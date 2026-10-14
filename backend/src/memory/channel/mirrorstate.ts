@@ -29,10 +29,11 @@
  * điều 17) — và hai bản trộn ba chiều trôi lệch nhau thì lệch đúng ở chỗ quyết định mất
  * hay giữ việc của người ta.
  */
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { currentMemoryDb, currentMemoryDir, openMemory, type MemoryDB } from "../db.js";
-import { getPeerSync, setPeerSync } from "../../config/settings.js";
+import { getMirrorAuto, getPeerSync, setPeerSync, type MirrorAuto } from "../../config/settings.js";
+import { channelIdentity } from "./index.js";
 import { writeFileAtomic } from "../../util/fs-atomic.js";
 import { merge3 } from "../../docs/standard.js";
 import {
@@ -562,7 +563,11 @@ function noteDeclined(peerId: string, area: string, rel: string, theirHash: stri
   m.set(k, theirHash);
 }
 
-export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: MemoryDB; peerSync?: PeerSyncLookup } = {}): {
+export function mirrorHooks(opts: {
+  repoRoot?: string; storeRoot?: string; db?: MemoryDB; peerSync?: PeerSyncLookup;
+  /** Injected by gates (two fake machines in one process); production reads the machine's own setting and identity. */
+  mirrorAuto?: () => MirrorAuto; selfId?: () => string;
+} = {}): {
   inventory: () => MirrorEntry[];
   declared: (peerId: string, entries: MirrorEntry[]) => void;
   read: (area: MirrorArea, rel: string) => Buffer | null;
@@ -610,6 +615,21 @@ export function mirrorHooks(opts: { repoRoot?: string; storeRoot?: string; db?: 
           knownBase.set(memKey(peerId, area, rel), incoming);
         }
         const r = receiveFile(opts.db ?? mirrorDb(), peerId, area, rel, body, { ...opts, autoApply });
+        // §9.6b: a row that just entered the queue is settled at once when the machine's policy says so.
+        if (r.queued) {
+          const policy = opts.mirrorAuto ? opts.mirrorAuto() : getMirrorAuto();
+          if (policy.mode !== "ask") {
+            try {
+              const box = opts.storeRoot ?? opts.repoRoot; // injected roots (gates) ⇒ log + stash stay inside them
+              autoResolve(opts.db ?? mirrorDb(), policy, opts.selfId ? opts.selfId() : selfDeviceId(), {
+                ...opts, peerId, inventoryFile: invFile, peerSync: lookup,
+                ...(box ? { logFile: join(box, "mirror-auto-log.json"), stashRoot: join(box, "mirror-stash") } : {}),
+              });
+            } catch {
+              /* fail-open: the row stays in the queue for a click */
+            }
+          }
+        }
         // Cố ý không nhận (bản mình mới hơn · mình đã xoá) ⇒ nhớ để khai; mọi kết cục khác ⇒ quên.
         const skip = !r.applied && !r.queued && !r.error && (r.verdict === "push" || r.verdict === "none");
         noteDeclined(peerId, area, rel, skip ? hashBytes(body) : null);
@@ -742,7 +762,8 @@ export function divergentCount(mine: MirrorEntry[], theirs: MirrorEntry[]): numb
 
 export interface PeerInventory {
   at: string;
-  entries: Array<{ area: MirrorArea; rel: string; hash?: string }>;
+  /** `mtimeMs` = when the peer last changed the file (its own clock) — the "which edit came first" of §9.6b. */
+  entries: Array<{ area: MirrorArea; rel: string; hash?: string; mtimeMs?: number }>;
 }
 
 function inventoryPath(machineDir = currentMemoryDir()): string {
@@ -767,7 +788,7 @@ export function rememberPeerInventory(peerId: string, entries: MirrorEntry[], fi
     const all = readInventories(file);
     all[normPeer(peerId)] = {
       at: now.toISOString(),
-      entries: entries.filter((e) => !isContentAddressed(e.area)).map((e) => ({ area: e.area, rel: e.rel, hash: e.hash })),
+      entries: entries.filter((e) => !isContentAddressed(e.area)).map((e) => ({ area: e.area, rel: e.rel, hash: e.hash, mtimeMs: e.mtimeMs })),
     };
     writeFileAtomic(file, JSON.stringify(all));
   } catch {
@@ -815,4 +836,131 @@ export function setPeerDirection(
   setPeerSync(peerId, want.direction === "one-way" ? { direction: "one-way", source: want.source } : { direction: "two-way", origin: want.origin });
   const c = getPeerSync(peerId);
   return { ok: true, direction: c.direction, ...(c.source ? { source: c.source } : {}), ...(c.origin ? { origin: c.origin } : {}) };
+}
+
+// ── TỰ DUYỆT hàng chờ hai chiều (plan/24 §9.6b) ──────────────────────────────────────────
+//
+// Hàng chờ vẫn là cửa duy nhất; cài đặt `mirrorAuto` chỉ quyết thay người bấm. Mỗi quyết định đi qua
+// `applyQueued` — nên chốt "đĩa đổi sau khi nhận thì không đè" vẫn giữ nguyên.
+//   · `author`: bên kia sửa (mình không) ⇒ nhận · khác đoạn ⇒ gộp · cùng đoạn ⇒ bản SỬA TRƯỚC thắng: mình sửa sau thì
+//     bản của mình được CẤT vào `mirror-stash/` (thư mục máy, không đồng bộ) để làm tiếp trên bản mới; không biết bên nào
+//     trước (thiếu giờ sửa, hoặc trùng giờ) ⇒ hỏi. Cả hai máy tính cùng một bên thắng nên tự hội tụ.
+//   · `fixed`: bản của máy được chọn thắng (máy này ⇒ giữ bản máy này; máy kia ⇒ nhận, khác đoạn thì gộp); mục đến từ
+//     một máy thứ ba khi mình không phải máy được chọn ⇒ hỏi.
+// Mục "để sau" không bị đụng: người dùng đã nói hỏi lại khi có cái mới.
+
+export interface AutoAction {
+  at: string;
+  peerId: string;
+  area: string;
+  rel: string;
+  choice: ApplyChoice;
+  why: string;
+  stash?: string;
+}
+export interface AutoResult {
+  applied: AutoAction[];
+  left: number;
+  errors: number;
+}
+
+const normId = (s: string): string => s.replace(/-/g, "").toUpperCase();
+/** This machine's device ID. index.ts imports this module; the call happens at run time, so the cycle is harmless. */
+function selfDeviceId(): string {
+  return channelIdentity().deviceId;
+}
+
+/** The choice the policy makes for one queued row, or null (ask). Pure — the tests drive it directly. */
+export function autoChoice(
+  row: Pick<QueueRow, "peerId" | "verdict">,
+  policy: MirrorAuto,
+  selfId: string,
+  when: { mine: number | null; theirs: number | null },
+): { choice: ApplyChoice; why: string; stashMine?: boolean } | null {
+  if (policy.mode === "fixed" && policy.machine) {
+    const fixed = normId(policy.machine);
+    if (fixed === normId(row.peerId)) {
+      return row.verdict === "merge" ? { choice: "merged", why: "fixed: merged both" }
+        : { choice: "theirs", why: "fixed: the chosen machine's version", stashMine: row.verdict === "block" };
+    }
+    if (fixed === normId(selfId)) {
+      return row.verdict === "merge" ? { choice: "merged", why: "fixed: merged both" } : { choice: "mine", why: "fixed: this machine's version" };
+    }
+    return null;
+  }
+  if (policy.mode === "author") {
+    if (row.verdict === "take") return { choice: "theirs", why: "author: only the other machine changed it" };
+    if (row.verdict === "merge") return { choice: "merged", why: "author: different lines, merged both" };
+    const { mine, theirs } = when;
+    if (mine === null || theirs === null || mine === theirs) return null;
+    return theirs < mine
+      ? { choice: "theirs", why: "author: the other machine edited first", stashMine: true }
+      : { choice: "mine", why: "author: this machine edited first" };
+  }
+  return null;
+}
+
+function stashDir(): string {
+  return join(currentMemoryDir(), "mirror-stash");
+}
+const AUTO_LOG = (): string => join(currentMemoryDir(), "mirror-auto-log.json");
+
+export function autoLog(file = AUTO_LOG()): AutoAction[] {
+  try {
+    const j = JSON.parse(readFileSync(file, "utf8")) as AutoAction[];
+    return Array.isArray(j) ? j : [];
+  } catch {
+    return [];
+  }
+}
+function appendAutoLog(acts: AutoAction[], file = AUTO_LOG()): void {
+  if (!acts.length) return;
+  try {
+    writeFileAtomic(file, JSON.stringify([...acts.reverse(), ...autoLog(file)].slice(0, 50)));
+  } catch {
+    /* the log is a convenience; the decision itself is already on disk */
+  }
+}
+
+/** Settle the waiting rows (of one peer, or all) by the policy. Fail-open per row: an error leaves the row waiting. */
+export function autoResolve(
+  db: MemoryDB,
+  policy: MirrorAuto,
+  selfId: string,
+  opts: { peerId?: string; repoRoot?: string; storeRoot?: string; inventoryFile?: string; logFile?: string; stashRoot?: string; peerSync?: PeerSyncLookup } = {},
+): AutoResult {
+  const out: AutoResult = { applied: [], left: 0, errors: 0 };
+  if (policy.mode === "ask") {
+    out.left = listQueue(db, opts.peerId).filter((r) => !r.dismissedAt).length;
+    return out;
+  }
+  for (const row of listQueue(db, opts.peerId, { freshen: true, repoRoot: opts.repoRoot, storeRoot: opts.storeRoot })) {
+    if (row.dismissedAt) continue;
+    if ((opts.peerSync ?? getPeerSync)(row.peerId).direction !== "two-way") { out.left++; continue; }
+    const root = mirrorRootFor(row.area, opts);
+    const abs = root ? resolveMirrorPath(root, row.rel) : null;
+    const mine = ((): number | null => {
+      try { return abs && existsSync(abs) ? statSync(abs).mtimeMs : null; } catch { return null; }
+    })();
+    const inv = peerInventory(row.peerId, opts.inventoryFile);
+    const theirs = inv?.entries.find((e) => e.area === row.area && e.rel === row.rel)?.mtimeMs ?? null;
+    const pick = autoChoice(row, policy, selfId, { mine, theirs });
+    if (!pick) { out.left++; continue; }
+    let stash: string | undefined;
+    if (pick.stashMine && abs && existsSync(abs)) {
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      stash = join(opts.stashRoot ?? stashDir(), row.area, `${row.rel}.${stamp}`);
+      try {
+        mkdirSync(dirname(stash), { recursive: true });
+        writeFileAtomic(stash, readFileSync(abs));
+      } catch {
+        out.errors++; out.left++; continue; // no stash, no overwrite: the later edit must never be lost
+      }
+    }
+    const r = applyQueued(db, row.id, pick.choice, opts, row.verdict);
+    if (!r.ok) { out.errors++; out.left++; continue; }
+    out.applied.push({ at: new Date().toISOString(), peerId: row.peerId, area: row.area, rel: row.rel, choice: pick.choice, why: pick.why, ...(stash ? { stash } : {}) });
+  }
+  appendAutoLog([...out.applied], opts.logFile);
+  return out;
 }
