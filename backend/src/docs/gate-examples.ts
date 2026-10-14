@@ -106,7 +106,8 @@ export function gateExampleFindings(root = STORE_DIR): string[] {
 const PRIVATE: Array<[string, RegExp, "md" | "all"]> = [
   ["names the person giving the work", /\buser\b/i, "md"],
   ["a dated decision", /\b(chốt|chot)\s+\d{4}-\d{2}-\d{2}/i, "md"],
-  ["an e-mail address", /[\w.+-]+@[\w-]+\.[\w.]+/, "all"],
+  // `.example` / `example.com` are reserved for examples (RFC 2606) — a sample address, not a contact.
+  ["an e-mail address", /[\w.+-]+@(?![\w.-]*\bexample\b)[\w-]+\.[\w.]+/, "all"],
   ["an IPv4 address", /\b(?:\d{1,3}\.){3}\d{1,3}\b/, "all"],
   ["a path under a user profile", /[A-Za-z]:[\\/]Users[\\/][^\\/\s<]+/, "all"],
   ["a personal alias", /ZyroFrost/i, "all"],
@@ -126,7 +127,11 @@ export function storePrivacyFindings(storeDir = STORE_DIR): string[] {
       if (!/\.(md|json|cjs|mjs|js|ps1|py|txt)$/i.test(name)) continue;
       readFileSync(p, "utf8").split(/\r?\n/).forEach((line, i) => {
         const md = /\.md$/i.test(name);
-        for (const [what, re, scope] of PRIVATE) if ((scope === "all" || md) && re.test(line)) out.push(`${r}:${i + 1} — ${what}`);
+        // In prose, text inside backticks is data (a transcript role `user`, a command) — not a person being named.
+        const prose = line.replace(/`[^`]*`/g, " ");
+        for (const [what, re, scope] of PRIVATE) {
+          if (scope === "md" ? md && re.test(prose) : re.test(line)) out.push(`${r}:${i + 1} — ${what}`);
+        }
       });
     }
   };
