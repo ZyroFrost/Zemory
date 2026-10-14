@@ -1,0 +1,91 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "PowerShell"
+    ]
+  },
+  "block": [
+    {
+      "note": "a new file with a non-ASCII name",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "báo-cáo.md",
+        "content": "x\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a Vietnamese identifier",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/a.ts",
+        "content": "const ketQua = 1;\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "a Vietnamese comment and a string are data",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/c.ts",
+        "content": "// kết quả của phép đo\nconst label = \"ketQua\";\nconst result = 1;\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "editing a file that already has its name",
+      "files": {
+        "cũ.md": "x\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "cũ.md",
+        "old_string": "x",
+        "new_string": "y"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ]
+}
