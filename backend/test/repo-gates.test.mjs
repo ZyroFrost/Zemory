@@ -80,8 +80,9 @@ test("constitution articles without a gate row are a gap; a non-git repo is not 
   const g = repoGates(root, "R");
   assert.equal(g.precommit, "no-git");
   assert.deepEqual(g.hp, { articles: 2, missing: [2], table: true });
-  assert.equal(g.gaps, 2, "the unmapped article + the missing top block");
+  assert.equal(g.gaps, 3, "the unmapped article + the missing top block + no rule core (plan/27 §3)");
   assert.match(repoGateLines(g).join("\n"), /article\(s\) 2 have no gate row/);
+  assert.match(repoGateLines(g).join("\n"), /no core section/, "a rule set without the core is told to take the standard");
 });
 
 // User 2026-10-07: "các luật nào mà ko viết hook dc thì đưa lên đầu để nó ko đọc lướt… kể cả hiến pháp luôn".
@@ -112,7 +113,7 @@ test("ungated articles go to the TOP of both files; numbers never move; `## Hàn
   const rules = join(agent, "02_RULES.md");
   writeFileSync(rules, readFileSync(rules, "utf8").replace("| 2 | Beta | CHỮ | phán đoán |", "| 2 | Beta | CHẶN | `b.test` |"));
   assert.match(noGateIssues(agent).join("\n"), /stale/);
-  assert.equal(repoGates(root, "R").gaps, 2, "unmapped article 4 + the stale block");
+  assert.equal(repoGates(root, "R").gaps, 3, "unmapped article 4 + the stale block + no rule core (plan/27 §3)");
 });
 
 // 3.7.7 appended "## Cổng cho hiến pháp" AFTER the standard stamp, and moving `## Hành xử` first dragged the stamp

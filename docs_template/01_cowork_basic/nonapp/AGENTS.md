@@ -12,8 +12,8 @@ Dự án này dùng **zemory** — bộ chuẩn làm việc. Luật nằm trong 
 
 **LUÔN đọc, mọi phiên, đúng thứ tự:**
 
-1. `docs/agent/01_CONSTITUTION.md` — bất biến riêng của dự án, **TỐI CAO**
-2. `docs/agent/02_RULES.md` — luật làm việc
+1. `docs/agent/01_CONSTITUTION.md` — bất biến riêng của dự án, **TỐI CAO** (khối ĐỌC KỸ ở đầu file, các điều nó liệt kê và §Mục đích là phần bắt đọc)
+2. `docs/agent/02_RULES.md` — **§Lõi**: luật không có chốt máy; phần còn lại có chốt máy, vi phạm thì bị chặn
 3. `docs/agent/05_TODO.md` — **CHỈ** các mục còn mở
 
 **MỞ KHI TRÚNG TRIGGER — chưa trúng thì KHÔNG mở:**

@@ -112,7 +112,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 1 | `AGENTS.md` | `<RAW>/AGENTS.md` | 54 |
 | 2 | `CLAUDE.md` | `<RAW>/CLAUDE.md` | 6 |
 | 3 | `docs/agent/01_CONSTITUTION.md` | `<RAW>/agent/01_CONSTITUTION.md` | 33 |
-| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 193 |
+| 4 | `docs/agent/02_RULES.md` | `<RAW>/agent/02_RULES.md` | 227 |
 | 5 | `docs/agent/03_STRUCTURE.md` | `<RAW>/agent/03_STRUCTURE.md` | 38 |
 | 6 | `docs/agent/04_SKILLS.md` | `<RAW>/agent/04_SKILLS.md` | 45 |
 | 7 | `docs/agent/05_TODO.md` | `<RAW>/agent/05_TODO.md` | 7 |
@@ -136,15 +136,15 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 25 | `.claude/skills/write-style/SKILL.md` | `<RAW>/.claude/skills/write-style/SKILL.md` | 91 |
 | 26 | `.claude/skills/sync-path/SKILL.md` | `<RAW>/.claude/skills/sync-path/SKILL.md` | 89 |
 | 27 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 1028 |
-| 28 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 81 |
-| 29 | `docs/hooks/02-59_read-first.cjs` | `<RAW>/hooks/02-59_read-first.cjs` | 294 |
+| 28 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 94 |
+| 29 | `docs/hooks/02-59_read-first.cjs` | `<RAW>/hooks/02-59_read-first.cjs` | 348 |
 | 30 | `.claude/skills/plan-trim/SKILL.md` | `<RAW>/.claude/skills/plan-trim/SKILL.md` | 66 |
 
 **Ba file cuối là bộ chặn tự động, không phải tài liệu.** Có những việc mà làm rồi thì không
 lấy lại được: ghi đè dữ liệu gốc người dùng đưa vào, xoá cả một thư mục, để mật khẩu lọt vào
 bản lưu. Luật bằng chữ ngăn được phần lớn, nhưng chữ thì người đọc có thể quên — ba file này
 để máy chặn ngay lúc xảy ra, thay vì phát hiện sau. `02-59_read-first.cjs` chặn mọi thao tác ghi khi
-agent chưa đọc hết bộ luật trong phiên.
+agent chưa đọc phần luật bắt đọc trong phiên (`02_RULES` §Lõi · khối ĐỌC KỸ của `01` · `05_TODO`).
 
 Cứ ghi chúng ra như mọi file khác. **Không tự nối vào máy** — muốn bật thì người dùng tự khai
 vào phần cài đặt của công cụ họ đang chạy. Nơi bạn làm việc chưa hỗ trợ thì ba file nằm yên,
@@ -188,7 +188,7 @@ mỗi quy trình. In ra bảng lệch. Thoát `0` = đúng hết · `1` = có ch
 Đọc **`docs/agent/01_CONSTITUTION.md`** → **`02_RULES.md`** → **`docs/plan/00_overview.md`**.
 
 > Đây **cũng chính là** cách đọc từ phiên sau trở đi — không có luật riêng cho lần dựng.
-> `AGENTS.md` quy định: luôn đọc `01` + `02` + mục còn mở trong `05_TODO`. Ba thứ **chỉ mở khi
+> `AGENTS.md` quy định: luôn đọc `01` (khối ĐỌC KỸ, các điều nó liệt kê, §Mục đích) + `02` §Lõi + mục còn mở trong `05_TODO`. Ba thứ **chỉ mở khi
 > trúng việc**: các quy trình trong `.claude/skills/`, `03_STRUCTURE` (chỗ-để-file **+ từ điển
 > chỉ số/cột**) và `04_SKILLS` (sổ đăng ký quy trình). Đừng mở trước cho "chắc".
 
@@ -242,6 +242,8 @@ Hỏi **mỗi lần MỘT câu, kèm đề xuất của bạn**. Thứ tự gợ
 4. Có quy tắc, mẫu, hay nguồn dữ liệu nào bắt buộc phải theo không?
 
 Đủ rõ thì điền: `AGENTS.md` (tên + mô tả 1–2 dòng) · `01_CONSTITUTION §Mục đích` + §PHI-MỤC-TIÊU.
+
+**Luật chung — hỏi một lần:** liệt kê mọi luật `02-N` trong `docs/agent/02_RULES.md` (số + tiêu đề, chia `## Lõi` và luật mang dấu `<!-- gate: … -->`), hỏi người dùng luật nào giữ nguyên · sửa · bỏ, rồi sửa file đúng câu trả lời. Bỏ luật = giữ số, ghi *bãi bỏ*. Chưa trả lời ⇒ giữ mặc định.
 
 ### 3c. Đề xuất OVERVIEW
 Viết `docs/plan/00_overview.md` theo đúng 4 mục bản mẫu chừa sẵn: **Tóm tắt ·

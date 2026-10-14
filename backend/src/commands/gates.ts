@@ -41,7 +41,7 @@ export function cmdGates(args: string[]): void {
   console.log(`zemory gates — ${rows.length} repo(s), ${open.length} with open gaps`);
   for (const g of rows) {
     const lines = repoGateLines(g);
-    console.log(`  ${lines.length ? "✗" : "✓"} ${g.name}`);
+    console.log(`  ${lines.length ? "✗" : "✓"} ${g.name}  (forced reading: ${g.forced.toLocaleString("en-US")} chars)`);
     for (const l of lines) console.log(`      · ${l}`);
   }
 }

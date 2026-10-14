@@ -134,8 +134,8 @@ test("non-app standard drops UI rules and adds the file-automation model", () =>
   // Non-app = 0 UI rules: reading/filling a .pbix is not app development.
   const appRules = read("05_app", "agent/02_RULES.md");
   const nonappRules = read("03_nonapp", "agent/02_RULES.md");
-  assert.match(appRules, /thiết kế UI\/UX phải TRÌNH DUYỆT/, "app rules keep the UI-design-approval rule");
-  assert.doesNotMatch(nonappRules, /thiết kế UI\/UX phải TRÌNH DUYỆT/, "non-app rules must NOT carry the app UI rule");
+  assert.match(appRules, /`02-62` \*\*Mọi quyết định thiết kế giao diện phải trình duyệt trước/, "app rules keep the UI-design-approval rule");
+  assert.doesNotMatch(nonappRules, /`02-62`/, "non-app rules must NOT carry the app UI rule");
   // The non-app structure standard documents pull/fill/upload + tasks/adhoc.
   const nonappStruct = read("03_nonapp", "agent/03_STRUCTURE.md");
   assert.match(nonappStruct, /KÉO \/ ĐIỀN \/ UPLOAD/, "non-app structure must document pull/fill/upload");
@@ -207,8 +207,8 @@ test("nguyên tắc của sync-path và write-style phải có trong 02_RULES c�
   const roots = ["01_cowork_basic/nonapp", "03_nonapp", "04_adapt", "05_app"];
   for (const r of roots) {
     const rules = readFileSync(new URL(`../../docs_template/${r}/agent/02_RULES.md`, import.meta.url), "utf8");
-    assert.match(rules, /CHƯA CÓ ĐƯỜNG SANG MÁY THỨ HAI/, `${r}: thiếu nguyên tắc của sync-path`);
-    assert.match(rules, /VĂN BẢN ĐƯA NGƯỜI ĐỌC/, `${r}: thiếu nguyên tắc của write-style`);
+    assert.match(rules, /`02-1` \*\*Xong = có đường sang máy thứ hai/, `${r}: thiếu nguyên tắc của sync-path`);
+    assert.match(rules, /`02-2` \*\*Văn bản đưa người đọc/, `${r}: thiếu nguyên tắc của write-style`);
     // Nguyên tắc chỉ MỘT dòng + trỏ sang skill; playbook không được bò ngược vào luật.
     assert.match(rules, /skills\/sync-path\/SKILL\.md/, `${r}: nguyên tắc không trỏ sang playbook`);
   }

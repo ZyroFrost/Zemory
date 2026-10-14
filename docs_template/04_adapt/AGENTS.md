@@ -25,7 +25,8 @@ Mọi luật · quy trình · cấu trúc · thiết kế nằm trong `docs/` �
    **chờ người duyệt** → khoá. **Tuyệt đối không tự khoá bảng khi chưa ai duyệt** — chuẩn tự uốn
    theo cái nó nhìn thấy thì `conform` luôn xanh và không gác gì cả.
    Đã khoá rồi → bỏ qua bước này.
-2. **ĐỌC LÕI `docs/agent/`** — KHÔNG bỏ sót: `01_CONSTITUTION` · `02_RULES` · `05_TODO` · `06_CHANGES`.
+   - **Khoá bảng xong → liệt kê luật chung rồi HỎI USER một lần:** mọi luật `02-N` trong `docs/agent/02_RULES.md` (số + tiêu đề, chia `## Lõi` — luật không có chốt máy — và luật mang dấu `<!-- gate: … -->`); hỏi luật nào giữ nguyên · sửa · bỏ, rồi sửa file đúng câu trả lời. Bỏ luật = giữ số, ghi *bãi bỏ* (`02-10` chặn mọi lần sửa làm mất số luật). Chưa trả lời ⇒ giữ mặc định.
+2. **ĐỌC LÕI `docs/agent/`** — máy ép ĐÚNG các mục này, không hơn: `02_RULES` §Lõi · ở `01_CONSTITUTION` khối ĐỌC KỸ, các điều khối đó liệt kê và §Mục đích · cả `05_TODO`. Phần còn lại của `01`/`02` không bắt đọc: luật ở đó có chốt máy, vi phạm thì bị chặn. `06_CHANGES` tra bằng `zemory changelog search`.
    **`docs/plan/*` KHÔNG bắt đọc mỗi phiên** — trước khi đề xuất/đổi thiết kế một vùng, tra `zemory plan search "<vùng>"`.
    **`03_STRUCTURE` và `04_SKILLS` KHÔNG nằm trong bộ này** — xem §Mở khi trúng trigger.
 3. **`03_STRUCTURE` ở hệ này là BẢNG ÁNH XẠ ĐÃ KHOÁ, dùng để TRA — không đọc hết mỗi phiên.**

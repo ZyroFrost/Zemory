@@ -244,17 +244,64 @@ function ledger(transcript, keys) {
   return { known };
 }
 
+// The lines (1-based) a SECTION demand covers (plan/27 §3), or null when the file has none of the named parts — then the
+// whole file is due: a repo whose rule set predates the markers is never let through on a missing marker.
+//   "core"             02_RULES: zemory:core:start … zemory:core:end
+//   "no-gate"          01_CONSTITUTION: the generated read-carefully block
+//   "no-gate-articles" the full text of every article that block lists ("N. " up to the next article or heading)
+//   "heading:<title>"  a "## <title>" section up to the next "## "
+function sectionLines(lines, parts) {
+  const want = new Set();
+  const span = (a, b) => { for (let i = a; i <= b; i++) want.add(i + 1); };
+  const find = (pfx) => lines.findIndex((l) => l.startsWith(pfx));
+  for (const p of parts) {
+    if (p === "core") {
+      const a = find("<!-- zemory:core:start"), b = find("<!-- zemory:core:end -->");
+      if (a >= 0 && b > a) span(a, b);
+    } else if (p === "no-gate" || p === "no-gate-articles") {
+      const a = find("<!-- zemory:no-gate:start"), b = find("<!-- zemory:no-gate:end -->");
+      if (a < 0 || b <= a) continue;
+      if (p === "no-gate") { span(a, b); continue; }
+      const listed = new Set();
+      for (let i = a; i <= b; i++) for (const m of lines[i].matchAll(/\*\*Điều (\d{1,2})\*\*/g)) listed.add(m[1]);
+      for (let i = 0; i < lines.length; i++) {
+        const m = /^(\d{1,2})\. /.exec(lines[i]);
+        if (!m || !listed.has(m[1])) continue;
+        let k = i + 1;
+        while (k < lines.length && !/^\d{1,2}\. /.test(lines[k]) && !/^#/.test(lines[k])) k++;
+        span(i, k - 1);
+      }
+    } else if (typeof p === "string" && p.startsWith("heading:")) {
+      const h = lines.findIndex((l) => l.startsWith("## " + p.slice(8)));
+      if (h < 0) continue;
+      let k = h + 1;
+      while (k < lines.length && !/^## /.test(lines[k])) k++;
+      span(h, k - 1);
+    }
+  }
+  return want.size ? want : null;
+}
+
 // Coverage of ONE file: which of its CURRENT lines the session has seen. A change by anyone (another session, our own script,
 // "zemory archive") leaves only the changed lines unseen — those, and nothing else, must be read. Blank lines carry nothing.
-function coverage(abs, L) {
+// With "parts", only the lines of those sections count (sectionLines); none found => the whole file.
+function coverage(abs, L, parts) {
   let lines;
   try { lines = splitLines(fs.readFileSync(abs, "utf8")); } catch { return null; }
   if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop(); // the newline that ends the file is not a line
+  const only = parts && parts.length ? sectionLines(lines, parts) : null;
   const seen = L.known.get(norm(abs)) || new Set();
   const unseen = [];
-  for (let i = 0; i < lines.length; i++) if (lines[i].trim() !== "" && !seen.has(lines[i])) unseen.push(i + 1);
-  return { full: unseen.length === 0, got: lines.length - unseen.length, total: lines.length, unseen, never: seen.size === 0 };
+  let total = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (only && !only.has(i + 1)) continue;
+    total++;
+    if (lines[i].trim() !== "" && !seen.has(lines[i])) unseen.push(i + 1);
+  }
+  return { full: unseen.length === 0, got: total - unseen.length, total, unseen, never: seen.size === 0, section: Boolean(only) };
 }
+const PART_LABEL = { "core": "§Lõi", "no-gate": "the read-carefully block", "no-gate-articles": "the articles it lists" };
+const partLabel = (p) => PART_LABEL[p] || (String(p).startsWith("heading:") ? "§" + String(p).slice(8) : String(p));
 
 // "3-5, 9, 12-40 (+N more)" — the line ranges a message asks for.
 function ranges(nums) {
@@ -290,21 +337,28 @@ function readFirst(payload, root, policy) {
     return null; // Read · Glob · Grep · everything that only looks
   }
   const need = expand(root, rf.required.concat(extraFor(rf, root, targets, cmd)));
-  const L = ledger(transcript, new Set(need.map((rel) => norm(path.join(root, rel)))));
+  // Section demands (plan/27 §3): only the named parts of a file are due — the rule core, not the whole rule set.
+  const secs = (Array.isArray(rf.sections) ? rf.sections : [])
+    .filter((s) => s && typeof s.file === "string" && Array.isArray(s.parts) && !need.includes(s.file) && fs.existsSync(path.join(root, s.file)));
+  const L = ledger(transcript, new Set(need.concat(secs.map((s) => s.file)).map((rel) => norm(path.join(root, rel)))));
   if (!L) return null;
   const missing = [];
-  for (const rel of need) {
-    const c = coverage(path.join(root, rel), L);
-    if (!c || c.full) continue;
-    missing.push("  - " + rel + "  (read " + c.got + "/" + c.total + " lines" + (c.never ? ")" : " - still to read: lines " + ranges(c.unseen) + ")"));
+  const report = (label, c) => {
+    if (!c || c.full) return;
+    missing.push("  - " + label + "  (read " + c.got + "/" + c.total + " lines" + (c.never && !c.section ? ")" : " - still to read: lines " + ranges(c.unseen) + ")"));
+  };
+  for (const rel of need) report(rel, coverage(path.join(root, rel), L));
+  for (const s of secs) {
+    const c = coverage(path.join(root, s.file), L, s.parts);
+    report(s.file + (c && c.section ? " - " + s.parts.map(partLabel).join(" + ") : ""), c);
   }
   if (!missing.length) return null;
-  return "BLOCKED (guard layer 1): NOT READ IN FULL - this repo requires reading these files completely in this session before acting:\n" +
+  return "BLOCKED (guard layer 1): NOT READ IN FULL - this repo requires reading these files (or the named sections of them) in this session before acting:\n" +
     missing.join("\n") +
-    "\nRead with the Read tool: a file never read - to the last line (a long file: keep reading with offset until the end);" +
-    " a file with lines listed - only those lines (offset = first line of a range, limit = its length). Lines already seen" +
+    "\nRead with the Read tool: a whole file never read - to the last line (a long file: keep reading with offset until the end);" +
+    " lines listed - only those lines (offset = first line of a range, limit = its length). Lines already seen" +
     " in this session need no reading again. grep / sed / head / Get-Content do not count. There is no flag for this.";
 }
 
-module.exports = { readFirst, shellActs, coverage, ledger };
+module.exports = { readFirst, shellActs, coverage, ledger, sectionLines };
 `;

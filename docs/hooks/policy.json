@@ -41,10 +41,23 @@
   "repo_gates": [],
   "read_first": {
     "required": [
-      "docs/agent/01_CONSTITUTION.md",
-      "docs/agent/02_RULES.md",
-      "docs/agent/05_TODO.md",
-      "docs/agent/06_CHANGES.md"
+      "docs/agent/05_TODO.md"
+    ],
+    "sections": [
+      {
+        "file": "docs/agent/02_RULES.md",
+        "parts": [
+          "core"
+        ]
+      },
+      {
+        "file": "docs/agent/01_CONSTITUTION.md",
+        "parts": [
+          "no-gate",
+          "no-gate-articles",
+          "heading:Mục đích"
+        ]
+      }
     ],
     "case_root": "tasks",
     "case_files": [

@@ -12,6 +12,7 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { guardMatcherGaps, precommitState } from "./guard-gen.js";
 import { noGateIssues } from "./no-gate.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
+import { coreIssueLines, coreIssues, forcedChars } from "./rule-core.js";
 import { hpGateCoverage } from "./validate.js";
 
 export interface RepoGates {
@@ -26,6 +27,10 @@ export interface RepoGates {
   top: string[];
   /** Read-before-write latch in place: 02-59_read-first.cjs present, policy.json declares read_first, and guard.cjs calls it. */
   readFirst: boolean;
+  /** Rule-core layout problems (docs/rule-core.ts, plan/27 §3): every rule gated or in the core, the core within its cap. */
+  core: string[];
+  /** Characters a session must read before acting (02 core + 01 forced part + 05_TODO). */
+  forced: number;
   /** Count of open gaps (0 = the repo runs every gate it should). */
   gaps: number;
 }
@@ -39,13 +44,17 @@ export function repoGates(root: string, name: string): RepoGates | null {
   const hp = hpGateCoverage(agentDir);
   const top = noGateIssues(agentDir);
   const readFirst = readFirstInPlace(join(agentDir, "..", "hooks"));
+  const rulesPath = join(agentDir, "02_RULES.md");
+  const core = existsSync(rulesPath) ? coreIssueLines(coreIssues(readFileSync(rulesPath, "utf8"), root)) : [];
+  const forced = forcedChars(agentDir);
   const gaps =
     (wiring === null ? 1 : wiring.length ? 1 : 0) +
     (precommit === "none" || precommit === "other" ? 1 : 0) +
     (hp && hp.missing.length ? 1 : 0) +
     (top.length ? 1 : 0) +
-    (readFirst ? 0 : 1);
-  return { root, name, wiring, precommit, hp, top, readFirst, gaps };
+    (readFirst ? 0 : 1) +
+    (core.length ? 1 : 0);
+  return { root, name, wiring, precommit, hp, top, readFirst, core, forced, gaps };
 }
 
 /** All three pieces must be there — a latch file an OLD guard never calls is a rule in words only. */
@@ -53,8 +62,9 @@ function readFirstInPlace(hooksDir: string): boolean {
   try {
     if (!existsSync(join(hooksDir, READ_FIRST_FILE))) return false;
     if (!readFileSync(join(hooksDir, "guard.cjs"), "utf8").includes(READ_FIRST_FILE)) return false;
-    const pol = JSON.parse(readFileSync(join(hooksDir, "policy.json"), "utf8")) as { read_first?: { required?: unknown } };
-    return Array.isArray(pol.read_first?.required) && pol.read_first.required.length > 0;
+    const pol = JSON.parse(readFileSync(join(hooksDir, "policy.json"), "utf8")) as { read_first?: { required?: unknown; sections?: unknown } };
+    const n = (v: unknown): number => (Array.isArray(v) ? v.length : 0);
+    return n(pol.read_first?.required) + n(pol.read_first?.sections) > 0;
   } catch {
     return false;
   }
@@ -71,5 +81,6 @@ export function repoGateLines(g: RepoGates): string[] {
   else if (g.hp && g.hp.missing.length) out.push(`constitution article(s) ${g.hp.missing.join(", ")} have no gate row (of ${g.hp.articles})`);
   for (const t of g.top) out.push(`${t} (\`zemory gates --write-top\`)`);
   if (!g.readFirst) out.push(`read-before-write latch not in place — ${READ_FIRST_FILE} missing or not called by guard.cjs (\`zemory hook guard\`)`);
+  out.push(...g.core);
   return out;
 }

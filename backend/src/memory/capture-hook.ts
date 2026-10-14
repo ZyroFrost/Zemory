@@ -28,6 +28,8 @@ import { tryWriteTurnSync } from "../jobs/writeturn.js";
 const HOOK_TURN_WAIT_MS = 3_000;
 import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
+import { coreForCompaction } from "../docs/rule-core.js";
+import { harnessPathsAt } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
@@ -120,11 +122,21 @@ export function ruleReminders(payload: any): string {
       out.push(`[zemory] ⚠ This session's title "${title}" breaks the session-title rule (${problem}) — ask the user ONCE to retitle it ${repo}_<Model>_<d-m-yyyy> (02_RULES §Phạm vi project).`);
     }
   }
+  // A host event delivered as a "prompt" (a background task finishing, a system notice) is not the user speaking: its
+  // text quotes agent output, so keyword doors fired on it (two reminders on one task notification, 2026-10-14).
+  if (/<task-notification>|\[SYSTEM NOTIFICATION|^\s*<system-reminder>/i.test(prompt)) return out.join("\n");
   if (/(chốt phiên|note lại|ghi sổ|docs lại|đổi session|sắp hết context|mở phiên mới)/i.test(prompt) && once("close")) {
     out.push("[zemory] Closing the session: follow skill session-close — `zemory memory scan` → digest/search GM (the summary is not the source) → re-measure 05_TODO from 3 sources → `zemory archive` → `zemory validate`.");
   }
   if (/(còn gì|còn việc|soát sổ|check todo|check hết todo|việc gì còn)/i.test(prompt) && once("audit")) {
     out.push("[zemory] Auditing the ledger = re-measure each item from ALL three sources: the code · Global Memory (`zemory memory search --all`, filter the USER's words) · a real run. Older than 7 days = suspect.");
+  }
+  // Doors for core rules (plan/27 §6): judgement rules have no tool call to hook, but the prompt names the moment.
+  if (/(giao diện|\bUI\b|\bUX\b|layout|bố cục|màu sắc|\btheme\b|dialog|nút bấm)/i.test(prompt) && once("ui")) {
+    out.push("[zemory] Interface work: every DESIGN decision (layout · size · colour · component shape · adding/removing an element) is proposed and approved BEFORE it is built (02-62); a skill is advice to present, not to auto-apply (02-16). Fixing a technical defect needs no approval.");
+  }
+  if (/(thiết kế|đề xuất|phương án|kiến trúc|đổi cách)/i.test(prompt) && once("design")) {
+    out.push("[zemory] Design proposal: run `zemory plan search \"<area>\"` before proposing — a direction already rejected must not be proposed again; state an objection to a flawed design before building it (02-14).");
   }
   return out.join("\n");
 }
@@ -255,10 +267,19 @@ export function handleHook(event: HookEventName, payload: any): string {
         "[zemory] Context vừa bị NÉN — phần chi tiết trước đó đã bị tóm tắt, nhưng Global Memory " +
         "giữ NGUYÊN VẸN cả phiên này. Trước khi làm tiếp: gọi `memory_context` (hoặc " +
         "`zemory memory search`) để dựng lại trạng thái thật, đừng suy ra từ bản tóm tắt.";
+      // The rule CORE goes back in after a compaction (plan/27 §6): the rules no hook holds are exactly the ones a
+      // summary drops. Rules, not memory — HP article 8 forbids pushing recall, not restating the repo's own rules.
+      let core = "";
+      try {
+        core = cwd ? coreForCompaction(harnessPathsAt(cwd).agent) : "";
+      } catch {
+        core = ""; // fail-open (HP article 9)
+      }
+      const parts = [note, card, core ? `[zemory] Lõi luật của repo (luật không có chốt máy — nguyên văn):\n${core}` : ""];
       return JSON.stringify({
         hookSpecificOutput: {
           hookEventName: "SessionStart",
-          additionalContext: card ? `${note}\n${card}` : note,
+          additionalContext: parts.filter(Boolean).join("\n"),
         },
       });
     }

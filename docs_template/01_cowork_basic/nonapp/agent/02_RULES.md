@@ -7,49 +7,120 @@
 > Đọc SAU `01_CONSTITUTION.md` (bất biến riêng của dự án, tối cao). Tuân thủ tuyệt đối.
 > Điều hướng nạp (đọc gì, lúc nào) → `AGENTS.md` ở root. Quy trình thao tác → `.claude/skills/`.
 
+## Lõi — luật không có chốt máy (bắt đọc)
+<!-- zemory:core:start · luật KHÔNG có hook/test nào chặn — phần DUY NHẤT của file bị bắt đọc (read-first) và được chèn lại sau khi nén context; luật có chốt máy rồi thì dời ra khỏi đây -->
+> Luật ở các mục sau mang dấu `<!-- gate: … -->`: hook chặn hoặc cổng đỏ khi vi phạm. Luật trong mục này không có lưới đỡ
+> nào — chỉ người đọc giữ được. Mỗi luật: điều kiện → hành vi; số `02-N` không bao giờ đánh lại.
+
+- `02-1` **Xong = có đường sang máy thứ hai, đã đo.** Thứ vừa dựng (lớp lưu · chỉ mục · bí mật · tài sản giao
+  đi) phải khai được đường sang máy khác, và đường đó phải được đo. Chưa khai hoặc chưa đo ⇒ việc còn dở, kể cả khi
+  cổng xanh. Quy trình: `.claude/skills/sync-path/SKILL.md`.
+- `02-2` **Văn bản đưa người đọc theo bộ luật văn phong.** Báo cáo · email · tài liệu giao đi viết cho người
+  nhận, không mang giọng harness (mệnh lệnh · viết hoa nhấn giọng · thuật ngữ nội bộ). Luật:
+  `.claude/skills/write-style/SKILL.md`.
+- `02-3` **Hiện từng bước, không chạy im lặng.** ① Trước mỗi cụm hành động nói một dòng: đang làm gì, vì sao
+  · ② mỗi khẳng định kèm nguồn đo · ③ số đo lệch dự đoán ⇒ báo ngay, không dồn về tổng kết · ④ việc chạy nền lâu
+  ⇒ báo đang chờ gì.
+- `02-4` **File tạm có đường chết.** Thứ tạo ra để làm việc mà không phải sản phẩm giao đi (bản nháp · bản thử ·
+  dữ liệu trung gian · ảnh chụp · bản sao để so) có chỗ riêng và có đường dọn. Thử xong và chắc không dùng lại ⇒
+  dọn trong phiên; thứ giữ lại phải nhỏ và nói rõ giữ vì gì.
+- `02-5` **`.gitignore` là giấu, không phải dọn.** File nháp ghi ra thư mục nháp ngoài repo. Buộc phải ghi
+  trong repo (công cụ ép đường dẫn · script cần cwd) ⇒ đặt tên `_scratch_*` và xoá trong cùng lượt (lệnh xoá đi qua
+  chốt `02-10`). Thêm pattern vào `.gitignore` không tính là đã dọn: file vẫn nằm trên đĩa và vẫn lớn lên.
+- `02-7` **Chỉ làm đúng việc được giao.** Đụng thứ ngoài yêu cầu ⇒ hỏi trước; không sửa rồi báo sau.
+- `02-8` **Yêu cầu chưa rõ ⇒ làm rõ trước khi làm** — tự kích, không chờ lời gọi. Kích khi: đa nghĩa · thuật ngữ
+  nhiều cách hiểu · thiếu dữ kiện · phạm vi chưa xác định · giả định ngầm · hai yêu cầu mâu thuẫn · trước thao tác
+  khó đảo; chỉ áp khi đầu vào chưa đủ để làm đúng. Dừng, đọc những gì đọc được, hỏi mỗi lần một câu kèm đề xuất, đủ
+  rõ mới làm; không tự chọn cách hiểu rộng nhất. Lời gọi "grill" ép chạy thủ công. Quy trình:
+  `.claude/skills/grill/SKILL.md`.
+- `02-9` **Thêm chức năng = mở rộng, không ghi đè** cái cũ, trừ khi yêu cầu nói rõ.
+- `02-11` **Chưa xác minh thì chưa phải sự thật.** Mọi khẳng định (con số · trạng thái · nguyên nhân · "đã
+  xong") truy được về nguồn kiểm được: đọc file · chạy lệnh · gọi bề mặt thật · tra tài liệu ngoài. Tra không ra ⇒
+  nói "không biết / chưa xác minh được" kèm các đường đã thử; không lấp bằng suy đoán nghe hợp lý. Trước khi báo
+  một con số, kết luận xong/chưa xong, hoặc xoá thứ gì ⇒ đo lại bằng đường thứ hai khác cơ chế (đổi công cụ · đổi
+  hướng đếm · gọi bề mặt thật). Bốn dạng sai phải soát: công cụ hỏng lặng trả rỗng · phép so lỏng báo oan · tiêu
+  chí nghe hợp lý mà sai bản chất · sổ nói khác thực tế.
+- `02-12` **Soát sổ = đo lại từng mục.** Áp mọi lúc, không chờ chốt phiên: khi được hỏi còn gì chưa làm · soát
+  sổ · plan/changelog tới đâu, và khi tự mở sổ. Mỗi mục `05_TODO` là một khẳng định trạng thái; file là nguồn của
+  nội dung, không phải của sự thật hệ thống. Trước khi liệt kê · báo cáo · hỏi về một mục, chạy đủ BA nguồn —
+  không chọn nguồn theo loại mục: ① **nguồn** (mở đúng file · đếm đúng dòng/cột · chạy lại truy vấn; không suy từ
+  mô tả) · ② **lịch sử quyết định** (có CLI `zemory` thì `zemory memory search --all`, lọc lời người giao việc;
+  không có thì đọc `docs/agent/archive/`) · ③ **chạy thật** (mở chính bản giao · làm mới dữ liệu rồi đối chiếu số).
+  Ba nguồn khớp mới kết luận; lệch ⇒ cái mới hơn thắng và ghi rõ cái cũ bị thay; không chạm được một nguồn ⇒ ghi
+  "chưa xác minh được" kèm nguồn đã thử — không mặc định "chưa làm", không lấy hai nguồn còn lại làm đủ. Mục quá 7
+  ngày không ai đụng = nghi ngờ. Hỏi lại một việc đã chốt là lỗi. Có CLI ⇒ máy đo `zemory todo verify` (exit ≠ 0
+  khi lệch).
+- `02-13` **Phép kiểm mới phải đỏ được.** Viết xong một phép kiểm (script · công thức đối chiếu · bảng so số) ⇒
+  phá đúng thứ nó canh rồi chạy lại; không đỏ ⇒ sửa phép kiểm. Hai lỗ hay gặp: phép kiểm không chạy tới nhánh
+  nguy hiểm; bản sao logic ở chỗ khác gánh thay. Xanh không phải bằng chứng.
+- `02-14` **Thấy điểm bất hợp lý trong thiết kế ⇒ nêu phản biện trước khi làm;** quyết định cuối thuộc người giao
+  việc.
+- `02-15` **Đổi hình hài · bố cục sản phẩm giao đi** (layout báo cáo · chọn biểu đồ · theme trình bày) ⇒ trình
+  trước, không tự đổi; điền số theo mẫu có sẵn thì cứ làm.
+- `02-16` **Skill là tham khảo cho khuyến nghị, không tự áp.** Đọc skill, rút khuyến nghị (nên theo · đang kẹt ·
+  nên chuẩn hoá), trình rồi mới làm.
+- `02-61` **Hook là lưới đỡ, không phải người quyết.** Hook không phải cơ chế cấm, càng không phải giấy phép. Hook
+  cho qua ≠ được phép: thao tác bất khả đảo vẫn phải hỏi trước dù không bị chặn. Hook chặn ≠ hết việc: bị chặn thì
+  hỏi, không tìm đường vòng; cờ `.allow-*` chỉ tạo sau khi được cho phép rõ trong phiên. Chữ là tầng quyết định,
+  máy là tầng đỡ hụt.
+- `02-19` **Nhị phân nặng** (`.pbix` · `.twb` · `.fig` · `.psd`) đi qua Git LFS.
+- `02-20` **Dữ liệu thật vs mẫu:** nguồn/extract thật ở `data/` (gitignore, theo máy); mẫu nhỏ đủ mở sản phẩm ở
+  `fixtures/` (tracked).
+- `02-25` **SQL · DAX · M gom vào `queries/` hoặc `measures/`, đặt tên** — không viết rải tại chỗ.
+- `02-26` **Docs (`docs/agent` · `docs/plan`) và thân `SKILL.md` viết tiếng Việt có dấu.** Nhóm ngôn ngữ (`02-26` ·
+  `02-66` · `02-27` · `02-29` · `02-30` · `02-31`) là mặc định của bộ này: người giao việc chốt bỏ hay nới vế nào thì
+  ghi quyết định vào `01_CONSTITUTION` (giữ vế nào, bỏ vế nào, vì sao); agent không tự nới, không tự siết; chưa ai
+  chốt ⇒ theo mặc định. Vế nên giữ kể cả khi nới hết: không viết tiếng Việt mất dấu — không muốn bỏ dấu thì viết
+  tiếng Anh.
+- `02-66` **Tên thư mục · tên skill · `name:` trong frontmatter: tiếng Anh, chữ thường, nối bằng `-`.**
+- `02-27` **Văn phong harness là đặc tả kỹ thuật.** Hiến pháp · luật · cấu trúc · plan · skill viết câu mệnh lệnh
+  ngắn, thuật ngữ chính xác, theo khuôn điều kiện → hành vi → phép kiểm. Không khẩu ngữ · cảm thán · hội thoại · kể
+  chuyện. Không trích lời người giao việc, không ghi ngày chốt — lời gốc, bối cảnh, sự cố nằm ở `06_CHANGES` và
+  Global Memory.
+- `02-29` **Mã và comment trong `scripts/` viết tiếng Anh:** comment · docstring · tên biến/hàm · log; một file
+  một ngôn ngữ. Không dịch ba thứ: ① chuỗi render ra tài liệu (desc·note sinh vào `docs/`) · ② tên do bên khác đặt
+  (cột Excel · trường API · tên file nguồn — giữ từng ký tự, dù trông như Việt mất dấu) · ③ thuật ngữ chuyên ngành.
+  Comment cũ: sửa khi đang đụng file đó, không dịch hàng loạt.
+- `02-30` **Định danh và tên file: ASCII tiếng Anh; trong mã chỉ chú thích được viết tiếng Việt.** Phủ: biến ·
+  hằng · hàm · lớp · kiểu · tham số · khoá config/JSON · tên test · tên file · tên thư mục · tên nhánh git. Cấm cả
+  dạng có dấu lẫn Việt mất dấu ghép lại. Miễn trừ: ba thứ ở `02-29` (dữ liệu, không phải định danh). Máy soi:
+  `node .claude/skills/audit/scripts/lang-scan.mjs .`
+- `02-31` **Chữ trong sản phẩm giao đi phải đủ và đúng.** ① Có dấu, đúng chính tả; không có tiếng Việt mất dấu ở
+  bất cứ file nào (plan · docs · chú thích script · tên test · chuỗi sinh máy): chỉ tiếng Anh hoặc tiếng Việt có dấu
+  — ngại encoding thì viết tiếng Anh; không mojibake (`Ã¡` · `â€` · `ï»¿`). ② Chú thích đủ: bảng có tiêu đề cột ·
+  hình có chú thích · mỗi số có đơn vị và kỳ. ③ Một thuật ngữ một tên xuyên suốt sản phẩm giao đi (đối chiếu từ
+  điển dự án nếu có). Cách đo: skill `audit`.
+- `02-33` **Docs: file `.md` là nguồn.** Sửa trực tiếp, đúng file, đúng vai trò; không cần chạy gì thêm.
+- `02-34` **Các file harness luôn khớp nội dung:** mỗi thay đổi ⇒ `05_TODO` phản ánh việc · `06_CHANGES` ghi sau
+  khi được xác nhận · `03` cập nhật khi đụng cấu trúc/định nghĩa · `04` cập nhật khi thêm/bớt skill · plan cập nhật
+  khi đổi thiết kế. Sổ nói khác thực tế là dạng sai không cổng nào bắt.
+- `02-35` **Mỗi file harness một việc, không lặp nội dung file khác:** `01` hiến pháp · `02` luật làm việc · `03`
+  chỗ để file + từ điển · `04` sổ đăng ký skill · `05` backlog · `06` changelog · `.claude/skills/` quy trình. Một
+  nội dung sống ở một nhà; nơi khác dẫn chiếu.
+- `02-36` **`docs/plan/` chỉ chứa spec:** không todo (→ `05_TODO`, qua cửa vào `02-38`), không luật (⇒ hỏi).
+- `02-37` **Plan gọn.** Plan là văn bản người viết để bàn và chốt thiết kế: giữ hướng đã chốt và điểm còn mở;
+  lịch sử sang `06_CHANGES`; đổi hướng thì sửa tại chỗ, lý do ghi ở `06_CHANGES`. Không khối máy sinh nào trong
+  `docs/plan` (mục lục · catalog · bảng tra do build sinh ⇒ file cạnh nguồn, plan trỏ link); sơ đồ và bảng cấu trúc
+  vẽ tay khi bàn thiết kế là phần chính của plan — luật này không bao giờ là lý do xoá sơ đồ hay né không vẽ. Mỗi
+  mục `05_TODO` gắn `→ plan/NN §mục`. Trần: một spec ~1.000 dòng · cả `docs/plan` ~5.000 dòng.
+- `02-38` **Sổ việc `05_TODO`.** ① **Cửa vào:** không tự thêm mục `05_TODO` · luật · cổng kiểm · bộ đếm · bộ đo ·
+  advisory. Thấy cần ⇒ hỏi một câu kèm đề xuất trong phiên; được chấp thuận mới ghi, vào đúng file. Đề xuất không
+  "đậu" vào sổ chờ duyệt. Ngưỡng: thực sự quan trọng — trước khi thêm trả lời đủ: gỡ bớt được gì · gộp vào cái có
+  sẵn được không · không có nó thì hỏng gì, đo được không; không trả lời được câu cuối ⇒ không làm. Không áp cho việc
+  được giao · sửa thứ đang hỏng · nghĩa vụ luật sẵn có bắt buộc. ② **Cửa ra:** một mục xong ⇒ đóng ngay: đo lại ·
+  ghi `06_CHANGES` · xoá khỏi `05_TODO`; không đợi chốt phiên.
+- `02-48` **Tiêu đề phiên** theo khuôn `<Repo>_<Model>_<d-m-yyyy>` (`<Model>` = model đang chạy; chủ đề chèn trước
+  ngày; phiên thứ 2, 3 trong ngày thêm `_<số>` sau ngày; ngày không đệm số 0). Tiêu đề do người giao việc đặt, agent
+  không tự đổi; phiên chưa có tiêu đề = chưa dùng. Tiêu đề phiên của chính mình lệch khuôn ⇒ nhắc một lần.
+- `02-49` **Nhắn agent ở phiên khác** (khi môi trường cho phép): chỉ nhắn phiên đang chạy có tiêu đề chuẩn, ngày
+  trong tiêu đề mới nhất của repo đó; phiên chưa có tiêu đề ⇒ không nhắn. Tiêu đề không phải địa chỉ gửi: có
+  `zemory` thì tra `zemory peers` (★ = phiên được nhắn); không tra được ⇒ không gửi, báo lại. Trả lời tin đến bằng
+  đúng địa chỉ `from` của tin.
+- `02-52` **Commit cục bộ (đảo được) theo phong cách repo, không cần xin;** push mới là cửa cần phép (`02-50`).
+<!-- zemory:core:end -->
+
 ## Hành xử
-- `02-1` **CHƯA CÓ ĐƯỜNG SANG MÁY THỨ HAI = CHƯA XONG** *(user chốt 2026-09-16)*. Mọi thứ vừa dựng — lớp
-  lưu, chỉ mục, bí mật, tài sản giao đi — phải KHAI được nó sang máy khác bằng đường nào, và đường đó
-  phải ĐO rồi mới gọi là xong. Không khai được = việc còn dở, bất kể cổng có xanh. Quy trình khai +
-  đo: `.claude/skills/sync-path/SKILL.md`.
-- `02-2` **VĂN BẢN ĐƯA NGƯỜI ĐỌC THEO VĂN PHONG ĐÃ CHỐT** *(user chốt 2026-09-16)*. Báo cáo · email · tài
-  liệu giao đi viết cho NGƯỜI NHẬN, không bê giọng harness (mệnh lệnh, viết hoa nhấn giọng, thuật ngữ
-  nội bộ) sang. Bộ luật văn phong: `.claude/skills/write-style/SKILL.md`.
-- `02-3` **HIỆN SUY NGHĨ TỪNG BƯỚC — CẤM CHẠY IM LẶNG (luật cứng).** Mọi bước phải để lộ *đang làm gì · vì sao · dựa trên số nào*, **ngay khi làm**, không dồn vào bản tổng kết cuối. Không được chạy một chuỗi dài rồi mới ngoi lên báo kết quả. **Vì sao:** thứ nguy hiểm nhất không phải làm sai, mà là **làm sai trong im lặng** — người dùng mất khả năng chặn giữa chừng, và khi phát hiện thì đã trôi qua hàng chục bước. Hệ quả bắt buộc: ① nói TRƯỚC mỗi cụm hành động, một dòng là đủ · ② mỗi khẳng định đi kèm nguồn đo được · ③ số đo lệch với dự đoán thì **nói ngay**, không đợi tới cuối · ④ việc chạy lâu phải báo đang chờ gì.
-- `02-4` **FILE TẠM PHẢI CÓ ĐƯỜNG CHẾT — không thứ gì được phình vô hạn.** Mọi thứ bạn tạo ra để LÀM VIỆC mà không phải sản phẩm giao đi (bản nháp, bản thử, dữ liệu trung gian, ảnh chụp, bản sao để so) phải có chỗ riêng và có đường dọn. Xong một phép thử mà biết chắc không dùng lại ⇒ **dọn ngay trong phiên**; thứ đáng giữ thì giữ nhưng phải NHỎ và nói rõ giữ vì gì. Rác không nằm trong sản phẩm nên không ai thấy nó lớn lên — cho tới lúc thư mục dự án hết dùng được.
-- `02-5` **🔴 `.gitignore` là GIẤU, KHÔNG phải DỌN — và rác nằm TRONG repo phải chết trong cùng lượt.**
-  *(luật thêm 2026-08-24 từ số đo thực địa; đi cặp với bullet FILE TẠM ngay trên.)*
-  · **File nháp ghi vào thư mục nháp NGOÀI repo.** Buộc phải ghi trong repo (công cụ ép đường dẫn,
-    script cần cwd) ⇒ đặt tên `_scratch_*` và **xoá trong CÙNG LƯỢT**, không để dành tới lúc chốt phiên.
-  · **Thêm pattern vào `.gitignore` KHÔNG tính là đã dọn.** Nó chỉ làm file tàng hình với `git status`;
-    file vẫn nằm nguyên trên đĩa và vẫn lớn lên. Muốn dọn thì phải XOÁ.
-  **Vì sao thành luật — đo một repo, một lượt quét:** 5 file nháp `.tmp_*` ở gốc còn sót từ phiên ba
-  ngày trước · `data/extract/` phình **3.096 MB**, trong đó một **venv Python 201 MB / 13.830 file** bị
-  bulk-copy vào và một `.rar` **1,34 GB** trùng nội dung với chính folder đã giải nén cạnh nó. Dọn được
-  **1,56 GB / ~13.850 file, không mất gì**. Toàn bộ chỗ đó nằm dưới đường đã gitignore — tức nó vô hình
-  với mọi cổng, và cũng vô hình với chính người tạo ra nó.
-- `02-7` **Chỉ làm đúng cái được yêu cầu.** Đụng thứ khác → **hỏi trước**, không tự sửa rồi báo.
-- `02-8` **Yêu cầu không rõ phải được làm rõ TRƯỚC khi thực thi — cơ chế TỰ ĐỘNG, không chờ user gọi.** Kích hoạt khi: đa nghĩa · thuật ngữ nhiều cách hiểu · thiếu dữ kiện · phạm vi không xác định · giả định ngầm chưa nêu · hai yêu cầu mâu thuẫn · hoặc trước thao tác khó đảo ngược. → Mở `.claude/skills/grill/`. KHÔNG tự chọn cách hiểu rộng nhất.
-- `02-9` **Thêm chức năng = mở rộng, KHÔNG ghi đè** cái cũ (trừ khi yêu cầu rõ).
-- `02-10` **Thao tác XOÁ phải được user xác nhận trước.** Xoá file, sản phẩm, script, nội dung docs hay thư mục đều coi là bất khả đảo: nêu đối tượng + lý do, chờ chấp thuận rồi mới làm. Thứ dư thừa: **đề xuất, không tự xoá**. Bổ sung/mở rộng không cần xác nhận; **xoá/thu hẹp luôn cần**. **Chốt máy:** guard chặn mọi lệnh xoá file trong repo (`rm` · `del` · `Remove-Item` · `git rm` · xoá trong script) và mọi lần sửa làm MẤT một số luật trong `01`/`02`, khi chưa có cờ `.allow-delete`; thư mục tạm được miễn; bãi bỏ một luật thì giữ số.
-- `02-11` **CHƯA XÁC MINH THÌ CHƯA PHẢI SỰ THẬT — KHÔNG BỊA, KHÔNG SUY DIỄN (luật cứng).** Áp cho **mọi khẳng định**, không riêng con số: trạng thái hệ thống · nguyên nhân · "cái gì đang xảy ra" · "đã xong chưa". Mỗi khẳng định phải truy được về **nguồn kiểm được** (đọc file · chạy lệnh · gọi bề mặt thật · tra tài liệu ngoài). **Tra không ra ⇒ nói thẳng "không biết / chưa xác minh được"** và nêu đã thử đường nào — cấm lấp bằng suy đoán nghe hợp lý, vì *nghe hợp lý* chính là thứ làm nó lọt.
-  Trước khi ① báo một con số · ② kết luận "xong / chưa xong" · ③ xoá bất cứ thứ gì — phải đo lại bằng **đường thứ hai, khác cơ chế**. Bốn dạng sai thường gặp: công cụ trả rỗng vì **hỏng lặng** (cờ sai ⇒ tưởng "sạch") · **báo oan** do so lỏng (không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai bản chất** (khoá phụ trỏ hụt ⇒ tưởng dữ liệu mồ côi, suýt xoá thứ đang sống) · **sổ nói khác thực tế**. Kiểm chéo = đổi công cụ, đổi hướng đếm, hoặc gọi bề mặt thật.
-- `02-12` **📋 SOÁT SỔ = ĐO LẠI TỪNG MỤC, KHÔNG ĐỌC RỒI CHÉP LẠI (luật cứng).**
-  **ÁP MỌI LÚC — KHÔNG chờ chốt phiên.** Kích hoạt ngay khi user nói *"check todo"* · *"còn gì chưa làm"* · *"liệt kê ra"* · *"soát lại"* · *"plan/change tới đâu rồi"*, hay khi agent tự mở sổ giữa chừng. Phần lớn ca hỏng là GIỮA PHIÊN, ngay sau khi vừa xong một việc — đúng lúc dễ tưởng mình đang nhớ rõ nhất.
-  - **Vì sao:** mỗi mục trong `05_TODO` là một **KHẲNG ĐỊNH VỀ TRẠNG THÁI** ("chưa làm", "chờ duyệt", "còn N mục") — mà khẳng định thì phải **truy được về nguồn kiểm được** (luật ngay trên). File `.md` là nguồn của *nội dung* (FILE WINS), **KHÔNG phải nguồn của sự thật hệ thống**. Đọc sổ rồi báo lại y nguyên = báo cáo chưa xác minh, dù chữ nằm trong file của chính mình.
-  - **TRƯỚC khi liệt kê / báo cáo / hỏi user về bất kỳ mục nào — BA NGUỒN, CHẠY ĐỦ CẢ BA. KHÔNG chọn nguồn theo "loại mục".** Ba nguồn trả lời BA câu KHÁC nhau, không nguồn nào thay được nguồn nào:
-    · **① NGUỒN — *"file/số liệu hiện đang thế nào"***: mở đúng file, đếm đúng dòng/cột, chạy lại truy vấn. **Cấm suy từ mô tả.**
-    · **② LỊCH SỬ QUYẾT ĐỊNH — *"đã từng quyết / làm gì"***: có `zemory` CLI thì `zemory memory search --all` (**lọc riêng LỜI USER** — quyết định đến từ user, không từ agent); không có thì đọc `docs/agent/archive/`. Quyết định hay nằm ở phiên khác, thậm chí **REPO KHÁC**.
-    · **③ CHẠY THẬT — *"khi mở ra nó ra cái gì"***: mở chính bản giao (báo cáo · mô hình · bản xuất) nhìn tận mắt · làm mới dữ liệu rồi đối chiếu số. **Công thức/cấu hình có mặt KHÔNG bảo đảm số ra đúng** — nguồn đổi mà bản giao chưa làm mới thì sai LẶNG; còn lịch sử thì chỉ nói về quá khứ, không nói hiện tại.
-    **CHỈ KHI CẢ BA KHỚP mới được kết luận.** Lệch nhau ⇒ **cái MỚI HƠN thắng**, và phải ghi rõ cái cũ đã bị thay — **lời nói của user CÓ HẠN DÙNG**: một quyết định cũ có thể bị chính việc làm sau đó supersede. Không chạm được nguồn nào (không mở được, mất mạng, chưa có quyền…) ⇒ ghi **"chưa xác minh được"** kèm nguồn đã thử — **KHÔNG** mặc định là "chưa làm", và **KHÔNG** lấy hai nguồn còn lại làm đủ.
-    > ⚠ **Vì sao phải nói "đủ cả ba" thay vì liệt kê điều kiện:** bản cũ của chính luật này viết theo kiểu *"kiểm được bằng X ⇒ làm thế này · là quyết định ⇒ làm thế kia"* — đọc ra thành **bảng phân nhánh theo loại mục**, nên agent phân loại xong là rẽ MỘT nhánh rồi dừng. Đã trả giá thật, và trong cùng một ngày nó sai theo **hai hướng ngược nhau**: một mục chỉ chạy ① nên bỏ sót việc đã được sửa hai lần cùng một nguồn dữ liệu đã chết vẫn nằm trong bản quét; một mục khác chỉ chạy ② nên tin một câu user nói từ lâu rồi **gỡ mất một mục mà thực tế đã làm xong**. Cả hai đều lọt qua bản cũ **mà không vi phạm chữ nào**.
-  - **Mục quá 7 ngày không ai đụng = NGHI NGỜ, không phải sự thật.** Đo trên một repo thật: soát 58 mục thì **11 sai (~19%)** — có mục đã làm xong vẫn mang dấu `[ ]`, có mục agent tự bịa vì thấy triệu chứng rồi phán nguyên nhân.
-  - **Hỏi lại user một việc đã chốt là LỖI, không phải cẩn thận.** Nó bắt user trả lời hai lần cho cùng một câu và làm hỏng lòng tin vào cả bản danh sách.
-  - **Máy phải canh, đừng dựa agent nhớ** (cùng doctrine `structure-sync`/`conform`): `zemory todo verify` đo lại từng mục bằng nguồn kiểm được (tên file/ký hiệu/bề mặt mà mục nêu có thật không · phép đo mục tự nêu có còn đúng không · nguồn đã đổi SAU khi dòng sổ được viết chưa) rồi in bảng LỆCH; exit khác 0 khi có lệch nên nối được vào cổng kiểm. Luật không có máy canh thì chỉ là lời hứa.
-- `02-13` **Phép kiểm mới phải chứng minh mình ĐỎ ĐƯỢC.** Viết xong một phép kiểm (script, công thức đối chiếu, bảng so số) → **phá đúng thứ nó canh** rồi chạy lại: không đỏ ⇒ nó chưa soi gì, phải sửa phép kiểm chứ không phải mừng vì xanh. Hai lỗ điển hình: phép kiểm chưa bao giờ chạy tới nhánh nguy hiểm, và **bản sao logic ở nơi khác gánh thay**. Xanh KHÔNG phải bằng chứng.
-- `02-14` **Nêu phản biện thiết kế trước khi thực thi** nếu thấy điểm bất hợp lý; quyết định cuối thuộc về user.
-- `02-15` **Đổi HÌNH HÀI / BỐ CỤC sản phẩm giao đi** (layout báo cáo, chọn biểu đồ, theme trình bày) = quyết định TRÌNH BÀY → **trình user trước, KHÔNG tự đổi**. Điền số theo mẫu có sẵn thì cứ làm.
-- `02-16` **Skill là THAM KHẢO để khuyến nghị, KHÔNG auto-apply.** Đọc skill → rút khuyến nghị (nên theo / đang kẹt / nên chuẩn hoá) → **TRÌNH user**; user chốt mới làm.
+- `02-10` **Thao tác XOÁ phải được user xác nhận trước.** Xoá file, sản phẩm, script, nội dung docs hay thư mục đều coi là bất khả đảo: nêu đối tượng + lý do, chờ chấp thuận rồi mới làm. Thứ dư thừa: **đề xuất, không tự xoá**. Bổ sung/mở rộng không cần xác nhận; **xoá/thu hẹp luôn cần**. **Chốt máy:** guard chặn mọi lệnh xoá file trong repo (`rm` · `del` · `Remove-Item` · `git rm` · xoá trong script) và mọi lần sửa làm MẤT một số luật trong `01`/`02`, khi chưa có cờ `.allow-delete`; thư mục tạm được miễn; bãi bỏ một luật thì giữ số. <!-- gate: guard -->
 
 ## Cấu trúc thư mục
 **Cần đặt · tạo · dời bất cứ file nào → mở `.claude/skills/structure/` TRƯỚC.** Ở đó có cây thư mục, bảng tra "cần gì → để đâu", và quy ước đặt tên. Không chắc để đâu → tra bảng đó hoặc HỎI, **đừng đoán**. Thấy chỗ đang lệch chuẩn → nắn về chuẩn (lớn/khó đảo thì BÁO), KHÔNG nhân cái sai lên.
@@ -57,15 +128,11 @@
 
 ## Luật khi VIẾT (BẮT BUỘC — luật cứng)
 
-> Năm luật này nổ **lúc viết**, không phải lúc tạo thư mục, và **không cổng kiểm nào bắt được**.
-> Không biết = vi phạm âm thầm. Vì vậy chúng nằm ở đây (luôn nạp), không ở skill (tra khi cần).
+> Luật nổ lúc VIẾT. Dòng mang dấu `<!-- gate: … -->` có chốt máy; luật lúc-viết chưa có chốt nằm ở §Lõi.
 
 ```
-02-19 Nhị phân nặng     .pbix/.twb/.fig/.psd → Git LFS (track file, LFS lo dung lượng)
-02-20 Data thật vs mẫu  nguồn/extract THẬT → data/ (gitignore, theo máy) · mẫu nhỏ mở được sản phẩm → fixtures/ (tracked)
-Secret/connection config/*.example.* tracked (trỏ TÊN env) · connection thật → .env / *.local.* (gitignore). KHÔNG commit secret
-02-25 SQL/DAX/M         gom queries/ hoặc measures/, đặt tên — KHÔNG rải inline
-02-65 ĐẦU VÀO CHỈ ĐỌC   data/<task>/01_raw/ là bản GỐC người ta gửi / kéo từ nguồn — **KHÔNG sửa, KHÔNG ghi đè, KHÔNG xoá**.
+02-21 Secret/connection config/*.example.* tracked (trỏ TÊN env) · connection thật → .env / *.local.* (gitignore). KHÔNG commit secret <!-- gate: guard -->
+02-65 ĐẦU VÀO CHỈ ĐỌC   data/<task>/01_raw/ là bản GỐC người ta gửi / kéo từ nguồn — **KHÔNG sửa, KHÔNG ghi đè, KHÔNG xoá**. <!-- gate: guard -->
                   Trung gian (02_processing/) xoá thoải mái, dựng lại được; bản giao đi (03_output/) giữ để đối chiếu.
                   Ba chặng có BA VÒNG ĐỜI khác nhau, đó là lý do chúng tách — và vì sao chỉ 01_raw bất khả đảo:
                   trung gian mất thì chạy lại, đầu vào mất là mất luôn, đi xin lại người gửi.
@@ -85,7 +152,8 @@ Host không có cơ chế đó ⇒ file nằm im, **vô hại**, và ăn ngay ng
 ```
 CHẶN ghi     data/*/01_raw   đầu vào GỐC mỗi case — mất là mất luôn, phải xin lại người gửi
              docs/agent      hiến pháp + luật
-CHẶN xoá     xoá ĐỆ QUY (rm -r · Remove-Item -Recurse · del /S) — một lệnh quét cả cây
+CHẶN xoá     mọi lệnh xoá file trong dự án (`02-10` — thư mục tạm miễn; cờ hooks/.allow-delete)
+             xoá ĐỆ QUY (rm -r · Remove-Item -Recurse · del /S) — một lệnh quét cả cây
              xoá chạm file secret (.env · *.key · *.pem …)
 CHẶN ngoài   ghi ra đường TUYỆT ĐỐI ngoài thư mục dự án (miễn thư mục tạm · ~/.claude · /dev/null)
              SQL bắt máy chủ ghi file (BACKUP/RESTORE … DISK) · SQL đổi cấu hình máy chủ (sp_configure, linked server, CREATE/DROP DATABASE)
@@ -96,53 +164,16 @@ CHO QUA      02_processing/ · 03_output/ · file tạm — agent ghi suốt ở
 Vượt MỘT VIỆC bằng flag hooks/.allow-* (user duyệt trong phiên). Guard cho qua rồi ĐÓNG DẤU vào file flag, không xoá ngay: đúng lệnh đó được thử lại trong 90 giây; xin việc khác hoặc quá hạn thì flag bị thu hồi
 ```
 
-**Chốt chặn ≠ chốt chặt.** Danh sách trên cố ý KHÔNG chặn xoá một file thường: gate nhiễu là
-gate bị bỏ qua, và lúc đó nó tệ hơn không có gate. Sửa luật = sửa thẳng `hooks/policy.json`
-(bộ này không có lệnh sinh lại).
+**Chặn xoá:** mọi lệnh xoá file trong dự án cần cờ `hooks/.allow-delete` (thư mục tạm được miễn) — `02-10`. Sửa luật =
+sửa thẳng `hooks/policy.json` (bộ này không có lệnh sinh lại).
 
-**Bộ chặn này là LƯỚI ĐỠ, không phải người quyết.** Nó có mặt để đỡ những lúc bạn đọc sót hoặc
-quên luật — nó **không** phải cơ chế cấm xoá, và **càng không** phải giấy phép. Quyền quyết định
-xoá luôn thuộc **người dùng**: hỏi và được đồng ý TRƯỚC, dù bộ chặn có kêu hay không.
-- `02-61` **Nó im ≠ bạn được phép.** Nó chỉ bắt được những kiểu đã liệt kê ở trên; xoá một file thường
-  cố ý cho qua, nhưng đó vẫn là việc không lấy lại được, vẫn phải hỏi.
-- `02-61` **Nó chặn ≠ hết việc.** Bị chặn thì đi HỎI người dùng, đừng tìm đường vòng và đừng tự tạo file
-  cho phép.
+Vai của bộ chặn: `02-61` (§Lõi).
 
-**Không nối được chốt máy thì luật chữ ở §Hành xử vẫn áp nguyên** — *xoá là bất khả đảo, phải hỏi trước*.
+**Không nối được chốt máy thì luật chữ (§Lõi · `02-10`) vẫn áp nguyên** — *xoá là bất khả đảo, phải hỏi trước*.
 
-## Ngôn ngữ (mặc định — **user bật/tắt được**)
+## Ngôn ngữ
 
-> ⚙ **Bộ cowork dùng CHUNG cho nhiều kiểu dự án, nên mục này là MẶC ĐỊNH GỢI Ý, không phải luật cứng.**
-> Dự án nào thấy chặt quá — ví dụ nhóm quen đặt tên cột/biến theo tiếng Việt, hoặc tài liệu giao đi
-> viết bằng ngôn ngữ khác — thì **user chốt bỏ hoặc nới**, rồi **ghi quyết định đó vào
-> `01_CONSTITUTION.md`** (một dòng là đủ: giữ vế nào, bỏ vế nào, vì sao). Agent theo bản đã chốt ở
-> đó, KHÔNG tự nới và cũng KHÔNG tự siết. Chưa ai chốt gì ⇒ theo mặc định dưới đây.
-> *(Vế duy nhất nên giữ kể cả khi nới hết: **đừng viết tiếng Việt MẤT DẤU** — nó vừa khó đọc vừa làm
-> mọi bộ dò chính tả mù. Không muốn bỏ dấu thì viết tiếng Anh.)*
-
-- `02-26` **docs (`docs/agent` + `docs/plan`) và thân `SKILL.md`**: tiếng Việt có dấu.
-- `02-66` **Tên thư mục · tên skill · `name:` trong frontmatter**: **tiếng Anh**, chữ thường, nối bằng `-`.
-- `02-27` **Văn phong harness = KỸ THUẬT / QUY PHẠM.** Câu mệnh lệnh ngắn, thuật ngữ chính xác, nêu điều kiện → hành vi. Không khẩu ngữ, không kể chuyện, không ví dụ hội thoại.
-- `02-29` **code · comment trong `scripts/`: TIẾNG ANH TOÀN BỘ** — comment · docstring · tên biến/hàm · log. Một file một ngôn ngữ. **Ba thứ KHÔNG phải comment — KHÔNG dịch:** ① **chuỗi RENDER ra tài liệu / bề mặt người đọc** (desc·note sinh vào `docs/`) theo luật docs ở trên · ② **tên do người khác đặt** (tên cột Excel · trường API · tên file nguồn) giữ NGUYÊN từng ký tự dù trông như "mất dấu": đổi là loader không tìm thấy · ③ **thuật ngữ chuyên ngành** giữ nguyên. Comment bản địa cũ: sửa khi đang đụng file đó, KHÔNG dịch hàng loạt.
-- `02-30` **ĐỊNH DANH · TÊN FILE = ASCII TIẾNG ANH. TRONG MÃ, THỨ DUY NHẤT ĐƯỢC PHÉP LÀ TIẾNG VIỆT CHÍNH LÀ CHÚ THÍCH** *(luật thiết kế chung MỌI app)*. Phủ hết: tên biến · hằng · hàm · lớp · kiểu · tham số · khoá config/JSON · tên test · **tên file · tên thư mục** · tên nhánh git. Cấm **cả hai** dạng — có dấu (`chặnNhầm` · `tênFile`) và mất dấu ghép lại (`THAN_TOI_DA` · `soLuongBanGhi`). *Vì sao là luật chứ không phải gu: định danh là thứ MÁY khớp — grep · refactor · import · đường dẫn trong lệnh shell đều gãy hoặc trượt trên chữ ngoài ASCII, mà đổi tên về sau thì đụng mọi chỗ gọi.* Ba miễn trừ ở vế trên giữ nguyên (tên do người khác đặt · thuật ngữ chuyên ngành · chuỗi render cho người đọc) — đó là DỮ LIỆU, không phải định danh. Máy soi: `node .claude/skills/audit/scripts/lang-scan.mjs .`
-- `02-31` **CHỮ TRONG SẢN PHẨM GIAO ĐI PHẢI ĐẦY ĐỦ VÀ ĐÚNG — ba ràng buộc, áp lúc VIẾT.**
-  Người đọc nhận sản phẩm, không nhận quy trình; một lỗi chữ thì không cổng nào kêu.
-  · **① Có dấu, đúng chính tả — TUYỆT ĐỐI KHÔNG CÓ TIẾNG VIỆT MẤT DẤU Ở BẤT CỨ ĐÂU** (mọi file, không
-    trừ file nào: plan · docs · chú thích script · tên test · chuỗi sinh máy). Đúng **HAI** lựa chọn:
-    **① tiếng Anh · ② tiếng Việt CÓ DẤU.** Sợ encoding console thì viết **TIẾNG ANH**, đừng viết Việt
-    mất dấu. Và không mang mojibake (UTF-8 bị đọc thành Latin-1: `Ã¡` · `â€` · `ï»¿`).
-  · **② Chú thích ĐỦ.** Mỗi bảng có tiêu đề cột · mỗi hình/biểu đồ có chú thích · **mỗi số có đơn
-    vị + kỳ**. Số trần không đơn vị là số không kiểm được.
-  · **③ Một thuật ngữ MỘT tên** xuyên suốt mọi trang giao đi (đối chiếu từ điển của project nếu có);
-    cùng một thứ gọi hai tên là bắt người đọc tự đoán.
-  *(Cách đo + bẫy báo oan nằm ở `.claude/skills/audit/`.)*
-## Tài liệu
-- `02-33` **Docs = FILE là nguồn (FILE WINS):** sửa `.md` trực tiếp, bám chuẩn; **xong là xong**.
-- `02-35` **Mỗi file harness làm ĐÚNG MỘT việc — KHÔNG lặp nội dung file khác.** `01` hiến pháp · `02` luật làm việc · `03` chỗ-để-file + từ điển · `04` sổ đăng ký skill · `05` backlog · `06` changelog · `.claude/skills/` quy trình. Một nội dung sống ở ĐÚNG MỘT nhà; nơi khác cần thì **DẪN CHIẾU**, không chép lại.
-- `02-34` **Đồng bộ bắt buộc — `01` ↔ `02` ↔ `03` ↔ `04` ↔ `05` ↔ `06` ↔ `plan/` luôn KHỚP nhau.** Mỗi thay đổi: `05_TODO` phản ánh việc, `06_CHANGES` ghi log (sau khi user OK), `03` cập nhật nếu đụng cấu trúc/định nghĩa, `04` cập nhật nếu thêm/bớt skill, `plan/` cập nhật nếu đổi thiết kế. Sổ nói khác thực tế là dạng sai khó phát hiện nhất — không cổng nào bắt được.
-- `02-36` **`docs/plan/` chỉ chứa SPECS** — KHÔNG todo (→ `05_TODO`, qua cửa vào bên dưới), KHÔNG luật (→ **HỎI user**).
-- `02-38` **SỔ VIỆC `05_TODO` — CỬA VÀO: agent KHÔNG tự thêm mục.** Không tự phát sinh mục `05_TODO` · luật mới · cổng kiểm · bộ đếm · bộ đo · advisory. Thấy cần ⇒ **hỏi MỘT câu kèm đề xuất ngay trong phiên**; user gật mới ghi, gật vào đâu ghi vào đó. **Đề xuất KHÔNG được "đậu" vào sổ chờ duyệt** — mục đậu thì không bao giờ đóng được (nó là câu hỏi chưa ai trả lời, không phải việc chưa làm), và đó chính là cách sổ phình. Ngưỡng: **thực sự quan trọng** — lắc nhắc thì bỏ qua. Trước khi thêm, trả lời đủ ba câu: ① gỡ bớt được gì · ② gộp vào cái đã có được không · ③ **không có nó thì hỏng cái gì, đo được không** — không trả lời được ③ thì KHÔNG LÀM. KHÔNG áp cho: việc user giao · sửa thứ đang hỏng · nghĩa vụ luật sẵn có đã bắt buộc.
-- `02-38` **CỬA RA: xong một mục là đóng ngay** — đo lại, ghi `06_CHANGES`, **xoá khỏi `05_TODO`**; không đợi chốt phiên.
+> Các luật ngôn ngữ (`02-26` · `02-66` · `02-27` · `02-29` · `02-30` · `02-31`) nằm ở §Lõi.
 
 ## Chốt phiên / ghi sổ (BẮT BUỘC — luật cứng)
 **Kích hoạt khi user nói:** "note lại" · "docs lại" · "ghi sổ" · "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
@@ -150,27 +181,30 @@ xoá luôn thuộc **người dùng**: hỏi và được đồng ý TRƯỚC, d
 Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **hoặc** `05_TODO`. Chẩn đoán sai · đường cụt: gộp vào entry `06_CHANGES` của chính việc đó, **KHÔNG đẻ mục `05_TODO` riêng** (cửa vào ở trên).
 
 ## Phạm vi (BẮT BUỘC — luật cứng)
-- `02-44` **CHỈ làm việc trong thư mục đang mở.** TUYỆT ĐỐI KHÔNG ghi/sửa/chạy lệnh đụng thư mục dự án khác khi user CHƯA cho phép rõ ràng trong phiên — **kể cả với ý định "giúp" hay "tiện tay sửa luôn"**.
-- `02-45` Cần đụng chỗ khác → **DỪNG, HỎI TRƯỚC**: nêu rõ định làm gì, ở đâu, vì sao. Nơi khác có thể đang có phiên khác làm việc.
-- `02-46` Đọc-tham-khảo (read-only) thì được; **mọi thao tác GHI là cấm mặc định**.
-- `02-48` **Tiêu đề phiên** (user đặt, agent không tự đổi): khuôn `<Repo>_<Model>_<d-m-yyyy>` — `<Model>` = model đang chạy (`Claude`, `Codex`, …); chủ đề nếu có chèn trước ngày; phiên thứ 2, 3 trong ngày thêm `_<số>` sau ngày; ngày không đệm số 0. Phiên chưa có tiêu đề = chưa dùng. Tiêu đề phiên của chính mình lệch khuôn ⇒ nhắc user một lần.
-- `02-49` **Nhắn agent ở phiên khác** (khi môi trường cho phép): chỉ nhắn phiên đang chạy có tiêu đề chuẩn `<Repo>_<Model>_<d-m-yyyy>`, ngày trong tiêu đề mới nhất của repo đó — phiên chưa có tiêu đề (`Untitled`, chưa dùng) ⇒ CẤM. Tiêu đề không phải địa chỉ gửi: có `zemory` thì tra `zemory peers` (★ = phiên được nhắn); không tra được ⇒ KHÔNG gửi, báo user. Trả lời tin đến thì dùng đúng địa chỉ `from` của tin.
+- `02-44` **CHỈ làm việc trong thư mục đang mở.** TUYỆT ĐỐI KHÔNG ghi/sửa/chạy lệnh đụng thư mục dự án khác khi user CHƯA cho phép rõ ràng trong phiên — **kể cả với ý định "giúp" hay "tiện tay sửa luôn"**. <!-- gate: guard -->
+- `02-45` Cần đụng chỗ khác → **DỪNG, HỎI TRƯỚC**: nêu rõ định làm gì, ở đâu, vì sao. Nơi khác có thể đang có phiên khác làm việc. <!-- gate: guard -->
+- `02-46` Đọc-tham-khảo (read-only) thì được; **mọi thao tác GHI là cấm mặc định**. <!-- gate: guard -->
 
 > 🖥️ **Chỉ khi có `zemory` CLI** (Claude Code trên máy thật — Cowork bỏ qua mục này):
 > Lệnh `zemory` **GHI theo cwd**. Đứng ở repo tham khảo mà chạy `init`/`sync`/`reindex`/`archive`/`memory scan` = ghi vào repo ĐÓ. Lấy chuẩn = đọc `docs_template/`, rồi chạy lệnh **ở thư mục của bạn**.
 > Tra việc ở phiên khác: `zemory memory search "<q>" [--all]` — recall on-demand, đừng tra bừa.
 
 ## Git (BẮT BUỘC — luật cứng, áp bất cứ khi nào thư mục làm việc là git repo)
-- `02-50` **KHÔNG `git push` khi user CHƯA cho phép.** Remote là bản sao lưu cuối cùng của dự án — đẩy lên là ra ngoài, **không gỡ lại được** (gỡ = force-push, càng phá). Xong việc → **BÁO CÁO rồi DỪNG**; user bảo "push" / "lên git" mới đẩy.
-- `02-51` **Ghi sổ ≠ publish.** User bảo ghi changelog, commit, hay nói "xong rồi" **KHÔNG phải** là cho phép push. Đừng suy diễn.
-- `02-52` Commit cục bộ (đảo được) thì thoải mái theo phong cách repo; **push mới là cửa cần phép**.
-- `02-53` KHÔNG `--force`, KHÔNG rewrite lịch sử đã push, KHÔNG `reset --hard`/`clean` lên việc chưa commit của user nếu chưa hỏi.
-
-## Plan gọn (BẮT BUỘC)
-- `02-37` **PLAN PHẢI GỌN — vì mọi phiên phải đọc HẾT nó.** Plan chỉ giữ **hướng ĐÃ CHỐT hiện tại + điểm còn mở**; lịch sử ("làm ngày nào", "trước đây là X") là việc của `06_CHANGES`. Đổi hướng ⇒ sửa TẠI CHỖ thành hướng mới, lý do ghi ở CHANGES. **Plan là văn bản NGƯỜI viết để bàn và chốt thiết kế — không máy sinh nào ghi vào `docs/plan`, kể cả MỘT KHỐI trong file**: mục lục · catalog · bảng tra do build sinh ⇒ ghi ra file cạnh nguồn sinh ra nó, plan chỉ trỏ link. **Sơ đồ cây thư mục · bảng cấu trúc · khối mũi tên kiến trúc · `mermaid` do agent hoặc người viết thẳng khi bàn thiết kế là PHẦN CHÍNH của plan — giữ, cứ vẽ tay, KHÔNG cần script**; luật chỉ cấm ĐẦU RA của script build nằm trong plan, không bao giờ là lý do xoá sơ đồ hay né không vẽ. `zemory validate` báo LỖI khi gặp dấu khối máy sinh (`<!-- AUTOGEN` · `AUTOGEN:` · tiêu đề "SINH TỰ ĐỘNG" · "MÁY SINH … ĐỪNG SỬA TAY"). Mỗi mục `05_TODO` gắn `→ plan/NN §mục` để dẫn đường (không thay luật đọc hết). Trần: một spec ~1.000 dòng · cả `docs/plan` ~5.000 dòng — `zemory validate` cảnh báo khi vượt.
+- `02-50` **KHÔNG `git push` khi user CHƯA cho phép.** Remote là bản sao lưu cuối cùng của dự án — đẩy lên là ra ngoài, **không gỡ lại được** (gỡ = force-push, càng phá). Xong việc → **BÁO CÁO rồi DỪNG**; user bảo "push" / "lên git" mới đẩy. <!-- gate: guard -->
+- `02-51` **Ghi sổ ≠ publish.** User bảo ghi changelog, commit, hay nói "xong rồi" **KHÔNG phải** là cho phép push. Đừng suy diễn. <!-- gate: guard -->
+- `02-53` KHÔNG `--force`, KHÔNG rewrite lịch sử đã push, KHÔNG `reset --hard`/`clean` lên việc chưa commit của user nếu chưa hỏi. <!-- gate: guard -->
 
 ## Đọc trước khi ghi (BẮT BUỘC — có chốt máy)
-- `02-59` **ĐỌC HẾT TRƯỚC KHI GHI — có chốt máy** (2026-10-08): `02-59_read-first.cjs` (guard gọi) chặn mọi thao tác GHI (Write/Edit · lệnh shell có ghi) khi trong phiên này agent CHƯA đọc trọn các file khai ở `policy.json › read_first.required` — mặc định `01_CONSTITUTION` · `02_RULES` · `05_TODO` · `06_CHANGES` · `docs/plan/*.md` — bằng công cụ Read tới dòng cuối. Đọc dở hay đọc bằng `grep`/`head`/`Get-Content` KHÔNG tính. Chốt so theo NỘI DUNG từng dòng: dòng phiên đã thấy (qua Read, hoặc tự ghi bằng Edit/Write) không phải đọc lại; file bị sửa ngoài Edit/Write (phiên khác · script của chính agent · `zemory archive`) chỉ đòi đọc ĐÚNG các dòng đã đổi, câu chặn ghi số dòng (user chốt 2026-10-08: đọc lại cả file vì một dòng là phí token). Đòi thêm theo việc: ghi vào `tasks/<case>/` ⇒ `spec.md` · `mail_form.md` của case đó · tạo thư mục mới ⇒ `03_STRUCTURE` · đụng `frontend/` (bộ APP) ⇒ skill `app-design` · chạy script gửi mail ⇒ skill `write-style` (soi nội dung script được chạy, một bước sang script launcher gọi). Nén context KHÔNG bắt đọc lại (user chốt 2026-10-08); đọc GM · dò phiên (`zemory memory …` · `peers` · `graph`) không bao giờ bị chặn. **Không có cờ vượt.** Khai thêm file bắt đọc: khoá marker `readFirst: ["..."]`. Giới hạn: host không ghi transcript ⇒ chốt cho qua (fail-open); phần "đòi theo việc" chỉ phủ chỗ máy đoán tất định được — luật chữ vẫn là tầng quyết định.
+- `02-59` **Đọc trước khi ghi — có chốt máy.** `hooks/02-59_read-first.cjs` (guard gọi) chặn mọi thao tác ghi
+  (Write/Edit · lệnh shell có ghi) tới khi phiên đã đọc bằng công cụ Read đủ phần bắt đọc khai ở
+  `hooks/policy.json › read_first`: `02_RULES` §Lõi · ở `01_CONSTITUTION` khối ĐỌC KỸ (nếu có), các điều khối đó
+  liệt kê và `## Mục đích` · cả `05_TODO`. File thiếu ranh giới mục ⇒ đòi cả file. `grep`/`head`/`Get-Content` không
+  tính. Chốt so theo nội dung từng dòng: dòng đã thấy (Read, hoặc tự ghi bằng Edit/Write) không phải đọc lại; file
+  đổi chỉ đòi đúng các dòng đã đổi, câu chặn ghi số dòng. Đòi thêm theo việc: ghi vào `tasks/<case>/` ⇒ `spec.md` ·
+  `mail_form.md` của case · tạo thư mục mới ⇒ `03_STRUCTURE` · chạy script gửi mail ⇒ skill `write-style`. Nén
+  context không bắt đọc lại. Lệnh đọc Global Memory và dò phiên (`zemory memory …` · `peers` · `graph`) không bị chặn.
+  Không có cờ vượt. Khai thêm file bắt đọc: sửa `hooks/policy.json › read_first`. Giới hạn: host không ghi transcript
+  ⇒ cho qua (fail-open); phần "đòi theo việc" chỉ phủ chỗ máy đoán tất định được — luật chữ vẫn là tầng quyết định. <!-- gate: read-first -->
 
 ## Cổng cho hiến pháp (BẮT BUỘC — luật cứng)
 
@@ -183,7 +217,7 @@ Bất biến: mọi việc ĐÃ LÀM phải tìm được ở `06_CHANGES` **ho�
 > đầu để nó ko đọc lướt… kể cả hiến pháp luôn"*). Luật có chốt máy thì có lưới đỡ; luật chỉ có chữ thì chỉ người đọc giữ được, nên nó
 > là thứ KHÔNG được đọc lướt. `zemory gates --write-top` sinh khối **ĐỌC KỸ** ở đầu `01_CONSTITUTION` và đầu `02_RULES`, liệt kê
 > điều loại CHỮ · điều ghi "CHƯA có" · điều chưa có hàng trong bảng; **số điều KHÔNG đổi** (chỗ khác đang gọi "điều N"). Mục
-> `## Hành xử` (luật phán đoán — không hook nào đỡ) đứng ĐẦU `02_RULES`. Sửa bảng xong ⇒ chạy lại lệnh; `zemory validate` và
+> `## Lõi` (luật chưa có chốt máy; luật `02-N` ngoài lõi mang dấu `<!-- gate: … -->`) đứng ĐẦU `02_RULES`; `zemory gates` đỏ khi lệch. Sửa bảng xong ⇒ chạy lại lệnh; `zemory validate` và
 > `zemory gates` báo khi khối thiếu, cũ, hoặc không nằm ở đầu.
 
 | # | Điều (tóm) | Loại | Cổng / lý do |
