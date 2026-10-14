@@ -1,0 +1,23 @@
+{
+  "docs": "docs/agent",
+  "adapters": {
+    "memory": "global",
+    "search": "keyword"
+  },
+  "thresholds": {
+    "changes_lines": 300,
+    "changes_keep": 180
+  },
+  "protected": [
+    "data",
+    "share",
+    "attic",
+    "external",
+    "docs/agent/01_CONSTITUTION.md"
+  ],
+  "secretNames": [
+    "share.key",
+    "*.enc",
+    "global_memory*.db"
+  ]
+}
