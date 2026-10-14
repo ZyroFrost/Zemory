@@ -10,6 +10,7 @@ import test from "node:test";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { openMemory } from "../../dist/memory/db.js";
 import { autoChoice, listQueue, mirrorHooks, writeBase } from "../../dist/memory/channel/mirrorstate.js";
@@ -40,16 +41,17 @@ function conflict(m, rel, mineAt, theirsAt) {
   return m.hooks.receive(PEER, "docs", rel, Buffer.from("a\nB-theirs\nc\n"));
 }
 
-test("the choice table: ask never decides; author takes, merges, and lets the EARLIER edit win; fixed follows the chosen machine", () => {
+test("the choice table: ask never decides; author takes, merges, keeps the side that only adds, ASKS a true conflict; fixed follows the chosen machine", () => {
   const ask = { mode: "ask" }, author = { mode: "author" };
   for (const v of ["take", "merge", "block"]) assert.equal(autoChoice({ peerId: PEER, verdict: v }, ask, SELF, { mine: 1, theirs: 2 }), null);
   assert.equal(autoChoice({ peerId: PEER, verdict: "take" }, author, SELF, { mine: null, theirs: null }).choice, "theirs");
   assert.equal(autoChoice({ peerId: PEER, verdict: "merge" }, author, SELF, { mine: null, theirs: null }).choice, "merged");
-  const theirsFirst = autoChoice({ peerId: PEER, verdict: "block" }, author, SELF, { mine: 200, theirs: 100 });
-  assert.equal(theirsFirst.choice, "theirs"); assert.equal(theirsFirst.stashMine, true, "the later edit (mine) is stashed, never lost");
-  assert.equal(autoChoice({ peerId: PEER, verdict: "block" }, author, SELF, { mine: 100, theirs: 200 }).choice, "mine");
-  assert.equal(autoChoice({ peerId: PEER, verdict: "block" }, author, SELF, { mine: 100, theirs: 100 }), null, "a tie ⇒ ask");
-  assert.equal(autoChoice({ peerId: PEER, verdict: "block" }, author, SELF, { mine: 100, theirs: null }), null, "no edit time ⇒ ask");
+  // File times never decide: a machine that RECEIVED a copy stamps the time of receipt (2026-10-14, twice).
+  for (const when of [{ mine: 200, theirs: 100 }, { mine: 100, theirs: 200 }, { mine: 100, theirs: 100 }, { mine: 100, theirs: null }]) {
+    assert.equal(autoChoice({ peerId: PEER, verdict: "block" }, author, SELF, when), null, `a true two-sided edit is asked (${JSON.stringify(when)})`);
+  }
+  assert.equal(autoChoice({ peerId: PEER, verdict: "block" }, author, SELF, { mine: 1, theirs: 2, grown: "mine" }).choice, "mine");
+  assert.equal(autoChoice({ peerId: PEER, verdict: "block" }, author, SELF, { mine: 2, theirs: 1, grown: "theirs" }).choice, "theirs");
   const peerFixed = { mode: "fixed", machine: PEER }, selfFixed = { mode: "fixed", machine: SELF };
   assert.equal(autoChoice({ peerId: PEER, verdict: "block" }, peerFixed, SELF, { mine: 1, theirs: 2 }).choice, "theirs");
   assert.equal(autoChoice({ peerId: PEER, verdict: "take" }, selfFixed, SELF, { mine: 1, theirs: 2 }).choice, "mine");
@@ -75,27 +77,40 @@ test("author: a new file is taken at once, nothing left waiting, and the decisio
   assert.equal(log[0].rel, "new.md"); assert.equal(log[0].choice, "theirs");
 });
 
-test("author, same lines: the earlier edit wins — the later local edit is stashed first; this machine first ⇒ its version stays", (t) => {
-  const a = machine(t, { mode: "author" });
-  conflict(a, "x.md", 2_000_000, 1_000_000); // the peer edited FIRST
-  assert.equal(readFileSync(a.file("x.md"), "utf8"), "a\nB-theirs\nc\n", "the earlier edit (theirs) is applied");
-  const stashDir = join(a.repoRoot, "mirror-stash", "docs");
-  const stashed = readdirSync(stashDir).filter((f) => f.startsWith("x.md."));
-  assert.equal(stashed.length, 1, "the later edit (mine) is kept aside");
-  assert.equal(readFileSync(join(stashDir, stashed[0]), "utf8"), "a\nB-mine\nc\n");
-  assert.equal(listQueue(a.db, PEER).length, 0);
-
-  const b = machine(t, { mode: "author" });
-  conflict(b, "y.md", 1_000_000, 2_000_000); // THIS machine edited first
-  assert.equal(readFileSync(b.file("y.md"), "utf8"), "a\nB-mine\nc\n", "this machine's earlier edit stays");
-  assert.equal(listQueue(b.db, PEER).length, 0);
+test("author, same lines edited on both machines ⇒ asked, whichever file time looks earlier — nothing overwritten", (t) => {
+  for (const [mineAt, theirsAt] of [[2_000_000, 1_000_000], [1_000_000, 2_000_000]]) {
+    const m = machine(t, { mode: "author" });
+    conflict(m, "x.md", mineAt, theirsAt);
+    assert.equal(listQueue(m.db, PEER).length, 1, "the item waits for a hand");
+    assert.equal(readFileSync(m.file("x.md"), "utf8"), "a\nB-mine\nc\n", "nothing overwritten");
+  }
 });
 
-test("author, same lines, no way to tell which came first ⇒ the item still waits for a hand", (t) => {
+// The root of both incidents: the "this is a copy I sent" memory was lost on every daemon restart, so an old copy of this
+// machine's own file coming back read as "both edited". It is persisted now — pinned across a real process restart.
+test("an old copy of this machine's own file coming back after a RESTART is recognised: kept, not queued, not taken", (t) => {
   const m = machine(t, { mode: "author" });
-  conflict(m, "z.md", 1_000_000, 1_000_000);
-  assert.equal(listQueue(m.db, PEER).length, 1);
-  assert.equal(readFileSync(m.file("z.md"), "utf8"), "a\nB-mine\nc\n", "nothing overwritten");
+  const oldText = "v1\n", newText = "v1-edited-on-this-machine\n";
+  writeFileSync(m.file("own.md"), newText);
+  writeBase(m.db, PEER, "docs", "own.md", sha("v0\n"), Buffer.from("v0\n"));
+  m.hooks.sent(PEER, "docs", "own.md", sha(oldText)); // this machine had sent v1 earlier
+  const script = join(m.repoRoot, "..", "restart.mjs");
+  writeFileSync(script, [
+    'import { openMemory } from ' + JSON.stringify(new URL("../../dist/memory/db.js", import.meta.url).href) + ';',
+    'import { mirrorHooks, listQueue } from ' + JSON.stringify(new URL("../../dist/memory/channel/mirrorstate.js", import.meta.url).href) + ';',
+    'const [repoRoot, dbPath, peer] = process.argv.slice(2);',
+    'const db = openMemory(dbPath);',
+    'const h = mirrorHooks({ repoRoot, db, peerSync: () => ({ direction: "two-way" }), mirrorAuto: () => ({ mode: "author" }), selfId: () => "SELF" });',
+    'const r = h.receive(peer, "docs", "own.md", Buffer.from("v1\\n"));',
+    'console.log(JSON.stringify({ r, queued: listQueue(db, peer).length }));',
+    'db.close();',
+  ].join("\n"));
+  const dbPath = m.db.name;
+  const out = spawnSync(process.execPath, [script, m.repoRoot, dbPath, PEER], { encoding: "utf8" });
+  assert.equal(out.status, 0, out.stderr);
+  const res = JSON.parse(out.stdout.trim().split("\n").pop());
+  assert.equal(res.queued, 0, "the returning old copy is not a conflict");
+  assert.equal(readFileSync(m.file("own.md"), "utf8"), newText, "this machine's newer version stays");
 });
 
 // The incident of 2026-10-14: the peer held an OLD copy of this machine's own file (it had received it); its file time was
