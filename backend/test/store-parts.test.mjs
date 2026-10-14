@@ -2,7 +2,9 @@
 // detail, every part has a well-formed header, a changed part bumped its version, and every built kit lists parts that
 // exist. Negative cases run on a temp store so a checker that never fires cannot pass.
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { RULE_HOOKS } from "../../dist/docs/rule-hooks-src.js";
+import { SQL_GATE_SOURCE } from "../../dist/docs/sql-gate-src.js";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { gateExampleFindings, storePrivacyFindings } from "../../dist/docs/gate-examples.js";
@@ -45,6 +47,15 @@ test("every built kit names parts that exist", () => {
     for (const id of [...k.constitution, ...k.rules, ...k.slots, ...k.skills].filter((x) => !x.includes("*"))) {
       assert.ok(got.has(id), `${k.name}: ${id} is not in the store`);
     }
+  }
+});
+
+test("every store hook.cjs is a byte copy of the generator source (one source while both layouts live)", () => {
+  const sources = [...RULE_HOOKS.map((h) => [h.file.replace(/\.cjs$/, ""), h.source]), ["02-25_sql-one-way", SQL_GATE_SOURCE]];
+  for (const [folder, source] of sources) {
+    const p = join(STORE_DIR, "02_RULES", folder, "hook.cjs");
+    assert.ok(existsSync(p), `${folder}: no hook.cjs in the store`);
+    assert.equal(readFileSync(p, "utf8").replace(/\r\n/g, "\n"), source.replace(/\r\n/g, "\n"), `${folder}: store copy drifted from the generator`);
   }
 });
 

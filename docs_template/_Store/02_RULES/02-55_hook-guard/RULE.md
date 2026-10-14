@@ -1,21 +1,20 @@
 ---
 id: 02-55
 name: hook-guard
-version: 1
+version: 2
 kind: action
 generated: [guard.cjs, policy.json, precommit-guard.cjs, 02-59_read-first.cjs]
 ---
-# 02-55 Một cửa cho mọi cổng
+# 02-55 Bộ chốt máy `zemory hook guard`
 
-- `zemory hook guard` sinh vào folder này: `policy.json` (dựng từ `.harness.json`) · `guard.cjs` (PreToolUse, chặn TRƯỚC khi
-  hành động chạm đĩa hoặc mạng) · `precommit-guard.cjs` (chặn bí mật vào staging). Không sửa tay các file này.
-- `.claude/settings.json` có MỘT lệnh cho PreToolUse, trỏ vào `guard.cjs` này, matcher đủ
-  `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell`; hook khác của repo giữ nguyên. Pre-commit cắm khi repo chưa có;
-  pre-commit riêng của repo thì để yên và báo.
-- `guard.cjs` nạp `hook.cjs` của mọi folder luật trong `01_CONSTITUTION/` và `02_RULES/`; luật nào khai `native` trong
-  `gate.json` thì dòng đó nằm trong `permissions.deny` của `.claude/settings.json`.
-- Chặn = quyết định JSON `permissionDecision: "deny"` trên stdout, cộng mã thoát 2.
-- Cờ `.allow-*` = phê duyệt cho MỘT việc, nằm ở `docs/.harness-state/` (không vào git). Guard cho qua rồi đóng dấu
-  `ZEMORY-USED <vân tay lệnh> <thời điểm>` vào chính file cờ; trong 90 giây đúng lệnh đó thử lại được; việc khác hoặc quá hạn
-  ⇒ thu hồi. Nhóm bí mật không có cờ.
-- Phép kiểm: `zemory gates` đo guard có thật sự được cắm và chạy; `zemory doctor` nhắc khi repo chưa sinh chốt.
+- `zemory hook guard` sinh bộ chốt vào `<nhà harness>/hooks/` (harness dạng file) từ marker `.harness.json` (khoá `protected` · `secretNames`):
+  - `policy.json` — luật đã dịch từ marker.
+  - `guard.cjs` — hook `PreToolUse`, chặn TRƯỚC khi hành động chạm đĩa hoặc mạng.
+  - `precommit-guard.cjs` — chặn secret lọt vào staging; phủ cả commit do người làm.
+- Harness dạng thư mục: `guard.cjs` nằm trong thư mục của luật `02-55`, và cờ `.allow-*` nằm ở `docs/.harness-state/`.
+- Guard là CHUẨN, không phải tuỳ chọn. Lệnh tự cắm guard vào `.claude/settings.json` › `PreToolUse` với matcher đủ `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell`, giữ nguyên mọi hook khác của repo.
+- Pre-commit cũng tự cắm: repo chưa có `pre-commit` ⇒ lệnh tạo hook gọi `precommit-guard.cjs` (theo `core.hooksPath` nếu repo khai). Repo đã có pre-commit riêng ⇒ để yên, báo ra, thêm dòng gọi guard bằng tay.
+- Cờ `.allow-*` cho việc được duyệt một lần: xem `02-56`. Nhóm secret không có cờ.
+- Phép kiểm:
+  - `zemory doctor` báo ĐỎ khi guard chưa cắm hoặc matcher thiếu công cụ; nhắc khi repo khai `protected` mà chưa sinh chốt.
+  - `zemory gates --all` (và chip **Cổng repo** trên giao diện) đo mọi repo có THẬT SỰ chạy guard · pre-commit · đủ hàng §Cổng của hiến pháp.

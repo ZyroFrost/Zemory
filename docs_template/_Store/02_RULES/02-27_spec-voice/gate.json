@@ -1,0 +1,97 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "PowerShell"
+    ]
+  },
+  "block": [
+    {
+      "note": "a dated decision added to a rule file",
+      "files": {
+        "docs/agent/02_RULES/02-38_todo-door/RULE.md": "- ask\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/02_RULES/02-38_todo-door/RULE.md",
+        "old_string": "- ask",
+        "new_string": "- ask *(user chốt 2026-10-14)*"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a quote added to the file-harness rules",
+      "files": {
+        "docs/agent/02_RULES.md": "- `02-38` ask\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/02_RULES.md",
+        "old_string": "- `02-38` ask",
+        "new_string": "- `02-38` ask — user: *\"cứ làm đi\"*"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "a plain rule line",
+      "files": {
+        "docs/agent/02_RULES/02-38_todo-door/RULE.md": "- ask\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/02_RULES/02-38_todo-door/RULE.md",
+        "old_string": "- ask",
+        "new_string": "- ask one question first"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a file outside the harness",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "notes.md",
+        "content": "User chốt 2026-10-14: làm luôn.\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ]
+}

@@ -52,7 +52,19 @@ function edit(payload, root) {
   return { tool, abs, rel, added, removed, exists, newLines };
 }
 
-// The rule's own text: the line carrying its number plus its continuation lines, capped.
+// The rule's own text, capped. Folder harness (plan/28 §0d): the body of RULE.md beside this hook. File harness: the line
+// carrying its number in the rules file plus its continuation lines.
+function ownRule(root) {
+  try {
+    const file = path.join(__dirname, "RULE.md");
+    let lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+    if (lines[0] === "---") lines = lines.slice(lines.indexOf("---", 1) + 1);
+    const body = lines.filter((l, i) => i > 0 || l.trim()).slice(0, 20).map((l) => (l.length > 400 ? l.slice(0, 400) + "…" : l));
+    return { rel: path.relative(root, file).replace(/\\/g, "/"), text: body.join("\n").trim() };
+  } catch {
+    return null;
+  }
+}
 function ruleText(root, file, id) {
   try {
     const lines = fs.readFileSync(path.join(root, file), "utf8").split(/\r?\n/);
@@ -70,6 +82,8 @@ function ruleText(root, file, id) {
   }
 }
 function blocked(root, policy, id, what) {
+  const own = ownRule(root);
+  if (own && own.text) return "BLOCKED (guard layer 1): rule " + id + " - " + what + "\n\nThe rule (" + own.rel + "):\n" + own.text;
   const text = ruleText(root, policy.rules_file || "", id);
   return "BLOCKED (guard layer 1): rule " + id + " - " + what + (text ? "\n\nThe rule (" + policy.rules_file + "):\n" + text : "");
 }
@@ -257,7 +271,9 @@ function check(payload, root, policy) {
   // 02-27 — the harness is written as specification: a NEW line in 01–04 or a SKILL.md may not quote the user or date a
   // decision ("user chốt <date>"). Only new lines: older text is rewritten in its own pass (plan/27 §7 ④).
   hook("02-27_spec-voice.cjs", String.raw`
-const HARNESS = /(^|\/)(0[1-4]_[A-Z_]+\.md|SKILL\.md)$/;
+// File harness: 01–04 as files. Folder harness (plan/28 §0c) and the parts store: every file of a numbered shelf folder
+// (RULE.md · SLOT.md · PURPOSE.md · INDEX.md). Skills everywhere.
+const HARNESS = /(^|\/)(0[1-4]_[A-Z_]+\.md|0[1-4]_[A-Z_]+\/(?:[^/]+\/)?[^/]+\.md|SKILL\.md)$/;
 const VOICE = [
   /\buser\s+chốt\s+\d{4}-\d{2}-\d{2}/i,
   /\(\s*user\s+chốt\b/i,
@@ -270,7 +286,7 @@ function check(payload, root, policy) {
     if (!e || !HARNESS.test(e.rel)) return null;
     const bad = e.newLines.filter((l) => VOICE.some((re) => re.test(l)));
     if (!bad.length) return null;
-    return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " quote the user or date a decision:\n" +
+    return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " quote a person or date a decision:\n" +
       bad.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n") +
       "\nState the rule as condition -> behaviour; the original words, date and incident go to 06_CHANGES.");
   } catch { return null; }
@@ -354,8 +370,8 @@ function check(payload, root, policy) {
     const after = (e.added.match(OPEN) || []).length, before = (e.removed.match(OPEN) || []).length;
     if (after <= before) return null;
     return { flag: "todo", subject: e.rel + ":" + after, msg: blocked(root, policy, "02-38",
-      "this adds " + (after - before) + " open item(s) to " + e.rel + " - an item enters the ledger only after the user says yes in this session. " +
-      "Ask ONE question with your proposal; a repairing task the user gave, or a duty an existing rule imposes, is said yes to already.") };
+      "this adds " + (after - before) + " open item(s) to " + e.rel + " - an item enters the ledger only after it is approved in this session. " +
+      "Ask ONE question with your proposal; a repair that was asked for, or a duty an existing rule imposes, counts as approved already.") };
   } catch { return null; }
 }`),
 ];

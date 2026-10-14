@@ -1,0 +1,79 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "PowerShell"
+    ]
+  },
+  "block": [
+    {
+      "note": "a new open item in 05_TODO",
+      "files": {
+        "docs/agent/05_TODO.md": "# TODO\n- [ ] one\n- [ ] two\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/05_TODO.md",
+        "old_string": "- [ ] two",
+        "new_string": "- [ ] two\n- [ ] three"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "rewording an item",
+      "files": {
+        "docs/agent/05_TODO.md": "# TODO\n- [ ] one\n- [ ] two\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/05_TODO.md",
+        "old_string": "- [ ] two",
+        "new_string": "- [ ] two, reworded"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "closing an item",
+      "files": {
+        "docs/agent/05_TODO.md": "# TODO\n- [ ] one\n- [ ] two\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/05_TODO.md",
+        "old_string": "- [ ] two",
+        "new_string": "- [x] two"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ]
+}

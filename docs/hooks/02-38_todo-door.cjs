@@ -39,7 +39,19 @@ function edit(payload, root) {
   return { tool, abs, rel, added, removed, exists, newLines };
 }
 
-// The rule's own text: the line carrying its number plus its continuation lines, capped.
+// The rule's own text, capped. Folder harness (plan/28 §0d): the body of RULE.md beside this hook. File harness: the line
+// carrying its number in the rules file plus its continuation lines.
+function ownRule(root) {
+  try {
+    const file = path.join(__dirname, "RULE.md");
+    let lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+    if (lines[0] === "---") lines = lines.slice(lines.indexOf("---", 1) + 1);
+    const body = lines.filter((l, i) => i > 0 || l.trim()).slice(0, 20).map((l) => (l.length > 400 ? l.slice(0, 400) + "…" : l));
+    return { rel: path.relative(root, file).replace(/\\/g, "/"), text: body.join("\n").trim() };
+  } catch {
+    return null;
+  }
+}
 function ruleText(root, file, id) {
   try {
     const lines = fs.readFileSync(path.join(root, file), "utf8").split(/\r?\n/);
@@ -57,6 +69,8 @@ function ruleText(root, file, id) {
   }
 }
 function blocked(root, policy, id, what) {
+  const own = ownRule(root);
+  if (own && own.text) return "BLOCKED (guard layer 1): rule " + id + " - " + what + "\n\nThe rule (" + own.rel + "):\n" + own.text;
   const text = ruleText(root, policy.rules_file || "", id);
   return "BLOCKED (guard layer 1): rule " + id + " - " + what + (text ? "\n\nThe rule (" + policy.rules_file + "):\n" + text : "");
 }
@@ -92,8 +106,8 @@ function check(payload, root, policy) {
     const after = (e.added.match(OPEN) || []).length, before = (e.removed.match(OPEN) || []).length;
     if (after <= before) return null;
     return { flag: "todo", subject: e.rel + ":" + after, msg: blocked(root, policy, "02-38",
-      "this adds " + (after - before) + " open item(s) to " + e.rel + " - an item enters the ledger only after the user says yes in this session. " +
-      "Ask ONE question with your proposal; a repairing task the user gave, or a duty an existing rule imposes, is said yes to already.") };
+      "this adds " + (after - before) + " open item(s) to " + e.rel + " - an item enters the ledger only after it is approved in this session. " +
+      "Ask ONE question with your proposal; a repair that was asked for, or a duty an existing rule imposes, counts as approved already.") };
   } catch { return null; }
 }
 module.exports = { check };

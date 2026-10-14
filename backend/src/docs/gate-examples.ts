@@ -42,6 +42,10 @@ function withFiles<T>(files: Record<string, string> | undefined, run: (root: str
 /** Does this example get blocked? A rule hook: check() returns non-null. A slot: conform finds something. */
 function blocks(part: Part, gate: Gate, ex: Example): boolean {
   return withFiles(ex.files, (root) => {
+    // A real repo always has its flags folder (the guard generator makes it); a hook that remembers per session writes
+    // there and lets the call through when it cannot — so the example gets one too.
+    const flagsDir = (ex.policy as { flags_dir?: unknown } | undefined)?.flags_dir;
+    if (typeof flagsDir === "string" && flagsDir) mkdirSync(join(root, flagsDir), { recursive: true });
     if (gate.hook) {
       const file = join(part.dir, gate.hook);
       delete requireHere.cache[requireHere.resolve(file)];
@@ -95,15 +99,17 @@ export function gateExampleFindings(root = STORE_DIR): string[] {
 
 // ── privacy of the store (plan/28 §0f) ──────────────────────────────────────────────────────────────────────────────
 
-/** Patterns a part may never carry: a person named as the one deciding, a quoted decision, a dated decision, contact or
- *  machine details. Kept narrow on purpose — a check that cries wolf is ignored. */
-const PRIVATE: Array<[string, RegExp]> = [
-  ["names the person giving the work", /\buser\b/i],
-  ["a dated decision", /\b(chốt|chot)\s+\d{4}-\d{2}-\d{2}/i],
-  ["an e-mail address", /[\w.+-]+@[\w-]+\.[\w.]+/],
-  ["an IPv4 address", /\b(?:\d{1,3}\.){3}\d{1,3}\b/],
-  ["a path under a user profile", /[A-Za-z]:[\\/]Users[\\/][^\\/\s<]+/],
-  ["a personal alias", /ZyroFrost/i],
+/** Patterns a part may never carry: a person named as the one deciding, a dated decision, contact or machine details. The
+ *  first two are about the TEXT of a rule or skill (`.md`): a hook that exists to catch "user chốt <date>" must carry that
+ *  phrase in its detector and its examples. Contact and machine details are checked in every file. Kept narrow on purpose
+ *  — a check that cries wolf is ignored. */
+const PRIVATE: Array<[string, RegExp, "md" | "all"]> = [
+  ["names the person giving the work", /\buser\b/i, "md"],
+  ["a dated decision", /\b(chốt|chot)\s+\d{4}-\d{2}-\d{2}/i, "md"],
+  ["an e-mail address", /[\w.+-]+@[\w-]+\.[\w.]+/, "all"],
+  ["an IPv4 address", /\b(?:\d{1,3}\.){3}\d{1,3}\b/, "all"],
+  ["a path under a user profile", /[A-Za-z]:[\\/]Users[\\/][^\\/\s<]+/, "all"],
+  ["a personal alias", /ZyroFrost/i, "all"],
 ];
 
 /** Every private detail found in the store's parts and kit files: `file:line — what`. */
@@ -119,7 +125,8 @@ export function storePrivacyFindings(storeDir = STORE_DIR): string[] {
       }
       if (!/\.(md|json|cjs|mjs|js|ps1|py|txt)$/i.test(name)) continue;
       readFileSync(p, "utf8").split(/\r?\n/).forEach((line, i) => {
-        for (const [what, re] of PRIVATE) if (re.test(line)) out.push(`${r}:${i + 1} — ${what}`);
+        const md = /\.md$/i.test(name);
+        for (const [what, re, scope] of PRIVATE) if ((scope === "all" || md) && re.test(line)) out.push(`${r}:${i + 1} — ${what}`);
       });
     }
   };

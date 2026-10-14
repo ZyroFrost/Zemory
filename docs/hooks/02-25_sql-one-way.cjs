@@ -24,7 +24,19 @@ function namedQueries(root, stores) {
   return out;
 }
 
-// The rule's own text: the line carrying its number plus its continuation lines, capped.
+// The rule's own text, capped. Folder harness (plan/28 §0d): the body of RULE.md beside this hook. File harness: the line
+// carrying its number in the rules file plus its continuation lines.
+function ownRule(root) {
+  try {
+    const file = path.join(__dirname, "RULE.md");
+    let lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+    if (lines[0] === "---") lines = lines.slice(lines.indexOf("---", 1) + 1);
+    const body = lines.filter((l, i) => i > 0 || l.trim()).slice(0, 20).map((l) => (l.length > 400 ? l.slice(0, 400) + "…" : l));
+    return { rel: path.relative(root, file).replace(/\\/g, "/"), text: body.join("\n").trim() };
+  } catch {
+    return null;
+  }
+}
 function ruleText(root, file, id) {
   try {
     const lines = fs.readFileSync(path.join(root, file), "utf8").split(/\r?\n/);
@@ -84,9 +96,11 @@ function check(payload, root, policy) {
       if (hit) return "  - " + short + "\n    -> ALREADY NAMED: use Q." + hit.name + " (" + hit.store + ")";
       return "  - " + short + "\n    -> not named yet: add ONE named entry to " + sql.stores[0] + " and call it by name";
     });
-    const text = ruleText(root, sql.rules_file || "", sql.rule || "02-25");
+    const own = ownRule(root);
+    const text = own && own.text ? own.text : ruleText(root, sql.rules_file || "", sql.rule || "02-25");
+    const from = own && own.text ? own.rel : sql.rules_file;
     return "BLOCKED (guard layer 1): rule " + (sql.rule || "02-25") + " - new SQL written inline in " + rel + ":\n" +
-      lines.join("\n") + (text ? "\n\nThe rule (" + sql.rules_file + "):\n" + text : "");
+      lines.join("\n") + (text ? "\n\nThe rule (" + from + "):\n" + text : "");
   } catch {
     return null;
   }
