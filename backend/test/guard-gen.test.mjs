@@ -147,11 +147,13 @@ test("regeneration: our own files are refreshed when they drift, files without o
   const r1 = generateGuards(root);
   // 3.7.5: + the runtime wiring (`.claude/settings.json`) — the guard is the standard, generated AND wired.
   // 3.8.0: + 02-59_read-first.cjs (read-before-write latch, called by guard.cjs).
-  // 2026-10-14: + the five rule hooks of plan/27 §3 (02-24 · 02-26 · 02-27 · 02-30 · 02-38), each named after its rule.
-  assert.equal(r1.added.length, 11, r1.added.join(", "));
+  // 2026-10-14: + the nine rule hooks of plan/27 §3 (02-24 · 02-26 · 02-27 · 02-30 · 02-38, then the doors 02-1 · 02-2 ·
+  // 02-13 and 02-47), each named after its rule.
+  assert.equal(r1.added.length, 15, r1.added.join(", "));
   assert.ok(r1.added.includes(".claude/settings.json (guard wired)"));
   assert.ok(r1.added.includes("02-59_read-first.cjs"));
-  for (const f of ["02-24_eol-keep.cjs", "02-26_vi-diacritics.cjs", "02-27_spec-voice.cjs", "02-30_ascii-names.cjs", "02-38_todo-door.cjs"]) {
+  for (const f of ["02-24_eol-keep.cjs", "02-26_vi-diacritics.cjs", "02-27_spec-voice.cjs", "02-30_ascii-names.cjs", "02-38_todo-door.cjs",
+    "02-1_second-machine.cjs", "02-2_reader-text.cjs", "02-13_test-red.cjs", "02-47_other-repo.cjs"]) {
     assert.ok(r1.added.includes(f), `the rule hook ${f} is generated`);
   }
   // Chạy lại y nguyên ⇒ không có gì mới.

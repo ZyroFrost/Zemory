@@ -61,6 +61,25 @@ function blocked(root, policy, id, what) {
   return "BLOCKED (guard layer 1): rule " + id + " - " + what + (text ? "\n\nThe rule (" + policy.rules_file + "):\n" + text : "");
 }
 
+// A DOOR reminder for a rule that cannot be forbidden, only recalled at the right moment: the FIRST matching call of a
+// session is blocked with the rule; the same call retried passes. Remembered per session in <hooks>/.seen.json (git-ignored,
+// last 50 sessions). No session id to remember by => never block (fail-open).
+function remindOnce(payload, root, policy, key) {
+  const sid = String(payload.session_id || payload.transcript_path || "");
+  if (!sid) return false;
+  const file = path.join(root, policy.flags_dir || "docs/hooks", ".seen.json");
+  let all = {};
+  try { all = JSON.parse(fs.readFileSync(file, "utf8")) || {}; } catch { all = {}; }
+  const list = Array.isArray(all[sid]) ? all[sid] : [];
+  if (list.includes(key)) return false;
+  all[sid] = list.concat(key);
+  const keys = Object.keys(all);
+  for (const k of keys.slice(0, Math.max(0, keys.length - 50))) delete all[k];
+  try { fs.writeFileSync(file, JSON.stringify(all)); } catch { return false; }
+  return true;
+}
+const ONCE = "\nThis is a reminder, shown once per session: retry the same call to continue.";
+
 // Paths the language rules do not reach: other people's code, frozen hand-overs, deliberate ASCII samples.
 const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /\/skills\/write-docx\/reference\//];
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;

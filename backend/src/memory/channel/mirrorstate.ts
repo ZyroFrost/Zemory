@@ -617,7 +617,9 @@ export function mirrorHooks(opts: {
         const r = receiveFile(opts.db ?? mirrorDb(), peerId, area, rel, body, { ...opts, autoApply });
         // §9.6b: a row that just entered the queue is settled at once when the machine's policy says so.
         if (r.queued) {
-          const policy = opts.mirrorAuto ? opts.mirrorAuto() : getMirrorAuto();
+          // Injected roots (gates) never read the machine's REAL setting — caught when this machine was switched to "author"
+          // and eight mirror tests that expect the queue started settling it. Same rule as `invFile` above.
+          const policy = opts.mirrorAuto ? opts.mirrorAuto() : opts.storeRoot ?? opts.repoRoot ? { mode: "ask" as const } : getMirrorAuto();
           if (policy.mode !== "ask") {
             try {
               const box = opts.storeRoot ?? opts.repoRoot; // injected roots (gates) ⇒ log + stash stay inside them
@@ -865,6 +867,19 @@ export interface AutoResult {
 }
 
 const normId = (s: string): string => s.replace(/-/g, "").toUpperCase();
+/** Does one text only ADD lines to the other (the other's lines appear in it, in order)? "mine" · "theirs" · null. */
+export function growth(mine: Buffer | null, theirs: Buffer | null): "mine" | "theirs" | null {
+  if (!mine || !theirs) return null;
+  const a = splitLines(mine), b = splitLines(theirs);
+  const within = (small: string[], big: string[]): boolean => {
+    let i = 0;
+    for (const l of big) if (i < small.length && l === small[i]) i++;
+    return i === small.length;
+  };
+  if (a.length > b.length && within(b, a)) return "mine";
+  if (b.length > a.length && within(a, b)) return "theirs";
+  return null;
+}
 /** This machine's device ID. index.ts imports this module; the call happens at run time, so the cycle is harmless. */
 function selfDeviceId(): string {
   return channelIdentity().deviceId;
@@ -875,7 +890,7 @@ export function autoChoice(
   row: Pick<QueueRow, "peerId" | "verdict">,
   policy: MirrorAuto,
   selfId: string,
-  when: { mine: number | null; theirs: number | null },
+  when: { mine: number | null; theirs: number | null; grown?: "mine" | "theirs" | null },
 ): { choice: ApplyChoice; why: string; stashMine?: boolean } | null {
   if (policy.mode === "fixed" && policy.machine) {
     const fixed = normId(policy.machine);
@@ -891,6 +906,11 @@ export function autoChoice(
   if (policy.mode === "author") {
     if (row.verdict === "take") return { choice: "theirs", why: "author: only the other machine changed it" };
     if (row.verdict === "merge") return { choice: "merged", why: "author: different lines, merged both" };
+    // One side only ADDS to the other ⇒ it carried on from it: the longer one wins, whatever the clocks say. Checked
+    // before the edit times because a machine that RECEIVED a file stamps it with the time of receipt, not of an edit —
+    // an old copy of this machine's own file once came back looking "earlier" and won (2026-10-14, stashed, restored).
+    if (when.grown === "mine") return { choice: "mine", why: "author: this machine's version only adds to the other's" };
+    if (when.grown === "theirs") return { choice: "theirs", why: "author: the other version only adds to this machine's" };
     const { mine, theirs } = when;
     if (mine === null || theirs === null || mine === theirs) return null;
     return theirs < mine
@@ -944,7 +964,8 @@ export function autoResolve(
     })();
     const inv = peerInventory(row.peerId, opts.inventoryFile);
     const theirs = inv?.entries.find((e) => e.area === row.area && e.rel === row.rel)?.mtimeMs ?? null;
-    const pick = autoChoice(row, policy, selfId, { mine, theirs });
+    const grown = row.verdict === "block" && abs && existsSync(abs) ? growth(readFileSync(abs), queueBodies(db, row.id).theirs) : null;
+    const pick = autoChoice(row, policy, selfId, { mine, theirs, grown });
     if (!pick) { out.left++; continue; }
     let stash: string | undefined;
     if (pick.stashMine && abs && existsSync(abs)) {

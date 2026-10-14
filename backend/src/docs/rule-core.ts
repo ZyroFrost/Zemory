@@ -17,7 +17,7 @@ import { SQL_GATE_FILE } from "./sql-gate-src.js";
 export const CORE_START = "<!-- zemory:core:start";
 export const CORE_END = "<!-- zemory:core:end -->";
 /** The core section may not grow past this (characters of the block, markers included). Ratchet: only ever lowered. */
-export const CORE_MAX_CHARS = 11000;
+export const CORE_MAX_CHARS = 9000;
 /** Gate kinds a mark may name. `test:<name>` must resolve to backend/test/<name>.test.mjs where that folder exists. */
 export const GATE_KINDS = ["guard", "hook", "test", "validate", "conform", "doctor", "gates", "peers", "read-first"] as const;
 

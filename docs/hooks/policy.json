@@ -106,6 +106,22 @@
       "rule": "02-27"
     },
     {
+      "file": "02-1_second-machine.cjs",
+      "rule": "02-1"
+    },
+    {
+      "file": "02-2_reader-text.cjs",
+      "rule": "02-2"
+    },
+    {
+      "file": "02-13_test-red.cjs",
+      "rule": "02-13"
+    },
+    {
+      "file": "02-47_other-repo.cjs",
+      "rule": "02-47"
+    },
+    {
       "file": "02-38_todo-door.cjs",
       "rule": "02-38"
     }

@@ -1450,7 +1450,8 @@ export function generateGuards(projectRoot: string): GuardGenResult {
   for (const h of RULE_HOOKS) put(h.file, h.source, oursJs);
   put("precommit-guard.cjs", PRECOMMIT_SOURCE, oursJs);
   // Flag không bao giờ được theo commit — .gitignore cục bộ trong chính thư mục hooks.
-  put(".gitignore", ".allow-*\n", () => true);
+  // + the once-per-session reminder memory of the door hooks (rule-hooks-src.ts `remindOnce`) — runtime state, never committed.
+  put(".gitignore", ".allow-*\n.seen.json\n", () => true);
 
   const wired = wireGuard(projectRoot, `${hooksRel}/guard.cjs`);
   if (wired) added.push(wired);
