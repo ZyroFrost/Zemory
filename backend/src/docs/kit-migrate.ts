@@ -318,7 +318,7 @@ export function repointLinks(root: string, apply: boolean): string[] {
   const SKIP = /[\\/](archive|node_modules|\.git|\.claude|attic|external|dist|0[12]_RULES|03_STRUCTURE[\\/](03-|Slot_)|0[12]_CONSTITUTION[\\/](01-|Cons_))([\\/]|$)/;
   const changed: string[] = [];
   const walk = (d: string): void => {
-    let ents: import("node:fs").Dirent[] = [];
+    let ents: import("node:fs").Dirent[];
     try { ents = readdirSync(d, { withFileTypes: true }); } catch { return; }
     for (const e of ents) {
       const p = join(d, e.name);

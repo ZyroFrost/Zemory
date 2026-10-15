@@ -2,7 +2,7 @@
 id: Rule_55
 aka: 02-55
 name: hook-guard
-version: 3
+version: 4
 kind: action
 generated: [guard.cjs, policy.json, precommit-guard.cjs, 02-59_read-first.cjs]
 ---
@@ -18,4 +18,4 @@ generated: [guard.cjs, policy.json, precommit-guard.cjs, 02-59_read-first.cjs]
 - Cờ `.allow-*` cho việc được duyệt một lần: xem `Rule_Gate_56_AllowFlagOnce`. Nhóm secret không có cờ.
 - Phép kiểm:
   - `zemory doctor` báo ĐỎ khi guard chưa cắm hoặc matcher thiếu công cụ; nhắc khi repo khai `protected` mà chưa sinh chốt.
-  - `zemory gates --all` (và chip **Cổng repo** trên giao diện) đo mọi repo có THẬT SỰ chạy guard · pre-commit · đủ hàng §Cổng của hiến pháp.
+  - `zemory gates --all` (và chip **Cổng repo** trên giao diện) đo mọi repo có THẬT SỰ chạy guard · pre-commit · mỗi điều hiến pháp có cổng thì cổng nằm trong `gate.json` của folder điều đó.

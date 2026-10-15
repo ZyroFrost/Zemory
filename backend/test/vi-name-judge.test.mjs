@@ -23,7 +23,7 @@ test("English names pass, including short words that are also Vietnamese syllabl
 test("false alarms on the store's real part names: zero", () => {
   const hits = [];
   for (const shelf of ["01_CONSTITUTION", "02_RULES", "03_STRUCTURE", "04_SKILLS"]) {
-    let names = [];
+    let names;
     try { names = readdirSync(join(STORE_DIR, shelf)); } catch { continue; }
     for (const f of names) {
       const name = f.split("_").slice(-1)[0];

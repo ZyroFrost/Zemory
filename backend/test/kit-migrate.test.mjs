@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { migrateToKit, slugOf } from "../../dist/docs/kit-migrate.js";
+import { migrateToKit } from "../../dist/docs/kit-migrate.js";
 import { applyKit } from "../../dist/docs/kit-apply.js";
 import { generateGuards, gitHooksDir } from "../../dist/docs/guard-gen.js";
 import { conform } from "../../dist/docs/conform.js";

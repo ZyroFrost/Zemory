@@ -2,14 +2,14 @@
 id: Rule_59
 aka: 02-59
 name: read-first
-version: 3
+version: 4
 kind: action
 ---
 # Rule_Gate_59_ReadFirst Đọc trước khi ghi
 
-- Chốt `02-59_read-first.cjs` (trong `<nhà harness>/hooks/`, guard gọi) chặn mọi thao tác ghi (Write/Edit · lệnh shell có ghi) tới khi phiên đã đọc bằng công cụ Read đủ phần bắt đọc khai ở `policy.json › read_first`:
-  - `02_RULES` §Lõi;
-  - ở `01_CONSTITUTION`: khối ĐỌC KỸ (nếu có), các điều khối đó liệt kê và `PURPOSE.md`;
+- Chốt read-first (sinh vào folder của `Rule_Gate_55_HookGuard`, guard gọi) chặn mọi thao tác ghi (Write/Edit · lệnh shell có ghi) tới khi phiên đã đọc bằng công cụ Read đủ phần bắt đọc khai ở `policy.json › read_first`:
+  - các luật `Core` của `01_RULES` (lõi);
+  - ở `02_CONSTITUTION`: `PURPOSE.md` và các điều `Core`;
   - cả `05_TODO`.
 - File thiếu ranh giới mục ⇒ đòi cả file. File khai mà không tồn tại ⇒ bỏ qua.
 - `grep` / `head` / `Get-Content` không tính là đã đọc.

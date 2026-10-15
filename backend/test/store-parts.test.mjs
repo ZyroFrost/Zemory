@@ -9,6 +9,7 @@ import { SLOT_ROLES } from "../../dist/docs/structure-tree.js";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { gateExampleFindings, storePrivacyFindings } from "../../dist/docs/gate-examples.js";
+import { storePointerFindings } from "../../dist/docs/pointer-check.js";
 import { kitParts, listParts, partNameFindings, readKits, SHELVES, STORE_DIR, unbumpedParts } from "../../dist/docs/store.js";
 import { tempDir } from "./helpers.mjs";
 
@@ -97,6 +98,35 @@ test("negative: a name that lies about its enforcement, area, number or shelf is
   says(/Rule_Core_04_W: code Rule does not belong on 03_STRUCTURE/);
   assert.ok(!wrong.some((x) => /Rule_Gate_07_Y/.test(x)), "a truthful name passes");
   assert.deepEqual(legacy, ["01_RULES/02-3_old"]);
+});
+
+test("every pointer in the store lands: parts, repo paths on a slot, current harness paths, no section of the old rules file", () => {
+  const f = storePointerFindings(STORE_DIR);
+  assert.deepEqual(f.map((x) => `${x.where} ${x.pointer} ${x.note ?? ""}`), []);
+});
+
+test("negative: every kind of dead pointer is caught, and a pointer that lands is not", (t) => {
+  const s = tempDir(t, "zemory-store-ptr-");
+  put(s, "03_STRUCTURE/Slot_Data_002_Secrets/SLOT.md", "---\nid: Slot_2\nname: secrets\nversion: 1\npath: data/secrets/\n---\ns\n");
+  put(s, "03_STRUCTURE/Slot_Docs_003_Agent/SLOT.md", "---\nid: Slot_3\nname: agent\nversion: 1\npath: docs/agent/\n---\na\n");
+  put(s, "04_SKILLS/sk/SKILL.md", "---\nname: sk\nversion: 1\n---\nk\n");
+  put(s, "01_RULES/Rule_Core_05_Live/RULE.md", "---\nid: Rule_5\nname: live\nversion: 1\n---\nl\n");
+  put(s, "Archive/01_RULES/Rule_Core_06_Gone/RULE.md", "---\nid: Rule_6\nname: gone\nversion: 1\nretired: 2026-10-15 · x\nreplaced-by: Rule_Core_05_Live\n---\ng\n");
+  put(s, "01_RULES/Rule_Core_01_Pointing/RULE.md", [
+    "---", "id: Rule_1", "name: p", "version: 1", "---",
+    "- good: Rule_Core_05_Live · `data/secrets/` · `docs/agent/01_RULES/` · `.claude/skills/sk/SKILL.md` · `misc/` (a word)",
+    "- missing part Rule_Core_09_Nothing", "- legacy id 02-5", "- retired part Rule_6",
+    "- old shelf `docs/agent/02_RULES/x/`", "- gone folder `docs/hooks/guard.cjs`", "- missing skill `.claude/skills/nope/SKILL.md`",
+    "- off the structure `data/elsewhere/`", "- old section §Lõi", "",
+  ].join("\n"));
+  const f = storePointerFindings(s);
+  const kinds = f.map((x) => `${x.kind} ${x.pointer}`);
+  for (const want of ["part Rule_Core_09_Nothing", "legacy-id 02-5", "retired Rule_6", "harness-path docs/agent/02_RULES/x/",
+    "harness-path docs/hooks/guard.cjs", "skill .claude/skills/nope/SKILL.md", "path data/elsewhere/", "old-section §Lõi"]) {
+    assert.ok(kinds.includes(want), `must be caught: ${want}\n${kinds.join("\n")}`);
+  }
+  assert.equal(f.filter((x) => x.where.endsWith(":6")).length, 0, `the line of good pointers raises nothing:\n${kinds.join("\n")}`);
+  assert.match(f.find((x) => x.kind === "retired").note, /replaced by Rule_Core_05_Live/);
 });
 
 test("negative: a wrong example, a gate with no examples and a private line are all reported", (t) => {

@@ -683,7 +683,7 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
       if (vi) wrong.push(`${where}: the name ${n.name} reads as Vietnamese without marks (${vi}) — names are English`);
       if (n.no !== undefined && p.key !== keyOf(n)) wrong.push(`${where}: the name says ${keyOf(n)} but the header id says ${p.key}`);
       if (n.code === "Rule" || n.code === "Cons") {
-        let gate: Record<string, unknown> | null = null;
+        let gate: Record<string, unknown> | null;
         try { gate = JSON.parse(readFileSync(join(p.dir, "gate.json"), "utf8")) as Record<string, unknown>; } catch { gate = null; }
         const real = enforcementOf(gate);
         if (real !== n.group) wrong.push(`${where}: named ${n.group} but its gate.json makes it ${real}`);
