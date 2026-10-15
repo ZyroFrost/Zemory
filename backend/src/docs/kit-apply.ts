@@ -14,12 +14,17 @@ import {
   frontMatter,
   kitParts,
   MAIN_FILE,
+  hostSkillOf,
   planAssembly,
+  plugSkills,
   renameLegacyShelves,
   STORE_DIR,
+  targetDir,
   type AssemblyStep,
+  type AssemblyTarget,
   type Kit,
   type Part,
+  type PlugResult,
 } from "./store.js";
 import { SHELF } from "./harness-names.js";
 
@@ -32,6 +37,8 @@ export interface KitApplyResult {
   skillsBlock: "written" | "current" | "no-file";
   /** Legacy shelf folders renamed to the current names by this pass (`02_RULES → 01_RULES` …). */
   renamedShelves: string[];
+  /** Host builds of the kit's skills written into the host folder; a repo-own skill of the same name is skipped. */
+  plug: PlugResult;
 }
 
 /** The kit a repo's marker names, or null (a repo still on the file harness). */
@@ -69,8 +76,11 @@ export function applyKit(
   const parts = kitParts(kit, storeDir).filter((p) => p.shelf !== SHELF.constitution || !marked);
   const steps = planAssembly(parts, target);
   const written = opts.apply ? applyAssembly(steps) : [];
-  const skillsBlock = opts.apply ? writeSkillsBlock(hp.agent, parts.filter((p) => p.shelf === "04_SKILLS"), target.skillsDir) : "current";
-  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves };
+  const skills = parts.filter((p) => p.shelf === SHELF.skills);
+  // the host plug: every assembled skill's host build, written from its source into the host's own skill folder
+  const plug = opts.apply ? plugSkills(target, skills) : { plugged: [], skipped: [] };
+  const skillsBlock = opts.apply ? writeSkillsBlock(hp.agent, skills, target) : "current";
+  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves, plug };
 }
 
 /** Create the marker (or add `kit` to an existing one). True when a new marker file was written. */
@@ -98,10 +108,11 @@ export function writeKitMarker(root: string, kit: Kit): boolean {
 const SK_START = "<!-- zemory:skills:start";
 const SK_END = "<!-- zemory:skills:end -->";
 
-/** The machine-written block of 04_SKILLS.md: one row per kit skill with the `from:` it was assembled from. Rows the repo
- *  adds below the block are its own. A file without the block markers is left alone. */
-function writeSkillsBlock(agentDir: string, skills: Part[], skillsDir: string): "written" | "current" | "no-file" {
-  const p = join(agentDir, "04_SKILLS.md");
+/** The machine-written block of the skills list (`04_SKILLS/INDEX.md`): one row per kit skill — its source in the
+ *  harness, the host folder it is plugged into, the `from:` it was assembled from. Rows the repo adds below the block are
+ *  its own. A file without the block markers is left alone. */
+function writeSkillsBlock(agentDir: string, skills: Part[], t: AssemblyTarget): "written" | "current" | "no-file" {
+  const p = join(agentDir, SHELF.skills, "INDEX.md");
   if (!existsSync(p)) return "no-file";
   const text = readFileSync(p, "utf8");
   const a = text.indexOf(SK_START);
@@ -110,11 +121,11 @@ function writeSkillsBlock(agentDir: string, skills: Part[], skillsDir: string): 
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const head = text.slice(a, text.indexOf("\n", a) + 1).replace(/\r?\n$/, "");
   const rows = skills.map((s) => {
-    const copy = join(skillsDir, s.folder, MAIN_FILE["04_SKILLS"]);
+    const copy = join(targetDir(t, s), MAIN_FILE[SHELF.skills]);
     const from = existsSync(copy) ? String(frontMatter(readFileSync(copy, "utf8"))?.meta.from ?? "") : "";
-    return `| \`${s.folder}/\` | ${from || "(not assembled)"} |`;
+    return `| \`${s.folder}/\` | \`.claude/skills/${hostSkillOf(s)}/\` | ${from || "(not assembled)"} |`;
   });
-  const block = [head, "| Skill | from |", "|---|---|", ...rows, SK_END].join(eol);
+  const block = [head, "| Skill (source) | Host | from |", "|---|---|---|", ...rows, SK_END].join(eol);
   const next = text.slice(0, a) + block + text.slice(b + SK_END.length);
   if (next === text) return "current";
   writeFileSync(p, next);

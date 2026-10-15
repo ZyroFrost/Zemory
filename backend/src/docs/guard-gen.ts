@@ -184,7 +184,14 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
       // Folder harness (plan/28 §0n): the doors are declared by the skills the repo really carries (gate.json › read) — a
       // repo without app-design has no frontend door. File harness: the built-in doors, until the repo moves.
       ...(folder
-        ? skillReadTriggers(hp.skills).map(({ skill, ...t }) => ({ ...t, read: `${skillsRel}/${skill}/SKILL.md` }))
+        ? skillReadTriggers(hp.skills, hp.agent).map(({ skill, source, ...t }) => ({
+            ...t,
+            // Any copy of the same skill counts (plan/28 §0o): the host build the agent is pointed at, the source in the
+            // harness, the build kept inside the source — and the host loading the skill by name (`skill`).
+            read: `${skillsRel}/${skill}/SKILL.md`,
+            alt: source ? [relp(join(source, "SKILL.md")), relp(join(source, "Claude", skill, "SKILL.md"))] : [],
+            skill,
+          }))
         : [
             ...(isApp ? [{ when: "path_prefix", prefix: "frontend", read: `${skillsRel}/app-design/SKILL.md` }] : []),
             { when: "cmd_re", re: "(mail|smtp|email)[\\w.-]*\\.(py|ps1|js|mjs|cjs|cmd|bat)\\b", read: `${skillsRel}/write-style/SKILL.md` },

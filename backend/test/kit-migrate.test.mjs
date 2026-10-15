@@ -89,7 +89,10 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   assert.deepEqual(JSON.parse(readFileSync(join(agent, "01_RULES", r99, "gate.json"), "utf8")), { gate: "guard" });
   // structure + skills + entry
   assert.equal(readFileSync(join(agent, "03_STRUCTURE", "INDEX.md"), "utf8"), oldStruct);
-  assert.match(readFileSync(join(root, ".claude", "skills", "grill", "SKILL.md"), "utf8"), /^from: _Store\/04_SKILLS\/grill/m, "an untouched shared skill takes the store copy");
+  // an untouched shared skill takes the store copy: source in the harness, plugged under its host name; the old folder goes
+  assert.match(readFileSync(join(root, "docs", "agent", "04_SKILLS", "Skill_Harness_Grill", "SKILL.md"), "utf8"), /^from: _Store\/04_SKILLS\/Skill_Harness_Grill/m);
+  assert.match(readFileSync(join(root, ".claude", "skills", "harness-grill", "SKILL.md"), "utf8"), /^from: _Store\/04_SKILLS\/Skill_Harness_Grill/m, "an untouched shared skill takes the store copy");
+  assert.ok(!existsSync(join(root, ".claude", "skills", "grill")), "the untouched old copy does not stay beside the new one");
   assert.match(readFileSync(join(root, ".claude", "skills", "audit", "SKILL.md"), "utf8"), /REPO EDIT/, "an edited shared skill is kept");
   assert.equal(readFileSync(join(root, ".claude", "skills", "pbi-main", "SKILL.md"), "utf8"), "---\nname: pbi-main\ndescription: x\n---\nown\n");
   assert.match(readFileSync(join(root, "AGENTS.md"), "utf8"), /pbi-main/, "the repo's own trigger row is carried");

@@ -7,7 +7,7 @@
 // A hook returns null (let through), a string (block), or { msg, flag, subject } (block unless the one-use flag
 // `.allow-<flag>` is granted — guard.cjs consumes it).
 //
-// The Vietnamese-without-diacritics judgement is the one `.claude/skills/audit/scripts/lang-scan.mjs` was tuned with
+// The Vietnamese-without-diacritics judgement is the one `.claude/skills/harness-audit/scripts/lang-scan.mjs` was tuned with
 // (tier A syllables · tier B function words · English homographs · data stripped before judging); keep the two in step.
 //
 // Written with String.raw so backslashes are literal — DO NOT use backticks or dollar-brace inside the sources below.
@@ -117,7 +117,9 @@ const ONCE = "\nThis is a reminder, shown once per session: retry the same call 
 
 // Paths the language rules do not reach: other people's code, frozen hand-overs, deliberate ASCII samples.
 // The write-docx reference samples sit under .claude/skills/ in a repo and under _Store/04_SKILLS/ in the parts store.
-const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|04_SKILLS)\/write-docx\/reference\//];
+// The skill's folder is its old name, its host name (doc-write-docx) or its store name (Skill_Doc_WriteDocx, with the
+// assembled host build under Claude/<name>/), and the samples folder is references/ (Agent Skills) or the old reference/.
+const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|04_SKILLS)\/[^/]*(write-docx|WriteDocx)[^/]*\/(Claude\/[^/]+\/)?references?\//];
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 `;
 
@@ -326,7 +328,7 @@ function check(payload, root, policy) {
     if (!e.newLines.some((l) => LAYER.test(l))) return null;
     if (!remindOnce(payload, root, policy, "02-1")) return null;
     return blocked(root, policy, "02-1", "this adds a storage or index layer in " + e.rel +
-      " - declare how it reaches a second machine and measure that path before calling it done (.claude/skills/sync-path/SKILL.md)." + ONCE);
+      " - declare how it reaches a second machine and measure that path before calling it done (.claude/skills/harness-sync-path/SKILL.md)." + ONCE);
   } catch { return null; }
 }`),
 
@@ -340,7 +342,7 @@ function check(payload, root, policy) {
     if (!e || e.exists || /^(docs\/(agent|plan)|\.claude)\//.test(e.rel)) return null;
     if (!OUT_DIR.test(e.rel) && !OUT_NAME.test(e.rel)) return null;
     if (!remindOnce(payload, root, policy, "02-2")) return null;
-    return blocked(root, policy, "02-2", e.rel + " reads as a text handed to people - write it for the reader, by the style rules in .claude/skills/write-style/SKILL.md." + ONCE);
+    return blocked(root, policy, "02-2", e.rel + " reads as a text handed to people - write it for the reader, by the style rules in .claude/skills/doc-write-style/SKILL.md." + ONCE);
   } catch { return null; }
 }`),
 

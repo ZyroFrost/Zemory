@@ -113,7 +113,9 @@ function extraFor(rf, root, targets, cmd) {
     for (const f of rf.case_files || ["spec.md"]) if (fs.existsSync(path.join(root, dir, f))) out.push(path.join(dir, f).replace(/\\/g, "/"));
   }
   for (const tr of rf.triggers || []) {
-    if (!tr.read || !fs.existsSync(path.join(root, tr.read))) continue;
+    // A skill door names every copy of the same skill (plan/28 §0o): the host build, the source, the build in the source.
+    const copies = [tr.read].concat(tr.alt || []).filter((rel) => rel && fs.existsSync(path.join(root, rel)));
+    if (!copies.length) continue;
     let hit = false;
     if (tr.when === "new_dir") {
       hit = targets.some((t) => !fs.existsSync(path.dirname(path.join(root, t))));
@@ -127,8 +129,19 @@ function extraFor(rf, root, targets, cmd) {
       // plus ONE hop into the scripts it names in turn (a launcher "run_weekly.py" / "bin\x.cmd" calling the sender).
       try { hit = scriptsOf(root, scriptsRun(cmd).join(" "), 1).some((txt) => new RegExp(tr.re, "i").test(txt)); } catch {}
     }
-    if (hit) out.push(tr.read);
+    if (hit) out.push(copies.length > 1 || tr.skill ? { copies, skill: tr.skill || null } : copies[0]);
   }
+  return out;
+}
+
+// Skills the host LOADED in this session (the agent invoked the Skill tool with that name): its text is in the
+// session as surely as a Read of the file, so the door counts it read.
+function skillsLoaded(transcript) {
+  const out = new Set();
+  let text = "";
+  try { text = fs.readFileSync(transcript, "utf8"); } catch { return out; }
+  for (const f of sessionFiles(transcript).slice(1)) { try { text += "\n" + fs.readFileSync(f, "utf8"); } catch {} }
+  for (const m of text.matchAll(/"name":"Skill","input":\{[^}]*?"skill":"([^"]+)"/g)) out.add(m[1].replace(/^[^:]+:/, ""));
   return out;
 }
 
@@ -336,11 +349,14 @@ function readFirst(payload, root, policy) {
   } else {
     return null; // Read · Glob · Grep · everything that only looks
   }
-  const need = expand(root, rf.required.concat(extraFor(rf, root, targets, cmd)));
+  const extra = extraFor(rf, root, targets, cmd);
+  const groups = extra.filter((x) => x && typeof x === "object");
+  const need = expand(root, rf.required.concat(extra.filter((x) => typeof x === "string")));
   // Section demands (plan/27 §3): only the named parts of a file are due — the rule core, not the whole rule set.
   const secs = (Array.isArray(rf.sections) ? rf.sections : [])
     .filter((s) => s && typeof s.file === "string" && Array.isArray(s.parts) && !need.includes(s.file) && fs.existsSync(path.join(root, s.file)));
-  const L = ledger(transcript, new Set(need.concat(secs.map((s) => s.file)).map((rel) => norm(path.join(root, rel)))));
+  const keys = need.concat(secs.map((s) => s.file)).concat(...groups.map((g) => g.copies));
+  const L = ledger(transcript, new Set(keys.map((rel) => norm(path.join(root, rel)))));
   if (!L) return null;
   const missing = [];
   const report = (label, c) => {
@@ -348,6 +364,15 @@ function readFirst(payload, root, policy) {
     missing.push("  - " + label + "  (read " + c.got + "/" + c.total + " lines" + (c.never && !c.section ? ")" : " - still to read: lines " + ranges(c.unseen) + ")"));
   };
   for (const rel of need) report(rel, coverage(path.join(root, rel), L));
+  // A skill: any one copy read in full, or the host loading the skill by name, is enough.
+  const loaded = groups.some((g) => g.skill) ? skillsLoaded(transcript) : new Set();
+  for (const g of groups) {
+    if (g.skill && loaded.has(g.skill)) continue;
+    const cs = g.copies.map((rel) => [rel, coverage(path.join(root, rel), L)]).filter(([, c]) => c);
+    if (!cs.length || cs.some(([, c]) => c.full)) continue;
+    const [rel, c] = cs.sort((a, b) => b[1].got / (b[1].total || 1) - a[1].got / (a[1].total || 1))[0];
+    report(rel + (g.copies.length > 1 ? " (or any copy of the same skill: " + g.copies.filter((x) => x !== rel).join(" · ") + ")" : ""), c);
+  }
   for (const s of secs) {
     const c = coverage(path.join(root, s.file), L, s.parts);
     report(s.file + (c && c.section ? " - " + s.parts.map(partLabel).join(" + ") : ""), c);

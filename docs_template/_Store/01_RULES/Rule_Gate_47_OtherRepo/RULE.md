@@ -2,7 +2,7 @@
 id: Rule_47
 aka: 02-47
 name: other-repo
-version: 5
+version: 6
 kind: action
 ---
 # Rule_Gate_47_OtherRepo Đứng trong repo tham khảo thì chỉ đọc

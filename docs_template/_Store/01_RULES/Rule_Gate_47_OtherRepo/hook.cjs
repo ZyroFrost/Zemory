@@ -102,7 +102,9 @@ const ONCE = "\nThis is a reminder, shown once per session: retry the same call 
 
 // Paths the language rules do not reach: other people's code, frozen hand-overs, deliberate ASCII samples.
 // The write-docx reference samples sit under .claude/skills/ in a repo and under _Store/04_SKILLS/ in the parts store.
-const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|04_SKILLS)\/write-docx\/reference\//];
+// The skill's folder is its old name, its host name (doc-write-docx) or its store name (Skill_Doc_WriteDocx, with the
+// assembled host build under Claude/<name>/), and the samples folder is references/ (Agent Skills) or the old reference/.
+const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|04_SKILLS)\/[^/]*(write-docx|WriteDocx)[^/]*\/(Claude\/[^/]+\/)?references?\//];
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 
 const WRITES = /\bzemory(?:\.cmd)?\s+(init|sync(?!\s+--check)|reindex|archive|migrate|adopt|setup|hook|memory\s+(?:scan|sync|embed|forget|redact)|gates\s+--write-top|project\s+move)\b/i;

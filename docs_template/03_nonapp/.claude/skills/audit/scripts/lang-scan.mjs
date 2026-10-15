@@ -44,7 +44,7 @@ const CODE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py'])
 const TEXT_EXT = new Set([...CODE_EXT, '.md', '.json', '.html', '.css'])
 // Paths exempt by design. Add a line here only with the reason next to it.
 const EXEMPT = [
-  /(^|\/)(skills|04_SKILLS)\/write-docx\/reference\//, // deliberately ASCII Python samples (kits · the parts store · every repo)
+  /(^|\/)(skills|04_SKILLS)\/[^/]*(write-docx|WriteDocx)[^/]*\/(Claude\/[^/]+\/)?references?\//, // deliberately ASCII Python samples (kits · the parts store · every repo)
   /(^|\/)gate\.json$/, // a gate's block/pass examples are test data, deliberately wrong text included
   // `external/` is OTHER PEOPLE'S code kept for reference - `03_STRUCTURE` defines it that way
   // ("code HỌ · ETL hệ cũ · script phòng khác"). Rewriting another team's script is not our call,

@@ -57,6 +57,13 @@ export function renameLegacyShelves(agentDir: string): string[] {
     renameSync(from, to);
     done.push(`${old} → ${cur}`);
   }
+  // The skills list moves into the skills shelf, beside the sources it lists (as 03_STRUCTURE/INDEX.md).
+  const list = join(agentDir, "04_SKILLS.md"), index = join(agentDir, SHELF.skills, "INDEX.md");
+  if (existsSync(list) && !existsSync(index)) {
+    mkdirSync(join(agentDir, SHELF.skills), { recursive: true });
+    renameSync(list, index);
+    done.push(`04_SKILLS.md → ${SHELF.skills}/INDEX.md`);
+  }
   return done;
 }
 
@@ -152,13 +159,22 @@ function withoutFrom(text: string): string {
 // ── files and hash ───────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** Every file under a part folder, relative and slash-separated, sorted. */
+/**
+ * The host builds a skill carries inside its own folder (plan/28 §0o: `Skill_<Group>_<Name>/Claude/<host-name>/`): assembled
+ * from the skill's source by the tool, never edited by hand. They are not part of the skill's content — not hashed, not
+ * merged, not copied into another build.
+ */
+export const HOST_BUILD_DIRS = ["Claude", "Codex"] as const;
+
 export function partFiles(dir: string): string[] {
   const out: string[] = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else out.push(relative(dir, p).replace(/\\/g, "/"));
+      if (e.isDirectory()) {
+        if (d === dir && (HOST_BUILD_DIRS as readonly string[]).includes(e.name)) continue;
+        walk(p);
+      } else out.push(relative(dir, p).replace(/\\/g, "/"));
     }
   };
   if (existsSync(dir)) walk(dir);
@@ -380,8 +396,10 @@ export interface AssemblyTarget {
   skillsDir: string;
 }
 
+/** Where a part's repo copy lives. Every shelf, skills included, under the harness folder: a skill's SOURCE is
+ *  `docs/agent/04_SKILLS/<Skill_…>/`; the host loads the build `plugSkills` writes from it (plan/28 §0o). */
 export function targetDir(t: AssemblyTarget, p: Pick<Part, "shelf" | "folder">): string {
-  return p.shelf === "04_SKILLS" ? join(t.skillsDir, p.folder) : join(t.agentDir, p.shelf, p.folder);
+  return join(t.agentDir, p.shelf, p.folder);
 }
 
 /**
@@ -391,8 +409,64 @@ export function targetDir(t: AssemblyTarget, p: Pick<Part, "shelf" | "folder">):
 export function findCopy(t: AssemblyTarget, part: Part): string | null {
   const exact = targetDir(t, part);
   if (existsSync(join(exact, MAIN_FILE[part.shelf]))) return exact;
-  const pool = part.shelf === "04_SKILLS" ? listRepoSkills(t.skillsDir) : listParts(t.agentDir, part.shelf);
-  return pool.find((p) => p.key === part.key)?.dir ?? null;
+  const byKey = listParts(t.agentDir, part.shelf).find((p) => p.key === part.key)?.dir;
+  if (byKey) return byKey;
+  if (part.shelf !== SHELF.skills) return null;
+  // A skill assembled before the two-layer skills sat in the host folder under its old name (aka). An assembled copy (it
+  // has a from: line) moves to the source shelf and is judged there — the repo's edits merge as usual; the host build is
+  // written fresh from the source afterwards. A host folder without from: is the repo's own skill and is left alone.
+  for (const name of [String(part.meta.aka ?? ""), hostSkillOf(part)].filter(Boolean)) {
+    const legacy = join(t.skillsDir, name, MAIN_FILE[SHELF.skills]);
+    if (existsSync(legacy) && frontMatter(readFileSync(legacy, "utf8"))?.meta.from) return join(t.skillsDir, name);
+  }
+  return null;
+}
+
+/** A skill's host name — the `name:` of its SKILL.md (Agent Skills: equal to the host folder). */
+export function hostSkillOf(part: Part): string {
+  return String(part.meta.name ?? "") || part.folder;
+}
+
+export interface PlugResult {
+  /** host folders written from the source */
+  plugged: string[];
+  /** host folders left alone: a skill of the repo's own already has that name */
+  skipped: string[];
+}
+
+/**
+ * The host plug (plan/28 §0o): for every assembled skill, build `<source>/Claude/<host-name>/` from the source (every file
+ * but gate.json — gates are the tool's, the host loads SKILL.md, scripts/, references/, assets/) and copy that build into
+ * the host's own skill folder (`.claude/skills/<host-name>/`). Both are the tool's output: rewritten whole each time. A
+ * host folder that is not ours (no SKILL.md with a from: line) is never replaced.
+ */
+export function plugSkills(t: AssemblyTarget, skills: Part[]): PlugResult {
+  const res: PlugResult = { plugged: [], skipped: [] };
+  for (const part of skills) {
+    const src = targetDir(t, part);
+    if (!existsSync(join(src, MAIN_FILE[SHELF.skills]))) continue;
+    const host = hostSkillOf(part);
+    const files = partFiles(src).filter((f) => f !== "gate.json");
+    const build = join(src, "Claude", host);
+    rmSync(join(src, "Claude"), { recursive: true, force: true });
+    for (const f of files) {
+      mkdirSync(dirname(join(build, f)), { recursive: true });
+      writeFileSync(join(build, f), readFileSync(join(src, f)));
+    }
+    const dest = join(t.skillsDir, host);
+    const destMain = join(dest, MAIN_FILE[SHELF.skills]);
+    if (existsSync(dest) && !(existsSync(destMain) && frontMatter(readFileSync(destMain, "utf8"))?.meta.from)) {
+      res.skipped.push(host);
+      continue;
+    }
+    rmSync(dest, { recursive: true, force: true });
+    for (const f of files) {
+      mkdirSync(dirname(join(dest, f)), { recursive: true });
+      writeFileSync(join(dest, f), readFileSync(join(build, f)));
+    }
+    res.plugged.push(host);
+  }
+  return res;
 }
 
 export type StepVerdict =
@@ -746,20 +820,40 @@ function gateOf(dir: string): { read?: ReadTrigger[]; prompt?: PromptGate } | nu
 }
 
 /** Read-before-write doors a repo's skills declare (`gate.json › read`): each entry names the SKILL.md to read. */
-export function skillReadTriggers(skillsDir: string): Array<ReadTrigger & { skill: string }> {
-  if (!existsSync(skillsDir)) return [];
-  const out: Array<ReadTrigger & { skill: string }> = [];
-  for (const e of readdirSync(skillsDir, { withFileTypes: true })) {
-    if (!e.isDirectory()) continue;
-    for (const t of gateOf(join(skillsDir, e.name))?.read ?? []) out.push({ ...t, skill: e.name });
+/**
+ * The skills a repo carries, each with the folder its gates live in: an assembled skill keeps gate.json in its SOURCE
+ * (`docs/agent/04_SKILLS/<Skill_…>/` — the host build carries no gates, plan/28 §0o); a skill of the repo's own (only in the
+ * host folder, no source) keeps it there. `source` is the source folder, null for a repo-own skill.
+ */
+function repoSkillDirs(skillsDir: string, agentDir?: string): Array<{ host: string; gates: string; source: string | null }> {
+  const out: Array<{ host: string; gates: string; source: string | null }> = [];
+  const seen = new Set<string>();
+  if (agentDir) {
+    for (const p of listParts(agentDir, SHELF.skills)) {
+      const host = hostSkillOf(p);
+      seen.add(host);
+      out.push({ host, gates: p.dir, source: p.dir });
+    }
   }
+  if (existsSync(skillsDir)) {
+    for (const e of readdirSync(skillsDir, { withFileTypes: true })) {
+      if (e.isDirectory() && !seen.has(e.name)) out.push({ host: e.name, gates: join(skillsDir, e.name), source: null });
+    }
+  }
+  return out;
+}
+
+/** Read-before-write doors a repo's skills declare (`gate.json › read`): each names the skill (its host name) and where
+ *  its source is, so the latch can accept a reading of any copy of the same skill. */
+export function skillReadTriggers(skillsDir: string, agentDir?: string): Array<ReadTrigger & { skill: string; source: string | null }> {
+  const out: Array<ReadTrigger & { skill: string; source: string | null }> = [];
+  for (const s of repoSkillDirs(skillsDir, agentDir)) for (const t of gateOf(s.gates)?.read ?? []) out.push({ ...t, skill: s.host, source: s.source });
   return out;
 }
 
 /** Prompt reminders a repo carries: from its skills and from the rule folders of a folder harness (`gate.json › prompt`). */
 export function promptGates(skillsDir: string, agentDir: string): PromptGate[] {
-  const dirs: string[] = [];
-  if (existsSync(skillsDir)) for (const e of readdirSync(skillsDir, { withFileTypes: true })) if (e.isDirectory()) dirs.push(join(skillsDir, e.name));
+  const dirs = repoSkillDirs(skillsDir, agentDir).map((s) => s.gates);
   for (const shelf of [SHELF.rules, SHELF.constitution] as const) for (const p of listParts(agentDir, shelf)) if (!isRetired(p)) dirs.push(p.dir);
   return dirs.map((d) => gateOf(d)?.prompt).filter((g): g is PromptGate => Boolean(g && g.re && g.text && g.kind));
 }

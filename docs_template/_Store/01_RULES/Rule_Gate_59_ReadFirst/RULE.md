@@ -2,7 +2,7 @@
 id: Rule_59
 aka: 02-59
 name: read-first
-version: 4
+version: 5
 kind: action
 ---
 # Rule_Gate_59_ReadFirst Đọc trước khi ghi
@@ -17,8 +17,8 @@ kind: action
 - Đòi thêm theo việc:
   - ghi vào `tasks/<case>/` ⇒ `spec.md` · `mail_form.md` của case đó;
   - tạo thư mục mới ⇒ `03_STRUCTURE`;
-  - đụng `frontend/` (bộ APP) ⇒ `.claude/skills/app-design/SKILL.md`;
-  - chạy script gửi mail ⇒ `.claude/skills/write-style/SKILL.md` (soi nội dung script được chạy, thêm một bước sang script nó gọi).
+  - đụng `frontend/` (bộ APP) ⇒ `.claude/skills/dev-app-design/SKILL.md`;
+  - chạy script gửi mail ⇒ `.claude/skills/doc-write-style/SKILL.md` (soi nội dung script được chạy, thêm một bước sang script nó gọi).
 - Nén context không bắt đọc lại: hook `SessionStart` chèn lại nguyên văn lõi.
 - Lệnh đọc Global Memory và dò phiên (`zemory memory …` · `peers` · `graph`) không bị chặn.
 - Không có cờ vượt.
