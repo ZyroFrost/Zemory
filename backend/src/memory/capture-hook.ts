@@ -136,7 +136,7 @@ export function ruleReminders(payload: any): string {
     gates = BUILTIN_PROMPT_GATES; // fail-open (HP article 9): the built-in reminders
   }
   for (const g of gates) {
-    let hit = false;
+    let hit: boolean;
     try { hit = new RegExp(g.re, "i").test(prompt); } catch { hit = false; }
     if (hit && once(g.kind)) out.push(g.text);
   }
