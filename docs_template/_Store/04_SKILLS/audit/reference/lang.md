@@ -1,6 +1,6 @@
 # mặt ⑫ — NGÔN NGỮ CỦA MÃ: cách ĐO
 
-> **NORM ở `02_RULES §Ngôn ngữ`** (luật thiết kế chung mọi app). Ở đây chỉ có
+> **NORM ở `02-26`–`02-31`** (luật thiết kế chung mọi app). Ở đây chỉ có
 > **cách đo** và **bẫy báo oan**. Luật nói PHẢI ĐÚNG GÌ; file này nói ĐO THẾ NÀO cho khỏi báo oan.
 > Máy chạy: `node .claude/skills/audit/scripts/lang-scan.mjs . [--all]` — phép Ⓐ Ⓑ Ⓒ.
 > Phép Ⓓ (song ngữ) đo riêng vì phải bám đúng chỗ để dict của repo.
@@ -34,7 +34,7 @@ Việt CÓ DẤU. Dòng đã có dấu ⇒ bỏ qua ngay, không xét tiếp.
   chữ `const` nằm trong chú thích tiếng Việt (`const —`) — và **bỏ sót 9 định danh thật**
   (`chặnNhầm` · `tênFile` · `phảiChặn` · `lọt` ở `backend/test/guard-tool-matrix.test.mjs`). Bóc
   chú thích + chuỗi xong mới đảo được cả hai chiều. *Đây đúng kiểu "thước sai, không phải N thiết
-  kế sai" — `02_RULES §BA LUẬT ĐO` ②.*
+  kế sai" — `02-68` ②.*
 · **② Đồng âm Anh–Việt làm dòng tiếng Anh thuần bị bắt.** `do · so · can · ten · ban · van · no ·
   to · in · on` vừa là từ tiếng Anh vừa là âm tiết Việt mất dấu. Không trừ chúng ra thì một câu
   tiếng Anh chuẩn cũng đủ 3 "âm tiết Việt". Đo được: 627 → **616** hit sau khi trừ.
@@ -67,7 +67,7 @@ Việt CÓ DẤU. Dòng đã có dấu ⇒ bỏ qua ngay, không xét tiếp.
 
 ## Archive — sửa được, nhưng chỉ được THÊM DẤU
 
-`docs/agent/archive/` **có bị quét**. `02_RULES §Changelog` cấm sửa/xoá entry cũ, nhưng **bỏ dấu vào
+`docs/agent/archive/` **có bị quét**. `02-42` cấm sửa/xoá entry cũ, nhưng **bỏ dấu vào
 lại không thêm cũng không bớt thông tin** — cùng một câu, chỉ là đọc được.
 Đổi *nội dung* một entry thì vẫn cấm. Một đợt đã phục hồi **39 dòng** (36 ở `06_CHANGES` · 3 ở
 `05_TODO`), số dòng không đổi, kèm dựng lại dấu phân cách đã hỏng vì mojibake cũ (`???`→`—` ·

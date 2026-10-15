@@ -1,12 +1,12 @@
 ---
 name: plan-trim
-version: 1
+version: 2
 description: Trim the specs in docs/plan when they grow past the cap, WITHOUT losing ideas — back up, draft outside the repo, have an independent reviewer restore every lost idea against the original and the code, then apply. Use when `zemory validate` warns that a spec or docs/plan is over the line cap, or when asked to shorten, trim or tidy the plans. Vietnamese triggers - "gọt plan", "dọn plan", "plan dài quá", "rút gọn plan", "plan vượt trần", "plan quá trần".
 ---
 
 # plan-trim — gọt plan vượt trần mà không mất ý
 
-> Luật nằm ở `02_RULES §Tài liệu` (gạch **PLAN PHẢI GỌN**): plan giữ hướng đã chốt + điểm còn mở, lịch sử
+> Luật nằm ở `02-37` (gạch **PLAN PHẢI GỌN**): plan giữ hướng đã chốt + điểm còn mở, lịch sử
 > sang `06_CHANGES`, trần một spec / cả `docs/plan` do `zemory validate` canh. Skill này chỉ là **cách làm**.
 > Đo được trên hai đợt gọt thật: một lượt soát bắt ~120 ý bị mất; một lượt khác (bốn spec) soát lại ~140 ý
 > và bắt 5 chỗ spec nói sai so với code.

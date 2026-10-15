@@ -1,6 +1,6 @@
 ---
 name: app-design
-version: 2
+version: 3
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
 ---
 
@@ -37,7 +37,7 @@ chúng không phải một danh sách thứ phải dựng.
 
 **Phép thử trước khi thêm bất cứ gì:** ① **gỡ** cái đang có được không · ② **gộp** vào chỗ đã có
 được không · ③ **không có nó thì người dùng làm hỏng việc gì**. Không trả lời được ③ ⇒ **KHÔNG THÊM**.
-*(Cùng khuôn ba câu hỏi của `02_RULES §Sổ việc` cửa vào — ở đó là chống phình SỔ, ở đây chống phình
+*(Cùng khuôn ba câu hỏi của `02-38` cửa vào — ở đó là chống phình SỔ, ở đây chống phình
 BỀ MẶT. Cùng một bệnh: bồi đắp cho chắc, rồi mọi người phải đọc mãi mãi.)*
 
 **Một thông tin xuất hiện ĐÚNG MỘT LẦN trên màn** (mở rộng của §F6, siết hơn): F6 cấm cùng một số

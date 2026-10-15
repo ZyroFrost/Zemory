@@ -1,12 +1,12 @@
 ---
 name: grill
-version: 2
+version: 3
 description: Clarify an ambiguous request before doing any work - stop, read what can be read, then ask one question at a time with your own proposal attached. Use whenever a request is ambiguous, uses terms with several meanings, lacks facts, has undefined scope, carries an unstated assumption, contains contradictory demands, or precedes a hard-to-undo action. Vietnamese triggers - "grill", "chưa rõ", "làm sao", "ý là gì", or any request you cannot execute correctly without guessing.
 ---
 
 # grill — làm rõ yêu cầu trước khi làm
 
-> **Kích hoạt TỰ ĐỘNG**, không chờ được gọi: `02_RULES §Hành xử` bắn khi yêu cầu chưa đủ để thực thi
+> **Kích hoạt TỰ ĐỘNG**, không chờ được gọi: `02-8` bắn khi yêu cầu chưa đủ để thực thi
 > đúng. Lệnh "grill" = ép chạy thủ công cùng cơ chế.
 
 **Mục tiêu:** làm rõ yêu cầu TRƯỚC khi thực thi — KHÔNG tự chọn cách hiểu rộng nhất, KHÔNG tự suy diễn.

@@ -1,6 +1,6 @@
 ---
 name: fill
-version: 1
+version: 2
 description: Fill a blank template with real numbers and export the finished deliverable (report, sheet, document). Use when a template exists and the data is ready, or when asked to produce, generate, or make a report from existing figures. Vietnamese triggers - "làm báo cáo", "điền số vào mẫu", "xuất báo cáo", "đổ số liệu", "lên report", "ra file cuối".
 ---
 
@@ -19,14 +19,14 @@ description: Fill a blank template with real numbers and export the finished del
    Giữ tên theo convention của task: `YYYYMMDD_..._REPORT.xlsx` — **tên nghiệp vụ, KHÔNG prefix số
    stage**.
 4. **Đối chiếu trước khi báo xong:** mở file vừa xuất ra, kiểm vài ô mốc so với nguồn. Một phép đo
-   chưa kiểm chéo thì chưa phải sự thật (`02_RULES §Hành xử`).
+   chưa kiểm chéo thì chưa phải sự thật (`02-11`).
 
 ## Ranh giới quan trọng
 
 | Việc | Được tự làm? |
 |---|---|
 | Điền số vào mẫu có sẵn | ✅ cứ làm |
-| Thêm/bớt cột · đổi biểu đồ · đổi layout · đổi theme | ❌ **TRÌNH DUYỆT TRƯỚC** (`02_RULES §Hành xử`) |
+| Thêm/bớt cột · đổi biểu đồ · đổi layout · đổi theme | ❌ **TRÌNH DUYỆT TRƯỚC** (`02-15`) |
 
 Đổi **hình hài/bố cục** sản phẩm giao đi là quyết định TRÌNH BÀY, không phải việc kỹ thuật — người
 nhận báo cáo quen mắt với bố cục cũ. Cần ý tưởng biểu đồ → tham khảo rồi **đề xuất**, không tự áp.

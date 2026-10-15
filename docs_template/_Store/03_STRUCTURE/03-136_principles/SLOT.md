@@ -1,7 +1,7 @@
 ---
 id: 03-136
 name: principles
-version: 1
+version: 2
 kind: guide
 path: .
 ---
@@ -32,7 +32,7 @@ path: .
   - Hệ NON-APP: con của `tasks/` · `pipelines/` · `data/` là tự do theo chuẩn; điều ngược lại ở hệ APP (trong domain chỉ dùng slot từ điển) vẫn giữ.
 - Khuôn tên chung:
   - Tên slot viết THƯỜNG; tên file + folder nhiều từ → gạch DƯỚI `_` (`docs_visual` · `docs_template` · `NN_tên.md`), không hyphen/camelCase.
-  - MỌI tên file/folder do mình đặt viết bằng tiếng Anh ASCII thuần — không ngôn ngữ bản địa (cả có dấu lẫn mất dấu), không ký tự ngoài ASCII. Nội dung bên trong vẫn theo `02_RULES §Ngôn ngữ`; luật này chỉ nói về TÊN. Lý do: tên bị gõ lại trong lệnh · import · link · URL; dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra. NON-APP: áp cho cả tên case (`tasks/<case>/`) và tên stage pipeline — chỗ hay bị đặt theo ngôn ngữ bản địa nhất.
+  - MỌI tên file/folder do mình đặt viết bằng tiếng Anh ASCII thuần — không ngôn ngữ bản địa (cả có dấu lẫn mất dấu), không ký tự ngoài ASCII. Nội dung bên trong vẫn theo `02-26`–`02-31`; luật này chỉ nói về TÊN. Lý do: tên bị gõ lại trong lệnh · import · link · URL; dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra. NON-APP: áp cho cả tên case (`tasks/<case>/`) và tên stage pipeline — chỗ hay bị đặt theo ngôn ngữ bản địa nhất.
   - ĐỂ YÊN tên không phải của mình: tên do tool/npm ép (`package-lock.json` · `.github/` · `docker-compose.yml`), code vendor (`external/`), dữ liệu runtime của bên thứ ba, file/vendor có sẵn (`TargetAll.xlsx` · `..._REPORT.xlsx` · `.pbix` · `.Report/` · `.SemanticModel/`).
   - Tên co theo stack (APP): Python `backend/<pkg>/` vs Node `backend/src/` — chỉ TẦNG co theo ngôn ngữ, không tự đổi tên concern.
 - Tool ép gốc (APP): MỌI config tool đọc từ gốc — folder `.<tool>/` (`.github` · `.vscode` · `.claude` · `.serena`) + file `*.config.*` · `.<tool>rc` · `.editorconfig` · `.npmrc` · `.dockerignore` · `.nvmrc` · `.env.example` · `tsconfig` · `eslint` · `requirements.txt` · `vite/next/tailwind/jest/playwright.config.*` · `.gitlab-ci.yml` · `Dockerfile` · `docker-compose.yml` · `*.spec` · `Makefile`/`justfile` · `.husky/` — ĐỂ YÊN; refactor không dời / dọn / liệt kê cứng (danh sách MỞ). Hệ NON-APP: danh sách file được ở gốc nằm ở luật `02-74`.
@@ -40,8 +40,8 @@ path: .
 - 3 loại kết nối (APP): `api/` = mình MỞ (biên VÀO) · `integrations/` = SERVICE ngoài (SaaS) · `store/` = DATABASE (remote/cloud/nội bộ); `external/` = code họ clone. Chiều gọi đi: `integrations/` = ra ngoài · `frontend/client/` = về BE của mình. MỘT tên không gánh hai chiều.
 - Cross-cutting phải RÕ: MỌI concern xuyên suốt (mã hoá · authz · logging · audit · error · cache · i18n…) phải có chỗ + loại trong chuẩn để audit/refactor thấy, không lọt. Thiếu concern → BÁO để thêm vào chuẩn.
 - Monorepo (APP): nhiều app → `apps/<app>/` + `packages/<lib>/` (+ `packages/contracts` nếu đa client), mỗi cái theo cây chuẩn.
-- Luật nổ lúc VIẾT code (`conform` không kiểm được) nằm ở `02_RULES §Luật khi VIẾT`, không ở chuẩn cấu trúc.
-- Hệ NON-APP: 0 luật UI. Trình bày deliverable (layout report/chart) là quyết định TRÌNH BÀY — trình duyệt trước (`02_RULES §Hành xử`), tham khảo skill `dataviz`; không phải luật UI-app.
+- Luật nổ lúc VIẾT code (`conform` không kiểm được) nằm ở `02_RULES/` (`02-19`–`02-25`), không ở chuẩn cấu trúc.
+- Hệ NON-APP: 0 luật UI. Trình bày deliverable (layout report/chart) là quyết định TRÌNH BÀY — trình duyệt trước (`02-15`), tham khảo skill `dataviz`; không phải luật UI-app.
 - Phạm vi áp dụng:
   - Chuẩn APP áp cho hầu hết app (UI + server-side): desktop WebView2, web app, tool có cockpit, AI project, monorepo; chọn layer-first hay domain-first theo số domain.
   - Chuẩn NON-APP áp cho BI/report (Power BI/Tableau), data/analytics (dbt/warehouse), docs-only, design/brand, research/notebook có cấu trúc.
