@@ -2,9 +2,19 @@
   "partial": true,
   "prompt": {
     "kind": "ui",
-    "re": "(giao diện|\\bUI\\b|\\bUX\\b|layout|bố cục|màu sắc|\\btheme\\b|dialog|nút bấm)",
-    "text": "[zemory] Interface work: every DESIGN decision (layout · size · colour · component shape · adding/removing an element) is proposed and approved BEFORE it is built (Rule_Keys_62_UiDesignApproval); a skill is advice to present, not to auto-apply (Rule_Core_16_SkillAdvises). Fixing a technical defect needs no approval."
+    "re": "\\b(giao dien|UI|UX|layout|bo cuc|màu|theme|dialog|nut|panel|font|icon|card|viền|header|khung|tab|bấm|click|keo|resize|zoom|man hinh|thumbnail|box|node|logo|menu|badge)\\b",
+    "text": "[zemory] Interface work: every DESIGN decision (layout · size · colour · component shape · adding/removing an element) is proposed and approved BEFORE it is built (Rule_Keys_62_UiDesignApproval); a skill is advice to present, not to auto-apply (Rule_Keys_16_SkillAdvises). Fixing a technical defect needs no approval."
   },
-  "block": [{ "note": "interface words", "prompt": "đổi layout màn hình chính" }],
-  "pass": [{ "note": "no interface words", "prompt": "tăng tốc truy vấn báo cáo" }]
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "đổi layout màn hình chính"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "tăng tốc truy vấn báo cáo"
+    }
+  ]
 }

@@ -2,7 +2,7 @@
 id: Slot_136
 aka: 03-136
 name: principles
-version: 4
+version: 5
 kind: guide
 path: .
 ---
@@ -33,10 +33,10 @@ path: .
   - Hệ NON-APP: con của `tasks/` · `pipelines/` · `data/` là tự do theo chuẩn; điều ngược lại ở hệ APP (trong domain chỉ dùng slot từ điển) vẫn giữ.
 - Khuôn tên chung:
   - Tên slot viết THƯỜNG; tên file + folder nhiều từ → gạch DƯỚI `_` (`docs_visual` · `docs_template` · `NN_tên.md`), không hyphen/camelCase.
-  - MỌI tên file/folder do mình đặt viết bằng tiếng Anh ASCII thuần — không ngôn ngữ bản địa (cả có dấu lẫn mất dấu), không ký tự ngoài ASCII. Nội dung bên trong vẫn theo `Rule_Gate_26_ViDiacritics`–`Rule_Core_31_TextCorrect`; luật này chỉ nói về TÊN. Lý do: tên bị gõ lại trong lệnh · import · link · URL; dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra. NON-APP: áp cho cả tên case (`tasks/<case>/`) và tên stage pipeline — chỗ hay bị đặt theo ngôn ngữ bản địa nhất.
+  - MỌI tên file/folder do mình đặt viết bằng tiếng Anh ASCII thuần — không ngôn ngữ bản địa (cả có dấu lẫn mất dấu), không ký tự ngoài ASCII. Nội dung bên trong vẫn theo `Rule_Gate_26_ViDiacritics`–`Rule_Keys_31_TextCorrect`; luật này chỉ nói về TÊN. Lý do: tên bị gõ lại trong lệnh · import · link · URL; dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra. NON-APP: áp cho cả tên case (`tasks/<case>/`) và tên stage pipeline — chỗ hay bị đặt theo ngôn ngữ bản địa nhất.
   - ĐỂ YÊN tên không phải của mình: tên do tool/npm ép (`package-lock.json` · `.github/` · `docker-compose.yml`), code vendor (`external/`), dữ liệu runtime của bên thứ ba, file/vendor có sẵn (`TargetAll.xlsx` · `..._REPORT.xlsx` · `.pbix` · `.Report/` · `.SemanticModel/`).
   - Tên co theo stack (APP): Python `backend/<pkg>/` vs Node `backend/src/` — chỉ TẦNG co theo ngôn ngữ, không tự đổi tên concern.
-- Tool ép gốc (APP): MỌI config tool đọc từ gốc — folder `.<tool>/` (`.github` · `.vscode` · `.claude` · `.serena`) + file `*.config.*` · `.<tool>rc` · `.editorconfig` · `.npmrc` · `.dockerignore` · `.nvmrc` · `.env.example` · `tsconfig` · `eslint` · `requirements.txt` · `vite/next/tailwind/jest/playwright.config.*` · `.gitlab-ci.yml` · `Dockerfile` · `docker-compose.yml` · `*.spec` · `Makefile`/`justfile` · `.husky/` — ĐỂ YÊN; refactor không dời / dọn / liệt kê cứng (danh sách MỞ). Hệ NON-APP: danh sách file được ở gốc nằm ở luật `Rule_Core_74_CleanRoot`.
+- Tool ép gốc (APP): MỌI config tool đọc từ gốc — folder `.<tool>/` (`.github` · `.vscode` · `.claude` · `.serena`) + file `*.config.*` · `.<tool>rc` · `.editorconfig` · `.npmrc` · `.dockerignore` · `.nvmrc` · `.env.example` · `tsconfig` · `eslint` · `requirements.txt` · `vite/next/tailwind/jest/playwright.config.*` · `.gitlab-ci.yml` · `Dockerfile` · `docker-compose.yml` · `*.spec` · `Makefile`/`justfile` · `.husky/` — ĐỂ YÊN; refactor không dời / dọn / liệt kê cứng (danh sách MỞ). Hệ NON-APP: danh sách file được ở gốc nằm ở luật `Rule_Keys_74_CleanRoot`.
 - 6 LOẠI non-code: `assets` = media · `resources` = đóng gói tracked · `config` = file operator · `data` = runtime gitignore · `external` = code ngoài · `attic` = backup.
 - 3 loại kết nối (APP): `api/` = mình MỞ (biên VÀO) · `integrations/` = SERVICE ngoài (SaaS) · `store/` = DATABASE (remote/cloud/nội bộ); `external/` = code họ clone. Chiều gọi đi: `integrations/` = ra ngoài · `frontend/client/` = về BE của mình. MỘT tên không gánh hai chiều.
 - Cross-cutting phải RÕ: MỌI concern xuyên suốt (mã hoá · authz · logging · audit · error · cache · i18n…) phải có chỗ + loại trong chuẩn để audit/refactor thấy, không lọt. Thiếu concern → BÁO để thêm vào chuẩn.

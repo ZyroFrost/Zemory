@@ -5,7 +5,7 @@ name: no-technical-names-ui
 version: 2
 kind: judgment
 retired: 2026-10-15 · applies to every app repo — a common rule
-replaced-by: Rule_Core_78_NoTechnicalNamesUi
+replaced-by: Rule_Keys_78_NoTechnicalNamesUi
 ---
 # Cons_Core_06_NoTechnicalNamesUi Giao diện không mang tên kỹ thuật
 

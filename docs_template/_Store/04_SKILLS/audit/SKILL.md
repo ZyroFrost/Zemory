@@ -1,6 +1,6 @@
 ---
 name: audit
-version: 4
+version: 5
 description: Run a full review of the project across every dimension, verifying each finding against real files before reporting it. Use only when explicitly asked for a thorough audit, or before a major milestone such as a release or a large batch of changes. This is not a quick check. Vietnamese triggers - "audit toàn diện", "soi hết", "kiểm tra toàn bộ", "rà lại hết", "review tổng thể".
 ---
 
@@ -89,7 +89,7 @@ chính MÃ — tên file · định danh · chú thích.)*
    lỗi, nó **NÓI DỐI**, và người dùng không có cách phân biệt với đang-chạy-thật) · **chạy ma trận
    guardrail** — cổng chặn có thật sự chặn không, thứ chỉ đo được bằng cách CHẠY, không đọc code ra
    (ca phải chặn **+ ca phải cho qua**, luật 7).
-11. **CHỮ & BỀ MẶT NGƯỜI ĐỌC** — **NORM ở `Rule_Core_31_TextCorrect`** (*chữ người dùng đọc phải đầy đủ và
+11. **CHỮ & BỀ MẶT NGƯỜI ĐỌC** — **NORM ở `Rule_Keys_31_TextCorrect`** (*chữ người dùng đọc phải đầy đủ và
    đúng*, 4 ràng buộc, ship cho MỌI bộ harness). Ở đây chỉ có **cách ĐO**. Năm phép, mỗi phép phải in
    *đã quét bao nhiêu* để không xanh giả:
    · **thiếu dấu tiếng Việt** trong docs · **chính tả** (từ lặp liền · mojibake);
@@ -112,7 +112,7 @@ chính MÃ — tên file · định danh · chú thích.)*
      **vẫn 0 thật** ⇒ phép này CHƯA đủ chính xác để làm cổng, chỉ dùng để soi tay.
    · *mojibake* (UTF-8 bị đọc thành Latin-1): `Â.`/`Ã.` trúng cả chữ Việt hợp lệ (ĐÂY · NGÃ) — 192
      hit oan. Mẫu đúng: `[ÃÂ][-¿]` · `â€` · `ï»¿` · `U+FFFD`. Và phải **miễn chuỗi nằm trong
-     backtick**: file DẠY về mojibake (chính `Rule_Core_31_TextCorrect`) nêu ví dụ mẫu ⇒ bộ dò ngây thơ báo
+     backtick**: file DẠY về mojibake (chính `Rule_Keys_31_TextCorrect`) nêu ví dụ mẫu ⇒ bộ dò ngây thơ báo
      oan trên đúng tài liệu định nghĩa ra nó (đo được: 6/245 hit, 0 thật).
    · *caption*: nhãn thường nằm ở **thẻ CON** (`<a><span>…</span></a>`) hoặc ở `<label>` bọc ngoài
      ⇒ chỉ đọc text ngay sau thẻ mở là báo oan 20 ca.
@@ -124,7 +124,7 @@ chính MÃ — tên file · định danh · chú thích.)*
      và endpoint do **CLI gọi qua HTTP** không có người gọi trong FE. Kể cả ba nguồn (FE tĩnh ·
      tiền tố động · test/CLI) rồi mới kết luận.
 
-12. **NGÔN NGỮ CỦA MÃ** — **NORM ở `Rule_Gate_26_ViDiacritics`–`Rule_Core_31_TextCorrect`** (luật thiết kế chung mọi app). Bốn phép,
+12. **NGÔN NGỮ CỦA MÃ** — **NORM ở `Rule_Gate_26_ViDiacritics`–`Rule_Keys_31_TextCorrect`** (luật thiết kế chung mọi app). Bốn phép,
    **cách đo + bẫy báo oan + số nền ở [`reference/lang.md`](reference/lang.md)**; máy chạy:
    `node .claude/skills/audit/scripts/lang-scan.mjs . [--all]` — nó in *đã quét bao nhiêu* để một lượt
    sạch không bị đọc thành "chưa soi gì".
@@ -195,7 +195,7 @@ nặng nhất, không phải mặt phụ.)*
    (ca phải chặn **+ ca phải cho qua**, luật 7).
 
 10. **CHỮ & BỀ MẶT NGƯỜI ĐỌC — mặt NẶNG NHẤT ở dự án non-app** (sản phẩm giao đi chính là chữ người
-   đọc, không phải phụ kiện của một app). NORM ở `Rule_Core_31_TextCorrect`. Đo: **thiếu dấu** · **chính
+   đọc, không phải phụ kiện của một app). NORM ở `Rule_Keys_31_TextCorrect`. Đo: **thiếu dấu** · **chính
    tả** (từ lặp liền · mojibake do UTF-8 bị đọc thành Latin-1) · **nhãn trong sản phẩm** (tiêu đề
    cột · chú thích hình · biểu đồ · ảnh có tiêu đề và **ĐƠN VỊ** rõ; số có đơn vị + kỳ/mốc thời gian
    kèm) · **thuật ngữ NHẤT QUÁN** — một thuật ngữ một tên xuyên suốt (cùng một metric không mang hai
@@ -211,7 +211,7 @@ nặng nhất, không phải mặt phụ.)*
    cột/sheet của nguồn, tên file vendor, thuật ngữ nghiệp vụ viết hoa lạ — soi chữ trong phần MÌNH
    viết, đừng soi chữ mình chỉ đi ngang qua.
 
-11. **NGÔN NGỮ CỦA MÃ** — NORM ở `Rule_Gate_26_ViDiacritics`–`Rule_Core_31_TextCorrect`. Máy chạy `node
+11. **NGÔN NGỮ CỦA MÃ** — NORM ở `Rule_Gate_26_ViDiacritics`–`Rule_Keys_31_TextCorrect`. Máy chạy `node
    .claude/skills/audit/scripts/lang-scan.mjs .`; nó in *đã quét bao nhiêu* để lượt sạch không bị đọc
    thành "chưa soi gì". Cách đo + bẫy chi tiết: [`reference/lang.md`](reference/lang.md).
    · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh trong script/pipeline** (biến · hàm ·

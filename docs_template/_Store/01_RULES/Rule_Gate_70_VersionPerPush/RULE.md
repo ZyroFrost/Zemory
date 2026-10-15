@@ -2,7 +2,7 @@
 id: Rule_70
 aka: 02-70
 name: version-per-push
-version: 3
+version: 4
 kind: action
 applies: [App]
 ---

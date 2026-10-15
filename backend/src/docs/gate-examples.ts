@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { listParts, SHELVES, slotGateFailures, STORE_DIR, type Part } from "./store.js";
+import { promptMatches } from "./harness-names.js";
 
 interface Example {
   note?: string;
@@ -33,7 +34,7 @@ interface Gate {
 
 /** Does a prompt / read gate fire on this example? Same matching as the reminder hook and the read-first latch. */
 function fires(gate: Gate, ex: Example): boolean {
-  if (gate.prompt) return new RegExp(gate.prompt.re, "i").test(ex.prompt ?? "");
+  if (gate.prompt) return promptMatches(gate.prompt.re, ex.prompt ?? "");
   return (gate.read ?? []).some((t) => {
     if (t.when === "path_prefix") return (ex.path ?? "").replace(/\\/g, "/").startsWith(`${t.prefix}/`);
     if (t.when === "cmd_re") return new RegExp(t.re ?? "$^", "i").test(ex.command ?? "");
@@ -60,7 +61,11 @@ function withFiles<T>(files: Record<string, string> | undefined, run: (root: str
 
 /** Does this example get blocked? A rule hook: check() returns non-null. A slot: conform finds something. */
 function blocks(part: Part, gate: Gate, ex: Example): boolean {
-  if (gate.prompt || gate.read) return fires(gate, ex);
+  // The SHAPE of the example decides which door it tries: a rule can carry both a blocking hook and a keyword reminder
+  // (plan/28 §0o), and a request is judged by the keywords while a tool call is judged by the hook.
+  if (typeof ex.prompt === "string") return gate.prompt ? promptMatches(gate.prompt.re, ex.prompt) : false;
+  if (gate.read && (ex.path !== undefined || ex.command !== undefined || ex.script !== undefined) && !gate.hook) return fires(gate, ex);
+  if (!gate.hook && !gate.conform) return fires(gate, ex);
   return withFiles(ex.files, (root) => {
     // A real repo always has its flags folder (the guard generator makes it); a hook that remembers per session writes
     // there and lets the call through when it cannot — so the example gets one too.
@@ -96,6 +101,11 @@ export function gateExampleFindings(root = STORE_DIR): string[] {
       const label = `${part.id} ${part.name}`;
       if (!(gate.block ?? []).length || !(gate.pass ?? []).length) {
         out.push(`${label}: needs at least one block and one pass example`);
+      }
+      // Two doors, two sets of examples: keywords next to a hook need their own request examples both ways.
+      if (gate.prompt && (gate.hook || gate.conform)) {
+        const asks = (xs: Example[] | undefined): boolean => (xs ?? []).some((x) => typeof x.prompt === "string");
+        if (!asks(gate.block) || !asks(gate.pass)) out.push(`${label}: its keywords need a request example that fires and one that does not`);
       }
       (gate.block ?? []).forEach((ex, i) => {
         try {

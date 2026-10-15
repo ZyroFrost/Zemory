@@ -1,0 +1,19 @@
+{
+  "prompt": {
+    "kind": "Rule_61",
+    "re": "\\b(bi chan|hook|\\.allow|vuot|ne hook|guard|chan lai)\\b",
+    "text": "[zemory] Rule_Keys_61_HookSafetyNet: A hook blocked: it is a safety net, not the decision; a .allow flag only after explicit approval in this session."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "sao bị chặn hook vậy"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "thêm cột"
+    }
+  ]
+}
