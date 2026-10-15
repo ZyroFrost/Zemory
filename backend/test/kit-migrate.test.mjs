@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { migrateToKit, slugOf } from "../../dist/docs/kit-migrate.js";
 import { applyKit } from "../../dist/docs/kit-apply.js";
 import { generateGuards, gitHooksDir } from "../../dist/docs/guard-gen.js";
+import { conform } from "../../dist/docs/conform.js";
 import { tempDir } from "./helpers.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -68,6 +69,11 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   // constitution
   const a1 = join(agent, "01_CONSTITUTION", "Cons_Core_01_DieuMotBatBien", "RULE.md");
   assert.match(readFileSync(a1, "utf8"), /nội dung một/);
+  // The migration can only drop the marks of a Vietnamese title; conform holds the repo red until the part has an English
+  // name (rule 30 for names the tool itself wrote — no hook sees those writes).
+  const viFinding = conform(root).items.find((i) => i.check === "part-name-vi");
+  assert.ok(viFinding && viFinding.samples.some((s) => /Cons_Core_01_DieuMotBatBien/.test(s)), JSON.stringify(viFinding));
+  assert.equal(viFinding.level, "blocking");
   const purpose = readFileSync(join(agent, "01_CONSTITUTION", "PURPOSE.md"), "utf8");
   assert.match(purpose, /Phục vụ bài toán A/);
   assert.match(purpose, /chỉ khi có phê duyệt/, "every non-article section is kept");

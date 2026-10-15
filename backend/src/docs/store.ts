@@ -18,6 +18,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
 import { LEGACY_SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, slotArea } from "./harness-names.js";
+import { viName } from "./vi-name-judge.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
 // the constant from adopt would read it before adopt has run.
@@ -652,6 +653,8 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
         continue;
       }
       if (!(SHELF_CODE[shelf] ?? []).includes(n.code)) wrong.push(`${where}: code ${n.code} does not belong on ${shelf}`);
+      const vi = viName(n.name);
+      if (vi) wrong.push(`${where}: the name ${n.name} reads as Vietnamese without marks (${vi}) — names are English`);
       if (n.no !== undefined && p.key !== keyOf(n)) wrong.push(`${where}: the name says ${keyOf(n)} but the header id says ${p.key}`);
       if (n.code === "Rule" || n.code === "Cons") {
         let gate: Record<string, unknown> | null = null;

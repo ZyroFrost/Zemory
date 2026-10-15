@@ -105,6 +105,53 @@ const ONCE = "\nThis is a reminder, shown once per session: retry the same call 
 const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|04_SKILLS)\/write-docx\/reference\//];
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 
+const VI_ONSET = /^(ngh|ng|nh|ch|gh|gi|kh|ph|th|tr|qu|b|c|d|g|h|k|l|m|n|p|r|s|t|v|x)?/;
+const VI_RHYME = new Set(("a ai ao au ay an ang anh ac ach am ap at " +
+  "e eo em en eng ep et ec ech enh " +
+  "i ia iu ieu iem ien ieng iep iet iec inh ich im in ip it " +
+  "o oa oai oan oang oanh oac oach oam oap oat oay oe oen oeo oet oi om on ong oong oc op ot " +
+  "u ua uan uang uat uay ue uen uet ui um un ung uc up ut uy uya uyen uyet uynh uych uyu uoi uom uon uong uoc uop uot uou " +
+  "ui ung uu uoi").split(" "));
+const VI_EN = new Set(["a", "an", "at", "be", "can", "do", "go", "he", "in", "is", "it", "me", "no", "on", "so", "to", "up",
+  "we", "man", "ban", "bat", "bin", "map", "mat", "net", "pin", "set", "tin", "top", "van", "hot", "hit", "kit", "lot",
+  "not", "pot", "sit", "tag", "tab", "cap", "cat", "cut", "gap", "hat", "nut", "pan", "pat", "pet", "tap", "ten", "tip",
+  "con", "den", "hen", "pen", "sun", "run", "gun", "bun", "fun", "mug", "rug", "bug", "hub", "sub", "tub", "cup"]);
+function viSyllable(w) {
+  const rest = w.replace(VI_ONSET, "");
+  return rest !== w || /^[aeiouy]/.test(w) ? VI_RHYME.has(rest) : false;
+}
+// Short programming words (get · set · map · put · lang · vec) also fit the syllable shape, so fitting is not enough:
+// at least one part must carry a mark English names lack — a Vietnamese-only rhyme, a Vietnamese-only onset, or one of
+// the unmistakable words rule 30 already uses. Measured on zemory's 920 file names and 20,370 identifiers.
+const VI_RHYME_ONLY = new Set(("ieu iem ien ieng iep iet iec ia iu uong uon uoc uot uoi uom uop uou uyen uyet uynh uych uya uyu uy " +
+  "oai oan oang oanh oac oach oam oap oat oay oe oen oeo oet oong ao au uu inh ich anh ach enh ech ua").split(" "));
+const VI_WORD = new Set(["khong", "duoc", "nguoi", "viec", "tieng", "nhieu", "truong", "thuong", "phuong", "huong", "duong",
+  "luong", "tuong", "chuong", "muon", "ket", "thiet", "dien", "diem", "kiem", "hien", "chuyen", "quyen", "tuyen", "nguon",
+  "thuoc", "buoc", "cuoc", "nuoc", "truoc", "suot", "luot", "doan", "loai", "ngoai", "xuat", "mot", "cua", "cho", "voi"]);
+function viMarked(w) {
+  if (VI_WORD.has(w)) return true;
+  if (/^(ngh|ng|nh|kh|gh)/.test(w)) return true;
+  return VI_RHYME_ONLY.has(w.replace(VI_ONSET, ""));
+}
+function viWords(text) {
+  const parts = String(text).replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[^A-Za-z]+/).filter(Boolean).map((w) => w.toLowerCase());
+  if (parts.length < 2 || !parts.every(viSyllable)) return null;
+  if (parts.every((p) => VI_EN.has(p))) return null;
+  if (!parts.some(viMarked)) return null;
+  return parts.join(" ");
+}
+// null = an English (or neutral) name · string = the Vietnamese words. A name of components joined by "_"
+// (Rule_Core_80_DieuMotBatBien) is judged component by component as well as whole.
+function viName(name) {
+  const base = String(name).replace(/\.[A-Za-z0-9]+$/, "");
+  for (const c of [base, ...base.split("_")]) {
+    const hit = viWords(c);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 const DECL = /(?:const|let|var|function|class|interface|type|enum|def)\s+([A-Za-z_$À-￿][\w$À-￿]*)/g;
 const ID_A = new Set(["khong", "duoc", "nguoi", "viec", "tieng", "nhieu", "truong", "thuong", "phuong", "huong", "duong",
   "luong", "tuong", "chuong", "muon", "ket", "thiet", "dien", "diem", "kiem", "hien", "chuyen", "quyen", "tuyen", "nguon",
@@ -126,30 +173,44 @@ function check(payload, root, policy) {
         if (!toks.length || !NEW_DIR.test(toks[0].replace(/^.*[\\/]/, ""))) continue;
         for (const t of toks.slice(1)) {
           const tok = t.replace(/^["']|["']$/g, "");
-          if (!tok || tok.startsWith("-") || !/[^\x20-\x7E]/.test(tok)) continue;
+          if (!tok || tok.startsWith("-")) continue;
+          const last = tok.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || "";
+          const vi = viName(last);
+          if (!/[^\x20-\x7E]/.test(tok) && !vi) continue;
           if (!inside(relOf(root, tok))) continue;
-          return blocked(root, policy, "02-30", "creating " + tok + " - a file or folder name in the repo is ASCII English.");
+          return blocked(root, policy, "02-30", "creating " + tok + " - a file or folder name in the repo is ASCII English" +
+            (vi ? " ('" + last + "' reads as Vietnamese without marks: " + vi + ")" : "") + ".");
         }
       }
       return null;
     }
     const e = edit(payload, root);
-    if (!e || LANG_EXEMPT.some((re) => re.test(e.rel))) return null;
+    if (!e) return null;
+    // Names first: the exemption below is for the CONTENT of harness files (written in Vietnamese), never for the name of
+    // a new file or folder — a rule folder named in Vietnamese without marks slipped through it.
     if (!e.exists) {
       const bad = e.rel.split("/").find((p) => /[^\x20-\x7E]/.test(p));
       if (bad) return blocked(root, policy, "02-30", "creating " + e.rel + " - the name part '" + bad + "' is not ASCII English.");
+      const vi = e.rel.split("/").map((p) => [p, viName(p)]).find(([, v]) => v);
+      if (vi) return blocked(root, policy, "02-30", "creating " + e.rel + " - the name part '" + vi[0] + "' reads as Vietnamese without marks (" + vi[1] + "); names are English.");
     }
+    if (LANG_EXEMPT.some((re) => re.test(e.rel))) return null;
     if (!CODE_EXT.test(e.rel)) return null;
     const code = strip(e.newLines.join("\n"), /\.py$/i.test(e.rel));
     const hits = [];
     for (const m of code.matchAll(DECL)) {
       const name = m[1];
       if (/[^\x00-\x7F]/.test(name)) hits.push(name + " (non-ASCII)");
-      else { const v = parts(name).filter((w) => ID_A.has(w)); if (v.length) hits.push(name + " (" + v.join(",") + ")"); }
+      else {
+        const v = parts(name).filter((w) => ID_A.has(w));
+        const vn = viName(name);
+        if (v.length) hits.push(name + " (" + v.join(",") + ")");
+        else if (vn) hits.push(name + " (" + vn + ")");
+      }
     }
     if (!hits.length) return null;
     return blocked(root, policy, "02-30", "new identifier(s) in " + e.rel + " that are not ASCII English: " + hits.slice(0, 5).join(" · ") +
-      ". Only comments may be Vietnamese.");
+      ". Everything in code is English, comments included.");
   } catch { return null; }
 }
 module.exports = { check };
