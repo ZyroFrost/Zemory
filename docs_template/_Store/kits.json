@@ -1,26 +1,25 @@
 {
-  "comment": "Kit register (plan/28 §0h–0n). Name = NN_<Host>_<Structure>_<Tier>; numbers are never reused. status: built = in use · reserved = number only · retired = kept, not offered. Parts are filtered by their `applies` against the kit's structure.",
+  "comment": "Kit register (plan/28 §0o). Name = Kit_<Host>_<NN>_<Cluster><Tier>; numbers are never reused. status: built = in use · reserved = number only · retired = kept, not offered. A kit picks ONE outer structure (03_STRUCTURE/Struc_Repo_<Cluster>/), which names its slots; rules and skills are listed here, a rule's `applies` is matched against the cluster.",
   "01": {
-    "name": "01_GUI_App_Basic",
+    "name": "Kit_GUI_01_AppBasic",
+    "legacy": "01_GUI_App_Basic",
     "status": "reserved",
     "host": "GUI",
-    "structure": "App",
+    "structure": "Struc_Repo_App",
     "tier": "Basic"
   },
   "02": {
-    "name": "02_GUI_App_Memory",
+    "name": "Kit_GUI_02_AppMemory",
+    "legacy": "02_GUI_App_Memory",
     "status": "built",
     "host": "GUI",
-    "structure": "App",
+    "structure": "Struc_Repo_App",
     "tier": "Memory",
     "constitution": [
       "Cons_*"
     ],
     "rules": [
       "Rule_*"
-    ],
-    "slots": [
-      "Slot_*"
     ],
     "skills": [
       "Skill_Dev_AppDesign",
@@ -34,30 +33,28 @@
       "Skill_Harness_SyncPath",
       "Skill_Doc_WriteDocx",
       "Skill_Doc_WriteStyle"
-    ],
-    "own": "App"
+    ]
   },
   "03": {
-    "name": "03_GUI_NonApp_Basic",
+    "name": "Kit_GUI_03_NonAppBasic",
+    "legacy": "03_GUI_NonApp_Basic",
     "status": "reserved",
     "host": "GUI",
-    "structure": "NonApp",
+    "structure": "Struc_Repo_NonApp",
     "tier": "Basic"
   },
   "04": {
-    "name": "04_GUI_NonApp_Memory",
+    "name": "Kit_GUI_04_NonAppMemory",
+    "legacy": "04_GUI_NonApp_Memory",
     "status": "built",
     "host": "GUI",
-    "structure": "NonApp",
+    "structure": "Struc_Repo_NonApp",
     "tier": "Memory",
     "constitution": [
       "Cons_*"
     ],
     "rules": [
       "Rule_*"
-    ],
-    "slots": [
-      "Slot_*"
     ],
     "skills": [
       "Skill_Harness_Audit",
@@ -74,30 +71,28 @@
       "Skill_Task_Upload",
       "Skill_Doc_WriteDocx",
       "Skill_Doc_WriteStyle"
-    ],
-    "own": "NonApp"
+    ]
   },
   "05": {
-    "name": "05_IDE_App_Basic",
+    "name": "Kit_IDE_05_AppBasic",
+    "legacy": "05_IDE_App_Basic",
     "status": "reserved",
     "host": "IDE",
-    "structure": "App",
+    "structure": "Struc_Repo_App",
     "tier": "Basic"
   },
   "06": {
-    "name": "06_IDE_App_Memory",
+    "name": "Kit_IDE_06_AppMemory",
+    "legacy": "06_IDE_App_Memory",
     "status": "built",
     "host": "IDE",
-    "structure": "App",
+    "structure": "Struc_Repo_App",
     "tier": "Memory",
     "constitution": [
       "Cons_*"
     ],
     "rules": [
       "Rule_*"
-    ],
-    "slots": [
-      "Slot_*"
     ],
     "skills": [
       "Skill_Dev_AppDesign",
@@ -111,30 +106,28 @@
       "Skill_Harness_SyncPath",
       "Skill_Doc_WriteDocx",
       "Skill_Doc_WriteStyle"
-    ],
-    "own": "App"
+    ]
   },
   "07": {
-    "name": "07_IDE_NonApp_Basic",
+    "name": "Kit_IDE_07_NonAppBasic",
+    "legacy": "07_IDE_NonApp_Basic",
     "status": "reserved",
     "host": "IDE",
-    "structure": "NonApp",
+    "structure": "Struc_Repo_NonApp",
     "tier": "Basic"
   },
   "08": {
-    "name": "08_IDE_NonApp_Memory",
+    "name": "Kit_IDE_08_NonAppMemory",
+    "legacy": "08_IDE_NonApp_Memory",
     "status": "built",
     "host": "IDE",
-    "structure": "NonApp",
+    "structure": "Struc_Repo_NonApp",
     "tier": "Memory",
     "constitution": [
       "Cons_*"
     ],
     "rules": [
       "Rule_*"
-    ],
-    "slots": [
-      "Slot_*"
     ],
     "skills": [
       "Skill_Harness_Audit",
@@ -151,7 +144,6 @@
       "Skill_Task_Upload",
       "Skill_Doc_WriteDocx",
       "Skill_Doc_WriteStyle"
-    ],
-    "own": "NonApp"
+    ]
   }
 }

@@ -21,7 +21,7 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
-import { isFolderHarness, listParts, slotGateFailures } from "./store.js";
+import { isFolderHarness, leafOf, listParts, listStructures, SLOT_LAYER, slotGateFailures, structureSlots } from "./store.js";
 import { viName } from "./vi-name-judge.js";
 import { SHELF } from "./harness-names.js";
 
@@ -292,12 +292,19 @@ export function conform(root: string): ConformReport {
       for (const why of r) broken.push(`${p.id} ${p.name}: ${why}`);
     }
     push("slot-gate", "blocking", "Slot không đạt phép kiểm khai trong gate.json", broken, "sửa repo cho đúng slot (xem SLOT.md của slot đó)");
+    // The two layers (plan/28 §0o): every slot sits in the inner layer, and the repo's structure names only slots it has.
+    const slots = listParts(hp.agent, SHELF.structure);
+    const flat = slots.filter((p) => !p.folder.startsWith(SLOT_LAYER + "/")).map((p) => `${SHELF.structure}/${p.folder}`);
+    push("slot-layer", "blocking", "Slot outside the inner layer", flat, `move it into ${SHELF.structure}/${SLOT_LAYER}/ (\`zemory sync --standard\` moves assembled ones)`);
+    const dangling: string[] = [];
+    for (const s of listStructures(hp.agent)) for (const m of structureSlots(s, slots).missing) dangling.push(`${s.folder} → ${m}`);
+    push("structure-slot", "blocking", "Structure names a slot the repo does not have", dangling, "assemble the slot (`zemory sync --standard`) or drop it from structure.json");
     // Rule 30 for names the TOOL wrote (the migration names a repo's own parts from their Vietnamese titles): no hook sees
     // those writes, so the names are judged here, with the same judge the hook runs.
     const viParts: string[] = [];
     for (const shelf of [SHELF.rules, SHELF.constitution, SHELF.structure] as const) {
       for (const p of listParts(hp.agent, shelf)) {
-        const vi = viName(p.folder);
+        const vi = viName(leafOf(p.folder));
         if (vi) viParts.push(`${shelf}/${p.folder} (${vi})`);
       }
     }

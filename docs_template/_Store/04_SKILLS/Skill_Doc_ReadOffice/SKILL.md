@@ -2,7 +2,7 @@
 id: Skill_Doc_ReadOffice
 aka: read-office
 name: doc-read-office
-version: 2
+version: 3
 description: Read the contents of Office and PDF files (.xlsx .xls .docx .pptx .pdf) efficiently, choosing the cheapest conversion for the job instead of dumping raw XML into context. Use when you need to open, inspect, extract, or summarise a spreadsheet, document, slide deck or PDF. Do not use for files that are already text (.csv .md .json .txt) - read those directly. Vietnamese triggers - "đọc file excel", "xem bảng tính", "mở file word", "đọc pdf", "trong file này có gì", "lấy số từ file".
 ---
 

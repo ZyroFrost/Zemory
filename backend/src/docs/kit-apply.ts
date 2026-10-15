@@ -1,16 +1,17 @@
 // plan/28 §0 — assemble a repo's folder harness from the parts store. One entry for both `zemory init --kit <no>` (a new
 // repo) and `zemory sync --standard` on a repo whose marker names a kit (HP article 17: no second command).
 //
-// Order: marker (records the kit) → the kit's own files (gap-fill only, never overwritten) → parts (plan, then write when
-// `apply`) → the skills block of 04_SKILLS.md → the guard. Reading is the default; nothing is written without `apply`.
+// Order: legacy layout moved → marker (records the kit) → the starter files the assembled slots seed (gap-fill only, never
+// overwritten) → parts (plan, then write when `apply`) → the host plug → the skills block of 04_SKILLS/INDEX.md → the guard.
+// Reading is the default; nothing is written without `apply`.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { CONFIG_FILE, findMarker, harnessPathsAt, readMarker } from "../core/config.js";
 import { DEFAULT_CONFIG } from "./adopt.js";
 import {
   applyAssembly,
-  copyOwnFiles,
   findKit,
+  kitStructure,
   frontMatter,
   kitParts,
   MAIN_FILE,
@@ -18,6 +19,7 @@ import {
   planAssembly,
   plugSkills,
   renameLegacyShelves,
+  seedFiles,
   STORE_DIR,
   targetDir,
   type AssemblyStep,
@@ -31,6 +33,7 @@ import { SHELF } from "./harness-names.js";
 export interface KitApplyResult {
   kit: Kit;
   createdMarker: boolean;
+  /** Starter files the assembled slots seeded into the repo (only where nothing was yet). */
   ownAdded: string[];
   steps: AssemblyStep[];
   written: AssemblyStep[];
@@ -68,12 +71,12 @@ export function applyKit(
   const renamedShelves = opts.apply ? renameLegacyShelves(target.agentDir) : [];
 
   let createdMarker = false;
-  if (opts.apply) createdMarker = writeKitMarker(root, kit);
-  const ownAdded = opts.apply ? copyOwnFiles(kit, root, basename(root), storeDir) : [];
+  if (opts.apply) createdMarker = writeKitMarker(root, kit, storeDir);
   // A constitution belongs to its repo: the suggested articles are offered ONCE, when the repo is assembled the first
   // time. After that sync never adds one back (the repo may have declined it) and never edits one (only an approval in
   // the repo's own session changes its constitution).
   const parts = kitParts(kit, storeDir).filter((p) => p.shelf !== SHELF.constitution || !marked);
+  const ownAdded = opts.apply ? seedFiles(kit, parts, root, basename(root), storeDir) : [];
   const steps = planAssembly(parts, target);
   const written = opts.apply ? applyAssembly(steps) : [];
   const skills = parts.filter((p) => p.shelf === SHELF.skills);
@@ -84,14 +87,15 @@ export function applyKit(
 }
 
 /** Create the marker (or add `kit` to an existing one). True when a new marker file was written. */
-export function writeKitMarker(root: string, kit: Kit): boolean {
+export function writeKitMarker(root: string, kit: Kit, storeDir = STORE_DIR): boolean {
+  const nonApp = kitStructure(kit, storeDir)?.meta.profile === "non-app";
   const existing = findMarker(root);
   if (existing) {
     try {
       const raw = JSON.parse(readFileSync(existing, "utf8").replace(new RegExp("^" + String.fromCharCode(0xfeff)), "")) as Record<string, unknown>;
       if (raw.kit === kit.name) return false;
       raw.kit = kit.name;
-      if (kit.structure === "NonApp") raw.profile = "non-app";
+      if (nonApp) raw.profile = "non-app";
       writeFileSync(existing, JSON.stringify(raw, null, 2) + "\n");
     } catch {
       /* an unreadable marker is left alone — sync reports it elsewhere */
@@ -100,7 +104,7 @@ export function writeKitMarker(root: string, kit: Kit): boolean {
   }
   const p = join(root, CONFIG_FILE);
   mkdirSync(dirname(p), { recursive: true });
-  const cfg = { ...DEFAULT_CONFIG, ...(kit.structure === "NonApp" ? { profile: "non-app" } : {}), kit: kit.name };
+  const cfg = { ...DEFAULT_CONFIG, ...(nonApp ? { profile: "non-app" } : {}), kit: kit.name };
   writeFileSync(p, JSON.stringify(cfg, null, 2) + "\n");
   return true;
 }

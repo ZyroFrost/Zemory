@@ -454,7 +454,7 @@ function checkBash(cmd) {
   // inside `python -c` · `xargs rm` · `Get-ChildItem -Recurse | Remove-Item` (a pipe, with
   // no path to match against). All are as irreversible as `rm -rf`.
   const MASS_DEL =
-    /\bfind\b[^\n]*-delete\b|\bfind\b[^\n]*-exec[^\n]*\brm\b|\bgit\s+clean\b[^\n]*-[a-z]*[fdx]|\brobocopy\b[^\n]*\/(MIR|PURGE)\b|\brmSync\s*\([^)]*recursive|\brmtree\s*\(|\bxargs\b[^\n]*\brm\b|\bGet-ChildItem\b[^\n]*\|[^\n]*\bRemove-Item\b/i;
+    /\bfind\b[^\n]*\s-delete\b|\bfind\b[^\n]*\s-exec[^\n]*\brm\b|\bgit\s+clean\b[^\n]*-[a-z]*[fdx]|\brobocopy\b[^\n]*\/(MIR|PURGE)\b|\brmSync\s*\([^)]*recursive|\brmtree\s*\(|\bxargs\b[^\n]*\brm\b|\bGet-ChildItem\b[^\n]*\|[^\n]*\bRemove-Item\b/i;
   const MASS_CMDS = /^(find|git|robocopy|xargs|get-childitem|gci|ls|dir|remove-item|ri|rm)$/;
   if ((anyCmdIs(bare, MASS_CMDS) || SEG_INTERP.test(cmdWordOf(bare))) && MASS_DEL.test(bare) && !consumeFlag("delete", bare)) {
     deny("BLOCKED (guard layer 1): MASS deletion (a whole-tree sweep) - irreversible, and Rule_Gate_10_ConfirmDelete requires asking the user first." +

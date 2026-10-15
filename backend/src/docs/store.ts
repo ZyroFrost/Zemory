@@ -36,6 +36,26 @@ export const MAIN_FILE: Record<Shelf, string> = {
   [SHELF.skills]: "SKILL.md",
 };
 
+/**
+ * The two layers of the structure shelf (plan/28 §0o). The inner layer `Struc_Slot/` holds every slot; a slot belongs to no
+ * structure and is never assembled on its own. The outer layer is one folder per structure (`Struc_Repo_App/`): a
+ * STRUCTURE.md and a structure.json naming the slots it is made of. A kit picks one structure; the slots come through it.
+ */
+export const SLOT_LAYER = "Struc_Slot";
+export const STRUCTURE_MAIN = "STRUCTURE.md";
+/** Folder of a slot's starter files (`seed/<repo path>`): written once into a new repo where nothing is yet, never
+ *  compared or merged after that — not part of the slot's content, not copied with it. */
+export const SEED_DIR = "seed";
+
+/** The header file of a part: an outer structure carries STRUCTURE.md, every other part its shelf's file. */
+export function mainOf(p: Pick<Part, "shelf" | "folder">): string {
+  return p.shelf === SHELF.structure && isStructureFolder(p.folder) ? STRUCTURE_MAIN : MAIN_FILE[p.shelf];
+}
+
+function isStructureFolder(folder: string): boolean {
+  return folder.startsWith("Struc_") && folder !== SLOT_LAYER && !folder.startsWith(SLOT_LAYER + "/");
+}
+
 /** A shelf name as written anywhere (legacy included) → the current shelf. */
 export function currentShelf(name: string): Shelf | null {
   if ((SHELVES as readonly string[]).includes(name)) return name as Shelf;
@@ -63,6 +83,21 @@ export function renameLegacyShelves(agentDir: string): string[] {
     mkdirSync(join(agentDir, SHELF.skills), { recursive: true });
     renameSync(list, index);
     done.push(`04_SKILLS.md → ${SHELF.skills}/INDEX.md`);
+  }
+  // Slots that still sit flat on the structure shelf (assembled before the two layers, or the repo's own) move into the
+  // inner layer, so the shelf only ever holds the layer and the structures.
+  const st = join(agentDir, SHELF.structure);
+  if (existsSync(st)) {
+    let moved = 0;
+    for (const e of readdirSync(st, { withFileTypes: true })) {
+      if (!e.isDirectory() || e.name === SLOT_LAYER || !existsSync(join(st, e.name, MAIN_FILE[SHELF.structure]))) continue;
+      const to = join(st, SLOT_LAYER, e.name);
+      if (existsSync(to)) continue;
+      mkdirSync(join(st, SLOT_LAYER), { recursive: true });
+      renameSync(join(st, e.name), to);
+      moved++;
+    }
+    if (moved) done.push(`${moved} slot(s) → ${SHELF.structure}/${SLOT_LAYER}/`);
   }
   return done;
 }
@@ -165,6 +200,7 @@ function withoutFrom(text: string): string {
  * merged, not copied into another build.
  */
 export const HOST_BUILD_DIRS = ["Claude", "Codex"] as const;
+const NOT_CONTENT: readonly string[] = [...HOST_BUILD_DIRS, SEED_DIR];
 
 export function partFiles(dir: string): string[] {
   const out: string[] = [];
@@ -172,7 +208,7 @@ export function partFiles(dir: string): string[] {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
       if (e.isDirectory()) {
-        if (d === dir && (HOST_BUILD_DIRS as readonly string[]).includes(e.name)) continue;
+        if (d === dir && NOT_CONTENT.includes(e.name)) continue;
         walk(p);
       } else out.push(relative(dir, p).replace(/\\/g, "/"));
     }
@@ -202,29 +238,32 @@ export function readPartFiles(dir: string, main?: string): Map<string, string> {
   return m;
 }
 
-export function partHash(dir: string, shelf: Shelf): string {
-  return hashFiles(readPartFiles(dir, MAIN_FILE[shelf]), MAIN_FILE[shelf]);
+export function partHash(dir: string, shelf: Shelf, main = MAIN_FILE[shelf]): string {
+  return hashFiles(readPartFiles(dir, main), main);
 }
 
 // ── reading parts ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-export function readPart(dir: string, shelf: Shelf): Part | null {
-  const main = join(dir, MAIN_FILE[shelf]);
+/** One part folder. `folder` is the path below the shelf: `Struc_Slot/Slot_…` for a slot in the inner layer. */
+export function readPart(dir: string, shelf: Shelf, mainName = MAIN_FILE[shelf]): Part | null {
+  const main = join(dir, mainName);
   if (!existsSync(main)) return null;
   const text = readFileSync(main, "utf8");
   const meta = frontMatter(text)?.meta ?? {};
-  const folder = dir.replace(/\\/g, "/").split("/").pop() ?? "";
+  const segs = dir.replace(/\\/g, "/").split("/");
+  const leaf = segs.pop() ?? "";
+  const folder = shelf === SHELF.structure && segs.pop() === SLOT_LAYER ? `${SLOT_LAYER}/${leaf}` : leaf;
   const str = (k: string): string => (typeof meta[k] === "string" ? (meta[k] as string) : "");
   const list = (k: string): string[] => (Array.isArray(meta[k]) ? (meta[k] as string[]) : str(k) ? [str(k)] : []);
   const from = str("from") ? parseFrom(str("from")) ?? undefined : undefined;
-  const id = str("id") || folder.split("_")[0];
+  const id = str("id") || leaf.split("_")[0];
   return {
     shelf,
     folder,
     dir,
     id,
-    key: partKey(id, folder),
-    name: str("name") || folder.replace(/^\d{2}-\d+_/, ""),
+    key: partKey(id, leaf),
+    name: str("name") || leaf.replace(/^\d{2}-\d+_/, ""),
     version: Number(str("version") || from?.version || 1),
     kind: str("kind") || undefined,
     applies: list("applies"),
@@ -253,17 +292,71 @@ export function shelfDir(root: string, shelf: string): string {
   return now;
 }
 
-/** Every part on one shelf under `root` (the store, or a repo's harness folder). Skills read from `skillsRoot`. */
+/** The last segment of a part folder (`Struc_Slot/Slot_Root_001_Entry` → `Slot_Root_001_Entry`). */
+export function leafOf(folder: string): string {
+  return folder.split("/").pop() ?? folder;
+}
+
+/**
+ * Every part on one shelf under `root` (the store, or a repo's harness folder). On the structure shelf these are the SLOTS:
+ * the inner layer, plus any slot still flat on the shelf (a repo not yet moved — `renameLegacyShelves` moves it). The outer
+ * structures are read by `listStructures`.
+ */
 export function listParts(root: string, shelf: Shelf): Part[] {
   const dir = shelfDir(root, shelf);
   if (!existsSync(dir)) return [];
   const out: Part[] = [];
+  const read = (d: string): void => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (!e.isDirectory()) continue;
+      const p = readPart(join(d, e.name), shelf);
+      if (p) out.push(p);
+    }
+  };
+  read(dir);
+  if (shelf === SHELF.structure && existsSync(join(dir, SLOT_LAYER))) read(join(dir, SLOT_LAYER));
+  return out.sort(byId);
+}
+
+/** The outer structures on the structure shelf (`Struc_Repo_App/` …): parts whose header file is STRUCTURE.md. */
+export function listStructures(root: string): Part[] {
+  const dir = shelfDir(root, SHELF.structure);
+  if (!existsSync(dir)) return [];
+  const out: Part[] = [];
   for (const e of readdirSync(dir, { withFileTypes: true })) {
-    if (!e.isDirectory()) continue;
-    const p = readPart(join(dir, e.name), shelf);
+    if (!e.isDirectory() || !isStructureFolder(e.name)) continue;
+    const p = readPart(join(dir, e.name), SHELF.structure, STRUCTURE_MAIN);
     if (p) out.push(p);
   }
-  return out.sort(byId);
+  return out.sort((a, b) => a.folder.localeCompare(b.folder));
+}
+
+/** Every part on a shelf, the outer structures included — what identity checks and copy lookups walk. */
+export function listAllParts(root: string, shelf: Shelf): Part[] {
+  return shelf === SHELF.structure ? [...listParts(root, shelf), ...listStructures(root)] : listParts(root, shelf);
+}
+
+/** The slot names a structure lists in its structure.json (empty when the file is missing or unreadable). */
+export function structureSlotNames(structure: Part): string[] {
+  try {
+    const j = JSON.parse(readFileSync(join(structure.dir, "structure.json"), "utf8")) as { slots?: unknown };
+    return Array.isArray(j.slots) ? j.slots.filter((s): s is string => typeof s === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The slots a structure is made of, found by KEY (a renamed slot still resolves), and the names that resolve to none. */
+export function structureSlots(structure: Part, slots: Part[]): { slots: Part[]; missing: string[] } {
+  const byKey = new Map(slots.map((s) => [s.key, s]));
+  const out: Part[] = [];
+  const missing: string[] = [];
+  for (const name of structureSlotNames(structure)) {
+    const s = byKey.get(partKey("", name));
+    if (s) out.push(s);
+    else missing.push(name);
+  }
+  return { slots: out, missing };
 }
 
 /** Skills of a repo live where the host loads them, not on a numbered shelf. */
@@ -289,20 +382,25 @@ function byId(a: Part, b: Part): number {
 
 export interface Kit {
   no: string;
+  /** `Kit_<Host>_<NN>_<Cluster><Tier>` (plan/28 §0o). */
   name: string;
+  /** The name before the dictionary (`06_IDE_App_Memory`): a repo marker written then still finds its kit. */
+  legacy: string;
   status: "built" | "reserved" | "retired";
   host: string;
+  /** The ONE outer structure the kit is assembled on (`Struc_Repo_App`); its structure.json names the slots. */
   structure: string;
   tier: "Basic" | "Memory";
   requires: string[];
   constitution: string[];
   rules: string[];
-  slots: string[];
   skills: string[];
   tools: string[];
-  /** Folder under `_Store/Own/` holding the kit's own files (AGENTS.md · PURPOSE.md · INDEX.md · 04/05/06 …): copied once
-   *  into a new repo, never overwritten — from then on they are the repo's. */
-  own: string;
+}
+
+/** The cluster of a kit's structure (`Struc_Repo_App` → `App`): what a rule's `applies` is matched against. */
+export function kitCluster(kit: Pick<Kit, "structure">): string {
+  return parsePartName(kit.structure)?.name ?? kit.structure;
 }
 
 export function readKits(storeDir = STORE_DIR): Kit[] {
@@ -314,6 +412,7 @@ export function readKits(storeDir = STORE_DIR): Kit[] {
     .map(([no, k]) => ({
       no,
       name: k.name ?? no,
+      legacy: k.legacy ?? "",
       status: k.status ?? "reserved",
       host: k.host ?? "",
       structure: k.structure ?? "",
@@ -321,31 +420,79 @@ export function readKits(storeDir = STORE_DIR): Kit[] {
       requires: k.requires ?? [],
       constitution: k.constitution ?? [],
       rules: k.rules ?? [],
-      slots: k.slots ?? [],
       skills: k.skills ?? [],
       tools: k.tools ?? [],
-      own: k.own ?? "",
     }));
 }
 
-/** Copy a kit's own files into a repo — only the ones the repo does not have yet. `<PROJECT>` becomes the folder name. */
-export function copyOwnFiles(kit: Kit, repoRoot: string, projectName: string, storeDir = STORE_DIR): string[] {
-  if (!kit.own) return [];
-  const src = join(storeDir, "Own", kit.own);
+/** The outer structure a kit is assembled on, or null when the store has none of that name. */
+export function kitStructure(kit: Pick<Kit, "structure">, storeDir = STORE_DIR): Part | null {
+  return listStructures(storeDir).find((s) => s.folder === kit.structure) ?? null;
+}
+
+const HOST_LABEL: Record<string, string> = { IDE: "VS Code / IDE", GUI: "Claude Desktop" };
+
+/**
+ * Write the starter files of the assembled slots into a new repo (plan/28 §0o: nothing is copied from outside the parts).
+ * Each slot's `seed/<repo path>` lands at that path when nothing is there yet; never overwritten — from then on the file is
+ * the repo's. Placeholders are filled from what was assembled: the project, the tool's address, the structure
+ * (`<STRUC_*>` from its STRUCTURE.md header, `<STRUC_KITS>` from the kits built on it) and the skills (`<SKILL_TRIGGERS>`,
+ * one row per skill whose gate.json carries a `trigger`).
+ */
+export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName: string, storeDir = STORE_DIR): string[] {
   const source = readSource(storeDir);
-  const added: string[] = [];
-  for (const rel of partFiles(src)) {
-    const dst = join(repoRoot, rel);
-    if (existsSync(dst)) continue;
-    mkdirSync(dirname(dst), { recursive: true });
-    const text = readFileSync(join(src, rel), "utf8")
+  const struc = parts.find((p) => p.shelf === SHELF.structure && isStructureFolder(p.folder));
+  const m = (k: string): string => String(struc?.meta[k] ?? "");
+  const kits = readKits(storeDir)
+    .filter((k) => k.status === "built" && k.structure === kit.structure && k.tier === kit.tier)
+    .sort((a, b) => (a.host === "IDE" ? -1 : 0) - (b.host === "IDE" ? -1 : 0) || a.no.localeCompare(b.no))
+    .map((k) => `\`zemory init --kit ${k.no}\` (${HOST_LABEL[k.host] ?? k.host})`)
+    .join(" hoặc ");
+  const triggers = parts
+    .filter((p) => p.shelf === SHELF.skills)
+    .map((p) => [gateOf(p.dir)?.trigger, hostSkillOf(p)] as const)
+    .filter(([t]) => typeof t === "string" && t)
+    .map(([t, host]) => `| ${t} | \`.claude/skills/${host}/SKILL.md\` |`)
+    .join("\n");
+  const fill = (text: string): string =>
+    text
       .replace(/<PROJECT>/g, projectName)
       .replace(/<ZEMORY_RAW>/g, source.raw)
-      .replace(/<ZEMORY_REPO>/g, source.repo);
-    writeFileSync(dst, text);
-    added.push(rel);
+      .replace(/<ZEMORY_REPO>/g, source.repo)
+      .replace(/<STRUC_LABEL>/g, m("label"))
+      .replace(/<STRUC_INTRO>/g, m("intro") ? (/^[:;,]/.test(m("intro")) ? m("intro") : ` ${m("intro")}`) : "")
+      .replace(/<STRUC_ASK>/g, m("ask"))
+      .replace(/<STRUC_INDEX_ROLE>/g, m("index-role"))
+      .replace(/<STRUC_TRIGGER>/g, m("trigger"))
+      .replace(/<STRUC_KITS>/g, kits)
+      .replace(/<SKILL_TRIGGERS>\r?\n?/g, triggers ? triggers + "\n" : "");
+  const added: string[] = [];
+  for (const slot of parts.filter((p) => p.shelf === SHELF.structure && !isStructureFolder(p.folder))) {
+    const src = join(slot.dir, SEED_DIR);
+    if (!existsSync(src)) continue;
+    for (const rel of seedList(src)) {
+      const dst = join(repoRoot, rel);
+      if (existsSync(dst)) continue;
+      mkdirSync(dirname(dst), { recursive: true });
+      const eol = "\n";
+      writeFileSync(dst, fill(readFileSync(join(src, rel), "utf8").replace(/\r\n/g, eol)));
+      added.push(rel);
+    }
   }
-  return added;
+  return added.sort();
+}
+
+/** Every file under a seed folder, relative and slash-separated. */
+export function seedList(dir: string): string[] {
+  const out: string[] = [];
+  const walk = (d: string): void => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (e.isDirectory()) walk(join(d, e.name));
+      else out.push(relative(dir, join(d, e.name)).replace(/\\/g, "/"));
+    }
+  };
+  if (existsSync(dir)) walk(dir);
+  return out.sort();
 }
 
 /** The tool's own source address — the ONE place it lives (plan/28 §0f); kit files carry placeholders. */
@@ -364,10 +511,11 @@ export function isRetired(p: Part): boolean {
   return p.meta.retired === "true";
 }
 
-/** A kit by number (`06`) or full name (`06_IDE_App_Memory`). */
+/** A kit by number (`06`), full name (`Kit_IDE_06_AppMemory`) or the name before the dictionary (`06_IDE_App_Memory`). */
 export function findKit(ref: string, storeDir = STORE_DIR): Kit | null {
   const kits = readKits(storeDir);
-  return kits.find((k) => k.name === ref || k.no === ref || k.no === ref.slice(0, 2)) ?? null;
+  const no = /^Kit_[A-Za-z]+_(\d{2})_/.exec(ref)?.[1] ?? /^(\d{2})(?:_|$)/.exec(ref)?.[1];
+  return kits.find((k) => k.name === ref || (k.legacy && k.legacy === ref) || k.no === ref || k.no === no) ?? null;
 }
 
 /** `02-*` · `02-25` · a skill name — `*` is the only wildcard. */
@@ -376,15 +524,22 @@ function pick(parts: Part[], patterns: string[], by: (p: Part) => string): Part[
   return parts.filter((p) => res.some((r) => r.test(by(p))));
 }
 
-/** The store parts a kit lists, shelf by shelf, filtered by `applies` (empty = every structure). */
+/**
+ * The store parts a kit assembles, shelf by shelf: its constitution articles and rules (a rule's `applies` names the
+ * clusters it is for; empty = every cluster), its ONE outer structure and the slots that structure lists, its skills.
+ */
 export function kitParts(kit: Kit, storeDir = STORE_DIR): Part[] {
-  const fits = (p: Part): boolean => p.applies.length === 0 || p.applies.includes(kit.structure);
+  const cluster = kitCluster(kit);
+  const fits = (p: Part): boolean => p.applies.length === 0 || p.applies.includes(cluster);
+  const struc = kitStructure(kit, storeDir);
+  const slots = struc ? structureSlots(struc, listParts(storeDir, SHELF.structure)).slots : [];
   return [
-    ...pick(listParts(storeDir, SHELF.constitution), kit.constitution, (p) => p.id),
-    ...pick(listParts(storeDir, SHELF.rules), kit.rules, (p) => p.id),
-    ...pick(listParts(storeDir, SHELF.structure), kit.slots, (p) => p.id),
-    ...pick(listParts(storeDir, SHELF.skills), kit.skills, (p) => p.folder),
-  ].filter(fits);
+    ...pick(listParts(storeDir, SHELF.constitution), kit.constitution, (p) => p.id).filter(fits),
+    ...pick(listParts(storeDir, SHELF.rules), kit.rules, (p) => p.id).filter(fits),
+    ...(struc ? [struc] : []),
+    ...slots,
+    ...pick(listParts(storeDir, SHELF.skills), kit.skills, (p) => p.folder).filter(fits),
+  ];
 }
 
 // ── assembly ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -408,8 +563,8 @@ export function targetDir(t: AssemblyTarget, p: Pick<Part, "shelf" | "folder">):
  */
 export function findCopy(t: AssemblyTarget, part: Part): string | null {
   const exact = targetDir(t, part);
-  if (existsSync(join(exact, MAIN_FILE[part.shelf]))) return exact;
-  const byKey = listParts(t.agentDir, part.shelf).find((p) => p.key === part.key)?.dir;
+  if (existsSync(join(exact, mainOf(part)))) return exact;
+  const byKey = listAllParts(t.agentDir, part.shelf).find((p) => p.key === part.key)?.dir;
   if (byKey) return byKey;
   if (part.shelf !== SHELF.skills) return null;
   // A skill assembled before the two-layer skills sat in the host folder under its old name (aka). An assembled copy (it
@@ -509,17 +664,17 @@ export function planAssembly(parts: Part[], t: AssemblyTarget): AssemblyStep[] {
     let write = step.write;
     if (!write) {
       // Nothing to bring (current): keep the repo's content, only restamp `from:` with the new folder name.
-      const main = MAIN_FILE[part.shelf];
+      const main = mainOf(part);
       const text = readFileSync(join(at, main), "utf8");
       const old = parseFrom(String(frontMatter(text)?.meta.from ?? ""));
-      write = new Map([[main, stampFrom(text, fromLine(part, old?.hash ?? partHash(part.dir, part.shelf)))]]);
+      write = new Map([[main, stampFrom(text, fromLine(part, old?.hash ?? partHash(part.dir, part.shelf, main)))]]);
     }
     return { ...step, target, renameFrom: at, write, reason: step.reason ?? `renamed from ${at}` };
   });
 }
 
 function planOne(part: Part, t: AssemblyTarget, target = targetDir(t, part)): AssemblyStep {
-  const main = MAIN_FILE[part.shelf];
+  const main = mainOf(part);
   const theirs = readPartFiles(part.dir, main);
   const theirsHash = hashFiles(theirs, main);
   const stamped = (files: Map<string, string>, hash: string): Map<string, string> => {
@@ -614,7 +769,9 @@ function partGit(dir: string): { git: (args: string[]) => string; prefix: string
 function filesAt(pg: { git: (args: string[]) => string; prefix: string }, sha: string): Map<string, string> {
   const files = new Map<string, string>();
   for (const f of pg.git(["ls-tree", "-r", "--full-name", "--name-only", sha, "--", "."]).split(/\r?\n/).filter(Boolean)) {
-    files.set(f.slice(pg.prefix.length), pg.git(["show", `${sha}:${f}`]));
+    const rel = f.slice(pg.prefix.length);
+    if (rel.includes("/") && NOT_CONTENT.includes(rel.split("/")[0])) continue; // host builds · seed: not content
+    files.set(rel, pg.git(["show", `${sha}:${f}`]));
   }
   return files;
 }
@@ -624,7 +781,7 @@ function filesAt(pg: { git: (args: string[]) => string; prefix: string }, sha: s
 export function baseFiles(part: Part, hash: string): Map<string, string> | null {
   const key = `${part.dir}#${hash}`;
   if (baseCache.has(key)) return baseCache.get(key) ?? null;
-  const main = MAIN_FILE[part.shelf];
+  const main = mainOf(part);
   const matches = (files: Map<string, string>): boolean => {
     const g = frontMatter(files.get(main) ?? "")?.meta.generated;
     for (const name of Array.isArray(g) ? g : typeof g === "string" && g ? [g] : []) files.delete(name);
@@ -654,29 +811,29 @@ export function baseFiles(part: Part, hash: string): Map<string, string> | null 
 }
 
 function baseAcrossRenames(part: Part, matches: (files: Map<string, string>) => boolean): Map<string, string> | null {
-  const shelfAt = dirname(part.dir);
+  // The shelf folder: a slot in the inner layer sits one level deeper; its history may still be flat on the shelf.
+  let shelfAt = dirname(part.dir);
+  if (shelfAt.replace(/\\/g, "/").split("/").pop() === SLOT_LAYER) shelfAt = dirname(shelfAt);
   const pg = partGit(shelfAt);
   if (!pg) return null;
-  const main = MAIN_FILE[part.shelf];
+  const main = mainOf(part);
   const shelfName = shelfAt.replace(/\\/g, "/").split("/").pop() ?? "";
   const legacy = Object.entries(LEGACY_SHELF).find(([old, cur]) => cur === shelfName || old === shelfName);
   const paths = ["."];
   if (legacy) paths.push(`../${legacy[0] === shelfName ? legacy[1] : legacy[0]}`);
   try {
     const shas = pg.git(["log", "--format=%H", "--", ...paths]).split(/\r?\n/).filter(Boolean);
-    const root = pg.prefix.split("/").filter(Boolean).slice(0, -1).join("/");
     for (const sha of shas) {
       const names = pg.git(["ls-tree", "-r", "--full-name", "--name-only", sha, "--", ...paths]).split(/\r?\n/).filter(Boolean);
+      // A part folder = a folder holding the header file, at any depth of the shelf; its content leaves out the folders
+      // that are not content (host builds · seed).
       const folders = new Map<string, string[]>();
       for (const f of names) {
-        const rest = root ? f.slice(root.length + 1) : f; // `<shelf>/<folder>/<file…>`
-        const [, folder, ...file] = rest.split("/");
-        if (!folder || !file.length) continue;
-        const prefix = (root ? root + "/" : "") + rest.split("/").slice(0, 2).join("/") + "/";
-        folders.set(prefix, [...(folders.get(prefix) ?? []), f]);
+        if (!f.endsWith("/" + main)) continue;
+        const prefix = f.slice(0, f.length - main.length);
+        folders.set(prefix, names.filter((n) => n.startsWith(prefix) && !NOT_CONTENT.includes(n.slice(prefix.length).split("/")[0]) || n === f));
       }
       for (const [prefix, files] of folders) {
-        if (!files.includes(prefix + main)) continue;
         const head = pg.git(["show", `${sha}:${prefix}${main}`]);
         const folder = prefix.split("/").slice(-2, -1)[0] ?? "";
         const id = String(frontMatter(head)?.meta.id ?? "");
@@ -698,7 +855,8 @@ function baseAcrossRenames(part: Part, matches: (files: Map<string, string>) => 
 export function unbumpedParts(storeDir = STORE_DIR): string[] {
   const out: string[] = [];
   for (const shelf of SHELVES) {
-    for (const p of listParts(storeDir, shelf)) {
+    for (const p of listAllParts(storeDir, shelf)) {
+      const main = mainOf(p);
       const pg = partGit(p.dir);
       if (!pg) continue;
       let head: Map<string, string>;
@@ -707,9 +865,9 @@ export function unbumpedParts(storeDir = STORE_DIR): string[] {
       } catch {
         continue; // no commit yet — nothing to compare with
       }
-      if (!head.has(MAIN_FILE[shelf])) continue; // the part is new since HEAD
-      const headVersion = Number((frontMatter(head.get(MAIN_FILE[shelf]) ?? "")?.meta.version as string) || 1);
-      if (hashFiles(head, MAIN_FILE[shelf]) !== hashFiles(readPartFiles(p.dir), MAIN_FILE[shelf]) && headVersion >= p.version) {
+      if (!head.has(main)) continue; // the part is new since HEAD
+      const headVersion = Number((frontMatter(head.get(main) ?? "")?.meta.version as string) || 1);
+      if (hashFiles(head, main) !== hashFiles(readPartFiles(p.dir), main) && headVersion >= p.version) {
         out.push(`${shelf}/${p.folder}: content changed since HEAD but version is still v${p.version}`);
       }
     }
@@ -736,7 +894,7 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
   const owner = new Map<string, string>();
   for (const base of [storeDir, join(storeDir, "Archive")]) {
     for (const shelf of SHELVES) {
-      for (const p of listParts(base, shelf)) {
+      for (const p of listAllParts(base, shelf)) {
         const where = `${base === storeDir ? "" : "Archive/"}${shelf}/${p.folder}`;
         const prev = owner.get(p.key);
         if (prev) wrong.push(`${where}: key ${p.key} is already taken by ${prev}`);
@@ -745,8 +903,8 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
     }
   }
   for (const shelf of SHELVES) {
-    for (const p of listParts(storeDir, shelf)) {
-      const n = parsePartName(p.folder);
+    for (const p of listAllParts(storeDir, shelf)) {
+      const n = parsePartName(leafOf(p.folder));
       const where = `${shelf}/${p.folder}`;
       if (!n) {
         legacy.push(where);
@@ -763,10 +921,22 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
         if (real !== n.group) wrong.push(`${where}: named ${n.group} but its gate.json makes it ${real}`);
       }
       if (n.code === "Slot") {
+        if (!p.folder.startsWith(SLOT_LAYER + "/")) wrong.push(`${where}: a slot lives in ${shelf}/${SLOT_LAYER}/, never on the shelf itself`);
+        if (p.applies.length) wrong.push(`${where}: a slot belongs to no structure — drop applies: (a structure lists its slots in structure.json)`);
+        const paths = String(p.meta.path ?? "").split(/\s*[·|]\s*/).map((x) => x.trim()).filter(Boolean);
+        for (const rel of seedList(join(p.dir, SEED_DIR))) {
+          const ok = paths.some((x) => x === "." || rel === x || rel.startsWith(x.endsWith("/") ? x : x + "/"));
+          if (!ok) wrong.push(`${where}: seed/${rel} is not under the slot's path (${paths.join(" · ")})`);
+        }
         const area = slotArea(String(p.meta.path ?? ""));
         if (area !== n.group) wrong.push(`${where}: area ${n.group} but path ${String(p.meta.path ?? "")} is in ${area}`);
       }
     }
+  }
+  for (const s of listStructures(storeDir)) {
+    const r = structureSlots(s, listParts(storeDir, SHELF.structure));
+    for (const m of r.missing) wrong.push(`${SHELF.structure}/${s.folder}: structure.json names ${m}, which is no slot in ${SLOT_LAYER}/`);
+    if (!structureSlotNames(s).length) wrong.push(`${SHELF.structure}/${s.folder}: structure.json lists no slot`);
   }
   return { wrong, legacy };
 }
@@ -811,9 +981,9 @@ export interface PromptGate {
   text: string;
 }
 
-function gateOf(dir: string): { read?: ReadTrigger[]; prompt?: PromptGate } | null {
+function gateOf(dir: string): { read?: ReadTrigger[]; prompt?: PromptGate; trigger?: string } | null {
   try {
-    return JSON.parse(readFileSync(join(dir, "gate.json"), "utf8")) as { read?: ReadTrigger[]; prompt?: PromptGate };
+    return JSON.parse(readFileSync(join(dir, "gate.json"), "utf8")) as { read?: ReadTrigger[]; prompt?: PromptGate; trigger?: string };
   } catch {
     return null;
   }
