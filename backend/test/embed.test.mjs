@@ -34,7 +34,7 @@ test("sliceNormalize: keeps the first N dims, unit norm, preserves component rat
 test("embed profile: Gemma model → asymmetric prompts; ZEMORY_EMBED_PROMPTS overrides both ways", () => {
   delete process.env.ZEMORY_EMBED_PROMPTS;
   delete process.env.ZEMORY_EMBED_MODEL;
-  assert.equal(currentEmbedProfile(), "gemma-prompt-v1", "default model is EmbeddingGemma → prompts on");
+  assert.equal(currentEmbedProfile(), "gemma2-prompt-v1", "a new index defaults to EmbeddingGemma 2 → prompts on");
   process.env.ZEMORY_EMBED_PROMPTS = "0";
   assert.equal(currentEmbedProfile(), "raw", "=0 forces raw");
   process.env.ZEMORY_EMBED_PROMPTS = "1";
@@ -58,7 +58,7 @@ test("embedConfig defaults to EmbeddingGemma · fp32 · <memory-dir>/models", ()
   delete process.env.ZEMORY_EMBED_MODEL;
   try {
     const c = embedConfig();
-    assert.match(c.model, /embeddinggemma/i);
+    assert.match(c.model, /embeddinggemma-2/i);
     assert.equal(c.dtype, "fp32");
     // cacheDir follows the memory data dir (so it relocates off C:\ with the DB),
     // not a fixed home path — just assert it lives in a `models` folder.

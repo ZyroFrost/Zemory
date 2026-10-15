@@ -195,7 +195,7 @@ function vectorOf(db: Conn, id: number): Buffer | null {
 // Every profile the reader accepts. An unknown string reads as "raw" ON PURPOSE — that is what
 // pre-profile indexes are — but a profile we DO ship must be listed here, or its index would
 // read as raw and get mean-pooled by a model that needs CLS: right shape, wrong space, no error.
-const KNOWN_PROFILES: readonly EmbedProfile[] = ["gemma-prompt-v1", "bge-m3-v1"];
+const KNOWN_PROFILES: readonly EmbedProfile[] = ["gemma-prompt-v1", "gemma2-prompt-v1", "bge-m3-v1"];
 
 /** Profile the existing index was built with; pre-profile indexes are "raw". */
 function storedProfile(db: Conn): EmbedProfile {

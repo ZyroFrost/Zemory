@@ -139,5 +139,46 @@ test("choosing the bge model through env is picked up by the profile (no need to
   } finally {
     delete process.env.ZEMORY_EMBED_MODEL;
   }
-  assert.equal(currentEmbedProfile(), "gemma-prompt-v1", "env trống ⇒ vẫn là hệ đang chạy hôm nay");
+  assert.equal(currentEmbedProfile(), "gemma2-prompt-v1", "empty env ⇒ a NEW index gets EmbeddingGemma 2");
+  process.env.ZEMORY_EMBED_MODEL = "onnx-community/embeddinggemma-300m-ONNX";
+  try {
+    assert.equal(currentEmbedProfile(), "gemma-prompt-v1", "naming the 300M model must not resolve to the v2 profile");
+  } finally {
+    delete process.env.ZEMORY_EMBED_MODEL;
+  }
+});
+
+test("changing the DEFAULT model must not move an existing index: every profile pins its own model", () => {
+  // Vectors of two models share nothing: measured 2026-10-15 on 1,200 real prompts, the same text under
+  // Gemma-300M vs EmbeddingGemma 2 gives cos −0.001, and a v2 query finds its own text among v1 vectors 1/1,200
+  // times. `gemma-prompt-v1` once said `model: null` (= follow the default), so switching the default to v2 would
+  // have silently queried every existing v1 store with the wrong model. The mutation guarded: un-pinning v1.
+  const saved = process.env.ZEMORY_EMBED_MODEL;
+  delete process.env.ZEMORY_EMBED_MODEL;
+  try {
+    for (const p of ["raw", "gemma-prompt-v1"]) {
+      useEmbedProfile(p);
+      assert.equal(embedConfig().model, "onnx-community/embeddinggemma-300m-ONNX", `${p} must keep Gemma-300M`);
+    }
+    useEmbedProfile("gemma2-prompt-v1");
+    assert.equal(embedConfig().model, "onnx-community/embeddinggemma-2-ONNX");
+  } finally {
+    useEmbedProfile(null);
+    if (saved !== undefined) process.env.ZEMORY_EMBED_MODEL = saved;
+  }
+});
+
+test("EmbeddingGemma 2 contract: text-only loader · mean · prompted · 768 · fp32 · sequential, and it reads back", () => {
+  // text-only: the feature-extraction pipeline would load the vision + audio encoders too (~1.8 GB of weights
+  // this app never uses). Pooling/prompt/dims match the model card (mean-pooled, same `task:`/`title:` prefixes).
+  const s = embedProfileSpec("gemma2-prompt-v1");
+  assert.equal(s.loader, "text-only");
+  assert.equal(s.pooling, "mean");
+  assert.equal(s.prompted, true);
+  assert.equal(s.dims, 768);
+  assert.equal(s.dtype, "fp32");
+  assert.equal(s.sequential, true);
+  assert.equal(embedProfileSpec("gemma-prompt-v1").loader ?? "pipeline", "pipeline", "the v1 store keeps the path it was built with");
+  // an unknown profile string reads as raw — v2 must be a KNOWN profile or its store would be read with v1
+  assert.deepEqual(vectorIndexInfo(stampedDb("gemma2-prompt-v1", 768, "fp32")), { profile: "gemma2-prompt-v1", dims: 768, dtype: "fp32" });
 });
