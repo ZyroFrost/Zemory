@@ -130,9 +130,9 @@ docs_visual ≠ docs    docs_visual/ nằm NGOÀI docs/ — agent KHÔNG tự đ
 ## Nguồn sự thật
 
 ```
-Từ điển dữ liệu   docs/agent/03_STRUCTURE/INDEX.md (03-138) — định nghĩa metric/cột là nguồn
+Từ điển dữ liệu   docs/agent/03_STRUCTURE/INDEX.md (Slot_Docs_138_DataDictionary) — định nghĩa metric/cột là nguồn
                   sự thật, chống mỗi báo cáo tính một kiểu. MỘT từ điển cho cả dự
-                  án: tên-chỗ (§1) và tên-nghiệp-vụ (03-138) ở chung một file.
+                  án: tên-chỗ (§1) và tên-nghiệp-vụ (Slot_Docs_138_DataDictionary) ở chung một file.
 Publish/refresh   Tự động hoá → scripts/ · bản render ra → exports/ (gitignore,
                   build lại được). Giữ bản trước khi đè vào attic/ để rollback.
 ```
@@ -144,7 +144,7 @@ KHÔNG luật UI     Dự án non-app không phát triển app ⇒ 0 luật thi�
                   "Có dashboard trong deliverable" KHÔNG biến nó thành app: chừng
                   nào chỉ đọc/dò/kéo/điền/xuất file thì vẫn là non-app.
                   Trình bày deliverable (layout report, chọn chart) = quyết định
-                  TRÌNH BÀY → trình duyệt trước (02-15), tham khảo
+                  TRÌNH BÀY → trình duyệt trước (Rule_Core_15_DeliverableLayout), tham khảo
                   skill dataviz nếu có. KHÔNG phải luật UI-app.
 Ngoài phạm vi     App có code chạy (UI/server/CLI) → dùng chuẩn APP, không phải
                   file này. Lib/SDK · mobile · game → convention riêng.

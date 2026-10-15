@@ -68,9 +68,15 @@ function ruleText(root, file, id) {
     return "";
   }
 }
+// The citation: a hook inside a renamed rule folder (plan/28 §0o) cites the folder's full name, which is always the rule's
+// current name; a legacy folder or the file harness keeps "rule <id>".
+function citation(id) {
+  const folder = path.basename(__dirname);
+  return /^(Rule|Cons)_(Gate|Keys|Core)_\d+_/.test(folder) ? folder : "rule " + id;
+}
 function blocked(root, policy, id, what) {
   const own = ownRule(root);
-  if (own && own.text) return "BLOCKED (guard layer 1): rule " + id + " - " + what + "\n\nThe rule (" + own.rel + "):\n" + own.text;
+  if (own && own.text) return "BLOCKED (guard layer 1): " + citation(id) + " - " + what + "\n\nThe rule (" + own.rel + "):\n" + own.text;
   const text = ruleText(root, policy.rules_file || "", id);
   return "BLOCKED (guard layer 1): rule " + id + " - " + what + (text ? "\n\nThe rule (" + policy.rules_file + "):\n" + text : "");
 }
@@ -95,7 +101,8 @@ function remindOnce(payload, root, policy, key) {
 const ONCE = "\nThis is a reminder, shown once per session: retry the same call to continue.";
 
 // Paths the language rules do not reach: other people's code, frozen hand-overs, deliberate ASCII samples.
-const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /\/skills\/write-docx\/reference\//];
+// The write-docx reference samples sit under .claude/skills/ in a repo and under _Store/04_SKILLS/ in the parts store.
+const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|04_SKILLS)\/write-docx\/reference\//];
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 
 const WRITES = /\bzemory(?:\.cmd)?\s+(init|sync(?!\s+--check)|reindex|archive|migrate|adopt|setup|hook|memory\s+(?:scan|sync|embed|forget|redact)|gates\s+--write-top|project\s+move)\b/i;
@@ -111,7 +118,8 @@ function check(payload, root, policy) {
     if (typeof cmd !== "string" || !WRITES.test(cmd)) return null;
     let target = null;
     if (payload.cwd && outsideOf(root, payload.cwd)) target = payload.cwd;
-    const cd = /(?:^|[;&|]\s*)(?:cd|set-location|sl|pushd)\s+("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
+    // Push-Location is PowerShell's pushd under its full name — it slipped through until 2026-10-15.
+    const cd = /(?:^|[;&|]\s*)(?:cd|set-location|sl|pushd|push-location)\s+("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
     if (!target && cd && outsideOf(root, cd[1])) target = cd[1];
     const r = /--root[= ]("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
     if (!target && r && outsideOf(root, r[1])) target = r[1];

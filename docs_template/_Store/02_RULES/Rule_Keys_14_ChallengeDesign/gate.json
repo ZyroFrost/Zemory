@@ -1,0 +1,10 @@
+{
+  "partial": true,
+  "prompt": {
+    "kind": "design",
+    "re": "(thiết kế|đề xuất|phương án|kiến trúc|đổi cách)",
+    "text": "[zemory] Design proposal: run `zemory plan search \"<area>\"` before proposing — a direction already rejected must not be proposed again; state an objection to a flawed design before building it (Rule_Keys_14_ChallengeDesign)."
+  },
+  "block": [{ "note": "design words", "prompt": "đề xuất phương án lưu trữ" }],
+  "pass": [{ "note": "no design words", "prompt": "chạy lại bộ test" }]
+}

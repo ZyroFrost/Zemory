@@ -5,4 +5,4 @@ thứ gì nằm đâu, sửa gì vào đâu.
 
 | Có gì / cần làm | → Đường |
 |---|---|
-| cửa vào harness | `AGENTS.md` · `CLAUDE.md` (slot `03-1`) |
+| cửa vào harness | `AGENTS.md` · `CLAUDE.md` (slot `Slot_Root_001_Entry`) |

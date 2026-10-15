@@ -155,6 +155,44 @@ test("the same line changed on both sides is a conflict and nothing is written",
   assert.equal(readFileSync(rule(root, "02-1_alpha"), "utf8"), local, "a conflicting copy is left exactly as it was");
 });
 
+test("a part renamed in the store (same id) is found by key: the copy moves to the new folder, a local edit still merges", (t) => {
+  // plan/28 §0o: identity is the number, not the folder. Promoting a rule from Core to Keys renames its folder; before the
+  // key lookup, sync saw an absent part at the new name and left the old copy behind — two copies of one rule.
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  writeFileSync(rule(root, "02-1_alpha"), readFileSync(rule(root, "02-1_alpha"), "utf8") + "- local line\n");
+  git(st.root, "mv", "_Store/02_RULES/02-1_alpha", "_Store/02_RULES/Rule_Keys_01_Alpha");
+  const p = join(st.s, "02_RULES", "Rule_Keys_01_Alpha", "RULE.md");
+  writeFileSync(p, readFileSync(p, "utf8").replace("version: 1", "version: 2").replace("- line one", "- line one, revised"));
+  st.commit("rename alpha");
+  const plan = applyKit(root, { apply: false, storeDir: st.s });
+  const step = plan.steps.find((s) => s.part.key === "Rule_1");
+  assert.equal(step.verdict, "merged", `the base must be found across the rename: ${step.reason ?? ""}`);
+  assert.match(step.renameFrom ?? "", /02-1_alpha$/);
+  applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(!existsSync(join(root, "docs", "agent", "02_RULES", "02-1_alpha")), "the old folder is gone — one copy per rule");
+  const text = readFileSync(rule(root, "Rule_Keys_01_Alpha"), "utf8");
+  assert.match(text, /line one, revised/, "the store's change arrived");
+  assert.match(text, /- local line/, "the repo's edit survived the move");
+  assert.match(text, /from: _Store\/02_RULES\/Rule_Keys_01_Alpha @v2 #/);
+  assert.equal(verdicts(applyKit(root, { apply: false, storeDir: st.s }))["Rule_Keys_01_Alpha"], "current");
+});
+
+test("a renamed part with nothing to bring still moves, keeping the repo's content", (t) => {
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  git(st.root, "mv", "_Store/02_RULES/02-2_beta", "_Store/02_RULES/Rule_Gate_02_Beta");
+  st.commit("rename beta");
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  const step = r.steps.find((s) => s.part.key === "Rule_2");
+  assert.ok(step.renameFrom, "the copy is moved");
+  assert.ok(existsSync(join(root, "docs", "agent", "02_RULES", "Rule_Gate_02_Beta", "hook.cjs")), "every file moved with the folder");
+  assert.ok(!existsSync(join(root, "docs", "agent", "02_RULES", "02-2_beta")));
+  assert.match(readFileSync(rule(root, "Rule_Gate_02_Beta"), "utf8"), /from: _Store\/02_RULES\/Rule_Gate_02_Beta @v1 #/, "the stamp names the new folder");
+});
+
 test("an untouched copy is replaced by the newer part; a file the part dropped is removed", (t) => {
   const st = store(t);
   const root = repo(t);

@@ -66,18 +66,18 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   for (const f of ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "AGENTS.md", "hooks"]) assert.ok(existsSync(join(arch, f)), `archived ${f}`);
   assert.equal(readFileSync(join(arch, "02_RULES.md"), "utf8"), oldRules, "the archive is byte for byte");
   // constitution
-  const a1 = join(agent, "01_CONSTITUTION", `01-1_${slugOf("Điều một bất biến.")}`, "RULE.md");
+  const a1 = join(agent, "01_CONSTITUTION", "Cons_Core_01_DieuMotBatBien", "RULE.md");
   assert.match(readFileSync(a1, "utf8"), /nội dung một/);
   const purpose = readFileSync(join(agent, "01_CONSTITUTION", "PURPOSE.md"), "utf8");
   assert.match(purpose, /Phục vụ bài toán A/);
   assert.match(purpose, /chỉ khi có phê duyệt/, "every non-article section is kept");
   assert.ok(!existsSync(join(agent, "01_CONSTITUTION.md")));
   // rules
-  const r7 = readdirSync(join(agent, "02_RULES")).find((d) => d.startsWith("02-7_"));
+  const r7 = readdirSync(join(agent, "02_RULES")).find((d) => d.startsWith("Rule_") && d.includes("_07_"));
   const t7 = readFileSync(join(agent, "02_RULES", r7, "RULE.md"), "utf8");
   assert.match(t7, /^from: _Store/m);
   assert.match(t7, /Bản của repo trước khi chuyển[\s\S]*REPO-ONLY-EDIT/, "the repo's wording is kept for a hand merge");
-  const r99 = readdirSync(join(agent, "02_RULES")).find((d) => d.startsWith("02-99_"));
+  const r99 = readdirSync(join(agent, "02_RULES")).find((d) => d.startsWith("Rule_Gate_99_"));
   assert.match(readFileSync(join(agent, "02_RULES", r99, "RULE.md"), "utf8"), /chỉ repo này có/);
   assert.doesNotMatch(readFileSync(join(agent, "02_RULES", r99, "RULE.md"), "utf8"), /^from:/m, "a repo-only rule is the repo's own");
   assert.deepEqual(JSON.parse(readFileSync(join(agent, "02_RULES", r99, "gate.json"), "utf8")), { gate: "guard" });
@@ -96,9 +96,9 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   assert.equal(fwd.status, 2, "the forwarder blocks through the new guard");
   assert.equal(JSON.parse(fwd.stdout).hookSpecificOutput.permissionDecision, "deny");
   const settings = readFileSync(join(root, ".claude", "settings.json"), "utf8");
-  assert.match(settings, /node docs\/agent\/02_RULES\/02-55_hook-guard\/guard\.cjs/);
+  assert.match(settings, /node docs\/agent\/02_RULES\/Rule_Gate_55_HookGuard\/guard\.cjs/);
   assert.doesNotMatch(settings, /docs\/hooks\/guard\.cjs/, "no command left pointing at the old guard");
-  assert.match(readFileSync(join(gitHooksDir(root), "pre-commit"), "utf8"), /02-55_hook-guard\/precommit-guard\.cjs/);
+  assert.match(readFileSync(join(gitHooksDir(root), "pre-commit"), "utf8"), /Rule_Gate_55_HookGuard\/precommit-guard\.cjs/);
   // and the next sync finds nothing to do
   const again = applyKit(root, { apply: false });
   assert.deepEqual(again.steps.filter((s) => !["current", "own"].includes(s.verdict)).map((s) => s.part.folder), []);
@@ -109,7 +109,7 @@ test("links to a replaced file are repointed (an article link to its folder); th
   put(root, "docs/plan/05_ui.md", "Xem [HP điều 1](../agent/01_CONSTITUTION.md) · [luật](../agent/02_RULES.md#git) · [cây](../agent/03_STRUCTURE.md) · nhắc 02_RULES.md trong câu.\n");
   migrateToKit(root, { kitRef: "08", apply: true });
   const t5 = readFileSync(join(root, "docs", "plan", "05_ui.md"), "utf8");
-  assert.match(t5, new RegExp(`\\[HP điều 1\\]\\(\\.\\./agent/01_CONSTITUTION/01-1_${slugOf("Điều một bất biến.")}/RULE\\.md\\)`));
+  assert.match(t5, new RegExp(`\\[HP điều 1\\]\\(\\.\\./agent/01_CONSTITUTION/Cons_Core_01_DieuMotBatBien/RULE\\.md\\)`));
   assert.match(t5, /\[luật\]\(\.\.\/agent\/02_RULES\/\)/);
   assert.match(t5, /\[cây\]\(\.\.\/agent\/03_STRUCTURE\/INDEX\.md\)/);
   assert.match(t5, /nhắc 02_RULES\.md trong câu/, "plain words are the repo's and stay");

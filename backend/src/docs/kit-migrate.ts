@@ -16,7 +16,8 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, write
 import { basename, join, relative } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { TEMPLATE_DIR } from "./adopt.js";
-import { generateGuards } from "./guard-gen.js";
+import { generateGuards, hooksDirOf } from "./guard-gen.js";
+import { camelName, formatPartName, legacyKey } from "./harness-names.js";
 import { applyKit, writeKitMarker, type KitApplyResult } from "./kit-apply.js";
 import { ruleBlocks } from "./rule-core.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
@@ -53,6 +54,14 @@ const KIT_RULE_FILES = ["03_nonapp/agent", "05_app/agent", "04_adapt/agent", "01
 const KIT_SKILL_DIRS = ["03_nonapp/.claude/skills", "05_app/.claude/skills", "04_adapt/.claude/skills", "01_cowork_basic/nonapp/.claude/skills", "02_cowork_memory/nonapp/.claude/skills"];
 
 const norm = (s: string): string => s.replace(/\r\n/g, "\n").replace(/[ \t]+/g, " ").replace(/\s+$/g, "").trim();
+
+/**
+ * The dictionary folder of a repo's own article or rule (plan/28 §0o). The name component comes from the title with marks
+ * dropped — not English yet: the constitution redraft (plan/28 §0o step 7) gives every repo-own part its English name.
+ */
+function partFolder(code: "Rule" | "Cons", no: number, group: "Gate" | "Core", title: string): string {
+  return formatPartName({ code, group, no, name: camelName(slugOf(title)) || "Untitled" });
+}
 
 /** ASCII English-ish kebab name from a Vietnamese title: diacritics dropped, at most five words. */
 export function slugOf(title: string): string {
@@ -170,7 +179,9 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   const agentsText = read(join(root, "AGENTS.md"));
 
   // ── what will happen (computed the same for dry-run and apply) ──
-  const storeRuleIds = new Set(kitParts(kit, storeDir).filter((p) => p.shelf === "02_RULES").map((p) => p.id));
+  // Matched by KEY (plan/28 §0o): the repo's file names a rule `02-7`, the store part is keyed `Rule_7`.
+  const storeRuleKeys = new Set(kitParts(kit, storeDir).filter((p) => p.shelf === "02_RULES").map((p) => p.key));
+  const keyOfId = (id: string): string => legacyKey(id) ?? id;
   const known = knownRuleTexts();
   const blocks = ruleBlocks(rulesText);
   rep.legacyRules = Boolean(rulesText.trim()) && blocks.length === 0;
@@ -180,7 +191,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   for (const b of blocks) {
     if (seen.has(b.id)) continue;
     seen.add(b.id);
-    if (storeRuleIds.has(b.id)) {
+    if (storeRuleKeys.has(keyOfId(b.id))) {
       if (!known.get(b.id)?.has(norm(b.text))) local.push({ id: b.id, text: b.text });
     } else own.push({ id: b.id, text: b.text, gate: b.gate });
   }
@@ -217,11 +228,11 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   mkdirSync(join(agent, "01_CONSTITUTION"), { recursive: true });
   writeFileSync(join(agent, "01_CONSTITUTION", "PURPOSE.md"), `# ${basename(root)} — Mục đích\n\n${con.purpose}`);
   for (const a of con.articles) {
-    const d = join(agent, "01_CONSTITUTION", `01-${a.n}_${slugOf(a.title)}`);
+    const d = join(agent, "01_CONSTITUTION", partFolder("Cons", a.n, "Core", a.title));
     mkdirSync(d, { recursive: true });
     const row = rows.get(a.n);
     const rowLine = row ? `\n\n- Cổng khai ở bảng cổng hiến pháp cũ: ${[row.kind, row.gate].filter(Boolean).join(" — ")} *(đổi thành \`gate.json\` khi có chốt máy thật)*` : "";
-    writeFileSync(join(d, "RULE.md"), `---\nid: 01-${a.n}\nname: ${slugOf(a.title)}\nversion: 1\nkind: judgment\n---\n# 01-${a.n} ${a.title}\n\n${a.body}${rowLine}\n`);
+    writeFileSync(join(d, "RULE.md"), `---\nid: Cons_${a.n}\naka: 01-${a.n}\nname: ${slugOf(a.title)}\nversion: 1\nkind: judgment\n---\n# ${basename(d)} ${a.title}\n\n${a.body}${rowLine}\n`);
   }
   rmSync(join(agent, "01_CONSTITUTION.md"), { force: true });
 
@@ -233,10 +244,10 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   mkdirSync(join(agent, "02_RULES"), { recursive: true });
   if (rep.legacyRules) writeFileSync(join(agent, "02_RULES", "LEGACY.md"), rulesText);
   for (const o of own) {
-    const d = join(agent, "02_RULES", `${o.id}_${slugOf(title(o.text))}`);
+    const d = join(agent, "02_RULES", partFolder("Rule", Number(o.id.split("-")[1]), o.gate ? "Gate" : "Core", title(o.text)));
     mkdirSync(d, { recursive: true });
     const kind = o.gate ? "content" : "judgment";
-    writeFileSync(join(d, "RULE.md"), `---\nid: ${o.id}\nname: ${slugOf(title(o.text))}\nversion: 1\nkind: ${kind}\n---\n# ${o.id} ${title(o.text)}\n\n${o.text.trim()}\n`);
+    writeFileSync(join(d, "RULE.md"), `---\nid: ${keyOfId(o.id)}\naka: ${o.id}\nname: ${slugOf(title(o.text))}\nversion: 1\nkind: ${kind}\n---\n# ${basename(d)} ${title(o.text)}\n\n${o.text.trim()}\n`);
     if (o.gate) writeFileSync(join(d, "gate.json"), JSON.stringify({ gate: o.gate }) + "\n");
   }
 
@@ -266,7 +277,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
 
   // Local wording of a store rule: kept inside the assembled RULE.md for a hand merge (the copy now counts as edited).
   for (const l of local) {
-    const dir = listParts(agent, "02_RULES").find((p) => p.id === l.id)?.dir;
+    const dir = listParts(agent, "02_RULES").find((p) => p.key === keyOfId(l.id))?.dir;
     if (!dir) continue;
     const p = join(dir, "RULE.md");
     writeFileSync(p, readFileSync(p, "utf8").replace(/\s*$/, "") +
@@ -280,11 +291,11 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   rep.repointedLinks = repointLinks(root, true);
   // A session open while the repo moves keeps the hook command it read at start (`node docs/hooks/guard.cjs`): without
   // this forwarder that path is gone and the host lets every call of that session through. New sessions use the new path.
-  const hooksRel = relative(join(agent, ".."), join(agent, "02_RULES", "02-55_hook-guard", "guard.cjs")).replace(/\\/g, "/");
+  const hooksRel = relative(join(agent, ".."), join(hooksDirOf(root), "guard.cjs")).replace(/\\/g, "/");
   mkdirSync(oldHooks, { recursive: true });
   writeFileSync(join(oldHooks, "guard.cjs"),
     `// Forwarder left by the move to the folder harness (plan/28): sessions opened before the move still call this path.\n` +
-    `// The guard itself lives in docs/agent/02_RULES/02-55_hook-guard/. Safe to delete once no such session is open.\n` +
+    `// The guard itself lives beside rule 55 (${hooksRel}). Safe to delete once no such session is open.\n` +
     `require(require("node:path").join(__dirname, "..", ${JSON.stringify(hooksRel)}));\n`);
   return rep;
 }
@@ -316,7 +327,7 @@ export function repointLinks(root: string, apply: boolean): string[] {
       // A link whose text names an article ("điều 2") goes to that article's folder, not to PURPOSE.
       n = n.replace(/\[([^\]]*?điều\s+(\d{1,2})[^\]]*)\]\(([^)\s]*?)01_CONSTITUTION\/PURPOSE\.md\)/gi, (whole, text: string, num: string, pre: string) => {
         const art = existsSync(join(agentDir, "01_CONSTITUTION"))
-          ? readdirSync(join(agentDir, "01_CONSTITUTION")).find((f) => f.startsWith(`01-${Number(num)}_`))
+          ? listParts(agentDir, "01_CONSTITUTION").find((p) => p.key === `Cons_${Number(num)}`)?.folder
           : undefined;
         return art ? `[${text}](${pre}01_CONSTITUTION/${art}/RULE.md)` : whole;
       });

@@ -16,7 +16,7 @@ mỗi luật và mỗi slot một folder; file này chỉ chỉ đường.
    `irm <ZEMORY_RAW>/backend/scripts/install.ps1 | iex` (đặt `$env:ZEMORY_DIR` trước — hỏi nếu chưa rõ thư mục cài; kho
    nhớ không nằm trong thư mục cài). Tab Code của Claude Desktop không đọc PowerShell profile ⇒ cài xong mở lại app.
    - Init xong ⇒ liệt kê một lần mọi luật `docs/agent/02_RULES/02-N_*/` (số + tiêu đề) và hỏi giữ · sửa · bỏ. Bỏ một luật
-     = thêm `retired: true` vào đầu `RULE.md`, giữ folder và số (`02-10`). Chưa trả lời ⇒ giữ mặc định.
+     = thêm `retired: true` vào đầu `RULE.md`, giữ folder và số (`Rule_Gate_10_ConfirmDelete`). Chưa trả lời ⇒ giữ mặc định.
 2. **Lõi được chèn sẵn đầu phiên** — Mục đích của repo + các luật phán đoán (không có chốt máy). Luật còn lại có chốt máy:
    vi phạm thì bị chặn, câu chặn mang nguyên văn luật.
 3. **Đọc `docs/agent/05_TODO.md`** trước khi làm.

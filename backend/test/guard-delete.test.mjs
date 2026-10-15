@@ -150,6 +150,19 @@ test("02-10 (b): an edit that drops a rule number from 01/02 is blocked; keeping
   assert.equal(ask(edit(hp, "3. **Mỗi lớp** …", "3. *(BÃI BỎ — giữ số)*")).blocked, false, "abolishing keeps the number");
 });
 
+test("02-10 (b), folder harness: changing or dropping the `id:` of a rule folder is blocked; editing the body passes", () => {
+  const ROOT = new URL("../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
+  const rule = join(ROOT, "docs_template/_Store/02_RULES/Rule_Gate_41_ChangelogNewestFirst/RULE.md");
+  const edit = (o, n) => ({ tool_name: "Edit", tool_input: { file_path: rule, old_string: o, new_string: n } });
+  const renumber = ask(edit("id: Rule_41", "id: Rule_99"));
+  assert.equal(renumber.blocked, true, `renumbering must be blocked\n${renumber.say}`);
+  assert.match(renumber.say, /removes rule Rule_41/);
+  assert.equal(ask(edit("id: Rule_41\n", "")).blocked, true, "dropping the id line must be blocked");
+  assert.equal(ask(edit("name: changelog-newest-first", "name: changelog-newest-first")).blocked, false, "a body edit keeps the number");
+  const write = ask({ tool_name: "Write", tool_input: { file_path: rule, content: "---\nname: x\n---\n" } });
+  assert.equal(write.blocked, true, "a Write without the id must be blocked");
+});
+
 test("an OLD policy with a NEW guard: it still blocks and must NOT throw", () => {
   // The cowork set is carried by hand to other machines, so the two files are bound to be out of step at times.
   // Before the fix, a missing `POLICY.flags[name]` meant path.join(..., undefined) => the guard DIED

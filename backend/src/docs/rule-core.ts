@@ -10,6 +10,7 @@ import { homedir } from "node:os";
 import { join, relative } from "node:path";
 import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
 import { bodyOf, isFolderHarness, isRetired, listParts, type Part } from "./store.js";
+import { legacyIdOf } from "./harness-names.js";
 import { selfRepoRoot } from "../projects.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
@@ -310,9 +311,9 @@ function folderCoverage(root: string, agentDir: string): RuleCoverage {
       if (!facts.guardWired) why = "guard not wired";
       else if (!existsSync(join(r.part.dir, r.gate.hook))) why = `${r.gate.hook} missing`;
       else if (!(facts.policy?.rule_dirs ?? []).includes(rel)) why = `${rel} not in policy.rule_dirs`;
-      else if (id === "02-25" && !facts.policy?.sql) why = "na";
+      else if (r.part.key === "Rule_25" && !facts.policy?.sql) why = "na";
     } else if (r.gate.gate) {
-      why = resolveGate(id, r.gate.gate, facts);
+      why = resolveGate(legacyIdOf(r.part.key) ?? id, r.gate.gate, facts);
     }
     if (why === "na") continue;
     out.gateable++;

@@ -46,6 +46,20 @@ test("it generates all 4 files, with the policy carrying the zemory mark and the
   assert.ok(policy.secret_names.includes(".env"), "bộ mẫu secret mặc định phải có mặt");
 });
 
+test("a protected `X.md` that became a folder `X/` protects the folder (the constitution after the move to folders)", (t) => {
+  // Measured 2026-10-15: all 9 repos moved to the folder harness still named `docs/agent/01_CONSTITUTION.md` in the
+  // marker; the file was gone, the prefix matched nothing, and every article under `01_CONSTITUTION/` was writable.
+  const root = tempDir(t, "zemory-guard-hp-");
+  mkdirSync(join(root, "docs", "agent", "01_CONSTITUTION", "01-1_x"), { recursive: true });
+  writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ protected: ["docs/agent/01_CONSTITUTION.md", "data/keep.md"] }));
+  const r = generateGuards(root);
+  const policy = JSON.parse(readFileSync(join(r.hooksDir, "policy.json"), "utf8"));
+  assert.ok(policy.protected_write.includes("docs/agent/01_CONSTITUTION"), `the folder must be protected: ${policy.protected_write}`);
+  assert.ok(policy.protected_write.includes("data/keep.md"), "an entry with no folder twin stays as written");
+  const out = fire(r.hooksDir, "Write", { file_path: join(root, "docs", "agent", "01_CONSTITUTION", "01-1_x", "RULE.md"), content: "x" });
+  assert.equal(out.status, 2, `writing an article must be blocked:\n${out.stdout}${out.stderr}`);
+});
+
 test("a Write into a protected path exits 2; the one-shot flag: create, pass, SELF-DELETE, block again (S5.6)", (t) => {
   const root = repo(t);
   const r = generateGuards(root);
