@@ -1,6 +1,6 @@
 ---
 name: case
-version: 1
+version: 2
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
   NON-APP). Dùng khi có một vấn đề mới cần điều tra, khi quay lại một vấn đề đã xử,
@@ -10,7 +10,7 @@ description: >
 
 # case — mở · đóng · mở lại một case
 
-> Chuẩn slot + luật 1-case-1-folder: `03_STRUCTURE §2 §3 §4`. Hồn của mẫu: mỗi vấn đề là
+> Chuẩn slot + luật 1-case-1-folder: slot `03-115` `tasks/` · `03-117` `tasks/<case>/` · `03-131` `data/<case>/` (+ từ điển `03-138`). Hồn của mẫu: mỗi vấn đề là
 > một MẠCH VIỆC quay lại nhiều lần — mọi thứ của nó phải nằm MỘT chỗ, mở một folder ra hết.
 
 ## Trước khi mở case mới — TRA ĐÃ CÓ CHƯA
@@ -37,7 +37,7 @@ NẰM, không nói nó thuộc VIỆC gì.**
    **Mục lục file** · **Việc còn mở** · **§Mở lại case khi nào**.
 3. Dò → findings `<ngày>_<slug>.md` · fix script `<ngày>_<slug>.sql` (**ĐỀ XUẤT**, người có quyền tự
    chạy — không tự thi hành lên nguồn ngoài) · query riêng `check_*.sql`. Data thật →
-   `data/<tên_case>/` (gitignore, **mirror ĐÚNG TÊN**, chia 3 chặng theo `03_STRUCTURE §4`).
+   `data/<tên_case>/` (gitignore, **mirror ĐÚNG TÊN**, chia 3 chặng theo slot `03-132`…`03-134`).
 4. Cập nhật INDEX `content/README.md`; metric mới (nếu có) → từ điển dữ liệu trong `03_STRUCTURE`;
    defect/spec dài (nếu có) → `docs/plan/`. Ba thứ này là **3 ngoại lệ** được nằm ngoài
    folder case.
