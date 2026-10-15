@@ -12,9 +12,9 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { citationKey, legacyKey } from "./harness-names.js";
-import { listParts, partFiles, SHELVES, STORE_DIR, type Part } from "./store.js";
+import { hostSkillOf, listParts, partFiles, SHELVES, STORE_DIR, type Part } from "./store.js";
 
-const HARNESS_ENTRIES = new Set(["01_RULES", "02_CONSTITUTION", "03_STRUCTURE", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md", "archive"]);
+const HARNESS_ENTRIES = new Set(["01_RULES", "02_CONSTITUTION", "03_STRUCTURE", "04_SKILLS", "05_TODO.md", "06_CHANGES.md", "archive"]);
 // A NAMED section of the old rules / constitution file. A numbered section (`§3`) is a section of the document it is
 // written in, not a pointer into the old file.
 const OLD_SECTION = /§\s?(Lõi|Cổng cho hiến pháp|Cổng của hiến pháp|Hành xử|Git|Guardrail|Phạm vi project|Tài liệu|Ngôn ngữ|Sổ việc|Chốt phiên)\b|\b0[12]_(RULES|CONSTITUTION)(\.md)?\s+§/;
@@ -42,7 +42,8 @@ function storeIndex(storeDir: string): {
       slotPaths.push(one);
     }
   }
-  const skills = new Set(listParts(storeDir, "04_SKILLS").map((p) => p.folder));
+  // a pointer into the host folder names a skill by its HOST name (`.claude/skills/harness-session-close/`)
+  const skills = new Set(listParts(storeDir, "04_SKILLS").map((p) => hostSkillOf(p)));
   // the roots of the repo tree: the first segment of every slot path that has a folder under it
   const roots = new Set(slotPaths.filter((s) => s.includes("/")).map((s) => s.split("/")[0]).filter((s) => !s.startsWith("<")));
   return { keys, retired, slots, slotPaths, skills, roots };

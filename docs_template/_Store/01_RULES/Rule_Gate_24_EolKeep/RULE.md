@@ -2,7 +2,7 @@
 id: Rule_24
 aka: 02-24
 name: eol-keep
-version: 4
+version: 5
 kind: content
 ---
 # Rule_Gate_24_EolKeep EOL: khoá bằng máy trước, chưa khoá thì đọc sao ghi vậy

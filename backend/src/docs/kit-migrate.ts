@@ -23,7 +23,7 @@ import { ruleBlocks } from "./rule-core.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { hpGateRows } from "./validate.js";
 import { historyOfRel, revText } from "./standard.js";
-import { findKit, isFolderHarness, kitParts, listParts, shelfDir, STORE_DIR, type Kit } from "./store.js";
+import { findKit, hostSkillOf, isFolderHarness, kitParts, listParts, shelfDir, STORE_DIR, type Kit } from "./store.js";
 
 export interface MigrateReport {
   root: string;
@@ -201,7 +201,11 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   const rows = new Map((hpGateRows(agent) ?? []).map((r) => [r.n, r]));
   rep.articles = con.articles.map((a) => `01-${a.n}`);
   rep.articleGateRows = con.articles.filter((a) => rows.has(a.n)).map((a) => `01-${a.n}`);
-  const kitSkills = kitParts(kit, storeDir).filter((p) => p.shelf === "04_SKILLS").map((p) => p.folder);
+  // A file-harness repo knows the kit's skills by their OLD names (`.claude/skills/grill/`); the store calls them
+  // Skill_Harness_Grill (host name harness-grill), with the old name kept as aka (plan/28 §0o).
+  const kitSkillParts = kitParts(kit, storeDir).filter((p) => p.shelf === SHELF.skills);
+  const kitSkills = kitSkillParts.map((p) => String(p.meta.aka ?? "") || p.folder);
+  const kitHosts = new Set(kitSkillParts.flatMap((p) => [String(p.meta.aka ?? ""), hostSkillOf(p)]).filter(Boolean));
   for (const s of kitSkills) {
     const f = join(hp.skills, s, "SKILL.md");
     if (!existsSync(f)) continue;
@@ -210,7 +214,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   }
   const triggerRows = agentsText.split(/\r?\n/).filter((l) => {
     const m = /\.claude\/skills\/([\w-]+)\//.exec(l);
-    return l.startsWith("|") && m && !kitSkills.includes(m[1]);
+    return l.startsWith("|") && m && !kitHosts.has(m[1]);
   });
   rep.carriedTriggers = triggerRows.length;
   if (!opts.apply) return rep;

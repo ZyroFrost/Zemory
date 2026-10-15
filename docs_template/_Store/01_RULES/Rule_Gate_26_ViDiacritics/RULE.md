@@ -2,7 +2,7 @@
 id: Rule_26
 aka: 02-26
 name: vi-diacritics
-version: 5
+version: 6
 kind: content
 ---
 # Rule_Gate_26_ViDiacritics Docs viết tiếng Việt có dấu

@@ -17,8 +17,10 @@ mỗi luật và mỗi slot một folder; file này chỉ chỉ đường.
    nhớ không nằm trong thư mục cài). Tab Code của Claude Desktop không đọc PowerShell profile ⇒ cài xong mở lại app.
    - Init xong ⇒ liệt kê một lần mọi luật `docs/agent/01_RULES/Rule_*/` (tên đầy đủ) và hỏi giữ · sửa · bỏ. Bỏ một luật
      = thêm `retired: true` vào đầu `RULE.md`, giữ folder và số (`Rule_Gate_10_ConfirmDelete`). Chưa trả lời ⇒ giữ mặc định.
-2. **Lõi được chèn sẵn đầu phiên** — Mục đích của repo + các luật phán đoán (không có chốt máy). Luật còn lại có chốt máy:
-   vi phạm thì bị chặn, câu chặn mang nguyên văn luật.
+2. **Luật tự đến, không phải đọc trước** — mỗi loại một đường:
+   - `Core` và `Keys` (luật phán đoán) cùng Mục đích của repo được chèn nguyên văn lúc mở phiên và sau mỗi lần nén;
+   - `Keys` còn nhắc lại một dòng khi câu gõ trúng từ khoá của luật đó;
+   - `Gate` chặn đúng lúc định làm sai — câu chặn mang tên đầy đủ và nguyên văn luật.
 3. **Đọc `docs/agent/05_TODO.md`** trước khi làm.
 4. **Tra khi cần, không đọc hết:** luật `docs/agent/01_RULES/Rule_<Gate·Keys·Core>_<NN>_<Tên>/RULE.md` · hiến pháp `docs/agent/02_CONSTITUTION/`
    · slot `docs/agent/03_STRUCTURE/` (`INDEX.md`: thứ gì nằm đâu, từ điển dữ liệu của repo) · lịch sử
@@ -33,18 +35,18 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | Mở khi | Đọc |
 |---|---|
 | tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch | `docs/agent/03_STRUCTURE/INDEX.md` + slot liên quan |
-| hỏi repo có quy trình gì · thêm/bớt skill | `docs/agent/04_SKILLS.md` |
-| yêu cầu chưa đủ rõ để làm đúng | `.claude/skills/grill/SKILL.md` |
-| "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/session-close/SKILL.md` |
-| repo lệch chuẩn, cần nắn lại | `.claude/skills/reconcile/SKILL.md` |
-| kiểm độ bám chuẩn | `.claude/skills/conform/SKILL.md` |
-| lời gọi "audit toàn diện" / "soi hết" | `.claude/skills/audit/SKILL.md` |
-| sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác | `.claude/skills/sync-path/SKILL.md` |
-| cần ĐỌC `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/read-office/SKILL.md` |
-| cần SỬA / TẠO file Word `.docx` | `.claude/skills/write-docx/SKILL.md` |
-| cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/write-style/SKILL.md` |
-| `zemory validate` báo plan vượt trần · "gọt plan" | `.claude/skills/plan-trim/SKILL.md` |
-| "mở case" · "lưu thành task" · "đóng case" · "mở lại case" · "vụ này lưu ở đâu" | `.claude/skills/case/SKILL.md` |
-| kéo dữ liệu từ nguồn về | `.claude/skills/pull/SKILL.md` |
-| điền số vào template → xuất deliverable | `.claude/skills/fill/SKILL.md` |
-| đẩy deliverable lên đích (BI · Drive · SharePoint) | `.claude/skills/upload/SKILL.md` |
+| hỏi repo có quy trình gì · thêm/bớt skill | `docs/agent/04_SKILLS/INDEX.md` |
+| yêu cầu chưa đủ rõ để làm đúng | `.claude/skills/harness-grill/SKILL.md` |
+| "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/harness-session-close/SKILL.md` |
+| repo lệch chuẩn, cần nắn lại | `.claude/skills/harness-reconcile/SKILL.md` |
+| kiểm độ bám chuẩn | `.claude/skills/harness-conform/SKILL.md` |
+| lời gọi "audit toàn diện" / "soi hết" | `.claude/skills/harness-audit/SKILL.md` |
+| sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác | `.claude/skills/harness-sync-path/SKILL.md` |
+| cần ĐỌC `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/doc-read-office/SKILL.md` |
+| cần SỬA / TẠO file Word `.docx` | `.claude/skills/doc-write-docx/SKILL.md` |
+| cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/doc-write-style/SKILL.md` |
+| `zemory validate` báo plan vượt trần · "gọt plan" | `.claude/skills/harness-plan-trim/SKILL.md` |
+| "mở case" · "lưu thành task" · "đóng case" · "mở lại case" · "vụ này lưu ở đâu" | `.claude/skills/task-case/SKILL.md` |
+| kéo dữ liệu từ nguồn về | `.claude/skills/task-pull/SKILL.md` |
+| điền số vào template → xuất deliverable | `.claude/skills/task-fill/SKILL.md` |
+| đẩy deliverable lên đích (BI · Drive · SharePoint) | `.claude/skills/task-upload/SKILL.md` |

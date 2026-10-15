@@ -9,6 +9,9 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { applyKit } from "../../dist/docs/kit-apply.js";
 import { repointLinks } from "../../dist/docs/kit-migrate.js";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
 import { frontMatter, hashFiles, parseFrom } from "../../dist/docs/store.js";
 import { generateGuards } from "../../dist/docs/guard-gen.js";
 import { coreForCompaction, folderCoreIssues, ruleCoverage } from "../../dist/docs/rule-core.js";
@@ -58,7 +61,7 @@ function store(t) {
   put(s, "02_CONSTITUTION/01-1_secrets/RULE.md", "---\nid: 01-1\nname: secrets\nversion: 1\nkind: judgment\nsuggested: true\n---\n# secrets\n");
   put(s, "Own/X/AGENTS.md", "# <PROJECT>\n");
   put(s, "Own/X/CLAUDE.md", "@AGENTS.md\n");
-  put(s, "Own/X/docs/agent/04_SKILLS.md", "# skills\n\n<!-- zemory:skills:start · machine block -->\n<!-- zemory:skills:end -->\n");
+  put(s, "Own/X/docs/agent/04_SKILLS/INDEX.md", "# skills\n\n<!-- zemory:skills:start · machine block -->\n<!-- zemory:skills:end -->\n");
   put(s, "Own/X/docs/agent/05_TODO.md", "# todo\n");
   put(s, "kits.json", JSON.stringify({ "01": { name: "01_IDE_App_Memory", status: "built", host: "IDE", structure: "App", tier: "Memory",
     constitution: ["01-*"], rules: ["02-*"], slots: ["03-1"], skills: ["sk"], own: "X" },
@@ -92,8 +95,13 @@ test("init assembles every part at its numbered place, stamped with from:, plus 
   }
   assert.ok(existsSync(join(root, "docs", "agent", "01_RULES", "02-2_beta", "hook.cjs")), "the hook travels with its rule");
   assert.ok(existsSync(join(root, "docs", "agent", "03_STRUCTURE", "03-1_entry", "SLOT.md")));
-  assert.ok(existsSync(join(root, ".claude", "skills", "sk", "SKILL.md")), "a skill lands where the host loads it");
-  assert.match(readFileSync(join(root, "docs", "agent", "04_SKILLS.md"), "utf8"), /\| `sk\/` \| _Store\/04_SKILLS\/sk @v1 #[0-9a-f]{12} \|/);
+  // a skill: its source in the harness, its host build inside the source, and the build plugged where the host loads it
+  assert.ok(existsSync(join(root, "docs", "agent", "04_SKILLS", "sk", "SKILL.md")), "the skill's source lands in the harness");
+  assert.ok(existsSync(join(root, "docs", "agent", "04_SKILLS", "sk", "Claude", "sk", "SKILL.md")), "the host build sits inside the source");
+  assert.ok(existsSync(join(root, ".claude", "skills", "sk", "SKILL.md")), "the host build is plugged where the host loads it");
+  assert.ok(!existsSync(join(root, ".claude", "skills", "sk", "gate.json")), "gates stay with the source; the host build carries none");
+  assert.match(readFileSync(join(root, "docs", "agent", "04_SKILLS", "INDEX.md"), "utf8"),
+    /\| `sk\/` \| `\.claude\/skills\/sk\/` \| _Store\/04_SKILLS\/sk @v1 #[0-9a-f]{12} \|/);
   const again = applyKit(root, { apply: false, storeDir: st.s });
   assert.deepEqual(new Set(Object.values(verdicts(again))), new Set(["current"]), "a second pass finds nothing to do");
 });
@@ -325,6 +333,45 @@ test("a skill's gate travels with the skill: its read door and its prompt remind
   const pol2 = JSON.parse(readFileSync(join(generateGuards(without).hooksDir, "policy.json"), "utf8"));
   assert.ok(!pol2.read_first.triggers.some((x) => x.when === "path_prefix"), "no skill, no door");
   assert.equal(ruleReminders({ session_id: sid("c"), cwd: without, prompt: "mở cửa sk giúp" }), "");
+});
+
+test("a skill door accepts any copy of the skill: the source, the host build, or the host loading it by name", (t) => {
+  // plan/28 §0o: a skill lives in three places (source · build inside it · host folder) and the host may load it itself.
+  // The latch counted only `.claude/skills/<name>/SKILL.md`, so reading the source still blocked.
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const hooks = generateGuards(root).hooksDir;
+  const policy = JSON.parse(readFileSync(join(hooks, "policy.json"), "utf8"));
+  policy.read_first = { ...policy.read_first, required: [], sections: [], triggers: policy.read_first.triggers.filter((x) => x.when === "path_prefix") };
+  const latch = join(hooks, "02-59_read-first.cjs");
+  const { readFirst } = require(latch);
+  const src = join(root, "docs", "agent", "04_SKILLS", "sk", "SKILL.md");
+  const text = readFileSync(src, "utf8");
+  const tx = (lines) => { const p = join(root, `t-${Math.random().toString(36).slice(2)}.jsonl`); writeFileSync(p, lines.map((l) => JSON.stringify(l)).join("\n") + "\n"); return p; };
+  const write = (transcript_path) => readFirst({ tool_name: "Write", tool_input: { file_path: join(root, "frontend", "a.js"), content: "x" }, transcript_path }, root, policy);
+  assert.match(write(tx([{ type: "user" }])) ?? "", /NOT READ IN FULL[\s\S]*\.claude\/skills\/sk\/SKILL\.md/, "nothing read: blocked, naming the copies");
+  assert.equal(write(tx([{ toolUseResult: { type: "text", file: { filePath: src, content: text } } }])), null, "the source read in full is enough");
+  assert.equal(write(tx([{ type: "assistant", message: { content: [{ type: "tool_use", name: "Skill", input: { skill: "sk" } }] } }])), null,
+    "the host loading the skill by name is enough");
+});
+
+test("a skill assembled into the host folder before the two layers moves to its source; the repo's edit is kept", (t) => {
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  // what an earlier zemory left: the assembled copy in the host folder, edited there, and no source in the harness
+  const agentSk = join(root, "docs", "agent", "04_SKILLS", "sk");
+  const host = join(root, ".claude", "skills", "sk");
+  rmSync(agentSk, { recursive: true });
+  writeFileSync(join(host, "SKILL.md"), readFileSync(join(host, "SKILL.md"), "utf8") + "\nREPO EDIT\n");
+  writeFileSync(join(host, "gate.json"), readFileSync(join(st.s, "04_SKILLS", "sk", "gate.json"), "utf8"));
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  const step = r.steps.find((s) => s.part.folder === "sk");
+  assert.match(step.renameFrom ?? "", /\.claude[\\/]skills[\\/]sk$/, "the host copy is the one found");
+  assert.match(readFileSync(join(agentSk, "SKILL.md"), "utf8"), /REPO EDIT/, "the edit moved with it into the source");
+  assert.match(readFileSync(join(host, "SKILL.md"), "utf8"), /REPO EDIT/, "and the host build is written from that source");
+  assert.ok(!existsSync(join(host, "gate.json")), "the host build carries no gates");
 });
 
 test("conform runs every slot's own check: a broken entry is a blocking slot-gate finding naming the slot", (t) => {

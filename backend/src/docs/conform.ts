@@ -265,7 +265,7 @@ export function conform(root: string): ConformReport {
   const need = [
     ...hp.entries,
     ...(folder
-      ? ["01_CONSTITUTION/PURPOSE.md", "03_STRUCTURE/INDEX.md", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md"].map((f) => join(hp.agent, f))
+      ? [`${SHELF.constitution}/PURPOSE.md`, `${SHELF.structure}/INDEX.md`, `${SHELF.skills}/INDEX.md`, "05_TODO.md", "06_CHANGES.md"].map((f) => join(hp.agent, f))
       : ["01_CONSTITUTION", "02_RULES", "03_STRUCTURE", "04_SKILLS", "05_TODO", "06_CHANGES"].map((f) => join(hp.agent, `${f}.md`))),
     join(hp.plan, "00_overview.md"),
   ];
@@ -326,7 +326,8 @@ export function conform(root: string): ConformReport {
   //               nó tồn tại mà không phiên nào tìm ra, tức tốn công viết mà không ai dùng.
   //      · CŨ   — playbook inline; roster = dòng "Skill inline hiện có"; đối chiếu với `##`.
   //    Giữ cả hai để project chưa migrate không bị báo oan.
-  const sk = read(root, relative(root, join(hp.agent, "04_SKILLS.md")).replace(/\\/g, "/"));
+  // The list: `04_SKILLS/INDEX.md` in a folder harness (beside the sources it lists, plan/28 §0o), `04_SKILLS.md` before.
+  const sk = read(root, relative(root, join(hp.agent, folder ? `${SHELF.skills}/INDEX.md` : "04_SKILLS.md")).replace(/\\/g, "/"));
   const skillsDir = hp.skills;
   const onDisk = existsSync(skillsDir)
     ? readdirSync(skillsDir, { withFileTypes: true })
@@ -335,7 +336,12 @@ export function conform(root: string): ConformReport {
         .sort()
     : [];
   if (sk && onDisk.length) {
-    const declared = [...sk.matchAll(/^\|\s*`([a-z0-9-]+)\/`\s*\|/gm)].map((m) => m[1]);
+    // A row names the skill by its host folder: the machine block writes `| Skill_… | .claude/skills/<host>/ | from |`,
+    // a row the repo writes by hand is `| <host>/ | … |`.
+    const declared = [...new Set([
+      ...[...sk.matchAll(/^\|\s*`([a-z0-9-]+)\/`\s*\|/gm)].map((m) => m[1]),
+      ...[...sk.matchAll(/`\.claude\/skills\/([a-z0-9-]+)\/`/g)].map((m) => m[1]),
+    ])];
     push(
       "skill-roster-drift",
       "blocking",

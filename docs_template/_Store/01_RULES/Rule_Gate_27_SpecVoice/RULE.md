@@ -2,7 +2,7 @@
 id: Rule_27
 aka: 02-27
 name: spec-voice
-version: 7
+version: 8
 kind: judgment
 ---
 # Rule_Gate_27_SpecVoice Văn phong harness là đặc tả kỹ thuật

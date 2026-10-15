@@ -23,17 +23,17 @@
       "Slot_*"
     ],
     "skills": [
-      "app-design",
-      "audit",
-      "conform",
-      "grill",
-      "plan-trim",
-      "read-office",
-      "reconcile",
-      "session-close",
-      "sync-path",
-      "write-docx",
-      "write-style"
+      "Skill_Dev_AppDesign",
+      "Skill_Harness_Audit",
+      "Skill_Harness_Conform",
+      "Skill_Harness_Grill",
+      "Skill_Harness_PlanTrim",
+      "Skill_Doc_ReadOffice",
+      "Skill_Harness_Reconcile",
+      "Skill_Harness_SessionClose",
+      "Skill_Harness_SyncPath",
+      "Skill_Doc_WriteDocx",
+      "Skill_Doc_WriteStyle"
     ],
     "own": "App"
   },
@@ -60,20 +60,20 @@
       "Slot_*"
     ],
     "skills": [
-      "audit",
-      "case",
-      "conform",
-      "fill",
-      "grill",
-      "plan-trim",
-      "pull",
-      "read-office",
-      "reconcile",
-      "session-close",
-      "sync-path",
-      "upload",
-      "write-docx",
-      "write-style"
+      "Skill_Harness_Audit",
+      "Skill_Task_Case",
+      "Skill_Harness_Conform",
+      "Skill_Task_Fill",
+      "Skill_Harness_Grill",
+      "Skill_Harness_PlanTrim",
+      "Skill_Task_Pull",
+      "Skill_Doc_ReadOffice",
+      "Skill_Harness_Reconcile",
+      "Skill_Harness_SessionClose",
+      "Skill_Harness_SyncPath",
+      "Skill_Task_Upload",
+      "Skill_Doc_WriteDocx",
+      "Skill_Doc_WriteStyle"
     ],
     "own": "NonApp"
   },
@@ -100,17 +100,17 @@
       "Slot_*"
     ],
     "skills": [
-      "app-design",
-      "audit",
-      "conform",
-      "grill",
-      "plan-trim",
-      "read-office",
-      "reconcile",
-      "session-close",
-      "sync-path",
-      "write-docx",
-      "write-style"
+      "Skill_Dev_AppDesign",
+      "Skill_Harness_Audit",
+      "Skill_Harness_Conform",
+      "Skill_Harness_Grill",
+      "Skill_Harness_PlanTrim",
+      "Skill_Doc_ReadOffice",
+      "Skill_Harness_Reconcile",
+      "Skill_Harness_SessionClose",
+      "Skill_Harness_SyncPath",
+      "Skill_Doc_WriteDocx",
+      "Skill_Doc_WriteStyle"
     ],
     "own": "App"
   },
@@ -137,20 +137,20 @@
       "Slot_*"
     ],
     "skills": [
-      "audit",
-      "case",
-      "conform",
-      "fill",
-      "grill",
-      "plan-trim",
-      "pull",
-      "read-office",
-      "reconcile",
-      "session-close",
-      "sync-path",
-      "upload",
-      "write-docx",
-      "write-style"
+      "Skill_Harness_Audit",
+      "Skill_Task_Case",
+      "Skill_Harness_Conform",
+      "Skill_Task_Fill",
+      "Skill_Harness_Grill",
+      "Skill_Harness_PlanTrim",
+      "Skill_Task_Pull",
+      "Skill_Doc_ReadOffice",
+      "Skill_Harness_Reconcile",
+      "Skill_Harness_SessionClose",
+      "Skill_Harness_SyncPath",
+      "Skill_Task_Upload",
+      "Skill_Doc_WriteDocx",
+      "Skill_Doc_WriteStyle"
     ],
     "own": "NonApp"
   }
