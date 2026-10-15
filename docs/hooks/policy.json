@@ -152,7 +152,7 @@
       "docs_template/"
     ]
   },
-  "outside_reason": "work stays INSIDE the project folder (02_RULES §Phạm vi project) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
+  "outside_reason": "work stays INSIDE the project folder (Rule_Gate_44_OpenFolderOnly) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
   "hooks_dir": "docs/hooks",
   "flags_dir": "docs/hooks",
   "flags": {

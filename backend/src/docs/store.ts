@@ -17,22 +17,48 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, s
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
-import { LEGACY_SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, slotArea } from "./harness-names.js";
+import { LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, slotArea } from "./harness-names.js";
 import { viName } from "./vi-name-judge.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
 // the constant from adopt would read it before adopt has run.
 export const STORE_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "docs_template", "_Store");
-export const SHELVES = ["01_CONSTITUTION", "02_RULES", "03_STRUCTURE", "04_SKILLS"] as const;
+/** Shelves in reading order (plan/28 §0o): common rules above the repo's own constitution. A legacy shelf folder
+ *  (`02_RULES` · `01_CONSTITUTION`) is still READ through `shelfDir`; everything is WRITTEN under these names. */
+export const SHELVES = [SHELF.rules, SHELF.constitution, SHELF.structure, SHELF.skills] as const;
 export type Shelf = (typeof SHELVES)[number];
 
 /** The file of a part that carries its header (id · name · version · from). */
 export const MAIN_FILE: Record<Shelf, string> = {
-  "01_CONSTITUTION": "RULE.md",
-  "02_RULES": "RULE.md",
-  "03_STRUCTURE": "SLOT.md",
-  "04_SKILLS": "SKILL.md",
+  [SHELF.rules]: "RULE.md",
+  [SHELF.constitution]: "RULE.md",
+  [SHELF.structure]: "SLOT.md",
+  [SHELF.skills]: "SKILL.md",
 };
+
+/** A shelf name as written anywhere (legacy included) → the current shelf. */
+export function currentShelf(name: string): Shelf | null {
+  if ((SHELVES as readonly string[]).includes(name)) return name as Shelf;
+  return (LEGACY_SHELF[name] as Shelf | undefined) ?? null;
+}
+
+/**
+ * Rename a harness's legacy shelf folders to the current names, once (`02_RULES` → `01_RULES` · `01_CONSTITUTION` →
+ * `02_CONSTITUTION`). Done before assembly writes anything, so parts never end up split across two shelf folders.
+ * Returns the renames made.
+ */
+export function renameLegacyShelves(agentDir: string): string[] {
+  const done: string[] = [];
+  for (const [old, cur] of Object.entries(LEGACY_SHELF)) {
+    if (old === cur) continue;
+    const from = join(agentDir, old), to = join(agentDir, cur);
+    if (!existsSync(from) || existsSync(to)) continue;
+    try { if (!statSync(from).isDirectory()) continue; } catch { continue; }
+    renameSync(from, to);
+    done.push(`${old} → ${cur}`);
+  }
+  return done;
+}
 
 export interface Part {
   shelf: Shelf;
@@ -338,10 +364,10 @@ function pick(parts: Part[], patterns: string[], by: (p: Part) => string): Part[
 export function kitParts(kit: Kit, storeDir = STORE_DIR): Part[] {
   const fits = (p: Part): boolean => p.applies.length === 0 || p.applies.includes(kit.structure);
   return [
-    ...pick(listParts(storeDir, "01_CONSTITUTION"), kit.constitution, (p) => p.id),
-    ...pick(listParts(storeDir, "02_RULES"), kit.rules, (p) => p.id),
-    ...pick(listParts(storeDir, "03_STRUCTURE"), kit.slots, (p) => p.id),
-    ...pick(listParts(storeDir, "04_SKILLS"), kit.skills, (p) => p.folder),
+    ...pick(listParts(storeDir, SHELF.constitution), kit.constitution, (p) => p.id),
+    ...pick(listParts(storeDir, SHELF.rules), kit.rules, (p) => p.id),
+    ...pick(listParts(storeDir, SHELF.structure), kit.slots, (p) => p.id),
+    ...pick(listParts(storeDir, SHELF.skills), kit.skills, (p) => p.folder),
   ].filter(fits);
 }
 
@@ -734,14 +760,14 @@ export function skillReadTriggers(skillsDir: string): Array<ReadTrigger & { skil
 export function promptGates(skillsDir: string, agentDir: string): PromptGate[] {
   const dirs: string[] = [];
   if (existsSync(skillsDir)) for (const e of readdirSync(skillsDir, { withFileTypes: true })) if (e.isDirectory()) dirs.push(join(skillsDir, e.name));
-  for (const shelf of ["01_CONSTITUTION", "02_RULES"] as const) for (const p of listParts(agentDir, shelf)) if (!isRetired(p)) dirs.push(p.dir);
+  for (const shelf of [SHELF.rules, SHELF.constitution] as const) for (const p of listParts(agentDir, shelf)) if (!isRetired(p)) dirs.push(p.dir);
   return dirs.map((d) => gateOf(d)?.prompt).filter((g): g is PromptGate => Boolean(g && g.re && g.text && g.kind));
 }
 
 /** True when a repo's harness is the folder layout (plan/28 §0c): `02_RULES` is a folder, not a file. */
 export function isFolderHarness(agentDir: string): boolean {
   try {
-    return statSync(join(agentDir, "02_RULES")).isDirectory();
+    return statSync(shelfDir(agentDir, SHELF.rules)).isDirectory();
   } catch {
     return false;
   }

@@ -17,13 +17,13 @@ import { basename, join, relative } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { TEMPLATE_DIR } from "./adopt.js";
 import { generateGuards, hooksDirOf } from "./guard-gen.js";
-import { camelName, formatPartName, legacyKey } from "./harness-names.js";
+import { SHELF, camelName, formatPartName, legacyKey } from "./harness-names.js";
 import { applyKit, writeKitMarker, type KitApplyResult } from "./kit-apply.js";
 import { ruleBlocks } from "./rule-core.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { hpGateRows } from "./validate.js";
 import { historyOfRel, revText } from "./standard.js";
-import { findKit, isFolderHarness, kitParts, listParts, STORE_DIR, type Kit } from "./store.js";
+import { findKit, isFolderHarness, kitParts, listParts, shelfDir, STORE_DIR, type Kit } from "./store.js";
 
 export interface MigrateReport {
   root: string;
@@ -180,7 +180,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
 
   // ── what will happen (computed the same for dry-run and apply) ──
   // Matched by KEY (plan/28 §0o): the repo's file names a rule `02-7`, the store part is keyed `Rule_7`.
-  const storeRuleKeys = new Set(kitParts(kit, storeDir).filter((p) => p.shelf === "02_RULES").map((p) => p.key));
+  const storeRuleKeys = new Set(kitParts(kit, storeDir).filter((p) => p.shelf === SHELF.rules).map((p) => p.key));
   const keyOfId = (id: string): string => legacyKey(id) ?? id;
   const known = knownRuleTexts();
   const blocks = ruleBlocks(rulesText);
@@ -225,10 +225,10 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   if (existsSync(oldHooks)) cpSync(oldHooks, join(archive, "hooks"), { recursive: true, filter: (s) => !/[\\/]\.(allow-[^\\/]*|seen\.json)$/.test(s) });
 
   // ── constitution: PURPOSE + one folder per article (the repo's own: no from) ──
-  mkdirSync(join(agent, "01_CONSTITUTION"), { recursive: true });
-  writeFileSync(join(agent, "01_CONSTITUTION", "PURPOSE.md"), `# ${basename(root)} — Mục đích\n\n${con.purpose}`);
+  mkdirSync(join(agent, SHELF.constitution), { recursive: true });
+  writeFileSync(join(agent, SHELF.constitution, "PURPOSE.md"), `# ${basename(root)} — Mục đích\n\n${con.purpose}`);
   for (const a of con.articles) {
-    const d = join(agent, "01_CONSTITUTION", partFolder("Cons", a.n, "Core", a.title));
+    const d = join(agent, SHELF.constitution, partFolder("Cons", a.n, "Core", a.title));
     mkdirSync(d, { recursive: true });
     const row = rows.get(a.n);
     const rowLine = row ? `\n\n- Cổng khai ở bảng cổng hiến pháp cũ: ${[row.kind, row.gate].filter(Boolean).join(" — ")} *(đổi thành \`gate.json\` khi có chốt máy thật)*` : "";
@@ -241,10 +241,10 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
 
   // ── rules: the old file leaves; repo-only rules become the repo's own folders ──
   rmSync(join(agent, "02_RULES.md"), { force: true });
-  mkdirSync(join(agent, "02_RULES"), { recursive: true });
-  if (rep.legacyRules) writeFileSync(join(agent, "02_RULES", "LEGACY.md"), rulesText);
+  mkdirSync(join(agent, SHELF.rules), { recursive: true });
+  if (rep.legacyRules) writeFileSync(join(agent, SHELF.rules, "LEGACY.md"), rulesText);
   for (const o of own) {
-    const d = join(agent, "02_RULES", partFolder("Rule", Number(o.id.split("-")[1]), o.gate ? "Gate" : "Core", title(o.text)));
+    const d = join(agent, SHELF.rules, partFolder("Rule", Number(o.id.split("-")[1]), o.gate ? "Gate" : "Core", title(o.text)));
     mkdirSync(d, { recursive: true });
     const kind = o.gate ? "content" : "judgment";
     writeFileSync(join(d, "RULE.md"), `---\nid: ${keyOfId(o.id)}\naka: ${o.id}\nname: ${slugOf(title(o.text))}\nversion: 1\nkind: ${kind}\n---\n# ${basename(d)} ${title(o.text)}\n\n${o.text.trim()}\n`);
@@ -277,7 +277,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
 
   // Local wording of a store rule: kept inside the assembled RULE.md for a hand merge (the copy now counts as edited).
   for (const l of local) {
-    const dir = listParts(agent, "02_RULES").find((p) => p.key === keyOfId(l.id))?.dir;
+    const dir = listParts(agent, SHELF.rules).find((p) => p.key === keyOfId(l.id))?.dir;
     if (!dir) continue;
     const p = join(dir, "RULE.md");
     writeFileSync(p, readFileSync(p, "utf8").replace(/\s*$/, "") +
@@ -306,12 +306,16 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
 export function repointLinks(root: string, apply: boolean): string[] {
   const agentDir = harnessPathsAt(root).agent;
   const MAP: Array<[RegExp, string]> = [
-    [/(\]\([^)\s]*?)01_CONSTITUTION\.md((?:#[^)\s]*)?\))/g, "$101_CONSTITUTION/PURPOSE.md$2"],
-    [/(\]\([^)\s]*?)02_RULES\.md(?:#[^)\s]*)?\)/g, "$102_RULES/)"],
+    // the file harness → the folder shelves (current names)
+    [/(\]\([^)\s]*?)01_CONSTITUTION\.md((?:#[^)\s]*)?\))/g, `$1${SHELF.constitution}/PURPOSE.md$2`],
+    [/(\]\([^)\s]*?)02_RULES\.md(?:#[^)\s]*)?\)/g, `$1${SHELF.rules}/)`],
     [/(\]\([^)\s]*?)03_STRUCTURE\.md(?:#[^)\s]*)?\)/g, "$103_STRUCTURE/INDEX.md)"],
+    // a folder harness on the legacy shelf names (plan/28 §0o) → the current names
+    [/(\]\([^)\s]*?)01_CONSTITUTION\//g, `$1${SHELF.constitution}/`],
+    [/(\]\([^)\s]*?)02_RULES\//g, `$1${SHELF.rules}/`],
   ];
   // Assembled parts (rules · slots · articles · skills) are fixed in the store and reach the repo by sync, never here.
-  const SKIP = /[\\/](archive|node_modules|\.git|\.claude|attic|external|dist|02_RULES|03_STRUCTURE[\\/]03-|01_CONSTITUTION[\\/]01-)([\\/]|$)/;
+  const SKIP = /[\\/](archive|node_modules|\.git|\.claude|attic|external|dist|0[12]_RULES|03_STRUCTURE[\\/](03-|Slot_)|0[12]_CONSTITUTION[\\/](01-|Cons_))([\\/]|$)/;
   const changed: string[] = [];
   const walk = (d: string): void => {
     let ents: import("node:fs").Dirent[] = [];
@@ -325,11 +329,11 @@ export function repointLinks(root: string, apply: boolean): string[] {
       let n = t;
       for (const [re, to] of MAP) n = n.replace(re, to);
       // A link whose text names an article ("điều 2") goes to that article's folder, not to PURPOSE.
-      n = n.replace(/\[([^\]]*?điều\s+(\d{1,2})[^\]]*)\]\(([^)\s]*?)01_CONSTITUTION\/PURPOSE\.md\)/gi, (whole, text: string, num: string, pre: string) => {
-        const art = existsSync(join(agentDir, "01_CONSTITUTION"))
-          ? listParts(agentDir, "01_CONSTITUTION").find((p) => p.key === `Cons_${Number(num)}`)?.folder
+      n = n.replace(/\[([^\]]*?điều\s+(\d{1,2})[^\]]*)\]\(([^)\s]*?)0[12]_CONSTITUTION\/PURPOSE\.md\)/gi, (whole, text: string, num: string, pre: string) => {
+        const art = existsSync(shelfDir(agentDir, SHELF.constitution))
+          ? listParts(agentDir, SHELF.constitution).find((p) => p.key === `Cons_${Number(num)}`)?.folder
           : undefined;
-        return art ? `[${text}](${pre}01_CONSTITUTION/${art}/RULE.md)` : whole;
+        return art ? `[${text}](${pre}${SHELF.constitution}/${art}/RULE.md)` : whole;
       });
       if (n !== t) {
         if (apply) writeFileSync(p, n);

@@ -51,7 +51,7 @@
       "files": {},
       "tool_name": "Write",
       "tool_input": {
-        "file_path": "docs/agent/02_RULES/Rule_Core_80_DieuMotBatBien/RULE.md",
+        "file_path": "docs/agent/01_RULES/Rule_Core_80_DieuMotBatBien/RULE.md",
         "content": "x\n"
       },
       "policy": {
@@ -181,7 +181,7 @@
       "files": {},
       "tool_name": "Write",
       "tool_input": {
-        "file_path": "docs/agent/02_RULES/Rule_Core_80_OneNameDictionary/RULE.md",
+        "file_path": "docs/agent/01_RULES/Rule_Core_80_OneNameDictionary/RULE.md",
         "content": "x\n"
       },
       "policy": {

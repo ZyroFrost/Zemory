@@ -55,7 +55,7 @@ test("every built kit names parts that exist", () => {
 
 test("every store hook.cjs is a byte copy of the generator source (one source while both layouts live)", () => {
   const sources = [...RULE_HOOKS.map((h) => [h.file.replace(/\.cjs$/, ""), h.source]), ["02-25_sql-one-way", SQL_GATE_SOURCE]];
-  const rules = listParts(STORE_DIR, "02_RULES");
+  const rules = listParts(STORE_DIR, "01_RULES");
   for (const [folder, source] of sources) {
     // The generator still names hooks by the legacy id (`02-24_eol-keep`); the store part is found by its key.
     const part = rules.find((r) => r.key === `Rule_${Number(folder.split("_")[0].split("-")[1])}`);
@@ -80,40 +80,40 @@ test("every renamed part name tells the truth: code, enforcement group, slot are
 
 test("negative: a name that lies about its enforcement, area, number or shelf is reported; a legacy name is listed apart", (t) => {
   const s = tempDir(t, "zemory-store-names-");
-  put(s, "02_RULES/Rule_Keys_09_X/RULE.md", "---\nid: Rule_9\nname: x\nversion: 1\n---\nx\n"); // no prompt gate: really Core
-  put(s, "02_RULES/Rule_Gate_07_Y/RULE.md", "---\nid: Rule_7\nname: y\nversion: 1\n---\ny\n");
-  put(s, "02_RULES/Rule_Gate_07_Y/gate.json", JSON.stringify({ hook: "hook.cjs" }));
-  put(s, "02_RULES/Rule_Core_06_Z/RULE.md", "---\nid: Rule_5\nname: z\nversion: 1\n---\nz\n"); // number disagrees with id
+  put(s, "01_RULES/Rule_Keys_09_X/RULE.md", "---\nid: Rule_9\nname: x\nversion: 1\n---\nx\n"); // no prompt gate: really Core
+  put(s, "01_RULES/Rule_Gate_07_Y/RULE.md", "---\nid: Rule_7\nname: y\nversion: 1\n---\ny\n");
+  put(s, "01_RULES/Rule_Gate_07_Y/gate.json", JSON.stringify({ hook: "hook.cjs" }));
+  put(s, "01_RULES/Rule_Core_06_Z/RULE.md", "---\nid: Rule_5\nname: z\nversion: 1\n---\nz\n"); // number disagrees with id
   put(s, "03_STRUCTURE/Slot_Frontend_012_Cmd/SLOT.md", "---\nid: Slot_12\nname: cmd\nversion: 1\npath: backend/src/commands/\n---\nc\n");
   put(s, "03_STRUCTURE/Rule_Core_04_W/SLOT.md", "---\nid: Rule_4\nname: w\nversion: 1\npath: x/\n---\nw\n");
-  put(s, "02_RULES/02-3_old/RULE.md", "---\nid: 02-3\nname: old\nversion: 1\n---\no\n");
-  put(s, "Archive/02_RULES/Rule_Core_09_Retired/RULE.md", "---\nid: Rule_9\nname: r\nversion: 2\nretired: 2026-10-15 · x\n---\nr\n");
+  put(s, "01_RULES/02-3_old/RULE.md", "---\nid: 02-3\nname: old\nversion: 1\n---\no\n");
+  put(s, "Archive/01_RULES/Rule_Core_09_Retired/RULE.md", "---\nid: Rule_9\nname: r\nversion: 2\nretired: 2026-10-15 · x\n---\nr\n");
   const { wrong, legacy } = partNameFindings(s);
-  assert.ok(wrong.some((x) => /Archive\/02_RULES\/Rule_Core_09_Retired: key Rule_9 is already taken/.test(x)), "a retired number is never handed out again");
+  assert.ok(wrong.some((x) => /Archive\/01_RULES\/Rule_Core_09_Retired: key Rule_9 is already taken/.test(x)), "a retired number is never handed out again");
   const says = (re) => assert.ok(wrong.some((x) => re.test(x)), `${re}\n${wrong.join("\n")}`);
   says(/Rule_Keys_09_X: named Keys but its gate\.json makes it Core/);
   says(/Rule_Core_06_Z: the name says Rule_6 but the header id says Rule_5/);
   says(/Slot_Frontend_012_Cmd: area Frontend but path backend\/src\/commands\/ is in Backend/);
   says(/Rule_Core_04_W: code Rule does not belong on 03_STRUCTURE/);
   assert.ok(!wrong.some((x) => /Rule_Gate_07_Y/.test(x)), "a truthful name passes");
-  assert.deepEqual(legacy, ["02_RULES/02-3_old"]);
+  assert.deepEqual(legacy, ["01_RULES/02-3_old"]);
 });
 
 test("negative: a wrong example, a gate with no examples and a private line are all reported", (t) => {
   const s = tempDir(t, "zemory-store-neg-");
-  put(s, "02_RULES/02-9_x/RULE.md", "---\nid: 02-9\nname: x\nversion: 1\nkind: content\n---\nx\n");
-  put(s, "02_RULES/02-9_x/hook.cjs", 'module.exports = { check: (p) => (String(p.tool_input.content).includes("BAD") ? "no" : null) };\n');
-  put(s, "02_RULES/02-9_x/gate.json", JSON.stringify({ hook: "hook.cjs",
+  put(s, "01_RULES/02-9_x/RULE.md", "---\nid: 02-9\nname: x\nversion: 1\nkind: content\n---\nx\n");
+  put(s, "01_RULES/02-9_x/hook.cjs", 'module.exports = { check: (p) => (String(p.tool_input.content).includes("BAD") ? "no" : null) };\n');
+  put(s, "01_RULES/02-9_x/gate.json", JSON.stringify({ hook: "hook.cjs",
     block: [{ tool_name: "Write", tool_input: { file_path: "a", content: "fine" } }],
     pass: [{ tool_name: "Write", tool_input: { file_path: "a", content: "BAD" } }] }));
   put(s, "03_STRUCTURE/03-9_y/SLOT.md", "---\nid: 03-9\nname: y\nversion: 1\n---\ny\n");
   put(s, "03_STRUCTURE/03-9_y/gate.json", JSON.stringify({ conform: { require: ["A.md"] } }));
-  put(s, "02_RULES/02-8_z/RULE.md", "---\nid: 02-8\nname: z\nversion: 1\nkind: judgment\n---\nasked the user, decided 2026-10-14\n");
+  put(s, "01_RULES/02-8_z/RULE.md", "---\nid: 02-8\nname: z\nversion: 1\nkind: judgment\n---\nasked the user, decided 2026-10-14\n");
   const f = gateExampleFindings(s);
   assert.ok(f.some((x) => /02-9 x: block example 1 went through/.test(x)), f.join("\n"));
   assert.ok(f.some((x) => /02-9 x: pass example 1 was blocked/.test(x)), f.join("\n"));
   assert.ok(f.some((x) => /03-9 y: needs at least one block and one pass example/.test(x)), f.join("\n"));
-  put(s, "02_RULES/02-8_z/notes.md", "role `user` in a transcript\nmail ops@company.vn\nsample a@b.example\n");
+  put(s, "01_RULES/02-8_z/notes.md", "role `user` in a transcript\nmail ops@company.vn\nsample a@b.example\n");
   const priv = storePrivacyFindings(s);
   assert.ok(priv.some((x) => /02-8_z\/RULE\.md:7 — names the person/.test(x)), priv.join("\n"));
   assert.ok(!priv.some((x) => /notes\.md:1 /.test(x)), "a backticked `user` is data, not a person");

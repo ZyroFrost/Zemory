@@ -15,17 +15,17 @@ mỗi luật và mỗi slot một folder; file này chỉ chỉ đường.
    rồi `zemory doctor` xanh. Thiếu lệnh `zemory` ⇒ cài bằng một lệnh PowerShell:
    `irm <ZEMORY_RAW>/backend/scripts/install.ps1 | iex` (đặt `$env:ZEMORY_DIR` trước — hỏi nếu chưa rõ thư mục cài; kho
    nhớ không nằm trong thư mục cài). Tab Code của Claude Desktop không đọc PowerShell profile ⇒ cài xong mở lại app.
-   - Init xong ⇒ liệt kê một lần mọi luật `docs/agent/02_RULES/02-N_*/` (số + tiêu đề) và hỏi giữ · sửa · bỏ. Bỏ một luật
+   - Init xong ⇒ liệt kê một lần mọi luật `docs/agent/01_RULES/Rule_*/` (tên đầy đủ) và hỏi giữ · sửa · bỏ. Bỏ một luật
      = thêm `retired: true` vào đầu `RULE.md`, giữ folder và số (`Rule_Gate_10_ConfirmDelete`). Chưa trả lời ⇒ giữ mặc định.
 2. **Lõi được chèn sẵn đầu phiên** — Mục đích của repo + các luật phán đoán (không có chốt máy). Luật còn lại có chốt máy:
    vi phạm thì bị chặn, câu chặn mang nguyên văn luật.
 3. **Đọc `docs/agent/05_TODO.md`** trước khi làm.
-4. **Tra khi cần, không đọc hết:** luật `docs/agent/02_RULES/<số>_<tên>/RULE.md` · hiến pháp `docs/agent/01_CONSTITUTION/`
+4. **Tra khi cần, không đọc hết:** luật `docs/agent/01_RULES/Rule_<Gate·Keys·Core>_<NN>_<Tên>/RULE.md` · hiến pháp `docs/agent/02_CONSTITUTION/`
    · slot `docs/agent/03_STRUCTURE/` (`INDEX.md`: thứ gì nằm đâu, từ điển dữ liệu của repo) · lịch sử
    `zemory changelog search` (phủ cả `docs/agent/archive/`) · thiết kế `zemory plan search "<vùng>"` trước khi đề xuất hay
    đổi thiết kế một vùng. Không thấy một việc trong `05_TODO`/`06_CHANGES` không có nghĩa là chưa từng có — tra archive
    trước khi kết luận.
-5. Hiến pháp (`01_CONSTITUTION/`) đứng trên luật làm việc (`02_RULES/`).
+5. Luật chung (`01_RULES/`) là sàn cho mọi repo; hiến pháp (`02_CONSTITUTION/`) của repo chỉ siết thêm, không nới.
 
 ## Mở khi trúng trigger — chưa trúng thì không mở
 Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `description`; bảng này là đường dự phòng.

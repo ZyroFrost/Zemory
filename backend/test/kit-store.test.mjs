@@ -4,10 +4,11 @@
 // and the JSON decision), the way the host calls it.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { applyKit } from "../../dist/docs/kit-apply.js";
+import { repointLinks } from "../../dist/docs/kit-migrate.js";
 import { frontMatter, hashFiles, parseFrom } from "../../dist/docs/store.js";
 import { generateGuards } from "../../dist/docs/guard-gen.js";
 import { coreForCompaction, folderCoreIssues, ruleCoverage } from "../../dist/docs/rule-core.js";
@@ -42,19 +43,19 @@ function store(t) {
   git(root, "config", "user.email", "t@t");
   git(root, "config", "user.name", "t");
   const s = join(root, "_Store");
-  put(s, "02_RULES/02-1_alpha/RULE.md", "---\nid: 02-1\nname: alpha\nversion: 1\nkind: judgment\n---\n# alpha\n\n- line one\n- line two\n- line three\n");
-  put(s, "02_RULES/02-2_beta/RULE.md", "---\nid: 02-2\nname: beta\nversion: 1\nkind: content\n---\n# beta\n\n- never write FORBIDDEN\n");
-  put(s, "02_RULES/02-2_beta/gate.json", '{ "hook": "hook.cjs" }\n');
-  put(s, "02_RULES/02-2_beta/hook.cjs", HOOK);
-  put(s, "02_RULES/02-55_hook-guard/RULE.md", "---\nid: 02-55\nname: hook-guard\nversion: 1\nkind: action\ngenerated: [guard.cjs, policy.json, precommit-guard.cjs, 02-59_read-first.cjs]\n---\n# guard\n");
-  put(s, "02_RULES/02-55_hook-guard/gate.json", '{ "gate": "guard" }\n');
+  put(s, "01_RULES/02-1_alpha/RULE.md", "---\nid: 02-1\nname: alpha\nversion: 1\nkind: judgment\n---\n# alpha\n\n- line one\n- line two\n- line three\n");
+  put(s, "01_RULES/02-2_beta/RULE.md", "---\nid: 02-2\nname: beta\nversion: 1\nkind: content\n---\n# beta\n\n- never write FORBIDDEN\n");
+  put(s, "01_RULES/02-2_beta/gate.json", '{ "hook": "hook.cjs" }\n');
+  put(s, "01_RULES/02-2_beta/hook.cjs", HOOK);
+  put(s, "01_RULES/02-55_hook-guard/RULE.md", "---\nid: 02-55\nname: hook-guard\nversion: 1\nkind: action\ngenerated: [guard.cjs, policy.json, precommit-guard.cjs, 02-59_read-first.cjs]\n---\n# guard\n");
+  put(s, "01_RULES/02-55_hook-guard/gate.json", '{ "gate": "guard" }\n');
   put(s, "03_STRUCTURE/03-1_entry/SLOT.md", "---\nid: 03-1\nname: entry\nversion: 1\npath: AGENTS.md\n---\n# entry\n");
   put(s, "03_STRUCTURE/03-1_entry/gate.json", JSON.stringify({ conform: { require: ["AGENTS.md", "CLAUDE.md"], contains: { "CLAUDE.md": "@AGENTS.md" } } }));
   put(s, "04_SKILLS/sk/SKILL.md", "---\nname: sk\nversion: 1\ndescription: x\n---\n# sk\n");
   put(s, "04_SKILLS/sk/gate.json", JSON.stringify({ read: [{ when: "path_prefix", prefix: "frontend" }],
     prompt: { kind: "sk-door", re: "mở cửa sk", text: "[zemory] SK REMINDER" },
     block: [{ path: "frontend/a.js" }], pass: [{ path: "backend/a.ts" }] }));
-  put(s, "01_CONSTITUTION/01-1_secrets/RULE.md", "---\nid: 01-1\nname: secrets\nversion: 1\nkind: judgment\nsuggested: true\n---\n# secrets\n");
+  put(s, "02_CONSTITUTION/01-1_secrets/RULE.md", "---\nid: 01-1\nname: secrets\nversion: 1\nkind: judgment\nsuggested: true\n---\n# secrets\n");
   put(s, "Own/X/AGENTS.md", "# <PROJECT>\n");
   put(s, "Own/X/CLAUDE.md", "@AGENTS.md\n");
   put(s, "Own/X/docs/agent/04_SKILLS.md", "# skills\n\n<!-- zemory:skills:start · machine block -->\n<!-- zemory:skills:end -->\n");
@@ -75,7 +76,7 @@ function repo(t) {
 }
 
 const verdicts = (r) => Object.fromEntries(r.steps.map((s) => [s.part.folder, s.verdict]));
-const rule = (root, folder) => join(root, "docs", "agent", "02_RULES", folder, "RULE.md");
+const rule = (root, folder) => join(root, "docs", "agent", "01_RULES", folder, "RULE.md");
 
 test("init assembles every part at its numbered place, stamped with from:, plus the kit's own files and marker", (t) => {
   const st = store(t);
@@ -89,7 +90,7 @@ test("init assembles every part at its numbered place, stamped with from:, plus 
     const from = parseFrom(String(frontMatter(readFileSync(rule(root, f), "utf8")).meta.from));
     assert.ok(from && from.version === 1 && from.folder === f, `${f} carries a from: line`);
   }
-  assert.ok(existsSync(join(root, "docs", "agent", "02_RULES", "02-2_beta", "hook.cjs")), "the hook travels with its rule");
+  assert.ok(existsSync(join(root, "docs", "agent", "01_RULES", "02-2_beta", "hook.cjs")), "the hook travels with its rule");
   assert.ok(existsSync(join(root, "docs", "agent", "03_STRUCTURE", "03-1_entry", "SLOT.md")));
   assert.ok(existsSync(join(root, ".claude", "skills", "sk", "SKILL.md")), "a skill lands where the host loads it");
   assert.match(readFileSync(join(root, "docs", "agent", "04_SKILLS.md"), "utf8"), /\| `sk\/` \| _Store\/04_SKILLS\/sk @v1 #[0-9a-f]{12} \|/);
@@ -101,17 +102,17 @@ test("suggested constitution articles are offered once: a declined one never com
   const st = store(t);
   const root = repo(t);
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
-  const art = join(root, "docs", "agent", "01_CONSTITUTION", "01-1_secrets", "RULE.md");
+  const art = join(root, "docs", "agent", "02_CONSTITUTION", "01-1_secrets", "RULE.md");
   assert.ok(existsSync(art), "init offers the article");
   // The store revises the article; the repo's kept copy stays as it is.
-  const p = join(st.s, "01_CONSTITUTION", "01-1_secrets", "RULE.md");
+  const p = join(st.s, "02_CONSTITUTION", "01-1_secrets", "RULE.md");
   writeFileSync(p, readFileSync(p, "utf8").replace("version: 1", "version: 2").replace("# secrets", "# secrets, revised"));
   const kept = readFileSync(art, "utf8");
   const r = applyKit(root, { apply: true, storeDir: st.s });
-  assert.ok(!r.steps.some((s) => s.part.shelf === "01_CONSTITUTION"), "sync does not touch the constitution");
+  assert.ok(!r.steps.some((s) => s.part.shelf === "02_CONSTITUTION"), "sync does not touch the constitution");
   assert.equal(readFileSync(art, "utf8"), kept);
   // The repo declines it: sync never adds it back.
-  rmSync(join(root, "docs", "agent", "01_CONSTITUTION", "01-1_secrets"), { recursive: true });
+  rmSync(join(root, "docs", "agent", "02_CONSTITUTION", "01-1_secrets"), { recursive: true });
   applyKit(root, { apply: true, storeDir: st.s });
   assert.ok(!existsSync(art), "a declined article stays declined");
 });
@@ -129,14 +130,14 @@ test("a local edit with the part unchanged stays current; a store change merges 
   writeFileSync(rule(root, "02-1_alpha"), readFileSync(rule(root, "02-1_alpha"), "utf8") + "- local line\n");
   assert.equal(verdicts(applyKit(root, { apply: false, storeDir: st.s }))["02-1_alpha"], "current", "the repo's edit is its own business");
 
-  const p = join(st.s, "02_RULES", "02-1_alpha", "RULE.md");
+  const p = join(st.s, "01_RULES", "02-1_alpha", "RULE.md");
   writeFileSync(p, readFileSync(p, "utf8").replace("version: 1", "version: 2").replace("- line one", "- line one, revised"));
   const r = applyKit(root, { apply: true, storeDir: st.s });
   assert.equal(verdicts(r)["02-1_alpha"], "merged");
   const text = readFileSync(rule(root, "02-1_alpha"), "utf8");
   assert.match(text, /line one, revised/, "the store's change arrived");
   assert.match(text, /- local line/, "the repo's line survived");
-  assert.match(text, /from: _Store\/02_RULES\/02-1_alpha @v2 #/);
+  assert.match(text, /from: _Store\/01_RULES\/02-1_alpha @v2 #/);
   assert.equal(verdicts(applyKit(root, { apply: false, storeDir: st.s }))["02-1_alpha"], "current", "no false conflict after a merge");
 });
 
@@ -146,7 +147,7 @@ test("the same line changed on both sides is a conflict and nothing is written",
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
   const local = readFileSync(rule(root, "02-1_alpha"), "utf8").replace("- line two", "- line two, ours");
   writeFileSync(rule(root, "02-1_alpha"), local);
-  const p = join(st.s, "02_RULES", "02-1_alpha", "RULE.md");
+  const p = join(st.s, "01_RULES", "02-1_alpha", "RULE.md");
   writeFileSync(p, readFileSync(p, "utf8").replace("version: 1", "version: 2").replace("- line two", "- line two, theirs"));
   const r = applyKit(root, { apply: true, storeDir: st.s });
   const step = r.steps.find((s) => s.part.folder === "02-1_alpha");
@@ -162,8 +163,8 @@ test("a part renamed in the store (same id) is found by key: the copy moves to t
   const root = repo(t);
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
   writeFileSync(rule(root, "02-1_alpha"), readFileSync(rule(root, "02-1_alpha"), "utf8") + "- local line\n");
-  git(st.root, "mv", "_Store/02_RULES/02-1_alpha", "_Store/02_RULES/Rule_Keys_01_Alpha");
-  const p = join(st.s, "02_RULES", "Rule_Keys_01_Alpha", "RULE.md");
+  git(st.root, "mv", "_Store/01_RULES/02-1_alpha", "_Store/01_RULES/Rule_Keys_01_Alpha");
+  const p = join(st.s, "01_RULES", "Rule_Keys_01_Alpha", "RULE.md");
   writeFileSync(p, readFileSync(p, "utf8").replace("version: 1", "version: 2").replace("- line one", "- line one, revised"));
   st.commit("rename alpha");
   const plan = applyKit(root, { apply: false, storeDir: st.s });
@@ -171,11 +172,11 @@ test("a part renamed in the store (same id) is found by key: the copy moves to t
   assert.equal(step.verdict, "merged", `the base must be found across the rename: ${step.reason ?? ""}`);
   assert.match(step.renameFrom ?? "", /02-1_alpha$/);
   applyKit(root, { apply: true, storeDir: st.s });
-  assert.ok(!existsSync(join(root, "docs", "agent", "02_RULES", "02-1_alpha")), "the old folder is gone — one copy per rule");
+  assert.ok(!existsSync(join(root, "docs", "agent", "01_RULES", "02-1_alpha")), "the old folder is gone — one copy per rule");
   const text = readFileSync(rule(root, "Rule_Keys_01_Alpha"), "utf8");
   assert.match(text, /line one, revised/, "the store's change arrived");
   assert.match(text, /- local line/, "the repo's edit survived the move");
-  assert.match(text, /from: _Store\/02_RULES\/Rule_Keys_01_Alpha @v2 #/);
+  assert.match(text, /from: _Store\/01_RULES\/Rule_Keys_01_Alpha @v2 #/);
   assert.equal(verdicts(applyKit(root, { apply: false, storeDir: st.s }))["Rule_Keys_01_Alpha"], "current");
 });
 
@@ -183,33 +184,57 @@ test("a renamed part with nothing to bring still moves, keeping the repo's conte
   const st = store(t);
   const root = repo(t);
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
-  git(st.root, "mv", "_Store/02_RULES/02-2_beta", "_Store/02_RULES/Rule_Gate_02_Beta");
+  git(st.root, "mv", "_Store/01_RULES/02-2_beta", "_Store/01_RULES/Rule_Gate_02_Beta");
   st.commit("rename beta");
   const r = applyKit(root, { apply: true, storeDir: st.s });
   const step = r.steps.find((s) => s.part.key === "Rule_2");
   assert.ok(step.renameFrom, "the copy is moved");
-  assert.ok(existsSync(join(root, "docs", "agent", "02_RULES", "Rule_Gate_02_Beta", "hook.cjs")), "every file moved with the folder");
-  assert.ok(!existsSync(join(root, "docs", "agent", "02_RULES", "02-2_beta")));
-  assert.match(readFileSync(rule(root, "Rule_Gate_02_Beta"), "utf8"), /from: _Store\/02_RULES\/Rule_Gate_02_Beta @v1 #/, "the stamp names the new folder");
+  assert.ok(existsSync(join(root, "docs", "agent", "01_RULES", "Rule_Gate_02_Beta", "hook.cjs")), "every file moved with the folder");
+  assert.ok(!existsSync(join(root, "docs", "agent", "01_RULES", "02-2_beta")));
+  assert.match(readFileSync(rule(root, "Rule_Gate_02_Beta"), "utf8"), /from: _Store\/01_RULES\/Rule_Gate_02_Beta @v1 #/, "the stamp names the new folder");
+});
+
+test("a repo on the legacy shelf folders is moved to the current ones before assembly: no shelf split, links follow", (t) => {
+  // The 9 repos moved to the folder harness first got `02_RULES/` and `01_CONSTITUTION/`. plan/28 §0o renumbers the
+  // shelves (common rules above the constitution); a sync must rename the folders first, or the parts it writes would sit
+  // in `01_RULES/` beside an old `02_RULES/` still holding the repo's own rules.
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const agent = join(root, "docs", "agent");
+  renameSync(join(agent, "01_RULES"), join(agent, "02_RULES"));
+  renameSync(join(agent, "02_CONSTITUTION"), join(agent, "01_CONSTITUTION"));
+  put(agent, "02_RULES/Rule_Core_90_OwnRule/RULE.md", "---\nid: Rule_90\nname: own-rule\nversion: 1\nkind: judgment\n---\n# own\n");
+  put(root, "docs/plan/01_x.md", "See [rule](../agent/02_RULES/Rule_Core_90_OwnRule/RULE.md) and [purpose](../agent/01_CONSTITUTION/PURPOSE.md).\n");
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.deepEqual(r.renamedShelves, ["01_CONSTITUTION → 02_CONSTITUTION", "02_RULES → 01_RULES"]);
+  assert.ok(!existsSync(join(agent, "02_RULES")) && !existsSync(join(agent, "01_CONSTITUTION")), "no legacy shelf left behind");
+  assert.ok(existsSync(join(agent, "01_RULES", "Rule_Core_90_OwnRule", "RULE.md")), "the repo's own rule moved with its shelf");
+  assert.ok(existsSync(join(agent, "01_RULES", "Rule_Gate_02_Beta", "hook.cjs")) || existsSync(join(agent, "01_RULES", "02-2_beta", "hook.cjs")),
+    "the store's parts are in the same shelf folder");
+  assert.deepEqual(new Set(Object.values(verdicts(r))), new Set(["current"]), "nothing else changed");
+  assert.deepEqual(repointLinks(root, true), ["docs/plan/01_x.md"]);
+  assert.equal(readFileSync(join(root, "docs/plan/01_x.md"), "utf8"),
+    "See [rule](../agent/01_RULES/Rule_Core_90_OwnRule/RULE.md) and [purpose](../agent/02_CONSTITUTION/PURPOSE.md).\n");
 });
 
 test("an untouched copy is replaced by the newer part; a file the part dropped is removed", (t) => {
   const st = store(t);
   const root = repo(t);
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
-  const d = join(st.s, "02_RULES", "02-2_beta");
+  const d = join(st.s, "01_RULES", "02-2_beta");
   writeFileSync(join(d, "RULE.md"), readFileSync(join(d, "RULE.md"), "utf8").replace("version: 1", "version: 2").replace("FORBIDDEN", "FORBIDDEN or BANNED"));
   writeFileSync(join(d, "gate.json"), '{ "hook": "hook.cjs", "match": { "tool": ["Write"] } }\n');
   const r = applyKit(root, { apply: true, storeDir: st.s });
   assert.equal(verdicts(r)["02-2_beta"], "clean");
   assert.match(readFileSync(rule(root, "02-2_beta"), "utf8"), /FORBIDDEN or BANNED/);
-  assert.match(readFileSync(join(root, "docs", "agent", "02_RULES", "02-2_beta", "gate.json"), "utf8"), /match/);
+  assert.match(readFileSync(join(root, "docs", "agent", "01_RULES", "02-2_beta", "gate.json"), "utf8"), /match/);
 });
 
 test("a folder without from: is the repo's own and is never touched", (t) => {
   const st = store(t);
   const root = repo(t);
-  put(root, "docs/agent/02_RULES/02-1_alpha/RULE.md", "---\nid: 02-1\n---\nmine\n");
+  put(root, "docs/agent/01_RULES/02-1_alpha/RULE.md", "---\nid: 02-1\n---\nmine\n");
   const r = applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
   assert.equal(verdicts(r)["02-1_alpha"], "own");
   assert.equal(readFileSync(rule(root, "02-1_alpha"), "utf8"), "---\nid: 02-1\n---\nmine\n");
@@ -219,8 +244,8 @@ test("generated files in a part folder never count as a local edit, and CRLF doe
   const st = store(t);
   const root = repo(t);
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
-  put(root, "docs/agent/02_RULES/02-55_hook-guard/guard.cjs", "// generated\n");
-  put(root, "docs/agent/02_RULES/02-55_hook-guard/policy.json", "{}\n");
+  put(root, "docs/agent/01_RULES/02-55_hook-guard/guard.cjs", "// generated\n");
+  put(root, "docs/agent/01_RULES/02-55_hook-guard/policy.json", "{}\n");
   const crlf = readFileSync(rule(root, "02-1_alpha"), "utf8").replace(/\n/g, "\r\n");
   writeFileSync(rule(root, "02-1_alpha"), crlf);
   const v = verdicts(applyKit(root, { apply: false, storeDir: st.s }));
@@ -234,9 +259,9 @@ test("the guard of a folder harness lives in 02-55, calls every rule hook, and b
   const root = repo(t);
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
   const g = generateGuards(root);
-  assert.match(g.hooksDir.replace(/\\/g, "/"), /docs\/agent\/02_RULES\/02-55_hook-guard$/);
+  assert.match(g.hooksDir.replace(/\\/g, "/"), /docs\/agent\/01_RULES\/02-55_hook-guard$/);
   const policy = JSON.parse(readFileSync(join(g.hooksDir, "policy.json"), "utf8"));
-  assert.deepEqual(policy.rule_dirs, ["docs/agent/02_RULES/02-2_beta"]);
+  assert.deepEqual(policy.rule_dirs, ["docs/agent/01_RULES/02-2_beta"]);
   assert.deepEqual(policy.rule_hooks, [], "no embedded hooks beside the guard in a folder harness");
   assert.equal(policy.flags_dir, "docs/.harness-state");
   assert.ok(existsSync(join(root, "docs", ".harness-state", ".gitignore")), "runtime state stays out of git");
@@ -259,7 +284,7 @@ test("the core of a folder harness = PURPOSE + judgment rules; coverage counts g
   const st = store(t);
   const root = repo(t);
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
-  put(root, "docs/agent/01_CONSTITUTION/PURPOSE.md", "# purpose of this repo\n");
+  put(root, "docs/agent/02_CONSTITUTION/PURPOSE.md", "# purpose of this repo\n");
   generateGuards(root);
   const agent = join(root, "docs", "agent");
   const core = coreForCompaction(agent);
@@ -273,10 +298,10 @@ test("the core of a folder harness = PURPOSE + judgment rules; coverage counts g
   assert.deepEqual(folderCoreIssues(root, agent), { noCore: false, unmarked: [], gatedInCore: [], badGate: [], overCap: 0 });
 
   // Holes: a content rule with no gate · a hook named in gate.json that is not there · a judgment rule with a gate.
-  put(root, "docs/agent/02_RULES/02-3_gamma/RULE.md", "---\nid: 02-3\nname: gamma\nversion: 1\nkind: action\n---\nx\n");
-  put(root, "docs/agent/02_RULES/02-4_delta/RULE.md", "---\nid: 02-4\nname: delta\nversion: 1\nkind: content\n---\nx\n");
-  put(root, "docs/agent/02_RULES/02-4_delta/gate.json", '{ "hook": "hook.cjs" }\n');
-  put(root, "docs/agent/02_RULES/02-1_alpha/gate.json", '{ "gate": "guard" }\n');
+  put(root, "docs/agent/01_RULES/02-3_gamma/RULE.md", "---\nid: 02-3\nname: gamma\nversion: 1\nkind: action\n---\nx\n");
+  put(root, "docs/agent/01_RULES/02-4_delta/RULE.md", "---\nid: 02-4\nname: delta\nversion: 1\nkind: content\n---\nx\n");
+  put(root, "docs/agent/01_RULES/02-4_delta/gate.json", '{ "hook": "hook.cjs" }\n');
+  put(root, "docs/agent/01_RULES/02-1_alpha/gate.json", '{ "gate": "guard" }\n');
   const i = folderCoreIssues(root, agent);
   assert.deepEqual(i.unmarked, ["02-3"]);
   assert.deepEqual(i.badGate, ["02-4 (hook.cjs missing)"]);

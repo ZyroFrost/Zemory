@@ -2,7 +2,7 @@
 id: Rule_30
 aka: 02-30
 name: ascii-names
-version: 5
+version: 6
 kind: content
 ---
 # Rule_Gate_30_AsciiNames Định danh và tên file: ASCII tiếng Anh

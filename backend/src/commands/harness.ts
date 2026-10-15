@@ -31,7 +31,7 @@ import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, stampRepo, standardDiff } from "../docs/standard.js";
 import { applyKit, repoKit, type KitApplyResult } from "../docs/kit-apply.js";
-import { migrateToKit } from "../docs/kit-migrate.js";
+import { migrateToKit, repointLinks } from "../docs/kit-migrate.js";
 
 /** One line per assembled part: what was (or would be) done. */
 function printKitSteps(r: KitApplyResult, apply: boolean): number {
@@ -63,6 +63,12 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   }
   console.log(`${opts.label}${opts.apply ? "" : " (DRY-RUN)"} — ${root} · kit ${r.kit.name}`);
   if (r.createdMarker) console.log("  + created .harness.json (kit recorded)");
+  if (r.renamedShelves.length) {
+    console.log(`  ✔ shelves renamed: ${r.renamedShelves.join(" · ")}`);
+    // links into the old shelf folders move with them (the words around a link are the repo's and stay)
+    const moved = repointLinks(root, true);
+    if (moved.length) console.log(`  ✔ links repointed in ${moved.length} file(s): ${moved.slice(0, 5).join(" · ")}`);
+  }
   if (r.ownAdded.length) console.log(`  + own files: ${r.ownAdded.join(" · ")}`);
   const conflicts = printKitSteps(r, opts.apply);
   if (opts.apply && r.skillsBlock === "written") console.log("  ✔ 04_SKILLS.md skills block refreshed");

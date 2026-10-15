@@ -1,5 +1,5 @@
 <!-- L3 — tài nguyên của skill `structure`. KHÔNG nạp cùng SKILL.md; chỉ mở khi cần tra quy ước cụ thể.
-     4 luật nổ-lúc-viết (LFS · data thật/mẫu · secret · SQL-DAX-M) KHÔNG ở đây — chúng ở docs/agent/02_RULES/
+     4 luật nổ-lúc-viết (LFS · data thật/mẫu · secret · SQL-DAX-M) KHÔNG ở đây — chúng ở docs/agent/01_RULES/
      vì phải luôn được nạp. Một nội dung, một nhà. -->
 # Quy ước chi tiết — chuẩn thư mục non-app
 
