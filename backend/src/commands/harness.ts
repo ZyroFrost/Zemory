@@ -31,6 +31,7 @@ import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, stampRepo, standardDiff } from "../docs/standard.js";
 import { applyKit, repoKit, type KitApplyResult } from "../docs/kit-apply.js";
+import { migrateToKit } from "../docs/kit-migrate.js";
 
 /** One line per assembled part: what was (or would be) done. */
 function printKitSteps(r: KitApplyResult, apply: boolean): number {
@@ -217,6 +218,30 @@ export function cmdSync(args: string[] = process.argv): void {
     for (const r of rep) console.log(`  ${r.action === "đã đóng dấu" ? "✔" : r.action.startsWith("sẽ") ? "→" : "·"} ${r.file.padEnd(20)} ${stampLabel[r.action] ?? r.action}${r.date ? ` ${r.date}` : ""}${r.own !== undefined ? `  (own ${r.own} · missing vs base ${r.miss})` : ""}`);
     const n = rep.filter((r) => r.action.startsWith("sẽ") || r.action === "đã đóng dấu").length;
     console.log(`  ${apply ? `stamped ${n}` : `would stamp ${n}`}` + (apply ? "" : " — add `--apply` to write"));
+    return;
+  }
+  // plan/28 §0l ⑤⑥ — a file-harness repo moves to the folder harness: same command, a kit named.
+  const kiIdx = args.indexOf("--kit");
+  if (args.includes("--standard") && kiIdx >= 0 && !repoKit(root)) {
+    const apply = args.includes("--apply");
+    const r = migrateToKit(root, { kitRef: args[kiIdx + 1] ?? "", apply });
+    console.log(`zemory sync --standard --kit${apply ? " --apply" : " (DRY-RUN)"} — ${root}`);
+    if ("error" in r) {
+      console.log(`  ✗ ${r.error}`);
+      process.exitCode = 1;
+      return;
+    }
+    const list = (xs: string[]): string => (xs.length ? xs.join(" · ") : "none");
+    console.log(`  kit ${r.kit.name} · old files ${apply ? "copied to" : "would be copied to"} ${r.archive}`);
+    console.log(`  constitution: ${r.articles.length} article(s) → one folder each${r.articleGateRows.length ? ` · old gate rows carried as text: ${list(r.articleGateRows)}` : ""}`);
+    if (r.legacyRules) console.log("  ! 02_RULES.md has no numbered rules — kept whole as 02_RULES/LEGACY.md; split it into rule folders by hand");
+    console.log(`  rules edited here (repo wording kept inside RULE.md for a hand merge): ${list(r.localRules)}`);
+    console.log(`  rules only this repo has (own folders, never synced): ${list(r.ownRules)}`);
+    console.log(`  shared skills: ${r.replacedSkills.length} replaced by the store copy · edited here, kept: ${list(r.keptSkills)}`);
+    if (r.carriedTriggers) console.log(`  AGENTS.md: ${r.carriedTriggers} trigger row(s) for the repo's own skills carried`);
+    if (r.assembly) printKitSteps(r.assembly, true);
+    if (r.guard) console.log(`  guard: ${r.guard.join(" · ") || "already in place"}`);
+    if (!apply) console.log("  — add `--apply` to move");
     return;
   }
   if (args.includes("--standard") && repoKit(root)) {

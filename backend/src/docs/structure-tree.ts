@@ -11,6 +11,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { harnessPathsAt } from "../core/config.js";
 import { isSourceLeaf } from "../memory/graph/graph.js";
+import { isFolderHarness, listParts } from "./store.js";
 
 /**
  * The standard slot dictionary — one line per concern, mirroring 03_STRUCTURE
@@ -148,10 +149,24 @@ const ROOT_ROLES: Record<string, string> = {
  * feeds conform, where the tight parse is the point). Description text after the `[opt]`/★ column
  * is NOT read: "trạng thái/cache/setting-user" is prose, not names. Fail-open to the static sets.
  */
+/** The file holding a repo's own structure text: `03_STRUCTURE.md` (file harness) or `03_STRUCTURE/INDEX.md` (folder
+ *  harness, plan/28 §0c — the old file becomes the repo's INDEX when it moves). */
+function structureFile(root: string): string {
+  const agent = harnessPathsAt(root).agent;
+  return isFolderHarness(agent) ? join(agent, "03_STRUCTURE", "INDEX.md") : join(agent, "03_STRUCTURE.md");
+}
+
+/** Slot names a folder harness carries as parts (guides excluded); empty for a file harness. */
+function partSlotNames(root: string): string[] {
+  const agent = harnessPathsAt(root).agent;
+  if (!isFolderHarness(agent)) return [];
+  return listParts(agent, "03_STRUCTURE").filter((p) => p.meta.kind !== "guide").map((p) => p.name);
+}
+
 export function standardNames(root: string): Set<string> {
-  const out = new Set<string>([...Object.keys(SLOT_ROLES), ...Object.keys(ROOT_ROLES)]);
+  const out = new Set<string>([...Object.keys(SLOT_ROLES), ...Object.keys(ROOT_ROLES), ...partSlotNames(root)]);
   try {
-    const md = readFileSync(join(harnessPathsAt(root).agent, "03_STRUCTURE.md"), "utf8");
+    const md = readFileSync(structureFile(root), "utf8");
     let inSec = false;
     for (const line of md.split(/\r?\n/)) {
       if (/^##\s*3\./.test(line)) { inSec = true; continue; }
@@ -179,9 +194,9 @@ export function standardNames(root: string): Set<string> {
  * §3 (or a foreign layout) simply gets no extra slots, i.e. behaves as before.
  */
 export function declaredSlots(root: string): Set<string> {
-  const out = new Set<string>();
+  const out = new Set<string>(partSlotNames(root));
   try {
-    const md = readFileSync(join(harnessPathsAt(root).agent, "03_STRUCTURE.md"), "utf8");
+    const md = readFileSync(structureFile(root), "utf8");
     let inSec = false;
     for (const line of md.split(/\r?\n/)) {
       // BÁM TÊN SECTION, KHÔNG BÁM SỐ. Hai chuẩn đánh số khác nhau cho cùng một mục: cây thư mục
