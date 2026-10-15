@@ -22,6 +22,7 @@ import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
 import { isFolderHarness, listParts, slotGateFailures } from "./store.js";
+import { viName } from "./vi-name-judge.js";
 
 export interface ConformItem {
   /** mã kiểm, ổn định để CI bám */
@@ -290,6 +291,17 @@ export function conform(root: string): ConformReport {
       for (const why of r) broken.push(`${p.id} ${p.name}: ${why}`);
     }
     push("slot-gate", "blocking", "Slot không đạt phép kiểm khai trong gate.json", broken, "sửa repo cho đúng slot (xem SLOT.md của slot đó)");
+    // Rule 30 for names the TOOL wrote (the migration names a repo's own parts from their Vietnamese titles): no hook sees
+    // those writes, so the names are judged here, with the same judge the hook runs.
+    const viParts: string[] = [];
+    for (const shelf of ["01_CONSTITUTION", "02_RULES", "03_STRUCTURE"] as const) {
+      for (const p of listParts(hp.agent, shelf)) {
+        const vi = viName(p.folder);
+        if (vi) viParts.push(`${shelf}/${p.folder} (${vi})`);
+      }
+    }
+    push("part-name-vi", "blocking", "Part name reads as Vietnamese without marks (rule 30: names are English)", viParts,
+      "rename the name component of the folder in English; keep the code and the number");
   }
 
   // ③ Điều hiến pháp KHÔNG được doc nào trích dẫn ⇒ luật có nguy cơ chết/bị quên.

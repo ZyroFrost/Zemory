@@ -12,6 +12,8 @@
 //
 // Written with String.raw so backslashes are literal — DO NOT use backticks or dollar-brace inside the sources below.
 
+import { VI_NAME_JUDGE } from "./vi-name-judge.js";
+
 const PRELUDE = String.raw`"use strict";
 const fs = require("node:fs");
 const path = require("node:path");
@@ -184,7 +186,7 @@ function check(payload, root, policy) {
 
   // 02-30 — identifiers and file names are ASCII English: a NEW file/folder with a non-ASCII name, or a new
   // declaration whose name has diacritics or an unmistakable Vietnamese syllable.
-  hook("02-30_ascii-names.cjs", String.raw`
+  hook("02-30_ascii-names.cjs", VI_NAME_JUDGE + String.raw`
 const DECL = /(?:const|let|var|function|class|interface|type|enum|def)\s+([A-Za-z_$À-￿][\w$À-￿]*)/g;
 const ID_A = new Set(["khong", "duoc", "nguoi", "viec", "tieng", "nhieu", "truong", "thuong", "phuong", "huong", "duong",
   "luong", "tuong", "chuong", "muon", "ket", "thiet", "dien", "diem", "kiem", "hien", "chuyen", "quyen", "tuyen", "nguon",
@@ -206,30 +208,44 @@ function check(payload, root, policy) {
         if (!toks.length || !NEW_DIR.test(toks[0].replace(/^.*[\\/]/, ""))) continue;
         for (const t of toks.slice(1)) {
           const tok = t.replace(/^["']|["']$/g, "");
-          if (!tok || tok.startsWith("-") || !/[^\x20-\x7E]/.test(tok)) continue;
+          if (!tok || tok.startsWith("-")) continue;
+          const last = tok.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || "";
+          const vi = viName(last);
+          if (!/[^\x20-\x7E]/.test(tok) && !vi) continue;
           if (!inside(relOf(root, tok))) continue;
-          return blocked(root, policy, "02-30", "creating " + tok + " - a file or folder name in the repo is ASCII English.");
+          return blocked(root, policy, "02-30", "creating " + tok + " - a file or folder name in the repo is ASCII English" +
+            (vi ? " ('" + last + "' reads as Vietnamese without marks: " + vi + ")" : "") + ".");
         }
       }
       return null;
     }
     const e = edit(payload, root);
-    if (!e || LANG_EXEMPT.some((re) => re.test(e.rel))) return null;
+    if (!e) return null;
+    // Names first: the exemption below is for the CONTENT of harness files (written in Vietnamese), never for the name of
+    // a new file or folder — a rule folder named in Vietnamese without marks slipped through it.
     if (!e.exists) {
       const bad = e.rel.split("/").find((p) => /[^\x20-\x7E]/.test(p));
       if (bad) return blocked(root, policy, "02-30", "creating " + e.rel + " - the name part '" + bad + "' is not ASCII English.");
+      const vi = e.rel.split("/").map((p) => [p, viName(p)]).find(([, v]) => v);
+      if (vi) return blocked(root, policy, "02-30", "creating " + e.rel + " - the name part '" + vi[0] + "' reads as Vietnamese without marks (" + vi[1] + "); names are English.");
     }
+    if (LANG_EXEMPT.some((re) => re.test(e.rel))) return null;
     if (!CODE_EXT.test(e.rel)) return null;
     const code = strip(e.newLines.join("\n"), /\.py$/i.test(e.rel));
     const hits = [];
     for (const m of code.matchAll(DECL)) {
       const name = m[1];
       if (/[^\x00-\x7F]/.test(name)) hits.push(name + " (non-ASCII)");
-      else { const v = parts(name).filter((w) => ID_A.has(w)); if (v.length) hits.push(name + " (" + v.join(",") + ")"); }
+      else {
+        const v = parts(name).filter((w) => ID_A.has(w));
+        const vn = viName(name);
+        if (v.length) hits.push(name + " (" + v.join(",") + ")");
+        else if (vn) hits.push(name + " (" + vn + ")");
+      }
     }
     if (!hits.length) return null;
     return blocked(root, policy, "02-30", "new identifier(s) in " + e.rel + " that are not ASCII English: " + hits.slice(0, 5).join(" · ") +
-      ". Only comments may be Vietnamese.");
+      ". Everything in code is English, comments included.");
   } catch { return null; }
 }`),
 
