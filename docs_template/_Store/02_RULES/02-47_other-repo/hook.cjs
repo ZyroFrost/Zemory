@@ -111,7 +111,8 @@ function check(payload, root, policy) {
     if (typeof cmd !== "string" || !WRITES.test(cmd)) return null;
     let target = null;
     if (payload.cwd && outsideOf(root, payload.cwd)) target = payload.cwd;
-    const cd = /(?:^|[;&|]\s*)(?:cd|set-location|sl|pushd)\s+("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
+    // Push-Location is PowerShell's pushd under its full name — it slipped through until 2026-10-15.
+    const cd = /(?:^|[;&|]\s*)(?:cd|set-location|sl|pushd|push-location)\s+("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
     if (!target && cd && outsideOf(root, cd[1])) target = cd[1];
     const r = /--root[= ]("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
     if (!target && r && outsideOf(root, r[1])) target = r[1];

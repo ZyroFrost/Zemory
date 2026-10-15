@@ -96,7 +96,7 @@ export function templateHistory(profile: "app" | "non-app", file: string): Rev[]
 }
 
 /** Mọi bản của MỘT đường dẫn (tương đối gốc zemory) trong lịch sử git, mới nhất trước, theo cả đổi tên. */
-function historyOfRel(rel: string): Rev[] {
+export function historyOfRel(rel: string): Rev[] {
   const hit = histCache.get(rel);
   if (hit) return hit;
   const self = selfRepoRoot();
@@ -122,7 +122,7 @@ function historyOfRel(rel: string): Rev[] {
   return out;
 }
 
-function revText(rev: Rev): string | null {
+export function revText(rev: Rev): string | null {
   const key = `${rev.sha}:${rev.path}`;
   if (textCache.has(key)) return textCache.get(key) ?? null;
   let t: string | null = null;

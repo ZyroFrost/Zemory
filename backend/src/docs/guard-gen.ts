@@ -1578,11 +1578,22 @@ export function precommitState(projectRoot: string): "guard" | "other" | "none" 
  */
 export function wirePrecommit(projectRoot: string, guardRel: string): "wired" | "guard" | "other" | "none" | "no-git" {
   const state = precommitState(projectRoot);
-  if (state !== "none") return state;
   const dir = gitHooksDir(projectRoot);
+  const ours = `#!/bin/sh\nexec node "$(git rev-parse --show-toplevel)/${guardRel}"\n`;
+  if (state === "guard" && dir) {
+    // OUR one-line pre-commit pointing at an old guard path (the guard moved) is rewritten; a repo's own script that calls
+    // the guard among other things is left alone.
+    const p = join(dir, "pre-commit");
+    const cur = readFileSync(p, "utf8");
+    if (/^#!\/bin\/sh\nexec node "\$\(git rev-parse --show-toplevel\)\/[^"]+precommit-guard\.cjs"\n$/.test(cur.replace(/\r\n/g, "\n")) && cur.replace(/\r\n/g, "\n") !== ours) {
+      writeFileSync(p, ours, { mode: 0o755 });
+      return "wired";
+    }
+  }
+  if (state !== "none") return state;
   if (!dir) return "no-git";
   mkdirSync(dir, { recursive: true });
-  writeFileSync(join(dir, "pre-commit"), `#!/bin/sh\nexec node "$(git rev-parse --show-toplevel)/${guardRel}"\n`, { mode: 0o755 });
+  writeFileSync(join(dir, "pre-commit"), ours, { mode: 0o755 });
   return "wired";
 }
 
@@ -1607,17 +1618,25 @@ export function wireGuard(projectRoot: string, guardRel: string): string | null 
       return null; // a settings file we cannot read is left alone — doctor reports it
     }
   }
-  const gaps = guardMatcherGaps(raw || null);
-  if (gaps !== null && gaps.length === 0) return null; // already wired in full
-  doc.hooks ??= {};
-  const pre = (doc.hooks.PreToolUse ??= []);
   const runsGuard = (h: { command?: string; args?: unknown[] }): boolean =>
     /(^|[\\/\s"'])guard\.cjs/.test([h.command ?? "", ...(Array.isArray(h.args) ? h.args : [])].map(String).join(" "));
+  const want = `node ${guardRel}`;
+  // A guard command that points at another path (the guard moved: file harness → folder harness, plan/28 §0d) calls a
+  // file that is no longer there — the host then lets every call through. It is repointed, like a narrow matcher widened.
+  const stale = (h: { command?: string }): boolean => runsGuard(h) && typeof h.command === "string" && h.command.trim() !== want;
+  const gaps = guardMatcherGaps(raw || null);
+  const anyStale = (doc.hooks?.PreToolUse ?? []).some((g) => (g.hooks ?? []).some(stale));
+  if (gaps !== null && gaps.length === 0 && !anyStale) return null; // already wired in full, at the right path
+  doc.hooks ??= {};
+  const pre = (doc.hooks.PreToolUse ??= []);
   const group = pre.find((g) => (g.hooks ?? []).some(runsGuard));
-  if (group) group.matcher = GUARD_MATCHER;
-  else pre.unshift({ matcher: GUARD_MATCHER, hooks: [{ type: "command", command: `node ${guardRel}` }] });
+  if (group) {
+    group.matcher = GUARD_MATCHER;
+    for (const h of group.hooks ?? []) if (stale(h)) h.command = want;
+  } else pre.unshift({ matcher: GUARD_MATCHER, hooks: [{ type: "command", command: want }] });
   const eol = raw.includes("\r\n") ? "\r\n" : "\n";
   mkdirSync(join(projectRoot, ".claude"), { recursive: true });
   writeFileSync(p, JSON.stringify(doc, null, 2).split("\n").join(eol) + eol);
-  return group ? ".claude/settings.json (guard matcher widened)" : ".claude/settings.json (guard wired)";
+  if (!group) return ".claude/settings.json (guard wired)";
+  return anyStale ? ".claude/settings.json (guard path updated)" : ".claude/settings.json (guard matcher widened)";
 }

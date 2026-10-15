@@ -26,6 +26,23 @@
           "outside": ".allow-outside"
         }
       }
+    },
+    {
+      "note": "the same through Push-Location",
+      "files": {},
+      "tool_name": "PowerShell",
+      "tool_input": {
+        "command": "Push-Location \"../other-repo\"; zemory sync --standard --apply"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
     }
   ],
   "pass": [

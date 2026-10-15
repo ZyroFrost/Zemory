@@ -20,8 +20,8 @@ export const CORE_START = "<!-- zemory:core:start";
 export const CORE_END = "<!-- zemory:core:end -->";
 /** The core section may not grow past this (characters of the block, markers included). Ratchet: only ever lowered. */
 export const CORE_MAX_CHARS = 9000;
-/** The injected core of a folder harness (PURPOSE + judgment rules + suggested articles), measured 2026-10-14 on fresh
- *  kits 06/08 at 15.0k/15.9k. Ratchet: only ever lowered — every new hook takes a rule out of the core. */
+/** The SHARED part of a folder harness core: judgment rules assembled from the store (the repo's constitution and
+ *  PURPOSE are its own and not capped). Ratchet: only ever lowered — every new hook takes a rule out of the core. */
 export const FOLDER_CORE_MAX_CHARS = 16000;
 /** Gate kinds a mark may name. `test:<name>` must resolve to backend/test/<name>.test.mjs where that folder exists. */
 export const GATE_KINDS = ["guard", "hook", "test", "validate", "conform", "doctor", "gates", "peers", "read-first"] as const;
@@ -286,8 +286,12 @@ export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
       else if (kind === "test" && checkTests && (!ref || !existsSync(join(testDir, `${ref}.test.mjs`)))) badGate.push(`${id} (${r.gate.gate})`);
     }
   }
-  const core = folderCoreText(agentDir);
-  return { noCore: false, unmarked, gatedInCore, badGate, overCap: core.length > FOLDER_CORE_MAX_CHARS ? core.length : 0 };
+  // The cap holds the SHARED core (judgment rules taken from the store, `from:`); a repo's own constitution and PURPOSE are
+  // its own to size. `gates` prints the whole forced size next to it.
+  const shared = folderRules(agentDir)
+    .filter((r) => r.part.kind === "judgment" && r.part.from)
+    .reduce((n, r) => n + bodyOf(readFileSync(join(r.part.dir, "RULE.md"), "utf8")).length, 0);
+  return { noCore: false, unmarked, gatedInCore, badGate, overCap: shared > FOLDER_CORE_MAX_CHARS ? shared : 0 };
 }
 
 function folderCoverage(root: string, agentDir: string): RuleCoverage {

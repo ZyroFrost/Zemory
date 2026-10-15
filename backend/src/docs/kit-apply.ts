@@ -67,7 +67,7 @@ export function applyKit(
 }
 
 /** Create the marker (or add `kit` to an existing one). True when a new marker file was written. */
-function writeKitMarker(root: string, kit: Kit): boolean {
+export function writeKitMarker(root: string, kit: Kit): boolean {
   const existing = findMarker(root);
   if (existing) {
     try {
