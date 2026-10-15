@@ -1,7 +1,7 @@
 ---
 id: 02-12
 name: todo-recheck
-version: 1
+version: 2
 kind: judgment
 ---
 # 02-12 Soát sổ là đo lại từng mục

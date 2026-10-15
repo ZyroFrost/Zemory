@@ -1,0 +1,5 @@
+{
+  "read": [{ "when": "path_prefix", "prefix": "frontend" }],
+  "block": [{ "note": "a write under frontend/ needs this skill read first", "path": "frontend/pages/home.js" }],
+  "pass": [{ "note": "a write elsewhere", "path": "backend/src/a.ts" }]
+}

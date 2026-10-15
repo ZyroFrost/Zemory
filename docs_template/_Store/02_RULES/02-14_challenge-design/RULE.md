@@ -1,7 +1,7 @@
 ---
 id: 02-14
 name: challenge-design
-version: 1
+version: 2
 kind: judgment
 ---
 # 02-14 Thấy điểm bất hợp lý trong thiết kế thì phản biện trước khi làm

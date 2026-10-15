@@ -1,7 +1,7 @@
 ---
 id: 02-13
 name: test-red
-version: 1
+version: 2
 kind: action
 ---
 # 02-13 Test và phép kiểm mới phải đỏ được

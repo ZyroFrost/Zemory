@@ -532,6 +532,47 @@ export function slotGateFailures(root: string, slotDir: string): string[] {
   return out;
 }
 
+// ── gates that live beside their owner (a skill or a rule) — plan/27 §2c, plan/28 §0n ─────────────────────────────
+
+export interface ReadTrigger {
+  when: "path_prefix" | "cmd_re" | "script_re" | "new_dir";
+  prefix?: string;
+  re?: string;
+}
+
+export interface PromptGate {
+  kind: string;
+  re: string;
+  text: string;
+}
+
+function gateOf(dir: string): { read?: ReadTrigger[]; prompt?: PromptGate } | null {
+  try {
+    return JSON.parse(readFileSync(join(dir, "gate.json"), "utf8")) as { read?: ReadTrigger[]; prompt?: PromptGate };
+  } catch {
+    return null;
+  }
+}
+
+/** Read-before-write doors a repo's skills declare (`gate.json › read`): each entry names the SKILL.md to read. */
+export function skillReadTriggers(skillsDir: string): Array<ReadTrigger & { skill: string }> {
+  if (!existsSync(skillsDir)) return [];
+  const out: Array<ReadTrigger & { skill: string }> = [];
+  for (const e of readdirSync(skillsDir, { withFileTypes: true })) {
+    if (!e.isDirectory()) continue;
+    for (const t of gateOf(join(skillsDir, e.name))?.read ?? []) out.push({ ...t, skill: e.name });
+  }
+  return out;
+}
+
+/** Prompt reminders a repo carries: from its skills and from the rule folders of a folder harness (`gate.json › prompt`). */
+export function promptGates(skillsDir: string, agentDir: string): PromptGate[] {
+  const dirs: string[] = [];
+  if (existsSync(skillsDir)) for (const e of readdirSync(skillsDir, { withFileTypes: true })) if (e.isDirectory()) dirs.push(join(skillsDir, e.name));
+  for (const shelf of ["01_CONSTITUTION", "02_RULES"] as const) for (const p of listParts(agentDir, shelf)) if (!isRetired(p)) dirs.push(p.dir);
+  return dirs.map((d) => gateOf(d)?.prompt).filter((g): g is PromptGate => Boolean(g && g.re && g.text && g.kind));
+}
+
 /** True when a repo's harness is the folder layout (plan/28 §0c): `02_RULES` is a folder, not a file. */
 export function isFolderHarness(agentDir: string): boolean {
   try {

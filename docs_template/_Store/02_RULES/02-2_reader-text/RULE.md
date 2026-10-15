@@ -1,7 +1,7 @@
 ---
 id: 02-2
 name: reader-text
-version: 1
+version: 2
 kind: action
 ---
 # 02-2 Văn bản đưa người đọc theo bộ luật văn phong

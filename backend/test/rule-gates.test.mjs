@@ -119,6 +119,13 @@ test("③b wireGuard: wires an unwired repo, widens a narrow matcher, keeps the 
   assert.equal(after.hooks.PreToolUse.length, 2, "no duplicate guard group");
   assert.deepEqual(after.hooks.PreToolUse[1], other, "the repo's own hook untouched");
   assert.equal(after.hooks.PreToolUse[0].matcher, GUARD_MATCHER);
+  // the guard moved (plan/28 §0d): the path is repointed in the place the entry keeps it — args form and command form
+  assert.equal(wireGuard(b, "docs/agent/02_RULES/02-55_hook-guard/guard.cjs"), ".claude/settings.json (guard path updated)");
+  const moved = JSON.parse(readFileSync(join(b, ".claude", "settings.json"), "utf8")).hooks.PreToolUse[0].hooks[0];
+  assert.deepEqual(moved, { type: "command", command: "node", args: ["docs/agent/02_RULES/02-55_hook-guard/guard.cjs"] }, "args form: the arg is rewritten, the path not doubled");
+  assert.equal(wireGuard(a, "docs/agent/02_RULES/02-55_hook-guard/guard.cjs"), ".claude/settings.json (guard path updated)");
+  assert.equal(JSON.parse(readFileSync(join(a, ".claude", "settings.json"), "utf8")).hooks.PreToolUse[0].hooks[0].command, "node docs/agent/02_RULES/02-55_hook-guard/guard.cjs");
+  assert.equal(wireGuard(a, "docs/agent/02_RULES/02-55_hook-guard/guard.cjs"), null, "repointed once ⇒ nothing to do");
 });
 
 test("④b a plan holds spec, not open work: open checkboxes in docs/plan are found (fences skipped)", async (t) => {

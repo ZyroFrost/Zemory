@@ -11,7 +11,7 @@ import { applyKit } from "../../dist/docs/kit-apply.js";
 import { frontMatter, hashFiles, parseFrom } from "../../dist/docs/store.js";
 import { generateGuards } from "../../dist/docs/guard-gen.js";
 import { coreForCompaction, folderCoreIssues, ruleCoverage } from "../../dist/docs/rule-core.js";
-import { handleHook } from "../../dist/memory/capture-hook.js";
+import { handleHook, ruleReminders } from "../../dist/memory/capture-hook.js";
 import { conform } from "../../dist/docs/conform.js";
 import { tempDir } from "./helpers.mjs";
 
@@ -51,13 +51,18 @@ function store(t) {
   put(s, "03_STRUCTURE/03-1_entry/SLOT.md", "---\nid: 03-1\nname: entry\nversion: 1\npath: AGENTS.md\n---\n# entry\n");
   put(s, "03_STRUCTURE/03-1_entry/gate.json", JSON.stringify({ conform: { require: ["AGENTS.md", "CLAUDE.md"], contains: { "CLAUDE.md": "@AGENTS.md" } } }));
   put(s, "04_SKILLS/sk/SKILL.md", "---\nname: sk\nversion: 1\ndescription: x\n---\n# sk\n");
+  put(s, "04_SKILLS/sk/gate.json", JSON.stringify({ read: [{ when: "path_prefix", prefix: "frontend" }],
+    prompt: { kind: "sk-door", re: "mở cửa sk", text: "[zemory] SK REMINDER" },
+    block: [{ path: "frontend/a.js" }], pass: [{ path: "backend/a.ts" }] }));
   put(s, "01_CONSTITUTION/01-1_secrets/RULE.md", "---\nid: 01-1\nname: secrets\nversion: 1\nkind: judgment\nsuggested: true\n---\n# secrets\n");
   put(s, "Own/X/AGENTS.md", "# <PROJECT>\n");
   put(s, "Own/X/CLAUDE.md", "@AGENTS.md\n");
   put(s, "Own/X/docs/agent/04_SKILLS.md", "# skills\n\n<!-- zemory:skills:start · machine block -->\n<!-- zemory:skills:end -->\n");
   put(s, "Own/X/docs/agent/05_TODO.md", "# todo\n");
   put(s, "kits.json", JSON.stringify({ "01": { name: "01_IDE_App_Memory", status: "built", host: "IDE", structure: "App", tier: "Memory",
-    constitution: ["01-*"], rules: ["02-*"], slots: ["03-1"], skills: ["sk"], own: "X" }, "02": { name: "02_IDE_NonApp_Memory", status: "reserved" } }));
+    constitution: ["01-*"], rules: ["02-*"], slots: ["03-1"], skills: ["sk"], own: "X" },
+    "03": { name: "03_IDE_NonApp_Memory", status: "built", host: "IDE", structure: "NonApp", tier: "Memory",
+    rules: ["02-*"], slots: ["03-1"], skills: [], own: "X" }, "02": { name: "02_IDE_NonApp_Memory", status: "reserved" } }));
   git(root, "add", "-A");
   git(root, "commit", "-q", "-m", "v1");
   return { root, s, commit: (m) => { git(root, "add", "-A"); git(root, "commit", "-q", "-m", m); } };
@@ -238,6 +243,23 @@ test("the core of a folder harness = PURPOSE + judgment rules; coverage counts g
   assert.deepEqual(i.unmarked, ["02-3"]);
   assert.deepEqual(i.badGate, ["02-4 (hook.cjs missing)"]);
   assert.deepEqual(i.gatedInCore, ["02-1"]);
+});
+
+test("a skill's gate travels with the skill: its read door and its prompt reminder exist only where the skill does", (t) => {
+  const st = store(t);
+  const withSk = repo(t);
+  applyKit(withSk, { kitRef: "01", apply: true, storeDir: st.s });
+  const pol = JSON.parse(readFileSync(join(generateGuards(withSk).hooksDir, "policy.json"), "utf8"));
+  assert.ok(pol.read_first.triggers.some((x) => x.when === "path_prefix" && x.prefix === "frontend" && x.read === ".claude/skills/sk/SKILL.md"),
+    "the door comes from the skill's gate.json");
+  assert.match(ruleReminders({ session_id: "rk1", cwd: withSk, prompt: "mở cửa sk giúp" }), /SK REMINDER/);
+  assert.doesNotMatch(ruleReminders({ session_id: "rk2", cwd: withSk, prompt: "chốt phiên" }), /Closing the session/,
+    "a folder harness has no built-in reminders — only those its skills and rules declare");
+  const without = repo(t);
+  applyKit(without, { kitRef: "03", apply: true, storeDir: st.s });
+  const pol2 = JSON.parse(readFileSync(join(generateGuards(without).hooksDir, "policy.json"), "utf8"));
+  assert.ok(!pol2.read_first.triggers.some((x) => x.when === "path_prefix"), "no skill, no door");
+  assert.equal(ruleReminders({ session_id: "rk3", cwd: without, prompt: "mở cửa sk giúp" }), "");
 });
 
 test("conform runs every slot's own check: a broken entry is a blocking slot-gate finding naming the slot", (t) => {

@@ -14,13 +14,32 @@ interface Example {
   policy?: Record<string, unknown>;
   tool_name?: string;
   tool_input?: Record<string, unknown>;
+  /** prompt gates: the words of the request */
+  prompt?: string;
+  /** read gates: the path written · the command run · the body of the script that command runs */
+  path?: string;
+  command?: string;
+  script?: string;
 }
 
 interface Gate {
   hook?: string;
   conform?: unknown;
+  prompt?: { re: string };
+  read?: Array<{ when: string; prefix?: string; re?: string }>;
   block?: Example[];
   pass?: Example[];
+}
+
+/** Does a prompt / read gate fire on this example? Same matching as the reminder hook and the read-first latch. */
+function fires(gate: Gate, ex: Example): boolean {
+  if (gate.prompt) return new RegExp(gate.prompt.re, "i").test(ex.prompt ?? "");
+  return (gate.read ?? []).some((t) => {
+    if (t.when === "path_prefix") return (ex.path ?? "").replace(/\\/g, "/").startsWith(`${t.prefix}/`);
+    if (t.when === "cmd_re") return new RegExp(t.re ?? "$^", "i").test(ex.command ?? "");
+    if (t.when === "script_re") return new RegExp(t.re ?? "$^", "i").test(ex.script ?? "");
+    return false;
+  });
 }
 
 const requireHere = createRequire(import.meta.url);
@@ -41,6 +60,7 @@ function withFiles<T>(files: Record<string, string> | undefined, run: (root: str
 
 /** Does this example get blocked? A rule hook: check() returns non-null. A slot: conform finds something. */
 function blocks(part: Part, gate: Gate, ex: Example): boolean {
+  if (gate.prompt || gate.read) return fires(gate, ex);
   return withFiles(ex.files, (root) => {
     // A real repo always has its flags folder (the guard generator makes it); a hook that remembers per session writes
     // there and lets the call through when it cannot — so the example gets one too.
@@ -62,7 +82,6 @@ function blocks(part: Part, gate: Gate, ex: Example): boolean {
 export function gateExampleFindings(root = STORE_DIR): string[] {
   const out: string[] = [];
   for (const shelf of SHELVES) {
-    if (shelf === "04_SKILLS") continue;
     for (const part of listParts(root, shelf)) {
       const p = join(part.dir, "gate.json");
       if (!existsSync(p)) continue;
@@ -73,7 +92,7 @@ export function gateExampleFindings(root = STORE_DIR): string[] {
         out.push(`${part.id}: gate.json unreadable`);
         continue;
       }
-      if (!gate.hook && !gate.conform) continue; // a mark only (guard · test:x …) — run by its own test
+      if (!gate.hook && !gate.conform && !gate.prompt && !gate.read) continue; // a mark only (guard · test:x …) — run by its own test
       const label = `${part.id} ${part.name}`;
       if (!(gate.block ?? []).length || !(gate.pass ?? []).length) {
         out.push(`${label}: needs at least one block and one pass example`);

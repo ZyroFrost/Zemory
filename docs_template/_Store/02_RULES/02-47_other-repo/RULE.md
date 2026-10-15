@@ -1,7 +1,7 @@
 ---
 id: 02-47
 name: other-repo
-version: 2
+version: 3
 kind: action
 ---
 # 02-47 Đứng trong repo tham khảo thì chỉ đọc

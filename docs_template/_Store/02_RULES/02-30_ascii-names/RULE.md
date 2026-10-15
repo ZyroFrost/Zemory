@@ -1,7 +1,7 @@
 ---
 id: 02-30
 name: ascii-names
-version: 1
+version: 2
 kind: content
 ---
 # 02-30 Định danh và tên file: ASCII tiếng Anh

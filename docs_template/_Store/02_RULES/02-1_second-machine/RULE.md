@@ -1,7 +1,7 @@
 ---
 id: 02-1
 name: second-machine
-version: 1
+version: 2
 kind: action
 ---
 # 02-1 Xong là có đường sang máy thứ hai, đã đo

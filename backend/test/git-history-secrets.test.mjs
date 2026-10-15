@@ -24,6 +24,9 @@ const git = (...args) => execFileSync("git", args, { cwd: ROOT, encoding: "utf8"
  *  ghi `06_CHANGES`, rồi mới allow. */
 const KNOWN_HISTORY = new Map([
   ["share/share.key", "chìa lộ 2026-08-04 (commit đã push, không gỡ được); ĐÃ XOAY — dấu tay nay e6fb0eff ≠ 41d88e4d bản lộ"],
+  // A FOLDER, not a file: the slot part that DESCRIBES `.env` (plan/28 store), holding only SLOT.md — no secret, no key to
+  // rotate. Committed locally in 7d766f0 (never pushed), renamed 03-93_env-file the next day.
+  ["docs_template/_Store/03_STRUCTURE/03-93_.env", "thư mục slot mô tả `.env` (chỉ có SLOT.md, không chứa bí mật); đổi tên 03-93_env-file 2026-10-15, chưa từng push"],
 ]);
 
 /** Mẫu tên secret — cùng họ với guard/policy (đuôi tên file, không đường dẫn). */
