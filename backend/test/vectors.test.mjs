@@ -233,10 +233,10 @@ test("vec_config records the embed profile; a raw-built index stays raw for late
   // prompts are back on, but the STORED profile is authoritative for this index
   assert.equal(vectorIndexProfile(dbPath), "raw");
 
-  // a fresh index under the default Gemma model records the prompt profile
+  // a fresh index under the default model (EmbeddingGemma 2) records its prompt profile
   const dbPath2 = seedDb();
   const r2 = await embedPending({ dbPath: dbPath2 });
-  if (r2.embedded > 0) assert.equal(vectorIndexProfile(dbPath2), "gemma-prompt-v1");
+  if (r2.embedded > 0) assert.equal(vectorIndexProfile(dbPath2), "gemma2-prompt-v1");
 });
 
 test("ZEMORY_EMBED_DIMS=256 builds a Matryoshka-sliced index; stored dims stay authoritative for queries", async (t) => {
