@@ -199,6 +199,9 @@ function outsideRoots() {
 function isOutside(tok, strict) {
   const t = String(tok).replace(/^["']|["']$/g, "").trim();
   if (!t || DEVICE_OK.test(t) || /^\/tmp\//i.test(t)) return false;
+  // Inside an interpreter payload, `/x/` (one segment, slash-closed, optional flags) is a regex literal, not a folder at
+  // the root of the disk.
+  if (strict && /^\/[^\/\s]+\/[gimsuy]*$/.test(t)) return false;
   if (!isAbsTok(t, strict)) return false;
   const c = canonPath(t);
   return !outsideRoots().some((r) => c === r || c.startsWith(r + "/"));
@@ -208,10 +211,13 @@ function isOutside(tok, strict) {
 // reported 2026-10-07 (session db-datawarehouse-fa): `python -c "...s.replace('E:\\_retired','E:\\Legacy')..."` edited
 // two .md files INSIDE the repo and was blocked as "writing into E:\_retired". `os.path.join` is NOT dropped - it
 // builds write paths. The write call's own argument (`open('C:/x','w')`) is untouched, so a real outside write still blocks.
+// An argument list may hold string literals WITH parentheses in them (`.split("assert.match(r.say, /x/,")`) — measured
+// 2026-10-16: `[^()]*` stopped at the first "(" inside the string and the regex literal `/02-10/` reached the path check.
+const TEXT_ARGS = String.raw`\((?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^()"'])*\)`;
 function dropTextOps(s) {
   return String(s)
-    .replace(/\.(replace|replaceAll|startswith|endswith|startsWith|endsWith|split|rsplit|find|rfind|index|count|includes|strip|lstrip|rstrip)\s*\([^()]*\)/g, ".$1()")
-    .replace(/\b(re\.sub|re\.search|re\.match|re\.findall|print|console\.log)\s*\([^()]*\)/g, "$1()");
+    .replace(new RegExp("\\.(replace|replaceAll|startswith|endswith|startsWith|endsWith|split|join|rsplit|find|rfind|index|count|includes|strip|lstrip|rstrip)\\s*" + TEXT_ARGS, "g"), ".$1()")
+    .replace(new RegExp("\\b(re\\.sub|re\\.search|re\\.match|re\\.findall|print|console\\.log)\\s*" + TEXT_ARGS, "g"), "$1()");
 }
 
 function denyOutside(what, subject) {

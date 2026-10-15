@@ -102,6 +102,10 @@
       "rule": "02-26"
     },
     {
+      "file": "02-29_code-english.cjs",
+      "rule": "02-29"
+    },
+    {
       "file": "02-27_spec-voice.cjs",
       "rule": "02-27"
     },

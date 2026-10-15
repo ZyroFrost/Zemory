@@ -2,10 +2,10 @@
 id: Rule_29
 aka: 02-29
 name: code-english
-version: 3
+version: 4
 kind: judgment
 ---
-# Rule_Keys_29_CodeEnglish Mã và comment viết tiếng Anh
+# Rule_Gate_29_CodeEnglish Mã và comment viết tiếng Anh
 
 - Phạm vi: mã của app, script · pipeline · measure — comment · docstring · tên biến/hàm · log kỹ thuật.
 - Một file một ngôn ngữ.
@@ -15,3 +15,4 @@ kind: judgment
   2. Tên do bên khác đặt (cột Excel · trường API · tên file nguồn) — giữ từng ký tự, dù trông như Việt mất dấu.
   3. Thuật ngữ chuyên ngành.
 - Comment tiếng Việt cũ: sửa khi đang đụng file đó, không mở đợt dịch hàng loạt.
+- Phép kiểm: hook — dòng comment mới hoặc vừa sửa trong file code mà có chữ Việt thì bị chặn; comment cũ chưa đụng tới không bị bắt.

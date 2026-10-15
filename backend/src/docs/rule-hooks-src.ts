@@ -293,6 +293,30 @@ function check(payload, root, policy) {
   } catch { return null; }
 }`),
 
+  // 02-29 — code is English, comments included (plan/28 §0o): a NEW or changed comment line in a code file that carries
+  // Vietnamese letters. Old comments are left alone until their line is touched — that is how the debt is paid down.
+  hook("02-29_code-english.cjs", String.raw`
+const VI_LETTER = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+// The comment part of a code line; string literals first, so a "//" inside a string is data.
+function commentText(line, py) {
+  const code = line.replace(new RegExp(BT + "(?:\\\\.|[^" + BT + "\\\\])*" + BT, "g"), "''")
+    .replace(/'(?:\\.|[^'\\])*'/g, "''").replace(/"(?:\\.|[^"\\])*"/g, "''");
+  const m = code.match(py ? /#\s*(.*)$/ : /(?:(?:^|[^:])\/\/|\/\*|^\s*\*)\s*(.*)$/);
+  return m ? m[1] : null;
+}
+function check(payload, root, policy) {
+  try {
+    const e = edit(payload, root);
+    if (!e || !CODE_EXT.test(e.rel) || LANG_EXEMPT.some((re) => re.test(e.rel))) return null;
+    const py = /\.py$/i.test(e.rel);
+    const bad = e.newLines.filter((l) => { const c = commentText(l, py); return c !== null && VI_LETTER.test(c); });
+    if (!bad.length) return null;
+    return blocked(root, policy, "02-29", "a comment in " + e.rel + " is written in Vietnamese - code is English, comments included:\n" +
+      bad.slice(0, 3).map((l) => "  " + l.trim().slice(0, 100)).join("\n") +
+      "\nWrite the comment in English. Vietnamese belongs in the docs and in the UI dictionaries.");
+  } catch { return null; }
+}`),
+
   // 02-27 — the harness is written as specification: a NEW line in 01–04 or a SKILL.md may not quote the user or date a
   // decision ("user chốt <date>"). Only new lines: older text is rewritten in its own pass (plan/27 §7 ④).
   hook("02-27_spec-voice.cjs", String.raw`
@@ -304,6 +328,10 @@ const VOICE = [
   /\(\s*user\s+chốt\b/i,
   /\buser\b[^\n]{0,30}:\s*\*?["“]/i,
   /\buser\s+(?:nói|bảo|yêu cầu)\s*:?\s*\*?["“]/i,
+  // personal detail (plan/28 §0o, rule 27 as a gate): an e-mail address (an RFC 2606 example domain is not a contact)
+  // and a path that carries a person's name (a user profile folder, a name.surname folder at a drive root)
+  /(?<![\w.])[\w.+-]+@(?![\w.-]*\bexample\b)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/,
+  /\b[A-Za-z]:[\\\/](?:Users[\\\/](?![<*])[^\\\/\s\x60]+|[a-z]+\.[a-z]+[\\\/])/i,
 ];
 function check(payload, root, policy) {
   try {
@@ -311,7 +339,7 @@ function check(payload, root, policy) {
     if (!e || !HARNESS.test(e.rel)) return null;
     const bad = e.newLines.filter((l) => VOICE.some((re) => re.test(l)));
     if (!bad.length) return null;
-    return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " quote a person or date a decision:\n" +
+    return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " quote a person, date a decision or carry a personal detail:\n" +
       bad.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n") +
       "\nState the rule as condition -> behaviour; the original words, date and incident go to 06_CHANGES.");
   } catch { return null; }

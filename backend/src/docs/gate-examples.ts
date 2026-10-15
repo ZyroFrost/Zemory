@@ -155,7 +155,18 @@ export function storePrivacyFindings(storeDir = STORE_DIR): string[] {
       }
       if (r === "source.json") continue; // the ONE place the tool's own address lives (plan/28 §0f)
       if (!/\.(md|json|cjs|mjs|js|ps1|py|txt)$/i.test(name)) continue;
-      readFileSync(p, "utf8").split(/\r?\n/).forEach((line, i) => {
+      let text = readFileSync(p, "utf8");
+      // A gate's block/pass examples are test data: a block example of the privacy gate must carry the very detail the
+      // gate stops, so they are not scanned. The gate's own words (its reminder, its settings) still are.
+      if (name === "gate.json") {
+        try {
+          const g = JSON.parse(text) as Record<string, unknown>;
+          delete g.block;
+          delete g.pass;
+          text = JSON.stringify(g, null, 2);
+        } catch { /* an unreadable gate.json is scanned as it is */ }
+      }
+      text.split(/\r?\n/).forEach((line, i) => {
         const md = /\.md$/i.test(name);
         // In prose, text inside backticks is data (a transcript role `user`, a command) — not a person being named.
         const prose = line.replace(/`[^`]*`/g, " ");

@@ -115,6 +115,10 @@ const VOICE = [
   /\(\s*user\s+chốt\b/i,
   /\buser\b[^\n]{0,30}:\s*\*?["“]/i,
   /\buser\s+(?:nói|bảo|yêu cầu)\s*:?\s*\*?["“]/i,
+  // personal detail (plan/28 §0o, rule 27 as a gate): an e-mail address (an RFC 2606 example domain is not a contact)
+  // and a path that carries a person's name (a user profile folder, a name.surname folder at a drive root)
+  /(?<![\w.])[\w.+-]+@(?![\w.-]*\bexample\b)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/,
+  /\b[A-Za-z]:[\\\/](?:Users[\\\/](?![<*])[^\\\/\s\x60]+|[a-z]+\.[a-z]+[\\\/])/i,
 ];
 function check(payload, root, policy) {
   try {
@@ -122,7 +126,7 @@ function check(payload, root, policy) {
     if (!e || !HARNESS.test(e.rel)) return null;
     const bad = e.newLines.filter((l) => VOICE.some((re) => re.test(l)));
     if (!bad.length) return null;
-    return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " quote a person or date a decision:\n" +
+    return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " quote a person, date a decision or carry a personal detail:\n" +
       bad.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n") +
       "\nState the rule as condition -> behaviour; the original words, date and incident go to 06_CHANGES.");
   } catch { return null; }
