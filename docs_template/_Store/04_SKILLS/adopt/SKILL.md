@@ -1,6 +1,6 @@
 ---
 name: adopt
-version: 1
+version: 2
 description: Nhận một repo CÓ SẴN cấu trúc riêng vào harness mà KHÔNG nắn repo — đọc cây thật, đề xuất bảng ánh xạ slot, chờ người duyệt, rồi khoá vào .harness.json. Dùng khi repo là của bên thứ ba / làm nhóm / có CI-import khoá cứng theo tên folder, hoặc khi `conform` báo cấu trúc gốc đã đổi.
 ---
 
@@ -85,7 +85,7 @@ Chỉ khi có phê duyệt:
   "extra": ["<đường/>"]
 }
 ```
-2. Điền §3 của `03_STRUCTURE.md`: bảng thật + **ngày khoá** + **tên người duyệt**. Xoá hết khung mẫu.
+2. Điền `03_STRUCTURE/INDEX.md`: bảng thật + **ngày khoá** + **tên người duyệt**. Xoá hết khung mẫu.
 3. Ghi một mục vào `06_CHANGES`: nhận repo ngày nào, profile gì, ánh xạ ra sao, **và những chỗ
    còn chưa chắc**.
 4. Chạy `zemory conform` — phải xanh. Đỏ ngay lúc này nghĩa là bảng sai, sửa bảng chứ đừng nới cổng.
@@ -93,6 +93,6 @@ Chỉ khi có phê duyệt:
 ## Về sau — cấu trúc gốc đổi thì `conform` đỏ
 
 Đó là **tin tốt**: repo của người khác thì nó sẽ đổi, và cổng báo đúng lúc. Xử lý: đọc lại cây →
-cập nhật §3 + `.harness.json` → ghi một dòng `06_CHANGES` nói cấu trúc gốc đổi ra sao.
+cập nhật `03_STRUCTURE/INDEX.md` + `.harness.json` → ghi một dòng `06_CHANGES` nói cấu trúc gốc đổi ra sao.
 
 **Đừng tắt cổng. Đừng nới bảng cho khỏi đỏ.** Nới một lần là từ đó cổng không còn nghĩa gì.
