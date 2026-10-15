@@ -252,14 +252,16 @@ test("a skill's gate travels with the skill: its read door and its prompt remind
   const pol = JSON.parse(readFileSync(join(generateGuards(withSk).hooksDir, "policy.json"), "utf8"));
   assert.ok(pol.read_first.triggers.some((x) => x.when === "path_prefix" && x.prefix === "frontend" && x.read === ".claude/skills/sk/SKILL.md"),
     "the door comes from the skill's gate.json");
-  assert.match(ruleReminders({ session_id: "rk1", cwd: withSk, prompt: "mở cửa sk giúp" }), /SK REMINDER/);
-  assert.doesNotMatch(ruleReminders({ session_id: "rk2", cwd: withSk, prompt: "chốt phiên" }), /Closing the session/,
+  // A reminder fires once per session and remembers that in the real memory folder: every run needs fresh session ids.
+  const sid = (k) => `kit-store-${k}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  assert.match(ruleReminders({ session_id: sid("a"), cwd: withSk, prompt: "mở cửa sk giúp" }), /SK REMINDER/);
+  assert.doesNotMatch(ruleReminders({ session_id: sid("b"), cwd: withSk, prompt: "chốt phiên" }), /Closing the session/,
     "a folder harness has no built-in reminders — only those its skills and rules declare");
   const without = repo(t);
   applyKit(without, { kitRef: "03", apply: true, storeDir: st.s });
   const pol2 = JSON.parse(readFileSync(join(generateGuards(without).hooksDir, "policy.json"), "utf8"));
   assert.ok(!pol2.read_first.triggers.some((x) => x.when === "path_prefix"), "no skill, no door");
-  assert.equal(ruleReminders({ session_id: "rk3", cwd: without, prompt: "mở cửa sk giúp" }), "");
+  assert.equal(ruleReminders({ session_id: sid("c"), cwd: without, prompt: "mở cửa sk giúp" }), "");
 });
 
 test("conform runs every slot's own check: a broken entry is a blocking slot-gate finding naming the slot", (t) => {
