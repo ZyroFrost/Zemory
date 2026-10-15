@@ -2,7 +2,7 @@
 id: Slot_136
 aka: 03-136
 name: principles
-version: 5
+version: 6
 kind: guide
 path: .
 ---
@@ -47,4 +47,4 @@ path: .
   - Chuẩn APP áp cho hầu hết app (UI + server-side): desktop WebView2, web app, tool có cockpit, AI project, monorepo; chọn layer-first hay domain-first theo số domain.
   - Chuẩn NON-APP áp cho BI/report (Power BI/Tableau), data/analytics (dbt/warehouse), docs-only, design/brand, research/notebook có cấu trúc.
   - KHÔNG ép (convention riêng, chỉ ghi là ngoài phạm vi): thư viện/SDK thuần (không UI) · mobile native (Gradle/Xcode) · ML/notebook · game engine (Unity/Unreal) · browser-extension. Với chuẩn NON-APP, app có code chạy → chuẩn APP.
-- Reconcile — nắn repo lệch về chuẩn: flow HIẾM; quy trình đầy đủ (docs lệch · cấu trúc folder lệch · recipe end-to-end) ở `.claude/skills/reconcile/SKILL.md`. `zemory validate`/`structure` chỉ CHỈ RA chỗ lệch (advisory); agent tự nắn bằng `git mv` (giữ history), zemory không auto-move; đập cấu trúc lớn / khó đảo → hỏi TRƯỚC (`02_RULES §Hành xử`, §Git).
+- Reconcile — nắn repo lệch về chuẩn: flow HIẾM; quy trình đầy đủ (docs lệch · cấu trúc folder lệch · recipe end-to-end) ở `.claude/skills/reconcile/SKILL.md`. `zemory validate`/`structure` chỉ CHỈ RA chỗ lệch (advisory); agent tự nắn bằng `git mv` (giữ history), zemory không auto-move; đập cấu trúc lớn / khó đảo → hỏi TRƯỚC (`Rule_Gate_10_ConfirmDelete`, `Rule_Gate_53_NoHistoryRewrite`).

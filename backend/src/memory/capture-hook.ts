@@ -137,9 +137,8 @@ export function ruleReminders(payload: any): string {
     gates = BUILTIN_PROMPT_GATES; // fail-open (HP article 9): the built-in reminders
   }
   for (const g of gates) {
-    let hit: boolean;
-    hit = promptMatches(g.re, prompt); // the matching the keyword table was measured with (plan/28 §0o)
-    if (hit && once(g.kind)) out.push(g.text);
+    // the matching the keyword table was measured with (plan/28 §0o)
+    if (promptMatches(g.re, prompt) && once(g.kind)) out.push(g.text);
   }
   return out.join("\n");
 }
