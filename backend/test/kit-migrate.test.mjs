@@ -3,7 +3,7 @@
 // shared skill untouched / edited, a skill of the repo's own with its AGENTS.md trigger, and an old guard wired into
 // settings.json and pre-commit. Nothing may be lost, nothing outside the harness touched, and the guard must follow.
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -90,7 +90,11 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   // untouched
   assert.equal(readFileSync(join(agent, "05_TODO.md"), "utf8"), "# TODO\n- [ ] keep me\n");
   // guard
-  assert.ok(!existsSync(join(root, "docs", "hooks")), "the old hooks folder left (archived)");
+  assert.deepEqual(readdirSync(join(root, "docs", "hooks")), ["guard.cjs"], "the old hooks folder left — only a forwarder stays");
+  // A session opened before the move still calls the old path: the forwarder must run the new guard and block.
+  const fwd = spawnSync(process.execPath, [join(root, "docs", "hooks", "guard.cjs")], { input: JSON.stringify({ tool_name: "Bash", tool_input: { command: "git push origin main" } }), encoding: "utf8" });
+  assert.equal(fwd.status, 2, "the forwarder blocks through the new guard");
+  assert.equal(JSON.parse(fwd.stdout).hookSpecificOutput.permissionDecision, "deny");
   const settings = readFileSync(join(root, ".claude", "settings.json"), "utf8");
   assert.match(settings, /node docs\/agent\/02_RULES\/02-55_hook-guard\/guard\.cjs/);
   assert.doesNotMatch(settings, /docs\/hooks\/guard\.cjs/, "no command left pointing at the old guard");
