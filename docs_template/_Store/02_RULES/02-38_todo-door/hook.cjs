@@ -95,7 +95,8 @@ function remindOnce(payload, root, policy, key) {
 const ONCE = "\nThis is a reminder, shown once per session: retry the same call to continue.";
 
 // Paths the language rules do not reach: other people's code, frozen hand-overs, deliberate ASCII samples.
-const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /\/skills\/write-docx\/reference\//];
+// The write-docx reference samples sit under .claude/skills/ in a repo and under _Store/04_SKILLS/ in the parts store.
+const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|04_SKILLS)\/write-docx\/reference\//];
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 
 const OPEN = /^\s*(?:[-*]|\d+\.|#{2,4})\s+\[[ ~]\]/gm;

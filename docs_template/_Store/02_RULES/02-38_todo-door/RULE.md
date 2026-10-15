@@ -1,7 +1,7 @@
 ---
 id: 02-38
 name: todo-door
-version: 1
+version: 2
 kind: action
 ---
 # 02-38 Sổ việc `05_TODO`: cửa vào và cửa ra

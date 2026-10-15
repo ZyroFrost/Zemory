@@ -29,7 +29,7 @@ const HOOK_TURN_WAIT_MS = 3_000;
 import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
 import { coreForCompaction } from "../docs/rule-core.js";
-import { isFolderHarness } from "../docs/store.js";
+import { isFolderHarness, promptGates } from "../docs/store.js";
 import { harnessPathsAt } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
 
@@ -126,21 +126,36 @@ export function ruleReminders(payload: any): string {
   // A host event delivered as a "prompt" (a background task finishing, a system notice) is not the user speaking: its
   // text quotes agent output, so keyword doors fired on it (two reminders on one task notification, 2026-10-14).
   if (/<task-notification>|\[SYSTEM NOTIFICATION|^\s*<system-reminder>/i.test(prompt)) return out.join("\n");
-  if (/(chốt phiên|note lại|ghi sổ|docs lại|đổi session|sắp hết context|mở phiên mới)/i.test(prompt) && once("close")) {
-    out.push("[zemory] Closing the session: follow skill session-close — `zemory memory scan` → digest/search GM (the summary is not the source) → re-measure 05_TODO from 3 sources → `zemory archive` → `zemory validate`.");
+  // Folder harness (plan/28 §0n): each reminder is declared beside its owner — a skill or a rule — in gate.json › prompt,
+  // so a repo carries exactly the reminders of the skills and rules it has. File harness: the built-in four.
+  let gates: Array<{ kind: string; re: string; text: string }> = BUILTIN_PROMPT_GATES;
+  try {
+    const hp = cwd ? harnessPathsAt(cwd) : null;
+    if (hp && isFolderHarness(hp.agent)) gates = promptGates(hp.skills, hp.agent);
+  } catch {
+    gates = BUILTIN_PROMPT_GATES; // fail-open (HP article 9): the built-in reminders
   }
-  if (/(còn gì|còn việc|soát sổ|check todo|check hết todo|việc gì còn)/i.test(prompt) && once("audit")) {
-    out.push("[zemory] Auditing the ledger = re-measure each item from ALL three sources: the code · Global Memory (`zemory memory search --all`, filter the USER's words) · a real run. Older than 7 days = suspect.");
-  }
-  // Doors for core rules (plan/27 §6): judgement rules have no tool call to hook, but the prompt names the moment.
-  if (/(giao diện|\bUI\b|\bUX\b|layout|bố cục|màu sắc|\btheme\b|dialog|nút bấm)/i.test(prompt) && once("ui")) {
-    out.push("[zemory] Interface work: every DESIGN decision (layout · size · colour · component shape · adding/removing an element) is proposed and approved BEFORE it is built (02-62); a skill is advice to present, not to auto-apply (02-16). Fixing a technical defect needs no approval.");
-  }
-  if (/(thiết kế|đề xuất|phương án|kiến trúc|đổi cách)/i.test(prompt) && once("design")) {
-    out.push("[zemory] Design proposal: run `zemory plan search \"<area>\"` before proposing — a direction already rejected must not be proposed again; state an objection to a flawed design before building it (02-14).");
+  for (const g of gates) {
+    let hit = false;
+    try { hit = new RegExp(g.re, "i").test(prompt); } catch { hit = false; }
+    if (hit && once(g.kind)) out.push(g.text);
   }
   return out.join("\n");
 }
+
+/** The reminders of a file-harness repo (before plan/28 they were the only ones). A folder harness reads them from the
+ *  gate.json of session-close · 02-12 · 02-62 · 02-14 instead. */
+const BUILTIN_PROMPT_GATES = [
+  { kind: "close", re: "(chốt phiên|note lại|ghi sổ|docs lại|đổi session|sắp hết context|mở phiên mới)",
+    text: "[zemory] Closing the session: follow skill session-close — `zemory memory scan` → digest/search GM (the summary is not the source) → re-measure 05_TODO from 3 sources → `zemory archive` → `zemory validate`." },
+  { kind: "audit", re: "(còn gì|còn việc|soát sổ|check todo|check hết todo|việc gì còn)",
+    text: "[zemory] Auditing the ledger = re-measure each item from ALL three sources: the code · Global Memory (`zemory memory search --all`, filter the USER's words) · a real run. Older than 7 days = suspect." },
+  // Doors for core rules (plan/27 §6): judgement rules have no tool call to hook, but the prompt names the moment.
+  { kind: "ui", re: "(giao diện|\\bUI\\b|\\bUX\\b|layout|bố cục|màu sắc|\\btheme\\b|dialog|nút bấm)",
+    text: "[zemory] Interface work: every DESIGN decision (layout · size · colour · component shape · adding/removing an element) is proposed and approved BEFORE it is built (02-62); a skill is advice to present, not to auto-apply (02-16). Fixing a technical defect needs no approval." },
+  { kind: "design", re: "(thiết kế|đề xuất|phương án|kiến trúc|đổi cách)",
+    text: "[zemory] Design proposal: run `zemory plan search \"<area>\"` before proposing — a direction already rejected must not be proposed again; state an objection to a flawed design before building it (02-14)." },
+];
 
 function alreadyWarned(sessionId: string, transcriptPath?: string): boolean {
   const p = warnedFlagPath(sessionId);

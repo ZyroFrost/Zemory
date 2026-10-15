@@ -23,7 +23,7 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { LEGACY_READ_FIRST_FILE, READ_FIRST_FILE, READ_FIRST_SOURCE } from "./read-first-src.js";
 import { SQL_GATE_FILE, SQL_GATE_SOURCE } from "./sql-gate-src.js";
 import { RULE_HOOKS } from "./rule-hooks-src.js";
-import { isFolderHarness, isRetired, listParts } from "./store.js";
+import { isFolderHarness, isRetired, listParts, skillReadTriggers } from "./store.js";
 
 /** Where the guard lives. File harness: `<agent>/../hooks`. Folder harness (plan/28 §0d): the folder of rule 02-55. */
 export function hooksDirOf(root: string): string {
@@ -166,10 +166,16 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     case_files: ["spec.md", "mail_form.md"],
     triggers: [
       { when: "new_dir", read: folder ? `${agentRel}/03_STRUCTURE/INDEX.md` : `${agentRel}/03_STRUCTURE.md` },
-      ...(isApp ? [{ when: "path_prefix", prefix: "frontend", read: `${skillsRel}/app-design/SKILL.md` }] : []),
-      { when: "cmd_re", re: "(mail|smtp|email)[\\w.-]*\\.(py|ps1|js|mjs|cjs|cmd|bat)\\b", read: `${skillsRel}/write-style/SKILL.md` },
-      // A sender named anything ("03_send.py"): read the script — and one hop into what a launcher calls (Dept_FA 2026-10-08).
-      { when: "script_re", re: "smtplib|send-mailmessage|smtpclient|sendmail\\(|send_message\\(|graph_mail|smtp_mail|/sendMail\\b", read: `${skillsRel}/write-style/SKILL.md` },
+      // Folder harness (plan/28 §0n): the doors are declared by the skills the repo really carries (gate.json › read) — a
+      // repo without app-design has no frontend door. File harness: the built-in doors, until the repo moves.
+      ...(folder
+        ? skillReadTriggers(hp.skills).map(({ skill, ...t }) => ({ ...t, read: `${skillsRel}/${skill}/SKILL.md` }))
+        : [
+            ...(isApp ? [{ when: "path_prefix", prefix: "frontend", read: `${skillsRel}/app-design/SKILL.md` }] : []),
+            { when: "cmd_re", re: "(mail|smtp|email)[\\w.-]*\\.(py|ps1|js|mjs|cjs|cmd|bat)\\b", read: `${skillsRel}/write-style/SKILL.md` },
+            // A sender named anything ("03_send.py"): read the script — and one hop into what a launcher calls (Dept_FA 2026-10-08).
+            { when: "script_re", re: "smtplib|send-mailmessage|smtpclient|sendmail\\(|send_message\\(|graph_mail|smtp_mail|/sendMail\\b", read: `${skillsRel}/write-style/SKILL.md` },
+          ]),
     ],
   };
   return {
@@ -1623,7 +1629,24 @@ export function wireGuard(projectRoot: string, guardRel: string): string | null 
   const want = `node ${guardRel}`;
   // A guard command that points at another path (the guard moved: file harness → folder harness, plan/28 §0d) calls a
   // file that is no longer there — the host then lets every call through. It is repointed, like a narrow matcher widened.
-  const stale = (h: { command?: string }): boolean => runsGuard(h) && typeof h.command === "string" && h.command.trim() !== want;
+  // The path is read from wherever the entry keeps it: `command: "node <path>"` or `command: "node", args: ["<path>"]`
+  // (both shapes are in use) — and rewritten in that same place.
+  const GUARD_PATH = /[^\s"']*guard\.cjs/;
+  const pathOf = (h: { command?: string; args?: unknown[] }): string | null => {
+    for (const s of [h.command ?? "", ...(Array.isArray(h.args) ? h.args : [])].map(String)) {
+      const m = GUARD_PATH.exec(s);
+      if (m) return m[0].replace(/\\/g, "/");
+    }
+    return null;
+  };
+  const stale = (h: { command?: string; args?: unknown[] }): boolean => runsGuard(h) && pathOf(h) !== guardRel;
+  const repoint = (h: { command?: string; args?: unknown[] }): void => {
+    if (Array.isArray(h.args) && h.args.some((a) => GUARD_PATH.test(String(a)))) {
+      h.args = h.args.map((a) => (GUARD_PATH.test(String(a)) ? String(a).replace(GUARD_PATH, guardRel) : a));
+    } else if (typeof h.command === "string") {
+      h.command = h.command.replace(GUARD_PATH, guardRel);
+    }
+  };
   const gaps = guardMatcherGaps(raw || null);
   const anyStale = (doc.hooks?.PreToolUse ?? []).some((g) => (g.hooks ?? []).some(stale));
   if (gaps !== null && gaps.length === 0 && !anyStale) return null; // already wired in full, at the right path
@@ -1632,7 +1655,7 @@ export function wireGuard(projectRoot: string, guardRel: string): string | null 
   const group = pre.find((g) => (g.hooks ?? []).some(runsGuard));
   if (group) {
     group.matcher = GUARD_MATCHER;
-    for (const h of group.hooks ?? []) if (stale(h)) h.command = want;
+    for (const h of group.hooks ?? []) if (stale(h)) repoint(h);
   } else pre.unshift({ matcher: GUARD_MATCHER, hooks: [{ type: "command", command: want }] });
   const eol = raw.includes("\r\n") ? "\r\n" : "\n";
   mkdirSync(join(projectRoot, ".claude"), { recursive: true });

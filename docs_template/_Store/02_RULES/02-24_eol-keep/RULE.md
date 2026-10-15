@@ -1,7 +1,7 @@
 ---
 id: 02-24
 name: eol-keep
-version: 1
+version: 2
 kind: content
 ---
 # 02-24 EOL: khoá bằng máy trước, chưa khoá thì đọc sao ghi vậy

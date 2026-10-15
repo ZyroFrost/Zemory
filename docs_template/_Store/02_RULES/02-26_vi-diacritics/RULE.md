@@ -1,7 +1,7 @@
 ---
 id: 02-26
 name: vi-diacritics
-version: 1
+version: 2
 kind: content
 ---
 # 02-26 Docs viết tiếng Việt có dấu

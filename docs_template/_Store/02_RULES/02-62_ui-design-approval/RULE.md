@@ -1,7 +1,7 @@
 ---
 id: 02-62
 name: ui-design-approval
-version: 2
+version: 3
 kind: judgment
 applies: [App]
 ---

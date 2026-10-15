@@ -1,6 +1,6 @@
 ---
 name: app-design
-version: 1
+version: 2
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
 ---
 
