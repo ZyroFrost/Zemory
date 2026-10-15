@@ -1,6 +1,6 @@
 ---
 name: session-close
-version: 4
+version: 5
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
 ---
 
@@ -86,7 +86,7 @@ là khi ĐỔI SESSION — BẮT BUỘC dò Global Memory + đối chiếu code 
 | Việc PHÁT SINH / ý cho phiên sau | **BÁO trong phiên, hỏi trước khi ghi** — cửa vào ở `Rule_Gate_38_TodoDoor`. Không gật ⇒ không có dòng nào |
 | Thiết kế / quyết định thay đổi (gồm định nghĩa metric) | `docs/plan/NN_*.md` · định nghĩa metric → Từ điển dữ liệu `Slot_Docs_138_DataDictionary` (+ supersede ở changelog nếu đảo quyết định cũ) |
 | Quyết định / trạng thái của MỘT case | spec của case đó (vd `tasks/<case>/spec.md`) — thân + khối khai báo (`updated` đổi cùng lượt); câu cũ bị thay thì sửa/gạch, KHÔNG để hai câu ngược nhau cùng sống |
-| Luật / bất biến riêng phát sinh | **HỎI ngay trong phiên**, gật thì ghi thẳng vào đúng nhà (`01`/`02`) — KHÔNG tự sửa `01_CONSTITUTION/`, và KHÔNG đậu vào `05_TODO` chờ duyệt |
+| Luật / bất biến riêng phát sinh | **HỎI ngay trong phiên**, gật thì ghi thẳng vào đúng nhà (`01`/`02`) — KHÔNG tự sửa `02_CONSTITUTION/`, và KHÔNG đậu vào `05_TODO` chờ duyệt |
 
 **Chuẩn "không bỏ sót":** mọi việc ĐÃ LÀM trong phiên phải tìm được ở `06_CHANGES` **hoặc**
 `05_TODO` — không việc nào chỉ nằm trong đầu rồi mất theo phiên. Chẩn đoán sai · đường cụt · thứ đã

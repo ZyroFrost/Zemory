@@ -14,11 +14,11 @@
     {
       "note": "a dated decision added to a rule file",
       "files": {
-        "docs/agent/02_RULES/02-38_todo-door/RULE.md": "- ask\n"
+        "docs/agent/01_RULES/02-38_todo-door/RULE.md": "- ask\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": "docs/agent/02_RULES/02-38_todo-door/RULE.md",
+        "file_path": "docs/agent/01_RULES/02-38_todo-door/RULE.md",
         "old_string": "- ask",
         "new_string": "- ask *(user chốt 2026-10-14)*"
       },
@@ -58,11 +58,11 @@
     {
       "note": "a plain rule line",
       "files": {
-        "docs/agent/02_RULES/02-38_todo-door/RULE.md": "- ask\n"
+        "docs/agent/01_RULES/02-38_todo-door/RULE.md": "- ask\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": "docs/agent/02_RULES/02-38_todo-door/RULE.md",
+        "file_path": "docs/agent/01_RULES/02-38_todo-door/RULE.md",
         "old_string": "- ask",
         "new_string": "- ask one question first"
       },

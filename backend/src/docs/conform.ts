@@ -23,6 +23,7 @@ import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
 import { isFolderHarness, listParts, slotGateFailures } from "./store.js";
 import { viName } from "./vi-name-judge.js";
+import { SHELF } from "./harness-names.js";
 
 export interface ConformItem {
   /** mã kiểm, ổn định để CI bám */
@@ -294,7 +295,7 @@ export function conform(root: string): ConformReport {
     // Rule 30 for names the TOOL wrote (the migration names a repo's own parts from their Vietnamese titles): no hook sees
     // those writes, so the names are judged here, with the same judge the hook runs.
     const viParts: string[] = [];
-    for (const shelf of ["01_CONSTITUTION", "02_RULES", "03_STRUCTURE"] as const) {
+    for (const shelf of [SHELF.rules, SHELF.constitution, SHELF.structure] as const) {
       for (const p of listParts(hp.agent, shelf)) {
         const vi = viName(p.folder);
         if (vi) viParts.push(`${shelf}/${p.folder} (${vi})`);

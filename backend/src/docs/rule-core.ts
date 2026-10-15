@@ -9,8 +9,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative } from "node:path";
 import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
-import { bodyOf, isFolderHarness, isRetired, listParts, type Part } from "./store.js";
-import { legacyIdOf } from "./harness-names.js";
+import { bodyOf, isFolderHarness, isRetired, listParts, shelfDir, type Part } from "./store.js";
+import { SHELF, legacyIdOf } from "./harness-names.js";
 import { selfRepoRoot } from "../projects.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
@@ -245,7 +245,7 @@ interface FolderRule {
 }
 
 function folderRules(agentDir: string): FolderRule[] {
-  return (["01_CONSTITUTION", "02_RULES"] as const).flatMap((shelf) =>
+  return ([SHELF.constitution, SHELF.rules] as const).flatMap((shelf) =>
     listParts(agentDir, shelf).filter((part) => !isRetired(part)).map((part) => {
       const p = join(part.dir, "gate.json");
       if (!existsSync(p)) return { part, gate: null, badJson: false };
@@ -260,7 +260,7 @@ function folderRules(agentDir: string): FolderRule[] {
 
 /** The judgment rules of a folder harness as text: the forced part a session starts with. */
 function folderCoreText(agentDir: string): string {
-  const purpose = readOr(() => readFileSync(join(agentDir, "01_CONSTITUTION", "PURPOSE.md"), "utf8").trim(), "");
+  const purpose = readOr(() => readFileSync(join(shelfDir(agentDir, SHELF.constitution), "PURPOSE.md"), "utf8").trim(), "");
   const rules = folderRules(agentDir)
     .filter((r) => r.part.kind === "judgment")
     .map((r) => bodyOf(readFileSync(join(r.part.dir, r.part.shelf === "03_STRUCTURE" ? "SLOT.md" : "RULE.md"), "utf8")).trim());

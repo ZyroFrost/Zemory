@@ -112,7 +112,7 @@ test("NEGATIVE CASE (segment): a secret name in a segment OTHER than the delete 
     // Since 2026-10-14 every in-repo delete asks first (02-10), so the command IS blocked — but for the delete itself,
     // never for a secret named in ANOTHER segment (that wrong reason teaches people to stop writing self-checks).
     assert.doesNotMatch(r.say, /secret/i, cmd + " — a secret in another segment must not be the reason: " + r.say);
-    assert.match(r.say, /02-10/, cmd + " — the in-repo delete is what asks: " + r.say);
+    assert.match(r.say, /Rule_Gate_10_ConfirmDelete/, cmd + " — the in-repo delete is what asks: " + r.say);
   }
   // and the positive case right beside it so a mutation cannot slip through: a secret in the ACTUAL delete segment is still BLOCKED
   const bad = ask(bash("echo ok && rm ." + "env"));
@@ -127,7 +127,7 @@ test("02-10: every in-repo file delete asks first; temp folders, mentions and gi
     `node -e "require('fs').unlinkSync('backend/src/ui.ts')"`, `python -c "import os; os.remove('a.txt')"`]) {
     const r = ask(bash(cmd));
     assert.equal(r.blocked, true, `an in-repo delete must ask first: ${cmd}\n${r.say}`);
-    assert.match(r.say, /02-10/, `the block must cite rule 02-10: ${cmd}`);
+    assert.match(r.say, /Rule_Gate_10_ConfirmDelete/, `the block must cite rule 02-10: ${cmd}`);
   }
   for (const cmd of ["rm /tmp/x.txt", `Remove-Item "${tmp}"`, "echo 'run rm build.log later'", "git rm --cached secret-free.txt"]) {
     const r = ask(bash(cmd));
@@ -152,7 +152,7 @@ test("02-10 (b): an edit that drops a rule number from 01/02 is blocked; keeping
 
 test("02-10 (b), folder harness: changing or dropping the `id:` of a rule folder is blocked; editing the body passes", () => {
   const ROOT = new URL("../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-  const rule = join(ROOT, "docs_template/_Store/02_RULES/Rule_Gate_41_ChangelogNewestFirst/RULE.md");
+  const rule = join(ROOT, "docs_template/_Store/01_RULES/Rule_Gate_41_ChangelogNewestFirst/RULE.md");
   const edit = (o, n) => ({ tool_name: "Edit", tool_input: { file_path: rule, old_string: o, new_string: n } });
   const renumber = ask(edit("id: Rule_41", "id: Rule_99"));
   assert.equal(renumber.blocked, true, `renumbering must be blocked\n${renumber.say}`);

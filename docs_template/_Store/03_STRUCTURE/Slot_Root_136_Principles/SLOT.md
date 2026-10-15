@@ -2,7 +2,7 @@
 id: Slot_136
 aka: 03-136
 name: principles
-version: 3
+version: 4
 kind: guide
 path: .
 ---
@@ -41,7 +41,7 @@ path: .
 - 3 loại kết nối (APP): `api/` = mình MỞ (biên VÀO) · `integrations/` = SERVICE ngoài (SaaS) · `store/` = DATABASE (remote/cloud/nội bộ); `external/` = code họ clone. Chiều gọi đi: `integrations/` = ra ngoài · `frontend/client/` = về BE của mình. MỘT tên không gánh hai chiều.
 - Cross-cutting phải RÕ: MỌI concern xuyên suốt (mã hoá · authz · logging · audit · error · cache · i18n…) phải có chỗ + loại trong chuẩn để audit/refactor thấy, không lọt. Thiếu concern → BÁO để thêm vào chuẩn.
 - Monorepo (APP): nhiều app → `apps/<app>/` + `packages/<lib>/` (+ `packages/contracts` nếu đa client), mỗi cái theo cây chuẩn.
-- Luật nổ lúc VIẾT code (`conform` không kiểm được) nằm ở `02_RULES/` (`Rule_Core_19_HeavyBinaryLfs`–`Rule_Gate_25_SqlOneWay`), không ở chuẩn cấu trúc.
+- Luật nổ lúc VIẾT code (`conform` không kiểm được) nằm ở `01_RULES/` (`Rule_Core_19_HeavyBinaryLfs`–`Rule_Gate_25_SqlOneWay`), không ở chuẩn cấu trúc.
 - Hệ NON-APP: 0 luật UI. Trình bày deliverable (layout report/chart) là quyết định TRÌNH BÀY — trình duyệt trước (`Rule_Core_15_DeliverableLayout`), tham khảo skill `dataviz`; không phải luật UI-app.
 - Phạm vi áp dụng:
   - Chuẩn APP áp cho hầu hết app (UI + server-side): desktop WebView2, web app, tool có cockpit, AI project, monorepo; chọn layer-first hay domain-first theo số domain.

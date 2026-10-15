@@ -217,7 +217,7 @@ function dropTextOps(s) {
 function denyOutside(what, subject) {
   if (consumeFlag("outside", subject)) return;
   deny("BLOCKED (guard layer 1): " + what + " - " +
-    (POLICY.outside_reason || "work stays inside the project folder (02_RULES Pham vi project)") + flagTip("outside"));
+    (POLICY.outside_reason || "work stays inside the project folder (Rule_Gate_44_OpenFolderOnly)") + flagTip("outside"));
 }
 
 // Split a segment into words the way a shell would for quoting (quotes removed, spaces inside them kept),
@@ -385,10 +385,10 @@ function checkBash(cmd) {
     const clash = versionClash();
     if (clash) {
       deny("BLOCKED (guard layer 1): `git push` carries code but package.json still says " + clash.version +
-        ", the same version as " + clash.upstream + " (" + clash.files + " code file(s) in the push) - bump the version first (02_RULES Git: every push of code carries a NEW version; docs-only pushes are exempt). There is no flag for this.");
+        ", the same version as " + clash.upstream + " (" + clash.files + " code file(s) in the push) - bump the version first (Rule_Gate_70_VersionPerPush: every push of code carries a NEW version; docs-only pushes are exempt). There is no flag for this.");
     }
     if (!consumeFlag("push", bare)) {
-      deny("BLOCKED (guard layer 1): `git push` - push only when the user says so (02_RULES Git)." +
+      deny("BLOCKED (guard layer 1): `git push` - push only when the user says so (Rule_Gate_50_PushApproval)." +
         "\nDid the user just say so? -> create the flag `" + POLICY.flags_dir + "/" + POLICY.flags.push + "` and run again (one use).");
     }
   }
@@ -451,7 +451,7 @@ function checkBash(cmd) {
     /\bfind\b[^\n]*-delete\b|\bfind\b[^\n]*-exec[^\n]*\brm\b|\bgit\s+clean\b[^\n]*-[a-z]*[fdx]|\brobocopy\b[^\n]*\/(MIR|PURGE)\b|\brmSync\s*\([^)]*recursive|\brmtree\s*\(|\bxargs\b[^\n]*\brm\b|\bGet-ChildItem\b[^\n]*\|[^\n]*\bRemove-Item\b/i;
   const MASS_CMDS = /^(find|git|robocopy|xargs|get-childitem|gci|ls|dir|remove-item|ri|rm)$/;
   if ((anyCmdIs(bare, MASS_CMDS) || SEG_INTERP.test(cmdWordOf(bare))) && MASS_DEL.test(bare) && !consumeFlag("delete", bare)) {
-    deny("BLOCKED (guard layer 1): MASS deletion (a whole-tree sweep) - irreversible, and 02_RULES requires asking the user first." +
+    deny("BLOCKED (guard layer 1): MASS deletion (a whole-tree sweep) - irreversible, and Rule_Gate_10_ConfirmDelete requires asking the user first." +
       flagTip("delete"));
   }
 
@@ -462,7 +462,7 @@ function checkBash(cmd) {
   const DISCARD =
     /\bgit\s+reset\b[^\n]*--hard\b|\bgit\s+checkout\b[^\n]*--\s|\bgit\s+checkout\s+\.|\bgit\s+restore\b[^\n]*(\.|--staged)|\bgit\s+stash\s+(drop|clear)\b/;
   if (hitsIn(bare, /^git$/, DISCARD) && !consumeFlag("discard", bare)) {
-    deny("BLOCKED (guard layer 1): a command DISCARDING uncommitted work - 02_RULES S Git requires asking the user first." +
+    deny("BLOCKED (guard layer 1): a command DISCARDING uncommitted work - Rule_Gate_53_NoHistoryRewrite requires asking the user first." +
       flagTip("discard"));
   }
 
@@ -525,7 +525,7 @@ function checkBash(cmd) {
       }
     }
     if (recursive && !delFlagOk()) {
-      deny("BLOCKED (guard layer 1): a RECURSIVE delete - an irreversible operation, and 02_RULES requires asking the user first." +
+      deny("BLOCKED (guard layer 1): a RECURSIVE delete - an irreversible operation, and Rule_Gate_10_ConfirmDelete requires asking the user first." +
         flagTip("delete"));
     }
     // 02-10 (plan/27 §2h, 2026-10-14): EVERY delete of a file in the repo needs the user's word first. This withdraws the
@@ -553,18 +553,18 @@ function checkBash(cmd) {
         return !tempRoots.some((r) => c === r || c.startsWith(r + "/"));
       });
       if (inRepo.length && !delFlagOk()) {
-        deny("BLOCKED (guard layer 1): rule 02-10 - deleting `" + inRepo[0] + "` - a delete cannot be undone, ask the user first." +
+        deny("BLOCKED (guard layer 1): Rule_Gate_10_ConfirmDelete - deleting `" + inRepo[0] + "` - a delete cannot be undone, ask the user first." +
           flagTip("delete"));
       }
     }
   }
   // 02-10 by other doors: `git rm` (except `--cached`, which only untracks) and a single-file delete inside an interpreter.
   if (hitsIn(bare, /^git$/, /\bgit\s+rm\b/) && !/\bgit\s+rm\b[^\n;|&]*--cached\b/.test(bare) && !consumeFlag("delete", bare)) {
-    deny("BLOCKED (guard layer 1): rule 02-10 - `git rm` deletes the file, ask the user first." + flagTip("delete"));
+    deny("BLOCKED (guard layer 1): Rule_Gate_10_ConfirmDelete - `git rm` deletes the file, ask the user first." + flagTip("delete"));
   }
   if (SEG_INTERP.test(cmdWordOf(bare)) && /\b(unlinkSync|rmSync|unlink)\s*\(|\bos\.(remove|unlink)\s*\(|\.unlink\s*\(\s*\)/.test(bare) &&
       !consumeFlag("delete", bare)) {
-    deny("BLOCKED (guard layer 1): rule 02-10 - a script deleting a file, ask the user first." + flagTip("delete"));
+    deny("BLOCKED (guard layer 1): Rule_Gate_10_ConfirmDelete - a script deleting a file, ask the user first." + flagTip("delete"));
   }
 
   // ── PLAN INVARIANTS (plan/27 §0b, 2026-10-14) ─────────
@@ -950,14 +950,14 @@ function main() {
       const kept = ids(after);
       const lost = [...ids(before)].filter((x) => !kept.has(x));
       if (lost.length && !consumeFlag("delete", relToRoot(p))) {
-        deny("BLOCKED (guard layer 1): rule 02-10 - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
+        deny("BLOCKED (guard layer 1): Rule_Gate_10_ConfirmDelete - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
           " - a rule is never deleted without the user's word; to retire one, keep its number and mark it abolished." + flagTip("delete"));
       }
     }
     // The folder harness twin (2026-10-15): one rule = one folder, its number on the `id:` line of the part's main file.
     // Deleting the folder is a recursive delete (blocked above); rewriting or dropping the `id:` line is the other way
     // a number leaves, and the .md regex above never saw these files.
-    if (p && /(^|\/)(01_CONSTITUTION|02_RULES)\/[^/]+\/RULE\.md$/i.test(relToRoot(p).replace(/\\/g, "/"))) {
+    if (p && /(^|\/)(01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES)\/[^/]+\/RULE\.md$/i.test(relToRoot(p).replace(/\\/g, "/"))) {
       const idOf = (s) => { const m = String(s || "").match(/^id:\s*(\S+)/m); return m ? m[1] : null; };
       let before = "", after = "";
       if (tool === "Write") {
@@ -973,7 +973,7 @@ function main() {
       const was = idOf(before), now = idOf(after);
       const lost = was && was !== now ? [was] : [];
       if (lost.length && !consumeFlag("delete", relToRoot(p))) {
-        deny("BLOCKED (guard layer 1): rule 02-10 - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
+        deny("BLOCKED (guard layer 1): Rule_Gate_10_ConfirmDelete - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
           " - a rule is never deleted without the user's word; to retire one, keep its number and mark it abolished." + flagTip("delete"));
       }
     }

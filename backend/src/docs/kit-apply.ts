@@ -15,11 +15,13 @@ import {
   kitParts,
   MAIN_FILE,
   planAssembly,
+  renameLegacyShelves,
   STORE_DIR,
   type AssemblyStep,
   type Kit,
   type Part,
 } from "./store.js";
+import { SHELF } from "./harness-names.js";
 
 export interface KitApplyResult {
   kit: Kit;
@@ -28,6 +30,8 @@ export interface KitApplyResult {
   steps: AssemblyStep[];
   written: AssemblyStep[];
   skillsBlock: "written" | "current" | "no-file";
+  /** Legacy shelf folders renamed to the current names by this pass (`02_RULES → 01_RULES` …). */
+  renamedShelves: string[];
 }
 
 /** The kit a repo's marker names, or null (a repo still on the file harness). */
@@ -50,20 +54,23 @@ export function applyKit(
     return { error: `this repo is assembled from ${marked.name}; switching kits is not supported by init` };
   }
 
+  const hp = harnessPathsAt(root);
+  const target = { agentDir: hp.agent, skillsDir: hp.skills };
+  // A repo still on the legacy shelf folders (02_RULES · 01_CONSTITUTION) moves to the current ones FIRST — before the
+  // kit's own files (PURPOSE.md) and the parts are written — so no shelf ever ends up split across two folders.
+  const renamedShelves = opts.apply ? renameLegacyShelves(target.agentDir) : [];
+
   let createdMarker = false;
   if (opts.apply) createdMarker = writeKitMarker(root, kit);
   const ownAdded = opts.apply ? copyOwnFiles(kit, root, basename(root), storeDir) : [];
-
-  const hp = harnessPathsAt(root);
-  const target = { agentDir: hp.agent, skillsDir: hp.skills };
   // A constitution belongs to its repo: the suggested articles are offered ONCE, when the repo is assembled the first
   // time. After that sync never adds one back (the repo may have declined it) and never edits one (only an approval in
   // the repo's own session changes its constitution).
-  const parts = kitParts(kit, storeDir).filter((p) => p.shelf !== "01_CONSTITUTION" || !marked);
+  const parts = kitParts(kit, storeDir).filter((p) => p.shelf !== SHELF.constitution || !marked);
   const steps = planAssembly(parts, target);
   const written = opts.apply ? applyAssembly(steps) : [];
   const skillsBlock = opts.apply ? writeSkillsBlock(hp.agent, parts.filter((p) => p.shelf === "04_SKILLS"), target.skillsDir) : "current";
-  return { kit, createdMarker, ownAdded, steps, written, skillsBlock };
+  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves };
 }
 
 /** Create the marker (or add `kit` to an existing one). True when a new marker file was written. */
