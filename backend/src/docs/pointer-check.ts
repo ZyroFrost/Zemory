@@ -12,7 +12,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { citationKey, legacyKey } from "./harness-names.js";
-import { hostSkillOf, listParts, partFiles, SHELVES, STORE_DIR, type Part } from "./store.js";
+import { hostSkillOf, leafOf, listAllParts, listParts, partFiles, SHELVES, STORE_DIR, type Part } from "./store.js";
 
 const HARNESS_ENTRIES = new Set(["01_RULES", "02_CONSTITUTION", "03_STRUCTURE", "04_SKILLS", "05_TODO.md", "06_CHANGES.md", "archive"]);
 // A NAMED section of the old rules / constitution file. A numbered section (`§3`) is a section of the document it is
@@ -30,8 +30,8 @@ function storeIndex(storeDir: string): {
 } {
   const keys = new Map<string, Part>(), retired = new Map<string, Part>();
   for (const shelf of SHELVES) {
-    for (const p of listParts(storeDir, shelf)) keys.set(p.key, p);
-    for (const p of listParts(join(storeDir, "Archive"), shelf)) retired.set(p.key, p);
+    for (const p of listAllParts(storeDir, shelf)) keys.set(p.key, p);
+    for (const p of listAllParts(join(storeDir, "Archive"), shelf)) retired.set(p.key, p);
   }
   const slots: RegExp[] = [];
   const slotPaths: string[] = [];
@@ -90,7 +90,7 @@ export function storePointerFindings(storeDir = STORE_DIR): PointerFinding[] {
   const idx = storeIndex(storeDir);
   const out: PointerFinding[] = [];
   const texts: Array<[string, string, string | null]> = [];
-  for (const shelf of SHELVES) for (const p of listParts(storeDir, shelf)) for (const [f, t] of wordsOf(p.dir)) texts.push([`${shelf}/${p.folder}/${f}`, t, p.dir]);
+  for (const shelf of SHELVES) for (const p of listAllParts(storeDir, shelf)) for (const [f, t] of wordsOf(p.dir)) texts.push([`${shelf}/${p.folder}/${f}`, t, p.dir]);
   const own = join(storeDir, "Own");
   if (existsSync(own)) for (const kit of readdirSync(own)) for (const f of partFiles(join(own, kit))) if (/\.md$/i.test(f)) texts.push([`Own/${kit}/${f}`, readFileSync(join(own, kit, f), "utf8"), null]);
 
@@ -110,7 +110,7 @@ export function storePointerFindings(storeDir = STORE_DIR): PointerFinding[] {
       for (const m of line.matchAll(/(?<![\w./-])(0[123]-\d{1,3})(?![\w.]|-\d)/g)) {
         const key = legacyKey(m[1]);
         const live = key ? idx.keys.get(key) : undefined;
-        out.push({ where: at, kind: "legacy-id", pointer: m[1], note: live ? `cite ${live.folder}` : "no such part" });
+        out.push({ where: at, kind: "legacy-id", pointer: m[1], note: live ? `cite ${leafOf(live.folder)}` : "no such part" });
       }
       // ② repo paths
       for (const m of line.matchAll(/`([^`\s]+)`/g)) {

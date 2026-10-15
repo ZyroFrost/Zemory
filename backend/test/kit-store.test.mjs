@@ -52,21 +52,27 @@ function store(t) {
   put(s, "01_RULES/02-2_beta/hook.cjs", HOOK);
   put(s, "01_RULES/02-55_hook-guard/RULE.md", "---\nid: 02-55\nname: hook-guard\nversion: 1\nkind: action\ngenerated: [guard.cjs, policy.json, precommit-guard.cjs, 02-59_read-first.cjs]\n---\n# guard\n");
   put(s, "01_RULES/02-55_hook-guard/gate.json", '{ "gate": "guard" }\n');
-  put(s, "03_STRUCTURE/03-1_entry/SLOT.md", "---\nid: 03-1\nname: entry\nversion: 1\npath: AGENTS.md\n---\n# entry\n");
-  put(s, "03_STRUCTURE/03-1_entry/gate.json", JSON.stringify({ conform: { require: ["AGENTS.md", "CLAUDE.md"], contains: { "CLAUDE.md": "@AGENTS.md" } } }));
+  // the two layers: slots in Struc_Slot/ (each seeds the starter files of its own paths), structures that list them
+  put(s, "03_STRUCTURE/Struc_Slot/03-1_entry/SLOT.md", "---\nid: 03-1\nname: entry\nversion: 1\npath: AGENTS.md · CLAUDE.md\n---\n# entry\n");
+  put(s, "03_STRUCTURE/Struc_Slot/03-1_entry/gate.json", JSON.stringify({ conform: { require: ["AGENTS.md", "CLAUDE.md"], contains: { "CLAUDE.md": "@AGENTS.md" } } }));
+  put(s, "03_STRUCTURE/Struc_Slot/03-1_entry/seed/AGENTS.md", "# <PROJECT>\n");
+  put(s, "03_STRUCTURE/Struc_Slot/03-1_entry/seed/CLAUDE.md", "@AGENTS.md\n");
+  put(s, "03_STRUCTURE/Struc_Slot/03-2_agent/SLOT.md", "---\nid: 03-2\nname: agent\nversion: 1\npath: docs/agent/\n---\n# agent\n");
+  put(s, "03_STRUCTURE/Struc_Slot/03-2_agent/seed/docs/agent/04_SKILLS/INDEX.md", "# skills\n\n<!-- zemory:skills:start · machine block -->\n<!-- zemory:skills:end -->\n");
+  put(s, "03_STRUCTURE/Struc_Slot/03-2_agent/seed/docs/agent/05_TODO.md", "# todo\n");
+  for (const c of ["App", "NonApp"]) {
+    put(s, `03_STRUCTURE/Struc_Repo_${c}/STRUCTURE.md`, `---\nid: Struc_Repo_${c}\nname: repo-${c.toLowerCase()}\nversion: 1\nprofile: ${c === "App" ? "app" : "non-app"}\n---\n# ${c}\n`);
+    put(s, `03_STRUCTURE/Struc_Repo_${c}/structure.json`, JSON.stringify({ slots: ["03-1_entry", "03-2_agent"] }));
+  }
   put(s, "04_SKILLS/sk/SKILL.md", "---\nname: sk\nversion: 1\ndescription: x\n---\n# sk\n");
   put(s, "04_SKILLS/sk/gate.json", JSON.stringify({ read: [{ when: "path_prefix", prefix: "frontend" }],
     prompt: { kind: "sk-door", re: "mở cửa sk", text: "[zemory] SK REMINDER" },
     block: [{ path: "frontend/a.js" }], pass: [{ path: "backend/a.ts" }] }));
   put(s, "02_CONSTITUTION/01-1_secrets/RULE.md", "---\nid: 01-1\nname: secrets\nversion: 1\nkind: judgment\nsuggested: true\n---\n# secrets\n");
-  put(s, "Own/X/AGENTS.md", "# <PROJECT>\n");
-  put(s, "Own/X/CLAUDE.md", "@AGENTS.md\n");
-  put(s, "Own/X/docs/agent/04_SKILLS/INDEX.md", "# skills\n\n<!-- zemory:skills:start · machine block -->\n<!-- zemory:skills:end -->\n");
-  put(s, "Own/X/docs/agent/05_TODO.md", "# todo\n");
-  put(s, "kits.json", JSON.stringify({ "01": { name: "01_IDE_App_Memory", status: "built", host: "IDE", structure: "App", tier: "Memory",
-    constitution: ["01-*"], rules: ["02-*"], slots: ["03-1"], skills: ["sk"], own: "X" },
-    "03": { name: "03_IDE_NonApp_Memory", status: "built", host: "IDE", structure: "NonApp", tier: "Memory",
-    rules: ["02-*"], slots: ["03-1"], skills: [], own: "X" }, "02": { name: "02_IDE_NonApp_Memory", status: "reserved" } }));
+  put(s, "kits.json", JSON.stringify({ "01": { name: "01_IDE_App_Memory", status: "built", host: "IDE", structure: "Struc_Repo_App", tier: "Memory",
+    constitution: ["01-*"], rules: ["02-*"], skills: ["sk"] },
+    "03": { name: "03_IDE_NonApp_Memory", status: "built", host: "IDE", structure: "Struc_Repo_NonApp", tier: "Memory",
+    rules: ["02-*"], skills: [] }, "02": { name: "02_IDE_NonApp_Memory", status: "reserved" } }));
   git(root, "add", "-A");
   git(root, "commit", "-q", "-m", "v1");
   return { root, s, commit: (m) => { git(root, "add", "-A"); git(root, "commit", "-q", "-m", m); } };
@@ -94,7 +100,9 @@ test("init assembles every part at its numbered place, stamped with from:, plus 
     assert.ok(from && from.version === 1 && from.folder === f, `${f} carries a from: line`);
   }
   assert.ok(existsSync(join(root, "docs", "agent", "01_RULES", "02-2_beta", "hook.cjs")), "the hook travels with its rule");
-  assert.ok(existsSync(join(root, "docs", "agent", "03_STRUCTURE", "03-1_entry", "SLOT.md")));
+  assert.ok(existsSync(join(root, "docs", "agent", "03_STRUCTURE", "Struc_Slot", "03-1_entry", "SLOT.md")), "a slot lands in the inner layer");
+  assert.ok(existsSync(join(root, "docs", "agent", "03_STRUCTURE", "Struc_Repo_App", "structure.json")), "the kit's structure lands beside it");
+  assert.ok(!existsSync(join(root, "docs", "agent", "03_STRUCTURE", "Struc_Slot", "03-1_entry", "seed")), "seeds are written at their paths, not copied with the slot");
   // a skill: its source in the harness, its host build inside the source, and the build plugged where the host loads it
   assert.ok(existsSync(join(root, "docs", "agent", "04_SKILLS", "sk", "SKILL.md")), "the skill's source lands in the harness");
   assert.ok(existsSync(join(root, "docs", "agent", "04_SKILLS", "sk", "Claude", "sk", "SKILL.md")), "the host build sits inside the source");
@@ -396,4 +404,38 @@ test("session start hands the folder core over at once; a file-harness repo stay
   put(old, "docs/.harness.json", JSON.stringify({ docs: "docs/agent", adapters: {}, thresholds: {} }));
   put(old, "docs/agent/02_RULES.md", "# rules\n");
   assert.equal(handleHook("session-start", { cwd: old, source: "startup", session_id: "s2" }), "");
+});
+
+test("a repo assembled before the two layers: sync moves its flat slots into Struc_Slot/ and ends where a fresh repo does", (t) => {
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const shelf = join(root, "docs", "agent", "03_STRUCTURE");
+  // the old layout: slots flat on the shelf, no structure folder
+  for (const s of ["03-1_entry", "03-2_agent"]) renameSync(join(shelf, "Struc_Slot", s), join(shelf, s));
+  rmSync(join(shelf, "Struc_Slot"), { recursive: true });
+  rmSync(join(shelf, "Struc_Repo_App"), { recursive: true });
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(r.renamedShelves.some((x) => /2 slot\(s\) → 03_STRUCTURE\/Struc_Slot\//.test(x)), JSON.stringify(r.renamedShelves));
+  assert.ok(!r.steps.some((s) => s.verdict === "conflict" || s.verdict === "own"), "nothing conflicts, nothing is mistaken for the repo's own");
+  assert.ok(!existsSync(join(shelf, "03-1_entry")) && existsSync(join(shelf, "Struc_Slot", "03-1_entry", "SLOT.md")));
+  assert.ok(existsSync(join(shelf, "Struc_Repo_App", "STRUCTURE.md")), "the structure is assembled");
+  const again = applyKit(root, { apply: false, storeDir: st.s });
+  assert.deepEqual(new Set(Object.values(verdicts(again))), new Set(["current"]), "and a second pass finds nothing to do");
+  assert.equal(conform(root).items.find((i) => i.check === "slot-layer"), undefined);
+});
+
+test("conform: a slot outside the inner layer and a structure naming a missing slot are blocking", (t) => {
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const shelf = join(root, "docs", "agent", "03_STRUCTURE");
+  const items = () => conform(root).items;
+  assert.equal(items().find((i) => i.check === "structure-slot"), undefined, "a fresh repo's structure resolves");
+  put(shelf, "Slot_Root_099_Stray/SLOT.md", "---\nid: Slot_99\nname: stray\nversion: 1\npath: stray/\n---\n# stray\n");
+  writeFileSync(join(shelf, "Struc_Repo_App", "structure.json"), JSON.stringify({ slots: ["03-1_entry", "Slot_Root_098_Gone"] }));
+  const flat = items().find((i) => i.check === "slot-layer");
+  assert.ok(flat && flat.level === "blocking" && /Slot_Root_099_Stray/.test(flat.samples.join(" ")));
+  const dangling = items().find((i) => i.check === "structure-slot");
+  assert.ok(dangling && dangling.level === "blocking" && /Slot_Root_098_Gone/.test(dangling.samples.join(" ")));
 });

@@ -45,6 +45,15 @@ test("mass deletion that uses none of the rm -r keywords: all eight paths are bl
   }
 });
 
+test("`-delete` inside a path is not the find action: counting files beside a flag path passes", () => {
+  // Measured 2026-10-16: `find <dir> -type f | wc -l && touch docs/hooks/.allow-delete` was blocked as a whole-tree sweep —
+  // the flag's own name carries `-delete`. The action is a separate argument; the real form stays blocked above.
+  for (const cmd of ["find docs_template/_Store/Own -type f | wc -l && touch docs/hooks/.allow-delete", "find . -name '*-delete.md' -print"]) {
+    const r = ask(bash(cmd));
+    assert.equal(r.blocked, false, `BLOCKED WRONGLY: ${cmd}\n${r.say}`);
+  }
+});
+
 test("discarding uncommitted work is blocked (02_RULES S Git forbade it in words, now it has a latch)", () => {
   for (const cmd of ["git reset --hard", "git reset --hard HEAD~1", "git checkout -- .", "git stash clear"]) {
     const r = ask(bash(cmd));

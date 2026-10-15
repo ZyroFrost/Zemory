@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { gateExampleFindings, storePrivacyFindings } from "../../dist/docs/gate-examples.js";
 import { storePointerFindings } from "../../dist/docs/pointer-check.js";
-import { kitParts, listParts, partNameFindings, readKits, SHELVES, STORE_DIR, unbumpedParts } from "../../dist/docs/store.js";
+import { kitParts, listParts, structureSlots, partNameFindings, readKits, SHELVES, STORE_DIR, unbumpedParts } from "../../dist/docs/store.js";
 import { tempDir } from "./helpers.mjs";
 
 function put(root, rel, text) {
@@ -47,10 +47,17 @@ test("a part whose content changed since HEAD bumped its version", () => {
 
 test("every built kit names parts that exist", () => {
   for (const k of readKits(STORE_DIR).filter((k) => k.status === "built")) {
-    const got = new Set(kitParts(k, STORE_DIR).map((p) => (p.shelf === "04_SKILLS" ? p.folder : p.id)));
-    for (const id of [...k.constitution, ...k.rules, ...k.slots, ...k.skills].filter((x) => !x.includes("*"))) {
+    const parts = kitParts(k, STORE_DIR);
+    const got = new Set(parts.map((p) => (p.shelf === "04_SKILLS" ? p.folder : p.id)));
+    for (const id of [...k.constitution, ...k.rules, ...k.skills].filter((x) => !x.includes("*"))) {
       assert.ok(got.has(id), `${k.name}: ${id} is not in the store`);
     }
+    // the kit's one structure is in the store, and every slot it lists resolves to a slot of the inner layer
+    const struc = parts.find((p) => p.folder === k.structure);
+    assert.ok(struc, `${k.name}: structure ${k.structure} is not in the store`);
+    const r = structureSlots(struc, listParts(STORE_DIR, "03_STRUCTURE"));
+    assert.deepEqual(r.missing, [], `${k.name}: ${k.structure} names slots that do not exist`);
+    assert.ok(r.slots.length > 0 && parts.filter((p) => p.folder.startsWith("Struc_Slot/")).length === r.slots.length);
   }
 });
 
@@ -149,4 +156,44 @@ test("negative: a wrong example, a gate with no examples and a private line are 
   assert.ok(!priv.some((x) => /notes\.md:1 /.test(x)), "a backticked `user` is data, not a person");
   assert.ok(priv.some((x) => /notes\.md:2 — an e-mail address/.test(x)), "a real address is caught");
   assert.ok(!priv.some((x) => /notes\.md:3 /.test(x)), "an RFC 2606 example address is not a contact");
+});
+
+test("the two structure layers hold in the store: no slot flat, none with applies, seeds under the slot's path, no dangling slot name", (t) => {
+  const s = tempDir(t, "zemory-layers-");
+  const put = (rel, text) => { mkdirSync(dirname(join(s, rel)), { recursive: true }); writeFileSync(join(s, rel), text); };
+  const slot = (rel, id, path, extra = "") => put(`03_STRUCTURE/${rel}/SLOT.md`, `---\nid: ${id}\nname: x\nversion: 1\npath: ${path}\n${extra}---\n# x\n`);
+  slot("Struc_Slot/Slot_Root_001_Entry", "Slot_1", "AGENTS.md · CLAUDE.md");
+  put("03_STRUCTURE/Struc_Slot/Slot_Root_001_Entry/seed/AGENTS.md", "# <PROJECT>\n");
+  put("03_STRUCTURE/Struc_Slot/Slot_Root_001_Entry/seed/docs/stray.md", "x\n");
+  slot("Struc_Slot/Slot_Docs_002_Docs", "Slot_2", "docs/", "applies: [App]\n");
+  slot("Slot_Docs_003_Plan", "Slot_3", "docs/plan/");
+  put("03_STRUCTURE/Struc_Repo_App/STRUCTURE.md", "---\nid: Struc_Repo_App\nname: repo-app\nversion: 1\n---\n# app\n");
+  put("03_STRUCTURE/Struc_Repo_App/structure.json", JSON.stringify({ slots: ["Slot_Root_001_Entry", "Slot_Docs_009_Gone"] }));
+  const wrong = partNameFindings(s).wrong.join("\n");
+  assert.match(wrong, /Slot_Docs_003_Plan: a slot lives in 03_STRUCTURE\/Struc_Slot\//);
+  assert.match(wrong, /Slot_Docs_002_Docs: a slot belongs to no structure/);
+  assert.match(wrong, /seed\/docs\/stray\.md is not under the slot's path/);
+  assert.doesNotMatch(wrong, /seed\/AGENTS\.md/, "a seed at the slot's own path passes");
+  assert.match(wrong, /Struc_Repo_App: structure\.json names Slot_Docs_009_Gone/);
+});
+
+test("every built kit assembles from the real store into a repo that holds: conform clean on the harness, nothing left to do", async (t) => {
+  const { applyKit } = await import("../../dist/docs/kit-apply.js");
+  const { conform } = await import("../../dist/docs/conform.js");
+  for (const k of readKits(STORE_DIR).filter((k) => k.status === "built")) {
+    const root = tempDir(t, `zemory-kit${k.no}-`);
+    const r = applyKit(root, { kitRef: k.no, apply: true });
+    assert.ok(!("error" in r), `${k.name}: ${r.error}`);
+    const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
+    assert.doesNotMatch(agents, /<(STRUC_[A-Z_]+|SKILL_TRIGGERS|PROJECT|ZEMORY_RAW|ZEMORY_REPO)>/, `${k.name}: a placeholder is left in AGENTS.md`);
+    const skills = kitParts(k, STORE_DIR).filter((p) => p.shelf === "04_SKILLS");
+    for (const s of skills) {
+      const host = String(s.meta.name);
+      assert.equal(agents.split(`\`.claude/skills/${host}/SKILL.md\``).length - 1, 1, `${k.name}: AGENTS.md has one trigger row for ${host}`);
+    }
+    const blocking = conform(root).items.filter((i) => i.level === "blocking" && ["harness-missing", "slot-gate", "slot-layer", "structure-slot", "part-name-vi"].includes(i.check));
+    assert.deepEqual(blocking.map((i) => `${i.check}: ${i.samples.join(" · ")}`), [], `${k.name}: the assembled repo holds`);
+    const again = applyKit(root, { apply: false });
+    assert.deepEqual(again.steps.filter((s) => s.verdict !== "current").map((s) => `${s.part.folder} ${s.verdict}`), [], `${k.name}: a second pass finds nothing to do`);
+  }
 });
