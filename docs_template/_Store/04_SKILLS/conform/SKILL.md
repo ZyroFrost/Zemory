@@ -1,6 +1,6 @@
 ---
 name: conform
-version: 3
+version: 4
 description: Measure how closely the project folder follows the declared standard - machine scores, agent judges. Run before closing a session, after restructuring, when taking over an unfamiliar folder, or periodically. Not needed after every small edit. Vietnamese triggers - "soi chuẩn", "kiểm chuẩn", "có đúng chuẩn không", "check cấu trúc", "dự án này có bám chuẩn không".
 ---
 
@@ -40,7 +40,7 @@ trước, agent chỉ đọc **bảng lệch** (~vài trăm token).
    - folder rỗng / rác → **đề xuất xoá, chờ xác nhận** trước khi xoá, không tự xoá
    - đừng chỉnh script chấm cho hết kêu
 5. **Chạy lại** máy chấm → xác nhận hết lệch. Đã sửa → `06_CHANGES`; phần còn lệch → **báo, hỏi trước
-   khi ghi vào `05_TODO`** (`02-38`).
+   khi ghi vào `05_TODO`** (`Rule_Gate_38_TodoDoor`).
 
 **Ranh giới với `zemory validate`:** `validate` hỏi *"bộ docs harness có đúng khuôn không"* (link,
 độ dài changelog, tầng folder). `soi chuẩn`/`conform` hỏi *"code + docs + thư mục có bám chuẩn đã KHAI

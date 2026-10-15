@@ -9,7 +9,7 @@ import { SLOT_ROLES } from "../../dist/docs/structure-tree.js";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { gateExampleFindings, storePrivacyFindings } from "../../dist/docs/gate-examples.js";
-import { kitParts, listParts, readKits, SHELVES, STORE_DIR, unbumpedParts } from "../../dist/docs/store.js";
+import { kitParts, listParts, partNameFindings, readKits, SHELVES, STORE_DIR, unbumpedParts } from "../../dist/docs/store.js";
 import { tempDir } from "./helpers.mjs";
 
 function put(root, rel, text) {
@@ -26,13 +26,15 @@ test("the store carries no private detail (plan/28 §0f)", () => {
   assert.deepEqual(storePrivacyFindings(STORE_DIR), []);
 });
 
-test("every part has a header matching its folder; rules declare their kind", () => {
+test("every part has a dictionary name, a header id equal to its key, and its legacy id kept as aka; rules declare their kind", () => {
+  const { legacy } = partNameFindings(STORE_DIR);
+  assert.deepEqual(legacy.filter((x) => !x.startsWith("04_SKILLS/")), [], "every rule, article and slot carries a dictionary name");
   for (const shelf of SHELVES) {
     for (const p of listParts(STORE_DIR, shelf)) {
       assert.ok(p.version >= 1, `${p.folder}: version`);
       if (shelf === "04_SKILLS") continue;
-      assert.ok(p.folder.startsWith(`${p.id}_`), `${shelf}/${p.folder}: id ${p.id} matches the folder`);
-      assert.ok(p.id.startsWith(shelf.slice(0, 2) + "-"), `${shelf}/${p.folder}: number belongs to its shelf`);
+      assert.equal(p.id, p.key, `${shelf}/${p.folder}: the header id is the key`);
+      assert.match(String(p.meta.aka ?? ""), /^0[123]-\d+$/, `${shelf}/${p.folder}: the legacy id stays citable (aka)`);
       if (shelf !== "03_STRUCTURE") assert.ok(["action", "content", "judgment"].includes(p.kind), `${p.folder}: kind`);
     }
   }
@@ -53,8 +55,12 @@ test("every built kit names parts that exist", () => {
 
 test("every store hook.cjs is a byte copy of the generator source (one source while both layouts live)", () => {
   const sources = [...RULE_HOOKS.map((h) => [h.file.replace(/\.cjs$/, ""), h.source]), ["02-25_sql-one-way", SQL_GATE_SOURCE]];
+  const rules = listParts(STORE_DIR, "02_RULES");
   for (const [folder, source] of sources) {
-    const p = join(STORE_DIR, "02_RULES", folder, "hook.cjs");
+    // The generator still names hooks by the legacy id (`02-24_eol-keep`); the store part is found by its key.
+    const part = rules.find((r) => r.key === `Rule_${Number(folder.split("_")[0].split("-")[1])}`);
+    assert.ok(part, `${folder}: no store part with that key`);
+    const p = join(part.dir, "hook.cjs");
     assert.ok(existsSync(p), `${folder}: no hook.cjs in the store`);
     assert.equal(readFileSync(p, "utf8").replace(/\r\n/g, "\n"), source.replace(/\r\n/g, "\n"), `${folder}: store copy drifted from the generator`);
   }
@@ -65,6 +71,32 @@ test("every slot name of the machine dictionary has a slot part in the store (HP
   const inStore = new Set(listParts(STORE_DIR, "03_STRUCTURE").filter((p) => p.meta.kind !== "guide").map((p) => p.name));
   const missing = Object.keys(SLOT_ROLES).filter((n) => !ZEMORY_ONLY.has(n) && !inStore.has(n));
   assert.deepEqual(missing, [], "add a slot part for these, or drop them from SLOT_ROLES");
+});
+
+test("every renamed part name tells the truth: code, enforcement group, slot area and number (plan/28 §0o)", () => {
+  const { wrong } = partNameFindings(STORE_DIR);
+  assert.deepEqual(wrong, [], wrong.join("\n"));
+});
+
+test("negative: a name that lies about its enforcement, area, number or shelf is reported; a legacy name is listed apart", (t) => {
+  const s = tempDir(t, "zemory-store-names-");
+  put(s, "02_RULES/Rule_Keys_09_X/RULE.md", "---\nid: Rule_9\nname: x\nversion: 1\n---\nx\n"); // no prompt gate: really Core
+  put(s, "02_RULES/Rule_Gate_07_Y/RULE.md", "---\nid: Rule_7\nname: y\nversion: 1\n---\ny\n");
+  put(s, "02_RULES/Rule_Gate_07_Y/gate.json", JSON.stringify({ hook: "hook.cjs" }));
+  put(s, "02_RULES/Rule_Core_06_Z/RULE.md", "---\nid: Rule_5\nname: z\nversion: 1\n---\nz\n"); // number disagrees with id
+  put(s, "03_STRUCTURE/Slot_Frontend_012_Cmd/SLOT.md", "---\nid: Slot_12\nname: cmd\nversion: 1\npath: backend/src/commands/\n---\nc\n");
+  put(s, "03_STRUCTURE/Rule_Core_04_W/SLOT.md", "---\nid: Rule_4\nname: w\nversion: 1\npath: x/\n---\nw\n");
+  put(s, "02_RULES/02-3_old/RULE.md", "---\nid: 02-3\nname: old\nversion: 1\n---\no\n");
+  put(s, "Archive/02_RULES/Rule_Core_09_Retired/RULE.md", "---\nid: Rule_9\nname: r\nversion: 2\nretired: 2026-10-15 · x\n---\nr\n");
+  const { wrong, legacy } = partNameFindings(s);
+  assert.ok(wrong.some((x) => /Archive\/02_RULES\/Rule_Core_09_Retired: key Rule_9 is already taken/.test(x)), "a retired number is never handed out again");
+  const says = (re) => assert.ok(wrong.some((x) => re.test(x)), `${re}\n${wrong.join("\n")}`);
+  says(/Rule_Keys_09_X: named Keys but its gate\.json makes it Core/);
+  says(/Rule_Core_06_Z: the name says Rule_6 but the header id says Rule_5/);
+  says(/Slot_Frontend_012_Cmd: area Frontend but path backend\/src\/commands\/ is in Backend/);
+  says(/Rule_Core_04_W: code Rule does not belong on 03_STRUCTURE/);
+  assert.ok(!wrong.some((x) => /Rule_Gate_07_Y/.test(x)), "a truthful name passes");
+  assert.deepEqual(legacy, ["02_RULES/02-3_old"]);
 });
 
 test("negative: a wrong example, a gate with no examples and a private line are all reported", (t) => {

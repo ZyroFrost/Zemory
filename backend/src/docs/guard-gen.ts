@@ -29,9 +29,12 @@ import { isFolderHarness, isRetired, listParts, skillReadTriggers } from "./stor
 export function hooksDirOf(root: string): string {
   const agent = harnessPathsAt(root).agent;
   if (!isFolderHarness(agent)) return join(agent, "..", "hooks");
-  const p = listParts(agent, "02_RULES").find((x) => x.id === "02-55");
+  const p = listParts(agent, "02_RULES").find((x) => x.key === GUARD_RULE_KEY);
   return p ? p.dir : join(agent, "02_RULES", "02-55_hook-guard");
 }
+
+/** The rule whose folder holds the guard (by key, so a renamed folder is still found). */
+const GUARD_RULE_KEY = "Rule_55";
 
 /** Where one-use flags and the once-per-session memory live. File harness: the hooks folder. Folder harness: a git-ignored
  *  `.harness-state/` beside the agent folder — runtime state is not part of any rule. */
@@ -47,7 +50,7 @@ function ruleHookDirs(root: string): string[] {
   const out: string[] = [];
   for (const shelf of ["01_CONSTITUTION", "02_RULES"] as const) {
     for (const p of listParts(agent, shelf)) {
-      if (p.id === "02-55" || isRetired(p)) continue; // the dispatcher itself · a rule the repo declined
+      if (p.key === GUARD_RULE_KEY || isRetired(p)) continue; // the dispatcher itself · a rule the repo declined
       if (existsSync(join(p.dir, "hook.cjs"))) out.push(relative(root, p.dir).replace(/\\/g, "/"));
     }
   }
@@ -129,7 +132,18 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     };
     const strs = (v: unknown): string[] =>
       Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).map((x) => x.trim()) : [];
-    protectedWrite = strs(j.protected);
+    // A marker written for the file harness names `docs/agent/01_CONSTITUTION.md`; after the move to the folder harness
+    // that file is gone and the prefix guarded nothing — measured 2026-10-15 on all 9 moved repos: every file under
+    // `01_CONSTITUTION/` was writable. A protected `X.md` that no longer exists while `X/` does ⇒ protect the folder.
+    protectedWrite = strs(j.protected).map((p) => {
+      const folder = p.replace(/\.md$/i, "");
+      if (folder === p || existsSync(join(root, p))) return p;
+      try {
+        return statSync(join(root, folder)).isDirectory() ? folder : p;
+      } catch {
+        return p;
+      }
+    });
     secretExtra = strs(j.secretNames);
     secretAllowExtra = strs(j.secretAllow);
     // Ngoài-project (2026-10-06): chỗ ghi ngoài repo user đã cho phép sẵn + máy chủ SQL được nhắm tới.
@@ -1204,6 +1218,29 @@ function main() {
       }
       const kept = ids(after);
       const lost = [...ids(before)].filter((x) => !kept.has(x));
+      if (lost.length && !consumeFlag("delete", relToRoot(p))) {
+        deny("BLOCKED (guard layer 1): rule 02-10 - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
+          " - a rule is never deleted without the user's word; to retire one, keep its number and mark it abolished." + flagTip("delete"));
+      }
+    }
+    // The folder harness twin (2026-10-15): one rule = one folder, its number on the \`id:\` line of the part's main file.
+    // Deleting the folder is a recursive delete (blocked above); rewriting or dropping the \`id:\` line is the other way
+    // a number leaves, and the .md regex above never saw these files.
+    if (p && /(^|\\/)(01_CONSTITUTION|02_RULES)\\/[^/]+\\/RULE\\.md$/i.test(relToRoot(p).replace(/\\\\/g, "/"))) {
+      const idOf = (s) => { const m = String(s || "").match(/^id:\\s*(\\S+)/m); return m ? m[1] : null; };
+      let before = "", after = "";
+      if (tool === "Write") {
+        try { before = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : ""; } catch { before = ""; }
+        after = ti.content || "";
+      } else {
+        // Edit / MultiEdit: apply the replacements to the file as it is, then read the id of the result.
+        try { before = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : ""; } catch { before = ""; }
+        after = before;
+        const edits = tool === "MultiEdit" ? ti.edits || [] : [ti];
+        for (const e of edits) after = e.replace_all ? after.split(e.old_string || "").join(e.new_string || "") : after.replace(e.old_string || "", () => e.new_string || "");
+      }
+      const was = idOf(before), now = idOf(after);
+      const lost = was && was !== now ? [was] : [];
       if (lost.length && !consumeFlag("delete", relToRoot(p))) {
         deny("BLOCKED (guard layer 1): rule 02-10 - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
           " - a rule is never deleted without the user's word; to retire one, keep its number and mark it abolished." + flagTip("delete"));

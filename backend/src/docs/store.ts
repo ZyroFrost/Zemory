@@ -13,10 +13,11 @@
 // Reading never writes; `applyAssembly` is the only writer and takes a plan made by `planAssembly`.
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
+import { LEGACY_SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, slotArea } from "./harness-names.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
 // the constant from adopt would read it before adopt has run.
@@ -38,6 +39,11 @@ export interface Part {
   folder: string;
   dir: string;
   id: string;
+  /**
+   * Stable identity (plan/28 §0o): code + number (`Rule_25`), or the folder for an unnumbered part. Assembly finds a repo
+   * copy by key, not by folder, so a part that changes enforcement group or name is renamed in place, never duplicated.
+   */
+  key: string;
   name: string;
   version: number;
   kind?: string;
@@ -85,6 +91,8 @@ export function bodyOf(text: string): string {
 }
 
 const FROM_RE = /^from:\s*_Store\/(\d{2}_[A-Z_]+)\/([^\s@]+)\s+@v(\d+)\s+#([0-9a-f]{8,})\s*$/;
+// A `from:` line written before the shelves were renumbered names a legacy shelf; it still parses (the hash is what counts).
+const knownShelf = (s: string): boolean => (SHELVES as readonly string[]).includes(s) || s in LEGACY_SHELF;
 
 export function fromLine(p: Pick<Part, "shelf" | "folder" | "version">, hash: string): string {
   return `from: _Store/${p.shelf}/${p.folder} @v${p.version} #${hash}`;
@@ -92,7 +100,7 @@ export function fromLine(p: Pick<Part, "shelf" | "folder" | "version">, hash: st
 
 export function parseFrom(value: string): FromRef | null {
   const m = FROM_RE.exec(`from: ${value}`.replace(/^from:\s*from:/, "from:"));
-  if (!m || !(SHELVES as readonly string[]).includes(m[1])) return null;
+  if (!m || !knownShelf(m[1])) return null;
   return { shelf: m[1] as Shelf, folder: m[2], version: Number(m[3]), hash: m[4] };
 }
 
@@ -166,11 +174,13 @@ export function readPart(dir: string, shelf: Shelf): Part | null {
   const str = (k: string): string => (typeof meta[k] === "string" ? (meta[k] as string) : "");
   const list = (k: string): string[] => (Array.isArray(meta[k]) ? (meta[k] as string[]) : str(k) ? [str(k)] : []);
   const from = str("from") ? parseFrom(str("from")) ?? undefined : undefined;
+  const id = str("id") || folder.split("_")[0];
   return {
     shelf,
     folder,
     dir,
-    id: str("id") || folder.split("_")[0],
+    id,
+    key: partKey(id, folder),
     name: str("name") || folder.replace(/^\d{2}-\d+_/, ""),
     version: Number(str("version") || from?.version || 1),
     kind: str("kind") || undefined,
@@ -180,9 +190,29 @@ export function readPart(dir: string, shelf: Shelf): Part | null {
   };
 }
 
+/** Identity from the header id (`Rule_14` · legacy `02-14`), else from the folder name; an unnumbered part is its folder. */
+export function partKey(id: string, folder: string): string {
+  const fromId = citationKey(id) ?? legacyKey(id);
+  if (fromId) return fromId;
+  const parsed = parsePartName(folder);
+  if (parsed) return keyOf(parsed);
+  return legacyKey(folder.split("_")[0]) ?? folder;
+}
+
+/** The shelf folder under `root` that holds `shelf` — its current name, or the legacy one a repo not yet renamed has. */
+export function shelfDir(root: string, shelf: string): string {
+  const now = join(root, shelf);
+  if (existsSync(now)) return now;
+  for (const [old, cur] of Object.entries(LEGACY_SHELF)) {
+    if (cur === shelf && existsSync(join(root, old))) return join(root, old);
+    if (old === shelf && existsSync(join(root, cur))) return join(root, cur);
+  }
+  return now;
+}
+
 /** Every part on one shelf under `root` (the store, or a repo's harness folder). Skills read from `skillsRoot`. */
 export function listParts(root: string, shelf: Shelf): Part[] {
-  const dir = join(root, shelf);
+  const dir = shelfDir(root, shelf);
   if (!existsSync(dir)) return [];
   const out: Part[] = [];
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -327,6 +357,17 @@ export function targetDir(t: AssemblyTarget, p: Pick<Part, "shelf" | "folder">):
   return p.shelf === "04_SKILLS" ? join(t.skillsDir, p.folder) : join(t.agentDir, p.shelf, p.folder);
 }
 
+/**
+ * The repo copy of a part, found by KEY (plan/28 §0o) — at its own folder name, or at an older name (the part moved from
+ * Core to Keys, was renamed, or sits on a legacy shelf). Null when the repo has no copy.
+ */
+export function findCopy(t: AssemblyTarget, part: Part): string | null {
+  const exact = targetDir(t, part);
+  if (existsSync(join(exact, MAIN_FILE[part.shelf]))) return exact;
+  const pool = part.shelf === "04_SKILLS" ? listRepoSkills(t.skillsDir) : listParts(t.agentDir, part.shelf);
+  return pool.find((p) => p.key === part.key)?.dir ?? null;
+}
+
 export type StepVerdict =
   /** the repo has no copy — add it */
   | "absent"
@@ -349,16 +390,34 @@ export interface AssemblyStep {
   write?: Map<string, string>;
   /** Files of the old copy no longer in the part (clean only). */
   remove?: string[];
+  /** The copy sits at an older folder (same key): move it to `target` before writing. */
+  renameFrom?: string;
   reason?: string;
 }
 
 /** What assembling `parts` into a repo would do. Reads only. */
 export function planAssembly(parts: Part[], t: AssemblyTarget): AssemblyStep[] {
-  return parts.map((part) => planOne(part, t));
+  return parts.map((part) => {
+    const target = targetDir(t, part);
+    const at = findCopy(t, part);
+    if (!at || at === target) return planOne(part, t, target);
+    // Same key at an older folder: judge the copy where it is, then move it to the new name. A verdict that writes nothing
+    // (current) still moves, so the folder name always tells the truth about the part.
+    const step = planOne(part, t, at);
+    if (step.verdict === "own" || step.verdict === "conflict") return step;
+    let write = step.write;
+    if (!write) {
+      // Nothing to bring (current): keep the repo's content, only restamp `from:` with the new folder name.
+      const main = MAIN_FILE[part.shelf];
+      const text = readFileSync(join(at, main), "utf8");
+      const old = parseFrom(String(frontMatter(text)?.meta.from ?? ""));
+      write = new Map([[main, stampFrom(text, fromLine(part, old?.hash ?? partHash(part.dir, part.shelf)))]]);
+    }
+    return { ...step, target, renameFrom: at, write, reason: step.reason ?? `renamed from ${at}` };
+  });
 }
 
-function planOne(part: Part, t: AssemblyTarget): AssemblyStep {
-  const target = targetDir(t, part);
+function planOne(part: Part, t: AssemblyTarget, target = targetDir(t, part)): AssemblyStep {
   const main = MAIN_FILE[part.shelf];
   const theirs = readPartFiles(part.dir, main);
   const theirsHash = hashFiles(theirs, main);
@@ -420,6 +479,10 @@ export function applyAssembly(steps: AssemblyStep[]): AssemblyStep[] {
   const done: AssemblyStep[] = [];
   for (const s of steps) {
     if (!s.write) continue;
+    if (s.renameFrom && !existsSync(s.target)) {
+      mkdirSync(dirname(s.target), { recursive: true });
+      renameSync(s.renameFrom, s.target);
+    }
     for (const f of s.remove ?? []) rmSync(join(s.target, f), { force: true });
     for (const [f, text] of s.write) {
       const p = join(s.target, f);
@@ -460,15 +523,20 @@ function filesAt(pg: { git: (args: string[]) => string; prefix: string }, sha: s
 export function baseFiles(part: Part, hash: string): Map<string, string> | null {
   const key = `${part.dir}#${hash}`;
   if (baseCache.has(key)) return baseCache.get(key) ?? null;
+  const main = MAIN_FILE[part.shelf];
+  const matches = (files: Map<string, string>): boolean => {
+    const g = frontMatter(files.get(main) ?? "")?.meta.generated;
+    for (const name of Array.isArray(g) ? g : typeof g === "string" && g ? [g] : []) files.delete(name);
+    return hashFiles(files, main) === hash;
+  };
   let found: Map<string, string> | null = null;
+  // Fast path: the history of the part's own folder.
   const pg = partGit(part.dir);
   if (pg) {
     try {
       for (const sha of pg.git(["log", "--format=%H", "--", "."]).split(/\r?\n/).filter(Boolean)) {
         const files = filesAt(pg, sha);
-        const g = frontMatter(files.get(MAIN_FILE[part.shelf]) ?? "")?.meta.generated;
-        for (const name of Array.isArray(g) ? g : typeof g === "string" && g ? [g] : []) files.delete(name);
-        if (hashFiles(files, MAIN_FILE[part.shelf]) === hash) {
+        if (matches(files)) {
           found = files;
           break;
         }
@@ -477,8 +545,50 @@ export function baseFiles(part: Part, hash: string): Map<string, string> | null 
       found = null;
     }
   }
+  // The part was renamed (enforcement group · name · shelf): look for its KEY across the whole shelf history, legacy
+  // shelf name included. Only the main file is read per folder until the key matches.
+  if (!found) found = baseAcrossRenames(part, matches);
   baseCache.set(key, found);
   return found;
+}
+
+function baseAcrossRenames(part: Part, matches: (files: Map<string, string>) => boolean): Map<string, string> | null {
+  const shelfAt = dirname(part.dir);
+  const pg = partGit(shelfAt);
+  if (!pg) return null;
+  const main = MAIN_FILE[part.shelf];
+  const shelfName = shelfAt.replace(/\\/g, "/").split("/").pop() ?? "";
+  const legacy = Object.entries(LEGACY_SHELF).find(([old, cur]) => cur === shelfName || old === shelfName);
+  const paths = ["."];
+  if (legacy) paths.push(`../${legacy[0] === shelfName ? legacy[1] : legacy[0]}`);
+  try {
+    const shas = pg.git(["log", "--format=%H", "--", ...paths]).split(/\r?\n/).filter(Boolean);
+    const root = pg.prefix.split("/").filter(Boolean).slice(0, -1).join("/");
+    for (const sha of shas) {
+      const names = pg.git(["ls-tree", "-r", "--full-name", "--name-only", sha, "--", ...paths]).split(/\r?\n/).filter(Boolean);
+      const folders = new Map<string, string[]>();
+      for (const f of names) {
+        const rest = root ? f.slice(root.length + 1) : f; // `<shelf>/<folder>/<file…>`
+        const [, folder, ...file] = rest.split("/");
+        if (!folder || !file.length) continue;
+        const prefix = (root ? root + "/" : "") + rest.split("/").slice(0, 2).join("/") + "/";
+        folders.set(prefix, [...(folders.get(prefix) ?? []), f]);
+      }
+      for (const [prefix, files] of folders) {
+        if (!files.includes(prefix + main)) continue;
+        const head = pg.git(["show", `${sha}:${prefix}${main}`]);
+        const folder = prefix.split("/").slice(-2, -1)[0] ?? "";
+        const id = String(frontMatter(head)?.meta.id ?? "");
+        if (partKey(id, folder) !== part.key) continue;
+        const map = new Map<string, string>();
+        for (const f of files) map.set(f.slice(prefix.length), f === prefix + main ? head : pg.git(["show", `${sha}:${f}`]));
+        if (matches(map)) return map;
+      }
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 // ── checks ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -504,6 +614,58 @@ export function unbumpedParts(storeDir = STORE_DIR): string[] {
     }
   }
   return out;
+}
+
+const SHELF_CODE: Record<string, string[]> = {
+  "01_CONSTITUTION": ["Cons"], "02_CONSTITUTION": ["Cons"],
+  "02_RULES": ["Rule"], "01_RULES": ["Rule"],
+  "03_STRUCTURE": ["Slot", "Struc"],
+  "04_SKILLS": ["Skill"],
+};
+
+/**
+ * A part name must tell the truth (plan/28 §0o): the code fits the shelf, the enforcement group of a rule or article is what
+ * its gate.json really does, a slot's area is the first segment of its path, the number is the number of its id. `legacy`
+ * lists the parts still under a pre-dictionary name — the rename step drives that list to zero.
+ */
+export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legacy: string[] } {
+  const wrong: string[] = [];
+  const legacy: string[] = [];
+  // A number is taken for good: a retired part in `Archive/` still holds it (plan/28 §0o).
+  const owner = new Map<string, string>();
+  for (const base of [storeDir, join(storeDir, "Archive")]) {
+    for (const shelf of SHELVES) {
+      for (const p of listParts(base, shelf)) {
+        const where = `${base === storeDir ? "" : "Archive/"}${shelf}/${p.folder}`;
+        const prev = owner.get(p.key);
+        if (prev) wrong.push(`${where}: key ${p.key} is already taken by ${prev}`);
+        else owner.set(p.key, where);
+      }
+    }
+  }
+  for (const shelf of SHELVES) {
+    for (const p of listParts(storeDir, shelf)) {
+      const n = parsePartName(p.folder);
+      const where = `${shelf}/${p.folder}`;
+      if (!n) {
+        legacy.push(where);
+        continue;
+      }
+      if (!(SHELF_CODE[shelf] ?? []).includes(n.code)) wrong.push(`${where}: code ${n.code} does not belong on ${shelf}`);
+      if (n.no !== undefined && p.key !== keyOf(n)) wrong.push(`${where}: the name says ${keyOf(n)} but the header id says ${p.key}`);
+      if (n.code === "Rule" || n.code === "Cons") {
+        let gate: Record<string, unknown> | null = null;
+        try { gate = JSON.parse(readFileSync(join(p.dir, "gate.json"), "utf8")) as Record<string, unknown>; } catch { gate = null; }
+        const real = enforcementOf(gate);
+        if (real !== n.group) wrong.push(`${where}: named ${n.group} but its gate.json makes it ${real}`);
+      }
+      if (n.code === "Slot") {
+        const area = slotArea(String(p.meta.path ?? ""));
+        if (area !== n.group) wrong.push(`${where}: area ${n.group} but path ${String(p.meta.path ?? "")} is in ${area}`);
+      }
+    }
+  }
+  return { wrong, legacy };
 }
 
 /** What a slot's `gate.json › conform` finds wrong in a repo: a required path that does not exist, a file that does not

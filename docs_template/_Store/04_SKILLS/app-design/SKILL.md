@@ -1,6 +1,6 @@
 ---
 name: app-design
-version: 3
+version: 5
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
 ---
 
@@ -37,7 +37,7 @@ chúng không phải một danh sách thứ phải dựng.
 
 **Phép thử trước khi thêm bất cứ gì:** ① **gỡ** cái đang có được không · ② **gộp** vào chỗ đã có
 được không · ③ **không có nó thì người dùng làm hỏng việc gì**. Không trả lời được ③ ⇒ **KHÔNG THÊM**.
-*(Cùng khuôn ba câu hỏi của `02-38` cửa vào — ở đó là chống phình SỔ, ở đây chống phình
+*(Cùng khuôn ba câu hỏi của `Rule_Gate_38_TodoDoor` cửa vào — ở đó là chống phình SỔ, ở đây chống phình
 BỀ MẶT. Cùng một bệnh: bồi đắp cho chắc, rồi mọi người phải đọc mãi mãi.)*
 
 **Một thông tin xuất hiện ĐÚNG MỘT LẦN trên màn** (mở rộng của §F6, siết hơn): F6 cấm cùng một số
@@ -212,6 +212,10 @@ vì sao mất.
   nếu không nó lúc ẩn lúc hiện tuỳ đường nào về sau. Và setter phải xoá cache của bảng điều khiển,
   nếu không công tắc "gạt mà không đổi".
 
+### F16. Dòng / panel TỔNG nằm DƯỚI nội dung
+Theo chuẩn bảng tính: dòng tổng của bảng, panel tổng của một nhóm luôn đứng sau phần được cộng. Bố cục đã chốt thì không tự
+dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_UiDesignApproval`).
+
 ## BE — tiến trình & tài nguyên
 
 ### B1. MỌI tiến trình của app gom về MỘT nhóm — không sót cái nào
@@ -246,4 +250,4 @@ KHÔNG chỉ push 1 chiều. Máy đích có backup lần trước → verify kh
 KHÔNG bắt buộc — chạy chính app = phép kiểm thử; folder test chỉ cho lõi logic dễ sai ngầm (search/migration/privacy). FE: e2e/story co-locate hoặc `frontend/test`.
 
 ### B7. Đánh số phiên bản
-git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `migrations`=schema · `06_CHANGES`=log. KHÔNG folder `versions/` chép tay. **Bump RELEASE-BASED: số version chỉ tăng khi RELEASE/deploy 1 bản, KHÔNG bump per-commit/per-feature; số chọn theo bảng của luật `02-70` (semver M.m.p — minor=tính năng, patch=fix deploy); mọi việc giữa 2 release GOM vào version kế; nguồn số = `package.json`(Node)/`__version__`(Py) — 1 chỗ; release-notes = `06_CHANGES`.**
+git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `migrations`=schema · `06_CHANGES`=log. KHÔNG folder `versions/` chép tay. **Bump RELEASE-BASED: số version chỉ tăng khi RELEASE/deploy 1 bản, KHÔNG bump per-commit/per-feature; số chọn theo bảng của luật `Rule_Gate_70_VersionPerPush` (semver M.m.p — minor=tính năng, patch=fix deploy); mọi việc giữa 2 release GOM vào version kế; nguồn số = `package.json`(Node)/`__version__`(Py) — 1 chỗ; release-notes = `06_CHANGES`.**

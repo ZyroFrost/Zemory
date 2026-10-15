@@ -81,9 +81,15 @@ function ruleText(root, file, id) {
     return "";
   }
 }
+// The citation: a hook inside a renamed rule folder (plan/28 §0o) cites the folder's full name, which is always the rule's
+// current name; a legacy folder or the file harness keeps "rule <id>".
+function citation(id) {
+  const folder = path.basename(__dirname);
+  return /^(Rule|Cons)_(Gate|Keys|Core)_\d+_/.test(folder) ? folder : "rule " + id;
+}
 function blocked(root, policy, id, what) {
   const own = ownRule(root);
-  if (own && own.text) return "BLOCKED (guard layer 1): rule " + id + " - " + what + "\n\nThe rule (" + own.rel + "):\n" + own.text;
+  if (own && own.text) return "BLOCKED (guard layer 1): " + citation(id) + " - " + what + "\n\nThe rule (" + own.rel + "):\n" + own.text;
   const text = ruleText(root, policy.rules_file || "", id);
   return "BLOCKED (guard layer 1): rule " + id + " - " + what + (text ? "\n\nThe rule (" + policy.rules_file + "):\n" + text : "");
 }

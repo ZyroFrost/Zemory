@@ -1,12 +1,12 @@
 ---
 name: session-close
-version: 3
+version: 4
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
 ---
 
 # session-close — chốt phiên / ghi sổ
 
-> Kích hoạt (luật cứng, `02-40` · `02-69`): có yêu cầu "note lại" · "docs lại" · "ghi sổ" ·
+> Kích hoạt (luật cứng, `Rule_Core_40_MemoryVerify` · `Rule_Core_69_LedgerCheckAnytime`): có yêu cầu "note lại" · "docs lại" · "ghi sổ" ·
 > "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang
 > nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
 
@@ -34,7 +34,7 @@ là khi ĐỔI SESSION — BẮT BUỘC dò Global Memory + đối chiếu code 
 2. **Verify từng mục sắp ghi vào docs với NGUỒN THẬT** = GM (điều đã thực sự làm/nói/quyết) +
    code / deliverable / measure / pipeline / file THẬT (đọc lại dòng/chỗ liên quan). Chỉ mục SỐNG
    SÓT verify mới được ghi; claim chưa verify = KHÔNG ghi.
-3. **SOÁT `05_TODO` = ĐO LẠI, KHÔNG đọc rồi chép** (`02-12`, luật áp **MỌI LÚC** — chốt
+3. **SOÁT `05_TODO` = ĐO LẠI, KHÔNG đọc rồi chép** (`Rule_Keys_12_TodoRecheck`, luật áp **MỌI LÚC** — chốt
    phiên chỉ là một trường hợp; kích hoạt cả khi giữa chừng có câu *"check todo"* · *"còn gì chưa
    làm"*): mỗi mục là một **KHẲNG ĐỊNH VỀ TRẠNG THÁI**, mà khẳng định phải truy được về nguồn kiểm
    được — file `.md` là nguồn của NỘI DUNG, **không phải nguồn của sự thật**. **BA NGUỒN, chạy ĐỦ
@@ -69,7 +69,7 @@ là khi ĐỔI SESSION — BẮT BUỘC dò Global Memory + đối chiếu code 
    (dùng `zemory memory digest <session>` / `memory search` để moi lại). Rút ra: đã LÀM gì · đã ĐỔI gì
    · QUYẾT ĐỊNH gì · còn DỞ gì · phát hiện LỖI gì chưa sửa.
 2. **FULL `docs/plan/*`** — mọi file, để biết việc vừa làm có đụng/lệch spec nào không (định nghĩa
-   metric thì soi Từ điển dữ liệu `03-138`).
+   metric thì soi Từ điển dữ liệu `Slot_Docs_138_DataDictionary`).
 3. **FULL `docs/agent/*`** — `01_CONSTITUTION` · `02_RULES` · `03_STRUCTURE` · `04_SKILLS` ·
    `05_TODO` · `06_CHANGES`, để biết chỗ nào phải cập nhật và không ghi trùng cái đã có.
 4. **FULL spec của MỌI case/task đã đụng trong phiên** (vd `tasks/<case>/spec.md`) — cả thân lẫn khối
@@ -83,8 +83,8 @@ là khi ĐỔI SESSION — BẮT BUỘC dò Global Memory + đối chiếu code 
 |---|---|
 | Việc đã xong / đã sửa code / sản phẩm (deliverable · measure · pipeline) đã sửa | `06_CHANGES.md` (sau khi được duyệt) **và xoá khỏi** `05_TODO.md` |
 | Việc còn dở (ĐANG làm, đã báo) | `05_TODO.md` — nêu rõ `[~]`, **đã tới đâu, bước kế tiếp là gì** |
-| Việc PHÁT SINH / ý cho phiên sau | **BÁO trong phiên, hỏi trước khi ghi** — cửa vào ở `02-38`. Không gật ⇒ không có dòng nào |
-| Thiết kế / quyết định thay đổi (gồm định nghĩa metric) | `docs/plan/NN_*.md` · định nghĩa metric → Từ điển dữ liệu `03-138` (+ supersede ở changelog nếu đảo quyết định cũ) |
+| Việc PHÁT SINH / ý cho phiên sau | **BÁO trong phiên, hỏi trước khi ghi** — cửa vào ở `Rule_Gate_38_TodoDoor`. Không gật ⇒ không có dòng nào |
+| Thiết kế / quyết định thay đổi (gồm định nghĩa metric) | `docs/plan/NN_*.md` · định nghĩa metric → Từ điển dữ liệu `Slot_Docs_138_DataDictionary` (+ supersede ở changelog nếu đảo quyết định cũ) |
 | Quyết định / trạng thái của MỘT case | spec của case đó (vd `tasks/<case>/spec.md`) — thân + khối khai báo (`updated` đổi cùng lượt); câu cũ bị thay thì sửa/gạch, KHÔNG để hai câu ngược nhau cùng sống |
 | Luật / bất biến riêng phát sinh | **HỎI ngay trong phiên**, gật thì ghi thẳng vào đúng nhà (`01`/`02`) — KHÔNG tự sửa `01_CONSTITUTION/`, và KHÔNG đậu vào `05_TODO` chờ duyệt |
 
@@ -93,7 +93,7 @@ là khi ĐỔI SESSION — BẮT BUỘC dò Global Memory + đối chiếu code 
 thử mà không xong **cũng phải ghi** (để phiên sau khỏi đâm lại chỗ đó): gộp vào **entry CHANGES của
 chính việc đó** (một hai dòng "đã loại X vì Y"), KHÔNG đẻ mục `05_TODO` riêng. *"Không bỏ sót" nói về
 việc ĐÃ LÀM — nó KHÔNG phải giấy phép ghi mọi thứ nghĩ ra vào sổ; cửa vào của sổ ở
-`02-38`.*
+`Rule_Gate_38_TodoDoor`.*
 
 ## Bước 2b — format changelog
 
@@ -102,7 +102,7 @@ việc ĐÃ LÀM — nó KHÔNG phải giấy phép ghi mọi thứ nghĩ ra và
   `> 🔄 **Supersede:** thay [YYYY-MM-DDx] — "[đề mục]" — [lý do].`
   Mệnh đề đó phải nêu **ĐÚNG khoá ngày của entry bị thay** (ngày + chữ cái hậu tố, y như trong heading
   của nó) — máy chỉ nối được khi có khoá đó, và nối rồi thì ai tra trúng entry CŨ mới thấy nhãn
-  “⚠ ĐÃ BỊ THAY”. Viết trống ngày ⇒ quyết định chết vẫn hiện như đang sống (`02-42`).
+  “⚠ ĐÃ BỊ THAY”. Viết trống ngày ⇒ quyết định chết vẫn hiện như đang sống (`Rule_Gate_42_ChangelogSupersede`).
   Ngày trần khi hôm đó có nhiều entry ⇒ **bị bỏ qua**, không đoán. **Không sửa/xoá entry cũ.**
 - **Entry NGẮN — trần ~30 dòng (luật, không phải gợi ý).** Một entry chỉ cần ba thứ: **đổi gì · vì
   sao · số đo**. Chi tiết thiết kế → `docs/plan/`; tường thuật quá trình → bỏ. *Lý do là số học: vùng
@@ -175,4 +175,4 @@ Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'   # ③ g�
 ## Bước cuối
 
 `zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO. **Không tự `git push`**
-(`02-50`).
+(`Rule_Gate_50_PushApproval`).

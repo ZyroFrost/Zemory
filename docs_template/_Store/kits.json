@@ -14,13 +14,13 @@
     "structure": "App",
     "tier": "Memory",
     "constitution": [
-      "01-*"
+      "Cons_*"
     ],
     "rules": [
-      "02-*"
+      "Rule_*"
     ],
     "slots": [
-      "03-*"
+      "Slot_*"
     ],
     "skills": [
       "app-design",
@@ -51,13 +51,13 @@
     "structure": "NonApp",
     "tier": "Memory",
     "constitution": [
-      "01-*"
+      "Cons_*"
     ],
     "rules": [
-      "02-*"
+      "Rule_*"
     ],
     "slots": [
-      "03-*"
+      "Slot_*"
     ],
     "skills": [
       "audit",
@@ -91,13 +91,13 @@
     "structure": "App",
     "tier": "Memory",
     "constitution": [
-      "01-*"
+      "Cons_*"
     ],
     "rules": [
-      "02-*"
+      "Rule_*"
     ],
     "slots": [
-      "03-*"
+      "Slot_*"
     ],
     "skills": [
       "app-design",
@@ -128,13 +128,13 @@
     "structure": "NonApp",
     "tier": "Memory",
     "constitution": [
-      "01-*"
+      "Cons_*"
     ],
     "rules": [
-      "02-*"
+      "Rule_*"
     ],
     "slots": [
-      "03-*"
+      "Slot_*"
     ],
     "skills": [
       "audit",

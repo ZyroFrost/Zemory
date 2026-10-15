@@ -954,6 +954,29 @@ function main() {
           " - a rule is never deleted without the user's word; to retire one, keep its number and mark it abolished." + flagTip("delete"));
       }
     }
+    // The folder harness twin (2026-10-15): one rule = one folder, its number on the `id:` line of the part's main file.
+    // Deleting the folder is a recursive delete (blocked above); rewriting or dropping the `id:` line is the other way
+    // a number leaves, and the .md regex above never saw these files.
+    if (p && /(^|\/)(01_CONSTITUTION|02_RULES)\/[^/]+\/RULE\.md$/i.test(relToRoot(p).replace(/\\/g, "/"))) {
+      const idOf = (s) => { const m = String(s || "").match(/^id:\s*(\S+)/m); return m ? m[1] : null; };
+      let before = "", after = "";
+      if (tool === "Write") {
+        try { before = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : ""; } catch { before = ""; }
+        after = ti.content || "";
+      } else {
+        // Edit / MultiEdit: apply the replacements to the file as it is, then read the id of the result.
+        try { before = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : ""; } catch { before = ""; }
+        after = before;
+        const edits = tool === "MultiEdit" ? ti.edits || [] : [ti];
+        for (const e of edits) after = e.replace_all ? after.split(e.old_string || "").join(e.new_string || "") : after.replace(e.old_string || "", () => e.new_string || "");
+      }
+      const was = idOf(before), now = idOf(after);
+      const lost = was && was !== now ? [was] : [];
+      if (lost.length && !consumeFlag("delete", relToRoot(p))) {
+        deny("BLOCKED (guard layer 1): rule 02-10 - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
+          " - a rule is never deleted without the user's word; to retire one, keep its number and mark it abolished." + flagTip("delete"));
+      }
+    }
     // An internal network address never enters a tracked file (plan/27 §0b) - the write-time twin of the
     // no-data-in-git ratchet: the same full-4-octet private ranges (10.x left out, it collides with version numbers)
     // plus every address bound to THIS machine's cards. Only NEW addresses count; git-ignored files and tests pass.
