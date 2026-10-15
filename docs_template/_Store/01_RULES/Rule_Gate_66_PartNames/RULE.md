@@ -2,7 +2,7 @@
 id: Rule_66
 aka: 02-66
 name: part-names
-version: 3
+version: 4
 kind: content
 ---
 # Rule_Gate_66_PartNames Tên linh kiện harness theo từ điển tên; tên skill theo chuẩn của host

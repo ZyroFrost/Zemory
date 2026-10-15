@@ -217,6 +217,8 @@ function resolveGate(id: string, mark: string, f: GateFacts): "ok" | "na" | stri
     if (ref === "precommit-guard") return f.precommit === "guard" ? "ok" : f.precommit === "no-git" ? "na" : "pre-commit not wired";
     if (ref === "rule-reminders") return /zemory(\.cmd)? hook prompt/.test(f.userHooks) ? "ok" : "prompt hook not installed (zemory hook install)";
     if (ref === "send-guard") return /zemory(\.cmd)? hook send-guard/.test(f.userHooks) ? "ok" : "send-guard hook not installed";
+    // the end-of-turn evidence check runs inside the Stop capture hook (plan/28 §0o)
+    if (ref === "stop-evidence") return /zemory(\.cmd)? hook stop/.test(f.userHooks) ? "ok" : "stop hook not installed (zemory hook install)";
     return `unknown hook ${ref}`;
   }
   // A test gate lives in the repo, or — for a rule about the tool's own behaviour — in the zemory install every repo runs.

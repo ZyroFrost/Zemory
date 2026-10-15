@@ -29,9 +29,10 @@ const HOOK_TURN_WAIT_MS = 3_000;
 import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
 import { coreForCompaction } from "../docs/rule-core.js";
-import { isFolderHarness, promptGates } from "../docs/store.js";
+import { isFolderHarness, isRetired, listParts, promptGates } from "../docs/store.js";
+import { stopDecision } from "../docs/turn-evidence.js";
 import { promptMatches } from "../docs/harness-names.js";
-import { harnessPathsAt } from "../core/config.js";
+import { harnessPathsAt, readMarker } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
@@ -411,6 +412,9 @@ export function handleHook(event: HookEventName, payload: any): string {
       // Đường nạp CHÍNH (per-message). `scan()` cả kho chỉ còn là lối CHÓT cho host không
       // đưa `transcript_path` — và ngay cả nó cũng phải nhường write-gate.
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
+      // Rule_Gate_11_VerifyClaims (plan/28 §0o): in a folder harness that carries rule 11, a turn that changed code must
+      // have run a check after the last change. Its answer is the ONLY text this hook ever returns.
+      const verdict = event === "stop" ? endOfTurnVerdict(payload) : "";
       const ingested = ingestCurrent(payload);
       if (!ingested && !path && !daemonJobBusyExternal()) {
         const release = tryWriteTurnSync(HOOK_TURN_WAIT_MS); // same queue as every other writer (plan/24 §12.7)
@@ -463,11 +467,26 @@ export function handleHook(event: HookEventName, payload: any): string {
           /* fail-open: phép đo không bao giờ được làm hỏng lượt nạp (điều 9) */
         }
       }
-      return "";
+      return verdict;
     }
     return "";
   } catch {
     return ""; // never break the host
+  }
+}
+
+/** The end-of-turn evidence check, only where the repo carries rule 11 as a folder part (plan/28 §0o). Its own gate
+ *  commands (marker `repoGates`) count as checks too. Fail-open: anything unexpected lets the turn end. */
+export function endOfTurnVerdict(payload: any): string {
+  try {
+    const cwd = String(payload?.cwd ?? "");
+    const hp = cwd ? harnessPathsAt(cwd) : null;
+    if (!hp || !isFolderHarness(hp.agent)) return "";
+    if (!listParts(hp.agent, "01_RULES").some((p) => p.key === "Rule_11" && !isRetired(p))) return "";
+    const own = (readMarker(cwd)?.data as { repoGates?: unknown } | undefined)?.repoGates;
+    return stopDecision(payload, Array.isArray(own) ? own.filter((x): x is string => typeof x === "string") : []);
+  } catch {
+    return "";
   }
 }
 

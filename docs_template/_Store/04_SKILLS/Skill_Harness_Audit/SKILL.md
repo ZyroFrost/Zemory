@@ -2,7 +2,7 @@
 id: Skill_Harness_Audit
 aka: audit
 name: harness-audit
-version: 6
+version: 7
 description: Run a full review of the project across every dimension, verifying each finding against real files before reporting it. Use only when explicitly asked for a thorough audit, or before a major milestone such as a release or a large batch of changes. This is not a quick check. Vietnamese triggers - "audit toàn diện", "soi hết", "kiểm tra toàn bộ", "rà lại hết", "review tổng thể".
 ---
 
@@ -35,7 +35,7 @@ lòng tin vào cả bảng.
 và một check không nổ được còn tệ hơn không có (nó phát ra lời bảo đảm trong khi chưa hề nhìn).
 
 **Luật 5 — ĐO HAI ĐƯỜNG, khác cơ chế.** Một phép đo chưa kiểm chéo thì chưa phải sự thật
-(`Rule_Core_11_VerifyClaims`). Bốn dạng đã trả giá: công cụ **hỏng lặng** trả rỗng (cờ sai ⇒ âm tính giả ⇒
+(`Rule_Gate_11_VerifyClaims`). Bốn dạng đã trả giá: công cụ **hỏng lặng** trả rỗng (cờ sai ⇒ âm tính giả ⇒
 tưởng "sạch") · **báo oan** do so lỏng (không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai
 bản chất** (khoá phụ trỏ hụt ⇒ tưởng mồ côi, suýt xoá dữ liệu đang sống) · **sổ nói khác code**.
 Kiểm chéo = đổi công cụ · đổi hướng đếm · hoặc gọi bề mặt thật (kho/DB ↔ API).

@@ -216,6 +216,10 @@ test("① NEGATIVE: an absolute path that is only an ARGUMENT of a text operatio
   const REPL = `s = open('docs/a.md').read().replace('E:\\\\_retired', 'E:\\\\Legacy'); open('docs/a.md', 'w').write(s)`;
   assert.ok(!sh(r, `python -c "${REPL}"`), ".replace('E:\\…') ⇒ qua");
   assert.ok(sh(r, `python -c "open('${OUT}', 'w').write(s.replace('E:/a', 'E:/b'))"`), "open(ngoài) vẫn chặn");
+  // 2026-10-16: a string argument WITH parentheses, holding a regex literal, was read as a path at the disk root
+  const SPLIT = `const fs=require("fs");let s=fs.readFileSync("a.mjs","utf8");s=s.split("assert.match(r.say, /02-10/,").join("x");fs.writeFileSync("a.mjs",s)`;
+  assert.ok(!sh(r, `node -e '${SPLIT}'`), "a regex literal inside a text operation is data, not a write target");
+  assert.ok(sh(r, `node -e 'require("fs").writeFileSync("${OUT}", "x")'`), "a real outside write through node still blocks");
 });
 
 test("④ NEGATIVE: READING on another machine passes, and so does a local scp download", (t) => {

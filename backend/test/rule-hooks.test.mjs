@@ -50,8 +50,12 @@ test("02-30: a new non-ASCII file/folder name or Vietnamese identifier is blocke
   assert.equal(s.fire("Bash", { command: "mkdir reports" }).blocked, false);
   assert.match(s.fire(...W(s.root, "src/a.ts", "const ketQua = 1;\n")).say, /rule 02-30[\s\S]*ketQua/);
   assert.match(s.fire(...W(s.root, "src/b.ts", "function tínhTổng() {}\n")).say, /non-ASCII/);
-  assert.equal(s.fire(...W(s.root, "src/c.ts", "// kết quả của phép đo\nconst label = \"ketQua\";\nconst result = 1;\n")).blocked, false,
-    "a Vietnamese comment and a string are data, not identifiers");
+  assert.equal(s.fire(...W(s.root, "src/c.ts", "// the measured result\nconst label = \"ketQua\";\nconst result = 1;\n")).blocked, false,
+    "a string is data, not an identifier");
+  // since 2026-10-16 comments are English too: a Vietnamese comment is rule 29's, not rule 30's
+  const vi = s.fire(...W(s.root, "src/d.ts", "// kết quả của phép đo\nconst result = 1;\n"));
+  assert.equal(vi.blocked, true);
+  assert.match(vi.say, /rule 02-29/);
   writeFileSync(join(s.root, "cũ.md"), "x\n");
   assert.doesNotMatch(s.fire(...E(s.root, "cũ.md", "x", "y")).say, /02-30/, "editing a file that already has its name is not creating one");
 });
