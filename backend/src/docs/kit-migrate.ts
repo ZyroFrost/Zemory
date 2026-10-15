@@ -275,6 +275,14 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
     writeFileSync(p, readFileSync(p, "utf8").replace(/\s*$/, "") + `\n\n## Trigger riêng của repo\n\n| Mở khi | Đọc |\n|---|---|\n${triggerRows.join("\n")}\n`);
   }
   rep.guard = generateGuards(root).added;
+  // A session open while the repo moves keeps the hook command it read at start (`node docs/hooks/guard.cjs`): without
+  // this forwarder that path is gone and the host lets every call of that session through. New sessions use the new path.
+  const hooksRel = relative(join(agent, ".."), join(agent, "02_RULES", "02-55_hook-guard", "guard.cjs")).replace(/\\/g, "/");
+  mkdirSync(oldHooks, { recursive: true });
+  writeFileSync(join(oldHooks, "guard.cjs"),
+    `// Forwarder left by the move to the folder harness (plan/28): sessions opened before the move still call this path.\n` +
+    `// The guard itself lives in docs/agent/02_RULES/02-55_hook-guard/. Safe to delete once no such session is open.\n` +
+    `require(require("node:path").join(__dirname, "..", ${JSON.stringify(hooksRel)}));\n`);
   return rep;
 }
 
