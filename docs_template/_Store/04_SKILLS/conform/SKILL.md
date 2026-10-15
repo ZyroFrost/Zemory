@@ -1,6 +1,6 @@
 ---
 name: conform
-version: 1
+version: 2
 description: Measure how closely the project folder follows the declared standard - machine scores, agent judges. Run before closing a session, after restructuring, when taking over an unfamiliar folder, or periodically. Not needed after every small edit. Vietnamese triggers - "soi chuẩn", "kiểm chuẩn", "có đúng chuẩn không", "check cấu trúc", "dự án này có bám chuẩn không".
 ---
 
@@ -35,7 +35,7 @@ trước, agent chỉ đọc **bảng lệch** (~vài trăm token).
 4. **Sửa NGUỒN**, không sửa lớp dẫn xuất / báo cáo:
    - đặt sai chỗ → `git mv` về đúng slot (giữ history) + sửa import; cần dời nhiều thì đề xuất qua
      skill `reconcile`
-   - là concern THẬT mà chuẩn chưa khai → **đề xuất thêm slot vào `03_STRUCTURE` §3/§4** (bộ không có
+   - là concern THẬT mà chuẩn chưa khai → **đề xuất thêm slot vào `03_STRUCTURE`** (một folder `03-N_<tên>/`, số nối cuối) (bộ không có
      CLI: vào skill `structure` §3) — đây là **đổi chuẩn**, phải trình duyệt trước
    - folder rỗng / rác → **đề xuất xoá, chờ xác nhận** trước khi xoá, không tự xoá
    - đừng chỉnh script chấm cho hết kêu
