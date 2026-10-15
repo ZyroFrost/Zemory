@@ -1,6 +1,6 @@
 ---
 name: structure
-version: 4
+version: 5
 description: Folder standard and routing table for a non-app project (BI, report, data, docs-only, design) — decides where every file belongs. Use before creating, naming, moving, or tidying any file or folder, or when asked where something should go. Vietnamese triggers - "để ở đâu", "đặt file này vào đâu", "sắp xếp lại thư mục", "tạo thư mục", "dọn cho gọn", "file này thuộc chỗ nào".
 ---
 
@@ -20,7 +20,7 @@ description: Folder standard and routing table for a non-app project (BI, report
 
 `★` bắt buộc · `◆` deliverable (≥1) · `[opt]` chỉ tạo khi có concern thật.
 Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor có sẵn **giữ nguyên** (`TargetAll.xlsx`, `.pbix`, `.Report/`).
-**MỌI tên file/folder do MÌNH đặt viết bằng tiếng Anh ASCII thuần** — KHÔNG ngôn ngữ bản địa (cả có dấu lẫn mất dấu), KHÔNG ký tự ngoài ASCII; hay vi phạm nhất là tên case `tasks/<case>/` và `docs/plan/NN_tên.md`. NỘI DUNG bên trong vẫn theo `Rule_Gate_26_ViDiacritics`–`Rule_Core_31_TextCorrect` — luật này chỉ nói về TÊN. Lý do: tên bị gõ lại trong lệnh·đường dẫn·link, dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra.
+**MỌI tên file/folder do MÌNH đặt viết bằng tiếng Anh ASCII thuần** — KHÔNG ngôn ngữ bản địa (cả có dấu lẫn mất dấu), KHÔNG ký tự ngoài ASCII; hay vi phạm nhất là tên case `tasks/<case>/` và `docs/plan/NN_tên.md`. NỘI DUNG bên trong vẫn theo `Rule_Gate_26_ViDiacritics`–`Rule_Keys_31_TextCorrect` — luật này chỉ nói về TÊN. Lý do: tên bị gõ lại trong lệnh·đường dẫn·link, dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra.
 
 ```
 <project>/

@@ -30,6 +30,7 @@ import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
 import { coreForCompaction } from "../docs/rule-core.js";
 import { isFolderHarness, promptGates } from "../docs/store.js";
+import { promptMatches } from "../docs/harness-names.js";
 import { harnessPathsAt } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
 
@@ -137,7 +138,7 @@ export function ruleReminders(payload: any): string {
   }
   for (const g of gates) {
     let hit: boolean;
-    try { hit = new RegExp(g.re, "i").test(prompt); } catch { hit = false; }
+    hit = promptMatches(g.re, prompt); // the matching the keyword table was measured with (plan/28 §0o)
     if (hit && once(g.kind)) out.push(g.text);
   }
   return out.join("\n");

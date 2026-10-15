@@ -2,7 +2,7 @@
 id: Rule_14
 aka: 02-14
 name: challenge-design
-version: 3
+version: 4
 kind: judgment
 ---
 # Rule_Keys_14_ChallengeDesign Thấy điểm bất hợp lý trong thiết kế thì phản biện trước khi làm

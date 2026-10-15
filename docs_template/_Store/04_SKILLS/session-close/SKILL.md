@@ -1,12 +1,12 @@
 ---
 name: session-close
-version: 5
+version: 6
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
 ---
 
 # session-close — chốt phiên / ghi sổ
 
-> Kích hoạt (luật cứng, `Rule_Core_40_MemoryVerify` · `Rule_Core_69_LedgerCheckAnytime`): có yêu cầu "note lại" · "docs lại" · "ghi sổ" ·
+> Kích hoạt (luật cứng, `Rule_Keys_40_MemoryVerify` · `Rule_Core_69_LedgerCheckAnytime`): có yêu cầu "note lại" · "docs lại" · "ghi sổ" ·
 > "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang
 > nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
 

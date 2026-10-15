@@ -2,7 +2,7 @@
 id: Rule_12
 aka: 02-12
 name: todo-recheck
-version: 3
+version: 4
 kind: judgment
 ---
 # Rule_Keys_12_TodoRecheck Soát sổ là đo lại từng mục

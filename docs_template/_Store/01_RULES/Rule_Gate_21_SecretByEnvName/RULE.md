@@ -2,7 +2,7 @@
 id: Rule_21
 aka: 02-21
 name: secret-by-env-name
-version: 3
+version: 4
 kind: action
 ---
 # Rule_Gate_21_SecretByEnvName Secret và connection: chỉ trỏ TÊN biến môi trường

@@ -7,7 +7,7 @@
 //   Rule_Keys_14_ChallengeDesign      a common rule, enforced by keyword reminders, number 14 of the rules shelf
 //   Cons_Gate_05_OneNameDictionary    a constitution article, enforced by a machine gate
 //   Struc_Repo_App                    a structure bundle covering one repo (no number: a bundle is chosen by name)
-//   Slot_Backend_12_Commands          a slot in the `backend/` area, number 12 of the structure shelf
+//   Slot_Backend_013_Commands         a slot in the `backend/` area, number 13 of the structure shelf
 //   Skill_Doc_WriteDocx               a skill of the Doc group (no number; its host copy is `doc-write-docx`)
 //
 // The NUMBER never changes and is what identifies a part: the key `Rule_14` stays the same when the rule moves from
@@ -141,6 +141,25 @@ export function slotArea(path: string): string {
 export function hostSkillName(p: Pick<PartName, "group" | "name">): string {
   const kebab = (s: string): string => s.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2").toLowerCase();
   return `${kebab(p.group)}-${kebab(p.name)}`;
+}
+
+// ── prompt keywords (Keys rules) ────────────────────────────────────────────────────────────────────────────────────
+// The reminder hook and the example runner match a rule's keywords EXACTLY the way the keyword table was measured
+// (plan/28 §0o: 1,200 labelled real requests + 16,417 for noise): `\b` is a Unicode word edge (JS `\b` knows only ASCII
+// letters, so it never fires next to "ể"), and a request is tried as typed and with its marks stripped, so an unmarked
+// keyword also catches the same word typed without diacritics.
+const EDGE = String.raw`(?:(?<![\p{L}\p{N}])(?=[\p{L}\p{N}])|(?<=[\p{L}\p{N}])(?![\p{L}\p{N}]))`;
+const unmarked = (t: string): string => t.normalize("NFD").replace(/\p{M}/gu, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+
+/** Does a keyword pattern fire on a request? A bad pattern never fires (fail-open). */
+export function promptMatches(re: string, text: string): boolean {
+  let rx: RegExp;
+  try {
+    rx = new RegExp(re.replaceAll("\\b", EDGE), "iu");
+  } catch {
+    return false;
+  }
+  return rx.test(text) || rx.test(unmarked(text));
 }
 
 /** Enforcement a part really has, read from its gate.json (plan/28 §0o): a blocking key ⇒ Gate · only a prompt ⇒ Keys · none ⇒ Core. */

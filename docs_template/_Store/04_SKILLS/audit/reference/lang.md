@@ -1,6 +1,6 @@
 # mặt ⑫ — NGÔN NGỮ CỦA MÃ: cách ĐO
 
-> **NORM ở `Rule_Gate_26_ViDiacritics`–`Rule_Core_31_TextCorrect`** (luật thiết kế chung mọi app). Ở đây chỉ có
+> **NORM ở `Rule_Gate_26_ViDiacritics`–`Rule_Keys_31_TextCorrect`** (luật thiết kế chung mọi app). Ở đây chỉ có
 > **cách đo** và **bẫy báo oan**. Luật nói PHẢI ĐÚNG GÌ; file này nói ĐO THẾ NÀO cho khỏi báo oan.
 > Máy chạy: `node .claude/skills/audit/scripts/lang-scan.mjs . [--all]` — phép Ⓐ Ⓑ Ⓒ.
 > Phép Ⓓ (song ngữ) đo riêng vì phải bám đúng chỗ để dict của repo.
@@ -34,7 +34,7 @@ Việt CÓ DẤU. Dòng đã có dấu ⇒ bỏ qua ngay, không xét tiếp.
   chữ `const` nằm trong chú thích tiếng Việt (`const —`) — và **bỏ sót 9 định danh thật**
   (`chặnNhầm` · `tênFile` · `phảiChặn` · `lọt` ở `backend/test/guard-tool-matrix.test.mjs`). Bóc
   chú thích + chuỗi xong mới đảo được cả hai chiều. *Đây đúng kiểu "thước sai, không phải N thiết
-  kế sai" — `Rule_Core_68_MeasureRules` ②.*
+  kế sai" — `Rule_Keys_68_MeasureRules` ②.*
 · **② Đồng âm Anh–Việt làm dòng tiếng Anh thuần bị bắt.** `do · so · can · ten · ban · van · no ·
   to · in · on` vừa là từ tiếng Anh vừa là âm tiết Việt mất dấu. Không trừ chúng ra thì một câu
   tiếng Anh chuẩn cũng đủ 3 "âm tiết Việt". Đo được: 627 → **616** hit sau khi trừ.

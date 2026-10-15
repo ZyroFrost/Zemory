@@ -2,7 +2,7 @@
 id: Rule_38
 aka: 02-38
 name: todo-door
-version: 4
+version: 5
 kind: action
 ---
 # Rule_Gate_38_TodoDoor Sổ việc `05_TODO`: cửa vào và cửa ra

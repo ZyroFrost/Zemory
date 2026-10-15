@@ -1,0 +1,20 @@
+{
+  "prompt": {
+    "kind": "Rule_66",
+    "re": "\\b(tao (folder|thu muc|skill)|ten folder|folder (moi|rieng|chinh|tong)|dat ten|doi ten|ten (phu hop|chuan)|viet thuong|cau truc folder|slot)\\b",
+    "text": "[zemory] Rule_Keys_66_KebabNames: Naming a folder, part or skill: the name dictionary (Rule_<Gate|Keys|Core>_<NN>_<Name> …; a skill in the host folder as <group>-<name>)."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "tạo folder mới cho báo cáo"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "chạy lại bộ test"
+    }
+  ],
+  "gate": "conform"
+}

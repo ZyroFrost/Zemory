@@ -2,7 +2,7 @@
 id: Rule_62
 aka: 02-62
 name: ui-design-approval
-version: 4
+version: 5
 kind: judgment
 applies: [App]
 ---

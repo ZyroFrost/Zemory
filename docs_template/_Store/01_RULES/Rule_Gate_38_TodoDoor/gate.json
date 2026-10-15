@@ -30,6 +30,10 @@
           "outside": ".allow-outside"
         }
       }
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "để sau rồi tính, ghi vào todo"
     }
   ],
   "pass": [
@@ -74,6 +78,15 @@
           "outside": ".allow-outside"
         }
       }
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "chạy lại bộ test"
     }
-  ]
+  ],
+  "prompt": {
+    "kind": "Rule_38",
+    "re": "\\b(de sau|ghi (vao )?todo|neo todo|note (lai )?de|lat nua|tinh sau|backlog|xu ly sau|lam sau|tam thoi)\\b",
+    "text": "[zemory] Rule_Gate_38_TodoDoor: Noting something for later: an item enters 05_TODO only when approved in this session; what can be done now is done now."
+  }
 }
