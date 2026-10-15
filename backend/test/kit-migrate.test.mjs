@@ -104,6 +104,17 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   assert.deepEqual(again.steps.filter((s) => !["current", "own"].includes(s.verdict)).map((s) => s.part.folder), []);
 });
 
+test("links to a replaced file are repointed (an article link to its folder); the words and other files stay", (t) => {
+  const root = fixture(t);
+  put(root, "docs/plan/05_ui.md", "Xem [HP điều 1](../agent/01_CONSTITUTION.md) · [luật](../agent/02_RULES.md#git) · [cây](../agent/03_STRUCTURE.md) · nhắc 02_RULES.md trong câu.\n");
+  migrateToKit(root, { kitRef: "08", apply: true });
+  const t5 = readFileSync(join(root, "docs", "plan", "05_ui.md"), "utf8");
+  assert.match(t5, new RegExp(`\\[HP điều 1\\]\\(\\.\\./agent/01_CONSTITUTION/01-1_${slugOf("Điều một bất biến.")}/RULE\\.md\\)`));
+  assert.match(t5, /\[luật\]\(\.\.\/agent\/02_RULES\/\)/);
+  assert.match(t5, /\[cây\]\(\.\.\/agent\/03_STRUCTURE\/INDEX\.md\)/);
+  assert.match(t5, /nhắc 02_RULES\.md trong câu/, "plain words are the repo's and stay");
+});
+
 test("an Adapt repo and a folder harness are refused", (t) => {
   const a = tempDir(t, "zemory-mig-a-");
   put(a, "docs/.harness.json", JSON.stringify({ docs: "docs/agent", layout: "foreign", slots: { x: "y" } }));

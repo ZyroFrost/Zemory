@@ -282,8 +282,11 @@ export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
     if (r.gate.hook && !existsSync(join(r.part.dir, r.gate.hook))) badGate.push(`${id} (${r.gate.hook} missing)`);
     if (r.gate.gate) {
       const [kind, ref] = r.gate.gate.split(":");
+      // Same rule as the coverage count: a test gate lives in the repo, or in the zemory install (a rule about the tool).
+      const self = selfRepoRoot();
+      const inTool = Boolean(ref && self && existsSync(join(self, "backend", "test", `${ref}.test.mjs`)));
       if (!(GATE_KINDS as readonly string[]).includes(kind)) badGate.push(`${id} (${r.gate.gate})`);
-      else if (kind === "test" && checkTests && (!ref || !existsSync(join(testDir, `${ref}.test.mjs`)))) badGate.push(`${id} (${r.gate.gate})`);
+      else if (kind === "test" && checkTests && (!ref || (!existsSync(join(testDir, `${ref}.test.mjs`)) && !inTool))) badGate.push(`${id} (${r.gate.gate})`);
     }
   }
   // The cap holds the SHARED core (judgment rules taken from the store, `from:`); a repo's own constitution and PURPOSE are

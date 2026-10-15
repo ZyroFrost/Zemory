@@ -12,7 +12,7 @@
 //  · the old 03_STRUCTURE.md becomes `03_STRUCTURE/INDEX.md` whole;
 //  · a shared skill the repo edited stays the repo's own; trigger rows of AGENTS.md for skills outside the kit are carried.
 // What is NOT touched: 05_TODO · 06_CHANGES · plan/ · the repo's own skills · anything outside the harness.
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { TEMPLATE_DIR } from "./adopt.js";
@@ -45,6 +45,8 @@ export interface MigrateReport {
   applied: boolean;
   assembly?: KitApplyResult;
   guard?: string[];
+  /** Files whose markdown links to a replaced file were repointed. */
+  repointedLinks?: string[];
 }
 
 const KIT_RULE_FILES = ["03_nonapp/agent", "05_app/agent", "04_adapt/agent", "01_cowork_basic/nonapp/agent", "02_cowork_memory/nonapp/agent"];
@@ -275,6 +277,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
     writeFileSync(p, readFileSync(p, "utf8").replace(/\s*$/, "") + `\n\n## Trigger riêng của repo\n\n| Mở khi | Đọc |\n|---|---|\n${triggerRows.join("\n")}\n`);
   }
   rep.guard = generateGuards(root).added;
+  rep.repointedLinks = repointLinks(root, true);
   // A session open while the repo moves keeps the hook command it read at start (`node docs/hooks/guard.cjs`): without
   // this forwarder that path is gone and the host lets every call of that session through. New sessions use the new path.
   const hooksRel = relative(join(agent, ".."), join(agent, "02_RULES", "02-55_hook-guard", "guard.cjs")).replace(/\\/g, "/");
@@ -284,6 +287,47 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
     `// The guard itself lives in docs/agent/02_RULES/02-55_hook-guard/. Safe to delete once no such session is open.\n` +
     `require(require("node:path").join(__dirname, "..", ${JSON.stringify(hooksRel)}));\n`);
   return rep;
+}
+
+/** Markdown LINK TARGETS that pointed at a file the move replaced, rewritten to where that content lives now. Only the
+ *  target inside `](…)` changes — the words of the text are the repo's and stay. Skips the archive, generated parts and
+ *  dependencies. Returns the files changed. */
+export function repointLinks(root: string, apply: boolean): string[] {
+  const agentDir = harnessPathsAt(root).agent;
+  const MAP: Array<[RegExp, string]> = [
+    [/(\]\([^)\s]*?)01_CONSTITUTION\.md((?:#[^)\s]*)?\))/g, "$101_CONSTITUTION/PURPOSE.md$2"],
+    [/(\]\([^)\s]*?)02_RULES\.md(?:#[^)\s]*)?\)/g, "$102_RULES/)"],
+    [/(\]\([^)\s]*?)03_STRUCTURE\.md(?:#[^)\s]*)?\)/g, "$103_STRUCTURE/INDEX.md)"],
+  ];
+  // Assembled parts (rules · slots · articles · skills) are fixed in the store and reach the repo by sync, never here.
+  const SKIP = /[\\/](archive|node_modules|\.git|\.claude|attic|external|dist|02_RULES|03_STRUCTURE[\\/]03-|01_CONSTITUTION[\\/]01-)([\\/]|$)/;
+  const changed: string[] = [];
+  const walk = (d: string): void => {
+    let ents: import("node:fs").Dirent[] = [];
+    try { ents = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const p = join(d, e.name);
+      if (SKIP.test(p + (e.isDirectory() ? "/" : ""))) continue;
+      if (e.isDirectory()) { walk(p); continue; }
+      if (!/\.md$/i.test(e.name)) continue;
+      const t = readFileSync(p, "utf8");
+      let n = t;
+      for (const [re, to] of MAP) n = n.replace(re, to);
+      // A link whose text names an article ("điều 2") goes to that article's folder, not to PURPOSE.
+      n = n.replace(/\[([^\]]*?điều\s+(\d{1,2})[^\]]*)\]\(([^)\s]*?)01_CONSTITUTION\/PURPOSE\.md\)/gi, (whole, text: string, num: string, pre: string) => {
+        const art = existsSync(join(agentDir, "01_CONSTITUTION"))
+          ? readdirSync(join(agentDir, "01_CONSTITUTION")).find((f) => f.startsWith(`01-${Number(num)}_`))
+          : undefined;
+        return art ? `[${text}](${pre}01_CONSTITUTION/${art}/RULE.md)` : whole;
+      });
+      if (n !== t) {
+        if (apply) writeFileSync(p, n);
+        changed.push(relative(root, p).replace(/\\/g, "/"));
+      }
+    }
+  };
+  walk(root);
+  return changed;
 }
 
 /** Old file-harness entries a repo may still point at after the move (for the report). */
