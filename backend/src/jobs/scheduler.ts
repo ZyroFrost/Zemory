@@ -543,6 +543,14 @@ async function scratchTick(): Promise<void> {
   } catch (e) {
     log(`dọn nháp bỏ qua: ${(e as Error).message}`);
   }
+  // Same tick: zemory's own temp folders a killed process left behind (`sweepStaleTemps`).
+  const temps = await runInWorker<string[]>("jobs/scratchpad.js", "sweepStaleTemps", [{}]);
+  try {
+    if (!temps.ok) throw new Error(temps.error);
+    if (temps.value.length) log(`stale temp folders removed: ${temps.value.length} (${temps.value.slice(0, 3).join(" · ")})`);
+  } catch (e) {
+    log(`stale temp sweep skipped: ${(e as Error).message}`);
+  }
   // Cùng nhịp 6 giờ, cùng bản chất "rác lớn dần theo GIỜ, nằm dưới đường đã gitignore nên không
   // cổng nào thấy". Bắt riêng try: một lượt hỏng ở đây không được cướp lượt dọn nháp ở trên.
   const prof = await runInWorker<ProfileSweepResult>("memory/browser-rotate.js", "sweepBrowserProfiles", [{}]);

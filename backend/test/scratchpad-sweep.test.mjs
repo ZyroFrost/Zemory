@@ -14,7 +14,7 @@ import test from "node:test";
 import { mkdirSync, writeFileSync, existsSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 
-import { sweepScratchpads } from "../../dist/jobs/scratchpad.js";
+import { sweepScratchpads, sweepStaleTemps } from "../../dist/jobs/scratchpad.js";
 import { tempDir } from "./helpers.mjs";
 
 const DAY = 86_400_000;
@@ -100,4 +100,27 @@ test("no scratch folder at all is silent and does not throw (fail-open)", () => 
   const r = sweepScratchpads({ root: null });
   assert.equal(r.root, null);
   assert.deepEqual(r.removed, []);
+});
+
+test("stale zemory temp folders a killed process left are removed; fresh ones, other names and zemory-test stay", (t) => {
+  const base = tempDir(t, "zemory-stale-base-");
+  const old = Date.now() / 1000 - 7 * 3600;
+  const mk = (name, aged) => {
+    const p = join(base, name);
+    mkdirSync(p, { recursive: true });
+    writeFileSync(join(p, "part.enc"), "x");
+    if (aged) utimesSync(p, old, old);
+    return p;
+  };
+  const push = mk("zemory-push-3Qtbk8", true);
+  const rows = mk("zemory-memory-rows-2gS7R1", true);
+  const fresh = mk("zemory-push-AbC123", false);
+  const other = mk("someone-else-XyZ789", true);
+  const runner = mk("zemory-test", true);
+  const removed = sweepStaleTemps({ base });
+  assert.deepEqual(removed.sort(), ["zemory-memory-rows-2gS7R1", "zemory-push-3Qtbk8"]);
+  assert.ok(!existsSync(push) && !existsSync(rows), "the stale ones are gone");
+  assert.ok(existsSync(fresh), "a folder touched in the last 6 hours may belong to a running process");
+  assert.ok(existsSync(other), "a name zemory did not make is never touched");
+  assert.ok(existsSync(runner), "the test runner's parent is the runner's business");
 });
