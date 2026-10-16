@@ -2,7 +2,7 @@
 id: Rule_24
 aka: 02-24
 name: eol-keep
-version: 6
+version: 7
 kind: content
 ---
 # Rule_Gate_24_EolKeep EOL: khoá bằng máy trước, chưa khoá thì đọc sao ghi vậy
@@ -13,3 +13,9 @@ kind: content
 - File máy ghép từ file khác (archive ← `05_TODO` / `06_CHANGES`) lấy EOL của file nguồn. Khi đang lệch, lượt ghi đầu tiên đảo cả file một lần — đó là giá trả một lần, không phải lỗi tool: chuyển dứt điểm trong một commit riêng có nhãn, chứng minh bằng `git diff --ignore-cr-at-eol` rỗng.
 - Không nắn ngược, không dựng cổng "EOL không được đổi" — mặt ghép archive đã có test của lệnh `archive` canh.
 - Phép kiểm: cổng `guard`.
+
+## Ví dụ
+
+- Tình huống: hai phiên agent cùng sửa một file chuẩn dùng xuống dòng kiểu Windows.
+- ✗ Sai: phiên thứ hai đọc cả file từ bản cũ rồi ghi đè toàn bộ — diff báo cả file đổi, ba dòng phiên kia vừa thêm biến mất mà không lệnh nào báo lỗi.
+- ✓ Đúng: repo có `.gitattributes` khoá EOL; chưa khoá thì sửa đúng đoạn cần sửa, giữ nguyên kiểu xuống dòng sẵn có của file.

@@ -2,9 +2,9 @@
 id: Rule_31
 aka: 02-31
 name: text-correct
-version: 4
+version: 5
 kind: judgment
-from: _Store/01_RULES/Rule_Keys_31_TextCorrect @v4 #8ca9e150a39e
+from: _Store/01_RULES/Rule_Keys_31_TextCorrect @v5 #a324437f56a1
 ---
 # Rule_Keys_31_TextCorrect Chữ người đọc thấy phải đủ và đúng
 
@@ -14,3 +14,9 @@ from: _Store/01_RULES/Rule_Keys_31_TextCorrect @v4 #8ca9e150a39e
 - ③ Một thuật ngữ một tên xuyên suốt (đối chiếu từ điển dự án nếu có).
 - App: nhãn đủ · song ngữ đủ hai đầu · UI khớp mã ⇒ `.claude/skills/dev-app-design/SKILL.md` §F4 / §F7.
 - Cách đo và bẫy báo oan: `.claude/skills/harness-audit/SKILL.md` (mặt 11 · 12).
+
+## Ví dụ
+
+- Tình huống: giao một báo cáo tháng có bảng và biểu đồ cho phòng kinh doanh.
+- ✗ Sai: tiêu đề cột bị lỗi mã hoá thành `Doanh thu thÃ¡ng`, biểu đồ không chú thích, con số không ghi đơn vị và kỳ; cùng một chỉ số chỗ gọi "doanh số", chỗ gọi "doanh thu".
+- ✓ Đúng: chữ có dấu đúng, không ký tự lỗi; bảng có tiêu đề cột, hình có chú thích, mỗi số ghi đơn vị và kỳ; một thuật ngữ một tên xuyên suốt.

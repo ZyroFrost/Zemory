@@ -2,10 +2,10 @@
 id: Rule_55
 aka: 02-55
 name: hook-guard
-version: 4
+version: 5
 kind: action
 generated: [guard.cjs, policy.json, precommit-guard.cjs, 02-59_read-first.cjs]
-from: _Store/01_RULES/Rule_Gate_55_HookGuard @v4 #256c23dd3ff9
+from: _Store/01_RULES/Rule_Gate_55_HookGuard @v5 #2252dcc0404b
 ---
 # Rule_Gate_55_HookGuard Bộ chốt máy `zemory hook guard`
 
@@ -20,3 +20,9 @@ from: _Store/01_RULES/Rule_Gate_55_HookGuard @v4 #256c23dd3ff9
 - Phép kiểm:
   - `zemory doctor` báo ĐỎ khi guard chưa cắm hoặc matcher thiếu công cụ; nhắc khi repo khai `protected` mà chưa sinh chốt.
   - `zemory gates --all` (và chip **Cổng repo** trên giao diện) đo mọi repo có THẬT SỰ chạy guard · pre-commit · mỗi điều hiến pháp có cổng thì cổng nằm trong `gate.json` của folder điều đó.
+
+## Ví dụ
+
+- Tình huống: một repo mới khai danh sách đường cấm ghi và tên file bí mật.
+- ✗ Sai: để file luật nằm đó mà không sinh hook, hoặc hook chỉ soi một vài công cụ ghi; commit tay vẫn đưa được file bí mật vào.
+- ✓ Đúng: chạy lệnh sinh guard để tự cắm hook trước-khi-ghi đủ mọi công cụ và pre-commit; lệnh kiểm sức khoẻ báo đỏ khi thiếu.

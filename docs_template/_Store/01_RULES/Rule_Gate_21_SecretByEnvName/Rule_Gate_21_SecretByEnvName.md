@@ -2,7 +2,7 @@
 id: Rule_21
 aka: 02-21
 name: secret-by-env-name
-version: 4
+version: 5
 kind: action
 ---
 # Rule_Gate_21_SecretByEnvName Secret và connection: chỉ trỏ TÊN biến môi trường
@@ -16,3 +16,9 @@ kind: action
   đi qua kênh đồng bộ, không qua git.
 - Ngoại lệ buộc nằm ngoài cây (vd con trỏ chỉ nơi đặt dữ liệu) ⇒ ghi rõ ở hiến pháp của repo; ngoại lệ không chứa bí mật.
 - Phép kiểm: cổng `guard`.
+
+## Ví dụ
+
+- Tình huống: một job cần mật khẩu để kết nối cơ sở dữ liệu nguồn.
+- ✗ Sai: ghi thẳng chuỗi kết nối có mật khẩu vào file config được commit; hoặc tạo một thư mục "két" nằm ngoài repo cho chắc.
+- ✓ Đúng: file config chỉ ghi `password_env: DB_SOURCE_PASSWORD`; giá trị thật nằm trong `.env` hoặc `data/secrets/` đã bị `.gitignore` chặn; sang máy khác đi qua kênh đồng bộ, không qua git.

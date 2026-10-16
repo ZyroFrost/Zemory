@@ -2,7 +2,7 @@
 id: Rule_20
 aka: 02-20
 name: real-vs-sample-data
-version: 2
+version: 3
 kind: action
 applies: [NonApp]
 ---
@@ -11,3 +11,9 @@ applies: [NonApp]
 - Nguồn / extract THẬT ⇒ `data/` (gitignore, theo máy).
 - Mẫu nhỏ đủ mở được sản phẩm giao đi (deliverable) ⇒ `fixtures/` (tracked).
 - Phép kiểm: cổng `guard`.
+
+## Ví dụ
+
+- Tình huống: Agent làm báo cáo nhân sự từ file trích xuất lương của cả công ty.
+- ✗ Sai: Để file trích xuất thật trong thư mục được git theo dõi; một lần commit là bảng lương đi lên kho mã.
+- ✓ Đúng: File thật nằm trong `data/` (bị bỏ qua, chỉ ở máy mình); repo chỉ giữ một bộ mẫu vài dòng dữ liệu giả trong `fixtures/` đủ để mở báo cáo.

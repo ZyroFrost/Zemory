@@ -2,10 +2,10 @@
 id: Rule_70
 aka: 02-70
 name: version-per-push
-version: 4
+version: 5
 kind: action
 applies: [App]
-from: _Store/01_RULES/Rule_Gate_70_VersionPerPush @v4 #2624deb51046
+from: _Store/01_RULES/Rule_Gate_70_VersionPerPush @v5 #822c78182aa3
 ---
 # Rule_Gate_70_VersionPerPush Mỗi lần push = một lần lên version
 
@@ -26,3 +26,9 @@ from: _Store/01_RULES/Rule_Gate_70_VersionPerPush @v4 #2624deb51046
 - Ngoại lệ: đợt CHỈ đụng docs ⇒ đẩy thẳng, KHÔNG bump. Luật mỗi lần push = một lần lên version viết cho đợt có BẢN BUILD đi kèm; docs không sinh artifact, bản build y hệt, và semver chỉ định nghĩa `minor` = tính năng · `patch` = fix deploy, docs không rơi vào ô nào; bump lúc đó báo cho máy kia là có bản mới trong khi không có, làm nhiễu đúng tín hiệu cập nhật. Đụng tới `backend/` · `frontend/` · `package.json` ⇒ quay về bảng ba cột.
 - Vẫn phải HỎI trước: force-push · xoá tag hoặc nhánh trên remote.
 - Phép kiểm: cổng `guard`.
+
+## Ví dụ
+
+- Tình huống: trong ngày agent đẩy hai bản vá cho công cụ nội bộ.
+- ✗ Sai: cả hai lần đẩy đều giữ nguyên số phiên bản; hoặc chỉ sửa lỗi mà nâng số tính năng.
+- ✓ Đúng: mỗi lần đẩy có bản build là một số mới theo bảng ba cột (sửa lỗi ⇒ cột 3), đọc số đang phát hành trước khi đặt; đợt chỉ sửa tài liệu thì đẩy không nâng số.

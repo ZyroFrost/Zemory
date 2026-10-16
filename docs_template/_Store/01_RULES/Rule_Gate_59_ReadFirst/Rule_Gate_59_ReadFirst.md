@@ -2,7 +2,7 @@
 id: Rule_59
 aka: 02-59
 name: read-first
-version: 5
+version: 6
 kind: action
 ---
 # Rule_Gate_59_ReadFirst Đọc trước khi ghi
@@ -24,3 +24,9 @@ kind: action
 - Không có cờ vượt.
 - Khai thêm file bắt đọc: khoá marker `readFirst` (bộ không có CLI: sửa thẳng `hooks/policy.json › read_first`).
 - Giới hạn: host không ghi transcript ⇒ cho qua (fail-open). Phần đòi theo việc chỉ phủ chỗ máy đoán tất định được; luật chữ vẫn là tầng quyết định.
+
+## Ví dụ
+
+- Tình huống: một phiên mới mở repo báo cáo và được giao sửa một mẫu email gửi hàng tuần.
+- ✗ Sai: mở file mẫu rồi sửa ngay, chưa đọc luật lõi, sổ việc và đặc tả của đúng case đó.
+- ✓ Đúng: đọc đủ phần bắt đọc (luật lõi, mục đích, sổ việc, đặc tả case, skill văn phong khi đụng script gửi mail) rồi mới ghi; chưa đọc thì lần ghi bị chặn và câu chặn chỉ rõ còn thiếu gì.

@@ -2,7 +2,7 @@
 id: Rule_58
 aka: 02-58
 name: outside-guard
-version: 2
+version: 3
 kind: action
 ---
 # Rule_Gate_58_OutsideGuard Chốt máy cho việc NGOÀI project
@@ -18,3 +18,9 @@ kind: action
 - Một cờ chung cho cả bốn nhóm: `.allow-outside`.
 - Giới hạn: guard KHÔNG thấy đường/SQL dựng lúc chạy, nằm trong biến hay trong file script (`sqlcmd -i x.sql` · `python job.py` · script có sẵn trên máy kia như `ssh <máy> powershell -File x.ps1`), và đường tương đối sau khi `cd` ra ngoài. Luật chữ về phạm vi project (`Rule_Gate_44_OpenFolderOnly`–`Rule_Gate_47_OtherRepo`) vẫn là tầng quyết định.
 - Phép kiểm: cổng `guard`.
+
+## Ví dụ
+
+- Tình huống: để thử nạp dữ liệu, agent muốn tạo một database thử và lịch chạy tự động trên máy chủ.
+- ✗ Sai: tự chạy lệnh tạo database, đổi cấu hình bộ nhớ máy chủ, đăng ký task trên máy khác qua lệnh từ xa.
+- ✓ Đúng: lệnh đó bị chặn; agent trình việc định làm, chờ người dùng duyệt rồi mới chạy với cờ một lần. Lệnh chỉ đọc (xem danh sách task, truy vấn SELECT) vẫn chạy bình thường.

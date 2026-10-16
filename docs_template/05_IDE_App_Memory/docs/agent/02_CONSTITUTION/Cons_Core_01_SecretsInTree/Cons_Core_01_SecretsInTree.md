@@ -2,10 +2,10 @@
 id: Cons_1
 aka: 01-1
 name: secrets-in-tree
-version: 4
+version: 5
 kind: judgment
 applies: [App, NonApp]
-from: _Store/02_CONSTITUTION/Cons_Core_01_SecretsInTree @v4 #cb0e99ff0cf5
+from: _Store/02_CONSTITUTION/Cons_Core_01_SecretsInTree @v5 #74b2ea327038
 ---
 # Cons_Core_01_SecretsInTree Bí mật: ngoài git không phải ngoài repo
 
@@ -15,3 +15,9 @@ from: _Store/02_CONSTITUTION/Cons_Core_01_SecretsInTree @v4 #cb0e99ff0cf5
 - Ngoại lệ buộc phải nằm ngoài (vd một con trỏ nói dữ liệu ở đâu — để cạnh dữ liệu thì thành vòng luẩn quẩn) ⇒ ghi rõ ngoại lệ ở điều này; ngoại lệ đó KHÔNG được chứa bí mật.
 
 > Điều GỢI Ý: đưa ra một lần lúc dựng repo. Giữ thì nó là điều của hiến pháp repo; không cần thì xoá folder này — `sync` không thêm lại và không sửa điều hiến pháp.
+
+## Ví dụ
+
+- Tình huống: Một app nội bộ có file két mật khẩu và file kết nối cơ sở dữ liệu. Agent cần sao lưu hai file này trước khi dọn máy.
+- ✗ Sai: Agent hiểu "không lên git" thành "không được nằm trong repo", nên tạo một thư mục sao lưu riêng ở ổ khác, ngoài dự án. Từ đó két nằm lạc chỗ, không ai biết đường tìm, và có thể nằm trong thư mục đang đồng bộ lên đám mây.
+- ✓ Đúng: Đặt két vào `data/secrets/` trong repo và kiểm tra `.gitignore` đã chặn thư mục đó (`git status` sạch). Bí mật vẫn không lên git mà vẫn đi cùng dự án.

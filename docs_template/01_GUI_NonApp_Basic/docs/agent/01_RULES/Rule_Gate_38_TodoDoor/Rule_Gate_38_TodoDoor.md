@@ -2,9 +2,9 @@
 id: Rule_38
 aka: 02-38
 name: todo-door
-version: 7
+version: 8
 kind: action
-from: _Store/01_RULES/Rule_Gate_38_TodoDoor @v7 #baa6105a0355
+from: _Store/01_RULES/Rule_Gate_38_TodoDoor @v8 #2a43cbeb5070
 ---
 # Rule_Gate_38_TodoDoor Sổ việc `05_TODO`: cửa vào và cửa ra
 
@@ -20,3 +20,9 @@ from: _Store/01_RULES/Rule_Gate_38_TodoDoor @v7 #baa6105a0355
   - Viết "xong" kiểu khác (gạch ngang · chữ XONG) thì máy không thấy.
   - `archive` lúc chốt phiên là lưới vét cuối, không phải chỗ để dồn.
 - Phép kiểm: cổng `guard`.
+
+## Ví dụ
+
+- Tình huống: giữa phiên, agent nghĩ ra một cổng kiểm mới "cho chắc"; cùng lúc vừa làm xong một mục trong sổ.
+- ✗ Sai: tự thêm cổng kiểm vào sổ việc như một đề xuất chờ duyệt; để mục đã xong nằm lại tới cuối phiên.
+- ✓ Đúng: hỏi một câu kèm đề xuất, trả lời được "không có nó thì hỏng gì, đo được không"; chỉ ghi khi được duyệt. Mục đã xong thì đo lại, ghi changelog và gỡ khỏi sổ ngay trong lượt đó.

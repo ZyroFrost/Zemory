@@ -2,9 +2,9 @@
 id: Rule_30
 aka: 02-30
 name: ascii-names
-version: 10
+version: 11
 kind: content
-from: _Store/01_RULES/Rule_Gate_30_AsciiNames @v10 #5e40e14d431e
+from: _Store/01_RULES/Rule_Gate_30_AsciiNames @v11 #2b7b1210f68b
 ---
 # Rule_Gate_30_AsciiNames Định danh và tên file: ASCII tiếng Anh
 
@@ -14,3 +14,9 @@ from: _Store/01_RULES/Rule_Gate_30_AsciiNames @v10 #5e40e14d431e
 - Miễn trừ: ba thứ ở `Rule_Gate_29_CodeEnglish` (dữ liệu, không phải định danh).
 - Máy soi: `node .claude/skills/harness-audit/scripts/lang-scan.mjs .`
 - Phép kiểm: cổng `guard`.
+
+## Ví dụ
+
+- Tình huống: tạo một file mới chứa danh sách dòng thiếu mã danh mục.
+- ✗ Sai: đặt tên `thieu-dong-dim.csv` hoặc biến `soLuongDonHang`.
+- ✓ Đúng: đặt `missing-dim-row.csv`, biến `orderCount`; chỉ dữ liệu do bên khác đặt tên mới được giữ nguyên.

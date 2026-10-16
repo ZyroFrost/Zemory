@@ -2,7 +2,7 @@
 id: Rule_8
 aka: 02-8
 name: clarify-first
-version: 5
+version: 6
 kind: judgment
 ---
 # Rule_Keys_08_ClarifyFirst Yêu cầu chưa rõ thì làm rõ trước khi làm
@@ -14,3 +14,9 @@ kind: judgment
 - Không tự chọn cách hiểu rộng nhất.
 - Kích hoạt thủ công khi lời gọi chứa "grill".
 - Quy trình: `.claude/skills/harness-grill/SKILL.md`.
+
+## Ví dụ
+
+- Tình huống: Người giao việc nhắn ngắn "gỡ phần đồng bộ tài liệu đi".
+- ✗ Sai: Agent hiểu là bỏ cả hệ thống tài liệu, bắt đầu xoá bảng, lệnh tìm kiếm và giao diện liên quan.
+- ✓ Đúng: Dừng, đọc những gì đang có, hỏi một câu kèm đề xuất cụ thể: giữ phần nào, bỏ phần nào; có câu trả lời rồi mới làm.
