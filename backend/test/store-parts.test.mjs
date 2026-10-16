@@ -264,3 +264,40 @@ test("a repo marked with an old kit name finds the set that replaced it; an old 
   for (const [old, no] of Object.entries(want)) assert.equal(findKit(old, STORE_DIR)?.no, no, old);
   for (const gone of ["06", "08", "05_IDE_App_Basic"]) assert.equal(findKit(gone, STORE_DIR), null, gone);
 });
+
+test("every set's BOOTSTRAP.md is the one generated from its parts: host steps, install, modules, file list", async () => {
+  const { setBootstrap, BOOTSTRAP_FILE } = await import("../../dist/docs/kit-apply.js");
+  for (const k of readKits(STORE_DIR)) {
+    const p = join(STORE_DIR, "..", k.name, BOOTSTRAP_FILE);
+    assert.ok(existsSync(p), `${k.name}: no ${BOOTSTRAP_FILE}`);
+    assert.equal(readFileSync(p, "utf8"), setBootstrap(k, STORE_DIR), `${k.name}: ${BOOTSTRAP_FILE} differs from its parts — rebuild with assembleSet`);
+    const text = readFileSync(p, "utf8");
+    assert.match(text, new RegExp(`hệ ${k.host}`), `${k.name}: the host steps are in`);
+    assert.ok(k.tier === "Basic" ? /## 4\. Danh sách file/.test(text) : text.includes(`zemory init --kit ${k.no}`), `${k.name}: install for its tier`);
+  }
+});
+
+test("every set reproduces what the old template it replaced gave a repo: its rules, its skills, its root entries", async () => {
+  // plan/28 §0p F: attic/legacy-templates is the reference until every repo is moved; a set that drops something its
+  // template shipped would take it away from every repo moved onto it.
+  const { hostSkillOf } = await import("../../dist/docs/store.js");
+  const { readdirSync } = await import("node:fs");
+  const LEGACY = join(STORE_DIR, "..", "..", "attic", "legacy-templates");
+  const kits = readKits(STORE_DIR);
+  for (const [old, no] of [["01_cowork_basic/nonapp", "01"], ["02_cowork_memory/nonapp", "02"], ["03_nonapp", "03"], ["05_app", "05"]]) {
+    const kit = kits.find((k) => k.no === no);
+    assert.ok(kit, `set ${no} (replacing ${old}) is missing`);
+    const base = join(LEGACY, old);
+    const parts = kitParts(kit, STORE_DIR);
+    const rules = new Set(parts.filter((p) => p.shelf === "01_RULES").map((p) => Number(p.key.split("_")[1])));
+    const oldRules = [...new Set([...readFileSync(join(base, "agent", "02_RULES.md"), "utf8").matchAll(/`02-(\d+)`/g)].map((m) => Number(m[1])))];
+    assert.deepEqual(oldRules.filter((n) => !rules.has(n)), [], `${kit.name}: rules of ${old} it does not carry`);
+    const skills = new Set(parts.filter((p) => p.shelf === "04_SKILLS").map((p) => hostSkillOf(p)));
+    const bare = (s) => s.replace(/^(harness|doc|dev|task|pbi)-/, "");
+    const oldSkills = readdirSync(join(base, ".claude", "skills"));
+    assert.deepEqual(oldSkills.filter((s) => !skills.has(s) && ![...skills].some((n) => bare(n) === s)), [], `${kit.name}: skills of ${old} it does not carry`);
+    const setDir = join(STORE_DIR, "..", kit.name);
+    const lost = readdirSync(base).filter((n) => !["agent", "plan", "hooks"].includes(n) && !existsSync(join(setDir, n)) && !existsSync(join(setDir, "docs", n)));
+    assert.deepEqual(lost, [], `${kit.name}: root entries of ${old} it does not carry`);
+  }
+});
