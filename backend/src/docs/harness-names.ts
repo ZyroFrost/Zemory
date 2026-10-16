@@ -32,7 +32,7 @@ export const LEGACY_SHELF: Record<string, ShelfName> = {
 };
 
 /** The code a part name starts with, per kind of part. */
-export const CODE = { rule: "Rule", constitution: "Cons", structure: "Struc", slot: "Slot", skill: "Skill" } as const;
+export const CODE = { rule: "Rule", constitution: "Cons", structure: "Struc", slot: "Slot", skill: "Skill", host: "Host" } as const;
 export type Code = (typeof CODE)[keyof typeof CODE];
 
 /** How a machine enforces a rule or article (plan/28 §0o): blocks · reminds by keyword · nothing (core text only). */
@@ -45,6 +45,11 @@ export type Scope = (typeof SCOPE)[number];
 
 /** Skill groups. A new group is added here first — a part name with an unknown component is a red gate. */
 export const SKILL_GROUP = ["Doc", "Harness", "Dev", "Task", "PBI"] as const;
+
+/** The hosts of shelf 05 (plan/28 §0p E): the KIND of environment the agent runs in, never an app's name — a GUI app of its own,
+ *  an IDE panel, a terminal. Whether a repo's harness carries its host is not settled (plan/28 §0p E). */
+export const HOST_KIND = ["GUI", "IDE", "CLI"] as const;
+export const HOSTS_SHELF = "05_HOSTS";
 
 /** One parsed part name. `nn` is the number as written (`05`), `no` the number (5). */
 export interface PartName {
@@ -65,6 +70,7 @@ const PATTERNS: Array<[Code, RegExp]> = [
   ["Struc", new RegExp(`^Struc_(${SCOPE.join("|")})_(${NAME})$`)],
   ["Slot", new RegExp(`^Slot_(${WORD})_(\\d{2,3})_(${NAME})$`)],
   ["Skill", new RegExp(`^Skill_(${SKILL_GROUP.join("|")})_(${NAME})$`)],
+  ["Host", new RegExp(`^Host_()(${HOST_KIND.join("|")})$`)],
 ];
 
 /** Parse a part folder name; null when it does not follow the dictionary (a red gate for store parts). */
@@ -72,7 +78,7 @@ export function parsePartName(folder: string): PartName | null {
   for (const [code, re] of PATTERNS) {
     const m = re.exec(folder);
     if (!m) continue;
-    if (code === "Struc" || code === "Skill") return { code, group: m[1], name: m[2] };
+    if (code === "Struc" || code === "Skill" || code === "Host") return { code, group: m[1], name: m[2] };
     return { code, group: m[1], nn: m[2], no: Number(m[2]), name: m[3] };
   }
   return null;
@@ -82,6 +88,7 @@ export function parsePartName(folder: string): PartName | null {
 const WIDTH: Partial<Record<Code, number>> = { Rule: 2, Cons: 2, Slot: 3 };
 
 export function formatPartName(p: Omit<PartName, "nn">): string {
+  if (p.code === "Host") return `Host_${p.name}`;
   if (p.code === "Struc" || p.code === "Skill") return `${p.code}_${p.group}_${p.name}`;
   const nn = String(p.no ?? 0).padStart(WIDTH[p.code] ?? 2, "0");
   return `${p.code}_${p.group}_${nn}_${p.name}`;
@@ -89,6 +96,7 @@ export function formatPartName(p: Omit<PartName, "nn">): string {
 
 /** The stable identity of a part: code + number (`Rule_14`), or code + group + name for unnumbered parts. */
 export function keyOf(p: Pick<PartName, "code" | "group" | "no" | "name">): string {
+  if (p.code === "Host") return `Host_${p.name}`;
   return p.no === undefined ? `${p.code}_${p.group}_${p.name}` : `${p.code}_${p.no}`;
 }
 

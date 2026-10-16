@@ -18,7 +18,7 @@
 // Riêng nhóm secret KHÔNG có flag. Agent chỉ được tạo flag SAU khi user nói rõ trong phiên.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { basename, join, relative, resolve } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { LEGACY_READ_FIRST_FILE, READ_FIRST_FILE, READ_FIRST_SOURCE } from "./read-first-src.js";
 import { SQL_GATE_FILE, SQL_GATE_SOURCE } from "./sql-gate-src.js";
@@ -197,7 +197,9 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
             // Any copy of the same skill counts (plan/28 §0o): the host build the agent is pointed at, the source in the
             // harness, the build kept inside the source — and the host loading the skill by name (`skill`).
             read: `${skillsRel}/${skill}/SKILL.md`,
-            alt: source ? [relp(join(source, "SKILL.md")), relp(join(source, "Claude", skill, "SKILL.md"))] : [],
+            alt: source
+              ? [relp(join(source, `${basename(source)}.md`)), relp(join(source, "SKILL.md")), relp(join(source, "Claude", skill, "SKILL.md"))]
+              : [],
             skill,
           }))
         : [
@@ -1323,7 +1325,8 @@ function main() {
     // The folder harness twin (2026-10-15): one rule = one folder, its number on the \`id:\` line of the part's main file.
     // Deleting the folder is a recursive delete (blocked above); rewriting or dropping the \`id:\` line is the other way
     // a number leaves, and the .md regex above never saw these files.
-    if (p && /(^|\\/)(01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES)\\/[^/]+\\/RULE\\.md$/i.test(relToRoot(p).replace(/\\\\/g, "/"))) {
+    // The header file is named after its folder (plan/28 §0p); an older copy still has RULE.md.
+    if (p && /(^|\\/)(01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES)\\/([^/]+)\\/(RULE|\\3)\\.md$/i.test(relToRoot(p).replace(/\\\\/g, "/"))) {
       const idOf = (s) => { const m = String(s || "").match(/^id:\\s*(\\S+)/m); return m ? m[1] : null; };
       let before = "", after = "";
       if (tool === "Write") {
@@ -1388,7 +1391,8 @@ function main() {
     //
     // Applied ONLY inside the repo tree: files in a temp or scratchpad folder are overwritten constantly, and blocking there
     // creates noise while protecting nothing.
-    if (tool === "Write" && p) {
+    // A one-use flag is not content: rewriting a used one is how a new approval is recorded, never a loss.
+    if (tool === "Write" && p && !isFlagFile(relToRoot(p).replace(/\\\\/g, "/"))) {
       const rel = relToRoot(p);
       const inside = !rel.startsWith("..") && !path.isAbsolute(rel);
       let sizeNow = 0;

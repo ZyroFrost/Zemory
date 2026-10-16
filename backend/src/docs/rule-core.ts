@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative } from "node:path";
 import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
-import { bodyOf, isFolderHarness, isRetired, listParts, shelfDir, type Part } from "./store.js";
+import { bodyOf, isFolderHarness, isRetired, listParts, mainOf, mainPath, shelfDir, type Part } from "./store.js";
 import { SHELF, legacyIdOf } from "./harness-names.js";
 import { selfRepoRoot } from "../projects.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
@@ -265,7 +265,7 @@ function folderCoreText(agentDir: string): string {
   const purpose = readOr(() => readFileSync(join(shelfDir(agentDir, SHELF.constitution), "PURPOSE.md"), "utf8").trim(), "");
   const rules = folderRules(agentDir)
     .filter((r) => r.part.kind === "judgment")
-    .map((r) => bodyOf(readFileSync(join(r.part.dir, r.part.shelf === "03_STRUCTURE" ? "SLOT.md" : "RULE.md"), "utf8")).trim());
+    .map((r) => bodyOf(readFileSync(mainPath(r.part.dir, mainOf(r.part)), "utf8")).trim());
   return [purpose, ...rules].filter(Boolean).join("\n\n");
 }
 
@@ -279,7 +279,7 @@ export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
   for (const r of folderRules(agentDir)) {
     const id = r.part.id;
     if (r.badJson) { badGate.push(`${id} (gate.json unreadable)`); continue; }
-    if (!r.part.kind) { badGate.push(`${id} (no kind: in RULE.md)`); continue; }
+    if (!r.part.kind) { badGate.push(`${id} (no kind: in its header file)`); continue; }
     if (r.part.kind === "judgment") { if (r.gate && !r.gate.partial) gatedInCore.push(id); continue; }
     if (!r.gate) { unmarked.push(id); continue; }
     if (r.gate.hook && !existsSync(join(r.part.dir, r.gate.hook))) badGate.push(`${id} (${r.gate.hook} missing)`);
@@ -296,7 +296,7 @@ export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
   // its own to size. `gates` prints the whole forced size next to it.
   const shared = folderRules(agentDir)
     .filter((r) => r.part.kind === "judgment" && r.part.from)
-    .reduce((n, r) => n + bodyOf(readFileSync(join(r.part.dir, "RULE.md"), "utf8")).length, 0);
+    .reduce((n, r) => n + bodyOf(readFileSync(mainPath(r.part.dir, mainOf(r.part)), "utf8")).length, 0);
   return { noCore: false, unmarked, gatedInCore, badGate, overCap: shared > FOLDER_CORE_MAX_CHARS ? shared : 0 };
 }
 

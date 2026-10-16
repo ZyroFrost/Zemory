@@ -54,11 +54,13 @@ function edit(payload, root) {
   return { tool, abs, rel, added, removed, exists, newLines };
 }
 
-// The rule's own text, capped. Folder harness (plan/28 §0d): the body of RULE.md beside this hook. File harness: the line
+// The rule's own text, capped. Folder harness (plan/28 §0d): the body of the rule's header file beside this hook. File harness: the line
 // carrying its number in the rules file plus its continuation lines.
 function ownRule(root) {
   try {
-    const file = path.join(__dirname, "RULE.md");
+    // the header file is named after the rule folder (plan/28 §0p); an older copy still has RULE.md
+    const own = path.join(__dirname, path.basename(__dirname) + ".md");
+    const file = fs.existsSync(own) ? own : path.join(__dirname, "RULE.md");
     let lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
     if (lines[0] === "---") lines = lines.slice(lines.indexOf("---", 1) + 1);
     const body = lines.filter((l, i) => i > 0 || l.trim()).slice(0, 20).map((l) => (l.length > 400 ? l.slice(0, 400) + "…" : l));

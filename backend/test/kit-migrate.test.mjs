@@ -67,7 +67,7 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   for (const f of ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "AGENTS.md", "hooks"]) assert.ok(existsSync(join(arch, f)), `archived ${f}`);
   assert.equal(readFileSync(join(arch, "02_RULES.md"), "utf8"), oldRules, "the archive is byte for byte");
   // constitution
-  const a1 = join(agent, "02_CONSTITUTION", "Cons_Core_01_DieuMotBatBien", "RULE.md");
+  const a1 = join(agent, "02_CONSTITUTION", "Cons_Core_01_DieuMotBatBien", "Cons_Core_01_DieuMotBatBien.md");
   assert.match(readFileSync(a1, "utf8"), /nội dung một/);
   // The migration can only drop the marks of a Vietnamese title; conform holds the repo red until the part has an English
   // name (rule 30 for names the tool itself wrote — no hook sees those writes).
@@ -80,17 +80,17 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   assert.ok(!existsSync(join(agent, "01_CONSTITUTION.md")));
   // rules
   const r7 = readdirSync(join(agent, "01_RULES")).find((d) => d.startsWith("Rule_") && d.includes("_07_"));
-  const t7 = readFileSync(join(agent, "01_RULES", r7, "RULE.md"), "utf8");
+  const t7 = readFileSync(join(agent, "01_RULES", r7, `${r7}.md`), "utf8");
   assert.match(t7, /^from: _Store/m);
   assert.match(t7, /Bản của repo trước khi chuyển[\s\S]*REPO-ONLY-EDIT/, "the repo's wording is kept for a hand merge");
   const r99 = readdirSync(join(agent, "01_RULES")).find((d) => d.startsWith("Rule_Gate_99_"));
-  assert.match(readFileSync(join(agent, "01_RULES", r99, "RULE.md"), "utf8"), /chỉ repo này có/);
-  assert.doesNotMatch(readFileSync(join(agent, "01_RULES", r99, "RULE.md"), "utf8"), /^from:/m, "a repo-only rule is the repo's own");
+  assert.match(readFileSync(join(agent, "01_RULES", r99, `${r99}.md`), "utf8"), /chỉ repo này có/);
+  assert.doesNotMatch(readFileSync(join(agent, "01_RULES", r99, `${r99}.md`), "utf8"), /^from:/m, "a repo-only rule is the repo's own");
   assert.deepEqual(JSON.parse(readFileSync(join(agent, "01_RULES", r99, "gate.json"), "utf8")), { gate: "guard" });
   // structure + skills + entry
   assert.equal(readFileSync(join(agent, "03_STRUCTURE", "INDEX.md"), "utf8"), oldStruct);
   // an untouched shared skill takes the store copy: source in the harness, plugged under its host name; the old folder goes
-  assert.match(readFileSync(join(root, "docs", "agent", "04_SKILLS", "Skill_Harness_Grill", "SKILL.md"), "utf8"), /^from: _Store\/04_SKILLS\/Skill_Harness_Grill/m);
+  assert.match(readFileSync(join(root, "docs", "agent", "04_SKILLS", "Skill_Harness_Grill", "Skill_Harness_Grill.md"), "utf8"), /^from: _Store\/04_SKILLS\/Skill_Harness_Grill/m);
   assert.match(readFileSync(join(root, ".claude", "skills", "harness-grill", "SKILL.md"), "utf8"), /^from: _Store\/04_SKILLS\/Skill_Harness_Grill/m, "an untouched shared skill takes the store copy");
   assert.ok(!existsSync(join(root, ".claude", "skills", "grill")), "the untouched old copy does not stay beside the new one");
   assert.match(readFileSync(join(root, ".claude", "skills", "audit", "SKILL.md"), "utf8"), /REPO EDIT/, "an edited shared skill is kept");
@@ -118,7 +118,7 @@ test("links to a replaced file are repointed (an article link to its folder); th
   put(root, "docs/plan/05_ui.md", "Xem [HP điều 1](../agent/01_CONSTITUTION.md) · [luật](../agent/02_RULES.md#git) · [cây](../agent/03_STRUCTURE.md) · nhắc 02_RULES.md trong câu.\n");
   migrateToKit(root, { kitRef: "04", apply: true });
   const t5 = readFileSync(join(root, "docs", "plan", "05_ui.md"), "utf8");
-  assert.match(t5, new RegExp(`\\[HP điều 1\\]\\(\\.\\./agent/02_CONSTITUTION/Cons_Core_01_DieuMotBatBien/RULE\\.md\\)`));
+  assert.match(t5, new RegExp(`\\[HP điều 1\\]\\(\\.\\./agent/02_CONSTITUTION/Cons_Core_01_DieuMotBatBien/Cons_Core_01_DieuMotBatBien\\.md\\)`));
   assert.match(t5, /\[luật\]\(\.\.\/agent\/01_RULES\/\)/);
   assert.match(t5, /\[cây\]\(\.\.\/agent\/03_STRUCTURE\/INDEX\.md\)/);
   assert.match(t5, /nhắc 02_RULES\.md trong câu/, "plain words are the repo's and stay");
