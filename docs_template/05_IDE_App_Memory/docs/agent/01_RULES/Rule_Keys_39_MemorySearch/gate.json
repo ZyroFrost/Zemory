@@ -1,0 +1,19 @@
+{
+  "prompt": {
+    "kind": "Rule_39",
+    "re": "\\b(hom qua|lan truoc|phien (truoc|khac)|session (truoc|sau|khac)|da (lam|noi|chot|quyet|sync|fix|chay) (roi|chua)|nho (ko|khong|la|da|dang)|t nho|tui nho|ben kia|repo khac|ban nãy|hồi xưa|truoc do|viec truoc|lam tiep|lam do|quay lai|cua ai|da (noi|bao) (roi|ma)|t tuong|tui tuong)\\b",
+    "text": "[zemory] Rule_Keys_39_MemorySearch: Work of another session or repo: search Global Memory first (`zemory memory search --all`) — never rebuild it from guesses."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "hôm qua đã làm tới đâu rồi"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "thêm nút lưu"
+    }
+  ]
+}

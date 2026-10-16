@@ -130,9 +130,9 @@ docs_visual ≠ docs    docs_visual/ nằm NGOÀI docs/ — agent KHÔNG tự đ
 ## Nguồn sự thật
 
 ```
-Từ điển dữ liệu   docs/agent/03_STRUCTURE/INDEX.md (Slot_Docs_138_DataDictionary) — định nghĩa metric/cột là nguồn
+Từ điển dữ liệu   docs/agent/03_STRUCTURE/INDEX.md (Docs_138_DataDictionary) — định nghĩa metric/cột là nguồn
                   sự thật, chống mỗi báo cáo tính một kiểu. MỘT từ điển cho cả dự
-                  án: tên-chỗ (§1) và tên-nghiệp-vụ (Slot_Docs_138_DataDictionary) ở chung một file.
+                  án: tên-chỗ (§1) và tên-nghiệp-vụ (Docs_138_DataDictionary) ở chung một file.
 Publish/refresh   Tự động hoá → scripts/ · bản render ra → exports/ (gitignore,
                   build lại được). Giữ bản trước khi đè vào attic/ để rollback.
 ```

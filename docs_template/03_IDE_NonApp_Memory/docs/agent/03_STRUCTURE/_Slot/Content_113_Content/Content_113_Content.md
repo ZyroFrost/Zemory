@@ -1,0 +1,15 @@
+---
+id: Slot_113
+aka: 03-113
+name: content
+version: 4
+path: content/
+from: _Store/03_STRUCTURE/_Slot/Content_113_Content @v4 #8711ef919e70
+---
+# Content_113_Content content — deliverable docs-only
+
+- Vai trò:
+  - ◆ Docs-only: nội dung `.md`/`.mdx` là sản phẩm chính.
+  - Deliverable ◆ — hệ NON-APP bắt buộc ≥1 folder deliverable trong `reports/` | `models/` | `content/` | `design/`, chọn theo loại dự án.
+  - Repo nặng ĐIỀU TRA (deliverable là hồ sơ case): findings nằm trong `tasks/<case>/`; `content/` giữ đúng `README.md` = INDEX case (bảng tra: case · trạng thái · chủ đề) — đây là chỗ tra nhanh có case nào.
+- Được chứa / không chứa: Không chứa: findings của case (→ `tasks/<case>/`).

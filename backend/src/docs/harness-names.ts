@@ -7,12 +7,15 @@
 //   Rule_Keys_14_ChallengeDesign      a common rule, enforced by keyword reminders, number 14 of the rules shelf
 //   Cons_Gate_05_OneNameDictionary    a constitution article, enforced by a machine gate
 //   Struc_Repo_App                    a structure bundle covering one repo (no number: a bundle is chosen by name)
-//   Slot_Backend_013_Commands         a slot in the `backend/` area, number 13 of the structure shelf
+//   Backend_013_Commands              a slot (inner layer `_Slot/`): area `backend/`, number 13 — no code, the layer says it
+//   GUI                               a host (inner layer `_Host/`): the kind of environment — no code, the layer says it
 //   Skill_Doc_WriteDocx               a skill of the Doc group (no number; its host copy is `doc-write-docx`)
 //
 // The NUMBER never changes and is what identifies a part: the key `Rule_14` stays the same when the rule moves from
 // Core to Keys or is renamed, so a citation of an old full name still resolves (lookup ignores group and name).
 // Legacy ids (`02-14` for rules, `01-5` for articles, `03-93` for slots) map onto keys through `legacyKey`.
+// An inner-layer part names only its own content (plan/28 §0p): the layer folder (`_Slot` · `_Host`) already says what
+// it is. The older prefixed forms (`Slot_Backend_013_Commands` · `Host_GUI`) are still read.
 
 /** Shelf folders of a repo harness and of the store, in reading order. */
 export const SHELF = {
@@ -46,10 +49,9 @@ export type Scope = (typeof SCOPE)[number];
 /** Skill groups. A new group is added here first — a part name with an unknown component is a red gate. */
 export const SKILL_GROUP = ["Doc", "Harness", "Dev", "Task", "PBI"] as const;
 
-/** The hosts of shelf 05 (plan/28 §0p E): the KIND of environment the agent runs in, never an app's name — a GUI app of its own,
- *  an IDE panel, a terminal. Whether a repo's harness carries its host is not settled (plan/28 §0p E). */
+/** The hosts (plan/28 §0p E): the KIND of environment the agent runs in, never an app's name — a GUI app of its own, an IDE
+ *  panel, a terminal. They live in the structure shelf's inner layer `_Host/`; a set carries exactly one. */
 export const HOST_KIND = ["GUI", "IDE", "CLI"] as const;
-export const HOSTS_SHELF = "05_HOSTS";
 
 /** One parsed part name. `nn` is the number as written (`05`), `no` the number (5). */
 export interface PartName {
@@ -71,6 +73,9 @@ const PATTERNS: Array<[Code, RegExp]> = [
   ["Slot", new RegExp(`^Slot_(${WORD})_(\\d{2,3})_(${NAME})$`)],
   ["Skill", new RegExp(`^Skill_(${SKILL_GROUP.join("|")})_(${NAME})$`)],
   ["Host", new RegExp(`^Host_()(${HOST_KIND.join("|")})$`)],
+  // the inner-layer forms: a slot is <Area>_<NNN>_<Name> (three digits — rules and articles have two and a code), a host its kind
+  ["Slot", new RegExp(`^(${WORD})_(\\d{3})_(${NAME})$`)],
+  ["Host", new RegExp(`^()(${HOST_KIND.join("|")})$`)],
 ];
 
 /** Parse a part folder name; null when it does not follow the dictionary (a red gate for store parts). */
@@ -88,9 +93,10 @@ export function parsePartName(folder: string): PartName | null {
 const WIDTH: Partial<Record<Code, number>> = { Rule: 2, Cons: 2, Slot: 3 };
 
 export function formatPartName(p: Omit<PartName, "nn">): string {
-  if (p.code === "Host") return `Host_${p.name}`;
+  if (p.code === "Host") return p.name;
   if (p.code === "Struc" || p.code === "Skill") return `${p.code}_${p.group}_${p.name}`;
   const nn = String(p.no ?? 0).padStart(WIDTH[p.code] ?? 2, "0");
+  if (p.code === "Slot") return `${p.group}_${nn}_${p.name}`;
   return `${p.code}_${p.group}_${nn}_${p.name}`;
 }
 
@@ -180,9 +186,6 @@ export function enforcementOf(gate: Record<string, unknown> | null): Enforcement
 
 // ── sets ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** The rules a set carries, by the code of the rules shelf: `Rule` is every common rule; a group adds its own on top
- *  (`RuleDB` · `RuleDept`). */
-export const RULE_SET = ["Rule", "RuleDB", "RuleDept"] as const;
 export const TIER = ["Basic", "Memory"] as const;
 
 /**
@@ -190,31 +193,33 @@ export const TIER = ["Basic", "Memory"] as const;
  * numbers of the old registers (`06` · `08`) meant other sets and are not listed.
  */
 export const LEGACY_SETS: Record<string, string> = {
-  "05_app": "02_Rule_App_Dev_Memory",
-  "02_GUI_App_Memory": "02_Rule_App_Dev_Memory",
-  "06_IDE_App_Memory": "02_Rule_App_Dev_Memory",
-  "Kit_GUI_02_AppMemory": "02_Rule_App_Dev_Memory",
-  "Kit_IDE_06_AppMemory": "02_Rule_App_Dev_Memory",
-  "02_Common_App_Dev_Memory": "02_Rule_App_Dev_Memory",
-  "01_cowork_basic": "03_Rule_NonApp_Task_Basic",
-  "03_Common_NonApp_Task_Basic": "03_Rule_NonApp_Task_Basic",
-  "03_nonapp": "04_Rule_NonApp_Task_Memory",
-  "02_cowork_memory": "04_Rule_NonApp_Task_Memory",
-  "04_GUI_NonApp_Memory": "04_Rule_NonApp_Task_Memory",
-  "08_IDE_NonApp_Memory": "04_Rule_NonApp_Task_Memory",
-  "Kit_GUI_04_NonAppMemory": "04_Rule_NonApp_Task_Memory",
-  "Kit_IDE_08_NonAppMemory": "04_Rule_NonApp_Task_Memory",
-  "04_Common_NonApp_Task_Memory": "04_Rule_NonApp_Task_Memory",
+  "05_app": "05_IDE_App_Memory",
+  "02_GUI_App_Memory": "05_IDE_App_Memory",
+  "06_IDE_App_Memory": "05_IDE_App_Memory",
+  "Kit_GUI_02_AppMemory": "05_IDE_App_Memory",
+  "Kit_IDE_06_AppMemory": "05_IDE_App_Memory",
+  "02_Common_App_Dev_Memory": "05_IDE_App_Memory",
+  "02_Rule_App_Dev_Memory": "05_IDE_App_Memory",
+  "01_cowork_basic": "01_GUI_NonApp_Basic",
+  "03_Common_NonApp_Task_Basic": "01_GUI_NonApp_Basic",
+  "03_Rule_NonApp_Task_Basic": "01_GUI_NonApp_Basic",
+  "02_cowork_memory": "02_GUI_NonApp_Memory",
+  "04_GUI_NonApp_Memory": "02_GUI_NonApp_Memory",
+  "Kit_GUI_04_NonAppMemory": "02_GUI_NonApp_Memory",
+  "03_nonapp": "03_IDE_NonApp_Memory",
+  "08_IDE_NonApp_Memory": "03_IDE_NonApp_Memory",
+  "Kit_IDE_08_NonAppMemory": "03_IDE_NonApp_Memory",
+  "04_Common_NonApp_Task_Memory": "03_IDE_NonApp_Memory",
+  "04_Rule_NonApp_Task_Memory": "03_IDE_NonApp_Memory",
 };
 
 /**
- * A set name reads its assembly in shelf order (plan/28 §0o): `<NN>_<01 rules>_<03 structure>_<04 skills>_<tier>` — the
- * constitution (02) is the repo's own and never in a name, an empty shelf leaves its component out
- * (`04_Rule_NonApp_Task_Memory`). Null when the name does not follow that order.
+ * A set name says only what is fixed for the set (plan/28 §0p): `<NN>_<host>_<structure>_<tier>` — `03_IDE_NonApp_Memory`.
+ * The host comes first, as `_Host/` comes before the structures in the structure shelf and the environment is chosen
+ * before the project's kind. Rules, articles and skills are chosen per set and change over time, so they are never in a
+ * name. Null when the name does not follow that shape.
  */
-export function parseSetName(name: string): { nn: string; rules: string; structure: string; skills: string; tier: string } | null {
-  const skills = SKILL_GROUP.join("|");
-  // the structure component is any name that is not a skill group (a set without a structure goes rules → skills)
-  const m = new RegExp(`^(\\d{2})_(${RULE_SET.join("|")})(?:_(?!(?:${skills})_)(${NAME}))?(?:_(${skills}))?_(${TIER.join("|")})$`).exec(name);
-  return m ? { nn: m[1], rules: m[2], structure: m[3] ?? "", skills: m[4] ?? "", tier: m[5] } : null;
+export function parseSetName(name: string): { nn: string; structure: string; host: string; tier: string } | null {
+  const m = new RegExp(`^(\\d{2})_(${HOST_KIND.join("|")})_(${NAME})_(${TIER.join("|")})$`).exec(name);
+  return m ? { nn: m[1], host: m[2], structure: m[3], tier: m[4] } : null;
 }

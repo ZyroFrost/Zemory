@@ -29,23 +29,26 @@ test("negative: a missing shelf, an empty shelf and a missing Archive are each r
   mkdirSync(join(s, "02_CONSTITUTION"), { recursive: true });
   put(s, "02_CONSTITUTION/PURPOSE.md", "# purpose\n"); // a shelf file is not a part
   put(s, "04_SKILLS/Skill_Doc_X/SKILL.md", "---\nname: x\nversion: 1\n---\nx\n");
-  put(s, "05_HOSTS/Host_Desktop/Host_Desktop.md", "# named after an app, not a kind\n");
-  put(s, "05_HOSTS/Host_IDE/notes.md", "# no header file\n");
   assert.deepEqual(storeShelfFindings(s), [
     "02_CONSTITUTION: shelf has no part",
     "03_STRUCTURE: shelf missing",
-    "05_HOSTS/Host_Desktop: not a host name (Host_GUI|IDE|CLI)",
-    "05_HOSTS/Host_IDE: no Host_IDE.md",
+    "03_STRUCTURE/_Host: no host",
     "Archive: shelf missing",
   ]);
   put(s, "02_CONSTITUTION/Cons_Core_01_Y/RULE.md", "---\nid: Cons_1\nname: y\nversion: 1\n---\ny\n");
-  put(s, "03_STRUCTURE/_Struc_Slot/Slot_Root_001_Entry/SLOT.md", "---\nid: Slot_1\nname: entry\nversion: 1\npath: AGENTS.md\n---\ne\n");
-  rmSync(join(s, "05_HOSTS", "Host_Desktop"), { recursive: true, force: true });
-  put(s, "05_HOSTS/Host_IDE/Host_IDE.md", "---\nid: Host_IDE\n---\n# IDE\n");
+  put(s, "03_STRUCTURE/_Slot/Root_001_Entry/Root_001_Entry.md", "---\nid: Slot_1\nname: entry\nversion: 1\npath: AGENTS.md\n---\ne\n");
+  put(s, "03_STRUCTURE/_Host/Desktop/Desktop.md", "# named after an app, not a kind\n");
+  put(s, "03_STRUCTURE/_Host/IDE/notes.md", "# no header file\n");
   mkdirSync(join(s, "Archive"), { recursive: true });
+  assert.deepEqual(storeShelfFindings(s), [
+    "03_STRUCTURE/_Host/Desktop: not a host kind (GUI|IDE|CLI)",
+    "03_STRUCTURE/_Host/IDE: no IDE.md",
+  ]);
+  rmSync(join(s, "03_STRUCTURE", "_Host", "Desktop"), { recursive: true, force: true });
+  put(s, "03_STRUCTURE/_Host/IDE/IDE.md", "---\nid: Host_IDE\n---\n# IDE\n");
   assert.deepEqual(storeShelfFindings(s), []);
-  rmSync(join(s, "05_HOSTS"), { recursive: true, force: true });
-  assert.deepEqual(storeShelfFindings(s), ["05_HOSTS: shelf missing"], "the hosts shelf is a shelf like the others");
+  rmSync(join(s, "03_STRUCTURE", "_Host"), { recursive: true, force: true });
+  assert.deepEqual(storeShelfFindings(s), ["03_STRUCTURE/_Host: no host"], "the hosts layer is never empty");
 });
 
 test("every gate example in the store behaves as declared, and every hook or slot gate has examples", () => {
@@ -87,7 +90,7 @@ test("every built kit names parts that exist", () => {
     assert.ok(struc, `${k.name}: structure ${k.structure} is not in the store`);
     const r = structureSlots(struc, listParts(STORE_DIR, "03_STRUCTURE"));
     assert.deepEqual(r.missing, [], `${k.name}: ${k.structure} names slots that do not exist`);
-    assert.ok(r.slots.length > 0 && parts.filter((p) => p.folder.startsWith("_Struc_Slot/")).length === r.slots.length);
+    assert.ok(r.slots.length > 0 && parts.filter((p) => p.folder.startsWith("_Slot/")).length === r.slots.length);
   }
 });
 
@@ -192,15 +195,15 @@ test("the two structure layers hold in the store: no slot flat, none with applie
   const s = tempDir(t, "zemory-layers-");
   const put = (rel, text) => { mkdirSync(dirname(join(s, rel)), { recursive: true }); writeFileSync(join(s, rel), text); };
   const slot = (rel, id, path, extra = "") => put(`03_STRUCTURE/${rel}/SLOT.md`, `---\nid: ${id}\nname: x\nversion: 1\npath: ${path}\n${extra}---\n# x\n`);
-  slot("_Struc_Slot/Slot_Root_001_Entry", "Slot_1", "AGENTS.md · CLAUDE.md");
-  put("03_STRUCTURE/_Struc_Slot/Slot_Root_001_Entry/seed/AGENTS.md", "# <PROJECT>\n");
-  put("03_STRUCTURE/_Struc_Slot/Slot_Root_001_Entry/seed/docs/stray.md", "x\n");
-  slot("_Struc_Slot/Slot_Docs_002_Docs", "Slot_2", "docs/", "applies: [App]\n");
+  slot("_Slot/Slot_Root_001_Entry", "Slot_1", "AGENTS.md · CLAUDE.md");
+  put("03_STRUCTURE/_Slot/Slot_Root_001_Entry/seed/AGENTS.md", "# <PROJECT>\n");
+  put("03_STRUCTURE/_Slot/Slot_Root_001_Entry/seed/docs/stray.md", "x\n");
+  slot("_Slot/Slot_Docs_002_Docs", "Slot_2", "docs/", "applies: [App]\n");
   slot("Slot_Docs_003_Plan", "Slot_3", "docs/plan/");
   put("03_STRUCTURE/Struc_Repo_App/STRUCTURE.md", "---\nid: Struc_Repo_App\nname: repo-app\nversion: 1\n---\n# app\n");
   put("03_STRUCTURE/Struc_Repo_App/structure.json", JSON.stringify({ slots: ["Slot_Root_001_Entry", "Slot_Docs_009_Gone"] }));
   const wrong = partNameFindings(s).wrong.join("\n");
-  assert.match(wrong, /Slot_Docs_003_Plan: a slot lives in 03_STRUCTURE\/_Struc_Slot\//);
+  assert.match(wrong, /Slot_Docs_003_Plan: a slot lives in 03_STRUCTURE\/_Slot\//);
   assert.match(wrong, /Slot_Docs_002_Docs: a slot belongs to no structure/);
   assert.match(wrong, /seed\/docs\/stray\.md is not under the slot's path/);
   assert.doesNotMatch(wrong, /seed\/AGENTS\.md/, "a seed at the slot's own path passes");
@@ -255,8 +258,9 @@ test("every set name reads its assembly in shelf order and tells the truth about
 
 test("a repo marked with an old kit name finds the set that replaced it; an old bare number finds nothing", async () => {
   const { findKit } = await import("../../dist/docs/store.js");
-  const want = { "06_IDE_App_Memory": "02", "02_GUI_App_Memory": "02", "05_app": "02", "08_IDE_NonApp_Memory": "04",
-    "04_GUI_NonApp_Memory": "04", "03_nonapp": "04", "02_cowork_memory": "04", "01_cowork_basic": "03" };
+  const want = { "06_IDE_App_Memory": "05", "02_GUI_App_Memory": "05", "05_app": "05", "08_IDE_NonApp_Memory": "03",
+    "04_GUI_NonApp_Memory": "02", "03_nonapp": "03", "02_cowork_memory": "02", "01_cowork_basic": "01",
+    "04_Rule_NonApp_Task_Memory": "03", "02_Rule_App_Dev_Memory": "05" };
   for (const [old, no] of Object.entries(want)) assert.equal(findKit(old, STORE_DIR)?.no, no, old);
   for (const gone of ["06", "08", "05_IDE_App_Basic"]) assert.equal(findKit(gone, STORE_DIR), null, gone);
 });
