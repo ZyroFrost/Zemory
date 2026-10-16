@@ -2,7 +2,7 @@
 id: Rule_37
 aka: 02-37
 name: plan-lean
-version: 2
+version: 3
 kind: content
 ---
 # Rule_Gate_37_PlanLean Plan phải gọn
@@ -15,3 +15,9 @@ kind: content
 - Mỗi mục `05_TODO` gắn `→ plan/NN §mục` để dẫn đường.
 - Trần: một spec ~1.000 dòng · cả `docs/plan` ~5.000 dòng (khoá `thresholds.plan_spec_lines` / `plan_total_lines`).
 - Phép kiểm: `zemory validate` báo LỖI khi gặp dấu khối máy sinh (`<!-- AUTOGEN` · `AUTOGEN:` · tiêu đề "SINH TỰ ĐỘNG" · "MÁY SINH … ĐỪNG SỬA TAY"); cảnh báo khi một spec hoặc cả `docs/plan` vượt trần.
+
+## Ví dụ
+
+- Tình huống: spec của luồng nạp dữ liệu đã đổi hướng ba lần.
+- ✗ Sai: giữ cả ba hướng cũ kèm "ngày nào làm gì", dán thêm bảng catalog do script build sinh — file vượt nghìn dòng, phiên sau đọc không xuể.
+- ✓ Đúng: sửa tại chỗ thành hướng hiện tại + điểm còn mở, lý do đổi ghi ở changelog; bảng máy sinh ghi ra file cạnh script, plan chỉ trỏ link; sơ đồ vẽ tay thì giữ.

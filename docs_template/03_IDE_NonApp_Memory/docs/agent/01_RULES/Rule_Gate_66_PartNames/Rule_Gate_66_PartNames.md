@@ -2,9 +2,9 @@
 id: Rule_66
 aka: 02-66
 name: part-names
-version: 4
+version: 5
 kind: content
-from: _Store/01_RULES/Rule_Gate_66_PartNames @v4 #226d22735773
+from: _Store/01_RULES/Rule_Gate_66_PartNames @v5 #3628d959346f
 ---
 # Rule_Gate_66_PartNames Tên linh kiện harness theo từ điển tên; tên skill theo chuẩn của host
 
@@ -17,3 +17,9 @@ from: _Store/01_RULES/Rule_Gate_66_PartNames @v4 #226d22735773
 - Tên slot và tên cụm KHÔNG là tên folder của repo: `SLOT.md › path:` là đường thật.
 - Skill trong folder nạp của host: `<nhóm>-<tên>`, chữ thường nối `-`, trùng trường `name:` (chuẩn Agent Skills).
 - Phép kiểm: phép kiểm tên của kho (`partNameFindings`) và `conform` (tên tiếng Việt mất dấu ⇒ đỏ).
+
+## Ví dụ
+
+- Tình huống: thêm một luật mới vào kho luật chung.
+- ✗ Sai: đặt tên tuỳ hứng, viết tiếng Việt không dấu, hoặc đánh lại số các luật cũ cho đẹp.
+- ✓ Đúng: đặt theo khuôn `Rule_<Nhóm>_<NN>_<TênTiếngAnh>`, lấy số kế tiếp, không đánh lại số; luật bãi bỏ giữ số và vào Archive.

@@ -2,10 +2,10 @@
 id: Cons_6
 aka: 01-6
 name: no-technical-names-ui
-version: 4
+version: 5
 kind: judgment
 applies: [App]
-from: _Store/02_CONSTITUTION/Cons_Core_06_NoTechnicalNamesUi @v4 #0772f2a8114b
+from: _Store/02_CONSTITUTION/Cons_Core_06_NoTechnicalNamesUi @v5 #baea15ca489f
 ---
 # Cons_Core_06_NoTechnicalNamesUi Giao diện không mang tên kỹ thuật
 
@@ -14,3 +14,9 @@ from: _Store/02_CONSTITUTION/Cons_Core_06_NoTechnicalNamesUi @v4 #0772f2a8114b
 - Nhãn kỹ thuật rò ra giao diện là dấu hiệu bề mặt đang nói ngôn ngữ của cơ sở dữ liệu, không phải của người dùng.
 
 > Điều GỢI Ý: đưa ra một lần lúc dựng repo. Giữ thì nó là điều của hiến pháp repo; không cần thì xoá folder này — `sync` không thêm lại và không sửa điều hiến pháp.
+
+## Ví dụ
+
+- Tình huống: Một app báo cáo có danh sách các truy vấn để người dùng chọn xem.
+- ✗ Sai: Danh sách ghi "Toàn bộ HĐ (m10)" và "Map cửa hàng (Fast→iPOS)", tức là tên bảng nội bộ. Người dùng nghiệp vụ không hiểu mình đang chọn gì.
+- ✓ Đúng: Ghi "Danh sách hóa đơn" và "Bảng ánh xạ cửa hàng". Tên bảng chỉ xuất hiện ở chỗ cố ý dành cho kỹ thuật, như ô xem câu truy vấn hoặc hộp chú thích cột.

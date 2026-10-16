@@ -2,7 +2,7 @@
 id: Rule_73
 aka: 02-73
 name: gate-every-rule
-version: 2
+version: 3
 kind: content
 ---
 # Rule_Gate_73_GateEveryRule Mỗi luật được phân loại rồi dựng chốt máy; chữ chỉ là tầng cuối
@@ -24,3 +24,9 @@ kind: content
 - Luật riêng của repo ⇒ cổng của repo: lệnh khai ở khoá marker `repoGates` (pre-commit chạy) hoặc test trong cổng.
 - Có chốt rồi ⇒ dời luật ra khỏi `## Lõi`, gắn `<!-- gate: … -->`.
 - Phép kiểm: `zemory gates` báo luật thiếu dấu · luật lõi mang dấu · lõi vượt trần.
+
+## Ví dụ
+
+- Tình huống: nhóm muốn thêm luật "không ghi địa chỉ IP nội bộ vào file đưa lên git".
+- ✗ Sai: chỉ thêm một dòng chữ vào bộ luật và tin agent sẽ nhớ.
+- ✓ Đúng: hỏi lúc vi phạm máy thấy gì — đây là nội dung đang ghi ⇒ dựng hook soi phần thêm và pre-commit, có ca chặn, ca phải cho qua và thử phá mã cho test đỏ; xong thì dời luật khỏi lõi, gắn dấu cổng.

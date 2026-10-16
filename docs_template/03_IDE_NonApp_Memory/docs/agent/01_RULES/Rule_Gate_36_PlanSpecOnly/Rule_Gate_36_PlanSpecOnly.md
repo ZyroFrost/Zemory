@@ -2,9 +2,9 @@
 id: Rule_36
 aka: 02-36
 name: plan-spec-only
-version: 2
+version: 3
 kind: content
-from: _Store/01_RULES/Rule_Gate_36_PlanSpecOnly @v2 #cde0361e306d
+from: _Store/01_RULES/Rule_Gate_36_PlanSpecOnly @v3 #c5fd5ce7542f
 ---
 # Rule_Gate_36_PlanSpecOnly Plan chỉ chứa spec
 
@@ -13,3 +13,9 @@ from: _Store/01_RULES/Rule_Gate_36_PlanSpecOnly @v2 #cde0361e306d
 - Không luật: bất biến hay luật riêng ⇒ hỏi trước; được chấp thuận thì ghi vào đúng file theo `Rule_Gate_38_TodoDoor`, plan chỉ dẫn chiếu.
 - Đặt tên `NN_tên.md`; `00` = tổng quan (theo `03_STRUCTURE`).
 - Phép kiểm: cổng `validate`.
+
+## Ví dụ
+
+- Tình huống: trong lúc viết spec cho tính năng xuất báo cáo, phát sinh ba việc cần làm.
+- ✗ Sai: thêm danh sách `[ ]` việc cần làm ở cuối file spec, kèm một "luật" mới tự đặt.
+- ✓ Đúng: spec chỉ mô tả thiết kế; ba việc hỏi rồi ghi vào `05_TODO` có link `→ plan/NN §mục`; luật mới phải hỏi trước, được duyệt thì ghi vào file luật, plan chỉ dẫn chiếu.

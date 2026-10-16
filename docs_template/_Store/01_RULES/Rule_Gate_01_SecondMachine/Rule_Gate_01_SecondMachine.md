@@ -2,7 +2,7 @@
 id: Rule_1
 aka: 02-1
 name: second-machine
-version: 6
+version: 7
 kind: action
 ---
 # Rule_Gate_01_SecondMachine Xong là có đường sang máy thứ hai, đã đo
@@ -11,3 +11,9 @@ kind: action
 - Chưa khai đường hoặc chưa đo ⇒ việc còn dở, kể cả khi cổng xanh.
 - Quy trình: `.claude/skills/harness-sync-path/SKILL.md`.
 - Phép kiểm: cổng `guard`.
+
+## Ví dụ
+
+- Tình huống: Một phiên agent dựng xong lớp chỉ mục tìm kiếm trên máy làm việc chính, cổng kiểm xanh, báo "xong".
+- ✗ Sai: Máy thứ hai kéo về thì có dữ liệu nhưng tìm kiếm không chạy, vì gói chuyển không chở chỉ mục và không ai thử mở ở đầu nhận.
+- ✓ Đúng: Trước khi báo xong, khai rõ chỉ mục đi sang máy kia bằng đường nào (git, gói mã hoá, dựng lại tại chỗ), rồi giải gói ra chỗ tạm và đếm đủ từng lớp như bên nhận sẽ đọc.

@@ -2,9 +2,9 @@
 id: Rule_29
 aka: 02-29
 name: code-english
-version: 5
+version: 6
 kind: judgment
-from: _Store/01_RULES/Rule_Gate_29_CodeEnglish @v5 #5e605f054f80
+from: _Store/01_RULES/Rule_Gate_29_CodeEnglish @v6 #579c7a87ef48
 ---
 # Rule_Gate_29_CodeEnglish Mã và comment viết tiếng Anh
 
@@ -17,3 +17,9 @@ from: _Store/01_RULES/Rule_Gate_29_CodeEnglish @v5 #5e605f054f80
   3. Thuật ngữ chuyên ngành.
 - Comment tiếng Việt cũ: sửa khi đang đụng file đó, không mở đợt dịch hàng loạt.
 - Phép kiểm: hook — dòng comment mới hoặc vừa sửa trong file code mà có chữ Việt thì bị chặn; comment cũ chưa đụng tới không bị bắt.
+
+## Ví dụ
+
+- Tình huống: sửa một hàm tính doanh thu trong script nạp dữ liệu.
+- ✗ Sai: thêm comment "tinh doanh thu theo thang" và đổi tên cột Excel nguồn `Ma_KH` thành `customer_code` cho đẹp.
+- ✓ Đúng: comment viết "Compute monthly revenue"; tên cột do hệ nguồn đặt giữ nguyên từng ký tự; nhãn hiện cho người đọc vẫn đi qua i18n.

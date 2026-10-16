@@ -2,9 +2,9 @@
 id: Rule_25
 aka: 02-25
 name: sql-one-way
-version: 4
+version: 5
 kind: content
-from: _Store/01_RULES/Rule_Gate_25_SqlOneWay @v4 #e1a58c84ebec
+from: _Store/01_RULES/Rule_Gate_25_SqlOneWay @v5 #f7eaa6013d92
 ---
 # Rule_Gate_25_SqlOneWay SQL · DAX · M: một cách, gom một chỗ, gọi theo tên
 
@@ -19,3 +19,9 @@ from: _Store/01_RULES/Rule_Gate_25_SqlOneWay @v4 #e1a58c84ebec
 - Code chạy dạng CHUỖI (worker eval) không import được ⇒ truyền câu có tên qua `workerData`.
 - Repo có nợ cũ ⇒ cổng ratchet: số câu SQL viết tại chỗ chỉ được GIẢM.
 - Phép kiểm: cổng `guard`.
+
+## Ví dụ
+
+- Tình huống: cần đếm đơn hàng theo cửa hàng cho một báo cáo mới.
+- ✗ Sai: viết thẳng câu `SELECT … GROUP BY` ngay trong hàm báo cáo, trong khi kho câu đã có một câu gần giống — giờ hai bản sẽ lệch nhau khi sửa.
+- ✓ Đúng: tra kho câu có tên trước; có thì gọi lại theo tên, chưa có thì thêm một câu có tên vào kho rồi gọi; bản trùng cũ thì dọn.

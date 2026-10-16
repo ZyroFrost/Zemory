@@ -2,9 +2,9 @@
 id: Rule_49
 aka: 02-49
 name: peer-message
-version: 2
+version: 3
 kind: action
-from: _Store/01_RULES/Rule_Gate_49_PeerMessage @v2 #8d13c965761e
+from: _Store/01_RULES/Rule_Gate_49_PeerMessage @v3 #3f6174aef337
 ---
 # Rule_Gate_49_PeerMessage Nhắn agent ở phiên hoặc repo khác
 
@@ -16,3 +16,9 @@ from: _Store/01_RULES/Rule_Gate_49_PeerMessage @v2 #8d13c965761e
 - Repo không có ★, hoặc không tra được `zemory peers` ⇒ không gửi; báo lại rằng phiên đích cần được đặt tiêu đề.
 - Trả lời tin đến ⇒ dùng đúng địa chỉ `from` của tin (`uds:…`).
 - Phép kiểm: hook cài ở mức toàn máy `zemory hook send-guard` chặn gửi tới phiên không có ★ và chỉ ra địa chỉ đúng.
+
+## Ví dụ
+
+- Tình huống: agent kho dữ liệu cần báo cho agent của phòng kế toán rằng bảng nguồn đã đổi cột.
+- ✗ Sai: gửi tới phiên đầu tiên thấy trong danh sách, kể cả phiên trống chưa có tiêu đề.
+- ✓ Đúng: chạy lệnh tra phiên, gửi tới phiên được đánh dấu là phiên mới nhất có tiêu đề chuẩn của repo đó; không có phiên nào hợp lệ thì không gửi và báo cần đặt tiêu đề.

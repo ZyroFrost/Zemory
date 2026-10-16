@@ -2,9 +2,9 @@
 id: Rule_48
 aka: 02-48
 name: session-title
-version: 2
+version: 3
 kind: content
-from: _Store/01_RULES/Rule_Gate_48_SessionTitle @v2 #b1812c805816
+from: _Store/01_RULES/Rule_Gate_48_SessionTitle @v3 #bfab39735cf4
 ---
 # Rule_Gate_48_SessionTitle Tiêu đề phiên
 
@@ -19,3 +19,9 @@ from: _Store/01_RULES/Rule_Gate_48_SessionTitle @v2 #b1812c805816
 - Tiêu đề phiên của chính mình lệch khuôn ⇒ nhắc một lần.
 - Phép kiểm: `zemory peers --all --check` chấm mọi phiên trên máy, kể cả phiên đã đóng (khuôn lệch · ngày lệch quá 1 ngày so với ngày mở phiên). `zemory peers --fix` in kế hoạch đặt lại; `--apply` mới ghi, và chỉ chạy khi có yêu cầu trong phiên: tiêu đề riêng chưa theo khuôn là lựa chọn có chủ đích, không tự sửa.
 - Phép kiểm: cổng `hook:rule-reminders`.
+
+## Ví dụ
+
+- Tình huống: người dùng mở phiên mới cho repo báo cáo kinh doanh để làm tiếp việc hôm qua.
+- ✗ Sai: để phiên mang tiêu đề tự sinh hoặc tên tuỳ hứng không có repo, model, ngày; agent thấy lệch thì tự đổi tên giùm.
+- ✓ Đúng: tiêu đề theo khuôn `<Repo>_<Model>_<ngày>` do người dùng đặt; agent thấy tiêu đề phiên của chính mình lệch khuôn thì nhắc đúng một lần.

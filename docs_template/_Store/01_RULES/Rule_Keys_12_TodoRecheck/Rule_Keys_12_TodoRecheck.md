@@ -2,7 +2,7 @@
 id: Rule_12
 aka: 02-12
 name: todo-recheck
-version: 4
+version: 5
 kind: judgment
 ---
 # Rule_Keys_12_TodoRecheck Soát sổ là đo lại từng mục
@@ -19,3 +19,9 @@ kind: judgment
 - Mục quá 7 ngày không ai đụng ⇒ coi là nghi ngờ.
 - Hỏi lại một việc đã chốt là lỗi.
 - Máy đo (khi có CLI): `zemory todo verify` kiểm ký hiệu mục nêu có thật không · phép đo mục tự nêu còn đúng không · nguồn có đổi sau khi dòng sổ được viết không; exit ≠ 0 khi lệch, nối được vào cổng.
+
+## Ví dụ
+
+- Tình huống: Người giao việc hỏi "danh sách việc còn gì chưa làm?".
+- ✗ Sai: Agent chép lại các dòng còn đánh dấu chưa xong trong sổ; hai việc thực ra đã chạy từ tuần trước, một việc đã bị huỷ ở phiên khác.
+- ✓ Đúng: Với từng mục, kiểm mã hoặc file thật, tra lịch sử quyết định, và chạy thử thật; ba nguồn khớp mới báo, nguồn nào không chạm được thì ghi rõ là chưa xác minh.

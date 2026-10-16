@@ -2,7 +2,7 @@
 id: Rule_56
 aka: 02-56
 name: allow-flag-once
-version: 2
+version: 3
 kind: action
 ---
 # Rule_Gate_56_AllowFlagOnce Cờ `.allow-*` = duyệt MỘT VIỆC
@@ -13,3 +13,9 @@ kind: action
 - Trong **90 giây**, ĐÚNG lệnh đó được thử lại. Xin việc KHÁC hoặc quá hạn ⇒ cờ bị thu hồi, phải xin lại.
 - Nhóm secret KHÔNG có cờ.
 - Phép kiểm: cổng `guard`.
+
+## Ví dụ
+
+- Tình huống: người dùng đồng ý cho xoá một thư mục tạm lớn trong repo.
+- ✗ Sai: tạo cờ cho phép rồi để đó, dùng tiếp cho một lệnh xoá khác vài phút sau; hoặc tự tạo cờ khi chưa ai đồng ý.
+- ✓ Đúng: chỉ tạo cờ sau khi được đồng ý, chạy đúng lệnh đã xin; lệnh khác hoặc quá hạn thì cờ bị thu hồi, phải xin lại.

@@ -2,7 +2,7 @@
 id: Rule_74
 aka: 02-74
 name: clean-root
-version: 3
+version: 4
 kind: judgment
 applies: [NonApp]
 ---
@@ -12,3 +12,9 @@ applies: [NonApp]
 - Mọi thứ khác PHẢI có folder: launcher → `bin/` · script → `scripts/` · config → `config/`.
 - Lý do: gốc là chỗ DUY NHẤT không ai sở hữu, nên rác rơi vào đó không ai nhận (vd file rỗng do `.cmd` redirect nhầm nằm ở gốc rồi lọt vào git).
 - Đánh đổi có ý thức: gõ `bin\<tên> pull` thay vì `<tên> pull`.
+
+## Ví dụ
+
+- Tình huống: agent viết thêm một script khởi chạy và một file cấu hình cho repo báo cáo.
+- ✗ Sai: đặt cả hai thẳng ở gốc repo cho tiện gõ lệnh.
+- ✓ Đúng: script khởi chạy vào `bin/`, script xử lý vào `scripts/`, cấu hình vào `config/`; gốc chỉ giữ các file mà công cụ bắt buộc phải nằm ở đó.

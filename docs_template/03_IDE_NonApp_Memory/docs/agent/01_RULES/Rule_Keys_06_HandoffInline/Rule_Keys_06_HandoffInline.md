@@ -2,9 +2,9 @@
 id: Rule_6
 aka: 02-6
 name: handoff-inline
-version: 3
+version: 4
 kind: judgment
-from: _Store/01_RULES/Rule_Keys_06_HandoffInline @v3 #aa7cf3403c8a
+from: _Store/01_RULES/Rule_Keys_06_HandoffInline @v4 #d99a46cc6104
 ---
 # Rule_Keys_06_HandoffInline Văn bản chuyển đi một lần thì in trong câu trả lời, không tạo file
 
@@ -12,3 +12,9 @@ from: _Store/01_RULES/Rule_Keys_06_HandoffInline @v3 #aa7cf3403c8a
 - Không ghi vào `tasks/`, không đính kèm file.
 - Dài tới mức khó đọc trong chat ⇒ hỏi có lưu thành file không.
 - Phép thử: repo chỉ giữ thứ nó chạy hoặc thứ định nghĩa việc nó chạy (spec · model · script · cấu hình · sổ).
+
+## Ví dụ
+
+- Tình huống: Agent cần nhờ nhóm dữ liệu bổ sung hai cột cho một bảng.
+- ✗ Sai: Tạo file yêu cầu trong thư mục việc của repo rồi báo người giao việc đi mở file đó ra gửi.
+- ✓ Đúng: In nguyên khối lời nhờ trong câu trả lời để người giao việc chép gửi; nếu dài tới mức khó đọc thì hỏi có muốn lưu thành file không.
