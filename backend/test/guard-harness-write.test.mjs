@@ -44,6 +44,30 @@ test("shell writes into the harness docs are blocked: redirection, touch, mkdir,
   assert.equal(bash(r, "grep -n todo docs/agent/05_TODO.md").status, 0, "reading is not writing");
 });
 
+test("a scratch script that writes into the harness docs is judged by its body; reading or writing elsewhere passes", (t) => {
+  // Measured 2026-10-16: `node <scratch>/x.mjs` wrote into the parts store through join(root, "docs_template", "_Store")
+  // and the guard, which reads only the command line, never saw it.
+  const r = repo(t);
+  const scratch = tempDir(t, "zemory-scratch-script-");
+  const script = (name, body) => {
+    const p = join(scratch, name);
+    writeFileSync(p, body);
+    return `node "${p.replace(/\\/g, "/")}" "${r.root.replace(/\\/g, "/")}"`;
+  };
+  const pieces = script("pieces.mjs", 'import { writeFileSync } from "node:fs";\nimport { join } from "node:path";\nwriteFileSync(join(process.argv[2], "docs", "agent", "x.md"), "x");\n');
+  const out = bash(r, pieces);
+  assert.equal(out.status, 2, `a script naming docs/agent piece by piece must be blocked:\n${out.stdout}${out.stderr}`);
+  assert.match(out.stdout + out.stderr, /Rule_Gate_79_HarnessEditNeedsApproval/);
+  const literal = script("literal.mjs", 'require("fs").writeFileSync("AGENTS.md", "x");\n');
+  assert.equal(bash(r, literal).status, 2, "a script naming AGENTS.md as one literal must be blocked");
+  const reads = script("reads.mjs", 'import { readFileSync } from "node:fs";\nconsole.log(readFileSync("docs/agent/05_TODO.md", "utf8"));\n');
+  assert.equal(bash(r, reads).status, 0, "reading the harness docs is not writing");
+  const elsewhere = script("elsewhere.mjs", 'import { writeFileSync } from "node:fs";\nwriteFileSync("out/report.txt", "x");\n');
+  assert.equal(bash(r, elsewhere).status, 0, "writing outside the harness docs is not this rule's business");
+  writeFileSync(join(r.hooks, ".allow-docs-write"), "approved\n");
+  assert.equal(bash(r, pieces).status, 0, "with the user's approval the script runs");
+});
+
 test("the approval flag is never blocked, and one flag lets one write through", (t) => {
   const r = repo(t);
   const flagRel = "docs/hooks/.allow-docs-write";
