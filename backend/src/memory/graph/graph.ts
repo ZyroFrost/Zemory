@@ -493,6 +493,7 @@ export function isEntryClassFile(id: string): boolean {
     /(^|\/)scripts?\//.test(p) || // backend/scripts/… — điểm vào chạy tay/npm
     /(^|\/)hooks\//.test(p) || // docs/hooks/guard.cjs — host gọi lúc chạy
     /(^|\/)docs_template\//.test(p) || // tài sản bản mẫu, không thuộc cây import của repo
+    /(^|\/)attic\/legacy-templates\//.test(p) || // the templates the sets replaced: reference only, nothing imports them
     /\.config\.(js|mjs|cjs|ts)$/.test(p) // eslint.config.js — công cụ đọc, không ai import
   );
 }

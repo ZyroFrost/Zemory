@@ -1,5 +1,5 @@
 // The harness ships TWO complete, standalone-readable template trees —
-// docs_template/05_app/ (runnable code) and docs_template/03_nonapp/ (BI/data/docs/
+// attic/legacy-templates/05_app/ (runnable code) and attic/legacy-templates/03_nonapp/ (BI/data/docs/
 // design deliverables). Most files legitimately differ (02_RULES drops UI,
 // 03_STRUCTURE is a different standard, 04_SKILLS adds pull/fill/upload). But the
 // SHARED SHELLS must stay byte-identical so the common harness never drifts
@@ -41,7 +41,7 @@ const SHARED = [
 ];
 
 const read = (profile, rel) =>
-  readFileSync(new URL(`../../docs_template/${profile}/${rel}`, import.meta.url), "utf8");
+  readFileSync(new URL(`../../attic/legacy-templates/${profile}/${rel}`, import.meta.url), "utf8");
 
 test("the cowork set carries EXACTLY the generated guard (a hand copy drifts, and a line count cannot catch it)", () => {
   // The cowork set is the ONLY one that ships `hooks/guard.cjs` ready-made (there is no CLI to generate it on site), so
@@ -49,11 +49,11 @@ test("the cowork set carries EXACTLY the generated guard (a hand copy drifts, an
   // gate watching it was the line count in the BOOTSTRAP MANIFEST, meaning two files differing in content but
   // matching in line count would SLIP THROUGH. This gate compares every byte.
   const gen = readFileSync(new URL("../../docs/hooks/guard.cjs", import.meta.url), "utf8");
-  const shipped = readFileSync(new URL("../../docs_template/01_cowork_basic/nonapp/hooks/guard.cjs", import.meta.url), "utf8");
+  const shipped = readFileSync(new URL("../../attic/legacy-templates/01_cowork_basic/nonapp/hooks/guard.cjs", import.meta.url), "utf8");
   assert.equal(
     shipped.replace(/\r\n/g, "\n"),
     gen.replace(/\r\n/g, "\n"),
-    "docs_template/01_cowork_basic/nonapp/hooks/guard.cjs has drifted from the generated build — run `zemory hook guard` and copy it again",
+    "attic/legacy-templates/01_cowork_basic/nonapp/hooks/guard.cjs has drifted from the generated build — run `zemory hook guard` and copy it again",
   );
   // The comparison above is only as good as the repo's own copy: a stale docs/hooks/guard.cjs (generator changed, nobody
   // ran `zemory hook guard`) made both sides old and this test green (2026-10-14). The repo copy must equal the generator.
@@ -64,9 +64,9 @@ test("the cowork set carries EXACTLY the generated guard (a hand copy drifts, an
 test("the cowork set carries EXACTLY the generated 02-59_read-first.cjs, and its policy declares read_first", () => {
   // guard.cjs calls 02-59_read-first.cjs; a stale copy next to a fresh guard enforces yesterday's rules (2026-10-08).
   const gen = readFileSync(new URL("../../docs/hooks/02-59_read-first.cjs", import.meta.url), "utf8");
-  const shipped = readFileSync(new URL("../../docs_template/01_cowork_basic/nonapp/hooks/02-59_read-first.cjs", import.meta.url), "utf8");
+  const shipped = readFileSync(new URL("../../attic/legacy-templates/01_cowork_basic/nonapp/hooks/02-59_read-first.cjs", import.meta.url), "utf8");
   assert.equal(shipped.replace(/\r\n/g, "\n"), gen.replace(/\r\n/g, "\n"), "cowork 02-59_read-first.cjs drifted — copy docs/hooks/02-59_read-first.cjs again");
-  const pol = JSON.parse(readFileSync(new URL("../../docs_template/01_cowork_basic/nonapp/hooks/policy.json", import.meta.url), "utf8"));
+  const pol = JSON.parse(readFileSync(new URL("../../attic/legacy-templates/01_cowork_basic/nonapp/hooks/policy.json", import.meta.url), "utf8"));
   assert.ok(Array.isArray(pol.read_first?.required) && pol.read_first.required.length > 0, "without read_first.required the latch never fires");
 });
 
@@ -78,7 +78,7 @@ test("the cowork set carries EXACTLY the generated 02-59_read-first.cjs, and its
 test("the cowork policy.json: secret_names + secret_allow must MATCH the generated set", async () => {
   const { SECRET_DEFAULTS, SECRET_ALLOW_DEFAULTS } = await import("../../dist/docs/guard-gen.js");
   const shipped = JSON.parse(
-    readFileSync(new URL("../../docs_template/01_cowork_basic/nonapp/hooks/policy.json", import.meta.url), "utf8"),
+    readFileSync(new URL("../../attic/legacy-templates/01_cowork_basic/nonapp/hooks/policy.json", import.meta.url), "utf8"),
   );
   for (const [key, gen] of [
     ["secret_names", SECRET_DEFAULTS],
@@ -106,7 +106,7 @@ test("shared harness shells are byte-identical across app and non-app (no drift)
     assert.equal(
       read("05_app", rel),
       read("03_nonapp", rel),
-      `${rel} must be byte-identical between docs_template/05_app/ and docs_template/03_nonapp/`,
+      `${rel} must be byte-identical between attic/legacy-templates/05_app/ and attic/legacy-templates/03_nonapp/`,
     );
   }
 });
@@ -175,7 +175,7 @@ test("the app structure standard no longer inlines the non-app §7 (it moved out
 //  ③ `AGENTS.md` phải có dòng trigger (đó là đường DUY NHẤT agent biết lúc nào mở).
 test("app-design tới được bản mẫu: skill có mặt, 02_RULES trỏ sang, AGENTS có trigger", () => {
   for (const prof of ["05_app", "04_adapt"]) {
-    const skill = new URL(`../../docs_template/${prof}/.claude/skills/app-design/SKILL.md`, import.meta.url);
+    const skill = new URL(`../../attic/legacy-templates/${prof}/.claude/skills/app-design/SKILL.md`, import.meta.url);
     const body = readFileSync(skill, "utf8");
     assert.match(body, /## FE/, `${prof}: skill thiếu mục FE`);
     assert.match(body, /## BE/, `${prof}: skill thiếu mục BE`);
@@ -184,7 +184,7 @@ test("app-design tới được bản mẫu: skill có mặt, 02_RULES trỏ san
     for (const need of [/### F8\./, /### B4\./, /### B5\./]) {
       assert.match(body, need, `${prof}: skill thiếu mục vừa dời từ 02_RULES (${need})`);
     }
-    const rules = readFileSync(new URL(`../../docs_template/${prof}/agent/02_RULES.md`, import.meta.url), "utf8");
+    const rules = readFileSync(new URL(`../../attic/legacy-templates/${prof}/agent/02_RULES.md`, import.meta.url), "utf8");
     assert.match(rules, /app-design\/SKILL\.md/, `${prof}: 02_RULES không trỏ sang skill`);
     // Và KHÔNG được giữ bản sao — hai nhà cho một nội dung là cách chúng lệch nhau.
     // LUẬT = thứ áp cho MỌI profile (kể cả NON-APP không có app). CHUẨN THIẾT KẾ = riêng của app.
@@ -195,7 +195,7 @@ test("app-design tới được bản mẫu: skill có mặt, 02_RULES trỏ san
                        /^2 KIỂU version-up/m, /^Backup deploy 2 CHIỀU/m, /Nhãn ĐỦ/, /UI phải KHỚP CODE/]) {
       assert.ok(!dup.test(rules), `${prof}: 02_RULES còn giữ bản sao chuẩn thiết kế (${dup})`);
     }
-    const agents = readFileSync(new URL(`../../docs_template/${prof}/AGENTS.md`, import.meta.url), "utf8");
+    const agents = readFileSync(new URL(`../../attic/legacy-templates/${prof}/AGENTS.md`, import.meta.url), "utf8");
     assert.match(agents, /app-design\/SKILL\.md/, `${prof}: AGENTS.md thiếu dòng trigger`);
   }
 });
@@ -211,7 +211,7 @@ test("app-design tới được bản mẫu: skill có mặt, 02_RULES trỏ san
 test("nguyên tắc của sync-path và write-style phải có trong 02_RULES của MỌI profile", () => {
   const roots = ["01_cowork_basic/nonapp", "03_nonapp", "04_adapt", "05_app"];
   for (const r of roots) {
-    const rules = readFileSync(new URL(`../../docs_template/${r}/agent/02_RULES.md`, import.meta.url), "utf8");
+    const rules = readFileSync(new URL(`../../attic/legacy-templates/${r}/agent/02_RULES.md`, import.meta.url), "utf8");
     assert.match(rules, /`02-1` \*\*Xong = có đường sang máy thứ hai/, `${r}: thiếu nguyên tắc của sync-path`);
     assert.match(rules, /`02-2` \*\*Văn bản đưa người đọc/, `${r}: thiếu nguyên tắc của write-style`);
     // Nguyên tắc chỉ MỘT dòng + trỏ sang skill; playbook không được bò ngược vào luật.
@@ -226,11 +226,11 @@ test("nguyên tắc của sync-path và write-style phải có trong 02_RULES c�
 // sang `sync-path` trong khi bộ đó KHÔNG mang skill ấy — một con trỏ chết ngay lúc sinh ra.
 test("mọi `.claude/skills/<x>/SKILL.md` mà 02_RULES trỏ sang đều phải có trong CÙNG bộ", () => {
   for (const prof of ["01_cowork_basic/nonapp", "03_nonapp", "04_adapt", "05_app"]) {
-    const rules = readFileSync(new URL(`../../docs_template/${prof}/agent/02_RULES.md`, import.meta.url), "utf8");
+    const rules = readFileSync(new URL(`../../attic/legacy-templates/${prof}/agent/02_RULES.md`, import.meta.url), "utf8");
     const want = [...new Set([...rules.matchAll(/\.claude\/skills\/([a-z-]+)\/SKILL\.md/g)].map((m) => m[1]))];
     assert.ok(want.length > 0, `${prof}: 02_RULES không trỏ sang skill nào — nguyên tắc đã rơi?`);
     for (const name of want) {
-      const f = new URL(`../../docs_template/${prof}/.claude/skills/${name}/SKILL.md`, import.meta.url);
+      const f = new URL(`../../attic/legacy-templates/${prof}/.claude/skills/${name}/SKILL.md`, import.meta.url);
       assert.ok(existsSync(f), `${prof}: luật trỏ sang skill \`${name}\` mà bộ này không mang nó`);
     }
   }
@@ -246,11 +246,11 @@ test("mọi `.claude/skills/<x>/SKILL.md` mà 02_RULES trỏ sang đều phải 
 // cây kia — nó chưa lệch, nhưng không có gì giữ nó khỏi lệch. Thêm một bộ mẫu mới cũng sẽ vô hình y
 // như vậy. Ca này TỰ ĐỌC thư mục, nên bộ mới được phủ ngay từ lúc nó ra đời.
 test("mọi cây harness trong docs_template đều byte-identical ở phần vỏ dùng chung (tự tìm, không gõ tay)", () => {
-  const dir = new URL("../../docs_template/", import.meta.url);
+  const dir = new URL("../../attic/legacy-templates/", import.meta.url);
   const bundles = readdirSync(dir, { withFileTypes: true })
     .filter((e) => e.isDirectory())
     .map((e) => e.name)
-    .filter((n) => existsSync(new URL(`../../docs_template/${n}/agent/`, import.meta.url)))
+    .filter((n) => existsSync(new URL(`../../attic/legacy-templates/${n}/agent/`, import.meta.url)))
     .sort();
   assert.ok(bundles.length >= 3, `phải tìm thấy ít nhất ba cây harness, thấy ${bundles.length}: ${bundles.join(", ")}`);
   assert.ok(bundles.includes("05_app") && bundles.includes("03_nonapp"), "hai cây gốc phải nằm trong danh sách tự tìm");

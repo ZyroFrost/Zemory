@@ -124,7 +124,7 @@ test("`only` lọc đúng file được nêu, không đụng file khác", () => 
 // Repo GIỐNG THẬT cho các ca mồi: chữ lấy từ template hiện tại (đã thay `<PROJECT>` như `adopt.ts`
 // làm lúc chép) cộng một dòng tự viết. Fixture chữ rác không dùng được nữa — lượt mồi nay TỪ CHỐI
 // đóng dấu một file không mọc ra từ bản chuẩn nào, và đó đúng là hành vi phải giữ.
-const TPL = (rel) => readFileSync(new URL("../../docs_template/05_app/" + rel, import.meta.url), "utf8");
+const TPL = (rel) => readFileSync(new URL("../../attic/legacy-templates/05_app/" + rel, import.meta.url), "utf8");
 function repoFromTemplate() {
   const root = mkdtempSync(join(tmpdir(), "zem-stamp-"));
   const sub = (t) => contentLines(t.replace(/<PROJECT>/g, basename(root)));

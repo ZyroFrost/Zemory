@@ -1,12 +1,12 @@
-// The Cowork BOOTSTRAP carries a COPY of facts that live in docs_template/01_cowork_basic/nonapp/:
+// The Cowork BOOTSTRAP carries a COPY of facts that live in attic/legacy-templates/01_cowork_basic/nonapp/:
 // which files make up the Cowork standard, and how many lines each one has. A copy that
 // nobody checks goes stale silently — and the failure is nasty, because the stale
 // number lands in BOOTSTRAP's own self-check step (check_install.py) and makes every
 // machine report a false ✗ on a file that is actually fine.
 //
-// NOTE the source moved on 2026-07-29: the Cowork set used to overlay docs_template/03_nonapp/
+// NOTE the source moved on 2026-07-29: the Cowork set used to overlay attic/legacy-templates/03_nonapp/
 // (the master template that `zemory init --non-app` scaffolds from), so the whole set was
-// moved under docs_template/01_cowork_basic/nonapp/ and the master template was pinned untouched.
+// moved under attic/legacy-templates/01_cowork_basic/nonapp/ and the master template was pinned untouched.
 //
 // SUPERSEDED 2026-07-31 (Phase 3, see docs/agent/06_CHANGES): the user ruled the skills
 // architecture goes onto the master templates too. So this gate no longer pins "masters
@@ -15,7 +15,7 @@
 // always-read set), while each stays its own variant. The separation still pinned is the
 // one that matters: BOOTSTRAP must scaffold from cowork/nonapp, never from the master.
 //
-//   - every file in docs_template/01_cowork_basic/nonapp/ must appear in the manifest (no silent gap)
+//   - every file in attic/legacy-templates/01_cowork_basic/nonapp/ must appear in the manifest (no silent gap)
 //   - every declared line count must equal the real file's line count
 //   - the target path must mirror the source path (.claude/** verbatim, agent/plan under docs/)
 // Break any of those and the gate goes red instead of the user's session.
@@ -26,10 +26,10 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const TEMPLATE = fileURLToPath(new URL("../../docs_template/01_cowork_basic/nonapp/", import.meta.url));
-const MASTER = fileURLToPath(new URL("../../docs_template/03_nonapp/", import.meta.url));
-const MASTER_APP = fileURLToPath(new URL("../../docs_template/05_app/", import.meta.url));
-const BOOTSTRAP = fileURLToPath(new URL("../../docs_template/01_cowork_basic/BOOTSTRAP.md", import.meta.url));
+const TEMPLATE = fileURLToPath(new URL("../../attic/legacy-templates/01_cowork_basic/nonapp/", import.meta.url));
+const MASTER = fileURLToPath(new URL("../../attic/legacy-templates/03_nonapp/", import.meta.url));
+const MASTER_APP = fileURLToPath(new URL("../../attic/legacy-templates/05_app/", import.meta.url));
+const BOOTSTRAP = fileURLToPath(new URL("../../attic/legacy-templates/01_cowork_basic/BOOTSTRAP.md", import.meta.url));
 const md = readFileSync(BOOTSTRAP, "utf8");
 
 /** Line count the way `wc -l` counts it: number of newline-terminated lines. */
@@ -65,7 +65,7 @@ test("BOOTSTRAP manifest covers every file of the Cowork standard (nothing ships
   assert.deepEqual(
     declared,
     templateFiles(),
-    "docs_template/01_cowork_basic/BOOTSTRAP.md manifest and docs_template/01_cowork_basic/nonapp/ disagree — " +
+    "attic/legacy-templates/01_cowork_basic/BOOTSTRAP.md manifest and attic/legacy-templates/01_cowork_basic/nonapp/ disagree — " +
       "a file was added or removed from the standard without updating the manifest, so Cowork would " +
       "scaffold an incomplete harness",
   );
@@ -108,13 +108,13 @@ test("BOOTSTRAP points at the COWORK standard, not the master template", () => {
   assert.match(
     md,
     /raw\.githubusercontent\.com\/[^\s`]+\/docs_template\/01_cowork_basic\/nonapp/,
-    "the <RAW> base must resolve to docs_template/01_cowork_basic/nonapp — the master nonapp template is a " +
+    "the <RAW> base must resolve to attic/legacy-templates/01_cowork_basic/nonapp — the master nonapp template is a " +
       "DIFFERENT standard (03_STRUCTURE/04_SKILLS based) and scaffolding it into Cowork mixes the two",
   );
   assert.doesNotMatch(
     md,
     /docs_template\/03_nonapp/,
-    "no reference may point at docs_template/03_nonapp — that is the zemory-CLI master template, " +
+    "no reference may point at attic/legacy-templates/03_nonapp — that is the zemory-CLI master template, " +
       "kept separate by user ruling (2026-07-29)",
   );
   assert.match(
@@ -161,7 +161,7 @@ test("all three sets carry the skills architecture (Phase 3 — no profile left 
 });
 
 test("the human explainer exists and the two docs point at each other (neither gets orphaned)", () => {
-  const readme = readFileSync(fileURLToPath(new URL("../../docs_template/01_cowork_basic/README.md", import.meta.url)), "utf8");
+  const readme = readFileSync(fileURLToPath(new URL("../../attic/legacy-templates/01_cowork_basic/README.md", import.meta.url)), "utf8");
   assert.match(
     md,
     /\[`README\.md`\]\(README\.md\)/,

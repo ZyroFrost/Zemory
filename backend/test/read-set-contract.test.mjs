@@ -20,7 +20,7 @@ import { join } from "node:path";
 const ROOT = join(import.meta.dirname, "..", "..");
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 
-const AGENTS = ["AGENTS.md", "docs_template/05_app/AGENTS.md", "docs_template/03_nonapp/AGENTS.md"];
+const AGENTS = ["AGENTS.md", "attic/legacy-templates/05_app/AGENTS.md", "attic/legacy-templates/03_nonapp/AGENTS.md"];
 
 // Rules that fire while WRITING, not while creating folders. conform is blind to all of
 // them (its checks are off-standard-dir · empty-slot-dir · harness-missing · hp-uncited ·
@@ -91,9 +91,9 @@ test("the do-not-invent rule exists in every 02_RULES, and exactly ONE copy of i
   // hai đầu: phải CÓ luật, và KHÔNG được có bản thứ hai cùng nghĩa.
   const FILES = [
     "docs/agent/02_RULES.md",
-    "docs_template/05_app/agent/02_RULES.md",
-    "docs_template/03_nonapp/agent/02_RULES.md",
-    "docs_template/01_cowork_basic/nonapp/agent/02_RULES.md",
+    "attic/legacy-templates/05_app/agent/02_RULES.md",
+    "attic/legacy-templates/03_nonapp/agent/02_RULES.md",
+    "attic/legacy-templates/01_cowork_basic/nonapp/agent/02_RULES.md",
   ];
   for (const f of FILES) {
     const t = read(f);
@@ -113,7 +113,7 @@ test("the do-not-invent rule exists in every 02_RULES, and exactly ONE copy of i
 
 test("the writing-time rules live in 02_RULES and are NO LONGER in 03_STRUCTURE", () => {
   for (const [profile, names] of Object.entries(WRITE_TIME)) {
-    const base = `docs_template/${profile}/agent`;
+    const base = `attic/legacy-templates/${profile}/agent`;
     const rules = read(`${base}/02_RULES.md`);
     const structure = read(`${base}/03_STRUCTURE.md`);
     for (const n of names) {
@@ -139,7 +139,7 @@ test("the zemory repo itself honours that same contract", () => {
 // Luật dời chỗ thì phép canh phải dời theo. Không có ca này, bốn luật thiết kế có thể biến mất
 // khỏi CẢ HAI nơi mà không cổng nào kêu — đúng kiểu hỏng mà `02_RULES` gọi là "vi phạm âm thầm".
 test("the design rules that left 02_RULES really live in the app-design skill", () => {
-  for (const base of ["", "docs_template/05_app/", "docs_template/04_adapt/"]) {
+  for (const base of ["", "attic/legacy-templates/05_app/", "attic/legacy-templates/04_adapt/"]) {
     const rulesPath = base ? `${base}agent/02_RULES.md` : "docs/agent/02_RULES.md";
     const skillPath = `${base}.claude/skills/app-design/SKILL.md`;
     if (!existsSync(join(ROOT, skillPath))) continue;
@@ -157,7 +157,7 @@ test("the design rules that left 02_RULES really live in the app-design skill", 
 
 test("03_STRUCTURE leaves a pointer to where the rules moved", () => {
   // Người đọc 03 tìm luật SQL/dialog phải được chỉ đường, không gặp khoảng trống.
-  for (const p of ["docs/agent/03_STRUCTURE.md", "docs_template/05_app/agent/03_STRUCTURE.md", "docs_template/03_nonapp/agent/03_STRUCTURE.md"]) {
+  for (const p of ["docs/agent/03_STRUCTURE.md", "attic/legacy-templates/05_app/agent/03_STRUCTURE.md", "attic/legacy-templates/03_nonapp/agent/03_STRUCTURE.md"]) {
     if (!existsSync(join(ROOT, p))) continue;
     assert.match(read(p), /Luật khi VIẾT[^\n]*02_RULES/u, `${p}: thiếu con trỏ tới 02_RULES §Luật khi VIẾT`);
   }
@@ -168,7 +168,7 @@ test("the template does NOT cite constitution article numbers (the constitution 
   // template làm `conform` của project VỪA INIT đỏ ngay — lỗi do bản mẫu, không do user.
   for (const p of ["05_app", "03_nonapp"]) {
     for (const f of ["02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md"]) {
-      const path = `docs_template/${p}/agent/${f}`;
+      const path = `attic/legacy-templates/${p}/agent/${f}`;
       if (!existsSync(join(ROOT, path))) continue;
       const hits = read(path).match(/(?:HP )?điều \d+/gu) ?? [];
       assert.deepEqual(hits, [], `${path} trích số điều: ${hits.join(", ")} — nêu nguyên tắc bằng chữ`);

@@ -2085,13 +2085,14 @@ test("bộ mẫu harness: đọc thư mục THẬT, phân ba hạng, và chặn 
   // đúng ba dòng đó là cổng ĐỎ dù hành vi không đổi một ly — và ngược lại, đổi hành vi mà giữ
   // nguyên chữ thì cổng XANH. Nay nó GỌI hàm thật rồi đo kết quả: neo theo hành vi thì bản viết
   // lại nào cũng đi qua được, còn hỏng thật thì không lọt.
-  const disk = readdirSync(new URL("../../docs_template/", import.meta.url), { withFileTypes: true })
+  // the file-harness templates live in attic/legacy-templates since the sets replaced them (plan/28 §0p F)
+  const disk = readdirSync(new URL("../../attic/legacy-templates/", import.meta.url), { withFileTypes: true })
     .filter((e) => e.isDirectory()).map((e) => e.name).sort();
   const bundles = listTemplateBundles();
   assert.deepEqual(bundles.map((b) => b.dir), disk, "danh sách phải ĐỌC từ đĩa, không giữ bản gõ tay");
 
   for (const b of bundles) {
-    const hasAgent = existsSync(new URL("../../docs_template/" + b.dir + "/agent/", import.meta.url));
+    const hasAgent = existsSync(new URL("../../attic/legacy-templates/" + b.dir + "/agent/", import.meta.url));
     assert.equal(b.kind, hasAgent ? "harness" : "kit", b.dir + ": phân hạng bằng sự tồn tại của agent/, không bằng tên");
     assert.equal(b.wired, b.profile !== null, b.dir + ': "rót được" phải suy từ profile, không khai riêng');
     assert.equal(b.reference, b.kind === "harness" && !b.wired, b.dir + ": hạng tham chiếu phải SUY RA, không phải danh sách gõ tay");

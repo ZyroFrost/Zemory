@@ -27,7 +27,7 @@ const SETS = ["05_app", "03_nonapp", "04_adapt"]; // cowork CỐ Ý ngoài phạ
 
 const read = (p) => readFileSync(join(ROOT, p), "utf8");
 const zSkillDir = join(ROOT, ".claude/skills");
-const tSkillDir = (s) => join(ROOT, "docs_template", s, ".claude/skills");
+const tSkillDir = (s) => join(ROOT, "attic", "legacy-templates", s, ".claude/skills");
 
 /** Skill của zemory KHÔNG phải ship cho mọi repo — phải ghi lý do, không để trống cho tiện. */
 const ZEMORY_ONLY_SKILLS = {
@@ -109,8 +109,8 @@ test("every generic zemory skill is SHIPPED to all 3 template trees", () => {
 
 test("a shipped skill must be REGISTERED in 04_SKILLS and in the AGENTS trigger table (shipped but undeclared means nobody opens it)", () => {
   for (const s of SETS) {
-    const reg = read(`docs_template/${s}/agent/04_SKILLS.md`);
-    const agents = read(`docs_template/${s}/AGENTS.md`);
+    const reg = read(`attic/legacy-templates/${s}/agent/04_SKILLS.md`);
+    const agents = read(`attic/legacy-templates/${s}/AGENTS.md`);
     for (const skill of readdirSync(tSkillDir(s), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name)) {
       assert.ok(reg.includes(`\`${skill}/\``), `bộ ${s}: skill \`${skill}\` có file mà 04_SKILLS không liệt kê`);
       assert.ok(agents.includes(`skills/${skill}/SKILL.md`), `bộ ${s}: skill \`${skill}\` không có hàng trigger trong AGENTS.md`);
@@ -135,7 +135,7 @@ test("the audit skill: MATCHED PER PROFILE - app and adapt equal zemory, non-app
   assert.equal(zf, 12, `bản zemory đang có ${zf} mặt — nếu đổi có chủ đích thì sửa cả cổng này`);
   assert.ok(zl >= 7, `bản zemory chỉ có ${zl} luật — phép đo nghi hỏng`);
   for (const s of SETS) {
-    const t = read(`docs_template/${s}/.claude/skills/audit/SKILL.md`);
+    const t = read(`attic/legacy-templates/${s}/.claude/skills/audit/SKILL.md`);
     assert.equal(lawCount(t), zl, `bộ ${s}: audit ${lawCount(t)} luật vs zemory ${zl} — LUẬT thì mọi profile giống nhau`);
     if (s === "03_nonapp") {
       // non-app KHÔNG so số mặt với app (nó bỏ mặt FE↔BE có chủ đích), mà so bằng NGHĨA:
@@ -158,7 +158,7 @@ test("the audit skill: MATCHED PER PROFILE - app and adapt equal zemory, non-app
 });
 
 test("the audit skill: the intro sentence must state the SAME face count as the heading (3 misses so far: 6-vs-11, 7-vs-11, three-vs-four)", () => {
-  const files = [".claude/skills/audit/SKILL.md", ...SETS.map((s) => `docs_template/${s}/.claude/skills/audit/SKILL.md`)];
+  const files = [".claude/skills/audit/SKILL.md", ...SETS.map((s) => `attic/legacy-templates/${s}/.claude/skills/audit/SKILL.md`)];
   for (const f of files) {
     const txt = read(f);
     const head = /### (\d+) mặt — chạy đủ/.exec(txt);
@@ -179,11 +179,11 @@ test("the hard rules under Writing-time rules: app and adapt carry them ALL, non
   // for §Lõi — still in the forced part of 02_RULES. Their new home is pinned right below, so no rule loses its watch.
   assert.ok(z.length >= 3, `zemory chỉ đọc ra ${z.length} luật — phép đo nghi hỏng`);
   // (02-24 later got its own hook and left §Lõi for §Luật khi VIẾT — wherever it sits, it must still be a rule bullet.)
-  for (const f of ["docs/agent/02_RULES.md", "docs_template/05_app/agent/02_RULES.md", "docs_template/04_adapt/agent/02_RULES.md"]) {
+  for (const f of ["docs/agent/02_RULES.md", "attic/legacy-templates/05_app/agent/02_RULES.md", "attic/legacy-templates/04_adapt/agent/02_RULES.md"]) {
     for (const id of ["02-23", "02-24"]) assert.ok(read(f).includes("- `" + id + "` **"), `${f}: ${id} is no longer a rule bullet anywhere`);
   }
   for (const s of SETS) {
-    const t = ruleLabels(`docs_template/${s}/agent/02_RULES.md`);
+    const t = ruleLabels(`attic/legacy-templates/${s}/agent/02_RULES.md`);
     const has = (r) => t.includes(r) || (s === "03_nonapp" && NONAPP_ALIAS[r] && t.includes(NONAPP_ALIAS[r]));
     const missing = z.filter((r) => !has(r));
     if (s === "03_nonapp") {

@@ -70,10 +70,10 @@ test("ensureHarness(root, 'non-app') scaffolds the NON-APP tree (its own 03 + pr
 // A scaffold that drops files is the kind of failure nobody sees: `02_cowork_memory` ships NO
 // files on purpose and just calls `init`, so whatever init forgets, that set silently lacks
 // forever. The checks above assert a SAMPLE (03_STRUCTURE + three skills); this one compares the
-// whole SET against the template on disk, so a file added to docs_template/03_nonapp/ that init
+// whole SET against the template on disk, so a file added to attic/legacy-templates/03_nonapp/ that init
 // never copies turns the gate red instead of shipping an incomplete harness.
-test("ensureHarness(root,'non-app') pours EVERY file of docs_template/03_nonapp (no silent gap)", (t) => {
-  const tplRoot = join(REPO_ROOT, "docs_template", "03_nonapp");
+test("ensureHarness(root,'non-app') pours EVERY file of attic/legacy-templates/03_nonapp (no silent gap)", (t) => {
+  const tplRoot = join(REPO_ROOT, "attic", "legacy-templates", "03_nonapp");
   const expected = walkRel(tplRoot).map((rel) =>
     // agent/* and plan/* land under docs/; AGENTS.md, CLAUDE.md and .claude/skills/** stay at root.
     rel.startsWith("agent/") || rel.startsWith("plan/") ? `docs/${rel}` : rel,

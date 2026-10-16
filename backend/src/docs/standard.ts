@@ -76,8 +76,10 @@ function tplPathOf(profile: "app" | "non-app", file: string): string {
 }
 
 function tplRel(profile: "app" | "non-app", file: string): string {
-  const dir = profile === "non-app" ? "03_nonapp" : "05_app";
-  return (file === "AGENTS.md" ? `docs_template/${dir}/AGENTS.md` : `docs_template/${dir}/agent/${file}`);
+  // the old templates live in attic/legacy-templates since the sets replaced them (plan/28 §0p F); `git log --follow`
+  // walks back through the move to their history under docs_template/
+  const dir = `attic/legacy-templates/${profile === "non-app" ? "03_nonapp" : "05_app"}`;
+  return (file === "AGENTS.md" ? `${dir}/AGENTS.md` : `${dir}/agent/${file}`);
 }
 
 type Rev = { sha: string; date: string; path: string };
@@ -92,7 +94,17 @@ const textCache = new Map<string, string | null>();
  * nhận harness sớm nhất, tức những repo lệch nhiều nhất.
  */
 export function templateHistory(profile: "app" | "non-app", file: string): Rev[] {
-  return historyOfRel(tplRel(profile, file));
+  // Both the current place and the place before the move into attic/ (plan/28 §0p F): `--follow` only walks back through
+  // a move once it is committed, so the old path is asked too and the two lists are merged by commit, newest first.
+  return historyAcrossMove(tplRel(profile, file));
+}
+
+/** The history of a legacy-template file under its current path and its path before the move into attic/. */
+function historyAcrossMove(rel: string): Rev[] {
+  const old = rel.replace(/^attic\/legacy-templates\//, "docs_template/");
+  const seen = new Set<string>();
+  const both = [...historyOfRel(rel), ...(old === rel ? [] : historyOfRel(old))].filter((r) => (seen.has(r.sha) ? false : (seen.add(r.sha), true)));
+  return both.sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
 }
 
 /** Mọi bản của MỘT đường dẫn (tương đối gốc zemory) trong lịch sử git, mới nhất trước, theo cả đổi tên. */
@@ -699,7 +711,7 @@ export function skillDiff(root: string): SkillVerdict[] {
         continue;
       }
       const rel = relative(self, join(tplDir, ...file.split("/"))).split(sep).join("/");
-      const fromHistory = historyOfRel(rel).some((r) => {
+      const fromHistory = historyAcrossMove(rel).some((r) => {
         const txt = revText(r);
         return txt !== null && contentLines(withProject(txt, root)).join("\n") === mine;
       });

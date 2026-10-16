@@ -26,16 +26,11 @@ import { type AppUpdate, aheadOfRepo, pickUpdate, readUpdateCache } from "../upd
 import { getDriveDir } from "../config/settings.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-/** The shared harness STANDARD, shipped with zemory (separate from any project's
- *  docs/). Split by profile: docs_template/05_app/ (code apps) and docs_template/
- *  03_nonapp/ (BI/data/docs/design deliverables). Each tree is complete + read
- *  standalone; the files that MUST match are locked byte-identical by a parity
- *  test (template-parity.test.mjs) so the shared shells never drift. Bundle
- *  folders carry a numeric prefix (01–05, ordered by complexity for the END
- *  USER — user chốt 2026-08-31) purely for navigation; it is NOT a version or
- *  a load-order dependency, so callers below still hardcode the two names this
- *  function actually needs. */
-export const TEMPLATE_DIR = join(HERE, "..", "..", "docs_template");
+/** The five templates of the file harness (05_app · 03_nonapp · 01_cowork_basic · 02_cowork_memory · 04_adapt), kept
+ *  in attic/legacy-templates since the sets in docs_template/ replaced them (plan/28 §0p F): the file-harness `init` /
+ *  `sync` still scaffold from them, kit-migrate compares a repo's rules against them, and they are the reference that
+ *  tells whether the new sets reproduce what every repo received. Deleted once every repo is moved. */
+export const TEMPLATE_DIR = join(HERE, "..", "..", "attic", "legacy-templates");
 
 /** The template subtree for a profile (defaults to app). `init`/`sync` scaffold
  *  from here and the UI loads it for reference. The profile value "non-app" (with
