@@ -2,10 +2,8 @@
 id: Cons_4
 aka: 01-4
 name: docs-match-code
-version: 2
+version: 3
 kind: judgment
-retired: 2026-10-15 · applies to every app repo — a common rule
-replaced-by: Rule_Core_76_DocsMatchCode
 ---
 # Cons_Core_04_DocsMatchCode Tài liệu nằm trong sản phẩm phải khớp code, sửa trong cùng thay đổi
 

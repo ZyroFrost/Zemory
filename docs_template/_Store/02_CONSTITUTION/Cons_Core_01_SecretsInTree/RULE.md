@@ -2,10 +2,8 @@
 id: Cons_1
 aka: 01-1
 name: secrets-in-tree
-version: 2
+version: 3
 kind: judgment
-retired: 2026-10-15 · merged into a common rule
-replaced-by: Rule_Gate_21_SecretByEnvName
 ---
 # Cons_Core_01_SecretsInTree Bí mật: ngoài git không phải ngoài repo
 

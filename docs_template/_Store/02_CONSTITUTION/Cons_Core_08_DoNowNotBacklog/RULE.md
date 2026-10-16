@@ -2,10 +2,8 @@
 id: Cons_8
 aka: 01-8
 name: do-now-not-backlog
-version: 2
+version: 3
 kind: judgment
-retired: 2026-10-15 · duplicates a common rule (the TODO entry door)
-replaced-by: Rule_Gate_38_TodoDoor
 ---
 # Cons_Core_08_DoNowNotBacklog Làm liền được thì làm, không đẩy vào backlog
 
