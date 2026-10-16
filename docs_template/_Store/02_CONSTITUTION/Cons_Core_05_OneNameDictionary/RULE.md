@@ -2,10 +2,8 @@
 id: Cons_5
 aka: 01-5
 name: one-name-dictionary
-version: 2
+version: 3
 kind: judgment
-retired: 2026-10-15 · applies to every repo — a common rule
-replaced-by: Rule_Keys_77_OneNameDictionary
 ---
 # Cons_Core_05_OneNameDictionary Một concern một tên — có từ điển định danh, không trộn hai ngôn ngữ
 

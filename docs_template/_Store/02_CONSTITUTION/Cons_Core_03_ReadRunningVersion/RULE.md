@@ -2,10 +2,8 @@
 id: Cons_3
 aka: 01-3
 name: read-running-version
-version: 2
+version: 3
 kind: judgment
-retired: 2026-10-15 · merged into a common rule
-replaced-by: Rule_Gate_70_VersionPerPush
 ---
 # Cons_Core_03_ReadRunningVersion Đóng gói: đọc phiên bản đang chạy trước khi đặt số mới
 

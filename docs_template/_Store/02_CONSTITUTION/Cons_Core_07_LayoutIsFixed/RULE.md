@@ -2,10 +2,8 @@
 id: Cons_7
 aka: 01-7
 name: layout-is-fixed
-version: 2
+version: 3
 kind: judgment
-retired: 2026-10-15 · duplicates a common rule (an agreed layout is a design decision)
-replaced-by: Rule_Keys_62_UiDesignApproval
 ---
 # Cons_Core_07_LayoutIsFixed Bố cục đã chốt là bất biến
 
