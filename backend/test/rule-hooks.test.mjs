@@ -90,6 +90,19 @@ test("02-27: a new line in the rule set that quotes the user or dates a decision
   assert.doesNotMatch(s.fire(...W(s.root, "notes.md", "User chốt 2026-10-14: làm luôn.\n")).say, /02-27/, "only the harness rule files");
 });
 
+test("02-10 (b): dropping a rule from the rules file is blocked; moving it within the file is not a loss", (t) => {
+  const s = repo(t);
+  s.flag("docs-write"); // the user approved editing the harness docs (Rule_Gate_79)
+  const rules = "docs/agent/02_RULES.md";
+  const drop = s.fire(...E(s.root, rules, "- `02-30` **ASCII.** names\n", ""));
+  assert.equal(drop.blocked, true, drop.say);
+  assert.match(drop.say, /removes rule 02-30/);
+  // the rule already stands at its new place, so taking out the old copy loses nothing
+  writeFileSync(join(s.root, rules), "- `02-24` **EOL.** keep it\n- `02-30` **ASCII.** names\n- `02-26` **Dấu.** docs\n- `02-27` **Voice.** spec\n- `02-38` **Ledger.** ask\n- `02-30` **ASCII.** names, moved\n");
+  const move = s.fire(...E(s.root, rules, "- `02-30` **ASCII.** names\n", ""));
+  assert.doesNotMatch(move.say, /removes rule/, move.say);
+});
+
 test("02-38: a new open item in 05_TODO is blocked until the one-use flag; rewording or closing an item passes", (t) => {
   const s = repo(t);
   s.flag("docs-write"); // the user approved editing the harness docs (Rule_Gate_79); this rule still judges the item

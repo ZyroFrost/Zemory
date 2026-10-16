@@ -171,7 +171,7 @@ test("regeneration: our own files are refreshed when they drift, files without o
   // 3.8.0: + 02-59_read-first.cjs (read-before-write latch, called by guard.cjs).
   // 2026-10-14: + the nine rule hooks of plan/27 §3 (02-24 · 02-26 · 02-27 · 02-30 · 02-38, then the doors 02-1 · 02-2 ·
   // 02-13 and 02-47), each named after its rule.
-  assert.equal(r1.added.length, 16, r1.added.join(", ")); // + 02-29_code-english.cjs (2026-10-16)
+  assert.equal(r1.added.length, 17, r1.added.join(", ")); // + 02-29_code-english.cjs · 02-4_scratch-cap.cjs (2026-10-16)
   assert.ok(r1.added.includes(".claude/settings.json (guard wired)"));
   assert.ok(r1.added.includes("02-59_read-first.cjs"));
   for (const f of ["02-24_eol-keep.cjs", "02-26_vi-diacritics.cjs", "02-27_spec-voice.cjs", "02-30_ascii-names.cjs", "02-38_todo-door.cjs",

@@ -1261,10 +1261,18 @@ function main() {
       if (tool === "Write") {
         try { before = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : ""; } catch { before = ""; }
         after = ti.content || "";
-      } else if (tool === "Edit") {
-        before = ti.old_string || ""; after = ti.new_string || "";
-      } else if (tool === "MultiEdit") {
-        for (const e of ti.edits || []) { before += "\\n" + (e.old_string || ""); after += "\\n" + (e.new_string || ""); }
+      } else if (tool === "Edit" || tool === "MultiEdit") {
+        // A rule MOVED within the file is not lost: apply the replacements to the whole file and compare the results. When a
+        // replacement cannot land (file unreadable, old text absent) the snippets are compared instead.
+        const edits = tool === "MultiEdit" ? ti.edits || [] : [ti];
+        let whole = null;
+        try { whole = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : null; } catch { whole = null; }
+        if (whole !== null && edits.length && edits.every((e) => e.old_string && whole.includes(e.old_string))) {
+          before = whole; after = whole;
+          for (const e of edits) after = e.replace_all ? after.split(e.old_string).join(e.new_string || "") : after.replace(e.old_string, () => e.new_string || "");
+        } else {
+          for (const e of edits) { before += "\\n" + (e.old_string || ""); after += "\\n" + (e.new_string || ""); }
+        }
       }
       const kept = ids(after);
       const lost = [...ids(before)].filter((x) => !kept.has(x));
