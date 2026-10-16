@@ -711,6 +711,45 @@ function checkBash(cmd) {
         flagWritePath(tok, "writing (through " + word + ") into");
       }
     }
+    // 3b a script FILE run by an interpreter (`node x.mjs`): the command line names no path, the file does (measured
+    //    2026-10-16: a scratch script wrote into the parts store with `join(root, "docs_template", "_Store", ...)` and
+    //    the guard never saw it). Read the file (up to 256 KB) and judge it like a payload: it writes AND names a
+    //    protected path, as one quoted literal or, for a nested path, every segment as its own quoted literal. A path that
+    //    only arrives at run time (argv, a value read from disk) is still not seen. Only an ad hoc script is judged: one
+    //    outside the repo (a scratch folder) or inside it but neither tracked nor ignored — committed code and build output
+    //    (the repo's own CLI, its scripts, this guard) are reviewed code and name protected paths on purpose.
+    const adHoc = (abs) => {
+      const rel = relToRoot(abs);
+      if (rel.startsWith("..") || path.isAbsolute(rel)) return true;
+      try {
+        const out = require("node:child_process").execFileSync("git", ["-C", ROOT, "ls-files", "--others", "--exclude-standard", "--", rel],
+          { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], windowsHide: true, timeout: 5000 });
+        return out.trim() !== "";
+      } catch { return false; }
+    };
+    if (SEG_INTERP.test(word)) {
+      const scriptTok = (tokens.slice(1).find((t) => t && !t.startsWith("-")) || "").replace(/^["']|["']$/g, "");
+      const file = /\.(m?js|cjs|ts|py|ps1|sh)$/i.test(scriptTok) ? path.resolve(ROOT, scriptTok) : "";
+      let body = "";
+      try { if (file && fs.statSync(file).size < 262144 && adHoc(file)) body = fs.readFileSync(file, "utf8"); } catch { body = ""; }
+      if (body && WRITE_VERB.test(body)) {
+        const Q = "[" + String.fromCharCode(34, 39, 96) + "]";
+        const SEP = "[/" + String.fromCharCode(92, 92) + "]";
+        const esc = (s) => String(s).split(".").join("[.]");
+        for (const prefix of POLICY.protected_write || []) {
+          const parts = String(prefix).split("/").filter(Boolean);
+          const tail = parts.length > 1 || prefix.includes(".") ? "(?:" + Q + "|" + SEP + ")" : SEP;
+          const literal = new RegExp(Q + esc(prefix) + tail).test(body);
+          const pieces = parts.length > 1 && parts.every((s) => new RegExp(Q + esc(s) + Q).test(body));
+          if (!literal && !pieces) continue;
+          if (consumeFlag("docs_write", bare)) break;
+          deny("BLOCKED (guard layer 1): the script `" + scriptTok + "` writes and names the protected path `" + prefix +
+            "` - " + writeReason(prefix) +
+            "\nDid the user approve it this session? -> create the flag `" + POLICY.flags_dir + "/" + POLICY.flags.docs_write +
+            "` and try again (the flag is good for ONE use).");
+        }
+      }
+    }
   }
 
   // ── OUTSIDE THE PROJECT 1: absolute write targets (see WORKING OUTSIDE THE PROJECT above) ──
