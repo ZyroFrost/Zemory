@@ -866,6 +866,24 @@ function baseAcrossRenames(part: Part, matches: (files: Map<string, string>) => 
 
 // ── checks ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 
+/** The store's archive shelf: retired parts, kept citable. */
+export const ARCHIVE_SHELF = "Archive";
+
+/**
+ * A store shelf that is missing or empty (plan/28 §0p A1): every repo pulls the store to pick parts from, so every shelf
+ * is always there under its own name, a numbered shelf with at least one part. Shelf 05 and Tools/ join the list when
+ * they are built.
+ */
+export function storeShelfFindings(storeDir = STORE_DIR): string[] {
+  const out: string[] = [];
+  for (const shelf of SHELVES) {
+    if (!existsSync(join(storeDir, shelf))) out.push(`${shelf}: shelf missing`);
+    else if (listParts(storeDir, shelf).length === 0) out.push(`${shelf}: shelf has no part`);
+  }
+  if (!existsSync(join(storeDir, ARCHIVE_SHELF))) out.push(`${ARCHIVE_SHELF}: shelf missing`);
+  return out;
+}
+
 /** A store part whose content changed without a version bump — its copies could not tell old from new. Needs history. */
 export function unbumpedParts(storeDir = STORE_DIR): string[] {
   const out: string[] = [];
