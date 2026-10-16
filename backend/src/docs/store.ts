@@ -37,11 +37,11 @@ export const MAIN_FILE: Record<Shelf, string> = {
 };
 
 /**
- * The two layers of the structure shelf (plan/28 §0o). The inner layer `Struc_Slot/` holds every slot; a slot belongs to no
+ * The two layers of the structure shelf (plan/28 §0o). The inner layer `_Struc_Slot/` holds every slot; a slot belongs to no
  * structure and is never assembled on its own. The outer layer is one folder per structure (`Struc_Repo_App/`): a
  * STRUCTURE.md and a structure.json naming the slots it is made of. A kit picks one structure; the slots come through it.
  */
-export const SLOT_LAYER = "Struc_Slot";
+export const SLOT_LAYER = "_Struc_Slot";
 export const STRUCTURE_MAIN = "STRUCTURE.md";
 /** Folder of a slot's starter files (`seed/<repo path>`): written once into a new repo where nothing is yet, never
  *  compared or merged after that — not part of the slot's content, not copied with it. */
@@ -244,7 +244,7 @@ export function partHash(dir: string, shelf: Shelf, main = MAIN_FILE[shelf]): st
 
 // ── reading parts ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** One part folder. `folder` is the path below the shelf: `Struc_Slot/Slot_…` for a slot in the inner layer. */
+/** One part folder. `folder` is the path below the shelf: `_Struc_Slot/Slot_…` for a slot in the inner layer. */
 export function readPart(dir: string, shelf: Shelf, mainName = MAIN_FILE[shelf]): Part | null {
   const main = join(dir, mainName);
   if (!existsSync(main)) return null;
@@ -292,7 +292,7 @@ export function shelfDir(root: string, shelf: string): string {
   return now;
 }
 
-/** The last segment of a part folder (`Struc_Slot/Slot_Root_001_Entry` → `Slot_Root_001_Entry`). */
+/** The last segment of a part folder (`_Struc_Slot/Slot_Root_001_Entry` → `Slot_Root_001_Entry`). */
 export function leafOf(folder: string): string {
   return folder.split("/").pop() ?? folder;
 }
@@ -382,12 +382,11 @@ function byId(a: Part, b: Part): number {
 
 export interface Kit {
   no: string;
-  /** `Kit_<Host>_<NN>_<Cluster><Tier>` (plan/28 §0o). */
+  /** A set name, read in shelf order: `<NN>_<01 rules>_<03 structure>_<04 skills>_<tier>` (plan/28 §0o). */
   name: string;
-  /** The name before the dictionary (`06_IDE_App_Memory`): a repo marker written then still finds its kit. */
-  legacy: string;
+  /** Names repos were marked with before (`06_IDE_App_Memory` · `05_app`): such a marker still finds its set. */
+  legacy: string[];
   status: "built" | "reserved" | "retired";
-  host: string;
   /** The ONE outer structure the kit is assembled on (`Struc_Repo_App`); its structure.json names the slots. */
   structure: string;
   tier: "Basic" | "Memory";
@@ -412,9 +411,8 @@ export function readKits(storeDir = STORE_DIR): Kit[] {
     .map(([no, k]) => ({
       no,
       name: k.name ?? no,
-      legacy: k.legacy ?? "",
+      legacy: Array.isArray(k.legacy) ? k.legacy : [],
       status: k.status ?? "reserved",
-      host: k.host ?? "",
       structure: k.structure ?? "",
       tier: k.tier ?? "Memory",
       requires: k.requires ?? [],
@@ -430,8 +428,6 @@ export function kitStructure(kit: Pick<Kit, "structure">, storeDir = STORE_DIR):
   return listStructures(storeDir).find((s) => s.folder === kit.structure) ?? null;
 }
 
-const HOST_LABEL: Record<string, string> = { IDE: "VS Code / IDE", GUI: "Claude Desktop" };
-
 /**
  * Write the starter files of the assembled slots into a new repo (plan/28 §0o: nothing is copied from outside the parts).
  * Each slot's `seed/<repo path>` lands at that path when nothing is there yet; never overwritten — from then on the file is
@@ -439,14 +435,14 @@ const HOST_LABEL: Record<string, string> = { IDE: "VS Code / IDE", GUI: "Claude 
  * (`<STRUC_*>` from its STRUCTURE.md header, `<STRUC_KITS>` from the kits built on it) and the skills (`<SKILL_TRIGGERS>`,
  * one row per skill whose gate.json carries a `trigger`).
  */
-export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName: string, storeDir = STORE_DIR): string[] {
+export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName: string, storeDir = STORE_DIR, agentDir?: string): string[] {
   const source = readSource(storeDir);
   const struc = parts.find((p) => p.shelf === SHELF.structure && isStructureFolder(p.folder));
   const m = (k: string): string => String(struc?.meta[k] ?? "");
+  // the command that assembles this structure where zemory is installed: the Memory set of the same structure
   const kits = readKits(storeDir)
-    .filter((k) => k.status === "built" && k.structure === kit.structure && k.tier === kit.tier)
-    .sort((a, b) => (a.host === "IDE" ? -1 : 0) - (b.host === "IDE" ? -1 : 0) || a.no.localeCompare(b.no))
-    .map((k) => `\`zemory init --kit ${k.no}\` (${HOST_LABEL[k.host] ?? k.host})`)
+    .filter((k) => k.status === "built" && k.structure === kit.structure && k.tier === "Memory")
+    .map((k) => `\`zemory init --kit ${k.no}\``)
     .join(" hoặc ");
   const triggers = parts
     .filter((p) => p.shelf === SHELF.skills)
@@ -477,6 +473,22 @@ export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName
       const eol = "\n";
       writeFileSync(dst, fill(readFileSync(join(src, rel), "utf8").replace(/\r\n/g, eol)));
       added.push(rel);
+    }
+  }
+  // The files a store shelf carries beside its parts (02_CONSTITUTION/PURPOSE.md: the frame of every constitution, plan/28
+  // §0o) land on the same shelf of the repo harness, once.
+  if (agentDir) {
+    for (const shelf of SHELVES) {
+      const dir = join(storeDir, shelf);
+      if (!existsSync(dir)) continue;
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (!e.isFile() || !e.name.endsWith(".md")) continue;
+        const dst = join(agentDir, shelf, e.name);
+        if (existsSync(dst)) continue;
+        mkdirSync(dirname(dst), { recursive: true });
+        writeFileSync(dst, fill(readFileSync(join(dir, e.name), "utf8").replace(/\r\n/g, "\n")));
+        added.push(relative(repoRoot, dst).replace(/\\/g, "/"));
+      }
     }
   }
   return added.sort();
@@ -511,11 +523,14 @@ export function isRetired(p: Part): boolean {
   return p.meta.retired === "true";
 }
 
-/** A kit by number (`06`), full name (`Kit_IDE_06_AppMemory`) or the name before the dictionary (`06_IDE_App_Memory`). */
+/**
+ * A set by number (`04`), name (`04_Common_NonApp_Task_Memory`) or a name repos were marked with before
+ * (`08_IDE_NonApp_Memory` · `03_nonapp`). An old name is looked up by name only: its number belonged to the old register and
+ * means another set now.
+ */
 export function findKit(ref: string, storeDir = STORE_DIR): Kit | null {
   const kits = readKits(storeDir);
-  const no = /^Kit_[A-Za-z]+_(\d{2})_/.exec(ref)?.[1] ?? /^(\d{2})(?:_|$)/.exec(ref)?.[1];
-  return kits.find((k) => k.name === ref || (k.legacy && k.legacy === ref) || k.no === ref || k.no === no) ?? null;
+  return kits.find((k) => k.name === ref || k.no === ref || k.legacy.includes(ref)) ?? null;
 }
 
 /** `02-*` · `02-25` · a skill name — `*` is the only wildcard. */

@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_App
 name: repo-app
-version: 1
+version: 2
 profile: app
 label: APP
 intro: (có code chạy: UI · server · CLI)
@@ -11,4 +11,4 @@ trigger: tạo · đổi tên · dời folder · thêm slot · `conform` báo l�
 # Struc_Repo_App
 
 Chuẩn cấu trúc của một repo hệ APP: repo làm và bảo trì một app có code chạy (UI · server · CLI). Cấu trúc này là cách
-ghép các slot trong `structure.json`; slot nằm ở `Struc_Slot/` và không mang hệ nào.
+ghép các slot trong `structure.json`; slot nằm ở `_Struc_Slot/` và không mang hệ nào.

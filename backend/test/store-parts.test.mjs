@@ -27,7 +27,7 @@ test("the store carries no private detail (plan/28 §0f)", () => {
   assert.deepEqual(storePrivacyFindings(STORE_DIR), []);
 });
 
-test("every part has a dictionary name, a header id equal to its key, and its legacy id kept as aka; rules declare their kind", () => {
+test("every part has a dictionary name and a header id equal to its key; an aka is well-formed; rules declare their kind", () => {
   const { legacy } = partNameFindings(STORE_DIR);
   assert.deepEqual(legacy.filter((x) => !x.startsWith("04_SKILLS/")), [], "every rule, article and slot carries a dictionary name");
   for (const shelf of SHELVES) {
@@ -35,7 +35,8 @@ test("every part has a dictionary name, a header id equal to its key, and its le
       assert.ok(p.version >= 1, `${p.folder}: version`);
       if (shelf === "04_SKILLS") continue;
       assert.equal(p.id, p.key, `${shelf}/${p.folder}: the header id is the key`);
-      assert.match(String(p.meta.aka ?? ""), /^0[123]-\d+$/, `${shelf}/${p.folder}: the legacy id stays citable (aka)`);
+      // aka is optional: a part born after the renumbering has no legacy id; when one is given it is well-formed.
+      if (p.meta.aka !== undefined) assert.match(String(p.meta.aka), /^0[123]-\d+$/, `${shelf}/${p.folder}: aka is a legacy id`);
       if (shelf !== "03_STRUCTURE") assert.ok(["action", "content", "judgment"].includes(p.kind), `${p.folder}: kind`);
     }
   }
@@ -57,7 +58,7 @@ test("every built kit names parts that exist", () => {
     assert.ok(struc, `${k.name}: structure ${k.structure} is not in the store`);
     const r = structureSlots(struc, listParts(STORE_DIR, "03_STRUCTURE"));
     assert.deepEqual(r.missing, [], `${k.name}: ${k.structure} names slots that do not exist`);
-    assert.ok(r.slots.length > 0 && parts.filter((p) => p.folder.startsWith("Struc_Slot/")).length === r.slots.length);
+    assert.ok(r.slots.length > 0 && parts.filter((p) => p.folder.startsWith("_Struc_Slot/")).length === r.slots.length);
   }
 });
 
@@ -162,15 +163,15 @@ test("the two structure layers hold in the store: no slot flat, none with applie
   const s = tempDir(t, "zemory-layers-");
   const put = (rel, text) => { mkdirSync(dirname(join(s, rel)), { recursive: true }); writeFileSync(join(s, rel), text); };
   const slot = (rel, id, path, extra = "") => put(`03_STRUCTURE/${rel}/SLOT.md`, `---\nid: ${id}\nname: x\nversion: 1\npath: ${path}\n${extra}---\n# x\n`);
-  slot("Struc_Slot/Slot_Root_001_Entry", "Slot_1", "AGENTS.md · CLAUDE.md");
-  put("03_STRUCTURE/Struc_Slot/Slot_Root_001_Entry/seed/AGENTS.md", "# <PROJECT>\n");
-  put("03_STRUCTURE/Struc_Slot/Slot_Root_001_Entry/seed/docs/stray.md", "x\n");
-  slot("Struc_Slot/Slot_Docs_002_Docs", "Slot_2", "docs/", "applies: [App]\n");
+  slot("_Struc_Slot/Slot_Root_001_Entry", "Slot_1", "AGENTS.md · CLAUDE.md");
+  put("03_STRUCTURE/_Struc_Slot/Slot_Root_001_Entry/seed/AGENTS.md", "# <PROJECT>\n");
+  put("03_STRUCTURE/_Struc_Slot/Slot_Root_001_Entry/seed/docs/stray.md", "x\n");
+  slot("_Struc_Slot/Slot_Docs_002_Docs", "Slot_2", "docs/", "applies: [App]\n");
   slot("Slot_Docs_003_Plan", "Slot_3", "docs/plan/");
   put("03_STRUCTURE/Struc_Repo_App/STRUCTURE.md", "---\nid: Struc_Repo_App\nname: repo-app\nversion: 1\n---\n# app\n");
   put("03_STRUCTURE/Struc_Repo_App/structure.json", JSON.stringify({ slots: ["Slot_Root_001_Entry", "Slot_Docs_009_Gone"] }));
   const wrong = partNameFindings(s).wrong.join("\n");
-  assert.match(wrong, /Slot_Docs_003_Plan: a slot lives in 03_STRUCTURE\/Struc_Slot\//);
+  assert.match(wrong, /Slot_Docs_003_Plan: a slot lives in 03_STRUCTURE\/_Struc_Slot\//);
   assert.match(wrong, /Slot_Docs_002_Docs: a slot belongs to no structure/);
   assert.match(wrong, /seed\/docs\/stray\.md is not under the slot's path/);
   assert.doesNotMatch(wrong, /seed\/AGENTS\.md/, "a seed at the slot's own path passes");
@@ -196,4 +197,23 @@ test("every built kit assembles from the real store into a repo that holds: conf
     const again = applyKit(root, { apply: false });
     assert.deepEqual(again.steps.filter((s) => s.verdict !== "current").map((s) => `${s.part.folder} ${s.verdict}`), [], `${k.name}: a second pass finds nothing to do`);
   }
+});
+
+test("every set name reads its assembly in shelf order and tells the truth about its structure and tier", async () => {
+  const { parseSetName } = await import("../../dist/docs/harness-names.js");
+  for (const k of readKits(STORE_DIR)) {
+    const n = parseSetName(k.name);
+    assert.ok(n, `${k.name}: not <NN>_<rules>_<structure>_<skills>_<tier>`);
+    assert.equal(n.nn, k.no, `${k.name}: the name's number is its register number`);
+    assert.equal(n.tier, k.tier, `${k.name}: the name's tier is its tier`);
+    assert.equal(n.structure ? `Struc_Repo_${n.structure}` : "", k.structure, `${k.name}: the name's structure is the one it picks`);
+  }
+});
+
+test("a repo marked with an old kit name finds the set that replaced it; an old bare number finds nothing", async () => {
+  const { findKit } = await import("../../dist/docs/store.js");
+  const want = { "06_IDE_App_Memory": "02", "02_GUI_App_Memory": "02", "05_app": "02", "08_IDE_NonApp_Memory": "04",
+    "04_GUI_NonApp_Memory": "04", "03_nonapp": "04", "02_cowork_memory": "04", "01_cowork_basic": "03" };
+  for (const [old, no] of Object.entries(want)) assert.equal(findKit(old, STORE_DIR)?.no, no, old);
+  for (const gone of ["06", "08", "05_IDE_App_Basic"]) assert.equal(findKit(gone, STORE_DIR), null, gone);
 });

@@ -76,7 +76,7 @@ export function applyKit(
   // time. After that sync never adds one back (the repo may have declined it) and never edits one (only an approval in
   // the repo's own session changes its constitution).
   const parts = kitParts(kit, storeDir).filter((p) => p.shelf !== SHELF.constitution || !marked);
-  const ownAdded = opts.apply ? seedFiles(kit, parts, root, basename(root), storeDir) : [];
+  const ownAdded = opts.apply ? seedFiles(kit, parts, root, basename(root), storeDir, target.agentDir) : [];
   const steps = planAssembly(parts, target);
   const written = opts.apply ? applyAssembly(steps) : [];
   const skills = parts.filter((p) => p.shelf === SHELF.skills);

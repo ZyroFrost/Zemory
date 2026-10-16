@@ -45,7 +45,7 @@ function fixture(t) {
 
 test("dry-run reports the move and writes nothing", (t) => {
   const root = fixture(t);
-  const r = migrateToKit(root, { kitRef: "08", apply: false });
+  const r = migrateToKit(root, { kitRef: "04", apply: false });
   assert.ok(!("error" in r), JSON.stringify(r));
   assert.deepEqual(r.localRules, ["02-7"], "only the rule the repo edited counts as edited");
   assert.deepEqual(r.ownRules, ["02-99"]);
@@ -60,7 +60,7 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   const before = (rel) => readFileSync(join(root, rel), "utf8");
   const oldRules = before("docs/agent/02_RULES.md");
   const oldStruct = before("docs/agent/03_STRUCTURE.md");
-  const r = migrateToKit(root, { kitRef: "08", apply: true, date: "2026-10-15" });
+  const r = migrateToKit(root, { kitRef: "04", apply: true, date: "2026-10-15" });
   assert.ok(!("error" in r), JSON.stringify(r));
   const agent = join(root, "docs", "agent");
   const arch = join(agent, "archive", "file-harness-2026-10-15");
@@ -116,7 +116,7 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
 test("links to a replaced file are repointed (an article link to its folder); the words and other files stay", (t) => {
   const root = fixture(t);
   put(root, "docs/plan/05_ui.md", "Xem [HP điều 1](../agent/01_CONSTITUTION.md) · [luật](../agent/02_RULES.md#git) · [cây](../agent/03_STRUCTURE.md) · nhắc 02_RULES.md trong câu.\n");
-  migrateToKit(root, { kitRef: "08", apply: true });
+  migrateToKit(root, { kitRef: "04", apply: true });
   const t5 = readFileSync(join(root, "docs", "plan", "05_ui.md"), "utf8");
   assert.match(t5, new RegExp(`\\[HP điều 1\\]\\(\\.\\./agent/02_CONSTITUTION/Cons_Core_01_DieuMotBatBien/RULE\\.md\\)`));
   assert.match(t5, /\[luật\]\(\.\.\/agent\/01_RULES\/\)/);
@@ -127,8 +127,8 @@ test("links to a replaced file are repointed (an article link to its folder); th
 test("an Adapt repo and a folder harness are refused", (t) => {
   const a = tempDir(t, "zemory-mig-a-");
   put(a, "docs/.harness.json", JSON.stringify({ docs: "docs/agent", layout: "foreign", slots: { x: "y" } }));
-  assert.match(migrateToKit(a, { kitRef: "08", apply: false }).error, /Adapt/);
+  assert.match(migrateToKit(a, { kitRef: "04", apply: false }).error, /Adapt/);
   const f = fixture(t);
-  migrateToKit(f, { kitRef: "08", apply: true });
-  assert.match(migrateToKit(f, { kitRef: "08", apply: false }).error, /already a folder harness/);
+  migrateToKit(f, { kitRef: "04", apply: true });
+  assert.match(migrateToKit(f, { kitRef: "04", apply: false }).error, /already a folder harness/);
 });
