@@ -9,7 +9,7 @@
 // chạy 1 worker ⇒ đỉnh nhóm nặng ≤ một model. Danh sách là TƯỜNG MINH và có cổng canh
 // (`test-partition.test.mjs`): file nào import lớp embed/rerank mà không nằm trong HEAVY ⇒ đỏ,
 // để phân nhóm không âm thầm lệch khi ai thêm test mới.
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import os from "node:os";
@@ -26,6 +26,37 @@ try {
 } catch {
   /* thiếu quyền đổi ưu tiên — vẫn chạy, chỉ là không nhường */
 }
+
+// One parent folder for every temp folder a test makes (measured 2026-10-16 on a work laptop: ~800 `z*` folders a day left
+// in %TEMP%, 33 GB). 61 test files call mkdtemp straight, many with no cleanup; rather than trust each, every child of this
+// run gets TEMP/TMP/TMPDIR pointed at `<tmp>/zemory-test/run-*`, removed when the run ends. A run killed halfway leaves its
+// folder behind, so each run first sweeps run folders older than SWEEP_AGE_MS (a parallel run is never that old).
+const TEMP_BASE = join(os.tmpdir(), "zemory-test");
+const SWEEP_AGE_MS = 6 * 60 * 60 * 1000;
+mkdirSync(TEMP_BASE, { recursive: true });
+for (const name of readdirSync(TEMP_BASE)) {
+  const p = join(TEMP_BASE, name);
+  try {
+    if (Date.now() - statSync(p).mtimeMs > SWEEP_AGE_MS) rmSync(p, { recursive: true, force: true });
+  } catch {
+    /* in use or already gone — the next run sweeps it */
+  }
+}
+const RUN_TEMP = mkdtempSync(join(TEMP_BASE, "run-"));
+for (const k of ["TEMP", "TMP", "TMPDIR"]) process.env[k] = RUN_TEMP;
+function removeRunTemp() {
+  try {
+    rmSync(RUN_TEMP, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+    // the parent goes too once no other run is using it: nothing of the tests stays in %TEMP%
+    if (readdirSync(TEMP_BASE).length === 0) rmSync(TEMP_BASE, { recursive: true, force: true });
+  } catch (e) {
+    console.error(`[test] could not remove ${RUN_TEMP}: ${e instanceof Error ? e.message : e} — the next run sweeps it`);
+  }
+}
+process.on("SIGINT", () => {
+  removeRunTemp();
+  process.exit(130);
+});
 
 function run(label, files, concurrency, extraEnv = {}) {
   if (!files.length) return Promise.resolve(0);
@@ -93,6 +124,7 @@ const heavySet = new Set(HEAVY);
 const missing = HEAVY.filter((f) => !all.includes(f));
 if (missing.length) {
   console.error(`[test] danh sách HEAVY trỏ file không tồn tại: ${missing.join(", ")}`);
+  removeRunTemp();
   process.exit(1);
 }
 const light = all.filter((f) => !heavySet.has(f));
@@ -102,4 +134,5 @@ const heavy = all.filter((f) => heavySet.has(f));
 const a = await run("nhóm nhẹ", light, LIGHT_CONCURRENCY);
 // Nhóm nạp model: TUẦN TỰ (HEAVY_CONCURRENCY = 1) và từng ca một tiến trình — xem `runHeavyIsolated`.
 const b = HEAVY_CONCURRENCY === 1 ? await runHeavyIsolated(heavy, HEAVY_ENV) : await run("nhóm nạp model", heavy, HEAVY_CONCURRENCY, HEAVY_ENV);
+removeRunTemp();
 process.exit(a || b ? 1 : 0);
