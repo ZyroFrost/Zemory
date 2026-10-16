@@ -1,0 +1,20 @@
+{
+  "partial": true,
+  "prompt": {
+    "kind": "design",
+    "re": "\\b(thiet ke|de (xuat|suat)|phuong an|kien truc|cau truc|chuan|quy chuan|best practice|so sanh|so voi|cach nao|nen (lam|dung|de|theo|co|la|chon)|hay la|giai phap|co che|huong (nao|di)|y tuong|goi y|toi uu|thi sao|sao (ko|khong) (lam|dung|cho|doi|de)|co can|mo hinh|giao thuc|ban (cho xong|lai)|giới hạn|gioi han|ng ta lam)\\b",
+    "text": "[zemory] Design proposal: run `zemory plan search \"<area>\"` first (a direction already rejected is not proposed again), look up the established standard before proposing (a web search agent), and object to a flawed design before building it (Rule_Keys_14_ChallengeDesign)."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "đề xuất phương án lưu trữ"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "chạy lại bộ test"
+    }
+  ]
+}

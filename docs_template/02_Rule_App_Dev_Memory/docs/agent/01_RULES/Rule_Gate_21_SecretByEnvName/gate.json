@@ -1,0 +1,20 @@
+{
+  "gate": "guard",
+  "prompt": {
+    "kind": "Rule_21",
+    "re": "\\b(mat khau|password|\\.env|secret|bi mat|key|token|credential|tai khoan|vault|mk|dang nhap|login)\\b",
+    "text": "[zemory] Rule_Gate_21_SecretByEnvName: Secrets: code reads an environment variable NAME; values live in data/secrets/ behind .gitignore, never in git, not even encrypted."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "mật khẩu database để ở đâu"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "thêm cột ngày"
+    }
+  ]
+}

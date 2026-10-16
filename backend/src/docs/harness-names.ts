@@ -172,14 +172,37 @@ export function enforcementOf(gate: Record<string, unknown> | null): Enforcement
 
 // ── sets ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-/** The rules a set carries: `Common` is every common rule; a group (`DB` · `Dept`) adds its own on top. */
-export const RULE_SET = ["Common", "DB", "Dept"] as const;
+/** The rules a set carries, by the code of the rules shelf: `Rule` is every common rule; a group adds its own on top
+ *  (`RuleDB` · `RuleDept`). */
+export const RULE_SET = ["Rule", "RuleDB", "RuleDept"] as const;
 export const TIER = ["Basic", "Memory"] as const;
+
+/**
+ * Names repos were marked with before the sets took their current names: such a marker still finds its set. The
+ * numbers of the old registers (`06` · `08`) meant other sets and are not listed.
+ */
+export const LEGACY_SETS: Record<string, string> = {
+  "05_app": "02_Rule_App_Dev_Memory",
+  "02_GUI_App_Memory": "02_Rule_App_Dev_Memory",
+  "06_IDE_App_Memory": "02_Rule_App_Dev_Memory",
+  "Kit_GUI_02_AppMemory": "02_Rule_App_Dev_Memory",
+  "Kit_IDE_06_AppMemory": "02_Rule_App_Dev_Memory",
+  "02_Common_App_Dev_Memory": "02_Rule_App_Dev_Memory",
+  "01_cowork_basic": "03_Rule_NonApp_Task_Basic",
+  "03_Common_NonApp_Task_Basic": "03_Rule_NonApp_Task_Basic",
+  "03_nonapp": "04_Rule_NonApp_Task_Memory",
+  "02_cowork_memory": "04_Rule_NonApp_Task_Memory",
+  "04_GUI_NonApp_Memory": "04_Rule_NonApp_Task_Memory",
+  "08_IDE_NonApp_Memory": "04_Rule_NonApp_Task_Memory",
+  "Kit_GUI_04_NonAppMemory": "04_Rule_NonApp_Task_Memory",
+  "Kit_IDE_08_NonAppMemory": "04_Rule_NonApp_Task_Memory",
+  "04_Common_NonApp_Task_Memory": "04_Rule_NonApp_Task_Memory",
+};
 
 /**
  * A set name reads its assembly in shelf order (plan/28 §0o): `<NN>_<01 rules>_<03 structure>_<04 skills>_<tier>` — the
  * constitution (02) is the repo's own and never in a name, an empty shelf leaves its component out
- * (`04_Common_NonApp_Task_Memory`). Null when the name does not follow that order.
+ * (`04_Rule_NonApp_Task_Memory`). Null when the name does not follow that order.
  */
 export function parseSetName(name: string): { nn: string; rules: string; structure: string; skills: string; tier: string } | null {
   const skills = SKILL_GROUP.join("|");

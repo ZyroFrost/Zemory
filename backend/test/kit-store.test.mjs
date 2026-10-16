@@ -7,12 +7,12 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { applyKit } from "../../dist/docs/kit-apply.js";
+import { applyKit, assembleSet } from "../../dist/docs/kit-apply.js";
 import { repointLinks } from "../../dist/docs/kit-migrate.js";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-import { frontMatter, hashFiles, parseFrom } from "../../dist/docs/store.js";
+import { frontMatter, hashFiles, parseFrom, readKits } from "../../dist/docs/store.js";
 import { generateGuards } from "../../dist/docs/guard-gen.js";
 import { coreForCompaction, folderCoreIssues, ruleCoverage } from "../../dist/docs/rule-core.js";
 import { handleHook, ruleReminders } from "../../dist/memory/capture-hook.js";
@@ -69,10 +69,11 @@ function store(t) {
     prompt: { kind: "sk-door", re: "mở cửa sk", text: "[zemory] SK REMINDER" },
     block: [{ path: "frontend/a.js" }], pass: [{ path: "backend/a.ts" }] }));
   put(s, "02_CONSTITUTION/01-1_secrets/RULE.md", "---\nid: 01-1\nname: secrets\nversion: 1\nkind: judgment\nsuggested: true\n---\n# secrets\n");
-  put(s, "kits.json", JSON.stringify({ "01": { name: "01_IDE_App_Memory", status: "built", host: "IDE", structure: "Struc_Repo_App", tier: "Memory",
-    constitution: ["01-*"], rules: ["02-*"], skills: ["sk"] },
-    "03": { name: "03_IDE_NonApp_Memory", status: "built", host: "IDE", structure: "Struc_Repo_NonApp", tier: "Memory",
-    rules: ["02-*"], skills: [] }, "02": { name: "02_IDE_NonApp_Memory", status: "reserved" } }));
+  // the sets: each one a folder beside the store, assembled from it (plan/28 §0p — no register)
+  for (const k of [
+    { no: "01", name: "01_Rule_App_Memory", structure: "Struc_Repo_App", tier: "Memory", constitution: ["01-*"], rules: ["02-*"], skills: ["sk"] },
+    { no: "03", name: "03_Rule_NonApp_Memory", structure: "Struc_Repo_NonApp", tier: "Memory", constitution: [], rules: ["02-*"], skills: [] },
+  ]) assembleSet({ legacy: [], status: "built", requires: [], tools: [], ...k }, s);
   git(root, "add", "-A");
   git(root, "commit", "-q", "-m", "v1");
   return { root, s, commit: (m) => { git(root, "add", "-A"); git(root, "commit", "-q", "-m", m); } };
@@ -93,7 +94,7 @@ test("init assembles every part at its numbered place, stamped with from:, plus 
   const r = applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
   assert.ok(!("error" in r), JSON.stringify(r));
   assert.deepEqual(new Set(Object.values(verdicts(r))), new Set(["absent"]));
-  assert.equal(JSON.parse(readFileSync(join(root, "docs", ".harness.json"), "utf8")).kit, "01_IDE_App_Memory");
+  assert.equal(JSON.parse(readFileSync(join(root, "docs", ".harness.json"), "utf8")).kit, "01_Rule_App_Memory");
   assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), `# ${root.split(/[\\/]/).pop()}\n`, "<PROJECT> becomes the folder name");
   for (const f of ["02-1_alpha", "02-2_beta", "02-55_hook-guard"]) {
     const from = parseFrom(String(frontMatter(readFileSync(rule(root, f), "utf8")).meta.from));
@@ -133,10 +134,25 @@ test("suggested constitution articles are offered once: a declined one never com
   assert.ok(!existsSync(art), "a declined article stays declined");
 });
 
-test("a reserved kit and an unknown kit are refused", (t) => {
+test("a number with no set folder is refused", (t) => {
   const st = store(t);
-  assert.match(applyKit(repo(t), { kitRef: "02", apply: true, storeDir: st.s }).error, /reserved/);
-  assert.match(applyKit(repo(t), { kitRef: "99", apply: true, storeDir: st.s }).error, /no kit/);
+  assert.match(applyKit(repo(t), { kitRef: "02", apply: true, storeDir: st.s }).error, /no set/);
+  assert.match(applyKit(repo(t), { kitRef: "99", apply: true, storeDir: st.s }).error, /no set/);
+});
+
+test("a set is its folder: what the folder carries is what the set assembles", (t) => {
+  const st = store(t);
+  const kits = readKits(st.s);
+  assert.deepEqual(kits.map((k) => k.name), ["01_Rule_App_Memory", "03_Rule_NonApp_Memory"]);
+  const k1 = kits[0];
+  assert.equal(k1.structure, "Struc_Repo_App");
+  assert.deepEqual(k1.skills, ["sk"]);
+  assert.ok(k1.rules.length === 3 && k1.constitution.length === 1, JSON.stringify(k1));
+  // a part taken out of the set folder leaves the set
+  rmSync(join(st.root, "01_Rule_App_Memory", "docs", "agent", "01_RULES", "02-1_alpha"), { recursive: true, force: true });
+  assert.ok(!readKits(st.s)[0].rules.includes("02-1"), "the removed rule is no longer in the set");
+  // a set folder keeps the placeholders: it is a template, not a repo
+  assert.match(readFileSync(join(st.root, "03_Rule_NonApp_Memory", "AGENTS.md"), "utf8"), /<PROJECT>/);
 });
 
 test("a local edit with the part unchanged stays current; a store change merges with it; the next pass is current", (t) => {

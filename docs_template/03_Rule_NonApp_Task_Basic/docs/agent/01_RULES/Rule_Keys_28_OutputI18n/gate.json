@@ -1,0 +1,19 @@
+{
+  "prompt": {
+    "kind": "Rule_28",
+    "re": "\\b(tieng viet|van noi|ban vn|hien vay ai hieu|phim tat|thong bao|title|dropdown|tieng anh|song ngu|dich|i18n|nhan hien thi|label|chu hien thi|english|en/vi|ngon ngu)\\b",
+    "text": "[zemory] Rule_Keys_28_OutputI18n: UI strings and CLI output: English, or i18n with both dictionaries complete."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "dịch nhãn sang tiếng anh"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "xoá bộ nhớ đệm"
+    }
+  ]
+}
