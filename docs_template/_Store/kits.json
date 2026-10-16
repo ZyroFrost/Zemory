@@ -1,20 +1,28 @@
 {
-  "comment": "Kit register (plan/28 §0o). Name = Kit_<Host>_<NN>_<Cluster><Tier>; numbers are never reused. status: built = in use · reserved = number only · retired = kept, not offered. A kit picks ONE outer structure (03_STRUCTURE/Struc_Repo_<Cluster>/), which names its slots; rules and skills are listed here, a rule's `applies` is matched against the cluster.",
+  "comment": "Set register (plan/28 §0o). Name = <NN>_<01 rules>_<03 structure>_<04 skills>_<tier>, read in shelf order; numbers are never reused. status: built = in use · reserved = number only · retired = kept, not offered. A set picks ONE outer structure (03_STRUCTURE/Struc_*), which names its slots; `hosts` are the host plugs (_Store/05_HOSTS/Host_*) it can be installed through; `legacy` lists the names repos were marked with before.",
   "01": {
-    "name": "Kit_GUI_01_AppBasic",
-    "legacy": "01_GUI_App_Basic",
+    "name": "01_Common_App_Dev_Basic",
     "status": "reserved",
-    "host": "GUI",
+    "tier": "Basic",
     "structure": "Struc_Repo_App",
-    "tier": "Basic"
+    "hosts": [],
+    "legacy": []
   },
   "02": {
-    "name": "Kit_GUI_02_AppMemory",
-    "legacy": "02_GUI_App_Memory",
+    "name": "02_Common_App_Dev_Memory",
     "status": "built",
-    "host": "GUI",
-    "structure": "Struc_Repo_App",
     "tier": "Memory",
+    "structure": "Struc_Repo_App",
+    "hosts": [
+      "Host_Code"
+    ],
+    "legacy": [
+      "02_GUI_App_Memory",
+      "06_IDE_App_Memory",
+      "Kit_GUI_02_AppMemory",
+      "Kit_IDE_06_AppMemory",
+      "05_app"
+    ],
     "constitution": [
       "Cons_*"
     ],
@@ -36,93 +44,56 @@
     ]
   },
   "03": {
-    "name": "Kit_GUI_03_NonAppBasic",
-    "legacy": "03_GUI_NonApp_Basic",
-    "status": "reserved",
-    "host": "GUI",
+    "name": "03_Common_NonApp_Task_Basic",
+    "status": "built",
+    "tier": "Basic",
     "structure": "Struc_Repo_NonApp",
-    "tier": "Basic"
+    "hosts": [
+      "Host_Cowork"
+    ],
+    "legacy": [
+      "01_cowork_basic"
+    ],
+    "constitution": [
+      "Cons_*"
+    ],
+    "rules": [
+      "Rule_*"
+    ],
+    "skills": [
+      "Skill_Doc_ReadOffice",
+      "Skill_Doc_WriteDocx",
+      "Skill_Doc_WriteStyle",
+      "Skill_Harness_Audit",
+      "Skill_Harness_Conform",
+      "Skill_Harness_Grill",
+      "Skill_Harness_PlanTrim",
+      "Skill_Harness_Reconcile",
+      "Skill_Harness_SessionClose",
+      "Skill_Harness_Structure",
+      "Skill_Harness_SyncPath",
+      "Skill_Task_Fill",
+      "Skill_Task_Pull",
+      "Skill_Task_Upload"
+    ]
   },
   "04": {
-    "name": "Kit_GUI_04_NonAppMemory",
-    "legacy": "04_GUI_NonApp_Memory",
+    "name": "04_Common_NonApp_Task_Memory",
     "status": "built",
-    "host": "GUI",
-    "structure": "Struc_Repo_NonApp",
     "tier": "Memory",
-    "constitution": [
-      "Cons_*"
-    ],
-    "rules": [
-      "Rule_*"
-    ],
-    "skills": [
-      "Skill_Harness_Audit",
-      "Skill_Task_Case",
-      "Skill_Harness_Conform",
-      "Skill_Task_Fill",
-      "Skill_Harness_Grill",
-      "Skill_Harness_PlanTrim",
-      "Skill_Task_Pull",
-      "Skill_Doc_ReadOffice",
-      "Skill_Harness_Reconcile",
-      "Skill_Harness_SessionClose",
-      "Skill_Harness_SyncPath",
-      "Skill_Task_Upload",
-      "Skill_Doc_WriteDocx",
-      "Skill_Doc_WriteStyle"
-    ]
-  },
-  "05": {
-    "name": "Kit_IDE_05_AppBasic",
-    "legacy": "05_IDE_App_Basic",
-    "status": "reserved",
-    "host": "IDE",
-    "structure": "Struc_Repo_App",
-    "tier": "Basic"
-  },
-  "06": {
-    "name": "Kit_IDE_06_AppMemory",
-    "legacy": "06_IDE_App_Memory",
-    "status": "built",
-    "host": "IDE",
-    "structure": "Struc_Repo_App",
-    "tier": "Memory",
-    "constitution": [
-      "Cons_*"
-    ],
-    "rules": [
-      "Rule_*"
-    ],
-    "skills": [
-      "Skill_Dev_AppDesign",
-      "Skill_Harness_Audit",
-      "Skill_Harness_Conform",
-      "Skill_Harness_Grill",
-      "Skill_Harness_PlanTrim",
-      "Skill_Doc_ReadOffice",
-      "Skill_Harness_Reconcile",
-      "Skill_Harness_SessionClose",
-      "Skill_Harness_SyncPath",
-      "Skill_Doc_WriteDocx",
-      "Skill_Doc_WriteStyle"
-    ]
-  },
-  "07": {
-    "name": "Kit_IDE_07_NonAppBasic",
-    "legacy": "07_IDE_NonApp_Basic",
-    "status": "reserved",
-    "host": "IDE",
     "structure": "Struc_Repo_NonApp",
-    "tier": "Basic"
-  },
-  "08": {
-    "name": "Kit_IDE_08_NonAppMemory",
-    "legacy": "08_IDE_NonApp_Memory",
-    "status": "built",
-    "host": "IDE",
-    "structure": "Struc_Repo_NonApp",
-    "tier": "Memory",
+    "hosts": [
+      "Host_Code",
+      "Host_Cowork"
+    ],
+    "legacy": [
+      "04_GUI_NonApp_Memory",
+      "08_IDE_NonApp_Memory",
+      "Kit_GUI_04_NonAppMemory",
+      "Kit_IDE_08_NonAppMemory",
+      "03_nonapp",
+      "02_cowork_memory"
+    ],
     "constitution": [
       "Cons_*"
     ],

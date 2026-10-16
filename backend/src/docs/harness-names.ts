@@ -169,3 +169,21 @@ export function enforcementOf(gate: Record<string, unknown> | null): Enforcement
   if (gate.prompt) return "Keys";
   return "Core";
 }
+
+// ── sets ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** The rules a set carries: `Common` is every common rule; a group (`DB` · `Dept`) adds its own on top. */
+export const RULE_SET = ["Common", "DB", "Dept"] as const;
+export const TIER = ["Basic", "Memory"] as const;
+
+/**
+ * A set name reads its assembly in shelf order (plan/28 §0o): `<NN>_<01 rules>_<03 structure>_<04 skills>_<tier>` — the
+ * constitution (02) is the repo's own and never in a name, an empty shelf leaves its component out
+ * (`04_Common_NonApp_Task_Memory`). Null when the name does not follow that order.
+ */
+export function parseSetName(name: string): { nn: string; rules: string; structure: string; skills: string; tier: string } | null {
+  const skills = SKILL_GROUP.join("|");
+  // the structure component is any name that is not a skill group (a set without a structure goes rules → skills)
+  const m = new RegExp(`^(\\d{2})_(${RULE_SET.join("|")})(?:_(?!(?:${skills})_)(${NAME}))?(?:_(${skills}))?_(${TIER.join("|")})$`).exec(name);
+  return m ? { nn: m[1], rules: m[2], structure: m[3] ?? "", skills: m[4] ?? "", tier: m[5] } : null;
+}

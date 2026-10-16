@@ -22,7 +22,7 @@ mỗi luật và mỗi slot một folder; file này chỉ chỉ đường.
    - `Gate` chặn đúng lúc định làm sai — câu chặn mang tên đầy đủ và nguyên văn luật.
 3. **Đọc `docs/agent/05_TODO.md`** trước khi làm.
 4. **Tra khi cần, không đọc hết:** luật `docs/agent/01_RULES/Rule_<Gate·Keys·Core>_<NN>_<Tên>/RULE.md` · hiến pháp `docs/agent/02_CONSTITUTION/`
-   · cấu trúc `docs/agent/03_STRUCTURE/` (`INDEX.md`: <STRUC_INDEX_ROLE>; slot ở `Struc_Slot/`) · lịch sử
+   · cấu trúc `docs/agent/03_STRUCTURE/` (`INDEX.md`: <STRUC_INDEX_ROLE>; slot ở `_Struc_Slot/`) · lịch sử
    `zemory changelog search` (phủ cả `docs/agent/archive/`) · thiết kế `zemory plan search "<vùng>"` trước khi đề xuất hay
    đổi thiết kế một vùng. Không thấy một việc trong `05_TODO`/`06_CHANGES` không có nghĩa là chưa từng có — tra archive
    trước khi kết luận.
