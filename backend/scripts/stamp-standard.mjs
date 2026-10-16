@@ -38,11 +38,11 @@ const FILES = ["AGENTS.md", "agent/01_CONSTITUTION.md", "agent/02_RULES.md", "ag
 
 /** Bundle roots, including the two cowork sets that nest their harness under `nonapp/`. */
 const BUNDLES = [
-  "docs_template/01_cowork_basic/nonapp",
-  "docs_template/02_cowork_memory/nonapp",
-  "docs_template/03_nonapp",
-  "docs_template/04_adapt",
-  "docs_template/05_app",
+  "attic/legacy-templates/01_cowork_basic/nonapp",
+  "attic/legacy-templates/02_cowork_memory/nonapp",
+  "attic/legacy-templates/03_nonapp",
+  "attic/legacy-templates/04_adapt",
+  "attic/legacy-templates/05_app",
 ];
 
 const MARK = /<!--\s*zemory-standard:\s*(\d{4}-\d{2}-\d{2})\s*-->\s*$/;
@@ -50,15 +50,20 @@ const MARK = /<!--\s*zemory-standard:\s*(\d{4}-\d{2}-\d{2})\s*-->\s*$/;
 /** Last date this file really changed, from git. Untracked or unknown ⇒ null, and we skip it
  *  rather than invent a date (plan/26 §8: no guessing a date for an unmarked file). */
 function gitDate(rel) {
-  try {
-    const out = execFileSync("git", ["log", "-1", "--format=%ad", "--date=short", "--", rel], {
-      cwd: REPO,
-      encoding: "utf8",
-    }).trim();
-    return /^\d{4}-\d{2}-\d{2}$/.test(out) ? out : null;
-  } catch {
-    return null;
-  }
+  // The templates moved from docs_template/ into attic/legacy-templates/ (plan/28 §0p F): a move is not a change of
+  // content, so the date is the last change under the old path or the last real edit (M) under the new one, whichever
+  // is later.
+  const one = (args) => {
+    try {
+      const out = execFileSync("git", ["log", "-1", "--format=%ad", "--date=short", ...args], { cwd: REPO, encoding: "utf8" }).trim();
+      return /^\d{4}-\d{2}-\d{2}$/.test(out) ? out : null;
+    } catch {
+      return null;
+    }
+  };
+  const old = rel.replace(/^attic\/legacy-templates\//, "docs_template/");
+  const dates = [one(["--diff-filter=M", "--", rel]), old === rel ? one(["--", rel]) : one(["--", old])].filter(Boolean);
+  return dates.length ? dates.sort().pop() : null;
 }
 
 let stamped = 0;

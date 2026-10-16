@@ -12,11 +12,14 @@ import { skillDiff, applySkills } from "../../dist/docs/standard.js";
 import { tempDir } from "./helpers.mjs";
 
 const ZEMORY = join(import.meta.dirname, "..", "..");
-const TPL = join(ZEMORY, "docs_template", "03_nonapp", ".claude", "skills");
+const TPL = join(ZEMORY, "attic", "legacy-templates", "03_nonapp", ".claude", "skills");
 
 /** Bản CŨ NHẤT của một tệp mẫu trong lịch sử git — "bản chuẩn cũ mà repo chưa sửa". */
 function oldestTemplate(rel) {
-  const log = execFileSync("git", ["log", "--follow", "--name-only", "--format=@@%H", "--", rel], { cwd: ZEMORY, encoding: "utf8" });
+  // the template's path before the move into attic/ too: `--follow` walks back through a move only once it is committed
+  const old = rel.replace(/^attic\/legacy-templates\//, "docs_template/");
+  const log = execFileSync("git", ["log", "--follow", "--name-only", "--format=@@%H", "--", rel], { cwd: ZEMORY, encoding: "utf8" }) +
+    (old === rel ? "" : execFileSync("git", ["log", "--follow", "--name-only", "--format=@@%H", "--", old], { cwd: ZEMORY, encoding: "utf8" }));
   const blocks = log.split("@@").map((b) => b.trim().split(/\r?\n/)).filter((b) => b[0]);
   const last = blocks[blocks.length - 1];
   return execFileSync("git", ["show", `${last[0]}:${last[last.length - 1]}`], { cwd: ZEMORY, encoding: "utf8" });
@@ -42,7 +45,7 @@ test("skill chung: thiếu ⇒ thêm · bản mẫu cũ chưa sửa ⇒ thay · 
   // current: đúng bản mẫu hiện tại (kể cả khác kiểu xuống dòng — không phải "sửa")
   put(root, "grill/SKILL.md", tpl("grill/SKILL.md").replace(/\r?\n/g, "\r\n"));
   // clean: bản cũ nhất của session-close trong lịch sử bộ mẫu
-  const old = oldestTemplate("docs_template/03_nonapp/.claude/skills/session-close/SKILL.md");
+  const old = oldestTemplate("attic/legacy-templates/03_nonapp/.claude/skills/session-close/SKILL.md");
   const sc = put(root, "session-close/SKILL.md", old);
   // local: bản mẫu hiện tại + một dòng repo tự thêm
   const audit = put(root, "audit/SKILL.md", tpl("audit/SKILL.md") + "\nDÒNG REPO TỰ THÊM\n");
@@ -78,7 +81,7 @@ test("repo NGUỒN (chính zemory) ⇒ không so gì: chuẩn đi TỪ đây ra"
 
 test("thay bản mẫu cũ giữ kiểu xuống dòng của file ĐÍCH (02_RULES §EOL)", (t) => {
   const root = repo(t);
-  const old = oldestTemplate("docs_template/03_nonapp/.claude/skills/session-close/SKILL.md").replace(/\r?\n/g, "\r\n");
+  const old = oldestTemplate("attic/legacy-templates/03_nonapp/.claude/skills/session-close/SKILL.md").replace(/\r?\n/g, "\r\n");
   const sc = put(root, "session-close/SKILL.md", old);
   applySkills(root, { apply: true });
   const out = readFileSync(sc, "utf8");
@@ -89,8 +92,9 @@ test("🔴 trùng DẤU NGÀY mà bản mẫu đã sửa lại trong ngày ⇒ K
   const { standardDiff } = await import("../../dist/docs/standard.js");
   const root = repo(t);
   // Bản 02_RULES phiên kho phát sáng 04/10 (c7ea64f, dấu 2026-10-04); bản mẫu hiện tại sửa lại CÙNG ngày.
+  // at that commit the template still sat in docs_template/ (moved into attic/legacy-templates/ later, plan/28 §0p F)
   const morning = execFileSync("git", ["show", "c7ea64f:docs_template/03_nonapp/agent/02_RULES.md"], { cwd: ZEMORY, encoding: "utf8" });
-  const now = readFileSync(join(ZEMORY, "docs_template", "03_nonapp", "agent", "02_RULES.md"), "utf8");
+  const now = readFileSync(join(ZEMORY, "attic", "legacy-templates", "03_nonapp", "agent", "02_RULES.md"), "utf8");
   assert.notEqual(morning.replace(/\r\n/g, "\n"), now.replace(/\r\n/g, "\n"), "tiền đề: bản mẫu đã đổi sau bản sáng");
   assert.match(morning, /zemory-standard: 2026-10-04/, "tiền đề: bản sáng mang dấu 2026-10-04");
   // `init` thay `<PROJECT>` bằng tên repo — fixture phải làm y hệt, không thì mọi dòng có tên đọc thành "sửa tay".
@@ -106,7 +110,7 @@ test("🔴 repo đã mang sẵn mọi dòng chuẩn đổi (dấu ngày cũ) ⇒
   const { basename } = await import("node:path");
   const root = repo(t);
   // Nội dung = bản mẫu HIỆN TẠI + một dòng repo tự thêm, nhưng dấu ngày vẫn là 2026-09-21 (bản gốc khác).
-  const now = readFileSync(join(ZEMORY, "docs_template", "03_nonapp", "agent", "02_RULES.md"), "utf8").replace(/<PROJECT>/g, basename(root));
+  const now = readFileSync(join(ZEMORY, "attic", "legacy-templates", "03_nonapp", "agent", "02_RULES.md"), "utf8").replace(/<PROJECT>/g, basename(root));
   // Lower WHATEVER date the template carries today — pinning one literal date turned this case red
   // every time the template was revised (2026-10-05), with no change in behaviour.
   const body = now.replace(/zemory-standard: \d{4}-\d{2}-\d{2}/, "zemory-standard: 2026-09-21").replace(/\r?\n/g, "\n");

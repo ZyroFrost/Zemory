@@ -147,17 +147,33 @@ test("02-10: every in-repo file delete asks first; temp folders, mentions and gi
 
 // 02-10 (b): a rule never disappears from a rule set without the user's word; retiring one keeps its number.
 test("02-10 (b): an edit that drops a rule number from 01/02 is blocked; keeping the number passes", () => {
+  // A temp repo holding a copy of the old app template's rules and constitution as its harness: the harness docs are
+  // protected (Rule_Gate_79), so the session holds the user's approval flag and the number check is judged on top of it.
   const ROOT = new URL("../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-  const edit = (rel, o, n) => ({ tool_name: "Edit", tool_input: { file_path: join(ROOT, rel), old_string: o, new_string: n } });
-  const rules = "docs_template/05_app/agent/02_RULES.md";
-  const hp = "docs_template/05_app/agent/01_CONSTITUTION.md";
-  const drop = ask(edit(rules, "- `02-41` Mới nhất ở trên cùng.\n- `02-42` Entry đảo", "- `02-42` Entry đảo"));
-  assert.equal(drop.blocked, true, `dropping 02-41 must be blocked\n${drop.say}`);
-  assert.match(drop.say, /removes rule 02-41/);
-  assert.equal(ask(edit(rules, "- `02-41` Mới nhất ở trên cùng.", "- `02-41` Mới nhất luôn ở trên cùng.")).blocked, false, "rewording keeps the number");
-  const hpDrop = ask(edit(hp, "3. **Mỗi lớp**\n4. **1 capability**", "4. **1 capability**"));
-  assert.equal(hpDrop.blocked, true, `dropping article 3 must be blocked\n${hpDrop.say}`);
-  assert.equal(ask(edit(hp, "3. **Mỗi lớp** …", "3. *(BÃI BỎ — giữ số)*")).blocked, false, "abolishing keeps the number");
+  const tmp = mkdtempSync(join(tmpdir(), "zemory-guard-md-"));
+  try {
+    mkdirSync(join(tmp, "docs", "agent"), { recursive: true });
+    for (const f of ["02_RULES.md", "01_CONSTITUTION.md"]) cpSync(join(ROOT, "attic/legacy-templates/05_app/agent", f), join(tmp, "docs", "agent", f));
+    writeFileSync(join(tmp, "docs", ".harness.json"), JSON.stringify({ layout: "app", docs: "docs/agent" }));
+    const { hooksDir } = generateGuards(tmp);
+    const guard = join(hooksDir, "guard.cjs");
+    const approve = () => writeFileSync(join(hooksDir, ".allow-docs-write"), "");
+    const ask2 = (payload) => ask(payload, guard);
+    const edit = (rel, o, n) => ({ tool_name: "Edit", tool_input: { file_path: join(tmp, rel), old_string: o, new_string: n } });
+    const rules = "docs/agent/02_RULES.md";
+    const hp = "docs/agent/01_CONSTITUTION.md";
+    approve();
+    const drop = ask2(edit(rules, "- `02-41` Mới nhất ở trên cùng.\n- `02-42` Entry đảo", "- `02-42` Entry đảo"));
+    assert.equal(drop.blocked, true, `dropping 02-41 must be blocked\n${drop.say}`);
+    assert.match(drop.say, /removes rule 02-41/);
+    assert.equal(ask2(edit(rules, "- `02-41` Mới nhất ở trên cùng.", "- `02-41` Mới nhất luôn ở trên cùng.")).blocked, false, "rewording keeps the number");
+    approve();
+    const hpDrop = ask2(edit(hp, "3. **Mỗi lớp**\n4. **1 capability**", "4. **1 capability**"));
+    assert.equal(hpDrop.blocked, true, `dropping article 3 must be blocked\n${hpDrop.say}`);
+    assert.equal(ask2(edit(hp, "3. **Mỗi lớp** …", "3. *(BÃI BỎ — giữ số)*")).blocked, false, "abolishing keeps the number");
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 test("02-10 (b), folder harness: changing or dropping the `id:` of a rule folder is blocked; editing the body passes", () => {

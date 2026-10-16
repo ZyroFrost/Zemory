@@ -17,7 +17,7 @@ import { READ_FIRST_SOURCE } from "../../dist/docs/read-first-src.js";
 import { tempDir } from "./helpers.mjs";
 
 const ROOT = new URL("../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-const SETS = ["docs/agent", ...["01_cowork_basic/nonapp", "02_cowork_memory/nonapp", "03_nonapp", "04_adapt", "05_app"].map((s) => `docs_template/${s}/agent`)];
+const SETS = ["docs/agent", ...["01_cowork_basic/nonapp", "02_cowork_memory/nonapp", "03_nonapp", "04_adapt", "05_app"].map((s) => `attic/legacy-templates/${s}/agent`)];
 
 test("every rule set: each rule is gated or in the core, never both, and the core is within its cap", () => {
   for (const dir of SETS) {

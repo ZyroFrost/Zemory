@@ -85,4 +85,8 @@ attic/index-rescue-*/
 # duana-ui.json` mang tên database thật của công ty. Không dòng nào giúp người lạ dùng
 # zemory — đó là thước phân biệt "tài liệu của công cụ" với "hồ sơ của một bản cài".
 # Ba dòng attic/* ở trên giữ nguyên: thừa thì vô hại, mà xoá đi là mất lời giải thích.
-/attic/
+/attic/*
+# The five templates the sets replaced (plan/28 §0p F): the reference that tells whether the new sets reproduce what
+# every repo received, and what kit-migrate compares a repo's rules against. Tracked so every machine has them; deleted
+# once all repos are moved.
+!/attic/legacy-templates/

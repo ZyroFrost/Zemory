@@ -15,7 +15,7 @@ import { conform } from "../../dist/docs/conform.js";
 import { tempDir } from "./helpers.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const NONAPP = join(ROOT, "docs_template", "03_nonapp");
+const NONAPP = join(ROOT, "attic", "legacy-templates", "03_nonapp");
 const put = (root, rel, text) => {
   mkdirSync(dirname(join(root, rel)), { recursive: true });
   writeFileSync(join(root, rel), text);

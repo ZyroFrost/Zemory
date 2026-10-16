@@ -23,7 +23,7 @@ test("isEntryClassFile: correctly recognises what CANNOT have an import edge", (
     "frontend/scripts/sources.js",
     "docs/hooks/guard.cjs",
     "docs/hooks/precommit-guard.cjs",
-    "docs_template/01_cowork_basic/check_install.py",
+    "attic/legacy-templates/01_cowork_basic/check_install.py",
     "eslint.config.js",
   ]) {
     assert.equal(isEntryClassFile(p), true, `${p} phải bị loại khỏi phép đo code-chết`);
