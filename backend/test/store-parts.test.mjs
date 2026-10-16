@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { gateExampleFindings, storePrivacyFindings } from "../../dist/docs/gate-examples.js";
 import { storePointerFindings } from "../../dist/docs/pointer-check.js";
-import { kitParts, listParts, structureSlots, partNameFindings, readKits, SHELVES, STORE_DIR, unbumpedParts } from "../../dist/docs/store.js";
+import { kitParts, listParts, structureSlots, partNameFindings, readKits, SHELVES, STORE_DIR, storeShelfFindings, unbumpedParts } from "../../dist/docs/store.js";
 import { tempDir } from "./helpers.mjs";
 
 function put(root, rel, text) {
@@ -18,6 +18,27 @@ function put(root, rel, text) {
   mkdirSync(dirname(p), { recursive: true });
   writeFileSync(p, text);
 }
+
+test("the store has every shelf, each numbered shelf with at least one part (plan/28 §0p A1)", () => {
+  assert.deepEqual(storeShelfFindings(STORE_DIR), []);
+});
+
+test("negative: a missing shelf, an empty shelf and a missing Archive are each reported; a full store is not", (t) => {
+  const s = tempDir(t, "zemory-store-shelves-");
+  put(s, "01_RULES/Rule_Core_03_X/RULE.md", "---\nid: Rule_3\nname: x\nversion: 1\n---\nx\n");
+  mkdirSync(join(s, "02_CONSTITUTION"), { recursive: true });
+  put(s, "02_CONSTITUTION/PURPOSE.md", "# purpose\n"); // a shelf file is not a part
+  put(s, "04_SKILLS/Skill_Doc_X/SKILL.md", "---\nname: x\nversion: 1\n---\nx\n");
+  assert.deepEqual(storeShelfFindings(s), [
+    "02_CONSTITUTION: shelf has no part",
+    "03_STRUCTURE: shelf missing",
+    "Archive: shelf missing",
+  ]);
+  put(s, "02_CONSTITUTION/Cons_Core_01_Y/RULE.md", "---\nid: Cons_1\nname: y\nversion: 1\n---\ny\n");
+  put(s, "03_STRUCTURE/_Struc_Slot/Slot_Root_001_Entry/SLOT.md", "---\nid: Slot_1\nname: entry\nversion: 1\npath: AGENTS.md\n---\ne\n");
+  mkdirSync(join(s, "Archive"), { recursive: true });
+  assert.deepEqual(storeShelfFindings(s), []);
+});
 
 test("every gate example in the store behaves as declared, and every hook or slot gate has examples", () => {
   assert.deepEqual(gateExampleFindings(STORE_DIR), []);
