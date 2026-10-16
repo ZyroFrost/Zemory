@@ -1,0 +1,179 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "NotebookEdit",
+      "Bash",
+      "PowerShell"
+    ]
+  },
+  "block": [
+    {
+      "note": "a new file in a scratch folder that already holds 5",
+      "files": {
+        "claude/proj/sess/scratchpad/f1.txt": "x\n",
+        "claude/proj/sess/scratchpad/f2.txt": "x\n",
+        "claude/proj/sess/scratchpad/f3.txt": "x\n",
+        "claude/proj/sess/scratchpad/f4.txt": "x\n",
+        "claude/proj/sess/scratchpad/f5.txt": "x\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "claude/proj/sess/scratchpad/f6.txt",
+        "content": "x\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a redirection that creates a 6th file",
+      "files": {
+        "claude/proj/sess/scratchpad/f1.txt": "x\n",
+        "claude/proj/sess/scratchpad/f2.txt": "x\n",
+        "claude/proj/sess/scratchpad/f3.txt": "x\n",
+        "claude/proj/sess/scratchpad/f4.txt": "x\n",
+        "claude/proj/sess/scratchpad/f5.txt": "x\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "echo x > claude/proj/sess/scratchpad/out.log"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a 6th file through a variable set in the same command",
+      "files": {
+        "claude/proj/sess/scratchpad/f1.txt": "x\n",
+        "claude/proj/sess/scratchpad/f2.txt": "x\n",
+        "claude/proj/sess/scratchpad/f3.txt": "x\n",
+        "claude/proj/sess/scratchpad/f4.txt": "x\n",
+        "claude/proj/sess/scratchpad/f5.txt": "x\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "SP=\"claude/proj/sess/scratchpad\"; node probe.mjs > \"$SP/out.log\""
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "overwriting a file already there",
+      "files": {
+        "claude/proj/sess/scratchpad/f1.txt": "x\n",
+        "claude/proj/sess/scratchpad/f2.txt": "x\n",
+        "claude/proj/sess/scratchpad/f3.txt": "x\n",
+        "claude/proj/sess/scratchpad/f4.txt": "x\n",
+        "claude/proj/sess/scratchpad/f5.txt": "x\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "claude/proj/sess/scratchpad/f1.txt",
+        "content": "y\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a 5th file",
+      "files": {
+        "claude/proj/sess/scratchpad/f1.txt": "x\n",
+        "claude/proj/sess/scratchpad/f2.txt": "x\n",
+        "claude/proj/sess/scratchpad/f3.txt": "x\n",
+        "claude/proj/sess/scratchpad/f4.txt": "x\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "claude/proj/sess/scratchpad/f5.txt",
+        "content": "x\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a folder that is not a session scratch folder",
+      "files": {
+        "work/f1.txt": "x\n",
+        "work/f2.txt": "x\n",
+        "work/f3.txt": "x\n",
+        "work/f4.txt": "x\n",
+        "work/f5.txt": "x\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "work/f6.txt",
+        "content": "x\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a redirection to the null device",
+      "files": {
+        "claude/proj/sess/scratchpad/f1.txt": "x\n",
+        "claude/proj/sess/scratchpad/f2.txt": "x\n",
+        "claude/proj/sess/scratchpad/f3.txt": "x\n",
+        "claude/proj/sess/scratchpad/f4.txt": "x\n",
+        "claude/proj/sess/scratchpad/f5.txt": "x\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "node x.mjs > /dev/null 2>&1"
+      },
+      "policy": {
+        "rules_file": "docs/agent/02_RULES.md",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ]
+}

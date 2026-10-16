@@ -103,6 +103,10 @@
   "todo_file": "docs/agent/05_TODO.md",
   "rule_hooks": [
     {
+      "file": "02-4_scratch-cap.cjs",
+      "rule": "02-4"
+    },
+    {
       "file": "02-24_eol-keep.cjs",
       "rule": "02-24"
     },

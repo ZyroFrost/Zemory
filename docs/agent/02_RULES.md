@@ -19,11 +19,6 @@
 - `02-3` **Hiện từng bước, không chạy im lặng.** ① Trước mỗi cụm hành động nói một dòng: đang làm gì, vì sao
   · ② mỗi khẳng định kèm nguồn đo · ③ số đo lệch dự đoán ⇒ báo ngay, không dồn về tổng kết · ④ việc chạy nền lâu
   ⇒ báo đang chờ gì.
-- `02-4` **File tạm có đường chết.** Thứ tạo ra để làm việc mà không phải sản phẩm (script dò · dữ liệu đo ·
-  model tải về · ảnh chụp · bản sao thử) nằm trong thư mục nháp của phiên, không nằm trong repo. Đo xong và chắc
-  không dùng lại ⇒ dọn trong phiên; thứ giữ lại phải nhỏ và nói rõ giữ vì gì. Máy canh: `scratchTick` quét thư mục
-  nháp mỗi 6 giờ, dọn phiên quá 7 ngày hoặc khi tổng vượt 2 GB (cũ nhất trước) — chỉ nhận khuôn
-  `<project>/<session>/scratchpad`, không đụng phiên đang chạy hay thư mục vừa ghi trong 6 giờ, fail-open.
 - `02-7` **Chỉ làm đúng việc được giao.** Đụng thứ ngoài yêu cầu ⇒ hỏi trước; không sửa rồi báo sau.
 - `02-67` **Việc chen ngang xếp hàng.** Yêu cầu mới đến giữa chừng không huỷ việc đang làm: báo một dòng ghi
   nhận, làm xong việc hiện tại (hoặc tới mốc an toàn) rồi mới sang việc mới — trừ khi có lệnh dừng · bỏ · làm việc
@@ -103,6 +98,16 @@
 
 ## Hành xử
 - `02-10` **Thao tác xóa phải được user xác nhận trước.** Xóa file, code, hàm, lệnh, chức năng, nội dung docs hoặc folder được coi là bất khả đảo ngược: nêu đối tượng và lý do, chờ chấp thuận rồi mới thực hiện; không tự xóa rồi báo sau. Thành phần dư thừa hoặc không còn dùng: đề xuất, không tự xóa. Bổ sung/mở rộng không cần xác nhận; xóa/thu hẹp luôn cần. **Chốt máy:** guard chặn mọi lệnh xoá file trong repo (`rm` · `del` · `Remove-Item` · `git rm` · xoá trong script) và mọi lần sửa làm MẤT một số luật trong `01`/`02`, khi chưa có cờ `.allow-delete`; thư mục tạm được miễn; bãi bỏ một luật thì giữ số. <!-- gate: guard -->
+- `02-4` **File tạm có đường chết.** Thứ tạo ra để làm việc mà không phải sản phẩm (script dò · dữ liệu đo ·
+  model tải về · ảnh chụp · bản sao thử) nằm trong thư mục nháp của phiên, không nằm trong repo. Dùng xong một file
+  tạm ⇒ xoá ngay; trần: một phiên giữ tối đa 5 file tạm cùng lúc, sắp vượt ⇒ xoá file cũ trước. Thứ giữ lại phải nhỏ
+  và nói rõ giữ vì gì. Thư mục tạm do mã tạo ra (test · script · `mkdtemp`) ⇒ mã đó tự xoá ở `finally`/`after`, kể cả
+  khi lỗi hay bị huỷ; bộ chạy test gom thư mục tạm của mọi tiến trình con vào một thư mục cha của lượt chạy, xoá khi
+  xong, dọn lượt cũ bỏ dở — phép kiểm: số thư mục trong thư mục tạm hệ thống trước và sau một lượt bằng nhau.
+  **Chốt máy:** hook `02-4_scratch-cap` chặn mọi lời gọi tạo file MỚI trong thư mục nháp của phiên
+  (`<tmp>/claude/<project>/<session>/scratchpad`) khi thư mục đó đã có 5 file; không có cờ vượt — xoá file đã dùng
+  xong rồi tạo lại. `scratchTick` quét thư mục nháp mỗi 6 giờ, dọn phiên quá 7 ngày hoặc khi tổng vượt 2 GB (cũ nhất
+  trước), không đụng phiên đang chạy hay thư mục vừa ghi trong 6 giờ, fail-open. <!-- gate: guard -->
 - `02-5` **`.gitignore` là giấu, không phải dọn.** File nháp ghi ra thư mục nháp ngoài repo. Buộc phải ghi
   trong repo (công cụ ép đường dẫn · script cần cwd) ⇒ đặt tên `_scratch_*` và xoá trong cùng lượt (lệnh xoá đi qua
   chốt `02-10`). Thêm pattern vào `.gitignore` không tính là đã dọn: file vẫn nằm trên đĩa và vẫn lớn lên. <!-- gate: hook:precommit-guard -->

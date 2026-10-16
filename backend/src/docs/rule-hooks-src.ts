@@ -164,6 +164,64 @@ function hook(file: string, body: string): { file: string; source: string } {
 }
 
 export const RULE_HOOKS = [
+  // 02-4 — scratch files have a cap: a call that creates a NEW file in the session's scratch folder
+  // (<tmp>/claude/<project>/<session>/scratchpad) is blocked while that folder already holds CAP files. The way through is
+  // deleting what is used up; there is no flag. Writes outside the scratch folder are not this rule's business.
+  hook("02-4_scratch-cap.cjs", String.raw`
+const CAP = 5;
+const norm = (p) => String(p || "").replace(/\\/g, "/").replace(/^\/([a-zA-Z])\//, "$1:/");
+function scratchRoot(abs) {
+  const m = /^(.*\/claude\/[^/]+\/[^/]+\/scratchpad)(?:\/|$)/i.exec(norm(abs));
+  return m ? m[1] : null;
+}
+function filesIn(dir) {
+  const out = [];
+  const walk = (d) => {
+    let list = [];
+    try { list = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of list) {
+      if (out.length > 200) return;
+      const p = d + "/" + e.name;
+      if (e.isDirectory()) walk(p); else out.push(p);
+    }
+  };
+  walk(dir);
+  return out;
+}
+// Paths a shell command creates: redirections, tee, touch and the PowerShell writers. Variables assigned in the same
+// command (SP="...") are substituted first; a path still holding a variable cannot be judged and is skipped.
+function shellTargets(cmd) {
+  const vars = {};
+  for (const m of cmd.matchAll(/(?:^|[\s;&|])([A-Za-z_]\w*)=(?:"([^"]*)"|'([^']*)'|([^\s;&|]+))/g)) vars[m[1]] = m[2] ?? m[3] ?? m[4] ?? "";
+  const sub = (s) => s.replace(/\$\{?([A-Za-z_]\w*)\}?/g, (all, n) => (n in vars ? vars[n] : all));
+  const strip = (t) => t.replace(/^["']|["']$/g, "");
+  const out = [];
+  const tok = "(\"[^\"]+\"|'[^']+'|[^\\s;&|<>]+)";
+  for (const m of cmd.matchAll(new RegExp("(?:^|[^0-9&>])>>?\\s*" + tok, "g"))) out.push(m[1]);
+  for (const m of cmd.matchAll(new RegExp("\\b(?:tee(?:-object)?(?:\\s+-a)?|touch|out-file(?:\\s+-filepath)?|set-content(?:\\s+-path)?|add-content(?:\\s+-path)?|new-item(?:\\s+-path)?)\\s+" + tok, "gi"))) out.push(m[1]);
+  return out.map((t) => sub(strip(t))).filter((t) => t && !t.includes("$") && !/^(\/dev\/null|nul|&\d)$/i.test(t));
+}
+function check(payload, root, policy) {
+  try {
+    const ti = payload.tool_input || {};
+    const base = payload.cwd || root;
+    let targets = [];
+    if (typeof ti.command === "string" && ti.command) targets = shellTargets(ti.command).map((t) => path.resolve(base, t));
+    else if ((payload.tool_name === "Write" || payload.tool_name === "NotebookEdit") && (ti.file_path || ti.notebook_path)) targets = [ti.file_path || ti.notebook_path];
+    for (const t of targets) {
+      const dir = scratchRoot(t);
+      if (!dir) continue;
+      try { if (fs.existsSync(t)) continue; } catch { continue; }
+      const files = filesIn(dir);
+      if (files.length < CAP) continue;
+      return blocked(root, policy, "02-4", "creating " + norm(t).slice(dir.length + 1) + " in the session scratch folder, which already holds " +
+        files.length + " files (cap " + CAP + "):\n" + files.slice(0, 12).map((f) => "  " + f.slice(dir.length + 1)).join("\n") +
+        "\nDelete the files that are used up, then create the new one.");
+    }
+    return null;
+  } catch { return null; }
+}`),
+
   // 02-24 — EOL: a Write that would turn a CRLF file into LF (or back) rewrites every line and buries the real change.
   hook("02-24_eol-keep.cjs", String.raw`
 function style(s) {
