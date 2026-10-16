@@ -2,7 +2,7 @@
 id: Skill_Harness_Structure
 aka: structure
 name: harness-structure
-version: 7
+version: 8
 description: Folder standard and routing table for a non-app project (BI, report, data, docs-only, design) — decides where every file belongs. Use before creating, naming, moving, or tidying any file or folder, or when asked where something should go. Vietnamese triggers - "để ở đâu", "đặt file này vào đâu", "sắp xếp lại thư mục", "tạo thư mục", "dọn cho gọn", "file này thuộc chỗ nào".
 ---
 
@@ -29,7 +29,7 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 │ ═══ TRACKED — nguồn + định nghĩa + deliverable ═══
 ├── AGENTS.md         ★  cửa vào: mô tả dự án + hợp đồng nạp
 ├── docs/             ★  agent/(01·02·05·06) · plan/ · .harness.json
-│       └ 03_STRUCTURE/INDEX.md (Slot_Docs_138_DataDictionary) = TỪ ĐIỂN: metric · cột · thuật ngữ (KHÔNG tạo dictionary.md riêng)
+│       └ 03_STRUCTURE/INDEX.md (Docs_138_DataDictionary) = TỪ ĐIỂN: metric · cột · thuật ngữ (KHÔNG tạo dictionary.md riêng)
 ├── docs_visual/      [opt] sơ đồ · lineage cho NGƯỜI xem (.html/.svg), NGOÀI docs/
 │ ─── DELIVERABLE — chọn theo loại, ≥1 ───
 ├── reports/          ◆  BI: .pbix/.pbip/.twb                    [LFS nếu nặng]
@@ -87,7 +87,7 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 | data làm việc của 1 task | `data/<task>/` (gitignore, mirror `tasks/`) |
 | bản render/publish sinh ra | `exports/` (gitignore) |
 | connection string / token THẬT | `.env` (gitignore) |
-| định nghĩa metric/cột (nguồn sự thật) | `docs/agent/03_STRUCTURE/INDEX.md` (`Slot_Docs_138_DataDictionary`) |
+| định nghĩa metric/cột (nguồn sự thật) | `docs/agent/03_STRUCTURE/INDEX.md` (`Docs_138_DataDictionary`) |
 | sơ đồ luồng/lineage xem trực quan | `docs_visual/` — NGOÀI `docs/`, có `.md` chủ trỏ tới |
 | bản cũ deliverable / trước publish | `attic/` |
 | tài liệu / luật / plan | `docs/` — sửa file `.md` trực tiếp (file wins) |

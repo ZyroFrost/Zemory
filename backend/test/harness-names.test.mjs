@@ -10,18 +10,32 @@ import {
   formatPartName,
   hostSkillName,
   keyOf,
+  parseSetName,
   legacyKey,
   parsePartName,
   slotArea,
 } from "../../dist/docs/harness-names.js";
 
 test("every kind of part name parses into its components and formats back to the same text", () => {
-  for (const name of ["Rule_Keys_14_ChallengeDesign", "Cons_Gate_05_OneNameDictionary", "Struc_Repo_App", "Slot_Backend_012_Commands", "Skill_Doc_WriteDocx"]) {
+  for (const name of ["Rule_Keys_14_ChallengeDesign", "Cons_Gate_05_OneNameDictionary", "Struc_Repo_App", "Backend_012_Commands", "GUI", "Skill_Doc_WriteDocx"]) {
     const p = parsePartName(name);
     assert.ok(p, `must parse: ${name}`);
     assert.equal(formatPartName(p), name);
   }
   assert.deepEqual(parsePartName("Rule_Core_11_VerifyClaims"), { code: "Rule", group: "Core", nn: "11", no: 11, name: "VerifyClaims" });
+  // an inner-layer part names only its own content (plan/28 §0p); the older prefixed forms still read to the same key
+  assert.equal(parsePartName("Backend_012_Commands").code, "Slot");
+  assert.equal(parsePartName("IDE").code, "Host");
+  assert.equal(keyOf(parsePartName("Slot_Backend_012_Commands")), keyOf(parsePartName("Backend_012_Commands")));
+  assert.equal(keyOf(parsePartName("Host_GUI")), keyOf(parsePartName("GUI")));
+  assert.equal(parsePartName("Desktop"), null, "a host is a kind of environment, never an app's name");
+});
+
+test("a set name says only what is fixed for the set: number, structure, host, tier", () => {
+  assert.deepEqual(parseSetName("03_IDE_NonApp_Memory"), { nn: "03", structure: "NonApp", host: "IDE", tier: "Memory" });
+  for (const bad of ["03_Rule_NonApp_Task_Memory", "03_NonApp_IDE_Memory", "03_NonApp_Memory", "03_Desktop_NonApp_Memory", "3_IDE_NonApp_Memory"]) {
+    assert.equal(parseSetName(bad), null, `must be rejected: ${bad}`);
+  }
 });
 
 test("a name with an unknown component or the wrong case is rejected (a red gate for store parts)", () => {

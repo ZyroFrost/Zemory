@@ -2,14 +2,14 @@
 id: Skill_Task_Upload
 aka: upload
 name: task-upload
-version: 5
+version: 6
 description: Publish a finished deliverable to its destination (BI workspace, Drive, SharePoint, shared folder). Use when the deliverable is complete and needs to go out, or when asked to publish, push, send, or upload the report. Vietnamese triggers - "đẩy lên", "publish", "up báo cáo", "đưa lên workspace", "gửi bản cuối", "đăng lên".
 ---
 
 # upload — đẩy / publish sản phẩm lên đích
 
 > Kích hoạt: deliverable đã xong → đưa lên đích (workspace BI · Drive · SharePoint · thư mục chung).
-> Xem `Slot_Scripts_128_Scripts` — KÉO / ĐIỀN / UPLOAD file.
+> Xem `Scripts_128_Scripts` — KÉO / ĐIỀN / UPLOAD file.
 >
 > ⚠️ Đây là thao tác **khó đảo ngược**. Đẩy đè lên bản đang chạy giống như `git push` — phải được
 > cho phép rõ ràng khi đích là môi trường thật/production.
