@@ -33,7 +33,8 @@ const path = require("node:path");
 function check(payload) {
   const ti = payload.tool_input || {};
   if (payload.tool_name !== "Write" || !String(ti.content || "").includes("FORBIDDEN")) return null;
-  const body = fs.readFileSync(path.join(__dirname, "RULE.md"), "utf8").split("---").slice(2).join("---").trim();
+  const own = path.join(__dirname, path.basename(__dirname) + ".md");
+  const body = fs.readFileSync(fs.existsSync(own) ? own : path.join(__dirname, "RULE.md"), "utf8").split("---").slice(2).join("---").trim();
   return "BLOCKED (guard layer 1): rule 02-2 - forbidden word\\n\\nThe rule:\\n" + body;
 }
 module.exports = { check };
@@ -86,7 +87,8 @@ function repo(t) {
 }
 
 const verdicts = (r) => Object.fromEntries(r.steps.map((s) => [s.part.folder, s.verdict]));
-const rule = (root, folder) => join(root, "docs", "agent", "01_RULES", folder, "RULE.md");
+// a repo copy carries its header file under the folder's own name (plan/28 §0p); the store fixture keeps the old name
+const rule = (root, folder) => join(root, "docs", "agent", "01_RULES", folder, `${folder}.md`);
 
 test("init assembles every part at its numbered place, stamped with from:, plus the kit's own files and marker", (t) => {
   const st = store(t);
@@ -101,11 +103,11 @@ test("init assembles every part at its numbered place, stamped with from:, plus 
     assert.ok(from && from.version === 1 && from.folder === f, `${f} carries a from: line`);
   }
   assert.ok(existsSync(join(root, "docs", "agent", "01_RULES", "02-2_beta", "hook.cjs")), "the hook travels with its rule");
-  assert.ok(existsSync(join(root, "docs", "agent", "03_STRUCTURE", "_Struc_Slot", "03-1_entry", "SLOT.md")), "a slot lands in the inner layer");
+  assert.ok(existsSync(join(root, "docs", "agent", "03_STRUCTURE", "_Struc_Slot", "03-1_entry", "03-1_entry.md")), "a slot lands in the inner layer");
   assert.ok(existsSync(join(root, "docs", "agent", "03_STRUCTURE", "Struc_Repo_App", "structure.json")), "the kit's structure lands beside it");
   assert.ok(!existsSync(join(root, "docs", "agent", "03_STRUCTURE", "_Struc_Slot", "03-1_entry", "seed")), "seeds are written at their paths, not copied with the slot");
   // a skill: its source in the harness, its host build inside the source, and the build plugged where the host loads it
-  assert.ok(existsSync(join(root, "docs", "agent", "04_SKILLS", "sk", "SKILL.md")), "the skill's source lands in the harness");
+  assert.ok(existsSync(join(root, "docs", "agent", "04_SKILLS", "sk", "sk.md")), "the skill's source lands in the harness");
   assert.ok(existsSync(join(root, "docs", "agent", "04_SKILLS", "sk", "Claude", "sk", "SKILL.md")), "the host build sits inside the source");
   assert.ok(existsSync(join(root, ".claude", "skills", "sk", "SKILL.md")), "the host build is plugged where the host loads it");
   assert.ok(!existsSync(join(root, ".claude", "skills", "sk", "gate.json")), "gates stay with the source; the host build carries none");
@@ -119,7 +121,7 @@ test("suggested constitution articles are offered once: a declined one never com
   const st = store(t);
   const root = repo(t);
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
-  const art = join(root, "docs", "agent", "02_CONSTITUTION", "01-1_secrets", "RULE.md");
+  const art = join(root, "docs", "agent", "02_CONSTITUTION", "01-1_secrets", "01-1_secrets.md");
   assert.ok(existsSync(art), "init offers the article");
   // The store revises the article; the repo's kept copy stays as it is.
   const p = join(st.s, "02_CONSTITUTION", "01-1_secrets", "RULE.md");
@@ -269,7 +271,8 @@ test("a folder without from: is the repo's own and is never touched", (t) => {
   put(root, "docs/agent/01_RULES/02-1_alpha/RULE.md", "---\nid: 02-1\n---\nmine\n");
   const r = applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
   assert.equal(verdicts(r)["02-1_alpha"], "own");
-  assert.equal(readFileSync(rule(root, "02-1_alpha"), "utf8"), "---\nid: 02-1\n---\nmine\n");
+  assert.equal(readFileSync(join(root, "docs", "agent", "01_RULES", "02-1_alpha", "RULE.md"), "utf8"), "---\nid: 02-1\n---\nmine\n");
+  assert.ok(!existsSync(rule(root, "02-1_alpha")), "nothing was written beside the repo's own file");
 });
 
 test("generated files in a part folder never count as a local edit, and CRLF does not change a hash", (t) => {
@@ -370,7 +373,7 @@ test("a skill door accepts any copy of the skill: the source, the host build, or
   policy.read_first = { ...policy.read_first, required: [], sections: [], triggers: policy.read_first.triggers.filter((x) => x.when === "path_prefix") };
   const latch = join(hooks, "02-59_read-first.cjs");
   const { readFirst } = require(latch);
-  const src = join(root, "docs", "agent", "04_SKILLS", "sk", "SKILL.md");
+  const src = join(root, "docs", "agent", "04_SKILLS", "sk", "sk.md");
   const text = readFileSync(src, "utf8");
   const tx = (lines) => { const p = join(root, `t-${Math.random().toString(36).slice(2)}.jsonl`); writeFileSync(p, lines.map((l) => JSON.stringify(l)).join("\n") + "\n"); return p; };
   const write = (transcript_path) => readFirst({ tool_name: "Write", tool_input: { file_path: join(root, "frontend", "a.js"), content: "x" }, transcript_path }, root, policy);
@@ -393,7 +396,7 @@ test("a skill assembled into the host folder before the two layers moves to its 
   const r = applyKit(root, { apply: true, storeDir: st.s });
   const step = r.steps.find((s) => s.part.folder === "sk");
   assert.match(step.renameFrom ?? "", /\.claude[\\/]skills[\\/]sk$/, "the host copy is the one found");
-  assert.match(readFileSync(join(agentSk, "SKILL.md"), "utf8"), /REPO EDIT/, "the edit moved with it into the source");
+  assert.match(readFileSync(join(agentSk, "sk.md"), "utf8"), /REPO EDIT/, "the edit moved with it into the source");
   assert.match(readFileSync(join(host, "SKILL.md"), "utf8"), /REPO EDIT/, "and the host build is written from that source");
   assert.ok(!existsSync(join(host, "gate.json")), "the host build carries no gates");
 });
@@ -434,8 +437,8 @@ test("a repo assembled before the two layers: sync moves its flat slots into _St
   const r = applyKit(root, { apply: true, storeDir: st.s });
   assert.ok(r.renamedShelves.some((x) => /2 slot\(s\) → 03_STRUCTURE\/_Struc_Slot\//.test(x)), JSON.stringify(r.renamedShelves));
   assert.ok(!r.steps.some((s) => s.verdict === "conflict" || s.verdict === "own"), "nothing conflicts, nothing is mistaken for the repo's own");
-  assert.ok(!existsSync(join(shelf, "03-1_entry")) && existsSync(join(shelf, "_Struc_Slot", "03-1_entry", "SLOT.md")));
-  assert.ok(existsSync(join(shelf, "Struc_Repo_App", "STRUCTURE.md")), "the structure is assembled");
+  assert.ok(!existsSync(join(shelf, "03-1_entry")) && existsSync(join(shelf, "_Struc_Slot", "03-1_entry", "03-1_entry.md")));
+  assert.ok(existsSync(join(shelf, "Struc_Repo_App", "Struc_Repo_App.md")), "the structure is assembled");
   const again = applyKit(root, { apply: false, storeDir: st.s });
   assert.deepEqual(new Set(Object.values(verdicts(again))), new Set(["current"]), "and a second pass finds nothing to do");
   assert.equal(conform(root).items.find((i) => i.check === "slot-layer"), undefined);
@@ -454,4 +457,22 @@ test("conform: a slot outside the inner layer and a structure naming a missing s
   assert.ok(flat && flat.level === "blocking" && /Slot_Root_099_Stray/.test(flat.samples.join(" ")));
   const dangling = items().find((i) => i.check === "structure-slot");
   assert.ok(dangling && dangling.level === "blocking" && /Slot_Root_098_Gone/.test(dangling.samples.join(" ")));
+});
+
+test("a copy whose header file has the old name (RULE.md) is renamed to the folder's name, content and hash kept", (t) => {
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const own = rule(root, "02-1_alpha");
+  const old = join(dirname(own), "RULE.md");
+  const text = readFileSync(own, "utf8");
+  renameSync(own, old); // a repo assembled before plan/28 §0p
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  const step = r.steps.find((s) => s.part.folder === "02-1_alpha");
+  assert.equal(step.verdict, "clean", "the old name is not mistaken for a local edit");
+  assert.match(step.reason ?? "", /renamed/);
+  assert.ok(existsSync(own) && !existsSync(old), "the header file now carries the folder's name, the old one is gone");
+  assert.equal(readFileSync(own, "utf8"), text, "the content, from: line included, is unchanged");
+  const again = applyKit(root, { apply: false, storeDir: st.s });
+  assert.equal(again.steps.find((s) => s.part.folder === "02-1_alpha").verdict, "current");
 });

@@ -135,7 +135,7 @@ Người đọc kết quả của bạn làm nghiệp vụ, không phải kỹ s
 | 24 | `.claude/skills/write-docx/reference/edit-traps.md` | `<RAW>/.claude/skills/write-docx/reference/edit-traps.md` | 86 |
 | 25 | `.claude/skills/write-style/SKILL.md` | `<RAW>/.claude/skills/write-style/SKILL.md` | 91 |
 | 26 | `.claude/skills/sync-path/SKILL.md` | `<RAW>/.claude/skills/sync-path/SKILL.md` | 89 |
-| 27 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 1155 |
+| 27 | `docs/hooks/guard.cjs` | `<RAW>/hooks/guard.cjs` | 1157 |
 | 28 | `docs/hooks/policy.json` | `<RAW>/hooks/policy.json` | 127 |
 | 29 | `docs/hooks/02-59_read-first.cjs` | `<RAW>/hooks/02-59_read-first.cjs` | 373 |
 | 30 | `.claude/skills/plan-trim/SKILL.md` | `<RAW>/.claude/skills/plan-trim/SKILL.md` | 66 |

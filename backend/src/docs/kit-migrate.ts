@@ -23,7 +23,7 @@ import { ruleBlocks } from "./rule-core.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { hpGateRows } from "./validate.js";
 import { historyOfRel, revText } from "./standard.js";
-import { findKit, hostSkillOf, isFolderHarness, kitParts, listParts, shelfDir, STORE_DIR, type Kit } from "./store.js";
+import { findKit, hostSkillOf, isFolderHarness, kitParts, listParts, mainPath, shelfDir, STORE_DIR, type Kit } from "./store.js";
 
 export interface MigrateReport {
   root: string;
@@ -236,7 +236,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
     mkdirSync(d, { recursive: true });
     const row = rows.get(a.n);
     const rowLine = row ? `\n\n- Cổng khai ở bảng cổng hiến pháp cũ: ${[row.kind, row.gate].filter(Boolean).join(" — ")} *(đổi thành \`gate.json\` khi có chốt máy thật)*` : "";
-    writeFileSync(join(d, "RULE.md"), `---\nid: Cons_${a.n}\naka: 01-${a.n}\nname: ${slugOf(a.title)}\nversion: 1\nkind: judgment\n---\n# ${basename(d)} ${a.title}\n\n${a.body}${rowLine}\n`);
+    writeFileSync(join(d, `${basename(d)}.md`), `---\nid: Cons_${a.n}\naka: 01-${a.n}\nname: ${slugOf(a.title)}\nversion: 1\nkind: judgment\n---\n# ${basename(d)} ${a.title}\n\n${a.body}${rowLine}\n`);
   }
   rmSync(join(agent, "01_CONSTITUTION.md"), { force: true });
 
@@ -251,7 +251,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
     const d = join(agent, SHELF.rules, partFolder("Rule", Number(o.id.split("-")[1]), o.gate ? "Gate" : "Core", title(o.text)));
     mkdirSync(d, { recursive: true });
     const kind = o.gate ? "content" : "judgment";
-    writeFileSync(join(d, "RULE.md"), `---\nid: ${keyOfId(o.id)}\naka: ${o.id}\nname: ${slugOf(title(o.text))}\nversion: 1\nkind: ${kind}\n---\n# ${basename(d)} ${title(o.text)}\n\n${o.text.trim()}\n`);
+    writeFileSync(join(d, `${basename(d)}.md`), `---\nid: ${keyOfId(o.id)}\naka: ${o.id}\nname: ${slugOf(title(o.text))}\nversion: 1\nkind: ${kind}\n---\n# ${basename(d)} ${title(o.text)}\n\n${o.text.trim()}\n`);
     if (o.gate) writeFileSync(join(d, "gate.json"), JSON.stringify({ gate: o.gate }) + "\n");
   }
 
@@ -283,7 +283,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   for (const l of local) {
     const dir = listParts(agent, SHELF.rules).find((p) => p.key === keyOfId(l.id))?.dir;
     if (!dir) continue;
-    const p = join(dir, "RULE.md");
+    const p = mainPath(dir, "RULE.md");
     writeFileSync(p, readFileSync(p, "utf8").replace(/\s*$/, "") +
       `\n\n## Bản của repo trước khi chuyển\n\n> Chữ của repo cho luật này khác bản chuẩn. Đối chiếu, gộp phần còn cần vào bên trên, rồi xoá mục này.\n\n${l.text.trim()}\n`);
   }
@@ -337,7 +337,7 @@ export function repointLinks(root: string, apply: boolean): string[] {
         const art = existsSync(shelfDir(agentDir, SHELF.constitution))
           ? listParts(agentDir, SHELF.constitution).find((p) => p.key === `Cons_${Number(num)}`)?.folder
           : undefined;
-        return art ? `[${text}](${pre}${SHELF.constitution}/${art}/RULE.md)` : whole;
+        return art ? `[${text}](${pre}${SHELF.constitution}/${art}/${art}.md)` : whole;
       });
       if (n !== t) {
         if (apply) writeFileSync(p, n);

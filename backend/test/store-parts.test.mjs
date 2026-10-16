@@ -2,7 +2,7 @@
 // detail, every part has a well-formed header, a changed part bumped its version, and every built kit lists parts that
 // exist. Negative cases run on a temp store so a checker that never fires cannot pass.
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { RULE_HOOKS } from "../../dist/docs/rule-hooks-src.js";
 import { SQL_GATE_SOURCE } from "../../dist/docs/sql-gate-src.js";
 import { SLOT_ROLES } from "../../dist/docs/structure-tree.js";
@@ -29,15 +29,23 @@ test("negative: a missing shelf, an empty shelf and a missing Archive are each r
   mkdirSync(join(s, "02_CONSTITUTION"), { recursive: true });
   put(s, "02_CONSTITUTION/PURPOSE.md", "# purpose\n"); // a shelf file is not a part
   put(s, "04_SKILLS/Skill_Doc_X/SKILL.md", "---\nname: x\nversion: 1\n---\nx\n");
+  put(s, "05_HOSTS/Host_Desktop/Host_Desktop.md", "# named after an app, not a kind\n");
+  put(s, "05_HOSTS/Host_IDE/notes.md", "# no header file\n");
   assert.deepEqual(storeShelfFindings(s), [
     "02_CONSTITUTION: shelf has no part",
     "03_STRUCTURE: shelf missing",
+    "05_HOSTS/Host_Desktop: not a host name (Host_GUI|IDE|CLI)",
+    "05_HOSTS/Host_IDE: no Host_IDE.md",
     "Archive: shelf missing",
   ]);
   put(s, "02_CONSTITUTION/Cons_Core_01_Y/RULE.md", "---\nid: Cons_1\nname: y\nversion: 1\n---\ny\n");
   put(s, "03_STRUCTURE/_Struc_Slot/Slot_Root_001_Entry/SLOT.md", "---\nid: Slot_1\nname: entry\nversion: 1\npath: AGENTS.md\n---\ne\n");
+  rmSync(join(s, "05_HOSTS", "Host_Desktop"), { recursive: true, force: true });
+  put(s, "05_HOSTS/Host_IDE/Host_IDE.md", "---\nid: Host_IDE\n---\n# IDE\n");
   mkdirSync(join(s, "Archive"), { recursive: true });
   assert.deepEqual(storeShelfFindings(s), []);
+  rmSync(join(s, "05_HOSTS"), { recursive: true, force: true });
+  assert.deepEqual(storeShelfFindings(s), ["05_HOSTS: shelf missing"], "the hosts shelf is a shelf like the others");
 });
 
 test("every gate example in the store behaves as declared, and every hook or slot gate has examples", () => {

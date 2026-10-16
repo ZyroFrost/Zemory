@@ -15,6 +15,7 @@ import {
   frontMatter,
   kitParts,
   MAIN_FILE,
+  mainPath,
   hostSkillOf,
   planAssembly,
   plugSkills,
@@ -139,7 +140,7 @@ function writeSkillsBlock(agentDir: string, skills: Part[], t: AssemblyTarget): 
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const head = text.slice(a, text.indexOf("\n", a) + 1).replace(/\r?\n$/, "");
   const rows = skills.map((s) => {
-    const copy = join(targetDir(t, s), MAIN_FILE[SHELF.skills]);
+    const copy = mainPath(targetDir(t, s), MAIN_FILE[SHELF.skills]);
     const from = existsSync(copy) ? String(frontMatter(readFileSync(copy, "utf8"))?.meta.from ?? "") : "";
     return `| \`${s.folder}/\` | \`.claude/skills/${hostSkillOf(s)}/\` | ${from || "(not assembled)"} |`;
   });

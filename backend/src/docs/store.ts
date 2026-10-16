@@ -14,10 +14,10 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
-import { LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
+import { HOST_KIND, HOSTS_SHELF, LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
 import { viName } from "./vi-name-judge.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
@@ -47,9 +47,31 @@ export const STRUCTURE_MAIN = "STRUCTURE.md";
  *  compared or merged after that — not part of the slot's content, not copied with it. */
 export const SEED_DIR = "seed";
 
-/** The header file of a part: an outer structure carries STRUCTURE.md, every other part its shelf's file. */
+/**
+ * The KEY of a part's header file inside the tool: an outer structure's STRUCTURE.md, every other part its shelf's file.
+ * On disk the header file is named after its folder (plan/28 §0p: `Rule_Gate_04_ScratchFiles/Rule_Gate_04_ScratchFiles.md`);
+ * an older copy still has the key name. Every file map is keyed by the key name whatever the file is called on disk, so a
+ * rename never changes a hash and a copy assembled before still matches its `from:` line (`readPartFiles` · `filesAt` read
+ * it that way, `applyAssembly` writes the key back under the folder's name).
+ */
 export function mainOf(p: Pick<Part, "shelf" | "folder">): string {
   return p.shelf === SHELF.structure && isStructureFolder(p.folder) ? STRUCTURE_MAIN : MAIN_FILE[p.shelf];
+}
+
+/** The header file's name on disk: the folder's own name. */
+export function ownMainName(dir: string): string {
+  return `${basename(dir)}.md`;
+}
+
+/** The header file of a part folder on disk: its own name, else the key name an older copy has. */
+export function mainPath(dir: string, key: string): string {
+  const own = join(dir, ownMainName(dir));
+  return existsSync(own) || !existsSync(join(dir, key)) ? own : join(dir, key);
+}
+
+/** Does the folder hold a header file, under either name? */
+export function hasMain(dir: string, key: string): boolean {
+  return existsSync(join(dir, ownMainName(dir))) || existsSync(join(dir, key));
 }
 
 function isStructureFolder(folder: string): boolean {
@@ -90,7 +112,7 @@ export function renameLegacyShelves(agentDir: string): string[] {
   if (existsSync(st)) {
     let moved = 0;
     for (const e of readdirSync(st, { withFileTypes: true })) {
-      if (!e.isDirectory() || e.name === SLOT_LAYER || !existsSync(join(st, e.name, MAIN_FILE[SHELF.structure]))) continue;
+      if (!e.isDirectory() || e.name === SLOT_LAYER || isStructureFolder(e.name) || !hasMain(join(st, e.name), MAIN_FILE[SHELF.structure])) continue;
       const to = join(st, SLOT_LAYER, e.name);
       if (existsSync(to)) continue;
       mkdirSync(join(st, SLOT_LAYER), { recursive: true });
@@ -232,7 +254,13 @@ export function hashFiles(files: Map<string, string>, main: string): string {
  *  guard and its policy in `02-55` — so they never count as a local edit and are never merged). */
 export function readPartFiles(dir: string, main?: string): Map<string, string> {
   const m = new Map<string, string>();
-  for (const f of partFiles(dir)) m.set(f, readFileSync(join(dir, f), "utf8"));
+  const own = ownMainName(dir);
+  const files = partFiles(dir);
+  for (const f of files) {
+    // the header file is keyed by its key name (`mainOf`); a stale key-named file beside the own-named one is left out
+    if (main && f === main && main !== own && files.includes(own)) continue;
+    m.set(main && f === own ? main : f, readFileSync(join(dir, f), "utf8"));
+  }
   const head = main ? frontMatter(m.get(main) ?? "")?.meta.generated : undefined;
   for (const g of Array.isArray(head) ? head : typeof head === "string" && head ? [head] : []) m.delete(g);
   return m;
@@ -246,7 +274,7 @@ export function partHash(dir: string, shelf: Shelf, main = MAIN_FILE[shelf]): st
 
 /** One part folder. `folder` is the path below the shelf: `_Struc_Slot/Slot_…` for a slot in the inner layer. */
 export function readPart(dir: string, shelf: Shelf, mainName = MAIN_FILE[shelf]): Part | null {
-  const main = join(dir, mainName);
+  const main = mainPath(dir, mainName);
   if (!existsSync(main)) return null;
   const text = readFileSync(main, "utf8");
   const meta = frontMatter(text)?.meta ?? {};
@@ -309,6 +337,9 @@ export function listParts(root: string, shelf: Shelf): Part[] {
   const read = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       if (!e.isDirectory()) continue;
+      // the outer structures are read by listStructures: with every header file named after its folder, only the folder
+      // name tells a structure from a slot
+      if (shelf === SHELF.structure && (e.name === SLOT_LAYER || isStructureFolder(e.name))) continue;
       const p = readPart(join(d, e.name), shelf);
       if (p) out.push(p);
     }
@@ -595,7 +626,7 @@ export function targetDir(t: AssemblyTarget, p: Pick<Part, "shelf" | "folder">):
  */
 export function findCopy(t: AssemblyTarget, part: Part): string | null {
   const exact = targetDir(t, part);
-  if (existsSync(join(exact, mainOf(part)))) return exact;
+  if (hasMain(exact, mainOf(part))) return exact;
   const byKey = listAllParts(t.agentDir, part.shelf).find((p) => p.key === part.key)?.dir;
   if (byKey) return byKey;
   if (part.shelf !== SHELF.skills) return null;
@@ -631,14 +662,17 @@ export function plugSkills(t: AssemblyTarget, skills: Part[]): PlugResult {
   const res: PlugResult = { plugged: [], skipped: [] };
   for (const part of skills) {
     const src = targetDir(t, part);
-    if (!existsSync(join(src, MAIN_FILE[SHELF.skills]))) continue;
+    if (!hasMain(src, MAIN_FILE[SHELF.skills])) continue;
     const host = hostSkillOf(part);
-    const files = partFiles(src).filter((f) => f !== "gate.json");
+    // the host build is named the host's way: the source's own-named header file becomes SKILL.md (Agent Skills)
+    const srcMain = basename(mainPath(src, MAIN_FILE[SHELF.skills]));
+    const files = partFiles(src).filter((f) => f !== "gate.json" && !(f === MAIN_FILE[SHELF.skills] && srcMain !== f));
+    const buildName = (f: string): string => (f === srcMain ? MAIN_FILE[SHELF.skills] : f);
     const build = join(src, "Claude", host);
     rmSync(join(src, "Claude"), { recursive: true, force: true });
     for (const f of files) {
-      mkdirSync(dirname(join(build, f)), { recursive: true });
-      writeFileSync(join(build, f), readFileSync(join(src, f)));
+      mkdirSync(dirname(join(build, buildName(f))), { recursive: true });
+      writeFileSync(join(build, buildName(f)), readFileSync(join(src, f)));
     }
     const dest = join(t.skillsDir, host);
     const destMain = join(dest, MAIN_FILE[SHELF.skills]);
@@ -647,7 +681,7 @@ export function plugSkills(t: AssemblyTarget, skills: Part[]): PlugResult {
       continue;
     }
     rmSync(dest, { recursive: true, force: true });
-    for (const f of files) {
+    for (const f of files.map(buildName)) {
       mkdirSync(dirname(join(dest, f)), { recursive: true });
       writeFileSync(join(dest, f), readFileSync(join(build, f)));
     }
@@ -697,7 +731,7 @@ export function planAssembly(parts: Part[], t: AssemblyTarget): AssemblyStep[] {
     if (!write) {
       // Nothing to bring (current): keep the repo's content, only restamp `from:` with the new folder name.
       const main = mainOf(part);
-      const text = readFileSync(join(at, main), "utf8");
+      const text = readFileSync(mainPath(at, main), "utf8");
       const old = parseFrom(String(frontMatter(text)?.meta.from ?? ""));
       write = new Map([[main, stampFrom(text, fromLine(part, old?.hash ?? partHash(part.dir, part.shelf, main)))]]);
     }
@@ -714,7 +748,7 @@ function planOne(part: Part, t: AssemblyTarget, target = targetDir(t, part)): As
     out.set(main, stampFrom(files.get(main) ?? "", fromLine(part, hash)));
     return out;
   };
-  if (!existsSync(join(target, main))) {
+  if (!hasMain(target, main)) {
     // Only the part's own generated files there (the guard written before 02-55 was assembled) = not assembled yet.
     const g = frontMatter(theirs.get(main) ?? "")?.meta.generated;
     const gen = new Set(Array.isArray(g) ? g : typeof g === "string" && g ? [g] : []);
@@ -726,9 +760,12 @@ function planOne(part: Part, t: AssemblyTarget, target = targetDir(t, part)): As
   const from = parseFrom(String(frontMatter(mine.get(main) ?? "")?.meta.from ?? ""));
   if (!from) return { part, target, verdict: "own", reason: "no from: line — the repo's own folder" };
   const mineHash = hashFiles(mine, main);
+  // A copy whose header file still has an older name: the content stays as it is, only the name moves (see mainOf).
+  const renameOnly = (): AssemblyStep => ({ part, target, verdict: "clean", write: new Map([[main, mine.get(main) ?? ""]]), remove: [], reason: "header file renamed to the folder's name" });
+  const oldName = !existsSync(join(target, ownMainName(target)));
   if (mineHash === theirsHash) {
     // Same content; only refresh the stamp when it names an older version/hash.
-    if (from.hash === theirsHash && from.version === part.version) return { part, target, verdict: "current" };
+    if (from.hash === theirsHash && from.version === part.version) return oldName ? renameOnly() : { part, target, verdict: "current" };
     return { part, target, verdict: "clean", write: stamped(theirs, theirsHash), remove: [] };
   }
   if (mineHash === from.hash) {
@@ -736,7 +773,7 @@ function planOne(part: Part, t: AssemblyTarget, target = targetDir(t, part)): As
     return { part, target, verdict: "clean", write: stamped(theirs, theirsHash), remove };
   }
   // Edited here, but the part has not changed since it was assembled (or last merged): nothing to bring, the edit stays.
-  if (from.hash === theirsHash) return { part, target, verdict: "current", reason: "edited here; the store part has not changed since" };
+  if (from.hash === theirsHash) return oldName ? renameOnly() : { part, target, verdict: "current", reason: "edited here; the store part has not changed since" };
   // Edited here: three-way, per file, against the part as it was at assembly time.
   const base = baseFiles(part, from.hash);
   if (!base) return { part, target, verdict: "conflict", reason: `edited here, and the base #${from.hash} is not in zemory's history` };
@@ -771,11 +808,21 @@ export function applyAssembly(steps: AssemblyStep[]): AssemblyStep[] {
       mkdirSync(dirname(s.target), { recursive: true });
       renameSync(s.renameFrom, s.target);
     }
-    for (const f of s.remove ?? []) rmSync(join(s.target, f), { force: true });
+    // The header file is keyed by its key name and written under the folder's own name; whatever header file the copy
+    // had under another name (the key name of an older copy, the old folder name after a rename) goes.
+    const key = mainOf(s.part);
+    const own = ownMainName(s.target);
+    const disk = (f: string): string => (f === key ? own : f);
+    for (const f of s.remove ?? []) rmSync(join(s.target, disk(f)), { force: true });
     for (const [f, text] of s.write) {
-      const p = join(s.target, f);
+      const p = join(s.target, disk(f));
       mkdirSync(dirname(p), { recursive: true });
       writeFileSync(p, text);
+    }
+    if (s.write.has(key)) {
+      for (const stale of [key, s.renameFrom ? ownMainName(s.renameFrom) : ""]) {
+        if (stale && stale !== own) rmSync(join(s.target, stale), { force: true });
+      }
     }
     done.push(s);
   }
@@ -798,13 +845,18 @@ function partGit(dir: string): { git: (args: string[]) => string; prefix: string
 }
 
 /** The files of a part folder at one commit (full names from git, the folder prefix stripped). */
-function filesAt(pg: { git: (args: string[]) => string; prefix: string }, sha: string): Map<string, string> {
+function filesAt(pg: { git: (args: string[]) => string; prefix: string }, sha: string, main?: string): Map<string, string> {
   const files = new Map<string, string>();
-  for (const f of pg.git(["ls-tree", "-r", "--full-name", "--name-only", sha, "--", "."]).split(/\r?\n/).filter(Boolean)) {
-    const rel = f.slice(pg.prefix.length);
-    if (rel.includes("/") && NOT_CONTENT.includes(rel.split("/")[0])) continue; // host builds · seed: not content
-    files.set(rel, pg.git(["show", `${sha}:${f}`]));
-  }
+  const own = `${pg.prefix.replace(/\/$/, "").split("/").pop() ?? ""}.md`;
+  const names = pg.git(["ls-tree", "-r", "--full-name", "--name-only", sha, "--", "."]).split(/\r?\n/).filter(Boolean);
+  const rels = names.map((f) => f.slice(pg.prefix.length));
+  names.forEach((f, i) => {
+    const rel = rels[i];
+    if (rel.includes("/") && NOT_CONTENT.includes(rel.split("/")[0])) return; // host builds · seed: not content
+    // the header file under the key name, whichever name it had at that commit (see mainOf)
+    if (main && rel === main && main !== own && rels.includes(own)) return;
+    files.set(main && rel === own ? main : rel, pg.git(["show", `${sha}:${f}`]));
+  });
   return files;
 }
 
@@ -825,7 +877,7 @@ export function baseFiles(part: Part, hash: string): Map<string, string> | null 
   if (pg) {
     try {
       for (const sha of pg.git(["log", "--format=%H", "--", "."]).split(/\r?\n/).filter(Boolean)) {
-        const files = filesAt(pg, sha);
+        const files = filesAt(pg, sha, main);
         if (matches(files)) {
           found = files;
           break;
@@ -859,19 +911,30 @@ function baseAcrossRenames(part: Part, matches: (files: Map<string, string>) => 
       const names = pg.git(["ls-tree", "-r", "--full-name", "--name-only", sha, "--", ...paths]).split(/\r?\n/).filter(Boolean);
       // A part folder = a folder holding the header file, at any depth of the shelf; its content leaves out the folders
       // that are not content (host builds · seed).
-      const folders = new Map<string, string[]>();
+      // The header file under either name: the key name, or the folder's own name (see mainOf).
+      const folders = new Map<string, { head: string; files: string[] }>();
       for (const f of names) {
-        if (!f.endsWith("/" + main)) continue;
-        const prefix = f.slice(0, f.length - main.length);
-        folders.set(prefix, names.filter((n) => n.startsWith(prefix) && !NOT_CONTENT.includes(n.slice(prefix.length).split("/")[0]) || n === f));
+        const segs = f.split("/");
+        const file = segs.pop() ?? "";
+        const leaf = segs[segs.length - 1] ?? "";
+        if (file !== main && file !== `${leaf}.md`) continue;
+        const prefix = f.slice(0, f.length - file.length);
+        if (folders.has(prefix) && file === main) continue; // the own-named file wins over a stale key-named one
+        folders.set(prefix, {
+          head: f,
+          files: names.filter((n) => n.startsWith(prefix) && !NOT_CONTENT.includes(n.slice(prefix.length).split("/")[0])),
+        });
       }
-      for (const [prefix, files] of folders) {
-        const head = pg.git(["show", `${sha}:${prefix}${main}`]);
+      for (const [prefix, { head: headPath, files }] of folders) {
+        const head = pg.git(["show", `${sha}:${headPath}`]);
         const folder = prefix.split("/").slice(-2, -1)[0] ?? "";
         const id = String(frontMatter(head)?.meta.id ?? "");
         if (partKey(id, folder) !== part.key) continue;
         const map = new Map<string, string>();
-        for (const f of files) map.set(f.slice(prefix.length), f === prefix + main ? head : pg.git(["show", `${sha}:${f}`]));
+        for (const f of files) {
+          if (f !== headPath && (f === prefix + main || f === `${prefix}${folder}.md`)) continue;
+          map.set(f === headPath ? main : f.slice(prefix.length), f === headPath ? head : pg.git(["show", `${sha}:${f}`]));
+        }
         if (matches(map)) return map;
       }
     }
@@ -886,16 +949,33 @@ function baseAcrossRenames(part: Part, matches: (files: Map<string, string>) => 
 /** The store's archive shelf: retired parts, kept citable. */
 export const ARCHIVE_SHELF = "Archive";
 
+/** The hosts on shelf 05 (`Host_GUI` · `Host_IDE` · `Host_CLI`): folder name, kind, header file. Whether a repo carries one is not settled (plan/28 §0p E). */
+export function listHosts(storeDir = STORE_DIR): { folder: string; kind: string | null; main: string }[] {
+  const dir = join(storeDir, HOSTS_SHELF);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .map((e) => ({ folder: e.name, kind: parsePartName(e.name)?.code === "Host" ? (parsePartName(e.name)?.name ?? null) : null, main: join(dir, e.name, `${e.name}.md`) }))
+    .sort((a, b) => a.folder.localeCompare(b.folder));
+}
+
 /**
  * A store shelf that is missing or empty (plan/28 §0p A1): every repo pulls the store to pick parts from, so every shelf
- * is always there under its own name, a numbered shelf with at least one part. Shelf 05 and Tools/ join the list when
- * they are built.
+ * is always there under its own name, a numbered shelf with at least one part. Shelf 05 holds one host per kind of
+ * environment, each named by the dictionary with its header file. Tools/ joins the list when it is built.
  */
 export function storeShelfFindings(storeDir = STORE_DIR): string[] {
   const out: string[] = [];
   for (const shelf of SHELVES) {
     if (!existsSync(join(storeDir, shelf))) out.push(`${shelf}: shelf missing`);
     else if (listParts(storeDir, shelf).length === 0) out.push(`${shelf}: shelf has no part`);
+  }
+  const hosts = listHosts(storeDir);
+  if (!existsSync(join(storeDir, HOSTS_SHELF))) out.push(`${HOSTS_SHELF}: shelf missing`);
+  else if (!hosts.length) out.push(`${HOSTS_SHELF}: shelf has no part`);
+  for (const h of hosts) {
+    if (!h.kind) out.push(`${HOSTS_SHELF}/${h.folder}: not a host name (Host_${HOST_KIND.join("|")})`);
+    else if (!existsSync(h.main)) out.push(`${HOSTS_SHELF}/${h.folder}: no ${h.folder}.md`);
   }
   if (!existsSync(join(storeDir, ARCHIVE_SHELF))) out.push(`${ARCHIVE_SHELF}: shelf missing`);
   return out;
@@ -911,13 +991,13 @@ export function unbumpedParts(storeDir = STORE_DIR): string[] {
       if (!pg) continue;
       let head: Map<string, string>;
       try {
-        head = filesAt(pg, "HEAD");
+        head = filesAt(pg, "HEAD", main);
       } catch {
         continue; // no commit yet — nothing to compare with
       }
       if (!head.has(main)) continue; // the part is new since HEAD
       const headVersion = Number((frontMatter(head.get(main) ?? "")?.meta.version as string) || 1);
-      if (hashFiles(head, main) !== hashFiles(readPartFiles(p.dir), main) && headVersion >= p.version) {
+      if (hashFiles(head, main) !== hashFiles(readPartFiles(p.dir, main), main) && headVersion >= p.version) {
         out.push(`${shelf}/${p.folder}: content changed since HEAD but version is still v${p.version}`);
       }
     }
