@@ -1,7 +1,7 @@
 // `zemory hook <install|stop|...>` — the 0-token capture hook wiring (HP điều 10).
 import { join, relative } from "node:path";
 import { currentProjectRoot } from "../core/config.js";
-import { generateGuards, GUARD_MATCHER } from "../docs/guard-gen.js";
+import { generateGuards, GUARD_MATCHER, guardCommand } from "../docs/guard-gen.js";
 import { handleHook, installCodexHooks, installHooks, uninstallHooks } from "../memory/capture-hook.js";
 import { judgeSendTarget } from "../memory/send-guard.js";
 import { readStdin } from "./_shared.js";
@@ -68,7 +68,7 @@ export async function cmdHook(args: string[]): Promise<void> {
     // is an open door — measured 2026-08-20: one repo declared a matcher without `PowerShell`, and every dangerous
     // command going through that tool never reached the guard. Say it out loud rather than leaving it to be guessed.
     console.log(
-      `    · Claude Code (.claude/settings.json): PreToolUse matcher ${GUARD_MATCHER} → node ${rel(r.hooksDir)}/guard.cjs`,
+      `    · Claude Code (.claude/settings.json): PreToolUse matcher ${GUARD_MATCHER} → ${guardCommand(`${rel(r.hooksDir)}/guard.cjs`)}`,
     );
     console.log(`    · pre-commit: a local hook running node ${rel(r.hooksDir)}/precommit-guard.cjs`);
     console.log("  One-time flags (.allow-*) live in the hooks folder, already .gitignore'd — create one only when the user says so explicitly.");

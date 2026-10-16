@@ -105,7 +105,7 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   assert.equal(fwd.status, 2, "the forwarder blocks through the new guard");
   assert.equal(JSON.parse(fwd.stdout).hookSpecificOutput.permissionDecision, "deny");
   const settings = readFileSync(join(root, ".claude", "settings.json"), "utf8");
-  assert.match(settings, /node docs\/agent\/01_RULES\/Rule_Gate_55_HookGuard\/guard\.cjs/);
+  assert.match(settings, /CLAUDE_PROJECT_DIR[^"]*\/docs\/agent\/01_RULES\/Rule_Gate_55_HookGuard\/guard\.cjs/);
   assert.doesNotMatch(settings, /docs\/hooks\/guard\.cjs/, "no command left pointing at the old guard");
   assert.match(readFileSync(join(gitHooksDir(root), "pre-commit"), "utf8"), /Rule_Gate_55_HookGuard\/precommit-guard\.cjs/);
   // and the next sync finds nothing to do

@@ -1699,7 +1699,18 @@ export function wirePrecommit(projectRoot: string, guardRel: string): "wired" | 
 }
 
 /**
- * CẮM guard vào runtime của repo: `.claude/settings.json` › PreToolUse, matcher `GUARD_MATCHER` → `node <guard>`.
+ * The command that runs the guard, anchored at the project root rather than the session's working folder. Measured
+ * 2026-10-16: with `node docs/hooks/guard.cjs`, a session whose working folder had moved into a subfolder ran node on a
+ * path that did not exist there — exit 1, which the host treats as a non-blocking error, so the write went through
+ * unguarded. Node reads CLAUDE_PROJECT_DIR itself, so the command is the same in Git Bash, PowerShell and cmd; without
+ * the variable (another host) it falls back to the working folder as before.
+ */
+export function guardCommand(guardRel: string): string {
+  return `node -e "require((process.env.CLAUDE_PROJECT_DIR||'.')+'/${guardRel}')"`;
+}
+
+/**
+ * Wires the guard into the repo's runtime: `.claude/settings.json` › PreToolUse, matcher `GUARD_MATCHER` → `guardCommand`.
  *
  * 🔄 Supersede the old line "the tool does not wire it for you — the user reviews and adds it" (user 2026-10-07: *"phải
  * theo chuẩn toàn bộ chứ, đây là luật mà… bộ kiểm của zemory quản có đồng bộ ko"*). Measured that day: 6 of 17 repos had a
@@ -1721,26 +1732,16 @@ export function wireGuard(projectRoot: string, guardRel: string): string | null 
   }
   const runsGuard = (h: { command?: string; args?: unknown[] }): boolean =>
     /(^|[\\/\s"'])guard\.cjs/.test([h.command ?? "", ...(Array.isArray(h.args) ? h.args : [])].map(String).join(" "));
-  const want = `node ${guardRel}`;
-  // A guard command that points at another path (the guard moved: file harness → folder harness, plan/28 §0d) calls a
-  // file that is no longer there — the host then lets every call through. It is repointed, like a narrow matcher widened.
-  // The path is read from wherever the entry keeps it: `command: "node <path>"` or `command: "node", args: ["<path>"]`
-  // (both shapes are in use) — and rewritten in that same place.
-  const GUARD_PATH = /[^\s"']*guard\.cjs/;
-  const pathOf = (h: { command?: string; args?: unknown[] }): string | null => {
-    for (const s of [h.command ?? "", ...(Array.isArray(h.args) ? h.args : [])].map(String)) {
-      const m = GUARD_PATH.exec(s);
-      if (m) return m[0].replace(/\\/g, "/");
-    }
-    return null;
-  };
-  const stale = (h: { command?: string; args?: unknown[] }): boolean => runsGuard(h) && pathOf(h) !== guardRel;
+  const want = guardCommand(guardRel);
+  // Any other guard command is repointed to `want`, like a narrow matcher widened: one pointing at another path (the guard
+  // moved: file harness → folder harness, plan/28 §0d) calls a file that is no longer there, and a bare relative path
+  // (`node docs/hooks/guard.cjs`, with or without `args`) dies the moment the session's working folder moves below the
+  // repo root — in both cases the host lets every call through.
+  const stale = (h: { command?: string; args?: unknown[] }): boolean =>
+    runsGuard(h) && !(h.command === want && !(Array.isArray(h.args) && h.args.length));
   const repoint = (h: { command?: string; args?: unknown[] }): void => {
-    if (Array.isArray(h.args) && h.args.some((a) => GUARD_PATH.test(String(a)))) {
-      h.args = h.args.map((a) => (GUARD_PATH.test(String(a)) ? String(a).replace(GUARD_PATH, guardRel) : a));
-    } else if (typeof h.command === "string") {
-      h.command = h.command.replace(GUARD_PATH, guardRel);
-    }
+    h.command = want;
+    delete h.args;
   };
   const gaps = guardMatcherGaps(raw || null);
   const anyStale = (doc.hooks?.PreToolUse ?? []).some((g) => (g.hooks ?? []).some(stale));
