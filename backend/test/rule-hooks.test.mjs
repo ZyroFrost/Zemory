@@ -81,6 +81,7 @@ test("02-26: new Vietnamese without diacritics in docs, comments or a commit mes
 
 test("02-27: a new line in the rule set that quotes the user or dates a decision is blocked; other files and old lines pass", (t) => {
   const s = repo(t);
+  s.flag("docs-write"); // the user approved editing the harness docs (Rule_Gate_79); this rule still judges the line
   const rules = "docs/agent/02_RULES.md";
   const r = s.fire(...E(s.root, rules, "- `02-38` **Ledger.** ask", "- `02-38` **Ledger.** ask *(user chốt 2026-10-14)*"));
   assert.equal(r.blocked, true); assert.match(r.say, /rule 02-27/);
@@ -91,6 +92,7 @@ test("02-27: a new line in the rule set that quotes the user or dates a decision
 
 test("02-38: a new open item in 05_TODO is blocked until the one-use flag; rewording or closing an item passes", (t) => {
   const s = repo(t);
+  s.flag("docs-write"); // the user approved editing the harness docs (Rule_Gate_79); this rule still judges the item
   const todo = "docs/agent/05_TODO.md";
   const r = s.fire(...E(s.root, todo, "- [ ] two", "- [ ] two\n- [ ] three"));
   assert.equal(r.blocked, true); assert.match(r.say, /rule 02-38[\s\S]*\.allow-todo/);
