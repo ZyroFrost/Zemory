@@ -160,3 +160,34 @@ export function sweepScratchpads(
   out.keptBytes = running;
   return out;
 }
+
+/**
+ * Temp folders zemory's own code makes with mkdtemp (`<tmp>/zemory-<what>-XXXXXX`) and a killed process never removed:
+ * a sync push or an export cut short leaves its folder behind, since `finally` does not run in a killed process
+ * (measured 2026-10-16: `zemory-push-*` and `zemory-memory-rows-*` from 10:44 still there hours later). Only that name
+ * shape, only folders untouched for MIN_AGE_MS, never `zemory-test` (the test runner owns it); every error is swallowed.
+ */
+export function sweepStaleTemps(opts: { base?: string; now?: number } = {}): string[] {
+  const base = opts.base ?? tmpdir();
+  const now = opts.now ?? Date.now();
+  const removed: string[] = [];
+  let names: string[];
+  try {
+    names = readdirSync(base);
+  } catch {
+    return removed;
+  }
+  for (const name of names) {
+    if (!/^zemory-[a-z0-9-]+-[A-Za-z0-9]{6}$/.test(name) || name.startsWith("zemory-test")) continue;
+    const p = join(base, name);
+    try {
+      const st = statSync(p);
+      if (!st.isDirectory() || now - st.mtimeMs < MIN_AGE_MS) continue;
+      rmSync(p, { recursive: true, force: true });
+      removed.push(name);
+    } catch {
+      /* in use or already gone — the next tick tries again */
+    }
+  }
+  return removed;
+}
