@@ -12,7 +12,7 @@ import test from "node:test";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
-import { GUARD_MATCHER, guardMatcherGaps } from "../../dist/docs/guard-gen.js";
+import { GUARD_MATCHER, guardCommand, guardMatcherGaps } from "../../dist/docs/guard-gen.js";
 import { danglingSupersedes } from "../../dist/docs/validate.js";
 
 const SRC = new URL("../src/", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
@@ -113,19 +113,39 @@ test("③b wireGuard: wires an unwired repo, widens a narrow matcher, keeps the 
   mkdirSync(join(b, ".claude"), { recursive: true });
   const other = { matcher: "Bash|PowerShell", hooks: [{ type: "command", command: "node", args: ["docs/hooks/pbi-open-gate.cjs"] }] };
   writeFileSync(join(b, ".claude", "settings.json"), JSON.stringify({ env: { KEEP: "1" }, hooks: { PreToolUse: [{ matcher: "Write|Bash", hooks: [{ type: "command", command: "node", args: ["docs/hooks/guard.cjs"] }] }, other] } }, null, 2));
-  assert.equal(wireGuard(b, "docs/hooks/guard.cjs"), ".claude/settings.json (guard matcher widened)");
+  // the relative args form is also rewritten to the anchored command
+  assert.equal(wireGuard(b, "docs/hooks/guard.cjs"), ".claude/settings.json (guard path updated)");
   const after = JSON.parse(readFileSync(join(b, ".claude", "settings.json"), "utf8"));
   assert.equal(after.env.KEEP, "1", "unrelated settings kept");
   assert.equal(after.hooks.PreToolUse.length, 2, "no duplicate guard group");
   assert.deepEqual(after.hooks.PreToolUse[1], other, "the repo's own hook untouched");
   assert.equal(after.hooks.PreToolUse[0].matcher, GUARD_MATCHER);
-  // the guard moved (plan/28 §0d): the path is repointed in the place the entry keeps it — args form and command form
-  assert.equal(wireGuard(b, "docs/agent/02_RULES/02-55_hook-guard/guard.cjs"), ".claude/settings.json (guard path updated)");
-  const moved = JSON.parse(readFileSync(join(b, ".claude", "settings.json"), "utf8")).hooks.PreToolUse[0].hooks[0];
-  assert.deepEqual(moved, { type: "command", command: "node", args: ["docs/agent/02_RULES/02-55_hook-guard/guard.cjs"] }, "args form: the arg is rewritten, the path not doubled");
+  assert.deepEqual(after.hooks.PreToolUse[0].hooks[0], { type: "command", command: guardCommand("docs/hooks/guard.cjs") }, "args form folded into the anchored command");
+  // the guard moved (plan/28 §0d): repointed, the path not doubled
   assert.equal(wireGuard(a, "docs/agent/02_RULES/02-55_hook-guard/guard.cjs"), ".claude/settings.json (guard path updated)");
-  assert.equal(JSON.parse(readFileSync(join(a, ".claude", "settings.json"), "utf8")).hooks.PreToolUse[0].hooks[0].command, "node docs/agent/02_RULES/02-55_hook-guard/guard.cjs");
+  assert.equal(JSON.parse(readFileSync(join(a, ".claude", "settings.json"), "utf8")).hooks.PreToolUse[0].hooks[0].command, guardCommand("docs/agent/02_RULES/02-55_hook-guard/guard.cjs"));
   assert.equal(wireGuard(a, "docs/agent/02_RULES/02-55_hook-guard/guard.cjs"), null, "repointed once ⇒ nothing to do");
+});
+
+test("③c the wired guard command still guards when the session's working folder is a subfolder", async (t) => {
+  // Measured 2026-10-16: `node docs/hooks/guard.cjs` run from a subfolder exits 1 (file not found) and the host lets the
+  // call through. The anchored command reads CLAUDE_PROJECT_DIR, so it finds the guard from anywhere in the repo.
+  const { generateGuards } = await import("../../dist/docs/guard-gen.js");
+  const { tempDir } = await import("./helpers.mjs");
+  const { mkdirSync, writeFileSync } = await import("node:fs");
+  const { spawnSync } = await import("node:child_process");
+  const root = tempDir(t, "zemory-wire-sub-");
+  mkdirSync(join(root, "docs", "agent"), { recursive: true });
+  writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ layout: "app", docs: "docs/agent" }));
+  generateGuards(root);
+  const command = JSON.parse(readFileSync(join(root, ".claude", "settings.json"), "utf8")).hooks.PreToolUse[0].hooks[0].command;
+  const sub = join(root, "docs", "agent");
+  const input = JSON.stringify({ tool_name: "Write", tool_input: { file_path: join(root, "docs", "agent", "05_TODO.md"), content: "x\n" } });
+  const run = (cmd, env) => spawnSync(cmd, { shell: true, cwd: sub, input, encoding: "utf8", env: { ...process.env, ...env } });
+  const anchored = run(command, { CLAUDE_PROJECT_DIR: root });
+  assert.equal(anchored.status, 2, `from a subfolder the anchored guard must block:\n${anchored.stdout}${anchored.stderr}`);
+  const bare = run("node docs/hooks/guard.cjs", {});
+  assert.notEqual(bare.status, 2, "the old relative command does not guard from a subfolder — the hole this replaces");
 });
 
 test("④b a plan holds spec, not open work: open checkboxes in docs/plan are found (fences skipped)", async (t) => {

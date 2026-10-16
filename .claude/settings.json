@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node docs/hooks/guard.cjs"
+            "command": "node -e \"require((process.env.CLAUDE_PROJECT_DIR||'.')+'/docs/hooks/guard.cjs')\""
           }
         ]
       }
