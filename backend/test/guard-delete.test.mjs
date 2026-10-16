@@ -19,6 +19,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync, cpSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { generateGuards } from "../../dist/docs/guard-gen.js";
 
 const GUARD = new URL("../../docs/hooks/guard.cjs", import.meta.url).pathname.replace(/^\//, "");
 
@@ -160,17 +161,42 @@ test("02-10 (b): an edit that drops a rule number from 01/02 is blocked; keeping
 });
 
 test("02-10 (b), folder harness: changing or dropping the `id:` of a rule folder is blocked; editing the body passes", () => {
+  // A temp repo carrying a parts store: the store is harness docs (Rule_Gate_79), so the session holds the user's
+  // approval flag — the id check must still block on top of it. The real repo's guard and flags stay untouched.
   const ROOT = new URL("../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
-  const rule = join(ROOT, "docs_template/_Store/01_RULES/Rule_Gate_41_ChangelogNewestFirst/RULE.md");
-  const edit = (o, n) => ({ tool_name: "Edit", tool_input: { file_path: rule, old_string: o, new_string: n } });
-  const renumber = ask(edit("id: Rule_41", "id: Rule_99"));
+  const tmp = mkdtempSync(join(tmpdir(), "zemory-guard-id-"));
+  try {
+    const relRule = "docs_template/_Store/01_RULES/Rule_Gate_41_ChangelogNewestFirst/RULE.md";
+    mkdirSync(join(tmp, relRule, ".."), { recursive: true });
+    cpSync(join(ROOT, relRule), join(tmp, relRule));
+    mkdirSync(join(tmp, "docs", "agent"), { recursive: true });
+    writeFileSync(join(tmp, "docs", ".harness.json"), JSON.stringify({ layout: "app", docs: "docs/agent" }));
+    const { hooksDir } = generateGuards(tmp);
+    const guard = join(hooksDir, "guard.cjs");
+    const rule = join(tmp, relRule);
+    const edit = (o, n) => ({ tool_name: "Edit", tool_input: { file_path: rule, old_string: o, new_string: n } });
+    const unapproved = ask(edit("name: changelog-newest-first", "name: changelog-newest-first"), guard);
+    assert.equal(unapproved.blocked, true, "without the user's approval the store is not writable");
+    assert.match(unapproved.say, /Rule_Gate_79_HarnessEditNeedsApproval/);
+    writeFileSync(join(hooksDir, ".allow-docs-write"), "");
+    checkRuleIdEdits(rule, edit, guard);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+function checkRuleIdEdits(rule, edit, guard) {
+  const ask2 = (payload) => ask(payload, guard);
+  const renumber = ask2(edit("id: Rule_41", "id: Rule_99"));
   assert.equal(renumber.blocked, true, `renumbering must be blocked\n${renumber.say}`);
   assert.match(renumber.say, /removes rule Rule_41/);
-  assert.equal(ask(edit("id: Rule_41\n", "")).blocked, true, "dropping the id line must be blocked");
-  assert.equal(ask(edit("name: changelog-newest-first", "name: changelog-newest-first")).blocked, false, "a body edit keeps the number");
-  const write = ask({ tool_name: "Write", tool_input: { file_path: rule, content: "---\nname: x\n---\n" } });
+  const dropped = ask2(edit("id: Rule_41\n", ""));
+  assert.equal(dropped.blocked, true, "dropping the id line must be blocked");
+  assert.match(dropped.say, /removes rule Rule_41/);
+  assert.equal(ask2(edit("name: changelog-newest-first", "name: changelog-newest-first")).blocked, false, "a body edit keeps the number");
+  const write = ask2({ tool_name: "Write", tool_input: { file_path: rule, content: "---\nname: x\n---\n" } });
   assert.equal(write.blocked, true, "a Write without the id must be blocked");
-});
+}
 
 test("an OLD policy with a NEW guard: it still blocks and must NOT throw", () => {
   // The cowork set is carried by hand to other machines, so the two files are bound to be out of step at times.

@@ -6,9 +6,22 @@
     "share",
     "attic",
     "external",
-    "docs/agent/01_CONSTITUTION.md"
+    "docs/agent/01_CONSTITUTION.md",
+    "docs/agent",
+    "docs/plan",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs_template/_Store"
+  ],
+  "harness_write": [
+    "docs/agent",
+    "docs/plan",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs_template/_Store"
   ],
   "protected_write_reason": "a path declared `protected` in .harness.json — it belongs to the repo, the harness agent may not write into it",
+  "harness_write_reason": "the harness docs (Rule_Gate_79_HarnessEditNeedsApproval) — creating, editing, deleting or moving anything in them needs the user's approval in this session; the agent never creates a rule, article, slot, skill or layer on its own",
   "secret_names": [
     ".env",
     ".env.*",

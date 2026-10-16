@@ -169,6 +169,14 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
   // Folder harness (plan/28 §0e): the core is not read by the agent — it is injected at session start — so only 05_TODO is
   // forced; the structure trigger points at the repo's INDEX.md.
   const folder = isFolderHarness(hp.agent);
+  // The hooks are not listed: in the folder harness each hook lives in its rule folder, inside the harness folder
+  // (plan/28 §0d), so protecting the harness folder protects them.
+  const harnessWrite = [
+    agentRel,
+    relp(hp.plan),
+    ...hp.entries.map(relp),
+    ...(existsSync(join(root, "docs_template", "_Store")) ? ["docs_template/_Store"] : []),
+  ].filter((p) => p && !p.startsWith(".."));
   const readFirst = {
     required: [`${agentRel}/05_TODO.md`, ...readFirstExtra],
     sections: folder
@@ -205,8 +213,14 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     comment:
       "ONE source for the layer-1 rules (irreversible actions the machine can check). guard.cjs (PreToolUse) and precommit-guard.cjs both read this file. " +
       "Generated from the marker (.harness.json keys `protected`/`secretNames`/`secretAllow`/`allowedRoots`/`allowedSqlServers`/`repoGates`) — edit the marker, then run `zemory hook guard` to regenerate.",
-    protected_write: protectedWrite,
+    // Rule_Gate_79: the harness docs themselves are protected in every repo, declared or not — rules, constitution,
+    // structure, skills, the rest of the harness folder, plan, hooks, the entry files, and the parts store of the repo that
+    // carries it. The one-use flags in flags_dir are exempt (writing a flag is how the user's approval is recorded).
+    protected_write: [...new Set([...protectedWrite, ...harnessWrite])],
+    harness_write: harnessWrite,
     protected_write_reason: "a path declared `protected` in .harness.json — it belongs to the repo, the harness agent may not write into it",
+    harness_write_reason:
+      "the harness docs (Rule_Gate_79_HarnessEditNeedsApproval) — creating, editing, deleting or moving anything in them needs the user's approval in this session; the agent never creates a rule, article, slot, skill or layer on its own",
     secret_names: [...new Set([...SECRET_DEFAULTS, ...secretExtra])],
     secret_allow: [...new Set([...SECRET_ALLOW_DEFAULTS, ...secretAllowExtra])],
     secret_reason: "a secret must never enter a commit — there is NO flag to get past this (price already paid: a secret reached GitHub 2026-08-04)",
@@ -387,13 +401,26 @@ function underProtected(rel, prefix) {
   return rel === pre || rel.startsWith(pre + "/");
 }
 
+// A one-use flag (or the once-per-session memory) in flags_dir: writing it is how an approval is recorded, so it is never
+// a write into the harness docs (Rule_Gate_79), even when flags_dir sits inside them.
+function isFlagFile(rel) {
+  const d = String(POLICY.flags_dir || "").replace(/\\/+$/, "");
+  return Boolean(d) && rel.startsWith(d + "/.");
+}
+
+// The reason a protected prefix is protected: the harness docs (Rule_Gate_79) or a path the marker declared.
+function writeReason(prefix) {
+  return (POLICY.harness_write || []).includes(prefix) ? POLICY.harness_write_reason : POLICY.protected_write_reason;
+}
+
 function checkWrite(rel) {
   if (nameMatches(rel, POLICY.secret_allow || [])) return;
+  if (isFlagFile(rel)) return;
   for (const prefix of POLICY.protected_write || []) {
     const hit = underProtected(rel, prefix);
     if (hit) {
       if (consumeFlag("docs_write", rel)) return;
-      deny("BLOCKED (guard layer 1): writing into \`" + prefix + "\` - " + POLICY.protected_write_reason +
+      deny("BLOCKED (guard layer 1): writing into \`" + prefix + "\` - " + writeReason(prefix) +
         "\\nDid the user approve it this session? -> create the flag \`" + POLICY.flags_dir + "/" + POLICY.flags.docs_write + "\` and try again (the flag is good for ONE use).");
     }
   }
@@ -800,8 +827,8 @@ function checkBash(cmd) {
           // on the remaining tokens, the RECURSIVE delete check, and the \`mv\`/redirection branch
           // below - meaning one delete flag would open the door for everything else on the same command line.
           if (!delFlagOk()) {
-            deny("BLOCKED (guard layer 1): deleting inside the declared protected path \`" + prefix + "\` - " +
-              POLICY.protected_write_reason + flagTip("delete"));
+            deny("BLOCKED (guard layer 1): deleting inside the protected path \`" + prefix + "\` - " +
+              writeReason(prefix) + flagTip("delete"));
           }
         }
       }
@@ -927,11 +954,12 @@ function checkBash(cmd) {
     const tok = String(raw).replace(/^["']|["']$/g, "");
     if (!tok || tok.startsWith("-")) return;
     const rel = relToRoot(tok.replace(/\\\\/g, "/").replace(/^\\.\\//, ""));
+    if (isFlagFile(rel)) return;
     for (const prefix of POLICY.protected_write || []) {
       if (!underProtected(rel, prefix)) continue;
       if (consumeFlag("docs_write", bare)) return;
       deny("BLOCKED (guard layer 1): " + how + " \`" + rel + "\` which sits inside the protected path \`" + prefix +
-        "\` - " + POLICY.protected_write_reason +
+        "\` - " + writeReason(prefix) +
         "\\nDid the user approve it this session? -> create the flag \`" + POLICY.flags_dir + "/" + POLICY.flags.docs_write +
         "\` and try again (the flag is good for ONE use).");
     }
@@ -956,6 +984,14 @@ function checkBash(cmd) {
     }
     // 3 interpreters: judge only when the payload holds both a protected path AND a writing verb — to
     //    avoid wrongly blocking \`python -c "print(open('data/x').read())"\` (reading, not writing).
+    // 2b commands that create or edit in place (Rule_Gate_79 counts every write): \`touch\` · \`mkdir\` · the PowerShell
+    //    writers · \`sed -i\` / \`perl -i\` · \`git mv\` — every path argument is judged.
+    const tokens = seg.trim().split(/\\s+/);
+    const inPlace = /^(sed|perl)$/.test(word) && tokens.some((t) => /^-[a-zA-Z]*i/.test(t));
+    const gitMv = word === "git" && tokens[1] === "mv";
+    if (/^(touch|mkdir|md|new-item|ni|set-content|sc|add-content|ac|out-file|tee|tee-object)$/.test(word) || inPlace || gitMv) {
+      for (const a of tokens.slice(gitMv ? 2 : 1)) if (a && !a.startsWith("-") && /[\\/.]/.test(a)) flagWritePath(a, "writing (" + word + ") into");
+    }
     if (SEG_INTERP.test(word) && WRITE_VERB.test(seg)) {
       for (const tok of dropTextOps(seg).split(/[\\s'"(),]+/)) {
         // Do NOT require the token to contain a \`/\`: a protected path is often a BARE NAME at the repo root

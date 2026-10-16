@@ -42,7 +42,11 @@ test("it generates all 4 files, with the policy carrying the zemory mark and the
   }
   const policy = JSON.parse(readFileSync(join(r.hooksDir, "policy.json"), "utf8"));
   assert.equal(policy.generator, "zemory");
-  assert.deepEqual(policy.protected_write, ["docs/"], "đường cấm phải lấy từ khoá `protected` của marker");
+  // Rule_Gate_79: the harness docs are protected by default on top of what the marker declares.
+  assert.ok(policy.harness_write.length > 0, "the harness docs are protected by default");
+  assert.deepEqual(policy.protected_write.filter((p) => !policy.harness_write.includes(p)), ["docs/"],
+    "the declared paths come from the marker's `protected` key");
+  assert.ok(policy.harness_write.every((p) => policy.protected_write.includes(p)), "every harness path is a protected path");
   assert.ok(policy.secret_names.includes(".env"), "bộ mẫu secret mặc định phải có mặt");
 });
 
