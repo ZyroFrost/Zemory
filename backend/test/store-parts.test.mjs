@@ -199,6 +199,20 @@ test("the two structure layers hold in the store: no slot flat, none with applie
   assert.match(wrong, /Struc_Repo_App: structure\.json names Slot_Docs_009_Gone/);
 });
 
+test("every set folder is up to date with the store: a pass over it finds nothing to do (plan/28 §0p)", async () => {
+  const { applyKit } = await import("../../dist/docs/kit-apply.js");
+  const kits = readKits(STORE_DIR);
+  assert.ok(kits.length >= 3, `the set folders beside the store: ${kits.map((k) => k.name)}`);
+  for (const k of kits) {
+    const r = applyKit(join(STORE_DIR, "..", k.name), { kit: k, apply: false });
+    assert.ok(!("error" in r), `${k.name}: ${r.error}`);
+    // a set folder is machine output: "current" with a reason means its copy was edited by hand, which a repo may do
+    // and a set may not
+    assert.deepEqual(r.steps.filter((s) => s.verdict !== "current" || s.reason).map((s) => `${s.part.folder} ${s.verdict} ${s.reason ?? ""}`), [],
+      `${k.name}: the folder differs from the store — rebuild it with assembleSet, never edit it by hand`);
+  }
+});
+
 test("every built kit assembles from the real store into a repo that holds: conform clean on the harness, nothing left to do", async (t) => {
   const { applyKit } = await import("../../dist/docs/kit-apply.js");
   const { conform } = await import("../../dist/docs/conform.js");

@@ -1,0 +1,20 @@
+{
+  "trigger": "\"note lại\" · \"ghi sổ\" · \"chốt phiên\" · sắp đổi session",
+  "prompt": {
+    "kind": "close",
+    "re": "(chốt phiên|note lại|ghi sổ|docs lại|đổi session|sắp hết context|mở phiên mới)",
+    "text": "[zemory] Closing the session: follow skill session-close — `zemory memory scan` → digest/search GM (the summary is not the source) → re-measure 05_TODO from 3 sources → `zemory archive` → `zemory validate`."
+  },
+  "block": [
+    {
+      "note": "closing words",
+      "prompt": "note lại rồi chốt phiên nhé"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an ordinary request",
+      "prompt": "sửa lỗi nút lưu"
+    }
+  ]
+}

@@ -20,6 +20,7 @@ import {
   plugSkills,
   renameLegacyShelves,
   seedFiles,
+  setDir,
   STORE_DIR,
   targetDir,
   type AssemblyStep,
@@ -53,12 +54,14 @@ export function repoKit(root: string, storeDir = STORE_DIR): Kit | null {
 /** Assemble (or report what assembling would do). `kitRef` names a kit for a repo that has none yet (init). */
 export function applyKit(
   root: string,
-  opts: { kitRef?: string; apply: boolean; storeDir?: string },
+  // `kit`: assemble this set as given (building a set folder, `assembleSet`) · `projectName`: what <PROJECT> becomes
+  // (the folder name by default; a set folder keeps the placeholder)
+  opts: { kitRef?: string; kit?: Kit; projectName?: string; apply: boolean; storeDir?: string },
 ): KitApplyResult | { error: string } {
   const storeDir = opts.storeDir ?? STORE_DIR;
-  const marked = repoKit(root, storeDir);
-  const kit = opts.kitRef ? findKit(opts.kitRef, storeDir) : marked;
-  if (!kit) return { error: opts.kitRef ? `no kit "${opts.kitRef}" in ${storeDir}/kits.json` : "the marker names no kit" };
+  const marked = opts.kit ? null : repoKit(root, storeDir);
+  const kit = opts.kit ?? (opts.kitRef ? findKit(opts.kitRef, storeDir) : marked);
+  if (!kit) return { error: opts.kitRef ? `no set "${opts.kitRef}" beside ${storeDir}` : "the marker names no set" };
   if (kit.status !== "built") return { error: `kit ${kit.name} is ${kit.status} — only a built kit can be assembled` };
   if (marked && opts.kitRef && marked.name !== kit.name) {
     return { error: `this repo is assembled from ${marked.name}; switching kits is not supported by init` };
@@ -76,7 +79,7 @@ export function applyKit(
   // time. After that sync never adds one back (the repo may have declined it) and never edits one (only an approval in
   // the repo's own session changes its constitution).
   const parts = kitParts(kit, storeDir).filter((p) => p.shelf !== SHELF.constitution || !marked);
-  const ownAdded = opts.apply ? seedFiles(kit, parts, root, basename(root), storeDir, target.agentDir) : [];
+  const ownAdded = opts.apply ? seedFiles(kit, parts, root, opts.projectName ?? basename(root), storeDir, target.agentDir) : [];
   const steps = planAssembly(parts, target);
   const written = opts.apply ? applyAssembly(steps) : [];
   const skills = parts.filter((p) => p.shelf === SHELF.skills);
@@ -84,6 +87,17 @@ export function applyKit(
   const plug = opts.apply ? plugSkills(target, skills) : { plugged: [], skipped: [] };
   const skillsBlock = opts.apply ? writeSkillsBlock(hp.agent, skills, target) : "current";
   return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves, plug };
+}
+
+/**
+ * Build or refresh a set folder beside the store (plan/28 §0p): the set is assembled like a repo, placeholders kept, and
+ * from then on the folder IS the set — `readKits` reads what it carries from it. Re-running it brings the folder up to the
+ * store the way `sync --standard` does for a repo.
+ */
+export function assembleSet(kit: Kit, storeDir = STORE_DIR): KitApplyResult | { error: string } {
+  const dir = setDir(kit.name, storeDir);
+  mkdirSync(dir, { recursive: true });
+  return applyKit(dir, { kit: { ...kit, status: "built" }, projectName: "<PROJECT>", apply: true, storeDir });
 }
 
 /** Create the marker (or add `kit` to an existing one). True when a new marker file was written. */

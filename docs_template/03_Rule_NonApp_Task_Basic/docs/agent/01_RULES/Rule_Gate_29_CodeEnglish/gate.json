@@ -1,0 +1,99 @@
+{
+  "prompt": {
+    "kind": "Rule_29",
+    "re": "\\b(query|lenh cmd|ten bien|logic|comment|chu thich|commit|log|dat ten bien|code|script|ham|function)\\b",
+    "text": "[zemory] Rule_Gate_29_CodeEnglish: Code is English: identifiers, file names, logs, commit messages and comments."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "viết comment cho hàm này"
+    },
+    {
+      "note": "a Vietnamese comment in a TypeScript file",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/a.ts",
+        "content": "// kiểm tra kết quả trước khi ghi\nconst result = 1;\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_RULES",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a Vietnamese comment in a Python file",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "scripts/b.py",
+        "content": "x = 1  # tổng số dòng\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_RULES",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    },
+    {
+      "note": "an English comment, and Vietnamese inside a string (that is data)",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/c.ts",
+        "content": "// check the result before writing\nconst label = \"kết quả\";\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_RULES",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "Vietnamese in a docs file is not code",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/plan/a.md",
+        "content": "Kết quả đo.\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_RULES",
+        "todo_file": "docs/agent/05_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit"
+    ]
+  }
+}

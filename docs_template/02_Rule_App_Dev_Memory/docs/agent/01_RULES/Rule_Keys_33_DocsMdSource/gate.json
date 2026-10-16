@@ -1,0 +1,19 @@
+{
+  "prompt": {
+    "kind": "Rule_33",
+    "re": "\\b(docs|changelog|06_CHANGES|05_TODO|\\.md|reindex|ghi so|note lai|cap nhap (docs|note|todo)|ghi lai|planning)\\b",
+    "text": "[zemory] Rule_Keys_33_DocsMdSource: Harness docs: the .md file is the source, edited by hand; the search index is derived — reindex after."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "cập nhập docs cho tính năng mới"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    }
+  ]
+}

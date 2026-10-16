@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, s
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
-import { LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, slotArea } from "./harness-names.js";
+import { LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
 import { viName } from "./vi-name-judge.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
@@ -402,25 +402,40 @@ export function kitCluster(kit: Pick<Kit, "structure">): string {
   return parsePartName(kit.structure)?.name ?? kit.structure;
 }
 
+/**
+ * The sets, read from the template folder itself (plan/28 §0p): a set IS its assembled folder beside the store
+ * (`docs_template/<NN>_Rule_…/`), named in shelf order. There is no register: what the set carries is what its folder
+ * carries — the rules, articles and skills on its harness shelves and its one outer structure.
+ */
 export function readKits(storeDir = STORE_DIR): Kit[] {
-  const p = join(storeDir, "kits.json");
-  if (!existsSync(p)) return [];
-  const raw = JSON.parse(readFileSync(p, "utf8")) as Record<string, Partial<Kit>>;
-  return Object.entries(raw)
-    .filter(([k]) => /^\d{2}$/.test(k))
-    .map(([no, k]) => ({
-      no,
-      name: k.name ?? no,
-      legacy: Array.isArray(k.legacy) ? k.legacy : [],
-      status: k.status ?? "reserved",
-      structure: k.structure ?? "",
-      tier: k.tier ?? "Memory",
-      requires: k.requires ?? [],
-      constitution: k.constitution ?? [],
-      rules: k.rules ?? [],
-      skills: k.skills ?? [],
-      tools: k.tools ?? [],
-    }));
+  const base = dirname(storeDir);
+  if (!existsSync(base)) return [];
+  const out: Kit[] = [];
+  for (const e of readdirSync(base, { withFileTypes: true })) {
+    if (!e.isDirectory()) continue;
+    const n = parseSetName(e.name);
+    if (!n) continue;
+    const agent = join(base, e.name, "docs", "agent");
+    out.push({
+      no: n.nn,
+      name: e.name,
+      legacy: Object.entries(LEGACY_SETS).filter(([, v]) => v === e.name).map(([k]) => k),
+      status: "built",
+      structure: listStructures(agent)[0]?.folder ?? "",
+      tier: n.tier as Kit["tier"],
+      requires: [],
+      constitution: listParts(agent, SHELF.constitution).map((p) => p.id),
+      rules: listParts(agent, SHELF.rules).map((p) => p.id),
+      skills: listParts(agent, SHELF.skills).map((p) => p.folder),
+      tools: [],
+    });
+  }
+  return out.sort((a, b) => a.no.localeCompare(b.no));
+}
+
+/** The folder of a set: beside the store, under the set's name. */
+export function setDir(name: string, storeDir = STORE_DIR): string {
+  return join(dirname(storeDir), name);
 }
 
 /** The outer structure a kit is assembled on, or null when the store has none of that name. */
@@ -439,9 +454,11 @@ export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName
   const source = readSource(storeDir);
   const struc = parts.find((p) => p.shelf === SHELF.structure && isStructureFolder(p.folder));
   const m = (k: string): string => String(struc?.meta[k] ?? "");
-  // the command that assembles this structure where zemory is installed: the Memory set of the same structure
-  const kits = readKits(storeDir)
+  // the command that assembles this structure where zemory is installed: the Memory set of the same structure — the set
+  // being assembled counts too (its own folder has no parts yet the first time, so the scan cannot see it)
+  const kits = [...readKits(storeDir).filter((k) => k.name !== kit.name), kit]
     .filter((k) => k.status === "built" && k.structure === kit.structure && k.tier === "Memory")
+    .sort((a, b) => a.no.localeCompare(b.no))
     .map((k) => `\`zemory init --kit ${k.no}\``)
     .join(" hoặc ");
   const triggers = parts

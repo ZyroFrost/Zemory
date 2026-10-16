@@ -1,0 +1,20 @@
+{
+  "partial": true,
+  "prompt": {
+    "kind": "audit",
+    "re": "\\b(con gi|con viec|con sot|con thieu|con lai|soat so|todo|list can lam|viec can lam|lam gi (nua|tiep)|tiep theo|toi dau|tien do|het (roi|chua|gi)|con 1 task|sao nua|xong het)\\b",
+    "text": "[zemory] Auditing the ledger = re-measure each item from ALL three sources: the code · Global Memory (`zemory memory search --all`, filter the requests and approvals) · a real run. Older than 7 days = suspect."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "còn gì chưa làm không"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "thêm cột ngày vào bảng"
+    }
+  ]
+}

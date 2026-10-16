@@ -91,7 +91,7 @@ export function cmdInit(args: string[]): void {
   const ki = args.indexOf("--kit");
   if (ki >= 0) {
     if (!args[ki + 1]) {
-      console.log("usage: zemory init --kit <no | name>   (kits: docs_template/_Store/kits.json)");
+      console.log("usage: zemory init --kit <no | name>   (sets: the docs_template/<NN>_Rule_… folders)");
       process.exitCode = 1;
       return;
     }
