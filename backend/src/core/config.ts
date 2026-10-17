@@ -287,6 +287,15 @@ export function harnessPathsAt(projectRoot: string): HarnessPaths {
   }
 }
 
+/** The harness archive (plan/28 §0q, user 2026-10-18): `docs/archive/`, beside the harness folder, not inside it — it is
+ *  history reached by search, never read at session start. A repo not yet moved still has `<agent>/archive/`: read there
+ *  until sync moves it (the fallback goes once every repo on the board is moved). */
+export function archiveDirOf(agent: string): string {
+  const now = join(dirname(agent), "archive");
+  const old = join(agent, "archive");
+  return !existsSync(now) && existsSync(old) ? old : now;
+}
+
 export function harnessPaths(ctx: Context): HarnessPaths {
   const p = ctx.config.paths ?? {};
   const rel = (v: string | undefined, fallback: string): string =>
@@ -295,7 +304,7 @@ export function harnessPaths(ctx: Context): HarnessPaths {
   return {
     agent,
     plan: p.plan?.trim() ? resolveHarnessRel(ctx.projectRoot, p.plan) : join(dirname(agent), "plan"),
-    archive: p.archive?.trim() ? resolveHarnessRel(ctx.projectRoot, p.archive) : join(agent, "archive"),
+    archive: p.archive?.trim() ? resolveHarnessRel(ctx.projectRoot, p.archive) : archiveDirOf(agent),
     skills: rel(p.skills, join(".claude", "skills")),
     entries: (p.entries?.length ? p.entries : ["AGENTS.md", "CLAUDE.md"]).map((e) =>
       resolveHarnessRel(ctx.projectRoot, e),

@@ -253,6 +253,8 @@ test("a repo on the legacy shelf folders is moved to the current ones before ass
   renameSync(join(agent, "01_LAW", "_Cons"), join(agent, "01_CONSTITUTION"));
   put(agent, "02_RULES/Rule_Core_90_OwnRule/RULE.md", "---\nid: Rule_90\nname: own-rule\nversion: 1\nkind: judgment\n---\n# own\n");
   put(root, "docs/plan/01_x.md", "See [rule](../agent/02_RULES/Rule_Core_90_OwnRule/RULE.md) and [purpose](../agent/01_CONSTITUTION/PURPOSE.md).\n");
+  // a link whose text IS the old path follows its target; a link with words of its own keeps them
+  put(root, "content/README.md", "Slots: [`docs/agent/03_STRUCTURE.md`](../docs/agent/03_STRUCTURE.md#x) §2 · [the structure](../docs/agent/03_STRUCTURE.md).\n");
   const r = applyKit(root, { apply: true, storeDir: st.s });
   assert.deepEqual(r.renamedShelves, ["02_RULES → 01_LAW/_Rule", "01_CONSTITUTION → 01_LAW/_Cons"]);
   assert.ok(!existsSync(join(agent, "02_RULES")) && !existsSync(join(agent, "01_CONSTITUTION")), "no legacy shelf left behind");
@@ -260,9 +262,11 @@ test("a repo on the legacy shelf folders is moved to the current ones before ass
   assert.ok(existsSync(join(agent, "01_LAW", "_Rule", "Rule_Gate_02_Beta", "hook.cjs")) || existsSync(join(agent, "01_LAW", "_Rule", "02-2_beta", "hook.cjs")),
     "the store's parts are in the same shelf folder");
   assert.deepEqual(new Set(Object.values(verdicts(r))), new Set(["current"]), "nothing else changed");
-  assert.deepEqual(repointLinks(root, true), ["docs/plan/01_x.md"]);
+  assert.deepEqual(repointLinks(root, true).sort(), ["content/README.md", "docs/plan/01_x.md"]);
   assert.equal(readFileSync(join(root, "docs/plan/01_x.md"), "utf8"),
     "See [rule](../agent/01_LAW/_Rule/Rule_Core_90_OwnRule/RULE.md) and [purpose](../agent/01_LAW/_Cons/PURPOSE.md).\n");
+  assert.equal(readFileSync(join(root, "content/README.md"), "utf8"),
+    "Slots: [`docs/agent/02_STRUCTURE/INDEX.md`](../docs/agent/02_STRUCTURE/INDEX.md) §2 · [the structure](../docs/agent/02_STRUCTURE/INDEX.md).\n");
 });
 
 test("an untouched copy is replaced by the newer part; a file the part dropped is removed", (t) => {
@@ -426,16 +430,38 @@ test("conform runs every slot's own check: a broken entry is a blocking slot-gat
   assert.match(f.samples.join("\n"), /03-1 entry: CLAUDE\.md does not contain @AGENTS\.md/);
 });
 
-test("session start hands the folder core over at once; a file-harness repo stays silent outside compaction", (t) => {
+test("only the laws no hook holds are forced before acting; a new session is silent; a compaction gets them back", (t) => {
+  // user 2026-10-18: the read-first door forced every article of the constitution on top of the core handed over at
+  // session start — the same text twice, and laws with a hook forced as well.
   const st = store(t);
   const root = repo(t);
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
-  const out = handleHook("session-start", { cwd: root, source: "startup", session_id: "s1" });
-  assert.match(JSON.parse(out).hookSpecificOutput.additionalContext, /line one/);
-  const old = tempDir(t, "zemory-filerepo-");
-  put(old, "docs/.harness.json", JSON.stringify({ docs: "docs/agent", adapters: {}, thresholds: {} }));
-  put(old, "docs/agent/02_RULES.md", "# rules\n");
-  assert.equal(handleHook("session-start", { cwd: old, source: "startup", session_id: "s2" }), "");
+  const cons = join(root, "docs", "agent", "01_LAW", "_Cons");
+  writeFileSync(join(cons, "01-1_secrets", "Cons.md"), "---\nframe: 01-1_secrets\nstatus: written\n---\n# Secrets\n\nOnly in the vault.\n");
+  put(root, "docs/agent/01_LAW/_Cons/Cons_Core_101_Plain/Cons_Core_101_Plain.md", "---\nid: Cons_101\nname: plain\nversion: 1\nkind: judgment\n---\n# plain\n\nJudge it.\n");
+  put(root, "docs/agent/01_LAW/_Cons/Cons_Gate_102_Held/Cons_Gate_102_Held.md", "---\nid: Cons_102\nname: held\nversion: 1\nkind: content\n---\n# held\n\nA hook holds it.\n");
+  put(root, "docs/agent/01_LAW/_Cons/Cons_Gate_102_Held/gate.json", JSON.stringify({ hook: "hook.cjs" }));
+  put(root, "docs/agent/01_LAW/_Cons/Cons_Gate_102_Held/hook.cjs", "module.exports = { check: () => null };\n");
+  // a law with a keyword reminder: not forced, and the reminder carries it word for word
+  put(root, "docs/agent/01_LAW/_Cons/Cons_Keys_103_Nudged/Cons_Keys_103_Nudged.md", "---\nid: Cons_103\nname: nudged\nversion: 1\nkind: judgment\n---\n# nudged\n\nAsk before a mass send.\n");
+  put(root, "docs/agent/01_LAW/_Cons/Cons_Keys_103_Nudged/gate.json", JSON.stringify({ prompt: { kind: "mass-send", re: "gửi hàng loạt", text: "[zemory] Mass send." } }));
+  generateGuards(root);
+  const pol = JSON.parse(readFileSync(join(root, "docs", "agent", "01_LAW", "_Rule", "02-55_hook-guard", "policy.json"), "utf8"));
+  const req = pol.read_first.required.map((p) => p.replace(/\\/g, "/"));
+  assert.ok(req.includes("docs/agent/04_TODO.md"), "the backlog is read");
+  assert.ok(req.some((p) => p.endsWith("01-1_secrets/Cons.md")), "the constitution the repo wrote is read");
+  assert.ok(req.some((p) => p.endsWith("Cons_Core_101_Plain.md")), "an own article no hook holds is read");
+  assert.ok(req.some((p) => /02-1_alpha\/02-1_alpha\.md$/.test(p)), "a judgment rule is read");
+  assert.ok(!req.some((p) => p.includes("Cons_Gate_102_Held")), "an own article a hook holds is NOT forced");
+  assert.ok(!req.some((p) => p.includes("Cons_Keys_103_Nudged")), "a law with a reminder is NOT forced");
+  const nudge = ruleReminders({ session_id: `nudge-${process.pid}-${Date.now()}`, cwd: root, prompt: "gửi hàng loạt cho mọi nhà hàng" });
+  assert.match(nudge, /\[zemory\] Mass send\.[\s\S]*Ask before a mass send\./, "the reminder carries the law word for word");
+  assert.ok(!req.some((p) => p.includes("02-2_beta") || p.includes("02-55_hook-guard")), "a rule a hook holds is NOT forced");
+  assert.equal(handleHook("session-start", { cwd: root, source: "startup", session_id: "s1" }), "", "a new session: nothing handed over twice");
+  const back = JSON.parse(handleHook("session-start", { cwd: root, source: "compact", session_id: "s1" })).hookSpecificOutput.additionalContext;
+  assert.match(back, /line one/);
+  assert.match(back, /Judge it\./);
+  assert.doesNotMatch(back, /A hook holds it\./, "after a compaction: the same list, a hooked law stays out");
 });
 
 test("a repo assembled before the two layers: sync moves its flat slots into _Slot/ and ends where a fresh repo does", (t) => {
@@ -613,4 +639,38 @@ test("a skill moved to another group (replaces:) takes over the old copy: the so
   assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), "| report | `.claude/skills/pbi-old/SKILL.md` |\n| mine | `.claude/skills/own-sk/SKILL.md` |\n",
     "the trigger row follows the host rename; the repo's own row stays");
   assert.deepEqual(applyKit(root, { apply: false, storeDir: st.s }).steps.filter((s) => s.verdict !== "current").map((s) => s.part.folder), [], "a second pass finds nothing");
+});
+
+test("the archive leaves the harness folder for docs/archive with its links intact; the old hook forwarder goes; conform sees both", (t) => {
+  // plan/28 §0q (user 2026-10-18): a loose archive/ in docs/agent and a leftover docs/hooks/guard.cjs passed conform on
+  // four reshaped repos — only the user's eye caught them.
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  put(root, "docs/plan/a.md", "# a\n");
+  put(root, "docs/agent/archive/05_CHANGES.md", "# old\n\nSee [a](../../plan/a.md) and [web](https://x.dev) and [here](#top).\n");
+  put(root, "docs/agent/archive/file-harness-2026-10-17/02_RULES.md", "# rules\n\n[todo](../../04_TODO.md) · [skills](04_SKILLS.md) · [log](../05_CHANGES.md)\n");
+  put(root, "docs/agent/archive/file-harness-2026-10-17/04_SKILLS.md", "# skills\n");
+  put(root, "docs/hooks/guard.cjs", "// Forwarder left by the move to the folder harness (plan/28): x\nrequire('x');\n");
+  writeFileSync(join(root, "AGENTS.md"), "History: `docs/agent/archive/` — search it.\n");
+  put(root, "docs/plan/b.md", "See [old](../agent/archive/05_CHANGES.md).\n");
+  const layout = () => conform(root).items.find((i) => i.check === "harness-layout")?.samples ?? [];
+  assert.deepEqual(layout().sort(), ["docs/agent/archive", "docs/hooks/ (hooks live in the rule that owns them)"]);
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(r.renamedShelves.includes("archive → ../archive") && r.renamedShelves.includes("hooks/guard.cjs forwarder removed"), JSON.stringify(r.renamedShelves));
+  assert.ok(!existsSync(join(root, "docs", "agent", "archive")) && !existsSync(join(root, "docs", "hooks")));
+  assert.equal(readFileSync(join(root, "docs", "archive", "05_CHANGES.md"), "utf8"), "# old\n\nSee [a](../plan/a.md) and [web](https://x.dev) and [here](#top).\n",
+    "a link one level shallower still points at the same file");
+  // a link out of the archive follows the depth; a link to a file that moved WITH it stays a sibling link
+  assert.equal(readFileSync(join(root, "docs", "archive", "file-harness-2026-10-17", "02_RULES.md"), "utf8"),
+    "# rules\n\n[todo](../../agent/04_TODO.md) · [skills](04_SKILLS.md) · [log](../05_CHANGES.md)\n");
+  assert.deepEqual(layout(), [], "the harness folder holds its shelves and ledgers only");
+  assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), "History: `docs/archive/` — search it.\n", "the entry file names the new place");
+  repointLinks(root, true);
+  assert.equal(readFileSync(join(root, "docs", "plan", "b.md"), "utf8"), "See [old](../archive/05_CHANGES.md).\n", "a link into the old archive follows");
+  // a docs/hooks of the repo's own is never deleted by the tool, and conform keeps naming it
+  put(root, "docs/hooks/mine.cjs", "module.exports = 1;\n");
+  applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(existsSync(join(root, "docs", "hooks", "mine.cjs")));
+  assert.deepEqual(layout(), ["docs/hooks/ (hooks live in the rule that owns them)"]);
 });

@@ -64,7 +64,7 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   const r = migrateToKit(root, { kitRef: "03", apply: true, date: "2026-10-15" });
   assert.ok(!("error" in r), JSON.stringify(r));
   const agent = join(root, "docs", "agent");
-  const arch = join(agent, "archive", "file-harness-2026-10-15");
+  const arch = join(root, "docs", "archive", "file-harness-2026-10-15");
   for (const f of ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "AGENTS.md", "hooks"]) assert.ok(existsSync(join(arch, f)), `archived ${f}`);
   assert.equal(readFileSync(join(arch, "02_RULES.md"), "utf8"), oldRules, "the archive is byte for byte");
   // constitution
@@ -162,7 +162,7 @@ test("sync on a first-generation folder repo: the purpose fills the purpose fram
   const consMd = readFileSync(join(cons, frame, "Cons.md"), "utf8");
   assert.match(consMd, /^status: written$/m);
   assert.match(consMd, /App giám sát hạ tầng/, "the purpose text moved over whole");
-  assert.ok(!existsSync(join(cons, "PURPOSE.md")) && existsSync(join(root, "docs", "agent", "archive", "PURPOSE.md")), "old file archived, not lost");
+  assert.ok(!existsSync(join(cons, "PURPOSE.md")) && existsSync(join(root, "docs", "archive", "PURPOSE.md")), "old file archived, not lost");
   const art = readFileSync(join(cons, to, `${to}.md`), "utf8");
   assert.match(art, /^id: Cons_102$/m);
   assert.match(art, /^aka: 01-2$/m);

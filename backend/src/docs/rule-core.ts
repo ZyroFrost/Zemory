@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative } from "node:path";
 import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
-import { bodyOf, constitutionFiles, isFolderHarness, isRetired, listParts, mainOf, mainPath, shelfDir, type Part } from "./store.js";
+import { bodyOf, folderCoreFiles, isFolderHarness, isRetired, listParts, mainOf, mainPath, type Part } from "./store.js";
 import { SHELF, legacyIdOf } from "./harness-names.js";
 import { selfRepoRoot } from "../projects.js";
 import { ledgerFile } from "../core/config.js";
@@ -267,15 +267,9 @@ function folderRules(agentDir: string): FolderRule[] {
   );
 }
 
-/** The judgment rules of a folder harness as text: the forced part a session starts with. */
+/** The laws no hook holds as text (folderCoreFiles): what goes back in after a compaction. */
 function folderCoreText(agentDir: string): string {
-  // An older harness still has PURPOSE.md on the constitution shelf; the current one writes it in Cons_Gate_09_Purpose/Cons.md.
-  const purpose = readOr(() => readFileSync(join(shelfDir(agentDir, SHELF.constitution), "PURPOSE.md"), "utf8").trim(), "");
-  const constitution = constitutionFiles(agentDir).map((f) => bodyOf(readOr(() => readFileSync(f, "utf8"), "")).trim());
-  const rules = folderRules(agentDir)
-    .filter((r) => r.part.shelf === SHELF.rules && r.part.kind === "judgment")
-    .map((r) => bodyOf(readFileSync(mainPath(r.part.dir, mainOf(r.part)), "utf8")).trim());
-  return [purpose, ...constitution, ...rules].filter(Boolean).join("\n\n");
+  return folderCoreFiles(agentDir).map((f) => bodyOf(readOr(() => readFileSync(f, "utf8"), "")).trim()).filter(Boolean).join("\n\n");
 }
 
 
@@ -384,7 +378,10 @@ export function forcedChars(agentDir: string): number {
 }
 
 /** The rule core as text for re-injection after a context compaction; "" when the repo has no core. Capped. */
-export function coreForCompaction(agentDir: string, cap = 22000): string {
+/** Characters of the core put back after a compaction; past it the text is cut, so conform names what to trim. */
+export const CORE_REINJECT_CAP = 22000;
+
+export function coreForCompaction(agentDir: string, cap = CORE_REINJECT_CAP): string {
   if (isFolderHarness(agentDir)) {
     const all = folderCoreText(agentDir);
     return all.length > cap ? `${all.slice(0, cap)}\n… (cut at ${cap} characters — read the rest in 02_RULES/)` : all;

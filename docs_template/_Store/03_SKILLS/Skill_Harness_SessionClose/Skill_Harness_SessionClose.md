@@ -2,7 +2,7 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 12
+version: 13
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
 ---
 
@@ -122,7 +122,7 @@ Chạy `zemory archive` ngay sau khi ghi. Nó làm hai việc KHÁC NHAU, đúng
 - **`04_TODO.md` — KHÔNG có ngưỡng.** Mọi mục đã xong — dấu `[x]` **hoặc** `✅`, `archive` nhận cả
   hai (bản chỉ-biết-`[x]` từng làm lệnh **chưa bao giờ nhặt được mục nào** ở repo viết `✅`, trong
   khi sổ phình tới 2.327 dòng và lệnh báo *"nothing to do"* mỗi lần) — chuyển sang
-  `docs/agent/archive/04_TODO.md` ngay, vì một mục đã xong là **đặt sai chỗ kể từ giây nó xong** —
+  `docs/archive/04_TODO.md` ngay, vì một mục đã xong là **đặt sai chỗ kể từ giây nó xong** —
   không liên quan file dài hay ngắn. (Đo được: gác bằng ngưỡng kích thước là lý do 107 mục đã xong nằm
   lại chiếm **46%** một file vốn được nạp MỌI phiên.) Mục còn mở `[ ]`/`[~]` giữ nguyên toàn bộ.
   **Dạng dấu máy dời (zemory ≥ 3.6.0):** dòng `- [x]` · `- ✅` · `N. [x]`, và khối có tiêu đề `## [x]`
@@ -139,7 +139,7 @@ Chạy `zemory archive` ngay sau khi ghi. Nó làm hai việc KHÁC NHAU, đúng
 **Chép NGUYÊN VĂN, KHÔNG tóm tắt** — tầng archive là để TRA LẠI, không phải để nén; cả hai tầng được
 reindex nên mục vừa chuyển tra được ngay (`zemory changelog search` · `zemory memory search`).
 
-**Không chạy được `zemory`?** Làm tay đúng hai luật trên, đích `docs/agent/archive/<tên file>.md`
+**Không chạy được `zemory`?** Làm tay đúng hai luật trên, đích `docs/archive/<tên file>.md`
 (tạo nếu chưa có), rồi báo đã chuyển bao nhiêu mục:
 
 - `04_TODO.md` — KHÔNG chờ ngưỡng nào. Mục xong dời NGUYÊN VĂN sang archive ngay; dọn cả mục **đã

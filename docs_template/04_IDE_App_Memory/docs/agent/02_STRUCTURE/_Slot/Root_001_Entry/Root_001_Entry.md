@@ -2,9 +2,9 @@
 id: Slot_1
 aka: 03-1
 name: entry
-version: 4
+version: 5
 path: AGENTS.md · CLAUDE.md
-from: _Store/02_STRUCTURE/_Slot/Root_001_Entry @v4 #65d089771917
+from: _Store/02_STRUCTURE/_Slot/Root_001_Entry @v5 #3942b7dd4a35
 ---
 # Root_001_Entry entry — cửa vào harness
 

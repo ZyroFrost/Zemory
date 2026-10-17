@@ -270,6 +270,8 @@ function followEntryRenames(root: string, skills: Part[], t: AssemblyTarget): vo
   const p = join(root, "AGENTS.md");
   if (!existsSync(p)) return;
   const text = readFileSync(p, "utf8");
-  const next = followHostRenames(text, skills, t);
+  let next = followHostRenames(text, skills, t);
+  // the archive moved out of the harness folder (moveArchiveOut): the entry file names where it is now
+  if (!existsSync(join(t.agentDir, "archive"))) next = next.split("docs/agent/archive/").join("docs/archive/");
   if (next !== text) writeFileSync(p, next);
 }

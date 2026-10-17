@@ -20,7 +20,7 @@ function usageLines(): string[] {
       "  migrate   analyze existing docs for brownfield adopt (no changes)",
       "  doctor    quick check (text): wired? docs? features?",
       "  ui        open a small status window (app-mode; --no-window = serve only)",
-      "  archive   move old 06_CHANGES blocks to docs/agent/archive/ when over threshold",
+      "  archive   move old 06_CHANGES blocks to docs/archive/ when over threshold",
       "  validate  check docs (.md), links, changelog retention, and supersede",
       "  conform   score how closely this repo follows the declared folder standard (--gate)",
       "  sweep     close leftover browser processes zemory started (--dry-run · --all · --json)",

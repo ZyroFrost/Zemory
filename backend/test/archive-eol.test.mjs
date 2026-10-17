@@ -45,7 +45,7 @@ test("05_TODO CRLF: the archive file must carry no lone LF", () => {
   const s = scratch("05_TODO.md", TODO_LINES.join("\r\n"));
   try {
     assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 1);
-    const archived = s.read(join("archive", "05_TODO.md"));
+    const archived = s.read(join("..", "archive", "05_TODO.md"));
     assert.equal(loneLf(archived), 0, "archive phải theo CRLF của file nguồn, kể cả dòng INTRO");
     assert.equal(loneLf(s.read("05_TODO.md")), 0, "file sổ chính cũng phải giữ CRLF");
   } finally {
@@ -57,7 +57,7 @@ test("06_CHANGES CRLF: the archive file must carry no lone LF", () => {
   const s = scratch("06_CHANGES.md", CHANGES_LINES.join("\r\n"));
   try {
     assert.ok(archiveChanges(s.ctx, s.dbPath).moved > 0, "phải cắt được ít nhất một entry");
-    const archived = s.read(join("archive", "06_CHANGES.md"));
+    const archived = s.read(join("..", "archive", "06_CHANGES.md"));
     assert.equal(loneLf(archived), 0, "archive phải theo CRLF của file nguồn");
     assert.equal(loneLf(s.read("06_CHANGES.md")), 0, "file sổ chính cũng phải giữ CRLF");
   } finally {
@@ -69,7 +69,7 @@ test("an LF repo must not get CR mixed in", () => {
   const s = scratch("05_TODO.md", TODO_LINES.join("\n"));
   try {
     assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 1);
-    assert.doesNotMatch(s.read(join("archive", "05_TODO.md")), /\r/, "repo LF phải ra LF");
+    assert.doesNotMatch(s.read(join("..", "archive", "05_TODO.md")), /\r/, "repo LF phải ra LF");
     assert.doesNotMatch(s.read("05_TODO.md"), /\r/, "repo LF phải ra LF");
   } finally {
     s.cleanup();
