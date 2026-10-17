@@ -306,14 +306,24 @@
       ok('✓ '+rr.hooked+'/'+rr.gateable,t('gates.ruleOk').replace('{h}',rr.hooked).replace('{j}',rr.judgement));
     var top=!g.hp?na:(g.top&&g.top.length?no(t('gates.cellStale'),t('gates.top')):ok());
     var rf=g.readFirst===false?no(t('gates.cellNo'),t('gates.noReadFirst')):ok();
-    return [guard,pre,rules,hp,top,rf];
+    // The daemon's periodic sweep (conform · validate · todo verify); null = not swept yet. Labels via i18n, the finding
+    // itself is the check's own text.
+    var s=g.sweep,parts=[];
+    if(s){
+      [['conform','gates.swConform'],['validate','gates.swValidate'],['todo','gates.swTodo']].forEach(function(k){
+        var c=s[k[0]];if(c&&c.count)parts.push(t(k[1]).replace('{n}',c.count)+(c.first?' — '+c.first:''));
+      });
+      (s.failed||[]).forEach(function(f){parts.push(t('gates.swFailed')+' — '+f);});
+    }
+    var sw=!s?na:(parts.length?no(t('gates.cellFindings').replace('{n}',parts.length),parts.join(' · ')):ok());
+    return [guard,pre,rules,hp,top,rf,sw];
   }
   function gatesDialog(){
     function draw(note){
       var rows=(GATES||[]).slice().sort(function(a,b){return (b.gaps>0)-(a.gaps>0)||a.name.localeCompare(b.name);});
       var cell=function(c){return '<span class="'+(c.na?'na':c.ok?'ok':'no')+'"'+(c.tip?' title="'+stdEsc(c.tip)+'"':'')+'>'+stdEsc(c.txt)+'</span>';};
       var head='<div class="gchk h"><span>'+stdEsc(t('gates.colRepo'))+'</span><span>'+stdEsc(t('gates.colGuard'))+'</span><span>'+stdEsc(t('gates.colPre'))+
-        '</span><span>'+stdEsc(t('gates.colRules'))+'</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span></div>';
+        '</span><span>'+stdEsc(t('gates.colRules'))+'</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span><span>'+stdEsc(t('gates.colSweep'))+'</span></div>';
       var body=rows.length?head+rows.map(function(g){
         return '<div class="gchk"><b title="'+stdEsc(g.root||'')+'">'+stdEsc(g.name)+'</b>'+gateCells(g).map(cell).join('')+'</div>';
       }).join(''):'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';

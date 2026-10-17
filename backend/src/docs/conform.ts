@@ -21,7 +21,7 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
-import { consFindings, isFolderHarness, leafOf, listParts, listStructures, shelfDir, SLOT_LAYER, slotGateFailures, structureSlots } from "./store.js";
+import { consFindings, isFolderHarness, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots } from "./store.js";
 import { viName } from "./vi-name-judge.js";
 import { SHELF } from "./harness-names.js";
 
@@ -266,7 +266,7 @@ export function conform(root: string): ConformReport {
   const need = [
     ...hp.entries,
     ...(folder
-      ? [join(shelfDir(hp.agent, SHELF.structure), "INDEX.md"), join(shelfDir(hp.agent, SHELF.skills), "INDEX.md"), hp.todo, hp.changes]
+      ? [join(shelfDir(hp.agent, SHELF.structure), "INDEX.md"), skillsIndexOf(hp.agent), hp.todo, hp.changes]
       : [...["01_CONSTITUTION", "02_RULES", "03_STRUCTURE", "04_SKILLS"].map((f) => join(hp.agent, `${f}.md`)), hp.todo, hp.changes]),
     join(hp.plan, "00_overview.md"),
   ];
@@ -337,8 +337,8 @@ export function conform(root: string): ConformReport {
   //               nó tồn tại mà không phiên nào tìm ra, tức tốn công viết mà không ai dùng.
   //      · CŨ   — playbook inline; roster = dòng "Skill inline hiện có"; đối chiếu với `##`.
   //    Giữ cả hai để project chưa migrate không bị báo oan.
-  // The list: `04_SKILLS/INDEX.md` in a folder harness (beside the sources it lists, plan/28 §0o), `04_SKILLS.md` before.
-  const sk = read(root, relative(root, folder ? join(shelfDir(hp.agent, SHELF.skills), "INDEX.md") : join(hp.agent, "04_SKILLS.md")).replace(/\\/g, "/"));
+  // The list: `03_SKILLS/INDEX.md` in a folder harness (beside the sources it lists, plan/28 §0o), `04_SKILLS.md` before.
+  const sk = read(root, relative(root, folder ? skillsIndexOf(hp.agent) : join(hp.agent, "04_SKILLS.md")).replace(/\\/g, "/"));
   const skillsDir = hp.skills;
   const onDisk = existsSync(skillsDir)
     ? readdirSync(skillsDir, { withFileTypes: true })

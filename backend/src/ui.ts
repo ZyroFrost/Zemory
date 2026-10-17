@@ -51,6 +51,7 @@ import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, standardDiff } from "./docs/standard.js";
 import { repoGateLines, repoGates, type RepoGates } from "./docs/repo-gates.js";
+import { loadRepoSweep, sweepLines, type SweepRow } from "./docs/repo-sweep.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
 /**
@@ -117,7 +118,7 @@ function lanAddresses(): Array<{ addr: string; iface: string; fixed: boolean }> 
 }
 
 let harnessUpdCache: { at: number; stale: Array<{ root: string; name: string; missing: number; guardStale: number }> } | null = null;
-let repoGatesCache: { at: number; rows: Array<RepoGates & { lines: string[] }> } | null = null;
+let repoGatesCache: { at: number; rows: Array<RepoGates & { lines: string[]; sweep: SweepRow | null }> } | null = null;
 /**
  * LÀM MỚI số phiên bản của remote — ở TIẾN TRÌNH CON, không bao giờ trong vòng lặp sự kiện.
  *
@@ -4123,12 +4124,20 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // a row per constitution article. Same function as `zemory gates --all`. Cached 5′ like /harness-updates.
       const now = Date.now();
       if (!repoGatesCache || now - repoGatesCache.at > 300_000 || u.searchParams.get("fresh") === "1") {
-        const rows: Array<RepoGates & { lines: string[] }> = [];
+        const rows: Array<RepoGates & { lines: string[]; sweep: SweepRow | null }> = [];
         try {
+          // The daemon's 6-hour sweep (conform · validate · todo verify) joins each repo's gaps: one chip, one list.
+          const sweep = loadRepoSweep();
+          const swept = new Map((sweep?.rows ?? []).map((r) => [r.root, r]));
           for (const proj of listKnownProjects()) {
             if (!existsSync(proj.root)) continue;
             const g = repoGates(proj.root, proj.name);
-            if (g) rows.push({ ...g, lines: repoGateLines(g) });
+            if (!g) continue;
+            // null = not swept yet (new repo, or the first sweep has not run) — shown as "—", never as clean. The UI
+            // labels the row through i18n; `lines` keeps the English CLI text for `zemory gates`-style readers.
+            const row = swept.get(proj.root) ?? null;
+            const extra = row ? sweepLines(row) : [];
+            rows.push({ ...g, gaps: g.gaps + extra.length, lines: [...repoGateLines(g), ...extra], sweep: row });
           }
         } catch {
           /* fail-open — a reminder surface must not die */

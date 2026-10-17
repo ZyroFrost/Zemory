@@ -97,11 +97,14 @@ const BACKUP_EVERY_MS = 30 * 60_000;
 // Rác nháp lớn dần theo GIỜ chứ không theo phút — 6 tiếng một lượt là đủ dày mà gần như
 // không tốn gì (một lượt `readdir` + `stat`).
 const SCRATCH_EVERY_MS = 6 * 60 * 60_000;
+// The sweep code itself loads only in the worker (docs/repo-sweep.js): the daemon's main thread never imports it.
+const REPO_SWEEP_EVERY_MS = 6 * 60 * 60_000;
 
 let maintainTimer: ReturnType<typeof setInterval> | null = null;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 let backupTimer: ReturnType<typeof setInterval> | null = null;
 let scratchTimer: ReturnType<typeof setInterval> | null = null;
+let repoSweepTimer: ReturnType<typeof setInterval> | null = null;
 let webTimer: ReturnType<typeof setInterval> | null = null;
 /** Nhịp HỎI "lane nào tới lượt" — rẻ (đọc settings). Việc tới lượt hay chưa do `webDue` phán,
  *  nên đồng hồ này dày hơn chu kỳ kéo mà không làm tăng số lần mở trình duyệt. */
@@ -524,6 +527,13 @@ async function backupTick(why: string, fromChain = false): Promise<void> {
  * (chỉ đọc/xoá trong thư mục tạm của host), nên treo nó vào công tắc tính năng khác là tái diễn
  * đúng lỗi đã làm backup chết lặng 4 ngày. Fail-open như mọi lớp phụ (HP điều 9).
  */
+/** Periodic repo sweep: conform · validate · todo verify over every registered repo, in a worker; report only. */
+async function repoSweepTick(): Promise<void> {
+  const r = await runInWorker<{ repos: number; red: number }>("docs/repo-sweep.js", "sweepRepos", [], 10 * 60_000);
+  if (!r.ok) log(`repo sweep skipped: ${r.error}`);
+  else log(`repo sweep: ${r.value.repos} repo(s), ${r.value.red} with findings`);
+}
+
 async function scratchTick(): Promise<void> {
   // 🔴 CẢ BỐN lượt dọn chạy ở WORKER (`fnworker.ts`). Đo 2026-09-25 bằng CPU profiler gắn vào daemon
   // thật: chúng là `statSync`/`readdirSync` trên cả cây nháp + `execFileSync` liệt kê tiến trình —
@@ -1049,6 +1059,11 @@ export function startScheduler(): void {
   backupTimer = setInterval(() => void backupTick("nhịp riêng"), BACKUP_EVERY_MS);
   scratchTimer = setInterval(() => void scratchTick(), SCRATCH_EVERY_MS);
   setTimeout(() => void scratchTick(), 90_000).unref?.(); // mồi một lượt sau khi daemon ổn định
+  // Repo sweep (plan/28 §0q): its own clock like the scratch sweep — it reads, never writes a store, so it hangs on no
+  // feature switch. First run 5 minutes after boot, off the other clocks' starting beats.
+  repoSweepTimer = setInterval(() => void repoSweepTick(), REPO_SWEEP_EVERY_MS);
+  repoSweepTimer.unref?.();
+  setTimeout(() => void repoSweepTick(), 5 * 60_000).unref?.();
   // LỆCH PHA nửa chu kỳ: hai đồng hồ cùng chu kỳ mà tạo cùng lúc thì tới hạn CÙNG một khoảnh
   // khắc, và cái đăng ký trước luôn giành được lượt (xem chú thích ở syncTick). Đặt sync vào
   // giữa hai nhịp bảo trì để lúc nó tới hạn thì chuỗi kia đã xong từ lâu.
@@ -1101,7 +1116,8 @@ export function stopScheduler(): void {
   if (backupTimer) clearInterval(backupTimer);
   if (scratchTimer) clearInterval(scratchTimer);
   if (webTimer) clearInterval(webTimer);
-  maintainTimer = syncTimer = backupTimer = scratchTimer = webTimer = null;
+  if (repoSweepTimer) clearInterval(repoSweepTimer);
+  maintainTimer = syncTimer = backupTimer = scratchTimer = webTimer = repoSweepTimer = null;
   chainRunning = false;
   if (child) {
     try {

@@ -40,7 +40,8 @@ export function planSizeIssues(planDir: string, specMax: number, planMax: number
   return out;
 }
 
-export function validate(ctx: Context): ValidateReport {
+/** `paths: false` skips the dead-path scan — the periodic repo sweep has its own paths sweep and must stay cheap. */
+export function validate(ctx: Context, opts: { paths?: boolean } = {}): ValidateReport {
   const issues: ValidateIssue[] = [];
   const projectRoot = ctx.projectRoot;
   const agentDir = ctx.docsDir; // docs/agent
@@ -198,6 +199,7 @@ export function validate(ctx: Context): ValidateReport {
   //    must not cause. Details live in `zemory paths check`; `--gate` is opt-in there.
   //    Fail-open (điều 9): a failing scan becomes an info line, never a thrown validate().
   let paths: PathsReport | undefined;
+  if (opts.paths === false) return { issues, ok: !issues.some((i) => i.level === "error") };
   try {
     paths = pathsCheck(ctx);
     issues.push({ level: "info", msg: `${pathsSummary(paths)} — \`zemory paths check\` for the list` });

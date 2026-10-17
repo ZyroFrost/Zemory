@@ -44,8 +44,11 @@ test("⑤ a CHECKLIST: every repo is a row with its four checks, not only the re
   const body = fn("gatesDialog");
   assert.match(body, /var rows=\(GATES\|\|\[\]\)\.slice\(\)\.sort\(/, "all repos, gaps first");
   assert.doesNotMatch(body, /filter\(function\(g\)\{return g\.gaps>0;\}\);\s*var body/, "listing only the bad repos = the old list");
-  // six checks: rule gates got their own column beside the constitution gates (2026-10-14, plan/27 §3)
-  assert.match(fn("gateCells"), /return \[guard,pre,rules,hp,top,rf\];/, "six checks per repo (rule gates added 2026-10-14)");
+  // seven checks: rule gates got their own column beside the constitution gates (2026-10-14, plan/27 §3); the daemon's
+  // periodic sweep is the seventh (plan/28 §0q)
+  assert.match(fn("gateCells"), /return \[guard,pre,rules,hp,top,rf,sw\];/, "seven checks per repo (periodic sweep added 2026-10-17)");
+  assert.match(readFileSync(new URL("../../frontend/styles/app.css", import.meta.url), "utf8"), /\.gchk\{display:grid;grid-template-columns:minmax\(0,1\.6fr\) repeat\(7,/,
+    "the grid has one track per check (a missing track wraps the last cell onto a new line)");
   assert.match(fn("gatesDialog"), /t\('gates\.colRules'\)[\s\S]*t\('gates\.colHp'\)/, "the rule-gates column stands before, and apart from, the constitution column");
 });
 
@@ -70,6 +73,7 @@ test("⑦ after applying, the box REDRAWS from fresh numbers, and the measure as
 
 test("③ gap lines go through i18n in BOTH dictionaries, never the backend's English `lines`", () => {
   assert.doesNotMatch(fn("gatesDialog"), /g\.lines/, "rendering g.lines puts English CLI text in the UI");
-  const keys = ["gates.colRf", "gates.noReadFirst", "gates.colRepo", "gates.colGuard", "gates.colPre", "gates.colHp", "gates.colTop", "gates.cellNo", "gates.cellTools", "gates.cellOwn", "gates.cellNoTable", "gates.cellStale", "gates.checkedBad", "gates.checkedOk", "gates.noGuard", "gates.matcher", "gates.noPrecommit", "gates.ownPrecommit", "gates.noTable", "gates.noRow", "gates.top"];
+  const keys = ["gates.colRf", "gates.noReadFirst", "gates.colRepo", "gates.colGuard", "gates.colPre", "gates.colHp", "gates.colTop", "gates.cellNo", "gates.cellTools", "gates.cellOwn", "gates.cellNoTable", "gates.cellStale", "gates.checkedBad", "gates.checkedOk", "gates.noGuard", "gates.matcher", "gates.noPrecommit", "gates.ownPrecommit", "gates.noTable", "gates.noRow", "gates.top",
+    "gates.colSweep", "gates.cellFindings", "gates.swConform", "gates.swValidate", "gates.swTodo", "gates.swFailed"];
   for (const k of keys) assert.equal(CHROME.split(`'${k}':`).length - 1, 2, `${k} must exist in the VI and the EN dictionary`);
 });
