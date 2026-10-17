@@ -2,7 +2,7 @@
 id: Skill_Harness_Audit
 aka: audit
 name: harness-audit
-version: 10
+version: 12
 description: Run a full review of the project across every dimension, verifying each finding against real files before reporting it. Use only when explicitly asked for a thorough audit, or before a major milestone such as a release or a large batch of changes. This is not a quick check. Vietnamese triggers - "audit toàn diện", "soi hết", "kiểm tra toàn bộ", "rà lại hết", "review tổng thể".
 ---
 
@@ -35,7 +35,7 @@ lòng tin vào cả bảng.
 và một check không nổ được còn tệ hơn không có (nó phát ra lời bảo đảm trong khi chưa hề nhìn).
 
 **Luật 5 — ĐO HAI ĐƯỜNG, khác cơ chế.** Một phép đo chưa kiểm chéo thì chưa phải sự thật
-(`Rule_Gate_11_VerifyClaims`). Bốn dạng đã trả giá: công cụ **hỏng lặng** trả rỗng (cờ sai ⇒ âm tính giả ⇒
+(`Rule_Keys_11_VerifyClaims`). Bốn dạng đã trả giá: công cụ **hỏng lặng** trả rỗng (cờ sai ⇒ âm tính giả ⇒
 tưởng "sạch") · **báo oan** do so lỏng (không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai
 bản chất** (khoá phụ trỏ hụt ⇒ tưởng mồ côi, suýt xoá dữ liệu đang sống) · **sổ nói khác code**.
 Kiểm chéo = đổi công cụ · đổi hướng đếm · hoặc gọi bề mặt thật (kho/DB ↔ API).
@@ -69,7 +69,9 @@ chính MÃ — tên file · định danh · chú thích.)*
    **neo test có trỏ vào file đang chạy không**.
 5. **Dữ liệu thật** — `integrity_check` · độ phủ (index/vector/digest) · hàng mồ côi · kích thước.
 6. **Bề mặt sống** — gọi endpoint THẬT (mã trả về + thời gian) · mở app **nhìn tận mắt**. Suy luận
-   từ code không thay được việc nhìn: đã có lần endpoint xanh, gate xanh, mà UI vẫn sai.
+   từ code không thay được việc nhìn: đã có lần endpoint xanh, gate xanh, mà UI vẫn sai. **Mã trả về
+   không phải là đã nhìn**: mở màn hình và hộp thoại chính, ĐỌC nội dung (số cột · nhãn · băng cảnh
+   báo) — nhiều lượt audit báo sạch trong khi hộp thoại chính hiện cột sai và một cảnh báo oan.
 7. **Bí mật & phát tán** — secret trong cây **VÀ trong LỊCH SỬ git** (không chỉ HEAD: khoá lộ rồi thì
    lộ **vĩnh viễn**, xoá ở HEAD không gỡ được thứ đã đẩy đi) · file lớn/binary lọt git · **đường ra
    ngoài** rộng hơn `git push`: thư mục đồng bộ đám mây · kênh *backup máy* của trình đồng bộ (thứ
@@ -85,13 +87,16 @@ chính MÃ — tên file · định danh · chú thích.)*
    bỏ qua lời từ chối thì vẫn thủng) · có kẻ ghi thứ hai nào đang mở kho không · giao dịch có nguyên
    tử · **THỬ PHỤC HỒI THẬT** một bản sao lưu ra chỗ tạm rồi ĐẾM — *"dữ liệu lành"* KHÁC *"dựng lại
    được"*, và kênh mang đi có thể lặng lẽ vứt mất lớp đắt nhất mà không cổng nào đỏ.
+   **Trạng thái dùng chung NGOÀI repo** (thư mục trao đổi giữa các máy) thì mọi phép kiểm mã đều mù: liệt
+   kê nó kèm TUỔI từng tệp — bản khai cũ nằm lại đủ để đẻ cột sai và cảnh báo oan qua nhiều lượt audit;
+   bản quá cũ dời sang chỗ cất (`retired/`).
    Kèm: chạy skill `sync-path/`.
 10. **Vận hành nền & guardrail** — tiến trình nền còn sống không · có nhịp tim/log đủ để truy khi nó
    chết cứng không · bề mặt có **CHẾT THEO nền** không (vỏ rỗng là kiểu hỏng tệ nhất: nó không báo
    lỗi, nó **NÓI DỐI**, và người dùng không có cách phân biệt với đang-chạy-thật) · **chạy ma trận
    guardrail** — cổng chặn có thật sự chặn không, thứ chỉ đo được bằng cách CHẠY, không đọc code ra
    (ca phải chặn **+ ca phải cho qua**, luật 7).
-11. **CHỮ & BỀ MẶT NGƯỜI ĐỌC** — **NORM ở `Rule_Keys_31_TextCorrect`** (*chữ người dùng đọc phải đầy đủ và
+11. **CHỮ & BỀ MẶT NGƯỜI ĐỌC** — **NORM ở `Rule_Gate_02_ReaderText` · `Rule_Gate_31_NoBrokenVietnamese`** (*chữ người dùng đọc phải đầy đủ và
    đúng*, 4 ràng buộc, ship cho MỌI bộ harness). Ở đây chỉ có **cách ĐO**. Năm phép, mỗi phép phải in
    *đã quét bao nhiêu* để không xanh giả:
    · **thiếu dấu tiếng Việt** trong docs · **chính tả** (từ lặp liền · mojibake);
@@ -114,7 +119,7 @@ chính MÃ — tên file · định danh · chú thích.)*
      **vẫn 0 thật** ⇒ phép này CHƯA đủ chính xác để làm cổng, chỉ dùng để soi tay.
    · *mojibake* (UTF-8 bị đọc thành Latin-1): `Â.`/`Ã.` trúng cả chữ Việt hợp lệ (ĐÂY · NGÃ) — 192
      hit oan. Mẫu đúng: `[ÃÂ][-¿]` · `â€` · `ï»¿` · `U+FFFD`. Và phải **miễn chuỗi nằm trong
-     backtick**: file DẠY về mojibake (chính `Rule_Keys_31_TextCorrect`) nêu ví dụ mẫu ⇒ bộ dò ngây thơ báo
+     backtick**: file DẠY về mojibake (chính `Rule_Gate_31_NoBrokenVietnamese`) nêu ví dụ mẫu ⇒ bộ dò ngây thơ báo
      oan trên đúng tài liệu định nghĩa ra nó (đo được: 6/245 hit, 0 thật).
    · *caption*: nhãn thường nằm ở **thẻ CON** (`<a><span>…</span></a>`) hoặc ở `<label>` bọc ngoài
      ⇒ chỉ đọc text ngay sau thẻ mở là báo oan 20 ca.
@@ -126,12 +131,12 @@ chính MÃ — tên file · định danh · chú thích.)*
      và endpoint do **CLI gọi qua HTTP** không có người gọi trong FE. Kể cả ba nguồn (FE tĩnh ·
      tiền tố động · test/CLI) rồi mới kết luận.
 
-12. **NGÔN NGỮ CỦA MÃ** — **NORM ở `Rule_Gate_31_NoBrokenVietnamese`–`Rule_Keys_31_TextCorrect`** (luật thiết kế chung mọi app). Bốn phép,
+12. **NGÔN NGỮ CỦA MÃ** — **NORM ở `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`** (luật chung mọi app). Bốn phép,
    **cách đo + bẫy báo oan + số nền ở [`references/lang.md`](references/lang.md)**; máy chạy:
    `node .claude/skills/harness-audit/scripts/lang-scan.mjs . [--all]` — nó in *đã quét bao nhiêu* để một lượt
    sạch không bị đọc thành "chưa soi gì".
    · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh** (biến · hằng · hàm · lớp · kiểu ·
-     khoá config) chỉ ASCII tiếng Anh — trong mã, thứ DUY NHẤT được tiếng Việt là **chú thích**;
+     khoá config) chỉ ASCII tiếng Anh — **chú thích cũng tiếng Anh** (`Rule_Gate_29_CodeLanguage`);
    · **Ⓒ tuyệt đối KHÔNG có tiếng Việt mất dấu ở BẤT CỨ ĐÂU** — plan · docs · chú thích · tên test ·
      chuỗi sinh máy: hoặc tiếng Anh, hoặc tiếng Việt CÓ DẤU, không có lựa chọn thứ ba;
    · **Ⓓ song ngữ UI** — cân dict vi↔en (thiếu một bên thì hàm dịch lặng lẽ rơi về ngôn ngữ gốc,
@@ -197,7 +202,7 @@ nặng nhất, không phải mặt phụ.)*
    (ca phải chặn **+ ca phải cho qua**, luật 7).
 
 10. **CHỮ & BỀ MẶT NGƯỜI ĐỌC — mặt NẶNG NHẤT ở dự án non-app** (sản phẩm giao đi chính là chữ người
-   đọc, không phải phụ kiện của một app). NORM ở `Rule_Keys_31_TextCorrect`. Đo: **thiếu dấu** · **chính
+   đọc, không phải phụ kiện của một app). NORM ở `Rule_Gate_02_ReaderText` · `Rule_Gate_31_NoBrokenVietnamese`. Đo: **thiếu dấu** · **chính
    tả** (từ lặp liền · mojibake do UTF-8 bị đọc thành Latin-1) · **nhãn trong sản phẩm** (tiêu đề
    cột · chú thích hình · biểu đồ · ảnh có tiêu đề và **ĐƠN VỊ** rõ; số có đơn vị + kỳ/mốc thời gian
    kèm) · **thuật ngữ NHẤT QUÁN** — một thuật ngữ một tên xuyên suốt (cùng một metric không mang hai
@@ -213,12 +218,12 @@ nặng nhất, không phải mặt phụ.)*
    cột/sheet của nguồn, tên file vendor, thuật ngữ nghiệp vụ viết hoa lạ — soi chữ trong phần MÌNH
    viết, đừng soi chữ mình chỉ đi ngang qua.
 
-11. **NGÔN NGỮ CỦA MÃ** — NORM ở `Rule_Gate_31_NoBrokenVietnamese`–`Rule_Keys_31_TextCorrect`. Máy chạy `node
+11. **NGÔN NGỮ CỦA MÃ** — NORM ở `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`. Máy chạy `node
    .claude/skills/harness-audit/scripts/lang-scan.mjs .`; nó in *đã quét bao nhiêu* để lượt sạch không bị đọc
    thành "chưa soi gì". Cách đo + bẫy chi tiết: [`references/lang.md`](references/lang.md).
    · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh trong script/pipeline** (biến · hàm ·
-     cột trung gian mình tự đặt · khoá config) chỉ ASCII tiếng Anh — thứ DUY NHẤT được tiếng Việt
-     trong mã là **chú thích**. *Tên do NGUỒN đặt (cột Excel · trường API) giữ nguyên từng ký tự: đó
+     cột trung gian mình tự đặt · khoá config) chỉ ASCII tiếng Anh — **chú thích cũng tiếng Anh**
+     (`Rule_Gate_29_CodeLanguage`). *Tên do NGUỒN đặt (cột Excel · trường API) giữ nguyên từng ký tự: đó
      là DỮ LIỆU, đổi là loader không tìm thấy.*
    · **Ⓒ tuyệt đối KHÔNG có tiếng Việt mất dấu ở BẤT CỨ ĐÂU** — plan · docs · chú thích · tên test ·
      chuỗi sinh máy: hoặc tiếng Anh, hoặc tiếng Việt CÓ DẤU, không có lựa chọn thứ ba.

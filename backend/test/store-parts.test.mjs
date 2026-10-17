@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { gateExampleFindings, storePrivacyFindings } from "../../dist/docs/gate-examples.js";
 import { storePointerFindings } from "../../dist/docs/pointer-check.js";
-import { kitParts, listParts, structureSlots, partNameFindings, readKits, SHELVES, STORE_DIR, storeShelfFindings, unbumpedParts } from "../../dist/docs/store.js";
+import { kitParts, listParts, structureSlots, partMentionFindings, partNameFindings, readKits, SHELVES, STORE_DIR, storeShelfFindings, unbumpedParts } from "../../dist/docs/store.js";
 import { tempDir } from "./helpers.mjs";
 
 function put(root, rel, text) {
@@ -309,4 +309,17 @@ test("every set reproduces what the old template it replaced gave a repo: its ru
     const lost = readdirSync(base).filter((n) => !["agent", "plan", "hooks"].includes(n) && !existsSync(join(setDir, n)) && !existsSync(join(setDir, "docs", n)));
     assert.deepEqual(lost, [], `${kit.name}: root entries of ${old} it does not carry`);
   }
+});
+
+test("every part the store's own text names is a live part (a renamed or retired name left in prose points at nothing)", (t) => {
+  // 2026-10-17: 7 mentions of a renamed rule and 12 more dead names (renamed rules, a wrong enforcement group) in skills, slots
+  // and reminder texts — no gate looked at names, only at paths.
+  assert.deepEqual(partMentionFindings(STORE_DIR), [], "every dead name: point it at the live part (or Archive/ARCHIVE.md)");
+  // negative: a fake store with one dead mention, and a wrong name inside a gate.json example (test data, never reported)
+  const s = tempDir(t, "zemory-mention-");
+  const part = join(s, "01_LAW", "_Rule", "Rule_Gate_01_Alpha");
+  mkdirSync(part, { recursive: true });
+  writeFileSync(join(part, "Rule_Gate_01_Alpha.md"), "---\nid: Rule_1\nname: alpha\nversion: 1\n---\n# Rule_Gate_01_Alpha\n\nSee Rule_Gate_02_Gone and Rule_Gate_01_Alpha.\n");
+  writeFileSync(join(part, "gate.json"), JSON.stringify({ gate: "guard", block: [{ prompt: "Rule_Core_90_X" }] }));
+  assert.deepEqual(partMentionFindings(s), ["01_LAW/_Rule/Rule_Gate_01_Alpha/Rule_Gate_01_Alpha.md: Rule_Gate_02_Gone"]);
 });

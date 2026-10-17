@@ -2,9 +2,9 @@
 id: Rule_21
 aka: 02-21
 name: what-enters-git
-version: 6
+version: 7
 kind: action
-from: _Store/01_LAW/_Rule/Rule_Gate_21_WhatEntersGit @v6 #39ef80a4a3fc
+from: _Store/01_LAW/_Rule/Rule_Gate_21_WhatEntersGit @v7 #e77b5f85d9aa
 ---
 # Rule_Gate_21_WhatEntersGit Thứ không được vào git
 

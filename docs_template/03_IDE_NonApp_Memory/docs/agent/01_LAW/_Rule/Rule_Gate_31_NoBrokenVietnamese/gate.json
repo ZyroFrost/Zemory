@@ -117,6 +117,6 @@
   "prompt": {
     "kind": "Rule_31",
     "re": "\\b(viet hoa|doi van|an du|quy cach|ghi ro|in lai full|chu dau|%\\w*|chinh ta|lỗi font|loi font|mojibake|dấu|tieng viet|don vi|ten file|title|%|ghi chinh xac|viet sai|sai chu)\\b",
-    "text": "[zemory] Rule_Keys_31_TextCorrect: Text people read is complete and correct: spelling, diacritics, units, one name per thing."
+    "text": "[zemory] Rule_Gate_31_NoBrokenVietnamese: Text people read is complete and correct: spelling, diacritics, units, one name per thing."
   }
 }

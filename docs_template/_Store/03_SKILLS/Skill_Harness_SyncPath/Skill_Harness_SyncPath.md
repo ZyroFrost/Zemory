@@ -2,7 +2,7 @@
 id: Skill_Harness_SyncPath
 aka: sync-path
 name: harness-sync-path
-version: 8
+version: 9
 description: Declare and PROVE how every new artifact reaches a second machine - code, data layer, derived index, secret, model, config. Run before calling any build "done", when adding a new storage or index layer, when handing a repo to another PC, or when something works on one machine but not the other. Vietnamese triggers - "đồng bộ 2 máy", "máy thứ hai", "bàn giao máy mới", "pull về máy kia", "kẹt giữa 2 máy", "sync đa máy", "máy kia chạy được chưa".
 ---
 
@@ -65,7 +65,7 @@ thước phía máy chủ có **khớp bản cục bộ** không.
 
 *Đã trả giá thật:* gói bàn giao nằm im trong thư mục đồng bộ, **hai gói 317 MB kẹt suốt 3 ngày** mà
 không ai biết — trong khi lệnh đồng bộ vẫn báo "đã xuất" thành công mỗi lần. Đúng kiểu hỏng mà
-`Rule_Keys_22_DieWithBackend` gọi là **vỏ rỗng: không báo lỗi, nó nói dối**.
+`Rule_Keys_22_FailLoud` gọi là **vỏ rỗng: không báo lỗi, nó nói dối**.
 
 ## 4. Bẫy đã trả giá — đọc trước khi tự tin
 

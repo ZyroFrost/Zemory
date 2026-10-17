@@ -2,7 +2,7 @@
   "prompt": {
     "kind": "Rule_22",
     "re": "\\b(gay|lich|load|restore|install|launcher|pipeline|job|lich chay|len lich|task (tu dong|thang|ngay|cu)|task scheduler|scheduled|chay nen|tien trinh|treo|đơ|đứng máy|dung may|crash|tắt|timeout|tu chay|tu dong|tray|restart|khoi dong|chay tiep|bi dis|tran ram|ram)\\b",
-    "text": "[zemory] Rule_Keys_22_DieWithBackend: A surface that depends on a background process notices when it dies and says so — never a shell that looks alive."
+    "text": "[zemory] Rule_Keys_22_FailLoud: A surface that depends on a background process notices when it dies and says so — never a shell that looks alive."
   },
   "block": [
     {

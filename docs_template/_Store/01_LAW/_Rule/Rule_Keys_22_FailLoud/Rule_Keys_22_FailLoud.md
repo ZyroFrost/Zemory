@@ -2,7 +2,7 @@
 id: Rule_22
 aka: 02-22
 name: fail-loud
-version: 5
+version: 6
 kind: judgment
 ---
 # Rule_Keys_22_FailLoud Lỗi phải lộ ra

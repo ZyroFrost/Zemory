@@ -6,18 +6,18 @@ có mặt ở đó và khớp bản kho (dòng `from:`), và mọi folder ở đ
 <!-- zemory:skills:start · máy ghi khối này lúc ráp; skill riêng của repo thêm dòng BÊN DƯỚI khối -->
 | Skill (source) | Host | from |
 |---|---|---|
-| `Skill_Dev_AppDesign/` | `.claude/skills/dev-app-design/` | _Store/03_SKILLS/Skill_Dev_AppDesign @v9 #967642d52499 |
+| `Skill_Dev_AppDesign/` | `.claude/skills/dev-app-design/` | _Store/03_SKILLS/Skill_Dev_AppDesign @v10 #e535ef02ac67 |
 | `Skill_Dev_DbDesign/` | `.claude/skills/dev-db-design/` | _Store/03_SKILLS/Skill_Dev_DbDesign @v1 #30e26d09cf0a |
-| `Skill_Dev_Release/` | `.claude/skills/dev-release/` | _Store/03_SKILLS/Skill_Dev_Release @v1 #02e0ace5a41d |
+| `Skill_Dev_Release/` | `.claude/skills/dev-release/` | _Store/03_SKILLS/Skill_Dev_Release @v2 #44f0a9617f24 |
 | `Skill_Doc_ReadOffice/` | `.claude/skills/doc-read-office/` | _Store/03_SKILLS/Skill_Doc_ReadOffice @v3 #157c05e6193a |
 | `Skill_Doc_WriteDocx/` | `.claude/skills/doc-write-docx/` | _Store/03_SKILLS/Skill_Doc_WriteDocx @v3 #f9bb4e682e86 |
 | `Skill_Doc_WriteStyle/` | `.claude/skills/doc-write-style/` | _Store/03_SKILLS/Skill_Doc_WriteStyle @v4 #c728d5e46bbd |
-| `Skill_Harness_Audit/` | `.claude/skills/harness-audit/` | _Store/03_SKILLS/Skill_Harness_Audit @v10 #19f84b41231b |
+| `Skill_Harness_Audit/` | `.claude/skills/harness-audit/` | _Store/03_SKILLS/Skill_Harness_Audit @v12 #5b6b6b598100 |
 | `Skill_Harness_Conform/` | `.claude/skills/harness-conform/` | _Store/03_SKILLS/Skill_Harness_Conform @v7 #e8b8b39c1c08 |
 | `Skill_Harness_Grill/` | `.claude/skills/harness-grill/` | _Store/03_SKILLS/Skill_Harness_Grill @v7 #debb410eb706 |
 | `Skill_Harness_PlanTrim/` | `.claude/skills/harness-plan-trim/` | _Store/03_SKILLS/Skill_Harness_PlanTrim @v6 #657b131af283 |
-| `Skill_Harness_Reconcile/` | `.claude/skills/harness-reconcile/` | _Store/03_SKILLS/Skill_Harness_Reconcile @v8 #591385ea23c5 |
+| `Skill_Harness_Reconcile/` | `.claude/skills/harness-reconcile/` | _Store/03_SKILLS/Skill_Harness_Reconcile @v9 #10c0dd259111 |
 | `Skill_Harness_RuleGate/` | `.claude/skills/harness-rule-gate/` | _Store/03_SKILLS/Skill_Harness_RuleGate @v1 #1ee8d0317b78 |
-| `Skill_Harness_SessionClose/` | `.claude/skills/harness-session-close/` | _Store/03_SKILLS/Skill_Harness_SessionClose @v11 #9055abfbc5e0 |
-| `Skill_Harness_SyncPath/` | `.claude/skills/harness-sync-path/` | _Store/03_SKILLS/Skill_Harness_SyncPath @v8 #ca38efb40d82 |
+| `Skill_Harness_SessionClose/` | `.claude/skills/harness-session-close/` | _Store/03_SKILLS/Skill_Harness_SessionClose @v12 #ffde4d674f68 |
+| `Skill_Harness_SyncPath/` | `.claude/skills/harness-sync-path/` | _Store/03_SKILLS/Skill_Harness_SyncPath @v9 #ba1f734475c9 |
 <!-- zemory:skills:end -->

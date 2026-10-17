@@ -2,7 +2,7 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 11
+version: 12
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
 ---
 
@@ -177,7 +177,7 @@ Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'   # ③ g�
 ## Bước cuối
 
 `zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO. **Không tự `git push`**
-(`Rule_Gate_50_PushApproval`).
+(`Rule_Gate_50_Git`).
 
 ## Bảng soát tài liệu đi cùng thay đổi (`Rule_Gate_34_DocsFollowChange`)
 

@@ -1,8 +1,8 @@
 {
   "prompt": {
     "kind": "Rule_29",
-    "re": "\\b(query|lenh cmd|ten bien|logic|comment|chu thich|commit|log|dat ten bien|code|script|ham|function)\\b",
-    "text": "[zemory] Rule_Gate_29_CodeEnglish: Code is English: identifiers, file names, logs, commit messages and comments."
+    "re": "\\b(query|lenh cmd|ten bien|logic|comment|chu thich|commit|log|dat ten bien|code|script|ham|function|tieng viet|van noi|ban vn|hien vay ai hieu|phim tat|thong bao|title|dropdown|tieng anh|song ngu|dich|i18n|nhan hien thi|label|chu hien thi|english|en/vi|ngon ngu)\\b",
+    "text": "[zemory] Rule_Gate_29_CodeLanguage: Code is English: identifiers, file names, logs, commit messages, comments and CLI output; UI strings go through i18n with both dictionaries complete (Skill_Dev_AppDesign)."
   },
   "block": [
     {
@@ -151,6 +151,10 @@
           "outside": ".allow-outside"
         }
       }
+    },
+    {
+      "note": "an i18n request this rule's keywords catch",
+      "prompt": "thêm song ngữ cho nhãn hiển thị"
     }
   ],
   "pass": [

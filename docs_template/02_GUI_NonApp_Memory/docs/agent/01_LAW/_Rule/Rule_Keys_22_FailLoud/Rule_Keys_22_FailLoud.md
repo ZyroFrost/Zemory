@@ -2,9 +2,9 @@
 id: Rule_22
 aka: 02-22
 name: fail-loud
-version: 5
+version: 6
 kind: judgment
-from: _Store/01_LAW/_Rule/Rule_Keys_22_FailLoud @v5 #fcec0fa74b55
+from: _Store/01_LAW/_Rule/Rule_Keys_22_FailLoud @v6 #b9d3bc9f9bb4
 ---
 # Rule_Keys_22_FailLoud Lỗi phải lộ ra
 

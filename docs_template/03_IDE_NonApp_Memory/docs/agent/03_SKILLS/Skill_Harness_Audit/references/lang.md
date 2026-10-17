@@ -1,6 +1,6 @@
 # mặt ⑫ — NGÔN NGỮ CỦA MÃ: cách ĐO
 
-> **NORM ở `Rule_Gate_31_NoBrokenVietnamese`–`Rule_Keys_31_TextCorrect`** (luật thiết kế chung mọi app). Ở đây chỉ có
+> **NORM ở `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`** (luật chung mọi app). Ở đây chỉ có
 > **cách đo** và **bẫy báo oan**. Luật nói PHẢI ĐÚNG GÌ; file này nói ĐO THẾ NÀO cho khỏi báo oan.
 > Máy chạy: `node .claude/skills/harness-audit/scripts/lang-scan.mjs . [--all]` — phép Ⓐ Ⓑ Ⓒ.
 > Phép Ⓓ (song ngữ) đo riêng vì phải bám đúng chỗ để dict của repo.

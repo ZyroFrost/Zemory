@@ -1,1 +1,21 @@
-{"gate":"guard"}
+{
+  "gate": "guard",
+  "partial": true,
+  "prompt": {
+    "kind": "Rule_10",
+    "re": "\\b(them (tinh nang|chuc nang|cot|nut|lenh|vao|1|cho)|bo sung|tinh nang|chuc nang|doi (lai|cach|thanh)|thay (the|bang)|bo cai cu|tra lai|mat tinh nang|giu (nguyen|lai))\\b",
+    "text": "[zemory] Rule_Gate_10_DestructiveOps: adding or changing a feature extends what exists — a working behaviour is never replaced or removed silently; overwriting is deleting and needs the user's yes."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "thêm tính năng xuất excel"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "chạy lại bộ test"
+    }
+  ]
+}

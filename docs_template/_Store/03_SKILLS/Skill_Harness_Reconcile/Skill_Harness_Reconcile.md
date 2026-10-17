@@ -2,7 +2,7 @@
 id: Skill_Harness_Reconcile
 aka: reconcile
 name: harness-reconcile
-version: 8
+version: 9
 description: Bring a project folder back in line with the standard when files have drifted into the wrong places, or when adopting an existing messy folder. Produces a proposal table - never moves anything on its own. Use when taking over an unfamiliar folder, or when asked to reorganise, tidy up, or restructure. Vietnamese triggers - "sắp xếp lại", "dọn lại thư mục", "nắn về chuẩn", "folder đang lộn xộn", "áp chuẩn vào dự án có sẵn".
 ---
 
@@ -11,7 +11,7 @@ description: Bring a project folder back in line with the standard when files ha
 > Kích hoạt (`Root_136_Principles` mục Reconcile): flow HIẾM, chỉ khi dọn một repo/thư mục chưa theo chuẩn.
 > **Luật tối cao của skill này: ĐỀ XUẤT, KHÔNG TỰ LÀM.** `zemory validate`/`zemory structure` (hoặc
 > `scripts/check_structure.py` của skill `structure`) chỉ **CHỈ RA** chỗ lệch (advisory) — **agent tự
-> nắn, công cụ KHÔNG auto-move**. **Đập cấu trúc lớn / khó đảo → HỎI TRƯỚC** (`Rule_Gate_10_ConfirmDelete`, `Rule_Gate_50_Git`).
+> nắn, công cụ KHÔNG auto-move**. **Đập cấu trúc lớn / khó đảo → HỎI TRƯỚC** (`Rule_Gate_10_DestructiveOps`, `Rule_Gate_50_Git`).
 
 ## A. Docs lệch (doc trùng · thừa · lạc chỗ)
 

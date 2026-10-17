@@ -2,8 +2,9 @@
 id: Rule_59
 aka: 02-59
 name: read-first
-version: 7
+version: 8
 kind: action
+generated: [guard.cjs, policy.json, precommit-guard.cjs, 02-59_read-first.cjs]
 ---
 # Rule_Gate_59_ReadFirst Đọc trước khi ghi
 

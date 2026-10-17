@@ -1,9 +1,9 @@
 ---
 id: Skill_Dev_Release
 name: dev-release
-version: 1
+version: 2
 description: Release a build of an app - pick the version number, read the version that is running, check the tree before pushing, and push with the bump in the same commit. Use whenever a build is about to be pushed or packaged, or a release, publish, bump or deploy is asked for. Vietnamese triggers - "lên version", "phát hành", "đóng gói", "đẩy bản mới", "push bản build".
-from: _Store/03_SKILLS/Skill_Dev_Release @v1 #02e0ace5a41d
+from: _Store/03_SKILLS/Skill_Dev_Release @v2 #44f0a9617f24
 ---
 
 # dev-release — phát hành một bản build
