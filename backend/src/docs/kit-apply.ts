@@ -233,7 +233,20 @@ function writeSkillsBlock(agentDir: string, skills: Part[], t: AssemblyTarget): 
     return `| \`${s.folder}/\` | \`.claude/skills/${hostSkillOf(s)}/\` | ${from || "(not assembled)"} |`;
   });
   const block = [head, "| Skill (source) | Host | from |", "|---|---|---|", ...rows, SK_END].join(eol);
-  const next = text.slice(0, a) + block + text.slice(b + SK_END.length);
+  // The repo's own rows still name a kit skill by its OLD name (`grill/`) after that folder made way for the host build
+  // (`harness-grill/`): conform then reported each as a skill with no SKILL.md (8 and 13 rows on two real repos,
+  // 2026-10-17). Follow the rename outside the block; a folder still on disk under the old name (an edited copy) keeps it.
+  const renamed = (s: string): string => {
+    let out = s;
+    for (const k of skills) {
+      const aka = String(k.meta.aka ?? "");
+      const host = hostSkillOf(k);
+      if (!aka || aka === host || existsSync(join(t.skillsDir, aka))) continue;
+      out = out.split("`" + aka + "/`").join("`" + host + "/`");
+    }
+    return out;
+  };
+  const next = renamed(text.slice(0, a)) + block + renamed(text.slice(b + SK_END.length));
   if (next === text) return "current";
   writeFileSync(p, next);
   return "written";

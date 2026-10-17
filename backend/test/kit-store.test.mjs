@@ -516,3 +516,17 @@ test("the skill list of a folder harness: 03_SKILLS/INDEX.md, else the list FILE
   writeFileSync(join(agent, "03_SKILLS", "INDEX.md"), "# skills\n");
   assert.equal(skillsIndexOf(agent), join(agent, "03_SKILLS", "INDEX.md"), "the current place wins once it exists");
 });
+
+test("sync: the repo's own skill rows follow a kit skill to its host name; an edited copy on disk keeps its old name", (t) => {
+  // Real repo trials 2026-10-17: rows like `grill/` stayed after the folder made way for `harness-grill/`, and conform
+  // reported every one as a skill with no SKILL.md (SasinFlow 8 · Dept_OPS 13).
+  const root = repo(t);
+  applyKit(root, { kitRef: "04", apply: true });
+  const index = join(root, "docs", "agent", "03_SKILLS", "INDEX.md");
+  writeFileSync(index, readFileSync(index, "utf8") + "\n| `grill/` | clarify first |\n| `audit/` | full review |\n");
+  mkdirSync(join(root, ".claude", "skills", "audit"), { recursive: true }); // an edited copy still under the old name
+  applyKit(root, { apply: true });
+  const text = readFileSync(index, "utf8");
+  assert.match(text, /\| `harness-grill\/` \| clarify first \|/, "the gone folder's row follows the rename");
+  assert.match(text, /\| `audit\/` \| full review \|/, "a folder still on disk keeps its row");
+});

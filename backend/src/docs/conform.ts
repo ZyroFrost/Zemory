@@ -572,7 +572,8 @@ export function conform(root: string): ConformReport {
       files: g.nodes.length,
       slotsUsed: std.stats.slots,
       slotsDeclared: std.stats.slots + std.stats.slotsUnused,
-      hpDieu: std.stats.hpDieu,
+      // The standard graph reads 01_CONSTITUTION.md only; a folder harness keeps one folder per article (frames + own).
+      hpDieu: folder ? listParts(hp.agent, SHELF.constitution).length : std.stats.hpDieu,
       skills: std.stats.skills,
     },
     ok: !items.some((i) => i.level === "blocking"),
