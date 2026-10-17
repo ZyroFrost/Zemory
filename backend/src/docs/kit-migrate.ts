@@ -12,7 +12,7 @@
 //  · the old 03_STRUCTURE.md becomes `03_STRUCTURE/INDEX.md` whole;
 //  · a shared skill the repo edited stays the repo's own; trigger rows of AGENTS.md for skills outside the kit are carried.
 // What is NOT touched: 05_TODO · 06_CHANGES · plan/ · the repo's own skills · anything outside the harness.
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, relative } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { TEMPLATE_DIR } from "./adopt.js";
@@ -370,6 +370,85 @@ export function repointLinks(root: string, apply: boolean): string[] {
   };
   walk(root);
   return changed;
+}
+
+export interface OwnConstitutionMove {
+  purpose: boolean;
+  renamed: Array<{ from: string; to: string }>;
+}
+
+/**
+ * A first-generation folder harness (plan/28 §0q) keeps its purpose in `_Cons/PURPOSE.md` and its articles as `01-N_slug/RULE.md`.
+ * The file-to-folder move already gives them the current shape; sync does the same here, so every repo ends on ONE template:
+ * the purpose becomes the written `Cons.md` of the purpose frame (the old file goes to the archive), and each article becomes the
+ * repo's own `Cons_<Core|Gate>_<100+N>_<Name>` (aka `01-N`), every file of its folder kept. Links into the old folders follow.
+ * Real-repo trial 2026-10-17: SasinFlow · SasinInfra carried both, and conform called their purpose unwritten.
+ */
+export function normalizeOwnConstitution(root: string, apply: boolean): OwnConstitutionMove {
+  const hp = harnessPathsAt(root);
+  const cons = shelfDir(hp.agent, SHELF.constitution);
+  const out: OwnConstitutionMove = { purpose: false, renamed: [] };
+  if (!existsSync(cons)) return out;
+  const frame = listParts(hp.agent, SHELF.constitution).find((p) => p.key === "Cons_9" && p.from);
+  const purposeFile = join(cons, "PURPOSE.md");
+  if (frame && existsSync(purposeFile)) {
+    const consMd = join(frame.dir, CONS_REPO_FILE);
+    const written = existsSync(consMd) && /^status:\s*written\s*$/m.test(readFileSync(consMd, "utf8"));
+    if (!written) {
+      out.purpose = true;
+      if (apply) {
+        const body = readFileSync(purposeFile, "utf8").replace(/^\uFEFF/, "").replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "").trim();
+        writeFileSync(consMd, `---\nframe: ${frame.folder}\nstatus: written\n---\n${body}\n`);
+        mkdirSync(hp.archive, { recursive: true });
+        cpSync(purposeFile, join(hp.archive, "PURPOSE.md"));
+        rmSync(purposeFile, { force: true });
+      }
+    }
+  }
+  for (const e of readdirSync(cons, { withFileTypes: true })) {
+    const m = /^01-(\d+)_/.exec(e.name);
+    if (!e.isDirectory() || !m) continue;
+    const dir = join(cons, e.name);
+    const mainName = existsSync(join(dir, "RULE.md")) ? "RULE.md" : readdirSync(dir).find((f) => f.endsWith(".md"));
+    if (!mainName) continue;
+    const text = readFileSync(join(dir, mainName), "utf8");
+    if (/^from:/m.test(text)) continue; // a store copy, not the repo's own
+    const n = Number(m[1]);
+    const no = OWN_ARTICLE_FROM - 1 + n;
+    const heading = (/^#\s+(.+)$/m.exec(text)?.[1] ?? e.name).replace(/^01-\d+\s+/, "").trim();
+    let gated = false;
+    try { gated = Boolean(Object.keys(JSON.parse(readFileSync(join(dir, "gate.json"), "utf8"))).some((k) => ["gate", "hook", "match"].includes(k))); } catch { /* no gate.json */ }
+    const to = partFolder("Cons", no, gated ? "Gate" : "Core", heading);
+    if (existsSync(join(cons, to))) continue;
+    out.renamed.push({ from: e.name, to });
+    if (!apply) continue;
+    renameSync(dir, join(cons, to));
+    const head = text
+      .replace(/^id:\s*.*$/m, `id: Cons_${no}`)
+      .replace(/^(id: .*)$/m, /^aka:/m.test(text) ? "$1" : `$1\naka: 01-${n}`)
+      .replace(/^#\s+01-\d+\s+/m, `# ${to} `);
+    writeFileSync(join(cons, to, `${to}.md`), head);
+    if (mainName !== `${to}.md`) rmSync(join(cons, to, mainName), { force: true });
+  }
+  if (apply && out.renamed.length) {
+    // links into a moved article folder (plans · README · the repo's own docs) follow it; its own text is untouched
+    const walk = (d: string): void => {
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        const p = join(d, e.name);
+        if (/^(\.git|node_modules|archive|attic|external|dist|\.claude)$/.test(e.name)) continue;
+        if (e.isDirectory()) { walk(p); continue; }
+        if (!/\.md$/i.test(e.name)) continue;
+        const t = readFileSync(p, "utf8");
+        let n = t;
+        for (const r of out.renamed) {
+          n = n.split(`${r.from}/RULE.md`).join(`${r.to}/${r.to}.md`).split(`/${r.from}/`).join(`/${r.to}/`).split(`/${r.from})`).join(`/${r.to})`);
+        }
+        if (n !== t) writeFileSync(p, n);
+      }
+    };
+    walk(root);
+  }
+  return out;
 }
 
 /** Old file-harness entries a repo may still point at after the move (for the report). */

@@ -2,7 +2,7 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 9
+version: 10
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
 ---
 
@@ -216,7 +216,7 @@ vì sao mất.
 
 ### F16. Dòng / panel TỔNG nằm DƯỚI nội dung
 Theo chuẩn bảng tính: dòng tổng của bảng, panel tổng của một nhóm luôn đứng sau phần được cộng. Bố cục đã chốt thì không tự
-dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_UiDesignApproval`).
+dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_DesignChangeApproval`).
 
 ## BE — tiến trình & tài nguyên
 

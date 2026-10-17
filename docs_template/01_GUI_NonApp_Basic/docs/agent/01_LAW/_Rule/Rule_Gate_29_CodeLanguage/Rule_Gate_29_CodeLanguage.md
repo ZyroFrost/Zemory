@@ -2,9 +2,9 @@
 id: Rule_29
 aka: 02-29
 name: code-language
-version: 7
+version: 9
 kind: judgment
-from: _Store/01_LAW/_Rule/Rule_Gate_29_CodeLanguage @v7 #0097fc87f9e2
+from: _Store/01_LAW/_Rule/Rule_Gate_29_CodeLanguage @v9 #a138c2372019
 ---
 # Rule_Gate_29_CodeLanguage Mã và tên viết tiếng Anh
 

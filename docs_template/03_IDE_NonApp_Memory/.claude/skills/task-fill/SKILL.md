@@ -2,9 +2,9 @@
 id: Skill_Task_Fill
 aka: fill
 name: task-fill
-version: 7
+version: 8
 description: Fill a blank template with real numbers and export the finished deliverable (report, sheet, document). Use when a template exists and the data is ready, or when asked to produce, generate, or make a report from existing figures. Vietnamese triggers - "làm báo cáo", "điền số vào mẫu", "xuất báo cáo", "đổ số liệu", "lên report", "ra file cuối".
-from: _Store/03_SKILLS/Skill_Task_Fill @v7 #af4500bace48
+from: _Store/03_SKILLS/Skill_Task_Fill @v8 #8772aae04f3e
 ---
 
 # fill — điền template, xuất deliverable
@@ -22,7 +22,7 @@ from: _Store/03_SKILLS/Skill_Task_Fill @v7 #af4500bace48
    Giữ tên theo convention của task: `YYYYMMDD_..._REPORT.xlsx` — **tên nghiệp vụ, KHÔNG prefix số
    stage**.
 4. **Đối chiếu trước khi báo xong:** mở file vừa xuất ra, kiểm vài ô mốc so với nguồn. Một phép đo
-   chưa kiểm chéo thì chưa phải sự thật (`Rule_Gate_11_VerifyClaims`).
+   chưa kiểm chéo thì chưa phải sự thật (`Rule_Keys_11_VerifyClaims`).
 
 ## Ranh giới quan trọng
 

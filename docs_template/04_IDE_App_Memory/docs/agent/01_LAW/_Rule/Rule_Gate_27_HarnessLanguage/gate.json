@@ -160,6 +160,6 @@
   "prompt": {
     "kind": "Rule_27",
     "re": "\\b(luat|hien phap|rule|constitution|skill|slot|dieu \\d+|standard|bo chuan|chuan (moi|zemory|chung))\\b",
-    "text": "[zemory] Rule_Gate_27_SpecVoice: Writing a rule, constitution, plan or skill: specification voice — condition, behaviour, check; no quotes of anyone, no dated decisions."
+    "text": "[zemory] Rule_Gate_27_HarnessLanguage: Writing a rule, constitution, plan or skill: specification voice — condition, behaviour, check; no quotes of anyone, no dated decisions."
   }
 }

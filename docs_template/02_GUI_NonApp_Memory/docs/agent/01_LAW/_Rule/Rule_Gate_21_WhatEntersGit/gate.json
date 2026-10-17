@@ -3,7 +3,7 @@
   "prompt": {
     "kind": "Rule_21",
     "re": "\\b(mat khau|password|\\.env|secret|bi mat|key|token|credential|tai khoan|vault|mk|dang nhap|login)\\b",
-    "text": "[zemory] Rule_Gate_21_SecretByEnvName: Secrets: code reads an environment variable NAME; values live in data/secrets/ behind .gitignore, never in git, not even encrypted."
+    "text": "[zemory] Rule_Gate_21_WhatEntersGit: Secrets: code reads an environment variable NAME; values live in data/secrets/ behind .gitignore, never in git, not even encrypted."
   },
   "block": [
     {

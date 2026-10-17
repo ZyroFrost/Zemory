@@ -32,7 +32,7 @@ import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, stampRepo, standardDiff } from "../docs/standard.js";
 import { applyKit, repoKit, type KitApplyResult } from "../docs/kit-apply.js";
-import { migrateToKit, repointLinks } from "../docs/kit-migrate.js";
+import { migrateToKit, normalizeOwnConstitution, repointLinks } from "../docs/kit-migrate.js";
 
 /** One line per assembled part: what was (or would be) done. */
 function printKitSteps(r: KitApplyResult, apply: boolean): number {
@@ -68,8 +68,12 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   const kept = (r.retired ?? []).filter((x) => !x.movedTo);
   if (moved.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}retired by the store, moved to the archive: ${moved.map((x) => x.folder).join(" · ")}`);
   if (kept.length) console.log(`  ! retired by the store but edited here — merge into its new home by hand (Archive/ARCHIVE.md names it): ${kept.map((x) => x.folder).join(" · ")}`);
-  if (r.renamedShelves.length) {
-    console.log(`  ✔ shelves renamed: ${r.renamedShelves.join(" · ")}`);
+  if (r.renamedShelves.length) console.log(`  ✔ shelves renamed: ${r.renamedShelves.join(" · ")}`);
+  // A first-generation folder repo's purpose and articles take the current shape (the same one the file move gives).
+  const own = normalizeOwnConstitution(root, opts.apply);
+  if (own.purpose) console.log(`  ✔ ${opts.apply ? "" : "would be "}purpose moved into the purpose frame's ${"Cons.md"} (old PURPOSE.md archived)`);
+  if (own.renamed.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}own articles renamed: ${own.renamed.map((x) => `${x.from} → ${x.to}`).join(" · ")}`);
+  if (opts.apply && (r.renamedShelves.length || own.purpose || own.renamed.length)) {
     // links into the old shelf folders move with them (the words around a link are the repo's and stay)
     const moved = repointLinks(root, true);
     if (moved.length) console.log(`  ✔ links repointed in ${moved.length} file(s): ${moved.slice(0, 5).join(" · ")}`);

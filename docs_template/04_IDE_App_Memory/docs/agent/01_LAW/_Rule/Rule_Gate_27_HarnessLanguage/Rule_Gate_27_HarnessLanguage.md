@@ -2,9 +2,9 @@
 id: Rule_27
 aka: 02-27
 name: harness-language
-version: 12
+version: 13
 kind: judgment
-from: _Store/01_LAW/_Rule/Rule_Gate_27_HarnessLanguage @v12 #96e79d17eb91
+from: _Store/01_LAW/_Rule/Rule_Gate_27_HarnessLanguage @v13 #c9e8642bee38
 ---
 # Rule_Gate_27_HarnessLanguage Ngôn ngữ và văn phong của docs harness
 

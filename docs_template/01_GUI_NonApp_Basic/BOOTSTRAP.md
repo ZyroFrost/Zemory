@@ -39,7 +39,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 4 | `.claude/skills/doc-write-docx/references/edit-traps.md` | 86 |
 | 5 | `.claude/skills/doc-write-docx/references/pagination-toc.md` | 118 |
 | 6 | `.claude/skills/doc-write-style/SKILL.md` | 95 |
-| 7 | `.claude/skills/harness-audit/SKILL.md` | 260 |
+| 7 | `.claude/skills/harness-audit/SKILL.md` | 265 |
 | 8 | `.claude/skills/harness-audit/references/lang.md` | 155 |
 | 9 | `.claude/skills/harness-audit/scripts/lang-scan.mjs` | 228 |
 | 10 | `.claude/skills/harness-conform/SKILL.md` | 56 |
@@ -96,7 +96,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 61 | `docs/agent/01_LAW/_Rule/Rule_Gate_04_ScratchFiles/gate.json` | 179 |
 | 62 | `docs/agent/01_LAW/_Rule/Rule_Gate_04_ScratchFiles/hook.cjs` | 165 |
 | 63 | `docs/agent/01_LAW/_Rule/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md` | 23 |
-| 64 | `docs/agent/01_LAW/_Rule/Rule_Gate_10_DestructiveOps/gate.json` | 1 |
+| 64 | `docs/agent/01_LAW/_Rule/Rule_Gate_10_DestructiveOps/gate.json` | 21 |
 | 65 | `docs/agent/01_LAW/_Rule/Rule_Gate_21_WhatEntersGit/Rule_Gate_21_WhatEntersGit.md` | 24 |
 | 66 | `docs/agent/01_LAW/_Rule/Rule_Gate_21_WhatEntersGit/gate.json` | 20 |
 | 67 | `docs/agent/01_LAW/_Rule/Rule_Gate_24_EolKeep/Rule_Gate_24_EolKeep.md` | 22 |
@@ -106,7 +106,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 71 | `docs/agent/01_LAW/_Rule/Rule_Gate_27_HarnessLanguage/gate.json` | 165 |
 | 72 | `docs/agent/01_LAW/_Rule/Rule_Gate_27_HarnessLanguage/hook.cjs` | 137 |
 | 73 | `docs/agent/01_LAW/_Rule/Rule_Gate_29_CodeLanguage/Rule_Gate_29_CodeLanguage.md` | 22 |
-| 74 | `docs/agent/01_LAW/_Rule/Rule_Gate_29_CodeLanguage/gate.json` | 286 |
+| 74 | `docs/agent/01_LAW/_Rule/Rule_Gate_29_CodeLanguage/gate.json` | 290 |
 | 75 | `docs/agent/01_LAW/_Rule/Rule_Gate_29_CodeLanguage/hook-names.cjs` | 220 |
 | 76 | `docs/agent/01_LAW/_Rule/Rule_Gate_29_CodeLanguage/hook.cjs` | 132 |
 | 77 | `docs/agent/01_LAW/_Rule/Rule_Gate_31_NoBrokenVietnamese/Rule_Gate_31_NoBrokenVietnamese.md` | 22 |
@@ -125,10 +125,10 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 90 | `docs/agent/01_LAW/_Rule/Rule_Gate_44_RepoScope/hook.cjs` | 135 |
 | 91 | `docs/agent/01_LAW/_Rule/Rule_Gate_50_Git/Rule_Gate_50_Git.md` | 21 |
 | 92 | `docs/agent/01_LAW/_Rule/Rule_Gate_50_Git/gate.json` | 1 |
-| 93 | `docs/agent/01_LAW/_Rule/Rule_Gate_59_ReadFirst/Rule_Gate_59_ReadFirst.md` | 21 |
+| 93 | `docs/agent/01_LAW/_Rule/Rule_Gate_59_ReadFirst/Rule_Gate_59_ReadFirst.md` | 22 |
 | 94 | `docs/agent/01_LAW/_Rule/Rule_Gate_59_ReadFirst/gate.json` | 1 |
 | 95 | `docs/agent/01_LAW/_Rule/Rule_Gate_63_SkillTrigger/Rule_Gate_63_SkillTrigger.md` | 20 |
-| 96 | `docs/agent/01_LAW/_Rule/Rule_Gate_63_SkillTrigger/gate.json` | 1 |
+| 96 | `docs/agent/01_LAW/_Rule/Rule_Gate_63_SkillTrigger/gate.json` | 21 |
 | 97 | `docs/agent/01_LAW/_Rule/Rule_Gate_79_HarnessEdit/Rule_Gate_79_HarnessEdit.md` | 21 |
 | 98 | `docs/agent/01_LAW/_Rule/Rule_Gate_79_HarnessEdit/gate.json` | 1 |
 | 99 | `docs/agent/01_LAW/_Rule/Rule_Keys_03_ShowSteps/Rule_Keys_03_ShowSteps.md` | 20 |
@@ -137,7 +137,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 102 | `docs/agent/01_LAW/_Rule/Rule_Keys_06_HandoffInline/gate.json` | 19 |
 | 103 | `docs/agent/01_LAW/_Rule/Rule_Keys_07_ScopeOnly/Rule_Keys_07_ScopeOnly.md` | 19 |
 | 104 | `docs/agent/01_LAW/_Rule/Rule_Keys_07_ScopeOnly/gate.json` | 19 |
-| 105 | `docs/agent/01_LAW/_Rule/Rule_Keys_08_ClarifyFirst/Rule_Keys_08_ClarifyFirst.md` | 20 |
+| 105 | `docs/agent/01_LAW/_Rule/Rule_Keys_08_ClarifyFirst/Rule_Keys_08_ClarifyFirst.md` | 21 |
 | 106 | `docs/agent/01_LAW/_Rule/Rule_Keys_08_ClarifyFirst/gate.json` | 27 |
 | 107 | `docs/agent/01_LAW/_Rule/Rule_Keys_11_VerifyClaims/Rule_Keys_11_VerifyClaims.md` | 24 |
 | 108 | `docs/agent/01_LAW/_Rule/Rule_Keys_11_VerifyClaims/gate.json` | 43 |
@@ -218,10 +218,10 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 183 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Claude/doc-write-style/SKILL.md` | 95 |
 | 184 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Skill_Doc_WriteStyle.md` | 95 |
 | 185 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/gate.json` | 31 |
-| 186 | `docs/agent/03_SKILLS/Skill_Harness_Audit/Claude/harness-audit/SKILL.md` | 260 |
+| 186 | `docs/agent/03_SKILLS/Skill_Harness_Audit/Claude/harness-audit/SKILL.md` | 265 |
 | 187 | `docs/agent/03_SKILLS/Skill_Harness_Audit/Claude/harness-audit/references/lang.md` | 155 |
 | 188 | `docs/agent/03_SKILLS/Skill_Harness_Audit/Claude/harness-audit/scripts/lang-scan.mjs` | 228 |
-| 189 | `docs/agent/03_SKILLS/Skill_Harness_Audit/Skill_Harness_Audit.md` | 260 |
+| 189 | `docs/agent/03_SKILLS/Skill_Harness_Audit/Skill_Harness_Audit.md` | 265 |
 | 190 | `docs/agent/03_SKILLS/Skill_Harness_Audit/gate.json` | 3 |
 | 191 | `docs/agent/03_SKILLS/Skill_Harness_Audit/references/lang.md` | 155 |
 | 192 | `docs/agent/03_SKILLS/Skill_Harness_Audit/scripts/lang-scan.mjs` | 228 |

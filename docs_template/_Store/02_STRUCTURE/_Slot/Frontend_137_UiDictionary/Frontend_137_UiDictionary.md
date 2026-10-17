@@ -2,7 +2,7 @@
 id: Slot_137
 aka: 03-137
 name: ui-dictionary
-version: 6
+version: 7
 kind: guide
 path: frontend/
 ---
@@ -11,7 +11,7 @@ path: frontend/
 - Vai trò:
   - Nơi skill thiết kế ADAPT hiện ra thật. Skill gốc đầy đủ nằm ở `external/skills/`; agent đọc thẳng bản gốc để lấy ý tưởng thẩm mỹ rồi khớp về các slot dưới đây để ra đúng cấu trúc/ràng buộc của project. Index skill: `03_SKILLS`.
   - Tra như từ điển folder: slot để TRA — chỉ dùng slot có concern thật, không ép đủ bộ. `★` = nên có ở mọi UI · `[opt]` = khi có concern.
-  - Ranh giới: STACK (Tailwind / no-build CSS-var / framework) là CẤU TRÚC — cố định theo project, không bàn lại mỗi lần. LAYOUT & GU là thứ agent bàn rồi chốt (`Rule_Keys_62_UiDesignApproval` — thiết kế UI phải trình duyệt trước).
+  - Ranh giới: STACK (Tailwind / no-build CSS-var / framework) là CẤU TRÚC — cố định theo project, không bàn lại mỗi lần. LAYOUT & GU là thứ agent bàn rồi chốt (`Rule_Keys_62_DesignChangeApproval` — thiết kế UI phải trình duyệt trước).
   - Giá trị THẬT (token/palette của repo) sống ở `frontend/styles`, không ở đây.
 - A. Nền token:
   - `tokens` ★ — mọi màu/size = CSS-var một chỗ, 0 literal.

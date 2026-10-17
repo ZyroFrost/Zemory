@@ -2,9 +2,9 @@
 id: Rule_31
 aka: 02-31
 name: no-broken-vietnamese
-version: 7
+version: 8
 kind: content
-from: _Store/01_LAW/_Rule/Rule_Gate_31_NoBrokenVietnamese @v7 #d7219e97adcc
+from: _Store/01_LAW/_Rule/Rule_Gate_31_NoBrokenVietnamese @v8 #cbb8821973c6
 ---
 # Rule_Gate_31_NoBrokenVietnamese Không tiếng Việt mất dấu, không lỗi mã hoá
 

@@ -352,6 +352,35 @@ export function shelfDir(root: string, shelf: string): string {
   return now;
 }
 
+/**
+ * Every part named in the store's own text (`Rule_Gate_31_…` · `Cons_Gate_09_…` · `Skill_Harness_Audit`) must be a live part.
+ * A renamed or retired part left behind in prose points readers at nothing: seven such mentions of a renamed rule lived on in
+ * three parts (2026-10-17). Archive/ is the one place that names the retired. Returns "<file>: <name>" per dead mention.
+ */
+export function partMentionFindings(storeDir = STORE_DIR): string[] {
+  const live = new Set<string>();
+  for (const shelf of SHELVES) for (const p of listParts(storeDir, shelf)) live.add(leafOf(p.folder));
+  const NAME = /\b(?:(?:Rule|Cons)_(?:Gate|Keys|Core)_\d{2,3}_[A-Za-z0-9]+|Skill_[A-Z][a-z]+_[A-Za-z0-9]+)\b/g;
+  const out: string[] = [];
+  const walk = (d: string): void => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) { if (!(d === storeDir && e.name === ARCHIVE_SHELF)) walk(p); continue; }
+      if (!/\.(md|json)$/i.test(e.name)) continue;
+      let text = readFileSync(p, "utf8");
+      // a gate.json's block/pass examples are test data, wrong names on purpose (the naming rule's own cases)
+      if (e.name === "gate.json") {
+        try { const j = JSON.parse(text) as Record<string, unknown>; delete j.block; delete j.pass; text = JSON.stringify(j); } catch { /* read as text */ }
+      }
+      for (const m of text.matchAll(NAME)) {
+        if (!live.has(m[0])) out.push(`${relative(storeDir, p).replace(/\\/g, "/")}: ${m[0]}`);
+      }
+    }
+  };
+  if (existsSync(storeDir)) walk(storeDir);
+  return [...new Set(out)];
+}
+
 /** The skill list of a folder harness: `03_SKILLS/INDEX.md`, or the list FILE a first-generation folder repo still has
  *  (`04_SKILLS.md` · `03_SKILLS.md`) until sync moves it — reading only the new place reported those repos as missing it. */
 export function skillsIndexOf(agentDir: string): string {

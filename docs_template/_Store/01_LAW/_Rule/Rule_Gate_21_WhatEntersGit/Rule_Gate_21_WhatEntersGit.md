@@ -2,7 +2,7 @@
 id: Rule_21
 aka: 02-21
 name: what-enters-git
-version: 6
+version: 7
 kind: action
 ---
 # Rule_Gate_21_WhatEntersGit Thứ không được vào git

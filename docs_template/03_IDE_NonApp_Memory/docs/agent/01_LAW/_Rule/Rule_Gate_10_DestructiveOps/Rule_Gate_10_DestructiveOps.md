@@ -2,9 +2,9 @@
 id: Rule_10
 aka: 02-10
 name: destructive-ops
-version: 4
+version: 5
 kind: action
-from: _Store/01_LAW/_Rule/Rule_Gate_10_DestructiveOps @v4 #fc7f0028d774
+from: _Store/01_LAW/_Rule/Rule_Gate_10_DestructiveOps @v5 #88547070c9c7
 ---
 # Rule_Gate_10_DestructiveOps Thao tác phá dữ liệu phải được xác nhận; đầu vào gốc chỉ đọc
 

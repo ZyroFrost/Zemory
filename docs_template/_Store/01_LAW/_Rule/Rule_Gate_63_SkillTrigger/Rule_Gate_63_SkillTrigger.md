@@ -2,7 +2,7 @@
 id: Rule_63
 aka: 02-63
 name: skill-trigger
-version: 5
+version: 6
 kind: action
 ---
 # Rule_Gate_63_SkillTrigger Việc trúng trigger của skill thì mở skill trước

@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { migrateToKit } from "../../dist/docs/kit-migrate.js";
+import { migrateToKit, normalizeOwnConstitution } from "../../dist/docs/kit-migrate.js";
 import { applyKit } from "../../dist/docs/kit-apply.js";
 import { generateGuards, gitHooksDir } from "../../dist/docs/guard-gen.js";
 import { conform } from "../../dist/docs/conform.js";
@@ -137,4 +137,39 @@ test("an Adapt repo and a folder harness are refused", (t) => {
   const f = fixture(t);
   migrateToKit(f, { kitRef: "03", apply: true });
   assert.match(migrateToKit(f, { kitRef: "03", apply: false }).error, /already a folder harness/);
+});
+
+test("sync on a first-generation folder repo: the purpose fills the purpose frame, each article takes its own number, links follow", (t) => {
+  // Real-repo trial 2026-10-17 (SasinFlow · SasinInfra): `_Cons/PURPOSE.md` and `01-N_slug/RULE.md` stayed as they were, so the
+  // purpose frame read as unwritten and the articles kept a shape no other repo has.
+  const root = tempDir(t, "zemory-gen1-");
+  execFileSync("git", ["init", "-q"], { cwd: root });
+  applyKit(root, { kitRef: "04", apply: true });
+  const cons = join(root, "docs", "agent", "01_LAW", "_Cons");
+  writeFileSync(join(cons, "PURPOSE.md"), "# Repo — Mục đích\n\nApp giám sát hạ tầng.\n");
+  mkdirSync(join(cons, "01-2_data-tu-chua"), { recursive: true });
+  writeFileSync(join(cons, "01-2_data-tu-chua", "RULE.md"), "---\nid: 01-2\nname: data-tu-chua\nversion: 1\nkind: judgment\n---\n# 01-2 Data tự chứa trong repo\n\nMọi dữ liệu nằm trong repo.\n");
+  writeFileSync(join(cons, "01-2_data-tu-chua", "gate.json"), JSON.stringify({ gate: "conform" }));
+  mkdirSync(join(root, "docs", "plan"), { recursive: true });
+  writeFileSync(join(root, "docs", "plan", "05_ui.md"), "Xem [điều 2](../agent/01_LAW/_Cons/01-2_data-tu-chua/RULE.md).\n");
+
+  const r = normalizeOwnConstitution(root, true);
+  assert.equal(r.purpose, true);
+  assert.deepEqual(r.renamed.map((x) => x.from), ["01-2_data-tu-chua"]);
+  const to = r.renamed[0].to;
+  assert.match(to, /^Cons_Gate_102_/, "own article numbered 100+N, gated because its gate.json gates");
+  const frame = readdirSync(cons).find((f) => f.startsWith("Cons_Gate_09_"));
+  const consMd = readFileSync(join(cons, frame, "Cons.md"), "utf8");
+  assert.match(consMd, /^status: written$/m);
+  assert.match(consMd, /App giám sát hạ tầng/, "the purpose text moved over whole");
+  assert.ok(!existsSync(join(cons, "PURPOSE.md")) && existsSync(join(root, "docs", "agent", "archive", "PURPOSE.md")), "old file archived, not lost");
+  const art = readFileSync(join(cons, to, `${to}.md`), "utf8");
+  assert.match(art, /^id: Cons_102$/m);
+  assert.match(art, /^aka: 01-2$/m);
+  assert.match(art, /Mọi dữ liệu nằm trong repo/, "the article's body is kept");
+  assert.ok(existsSync(join(cons, to, "gate.json")), "every file of the folder moves with it");
+  assert.match(readFileSync(join(root, "docs", "plan", "05_ui.md"), "utf8"), new RegExp(`_Cons/${to}/${to}\\.md`), "the link follows");
+  const again = normalizeOwnConstitution(root, true);
+  assert.equal(again.purpose, false);
+  assert.deepEqual(again.renamed, [], "a second sync changes nothing");
 });
