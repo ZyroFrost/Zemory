@@ -2,7 +2,7 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 10
+version: 11
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
 ---
 
@@ -170,7 +170,8 @@ HÀNH VI thì báo bao nhiêu lần cũng không hết.
 · **`overflow-y:auto` một mình BẬT luôn cuộn ngang** — CSS ép chiều còn lại từ `visible` thành `auto`. Hễ có một khối con rộng quá là mọc thanh ngang mà không ai khai nó. Vùng cuộn phải viết **đủ hai chiều**: `overflow-y:auto;overflow-x:hidden`.
 · **`repeat(N,1fr)` là số cột CỨNG** — ô không co dưới nội dung tối thiểu ⇒ lưới rộng hơn khung. Dùng `repeat(auto-fit,minmax(<sàn>,1fr))`: đủ rộng thì vẫn N cột, hẹp thì tự bớt cột.
 · **Track `1fr` vẫn bị nội dung đẩy rộng** — `1fr` thực chất là `minmax(auto,1fr)` và `auto` đo theo min-content của ô. Ô lưới phải có `min-width:0` mới co được.
-· Ngoại lệ DUY NHẤT: khối **mã nguồn** (`pre.code`, `.fpre`) — bẻ dòng mã làm sai nghĩa, nên nó được giữ cuộn ngang.
+· Ngoại lệ: khối **mã nguồn** (`pre.code`, `.fpre`) — bẻ dòng mã làm sai nghĩa, nên nó được giữ cuộn ngang · **lưới dữ liệu
+  trên điện thoại** (§M5) — cuộn ngang TRONG khung của lưới, cột định danh ghim trái; trang vẫn không bao giờ cuộn ngang.
 · Đo bằng máy, đừng nhìn ảnh: quét `scrollWidth - clientWidth > 0` trên MỌI màn × MỌI tab con ở vài khổ khung (1100 · 900). Phân biệt **`overflow:hidden` + ellipsis** (cắt chữ, KHÔNG sinh thanh cuộn — hợp lệ) với vùng thật sự cuộn được.
 
 ### F13. Thẻ (card): NEO cố định, thứ liên quan ĐỨNG SÁT NHAU
@@ -217,6 +218,36 @@ vì sao mất.
 ### F16. Dòng / panel TỔNG nằm DƯỚI nội dung
 Theo chuẩn bảng tính: dòng tổng của bảng, panel tổng của một nhóm luôn đứng sau phần được cộng. Bố cục đã chốt thì không tự
 dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_DesignChangeApproval`).
+
+## BỘ KIỂM — luật đo được thì máy kiểm
+
+Luật viết trong skill không tự thi hành: một luật đã chốt vẫn bị phạm lại khi không có máy canh.
+- Mỗi luật đo được của skill này (F0c chiều cao control · F2 cỡ hộp thoại · F4 nhãn và độ dài nhãn · F7 route · M1–M6) ⇒
+  một mã trong script kiểm của repo; build hoặc gate gọi script đó. Tên và lệnh chạy script là của repo, ghi trong mục riêng
+  của repo ở bản chép skill này.
+- Mã thoát: 0 xanh · 1 lỗi (in từng chỗ) · **3 chưa kiểm đủ** (lớp cần trình duyệt không chạy được) — không bao giờ tính là xanh.
+- Tệp hệ cũ đóng băng ⇒ cảnh báo kèm danh sách nợ, không im. Miễn trừ khai kèm lý do; miễn trừ không còn khớp gì ⇒ lỗi.
+- Thêm một luật đo được vào skill ⇒ thêm mã vào bộ kiểm cùng lượt. Luật chưa đo được bằng máy (F0 · F0b) là việc của người duyệt.
+
+## M — ĐIỆN THOẠI (app có bố cục điện thoại)
+
+Thêm một luật điện thoại theo thứ tự: ① người dùng duyệt một điểm thiết kế · ② viết thành một mã trong bộ kiểm · ③ chạy trên
+bản chưa sửa — phải đỏ (bản đã đạt thì phá mã cho đỏ) · ④ sửa giao diện tới khi xanh. Chỉ trang đã duyệt bố cục điện thoại
+mới vào danh sách kiểm điện thoại; đưa vào sớm là cổng đỏ trước khi có thiết kế.
+- **Bản máy tính không đổi.** Lớp điện thoại chỉ THÊM, áp dưới mốc chuyển.
+- **Mốc chuyển ≤ 768 px** (`@media (max-width:768px)`); hệ số co toàn trang không áp dưới mốc.
+- **M1 — vừa màn.** Ở 390 px trang không rộng hơn màn hình, không phần tử nào thò qua mép phải; bảng rộng cuộn TRONG khung
+  của nó. Bẫy: con flex mang `min-width:auto` = bề rộng hàng dài nhất ⇒ đẩy tràn dù hàng tự cuộn — khung chứa hàng cuộn phải
+  `min-width:0`. Điện thoại NỚI khung bố cục theo phần tràn ⇒ bề ngang báo về lớn hơn 390 chính là lỗi M1.
+- **M2 — không co.** Hệ số co toàn trang tắt dưới mốc.
+- **M3 — thanh tab ở ĐÁY**, mỗi tab một phần bằng nhau; máy tính giữ chỗ cũ.
+- **M4 — vùng chạm ≥ 44 px**: `--ctl-h:44px` dưới mốc (một biến, cùng §F0c).
+- **M5 — lưới dữ liệu** giữ dạng bảng, cuộn ngang trong khung, cột định danh (mã · tên) ghim trái, nền đục; rail phụ bên cạnh
+  không còn chỗ ⇒ ẩn trên điện thoại.
+- **M6 — hộp thoại** toàn màn hình dưới mốc (khung 16:9 của §F2 không vừa màn dọc).
+- **Đo đúng cỡ:** trình duyệt headless có bề rộng cửa sổ tối thiểu (Edge khoảng 500 px) ⇒ chụp hoặc đo "cửa sổ 390" là đo bố
+  cục rộng hơn rồi cắt. Bộ kiểm đặt trang trong `<iframe>` đúng 390 px và từ chối phán (mã 3) khi bề ngang nhận được khác 390.
+- Skill ngoài về UI/UX cho khuyến nghị khi thiết kế; thứ có hiệu lực là mục này.
 
 ## BE — tiến trình & tài nguyên
 

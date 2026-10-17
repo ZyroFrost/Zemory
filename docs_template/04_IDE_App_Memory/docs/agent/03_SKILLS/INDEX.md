@@ -6,7 +6,7 @@ có mặt ở đó và khớp bản kho (dòng `from:`), và mọi folder ở đ
 <!-- zemory:skills:start · máy ghi khối này lúc ráp; skill riêng của repo thêm dòng BÊN DƯỚI khối -->
 | Skill (source) | Host | from |
 |---|---|---|
-| `Skill_Dev_AppDesign/` | `.claude/skills/dev-app-design/` | _Store/03_SKILLS/Skill_Dev_AppDesign @v10 #e535ef02ac67 |
+| `Skill_Dev_AppDesign/` | `.claude/skills/dev-app-design/` | _Store/03_SKILLS/Skill_Dev_AppDesign @v11 #1d5df3f20c78 |
 | `Skill_Dev_DbDesign/` | `.claude/skills/dev-db-design/` | _Store/03_SKILLS/Skill_Dev_DbDesign @v1 #30e26d09cf0a |
 | `Skill_Dev_Release/` | `.claude/skills/dev-release/` | _Store/03_SKILLS/Skill_Dev_Release @v2 #44f0a9617f24 |
 | `Skill_Doc_ReadOffice/` | `.claude/skills/doc-read-office/` | _Store/03_SKILLS/Skill_Doc_ReadOffice @v3 #157c05e6193a |
