@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative } from "node:path";
 import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
-import { bodyOf, folderCoreFiles, isFolderHarness, isRetired, listParts, mainOf, mainPath, type Part } from "./store.js";
+import { bodyOf, folderCoreFiles, frontMatter, isFolderHarness, isRetired, listParts, shelfDir, type Part } from "./store.js";
 import { SHELF, legacyIdOf } from "./harness-names.js";
 import { selfRepoRoot } from "../projects.js";
 import { ledgerFile } from "../core/config.js";
@@ -128,8 +128,10 @@ export interface CoreIssues {
   gatedInCore: string[];
   /** Gate marks that do not resolve ("test:x" with no test file, an unknown kind). */
   badGate: string[];
-  /** Characters of the core section when over CORE_MAX_CHARS, else 0. */
+  /** Characters of the core section when over its cap, else 0. */
   overCap: number;
+  /** The cap overCap was measured against (CORE_MAX_CHARS for a file harness, FOLDER_CORE_MAX_CHARS for a folder one). */
+  cap?: number;
 }
 
 /** The holes in a rule file's core layout. `root` resolves `test:<name>` marks (checked only where backend/test exists). */
@@ -160,7 +162,7 @@ export function coreIssueLines(i: CoreIssues): string[] {
   if (i.unmarked.length) out.push(`rule(s) ${i.unmarked.join(", ")} outside the core carry no gate mark — build the gate and mark it (how: rule 02-73), or move them into the core`);
   if (i.gatedInCore.length) out.push(`rule(s) ${i.gatedInCore.join(", ")} in the core carry a gate mark — a gated rule leaves the core`);
   if (i.badGate.length) out.push(`gate mark(s) that do not resolve: ${i.badGate.join(" · ")}`);
-  if (i.overCap) out.push(`the core section is ${i.overCap} characters, over the ${CORE_MAX_CHARS} cap — tighten it or gate a rule`);
+  if (i.overCap) out.push(`the core section is ${i.overCap} characters, over the ${i.cap ?? CORE_MAX_CHARS} cap — tighten it or gate a rule`);
   return out;
 }
 
@@ -284,8 +286,9 @@ export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
     const id = r.part.id;
     if (r.badJson) { badGate.push(`${id} (gate.json unreadable)`); continue; }
     if (!r.part.kind) { badGate.push(`${id} (no kind: in its header file)`); continue; }
-    if (r.part.kind === "judgment") { if (r.gate && !r.gate.partial) gatedInCore.push(id); continue; }
-    if (!r.gate) { unmarked.push(id); continue; }
+    // A judgment rule with a hook simply leaves the forced list (folderCoreFiles, 2026-10-18) — not a contradiction any
+    // more; its hook still has to resolve. A rule of any other kind needs a gate.
+    if (!r.gate) { if (r.part.kind !== "judgment") unmarked.push(id); continue; }
     for (const h of hooksOf(r.gate)) if (!existsSync(join(r.part.dir, h))) badGate.push(`${id} (${h} missing)`);
     if (r.gate.gate) {
       const [kind, ref] = r.gate.gate.split(":");
@@ -296,12 +299,16 @@ export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
       else if (kind === "test" && checkTests && (!ref || (!existsSync(join(testDir, `${ref}.test.mjs`)) && !inTool))) badGate.push(`${id} (${r.gate.gate})`);
     }
   }
-  // The cap holds the SHARED core (judgment rules taken from the store, `from:`); a repo's own constitution and PURPOSE are
-  // its own to size. `gates` prints the whole forced size next to it.
-  const shared = folderRules(agentDir)
-    .filter((r) => r.part.kind === "judgment" && r.part.from)
-    .reduce((n, r) => n + bodyOf(readFileSync(mainPath(r.part.dir, mainOf(r.part)), "utf8")).length, 0);
-  return { noCore: false, unmarked, gatedInCore, badGate, overCap: shared > FOLDER_CORE_MAX_CHARS ? shared : 0 };
+  // The cap holds the SHARED core: the store's rules among the laws no hook holds (folderCoreFiles — the same list the
+  // read-first door forces); a repo's own constitution and purpose are its own to size. `gates` prints the whole forced
+  // size next to it, conform's core-size names the biggest files.
+  const rulesDir = shelfDir(agentDir, SHELF.rules);
+  const shared = folderCoreFiles(agentDir)
+    .filter((f) => f.startsWith(rulesDir))
+    .map((f) => readFileSync(f, "utf8"))
+    .filter((t) => Boolean(frontMatter(t)?.meta.from))
+    .reduce((n, t) => n + bodyOf(t).length, 0);
+  return { noCore: false, unmarked, gatedInCore, badGate, overCap: shared > FOLDER_CORE_MAX_CHARS ? shared : 0, cap: FOLDER_CORE_MAX_CHARS };
 }
 
 function folderCoverage(root: string, agentDir: string): RuleCoverage {

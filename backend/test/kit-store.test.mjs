@@ -347,9 +347,10 @@ test("the core of a folder harness = PURPOSE + judgment rules; coverage counts g
   assert.equal(cov.judgement, 2, "02-1 alpha and the suggested article 01-1 are judgment");
   assert.deepEqual(cov.missing, [], JSON.stringify(cov.missing));
   assert.ok(cov.hooked >= 1, "02-2's hook counts as a working gate");
-  assert.deepEqual(folderCoreIssues(root, agent), { noCore: false, unmarked: [], gatedInCore: [], badGate: [], overCap: 0 });
+  assert.deepEqual(folderCoreIssues(root, agent), { noCore: false, unmarked: [], gatedInCore: [], badGate: [], overCap: 0, cap: 16000 });
 
-  // Holes: a content rule with no gate · a hook named in gate.json that is not there · a judgment rule with a gate.
+  // Holes: a content rule with no gate · a hook named in gate.json that is not there. A judgment rule that gets a gate is
+  // no hole: it leaves the forced list (folderCoreFiles, 2026-10-18).
   put(root, "docs/agent/01_LAW/_Rule/02-3_gamma/RULE.md", "---\nid: 02-3\nname: gamma\nversion: 1\nkind: action\n---\nx\n");
   put(root, "docs/agent/01_LAW/_Rule/02-4_delta/RULE.md", "---\nid: 02-4\nname: delta\nversion: 1\nkind: content\n---\nx\n");
   put(root, "docs/agent/01_LAW/_Rule/02-4_delta/gate.json", '{ "hook": "hook.cjs" }\n');
@@ -357,7 +358,8 @@ test("the core of a folder harness = PURPOSE + judgment rules; coverage counts g
   const i = folderCoreIssues(root, agent);
   assert.deepEqual(i.unmarked, ["02-3"]);
   assert.deepEqual(i.badGate, ["02-4 (hook.cjs missing)"]);
-  assert.deepEqual(i.gatedInCore, ["02-1"]);
+  assert.deepEqual(i.gatedInCore, [], "a gated judgment rule is not a contradiction any more");
+  assert.doesNotMatch(coreForCompaction(agent), /line one/, "it left the core the session gets back");
 });
 
 test("a skill's gate travels with the skill: its read door and its prompt reminder exist only where the skill does", (t) => {
