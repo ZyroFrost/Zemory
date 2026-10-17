@@ -1,4 +1,4 @@
-// Rule_Gate_11_VerifyClaims at the end of a turn (plan/28 §0o): code changed after the last check ⇒ the turn may not end.
+// Rule_Gate_01_DoneMeansRun at the end of a turn (plan/28 §0q): code changed after the last check ⇒ the turn may not end.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -14,7 +14,7 @@ const jsonl = (recs) => recs.map((r) => JSON.stringify(r)).join("\n") + "\n";
 
 test("code changed and no check after it: blocked, naming the files", () => {
   const why = turnEvidence(jsonl([user("sửa lỗi đăng nhập"), tool("Edit", { file_path: "D:/r/backend/src/login.ts" }), result()]));
-  assert.match(why ?? "", /Rule_Gate_11_VerifyClaims[\s\S]*src\/login\.ts/);
+  assert.match(why ?? "", /Rule_Gate_01_DoneMeansRun[\s\S]*src\/login\.ts/);
 });
 
 test("a check after the last change lets the turn end; a change after the check blocks again", () => {
@@ -38,8 +38,8 @@ test("docs-only turns, a repo's own gate command, and a new turn after the perso
 test("the hook asks only where the repo carries rule 11 as a part; elsewhere it stays silent", (t) => {
   const tx = (dir) => { const p = join(dir, "t.jsonl"); writeFileSync(p, jsonl([user("x"), tool("Edit", { file_path: join(dir, "src", "a.ts") })])); return p; };
   const withRule = tempDir(t, "zemory-turn-r11-");
-  mkdirSync(join(withRule, "docs", "agent", "01_RULES", "Rule_Gate_11_VerifyClaims"), { recursive: true });
-  writeFileSync(join(withRule, "docs", "agent", "01_RULES", "Rule_Gate_11_VerifyClaims", "RULE.md"), "---\nid: Rule_11\nname: verify-claims\nversion: 1\n---\nx\n");
+  mkdirSync(join(withRule, "docs", "agent", "01_LAW", "_Rule", "Rule_Keys_11_VerifyClaims"), { recursive: true });
+  writeFileSync(join(withRule, "docs", "agent", "01_LAW", "_Rule", "Rule_Keys_11_VerifyClaims", "RULE.md"), "---\nid: Rule_11\nname: verify-claims\nversion: 1\n---\nx\n");
   writeFileSync(join(withRule, "docs", ".harness.json"), "{}\n");
   assert.match(endOfTurnVerdict({ cwd: withRule, transcript_path: tx(withRule) }), /"decision":"block"/);
   const without = tempDir(t, "zemory-turn-none-");
@@ -55,7 +55,7 @@ test("the Stop hook answers with a block decision once; the Stop that follows it
   writeFileSync(p, jsonl([user("x"), tool("Edit", { file_path: "D:/r/a.ts" })]));
   const d = JSON.parse(stopDecision({ transcript_path: p }));
   assert.equal(d.decision, "block");
-  assert.match(d.reason, /Rule_Gate_11_VerifyClaims/);
+  assert.match(d.reason, /Rule_Gate_01_DoneMeansRun/);
   assert.equal(stopDecision({ transcript_path: p, stop_hook_active: true }), "", "never loops");
   assert.equal(stopDecision({ transcript_path: join(dir, "missing.jsonl") }), "", "fail-open");
 });

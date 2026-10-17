@@ -2,14 +2,14 @@
 id: Skill_Task_Pull
 aka: pull
 name: task-pull
-version: 3
+version: 4
 description: Fetch fresh data from a source (SQL, VM, web, API) into the project so a deliverable can be built. Use when the deliverable needs newer numbers, when a scheduled task starts, or when asked to refresh, download, or retrieve source data. Vietnamese triggers - "kéo dữ liệu", "lấy số mới", "tải data về", "cập nhật nguồn", "pull dữ liệu", "làm mới số liệu".
-from: _Store/04_SKILLS/Skill_Task_Pull @v3 #ce27fec0292c
+from: _Store/03_SKILLS/Skill_Task_Pull @v4 #3124d5a346ba
 ---
 
 # pull — kéo dữ liệu từ nguồn
 
-> Kích hoạt: cần đưa data mới từ nguồn (SQL/VM/web/API) về để làm deliverable. Slot: `03_STRUCTURE`.
+> Kích hoạt: cần đưa data mới từ nguồn (SQL/VM/web/API) về để làm deliverable. Slot: `02_STRUCTURE`.
 > Trong **pipeline đánh số**: cổng **`00_ready.py`** kiểm nguồn sẵn sàng (exit 0/1) TRƯỚC, rồi
 > **`01_pull.py`** mới kéo. Launcher `<tên> auto` tự chạy gate → pull nếu đủ điều kiện; hoặc
 > `<tên> pull` chạy thẳng stage 01.
@@ -23,7 +23,7 @@ from: _Store/04_SKILLS/Skill_Task_Pull @v3 #ce27fec0292c
    Có rate-limit → pace/backoff. Phải **resume-safe**: đứt giữa chừng thì kéo tiếp được, không phải
    làm lại từ đầu.
 3. **KHÔNG commit file kéo về** — nặng và có thể chứa dữ liệu cá nhân (PII).
-4. **Ghi lại lần kéo** (nguồn · phạm vi · số dòng) vào spec của task hoặc `05_TODO.md`, để truy được
+4. **Ghi lại lần kéo** (nguồn · phạm vi · số dòng) vào spec của task hoặc `04_TODO.md`, để truy được
    sau.
 
 ## Cấm

@@ -24,7 +24,7 @@ interface Example {
 }
 
 interface Gate {
-  hook?: string;
+  hook?: string | string[];
   conform?: unknown;
   prompt?: { re: string };
   read?: Array<{ when: string; prefix?: string; re?: string }>;
@@ -72,12 +72,15 @@ function blocks(part: Part, gate: Gate, ex: Example): boolean {
     const flagsDir = (ex.policy as { flags_dir?: unknown } | undefined)?.flags_dir;
     if (typeof flagsDir === "string" && flagsDir) mkdirSync(join(root, flagsDir), { recursive: true });
     if (gate.hook) {
-      const file = join(part.dir, gate.hook);
-      delete requireHere.cache[requireHere.resolve(file)];
-      const mod = requireHere(file) as { check: (p: unknown, r: string, pol: unknown) => unknown };
+      // a rule that took in another carries one hook per check; the call is blocked when any of them blocks
       const input = { ...(ex.tool_input ?? {}) };
       if (typeof input.file_path === "string") input.file_path = join(root, input.file_path);
-      return Boolean(mod.check({ tool_name: ex.tool_name, tool_input: input, session_id: "gate-example" }, root, ex.policy ?? {}));
+      return (Array.isArray(gate.hook) ? gate.hook : [gate.hook]).some((h) => {
+        const file = join(part.dir, h);
+        delete requireHere.cache[requireHere.resolve(file)];
+        const mod = requireHere(file) as { check: (p: unknown, r: string, pol: unknown) => unknown };
+        return Boolean(mod.check({ tool_name: ex.tool_name, tool_input: input, session_id: "gate-example" }, root, ex.policy ?? {}));
+      });
     }
     return slotGateFailures(root, part.dir).length > 0;
   });

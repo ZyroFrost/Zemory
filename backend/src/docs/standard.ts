@@ -141,7 +141,8 @@ export function revText(rev: Rev): string | null {
   const self = selfRepoRoot();
   if (self) {
     try {
-      t = execFileSync("git", ["show", key], { windowsHide: true, cwd: self, encoding: "utf8", maxBuffer: 8 << 20 });
+      // stderr is not the reader's business: a path absent at that commit is an expected miss, not an error to print
+      t = execFileSync("git", ["show", key], { windowsHide: true, cwd: self, encoding: "utf8", maxBuffer: 8 << 20, stdio: ["ignore", "pipe", "ignore"] });
     } catch {
       t = null;
     }

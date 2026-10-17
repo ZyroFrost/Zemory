@@ -21,7 +21,7 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
-import { isFolderHarness, leafOf, listParts, listStructures, SLOT_LAYER, slotGateFailures, structureSlots } from "./store.js";
+import { consFindings, isFolderHarness, leafOf, listParts, listStructures, shelfDir, SLOT_LAYER, slotGateFailures, structureSlots } from "./store.js";
 import { viName } from "./vi-name-judge.js";
 import { SHELF } from "./harness-names.js";
 
@@ -260,13 +260,14 @@ export function conform(root: string): ConformReport {
   // (có ĐỦ cả 6 file) vẫn bị báo THIẾU cả 7 — cổng đi tìm ở chỗ không ai bảo nó tìm.
   // Đo trên repo thật trước khi vá: đúng 7 mục báo oan, trong khi file nằm đủ bên `harness/`.
   const hp = harnessPathsAt(root);
-  // Folder harness (plan/28 §0c): 01/02/03 are assembled folders; the files a repo owns are PURPOSE · INDEX · 04 · 05 · 06.
+  // Folder harness (plan/28 §0c · §0q): the law and structure shelves are assembled folders; the files a repo owns are the
+  // two INDEX files and the two ledgers (the constitution is the Cons.md of each frame — checked below).
   const folder = isFolderHarness(hp.agent);
   const need = [
     ...hp.entries,
     ...(folder
-      ? [`${SHELF.constitution}/PURPOSE.md`, `${SHELF.structure}/INDEX.md`, `${SHELF.skills}/INDEX.md`, "05_TODO.md", "06_CHANGES.md"].map((f) => join(hp.agent, f))
-      : ["01_CONSTITUTION", "02_RULES", "03_STRUCTURE", "04_SKILLS", "05_TODO", "06_CHANGES"].map((f) => join(hp.agent, `${f}.md`))),
+      ? [join(shelfDir(hp.agent, SHELF.structure), "INDEX.md"), join(shelfDir(hp.agent, SHELF.skills), "INDEX.md"), hp.todo, hp.changes]
+      : [...["01_CONSTITUTION", "02_RULES", "03_STRUCTURE", "04_SKILLS"].map((f) => join(hp.agent, `${f}.md`)), hp.todo, hp.changes]),
     join(hp.plan, "00_overview.md"),
   ];
   // Hai cửa vào ở gốc: chỉ cần MỘT là harness nạp được (AGENTS.md là chuẩn liên-hãng,
@@ -287,11 +288,14 @@ export function conform(root: string): ConformReport {
   // must contain). One finding per broken requirement, named after the slot.
   if (folder) {
     const broken: string[] = [];
-    for (const p of listParts(hp.agent, "03_STRUCTURE")) {
+    for (const p of listParts(hp.agent, SHELF.structure)) {
       const r = slotGateFailures(root, p.dir);
       for (const why of r) broken.push(`${p.id} ${p.name}: ${why}`);
     }
     push("slot-gate", "blocking", "Slot không đạt phép kiểm khai trong gate.json", broken, "sửa repo cho đúng slot (xem SLOT.md của slot đó)");
+    // The constitution (plan/28 §0q): every assembled frame must have its Cons.md written for this repo, or marked n/a.
+    push("cons-unwritten", "blocking", "Constitution frame not written for this repo", consFindings(hp.agent),
+      "write Cons.md from the frame's template for this product, or set status: n/a with the reason");
     // The two layers (plan/28 §0o): every slot sits in the inner layer, and the repo's structure names only slots it has.
     const slots = listParts(hp.agent, SHELF.structure);
     const flat = slots.filter((p) => !p.folder.startsWith(SLOT_LAYER + "/")).map((p) => `${SHELF.structure}/${p.folder}`);
@@ -334,7 +338,7 @@ export function conform(root: string): ConformReport {
   //      · CŨ   — playbook inline; roster = dòng "Skill inline hiện có"; đối chiếu với `##`.
   //    Giữ cả hai để project chưa migrate không bị báo oan.
   // The list: `04_SKILLS/INDEX.md` in a folder harness (beside the sources it lists, plan/28 §0o), `04_SKILLS.md` before.
-  const sk = read(root, relative(root, join(hp.agent, folder ? `${SHELF.skills}/INDEX.md` : "04_SKILLS.md")).replace(/\\/g, "/"));
+  const sk = read(root, relative(root, folder ? join(shelfDir(hp.agent, SHELF.skills), "INDEX.md") : join(hp.agent, "04_SKILLS.md")).replace(/\\/g, "/"));
   const skillsDir = hp.skills;
   const onDisk = existsSync(skillsDir)
     ? readdirSync(skillsDir, { withFileTypes: true })

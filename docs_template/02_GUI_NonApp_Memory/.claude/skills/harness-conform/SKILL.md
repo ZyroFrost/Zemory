@@ -2,9 +2,9 @@
 id: Skill_Harness_Conform
 aka: conform
 name: harness-conform
-version: 6
+version: 7
 description: Measure how closely the project folder follows the declared standard - machine scores, agent judges. Run before closing a session, after restructuring, when taking over an unfamiliar folder, or periodically. Not needed after every small edit. Vietnamese triggers - "soi chuẩn", "kiểm chuẩn", "có đúng chuẩn không", "check cấu trúc", "dự án này có bám chuẩn không".
-from: _Store/04_SKILLS/Skill_Harness_Conform @v6 #e2f3b90afe8e
+from: _Store/03_SKILLS/Skill_Harness_Conform @v7 #e8b8b39c1c08
 ---
 
 # conform — soi độ bám chuẩn
@@ -15,7 +15,7 @@ from: _Store/04_SKILLS/Skill_Harness_Conform @v6 #e2f3b90afe8e
 > **Máy chấm trước, agent phán sau.** Máy chỉ biết "thư mục này không khớp slot nào"; **chỉ agent mới
 > biết nó *nên* về slot nào, hay đây là concern thật cần thêm vào chuẩn**.
 
-**Nguyên tắc (bất biến — xem `01_CONSTITUTION`, điều "MÁY dựng lớp dẫn xuất · AGENT sửa NGUỒN"):** lớp
+**Nguyên tắc (bất biến — xem `01_LAW/_Cons`, điều "MÁY dựng lớp dẫn xuất · AGENT sửa NGUỒN"):** lớp
 dẫn xuất (graph · index · taxonomy) do MÁY dựng tất định. **Agent KHÔNG ghi vào lớp dẫn xuất** — muốn
 nó có gì thì KHAI vào chuẩn hoặc sửa NGUỒN (docs · code) rồi để máy dựng lại. Agent là người **KIỂM**,
 không phải người sinh.
@@ -38,12 +38,12 @@ trước, agent chỉ đọc **bảng lệch** (~vài trăm token).
 4. **Sửa NGUỒN**, không sửa lớp dẫn xuất / báo cáo:
    - đặt sai chỗ → `git mv` về đúng slot (giữ history) + sửa import; cần dời nhiều thì đề xuất qua
      skill `reconcile`
-   - là concern THẬT mà chuẩn chưa khai → **đề xuất thêm slot vào `03_STRUCTURE`** (một folder `03-N_<tên>/`, số nối cuối) (bộ không có
+   - là concern THẬT mà chuẩn chưa khai → **đề xuất thêm slot vào `02_STRUCTURE`** (một folder `03-N_<tên>/`, số nối cuối) (bộ không có
      CLI: vào skill `structure` §3) — đây là **đổi chuẩn**, phải trình duyệt trước
    - folder rỗng / rác → **đề xuất xoá, chờ xác nhận** trước khi xoá, không tự xoá
    - đừng chỉnh script chấm cho hết kêu
-5. **Chạy lại** máy chấm → xác nhận hết lệch. Đã sửa → `06_CHANGES`; phần còn lệch → **báo, hỏi trước
-   khi ghi vào `05_TODO`** (`Rule_Gate_38_TodoDoor`).
+5. **Chạy lại** máy chấm → xác nhận hết lệch. Đã sửa → `05_CHANGES`; phần còn lệch → **báo, hỏi trước
+   khi ghi vào `04_TODO`** (`Rule_Gate_38_TodoDoor`).
 
 **Ranh giới với `zemory validate`:** `validate` hỏi *"bộ docs harness có đúng khuôn không"* (link,
 độ dài changelog, tầng folder). `soi chuẩn`/`conform` hỏi *"code + docs + thư mục có bám chuẩn đã KHAI

@@ -7,8 +7,8 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { writeFileAtomic } from "../util/fs-atomic.js";
 import { readTextFile } from "../util/read-text.js";
-import { dirname, join, relative } from "node:path";
-import { harnessPaths } from "../core/config.js";
+import { basename, dirname, join, relative } from "node:path";
+import { harnessPaths, ledgerFile } from "../core/config.js";
 import { currentMemoryDb } from "../memory/db.js";
 import type { Context } from "../core/types.js";
 import { importChangelog } from "./changelog.js";
@@ -277,7 +277,7 @@ export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions =
   // JS caller (a missing arg arrives as undefined), so the check is at runtime: loud
   // failure beats silently writing to production.
   if (!dbPath) throw new Error("archiveTodo: dbPath is required (pass currentMemoryDb() explicitly)");
-  const mainPath = join(ctx.docsDir, "05_TODO.md");
+  const mainPath = harnessPaths(ctx).todo;
   if (!existsSync(mainPath)) return { moved: 0, activeLines: 0, archivePath: null };
 
   const text = readTextFile(mainPath);
@@ -300,7 +300,7 @@ export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions =
   const movedText =
     deepenRelativeLinks(closed.map((b) => lines.slice(b.start, b.end).join(eol)).join(eol).replace(/\s+$/, "")) + "\n";
 
-  const archivePath = join(harnessPaths(ctx).archive, "05_TODO.md");
+  const archivePath = archiveOf(harnessPaths(ctx).archive, mainPath, "todo");
   // XEM TRƯỚC: trả về SỐ mà không ghi gì. Đặt chốt ở đây (sau khi đã đếm, trước byte đầu tiên)
   // thay vì ở CLI — để mọi người gọi `archiveTodo` đều có đường xem trước, không riêng CLI.
   if (opts.dryRun) {
@@ -339,7 +339,7 @@ export function archiveChanges(
   dbPath: string = currentMemoryDb(),
   opts: ArchiveOptions = {},
 ): ArchiveResult {
-  const mainPath = join(ctx.docsDir, "06_CHANGES.md");
+  const mainPath = harnessPaths(ctx).changes;
   if (!existsSync(mainPath)) return { moved: 0, activeLines: 0, archivePath: null };
   const threshold = ctx.config.thresholds?.changes_lines ?? 400;
   const keep = ctx.config.thresholds?.changes_keep ?? Math.round(threshold * 0.6);
@@ -371,7 +371,7 @@ export function archiveChanges(
   const moved = heads.length - k;
 
   // Prepend the moved block (newest-of-moved on top) to the archive file.
-  const archivePath = join(harnessPaths(ctx).archive, "06_CHANGES.md");
+  const archivePath = archiveOf(harnessPaths(ctx).archive, mainPath, "changes");
   // XEM TRƯỚC (xem `ArchiveOptions`): đếm xong thì dừng, không ghi byte nào.
   if (opts.dryRun) return { moved, activeLines: keptText.split(/\r?\n/).length, archivePath };
   mkdirSync(dirname(archivePath), { recursive: true });
@@ -389,4 +389,11 @@ export function archiveChanges(
   importChangelog(mainPath, ctx.projectRoot, dbPath, { replace: true });
   importChangelog(archivePath, ctx.projectRoot, dbPath, { replace: true, archived: true });
   return { moved, activeLines: keptText.split(/\r?\n/).length, archivePath };
+}
+
+/** The archive file of a ledger: the one the archive folder already has (under any name the ledger has had), else the
+ *  ledger's own name — so a repo on 05_TODO.md archives into archive/05_TODO.md, a repo on 04_TODO.md into 04_TODO.md. */
+function archiveOf(archiveDir: string, ledger: string, kind: "todo" | "changes"): string {
+  const existing = ledgerFile(archiveDir, kind);
+  return existsSync(existing) ? existing : join(archiveDir, basename(ledger));
 }

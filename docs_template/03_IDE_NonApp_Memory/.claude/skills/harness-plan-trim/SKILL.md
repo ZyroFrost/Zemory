@@ -2,15 +2,15 @@
 id: Skill_Harness_PlanTrim
 aka: plan-trim
 name: harness-plan-trim
-version: 5
+version: 6
 description: Trim the specs in docs/plan when they grow past the cap, WITHOUT losing ideas — back up, draft outside the repo, have an independent reviewer restore every lost idea against the original and the code, then apply. Use when `zemory validate` warns that a spec or docs/plan is over the line cap, or when asked to shorten, trim or tidy the plans. Vietnamese triggers - "gọt plan", "dọn plan", "plan dài quá", "rút gọn plan", "plan vượt trần", "plan quá trần".
-from: _Store/04_SKILLS/Skill_Harness_PlanTrim @v5 #0fa0dae28a22
+from: _Store/03_SKILLS/Skill_Harness_PlanTrim @v6 #657b131af283
 ---
 
 # plan-trim — gọt plan vượt trần mà không mất ý
 
-> Luật nằm ở `Rule_Gate_37_PlanLean` (gạch **PLAN PHẢI GỌN**): plan giữ hướng đã chốt + điểm còn mở, lịch sử
-> sang `06_CHANGES`, trần một spec / cả `docs/plan` do `zemory validate` canh. Skill này chỉ là **cách làm**.
+> Luật nằm ở `Docs_006_Plan` (gạch **PLAN PHẢI GỌN**): plan giữ hướng đã chốt + điểm còn mở, lịch sử
+> sang `05_CHANGES`, trần một spec / cả `docs/plan` do `zemory validate` canh. Skill này chỉ là **cách làm**.
 > Đo được trên hai đợt gọt thật: một lượt soát bắt ~120 ý bị mất; một lượt khác (bốn spec) soát lại ~140 ý
 > và bắt 5 chỗ spec nói sai so với code.
 
@@ -60,7 +60,7 @@ nó gánh hai bài toán khác nhau. **Người duyệt quyết** — không t�
 **8. Đọc lại TRỌN bản cuối** (soát lần cuối, và chốt đọc-trước-khi-ghi đòi đọc lại file vừa thay), rồi chạy
 `zemory paths check` (0 đường mới chết) và `zemory validate`.
 
-**9. Ghi `06_CHANGES`:** spec nào, trước/sau bao nhiêu dòng, lượt soát đưa lại bao nhiêu ý, chỗ nào sửa cho khớp
+**9. Ghi `05_CHANGES`:** spec nào, trước/sau bao nhiêu dòng, lượt soát đưa lại bao nhiêu ý, chỗ nào sửa cho khớp
 code, đường dẫn bản gốc.
 
 ## Bẫy đã gặp

@@ -1,0 +1,95 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "PowerShell"
+    ]
+  },
+  "block": [
+    {
+      "note": "a Write that turns a CRLF file into LF",
+      "files": {
+        "a.md": "x\r\ny\r\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "a.md",
+        "content": "x\ny\nz\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "same line endings",
+      "files": {
+        "a.md": "x\r\ny\r\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "a.md",
+        "content": "x\r\ny\r\nz\r\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a new file",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "new.md",
+        "content": "x\ny\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a repo that locks EOL in .gitattributes",
+      "files": {
+        "a.md": "x\r\ny\r\n",
+        ".gitattributes": "* text=auto eol=lf\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "a.md",
+        "content": "x\ny\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ]
+}

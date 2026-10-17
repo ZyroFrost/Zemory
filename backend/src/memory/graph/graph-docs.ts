@@ -80,7 +80,7 @@ export function buildDocsGraph(root: string): DocsGraph {
   }
 
   // ── supersede (from 06_CHANGES.md) ──
-  const changelogId = files.find((f) => f.endsWith("06_CHANGES.md"));
+  const changelogId = files.find((f) => f.endsWith("05_CHANGES.md") || f.endsWith("06_CHANGES.md"));
   let supersede = 0;
   if (changelogId) {
     try {

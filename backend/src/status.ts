@@ -4,7 +4,8 @@
 
 import { existsSync, readdirSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { currentProjectRoot, isConnected, loadContext, normalizeRoot } from "./core/config.js";
+import { currentProjectRoot, isConnected, ledgerFile, loadContext, normalizeRoot } from "./core/config.js";
+import { isFolderHarness } from "./docs/store.js";
 import { type KnownProject, listKnownProjects, rememberProject } from "./projects.js";
 import { tr } from "./i18n/index.js";
 
@@ -52,7 +53,9 @@ function planSignal(docsDir: string): StatusReport["plan"] {
 
 // Canonical markdown docs the harness expects (the rest — plan/changelog — live
 // in global_memory.db and render to mirrors). RULES is the one hand-source doc.
-const REQUIRED_DOCS = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md"];
+const REQUIRED_DOCS = ["01_LAW", "02_STRUCTURE", "03_SKILLS", "04_TODO.md", "05_CHANGES.md"];
+/** The file harness a repo not yet moved still has (plan/28 §0q) — judged by its own names. */
+const REQUIRED_DOCS_FILE = ["01_CONSTITUTION.md", "02_RULES.md", "03_STRUCTURE.md", "04_SKILLS.md", "05_TODO.md", "06_CHANGES.md"];
 
 /**
  * zemory's token-saving features. Each `state` flips to "on" as the feature
@@ -103,9 +106,11 @@ export async function gatherStatus(rootArg?: string): Promise<StatusReport> {
     rememberProject(root);
     const ctx = loadContext(root);
     report.project.docs = ctx.config.docs;
-    report.docs = REQUIRED_DOCS.map((file) => ({
+    const folder = isFolderHarness(ctx.docsDir);
+    report.docs = (folder ? REQUIRED_DOCS : REQUIRED_DOCS_FILE).map((file) => ({
       file,
-      ok: existsSync(join(ctx.docsDir, file)),
+      ok: existsSync(join(ctx.docsDir, file)) || (folder && file === "04_TODO.md" && existsSync(ledgerFile(ctx.docsDir, "todo"))) ||
+        (folder && file === "05_CHANGES.md" && existsSync(ledgerFile(ctx.docsDir, "changes"))),
     }));
     report.plan = planSignal(ctx.docsDir);
 

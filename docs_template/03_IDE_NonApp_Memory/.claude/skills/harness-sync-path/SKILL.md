@@ -2,9 +2,9 @@
 id: Skill_Harness_SyncPath
 aka: sync-path
 name: harness-sync-path
-version: 6
+version: 8
 description: Declare and PROVE how every new artifact reaches a second machine - code, data layer, derived index, secret, model, config. Run before calling any build "done", when adding a new storage or index layer, when handing a repo to another PC, or when something works on one machine but not the other. Vietnamese triggers - "đồng bộ 2 máy", "máy thứ hai", "bàn giao máy mới", "pull về máy kia", "kẹt giữa 2 máy", "sync đa máy", "máy kia chạy được chưa".
-from: _Store/04_SKILLS/Skill_Harness_SyncPath @v6 #48e625dae78d
+from: _Store/03_SKILLS/Skill_Harness_SyncPath @v8 #ca38efb40d82
 ---
 
 # sync-path — mỗi thứ sinh ra phải có ĐƯỜNG sang máy khác, và phải ĐO được
@@ -25,7 +25,7 @@ việc chưa xong, dù code chạy.
 
 | kênh | dùng cho | ràng buộc |
 |---|---|---|
-| **git** | mã nguồn · docs · template · hook · cấu hình mặc định | **cấm mọi data/bí mật** (xem `01_CONSTITUTION`) |
+| **git** | mã nguồn · docs · template · hook · cấu hình mặc định | **cấm mọi data/bí mật** (xem `01_LAW/_Cons`) |
 | **gói mã hoá** (vd `.enc`) | kho dữ liệu thật | không bao giờ qua git; không để kho SỐNG trong thư mục đồng bộ đám mây |
 | **người mang tay** | chìa · mật khẩu | không git, không đám mây, không in ra màn hình |
 | **dựng lại tại máy đích** | lớp dẫn xuất rẻ · output build (`dist/`) · cache | phải ghi rõ **lệnh dựng** và **giá** (bao lâu) |
@@ -85,11 +85,19 @@ không ai biết — trong khi lệnh đồng bộ vẫn báo "đã xuất" thà
 
 ## 5. Máy canh, đừng dựa trí nhớ
 
-Skill là chữ, mà chữ thì quên được — thứ CHẶN drift là **code** (xem `01_CONSTITUTION`). Repo phải có
+Skill là chữ, mà chữ thì quên được — thứ CHẶN drift là **code** (xem `01_LAW/_Cons`). Repo phải có
 cổng cho ít nhất hai việc, và **chạy chúng thay vì tự nhớ**:
 
 - cổng chặn **data/bí mật lọt git** — kèm ca ÂM: một ngoại lệ mở đường cho gói dữ liệu là đủ hỏng;
 - cổng canh **mọi cửa của đường đồng bộ dò chìa giống nhau**.
 
 Thêm một lớp lưu/chỉ mục mới mà **không** thêm được cổng canh kênh của nó ⇒ ghi thẳng vào
-`05_TODO` là **nợ**, đừng để nó thành thứ phiên sau phải đi dò lại.
+`04_TODO` là **nợ**, đừng để nó thành thứ phiên sau phải đi dò lại.
+
+## 6. Bí mật và cấu hình sang máy khác (`Rule_Gate_21_WhatEntersGit`)
+
+- File tracked chỉ trỏ TÊN biến môi trường (`password_env: DB_SOURCE_PASSWORD`); kèm `.env.example` liệt kê đủ tên, không
+  giá trị.
+- Giá trị thật ở `.env` / `*.local.*` hoặc slot bí mật, có `.gitignore` chặn; sang máy khác đi qua kênh đồng bộ, không qua
+  git, kể cả khi đã mã hoá.
+- Đo ở máy nhận: đủ tên biến, đọc được giá trị, chạy được việc cần bí mật đó.

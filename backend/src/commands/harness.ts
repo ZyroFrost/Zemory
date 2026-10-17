@@ -6,7 +6,8 @@ import { existsSync, readFileSync, readSync, readdirSync } from "node:fs";
 import { relative, resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
-import { currentProjectRoot, findProjectRoot, harnessPathsAt, loadContext, readMarker } from "../core/config.js";
+import { currentProjectRoot, findProjectRoot, harnessPathsAt, ledgerFile, loadContext, readMarker } from "../core/config.js";
+import { LEDGER_NAMES } from "../docs/harness-names.js";
 import { createRuntime } from "../core/runtime.js";
 import { ensureHarness, entryStates, freshHarness, syncCheck } from "../docs/adopt.js";
 import { archiveChanges, archiveTodo } from "../docs/archive.js";
@@ -63,6 +64,10 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   }
   console.log(`${opts.label}${opts.apply ? "" : " (DRY-RUN)"} — ${root} · kit ${r.kit.name}`);
   if (r.createdMarker) console.log("  + created .harness.json (kit recorded)");
+  const moved = (r.retired ?? []).filter((x) => x.movedTo);
+  const kept = (r.retired ?? []).filter((x) => !x.movedTo);
+  if (moved.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}retired by the store, moved to the archive: ${moved.map((x) => x.folder).join(" · ")}`);
+  if (kept.length) console.log(`  ! retired by the store but edited here — merge into its new home by hand (Archive/ARCHIVE.md names it): ${kept.map((x) => x.folder).join(" · ")}`);
   if (r.renamedShelves.length) {
     console.log(`  ✔ shelves renamed: ${r.renamedShelves.join(" · ")}`);
     // links into the old shelf folders move with them (the words around a link are the repo's and stay)
@@ -71,7 +76,7 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   }
   if (r.ownAdded.length) console.log(`  + own files: ${r.ownAdded.join(" · ")}`);
   const conflicts = printKitSteps(r, opts.apply);
-  if (opts.apply && r.skillsBlock === "written") console.log("  ✔ 04_SKILLS.md skills block refreshed");
+  if (opts.apply && r.skillsBlock === "written") console.log("  ✔ 03_SKILLS/INDEX.md skills block refreshed");
   if (opts.apply) {
     try {
       const g = generateGuards(root);
@@ -243,6 +248,7 @@ export function cmdSync(args: string[] = process.argv): void {
     if (r.legacyRules) console.log("  ! 02_RULES.md has no numbered rules — kept whole as 02_RULES/LEGACY.md; split it into rule folders by hand");
     console.log(`  rules edited here (repo wording kept inside RULE.md for a hand merge): ${list(r.localRules)}`);
     console.log(`  rules only this repo has (own folders, never synced): ${list(r.ownRules)}`);
+    if (r.retiredRules?.length) console.log(`  rules the store retired, dropped (their content lives in the rule that took them in — Archive/ARCHIVE.md): ${list(r.retiredRules)}`);
     console.log(`  shared skills: ${r.replacedSkills.length} replaced by the store copy · edited here, kept: ${list(r.keptSkills)}`);
     if (r.carriedTriggers) console.log(`  AGENTS.md: ${r.carriedTriggers} trigger row(s) for the repo's own skills carried`);
     if (r.assembly) printKitSteps(r.assembly, true);
@@ -1196,7 +1202,7 @@ export function cmdReindex(): void {
   const arcDir = hp.archive;
   const mdIn = (dir: string) => {
     try {
-      return readdirSync(dir).filter((f) => f.endsWith(".md") && f !== "06_CHANGES.md");
+      return readdirSync(dir).filter((f) => f.endsWith(".md") && !(LEDGER_NAMES.changes as readonly string[]).includes(f));
     } catch {
       return [];
     }
@@ -1230,13 +1236,13 @@ export function cmdReindex(): void {
   // worse than a miss: it sends the reader to a file that is not there.
   const pruned = pruneMissingDocs(root);
 
-  const chPath = join(agentDir, "06_CHANGES.md");
+  const chPath = hp.changes;
   const ch = existsSync(chPath) ? importChangelog(chPath, root, undefined, { replace: true }) : 0;
   // The ARCHIVE is a source file too — outside the per-session read, but git-tracked
   // and rebuildable. Index it as its own tier so old decisions stay searchable
   // (plan/02 §3). Skipping this is why `changelog search` used to miss everything
   // older than the last trim.
-  const chArc = join(arcDir, "06_CHANGES.md");
+  const chArc = ledgerFile(arcDir, "changes");
   const arc = existsSync(chArc)
     ? importChangelog(chArc, root, undefined, { replace: true, archived: true })
     : 0;

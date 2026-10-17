@@ -31,7 +31,7 @@ import { syncCheck } from "../docs/adopt.js";
 import { coreForCompaction } from "../docs/rule-core.js";
 import { isFolderHarness, isRetired, listParts, promptGates } from "../docs/store.js";
 import { stopDecision } from "../docs/turn-evidence.js";
-import { promptMatches } from "../docs/harness-names.js";
+import { promptMatches, SHELF } from "../docs/harness-names.js";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
 
@@ -412,7 +412,7 @@ export function handleHook(event: HookEventName, payload: any): string {
       // Đường nạp CHÍNH (per-message). `scan()` cả kho chỉ còn là lối CHÓT cho host không
       // đưa `transcript_path` — và ngay cả nó cũng phải nhường write-gate.
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
-      // Rule_Gate_11_VerifyClaims (plan/28 §0o): in a folder harness that carries rule 11, a turn that changed code must
+      // Rule_Gate_01_DoneMeansRun (plan/28 §0q): in a folder harness that carries rule 11, a turn that changed code must
       // have run a check after the last change. Its answer is the ONLY text this hook ever returns.
       const verdict = event === "stop" ? endOfTurnVerdict(payload) : "";
       const ingested = ingestCurrent(payload);
@@ -482,7 +482,8 @@ export function endOfTurnVerdict(payload: any): string {
     const cwd = String(payload?.cwd ?? "");
     const hp = cwd ? harnessPathsAt(cwd) : null;
     if (!hp || !isFolderHarness(hp.agent)) return "";
-    if (!listParts(hp.agent, "01_RULES").some((p) => p.key === "Rule_11" && !isRetired(p))) return "";
+    // the evidence clause belongs to rule 1 (done means run, plan/28 §0q); a repo not yet re-assembled still has it in rule 11
+    if (!listParts(hp.agent, SHELF.rules).some((p) => (p.key === "Rule_1" || p.key === "Rule_11") && !isRetired(p))) return "";
     const own = (readMarker(cwd)?.data as { repoGates?: unknown } | undefined)?.repoGates;
     return stopDecision(payload, Array.isArray(own) ? own.filter((x): x is string => typeof x === "string") : []);
   } catch {

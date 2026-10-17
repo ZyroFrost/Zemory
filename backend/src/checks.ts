@@ -70,8 +70,9 @@ export async function runCheck(feature: string, rootArg?: string): Promise<Check
     // than not probing at all: a false "off" sends someone fixing a non-problem.
     const root = configuredRoot;
     if (!root) return { feature, ok: true, state: "on", detail: tr("sẵn sàng (playbook toàn cục)", "ready (global playbook)") };
-    const skillFile = join(root, ".claude", "skills", "grill", "SKILL.md");
-    if (existsSync(skillFile)) {
+    // the host name the store gives it (`harness-grill`, plan/28 §0o), or the name older repos still have
+    const skillFile = ["harness-grill", "grill"].map((n) => join(root, ".claude", "skills", n, "SKILL.md")).find((f) => existsSync(f));
+    if (skillFile) {
       return { feature, ok: true, state: "on", detail: tr("sẵn sàng (skill grill)", "ready (grill skill)") };
     }
     const skills = join(loadContext(root).docsDir, "04_SKILLS.md");

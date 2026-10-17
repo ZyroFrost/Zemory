@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, s
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
-import { HOST_KIND, LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
+import { CONS_REPO_FILE, HOST_KIND, LEGACY_LEDGER, LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
 import { viName } from "./vi-name-judge.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
@@ -104,15 +104,28 @@ export function renameLegacyShelves(agentDir: string): string[] {
     const from = join(agentDir, old), to = join(agentDir, cur);
     if (!existsSync(from) || existsSync(to)) continue;
     try { if (!statSync(from).isDirectory()) continue; } catch { continue; }
+    mkdirSync(dirname(to), { recursive: true });
     renameSync(from, to);
     done.push(`${old} → ${cur}`);
   }
-  // The skills list moves into the skills shelf, beside the sources it lists (as 03_STRUCTURE/INDEX.md).
-  const list = join(agentDir, "04_SKILLS.md"), index = join(agentDir, SHELF.skills, "INDEX.md");
-  if (existsSync(list) && !existsSync(index)) {
+  // The skills list moves into the skills shelf, beside the sources it lists (as the structure shelf's INDEX.md).
+  for (const list of ["04_SKILLS.md", "03_SKILLS.md"].map((n) => join(agentDir, n))) {
+    const index = join(agentDir, SHELF.skills, "INDEX.md");
+    if (!existsSync(list) || existsSync(index)) continue;
+    try { if (!statSync(list).isFile()) continue; } catch { continue; }
     mkdirSync(join(agentDir, SHELF.skills), { recursive: true });
     renameSync(list, index);
-    done.push(`04_SKILLS.md → ${SHELF.skills}/INDEX.md`);
+    done.push(`${basename(list)} → ${SHELF.skills}/INDEX.md`);
+  }
+  // The ledgers take their current names (plan/28 §0q): 05_TODO.md → 04_TODO.md · 06_CHANGES.md → 05_CHANGES.md.
+  // Their archives too, so a ledger and its archive always carry the same name.
+  for (const dir of [agentDir, join(agentDir, "archive")]) {
+    for (const [old, cur] of Object.entries(LEGACY_LEDGER)) {
+      const from = join(dir, old), to = join(dir, cur);
+      if (!existsSync(from) || existsSync(to)) continue;
+      renameSync(from, to);
+      done.push(`${relative(agentDir, from).replace(/\\/g, "/")} → ${cur}`);
+    }
   }
   // Slots that still sit flat on the structure shelf (assembled before the two layers, or the repo's own) move into the
   // inner layer, so the shelf only ever holds the layer and the structures.
@@ -194,9 +207,12 @@ export function bodyOf(text: string): string {
   return text.split(/\r?\n/).slice(fm.end + 1).join("\n").replace(/^\s*\n/, "");
 }
 
-const FROM_RE = /^from:\s*_Store\/(\d{2}_[A-Z_]+)\/([^\s@]+)\s+@v(\d+)\s+#([0-9a-f]{8,})\s*$/;
+// The shelf is one folder (`02_STRUCTURE`) or the law shelf with its inner layer (`01_LAW/_Rule`).
+const FROM_RE = /^from:\s*_Store\/(\d{2}_[A-Z_]+(?:\/_(?:Rule|Cons))?)\/([^\s@]+)\s+@v(\d+)\s+#([0-9a-f]{8,})\s*$/;
 // A `from:` line written before the shelves were renumbered names a legacy shelf; it still parses (the hash is what counts).
 const knownShelf = (s: string): boolean => (SHELVES as readonly string[]).includes(s) || s in LEGACY_SHELF;
+/** A shelf named in a `from:` line, a legacy name mapped to the current shelf. */
+const shelfOfFrom = (s: string): Shelf => ((SHELVES as readonly string[]).includes(s) ? s : LEGACY_SHELF[s]) as Shelf;
 
 export function fromLine(p: Pick<Part, "shelf" | "folder" | "version">, hash: string): string {
   return `from: _Store/${p.shelf}/${p.folder} @v${p.version} #${hash}`;
@@ -205,7 +221,7 @@ export function fromLine(p: Pick<Part, "shelf" | "folder" | "version">, hash: st
 export function parseFrom(value: string): FromRef | null {
   const m = FROM_RE.exec(`from: ${value}`.replace(/^from:\s*from:/, "from:"));
   if (!m || !knownShelf(m[1])) return null;
-  return { shelf: m[1] as Shelf, folder: m[2], version: Number(m[3]), hash: m[4] };
+  return { shelf: shelfOfFrom(m[1]), folder: m[2], version: Number(m[3]), hash: m[4] };
 }
 
 /** Put (or replace) the `from:` line as the last header line. A file without a header gets one. */
@@ -245,7 +261,7 @@ export function partFiles(dir: string): string[] {
       if (e.isDirectory()) {
         if (d === dir && NOT_CONTENT.includes(e.name)) continue;
         walk(p);
-      } else out.push(relative(dir, p).replace(/\\/g, "/"));
+      } else if (!(d === dir && e.name === CONS_REPO_FILE)) out.push(relative(dir, p).replace(/\\/g, "/"));
     }
   };
   if (existsSync(dir)) walk(dir);
@@ -425,7 +441,7 @@ export function listRepoSkills(skillsRoot: string): Part[] {
   const out: Part[] = [];
   for (const e of readdirSync(skillsRoot, { withFileTypes: true })) {
     if (!e.isDirectory()) continue;
-    const p = readPart(join(skillsRoot, e.name), "04_SKILLS");
+    const p = readPart(join(skillsRoot, e.name), SHELF.skills);
     if (p) out.push(p);
   }
   return out.sort(byId);
@@ -660,7 +676,9 @@ export function targetDir(t: AssemblyTarget, p: Pick<Part, "shelf" | "folder">):
 export function findCopy(t: AssemblyTarget, part: Part): string | null {
   const exact = targetDir(t, part);
   if (hasMain(exact, mainOf(part))) return exact;
-  const byKey = listAllParts(t.agentDir, part.shelf).find((p) => p.key === part.key)?.dir;
+  // On the constitution shelf only an assembled copy (it has a from: line) answers to a frame's key: a repo's own article
+  // from an older layout may carry the same number (Cons_10) and is never the frame's copy (plan/28 §0q).
+  const byKey = listAllParts(t.agentDir, part.shelf).find((p) => p.key === part.key && (part.shelf !== SHELF.constitution || Boolean(p.from)))?.dir;
   if (byKey) return byKey;
   if (part.shelf !== SHELF.skills) return null;
   // A skill assembled before the two-layer skills sat in the host folder under its old name (aka). An assembled copy (it
@@ -857,6 +875,11 @@ export function applyAssembly(steps: AssemblyStep[]): AssemblyStep[] {
         if (stale && stale !== own) rmSync(join(s.target, stale), { force: true });
       }
     }
+    // A constitution frame brings its Cons.md template once; from then on the file is the repo's (plan/28 §0q).
+    const tpl = join(s.part.dir, CONS_REPO_FILE);
+    if (s.part.shelf === SHELF.constitution && existsSync(tpl) && !existsSync(join(s.target, CONS_REPO_FILE))) {
+      writeFileSync(join(s.target, CONS_REPO_FILE), readFileSync(tpl, "utf8").replace(/\r\n/g, "\n"));
+    }
     done.push(s);
   }
   return done;
@@ -934,10 +957,14 @@ function baseAcrossRenames(part: Part, matches: (files: Map<string, string>) => 
   const pg = partGit(shelfAt);
   if (!pg) return null;
   const main = mainOf(part);
-  const shelfName = shelfAt.replace(/\\/g, "/").split("/").pop() ?? "";
-  const legacy = Object.entries(LEGACY_SHELF).find(([old, cur]) => cur === shelfName || old === shelfName);
-  const paths = ["."];
-  if (legacy) paths.push(`../${legacy[0] === shelfName ? legacy[1] : legacy[0]}`);
+  // The shelf as named below the harness/store folder: one segment, or two for the law shelf's layers (`01_LAW/_Rule`).
+  const segs = shelfAt.replace(/\\/g, "/").split("/");
+  const shelfName = segs[segs.length - 1].startsWith("_") ? segs.slice(-2).join("/") : segs[segs.length - 1];
+  const up = "../".repeat(shelfName.split("/").length);
+  const cur = currentShelf(shelfName);
+  // every other name the same shelf has had (legacy shelves of it, or the current one when this is a legacy folder)
+  const others = [cur ?? "", ...Object.entries(LEGACY_SHELF).filter(([, c]) => c === cur).map(([o]) => o)].filter((n) => n && n !== shelfName);
+  const paths = [".", ...others.map((n) => `${up}${n}`)];
   try {
     const shas = pg.git(["log", "--format=%H", "--", ...paths]).split(/\r?\n/).filter(Boolean);
     for (const sha of shas) {
@@ -1031,10 +1058,10 @@ export function unbumpedParts(storeDir = STORE_DIR): string[] {
 }
 
 const SHELF_CODE: Record<string, string[]> = {
-  "01_CONSTITUTION": ["Cons"], "02_CONSTITUTION": ["Cons"],
-  "02_RULES": ["Rule"], "01_RULES": ["Rule"],
-  "03_STRUCTURE": ["Slot", "Struc", "Host"],
-  "04_SKILLS": ["Skill"],
+  [SHELF.constitution]: ["Cons"],
+  [SHELF.rules]: ["Rule"],
+  [SHELF.structure]: ["Slot", "Struc", "Host"],
+  [SHELF.skills]: ["Skill"],
 };
 
 /**
@@ -1094,6 +1121,87 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
     if (!structureSlotNames(s).length) wrong.push(`${SHELF.structure}/${s.folder}: structure.json lists no slot`);
   }
   return { wrong, legacy };
+}
+
+export interface RetiredCopy {
+  /** shelf-relative folder of the repo copy */
+  folder: string;
+  shelf: Shelf;
+  /** where it was moved (repo-relative), or null when it was left because the repo edited it */
+  movedTo: string | null;
+}
+
+/**
+ * Repo copies of parts the store has retired (plan/28 §0q): an assembled copy (`from:`) whose key now sits in the store's
+ * Archive and in none of the kit's parts. Left in place it would keep its hook and its core text beside the rule that took
+ * it in — the same check twice. Untouched since assembly ⇒ moved to `<archive>/retired/<shelf>/` (nothing is deleted);
+ * edited here ⇒ left where it is and reported, so the edit is merged into its new home by hand.
+ */
+export function retireCopies(t: AssemblyTarget, kitKeys: Set<string>, archiveDir: string, apply: boolean, storeDir = STORE_DIR): RetiredCopy[] {
+  const out: RetiredCopy[] = [];
+  for (const shelf of [SHELF.rules, SHELF.constitution] as const) {
+    const retired = new Set(listParts(join(storeDir, ARCHIVE_SHELF), shelf).map((p) => p.key));
+    for (const p of listParts(t.agentDir, shelf)) {
+      if (!p.from || kitKeys.has(p.key) || !retired.has(p.key)) continue;
+      const main = mainOf(p);
+      const untouched = hashFiles(readPartFiles(p.dir, main), main) === p.from.hash;
+      if (!untouched) { out.push({ folder: p.folder, shelf, movedTo: null }); continue; }
+      const dest = join(archiveDir, "retired", shelf, p.folder);
+      if (apply && !existsSync(dest)) {
+        mkdirSync(dirname(dest), { recursive: true });
+        renameSync(p.dir, dest);
+      }
+      out.push({ folder: p.folder, shelf, movedTo: relative(dirname(t.agentDir), dest).replace(/\\/g, "/") });
+    }
+  }
+  return out;
+}
+
+/**
+ * A constitution FRAME (plan/28 §0q): an assembled part whose header says `frame: true` — a common rule that makes the repo
+ * declare one kind of invariant in its Cons.md. Anything else on the shelf (the repo's own article, or an article an older
+ * layout gave the repo to keep) is constitution text in its own right.
+ */
+export function isFrame(p: Part): boolean {
+  return Boolean(p.from) && String(p.meta.frame ?? "") === "true";
+}
+
+/**
+ * Constitution frames a repo has not written yet (plan/28 §0q). An assembled frame (it has a `from:` line) needs a Cons.md
+ * with `status: written` and no template placeholder left (`<…>`), or `status: n/a` with a reason line. A repo's own article
+ * (no `from:`) is its own text and is not judged here.
+ */
+export function consFindings(agentDir: string): string[] {
+  const out: string[] = [];
+  for (const p of listParts(agentDir, SHELF.constitution)) {
+    if (!isFrame(p) || isRetired(p)) continue;
+    const file = join(p.dir, CONS_REPO_FILE);
+    if (!existsSync(file)) { out.push(`${p.folder}: ${CONS_REPO_FILE} missing`); continue; }
+    const text = readFileSync(file, "utf8");
+    const status = String(frontMatter(text)?.meta.status ?? "");
+    const body = bodyOf(text).trim();
+    if (status === "n/a") { if (!body) out.push(`${p.folder}: status n/a without a reason`); continue; }
+    if (status !== "written") { out.push(`${p.folder}: status is "${status || "missing"}" — not written yet`); continue; }
+    const left = /<[^<>\n`]{1,60}>/.exec(body.replace(/`[^`\n]*`/g, ""));
+    if (left) out.push(`${p.folder}: template placeholder ${left[0]} left`);
+  }
+  return out;
+}
+
+/**
+ * The repo's constitution as files (plan/28 §0q): the Cons.md of every frame the repo has written (status `written` — an
+ * `n/a` frame says nothing about the product), and the header file of each of the repo's own articles (no `from:` line).
+ */
+export function constitutionFiles(agentDir: string): string[] {
+  const out: string[] = [];
+  for (const p of listParts(agentDir, SHELF.constitution)) {
+    if (isRetired(p)) continue;
+    if (!isFrame(p)) { out.push(mainPath(p.dir, mainOf(p))); continue; }
+    const f = join(p.dir, CONS_REPO_FILE);
+    const text = (existsSync(f) ? readFileSync(f, "utf8") : "");
+    if (text && /^status:\s*written\s*$/m.test(text)) out.push(f);
+  }
+  return out;
 }
 
 /** What a slot's `gate.json › conform` finds wrong in a repo: a required path that does not exist, a file that does not

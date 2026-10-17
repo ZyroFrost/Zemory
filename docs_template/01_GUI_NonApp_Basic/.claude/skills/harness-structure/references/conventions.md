@@ -1,5 +1,5 @@
 <!-- L3 — tài nguyên của skill `structure`. KHÔNG nạp cùng SKILL.md; chỉ mở khi cần tra quy ước cụ thể.
-     4 luật nổ-lúc-viết (LFS · data thật/mẫu · secret · SQL-DAX-M) KHÔNG ở đây — chúng ở docs/agent/01_RULES/
+     4 luật nổ-lúc-viết (LFS · data thật/mẫu · secret · SQL-DAX-M) KHÔNG ở đây — chúng ở docs/agent/01_LAW/_Rule/
      vì phải luôn được nạp. Một nội dung, một nhà. -->
 # Quy ước chi tiết — chuẩn thư mục non-app
 
@@ -130,7 +130,7 @@ docs_visual ≠ docs    docs_visual/ nằm NGOÀI docs/ — agent KHÔNG tự đ
 ## Nguồn sự thật
 
 ```
-Từ điển dữ liệu   docs/agent/03_STRUCTURE/INDEX.md (Docs_138_DataDictionary) — định nghĩa metric/cột là nguồn
+Từ điển dữ liệu   docs/agent/02_STRUCTURE/INDEX.md (Docs_138_DataDictionary) — định nghĩa metric/cột là nguồn
                   sự thật, chống mỗi báo cáo tính một kiểu. MỘT từ điển cho cả dự
                   án: tên-chỗ (§1) và tên-nghiệp-vụ (Docs_138_DataDictionary) ở chung một file.
 Publish/refresh   Tự động hoá → scripts/ · bản render ra → exports/ (gitignore,
@@ -144,7 +144,7 @@ KHÔNG luật UI     Dự án non-app không phát triển app ⇒ 0 luật thi�
                   "Có dashboard trong deliverable" KHÔNG biến nó thành app: chừng
                   nào chỉ đọc/dò/kéo/điền/xuất file thì vẫn là non-app.
                   Trình bày deliverable (layout report, chọn chart) = quyết định
-                  TRÌNH BÀY → trình duyệt trước (Rule_Core_15_DeliverableLayout), tham khảo
+                  TRÌNH BÀY → trình duyệt trước (Rule_Keys_62_DesignChangeApproval), tham khảo
                   skill dataviz nếu có. KHÔNG phải luật UI-app.
 Ngoài phạm vi     App có code chạy (UI/server/CLI) → dùng chuẩn APP, không phải
                   file này. Lib/SDK · mobile · game → convention riêng.

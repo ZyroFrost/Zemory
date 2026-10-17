@@ -4,7 +4,7 @@ aka: write-docx
 name: doc-write-docx
 version: 3
 description: Edit or produce Word files (.docx) without silently destroying their structure - tables, pictures, table of contents, styles, page setup. Use when you must change wording inside an existing .docx, swap or add a picture, resize a picture, insert a section, or hand back a .docx deliverable. Do not use when you only need to READ a document - use read-office for that. Vietnamese triggers - "sửa file word", "ghi file word", "đổi chữ trong file word", "thay ảnh trong docx", "chèn ảnh vào file word", "xuất file word", "cập nhật tài liệu word".
-from: _Store/04_SKILLS/Skill_Doc_WriteDocx @v3 #f9bb4e682e86
+from: _Store/03_SKILLS/Skill_Doc_WriteDocx @v3 #f9bb4e682e86
 ---
 
 # write-docx — sửa .docx mà không phá cấu trúc

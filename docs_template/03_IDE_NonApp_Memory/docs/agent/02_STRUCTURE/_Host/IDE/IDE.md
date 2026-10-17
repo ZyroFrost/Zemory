@@ -1,0 +1,55 @@
+---
+id: Host_IDE
+name: host-ide
+version: 3
+kind: host
+from: _Store/02_STRUCTURE/_Host/IDE @v3 #b9ee963eddb2
+---
+# IDE Hệ IDE — agent trong trình soạn code
+
+- Phạm vi: agent chạy trong panel của trình soạn code (extension), mở theo folder đang mở trong trình soạn.
+- Mở dự án: mở folder dự án trong trình soạn → mở panel agent → dán câu bootstrap của bộ (bộ Memory: `zemory init --kit <số>`).
+- Bộ ráp được: bộ Basic và bộ Memory.
+- Kiểm môi trường (doctor):
+  - Node ≥ 20 và Git có trên PATH (hook guard là hook Node; Git cho mã thoát 2 và chốt commit);
+  - bộ Memory: lệnh `zemory` có trên PATH, `zemory doctor` xanh trong folder dự án;
+  - lệnh hook neo theo `CLAUDE_PROJECT_DIR`, không theo folder làm việc của phiên.
+
+## Bộ chốt máy (guard)
+
+- `zemory hook guard` sinh bộ chốt từ marker `.harness.json` (khoá `protected` · `secretNames` · `allowedRoots` · `allowedSqlServers` · `repoGates` · `readFirst`): `policy.json` (luật đã dịch) · `guard.cjs` (hook `PreToolUse`, chặn trước khi hành động chạm đĩa hoặc mạng) · `precommit-guard.cjs` (chặn bí mật lọt vào staging, kể cả commit do người làm).
+- Guard là chuẩn, không phải tuỳ chọn: lệnh tự cắm guard vào `.claude/settings.json` › `PreToolUse` với matcher đủ `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell`, giữ nguyên mọi hook khác của repo. Pre-commit tự cắm khi repo chưa có; repo đã có pre-commit riêng ⇒ báo ra, thêm dòng gọi guard bằng tay.
+- Mỗi luật có hook mang `hook*.cjs` trong folder luật; guard gọi lần lượt từng file.
+- Phép kiểm: `zemory doctor` đỏ khi guard chưa cắm hoặc matcher thiếu công cụ; `zemory gates --all` đo mọi repo có thật sự chạy guard · pre-commit.
+
+## Cờ dùng một lần
+
+- Cờ `.allow-*` (trong `docs/.harness-state/`) cho qua đúng một việc đã được duyệt; agent chỉ tạo cờ sau khi được cho phép rõ trong phiên (`Rule_Keys_61_HookSafetyNet`).
+- Guard cho qua rồi đóng dấu `ZEMORY-USED <vân tay lệnh> <thời điểm>` vào chính file cờ, không xoá ngay: trong 90 giây đúng lệnh đó được thử lại; xin việc khác hoặc quá hạn ⇒ cờ bị thu hồi. Nhóm bí mật không có cờ.
+
+## Đường cấm ghi (`protected`)
+
+- Đường cấm ghi của repo khai ở khoá `protected` của marker; harness được bảo vệ ở mọi repo dù có khai hay không (`Rule_Gate_79_HarnessEdit`).
+- `protected` nhận glob, không chỉ tiền tố: `data/*/01_raw` phủ đầu vào gốc của mọi case, kể cả case chưa có.
+- Chỉ khai thứ chỉ đọc (đầu vào gốc · két bí mật). Không khai sản phẩm repo đang xây: cổng kêu ở mọi lượt sửa thường ngày sẽ bị bỏ qua; chống sửa nhầm sản phẩm bằng git.
+
+## Việc ra ngoài dự án (`Rule_Gate_44_RepoScope`)
+
+- Guard chặn bốn nhóm, một cờ chung `.allow-outside`:
+  1. ghi ra đường tuyệt đối ngoài repo (Write/Edit · `>`/`>>` · `cp`/`mv`/`robocopy` · `mkdir`/`New-Item`/`Set-Content`/`Out-File`/`tee`/`touch` · trình thông dịch chạy lệnh ghi); miễn thư mục tạm của hệ thống · `~/.claude` · `/dev/null` · `NUL` · đường khai ở `allowedRoots`;
+  2. SQL bắt máy chủ ghi file (`BACKUP … TO DISK` · `RESTORE … FROM DISK` · `CREATE DATABASE … FILENAME`);
+  3. SQL đổi cấu hình máy chủ (`sp_configure` · linked server · `CREATE/DROP/ALTER DATABASE`); marker khai `allowedSqlServers` ⇒ chặn thêm máy chủ ngoài danh sách;
+  4. lệnh chạy trên máy khác (`ssh` · `Invoke-Command` · `Enter-PSSession` · `psexec` · `winrs`) mà payload tạo · xoá · đổi; chép lên máy khác bằng `scp`/`rsync`. Lệnh chỉ đọc cho qua.
+- Giới hạn: guard không thấy đường hay SQL dựng lúc chạy, nằm trong biến hay trong file script, và đường tương đối sau khi `cd` ra ngoài; luật chữ là tầng quyết định.
+
+## Đọc trước khi ghi (`Rule_Gate_59_ReadFirst`)
+
+- Chốt read-first so theo nội dung từng dòng: dòng đã thấy (qua Read, hoặc tự ghi bằng Edit/Write) không phải đọc lại; file đổi ngoài Edit/Write ⇒ chỉ đòi đúng các dòng đã đổi.
+- Nén context không bắt đọc lại: hook `SessionStart` chèn lại nguyên văn lõi và hiến pháp. Lệnh đọc Global Memory và dò phiên (`zemory memory …` · `peers` · `graph`) không bị chặn.
+- Khai thêm file bắt đọc: khoá marker `readFirst`. Host không ghi transcript ⇒ cho qua (fail-open).
+
+## Phiên và nhắn liên phiên
+
+- Tiêu đề phiên theo khuôn `<Repo>_<Model>_<d-m-yyyy>` (`<Repo>` = tên folder repo, đúng hoa thường; ngày không đệm số 0); có chủ đề ⇒ chèn trước ngày; phiên thứ hai trong ngày ⇒ thêm `_<số>` sau ngày. Người dùng đặt tiêu đề; agent thấy tiêu đề phiên của chính mình lệch khuôn thì nhắc một lần, không tự đổi. `zemory peers --all --check` chấm mọi phiên; `--fix` in kế hoạch, `--apply` chỉ chạy khi được yêu cầu.
+- Nhắn agent ở phiên hoặc repo khác: chỉ nhắn phiên đang chạy có tiêu đề chuẩn; repo nhiều phiên ⇒ phiên có ngày mới nhất. Tiêu đề không phải địa chỉ gửi: trước mỗi lần gửi chạy `zemory peers` rồi gửi tới địa chỉ có ★; không có ★ ⇒ không gửi, báo phiên đích cần đặt tiêu đề. Trả lời tin đến ⇒ dùng đúng địa chỉ `from` của tin.
+- Phép kiểm: hook toàn máy `zemory hook send-guard` chặn gửi tới phiên không có ★.

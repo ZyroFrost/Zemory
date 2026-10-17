@@ -40,6 +40,10 @@ export interface HarnessPaths {
   skills: string;
   /** Hai cửa vào ở gốc repo — thuần con trỏ vào `agent`. */
   entries: string[];
+  /** The TODO ledger: `04_TODO.md`, or the name an older layout gave it while the repo still has that one. */
+  todo: string;
+  /** The changelog: `05_CHANGES.md`, or its older name while the repo still has that one. */
+  changes: string;
 }
 
 /** Per-project config, loaded from `.harness.json` at the project root. */
