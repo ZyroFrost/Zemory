@@ -149,6 +149,9 @@ test("mirror-exclude: CỜ ĐỒNG Ý của guard không bao giờ rời máy đ
     ?? { area: "docs", path: tempDir(t, "zemory-flag-r-") };
   assert.equal(resolveMirrorPath(root, "hooks/.allow-push"), null, "chiều NHẬN cũng phải từ chối");
   assert.equal(resolveMirrorPath(root, "hooks\\.allow-push"), null, "gạch ngược của Windows không được thành đường vòng");
+  // Folder harness keeps its flags in `docs/.harness-state/` (policy flags_dir), not `hooks/`.
+  assert.match(excludeReason(".harness-state/.allow-push", ".allow-push", 40) ?? "", /cờ đồng ý/i, "folder-harness flag must stay");
+  assert.equal(resolveMirrorPath(root, ".harness-state/.allow-delete"), null, "receiving side refuses folder-harness flags too");
 
   // CA ÂM — mã guard thì VẪN đi: nó là tài liệu/luật dùng chung, chỉ có THẨM QUYỀN mới ở lại máy.
   assert.equal(excludeReason("hooks/guard.cjs", "guard.cjs", 40), null, "mã guard là tài liệu, phải chở");

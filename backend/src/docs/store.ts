@@ -909,6 +909,7 @@ function filesAt(pg: { git: (args: string[]) => string; prefix: string }, sha: s
   names.forEach((f, i) => {
     const rel = rels[i];
     if (rel.includes("/") && NOT_CONTENT.includes(rel.split("/")[0])) return; // host builds · seed: not content
+    if (rel === CONS_REPO_FILE) return; // the repo writes it — not part content (same rule as partFiles)
     // the header file under the key name, whichever name it had at that commit (see mainOf)
     if (main && rel === main && main !== own && rels.includes(own)) return;
     files.set(main && rel === own ? main : rel, pg.git(["show", `${sha}:${f}`]));

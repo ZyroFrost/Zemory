@@ -21,7 +21,7 @@ import { listKnownProjects } from "../projects.js";
 import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
-import { GUARD_MATCHER, generateGuards, guardDrift, guardMatcherGaps } from "../docs/guard-gen.js";
+import { GUARD_MATCHER, generateGuards, guardDrift, guardMatcherGaps, hooksDirOf } from "../docs/guard-gen.js";
 import { desktopShortcutStatus, judgeLaunch, launchFacts, setDesktopShortcut } from "../platform/autostart.js";
 import { getShortcutPrompted, setShortcutPrompted } from "../config/settings.js";
 import { backupStale } from "../memory/backup-rotate.js";
@@ -516,12 +516,13 @@ export async function cmdDoctor(): Promise<void> {
     try {
       const mj = readMarker(s.project.root)?.data as { protected?: unknown } | undefined;
       const declared = Array.isArray(mj?.protected) && mj.protected.length > 0;
-      const guardPath = join(hp.agent, "..", "hooks", "guard.cjs");
+      // Folder harness: the guard lives in the read-first rule's folder, not `docs/hooks/`.
+      const guardPath = join(hooksDirOf(s.project.root), "guard.cjs");
       // Every repo, not only one that declares `protected`: the guard also carries the read-first latch and the delete,
       // push and secret latches (02-55 — the guard is the standard). A fresh init without it went unreported (2026-10-14).
       if (!existsSync(guardPath)) {
         console.log(`  guard: ⚠ NO machine guard yet${declared ? " although the marker declares `protected`" : ""} — layer ① rules and the read-first latch are words only`);
-        console.log("      → run `zemory hook guard` to generate policy + guard (02_RULES §Guardrail layer ①)");
+        console.log("      → run `zemory hook guard` to generate policy + guard (Rule_Gate_59_ReadFirst)");
       } else {
         // Guard KHÔNG tự làm mới — mỗi lần zemory vá guard, repo đã cắm giữ bản HỞ cho tới
         // khi ai đó NHỚ chạy lại `hook guard`. Đề xuất 05_TODO, thành máy sau ngày có HAI
