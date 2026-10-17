@@ -3156,7 +3156,7 @@ def dw_longest(q, cur, cache):
     return cache[key]
 
 
-MEMBER_MAX_LINES = 3        # col-member (user 14/10: "size cột bị dài vô lý ... số ít thì đâu cần title dài" -> chose 3 lines):
+MEMBER_MAX_LINES = 4        # col-member (user 14/10: "size cột bị dài vô lý ... số ít thì đâu cần title dài" -> chose 3, then "bề rộng vẫn rộng" -> 4):
 MEMBER_3LINE_SHARE = 0.02   # header lines of a data-driven column; at most this share of the names may take one more
 
 
@@ -3744,10 +3744,11 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
     global KEEP_OLD_DESIGN
     KEEP_OLD_DESIGN = os.path.basename(os.path.normpath(report_dir)).endswith(('_Classic', '_Legacy'))
     check_structure(vis, bms, groups, leaves, put, fail)
+    # field parameters: a model rule for the versions we build - not kept on _Legacy (its original cannot be fixed)
+    check_field_params(report_dir, d_def, fail)
     f_rl = len(fail)
     check_report_level(report_dir, rep, d_def, vis, fail)
     check_fillrule(d_def, fail)
-    check_field_params(report_dir, d_def, fail)
     check_field_refs(report_dir, d_def, fail)
     # visual titles: Mix / Main only. a department repo user 14/10: "classic là giữ nguyên thiết kế, ko có chuẩn chỉnh UI nào áp lên
     # Classic hết" (a department repo still calls it on Classic too, user 12/10 there - to settle in one rule)

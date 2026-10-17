@@ -23,6 +23,7 @@ import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
 import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots } from "./store.js";
 import { CORE_REINJECT_CAP } from "./rule-core.js";
+import { wiredHooks } from "./hook-wiring.js";
 import { viName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
 
@@ -296,6 +297,14 @@ export function conform(root: string): ConformReport {
     if (existsSync(oldHooks)) stray.push(`${relative(root, oldHooks).replace(/\\/g, "/")}/ (hooks live in the rule that owns them)`);
     push("harness-layout", "blocking", "Harness folder holds something outside its shelves and ledgers", stray,
       "run `zemory sync --standard --apply` (moves the archive to docs/archive, removes the old hook forwarder); anything else: move it out by hand");
+  }
+
+  // ②quinquies — A hook command in .claude/settings.json whose file is gone: the host runs it, it fails, and a failing hook
+  // is let through — the gate stopped without a word (a department's mail gate, 2026-10-18). Any harness.
+  {
+    const dead = wiredHooks(root).filter((h) => h.file && !existsSync(join(root, h.file))).map((h) => `${h.event}: ${h.command}`);
+    push("hook-command-dead", "blocking", "A hook command in .claude/settings.json runs a file that does not exist", dead,
+      "restore the file, or drop the command if a rule of the set does the job now (`zemory sync --standard --apply`)");
   }
 
   // ②quater — The laws no hook holds are read before the first action and put back after a compaction (folderCoreFiles).
