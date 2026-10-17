@@ -344,6 +344,23 @@ export function repointLinks(root: string, apply: boolean): string[] {
   const purposeFrame = existsSync(shelfDir(agentDir, SHELF.constitution))
     ? listParts(agentDir, SHELF.constitution).find((p) => p.key === "Cons_9" && p.from)?.folder
     : undefined;
+  const agentRel = relative(root, agentDir).replace(/\\/g, "/");
+  // where each file of the file harness lives in the folder one (text pointers)
+  const TEXT_MAP: Record<string, string> = {
+    "01_CONSTITUTION": purposeFrame ? `${SHELF.constitution}/${purposeFrame}/${CONS_REPO_FILE}` : `${SHELF.constitution}/`,
+    "02_RULES": `${SHELF.rules}/`,
+    "03_STRUCTURE": `${SHELF.structure}/INDEX.md`,
+    "04_SKILLS": `${SHELF.skills}/INDEX.md`,
+    "05_TODO": LEDGER.todo,
+    "06_CHANGES": LEDGER.changes,
+  };
+  // the repo's assembled skills whose old host name (aka) has no folder any more
+  const hostRenames: Array<[string, string]> = existsSync(shelfDir(agentDir, SHELF.skills))
+    ? listParts(agentDir, SHELF.skills)
+        .filter((p) => p.from)
+        .map((p) => [String(p.meta.aka ?? ""), String(p.meta.name ?? "")] as [string, string])
+        .filter(([aka, host]) => aka && host && aka !== host && !existsSync(join(root, ".claude", "skills", aka)))
+    : [];
   const changed: string[] = [];
   const walk = (d: string): void => {
     let ents: import("node:fs").Dirent[];
@@ -369,6 +386,15 @@ export function repointLinks(root: string, apply: boolean): string[] {
       n = n.replace(/\[`(docs\/agent\/[^`\]]*)`\]\(((?:\.\.?\/)*)(docs\/agent\/[^)\s#]+)(#[^)\s]*)?\)/g,
         (whole, text: string, up: string, target: string, hash: string | undefined) =>
           text === target || existsSync(join(root, text)) ? whole : `[\`${target}\`](${up}${target}${hash ?? ""})`);
+      // A path written as text, not as a link (`docs/agent/03_STRUCTURE.md` §7), names a file the move replaced just the
+      // same — measured on a reshaped repo 2026-10-18: two such pointers left dead in a plan and a case spec.
+      n = n.replace(/`docs\/agent\/(0[1-6]_[A-Z]+)\.md`/g, (whole, name: string) => {
+        if (existsSync(join(agentDir, `${name}.md`))) return whole;
+        const to = TEXT_MAP[name];
+        return to ? `\`${agentRel}/${to}\`` : whole;
+      });
+      // A kit skill named by its old host name (`.claude/skills/case/`) after its build moved to the new one (task-case).
+      for (const [aka, host] of hostRenames) n = n.split(`.claude/skills/${aka}/`).join(`.claude/skills/${host}/`);
       if (n !== t) {
         if (apply) writeFileSync(p, n);
         changed.push(relative(root, p).replace(/\\/g, "/"));
@@ -377,6 +403,20 @@ export function repointLinks(root: string, apply: boolean): string[] {
   };
   walk(root);
   return changed;
+}
+
+/** A `protected` entry of the marker that names a file of the file harness the move replaced (`docs/agent/01_CONSTITUTION.md`)
+ *  protects nothing — the folder harness guards its own shelves and every `Cons.md`. Dropped; returns what was dropped. */
+export function pruneMarkerProtected(root: string, apply: boolean): string[] {
+  const p = join(root, "docs", ".harness.json");
+  if (!existsSync(p)) return [];
+  let j: { protected?: unknown };
+  try { j = JSON.parse(readFileSync(p, "utf8").replace(/^\uFEFF/, "")) as typeof j; } catch { return []; }
+  if (!Array.isArray(j.protected)) return [];
+  const dead = (j.protected as unknown[]).filter((e): e is string => typeof e === "string" && /^docs\/agent\/0[1-6]_[A-Z]+\.md$/.test(e) && !existsSync(join(root, e)));
+  if (!dead.length) return [];
+  if (apply) writeFileSync(p, JSON.stringify({ ...j, protected: (j.protected as unknown[]).filter((e) => !dead.includes(e as string)) }, null, 2) + "\n");
+  return dead;
 }
 
 export interface OwnConstitutionMove {

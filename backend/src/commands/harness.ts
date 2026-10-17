@@ -32,7 +32,7 @@ import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, stampRepo, standardDiff } from "../docs/standard.js";
 import { applyKit, repoKit, type KitApplyResult } from "../docs/kit-apply.js";
-import { migrateToKit, normalizeOwnConstitution, repointLinks } from "../docs/kit-migrate.js";
+import { migrateToKit, normalizeOwnConstitution, pruneMarkerProtected, repointLinks } from "../docs/kit-migrate.js";
 
 /** One line per assembled part: what was (or would be) done. */
 function printKitSteps(r: KitApplyResult, apply: boolean): number {
@@ -73,10 +73,13 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   const own = normalizeOwnConstitution(root, opts.apply);
   if (own.purpose) console.log(`  ✔ ${opts.apply ? "" : "would be "}purpose moved into the purpose frame's ${"Cons.md"} (old PURPOSE.md archived)`);
   if (own.renamed.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}own articles renamed: ${own.renamed.map((x) => `${x.from} → ${x.to}`).join(" · ")}`);
-  if (opts.apply && (r.renamedShelves.length || own.purpose || own.renamed.length)) {
-    // links into the old shelf folders move with them (the words around a link are the repo's and stay)
+  if (opts.apply) {
+    // Pointers into the old harness follow it, every pass (idempotent): a pointer left by an earlier tool, or written by
+    // the repo after the move, is caught too — links, paths written as text, old skill host names, the marker.
     const moved = repointLinks(root, true);
-    if (moved.length) console.log(`  ✔ links repointed in ${moved.length} file(s): ${moved.slice(0, 5).join(" · ")}`);
+    if (moved.length) console.log(`  ✔ pointers repointed in ${moved.length} file(s): ${moved.slice(0, 5).join(" · ")}`);
+    const dropped = pruneMarkerProtected(root, true);
+    if (dropped.length) console.log(`  ✔ marker: protected entries for files the move replaced dropped: ${dropped.join(" · ")}`);
   }
   if (r.ownAdded.length) console.log(`  + own files: ${r.ownAdded.join(" · ")}`);
   if (r.installed.written.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}installed by their parts: ${r.installed.written.join(" · ")}`);
