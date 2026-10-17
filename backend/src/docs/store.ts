@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
 import { archiveDirOf } from "../core/config.js";
 import { relinkFrom } from "./relink.js";
-import { CONS_REPO_FILE, HOST_KIND, LEGACY_LEDGER, LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
+import { CONS_REPO_FILE, HOST_KIND, LEDGER, LEDGER_NAMES, LEGACY_LEDGER, LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
 import { viName } from "./vi-name-judge.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
@@ -682,6 +682,15 @@ export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName
         added.push(relative(repoRoot, dst).replace(/\\/g, "/"));
       }
     }
+    // The two ledgers stand at the store root beside the shelves, in the order of the repo harness (01_LAW … 05_CHANGES):
+    // a frame with the guidance on what goes in and where it goes when done. Written once; from then on it is the repo's.
+    for (const name of [LEDGER.todo, LEDGER.changes]) {
+      const src = join(storeDir, name);
+      const dst = join(agentDir, name);
+      if (!existsSync(src) || existsSync(dst) || LEDGER_NAMES[name === LEDGER.todo ? "todo" : "changes"].some((n) => existsSync(join(agentDir, n)))) continue;
+      writeFileSync(dst, fill(readFileSync(src, "utf8").replace(/\r\n/g, "\n")));
+      added.push(relative(repoRoot, dst).replace(/\\/g, "/"));
+    }
   }
   return added.sort();
 }
@@ -1194,6 +1203,8 @@ export function storeShelfFindings(storeDir = STORE_DIR): string[] {
     else if (!existsSync(join(hostDir, h, `${h}.md`))) out.push(`${SHELF.structure}/${HOST_LAYER}/${h}: no ${h}.md`);
   }
   if (!existsSync(join(storeDir, ARCHIVE_SHELF))) out.push(`${ARCHIVE_SHELF}: shelf missing`);
+  // the ledger frames stand beside the shelves (user 2026-10-18: a new machine or repo opens them and knows how to write)
+  for (const name of [LEDGER.todo, LEDGER.changes]) if (!existsSync(join(storeDir, name))) out.push(`${name}: ledger frame missing`);
   return out;
 }
 

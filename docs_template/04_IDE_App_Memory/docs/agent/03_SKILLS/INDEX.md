@@ -17,6 +17,7 @@ có mặt ở đó và khớp bản kho (dòng `from:`), và mọi folder ở đ
 | `Skill_Harness_Grill/` | `.claude/skills/harness-grill/` | _Store/03_SKILLS/Skill_Harness_Grill @v7 #debb410eb706 |
 | `Skill_Harness_PlanTrim/` | `.claude/skills/harness-plan-trim/` | _Store/03_SKILLS/Skill_Harness_PlanTrim @v7 #6e462ac63f25 |
 | `Skill_Harness_Reconcile/` | `.claude/skills/harness-reconcile/` | _Store/03_SKILLS/Skill_Harness_Reconcile @v9 #10c0dd259111 |
+| `Skill_Harness_Reshape/` | `.claude/skills/harness-reshape/` | _Store/03_SKILLS/Skill_Harness_Reshape @v1 #b72fc73b59b1 |
 | `Skill_Harness_RuleGate/` | `.claude/skills/harness-rule-gate/` | _Store/03_SKILLS/Skill_Harness_RuleGate @v1 #1ee8d0317b78 |
 | `Skill_Harness_SessionClose/` | `.claude/skills/harness-session-close/` | _Store/03_SKILLS/Skill_Harness_SessionClose @v13 #67ab654bf7f1 |
 | `Skill_Harness_SyncPath/` | `.claude/skills/harness-sync-path/` | _Store/03_SKILLS/Skill_Harness_SyncPath @v9 #ba1f734475c9 |

@@ -68,4 +68,4 @@ zemory doctor
 - Luật chung: 28 (Gate 17 · Keys 8 · Core 3).
 - Khung hiến pháp (8): `Cons_Gate_09_Purpose` · `Cons_Gate_10_ReadOnlySources` · `Cons_Gate_11_WriteBoundary` · `Cons_Gate_12_SourceOfTruth` · `Cons_Gate_13_Architecture` · `Cons_Gate_14_Access` · `Cons_Gate_15_DataLifecycle` · `Cons_Gate_16_Dependencies`. Mỗi khung có `Cons.md` mẫu: viết lại cho sản phẩm của dự án, hoặc ghi `status: n/a` kèm lý do.
 - Structure: `Struc_Repo_App` · hệ: `_Host/IDE`.
-- Skill (14): `dev-app-design` · `dev-db-design` · `dev-release` · `doc-read-office` · `doc-write-docx` · `doc-write-style` · `harness-audit` · `harness-conform` · `harness-grill` · `harness-plan-trim` · `harness-reconcile` · `harness-rule-gate` · `harness-session-close` · `harness-sync-path`.
+- Skill (15): `dev-app-design` · `dev-db-design` · `dev-release` · `doc-read-office` · `doc-write-docx` · `doc-write-style` · `harness-audit` · `harness-conform` · `harness-grill` · `harness-plan-trim` · `harness-reconcile` · `harness-reshape` · `harness-rule-gate` · `harness-session-close` · `harness-sync-path`.

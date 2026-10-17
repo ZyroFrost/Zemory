@@ -2,7 +2,7 @@
 id: Slot_5
 aka: 03-5
 name: agent
-version: 6
+version: 7
 path: docs/agent/
 ---
 # Docs_005_Agent agent — bộ tài liệu lõi cho agent

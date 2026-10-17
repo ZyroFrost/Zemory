@@ -1,0 +1,20 @@
+{
+  "trigger": "nắn repo lên bộ chuẩn · áp chuẩn · chuyển repo sang bộ · sync --standard",
+  "prompt": {
+    "kind": "harness-reshape",
+    "re": "\\b(nan repo|ap chuan|ap bo|chuyen sang bo|reshape|dua repo ve chuan|sync --standard)\\b",
+    "text": "[zemory] Reshape: follow skill harness-reshape - measure the repo's own lines first, bring them up to the store, two phases, accept with the full table and a real run."
+  },
+  "block": [
+    {
+      "note": "a reshape request",
+      "prompt": "áp chuẩn cho repo Dept_MKT"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa câu SQL báo cáo tháng"
+    }
+  ]
+}

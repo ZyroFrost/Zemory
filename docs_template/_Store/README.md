@@ -12,9 +12,11 @@ bộ ráp, viết phần của mình, rồi đồng bộ với kho về sau.
 | `01_LAW/_Cons/` | Luật khung hiến pháp: bắt repo khai một loại bất biến của sản phẩm, kèm mẫu `Cons.md` | `docs/agent/01_LAW/_Cons/` = hiến pháp của repo | Thêm khung mới; không đụng `Cons.md` đã viết và điều riêng |
 | `02_STRUCTURE/` | Chuẩn cây thư mục: `Struc_Repo_<App\|NonApp>` · `_Slot/` · `_Host/<GUI\|IDE\|CLI>` | `docs/agent/02_STRUCTURE/` | Ghi đè theo kho |
 | `03_SKILLS/` | Cách làm một loại việc | `docs/agent/03_SKILLS/` + bản host dựng (`.claude/skills/`) | Ghi đè theo kho |
+| `04_TODO.md` | Khung sổ việc chưa làm, kèm hướng dẫn cửa vào / cửa ra | `docs/agent/04_TODO.md` | Ghi một lần khi repo chưa có; từ đó là của repo |
+| `05_CHANGES.md` | Khung sổ việc đã làm, kèm khuôn mục và cách dời sang archive | `docs/agent/05_CHANGES.md` | Ghi một lần khi repo chưa có; từ đó là của repo |
 | `Archive/` | Linh kiện đã gộp hoặc bãi bỏ, giữ số; `ARCHIVE.md` ghi nơi nhận nội dung | — | — |
 
-Repo còn có `docs/agent/04_TODO.md` (việc chưa làm) và `05_CHANGES.md` (việc đã làm); hai file này là của repo.
+Lịch sử của repo (mục sổ đã đóng, bản chép đã nghỉ hưu) nằm ở `docs/archive/`, cạnh `docs/agent/`, không đọc mỗi phiên.
 
 ## Tên linh kiện
 
