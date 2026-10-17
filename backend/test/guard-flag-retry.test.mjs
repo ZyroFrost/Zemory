@@ -16,7 +16,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { generateGuards } from "../../dist/docs/guard-gen.js";
@@ -65,6 +65,18 @@ test("the flag does NOT become a 90-second open door: a DIFFERENT job piggybacki
   assert.ok(blocked(r, OTHER), "việc B mượn flag của A ⇒ phải CHẶN");
   assert.ok(!flagExists(r), "và flag bị thu hồi khỏi đĩa, không để lại cửa hé");
   assert.ok(blocked(r, PUSH), "kể cả việc A cũng phải xin lại sau khi flag bị thu hồi");
+});
+
+test("a stamped flag created AGAIN (touch: same text, newer mtime) is a new approval, not a leftover", (t) => {
+  // 2026-10-17: `touch` on a stamped flag keeps the ZEMORY-USED text, so the next job revoked it at once although the
+  // user had just approved again.
+  const r = repo(t);
+  giveFlag(r);
+  assert.ok(!blocked(r, PUSH), "job A uses the flag and stamps it");
+  const later = new Date(Date.now() + 5000);
+  utimesSync(join(r.hooksDir, ".allow-push"), later, later); // what `touch` does
+  assert.ok(!blocked(r, OTHER), "re-created flag ⇒ job B passes");
+  assert.ok(blocked(r, PUSH), "and it is still one flag for one job: A again is revoked");
 });
 
 // ĐỔI TÊN TRONG ĐƯỜNG PROTECTED — user cấp cờ là PHẢI QUA ĐƯỢC.
@@ -156,6 +168,8 @@ test("once the window closes the flag is dead for good - it cannot be forgotten 
   // đẩy dấu thời gian lùi quá cửa sổ (90s) — mô phỏng "để đó rồi mai chạy"
   const { readFileSync } = await import("node:fs");
   const f = join(r.hooksDir, ".allow-push");
-  writeFileSync(f, readFileSync(f, "utf8").replace(/(\d{10,})/, String(Date.now() - 120_000)));
+  const old = Date.now() - 120_000;
+  writeFileSync(f, readFileSync(f, "utf8").replace(/(\d{10,})/, String(old)));
+  utimesSync(f, new Date(old), new Date(old)); // a flag left lying there is old on disk too, not just in its stamp
   assert.ok(blocked(r, PUSH), "quá cửa sổ ⇒ chặn, phải xin lại");
 });
