@@ -187,8 +187,11 @@ test("negative: a wrong example, a gate with no examples and a private line are 
   assert.ok(f.some((x) => /02-9 x: block example 1 went through/.test(x)), f.join("\n"));
   assert.ok(f.some((x) => /02-9 x: pass example 1 was blocked/.test(x)), f.join("\n"));
   assert.ok(f.some((x) => /03-9 y: needs at least one block and one pass example/.test(x)), f.join("\n"));
-  put(s, "01_LAW/_Rule/02-8_z/notes.md", "role `user` in a transcript\nmail ops@company.vn\nsample a@b.example\n");
+  put(s, "01_LAW/_Rule/02-8_z/notes.md", "role `user` in a transcript\nmail ops@company.vn\nsample a@b.example\n" +
+    "open the User Guide panel · icon user-dollar · D:\\<user>\\x\n```\ngate --user-ok\n```\nfetch @tabler/icons@3.19.0\nthe user decided\n");
   const priv = storePrivacyFindings(s);
+  for (const n of [4, 6, 8]) assert.ok(!priv.some((x) => x.includes(`notes.md:${n} `)), `notes.md:${n} names no person and no address: ${priv.join("\n")}`);
+  assert.ok(priv.some((x) => /notes\.md:9 — names the person/.test(x)), "the word outside every exception is still caught");
   assert.ok(priv.some((x) => /02-8_z\/RULE\.md:7 — names the person/.test(x)), priv.join("\n"));
   assert.ok(!priv.some((x) => /notes\.md:1 /.test(x)), "a backticked `user` is data, not a person");
   assert.ok(priv.some((x) => /notes\.md:2 — an e-mail address/.test(x)), "a real address is caught");
@@ -266,7 +269,10 @@ test("a repo marked with an old kit name finds the set that replaced it; an old 
     "04_GUI_NonApp_Memory": "02", "03_nonapp": "03", "02_cowork_memory": "02", "01_cowork_basic": "01",
     "04_Rule_NonApp_Task_Memory": "03", "02_Rule_App_Dev_Memory": "04" };
   for (const [old, no] of Object.entries(want)) assert.equal(findKit(old, STORE_DIR)?.no, no, old);
-  for (const gone of ["05", "06", "08", "05_IDE_App_Basic"]) assert.equal(findKit(gone, STORE_DIR), null, gone);
+  // 05 was the old register's app kit; no repo is marked with the bare number any more (searched 2026-10-18), so the
+  // department set took it
+  for (const gone of ["06", "08", "05_IDE_App_Basic"]) assert.equal(findKit(gone, STORE_DIR), null, gone);
+  assert.equal(findKit("05", STORE_DIR)?.name, "05_IDE_Dept_Memory");
 });
 
 test("every set's BOOTSTRAP.md is the one generated from its parts: host steps, install, modules, file list", async () => {
@@ -319,7 +325,10 @@ test("every part the store's own text names is a live part (a renamed or retired
   const s = tempDir(t, "zemory-mention-");
   const part = join(s, "01_LAW", "_Rule", "Rule_Gate_01_Alpha");
   mkdirSync(part, { recursive: true });
-  writeFileSync(join(part, "Rule_Gate_01_Alpha.md"), "---\nid: Rule_1\nname: alpha\nversion: 1\n---\n# Rule_Gate_01_Alpha\n\nSee Rule_Gate_02_Gone and Rule_Gate_01_Alpha.\n");
+  writeFileSync(join(part, "Rule_Gate_01_Alpha.md"), "---\nid: Rule_1\nname: alpha\nversion: 1\nreplaces: [Skill_Dev_Old]\n---\n# Rule_Gate_01_Alpha\n\n" +
+    "See Rule_Gate_02_Gone and Rule_Gate_01_Alpha, and Skill_PBI_Gone.\n");
   writeFileSync(join(part, "gate.json"), JSON.stringify({ gate: "guard", block: [{ prompt: "Rule_Core_90_X" }] }));
-  assert.deepEqual(partMentionFindings(s), ["01_LAW/_Rule/Rule_Gate_01_Alpha/Rule_Gate_01_Alpha.md: Rule_Gate_02_Gone"]);
+  // an all-capitals group is a name too; the replaces: line names an old part on purpose
+  assert.deepEqual(partMentionFindings(s), ["01_LAW/_Rule/Rule_Gate_01_Alpha/Rule_Gate_01_Alpha.md: Rule_Gate_02_Gone",
+    "01_LAW/_Rule/Rule_Gate_01_Alpha/Rule_Gate_01_Alpha.md: Skill_PBI_Gone"]);
 });

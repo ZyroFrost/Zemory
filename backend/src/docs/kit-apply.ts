@@ -22,6 +22,9 @@ import {
   hostSkillOf,
   planAssembly,
   plugSkills,
+  installBases,
+  installParts,
+  type InstallResult,
   renameLegacyShelves,
   retireCopies,
   seedFiles,
@@ -51,6 +54,8 @@ export interface KitApplyResult {
   plug: PlugResult;
   /** Copies of parts the store retired: moved to the archive when untouched, reported when edited here (plan/28 §0q). */
   retired: RetiredCopy[];
+  /** Files parts install where the repo runs them: written, or kept because they were edited here (plan/28 §0q). */
+  installed: InstallResult;
 }
 
 /** The kit a repo's marker names, or null (a repo still on the file harness). */
@@ -88,13 +93,17 @@ export function applyKit(
   const parts = kitParts(kit, storeDir);
   const ownAdded = opts.apply ? seedFiles(kit, parts, root, opts.projectName ?? basename(root), storeDir, target.agentDir) : [];
   const steps = planAssembly(parts, target);
+  const bases = installBases(target, parts);
   const written = opts.apply ? applyAssembly(steps) : [];
+  // files the parts install where the repo runs them (scripts/...), after the parts themselves are current
+  const installed = installParts(target, root, opts.apply ? parts : [], bases, opts.apply);
   const skills = parts.filter((p) => p.shelf === SHELF.skills);
   // the host plug: every assembled skill's host build, written from its source into the host's own skill folder
-  const plug = opts.apply ? plugSkills(target, skills) : { plugged: [], skipped: [] };
+  const plug = opts.apply ? plugSkills(target, skills) : { plugged: [], skipped: [], removed: [] };
   const skillsBlock = opts.apply ? writeSkillsBlock(hp.agent, skills, target) : "current";
+  if (opts.apply) followEntryRenames(root, skills, target);
   const retired = retireCopies(target, new Set(parts.map((p) => p.key)), hp.archive, opts.apply, storeDir);
-  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves, plug, retired };
+  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves, plug, retired, installed };
 }
 
 /**
@@ -236,18 +245,31 @@ function writeSkillsBlock(agentDir: string, skills: Part[], t: AssemblyTarget): 
   // The repo's own rows still name a kit skill by its OLD name (`grill/`) after that folder made way for the host build
   // (`harness-grill/`): conform then reported each as a skill with no SKILL.md (8 and 13 rows on two real repos,
   // 2026-10-17). Follow the rename outside the block; a folder still on disk under the old name (an edited copy) keeps it.
-  const renamed = (s: string): string => {
-    let out = s;
-    for (const k of skills) {
-      const aka = String(k.meta.aka ?? "");
-      const host = hostSkillOf(k);
-      if (!aka || aka === host || existsSync(join(t.skillsDir, aka))) continue;
-      out = out.split("`" + aka + "/`").join("`" + host + "/`");
-    }
-    return out;
-  };
-  const next = renamed(text.slice(0, a)) + block + renamed(text.slice(b + SK_END.length));
+  const next = followHostRenames(text.slice(0, a), skills, t) + block + followHostRenames(text.slice(b + SK_END.length), skills, t);
   if (next === text) return "current";
   writeFileSync(p, next);
   return "written";
+}
+
+/** A kit skill named by its OLD host name (aka) — a row `grill/` or a trigger path `.claude/skills/dev-pbi/SKILL.md` —
+ *  points at nothing once the host build moved to the new name. Follow the rename; a folder still on disk under the old
+ *  name (an edited copy, or the repo's own skill) keeps it. */
+function followHostRenames(s: string, skills: Part[], t: AssemblyTarget): string {
+  let out = s;
+  for (const k of skills) {
+    const aka = String(k.meta.aka ?? "");
+    const host = hostSkillOf(k);
+    if (!aka || aka === host || existsSync(join(t.skillsDir, aka))) continue;
+    out = out.split("`" + aka + "/`").join("`" + host + "/`").split(`.claude/skills/${aka}/`).join(`.claude/skills/${host}/`);
+  }
+  return out;
+}
+
+/** The trigger table of the entry file follows host renames too (see followHostRenames). */
+function followEntryRenames(root: string, skills: Part[], t: AssemblyTarget): void {
+  const p = join(root, "AGENTS.md");
+  if (!existsSync(p)) return;
+  const text = readFileSync(p, "utf8");
+  const next = followHostRenames(text, skills, t);
+  if (next !== text) writeFileSync(p, next);
 }

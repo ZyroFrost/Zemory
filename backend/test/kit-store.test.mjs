@@ -530,3 +530,87 @@ test("sync: the repo's own skill rows follow a kit skill to its host name; an ed
   assert.match(text, /\| `harness-grill\/` \| clarify first \|/, "the gone folder's row follows the rename");
   assert.match(text, /\| `audit\/` \| full review \|/, "a folder still on disk keeps its row");
 });
+
+test("a part's installs: land at their repo paths; a store change replaces an untouched copy; an edited or foreign copy is kept", async (t) => {
+  // plan/28 §0q: a tool lives in the part that owns it and is assembled where the repo runs it
+  const { installsOf } = await import("../../dist/docs/store.js");
+  const st = store(t);
+  put(st.s, "03_SKILLS/sk/SKILL.md", "---\nname: sk\nversion: 1\ndescription: x\ninstalls: [scripts/tool.py]\n---\n# sk\n");
+  put(st.s, "03_SKILLS/sk/scripts/tool.py", "print('v1')\n");
+  assembleSet(readKits(st.s).find((k) => k.no === "01"), st.s);
+  st.commit("installs");
+  const root = repo(t);
+  const r = applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  assert.deepEqual(r.installed, { written: ["scripts/tool.py"], kept: [] });
+  assert.equal(readFileSync(join(root, "scripts", "tool.py"), "utf8"), "print('v1')\n");
+  assert.ok(!existsSync(join(root, ".claude", "skills", "sk", "scripts", "tool.py")), "the host build carries no second copy");
+  assert.deepEqual(applyKit(root, { apply: true, storeDir: st.s }).installed, { written: [], kept: [] }, "nothing to do twice");
+  const bump = (v) => {
+    const p = join(st.s, "03_SKILLS", "sk", "SKILL.md");
+    writeFileSync(p, readFileSync(p, "utf8").replace(/version: \d+/, `version: ${v}`));
+    writeFileSync(join(st.s, "03_SKILLS", "sk", "scripts", "tool.py"), `print('v${v}')\n`);
+    st.commit(`v${v}`);
+  };
+  bump(2);
+  assert.deepEqual(applyKit(root, { apply: true, storeDir: st.s }).installed, { written: ["scripts/tool.py"], kept: [] });
+  assert.equal(readFileSync(join(root, "scripts", "tool.py"), "utf8"), "print('v2')\n", "an untouched copy follows the store");
+  writeFileSync(join(root, "scripts", "tool.py"), "print('mine')\n");
+  bump(3);
+  assert.deepEqual(applyKit(root, { apply: true, storeDir: st.s }).installed, { written: [], kept: ["scripts/tool.py"] });
+  assert.equal(readFileSync(join(root, "scripts", "tool.py"), "utf8"), "print('mine')\n", "an edit made here is never overwritten");
+  // a repo that had the file before the part shipped it keeps its own
+  const other = repo(t);
+  put(other, "scripts/tool.py", "print('older')\n");
+  assert.deepEqual(applyKit(other, { kitRef: "01", apply: true, storeDir: st.s }).installed, { written: [], kept: ["scripts/tool.py"] });
+  assert.equal(readFileSync(join(other, "scripts", "tool.py"), "utf8"), "print('older')\n");
+  assert.deepEqual(installsOf({ meta: { installs: "a.py" } }), ["a.py"]);
+  assert.deepEqual(installsOf({ meta: {} }), []);
+});
+
+test("a structure that extends another carries the base's slots plus its own; a loop ends", async (t) => {
+  const { listStructures, structureSlotNames } = await import("../../dist/docs/store.js");
+  const st = store(t);
+  put(st.s, "02_STRUCTURE/Struc_Repo_Dept/STRUCTURE.md", "---\nid: Struc_Repo_Dept\nname: repo-dept\nversion: 1\nprofile: non-app\n---\n# Dept\n");
+  put(st.s, "02_STRUCTURE/Struc_Repo_Dept/structure.json", JSON.stringify({ extends: "Struc_Repo_NonApp", slots: ["03-3_region", "03-1_entry"] }));
+  const byName = (n) => { const p = listStructures(st.s).find((x) => x.folder === n); assert.ok(p, `structure ${n} found`); return p; };
+  assert.deepEqual(structureSlotNames(byName("Struc_Repo_Dept")), ["03-1_entry", "03-2_agent", "03-3_region"], "base first, no duplicate");
+  put(st.s, "02_STRUCTURE/Struc_Repo_NonApp/structure.json", JSON.stringify({ extends: "Struc_Repo_Dept", slots: ["03-1_entry"] }));
+  assert.deepEqual(structureSlotNames(byName("Struc_Repo_Dept")).sort(), ["03-1_entry", "03-3_region"], "a loop stops instead of hanging");
+  const real = (await import("../../dist/docs/store.js")).STORE_DIR;
+  const dept = listStructures(real).find((p) => p.folder === "Struc_Repo_Dept");
+  const nonApp = listStructures(real).find((p) => p.folder === "Struc_Repo_NonApp");
+  assert.ok(dept && nonApp && structureSlotNames(nonApp).length > 0, "the store has both structures");
+  for (const s of structureSlotNames(nonApp)) assert.ok(structureSlotNames(dept).includes(s), `the store's Dept structure carries ${s}`);
+});
+
+test("a skill moved to another group (replaces:) takes over the old copy: the source moves, the old host build goes, an own skill stays", (t) => {
+  // plan/28 §0q: the key carries the group, so a group change is a new key — the repo must not keep both
+  const st = store(t);
+  const k = readKits(st.s).find((x) => x.no === "01");
+  put(st.s, "03_SKILLS/Skill_Dev_Old/Skill_Dev_Old.md", "---\nid: Skill_Dev_Old\nname: dev-old\nversion: 1\ndescription: x\n---\n# old\n\n- line one\n");
+  assembleSet({ ...k, skills: [...k.skills, "Skill_Dev_Old"] }, st.s);
+  st.commit("old");
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const src = join(root, "docs", "agent", "03_SKILLS");
+  writeFileSync(join(src, "Skill_Dev_Old", "Skill_Dev_Old.md"), readFileSync(join(src, "Skill_Dev_Old", "Skill_Dev_Old.md"), "utf8") + "- local line\n");
+  put(root, ".claude/skills/own-sk/SKILL.md", "---\nname: own-sk\n---\n# mine\n");
+  writeFileSync(join(root, "AGENTS.md"), "| report | `.claude/skills/dev-old/SKILL.md` |\n| mine | `.claude/skills/own-sk/SKILL.md` |\n");
+  rmSync(join(st.s, "03_SKILLS", "Skill_Dev_Old"), { recursive: true });
+  put(st.s, "03_SKILLS/Skill_PBI_Old/Skill_PBI_Old.md", "---\nid: Skill_PBI_Old\nname: pbi-old\nversion: 2\naka: dev-old\nreplaces: [Skill_Dev_Old]\ndescription: x\n---\n# old\n\n- line one\n");
+  assembleSet({ ...k, skills: [...k.skills, "Skill_PBI_Old"] }, st.s);
+  st.commit("group move");
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(!("error" in r), JSON.stringify(r));
+  assert.deepEqual(readKits(st.s).find((x) => x.no === "01").skills.sort(), ["Skill_PBI_Old", "sk"], "the set folder took the move too");
+  assert.ok(existsSync(join(src, "Skill_PBI_Old")), "the source sits under the new name");
+  assert.ok(!existsSync(join(src, "Skill_Dev_Old")), "no second source copy");
+  assert.match(readFileSync(join(src, "Skill_PBI_Old", "Skill_PBI_Old.md"), "utf8"), /- local line/, "the repo's edit came along");
+  assert.ok(existsSync(join(root, ".claude", "skills", "pbi-old", "SKILL.md")), "the new host build is plugged");
+  assert.ok(!existsSync(join(root, ".claude", "skills", "dev-old")), "the old host build is gone");
+  assert.deepEqual(r.plug.removed, ["dev-old"]);
+  assert.ok(existsSync(join(root, ".claude", "skills", "own-sk", "SKILL.md")), "a skill of the repo's own is never touched");
+  assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), "| report | `.claude/skills/pbi-old/SKILL.md` |\n| mine | `.claude/skills/own-sk/SKILL.md` |\n",
+    "the trigger row follows the host rename; the repo's own row stays");
+  assert.deepEqual(applyKit(root, { apply: false, storeDir: st.s }).steps.filter((s) => s.verdict !== "current").map((s) => s.part.folder), [], "a second pass finds nothing");
+});

@@ -79,6 +79,10 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
     if (moved.length) console.log(`  ✔ links repointed in ${moved.length} file(s): ${moved.slice(0, 5).join(" · ")}`);
   }
   if (r.ownAdded.length) console.log(`  + own files: ${r.ownAdded.join(" · ")}`);
+  if (r.installed.written.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}installed by their parts: ${r.installed.written.join(" · ")}`);
+  if (r.plug.removed.length) console.log(`  ✔ host builds left under an old skill name removed: ${r.plug.removed.join(" · ")}`);
+  if (r.plug.skipped.length) console.log(`  ! host folder taken by a skill of the repo's own, store build not plugged: ${r.plug.skipped.join(" · ")}`);
+  if (r.installed.kept.length) console.log(`  ! kept, edited here (merge into the store part by hand): ${r.installed.kept.join(" · ")}`);
   const conflicts = printKitSteps(r, opts.apply);
   if (opts.apply && r.skillsBlock === "written") console.log("  ✔ 03_SKILLS/INDEX.md skills block refreshed");
   if (opts.apply) {

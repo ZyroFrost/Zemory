@@ -1,0 +1,13 @@
+{
+  "docs": "docs/agent",
+  "adapters": {
+    "memory": "global",
+    "search": "keyword"
+  },
+  "thresholds": {
+    "changes_lines": 300,
+    "changes_keep": 180
+  },
+  "profile": "non-app",
+  "kit": "05_IDE_Dept_Memory"
+}

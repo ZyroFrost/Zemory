@@ -14,7 +14,7 @@ Luật chung (`01_LAW/_Rule`):
 | Rule_Keys_12_TodoRecheck | `Rule_Keys_11_VerifyClaims` (sổ là khẳng định) · cách đo ba nguồn: `Skill_Harness_Audit` |
 | Rule_Gate_13_TestRed | `Rule_Gate_01_DoneMeansRun` · cách phá mã: `Skill_Harness_Audit` |
 | Rule_Keys_14_ChallengeDesign | `Rule_Keys_08_ClarifyFirst` |
-| Rule_Core_15_DeliverableLayout | `Rule_Keys_62_DesignChangeApproval` · phần báo cáo BI: `Skill_Dev_Pbi` |
+| Rule_Core_15_DeliverableLayout | `Rule_Keys_62_DesignChangeApproval` · phần báo cáo BI: `Skill_PBI_Base` |
 | Rule_Keys_16_SkillAdvises | `Rule_Gate_63_SkillTrigger` (đảo nghĩa) · vế gợi ý thiết kế: `Rule_Keys_62_DesignChangeApproval` |
 | Rule_Gate_17_StructureIndexSync | `Rule_Gate_34_DocsFollowChange` · cổng `conform` |
 | Rule_Gate_18_FollowStandard | bãi bỏ: mọi vế đã có nhà (slot · `Rule_Gate_35_OneHome` · `Skill_Dev_AppDesign`) |

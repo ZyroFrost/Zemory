@@ -1,0 +1,20 @@
+{
+  "trigger": "sửa report .pbip · thêm tab · gắn bookmark · đổi icon · Desktop báo lỗi report",
+  "prompt": {
+    "kind": "pbi-pbip",
+    "re": "\\b(pbip|pbix|bookmark|them tab|doi icon|can luoi|report has issues|sua report)\\b",
+    "text": "[zemory] Power BI report: follow skill pbi-pbip - close Desktop before editing, reopen it last, run scripts/pbi_gate.py; then open the skill of the report's kind (Legacy / Classic / Mix / Main)."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "thêm tab vào report pbip"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút trong app"
+    }
+  ]
+}

@@ -97,7 +97,7 @@ export function storePointerFindings(storeDir = STORE_DIR): PointerFinding[] {
   for (const [where, text, partDir] of texts) {
     const lines = text.split(/\r?\n/);
     lines.forEach((line, i) => {
-      if (/^(aka|from|id|replaced-by):/.test(line)) return;
+      if (/^(aka|from|id|replaced-by|replaces):/.test(line)) return;
       const at = `${where}:${i + 1}`;
       // ① parts
       for (const m of line.matchAll(/\b(Rule|Cons|Slot)_[A-Z][A-Za-z]*_\d{2,3}_[A-Z0-9][A-Za-z0-9]*\b|\b(Rule|Cons|Slot)_\d{1,3}\b/g)) {

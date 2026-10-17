@@ -156,10 +156,12 @@ export function gateExampleFindings(root = STORE_DIR): string[] {
  *  phrase in its detector and its examples. Contact and machine details are checked in every file. Kept narrow on purpose
  *  — a check that cries wolf is ignored. */
 const PRIVATE: Array<[string, RegExp, "md" | "all"]> = [
-  ["names the person giving the work", /\buser\b/i, "md"],
+  // a name that only contains the word is not a person: the `User Guide` panel, an icon `user-dollar`, a placeholder `<user>`
+  ["names the person giving the work", /(?<![-<\w])user\b(?![->]|\s+guide)/i, "md"],
   ["a dated decision", /\b(chốt|chot)\s+\d{4}-\d{2}-\d{2}/i, "md"],
-  // `.example` / `example.com` are reserved for examples (RFC 2606) — a sample address, not a contact.
-  ["an e-mail address", /[\w.+-]+@(?![\w.-]*\bexample\b)[\w-]+\.[\w.]+/, "all"],
+  // `.example` / `example.com` are reserved for examples (RFC 2606) — a sample address, not a contact. A domain ends in a
+  // letter suffix: `@tabler/icons@3.19.0` is a package version.
+  ["an e-mail address", /[\w.+-]+@(?![\w.-]*\bexample\b)[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}\b/, "all"],
   ["an IPv4 address", /\b(?:\d{1,3}\.){3}\d{1,3}\b/, "all"],
   ["a path under a user profile", /[A-Za-z]:[\\/]Users[\\/][^\\/\s<]+/, "all"],
   ["a personal alias", /ZyroFrost/i, "all"],
@@ -189,10 +191,12 @@ export function storePrivacyFindings(storeDir = STORE_DIR): string[] {
           text = JSON.stringify(g, null, 2);
         } catch { /* an unreadable gate.json is scanned as it is */ }
       }
+      const md = /\.md$/i.test(name);
+      let fence = false;
       text.split(/\r?\n/).forEach((line, i) => {
-        const md = /\.md$/i.test(name);
-        // In prose, text inside backticks is data (a transcript role `user`, a command) — not a person being named.
-        const prose = line.replace(/`[^`]*`/g, " ");
+        // In prose, text inside backticks or a fenced block is data (a transcript role `user`, a command) — not a person.
+        if (md && /^\s*```/.test(line)) fence = !fence;
+        const prose = fence || /^\s*```/.test(line) ? "" : line.replace(/`[^`]*`/g, " ");
         for (const [what, re, scope] of PRIVATE) {
           if (scope === "md" ? md && re.test(prose) : re.test(line)) out.push(`${r}:${i + 1} — ${what}`);
         }
