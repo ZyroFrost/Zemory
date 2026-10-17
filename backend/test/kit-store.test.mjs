@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync 
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { applyKit, assembleSet } from "../../dist/docs/kit-apply.js";
-import { repointLinks } from "../../dist/docs/kit-migrate.js";
+import { pruneMarkerProtected, repointLinks } from "../../dist/docs/kit-migrate.js";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -675,4 +675,27 @@ test("the archive leaves the harness folder for docs/archive with its links inta
   applyKit(root, { apply: true, storeDir: st.s });
   assert.ok(existsSync(join(root, "docs", "hooks", "mine.cjs")));
   assert.deepEqual(layout(), ["docs/hooks/ (hooks live in the rule that owns them)"]);
+});
+
+test("pointers the move left behind follow it: a path written as text, an old skill host name, a dead protected entry", (t) => {
+  // A reshaped repo, measured 2026-10-18: four dead pointers survived — only link targets were repointed.
+  const st = store(t);
+  put(st.s, "03_SKILLS/sk/SKILL.md", "---\nname: sk\nversion: 2\naka: oldsk\ndescription: x\n---\n# sk\n");
+  assembleSet(readKits(st.s).find((k) => k.no === "01"), st.s);
+  st.commit("aka");
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  put(root, "docs/plan/00_overview.md", "Purpose in `docs/agent/01_CONSTITUTION.md` §Purpose; dictionary in `docs/agent/03_STRUCTURE.md` §7.\n");
+  put(root, "content/README.md", "Steps: [`.claude/skills/oldsk/`](../.claude/skills/oldsk/SKILL.md) · the backlog `docs/agent/04_TODO.md`.\n");
+  const marker = join(root, "docs", ".harness.json");
+  const m = JSON.parse(readFileSync(marker, "utf8"));
+  writeFileSync(marker, JSON.stringify({ ...m, protected: ["docs/agent/01_CONSTITUTION.md", "reports/*.pbix"] }, null, 2));
+  assert.deepEqual(repointLinks(root, true).sort(), ["content/README.md", "docs/plan/00_overview.md"]);
+  assert.equal(readFileSync(join(root, "docs", "plan", "00_overview.md"), "utf8"),
+    "Purpose in `docs/agent/01_LAW/_Cons/` §Purpose; dictionary in `docs/agent/02_STRUCTURE/INDEX.md` §7.\n");
+  assert.equal(readFileSync(join(root, "content", "README.md"), "utf8"),
+    "Steps: [`.claude/skills/sk/`](../.claude/skills/sk/SKILL.md) · the backlog `docs/agent/04_TODO.md`.\n", "a path that exists is left alone");
+  assert.deepEqual(pruneMarkerProtected(root, true), ["docs/agent/01_CONSTITUTION.md"]);
+  assert.deepEqual(JSON.parse(readFileSync(marker, "utf8")).protected, ["reports/*.pbix"], "the repo's own entries stay");
+  assert.deepEqual(repointLinks(root, true), [], "a second pass finds nothing");
 });
