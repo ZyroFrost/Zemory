@@ -19,6 +19,7 @@ import {
   kitParts,
   MAIN_FILE,
   mainPath,
+  gateOf,
   hostSkillOf,
   planAssembly,
   plugSkills,
@@ -273,5 +274,20 @@ function followEntryRenames(root: string, skills: Part[], t: AssemblyTarget): vo
   let next = followHostRenames(text, skills, t);
   // the archive moved out of the harness folder (moveArchiveOut): the entry file names where it is now
   if (!existsSync(join(t.agentDir, "archive"))) next = next.split("docs/agent/archive/").join("docs/archive/");
+  // A skill the set gained after the repo was assembled has no trigger row (the table is written once, from the seed): the
+  // agent would never know when to open it. Its row goes in after the last skill row; a row already there is not doubled.
+  const missing = skills
+    .map((s) => [gateOf(s.dir)?.trigger, hostSkillOf(s)] as const)
+    .filter(([trig, host]) => typeof trig === "string" && trig && !next.includes(`.claude/skills/${host}/`))
+    .map(([trig, host]) => `| ${trig} | \`.claude/skills/${host}/SKILL.md\` |`);
+  if (missing.length) {
+    const lines = next.split(/\r?\n/);
+    let last = -1;
+    lines.forEach((l, i) => { if (/^\|.*`\.claude\/skills\/[^/`]+\/SKILL\.md`/.test(l)) last = i; });
+    if (last >= 0) {
+      lines.splice(last + 1, 0, ...missing);
+      next = lines.join(next.includes("\r\n") ? "\r\n" : "\n");
+    }
+  }
   if (next !== text) writeFileSync(p, next);
 }

@@ -699,3 +699,23 @@ test("pointers the move left behind follow it: a path written as text, an old sk
   assert.deepEqual(JSON.parse(readFileSync(marker, "utf8")).protected, ["reports/*.pbix"], "the repo's own entries stay");
   assert.deepEqual(repointLinks(root, true), [], "a second pass finds nothing");
 });
+
+test("a skill the set gains later gets its trigger row in AGENTS.md: after the last skill row, once, the repo's rows kept", (t) => {
+  // A reshaped repo, measured 2026-10-18: harness-reshape was assembled but had no trigger row — the table is written once.
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  writeFileSync(join(root, "AGENTS.md"), "| Mở khi | Đọc |\n|---|---|\n| sk work | `.claude/skills/sk/SKILL.md` |\n| my own | `.claude/skills/mine/SKILL.md` |\n\nAfter the table.\n");
+  put(st.s, "03_SKILLS/Skill_Task_New/Skill_Task_New.md", "---\nid: Skill_Task_New\nname: task-new\nversion: 1\ndescription: x\n---\n# new\n");
+  put(st.s, "03_SKILLS/Skill_Task_New/gate.json", JSON.stringify({ trigger: "a new kind of task" }));
+  const k = readKits(st.s).find((x) => x.no === "01");
+  assembleSet({ ...k, skills: [...k.skills, "Skill_Task_New"] }, st.s);
+  st.commit("new skill");
+  applyKit(root, { apply: true, storeDir: st.s });
+  const want = "| Mở khi | Đọc |\n|---|---|\n| sk work | `.claude/skills/sk/SKILL.md` |\n| my own | `.claude/skills/mine/SKILL.md` |\n" +
+    "| a new kind of task | `.claude/skills/task-new/SKILL.md` |\n\nAfter the table.\n";
+  assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), want);
+  applyKit(root, { apply: true, storeDir: st.s });
+  assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), want, "a second pass adds nothing");
+  assert.deepEqual(conform(root).items.find((i) => i.check === "skill-no-trigger")?.samples ?? [], [], "conform sees the row");
+});
