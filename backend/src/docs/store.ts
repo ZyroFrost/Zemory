@@ -352,6 +352,14 @@ export function shelfDir(root: string, shelf: string): string {
   return now;
 }
 
+/** The skill list of a folder harness: `03_SKILLS/INDEX.md`, or the list FILE a first-generation folder repo still has
+ *  (`04_SKILLS.md` · `03_SKILLS.md`) until sync moves it — reading only the new place reported those repos as missing it. */
+export function skillsIndexOf(agentDir: string): string {
+  const now = join(shelfDir(agentDir, SHELF.skills), "INDEX.md");
+  if (existsSync(now)) return now;
+  return ["04_SKILLS.md", "03_SKILLS.md"].map((n) => join(agentDir, n)).find((f) => existsSync(f)) ?? now;
+}
+
 /** The last segment of a part folder (`_Slot/Root_001_Entry` → `Root_001_Entry`). */
 export function leafOf(folder: string): string {
   return folder.split("/").pop() ?? folder;

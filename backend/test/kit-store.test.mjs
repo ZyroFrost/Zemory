@@ -12,7 +12,7 @@ import { repointLinks } from "../../dist/docs/kit-migrate.js";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-import { frontMatter, hashFiles, parseFrom, readKits } from "../../dist/docs/store.js";
+import { frontMatter, hashFiles, parseFrom, readKits, skillsIndexOf } from "../../dist/docs/store.js";
 import { generateGuards } from "../../dist/docs/guard-gen.js";
 import { coreForCompaction, folderCoreIssues, ruleCoverage } from "../../dist/docs/rule-core.js";
 import { handleHook, ruleReminders } from "../../dist/memory/capture-hook.js";
@@ -502,4 +502,17 @@ test("a repo whose slots sit in the layer's older name (_Struc_Slot) is moved to
   assert.ok(!existsSync(join(shelf, "_Struc_Slot")) && existsSync(join(shelf, "_Slot", "03-1_entry", "03-1_entry.md")));
   const again = applyKit(root, { apply: false, storeDir: st.s });
   assert.deepEqual(again.steps.filter((s) => s.verdict !== "current").map((s) => `${s.part.folder} ${s.verdict}`), []);
+});
+
+test("the skill list of a folder harness: 03_SKILLS/INDEX.md, else the list FILE a first-generation repo still has", (t) => {
+  // Measured 2026-10-17 by the repo sweep: 9 first-generation folder repos (04_SKILLS.md, not yet synced) were reported
+  // as missing a required harness file because conform looked only at the new place.
+  const agent = join(tempDir(t, "zemory-skidx-"), "docs", "agent");
+  mkdirSync(agent, { recursive: true });
+  assert.equal(skillsIndexOf(agent), join(agent, "03_SKILLS", "INDEX.md"), "nothing there: the current place is named");
+  writeFileSync(join(agent, "04_SKILLS.md"), "# skills\n");
+  assert.equal(skillsIndexOf(agent), join(agent, "04_SKILLS.md"), "the legacy list file is found");
+  mkdirSync(join(agent, "03_SKILLS"));
+  writeFileSync(join(agent, "03_SKILLS", "INDEX.md"), "# skills\n");
+  assert.equal(skillsIndexOf(agent), join(agent, "03_SKILLS", "INDEX.md"), "the current place wins once it exists");
 });
