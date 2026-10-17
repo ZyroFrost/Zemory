@@ -1446,7 +1446,7 @@ export interface PromptGate {
   text: string;
 }
 
-function gateOf(dir: string): { read?: ReadTrigger[]; prompt?: PromptGate; trigger?: string } | null {
+export function gateOf(dir: string): { read?: ReadTrigger[]; prompt?: PromptGate; trigger?: string } | null {
   try {
     return JSON.parse(readFileSync(join(dir, "gate.json"), "utf8")) as { read?: ReadTrigger[]; prompt?: PromptGate; trigger?: string };
   } catch {
