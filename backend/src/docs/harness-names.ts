@@ -4,7 +4,7 @@
 // upper-case (the folder-name rule of the disk standard, plan/28 §5). Every component has one meaning:
 //
 //   shelf code · group · number · name
-//   Rule_Keys_14_ChallengeDesign      a common rule, enforced by keyword reminders, number 14 of the rules shelf
+//   Rule_Keys_08_ClarifyFirst         a common rule, enforced by keyword reminders, number 8 of the rules shelf
 //   Cons_Gate_05_OneNameDictionary    a constitution article, enforced by a machine gate
 //   Struc_Repo_App                    a structure bundle covering one repo (no number: a bundle is chosen by name)
 //   Backend_013_Commands              a slot (inner layer `_Slot/`): area `backend/`, number 13 — no code, the layer says it
@@ -17,22 +17,47 @@
 // An inner-layer part names only its own content (plan/28 §0p): the layer folder (`_Slot` · `_Host`) already says what
 // it is. The older prefixed forms (`Slot_Backend_013_Commands` · `Host_GUI`) are still read.
 
-/** Shelf folders of a repo harness and of the store, in reading order. */
+/**
+ * Shelf folders of a repo harness and of the store, in reading order (plan/28 §0q). The law shelf `01_LAW` holds two inner
+ * layers: `_Rule` (common rules, the same text in every repo) and `_Cons` (constitution frames: a common rule that makes the
+ * repo declare one kind of invariant, plus the `Cons.md` the repo writes for itself). A shelf value is a path below the
+ * harness folder, so the two law layers are addressed exactly like the other shelves.
+ */
+export const LAW_SHELF = "01_LAW";
 export const SHELF = {
-  rules: "01_RULES",
-  constitution: "02_CONSTITUTION",
-  structure: "03_STRUCTURE",
-  skills: "04_SKILLS",
+  rules: `${LAW_SHELF}/_Rule`,
+  constitution: `${LAW_SHELF}/_Cons`,
+  structure: "02_STRUCTURE",
+  skills: "03_SKILLS",
 } as const;
 export type ShelfName = (typeof SHELF)[keyof typeof SHELF];
 
-/** Old shelf folder → new. The file harness and the first folder harness used these; sync renames them. */
+/** Old shelf folder → new. Every earlier layout (file harness, first and second folder harness) used these; sync renames them. */
 export const LEGACY_SHELF: Record<string, ShelfName> = {
-  "01_CONSTITUTION": SHELF.constitution,
+  "01_RULES": SHELF.rules,
   "02_RULES": SHELF.rules,
+  "02_CONSTITUTION": SHELF.constitution,
+  "01_CONSTITUTION": SHELF.constitution,
   "03_STRUCTURE": SHELF.structure,
   "04_SKILLS": SHELF.skills,
 };
+
+/** The two ledger files of a repo harness (plan/28 §0q), and the names earlier layouts gave them. */
+export const LEDGER = { todo: "04_TODO.md", changes: "05_CHANGES.md" } as const;
+export const LEGACY_LEDGER: Record<string, string> = {
+  "05_TODO.md": LEDGER.todo,
+  "06_CHANGES.md": LEDGER.changes,
+};
+/** Every name the TODO / CHANGES ledger has had, current first — for readers that must find it in any repo. */
+export const LEDGER_NAMES = {
+  todo: [LEDGER.todo, "05_TODO.md"],
+  changes: [LEDGER.changes, "06_CHANGES.md"],
+} as const;
+
+/** The file a constitution frame's repo copy is written in (plan/28 §0q): the repo's own text, never overwritten by sync. */
+export const CONS_REPO_FILE = "Cons.md";
+/** Numbers from here up are the repo's own articles; the store never uses them. */
+export const OWN_ARTICLE_FROM = 101;
 
 /** The code a part name starts with, per kind of part. */
 export const CODE = { rule: "Rule", constitution: "Cons", structure: "Struc", slot: "Slot", skill: "Skill", host: "Host" } as const;
@@ -193,13 +218,14 @@ export const TIER = ["Basic", "Memory"] as const;
  * numbers of the old registers (`06` · `08`) meant other sets and are not listed.
  */
 export const LEGACY_SETS: Record<string, string> = {
-  "05_app": "05_IDE_App_Memory",
-  "02_GUI_App_Memory": "05_IDE_App_Memory",
-  "06_IDE_App_Memory": "05_IDE_App_Memory",
-  "Kit_GUI_02_AppMemory": "05_IDE_App_Memory",
-  "Kit_IDE_06_AppMemory": "05_IDE_App_Memory",
-  "02_Common_App_Dev_Memory": "05_IDE_App_Memory",
-  "02_Rule_App_Dev_Memory": "05_IDE_App_Memory",
+  "05_app": "04_IDE_App_Memory",
+  "05_IDE_App_Memory": "04_IDE_App_Memory",
+  "02_GUI_App_Memory": "04_IDE_App_Memory",
+  "06_IDE_App_Memory": "04_IDE_App_Memory",
+  "Kit_GUI_02_AppMemory": "04_IDE_App_Memory",
+  "Kit_IDE_06_AppMemory": "04_IDE_App_Memory",
+  "02_Common_App_Dev_Memory": "04_IDE_App_Memory",
+  "02_Rule_App_Dev_Memory": "04_IDE_App_Memory",
   "01_cowork_basic": "01_GUI_NonApp_Basic",
   "03_Common_NonApp_Task_Basic": "01_GUI_NonApp_Basic",
   "03_Rule_NonApp_Task_Basic": "01_GUI_NonApp_Basic",

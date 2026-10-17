@@ -23,6 +23,7 @@ import {
   planAssembly,
   plugSkills,
   renameLegacyShelves,
+  retireCopies,
   seedFiles,
   setDir,
   STORE_DIR,
@@ -32,6 +33,7 @@ import {
   type Kit,
   type Part,
   type PlugResult,
+  type RetiredCopy,
 } from "./store.js";
 import { SHELF } from "./harness-names.js";
 
@@ -47,6 +49,8 @@ export interface KitApplyResult {
   renamedShelves: string[];
   /** Host builds of the kit's skills written into the host folder; a repo-own skill of the same name is skipped. */
   plug: PlugResult;
+  /** Copies of parts the store retired: moved to the archive when untouched, reported when edited here (plan/28 §0q). */
+  retired: RetiredCopy[];
 }
 
 /** The kit a repo's marker names, or null (a repo still on the file harness). */
@@ -79,10 +83,9 @@ export function applyKit(
 
   let createdMarker = false;
   if (opts.apply) createdMarker = writeKitMarker(root, kit, storeDir);
-  // A constitution belongs to its repo: the suggested articles are offered ONCE, when the repo is assembled the first
-  // time. After that sync never adds one back (the repo may have declined it) and never edits one (only an approval in
-  // the repo's own session changes its constitution).
-  const parts = kitParts(kit, storeDir).filter((p) => p.shelf !== SHELF.constitution || !marked);
+  // The constitution frames (plan/28 §0q) are common rules like the others: their rule text follows the store, a new frame
+  // is added, and the Cons.md a repo wrote — its constitution — is never touched (applyAssembly writes it only when absent).
+  const parts = kitParts(kit, storeDir);
   const ownAdded = opts.apply ? seedFiles(kit, parts, root, opts.projectName ?? basename(root), storeDir, target.agentDir) : [];
   const steps = planAssembly(parts, target);
   const written = opts.apply ? applyAssembly(steps) : [];
@@ -90,7 +93,8 @@ export function applyKit(
   // the host plug: every assembled skill's host build, written from its source into the host's own skill folder
   const plug = opts.apply ? plugSkills(target, skills) : { plugged: [], skipped: [] };
   const skillsBlock = opts.apply ? writeSkillsBlock(hp.agent, skills, target) : "current";
-  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves, plug };
+  const retired = retireCopies(target, new Set(parts.map((p) => p.key)), hp.archive, opts.apply, storeDir);
+  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves, plug, retired };
 }
 
 /**
@@ -175,7 +179,7 @@ export function setBootstrap(kit: Kit, storeDir = STORE_DIR): string {
     "## 3. Module trong bộ",
     "",
     `- Luật chung: ${rules.length} (Gate ${byGroup("Gate")} · Keys ${byGroup("Keys")} · Core ${byGroup("Core")}).`,
-    `- Điều hiến pháp gợi ý: ${articles.length ? articles.map((a) => `\`${a}\``).join(" · ") : "không có"}.`,
+    `- Khung hiến pháp (${articles.length}): ${articles.length ? articles.map((a) => `\`${a}\``).join(" · ") : "không có"}. Mỗi khung có \`Cons.md\` mẫu: viết lại cho sản phẩm của dự án, hoặc ghi \`status: n/a\` kèm lý do.`,
     `- Structure: \`${kit.structure}\` · hệ: \`_Host/${kit.host}\`.`,
     `- Skill (${skills.length}): ${skills.map((s) => `\`${s}\``).join(" · ")}.`,
     ...(files.length

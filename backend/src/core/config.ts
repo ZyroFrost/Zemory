@@ -3,6 +3,7 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripBom } from "../util/read-text.js";
 import type { Context, HarnessConfig, HarnessPaths } from "./types.js";
+import { LEDGER_NAMES } from "../docs/harness-names.js";
 
 /** Đường marker MẶC ĐỊNH khi tạo mới (nếp cũ — repo của chính zemory dùng nó).
  *  ĐỌC thì KHÔNG được dùng hằng này: hãy gọi `findMarker()`, vì marker có thể nằm
@@ -299,5 +300,15 @@ export function harnessPaths(ctx: Context): HarnessPaths {
     entries: (p.entries?.length ? p.entries : ["AGENTS.md", "CLAUDE.md"]).map((e) =>
       resolveHarnessRel(ctx.projectRoot, e),
     ),
+    todo: ledgerFile(agent, "todo"),
+    changes: ledgerFile(agent, "changes"),
   };
+}
+
+/** A ledger file of a harness folder: the current name when it is there or when no older name is (so a new file gets the
+ *  current name), else the older name the repo still has (plan/28 §0q). */
+export function ledgerFile(agentDir: string, kind: keyof typeof LEDGER_NAMES): string {
+  const names = LEDGER_NAMES[kind];
+  for (const n of names) if (existsSync(join(agentDir, n))) return join(agentDir, n);
+  return join(agentDir, names[0]);
 }

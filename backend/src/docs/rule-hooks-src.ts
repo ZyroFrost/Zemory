@@ -121,7 +121,7 @@ const ONCE = "\nThis is a reminder, shown once per session: retry the same call 
 // The write-docx reference samples sit under .claude/skills/ in a repo and under _Store/04_SKILLS/ in the parts store.
 // The skill's folder is its old name, its host name (doc-write-docx) or its store name (Skill_Doc_WriteDocx, with the
 // assembled host build under Claude/<name>/), and the samples folder is references/ (Agent Skills) or the old reference/.
-const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|04_SKILLS)\/[^/]*(write-docx|WriteDocx)[^/]*\/(Claude\/[^/]+\/)?references?\//];
+const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|03_SKILLS|04_SKILLS)\/[^/]*(write-docx|WriteDocx)[^/]*\/(Claude\/[^/]+\/)?references?\//];
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 `;
 
@@ -381,8 +381,9 @@ function check(payload, root, policy) {
   // decision ("user chốt <date>"). Only new lines: older text is rewritten in its own pass (plan/27 §7 ④).
   hook("02-27_spec-voice.cjs", String.raw`
 // File harness: 01–04 as files. Folder harness (plan/28 §0c) and the parts store: every file of a numbered shelf folder
-// (RULE.md · SLOT.md · PURPOSE.md · INDEX.md). Skills everywhere.
-const HARNESS = /(^|\/)(0[1-4]_[A-Z_]+\.md|0[1-4]_[A-Z_]+\/(?:[^/]+\/)?[^/]+\.md|SKILL\.md)$/;
+// (rule and article files, Cons.md, SLOT.md, INDEX.md — two levels deep on the law shelf: 01_LAW/_Rule/<rule>/). Skills
+// everywhere. The ledgers (04_TODO · 05_CHANGES) are not harness text: they carry dates by design.
+const HARNESS = /(^|\/)((?:01_CONSTITUTION|02_RULES|03_STRUCTURE|04_SKILLS)\.md|(?:01_LAW|02_STRUCTURE|03_SKILLS|01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES|03_STRUCTURE|04_SKILLS)\/(?:[^/]+\/){0,2}[^/]+\.md|SKILL\.md)$/;
 const VOICE = [
   /\buser\s+chốt\s+\d{4}-\d{2}-\d{2}/i,
   /\(\s*user\s+chốt\b/i,
@@ -401,7 +402,7 @@ function check(payload, root, policy) {
     if (!bad.length) return null;
     return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " quote a person, date a decision or carry a personal detail:\n" +
       bad.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n") +
-      "\nState the rule as condition -> behaviour; the original words, date and incident go to 06_CHANGES.");
+      "\nState the rule as condition -> behaviour; the original words, date and incident go to the changelog (05_CHANGES).");
   } catch { return null; }
 }`),
 

@@ -1,0 +1,122 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "PowerShell"
+    ]
+  },
+  "block": [
+    {
+      "note": "prose without diacritics in a .md file",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "notes.md",
+        "content": "Viec nay khong duoc lam truoc khi kiem tra.\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a code comment without diacritics",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/a.ts",
+        "content": "// khong duoc goi ham nay\nconst x = 1;\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "sửa lỗi font tiếng việt"
+    }
+  ],
+  "pass": [
+    {
+      "note": "prose with diacritics",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "ok1.md",
+        "content": "Việc này không được làm trước khi kiểm tra.\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "names other people chose, in backticks and quotes",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "ok3.md",
+        "content": "Tên cột giữ nguyên: `Kich thuoc khu dat` và \"So luong nhap\".\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a line already in the file is not new",
+      "files": {
+        "old.md": "khong duoc lam\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "old.md",
+        "old_string": "khong duoc lam",
+        "new_string": "khong duoc lam\nDòng mới có dấu."
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "tăng tốc truy vấn"
+    }
+  ],
+  "prompt": {
+    "kind": "Rule_31",
+    "re": "\\b(viet hoa|doi van|an du|quy cach|ghi ro|in lai full|chu dau|%\\w*|chinh ta|lỗi font|loi font|mojibake|dấu|tieng viet|don vi|ten file|title|%|ghi chinh xac|viet sai|sai chu)\\b",
+    "text": "[zemory] Rule_Keys_31_TextCorrect: Text people read is complete and correct: spelling, diacritics, units, one name per thing."
+  }
+}

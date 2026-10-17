@@ -2,9 +2,9 @@
 id: Skill_Harness_Structure
 aka: structure
 name: harness-structure
-version: 8
+version: 9
 description: Folder standard and routing table for a non-app project (BI, report, data, docs-only, design) — decides where every file belongs. Use before creating, naming, moving, or tidying any file or folder, or when asked where something should go. Vietnamese triggers - "để ở đâu", "đặt file này vào đâu", "sắp xếp lại thư mục", "tạo thư mục", "dọn cho gọn", "file này thuộc chỗ nào".
-from: _Store/04_SKILLS/Skill_Harness_Structure @v8 #3177fab06b8d
+from: _Store/03_SKILLS/Skill_Harness_Structure @v9 #73e3378cbc63
 ---
 
 # Chuẩn thư mục — hệ NON-APP
@@ -23,14 +23,14 @@ from: _Store/04_SKILLS/Skill_Harness_Structure @v8 #3177fab06b8d
 
 `★` bắt buộc · `◆` deliverable (≥1) · `[opt]` chỉ tạo khi có concern thật.
 Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor có sẵn **giữ nguyên** (`TargetAll.xlsx`, `.pbix`, `.Report/`).
-**MỌI tên file/folder do MÌNH đặt viết bằng tiếng Anh ASCII thuần** — KHÔNG ngôn ngữ bản địa (cả có dấu lẫn mất dấu), KHÔNG ký tự ngoài ASCII; hay vi phạm nhất là tên case `tasks/<case>/` và `docs/plan/NN_tên.md`. NỘI DUNG bên trong vẫn theo `Rule_Gate_26_ViDiacritics`–`Rule_Keys_31_TextCorrect` — luật này chỉ nói về TÊN. Lý do: tên bị gõ lại trong lệnh·đường dẫn·link, dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra.
+**MỌI tên file/folder do MÌNH đặt viết bằng tiếng Anh ASCII thuần** — KHÔNG ngôn ngữ bản địa (cả có dấu lẫn mất dấu), KHÔNG ký tự ngoài ASCII; hay vi phạm nhất là tên case `tasks/<case>/` và `docs/plan/NN_tên.md`. NỘI DUNG bên trong vẫn theo `Rule_Gate_31_NoBrokenVietnamese`–`Rule_Keys_31_TextCorrect` — luật này chỉ nói về TÊN. Lý do: tên bị gõ lại trong lệnh·đường dẫn·link, dấu vỡ theo encoding và ký tự đồng hình (`с` Cyrillic vs `c` Latin) làm ref chết không nhìn ra.
 
 ```
 <project>/
 │ ═══ TRACKED — nguồn + định nghĩa + deliverable ═══
 ├── AGENTS.md         ★  cửa vào: mô tả dự án + hợp đồng nạp
 ├── docs/             ★  agent/(01·02·05·06) · plan/ · .harness.json
-│       └ 03_STRUCTURE/INDEX.md (Docs_138_DataDictionary) = TỪ ĐIỂN: metric · cột · thuật ngữ (KHÔNG tạo dictionary.md riêng)
+│       └ 02_STRUCTURE/INDEX.md (Docs_138_DataDictionary) = TỪ ĐIỂN: metric · cột · thuật ngữ (KHÔNG tạo dictionary.md riêng)
 ├── docs_visual/      [opt] sơ đồ · lineage cho NGƯỜI xem (.html/.svg), NGOÀI docs/
 │ ─── DELIVERABLE — chọn theo loại, ≥1 ───
 ├── reports/          ◆  BI: .pbix/.pbip/.twb                    [LFS nếu nặng]
@@ -88,7 +88,7 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 | data làm việc của 1 task | `data/<task>/` (gitignore, mirror `tasks/`) |
 | bản render/publish sinh ra | `exports/` (gitignore) |
 | connection string / token THẬT | `.env` (gitignore) |
-| định nghĩa metric/cột (nguồn sự thật) | `docs/agent/03_STRUCTURE/INDEX.md` (`Docs_138_DataDictionary`) |
+| định nghĩa metric/cột (nguồn sự thật) | `docs/agent/02_STRUCTURE/INDEX.md` (`Docs_138_DataDictionary`) |
 | sơ đồ luồng/lineage xem trực quan | `docs_visual/` — NGOÀI `docs/`, có `.md` chủ trỏ tới |
 | bản cũ deliverable / trước publish | `attic/` |
 | tài liệu / luật / plan | `docs/` — sửa file `.md` trực tiếp (file wins) |

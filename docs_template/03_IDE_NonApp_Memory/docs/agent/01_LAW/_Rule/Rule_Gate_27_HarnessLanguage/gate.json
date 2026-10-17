@@ -1,0 +1,165 @@
+{
+  "partial": true,
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "PowerShell"
+    ]
+  },
+  "block": [
+    {
+      "note": "a dated decision added to a rule file",
+      "files": {
+        "docs/agent/01_LAW/_Rule/02-38_todo-door/RULE.md": "- ask\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Rule/02-38_todo-door/RULE.md",
+        "old_string": "- ask",
+        "new_string": "- ask *(user chốt 2026-10-14)*"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a quote added to the file-harness rules",
+      "files": {
+        "docs/agent/02_RULES.md": "- `Rule_Gate_38_TodoDoor` ask\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/02_RULES.md",
+        "old_string": "- `Rule_Gate_38_TodoDoor` ask",
+        "new_string": "- `Rule_Gate_38_TodoDoor` ask — user: *\"cứ làm đi\"*"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "sửa lại luật về bí mật"
+    },
+    {
+      "note": "an e-mail address in a rule",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Rule/Rule_Core_90_X/RULE.md",
+        "content": "- Gửi báo cáo cho an.nguyen@company.vn mỗi tuần.\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a path carrying a person's name",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Rule/Rule_Core_90_X/RULE.md",
+        "content": "- Dữ liệu nằm ở D:\\an.nguyen\\data.\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "a plain rule line",
+      "files": {
+        "docs/agent/01_LAW/_Rule/02-38_todo-door/RULE.md": "- ask\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Rule/02-38_todo-door/RULE.md",
+        "old_string": "- ask",
+        "new_string": "- ask one question first"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a file outside the harness",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "notes.md",
+        "content": "User chốt 2026-10-14: làm luôn.\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "chạy lại bộ test"
+    },
+    {
+      "note": "an RFC 2606 example address is not a contact",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Rule/Rule_Core_90_X/RULE.md",
+        "content": "- Ví dụ địa chỉ: a@b.example.com.\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "prompt": {
+    "kind": "Rule_27",
+    "re": "\\b(luat|hien phap|rule|constitution|skill|slot|dieu \\d+|standard|bo chuan|chuan (moi|zemory|chung))\\b",
+    "text": "[zemory] Rule_Gate_27_SpecVoice: Writing a rule, constitution, plan or skill: specification voice — condition, behaviour, check; no quotes of anyone, no dated decisions."
+  }
+}

@@ -21,7 +21,7 @@
     "docs_template/_Store"
   ],
   "protected_write_reason": "a path declared `protected` in .harness.json — it belongs to the repo, the harness agent may not write into it",
-  "harness_write_reason": "the harness docs (Rule_Gate_79_HarnessEditNeedsApproval) — creating, editing, deleting or moving anything in them needs the user's approval in this session; the agent never creates a rule, article, slot, skill or layer on its own",
+  "harness_write_reason": "the harness docs (Rule_Gate_79_HarnessEdit) — creating, editing, deleting or moving anything in them needs the user's approval in this session; the agent never creates a rule, article, slot, skill or layer on its own",
   "secret_names": [
     ".env",
     ".env.*",
@@ -173,7 +173,7 @@
       "docs_template/"
     ]
   },
-  "outside_reason": "work stays INSIDE the project folder (Rule_Gate_44_OpenFolderOnly) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
+  "outside_reason": "work stays INSIDE the project folder (Rule_Gate_44_RepoScope) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
   "hooks_dir": "docs/hooks",
   "flags_dir": "docs/hooks",
   "flags": {

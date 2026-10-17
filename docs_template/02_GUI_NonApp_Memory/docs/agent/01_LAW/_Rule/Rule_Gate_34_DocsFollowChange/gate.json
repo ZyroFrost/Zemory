@@ -1,0 +1,21 @@
+{
+  "gate": "conform",
+  "partial": true,
+  "prompt": {
+    "kind": "Rule_34",
+    "re": "\\b(docs|changelog|05_CHANGES|04_TODO|\\.md|reindex|ghi so|note lai|cap nhap (docs|note|todo)|ghi lai|planning)\\b",
+    "text": "[zemory] Rule_Gate_34_DocsFollowChange: change a thing ⇒ change every document that describes it in the same change (structure · plan · changelog · in-product help); the .md file is the source, the search index is derived — reindex after."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "cập nhập docs cho tính năng mới"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-// Rule_Gate_79_HarnessEditNeedsApproval: the harness docs are protected in every repo, declared or not. Writing into them —
+// Rule_Gate_79_HarnessEdit: the harness docs are protected in every repo, declared or not. Writing into them —
 // through Write/Edit or a shell command — is blocked until the user's one-use approval flag exists; the flag files
 // themselves are never blocked (writing one is how the approval is recorded). The guard runs as a real process.
 import assert from "node:assert/strict";
@@ -30,7 +30,7 @@ test("a write into the harness docs is blocked without approval and names Rule_G
   for (const rel of ["docs/agent/05_TODO.md", "docs/agent/01_RULES/Rule_Core_90_New/RULE.md", "docs/plan/09_x.md", "AGENTS.md", "CLAUDE.md"]) {
     const out = write(r, rel);
     assert.equal(out.status, 2, `not blocked: ${rel}\n${out.stdout}${out.stderr}`);
-    assert.match(out.stdout + out.stderr, /Rule_Gate_79_HarnessEditNeedsApproval/, rel);
+    assert.match(out.stdout + out.stderr, /Rule_Gate_79_HarnessEdit/, rel);
   }
   assert.equal(write(r, "backend/src/a.ts").status, 0, "code outside the harness docs is not this rule's business");
 });
@@ -57,7 +57,7 @@ test("a scratch script that writes into the harness docs is judged by its body; 
   const pieces = script("pieces.mjs", 'import { writeFileSync } from "node:fs";\nimport { join } from "node:path";\nwriteFileSync(join(process.argv[2], "docs", "agent", "x.md"), "x");\n');
   const out = bash(r, pieces);
   assert.equal(out.status, 2, `a script naming docs/agent piece by piece must be blocked:\n${out.stdout}${out.stderr}`);
-  assert.match(out.stdout + out.stderr, /Rule_Gate_79_HarnessEditNeedsApproval/);
+  assert.match(out.stdout + out.stderr, /Rule_Gate_79_HarnessEdit/);
   const literal = script("literal.mjs", 'require("fs").writeFileSync("AGENTS.md", "x");\n');
   assert.equal(bash(r, literal).status, 2, "a script naming AGENTS.md as one literal must be blocked");
   const reads = script("reads.mjs", 'import { readFileSync } from "node:fs";\nconsole.log(readFileSync("docs/agent/05_TODO.md", "utf8"));\n');

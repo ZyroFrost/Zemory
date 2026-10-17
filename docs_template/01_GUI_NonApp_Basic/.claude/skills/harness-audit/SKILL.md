@@ -2,9 +2,9 @@
 id: Skill_Harness_Audit
 aka: audit
 name: harness-audit
-version: 8
+version: 10
 description: Run a full review of the project across every dimension, verifying each finding against real files before reporting it. Use only when explicitly asked for a thorough audit, or before a major milestone such as a release or a large batch of changes. This is not a quick check. Vietnamese triggers - "audit toàn diện", "soi hết", "kiểm tra toàn bộ", "rà lại hết", "review tổng thể".
-from: _Store/04_SKILLS/Skill_Harness_Audit @v8 #298fcf842a14
+from: _Store/03_SKILLS/Skill_Harness_Audit @v10 #19f84b41231b
 ---
 
 # audit — soi toàn diện
@@ -127,7 +127,7 @@ chính MÃ — tên file · định danh · chú thích.)*
      và endpoint do **CLI gọi qua HTTP** không có người gọi trong FE. Kể cả ba nguồn (FE tĩnh ·
      tiền tố động · test/CLI) rồi mới kết luận.
 
-12. **NGÔN NGỮ CỦA MÃ** — **NORM ở `Rule_Gate_26_ViDiacritics`–`Rule_Keys_31_TextCorrect`** (luật thiết kế chung mọi app). Bốn phép,
+12. **NGÔN NGỮ CỦA MÃ** — **NORM ở `Rule_Gate_31_NoBrokenVietnamese`–`Rule_Keys_31_TextCorrect`** (luật thiết kế chung mọi app). Bốn phép,
    **cách đo + bẫy báo oan + số nền ở [`references/lang.md`](references/lang.md)**; máy chạy:
    `node .claude/skills/harness-audit/scripts/lang-scan.mjs . [--all]` — nó in *đã quét bao nhiêu* để một lượt
    sạch không bị đọc thành "chưa soi gì".
@@ -153,7 +153,7 @@ nặng nhất, không phải mặt phụ.)*
 
 > Bộ nào không có CLI `zemory`: lệnh `zemory conform` / `zemory validate` ở mặt 1–2 thay bằng script kiểm
 > chuẩn của bộ (`python .claude/skills/harness-structure/scripts/check_structure.py .`, skill `conform`), kèm
-> đo tay độ dài `05_TODO`/`06_CHANGES` so ngưỡng 300 dòng và entry changelog nào vượt trần 30 dòng.
+> đo tay độ dài `04_TODO`/`05_CHANGES` so ngưỡng 300 dòng và entry changelog nào vượt trần 30 dòng.
 
 1. **Cổng của dự án** — chạy đủ cổng repo có: `zemory conform` · `zemory validate` · script kiểm cấu
    trúc · **cổng readiness của launcher** (`<tên> auto` phải trả mã thoát ≠ 0 khi thiếu điều kiện).
@@ -162,7 +162,7 @@ nặng nhất, không phải mặt phụ.)*
    nếu quá) · TODO còn mục nào đã xong mà chưa đóng không · docs lặp nội dung của nhau.
 3. **Cấu trúc & NGUỒN TRÙNG** — cùng một sự thật nằm ở **≥2 nơi** ⇒ chắc chắn sẽ lệch. Soi:
    file/thư mục ngoài chuẩn · script/query không ai gọi · cùng một truy vấn chép ở hai chỗ · **định
-   nghĩa metric nằm ở ≥2 nơi** (từ điển dữ liệu trong `03_STRUCTURE` là nhà DUY NHẤT — có
+   nghĩa metric nằm ở ≥2 nơi** (từ điển dữ liệu trong `02_STRUCTURE` là nhà DUY NHẤT — có
    `docs/dictionary.md` lạc, metric định nghĩa ở từ điển nhưng tính khác trong `measures/`, hay công
    thức chép vào nhiều measure không) · số pipeline có **mirror đúng 3 nơi** (`tasks/NN_` ↔
    `pipelines/NN_` ↔ `data/NN_`) · ghi vào file nguồn có nguyên tử không.
@@ -202,7 +202,7 @@ nặng nhất, không phải mặt phụ.)*
    tả** (từ lặp liền · mojibake do UTF-8 bị đọc thành Latin-1) · **nhãn trong sản phẩm** (tiêu đề
    cột · chú thích hình · biểu đồ · ảnh có tiêu đề và **ĐƠN VỊ** rõ; số có đơn vị + kỳ/mốc thời gian
    kèm) · **thuật ngữ NHẤT QUÁN** — một thuật ngữ một tên xuyên suốt (cùng một metric không mang hai
-   tên khác nhau giữa các report — đối chiếu từ điển dữ liệu trong `03_STRUCTURE`, đó là nhà duy nhất
+   tên khác nhau giữa các report — đối chiếu từ điển dữ liệu trong `02_STRUCTURE`, đó là nhà duy nhất
    của định nghĩa) · **chữ trong file giao đi** (tên sheet · tiêu đề trang · chú thích) — chỗ này
    người ngoài đọc, nên một lỗi chữ ở đây đắt hơn mọi lỗi trong repo.
    ⚠ **Các phép này BÁO OAN nếu làm ngây thơ:** danh sách từ-không-dấu chỉ được gồm từ mà bản không
@@ -214,7 +214,7 @@ nặng nhất, không phải mặt phụ.)*
    cột/sheet của nguồn, tên file vendor, thuật ngữ nghiệp vụ viết hoa lạ — soi chữ trong phần MÌNH
    viết, đừng soi chữ mình chỉ đi ngang qua.
 
-11. **NGÔN NGỮ CỦA MÃ** — NORM ở `Rule_Gate_26_ViDiacritics`–`Rule_Keys_31_TextCorrect`. Máy chạy `node
+11. **NGÔN NGỮ CỦA MÃ** — NORM ở `Rule_Gate_31_NoBrokenVietnamese`–`Rule_Keys_31_TextCorrect`. Máy chạy `node
    .claude/skills/harness-audit/scripts/lang-scan.mjs .`; nó in *đã quét bao nhiêu* để lượt sạch không bị đọc
    thành "chưa soi gì". Cách đo + bẫy chi tiết: [`references/lang.md`](references/lang.md).
    · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh trong script/pipeline** (biến · hàm ·
@@ -230,8 +230,8 @@ nặng nhất, không phải mặt phụ.)*
 ## Đầu ra
 
 Bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking` (phải sửa) /
-`advisory` (xem xét). Việc đã sửa → `06_CHANGES`. **Phát hiện MỚI và nghi vấn đã loại (kèm lý do loại
-— để lần sau khỏi đào lại): BÁO trong phiên, KHÔNG tự ghi thành mục `05_TODO`** — chỉ mục nào được
+`advisory` (xem xét). Việc đã sửa → `05_CHANGES`. **Phát hiện MỚI và nghi vấn đã loại (kèm lý do loại
+— để lần sau khỏi đào lại): BÁO trong phiên, KHÔNG tự ghi thành mục `04_TODO`** — chỉ mục nào được
 duyệt mới ghi (`Rule_Gate_38_TodoDoor`, cửa vào). Một lượt đủ mặt đẻ ra hàng chục advisory; ghi
 hết là nhồi sổ, mà sổ thì nạp MỌI phiên.
 
@@ -240,3 +240,21 @@ hết là nhồi sổ, mà sổ thì nạp MỌI phiên.
 - Cắt bớt mặt nào cho nhanh.
 - Ghi finding chưa verify.
 - Báo "sạch" khi mới chạy mỗi gate / mỗi script kiểm chuẩn.
+
+## Cách đo — dùng cho `Rule_Keys_11_VerifyClaims` và `Rule_Gate_01_DoneMeansRun`
+
+- **Phép kiểm phải đỏ được.** Viết xong một test hoặc phép kiểm (script · công thức đối chiếu · bảng so số) ⇒ phá đúng đoạn
+  mã hoặc thứ nó canh rồi chạy lại; không đỏ ⇒ sửa phép kiểm. Hai lỗ hay gặp: phép kiểm không chạy tới nhánh nguy hiểm;
+  bản sao logic ở chỗ khác gánh thay.
+- **Ba luật đo.** Phép đo tự dựng chép đủ tham số của thước chính thức. Nhiều phép thử cùng hỏng một hướng ⇒ nghi thước
+  trước, không nghi từng thiết kế. Số đo phải khớp chi phí vật lý của việc đó: nhanh bất thường là xanh giả cho tới khi
+  chứng minh được điều ngược lại.
+- **Soát sổ bằng ba nguồn**, áp mọi lúc, không chờ chốt phiên:
+  1. nguồn / mã: mở đúng file · grep · đếm đúng dòng/cột · chạy lại truy vấn; không suy từ mô tả;
+  2. lịch sử quyết định: có CLI ⇒ `zemory memory search --all`, lọc các lượt giao việc và phê duyệt; không có ⇒ đọc
+     `docs/agent/archive/`;
+  3. chạy thật: gọi endpoint · lệnh · giao diện thật · đọc log tiến trình đang chạy · mở chính bản giao · làm mới dữ liệu
+     rồi đối chiếu số.
+  Ba nguồn khớp mới kết luận; không chạm được một nguồn ⇒ ghi "chưa xác minh được" kèm nguồn đã thử. Máy đo:
+  `zemory todo verify` (ký hiệu mục nêu có thật không · phép đo mục tự nêu còn đúng không · nguồn có đổi sau khi dòng sổ
+  được viết không; exit ≠ 0 khi lệch).

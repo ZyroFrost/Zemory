@@ -253,7 +253,7 @@ export function verifyTodo(root: string, todoPath?: string): TodoVerifyReport {
   // Nhà của sổ lấy từ MARKER (ADAPT v2 · N2): repo đặt harness ở `harness/agent` mà gate đi
   // tìm `docs/agent/05_TODO.md` thì nó báo "0 mục" — một cổng KHÔNG BAO GIỜ ĐỎ ĐƯỢC, tức tệ
   // hơn không có cổng (nó phát ra lời bảo đảm trong khi chưa hề nhìn).
-  const file = todoPath ?? join(harnessPathsAt(root).agent, "05_TODO.md");
+  const file = todoPath ?? harnessPathsAt(root).todo;
   if (!existsSync(file)) throw new Error(`Không thấy ${file}`);
   const items = parseTodoItems(readTextFile(file));
   const src = loadSourceBlob(root);

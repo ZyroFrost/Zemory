@@ -2,20 +2,20 @@
 id: Skill_Task_Fill
 aka: fill
 name: task-fill
-version: 6
+version: 7
 description: Fill a blank template with real numbers and export the finished deliverable (report, sheet, document). Use when a template exists and the data is ready, or when asked to produce, generate, or make a report from existing figures. Vietnamese triggers - "làm báo cáo", "điền số vào mẫu", "xuất báo cáo", "đổ số liệu", "lên report", "ra file cuối".
-from: _Store/04_SKILLS/Skill_Task_Fill @v6 #2d7402d75512
+from: _Store/03_SKILLS/Skill_Task_Fill @v7 #af4500bace48
 ---
 
 # fill — điền template, xuất deliverable
 
-> Kích hoạt: có template trống + đã có số → xuất bản deliverable/exports. Slot: `03_STRUCTURE`.
+> Kích hoạt: có template trống + đã có số → xuất bản deliverable/exports. Slot: `02_STRUCTURE`.
 
 ## Quy trình
 
 1. **Lấy file mẫu từ `templates/`** (bản TRỐNG). **KHÔNG sửa template gốc** — làm việc trên bản sao.
 2. **Đổ số** từ `data/` · `measures/` · `queries/` vào đúng ô/sheet, theo **từ điển dữ liệu trong
-   `03_STRUCTURE`** — định nghĩa metric ở đó là **nguồn sự thật**, chống mỗi lần điền một kiểu.
+   `02_STRUCTURE`** — định nghĩa metric ở đó là **nguồn sự thật**, chống mỗi lần điền một kiểu.
 3. **Xuất ra:**
    - bản chính đem giao → thư mục deliverable (`reports/` · `models/` · `content/`)
    - bản render lại được → `exports/` (gitignore)
@@ -29,7 +29,7 @@ from: _Store/04_SKILLS/Skill_Task_Fill @v6 #2d7402d75512
 | Việc | Được tự làm? |
 |---|---|
 | Điền số vào mẫu có sẵn | ✅ cứ làm |
-| Thêm/bớt cột · đổi biểu đồ · đổi layout · đổi theme | ❌ **TRÌNH DUYỆT TRƯỚC** (`Rule_Core_15_DeliverableLayout`) |
+| Thêm/bớt cột · đổi biểu đồ · đổi layout · đổi theme | ❌ **TRÌNH DUYỆT TRƯỚC** (`Rule_Keys_62_DesignChangeApproval`) |
 
 Đổi **hình hài/bố cục** sản phẩm giao đi là quyết định TRÌNH BÀY, không phải việc kỹ thuật — người
 nhận báo cáo quen mắt với bố cục cũ. Cần ý tưởng biểu đồ → tham khảo rồi **đề xuất**, không tự áp.
@@ -37,5 +37,5 @@ nhận báo cáo quen mắt với bố cục cũ. Cần ý tưởng biểu đồ
 ## Cấm
 
 - Sửa đè lên file template gốc.
-- Tự đổi công thức metric khác với từ điển dữ liệu trong `03_STRUCTURE` vì "thấy hợp lý hơn".
+- Tự đổi công thức metric khác với từ điển dữ liệu trong `02_STRUCTURE` vì "thấy hợp lý hơn".
 - Báo "xong" khi chưa mở file ra nhìn.

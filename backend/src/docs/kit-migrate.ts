@@ -17,13 +17,13 @@ import { basename, join, relative } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { TEMPLATE_DIR } from "./adopt.js";
 import { generateGuards, hooksDirOf } from "./guard-gen.js";
-import { SHELF, camelName, formatPartName, legacyKey } from "./harness-names.js";
+import { CONS_REPO_FILE, LEDGER, OWN_ARTICLE_FROM, SHELF, camelName, formatPartName, legacyKey } from "./harness-names.js";
 import { applyKit, writeKitMarker, type KitApplyResult } from "./kit-apply.js";
 import { ruleBlocks } from "./rule-core.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { hpGateRows } from "./validate.js";
 import { historyOfRel, revText } from "./standard.js";
-import { findKit, hostSkillOf, isFolderHarness, kitParts, listParts, mainPath, shelfDir, STORE_DIR, type Kit } from "./store.js";
+import { ARCHIVE_SHELF, findKit, hostSkillOf, isFolderHarness, kitParts, listParts, mainPath, shelfDir, STORE_DIR, type Kit } from "./store.js";
 
 export interface MigrateReport {
   root: string;
@@ -33,6 +33,8 @@ export interface MigrateReport {
   localRules: string[];
   /** Rules only the repo has — written as the repo's own folders. */
   ownRules: string[];
+  /** Rules the store has retired (merged into others, plan/28 §0q) still word for word in the repo: dropped, not kept as own. */
+  retiredRules: string[];
   /** 02_RULES.md had no numbered rules: kept whole as 02_RULES/LEGACY.md. */
   legacyRules: boolean;
   /** Constitution articles written as folders, and those whose old gate row was carried as text. */
@@ -169,7 +171,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   const date = opts.date ?? new Date().toISOString().slice(0, 10);
   const archive = join(agent, "archive", `file-harness-${date}`);
   const rep: MigrateReport = {
-    root, kit, archive: relative(root, archive).replace(/\\/g, "/"), localRules: [], ownRules: [], legacyRules: false, articles: [],
+    root, kit, archive: relative(root, archive).replace(/\\/g, "/"), localRules: [], ownRules: [], retiredRules: [], legacyRules: false, articles: [],
     articleGateRows: [], keptSkills: [], replacedSkills: [], carriedTriggers: 0, applied: opts.apply,
   };
   const read = (p: string): string => (existsSync(p) ? readFileSync(p, "utf8") : "");
@@ -181,6 +183,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   // ── what will happen (computed the same for dry-run and apply) ──
   // Matched by KEY (plan/28 §0o): the repo's file names a rule `02-7`, the store part is keyed `Rule_7`.
   const storeRuleKeys = new Set(kitParts(kit, storeDir).filter((p) => p.shelf === SHELF.rules).map((p) => p.key));
+  const retiredKeys = new Set(listParts(join(storeDir, ARCHIVE_SHELF), SHELF.rules).map((p) => p.key));
   const keyOfId = (id: string): string => legacyKey(id) ?? id;
   const known = knownRuleTexts();
   const blocks = ruleBlocks(rulesText);
@@ -193,6 +196,9 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
     seen.add(b.id);
     if (storeRuleKeys.has(keyOfId(b.id))) {
       if (!known.get(b.id)?.has(norm(b.text))) local.push({ id: b.id, text: b.text });
+    } else if (retiredKeys.has(keyOfId(b.id)) && known.get(b.id)?.has(norm(b.text))) {
+      // the standard's own old wording of a rule the store has retired: its content lives in the rule that took it in
+      rep.retiredRules.push(b.id);
     } else own.push({ id: b.id, text: b.text, gate: b.gate });
   }
   rep.localRules = local.map((l) => l.id);
@@ -228,15 +234,22 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   const oldHooks = join(agent, "..", "hooks");
   if (existsSync(oldHooks)) cpSync(oldHooks, join(archive, "hooks"), { recursive: true, filter: (s) => !/[\\/]\.(allow-[^\\/]*|seen\.json)$/.test(s) });
 
-  // ── constitution: PURPOSE + one folder per article (the repo's own: no from) ──
+  // ── constitution (plan/28 §0q): the purpose becomes the written Cons.md of the purpose frame; each article becomes one of
+  // the repo's own, numbered from OWN_ARTICLE_FROM — the store's frames hold the numbers below it ──
   mkdirSync(join(agent, SHELF.constitution), { recursive: true });
-  writeFileSync(join(agent, SHELF.constitution, "PURPOSE.md"), `# ${basename(root)} — Mục đích\n\n${con.purpose}`);
+  const purposeFrame = kitParts(kit, storeDir).find((p) => p.shelf === SHELF.constitution && p.key === "Cons_9");
+  if (purposeFrame && con.purpose.trim()) {
+    const d = join(agent, SHELF.constitution, purposeFrame.folder);
+    mkdirSync(d, { recursive: true });
+    writeFileSync(join(d, CONS_REPO_FILE), `---\nframe: ${purposeFrame.folder}\nstatus: written\n---\n# ${basename(root)} — Mục đích\n\n${con.purpose.trim()}\n`);
+  }
   for (const a of con.articles) {
-    const d = join(agent, SHELF.constitution, partFolder("Cons", a.n, "Core", a.title));
+    const no = OWN_ARTICLE_FROM - 1 + a.n;
+    const d = join(agent, SHELF.constitution, partFolder("Cons", no, "Core", a.title));
     mkdirSync(d, { recursive: true });
     const row = rows.get(a.n);
     const rowLine = row ? `\n\n- Cổng khai ở bảng cổng hiến pháp cũ: ${[row.kind, row.gate].filter(Boolean).join(" — ")} *(đổi thành \`gate.json\` khi có chốt máy thật)*` : "";
-    writeFileSync(join(d, `${basename(d)}.md`), `---\nid: Cons_${a.n}\naka: 01-${a.n}\nname: ${slugOf(a.title)}\nversion: 1\nkind: judgment\n---\n# ${basename(d)} ${a.title}\n\n${a.body}${rowLine}\n`);
+    writeFileSync(join(d, `${basename(d)}.md`), `---\nid: Cons_${no}\naka: 01-${a.n}\nname: ${slugOf(a.title)}\nversion: 1\nkind: judgment\n---\n# ${basename(d)} ${a.title}\n\n${a.body}${rowLine}\n`);
   }
   rmSync(join(agent, "01_CONSTITUTION.md"), { force: true });
 
@@ -256,8 +269,8 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   }
 
   // ── structure: the old file becomes the repo's INDEX ──
-  mkdirSync(join(agent, "03_STRUCTURE"), { recursive: true });
-  if (structText) writeFileSync(join(agent, "03_STRUCTURE", "INDEX.md"), structText);
+  mkdirSync(join(agent, SHELF.structure), { recursive: true });
+  if (structText) writeFileSync(join(agent, SHELF.structure, "INDEX.md"), structText);
   rmSync(join(agent, "03_STRUCTURE.md"), { force: true });
 
   // ── 04: keep the file, add the machine block when missing ──
@@ -310,16 +323,25 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
 export function repointLinks(root: string, apply: boolean): string[] {
   const agentDir = harnessPathsAt(root).agent;
   const MAP: Array<[RegExp, string]> = [
-    // the file harness → the folder shelves (current names)
+    // the file harness → the folder shelves (current names, plan/28 §0q)
     [/(\]\([^)\s]*?)01_CONSTITUTION\.md((?:#[^)\s]*)?\))/g, `$1${SHELF.constitution}/PURPOSE.md$2`],
     [/(\]\([^)\s]*?)02_RULES\.md(?:#[^)\s]*)?\)/g, `$1${SHELF.rules}/)`],
-    [/(\]\([^)\s]*?)03_STRUCTURE\.md(?:#[^)\s]*)?\)/g, "$103_STRUCTURE/INDEX.md)"],
-    // a folder harness on the legacy shelf names (plan/28 §0o) → the current names
-    [/(\]\([^)\s]*?)01_CONSTITUTION\//g, `$1${SHELF.constitution}/`],
-    [/(\]\([^)\s]*?)02_RULES\//g, `$1${SHELF.rules}/`],
+    [/(\]\([^)\s]*?)03_STRUCTURE\.md(?:#[^)\s]*)?\)/g, `$1${SHELF.structure}/INDEX.md)`],
+    [/(\]\([^)\s]*?)04_SKILLS\.md(?:#[^)\s]*)?\)/g, `$1${SHELF.skills}/INDEX.md)`],
+    [/(\]\([^)\s]*?)06_CHANGES\.md/g, `$1${LEDGER.changes}`],
+    [/(\]\([^)\s]*?)05_TODO\.md/g, `$1${LEDGER.todo}`],
+    // a folder harness on a legacy shelf name → the current one
+    [/(\]\([^)\s]*?)0[12]_CONSTITUTION\//g, `$1${SHELF.constitution}/`],
+    [/(\]\([^)\s]*?)0[12]_RULES\//g, `$1${SHELF.rules}/`],
+    [/(\]\([^)\s]*?)03_STRUCTURE\//g, `$1${SHELF.structure}/`],
+    [/(\]\([^)\s]*?)04_SKILLS\//g, `$1${SHELF.skills}/`],
   ];
   // Assembled parts (rules · slots · articles · skills) are fixed in the store and reach the repo by sync, never here.
-  const SKIP = /[\\/](archive|node_modules|\.git|\.claude|attic|external|dist|0[12]_RULES|03_STRUCTURE[\\/](03-|Slot_)|0[12]_CONSTITUTION[\\/](01-|Cons_))([\\/]|$)/;
+  const SKIP = /[\\/](archive|node_modules|\.git|\.claude|attic|external|dist|0[12]_RULES|01_LAW|0[23]_STRUCTURE[\\/](03-|Slot_|_Slot|_Host|Struc_)|0[12]_CONSTITUTION[\\/](01-|Cons_))([\\/]|$)/;
+  // The purpose a repo wrote now lives in the purpose frame's Cons.md (plan/28 §0q), when the repo has that frame.
+  const purposeFrame = existsSync(shelfDir(agentDir, SHELF.constitution))
+    ? listParts(agentDir, SHELF.constitution).find((p) => p.key === "Cons_9" && p.from)?.folder
+    : undefined;
   const changed: string[] = [];
   const walk = (d: string): void => {
     let ents: import("node:fs").Dirent[];
@@ -333,12 +355,13 @@ export function repointLinks(root: string, apply: boolean): string[] {
       let n = t;
       for (const [re, to] of MAP) n = n.replace(re, to);
       // A link whose text names an article ("điều 2") goes to that article's folder, not to PURPOSE.
-      n = n.replace(/\[([^\]]*?điều\s+(\d{1,2})[^\]]*)\]\(([^)\s]*?)0[12]_CONSTITUTION\/PURPOSE\.md\)/gi, (whole, text: string, num: string, pre: string) => {
-        const art = existsSync(shelfDir(agentDir, SHELF.constitution))
-          ? listParts(agentDir, SHELF.constitution).find((p) => p.key === `Cons_${Number(num)}`)?.folder
-          : undefined;
+      // An article moved by the migration carries OWN_ARTICLE_FROM - 1 + its old number; one moved earlier keeps its number.
+      n = n.replace(/\[([^\]]*?điều\s+(\d{1,2})[^\]]*)\]\(([^)\s]*?)(?:0[12]_CONSTITUTION|01_LAW\/_Cons)\/PURPOSE\.md\)/gi, (whole, text: string, num: string, pre: string) => {
+        const own = existsSync(shelfDir(agentDir, SHELF.constitution)) ? listParts(agentDir, SHELF.constitution).filter((p) => !p.from) : [];
+        const art = (own.find((p) => p.key === `Cons_${OWN_ARTICLE_FROM - 1 + Number(num)}`) ?? own.find((p) => p.key === `Cons_${Number(num)}`))?.folder;
         return art ? `[${text}](${pre}${SHELF.constitution}/${art}/${art}.md)` : whole;
       });
+      if (purposeFrame) n = n.replace(/(\]\([^)\s]*?)01_LAW\/_Cons\/PURPOSE\.md/g, `$1${SHELF.constitution}/${purposeFrame}/${CONS_REPO_FILE}`);
       if (n !== t) {
         if (apply) writeFileSync(p, n);
         changed.push(relative(root, p).replace(/\\/g, "/"));

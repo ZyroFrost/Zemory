@@ -19,6 +19,8 @@ import { fileURLToPath } from "node:url";
 import { openMemory } from "../memory/db.js";
 import { CONFIG_FILE, findMarker, harnessPathsAt, loadContext, readMarker, appVersion } from "../core/config.js";
 import { guardDrift } from "./guard-gen.js";
+import { isFolderHarness } from "./store.js";
+import { LAW_SHELF } from "./harness-names.js";
 import type { HarnessConfig, StructureProfile } from "../core/types.js";
 import { rememberProject } from "../projects.js";
 import { readChannelVersion } from "../memory/share.js";
@@ -348,7 +350,9 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
   // These docs: .md is the source; the DB index is rebuilt by project_root +
   // path) — renaming the file alone would leave the DB row pointing at a path
   // that no longer exists, so the doc.path row moves too, in the same step.
-  if (existsSync(docsDir)) {
+  // Only a FILE harness: the folder harness (plan/28 §0q) gives 04_TODO / 05_CHANGES their current names, which this
+  // older table would read as gen-3 names and move back.
+  if (existsSync(docsDir) && !isFolderHarness(docsDir) && !existsSync(join(docsDir, LAW_SHELF))) {
     const renamed: Array<[string, string]> = [];
     for (const [oldName, newName] of Object.entries(LEGACY_RENAME)) {
       const oldPath = join(docsDir, oldName);

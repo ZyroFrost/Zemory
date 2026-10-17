@@ -157,7 +157,7 @@ const under = (abs: string, root: string): boolean => {
 export function isHistoryFile(relPath: string): boolean {
   const p = posix(relPath);
   const name = p.split("/").pop() ?? "";
-  return /(^|\/)docs\/agent\/archive\//.test(p) || /(^|\/)attic\//.test(p) || /(^|\/)06_CHANGES\.md$/.test(p) || /\d{4}-\d{2}-\d{2}/.test(name);
+  return /(^|\/)docs\/agent\/archive\//.test(p) || /(^|\/)attic\//.test(p) || /(^|\/)0[56]_CHANGES\.md$/.test(p) || /\d{4}-\d{2}-\d{2}/.test(name);
 }
 /** By LINE: an ISO date or a supersede marker. History also lives inside live files (a comment in
  *  config.ts still names the 2026-07 location) — the file rule alone mis-files those as dead.

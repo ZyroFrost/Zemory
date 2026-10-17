@@ -106,7 +106,7 @@ const ONCE = "\nThis is a reminder, shown once per session: retry the same call 
 // The write-docx reference samples sit under .claude/skills/ in a repo and under _Store/04_SKILLS/ in the parts store.
 // The skill's folder is its old name, its host name (doc-write-docx) or its store name (Skill_Doc_WriteDocx, with the
 // assembled host build under Claude/<name>/), and the samples folder is references/ (Agent Skills) or the old reference/.
-const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|04_SKILLS)\/[^/]*(write-docx|WriteDocx)[^/]*\/(Claude\/[^/]+\/)?references?\//];
+const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|03_SKILLS|04_SKILLS)\/[^/]*(write-docx|WriteDocx)[^/]*\/(Claude\/[^/]+\/)?references?\//];
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 
 function style(s) {

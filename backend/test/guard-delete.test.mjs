@@ -122,7 +122,7 @@ test("NEGATIVE CASE (segment): a secret name in a segment OTHER than the delete 
     // Since 2026-10-14 every in-repo delete asks first (02-10), so the command IS blocked — but for the delete itself,
     // never for a secret named in ANOTHER segment (that wrong reason teaches people to stop writing self-checks).
     assert.doesNotMatch(r.say, /secret/i, cmd + " — a secret in another segment must not be the reason: " + r.say);
-    assert.match(r.say, /Rule_Gate_10_ConfirmDelete/, cmd + " — the in-repo delete is what asks: " + r.say);
+    assert.match(r.say, /Rule_Gate_10_DestructiveOps/, cmd + " — the in-repo delete is what asks: " + r.say);
   }
   // and the positive case right beside it so a mutation cannot slip through: a secret in the ACTUAL delete segment is still BLOCKED
   const bad = ask(bash("echo ok && rm ." + "env"));
@@ -137,7 +137,7 @@ test("02-10: every in-repo file delete asks first; temp folders, mentions and gi
     `node -e "require('fs').unlinkSync('backend/src/ui.ts')"`, `python -c "import os; os.remove('a.txt')"`]) {
     const r = ask(bash(cmd));
     assert.equal(r.blocked, true, `an in-repo delete must ask first: ${cmd}\n${r.say}`);
-    assert.match(r.say, /Rule_Gate_10_ConfirmDelete/, `the block must cite rule 02-10: ${cmd}`);
+    assert.match(r.say, /Rule_Gate_10_DestructiveOps/, `the block must cite rule 02-10: ${cmd}`);
   }
   for (const cmd of ["rm /tmp/x.txt", `Remove-Item "${tmp}"`, "echo 'run rm build.log later'", "git rm --cached secret-free.txt"]) {
     const r = ask(bash(cmd));
@@ -182,7 +182,7 @@ test("02-10 (b), folder harness: changing or dropping the `id:` of a rule folder
   const ROOT = new URL("../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
   const tmp = mkdtempSync(join(tmpdir(), "zemory-guard-id-"));
   try {
-    const relRule = "docs_template/_Store/01_RULES/Rule_Gate_41_ChangelogNewestFirst/Rule_Gate_41_ChangelogNewestFirst.md";
+    const relRule = "docs_template/_Store/01_LAW/_Rule/Rule_Gate_38_TodoDoor/Rule_Gate_38_TodoDoor.md";
     mkdirSync(join(tmp, relRule, ".."), { recursive: true });
     cpSync(join(ROOT, relRule), join(tmp, relRule));
     mkdirSync(join(tmp, "docs", "agent"), { recursive: true });
@@ -191,9 +191,9 @@ test("02-10 (b), folder harness: changing or dropping the `id:` of a rule folder
     const guard = join(hooksDir, "guard.cjs");
     const rule = join(tmp, relRule);
     const edit = (o, n) => ({ tool_name: "Edit", tool_input: { file_path: rule, old_string: o, new_string: n } });
-    const unapproved = ask(edit("name: changelog-newest-first", "name: changelog-newest-first"), guard);
+    const unapproved = ask(edit("name: todo-door", "name: todo-door"), guard);
     assert.equal(unapproved.blocked, true, "without the user's approval the store is not writable");
-    assert.match(unapproved.say, /Rule_Gate_79_HarnessEditNeedsApproval/);
+    assert.match(unapproved.say, /Rule_Gate_79_HarnessEdit/);
     writeFileSync(join(hooksDir, ".allow-docs-write"), "");
     checkRuleIdEdits(rule, edit, guard);
   } finally {
@@ -203,13 +203,13 @@ test("02-10 (b), folder harness: changing or dropping the `id:` of a rule folder
 
 function checkRuleIdEdits(rule, edit, guard) {
   const ask2 = (payload) => ask(payload, guard);
-  const renumber = ask2(edit("id: Rule_41", "id: Rule_99"));
+  const renumber = ask2(edit("id: Rule_38", "id: Rule_99"));
   assert.equal(renumber.blocked, true, `renumbering must be blocked\n${renumber.say}`);
-  assert.match(renumber.say, /removes rule Rule_41/);
-  const dropped = ask2(edit("id: Rule_41\n", ""));
+  assert.match(renumber.say, /removes rule Rule_38/);
+  const dropped = ask2(edit("id: Rule_38\n", ""));
   assert.equal(dropped.blocked, true, "dropping the id line must be blocked");
-  assert.match(dropped.say, /removes rule Rule_41/);
-  assert.equal(ask2(edit("name: changelog-newest-first", "name: changelog-newest-first")).blocked, false, "a body edit keeps the number");
+  assert.match(dropped.say, /removes rule Rule_38/);
+  assert.equal(ask2(edit("name: todo-door", "name: todo-door")).blocked, false, "a body edit keeps the number");
   const write = ask2({ tool_name: "Write", tool_input: { file_path: rule, content: "---\nname: x\n---\n" } });
   assert.equal(write.blocked, true, "a Write without the id must be blocked");
 }

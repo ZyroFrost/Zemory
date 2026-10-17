@@ -2,13 +2,13 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 6
+version: 7
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
   NON-APP). Dùng khi có một vấn đề mới cần điều tra, khi quay lại một vấn đề đã xử,
   hoặc khi được yêu cầu đóng/mở lại một case. Cụm hay gặp: "mở case", "lưu thành task",
   "task mới", "đóng case", "mở lại case", "vụ này lưu ở đâu".
-from: _Store/04_SKILLS/Skill_Task_Case @v6 #864e04a5bdd5
+from: _Store/03_SKILLS/Skill_Task_Case @v7 #44e16c19e67c
 ---
 
 # case — mở · đóng · mở lại một case
@@ -41,7 +41,7 @@ NẰM, không nói nó thuộc VIỆC gì.**
 3. Dò → findings `<ngày>_<slug>.md` · fix script `<ngày>_<slug>.sql` (**ĐỀ XUẤT**, người có quyền tự
    chạy — không tự thi hành lên nguồn ngoài) · query riêng `check_*.sql`. Data thật →
    `data/<tên_case>/` (gitignore, **mirror ĐÚNG TÊN**, chia 3 chặng theo slot `Data_132_01Raw`…`Data_134_03Output`).
-4. Cập nhật INDEX `content/README.md`; metric mới (nếu có) → từ điển dữ liệu trong `03_STRUCTURE`;
+4. Cập nhật INDEX `content/README.md`; metric mới (nếu có) → từ điển dữ liệu trong `02_STRUCTURE`;
    defect/spec dài (nếu có) → `docs/plan/`. Ba thứ này là **3 ngoại lệ** được nằm ngoài
    folder case.
 
@@ -50,7 +50,7 @@ NẰM, không nói nó thuộc VIỆC gì.**
 Đổi Trạng thái → `🟢 ĐÓNG <ngày>` + ghi **vì sao đóng** (đã vá / đã chốt không sửa /
 không phải defect). **Việc còn mở KHÔNG được xoá** — chuyển thành *"đề xuất treo"* kèm điều
 kiện lôi ra lại. ⚠ Việc **chưa xong mà không thuộc phạm vi case** thì ghi rõ **"KHÔNG đóng
-theo"** và đẩy sang `05_TODO` — đóng case không được nuốt mất việc còn nợ.
+theo"** và đẩy sang `04_TODO` — đóng case không được nuốt mất việc còn nợ.
 
 ## MỞ LẠI
 

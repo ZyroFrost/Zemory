@@ -51,7 +51,7 @@ export function turnEvidence(transcriptText: string, ownGates: string[] = []): s
   }
   if (!changed.length) return null;
   const list = [...new Set(changed)];
-  return `Rule_Gate_11_VerifyClaims: this turn changed code (${list.slice(0, 5).join(" · ")}${list.length > 5 ? ` +${list.length - 5}` : ""}) ` +
+  return `Rule_Gate_01_DoneMeansRun: this turn changed code (${list.slice(0, 5).join(" · ")}${list.length > 5 ? ` +${list.length - 5}` : ""}) ` +
     "and ran no check after the last change. Run the repo's check (its gate, tests, type check or lint) and report the result " +
     "with its numbers — or say plainly that it was not run and why.";
 }

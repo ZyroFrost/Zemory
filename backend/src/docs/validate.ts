@@ -6,6 +6,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { Context } from "../core/types.js";
+import { ledgerFile } from "../core/config.js";
 import { foreignLayout } from "./conform.js";
 import { isClosedItemLine } from "./archive.js";
 import { pathsCheck, pathsSummary, type PathsReport } from "./paths.js";
@@ -94,7 +95,7 @@ export function validate(ctx: Context): ValidateReport {
   for (const m of noGateIssues(agentDir)) issues.push({ level: "warn", msg: `ungated-first: ${m} — run \`zemory gates --write-top\`` });
 
   // 2. Changelog length (suggest archive).
-  const chFile = join(agentDir, "06_CHANGES.md");
+  const chFile = ledgerFile(agentDir, "changes");
   const chMax = ctx.config.thresholds?.changes_lines ?? 400;
   if (existsSync(chFile)) {
     const n = lineCount(chFile);
@@ -107,7 +108,7 @@ export function validate(ctx: Context): ValidateReport {
     // Entry keys must be unique across BOTH tiers: a supersede clause names a key, and with two
     // entries under one key it links to whichever the parser meets first. Nothing checked this —
     // _DB_DataWarehouse (2026-10-04) carried two `## [2026-10-01a]` and validate reported clean.
-    const archFile = join(agentDir, "archive", "06_CHANGES.md");
+    const archFile = ledgerFile(join(agentDir, "archive"), "changes");
     // Bare-date keys repeated (`[2026-07-16]`×12) are how entries were written before suffixes, not
     // an error: only a suffixed key (meant to be unique) or a key a supersede clause names is a warn.
     const tiers = [readFileSync(chFile, "utf8"), existsSync(archFile) ? readFileSync(archFile, "utf8") : ""];
@@ -169,7 +170,7 @@ export function validate(ctx: Context): ValidateReport {
   //     107 items = 49.6 KB = 46% of 05_TODO, read into context every session. They
   //     are not a new mechanism's job: a done item belongs in the changelog, and the
   //     archive is only the net that catches what already piled up.
-  const todoFile = join(agentDir, "05_TODO.md");
+  const todoFile = ledgerFile(agentDir, "todo");
   if (existsSync(todoFile)) {
     const done = closedItems(readFileSync(todoFile, "utf8"));
     if (done > 0) {

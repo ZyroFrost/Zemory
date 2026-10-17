@@ -23,19 +23,25 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { LEGACY_READ_FIRST_FILE, READ_FIRST_FILE, READ_FIRST_SOURCE } from "./read-first-src.js";
 import { SQL_GATE_FILE, SQL_GATE_SOURCE } from "./sql-gate-src.js";
 import { RULE_HOOKS } from "./rule-hooks-src.js";
-import { isFolderHarness, isRetired, listParts, shelfDir, skillReadTriggers } from "./store.js";
+import { constitutionFiles, isFolderHarness, isRetired, listParts, shelfDir, skillReadTriggers } from "./store.js";
 import { SHELF } from "./harness-names.js";
 
-/** Where the guard lives. File harness: `<agent>/../hooks`. Folder harness (plan/28 §0d): the folder of rule 02-55. */
+/**
+ * Where the guard lives. File harness: `<agent>/../hooks`. Folder harness (plan/28 §0d · §0q): the folder of the read-first
+ * rule (Rule_59) — the latch is part of the guard. A repo assembled before keeps the folder of the retired hook-guard rule
+ * (Rule_55) while it still has it, so the hook command wired into its settings keeps pointing at a real file.
+ */
 export function hooksDirOf(root: string): string {
   const agent = harnessPathsAt(root).agent;
   if (!isFolderHarness(agent)) return join(agent, "..", "hooks");
-  const p = listParts(agent, SHELF.rules).find((x) => x.key === GUARD_RULE_KEY);
-  return p ? p.dir : join(shelfDir(agent, SHELF.rules), "Rule_Gate_55_HookGuard");
+  const parts = listParts(agent, SHELF.rules);
+  const p = parts.find((x) => x.key === LEGACY_GUARD_RULE_KEY) ?? parts.find((x) => x.key === GUARD_RULE_KEY);
+  return p ? p.dir : join(shelfDir(agent, SHELF.rules), "Rule_Gate_59_ReadFirst");
 }
 
 /** The rule whose folder holds the guard (by key, so a renamed folder is still found). */
-const GUARD_RULE_KEY = "Rule_55";
+const GUARD_RULE_KEY = "Rule_59";
+const LEGACY_GUARD_RULE_KEY = "Rule_55";
 
 /** Where one-use flags and the once-per-session memory live. File harness: the hooks folder. Folder harness: a git-ignored
  *  `.harness-state/` beside the agent folder — runtime state is not part of any rule. */
@@ -44,15 +50,24 @@ export function stateDirOf(root: string): string {
   return isFolderHarness(agent) ? join(agent, "..", ".harness-state") : hooksDirOf(root);
 }
 
-/** Rule folders (01 · 02) of a folder harness that carry a hook.cjs, repo-relative — guard.cjs calls each. */
+/** The hook files of one rule folder (`hook.cjs`, and one more per rule it took in: `hook-names.cjs` …), sorted. */
+export function ruleHookFiles(dir: string): string[] {
+  try {
+    return readdirSync(dir).filter((f) => /^hook[\w-]*\.cjs$/.test(f)).sort();
+  } catch {
+    return [];
+  }
+}
+
+/** Rule folders of a folder harness that carry hooks, repo-relative — guard.cjs calls every hook*.cjs in each. */
 function ruleHookDirs(root: string): string[] {
   const agent = harnessPathsAt(root).agent;
   if (!isFolderHarness(agent)) return [];
   const out: string[] = [];
   for (const shelf of [SHELF.rules, SHELF.constitution] as const) {
     for (const p of listParts(agent, shelf)) {
-      if (p.key === GUARD_RULE_KEY || isRetired(p)) continue; // the dispatcher itself · a rule the repo declined
-      if (existsSync(join(p.dir, "hook.cjs"))) out.push(relative(root, p.dir).replace(/\\/g, "/"));
+      if (p.key === GUARD_RULE_KEY || p.key === LEGACY_GUARD_RULE_KEY || isRetired(p)) continue; // the dispatcher itself · a rule the repo declined
+      if (ruleHookFiles(p.dir).length) out.push(relative(root, p.dir).replace(/\\/g, "/"));
     }
   }
   return out;
@@ -178,7 +193,8 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     ...(existsSync(join(root, "docs_template", "_Store")) ? ["docs_template/_Store"] : []),
   ].filter((p) => p && !p.startsWith(".."));
   const readFirst = {
-    required: [`${agentRel}/05_TODO.md`, ...readFirstExtra],
+    // + the repo's constitution (plan/28 §0q): every Cons.md it has written and its own articles, read in full.
+    required: [relp(hp.todo), ...(folder ? constitutionFiles(hp.agent).map(relp) : []), ...readFirstExtra],
     sections: folder
       ? []
       : [
@@ -188,7 +204,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     case_root: "tasks",
     case_files: ["spec.md", "mail_form.md"],
     triggers: [
-      { when: "new_dir", read: folder ? `${agentRel}/03_STRUCTURE/INDEX.md` : `${agentRel}/03_STRUCTURE.md` },
+      { when: "new_dir", read: folder ? relp(join(shelfDir(hp.agent, SHELF.structure), "INDEX.md")) : `${agentRel}/03_STRUCTURE.md` },
       // Folder harness (plan/28 §0n): the doors are declared by the skills the repo really carries (gate.json › read) — a
       // repo without app-design has no frontend door. File harness: the built-in doors, until the repo moves.
       ...(folder
@@ -222,7 +238,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     harness_write: harnessWrite,
     protected_write_reason: "a path declared `protected` in .harness.json — it belongs to the repo, the harness agent may not write into it",
     harness_write_reason:
-      "the harness docs (Rule_Gate_79_HarnessEditNeedsApproval) — creating, editing, deleting or moving anything in them needs the user's approval in this session; the agent never creates a rule, article, slot, skill or layer on its own",
+      "the harness docs (Rule_Gate_79_HarnessEdit) — creating, editing, deleting or moving anything in them needs the user's approval in this session; the agent never creates a rule, article, slot, skill or layer on its own",
     secret_names: [...new Set([...SECRET_DEFAULTS, ...secretExtra])],
     secret_allow: [...new Set([...SECRET_ALLOW_DEFAULTS, ...secretAllowExtra])],
     secret_reason: "a secret must never enter a commit — there is NO flag to get past this (price already paid: a secret reached GitHub 2026-08-04)",
@@ -243,7 +259,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     // plan/27 §3: hooks for common rules a machine can see at the tool call (rule-hooks-src.ts) — each file named after its
     // rule, called by guard.cjs in this order. The block message quotes the rule from rules_file.
     rules_file: folder ? relative(root, shelfDir(hp.agent, SHELF.rules)).replace(/\\/g, "/") : `${agentRel}/02_RULES.md`,
-    todo_file: `${agentRel}/05_TODO.md`,
+    todo_file: relp(hp.todo),
     // File harness: the embedded rule hooks, written next to guard.cjs. Folder harness: none here — each rule folder carries
     // its own hook.cjs, listed in rule_dirs (plan/28 §0d).
     rule_hooks: folder ? [] : RULE_HOOKS.map((h) => ({ file: h.file, rule: h.file.slice(0, h.file.indexOf("_")) })),
@@ -258,7 +274,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
         : {};
     })(),
     outside_reason:
-      "work stays INSIDE the project folder (Rule_Gate_44_OpenFolderOnly) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
+      "work stays INSIDE the project folder (Rule_Gate_44_RepoScope) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
     // hooks_dir = where guard.cjs sits (it walks back from there to the repo root); flags_dir = where .allow-* and .seen.json
     // live — the same folder in a file harness, `.harness-state/` in a folder harness.
     hooks_dir: hooksRel,
@@ -529,7 +545,7 @@ function dropTextOps(s) {
 function denyOutside(what, subject) {
   if (consumeFlag("outside", subject)) return;
   deny("BLOCKED (guard layer 1): " + what + " - " +
-    (POLICY.outside_reason || "work stays inside the project folder (Rule_Gate_44_OpenFolderOnly)") + flagTip("outside"));
+    (POLICY.outside_reason || "work stays inside the project folder (Rule_Gate_44_RepoScope)") + flagTip("outside"));
 }
 
 // Split a segment into words the way a shell would for quoting (quotes removed, spaces inside them kept),
@@ -697,10 +713,10 @@ function checkBash(cmd) {
     const clash = versionClash();
     if (clash) {
       deny("BLOCKED (guard layer 1): \`git push\` carries code but package.json still says " + clash.version +
-        ", the same version as " + clash.upstream + " (" + clash.files + " code file(s) in the push) - bump the version first (Rule_Gate_70_VersionPerPush: every push of code carries a NEW version; docs-only pushes are exempt). There is no flag for this.");
+        ", the same version as " + clash.upstream + " (" + clash.files + " code file(s) in the push) - bump the version first (Skill_Dev_Release: every push of code carries a NEW version; docs-only pushes are exempt). There is no flag for this.");
     }
     if (!consumeFlag("push", bare)) {
-      deny("BLOCKED (guard layer 1): \`git push\` - push only when the user says so (Rule_Gate_50_PushApproval)." +
+      deny("BLOCKED (guard layer 1): \`git push\` - push only when the user says so (Rule_Gate_50_Git)." +
         "\\nDid the user just say so? -> create the flag \`" + POLICY.flags_dir + "/" + POLICY.flags.push + "\` and run again (one use).");
     }
   }
@@ -763,7 +779,7 @@ function checkBash(cmd) {
     /\\bfind\\b[^\\n]*\\s-delete\\b|\\bfind\\b[^\\n]*\\s-exec[^\\n]*\\brm\\b|\\bgit\\s+clean\\b[^\\n]*-[a-z]*[fdx]|\\brobocopy\\b[^\\n]*\\/(MIR|PURGE)\\b|\\brmSync\\s*\\([^)]*recursive|\\brmtree\\s*\\(|\\bxargs\\b[^\\n]*\\brm\\b|\\bGet-ChildItem\\b[^\\n]*\\|[^\\n]*\\bRemove-Item\\b/i;
   const MASS_CMDS = /^(find|git|robocopy|xargs|get-childitem|gci|ls|dir|remove-item|ri|rm)$/;
   if ((anyCmdIs(bare, MASS_CMDS) || SEG_INTERP.test(cmdWordOf(bare))) && MASS_DEL.test(bare) && !consumeFlag("delete", bare)) {
-    deny("BLOCKED (guard layer 1): MASS deletion (a whole-tree sweep) - irreversible, and Rule_Gate_10_ConfirmDelete requires asking the user first." +
+    deny("BLOCKED (guard layer 1): MASS deletion (a whole-tree sweep) - irreversible, and Rule_Gate_10_DestructiveOps requires asking the user first." +
       flagTip("delete"));
   }
 
@@ -774,7 +790,7 @@ function checkBash(cmd) {
   const DISCARD =
     /\\bgit\\s+reset\\b[^\\n]*--hard\\b|\\bgit\\s+checkout\\b[^\\n]*--\\s|\\bgit\\s+checkout\\s+\\.|\\bgit\\s+restore\\b[^\\n]*(\\.|--staged)|\\bgit\\s+stash\\s+(drop|clear)\\b/;
   if (hitsIn(bare, /^git$/, DISCARD) && !consumeFlag("discard", bare)) {
-    deny("BLOCKED (guard layer 1): a command DISCARDING uncommitted work - Rule_Gate_53_NoHistoryRewrite requires asking the user first." +
+    deny("BLOCKED (guard layer 1): a command DISCARDING uncommitted work - Rule_Gate_50_Git requires asking the user first." +
       flagTip("discard"));
   }
 
@@ -837,7 +853,7 @@ function checkBash(cmd) {
       }
     }
     if (recursive && !delFlagOk()) {
-      deny("BLOCKED (guard layer 1): a RECURSIVE delete - an irreversible operation, and Rule_Gate_10_ConfirmDelete requires asking the user first." +
+      deny("BLOCKED (guard layer 1): a RECURSIVE delete - an irreversible operation, and Rule_Gate_10_DestructiveOps requires asking the user first." +
         flagTip("delete"));
     }
     // 02-10 (plan/27 §2h, 2026-10-14): EVERY delete of a file in the repo needs the user's word first. This withdraws the
@@ -865,18 +881,18 @@ function checkBash(cmd) {
         return !tempRoots.some((r) => c === r || c.startsWith(r + "/"));
       });
       if (inRepo.length && !delFlagOk()) {
-        deny("BLOCKED (guard layer 1): Rule_Gate_10_ConfirmDelete - deleting \`" + inRepo[0] + "\` - a delete cannot be undone, ask the user first." +
+        deny("BLOCKED (guard layer 1): Rule_Gate_10_DestructiveOps - deleting \`" + inRepo[0] + "\` - a delete cannot be undone, ask the user first." +
           flagTip("delete"));
       }
     }
   }
   // 02-10 by other doors: \`git rm\` (except \`--cached\`, which only untracks) and a single-file delete inside an interpreter.
   if (hitsIn(bare, /^git$/, /\\bgit\\s+rm\\b/) && !/\\bgit\\s+rm\\b[^\\n;|&]*--cached\\b/.test(bare) && !consumeFlag("delete", bare)) {
-    deny("BLOCKED (guard layer 1): Rule_Gate_10_ConfirmDelete - \`git rm\` deletes the file, ask the user first." + flagTip("delete"));
+    deny("BLOCKED (guard layer 1): Rule_Gate_10_DestructiveOps - \`git rm\` deletes the file, ask the user first." + flagTip("delete"));
   }
   if (SEG_INTERP.test(cmdWordOf(bare)) && /\\b(unlinkSync|rmSync|unlink)\\s*\\(|\\bos\\.(remove|unlink)\\s*\\(|\\.unlink\\s*\\(\\s*\\)/.test(bare) &&
       !consumeFlag("delete", bare)) {
-    deny("BLOCKED (guard layer 1): Rule_Gate_10_ConfirmDelete - a script deleting a file, ask the user first." + flagTip("delete"));
+    deny("BLOCKED (guard layer 1): Rule_Gate_10_DestructiveOps - a script deleting a file, ask the user first." + flagTip("delete"));
   }
 
   // ── PLAN INVARIANTS (plan/27 §0b, 2026-10-14) ─────────
@@ -1318,7 +1334,7 @@ function main() {
       const kept = ids(after);
       const lost = [...ids(before)].filter((x) => !kept.has(x));
       if (lost.length && !consumeFlag("delete", relToRoot(p))) {
-        deny("BLOCKED (guard layer 1): Rule_Gate_10_ConfirmDelete - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
+        deny("BLOCKED (guard layer 1): Rule_Gate_10_DestructiveOps - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
           " - a rule is never deleted without the user's word; to retire one, keep its number and mark it abolished." + flagTip("delete"));
       }
     }
@@ -1326,7 +1342,7 @@ function main() {
     // Deleting the folder is a recursive delete (blocked above); rewriting or dropping the \`id:\` line is the other way
     // a number leaves, and the .md regex above never saw these files.
     // The header file is named after its folder (plan/28 §0p); an older copy still has RULE.md.
-    if (p && /(^|\\/)(01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES)\\/([^/]+)\\/(RULE|\\3)\\.md$/i.test(relToRoot(p).replace(/\\\\/g, "/"))) {
+    if (p && /(^|\\/)(01_LAW\\/_Rule|01_LAW\\/_Cons|01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES)\\/([^/]+)\\/(RULE|\\3)\\.md$/i.test(relToRoot(p).replace(/\\\\/g, "/"))) {
       const idOf = (s) => { const m = String(s || "").match(/^id:\\s*(\\S+)/m); return m ? m[1] : null; };
       let before = "", after = "";
       if (tool === "Write") {
@@ -1342,7 +1358,7 @@ function main() {
       const was = idOf(before), now = idOf(after);
       const lost = was && was !== now ? [was] : [];
       if (lost.length && !consumeFlag("delete", relToRoot(p))) {
-        deny("BLOCKED (guard layer 1): Rule_Gate_10_ConfirmDelete - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
+        deny("BLOCKED (guard layer 1): Rule_Gate_10_DestructiveOps - this edit removes rule " + lost.join(", ") + " from " + relToRoot(p) +
           " - a rule is never deleted without the user's word; to retire one, keep its number and mark it abolished." + flagTip("delete"));
       }
     }
@@ -1434,11 +1450,16 @@ function main() {
     try { r = require(path.join(HERE, h.file)).check(payload, ROOT, POLICY); } catch { r = null; }
     verdict(r, h.file);
   }
-  // FOLDER HARNESS (plan/28 §0d): every rule folder that carries a hook.cjs, same contract as above.
+  // FOLDER HARNESS (plan/28 §0d): every rule folder that carries hooks, same contract as above. A rule that took in another
+  // rule (plan/28 §0q) carries one hook*.cjs per check (hook.cjs · hook-names.cjs …); each is called.
   for (const d of POLICY.rule_dirs || []) {
-    let r = null;
-    try { r = require(path.join(ROOT, d, "hook.cjs")).check(payload, ROOT, POLICY); } catch { r = null; }
-    verdict(r, d);
+    let files = [];
+    try { files = fs.readdirSync(path.join(ROOT, d)).filter((f) => /^hook[\\w-]*\\.cjs$/.test(f)).sort(); } catch { files = []; }
+    for (const f of files) {
+      let r = null;
+      try { r = require(path.join(ROOT, d, f)).check(payload, ROOT, POLICY); } catch { r = null; }
+      verdict(r, d + "/" + f);
+    }
   }
   // READ BEFORE WRITE (02-59_read-first.cjs, policy.read_first) - LAST, so the more specific blocks above keep their message.
   // A failure of the latch itself lets the action through: a broken guard must not block blindly.

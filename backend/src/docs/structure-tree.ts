@@ -11,7 +11,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { harnessPathsAt } from "../core/config.js";
 import { isSourceLeaf } from "../memory/graph/graph.js";
-import { isFolderHarness, listParts } from "./store.js";
+import { isFolderHarness, listParts, shelfDir } from "./store.js";
+import { SHELF } from "./harness-names.js";
 
 /**
  * The standard slot dictionary — one line per concern, mirroring 03_STRUCTURE
@@ -66,7 +67,7 @@ export const SLOT_ROLES: Record<string, string> = {
   infra: "IaC: k8s/helm/terraform/ansible",
   resources: "packaged tracked resources: prompts/sql/seed/locales",
   // ── harness docs structure ──
-  agent: "harness docs: 01_CONSTITUTION → 06_CHANGES",
+  agent: "harness docs: 01_LAW → 05_CHANGES",
   plan: "numbered specs (NN_name.md; 00 = overview)",
   // ── domain folders (domain-first, §2) — zemory's own ──
   memory: "domain: global memory (store/ingest/search/digest/ai)",
@@ -153,14 +154,14 @@ const ROOT_ROLES: Record<string, string> = {
  *  harness, plan/28 §0c — the old file becomes the repo's INDEX when it moves). */
 function structureFile(root: string): string {
   const agent = harnessPathsAt(root).agent;
-  return isFolderHarness(agent) ? join(agent, "03_STRUCTURE", "INDEX.md") : join(agent, "03_STRUCTURE.md");
+  return isFolderHarness(agent) ? join(shelfDir(agent, SHELF.structure), "INDEX.md") : join(agent, "03_STRUCTURE.md");
 }
 
 /** Slot names a folder harness carries as parts (guides excluded); empty for a file harness. */
 function partSlotNames(root: string): string[] {
   const agent = harnessPathsAt(root).agent;
   if (!isFolderHarness(agent)) return [];
-  return listParts(agent, "03_STRUCTURE").filter((p) => p.meta.kind !== "guide").map((p) => p.name);
+  return listParts(agent, SHELF.structure).filter((p) => p.meta.kind !== "guide").map((p) => p.name);
 }
 
 export function standardNames(root: string): Set<string> {
