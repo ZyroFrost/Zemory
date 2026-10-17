@@ -1,5 +1,9 @@
 {
   "gate": "guard",
+  "hook": "hook.cjs",
+  "match": {
+    "tool": ["Write", "Edit", "MultiEdit", "NotebookEdit"]
+  },
   "prompt": {
     "kind": "Rule_21",
     "re": "\\b(mat khau|password|\\.env|secret|bi mat|key|token|credential|tai khoan|vault|mk|dang nhap|login)\\b",
@@ -9,12 +13,62 @@
     {
       "note": "a request this rule's keywords catch",
       "prompt": "mật khẩu database để ở đâu"
+    },
+    {
+      "note": "a literal password written into a tracked config",
+      "tool_name": "Write",
+      "tool_input": { "file_path": "config/settings.py", "content": "DB_HOST = \"srv01\"\nDB_PASSWORD = \"Tr0ub4dor-77\"\n" }
+    },
+    {
+      "note": "a connection string carrying its password",
+      "tool_name": "Write",
+      "tool_input": { "file_path": "backend/appsettings.json", "content": "{ \"Db\": \"Server=srv01;Database=sales;User Id=app;Password=Kx9vR2mq;\" }\n" }
+    },
+    {
+      "note": "a private key pasted into a script",
+      "tool_name": "Edit",
+      "tool_input": { "file_path": "scripts/deploy.sh", "old_string": "# key", "new_string": "KEY='-----BEGIN RSA PRIVATE KEY-----'" }
     }
   ],
   "pass": [
     {
       "note": "an unrelated request",
       "prompt": "thêm cột ngày"
+    },
+    {
+      "note": "the value read from the environment",
+      "tool_name": "Write",
+      "tool_input": { "file_path": "config/settings.py", "content": "import os\nDB_PASSWORD = os.environ[\"DB_PASSWORD\"]\n" }
+    },
+    {
+      "note": "a config naming the environment variable, not the value",
+      "tool_name": "Write",
+      "tool_input": { "file_path": "config/jobs.yaml", "content": "source:\n  password_env: DB_SOURCE_PASSWORD\n" }
+    },
+    {
+      "note": "a sample file with a placeholder",
+      "tool_name": "Write",
+      "tool_input": { "file_path": "config/settings.example.yaml", "content": "password: \"<password>\"\n" }
+    },
+    {
+      "note": "the value in .env, which the standard keeps out of git",
+      "tool_name": "Write",
+      "tool_input": { "file_path": ".env", "content": "DB_PASSWORD=Tr0ub4dor-77\n" }
+    },
+    {
+      "note": "an UPPER_CASE value is the NAME of a vault entry, not its value",
+      "tool_name": "Write",
+      "tool_input": { "file_path": "backend/store/vault.py", "content": "PW_SECRET = \"APP_DEPLOY_PW\"  # entry name in the vault\n" }
+    },
+    {
+      "note": "other people's library shipped as-is",
+      "tool_name": "Write",
+      "tool_input": { "file_path": "web/wwwroot/assets/lib/bootstrap/bootstrap.js", "content": "const DATA_API_KEY = '.data-api-x9';\n" }
+    },
+    {
+      "note": "prose in a .md file is not code",
+      "tool_name": "Write",
+      "tool_input": { "file_path": "docs/plan/01_db.md", "content": "Không ghi password = \"abc12345\" vào config.\n" }
     }
   ]
 }

@@ -138,7 +138,10 @@ function shellTargets(cmd) {
   const strip = (t) => t.replace(/^["']|["']$/g, "");
   const out = [];
   const tok = "(\"[^\"]+\"|'[^']+'|[^\\s;&|<>]+)";
-  for (const m of cmd.matchAll(new RegExp("(?:^|[^0-9&>])>>?\\s*" + tok, "g"))) out.push(m[1]);
+  // A ">" inside a quoted string is not a redirect ("node -e '...x => y...'" read as creating a file, 2026-10-17); a quoted
+  // TARGET right after ">" still counts.
+  const unquoted = cmd.replace(/(>>?\s*)?("(?:\\.|[^"\\])*"|'[^']*')/g, (all, redir) => (redir ? all : "''"));
+  for (const m of unquoted.matchAll(new RegExp("(?:^|[^0-9&>])>>?\\s*" + tok, "g"))) out.push(m[1]);
   for (const m of cmd.matchAll(new RegExp("\\b(?:tee(?:-object)?(?:\\s+-a)?|touch|out-file(?:\\s+-filepath)?|set-content(?:\\s+-path)?|add-content(?:\\s+-path)?|new-item(?:\\s+-path)?)\\s+" + tok, "gi"))) out.push(m[1]);
   return out.map((t) => sub(strip(t))).filter((t) => t && !t.includes("$") && !/^(\/dev\/null|nul|&\d)$/i.test(t));
 }

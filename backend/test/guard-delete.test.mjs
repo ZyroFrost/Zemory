@@ -21,7 +21,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { generateGuards } from "../../dist/docs/guard-gen.js";
 
-const GUARD = new URL("../../docs/hooks/guard.cjs", import.meta.url).pathname.replace(/^\//, "");
+// A guard generated in a temp repo, not the working repo's own: a live one-use flag in the working repo (an approval the
+// user just gave) opened the door for the test and turned it red (2026-10-17). Removed when the run ends.
+const GUARD_ROOT = mkdtempSync(join(tmpdir(), "zemory-guard-delete-"));
+mkdirSync(join(GUARD_ROOT, "docs", "agent"), { recursive: true });
+writeFileSync(join(GUARD_ROOT, "docs", ".harness.json"), JSON.stringify({ layout: "app", docs: "docs/agent" }));
+const GUARD = join(generateGuards(GUARD_ROOT).hooksDir, "guard.cjs");
+process.on("exit", () => rmSync(GUARD_ROOT, { recursive: true, force: true }));
 
 function ask(payload, guard = GUARD) {
   const r = spawnSync(process.execPath, [guard], { input: JSON.stringify(payload), encoding: "utf8" });
@@ -100,7 +106,8 @@ test("emptying a file's content is blocked", () => {
 });
 
 test("OVERWRITING an existing file ASKS; Edit does NOT ask", () => {
-  const target = new URL("../../package.json", import.meta.url).pathname.replace(/^\//, "");
+  const target = join(GUARD_ROOT, "package.json"); // an existing file inside the guard's repo
+  writeFileSync(target, "{}\n");
   const w = ask({ tool_name: "Write", tool_input: { file_path: target } });
   assert.equal(w.blocked, true, `a Write over an existing file must ask:\n${w.say}`);
   assert.match(w.say, /ASK THE USER/, "it must say plainly that it is asking the user, not forbidding outright");

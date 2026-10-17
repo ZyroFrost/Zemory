@@ -41,6 +41,34 @@
     "sample.env"
   ],
   "secret_reason": "a secret must never enter a commit — there is NO flag to get past this (price already paid: a secret reached GitHub 2026-08-04)",
+  "secret_values": {
+    "patterns": [
+      {
+        "kind": "password",
+        "re": "(?<![A-Za-z])(?:pass(?:word)?|pwd|secret|token|api[_-]?key|client[_-]?secret)(?![A-Za-z])[\"']?\\s*[:=]\\s*[\"']([^\"'\\s$<>{}%]{6,})[\"']",
+        "flags": "i"
+      },
+      {
+        "kind": "connection string",
+        "re": "(?:^|[;\"'])\\s*(?:Password|Pwd)\\s*=\\s*([^;\"'\\s$<>{}%()]{4,})\\s*(?:;|$)",
+        "flags": "i"
+      },
+      {
+        "kind": "private key",
+        "re": "-----BEGIN [A-Z ]*PRIVATE KEY-----",
+        "flags": ""
+      },
+      {
+        "kind": "cloud access key",
+        "re": "\\bAKIA[0-9A-Z]{16}\\b",
+        "flags": ""
+      }
+    ],
+    "placeholder": "^(?:changeme|change_me|password|secret|x{3,}|\\*+|your[_-].*|example.*|dummy.*|fake.*|placeholder.*|<.*>)$",
+    "name": "^(?:[A-Z][A-Z0-9_]{2,}|[.#][a-z]+(?:-[a-z0-9]+)+|[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+)$",
+    "env": "environ|getenv|process\\.env|\\$\\{|%[A-Z_]+%|GetEnvironmentVariable|_env\\b",
+    "skipPath": "(^|/)(vendors?|third[_-]?party|external|node_modules)/|(^|/)wwwroot/.*/lib/|\\.min\\.js$"
+  },
   "key_read_block": [
     "*.pem",
     "*.ppk",
@@ -141,6 +169,10 @@
     {
       "file": "02-47_other-repo.cjs",
       "rule": "02-47"
+    },
+    {
+      "file": "02-21_secret-value.cjs",
+      "rule": "02-21"
     },
     {
       "file": "02-38_todo-door.cjs",

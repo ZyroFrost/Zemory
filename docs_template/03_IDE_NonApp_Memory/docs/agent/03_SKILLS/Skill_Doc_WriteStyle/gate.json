@@ -26,6 +26,10 @@
       "note": "an ordinary script",
       "command": "python scripts/01_pull.py",
       "script": "print(1)\n"
+    },
+    {
+      "note": "a mail-named file only READ inside node -e, not run",
+      "command": "node -e \"console.log(require('fs').readFileSync('tests/test_sent_mail.py','utf8').split('\\n')[3])\""
     }
   ]
 }

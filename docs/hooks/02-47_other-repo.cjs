@@ -119,7 +119,21 @@ function outsideOf(root, dir) {
 function check(payload, root, policy) {
   try {
     const cmd = (payload.tool_input || {}).command;
-    if (typeof cmd !== "string" || !WRITES.test(cmd)) return null;
+    if (typeof cmd !== "string") return null;
+    // a search tool's pattern is data: grep -E "memory scan|zemory archive" names commands, it runs none (2026-10-17)
+    const SEARCH = /^(grep|egrep|fgrep|rg|findstr|select-string|sls)$/i;
+    // split on ; & | and newlines OUTSIDE quotes: the "|" inside grep "a|b" is the pattern's
+    const segs = [];
+    let cur = "", q = null;
+    for (const c of cmd) {
+      if (q) { cur += c; if (c === q) q = null; continue; }
+      if (c === '"' || c === "'") { q = c; cur += c; continue; }
+      if (c === ";" || c === "&" || c === "|" || c === "\n") { segs.push(cur); cur = ""; continue; }
+      cur += c;
+    }
+    segs.push(cur);
+    const live = segs.filter((seg) => !SEARCH.test((seg.trim().split(/\s+/)[0] || "").replace(/^.*[\\/]/, ""))).join(" ; ");
+    if (!WRITES.test(live)) return null;
     let target = null;
     if (payload.cwd && outsideOf(root, payload.cwd)) target = payload.cwd;
     // Push-Location is PowerShell's pushd under its full name — it slipped through until 2026-10-15.

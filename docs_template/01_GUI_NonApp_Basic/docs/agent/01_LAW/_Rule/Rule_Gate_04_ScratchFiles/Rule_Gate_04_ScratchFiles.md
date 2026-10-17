@@ -2,9 +2,9 @@
 id: Rule_4
 aka: 02-4
 name: scratch-files
-version: 6
+version: 7
 kind: judgment
-from: _Store/01_LAW/_Rule/Rule_Gate_04_ScratchFiles @v6 #6755493fa6d0
+from: _Store/01_LAW/_Rule/Rule_Gate_04_ScratchFiles @v7 #8165033cd5ca
 ---
 # Rule_Gate_04_ScratchFiles File tạm có đường chết
 
