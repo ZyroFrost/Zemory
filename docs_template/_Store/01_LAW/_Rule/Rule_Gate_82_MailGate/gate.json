@@ -1,0 +1,116 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Bash",
+      "PowerShell"
+    ]
+  },
+  "replaces_hooks": [
+    "mail-gate.cjs"
+  ],
+  "block": [
+    {
+      "note": "the command calls a mail API itself",
+      "files": {},
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python -c \"import smtplib; smtplib.SMTP('x')\""
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "mail": ".allow-mail"
+        }
+      }
+    },
+    {
+      "note": "it runs a mail script by name",
+      "files": {},
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python scripts/02_mail.py --to someone"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "mail": ".allow-mail"
+        }
+      }
+    },
+    {
+      "note": "a launcher with a real-send argument",
+      "files": {},
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "bin\\run_task.cmd live"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "mail": ".allow-mail"
+        }
+      }
+    },
+    {
+      "note": "a script whose own text sends mail",
+      "files": {
+        "tools/report_job.py": "import smtplib\nsmtplib.SMTP('x').send_message(m)\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python tools/report_job.py"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "mail": ".allow-mail"
+        }
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "a plain command",
+      "files": {
+        "scripts/build_report.py": "print('ok')\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python scripts/build_report.py"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "mail": ".allow-mail"
+        }
+      }
+    },
+    {
+      "note": "a launcher test run without a send word",
+      "files": {},
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "bin\\run_task.cmd test"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "mail": ".allow-mail"
+        }
+      }
+    }
+  ]
+}

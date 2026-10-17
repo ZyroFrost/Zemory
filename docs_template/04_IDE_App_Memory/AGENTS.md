@@ -50,3 +50,4 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | được duyệt thêm hoặc sửa luật, khung hiến pháp, chốt máy | `.claude/skills/harness-rule-gate/SKILL.md` |
 | "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/harness-session-close/SKILL.md` |
 | sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác | `.claude/skills/harness-sync-path/SKILL.md` |
+| nắn repo lên bộ chuẩn · áp chuẩn · chuyển repo sang bộ · sync --standard | `.claude/skills/harness-reshape/SKILL.md` |

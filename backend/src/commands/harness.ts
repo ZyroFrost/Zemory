@@ -83,6 +83,7 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   }
   if (r.ownAdded.length) console.log(`  + own files: ${r.ownAdded.join(" · ")}`);
   if (r.installed.written.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}installed by their parts: ${r.installed.written.join(" · ")}`);
+  if (r.hooksTakenOver.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}repo hooks taken over by a store rule: ${r.hooksTakenOver.join(" · ")}`);
   if (r.plug.removed.length) console.log(`  ✔ host builds left under an old skill name removed: ${r.plug.removed.join(" · ")}`);
   if (r.plug.skipped.length) console.log(`  ! host folder taken by a skill of the repo's own, store build not plugged: ${r.plug.skipped.join(" · ")}`);
   if (r.installed.kept.length) console.log(`  ! kept, edited here (merge into the store part by hand): ${r.installed.kept.join(" · ")}`);

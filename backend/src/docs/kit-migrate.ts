@@ -24,6 +24,10 @@ import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { hpGateRows } from "./validate.js";
 import { historyOfRel, revText } from "./standard.js";
 import { ARCHIVE_SHELF, findKit, hostSkillOf, isFolderHarness, kitParts, listParts, mainPath, shelfDir, STORE_DIR, type Kit } from "./store.js";
+import { wiredHooks } from "./hook-wiring.js";
+import { READ_FIRST_FILE } from "./read-first-src.js";
+import { RULE_HOOKS } from "./rule-hooks-src.js";
+import { SQL_GATE_FILE } from "./sql-gate-src.js";
 
 export interface MigrateReport {
   root: string;
@@ -42,6 +46,8 @@ export interface MigrateReport {
   articleGateRows: string[];
   /** Shared skills the repo edited (kept as its own) and shared skills replaced by the store copy. */
   keptSkills: string[];
+  /** hooks of the repo's own that settings.json still calls, left in docs/hooks (they need a law to live in) */
+  keptHooks?: string[];
   replacedSkills: string[];
   /** AGENTS.md trigger rows carried for skills outside the kit. */
   carriedTriggers: number;
@@ -288,7 +294,16 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   rmSync(join(root, "AGENTS.md"), { force: true });
 
   // ── hooks: the old folder leaves (archived above); the guard is regenerated in 02-55 ──
-  if (existsSync(oldHooks)) rmSync(oldHooks, { recursive: true, force: true });
+  // A hook of the repo's own that settings.json still calls stays where it is: archiving it left the host calling a path
+  // that was gone, and a hook that fails is let through — a department's mail gate went silent that way (2026-10-18).
+  // The tool's own files (guard, latch, generated rule hooks) leave as before.
+  if (existsSync(oldHooks)) {
+    const ours = new Set(["guard.cjs", "read-first.cjs", READ_FIRST_FILE, "precommit-guard.cjs", "policy.json", ".gitignore", SQL_GATE_FILE, ...RULE_HOOKS.map((h) => h.file)]);
+    const own = wiredHooks(root).map((h) => h.file).filter((f) => f.startsWith("docs/hooks/") && !ours.has(f.slice("docs/hooks/".length)));
+    rep.keptHooks = [...new Set(own)];
+    if (!rep.keptHooks.length) rmSync(oldHooks, { recursive: true, force: true });
+    else for (const e of readdirSync(oldHooks)) if (!rep.keptHooks.includes(`docs/hooks/${e}`)) rmSync(join(oldHooks, e), { recursive: true, force: true });
+  }
 
   rep.assembly = applyKit(root, { apply: true, storeDir }) as KitApplyResult;
 
@@ -388,10 +403,11 @@ export function repointLinks(root: string, apply: boolean): string[] {
           text === target || existsSync(join(root, text)) ? whole : `[\`${target}\`](${up}${target}${hash ?? ""})`);
       // A path written as text, not as a link (`docs/agent/03_STRUCTURE.md` §7), names a file the move replaced just the
       // same — measured on a reshaped repo 2026-10-18: two such pointers left dead in a plan and a case spec.
-      n = n.replace(/`docs\/agent\/(0[1-6]_[A-Z]+)\.md`/g, (whole, name: string) => {
+      // A relative prefix written before it (`../../docs/agent/03_STRUCTURE.md`) stays as written.
+      n = n.replace(/`((?:\.\.\/)*)docs\/agent\/(0[1-6]_[A-Z]+)\.md`/g, (whole, up: string, name: string) => {
         if (existsSync(join(agentDir, `${name}.md`))) return whole;
         const to = TEXT_MAP[name];
-        return to ? `\`${agentRel}/${to}\`` : whole;
+        return to ? `\`${up}${agentRel}/${to}\`` : whole;
       });
       // A kit skill named by its old host name (`.claude/skills/case/`) after its build moved to the new one (task-case).
       for (const [aka, host] of hostRenames) n = n.split(`.claude/skills/${aka}/`).join(`.claude/skills/${host}/`);

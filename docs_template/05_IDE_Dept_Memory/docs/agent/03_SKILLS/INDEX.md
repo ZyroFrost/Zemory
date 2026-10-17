@@ -23,8 +23,8 @@ có mặt ở đó và khớp bản kho (dòng `from:`), và mọi folder ở đ
 | `Skill_PBI_Classic/` | `.claude/skills/pbi-classic/` | _Store/03_SKILLS/Skill_PBI_Classic @v1 #bb00ec97b894 |
 | `Skill_PBI_Legacy/` | `.claude/skills/pbi-legacy/` | _Store/03_SKILLS/Skill_PBI_Legacy @v1 #7323cd307e33 |
 | `Skill_PBI_Main/` | `.claude/skills/pbi-main/` | _Store/03_SKILLS/Skill_PBI_Main @v1 #4c2dcb6a9b4e |
-| `Skill_PBI_Mix/` | `.claude/skills/pbi-mix/` | _Store/03_SKILLS/Skill_PBI_Mix @v1 #a30d8e8298a4 |
-| `Skill_PBI_Pbip/` | `.claude/skills/pbi-pbip/` | _Store/03_SKILLS/Skill_PBI_Pbip @v2 #ea69028aaa75 |
+| `Skill_PBI_Mix/` | `.claude/skills/pbi-mix/` | _Store/03_SKILLS/Skill_PBI_Mix @v2 #0b5920543e23 |
+| `Skill_PBI_Pbip/` | `.claude/skills/pbi-pbip/` | _Store/03_SKILLS/Skill_PBI_Pbip @v3 #a7372a49ec9d |
 | `Skill_Task_Case/` | `.claude/skills/task-case/` | _Store/03_SKILLS/Skill_Task_Case @v7 #44e16c19e67c |
 | `Skill_Task_Fill/` | `.claude/skills/task-fill/` | _Store/03_SKILLS/Skill_Task_Fill @v8 #8772aae04f3e |
 | `Skill_Task_Pull/` | `.claude/skills/task-pull/` | _Store/03_SKILLS/Skill_Task_Pull @v4 #3124d5a346ba |

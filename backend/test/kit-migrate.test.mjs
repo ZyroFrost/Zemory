@@ -173,3 +173,19 @@ test("sync on a first-generation folder repo: the purpose fills the purpose fram
   assert.equal(again.purpose, false);
   assert.deepEqual(again.renamed, [], "a second sync changes nothing");
 });
+
+test("the move keeps a hook of the repo's own that settings.json still calls; the tool's own hook files leave", (t) => {
+  // A department's mail gate went silent this way (2026-10-18): the folder was archived, the host kept calling a gone path.
+  const root = fixture(t);
+  put(root, "docs/hooks/mail-gate.cjs", "process.exit(0);\n");
+  const sp = join(root, ".claude", "settings.json");
+  const s = JSON.parse(readFileSync(sp, "utf8"));
+  s.hooks.PreToolUse.push({ matcher: "Bash", hooks: [{ type: "command", command: "node docs/hooks/mail-gate.cjs" }] });
+  writeFileSync(sp, JSON.stringify(s, null, 2));
+  const r = migrateToKit(root, { kitRef: "03", apply: true, date: "2026-10-18" });
+  assert.ok(!("error" in r), JSON.stringify(r));
+  assert.deepEqual(r.keptHooks, ["docs/hooks/mail-gate.cjs"]);
+  assert.ok(existsSync(join(root, "docs", "hooks", "mail-gate.cjs")), "the called hook is still there");
+  assert.ok(!existsSync(join(root, "docs", "hooks", "policy.json")), "the tool's own files left");
+  assert.ok(existsSync(join(root, "docs", "archive", "file-harness-2026-10-18", "hooks", "mail-gate.cjs")), "and a copy is archived like the rest");
+});

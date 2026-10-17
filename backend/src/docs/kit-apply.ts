@@ -4,7 +4,7 @@
 // Order: legacy layout moved → marker (records the kit) → the starter files the assembled slots seed (gap-fill only, never
 // overwritten) → parts (plan, then write when `apply`) → the host plug → the skills block of 04_SKILLS/INDEX.md → the guard.
 // Reading is the default; nothing is written without `apply`.
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { CONFIG_FILE, findMarker, harnessPathsAt, readMarker } from "../core/config.js";
 import { DEFAULT_CONFIG } from "./adopt.js";
@@ -40,6 +40,7 @@ import {
   type RetiredCopy,
 } from "./store.js";
 import { SHELF } from "./harness-names.js";
+import { unwireHooks } from "./hook-wiring.js";
 
 export interface KitApplyResult {
   kit: Kit;
@@ -57,6 +58,8 @@ export interface KitApplyResult {
   retired: RetiredCopy[];
   /** Files parts install where the repo runs them: written, or kept because they were edited here (plan/28 §0q). */
   installed: InstallResult;
+  /** repo hooks a part took over (replaces_hooks): settings.json commands dropped, old copies archived */
+  hooksTakenOver: string[];
 }
 
 /** The kit a repo's marker names, or null (a repo still on the file harness). */
@@ -101,10 +104,11 @@ export function applyKit(
   const skills = parts.filter((p) => p.shelf === SHELF.skills);
   // the host plug: every assembled skill's host build, written from its source into the host's own skill folder
   const plug = opts.apply ? plugSkills(target, skills) : { plugged: [], skipped: [], removed: [] };
+  const hooksTakenOver = retireReplacedHooks(root, parts, opts.apply);
   const skillsBlock = opts.apply ? writeSkillsBlock(hp.agent, skills, target) : "current";
   if (opts.apply) followEntryRenames(root, skills, target);
   const retired = retireCopies(target, new Set(parts.map((p) => p.key)), hp.archive, opts.apply, storeDir);
-  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves, plug, retired, installed };
+  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves, plug, retired, installed, hooksTakenOver };
 }
 
 /**
@@ -263,6 +267,37 @@ function followHostRenames(s: string, skills: Part[], t: AssemblyTarget): string
     if (!aka || aka === host || existsSync(join(t.skillsDir, aka))) continue;
     out = out.split("`" + aka + "/`").join("`" + host + "/`").split(`.claude/skills/${aka}/`).join(`.claude/skills/${host}/`);
   }
+  return out;
+}
+
+/**
+ * A part that took over a repo's own hook (`gate.json › replaces_hooks: ["mail-gate.cjs"]` — the same check, now dispatched by
+ * the guard from the part's folder): the settings.json command that ran the old copy goes, and the copy moves to
+ * docs/archive/hooks/. One way only — two copies of one gate would block twice, and the old one stops being kept up.
+ */
+function retireReplacedHooks(root: string, parts: Part[], apply: boolean): string[] {
+  const names = new Set<string>();
+  for (const p of parts) {
+    try {
+      const g = JSON.parse(readFileSync(join(p.dir, "gate.json"), "utf8")) as { replaces_hooks?: unknown };
+      if (Array.isArray(g.replaces_hooks)) for (const n of g.replaces_hooks) if (typeof n === "string") names.add(n);
+    } catch { /* no gate.json */ }
+  }
+  if (!names.size) return [];
+  const files = [...names].map((n) => `docs/hooks/${n}`);
+  const out = unwireHooks(root, files, apply).map((c) => `settings.json: ${c}`);
+  for (const f of files) {
+    const from = join(root, f);
+    if (!existsSync(from)) continue;
+    out.push(`${f} → docs/archive/hooks/`);
+    if (!apply) continue;
+    const to = join(root, "docs", "archive", "hooks", basename(f));
+    mkdirSync(dirname(to), { recursive: true });
+    if (!existsSync(to)) renameSync(from, to); else rmSync(from);
+  }
+  // the old hook folder goes when only flags were left in it
+  const hooksDir = join(root, "docs", "hooks");
+  if (apply && existsSync(hooksDir) && !readdirSync(hooksDir).some((n) => !/^\.(allow-|seen\.json$|gitignore$)/.test(n))) rmSync(hooksDir, { recursive: true, force: true });
   return out;
 }
 

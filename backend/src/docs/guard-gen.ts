@@ -265,7 +265,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     todo_file: relp(hp.todo),
     // File harness: the embedded rule hooks, written next to guard.cjs. Folder harness: none here — each rule folder carries
     // its own hook.cjs, listed in rule_dirs (plan/28 §0d).
-    rule_hooks: folder ? [] : RULE_HOOKS.map((h) => ({ file: h.file, rule: h.file.slice(0, h.file.indexOf("_")) })),
+    rule_hooks: folder ? [] : RULE_HOOKS.filter((h) => !h.folderOnly).map((h) => ({ file: h.file, rule: h.file.slice(0, h.file.indexOf("_")) })),
     rule_dirs: ruleHookDirs(root),
     // 02-25 (plan/27 §2g): the hook that blocks NEW inline SQL. Written only when the repo has a named-SQL store file —
     // a repo that has not adopted the rule is never blocked by surprise. No flag: the way through is adding the named query.
@@ -299,6 +299,8 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
       outside: ".allow-outside",
       // 02-38: a NEW open item in 05_TODO after the user said yes in the session.
       todo: ".allow-todo",
+      // 02-82: ONE mail send the person allowed in the session.
+      mail: ".allow-mail",
     },
     flags_comment:
       "A flag = the user approving ONE job. The guard lets it through, then STAMPS `ZEMORY-USED <command fingerprint> <timestamp>` " +
@@ -1649,7 +1651,7 @@ export function guardDrift(projectRoot: string): string[] {
   check(READ_FIRST_FILE, READ_FIRST_SOURCE, oursJs);
   if (!folder) {
     check(SQL_GATE_FILE, SQL_GATE_SOURCE, oursJs);
-    for (const h of RULE_HOOKS) {
+    for (const h of RULE_HOOKS.filter((x) => !x.folderOnly)) {
       check(h.file, h.source, oursJs);
       if (existsSync(join(hooksDir, "guard.cjs")) && !existsSync(join(hooksDir, h.file))) stale.push(`${h.file} (missing)`);
     }
@@ -1718,7 +1720,7 @@ export function generateGuards(projectRoot: string): GuardGenResult {
   // A folder harness carries rule hooks in their own folders (assembled from the store), never next to the guard.
   if (!folder) {
     if (policy.sql) put(SQL_GATE_FILE, SQL_GATE_SOURCE, oursJs);
-    for (const h of RULE_HOOKS) put(h.file, h.source, oursJs);
+    for (const h of RULE_HOOKS.filter((x) => !x.folderOnly)) put(h.file, h.source, oursJs);
   }
   put("precommit-guard.cjs", PRECOMMIT_SOURCE, oursJs);
   // Flag không bao giờ được theo commit — .gitignore cục bộ trong chính thư mục hooks.

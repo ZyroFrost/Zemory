@@ -686,11 +686,14 @@ test("pointers the move left behind follow it: a path written as text, an old sk
   const root = repo(t);
   applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
   put(root, "docs/plan/00_overview.md", "Purpose in `docs/agent/01_CONSTITUTION.md` §Purpose; dictionary in `docs/agent/03_STRUCTURE.md` §7.\n");
+  put(root, "tasks/x/spec.md", "| `../../docs/agent/03_STRUCTURE.md` §7 | dictionary |\n");
   put(root, "content/README.md", "Steps: [`.claude/skills/oldsk/`](../.claude/skills/oldsk/SKILL.md) · the backlog `docs/agent/04_TODO.md`.\n");
   const marker = join(root, "docs", ".harness.json");
   const m = JSON.parse(readFileSync(marker, "utf8"));
   writeFileSync(marker, JSON.stringify({ ...m, protected: ["docs/agent/01_CONSTITUTION.md", "reports/*.pbix"] }, null, 2));
-  assert.deepEqual(repointLinks(root, true).sort(), ["content/README.md", "docs/plan/00_overview.md"]);
+  assert.deepEqual(repointLinks(root, true).sort(), ["content/README.md", "docs/plan/00_overview.md", "tasks/x/spec.md"]);
+  assert.equal(readFileSync(join(root, "tasks", "x", "spec.md"), "utf8"), "| `../../docs/agent/02_STRUCTURE/INDEX.md` §7 | dictionary |\n",
+    "a relative prefix written before the path stays");
   assert.equal(readFileSync(join(root, "docs", "plan", "00_overview.md"), "utf8"),
     "Purpose in `docs/agent/01_LAW/_Cons/` §Purpose; dictionary in `docs/agent/02_STRUCTURE/INDEX.md` §7.\n");
   assert.equal(readFileSync(join(root, "content", "README.md"), "utf8"),
@@ -718,4 +721,30 @@ test("a skill the set gains later gets its trigger row in AGENTS.md: after the l
   applyKit(root, { apply: true, storeDir: st.s });
   assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), want, "a second pass adds nothing");
   assert.deepEqual(conform(root).items.find((i) => i.check === "skill-no-trigger")?.samples ?? [], [], "conform sees the row");
+});
+
+test("a hook command whose file is gone is red in conform; a rule that took the hook over drops the command and archives the copy", (t) => {
+  // 2026-10-18: a department's mail gate went silent — settings.json called a file the move had archived; nothing was red.
+  const st = store(t);
+  put(st.s, "01_LAW/_Rule/02-82_mail/RULE.md", "---\nid: 02-82\nname: mail\nversion: 1\nkind: action\n---\n# mail\n\n- never send mail on its own\n");
+  put(st.s, "01_LAW/_Rule/02-82_mail/gate.json", JSON.stringify({ hook: "hook.cjs", replaces_hooks: ["mail-gate.cjs"] }));
+  put(st.s, "01_LAW/_Rule/02-82_mail/hook.cjs", "module.exports = { check: () => null };\n");
+  const k = readKits(st.s).find((x) => x.no === "01");
+  assembleSet({ ...k, rules: [...k.rules, "02-82"] }, st.s);
+  st.commit("mail rule");
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const sp = join(root, ".claude", "settings.json");
+  put(root, ".claude/settings.json", JSON.stringify({ hooks: { PreToolUse: [
+    { matcher: "Bash", hooks: [{ type: "command", command: "node docs/hooks/mail-gate.cjs" }] },
+    { matcher: "Write", hooks: [{ type: "command", command: "node docs/hooks/gone.cjs" }] },
+  ] } }, null, 2));
+  put(root, "docs/hooks/mail-gate.cjs", "process.exit(0);\n");
+  const dead = () => conform(root).items.find((i) => i.check === "hook-command-dead")?.samples ?? [];
+  assert.deepEqual(dead(), ["PreToolUse: node docs/hooks/gone.cjs"], "a called file that is gone is red; one that is there is not");
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.deepEqual(r.hooksTakenOver, ["settings.json: node docs/hooks/mail-gate.cjs", "docs/hooks/mail-gate.cjs → docs/archive/hooks/"]);
+  const after = JSON.parse(readFileSync(sp, "utf8"));
+  assert.deepEqual(after.hooks.PreToolUse.map((g) => g.hooks[0].command), ["node docs/hooks/gone.cjs"], "only the taken-over command goes");
+  assert.ok(existsSync(join(root, "docs", "archive", "hooks", "mail-gate.cjs")) && !existsSync(join(root, "docs", "hooks")), "the copy is archived, the empty folder gone");
 });

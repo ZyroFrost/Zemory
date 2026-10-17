@@ -59,3 +59,4 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | kéo dữ liệu từ nguồn về | `.claude/skills/task-pull/SKILL.md` |
 | đẩy deliverable lên đích (BI · Drive · SharePoint) | `.claude/skills/task-upload/SKILL.md` |
 | đưa task lên VM · tự động hoá task · đặt lịch trên VM | `.claude/skills/task-vm-automation/SKILL.md` |
+| nắn repo lên bộ chuẩn · áp chuẩn · chuyển repo sang bộ · sync --standard | `.claude/skills/harness-reshape/SKILL.md` |
