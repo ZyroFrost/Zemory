@@ -281,25 +281,9 @@ export function handleHook(event: HookEventName, payload: any): string {
     // SessionStart — chỉ nói khi host báo lý do `compact`. Phiên mới bình thường thì IM:
     // recall là phán đoán của agent (điều 8), không đẩy memory vào mỗi lần mở phiên.
     if (event === "session-start") {
-      if (payload?.source !== "compact") {
-        // Folder harness (plan/28 §0e): the rule core is not read by the agent, it is handed over at every session start —
-        // the repo's own rules, never memory (HP article 8 forbids pushing recall, not restating rules).
-        let core = "";
-        try {
-          const agent = cwd ? harnessPathsAt(cwd).agent : "";
-          core = agent && isFolderHarness(agent) ? coreForCompaction(agent) : "";
-        } catch {
-          core = ""; // fail-open (HP article 9)
-        }
-        return core
-          ? JSON.stringify({
-              hookSpecificOutput: {
-                hookEventName: "SessionStart",
-                additionalContext: `[zemory] Lõi luật của repo (luật không có chốt máy — nguyên văn):\n${core}`,
-              },
-            })
-          : "";
-      }
+      // A new session says nothing: the laws no hook holds are read before the first action (read-first, folderCoreFiles —
+      // user 2026-10-18). Handing them over here as well put the same text in twice.
+      if (payload?.source !== "compact") return "";
       // Lưới thứ hai cho cùng việc: host nào KHÔNG bắn `PreCompact` thì đây là chỗ duy nhất
       // biết vừa có một lần nén ⇒ mở lại quyền cảnh báo tại đây luôn.
       clearWarned(String(payload?.session_id ?? payload?.transcript_path ?? ""));

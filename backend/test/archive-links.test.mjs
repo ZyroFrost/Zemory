@@ -16,24 +16,29 @@ import test from "node:test";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
-import { deepenRelativeLinks } from "../../dist/docs/archive.js";
+import { relinkFrom } from "../../dist/docs/relink.js";
 
 const REPO = new URL("../../", import.meta.url).pathname.replace(/^\//, "");
 
-test("exactly one level is added to relative links, leaving absolute, external and placeholder links alone", () => {
-  assert.equal(deepenRelativeLinks("[a](../../backend/src/ui.ts)"), "[a](../../../backend/src/ui.ts)");
-  assert.equal(deepenRelativeLinks("[a](03_STRUCTURE.md)"), "[a](../03_STRUCTURE.md)");
-  assert.equal(deepenRelativeLinks("[a](./x.md)"), "[a](../x.md)");
+test("moved text keeps every relative link on the same file; absolute, external and placeholder links are left alone", () => {
+  const A = "/r/docs/agent", D = "/r/docs/agent/archive", S = "/r/docs/archive";
+  assert.equal(relinkFrom("[a](../../backend/src/ui.ts)", A, D), "[a](../../../backend/src/ui.ts)");
+  assert.equal(relinkFrom("[a](03_STRUCTURE.md)", A, D), "[a](../03_STRUCTURE.md)");
+  assert.equal(relinkFrom("[a](./x.md#h)", A, D), "[a](../x.md#h)");
+  // the archive beside the harness folder (docs/archive, plan/28 §0q): same depth, a sibling
+  assert.equal(relinkFrom("[a](04_TODO.md)", A, S), "[a](../agent/04_TODO.md)");
+  assert.equal(relinkFrom("[a](../plan/x.md)", A, S), "[a](../plan/x.md)");
   // KHÔNG được đụng: URL ngoài, neo trong trang, đường tuyệt đối, và placeholder của bản mẫu
   // (`docs_template/` cố ý chứa `<tên>`/`{n}` — biến đổi chúng là làm hỏng bản mẫu).
   for (const keep of ["[a](https://x.dev/y)", "[a](#muc)", "[a](/abs/path)", "[a](<repo>/data)", "[a]({n}.md)"]) {
-    assert.equal(deepenRelativeLinks(keep), keep, `không được đổi: ${keep}`);
+    assert.equal(relinkFrom(keep, A, S), keep, `không được đổi: ${keep}`);
   }
 });
 
 test("the REAL archive files on disk: 0 broken internal links", () => {
   // Vế này canh dữ liệu, không canh hàm: hàm đúng mà file cũ vẫn hỏng thì người đọc vẫn lạc.
-  for (const rel of ["docs/agent/archive/06_CHANGES.md", "docs/agent/archive/05_TODO.md"]) {
+  for (const rel of ["docs/archive/05_CHANGES.md", "docs/archive/04_TODO.md", "docs/archive/06_CHANGES.md", "docs/archive/05_TODO.md",
+    "docs/agent/archive/06_CHANGES.md", "docs/agent/archive/05_TODO.md"]) {
     const file = resolve(REPO, rel);
     if (!existsSync(file)) continue;
     const src = readFileSync(file, "utf8");

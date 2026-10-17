@@ -17,6 +17,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, s
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
+import { archiveDirOf } from "../core/config.js";
+import { relinkFrom } from "./relink.js";
 import { CONS_REPO_FILE, HOST_KIND, LEGACY_LEDGER, LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
 import { viName } from "./vi-name-judge.js";
 
@@ -93,6 +95,35 @@ export function currentShelf(name: string): Shelf | null {
 }
 
 /**
+ * The archive leaves the harness folder for `docs/archive/` (plan/28 §0q, user 2026-10-18), for any harness — file or
+ * folder. Merged into what is there, never overwriting: a name taken on both sides stays where it was and is reported.
+ * File by file, so a markdown file one level shallower keeps its links pointing at the same files (relinkFrom).
+ * Returns what was done, or "" when there was no old archive.
+ */
+export function moveArchiveOut(agentDir: string): string {
+  const oldArchive = join(agentDir, "archive");
+  if (!existsSync(oldArchive)) return "";
+  const newArchive = join(dirname(agentDir), "archive");
+  const left: string[] = [];
+  const move = (from: string, to: string): void => {
+    if (statSync(from).isDirectory()) {
+      if (existsSync(to) && !statSync(to).isDirectory()) { left.push(relative(agentDir, from).replace(/\\/g, "/")); return; }
+      mkdirSync(to, { recursive: true });
+      for (const e of readdirSync(from)) move(join(from, e), join(to, e));
+      if (!readdirSync(from).length) rmSync(from, { recursive: true });
+      return;
+    }
+    if (existsSync(to)) { left.push(relative(agentDir, from).replace(/\\/g, "/")); return; }
+    if (/\.md$/i.test(from)) {
+      writeFileSync(to, relinkFrom(readFileSync(from, "utf8"), dirname(from), dirname(to), { from: oldArchive, to: newArchive }));
+      rmSync(from);
+    } else renameSync(from, to);
+  };
+  move(oldArchive, newArchive);
+  return left.length ? `archive → ../archive (left in place, name taken on both sides: ${left.join(" · ")})` : "archive → ../archive";
+}
+
+/**
  * Rename a harness's legacy shelf folders to the current names, once (`02_RULES` → `01_RULES` · `01_CONSTITUTION` →
  * `02_CONSTITUTION`). Done before assembly writes anything, so parts never end up split across two shelf folders.
  * Returns the renames made.
@@ -117,9 +148,20 @@ export function renameLegacyShelves(agentDir: string): string[] {
     renameSync(list, index);
     done.push(`${basename(list)} → ${SHELF.skills}/INDEX.md`);
   }
+  const arch = moveArchiveOut(agentDir);
+  if (arch) done.push(arch);
+  // The forwarder the move to the folder harness left at the old hook path (for sessions open during the move) has done
+  // its job by the next sync: gone, and the old hooks folder with it when nothing else is in it.
+  const oldHooks = join(dirname(agentDir), "hooks");
+  const fwd = join(oldHooks, "guard.cjs");
+  if (existsSync(fwd) && readFileSync(fwd, "utf8").startsWith("// Forwarder left by the move to the folder harness")) {
+    rmSync(fwd);
+    if (!readdirSync(oldHooks).length) rmSync(oldHooks, { recursive: true });
+    done.push("hooks/guard.cjs forwarder removed");
+  }
   // The ledgers take their current names (plan/28 §0q): 05_TODO.md → 04_TODO.md · 06_CHANGES.md → 05_CHANGES.md.
   // Their archives too, so a ledger and its archive always carry the same name.
-  for (const dir of [agentDir, join(agentDir, "archive")]) {
+  for (const dir of [agentDir, archiveDirOf(agentDir)]) {
     for (const [old, cur] of Object.entries(LEGACY_LEDGER)) {
       const from = join(dir, old), to = join(dir, cur);
       if (!existsSync(from) || existsSync(to)) continue;
@@ -1326,6 +1368,33 @@ export function constitutionFiles(agentDir: string): string[] {
   return out;
 }
 
+/**
+ * The laws no hook holds (plan/27 · plan/28 §0e, user 2026-10-18: "only the laws without a hook are forced"), as files:
+ * the purpose the repo wrote, every written frame (`Cons.md`) and every own article of its constitution that carries no
+ * full gate, and every judgment rule. The ONE list behind the read-first door and the text put back after a compaction —
+ * a law that gets a hook leaves it by itself.
+ */
+export function folderCoreFiles(agentDir: string): string[] {
+  // any hook takes a law out of the forced list: one that blocks (`hook` · `gate`, carrying the law in its message) or one
+  // that reminds by keyword (`prompt`, carrying the law too — promptGates)
+  const hooked = (dir: string): boolean => {
+    try {
+      const g = JSON.parse(readFileSync(join(dir, "gate.json"), "utf8")) as { hook?: unknown; gate?: unknown; prompt?: unknown };
+      return Boolean(g.hook || g.gate || g.prompt);
+    } catch {
+      return false;
+    }
+  };
+  // An older harness still has PURPOSE.md on the constitution shelf; the current one writes it in Cons_Gate_09_Purpose/Cons.md.
+  const purpose = join(shelfDir(agentDir, SHELF.constitution), "PURPOSE.md");
+  // a frame's gate checks that its Cons.md is written; what the repo wrote there is judgment, so it stays
+  const constitution = constitutionFiles(agentDir).filter((f) => basename(f) === CONS_REPO_FILE || !hooked(dirname(f)));
+  const rules = listParts(agentDir, SHELF.rules)
+    .filter((p) => !isRetired(p) && p.kind === "judgment" && !hooked(p.dir))
+    .map((p) => mainPath(p.dir, mainOf(p)));
+  return [...(existsSync(purpose) ? [purpose] : []), ...constitution, ...rules];
+}
+
 /** What a slot's `gate.json › conform` finds wrong in a repo: a required path that does not exist, a file that does not
  *  contain the text it must. Empty = the slot holds. An unreadable gate.json is reported, never skipped. */
 export function slotGateFailures(root: string, slotDir: string): string[] {
@@ -1408,9 +1477,19 @@ export function skillReadTriggers(skillsDir: string, agentDir?: string): Array<R
 
 /** Prompt reminders a repo carries: from its skills and from the rule folders of a folder harness (`gate.json › prompt`). */
 export function promptGates(skillsDir: string, agentDir: string): PromptGate[] {
-  const dirs = repoSkillDirs(skillsDir, agentDir).map((s) => s.gates);
-  for (const shelf of [SHELF.rules, SHELF.constitution] as const) for (const p of listParts(agentDir, shelf)) if (!isRetired(p)) dirs.push(p.dir);
-  return dirs.map((d) => gateOf(d)?.prompt).filter((g): g is PromptGate => Boolean(g && g.re && g.text && g.kind));
+  const ok = (g: PromptGate | undefined): g is PromptGate => Boolean(g && g.re && g.text && g.kind);
+  const out = repoSkillDirs(skillsDir, agentDir).map((s) => gateOf(s.gates)?.prompt).filter(ok);
+  // A law with a reminder is not in the forced read list (folderCoreFiles, user 2026-10-18), so the reminder carries the
+  // law word for word, as a block message does — the agent meets the whole law at the moment it applies.
+  for (const shelf of [SHELF.rules, SHELF.constitution] as const) {
+    for (const p of listParts(agentDir, shelf)) {
+      const g = isRetired(p) ? undefined : gateOf(p.dir)?.prompt;
+      if (!ok(g)) continue;
+      const body = bodyOf(readFileSync(mainPath(p.dir, mainOf(p)), "utf8")).trim();
+      out.push({ ...g, text: body ? `${g.text}\n\nThe rule (${p.folder}):\n${body}` : g.text });
+    }
+  }
+  return out;
 }
 
 /** True when a repo's harness is the folder layout (plan/28 §0c): `02_RULES` is a folder, not a file. */

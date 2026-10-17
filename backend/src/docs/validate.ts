@@ -6,7 +6,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { Context } from "../core/types.js";
-import { ledgerFile } from "../core/config.js";
+import { archiveDirOf, ledgerFile } from "../core/config.js";
 import { foreignLayout } from "./conform.js";
 import { isClosedItemLine } from "./archive.js";
 import { pathsCheck, pathsSummary, type PathsReport } from "./paths.js";
@@ -109,7 +109,7 @@ export function validate(ctx: Context, opts: { paths?: boolean } = {}): Validate
     // Entry keys must be unique across BOTH tiers: a supersede clause names a key, and with two
     // entries under one key it links to whichever the parser meets first. Nothing checked this —
     // _DB_DataWarehouse (2026-10-04) carried two `## [2026-10-01a]` and validate reported clean.
-    const archFile = ledgerFile(join(agentDir, "archive"), "changes");
+    const archFile = ledgerFile(archiveDirOf(agentDir), "changes");
     // Bare-date keys repeated (`[2026-07-16]`×12) are how entries were written before suffixes, not
     // an error: only a suffixed key (meant to be unique) or a key a supersede clause names is a warn.
     const tiers = [readFileSync(chFile, "utf8"), existsSync(archFile) ? readFileSync(archFile, "utf8") : ""];

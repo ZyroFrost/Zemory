@@ -4,7 +4,7 @@
 // với docs thì chưa: `reindex` đi tìm `docs/plan` nên repo đặt harness ở `harness/` nhận một
 // chỉ mục RỖNG mà không báo lỗi gì; `todo verify` đi tìm `docs/agent/05_TODO.md` nên báo
 // "0 mục" — một cổng KHÔNG BAO GIỜ ĐỎ ĐƯỢC, tệ hơn không có cổng; `archive` thì ghi archive
-// vào `docs/agent/archive/` tức ĐẺ THÊM một cây docs thứ hai bên cạnh cây thật.
+// vào `docs/archive/` tức ĐẺ THÊM một cây docs thứ hai bên cạnh cây thật.
 //
 // Kèm ca BOM: file do người dùng Windows tạo (`Set-Content -Encoding utf8`) mang U+FEFF ở đầu.
 // Lỗi này đã nổ ba lần trong một ngày và luôn nổ IM LẶNG, nên nó phải có test riêng.
@@ -45,7 +45,7 @@ test("archive files closed items into the HARNESS archive, without growing a sec
 
   assert.equal(r.moved, 1, "phải dời đúng mục đã đóng");
   assert.ok(
-    r.archivePath.replace(/\\/g, "/").includes("harness/agent/archive"),
+    r.archivePath.replace(/\\/g, "/").includes("harness/archive"),
     `archive phải nằm trong nhà harness, nhận được: ${r.archivePath}`,
   );
   assert.equal(
@@ -84,7 +84,7 @@ test("marker carrying a BOM: both commands still find the right home (no silent 
 
   const r = archiveTodo(loadContext(root), ":memory:");
   assert.ok(
-    r.archivePath.replace(/\\/g, "/").includes("harness/agent/archive"),
+    r.archivePath.replace(/\\/g, "/").includes("harness/archive"),
     `BOM làm archive ghi nhầm chỗ: ${r.archivePath}`,
   );
 });
@@ -119,7 +119,7 @@ test("UI: file tree + doc read of an ADAPT project must show harness/ (not empty
   assert.equal(readProjectDocForTest(root, "../../../etc/passwd").ok, false, "đường thoát ra ngoài phải bị chặn");
 });
 
-test("the old layout still works: a standard docs/ repo still archives into docs/agent/archive", (t) => {
+test("the standard layout: a docs/ repo archives into docs/archive, beside docs/agent (plan/28 §0q)", (t) => {
   const root = tempDir(t, "zemory-legacy-cmd-");
   mkdirSync(join(root, "docs", "agent"), { recursive: true });
   writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ docs: "docs/agent", adapters: {}, thresholds: {} }));
@@ -128,5 +128,5 @@ test("the old layout still works: a standard docs/ repo still archives into docs
   const r = archiveTodo(loadContext(root), ":memory:");
 
   assert.equal(r.moved, 1);
-  assert.ok(r.archivePath.replace(/\\/g, "/").includes("docs/agent/archive"), r.archivePath);
+  assert.ok(r.archivePath.replace(/\\/g, "/").includes("docs/archive/"), r.archivePath);
 });

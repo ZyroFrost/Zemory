@@ -1101,11 +1101,11 @@ TITLE_TERMS = ('Sell In', 'Sell Out')
 
 
 def check_field_params(report_dir, d_def, fail):
-    """param-groupby + param-value (user 14/10, Franchise Purchases view 'So luong': "Something's wrong with one or more
+    """param-groupby + param-value (user 14/10, Franchise Purchases quantity view: "Something's wrong with one or more
     fields ... (Parameter_PhanTichTheo) Phan Tich Theo", then an empty table). A field-parameter table (column 'Parameter
     Fields' with ParameterMetadata) needs relatedColumnDetails groupByColumn 'Parameter Fields' on its display column,
     and every value a slicer / bookmark selects on 'Parameter Fields' must be one of the NAMEOF fields of the table
-    (the Legacy value 'Measure'[So luong] survived the rename of the table to '#Measure' and selected nothing)."""
+    (the Legacy value 'Measure'[<quantity>] survived the rename of the table to '#Measure' and selected nothing)."""
     params = {}
     for t in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
         s = open(t, encoding='utf-8-sig').read()
@@ -2467,7 +2467,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
             fail.append("page '%s' %s: a hole no block covers, about x %d-%d y %d-%d - blocks of one row end on the same "
                         "bottom and fill the tab (skill pbi-mix 5l-bis rule 0)" % (pages[pg]['displayName'], sel_name(d),
                         min(xs) * 5, (max(xs) + 2) * 5, min(ys) * 5, (max(ys) + 2) * 5))
-    # narrow-table (user 2026-10-08, Promotion tab 'So luong': a ~300 px table alone in a 1260 px frame): a table narrower
+    # narrow-table (user 2026-10-08, Promotion quantity tab: a ~300 px table alone in a 1260 px frame): a table narrower
     # short of its frame by more than FILL_SLACK leaves the right side empty - widen its columns (mix_builder --fit-columns)
     for (pg, i), d in vis.items():
         if pg not in visible:

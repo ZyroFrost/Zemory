@@ -58,7 +58,7 @@ test("archive moves the OLDEST changelog entries to a real file (FILE WINS, not 
     dbPath,
   );
 
-  const archivePath = join(agentDir, "archive", "06_CHANGES.md");
+  const archivePath = join(agentDir, "..", "archive", "06_CHANGES.md");
   assert.ok(result.moved > 0, "moved some entries");
   assert.equal(existsSync(archivePath), true, "archive is a real FILE, not a DB flag");
   const main = readFileSync(mainPath, "utf8");

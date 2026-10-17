@@ -2,9 +2,9 @@
 id: Skill_Harness_PlanTrim
 aka: plan-trim
 name: harness-plan-trim
-version: 6
+version: 7
 description: Trim the specs in docs/plan when they grow past the cap, WITHOUT losing ideas — back up, draft outside the repo, have an independent reviewer restore every lost idea against the original and the code, then apply. Use when `zemory validate` warns that a spec or docs/plan is over the line cap, or when asked to shorten, trim or tidy the plans. Vietnamese triggers - "gọt plan", "dọn plan", "plan dài quá", "rút gọn plan", "plan vượt trần", "plan quá trần".
-from: _Store/03_SKILLS/Skill_Harness_PlanTrim @v6 #657b131af283
+from: _Store/03_SKILLS/Skill_Harness_PlanTrim @v7 #6e462ac63f25
 ---
 
 # plan-trim — gọt plan vượt trần mà không mất ý
@@ -30,7 +30,7 @@ một nhà, chỗ kia trỏ về) · số trung gian mà chính file đã ghi l�
 
 ## Quy trình
 
-**1. Lùi bản gốc TRƯỚC khi đụng gì.** Chép nguyên `docs/plan/*.md` vào `docs/agent/archive/plan-<YYYY-MM-DD>/`,
+**1. Lùi bản gốc TRƯỚC khi đụng gì.** Chép nguyên `docs/plan/*.md` vào `docs/archive/plan-<YYYY-MM-DD>/`,
 kiểm từng file khớp byte. Không có bản gốc thì không soát được mất ý.
 
 **2. Tìm số mục đang bị dẫn chiếu.** `grep -rn "plan/NN §" docs backend` (và thư mục mã của repo). Mọi tiêu đề

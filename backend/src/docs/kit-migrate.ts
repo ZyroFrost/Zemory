@@ -13,7 +13,7 @@
 //  · a shared skill the repo edited stays the repo's own; trigger rows of AGENTS.md for skills outside the kit are carried.
 // What is NOT touched: 05_TODO · 06_CHANGES · plan/ · the repo's own skills · anything outside the harness.
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { basename, join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { TEMPLATE_DIR } from "./adopt.js";
 import { generateGuards, hooksDirOf } from "./guard-gen.js";
@@ -169,7 +169,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   if (kit.status !== "built") return { error: `kit ${kit.name} is ${kit.status}` };
 
   const date = opts.date ?? new Date().toISOString().slice(0, 10);
-  const archive = join(agent, "archive", `file-harness-${date}`);
+  const archive = join(dirname(agent), "archive", `file-harness-${date}`); // docs/archive (plan/28 §0q)
   const rep: MigrateReport = {
     root, kit, archive: relative(root, archive).replace(/\\/g, "/"), localRules: [], ownRules: [], retiredRules: [], legacyRules: false, articles: [],
     articleGateRows: [], keptSkills: [], replacedSkills: [], carriedTriggers: 0, applied: opts.apply,
@@ -335,6 +335,8 @@ export function repointLinks(root: string, apply: boolean): string[] {
     [/(\]\([^)\s]*?)0[12]_RULES\//g, `$1${SHELF.rules}/`],
     [/(\]\([^)\s]*?)03_STRUCTURE\//g, `$1${SHELF.structure}/`],
     [/(\]\([^)\s]*?)04_SKILLS\//g, `$1${SHELF.skills}/`],
+    // the archive left the harness folder (plan/28 §0q): `…/agent/archive/x` → `…/archive/x`, same depth
+    [/(\]\([^)\s]*?)agent\/archive\//g, `$1archive/`],
   ];
   // Assembled parts (rules · slots · articles · skills) are fixed in the store and reach the repo by sync, never here.
   const SKIP = /[\\/](archive|node_modules|\.git|\.claude|attic|external|dist|0[12]_RULES|01_LAW|0[23]_STRUCTURE[\\/](03-|Slot_|_Slot|_Host|Struc_)|0[12]_CONSTITUTION[\\/](01-|Cons_))([\\/]|$)/;
@@ -362,6 +364,11 @@ export function repointLinks(root: string, apply: boolean): string[] {
         return art ? `[${text}](${pre}${SHELF.constitution}/${art}/${art}.md)` : whole;
       });
       if (purposeFrame) n = n.replace(/(\]\([^)\s]*?)01_LAW\/_Cons\/PURPOSE\.md/g, `$1${SHELF.constitution}/${purposeFrame}/${CONS_REPO_FILE}`);
+      // A link whose text is the old harness path itself ([`docs/agent/03_STRUCTURE.md`](...)) would keep showing a file
+      // that is gone — the agent reads the text and looks for it. Such a text follows the target; any other words stay.
+      n = n.replace(/\[`(docs\/agent\/[^`\]]*)`\]\(((?:\.\.?\/)*)(docs\/agent\/[^)\s#]+)(#[^)\s]*)?\)/g,
+        (whole, text: string, up: string, target: string, hash: string | undefined) =>
+          text === target || existsSync(join(root, text)) ? whole : `[\`${target}\`](${up}${target}${hash ?? ""})`);
       if (n !== t) {
         if (apply) writeFileSync(p, n);
         changed.push(relative(root, p).replace(/\\/g, "/"));

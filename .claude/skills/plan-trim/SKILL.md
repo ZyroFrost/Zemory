@@ -26,7 +26,7 @@ một nhà, chỗ kia trỏ về) · số trung gian mà chính file đã ghi l�
 
 ## Quy trình
 
-**1. Lùi bản gốc TRƯỚC khi đụng gì.** Chép nguyên `docs/plan/*.md` vào `docs/agent/archive/plan-<YYYY-MM-DD>/`,
+**1. Lùi bản gốc TRƯỚC khi đụng gì.** Chép nguyên `docs/plan/*.md` vào `docs/archive/plan-<YYYY-MM-DD>/`,
 kiểm từng file khớp byte. Không có bản gốc thì không soát được mất ý.
 
 **2. Tìm số mục đang bị dẫn chiếu.** `grep -rn "plan/NN §" docs backend` (và thư mục mã của repo). Mọi tiêu đề

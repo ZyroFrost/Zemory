@@ -21,9 +21,10 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
-import { consFindings, isFolderHarness, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots } from "./store.js";
+import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots } from "./store.js";
+import { CORE_REINJECT_CAP } from "./rule-core.js";
 import { viName } from "./vi-name-judge.js";
-import { SHELF } from "./harness-names.js";
+import { LEDGER, SHELF } from "./harness-names.js";
 
 export interface ConformItem {
   /** mã kiểm, ổn định để CI bám */
@@ -283,6 +284,29 @@ export function conform(root: string): ConformReport {
       .map((f) => relative(root, f).replace(/\\/g, "/")),
     "chạy `zemory sync` để gap-fill từ template (không ghi đè file đã có)",
   );
+
+  // ②ter — Folder harness shape (plan/28 §0q, user 2026-10-18): the harness folder holds exactly the shelves and the
+  // two ledgers; the archive lives beside it (`docs/archive/`, read by search only), and the old hook folder is gone —
+  // hooks live in the rule that owns them. Before this, a loose `archive/` and a leftover `docs/hooks/guard.cjs` passed
+  // conform on four reshaped repos and only the user's eye caught them.
+  if (folder) {
+    const allowed = new Set<string>([SHELF.rules.split("/")[0], SHELF.structure, SHELF.skills, LEDGER.todo, LEDGER.changes]);
+    const stray = readdirSync(hp.agent).filter((n) => !allowed.has(n)).map((n) => `${relative(root, join(hp.agent, n)).replace(/\\/g, "/")}`);
+    const oldHooks = join(dirname(hp.agent), "hooks");
+    if (existsSync(oldHooks)) stray.push(`${relative(root, oldHooks).replace(/\\/g, "/")}/ (hooks live in the rule that owns them)`);
+    push("harness-layout", "blocking", "Harness folder holds something outside its shelves and ledgers", stray,
+      "run `zemory sync --standard --apply` (moves the archive to docs/archive, removes the old hook forwarder); anything else: move it out by hand");
+  }
+
+  // ②quater — The laws no hook holds are read before the first action and put back after a compaction (folderCoreFiles).
+  // Past the put-back cap the text is cut: name the biggest files, so the repo knows what to give a hook or trim.
+  if (folder) {
+    const sized = folderCoreFiles(hp.agent).map((f) => ({ f, n: bodyOf(readFileSync(f, "utf8")).trim().length }));
+    const total = sized.reduce((s, x) => s + x.n, 0);
+    push("core-size", "advisory", `Laws without a hook come to ${total} characters, over the ${CORE_REINJECT_CAP} put back after a compaction`,
+      total > CORE_REINJECT_CAP ? sized.sort((a, b) => b.n - a.n).map((x) => `${relative(root, x.f).replace(/\\/g, "/")} (${x.n})`) : [],
+      "give a law a hook (it leaves the forced list) or trim it; an own article that repeats a common rule goes");
+  }
 
   // ②bis — Folder harness: every slot carries its own check in gate.json › conform (files that must exist, text a file
   // must contain). One finding per broken requirement, named after the slot.

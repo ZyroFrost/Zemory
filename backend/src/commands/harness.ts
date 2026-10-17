@@ -757,7 +757,7 @@ export function cmdArchive(args: string[] = []): void {
   if (t.moved === 0) {
     console.log(`  05_TODO.md = ${t.activeLines} lines, 0 closed item(s) to move (this file has no threshold).`);
   } else {
-    console.log(`  ${dryRun ? "would move" : "moved"} ${t.moved} closed item(s) to docs/agent/archive/05_TODO.md.`);
+    console.log(`  ${dryRun ? "would move" : "moved"} ${t.moved} closed item(s) to docs/archive/05_TODO.md.`);
     console.log(`  active 05_TODO.md ${dryRun ? "would be" : "now"} ${t.activeLines} lines (open work only).`);
   }
   // NEVER silent (2026-10-04): a 1,328-line ledger once answered "0 closed items" while holding 10+

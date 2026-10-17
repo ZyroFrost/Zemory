@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { citationKey, legacyKey, SHELF } from "./harness-names.js";
 import { hostSkillOf, leafOf, listAllParts, listParts, partFiles, SHELVES, STORE_DIR, type Part } from "./store.js";
 
-const HARNESS_ENTRIES = new Set(["01_LAW", "02_STRUCTURE", "03_SKILLS", "04_TODO.md", "05_CHANGES.md", "archive"]);
+const HARNESS_ENTRIES = new Set(["01_LAW", "02_STRUCTURE", "03_SKILLS", "04_TODO.md", "05_CHANGES.md"]); // the archive lives at docs/archive (plan/28 §0q)
 // A NAMED section of the old rules / constitution file. A numbered section (`§3`) is a section of the document it is
 // written in, not a pointer into the old file.
 const OLD_SECTION = /§\s?(Lõi|Cổng cho hiến pháp|Cổng của hiến pháp|Hành xử|Git|Guardrail|Phạm vi project|Tài liệu|Ngôn ngữ|Sổ việc|Chốt phiên)\b|\b0[12]_(RULES|CONSTITUTION)(\.md)?\s+§/;

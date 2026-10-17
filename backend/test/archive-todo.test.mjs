@@ -59,7 +59,7 @@ test("archive moves closed items out and leaves open work, headings and prose in
     assert.match(active, /## Nhóm A/, "headings stay even when a section loses items");
     assert.match(active, /ghi chú phiên/, "narrative prose is not an item and must stay");
 
-    const archived = s.read(join("archive", "05_TODO.md"));
+    const archived = s.read(join("..", "archive", "05_TODO.md"));
     assert.match(archived, /việc đã xong/);
     assert.match(archived, /chi tiết của việc đã xong/);
     assert.match(archived, /việc xong thứ hai/);
@@ -147,7 +147,7 @@ test("a later archive run APPENDS — it must not discard what was archived befo
   const s = scratch(BACKLOG);
   try {
     assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 2);
-    const first = s.read(join("archive", "05_TODO.md"));
+    const first = s.read(join("..", "archive", "05_TODO.md"));
     assert.match(first, /việc đã xong/);
 
     // New work happens, gets done, and the backlog is archived again.
@@ -157,7 +157,7 @@ test("a later archive run APPENDS — it must not discard what was archived befo
     );
     assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 1);
 
-    const second = s.read(join("archive", "05_TODO.md"));
+    const second = s.read(join("..", "archive", "05_TODO.md"));
     assert.match(second, /việc xong ở đợt sau/, "the new batch is archived");
     assert.match(second, /việc đã xong/, "the FIRST batch must survive the second run");
     assert.match(second, /việc xong thứ hai/, "…all of it, not just the newest entry");
@@ -171,7 +171,7 @@ test("archiving twice is safe: the second run finds nothing left to move", () =>
   try {
     assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 2);
     assert.equal(archiveTodo(s.ctx, s.dbPath).moved, 0, "no closed items remain, so nothing moves");
-    assert.match(s.read(join("archive", "05_TODO.md")), /việc xong thứ hai/, "archive is not clobbered");
+    assert.match(s.read(join("..", "archive", "05_TODO.md")), /việc xong thứ hai/, "archive is not clobbered");
   } finally {
     s.cleanup();
   }
@@ -270,7 +270,7 @@ test("`✅` is a CLOSED marker too — the repo's real writing convention (2026-
     assert.match(left, /CHƯA làm/, "open item stays");
     assert.match(left, /đang làm/, "in-progress item stays");
     assert.ok(!left.includes("xong kiểu tick"), "the ✅ item must leave");
-    const moved = s.read(join("archive", "05_TODO.md"));
+    const moved = s.read(join("..", "archive", "05_TODO.md"));
     assert.match(moved, /xong kiểu tick/, "archive must hold the ✅ item");
     assert.match(moved, /dòng chi tiết đi kèm/, "its continuation line comes along");
     assert.ok(!moved.includes("CHƯA làm"), "open work must never be swallowed into the archive");
@@ -332,7 +332,7 @@ lời giải thích của khối đã đóng
     assert.match(active, /2\. \[ \] bước còn mở/, "open numbered item stays");
     assert.match(active, /## Khối bàn giao/, "a heading that is not closed stays");
     assert.match(active, /## Nhóm còn sống[\s\S]*việc mở/, "the next section is untouched");
-    assert.match(s.read("archive/05_TODO.md"), /## \[x\] ~~nghi vấn đã loại~~[\s\S]*mục con của khối đã đóng/, "archive keeps the section verbatim");
+    assert.match(s.read("../archive/05_TODO.md"), /## \[x\] ~~nghi vấn đã loại~~[\s\S]*mục con của khối đã đóng/, "archive keeps the section verbatim");
   } finally {
     s.cleanup();
   }

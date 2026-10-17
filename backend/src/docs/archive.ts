@@ -1,6 +1,6 @@
 // Changelog retention — FILE-BASED (the .md is the source, FILE WINS). When
 // 06_CHANGES.md grows past the threshold, the OLDEST entries are moved verbatim
-// into docs/agent/archive/06_CHANGES.md (cold storage, OUTSIDE the per-session
+// into docs/archive/05_CHANGES.md (cold storage, OUTSIDE the per-session
 // read), keeping the newest in place. The search index is then reseeded from the
 // trimmed source. No DB→md render, no second source of truth.
 
@@ -13,6 +13,7 @@ import { currentMemoryDb } from "../memory/db.js";
 import type { Context } from "../core/types.js";
 import { importChangelog } from "./changelog.js";
 import { importDoc } from "./plan.js";
+import { relinkFrom } from "./relink.js";
 
 /**
  * `dryRun` = ĐẾM rồi trả về, KHÔNG ghi một byte nào (không đụng file sổ, không đụng archive,
@@ -92,27 +93,6 @@ function bakDir(ctx: Context): string {
   return join(ctx.projectRoot, "attic", "harness-bak");
 }
 
-/**
- * Archiving moves text one directory DEEPER (`docs/agent/` → `docs/agent/archive/`), so every
- * relative link inside it must gain one `../` or it stops resolving.
- *
- * Measured 2026-08-13: **26 of 26** internal links in `docs/agent/archive/06_CHANGES.md` were
- * broken — every single one. They were written as `../../backend/src/…` (correct from
- * `docs/agent/`) and moved verbatim, so they now point into `docs/backend/…`, which does not
- * exist. A changelog entry links to code precisely so a later reader can go check the claim;
- * a link that silently resolves to nothing turns that into a dead end, and nothing ever
- * complains — the file still renders, the link is still blue.
- *
- * Left alone: absolute paths, anchors, external URLs, and template placeholders (`<…>`/`{…}`).
- */
-export function deepenRelativeLinks(markdown: string): string {
-  return markdown.replace(/\]\(([^)\s]+)\)/g, (whole, target: string) => {
-    if (/^(https?:|mailto:|#|\/)/.test(target)) return whole;
-    if (target.includes("<") || target.includes("{")) return whole;
-    const deeper = target.startsWith("./") ? "../" + target.slice(2) : "../" + target;
-    return `](${deeper})`;
-  });
-}
 
 const TODO_INTRO =
   "<!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->\n# TODO — Archive\n\n";
@@ -256,7 +236,7 @@ export function planTodo(lines: string[]): TodoPlan {
 }
 
 /** Move every CLOSED item (`[x]`) — with its continuation lines — out of 05_TODO.md
- *  into docs/agent/archive/05_TODO.md, keeping open (`[ ]`) and in-progress (`[~]`)
+ *  into docs/archive/04_TODO.md, keeping open (`[ ]`) and in-progress (`[~]`)
  *  items plus all headings and narrative in place. Unconditional: no threshold.
  *
  *  Why unconditional: the backlog's own header has always read "xong → ghi sang
@@ -297,10 +277,9 @@ export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions =
   const drop = new Set<number>();
   for (const b of closed) for (let i = b.start; i < b.end; i++) drop.add(i);
   const keptText = lines.filter((_, i) => !drop.has(i)).join(eol).replace(/\s+$/, "") + eol;
-  const movedText =
-    deepenRelativeLinks(closed.map((b) => lines.slice(b.start, b.end).join(eol)).join(eol).replace(/\s+$/, "")) + "\n";
-
   const archivePath = archiveOf(harnessPaths(ctx).archive, mainPath, "todo");
+  const movedText =
+    relinkFrom(closed.map((b) => lines.slice(b.start, b.end).join(eol)).join(eol).replace(/\s+$/, ""), dirname(mainPath), dirname(archivePath)) + "\n";
   // XEM TRƯỚC: trả về SỐ mà không ghi gì. Đặt chốt ở đây (sau khi đã đếm, trước byte đầu tiên)
   // thay vì ở CLI — để mọi người gọi `archiveTodo` đều có đường xem trước, không riêng CLI.
   if (opts.dryRun) {
@@ -333,7 +312,7 @@ export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions =
 }
 
 /** Trim 06_CHANGES.md when it grows past the threshold: move the OLDEST entries
- *  to docs/agent/archive/06_CHANGES.md verbatim, keep the newest in place. */
+ *  to docs/archive/05_CHANGES.md (links relinked), keep the newest in place. */
 export function archiveChanges(
   ctx: Context,
   dbPath: string = currentMemoryDb(),
@@ -367,11 +346,11 @@ export function archiveChanges(
   }
   const splitLine = heads[k];
   const keptText = lines.slice(0, splitLine).join(eol).replace(/\s+$/, "") + eol;
-  const movedText = deepenRelativeLinks(lines.slice(splitLine).join(eol).replace(/\s+$/, "")) + "\n";
   const moved = heads.length - k;
 
   // Prepend the moved block (newest-of-moved on top) to the archive file.
   const archivePath = archiveOf(harnessPaths(ctx).archive, mainPath, "changes");
+  const movedText = relinkFrom(lines.slice(splitLine).join(eol).replace(/\s+$/, ""), dirname(mainPath), dirname(archivePath)) + "\n";
   // XEM TRƯỚC (xem `ArchiveOptions`): đếm xong thì dừng, không ghi byte nào.
   if (opts.dryRun) return { moved, activeLines: keptText.split(/\r?\n/).length, archivePath };
   mkdirSync(dirname(archivePath), { recursive: true });

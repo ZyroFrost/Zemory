@@ -67,7 +67,7 @@ Việt CÓ DẤU. Dòng đã có dấu ⇒ bỏ qua ngay, không xét tiếp.
 
 ## Archive — sửa được, nhưng chỉ được THÊM DẤU
 
-`docs/agent/archive/` **có bị quét**. `Docs_005_Agent` cấm sửa/xoá entry cũ, nhưng **bỏ dấu vào
+`docs/archive/` **có bị quét**. `Docs_005_Agent` cấm sửa/xoá entry cũ, nhưng **bỏ dấu vào
 lại không thêm cũng không bớt thông tin** — cùng một câu, chỉ là đọc được.
 Đổi *nội dung* một entry thì vẫn cấm. Một đợt đã phục hồi **39 dòng** (36 ở `05_CHANGES` · 3 ở
 `04_TODO`), số dòng không đổi, kèm dựng lại dấu phân cách đã hỏng vì mojibake cũ (`???`→`—` ·

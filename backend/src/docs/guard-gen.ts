@@ -23,7 +23,7 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { LEGACY_READ_FIRST_FILE, READ_FIRST_FILE, READ_FIRST_SOURCE } from "./read-first-src.js";
 import { SQL_GATE_FILE, SQL_GATE_SOURCE } from "./sql-gate-src.js";
 import { RULE_HOOKS, SECRET_VALUES } from "./rule-hooks-src.js";
-import { constitutionFiles, isFolderHarness, isRetired, listParts, shelfDir, skillReadTriggers } from "./store.js";
+import { folderCoreFiles, isFolderHarness, isRetired, listParts, shelfDir, skillReadTriggers } from "./store.js";
 import { SHELF } from "./harness-names.js";
 
 /**
@@ -193,8 +193,9 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     ...(existsSync(join(root, "docs_template", "_Store")) ? ["docs_template/_Store"] : []),
   ].filter((p) => p && !p.startsWith(".."));
   const readFirst = {
-    // + the repo's constitution (plan/28 §0q): every Cons.md it has written and its own articles, read in full.
-    required: [relp(hp.todo), ...(folder ? constitutionFiles(hp.agent).map(relp) : []), ...readFirstExtra],
+    // + the laws no hook holds (folderCoreFiles, user 2026-10-18): judgment rules, the written constitution, own articles
+    // without a full gate. A law with a hook is not forced: its block message carries the law.
+    required: [relp(hp.todo), ...(folder ? folderCoreFiles(hp.agent).map(relp) : []), ...readFirstExtra],
     sections: folder
       ? []
       : [

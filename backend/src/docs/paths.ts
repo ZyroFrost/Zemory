@@ -134,7 +134,7 @@ export function isVarJoined(line: string, cand: string): boolean {
 export function isDictionaryFile(relPath: string): boolean {
   const p = posix(relPath);
   return (
-    // AGENTS.md is the template's router text: it names slots that exist LATER (`docs/agent/archive/`,
+    // AGENTS.md is the template's router text: it names slots that exist LATER (`docs/archive/`,
     // `attic/dead-plans/`). Measured 2026-09-09 on Dept_IC — hand-count 0, machine said 2, both from here.
     /^AGENTS\.md$/.test(p) ||
     /(^|\/)docs\/agent\/0[1-4]_[^/]+\.md$/.test(p) ||
@@ -157,7 +157,7 @@ const under = (abs: string, root: string): boolean => {
 export function isHistoryFile(relPath: string): boolean {
   const p = posix(relPath);
   const name = p.split("/").pop() ?? "";
-  return /(^|\/)docs\/agent\/archive\//.test(p) || /(^|\/)attic\//.test(p) || /(^|\/)0[56]_CHANGES\.md$/.test(p) || /\d{4}-\d{2}-\d{2}/.test(name);
+  return /(^|\/)docs\/(agent\/)?archive\//.test(p) || /(^|\/)attic\//.test(p) || /(^|\/)0[56]_CHANGES\.md$/.test(p) || /\d{4}-\d{2}-\d{2}/.test(name);
 }
 /** By LINE: an ISO date or a supersede marker. History also lives inside live files (a comment in
  *  config.ts still names the 2026-07 location) — the file rule alone mis-files those as dead.
@@ -274,7 +274,7 @@ export function classify(
   // Found by the first real sweep (DuAnA 05_TODO, 2026-09-09) — `.HEAD` looked like an extension.
   if (/[^.\\/]\.\.[^.\\/]/.test(s)) return { kind: "unresolved", reason: "not-a-path" };
   // A regex, not a path: escaped dot before an extension, or an escaped alternation (DW 2026-10-07: `webhook_fabi\.py` in
-  // deploy scripts, `docs/agent/archive/\|attic/` in a grep pattern).
+  // deploy scripts, `docs/archive/\|attic/` in a grep pattern).
   if (/\\\|/.test(s) || /^[\w-]+\\{1,2}\.[A-Za-z0-9]{1,8}$/.test(s)) return { kind: "unresolved", reason: "regex" };
   // `%~dp0` = the folder of the .cmd file itself — resolve it and judge for REAL (DW `bin/*.cmd`, 2026-10-07).
   if (/^%~dp0/i.test(s)) s = join(dirname(file), s.slice(5));

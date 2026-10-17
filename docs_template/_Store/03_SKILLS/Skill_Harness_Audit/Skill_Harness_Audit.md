@@ -2,7 +2,7 @@
 id: Skill_Harness_Audit
 aka: audit
 name: harness-audit
-version: 12
+version: 13
 description: Run a full review of the project across every dimension, verifying each finding against real files before reporting it. Use only when explicitly asked for a thorough audit, or before a major milestone such as a release or a large batch of changes. This is not a quick check. Vietnamese triggers - "audit toàn diện", "soi hết", "kiểm tra toàn bộ", "rà lại hết", "review tổng thể".
 ---
 
@@ -256,7 +256,7 @@ hết là nhồi sổ, mà sổ thì nạp MỌI phiên.
 - **Soát sổ bằng ba nguồn**, áp mọi lúc, không chờ chốt phiên:
   1. nguồn / mã: mở đúng file · grep · đếm đúng dòng/cột · chạy lại truy vấn; không suy từ mô tả;
   2. lịch sử quyết định: có CLI ⇒ `zemory memory search --all`, lọc các lượt giao việc và phê duyệt; không có ⇒ đọc
-     `docs/agent/archive/`;
+     `docs/archive/`;
   3. chạy thật: gọi endpoint · lệnh · giao diện thật · đọc log tiến trình đang chạy · mở chính bản giao · làm mới dữ liệu
      rồi đối chiếu số.
   Ba nguồn khớp mới kết luận; không chạm được một nguồn ⇒ ghi "chưa xác minh được" kèm nguồn đã thử. Máy đo:
