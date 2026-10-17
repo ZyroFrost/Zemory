@@ -10,18 +10,25 @@ import { join } from "node:path";
 import { tempDir } from "./helpers.mjs";
 
 const cli = new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\//, "");
-function setup(t, title) {
+// `away`: the session stands in a folder outside the repo (its scratch folder) while the host names the repo as the project.
+function setup(t, title, { away = false } = {}) {
   const dir = tempDir(t, "zemory-remind-");
   const repo = join(dir, "Dept_FA");
   mkdirSync(repo, { recursive: true });
+  const scratch = join(dir, "scratchpad");
+  mkdirSync(scratch, { recursive: true });
   const transcript = join(dir, "s1.jsonl");
   const lines = [JSON.stringify({ type: "user", cwd: repo, timestamp: "2026-10-07T01:00:00Z", message: { role: "user", content: "x" } })];
   if (title) lines.push(JSON.stringify({ type: "custom-title", customTitle: title, sessionId: "s1" }));
   writeFileSync(transcript, lines.join("\n") + "\n");
-  const env = { ...process.env, GLOBAL_MEMORY_DB: join(dir, "store", "gm.db"), ZEMORY_PEER_TITLE_CACHE: join(dir, "cache.json") };
+  // The gate itself runs inside a Claude session: its own CLAUDE_PROJECT_DIR must not leak into the case.
+  const base = { ...process.env };
+  delete base.CLAUDE_PROJECT_DIR;
+  const env = { ...base, GLOBAL_MEMORY_DB: join(dir, "store", "gm.db"), ZEMORY_PEER_TITLE_CACHE: join(dir, "cache.json"),
+    ...(away ? { CLAUDE_PROJECT_DIR: repo } : {}) };
   const prompt = (text) =>
     spawnSync(process.execPath, [cli, "hook", "prompt"], {
-      input: JSON.stringify({ session_id: "s1", transcript_path: transcript, cwd: repo, prompt: text }),
+      input: JSON.stringify({ session_id: "s1", transcript_path: transcript, cwd: away ? scratch : repo, prompt: text }),
       encoding: "utf8",
       env,
       timeout: 60_000,
@@ -38,6 +45,13 @@ test("a titled session whose title breaks the rule is reminded ONCE", (t) => {
 test("NEGATIVE: an untitled session and a standard title get nothing", (t) => {
   assert.doesNotMatch(setup(t, null).prompt("hello"), /session-title/);
   assert.doesNotMatch(setup(t, "Dept_FA_Claude_7-10-2026").prompt("hello"), /session-title/);
+});
+
+test("a session standing in its scratch folder is judged by its PROJECT's name, not the folder's", (t) => {
+  assert.doesNotMatch(setup(t, "Dept_FA_Claude_7-10-2026", { away: true }).prompt("hello"), /session-title/,
+    "standard title of the project ⇒ silent although cwd is `scratchpad`");
+  assert.match(setup(t, "Dept_FA-1-9-2026", { away: true }).prompt("hello"), /retitle it Dept_FA_/,
+    "a broken title is still caught, and the advice names the project");
 });
 
 test("keyword reminders: closing the session and auditing the ledger, each once", (t) => {

@@ -32,7 +32,7 @@ import { coreForCompaction } from "../docs/rule-core.js";
 import { isFolderHarness, isRetired, listParts, promptGates } from "../docs/store.js";
 import { stopDecision } from "../docs/turn-evidence.js";
 import { promptMatches, SHELF } from "../docs/harness-names.js";
-import { harnessPathsAt, readMarker } from "../core/config.js";
+import { findProjectRoot, harnessPathsAt, readMarker } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
@@ -119,10 +119,16 @@ export function ruleReminders(payload: any): string {
   const transcript = String(payload?.transcript_path ?? payload?.transcriptPath ?? "");
   if (transcript && cwd) {
     const title = titleOfTranscript(transcript);
-    const repo = cwd.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+    // The session's project, not the folder it happens to stand in: a session that cd'd into its scratch folder was
+    // told its title broke the rule because the "repo" was `scratchpad` (2026-10-17). The host names the project in
+    // CLAUDE_PROJECT_DIR; without it, the project root above cwd.
+    const projectDir = process.env.CLAUDE_PROJECT_DIR || findProjectRoot(cwd) || cwd;
+    const repo = projectDir.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
     const problem = title ? titleProblem(title, repo, null) : null;
     if (problem && once("title")) {
-      out.push(`[zemory] ⚠ This session's title "${title}" breaks the session-title rule (${problem}) — ask the user ONCE to retitle it ${repo}_<Model>_<d-m-yyyy> (02_RULES §Phạm vi project).`);
+      let where = "02_RULES §Phạm vi project";
+      try { if (isFolderHarness(harnessPathsAt(projectDir).agent)) where = `${SHELF.structure}/_Host/IDE`; } catch { /* keep the file-harness pointer */ }
+      out.push(`[zemory] ⚠ This session's title "${title}" breaks the session-title rule (${problem}) — ask the user ONCE to retitle it ${repo}_<Model>_<d-m-yyyy> (${where}).`);
     }
   }
   // A host event delivered as a "prompt" (a background task finishing, a system notice) is not the user speaking: its

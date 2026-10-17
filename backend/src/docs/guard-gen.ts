@@ -360,7 +360,14 @@ function consumeFlag(name, subject) {
   const mark = crypto.createHash("sha1").update(String(subject || name)).digest("hex").slice(0, 16);
   let prev = "";
   try { prev = fs.readFileSync(p, "utf8"); } catch {}
-  const m = /ZEMORY-USED ([0-9a-f]+) ([0-9]+)/.exec(prev);
+  let m = /ZEMORY-USED ([0-9a-f]+) ([0-9]+)/.exec(prev);
+  // A stamped flag created again (\`touch\` keeps the old text, only the mtime moves) is a NEW approval, not a leftover:
+  // revoking it sent people round in circles - they had made the flag, the guard still said none (2026-10-17).
+  if (m) {
+    let mtime = 0;
+    try { mtime = fs.statSync(p).mtimeMs; } catch {}
+    if (mtime > Number(m[2]) + 2000) m = null;
+  }
   if (m) {
     if (m[1] === mark && Date.now() - Number(m[2]) < FLAG_RETRY_MS) return true; // retry of the same job
     try { fs.unlinkSync(p); } catch {} // a different job or past the window => revoked, ask again
