@@ -146,9 +146,37 @@ test("02-47: a writing zemory command aimed at another repo is blocked (cd · --
   }
   const fromOutside = spawnSync(process.execPath, [join(s.hooksDir, "guard.cjs")], { input: JSON.stringify({ tool_name: "Bash", cwd: other, tool_input: { command: "zemory init" } }), encoding: "utf8" });
   assert.equal(fromOutside.status, 2, "the session cwd outside the repo counts too");
-  for (const command of [`cd "${other}" && zemory gates`, `cd "${other}" && zemory sync --check`, "zemory reindex", `zemory memory search x`]) {
+  for (const command of [`cd "${other}" && zemory gates`, `cd "${other}" && zemory sync --check`, "zemory reindex", `zemory memory search x`,
+    // a search tool's pattern names commands, it runs none (2026-10-17)
+    `cd "${other}" && grep -ciE "memory scan|zemory archive" SKILL.md`]) {
     assert.doesNotMatch(s.fire("Bash", { command }).say, /02-47/, `blocked wrongly: ${command}`);
   }
+});
+
+test("02-21: a test file with a credential-shaped value is reminded once per session, never blocked for good", (t) => {
+  const s = repo(t);
+  // an existing test file: a NEW one meets the 02-13 door first
+  mkdirSync(join(s.root, "tests"), { recursive: true });
+  writeFileSync(join(s.root, "tests", "test_login.py"), "LOGIN = {}\n");
+  const call = E(s.root, "tests/test_login.py", "LOGIN = {}", "LOGIN = {\"password\": \"Real-Looking-9\"}");
+  const first = fireIn(s, "S1", ...call);
+  assert.equal(first.blocked, true);
+  assert.match(first.say, /02-21[\s\S]*once per session/);
+  assert.doesNotMatch(first.say, /Real-Looking-9/, "the value is never printed");
+  assert.equal(fireIn(s, "S1", ...call).blocked, false, "the retry passes");
+  const code = fireIn(s, "S1", ...W(s.root, "config/settings.py", "DB_PASSWORD = \"Real-Looking-9\"\n"));
+  assert.equal(code.blocked, true, "outside tests it blocks");
+  assert.equal(fireIn(s, "S1", ...W(s.root, "config/settings.py", "DB_PASSWORD = \"Real-Looking-9\"\n")).blocked, true, "and keeps blocking: no flag, no retry");
+});
+
+test("02-4: a '>' inside a quoted string is not a redirect; a real redirect into the full scratch folder still blocks", (t) => {
+  const s = repo(t);
+  const scratch = join(s.root, "..", "claude", "proj", "sess", "scratchpad");
+  mkdirSync(scratch, { recursive: true });
+  for (let i = 0; i < 5; i++) writeFileSync(join(scratch, `f${i}.txt`), "x");
+  const fireCwd = (command) => spawnSync(process.execPath, [join(s.hooksDir, "guard.cjs")], { input: JSON.stringify({ tool_name: "Bash", cwd: scratch, tool_input: { command } }), encoding: "utf8" });
+  assert.notEqual(fireCwd(`node -e "const f = (a) => a + 1; console.log(f(1))"`).status, 2, "an arrow function in a string is not a file");
+  assert.equal(fireCwd("echo x > new.txt").status, 2, "a real redirect creating a 6th file blocks");
 });
 
 test("02-5: a scratch file in staging stops the commit; a normal file passes", (t) => {

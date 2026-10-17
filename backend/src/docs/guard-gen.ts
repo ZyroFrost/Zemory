@@ -22,7 +22,7 @@ import { basename, join, relative, resolve } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { LEGACY_READ_FIRST_FILE, READ_FIRST_FILE, READ_FIRST_SOURCE } from "./read-first-src.js";
 import { SQL_GATE_FILE, SQL_GATE_SOURCE } from "./sql-gate-src.js";
-import { RULE_HOOKS } from "./rule-hooks-src.js";
+import { RULE_HOOKS, SECRET_VALUES } from "./rule-hooks-src.js";
 import { constitutionFiles, isFolderHarness, isRetired, listParts, shelfDir, skillReadTriggers } from "./store.js";
 import { SHELF } from "./harness-names.js";
 
@@ -242,6 +242,8 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     secret_names: [...new Set([...SECRET_DEFAULTS, ...secretExtra])],
     secret_allow: [...new Set([...SECRET_ALLOW_DEFAULTS, ...secretAllowExtra])],
     secret_reason: "a secret must never enter a commit — there is NO flag to get past this (price already paid: a secret reached GitHub 2026-08-04)",
+    // literal secret VALUES (not only secret file names) — one source for the 02-21 write hook and the pre-commit latch
+    secret_values: SECRET_VALUES,
     // `*.key` CÓ MẶT ở đây dù bản mẫu gốc không có: nhất quán với secret_names — đã cấm
     // COMMIT thì cũng cấm ĐỌC vào transcript (phiên agent bị ingest vào DB rồi theo bundle
     // đi xa; chìa lọt vào transcript là kịch bản plan/16 §4 cấm). Đo thật trên zemory:
@@ -1505,6 +1507,38 @@ if (bad.length) {
   process.stderr.write("BLOCKED (pre-commit): a file matching a secret pattern is in staging - " + POLICY.secret_reason + "\\n");
   for (const f of bad) process.stderr.write("  - " + f + "\\n");
   process.exit(1);
+}
+// 02-21 (plan/28 §0q): a secret VALUE in a staged change - a literal password, a connection string with its password, a
+// private key, a cloud key - blocks the commit, whoever makes it. Test files are not scanned here: fake logins live there
+// (the write hook reminds once). The patterns come from policy.json › secret_values, the same ones the write hook uses.
+const SV = POLICY.secret_values;
+if (SV && Array.isArray(SV.patterns)) {
+  const env = new RegExp(SV.env, "i"), ph = new RegExp(SV.placeholder, "i"), nm = new RegExp(SV.name || "(?!)");
+  const TEST = /(^|\\/)(test|tests|__tests__)\\/|\\.test\\.[cm]?[jt]sx?$|_test\\.(py|go)$|(^|\\/)test_[^\\/]+\\.py$/i;
+  const CODE = /\\.(py|js|jsx|ts|tsx|mjs|cjs|json|ya?ml|toml|ini|cfg|conf|ps1|sh|bat|cmd|sql|xml|config|cs|java|go|php|rb)$/i;
+  const diff = cp.execSync("git diff --cached -U0 --diff-filter=ACMR", { encoding: "utf8", windowsHide: true, maxBuffer: 256 * 1024 * 1024 });
+  const hits = [];
+  let file = "";
+  for (const l of diff.split(/\\r?\\n/)) {
+    const m = /^\\+\\+\\+ b\\/(.+)$/.exec(l);
+    if (m) { file = m[1]; continue; }
+    if (!l.startsWith("+") || l.startsWith("+++") || !file || !CODE.test(file) || TEST.test(file)) continue;
+    if (/(^|\\/)\\.env(\\.[^\\/]*)?$|(^|\\/)data\\/secrets\\/|(^|\\/)gate\\.json$/i.test(file) || env.test(l)) continue;
+    if (SV.skipPath && new RegExp(SV.skipPath, "i").test(file)) continue;
+    for (const p of SV.patterns) {
+      const v = new RegExp(p.re, p.flags).exec(l);
+      if (!v) continue;
+      const val = v.length > 1 ? v[v.length - 1] || "" : "";
+      if (val && (ph.test(val) || nm.test(val))) continue;
+      hits.push(file + " (" + p.kind + ")");
+      break;
+    }
+  }
+  if (hits.length) {
+    process.stderr.write("BLOCKED (pre-commit): rule 02-21 - a secret value in staging; put it in .env or data/secrets/ and name the environment variable in the file:\\n  " +
+      [...new Set(hits)].join("\\n  ") + "\\n");
+    process.exit(1);
+  }
 }
 // HP 2 / 7 (plan/27 §0b, 2026-10-14): runtime data, the memory store and model weights never enter git, even under a
 // name that is not a secret. Only files ADDED or CHANGED count - removing such a file from git must stay possible.

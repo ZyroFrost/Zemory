@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { listParts, SHELVES, slotGateFailures, STORE_DIR, type Part } from "./store.js";
 import { promptMatches } from "./harness-names.js";
+import { READ_FIRST_SOURCE } from "./read-first-src.js";
 
 interface Example {
   note?: string;
@@ -32,15 +33,34 @@ interface Gate {
   pass?: Example[];
 }
 
+// The read-first latch's own trigger test, loaded from the generated source: a second copy of that logic here drifted the
+// day the latch learned that a file merely named in a command is not run (2026-10-17). The example's script body is written
+// where the command runs it, in a temp folder, so the latch reads it exactly as it would in a repo.
+type TriggerHit = (tr: unknown, root: string, targets: string[], cmd: string) => boolean;
+let latchTriggerHit: TriggerHit | null = null;
+function readTriggerFires(t: { when: string; prefix?: string; re?: string }, ex: Example): boolean {
+  if (!latchTriggerHit) {
+    const mod = { exports: {} as { triggerHit?: TriggerHit } };
+    new Function("module", "exports", "require", "__dirname", READ_FIRST_SOURCE)(mod, mod.exports, createRequire(import.meta.url), tmpdir());
+    latchTriggerHit = mod.exports.triggerHit ?? (() => false);
+  }
+  const root = mkdtempSync(join(tmpdir(), "zemory-door-"));
+  try {
+    const cmd = ex.command ?? "";
+    if (ex.script) {
+      const run = /\s([\w./\\-]+\.(?:py|ps1|js|mjs|cjs|cmd|bat|sh))\b/i.exec(" " + cmd);
+      if (run) { const p = join(root, run[1]); mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, ex.script); }
+    }
+    return latchTriggerHit(t, root, ex.path ? [ex.path] : [], cmd);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
 /** Does a prompt / read gate fire on this example? Same matching as the reminder hook and the read-first latch. */
 function fires(gate: Gate, ex: Example): boolean {
   if (gate.prompt) return promptMatches(gate.prompt.re, ex.prompt ?? "");
-  return (gate.read ?? []).some((t) => {
-    if (t.when === "path_prefix") return (ex.path ?? "").replace(/\\/g, "/").startsWith(`${t.prefix}/`);
-    if (t.when === "cmd_re") return new RegExp(t.re ?? "$^", "i").test(ex.command ?? "");
-    if (t.when === "script_re") return new RegExp(t.re ?? "$^", "i").test(ex.script ?? "");
-    return false;
-  });
+  return (gate.read ?? []).some((t) => readTriggerFires(t, ex));
 }
 
 const requireHere = createRequire(import.meta.url);

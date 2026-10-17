@@ -101,22 +101,29 @@ function extraFor(rf, root, targets, cmd) {
     // A skill door names every copy of the same skill (plan/28 §0o): the host build, the source, the build in the source.
     const copies = [tr.read].concat(tr.alt || []).filter((rel) => rel && fs.existsSync(path.join(root, rel)));
     if (!copies.length) continue;
-    let hit = false;
-    if (tr.when === "new_dir") {
-      hit = targets.some((t) => !fs.existsSync(path.dirname(path.join(root, t))));
-      if (!hit && cmd) hit = /(^|[\s;&|(])(mkdir|md|new-item\b[^;&|]*-itemtype\s+["']?directory)/i.test(cmd);
-    } else if (tr.when === "path_prefix") {
-      hit = targets.some((t) => norm(t).startsWith(norm(tr.prefix) + "/"));
-    } else if (tr.when === "cmd_re" && cmd) {
-      try { hit = new RegExp(tr.re, "i").test(cmd); } catch {}
-    } else if (tr.when === "script_re" && cmd) {
-      // By CONTENT, not by name (Dept_FA 2026-10-08: "03_send.py" sends real mail): every script the command names is read,
-      // plus ONE hop into the scripts it names in turn (a launcher "run_weekly.py" / "bin\x.cmd" calling the sender).
-      try { hit = scriptsOf(root, scriptsRun(cmd).join(" "), 1).some((txt) => new RegExp(tr.re, "i").test(txt)); } catch {}
-    }
-    if (hit) out.push(copies.length > 1 || tr.skill ? { copies, skill: tr.skill || null } : copies[0]);
+    if (triggerHit(tr, root, targets, cmd)) out.push(copies.length > 1 || tr.skill ? { copies, skill: tr.skill || null } : copies[0]);
   }
   return out;
+}
+
+// Does one trigger fire on this action? Exported so the store's gate examples run THIS code, not a copy of it.
+function triggerHit(tr, root, targets, cmd) {
+  if (tr.when === "new_dir") {
+    if (targets.some((t) => !fs.existsSync(path.dirname(path.join(root, t))))) return true;
+    return Boolean(cmd) && /(^|[\s;&|(])(mkdir|md|new-item\b[^;&|]*-itemtype\s+["']?directory)/i.test(cmd);
+  }
+  if (tr.when === "path_prefix") return targets.some((t) => norm(t).startsWith(norm(tr.prefix) + "/"));
+  if (tr.when === "cmd_re" && cmd) {
+    // the scripts the command RUNS, not every name in it: reading a test file named *_sent_mail.py inside "node -e"
+    // demanded the mail skill (2026-10-17)
+    try { const re = new RegExp(tr.re, "i"); return scriptsRun(cmd).some((s) => re.test(s)); } catch { return false; }
+  }
+  if (tr.when === "script_re" && cmd) {
+    // By CONTENT, not by name (Dept_FA 2026-10-08: "03_send.py" sends real mail): every script the command names is read,
+    // plus ONE hop into the scripts it names in turn (a launcher "run_weekly.py" / "bin\x.cmd" calling the sender).
+    try { return scriptsOf(root, scriptsRun(cmd).join(" "), 1).some((txt) => new RegExp(tr.re, "i").test(txt)); } catch { return false; }
+  }
+  return false;
 }
 
 // Skills the host LOADED in this session (the agent invoked the Skill tool with that name): its text is in the
@@ -370,4 +377,4 @@ function readFirst(payload, root, policy) {
     " in this session need no reading again. grep / sed / head / Get-Content do not count. There is no flag for this.";
 }
 
-module.exports = { readFirst, shellActs, coverage, ledger, sectionLines };
+module.exports = { readFirst, shellActs, coverage, ledger, sectionLines, triggerHit };

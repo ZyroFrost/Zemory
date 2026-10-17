@@ -164,6 +164,29 @@ test("precommit-guard: a secret in staging exits 1 naming it; clean staging exit
   assert.match(out.stderr, /\.env/, "phải nêu tên file phạm luật");
 });
 
+test("precommit-guard: a secret VALUE in a staged change blocks (02-21); env lookups, placeholders and test files pass", (t) => {
+  // 2026-10-17: the latch knew secret FILE NAMES only — a password typed into a tracked config went to git untouched.
+  const root = repo(t);
+  const r = generateGuards(root);
+  const git = (...a) => spawnSync("git", a, { cwd: root, encoding: "utf8" });
+  const commitCheck = () => spawnSync(process.execPath, [join(r.hooksDir, "precommit-guard.cjs")], { cwd: root, encoding: "utf8" });
+  git("init", "-q");
+  mkdirSync(join(root, "config"), { recursive: true });
+  mkdirSync(join(root, "tests"), { recursive: true });
+  writeFileSync(join(root, "config", "settings.py"), "import os\nDB_PASSWORD = os.environ[\"DB_PASSWORD\"]\n");
+  writeFileSync(join(root, "config", "sample.yaml"), "password: \"<password>\"\n");
+  writeFileSync(join(root, "tests", "test_login.py"), "LOGIN = {\"password\": \"Fake-Pass-9\"}\n");
+  git("add", "config", "tests");
+  let out = commitCheck();
+  assert.equal(out.status, 0, "env lookup · placeholder · test fixture must pass: " + out.stderr);
+  writeFileSync(join(root, "config", "db.json"), "{ \"conn\": \"Server=s1;Database=d;Password=Kx9vR2mq;\" }\n");
+  git("add", "config/db.json");
+  out = commitCheck();
+  assert.equal(out.status, 1, "a connection string with its password must block");
+  assert.match(out.stderr, /config\/db\.json \(connection string\)/);
+  assert.doesNotMatch(out.stderr, /Kx9vR2mq/, "the value itself is never printed");
+});
+
 test("regeneration: our own files are refreshed when they drift, files without our mark are left alone (N1)", (t) => {
   const root = repo(t);
   const r1 = generateGuards(root);
@@ -171,7 +194,9 @@ test("regeneration: our own files are refreshed when they drift, files without o
   // 3.8.0: + 02-59_read-first.cjs (read-before-write latch, called by guard.cjs).
   // 2026-10-14: + the nine rule hooks of plan/27 §3 (02-24 · 02-26 · 02-27 · 02-30 · 02-38, then the doors 02-1 · 02-2 ·
   // 02-13 and 02-47), each named after its rule.
-  assert.equal(r1.added.length, 17, r1.added.join(", ")); // + 02-29_code-english.cjs · 02-4_scratch-cap.cjs (2026-10-16)
+  // + 02-29_code-english.cjs · 02-4_scratch-cap.cjs (2026-10-16) · 02-21_secret-value.cjs (2026-10-17)
+  assert.equal(r1.added.length, 18, r1.added.join(", "));
+  assert.ok(r1.added.includes("02-21_secret-value.cjs"), "the secret-value hook is generated");
   assert.ok(r1.added.includes(".claude/settings.json (guard wired)"));
   assert.ok(r1.added.includes("02-59_read-first.cjs"));
   for (const f of ["02-24_eol-keep.cjs", "02-26_vi-diacritics.cjs", "02-27_spec-voice.cjs", "02-30_ascii-names.cjs", "02-38_todo-door.cjs",

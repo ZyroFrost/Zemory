@@ -2,9 +2,9 @@
 id: Rule_21
 aka: 02-21
 name: what-enters-git
-version: 7
+version: 8
 kind: action
-from: _Store/01_LAW/_Rule/Rule_Gate_21_WhatEntersGit @v7 #e77b5f85d9aa
+from: _Store/01_LAW/_Rule/Rule_Gate_21_WhatEntersGit @v8 #a448b04ae83b
 ---
 # Rule_Gate_21_WhatEntersGit Thứ không được vào git
 
@@ -15,7 +15,7 @@ from: _Store/01_LAW/_Rule/Rule_Gate_21_WhatEntersGit @v7 #e77b5f85d9aa
 - Dữ liệu thật (nguồn · extract · dữ liệu khách) không lên git. Repo chỉ giữ mẫu nhỏ, giả, đủ để mở sản phẩm. Chỗ đặt: slot dữ liệu và slot mẫu của `02_STRUCTURE`.
 - Nhị phân nặng (`.pbix` · `.twb` · `.fig` · `.psd` · model) không commit thẳng; đi theo khai LFS trong `.gitattributes`.
 - Lối đúng: bỏ file khỏi staging · giá trị thật chuyển sang `.env` hoặc slot bí mật · file tracked chỉ ghi tên biến môi trường.
-- Phép kiểm: pre-commit chặn file mang tên bí mật (`secretNames`) lọt vào staging, kể cả commit do người làm; nhóm bí mật không có cờ vượt.
+- Phép kiểm: pre-commit chặn file mang tên bí mật (`secretNames`) lọt vào staging, kể cả commit do người làm. Hook chặn lần ghi đưa GIÁ TRỊ bí mật vào file mã hoặc cấu hình mà git theo dõi (mật khẩu dạng chữ · chuỗi kết nối kèm mật khẩu · khoá riêng · khoá truy cập đám mây); pre-commit soi cùng các mẫu đó trong phần diff đã stage. Cho qua: giá trị đọc từ biến môi trường · chỗ điền mẫu (`<password>` · `changeme`) · `.env` · slot bí mật · văn bản `.md`. File test: chỉ nhắc một lần mỗi phiên (mật khẩu giả là bình thường). Nhóm bí mật không có cờ vượt.
 
 ## Ví dụ
 

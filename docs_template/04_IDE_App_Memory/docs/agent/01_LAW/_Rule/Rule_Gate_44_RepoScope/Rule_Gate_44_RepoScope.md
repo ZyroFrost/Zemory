@@ -2,9 +2,9 @@
 id: Rule_44
 aka: 02-44
 name: repo-scope
-version: 4
+version: 5
 kind: action
-from: _Store/01_LAW/_Rule/Rule_Gate_44_RepoScope @v4 #4b37293acdba
+from: _Store/01_LAW/_Rule/Rule_Gate_44_RepoScope @v5 #0f6f986fe907
 ---
 # Rule_Gate_44_RepoScope Chỉ ghi trong dự án đang mở
 
