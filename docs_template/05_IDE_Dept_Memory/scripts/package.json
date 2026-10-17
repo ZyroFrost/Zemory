@@ -1,0 +1,8 @@
+{
+  "name": "dept-ops-scripts",
+  "private": true,
+  "description": "Node helpers for scripts/pbi_diagram.py (model diagram order). Install: cd scripts && npm install",
+  "dependencies": {
+    "elkjs": "0.9.3"
+  }
+}

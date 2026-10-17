@@ -2,9 +2,9 @@
 id: Rule_62
 aka: 02-62
 name: design-change-approval
-version: 9
+version: 10
 kind: judgment
-from: _Store/01_LAW/_Rule/Rule_Keys_62_DesignChangeApproval @v9 #69825a9090ef
+from: _Store/01_LAW/_Rule/Rule_Keys_62_DesignChangeApproval @v10 #21f8616446e0
 ---
 # Rule_Keys_62_DesignChangeApproval Đổi hình hài thứ người khác đang dùng thì trình trước
 
@@ -13,7 +13,7 @@ from: _Store/01_LAW/_Rule/Rule_Keys_62_DesignChangeApproval @v9 #69825a9090ef
 - Bố cục đã chốt là bất biến: không tự đổi vị trí hay thứ tự.
 - Không cần trình: sửa lỗi kỹ thuật (lệch · tràn · hỏng) · điền số theo mẫu có sẵn.
 - Hướng được giao còn hở chi tiết thiết kế ⇒ trình phương án cho phần hở. Gợi ý lấy từ skill thiết kế ⇒ trình, không tự áp.
-- Quy ước cụ thể: `.claude/skills/dev-app-design/SKILL.md` · `.claude/skills/dev-pbi/SKILL.md` · slot quy ước và từ điển UI.
+- Quy ước cụ thể: `.claude/skills/dev-app-design/SKILL.md` · `.claude/skills/pbi-base/SKILL.md` · slot quy ước và từ điển UI.
 
 ## Ví dụ
 

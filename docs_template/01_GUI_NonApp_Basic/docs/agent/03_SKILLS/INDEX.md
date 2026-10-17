@@ -6,7 +6,6 @@ có mặt ở đó và khớp bản kho (dòng `from:`), và mọi folder ở đ
 <!-- zemory:skills:start · máy ghi khối này lúc ráp; skill riêng của repo thêm dòng BÊN DƯỚI khối -->
 | Skill (source) | Host | from |
 |---|---|---|
-| `Skill_Dev_Pbi/` | `.claude/skills/dev-pbi/` | _Store/03_SKILLS/Skill_Dev_Pbi @v1 #b1f73ecb33f1 |
 | `Skill_Doc_ReadOffice/` | `.claude/skills/doc-read-office/` | _Store/03_SKILLS/Skill_Doc_ReadOffice @v3 #157c05e6193a |
 | `Skill_Doc_WriteDocx/` | `.claude/skills/doc-write-docx/` | _Store/03_SKILLS/Skill_Doc_WriteDocx @v3 #f9bb4e682e86 |
 | `Skill_Doc_WriteStyle/` | `.claude/skills/doc-write-style/` | _Store/03_SKILLS/Skill_Doc_WriteStyle @v5 #87d65639c55d |
@@ -18,6 +17,7 @@ có mặt ở đó và khớp bản kho (dòng `from:`), và mọi folder ở đ
 | `Skill_Harness_SessionClose/` | `.claude/skills/harness-session-close/` | _Store/03_SKILLS/Skill_Harness_SessionClose @v12 #ffde4d674f68 |
 | `Skill_Harness_Structure/` | `.claude/skills/harness-structure/` | _Store/03_SKILLS/Skill_Harness_Structure @v10 #888b77ccf5bc |
 | `Skill_Harness_SyncPath/` | `.claude/skills/harness-sync-path/` | _Store/03_SKILLS/Skill_Harness_SyncPath @v9 #ba1f734475c9 |
+| `Skill_PBI_Base/` | `.claude/skills/pbi-base/` | _Store/03_SKILLS/Skill_PBI_Base @v2 #839bb383ff9b |
 | `Skill_Task_Fill/` | `.claude/skills/task-fill/` | _Store/03_SKILLS/Skill_Task_Fill @v8 #8772aae04f3e |
 | `Skill_Task_Pull/` | `.claude/skills/task-pull/` | _Store/03_SKILLS/Skill_Task_Pull @v4 #3124d5a346ba |
 | `Skill_Task_Upload/` | `.claude/skills/task-upload/` | _Store/03_SKILLS/Skill_Task_Upload @v7 #5c9c0a4d1ec7 |

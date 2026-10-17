@@ -36,7 +36,7 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 |---|---|
 | tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch | `docs/agent/02_STRUCTURE/INDEX.md` + slot liên quan |
 | hỏi repo có quy trình gì · thêm/bớt skill | `docs/agent/03_SKILLS/INDEX.md` |
-| dựng · sửa báo cáo, dashboard, measure, visual | `.claude/skills/dev-pbi/SKILL.md` |
+| dựng · sửa báo cáo, dashboard, measure, visual | `.claude/skills/pbi-base/SKILL.md` |
 | cần ĐỌC `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/doc-read-office/SKILL.md` |
 | cần SỬA / TẠO file Word `.docx` | `.claude/skills/doc-write-docx/SKILL.md` |
 | cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/doc-write-style/SKILL.md` |

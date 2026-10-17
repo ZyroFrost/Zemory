@@ -360,7 +360,8 @@ export function shelfDir(root: string, shelf: string): string {
 export function partMentionFindings(storeDir = STORE_DIR): string[] {
   const live = new Set<string>();
   for (const shelf of SHELVES) for (const p of listParts(storeDir, shelf)) live.add(leafOf(p.folder));
-  const NAME = /\b(?:(?:Rule|Cons)_(?:Gate|Keys|Core)_\d{2,3}_[A-Za-z0-9]+|Skill_[A-Z][a-z]+_[A-Za-z0-9]+)\b/g;
+  // a group may be all capitals (`Skill_PBI_Base`)
+  const NAME = /\b(?:(?:Rule|Cons)_(?:Gate|Keys|Core)_\d{2,3}_[A-Za-z0-9]+|Skill_[A-Z][A-Za-z]+_[A-Za-z0-9]+)\b/g;
   const out: string[] = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
@@ -372,6 +373,8 @@ export function partMentionFindings(storeDir = STORE_DIR): string[] {
       if (e.name === "gate.json") {
         try { const j = JSON.parse(text) as Record<string, unknown>; delete j.block; delete j.pass; text = JSON.stringify(j); } catch { /* read as text */ }
       }
+      // `replaces:` names the part this one took over — an old name on purpose
+      text = text.replace(/^replaces:.*$/gm, "");
       for (const m of text.matchAll(NAME)) {
         if (!live.has(m[0])) out.push(`${relative(storeDir, p).replace(/\\/g, "/")}: ${m[0]}`);
       }
@@ -449,14 +452,28 @@ export function listHostParts(root: string): Part[] {
   return out.sort((a, b) => a.folder.localeCompare(b.folder));
 }
 
-/** The slot names a structure lists in its structure.json (empty when the file is missing or unreadable). */
-export function structureSlotNames(structure: Part): string[] {
+/**
+ * The slot names a structure is made of (empty when its structure.json is missing or unreadable). A structure may
+ * `extends` another one: the base's slots come first, then its own, each name once — a department repo is a non-app repo
+ * plus the department's slots, and the base list is never copied (plan/28 §0q). The base is found beside the structure (the
+ * store) or, in a repo where only the assembled structure sits, on the store's shelf.
+ */
+export function structureSlotNames(structure: Part, seen: Set<string> = new Set()): string[] {
+  let j: { slots?: unknown; extends?: unknown };
   try {
-    const j = JSON.parse(readFileSync(join(structure.dir, "structure.json"), "utf8")) as { slots?: unknown };
-    return Array.isArray(j.slots) ? j.slots.filter((s): s is string => typeof s === "string") : [];
+    j = JSON.parse(readFileSync(join(structure.dir, "structure.json"), "utf8")) as typeof j;
   } catch {
     return [];
   }
+  const own = Array.isArray(j.slots) ? j.slots.filter((s): s is string => typeof s === "string") : [];
+  const baseName = typeof j.extends === "string" ? j.extends : "";
+  if (!baseName || seen.has(structure.folder)) return own;
+  seen.add(structure.folder);
+  const where = [dirname(structure.dir), shelfDir(STORE_DIR, SHELF.structure)];
+  const baseDir = where.map((d) => join(d, baseName)).find((d) => existsSync(join(d, "structure.json")));
+  const base = baseDir ? readPart(baseDir, SHELF.structure, STRUCTURE_MAIN) : null;
+  const inherited = base ? structureSlotNames(base, seen) : [];
+  return [...new Set([...inherited, ...own])];
 }
 
 /** The slots a structure is made of, found by KEY (a renamed slot still resolves), and the names that resolve to none. */
@@ -717,6 +734,11 @@ export function findCopy(t: AssemblyTarget, part: Part): string | null {
   // from an older layout may carry the same number (Cons_10) and is never the frame's copy (plan/28 §0q).
   const byKey = listAllParts(t.agentDir, part.shelf).find((p) => p.key === part.key && (part.shelf !== SHELF.constitution || Boolean(p.from)))?.dir;
   if (byKey) return byKey;
+  // A part that took over another one under a new key (`replaces:` — a skill moved to another group): the assembled copy
+  // of the old part is this part's copy. Only an assembled copy (from:) answers; a repo's own part never does.
+  const old = replacesOf(part);
+  const taken = old.length ? listAllParts(t.agentDir, part.shelf).find((p) => old.includes(p.key) && Boolean(p.from))?.dir : undefined;
+  if (taken) return taken;
   if (part.shelf !== SHELF.skills) return null;
   // A skill assembled before the two-layer skills sat in the host folder under its old name (aka). An assembled copy (it
   // has a from: line) moves to the source shelf and is judged there — the repo's edits merge as usual; the host build is
@@ -726,6 +748,12 @@ export function findCopy(t: AssemblyTarget, part: Part): string | null {
     if (existsSync(legacy) && frontMatter(readFileSync(legacy, "utf8"))?.meta.from) return join(t.skillsDir, name);
   }
   return null;
+}
+
+/** The keys of the parts this part took over (`replaces: [Skill_Dev_Pbi]`), as keys. */
+export function replacesOf(p: Pick<Part, "meta">): string[] {
+  const v = p.meta.replaces;
+  return (Array.isArray(v) ? v : typeof v === "string" && v ? [v] : []).map((s) => partKey(String(s), String(s))).filter(Boolean);
 }
 
 /** A skill's host name — the `name:` of its SKILL.md (Agent Skills: equal to the host folder). */
@@ -738,6 +766,51 @@ export interface PlugResult {
   plugged: string[];
   /** host folders left alone: a skill of the repo's own already has that name */
   skipped: string[];
+  /** host folders the tool built under a skill's old name (aka), removed */
+  removed: string[];
+}
+
+/** Files a part declares under `installs:` (repo paths, e.g. `scripts/pbi_gate.py`): they live in the part and are
+ *  assembled into the repo where the repo runs them (plan/28 §0q — a tool lives in the part that owns it). */
+export function installsOf(p: Part): string[] {
+  const v = p.meta.installs;
+  return (Array.isArray(v) ? v : typeof v === "string" && v ? [v] : []).map(String).filter(Boolean);
+}
+
+/** Before assembly: the repo copy of every installed file as it was (the base of the three-way decision). */
+export function installBases(t: AssemblyTarget, parts: Part[]): Map<string, string | null> {
+  const out = new Map<string, string | null>();
+  for (const p of parts) {
+    for (const rel of installsOf(p)) {
+      const f = join(targetDir(t, p), rel);
+      out.set(`${p.key}:${rel}`, existsSync(f) ? readFileSync(f, "utf8") : null);
+    }
+  }
+  return out;
+}
+
+export interface InstallResult { written: string[]; kept: string[] }
+
+/** After assembly: write each installed file to its repo path. A repo file equal to the part's previous copy (or absent)
+ *  takes the new one; a repo file edited here, or one the repo had before the part shipped it, is kept and reported —
+ *  never overwritten silently (a mirror once destroyed a department's uncommitted work). */
+export function installParts(t: AssemblyTarget, root: string, parts: Part[], bases: Map<string, string | null>, apply: boolean): InstallResult {
+  const res: InstallResult = { written: [], kept: [] };
+  for (const p of parts) {
+    for (const rel of installsOf(p)) {
+      const src = join(targetDir(t, p), rel);
+      if (!existsSync(src)) continue;
+      const next = readFileSync(src, "utf8");
+      const dst = join(root, rel);
+      const cur = existsSync(dst) ? readFileSync(dst, "utf8") : null;
+      if (cur === next) continue;
+      const base = bases.get(`${p.key}:${rel}`) ?? null;
+      if (cur !== null && cur !== base) { res.kept.push(rel); continue; }
+      if (apply) { mkdirSync(dirname(dst), { recursive: true }); writeFileSync(dst, next); }
+      res.written.push(rel);
+    }
+  }
+  return res;
 }
 
 /**
@@ -747,14 +820,15 @@ export interface PlugResult {
  * host folder that is not ours (no SKILL.md with a from: line) is never replaced.
  */
 export function plugSkills(t: AssemblyTarget, skills: Part[]): PlugResult {
-  const res: PlugResult = { plugged: [], skipped: [] };
+  const res: PlugResult = { plugged: [], skipped: [], removed: [] };
   for (const part of skills) {
     const src = targetDir(t, part);
     if (!hasMain(src, MAIN_FILE[SHELF.skills])) continue;
     const host = hostSkillOf(part);
     // the host build is named the host's way: the source's own-named header file becomes SKILL.md (Agent Skills)
     const srcMain = basename(mainPath(src, MAIN_FILE[SHELF.skills]));
-    const files = partFiles(src).filter((f) => f !== "gate.json" && !(f === MAIN_FILE[SHELF.skills] && srcMain !== f));
+    const installed = installsOf(part);
+    const files = partFiles(src).filter((f) => f !== "gate.json" && !installed.includes(f) && !(f === MAIN_FILE[SHELF.skills] && srcMain !== f));
     const buildName = (f: string): string => (f === srcMain ? MAIN_FILE[SHELF.skills] : f);
     const build = join(src, "Claude", host);
     rmSync(join(src, "Claude"), { recursive: true, force: true });
@@ -774,6 +848,15 @@ export function plugSkills(t: AssemblyTarget, skills: Part[]): PlugResult {
       writeFileSync(join(dest, f), readFileSync(join(build, f)));
     }
     res.plugged.push(host);
+    // the build this skill left under its old host name (aka) is the tool's own output: gone, or the host loads two copies.
+    // A folder without a from: line is the repo's own skill and stays.
+    const aka = String(part.meta.aka ?? "");
+    const stale = aka && aka !== host ? join(t.skillsDir, aka) : "";
+    const staleMain = stale ? join(stale, MAIN_FILE[SHELF.skills]) : "";
+    if (staleMain && existsSync(staleMain) && frontMatter(readFileSync(staleMain, "utf8"))?.meta.from) {
+      rmSync(stale, { recursive: true, force: true });
+      res.removed.push(aka);
+    }
   }
   return res;
 }
@@ -1027,7 +1110,8 @@ function baseAcrossRenames(part: Part, matches: (files: Map<string, string>) => 
         const head = pg.git(["show", `${sha}:${headPath}`]);
         const folder = prefix.split("/").slice(-2, -1)[0] ?? "";
         const id = String(frontMatter(head)?.meta.id ?? "");
-        if (partKey(id, folder) !== part.key) continue;
+        const k = partKey(id, folder);
+        if (k !== part.key && !replacesOf(part).includes(k)) continue; // its own key, or a part it took over
         const map = new Map<string, string>();
         for (const f of files) {
           if (f !== headPath && (f === prefix + main || f === `${prefix}${folder}.md`)) continue;

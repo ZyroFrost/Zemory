@@ -16,10 +16,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
+import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { GUARD_MATCHER } from "../../dist/docs/guard-gen.js";
 
-const GUARD = new URL("../../docs/hooks/guard.cjs", import.meta.url).pathname.replace(/^\//, "");
-const ask = (payload) => spawnSync(process.execPath, [GUARD], { input: JSON.stringify(payload), encoding: "utf8" }).status === 2;
+// The guard runs from a copy of this repo's hooks and harness, never from the repo itself: a one-use flag left in the
+// working tree (`.allow-docs-write` from the session at work) would let a must-block case through and turn this red.
+const ROOT = fileURLToPath(new URL("../../", import.meta.url));
+const COPY = mkdtempSync(join(tmpdir(), "zemory-guard-matrix-"));
+process.on("exit", () => rmSync(COPY, { recursive: true, force: true }));
+for (const rel of ["docs/hooks", "docs/agent"]) {
+  cpSync(join(ROOT, rel), join(COPY, rel), { recursive: true, filter: (src) => !basename(src).startsWith(".allow-") });
+}
+for (const f of ["docs/.harness.json"]) if (existsSync(join(ROOT, f))) cpSync(join(ROOT, f), join(COPY, f));
+const GUARD = join(COPY, "docs", "hooks", "guard.cjs");
+const ask = (payload) => spawnSync(process.execPath, [GUARD], { input: JSON.stringify(payload), encoding: "utf8", cwd: COPY }).status === 2;
 
 // Ghép từ mảnh: chuỗi nguy hiểm nguyên vẹn trong file test sẽ bị chính guard runtime chặn khi
 // agent đọc/ghi file này — đã dính thật một lần.
