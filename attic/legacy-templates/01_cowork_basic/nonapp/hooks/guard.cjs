@@ -304,8 +304,10 @@ const GIT_CMD = "(?<!\\.)\\bgit\\b(?![\\\\/])";
 // `push` must be ONE ARGUMENT, not a fragment of a longer name (and, measured 2026-08-22 by this very
 // session): `\\bpush\\b` also matches a token INSIDE a file name because `-` and `.` are non-word characters, so
 // `git check-ignore -v docs/hooks/.allow-push` was blocked as a real push command — that is, the very
-// even the command that INSPECTS THE FLAG could not run. Added (?<![\w.-]) so it catches only `push` in its real sense.
-const PUSH_ARG = "(?<![\\w.-])push\\b";
+// even the command that INSPECTS THE FLAG could not run. Requiring whitespace right before `push` catches only `push` in its real sense.
+// `push` must also be git's SUBCOMMAND: only global options may stand between (`git -C dir push` · `git --no-pager push`).
+// `git stash push` is a stash, not a push - it was blocked as one (2026-10-17).
+const PUSH_ARG = "(?:\\s+(?:-[Cc]\\s+\\S+|--?[\\w-]+(?:=\\S+)?))*\\s+push\\b";
 
 // ── COMMAND POSITION: match a TOKEN where a command belongs, not a string anywhere ─────
 //
@@ -400,7 +402,7 @@ function versionClash() {
 function checkBash(cmd) {
   const bare = stripMessages(cmd);
 
-  if (hitsIn(bare, /^git$/, new RegExp(GIT_CMD + "[^\\n;|&]*" + PUSH_ARG))) {
+  if (hitsIn(bare, /^git$/, new RegExp(GIT_CMD + PUSH_ARG))) {
     const clash = versionClash();
     if (clash) {
       deny("BLOCKED (guard layer 1): `git push` carries code but package.json still says " + clash.version +

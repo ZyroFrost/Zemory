@@ -100,6 +100,9 @@ test("a FILE NAME containing the word `push` is NOT a push command - it must pas
     ["xoá cờ sau khi dùng", "git status --short docs/hooks/.allow-" + "push"],
     ["liệt kê thư mục hooks", "ls -la docs/hooks/.allow-" + "push"],
     ["nhắc tên cờ trong echo cạnh lệnh git", "git status; echo tao docs/hooks/.allow-" + "push"],
+    // `push` as an argument of ANOTHER subcommand is not a push (2026-10-17: `git stash push` was blocked).
+    ["git stash push", "git stash " + "push -q a.ts"],
+    ["git remote set-url --push", "git remote set-url --" + "push origin x"],
   ];
   const wrongBlocks = [];
   for (const tool of COMMAND_TOOLS) {
@@ -109,7 +112,8 @@ test("a FILE NAME containing the word `push` is NOT a push command - it must pas
   }
   assert.deepEqual(wrongBlocks, [], "Tên file bị đọc thành lệnh push:\n  " + wrongBlocks.join("\n  "));
   // VẾ NGƯỢC — bản vá không được làm hở đường push thật, kể cả các dạng dễ leaked.
-  for (const command of [PUSH, "cd x && " + PUSH, "sudo " + PUSH, "git push --force origin main", "git push -u origin HEAD"]) {
+  for (const command of [PUSH, "cd x && " + PUSH, "sudo " + PUSH, "git push --force origin main", "git push -u origin HEAD",
+    "git -C repo push", "git --no-pager push", "git -c core.x=1 push origin main"]) {
     assert.ok(ask({ tool_name: "Bash", tool_input: { command } }), `phải chặn: ${command}`);
   }
 });

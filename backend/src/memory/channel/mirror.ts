@@ -131,7 +131,9 @@ function isScratchFile(name: string): boolean {
  * theo một cái tên, vì thêm một cờ mới — `.allow-delete`, `.allow-docs-write` — là lỗ mở lại.
  */
 function isConsentFlag(rel: string, name: string): boolean {
-  return name.startsWith(".allow-") && rel.split("/").includes("hooks");
+  // File harness keeps flags in `docs/hooks/`; folder harness in `docs/.harness-state/` (policy `flags_dir`).
+  const segs = rel.split("/");
+  return name.startsWith(".allow-") && (segs.includes("hooks") || segs.includes(".harness-state"));
 }
 
 /**
