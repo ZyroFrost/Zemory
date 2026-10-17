@@ -25,7 +25,7 @@ Repo này dùng harness của zemory, hệ **DEPT**: repo của một phòng ban
 3. **Đọc `docs/agent/04_TODO.md`** và mọi `Cons.md` đã viết trước khi làm.
 4. **Tra khi cần, không đọc hết:** luật `docs/agent/01_LAW/_Rule/` · hiến pháp `docs/agent/01_LAW/_Cons/` · cấu trúc
    `docs/agent/02_STRUCTURE/` (`INDEX.md`: thứ gì nằm đâu, từ điển dữ liệu của repo; slot ở `_Slot/`) · lịch sử `zemory changelog search` (phủ cả
-   `docs/agent/archive/`) · thiết kế `zemory plan search "<vùng>"` trước khi đề xuất hay đổi thiết kế một vùng. Không thấy
+   `docs/archive/`) · thiết kế `zemory plan search "<vùng>"` trước khi đề xuất hay đổi thiết kế một vùng. Không thấy
    một việc trong `04_TODO`/`05_CHANGES` không có nghĩa là chưa từng có — tra archive trước khi kết luận.
 5. Luật chung (`01_LAW/_Rule/`) là sàn cho mọi repo; hiến pháp (`01_LAW/_Cons/`) của repo chỉ siết thêm, không nới.
 

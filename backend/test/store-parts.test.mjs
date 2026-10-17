@@ -34,7 +34,12 @@ test("negative: a missing shelf, an empty shelf and a missing Archive are each r
     "02_STRUCTURE: shelf missing",
     "02_STRUCTURE/_Host: no host",
     "Archive: shelf missing",
+    "04_TODO.md: ledger frame missing",
+    "05_CHANGES.md: ledger frame missing",
   ]);
+  // the ledger frames stand beside the shelves, in the order of the repo harness
+  put(s, "04_TODO.md", "# <PROJECT> — TODO\n");
+  put(s, "05_CHANGES.md", "# <PROJECT> — Change Log\n");
   put(s, "01_LAW/_Cons/Cons_Core_01_Y/RULE.md", "---\nid: Cons_1\nname: y\nversion: 1\n---\ny\n");
   put(s, "02_STRUCTURE/_Slot/Root_001_Entry/Root_001_Entry.md", "---\nid: Slot_1\nname: entry\nversion: 1\npath: AGENTS.md\n---\ne\n");
   put(s, "02_STRUCTURE/_Host/Desktop/Desktop.md", "# named after an app, not a kind\n");
