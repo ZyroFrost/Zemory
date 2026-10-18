@@ -806,3 +806,25 @@ test("Rule_83: a harness part edited in a repo is red in conform; impact names e
   assert.equal(states("02-1_alpha").B, "current", "synced down = current");
   assert.equal(partImpact("no-such-part", repos, st.s).part, null);
 });
+
+test("a ledger's link into the archive follows it out of the harness folder (archive/x -> ../archive/x)", (t) => {
+  // a reshaped repo 2026-10-18: 04_TODO.md kept `archive/04_TODO.md` after the archive moved to docs/archive
+  const root = repo(t);
+  put(root, "docs/.harness.json", JSON.stringify({ docs: "docs/agent" }));
+  put(root, "docs/archive/04_TODO.md", "# old\n");
+  put(root, "docs/agent/04_TODO.md", "# todo\n\nsee [old](archive/04_TODO.md) and [gone](archive/nowhere.md)\n");
+  const changed = repointLinks(root, true);
+  assert.ok(changed.includes("docs/agent/04_TODO.md"));
+  assert.equal(readFileSync(join(root, "docs", "agent", "04_TODO.md"), "utf8"),
+    "# todo\n\nsee [old](../archive/04_TODO.md) and [gone](archive/nowhere.md)\n", "only a link whose file is in docs/archive moves");
+});
+
+test("a retired part kept in docs/archive (a rule folder with its hook.cjs) is history, not an off-standard code folder", (t) => {
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  put(root, "docs/archive/retired/01_LAW/_Rule/02-9_old/hook.cjs", "const fs = require(\"node:fs\");\nmodule.exports = { check: () => null };\n");
+  put(root, "docs/archive/retired/01_LAW/_Rule/02-9_old/02-9_old.md", "# old\n");
+  const off = conform(root).items.find((i) => i.check === "off-standard-dir")?.samples ?? [];
+  assert.ok(!off.some((d) => d.startsWith("docs/archive")), off.join(" · "));
+});
