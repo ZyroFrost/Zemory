@@ -1,11 +1,11 @@
 ---
 id: Skill_Task_VmAutomation
 name: task-vm-automation
-version: 1
+version: 2
 aka: vm-automation
 description: Put a periodic task (Daily / Weekly / Monthly) on the VM to RUN BY ITSELF - the vm_deploy.json manifest, the schedule, the Log_JobRun run log, results to the region's SharePoint, the _SharePoint.url shortcut. Use whenever a task goes onto the VM, is automated or scheduled, or its VM run is checked. Vietnamese triggers - "đưa task lên VM", "tự động hoá task", "đặt lịch trên VM", "task chạy trên VM chưa".
 installs: [scripts/task_run.py, scripts/make_output_links.py, scripts/move_outputs_to_vm.py]
-from: _Store/03_SKILLS/Skill_Task_VmAutomation @v1 #b66885eb282d
+from: _Store/03_SKILLS/Skill_Task_VmAutomation @v2 #3a9ad3fb63e5
 ---
 
 # task-vm-automation — đưa task lên chạy tự động trên VM
@@ -78,7 +78,7 @@ máy làm việc  ──Syncthing──▶  VM  <vm_work_dir>\<Repo>\      CHỞ
 | Thứ | Nằm ở | Ai xem |
 |---|---|---|
 | File người dùng nộp vào (đầu vào) | SharePoint `DataLake/DataInput/<PHÒNG>/…` | task đọc thẳng |
-| Kết quả cuối (deliverable) | SharePoint `DataLake/DataReport/<PHÒNG>/…` — task tự đẩy (PUT ghi đè, giữ phiên bản) | người nhận mở ở đó |
+| Kết quả cuối (deliverable) | SharePoint (`sharepoint_site` trong giá trị vùng)`/<PHÒNG>/…` — task tự đẩy (PUT ghi đè, giữ phiên bản) | người nhận mở ở đó |
 | Dữ liệu làm việc của task (log · trạng thái · bản chép kết quả) | VM `<vm_run_dir>\<Repo>\data\<Task>\…` | sao lưu VM; tra khi cần |
 | `data\<Task>\01_raw` · `03_output` trên máy làm việc | **ĐÚNG 1 file mỗi thư mục: `_SharePoint.url`** — `01_raw` trỏ `DataInput`, `03_output` trỏ `DataReport`; `02_processing` trống | bấm shortcut ra nguồn / kết quả thật |
 
@@ -149,7 +149,7 @@ xem) — không để lại trong `03_output`.
 - `schedule`: tên task = tên thư mục task (lượt phụ thêm hậu tố `_Night` / `_Close`…). Một trong `"daily": "HH:MM"` · `"weekly": {"day": "MON", "at": "HH:MM"}` · `"monthly": {"day": 1, "at": "HH:MM"}` · `"ondemand": true` (07/10: không trigger, chạy khi bấm — mẫu `repo quản lý vùng/tasks/DW_OnDemand_RunModels`).
 - `files` nhận mẫu `*` / `?` (07/10, vd `"models/*.sql"`) — giải trong repo nguồn mỗi vòng. Gỡ một mục `schedule` ⇒ `vm_deploy` ghi `ORPHAN` + TẮT task đó (không xoá; xoá do người dùng).
 - 🔴 **LƯỚI SLOT 30 PHÚT** (*"mọi task từ mọi phòng ban sẽ trải dài từ 12h đêm tới hết ngày, cứ cách nhau 30p … bỏ task vào theo slot"*): giờ chạy chỉ được `HH:00` hoặc `HH:30`, mỗi task MỘT slot, không chồng task của phòng khác. Trùng = cùng giờ, trừ hai lịch tuần khác thứ hoặc hai lịch tháng khác ngày (lịch ngày giữ slot mọi ngày). **Ngoại lệ cùng chuỗi việc** (*"lịch ko nhất thiết cấm trùng lịch, XYZ với ABC 2 mail nhưng chung loại job vẫn gửi chung dc"*): các lịch khai CÙNG `"slot_group": "<tên chuỗi>"` được chung slot (vd `store_inventory` = đợt cứu kho + mail ABC + XYZ lúc 01:00/13:00); khác nhóm hoặc không khai nhóm thì vẫn tính trùng. Máy canh: `vm_deploy` không đăng ký lịch mới/vừa đổi lệch lưới hoặc trùng slot, ghi `!! SLOT … not registered` vào `vm_deploy.log` ⇒ chọn slot khác. **THỨ TỰ ƯU TIÊN SLOT** (*"ưu tiên lịch ABC XYZ inventory trước, rồi mới tới XYZ và mấy lịch sau"*): ① task gắn GIỜ CHỐT nghiệp vụ trong ngày — chuỗi tồn kho (ABC night 01:00 · ABC close 13:00 · XYZ 13:30, ngay sau lượt cứu 01:00/13:00 của kho) · ② task hằng ngày khác · ③ báo cáo tuần · ④ tháng / quý. Mỗi phòng TỰ ĐỌC bảng slot và TỰ ĐIỀN vào slot trống (*"kể cả việc schedule, mỗi phòng ban tự đọc tự điền vào slot trống"*) — không xin kho. Muốn slot của task ưu tiên THẤP hơn ⇒ nhắn thẳng phiên của repo đó, repo ưu tiên thấp tự dời (vd XYZ Weekly thứ Sáu 01:00 → 02:30 để nhường ABC night). KHÔNG bao giờ đẩy task ưu tiên cao hơn. Task đọc số tồn kho của lượt cứu ⇒ đặt CÙNG slot cứu hoặc sau, và chờ `_Config.INVENTORY_RescueDoneAt` mới hơn giờ slot rồi mới đọc (cổng đầu vào §5c mục 6).
-**Chọn slot TRƯỚC khi khai:** `python repo quản lý vùngscripts\vm_schedule.py` (bảng slot đang dùng của mọi repo · trùng · lệch lưới · giờ trống, đọc thẳng mọi `vm_deploy.json` — không cần SSH) rồi `… --check daily 13:30` (hoặc `weekly FRI 02:30` · `monthly 1 02:00`) phải ra `TRỐNG`. Bản in sẵn: `repo quản lý vùng/content/standard/vm_schedule.md` (máy sinh). Task hệ cũ không tính (không đụng, sẽ cắt). Luật cũ "né phút :01/:31" BỎ — task hệ cũ `\Inventory day` đã xoá 07/10.
+**Chọn slot TRƯỚC khi khai:** `python <repo tổng quản vùng>\scripts\vm_schedule.py` (bảng slot đang dùng của mọi repo · trùng · lệch lưới · giờ trống, đọc thẳng mọi `vm_deploy.json` — không cần SSH) rồi `… --check daily 13:30` (hoặc `weekly FRI 02:30` · `monthly 1 02:00`) phải ra `TRỐNG`. Bản in sẵn: `repo quản lý vùng/content/standard/vm_schedule.md` (máy sinh). Task hệ cũ không tính (không đụng, sẽ cắt). Luật cũ "né phút :01/:31" BỎ — task hệ cũ `\Inventory day` đã xoá 07/10.
 - Lệnh thật được dựng sẵn: `python scripts\task_run.py --task <Task> -- bin\<Task>.cmd <args> >> data\logs\<Task>.log`.
   Log trên VM luôn tên `data\logs\<tên task>.log` (task đăng ký tay trước chuẩn có thể còn file log tên khác, vd `…_close.log` —
   từ lượt bọc `task_run` trở đi log nằm ở tên mới).

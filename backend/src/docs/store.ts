@@ -1308,7 +1308,8 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
   for (const s of listStructures(storeDir)) {
     const r = structureSlots(s, listParts(storeDir, SHELF.structure));
     for (const m of r.missing) wrong.push(`${SHELF.structure}/${s.folder}: structure.json names ${m}, which is no slot in ${SLOT_LAYER}/`);
-    if (!structureSlotNames(s).length) wrong.push(`${SHELF.structure}/${s.folder}: structure.json lists no slot`);
+    // a region structure (scope: region) is never assembled into a repo: it declares roles, not slots
+    if (!structureSlotNames(s).length && String(s.meta?.scope ?? "") !== "region") wrong.push(`${SHELF.structure}/${s.folder}: structure.json lists no slot`);
   }
   return { wrong, legacy };
 }

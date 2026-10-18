@@ -1,9 +1,9 @@
 ---
 id: Skill_PBI_Main
 name: pbi-main
-version: 1
+version: 2
 description: Build the MAIN copy of a Power BI report - the warehouse model and the NEW design to the region's standard, with no old copy to cite. Use whenever a report is designed from scratch, the official copy replaces the old system, or the full design standard is applied to a file. Not when the old design is kept (pbi-classic or pbi-mix). Vietnamese triggers - "bản main", "dựng report mới", "thiết kế mới theo chuẩn", "bản chính thức".
-from: _Store/03_SKILLS/Skill_PBI_Main @v1 #4c2dcb6a9b4e
+from: _Store/03_SKILLS/Skill_PBI_Main @v2 #bb68e1346efe
 ---
 
 # Bản `Main` — thiết kế MỚI trên kho, áp đủ chuẩn
@@ -25,15 +25,16 @@ chết đi lang thang **suốt một tháng** sau khi chúng bị thay.
 | Bộ số khoảng cách, lưới 5, khung trắng, bảng màu | `chuẩn phòng ban §2d` |
 | Khung UI có sẵn — chỉ thay dữ liệu | `chuẩn phòng ban §2e` |
 | Thao tác sửa `.pbip` mà không vỡ file | `.claude/skills/pbi-pbip/SKILL.md` |
-| Tài sản ảnh, theme | repo quản lý vùngassets\` |
+| Tài sản ảnh, theme | thư mục `assets/` của repo tổng quản vùng (`theme_file` · `icons_dir` trong giá trị vùng) |
 
 ## 2. Bốn thứ hay bị bỏ sót nhất — nhắc ở đây vì chúng hỏng LẶNG
 
 - 🔴 **`header.show` của slicer không khai thì mặc định BẬT.** Quét `"show": true` ra 0 kết quả và
   tưởng đã tắt là sai — phải khai **tường minh** `false`. Ca thật: **22/22 slicer** dính, trong khi
   `title.show` đã `false` sẵn nên nhìn lướt tưởng xong.
-- 🔴 **`visualLink` trên `shape` KHÔNG bấm được** — Power BI nhận JSON, mở file bình thường, không
-  báo gì, bấm vào không xảy ra chuyện gì. Hỏng im lặng tuyệt đối. Nút phải là `image`.
+- 🔴 **`visualLink` đặt sai tầng thì nút im lặng** — khoá phải nằm ở `visual.visualContainerObjects.visualLink`, không ở
+  `visual.visualLink`. Đặt sai tầng: Power BI vẫn mở file, không báo gì, bấm không chạy. `shape` mang `visualLink` đúng tầng
+  bấm được (đo trên chính một report Main: `BG_UserGuide`).
 - 🔴 **Bê visual từ khuôn mẫu là thừa hưởng mọi mặc định của khuôn**, kể cả thứ không có dòng nào
   trong JSON. Hay dính nhất: `ThemeDataColor` `ColorId: 7, Percent: 0.2` ⇒ **chữ xám lợt mà JSON vẫn
   hợp lệ**. Chữ thì ghi thẳng mã màu.

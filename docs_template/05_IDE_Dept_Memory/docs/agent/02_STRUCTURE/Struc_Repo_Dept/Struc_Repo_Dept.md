@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_Dept
 name: repo-dept
-version: 2
+version: 3
 profile: non-app
 label: DEPT
 intro: : repo của một phòng ban trong một vùng có tổng quản — việc theo case (kéo · xử lý · giao báo cáo), báo cáo BI, tác vụ chạy định kỳ trên máy chủ; không phát triển app
@@ -9,7 +9,7 @@ ask: ; repo phòng ban nhận dữ liệu từ kho của tổng quản và giao 
 index-role: thứ gì nằm đâu, từ điển dữ liệu của repo
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 installs: [scripts/region_values.py]
-from: _Store/02_STRUCTURE/Struc_Repo_Dept @v2 #f43b273fa2f3
+from: _Store/02_STRUCTURE/Struc_Repo_Dept @v3 #011666b4e647
 ---
 # Struc_Repo_Dept
 
@@ -42,12 +42,7 @@ repo phòng ban. Slot nằm ở `_Slot/` và không mang hệ nào.
 - Thiếu một khoá ⇒ tool rơi về mặc định trung tính (danh sách rỗng, đường dẫn không tồn tại) và cổng liên quan báo thiếu;
   không tool nào tự điền giá trị công ty.
 
-## Ranh giới giữa các repo của vùng
+## Thuộc một vùng
 
-- Báo cáo của mọi phòng đọc kho của vùng (`warehouse_db`), không trỏ thẳng nguồn của hệ nghiệp vụ.
-- Repo phòng ban ↔ repo phòng ban khác: không trỏ đường dẫn, chỉ nêu TÊN repo. Hai phòng cần cùng một thứ ⇒ thứ đó lên tổng
-  quản trước (một phòng làm mẫu, tổng quản nhân bản), không với tay sang nhau; trùng giữa hai phòng thì mỗi bên giữ bản chạy độc lập.
-- Repo phòng ban ↔ tổng quản: trỏ được cả hai chiều. Phụ thuộc lúc chạy (mã đọc file của tổng quản) đi qua biến cấu hình
-  (`DW_REPO`) hoặc cơ chế triển khai của kho, không viết cứng đường dẫn rải trong mã.
-- Bộ nhớ chung của các repo trong vùng: thao tác bộ nhớ khớp ĐÚNG `project_root` của repo đang làm, không khớp tiền tố —
-  khớp tiền tố là chạm repo anh em đang có phiên khác làm việc.
+- Repo phòng ban khai trong marker vai `dept`, tổng quản (`owner`) và các dịch vụ dùng (`uses`); vai, quan hệ và ranh giới giữa
+  các repo của vùng nằm ở `Struc_Region_Workspace`.

@@ -1,17 +1,17 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 7
+version: 8
 aka: pbip
 description: Edit a Power BI .pbip/PBIR report by writing its JSON directly - pages, visuals, bookmarks, buttons, icons, the coordinate grid - without breaking the file; the model diagram standard and the static gate. Use whenever a .pbip report is built or changed, a tab or bookmark is added, an icon or the grid is fixed, or Desktop reports issues. Vietnamese triggers - "sửa report", "sửa pbix", "dựng dashboard", "thêm tab", "gắn bookmark", "đổi icon", "căn lưới", "mở Desktop kiểm".
 installs: [scripts/pbi_gate.py, scripts/pbi_diagram.py, scripts/diagram_order.js, scripts/package.json]
-from: _Store/03_SKILLS/Skill_PBI_Pbip @v7 #188ab8ddfc28
+from: _Store/03_SKILLS/Skill_PBI_Pbip @v8 #d8292e7b6f33
 ---
 
 # Sửa `.pbip` mà không làm vỡ file
 
-> File này nói **CÁCH THAO TÁC**. Luật **THIẾT KẾ** (bảng màu · lưới 5 · màu icon · nút phải là
-> `image` · slicer tắt header) ở chuẩn thiết kế của vùng (`design_standard` trong giá trị vùng),
+> File này nói **CÁCH THAO TÁC**. Luật **THIẾT KẾ** (bảng màu · lưới 5 · màu icon · `visualLink`
+> ở `visualContainerObjects` · slicer tắt header) ở chuẩn thiết kế của vùng (`design_standard` trong giá trị vùng),
 > icon ở kho icon của vùng (`icons_dir`). Đụng thiết kế → mở file kia trước.
 
 ## 0. BỐN LOẠI FILE PBI — luật khác nhau, đừng áp nhầm

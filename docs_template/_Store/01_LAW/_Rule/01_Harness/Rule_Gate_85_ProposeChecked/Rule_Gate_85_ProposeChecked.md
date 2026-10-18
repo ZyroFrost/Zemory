@@ -1,7 +1,7 @@
 ---
 id: Rule_85
 name: propose-checked
-version: 2
+version: 3
 kind: action
 code: 01_Harness
 checked: [Rule_Gate_83_HarnessFromStore, Rule_Core_80_SharedChangeImpact, Rule_Keys_62_DesignChangeApproval]
@@ -23,5 +23,5 @@ checked: [Rule_Gate_83_HarnessFromStore, Rule_Core_80_SharedChangeImpact, Rule_K
 
 - Tình huống: một repo phòng ban muốn thêm luật "không sửa proc trong DB nguồn".
 - ✗ Sai: tạo ngay một điều hiến pháp mới riêng cho repo.
-- ✓ Đúng: dò kho, thấy `Cons_Gate_10_ReadOnlySources` đã giữ nguồn chỉ-đọc ⇒ đề xuất bổ sung một ca vào điều đó; không cần
+- ✓ Đúng: dò HS, thấy `Cons_Gate_11_WriteBoundary` đã giữ ranh giới ghi ⇒ đề xuất bổ sung một ca vào khung đó; không cần
   điều mới.
