@@ -183,7 +183,6 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   const read = (p: string): string => (existsSync(p) ? readFileSync(p, "utf8") : "");
   const rulesText = read(join(agent, "02_RULES.md"));
   const hpText = read(join(agent, "01_CONSTITUTION.md"));
-  const structText = read(join(agent, "03_STRUCTURE.md"));
   const agentsText = read(join(root, "AGENTS.md"));
 
   // ── what will happen (computed the same for dry-run and apply) ──
@@ -274,18 +273,10 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
     if (o.gate) writeFileSync(join(d, "gate.json"), JSON.stringify({ gate: o.gate }) + "\n");
   }
 
-  // ── structure: the old file becomes the repo's INDEX ──
+  // ── structure: the old file is in the archive (above); the INDEX is the machine's table of contents (plan/29 §13),
+  // written by the assembly below. 04_SKILLS.md moves to the skills shelf and is archived the same way when replaced.
   mkdirSync(join(agent, SHELF.structure), { recursive: true });
-  if (structText) writeFileSync(join(agent, SHELF.structure, "INDEX.md"), structText);
   rmSync(join(agent, "03_STRUCTURE.md"), { force: true });
-
-  // ── 04: keep the file, add the machine block when missing ──
-  const sk = join(agent, "04_SKILLS.md");
-  if (existsSync(sk) && !readFileSync(sk, "utf8").includes("<!-- zemory:skills:start")) {
-    const t = readFileSync(sk, "utf8");
-    const eol = t.includes("\r\n") ? "\r\n" : "\n";
-    writeFileSync(sk, t.replace(/\s*$/, "") + `${eol}${eol}<!-- zemory:skills:start · máy ghi khối này lúc ráp; skill riêng của repo ghi ngoài khối -->${eol}<!-- zemory:skills:end -->${eol}`);
-  }
 
   // ── shared skills: an unedited copy makes way for the store's ──
   for (const s of rep.replacedSkills) rmSync(join(hp.skills, s), { recursive: true, force: true });

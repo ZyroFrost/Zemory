@@ -15,9 +15,7 @@ import {
   readSource,
   findKit,
   kitStructure,
-  frontMatter,
   kitParts,
-  MAIN_FILE,
   mainPath,
   gateOf,
   hostSkillOf,
@@ -31,7 +29,6 @@ import {
   seedFiles,
   setDir,
   STORE_DIR,
-  targetDir,
   type AssemblyStep,
   type AssemblyTarget,
   type Kit,
@@ -41,6 +38,7 @@ import {
 } from "./store.js";
 import { SHELF } from "./harness-names.js";
 import { unwireHooks } from "./hook-wiring.js";
+import { writeIndexes } from "./harness-index.js";
 
 export interface KitApplyResult {
   kit: Kit;
@@ -49,7 +47,10 @@ export interface KitApplyResult {
   ownAdded: string[];
   steps: AssemblyStep[];
   written: AssemblyStep[];
-  skillsBlock: "written" | "current" | "no-file";
+  /** the two INDEX files (plan/29 §13): rewritten from what is assembled, or already current */
+  skillsBlock: "written" | "current";
+  /** hand-written INDEX files kept whole in the archive before the generated ones replaced them */
+  indexArchived: string[];
   /** Legacy shelf folders renamed to the current names by this pass (`02_RULES → 01_RULES` …). */
   renamedShelves: string[];
   /** Host builds of the kit's skills written into the host folder; a repo-own skill of the same name is skipped. */
@@ -105,10 +106,13 @@ export function applyKit(
   // the host plug: every assembled skill's host build, written from its source into the host's own skill folder
   const plug = opts.apply ? plugSkills(target, skills) : { plugged: [], skipped: [], removed: [] };
   const hooksTakenOver = retireReplacedHooks(root, parts, opts.apply);
-  const skillsBlock = opts.apply ? writeSkillsBlock(hp.agent, skills, target) : "current";
   if (opts.apply) followEntryRenames(root, skills, target);
   const retired = retireCopies(target, new Set(parts.map((p) => p.key)), hp.archive, opts.apply, storeDir);
-  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, renamedShelves, plug, retired, installed, hooksTakenOver };
+  // plan/29 §13: both INDEX files are tables of contents the machine writes from what is assembled - last, once retired
+  // copies have left; a hand-written one is archived whole the first time
+  const index = writeIndexes(hp.agent, hp.skills, hp.archive, opts.projectName ?? basename(root), opts.apply);
+  const skillsBlock: KitApplyResult["skillsBlock"] = index.written.length ? "written" : "current";
+  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, indexArchived: index.archived, renamedShelves, plug, retired, installed, hooksTakenOver };
 }
 
 /**
@@ -120,6 +124,9 @@ export function assembleSet(kit: Kit, storeDir = STORE_DIR): KitApplyResult | { 
   const dir = setDir(kit.name, storeDir);
   mkdirSync(dir, { recursive: true });
   const r = applyKit(dir, { kit: { ...kit, status: "built" }, projectName: "<PROJECT>", apply: true, storeDir });
+  // A set is a template, not a repo with a history: what a pass retires or replaces in it is already kept in the store's
+  // Archive, and an archive folder in the set would be copied into every new repo (and listed in its BOOTSTRAP).
+  rmSync(join(dir, "docs", "archive"), { recursive: true, force: true });
   if (!("error" in r)) writeFileSync(join(dir, BOOTSTRAP_FILE), setBootstrap(kit, storeDir));
   return r;
 }
@@ -226,36 +233,6 @@ export function writeKitMarker(root: string, kit: Kit, storeDir = STORE_DIR): bo
   return true;
 }
 
-const SK_START = "<!-- zemory:skills:start";
-const SK_END = "<!-- zemory:skills:end -->";
-
-/** The machine-written block of the skills list (`04_SKILLS/INDEX.md`): one row per kit skill — its source in the
- *  harness, the host folder it is plugged into, the `from:` it was assembled from. Rows the repo adds below the block are
- *  its own. A file without the block markers is left alone. */
-function writeSkillsBlock(agentDir: string, skills: Part[], t: AssemblyTarget): "written" | "current" | "no-file" {
-  const p = join(agentDir, SHELF.skills, "INDEX.md");
-  if (!existsSync(p)) return "no-file";
-  const text = readFileSync(p, "utf8");
-  const a = text.indexOf(SK_START);
-  const b = text.indexOf(SK_END);
-  if (a < 0 || b < a) return "no-file";
-  const eol = text.includes("\r\n") ? "\r\n" : "\n";
-  const head = text.slice(a, text.indexOf("\n", a) + 1).replace(/\r?\n$/, "");
-  const rows = skills.map((s) => {
-    const copy = mainPath(targetDir(t, s), MAIN_FILE[SHELF.skills]);
-    const from = existsSync(copy) ? String(frontMatter(readFileSync(copy, "utf8"))?.meta.from ?? "") : "";
-    return `| \`${s.folder}/\` | \`.claude/skills/${hostSkillOf(s)}/\` | ${from || "(not assembled)"} |`;
-  });
-  const block = [head, "| Skill (source) | Host | from |", "|---|---|---|", ...rows, SK_END].join(eol);
-  // The repo's own rows still name a kit skill by its OLD name (`grill/`) after that folder made way for the host build
-  // (`harness-grill/`): conform then reported each as a skill with no SKILL.md (8 and 13 rows on two real repos,
-  // 2026-10-17). Follow the rename outside the block; a folder still on disk under the old name (an edited copy) keeps it.
-  const next = followHostRenames(text.slice(0, a), skills, t) + block + followHostRenames(text.slice(b + SK_END.length), skills, t);
-  if (next === text) return "current";
-  writeFileSync(p, next);
-  return "written";
-}
-
 /** A kit skill named by its OLD host name (aka) — a row `grill/` or a trigger path `.claude/skills/dev-pbi/SKILL.md` —
  *  points at nothing once the host build moved to the new name. Follow the rename; a folder still on disk under the old
  *  name (an edited copy, or the repo's own skill) keeps it. */
@@ -309,6 +286,9 @@ function followEntryRenames(root: string, skills: Part[], t: AssemblyTarget): vo
   let next = followHostRenames(text, skills, t);
   // the archive moved out of the harness folder (moveArchiveOut): the entry file names where it is now
   if (!existsSync(join(t.agentDir, "archive"))) next = next.split("docs/agent/archive/").join("docs/archive/");
+  // the structure INDEX is a table of contents the machine writes (plan/29 §13): the line that called it the repo's own
+  // "where things are, data dictionary" follows
+  next = next.replace(/(`INDEX\.md`: )thứ gì nằm đâu(?:, từ điển dữ liệu của repo)?;/g, "$1mục lục slot do máy sinh lúc sync, không sửa tay;");
   // A skill the set gained after the repo was assembled has no trigger row (the table is written once, from the seed): the
   // agent would never know when to open it. Its row goes in after the last skill row; a row already there is not doubled.
   const missing = skills

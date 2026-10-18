@@ -12,7 +12,7 @@ import { pruneMarkerProtected, repointLinks } from "../../dist/docs/kit-migrate.
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
-import { frontMatter, hashFiles, parseFrom, readKits, skillsIndexOf } from "../../dist/docs/store.js";
+import { frontMatter, hashFiles, parseFrom, readKits, setDir, skillsIndexOf } from "../../dist/docs/store.js";
 import { generateGuards } from "../../dist/docs/guard-gen.js";
 import { coreForCompaction, folderCoreIssues, ruleCoverage } from "../../dist/docs/rule-core.js";
 import { handleHook, ruleReminders } from "../../dist/memory/capture-hook.js";
@@ -115,8 +115,13 @@ test("init assembles every part at its numbered place, stamped with from:, plus 
   assert.ok(existsSync(join(root, "docs", "agent", "03_SKILLS", "sk", "Claude", "sk", "SKILL.md")), "the host build sits inside the source");
   assert.ok(existsSync(join(root, ".claude", "skills", "sk", "SKILL.md")), "the host build is plugged where the host loads it");
   assert.ok(!existsSync(join(root, ".claude", "skills", "sk", "gate.json")), "gates stay with the source; the host build carries none");
-  assert.match(readFileSync(join(root, "docs", "agent", "03_SKILLS", "INDEX.md"), "utf8"),
-    /\| `sk\/` \| `\.claude\/skills\/sk\/` \| _Store\/03_SKILLS\/sk @v1 #[0-9a-f]{12} \|/);
+  // plan/29 §13: the skills INDEX is a table of contents the machine writes — source, host folder, type, when to open
+  const skIndex = readFileSync(join(root, "docs", "agent", "03_SKILLS", "INDEX.md"), "utf8");
+  assert.match(skIndex, /^<!-- zemory:generated/m);
+  assert.match(skIndex, /\| \[`sk`\]\(sk\/sk\.md\) \| `\.claude\/skills\/sk\/` \| {2}\| x \|/);
+  const stIndex = readFileSync(join(root, "docs", "agent", "02_STRUCTURE", "INDEX.md"), "utf8");
+  assert.match(stIndex, /^<!-- zemory:generated/m);
+  assert.match(stIndex, /\| \[`03-1_entry`\]\(_Slot\/03-1_entry\/03-1_entry\.md\) \|/, "every slot has its row");
   const again = applyKit(root, { apply: false, storeDir: st.s });
   assert.deepEqual(new Set(Object.values(verdicts(again))), new Set(["current"]), "a second pass finds nothing to do");
 });
@@ -547,18 +552,68 @@ test("the skill list of a folder harness: 03_SKILLS/INDEX.md, else the list FILE
   assert.equal(skillsIndexOf(agent), join(agent, "03_SKILLS", "INDEX.md"), "the current place wins once it exists");
 });
 
-test("sync: the repo's own skill rows follow a kit skill to its host name; an edited copy on disk keeps its old name", (t) => {
-  // Real repo trials 2026-10-17: rows like `grill/` stayed after the folder made way for `harness-grill/`, and conform
-  // reported every one as a skill with no SKILL.md (SasinFlow 8 · Dept_OPS 13).
+test("sync: both INDEX files are the machine's; a hand-written one is archived whole once; a host-only skill has its row", (t) => {
+  // plan/29 §13 (user 2026-10-18: INDEX kept, fully machine-written). Real repos carried hand rows that named folders long
+  // gone (SasinFlow 8 · Dept_OPS 13) and data dictionaries no structure reads.
   const root = repo(t);
   applyKit(root, { kitRef: "04", apply: true });
-  const index = join(root, "docs", "agent", "03_SKILLS", "INDEX.md");
-  writeFileSync(index, readFileSync(index, "utf8") + "\n| `grill/` | clarify first |\n| `audit/` | full review |\n");
-  mkdirSync(join(root, ".claude", "skills", "audit"), { recursive: true }); // an edited copy still under the old name
+  const sk = join(root, "docs", "agent", "03_SKILLS", "INDEX.md");
+  const st = join(root, "docs", "agent", "02_STRUCTURE", "INDEX.md");
+  const handSk = "# my skills\n\n| `grill/` | clarify first |\n";
+  const handSt = "# my structure\n\n| Revenue | net of VAT |\n";
+  writeFileSync(sk, handSk);
+  writeFileSync(st, handSt);
+  put(root, ".claude/skills/own-sk/SKILL.md", "---\nname: own-sk\ndescription: my own work\n---\n# own\n");
+  const r = applyKit(root, { apply: true, });
+  assert.equal(r.indexArchived.length, 2, JSON.stringify(r.indexArchived));
+  const kept = (n) => readFileSync(r.indexArchived.find((p) => p.endsWith(n)), "utf8");
+  assert.equal(kept("03_SKILLS-INDEX.md"), handSk, "the hand-written skills list is kept byte for byte");
+  assert.equal(kept("02_STRUCTURE-INDEX.md"), handSt, "the hand-written structure text is kept byte for byte");
+  assert.match(readFileSync(sk, "utf8"), /^<!-- zemory:generated/m);
+  assert.doesNotMatch(readFileSync(sk, "utf8"), /`grill\/`/, "no hand row survives in the generated list");
+  assert.match(readFileSync(sk, "utf8"), /\| \(host only · chỉ ở host\) \| `\.claude\/skills\/own-sk\/` \| {2}\| my own work \|/);
+  assert.doesNotMatch(readFileSync(st, "utf8"), /Revenue/);
+  const again = applyKit(root, { apply: true });
+  assert.deepEqual(again.indexArchived, [], "a generated INDEX is never archived");
+  assert.equal(again.skillsBlock, "current", "nothing changed, nothing written");
+  // a generated INDEX gone stale (a skill added since) is rewritten, still not archived
+  put(root, ".claude/skills/own-two/SKILL.md", "---\nname: own-two\ndescription: second\n---\n# two\n");
+  const third = applyKit(root, { apply: true });
+  assert.deepEqual(third.indexArchived, [], "the machine's own earlier list is not history");
+  assert.match(readFileSync(sk, "utf8"), /own-two/);
+});
+
+test("a slot the store retires leaves the repo for its archive (plan/29 §13, Docs_138), and leaves the set folder whole", (t) => {
+  const st = store(t);
+  const kit01 = () => readKits(st.s).find((k) => k.no === "01");
+  const root = repo(t);
+  put(st.s, "02_STRUCTURE/_Slot/03-3_dict/SLOT.md", "---\nid: 03-3\nname: dict\nversion: 1\npath: docs/agent/02_STRUCTURE/INDEX.md\n---\n# dict\n");
+  put(st.s, "02_STRUCTURE/Struc_Repo_App/structure.json", JSON.stringify({ slots: ["03-1_entry", "03-2_agent", "03-3_dict"] }));
+  assembleSet(kit01(), st.s);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const copy = join(root, "docs", "agent", "02_STRUCTURE", "_Slot", "03-3_dict");
+  assert.ok(existsSync(copy), "assembled while the store carries it");
+  // retired: the slot moves to the store's Archive and out of the structure
+  mkdirSync(join(st.s, "Archive", "02_STRUCTURE", "_Slot"), { recursive: true });
+  renameSync(join(st.s, "02_STRUCTURE", "_Slot", "03-3_dict"), join(st.s, "Archive", "02_STRUCTURE", "_Slot", "03-3_dict"));
+  put(st.s, "02_STRUCTURE/Struc_Repo_App/structure.json", JSON.stringify({ slots: ["03-1_entry", "03-2_agent"] }));
+  assembleSet(kit01(), st.s);
+  assert.ok(!existsSync(join(setDir("01_IDE_App_Memory", st.s), "docs", "archive")), "a set keeps no archive of its own");
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(!existsSync(copy), "the copy left the harness");
+  assert.ok(existsSync(join(root, "docs", "archive", "retired", "02_STRUCTURE", "_Slot", "03-3_dict", "03-3_dict.md")), "kept in the repo archive");
+  assert.ok(r.retired.some((x) => x.folder === "_Slot/03-3_dict"));
+  assert.doesNotMatch(readFileSync(join(root, "docs", "agent", "02_STRUCTURE", "INDEX.md"), "utf8"), /03-3_dict/, "the contents follow");
+});
+
+test("sync: the entry file's line about the structure INDEX follows it (a table of contents, no longer the repo's own text)", (t) => {
+  const root = repo(t);
+  applyKit(root, { kitRef: "05", apply: true });
+  const p = join(root, "AGENTS.md");
+  writeFileSync(p, readFileSync(p, "utf8").replace(/(`INDEX\.md`: )[^;]*;/, "$1thứ gì nằm đâu, từ điển dữ liệu của repo;"));
   applyKit(root, { apply: true });
-  const text = readFileSync(index, "utf8");
-  assert.match(text, /\| `harness-grill\/` \| clarify first \|/, "the gone folder's row follows the rename");
-  assert.match(text, /\| `audit\/` \| full review \|/, "a folder still on disk keeps its row");
+  assert.match(readFileSync(p, "utf8"), /`INDEX\.md`: mục lục slot do máy sinh lúc sync, không sửa tay;/);
+  assert.doesNotMatch(readFileSync(p, "utf8"), /từ điển dữ liệu của repo/);
 });
 
 test("a part's installs: land at their repo paths; a store change replaces an untouched copy; an edited or foreign copy is kept", async (t) => {

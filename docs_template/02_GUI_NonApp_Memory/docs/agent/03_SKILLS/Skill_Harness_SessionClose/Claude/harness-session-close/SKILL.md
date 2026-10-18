@@ -2,10 +2,10 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 16
+version: 17
 type: process
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
-from: _Store/03_SKILLS/Skill_Harness_SessionClose @v16 #306d8e7006eb
+from: _Store/03_SKILLS/Skill_Harness_SessionClose @v17 #4068a099cb12
 ---
 
 # session-close — chốt phiên / ghi sổ
@@ -73,7 +73,7 @@ là khi ĐỔI SESSION — BẮT BUỘC dò Global Memory + đối chiếu code 
    (dùng `zemory memory digest <session>` / `memory search` để moi lại). Rút ra: đã LÀM gì · đã ĐỔI gì
    · QUYẾT ĐỊNH gì · còn DỞ gì · phát hiện LỖI gì chưa sửa.
 2. **FULL `docs/plan/*`** — mọi file, để biết việc vừa làm có đụng/lệch spec nào không (định nghĩa
-   metric thì soi Từ điển dữ liệu `Docs_138_DataDictionary`).
+   metric thì soi khung HP `Cons_Gate_12_SourceOfTruth`, mục Định nghĩa).
 3. **FULL `docs/agent/*`** — `01_LAW/_Cons` · `01_LAW/_Rule` · `02_STRUCTURE` · `03_SKILLS` ·
    `04_TODO` · `05_CHANGES`, để biết chỗ nào phải cập nhật và không ghi trùng cái đã có.
 4. **FULL spec của MỌI case/task đã đụng trong phiên** (vd `tasks/<case>/spec.md`) — cả thân lẫn khối
@@ -88,7 +88,7 @@ là khi ĐỔI SESSION — BẮT BUỘC dò Global Memory + đối chiếu code 
 | Việc đã xong / đã sửa code / sản phẩm (deliverable · measure · pipeline) đã sửa | `05_CHANGES.md` (sau khi được duyệt) **và xoá khỏi** `04_TODO.md` |
 | Việc còn dở (ĐANG làm, đã báo) | `04_TODO.md` — nêu rõ `[~]`, **đã tới đâu, bước kế tiếp là gì** |
 | Việc PHÁT SINH / ý cho phiên sau | **BÁO trong phiên, hỏi trước khi ghi** — cửa vào ở `Rule_Gate_38_TodoDoor`. Không gật ⇒ không có dòng nào |
-| Thiết kế / quyết định thay đổi (gồm định nghĩa metric) | `docs/plan/NN_*.md` · định nghĩa metric → Từ điển dữ liệu `Docs_138_DataDictionary` (+ supersede ở changelog nếu đảo quyết định cũ) |
+| Thiết kế / quyết định thay đổi (gồm định nghĩa metric) | `docs/plan/NN_*.md` · định nghĩa metric → khung HP `Cons_Gate_12_SourceOfTruth` mục Định nghĩa, cách tính → skill riêng `Skill_Own_<Tên>` (+ supersede ở changelog nếu đảo quyết định cũ) |
 | Quyết định / trạng thái của MỘT case | spec của case đó (vd `tasks/<case>/spec.md`) — thân + khối khai báo (`updated` đổi cùng lượt); câu cũ bị thay thì sửa/gạch, KHÔNG để hai câu ngược nhau cùng sống |
 | Luật / bất biến riêng phát sinh | **HỎI ngay trong phiên**, gật thì ghi thẳng vào đúng nhà (`01`/`02`) — KHÔNG tự sửa `01_LAW/_Cons/`, và KHÔNG đậu vào `04_TODO` chờ duyệt |
 

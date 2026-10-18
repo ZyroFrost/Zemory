@@ -1,12 +1,12 @@
 ---
 id: Struc_Repo_Dept
 name: repo-dept
-version: 3
+version: 4
 profile: non-app
 label: DEPT
 intro: : repo của một phòng ban trong một vùng có tổng quản — việc theo case (kéo · xử lý · giao báo cáo), báo cáo BI, tác vụ chạy định kỳ trên máy chủ; không phát triển app
 ask: ; repo phòng ban nhận dữ liệu từ kho của tổng quản và giao báo cáo cho người nhận là DEPT
-index-role: thứ gì nằm đâu, từ điển dữ liệu của repo
+index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 installs: [scripts/region_values.py]
 ---

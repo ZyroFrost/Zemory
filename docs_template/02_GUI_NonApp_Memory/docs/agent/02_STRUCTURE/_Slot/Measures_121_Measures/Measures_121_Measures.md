@@ -2,13 +2,13 @@
 id: Slot_121
 aka: 03-121
 name: measures
-version: 4
+version: 5
 path: measures/
-from: _Store/02_STRUCTURE/_Slot/Measures_121_Measures @v4 #eb2828cb7302
+from: _Store/02_STRUCTURE/_Slot/Measures_121_Measures @v5 #33d905f6d83a
 ---
 # Measures_121_Measures measures — thư viện measure đặt tên
 
 - Vai trò:
   - Thư viện DAX / tính toán đặt tên + chú thích — trích ra để review / tái dùng. Dùng chung nhiều case.
-  - Phải tính đúng như từ điển dữ liệu (part `Docs_138_DataDictionary` data-dictionary); thấy công thức thực tế khác mô tả ⇒ BÁO, không tự sửa bên nào.
+  - Phải tính đúng như định nghĩa ở khung HP `Cons_Gate_12_SourceOfTruth` (mục Định nghĩa) và cách tính ở skill riêng `Skill_Own_<Tên>`; thấy công thức thực tế khác mô tả ⇒ BÁO, không tự sửa bên nào.
 - Khuôn tên: Tên `measures/` — không dùng `dax` hay `calc`.
