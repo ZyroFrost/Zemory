@@ -1,53 +1,7 @@
 {
   "slots": [],
-  "roles": {
-    "region-manager": {
-      "manages": [
-        "dept"
-      ],
-      "provides": [
-        "data",
-        "region-values"
-      ]
-    },
-    "system-manager": {
-      "manages": [
-        "app",
-        "app-data"
-      ],
-      "provides": []
-    },
-    "app-data": {
-      "manages": [],
-      "provides": [
-        "app-data"
-      ]
-    },
-    "log-center": {
-      "manages": [],
-      "provides": [
-        "log"
-      ]
-    },
-    "reference": {
-      "manages": [],
-      "provides": [
-        "glossary",
-        "legacy",
-        "template"
-      ]
-    },
-    "dept": {
-      "manages": [],
-      "provides": []
-    },
-    "app": {
-      "manages": [],
-      "provides": []
-    },
-    "guest": {
-      "manages": [],
-      "provides": []
-    }
-  }
+  "relations": [
+    "owner",
+    "uses"
+  ]
 }

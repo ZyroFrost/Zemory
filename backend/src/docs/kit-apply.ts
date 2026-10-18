@@ -234,7 +234,9 @@ export function writeKitMarker(root: string, kit: Kit, storeDir = STORE_DIR): bo
   if (existing) {
     try {
       const raw = JSON.parse(readFileSync(existing, "utf8").replace(new RegExp("^" + String.fromCharCode(0xfeff)), "")) as Record<string, unknown>;
-      if (raw.kit === kit.name) return false;
+      // plan/29 §14b: the role comes from the template; a marker that still says it is rewritten without it
+      if (raw.kit === kit.name && !("role" in raw)) return false;
+      delete raw.role;
       raw.kit = kit.name;
       if (nonApp) raw.profile = "non-app";
       writeFileSync(existing, JSON.stringify(raw, null, 2) + "\n");

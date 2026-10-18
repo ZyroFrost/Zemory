@@ -317,14 +317,14 @@ export function conform(root: string): ConformReport {
       "restore the file, or drop the command if a rule of the set does the job now (`zemory sync --standard --apply` rewrites the tool's own pre-commit)");
   }
 
-  // ②septies — Struc_Region_Workspace (user 2026-10-18): the repo's role, its one owner and the services it uses, checked
-  // against the roles HS declares; a repo that has not declared its role yet is named (advisory) until the region is moved.
+  // ②septies — plan/29 §14b: the repo's role comes from its template; its one owner and the services it uses are checked
+  // against the roles of the templates on both ends. A repo named whose template is not assembled yet is named (advisory).
   {
     const r = regionLinkFindings(root);
-    push("region-links", "blocking", "The marker's role / owner / uses do not match Struc_Region_Workspace", r.wrong,
-      "fix the marker: one owner whose role manages this repo's role; each uses.<kind> points at a repo providing that kind");
-    push("region-role", "advisory", "The repo has not declared its role in the workspace", r.missing,
-      "add role (+ owner, uses) to docs/.harness.json — the roles are in Struc_Region_Workspace");
+    push("region-links", "blocking", "The marker's owner / uses do not match the roles of the templates", r.wrong,
+      "fix the marker: the owner rule of the template; an owner whose template manages this one; each uses.<kind> points at a repo whose template provides it");
+    push("region-pending", "advisory", "A repo named in the marker is assembled from no template yet", r.pending,
+      "checked once that repo is assembled (its own set)");
   }
 
   // ②sexies — Rule_Gate_83_HarnessFromStore (user 2026-10-18): a repo uses the harness, it does not own it — a part changes in

@@ -111,5 +111,14 @@
     "Exports_135_Exports",
     "Root_136_Principles",
     "Frontend_137_UiDictionary"
-  ]
+  ],
+  "role": {
+    "name": "app",
+    "manages": [],
+    "managed_by": [
+      "system-manager"
+    ],
+    "owner": "optional",
+    "provides": []
+  }
 }

@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_App
 name: repo-app
-version: 4
+version: 5
 profile: app
 label: APP
 intro: (có code chạy: UI · server · CLI)

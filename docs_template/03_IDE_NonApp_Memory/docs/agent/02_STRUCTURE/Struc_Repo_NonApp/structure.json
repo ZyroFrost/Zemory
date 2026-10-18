@@ -49,5 +49,12 @@
     "Data_134_03Output",
     "Exports_135_Exports",
     "Root_136_Principles"
-  ]
+  ],
+  "role": {
+    "name": "non-app",
+    "manages": [],
+    "managed_by": [],
+    "owner": "optional",
+    "provides": []
+  }
 }

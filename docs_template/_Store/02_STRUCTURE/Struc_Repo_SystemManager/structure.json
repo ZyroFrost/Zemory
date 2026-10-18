@@ -1,0 +1,14 @@
+{
+  "extends": "Struc_Repo_App",
+  "slots": [],
+  "role": {
+    "name": "system-manager",
+    "manages": [
+      "app",
+      "app-data"
+    ],
+    "managed_by": [],
+    "owner": "none",
+    "provides": []
+  }
+}
