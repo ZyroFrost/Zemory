@@ -2,7 +2,7 @@
 id: Skill_Harness_SyncPath
 aka: sync-path
 name: harness-sync-path
-version: 9
+version: 10
 description: Declare and PROVE how every new artifact reaches a second machine - code, data layer, derived index, secret, model, config. Run before calling any build "done", when adding a new storage or index layer, when handing a repo to another PC, or when something works on one machine but not the other. Vietnamese triggers - "đồng bộ 2 máy", "máy thứ hai", "bàn giao máy mới", "pull về máy kia", "kẹt giữa 2 máy", "sync đa máy", "máy kia chạy được chưa".
 ---
 
@@ -24,7 +24,7 @@ việc chưa xong, dù code chạy.
 
 | kênh | dùng cho | ràng buộc |
 |---|---|---|
-| **git** | mã nguồn · docs · template · hook · cấu hình mặc định | **cấm mọi data/bí mật** (xem `01_LAW/_Cons`) |
+| **git** | mã nguồn · docs · template · hook · cấu hình mặc định | **cấm mọi data/bí mật** (`Rule_Gate_21_WhatEntersGit`) |
 | **gói mã hoá** (vd `.enc`) | kho dữ liệu thật | không bao giờ qua git; không để kho SỐNG trong thư mục đồng bộ đám mây |
 | **người mang tay** | chìa · mật khẩu | không git, không đám mây, không in ra màn hình |
 | **dựng lại tại máy đích** | lớp dẫn xuất rẻ · output build (`dist/`) · cache | phải ghi rõ **lệnh dựng** và **giá** (bao lâu) |
@@ -84,7 +84,7 @@ không ai biết — trong khi lệnh đồng bộ vẫn báo "đã xuất" thà
 
 ## 5. Máy canh, đừng dựa trí nhớ
 
-Skill là chữ, mà chữ thì quên được — thứ CHẶN drift là **code** (xem `01_LAW/_Cons`). Repo phải có
+Skill là chữ, mà chữ thì quên được — thứ CHẶN drift là **code** (`Rule_Gate_79_HarnessEdit`: luật không đảo được phải có chốt máy). Repo phải có
 cổng cho ít nhất hai việc, và **chạy chúng thay vì tự nhớ**:
 
 - cổng chặn **data/bí mật lọt git** — kèm ca ÂM: một ngoại lệ mở đường cho gói dữ liệu là đủ hỏng;

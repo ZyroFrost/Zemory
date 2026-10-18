@@ -2,7 +2,7 @@
 id: Slot_136
 aka: 03-136
 name: principles
-version: 10
+version: 11
 kind: guide
 path: .
 ---
@@ -42,7 +42,7 @@ path: .
 - Cross-cutting phải RÕ: MỌI concern xuyên suốt (mã hoá · authz · logging · audit · error · cache · i18n…) phải có chỗ + loại trong chuẩn để audit/refactor thấy, không lọt. Thiếu concern → BÁO để thêm vào chuẩn.
 - Monorepo (APP): nhiều app → `apps/<app>/` + `packages/<lib>/` (+ `packages/contracts` nếu đa client), mỗi cái theo cây chuẩn.
 - Luật nổ lúc VIẾT code (`conform` không kiểm được) nằm ở `01_LAW/_Rule/` (`Rule_Gate_21_WhatEntersGit` · `Rule_Gate_35_OneHome` · `Rule_Gate_29_CodeLanguage`), không ở chuẩn cấu trúc.
-- Hệ NON-APP: 0 luật UI. Trình bày deliverable (layout report/chart) là quyết định TRÌNH BÀY — trình duyệt trước (`Rule_Keys_62_DesignChangeApproval`), tham khảo skill `dataviz`; không phải luật UI-app.
+- Hệ NON-APP: 0 luật UI. Trình bày deliverable (layout report/chart) là quyết định TRÌNH BÀY — trình duyệt trước (`Rule_Keys_62_DesignChangeApproval`), cách dựng ở skill `pbi-base`; không phải luật UI-app.
 - Phạm vi áp dụng:
   - Chuẩn APP áp cho hầu hết app (UI + server-side): desktop WebView2, web app, tool có cockpit, AI project, monorepo; chọn layer-first hay domain-first theo số domain.
   - Chuẩn NON-APP áp cho BI/report (Power BI/Tableau), data/analytics (dbt/warehouse), docs-only, design/brand, research/notebook có cấu trúc.

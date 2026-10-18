@@ -2,7 +2,7 @@
 id: Skill_Harness_Conform
 aka: conform
 name: harness-conform
-version: 7
+version: 8
 description: Measure how closely the project folder follows the declared standard - machine scores, agent judges. Run before closing a session, after restructuring, when taking over an unfamiliar folder, or periodically. Not needed after every small edit. Vietnamese triggers - "soi chuẩn", "kiểm chuẩn", "có đúng chuẩn không", "check cấu trúc", "dự án này có bám chuẩn không".
 ---
 
@@ -14,7 +14,7 @@ description: Measure how closely the project folder follows the declared standar
 > **Máy chấm trước, agent phán sau.** Máy chỉ biết "thư mục này không khớp slot nào"; **chỉ agent mới
 > biết nó *nên* về slot nào, hay đây là concern thật cần thêm vào chuẩn**.
 
-**Nguyên tắc (bất biến — xem `01_LAW/_Cons`, điều "MÁY dựng lớp dẫn xuất · AGENT sửa NGUỒN"):** lớp
+**Nguyên tắc:** lớp
 dẫn xuất (graph · index · taxonomy) do MÁY dựng tất định. **Agent KHÔNG ghi vào lớp dẫn xuất** — muốn
 nó có gì thì KHAI vào chuẩn hoặc sửa NGUỒN (docs · code) rồi để máy dựng lại. Agent là người **KIỂM**,
 không phải người sinh.
@@ -37,8 +37,8 @@ trước, agent chỉ đọc **bảng lệch** (~vài trăm token).
 4. **Sửa NGUỒN**, không sửa lớp dẫn xuất / báo cáo:
    - đặt sai chỗ → `git mv` về đúng slot (giữ history) + sửa import; cần dời nhiều thì đề xuất qua
      skill `reconcile`
-   - là concern THẬT mà chuẩn chưa khai → **đề xuất thêm slot vào `02_STRUCTURE`** (một folder `03-N_<tên>/`, số nối cuối) (bộ không có
-     CLI: vào skill `structure` §3) — đây là **đổi chuẩn**, phải trình duyệt trước
+   - là concern THẬT mà chuẩn chưa khai → **đề xuất thêm slot lên HS** (`<Area>_<NNN>_<Name>` trong `02_STRUCTURE/_Slot/`, số nối cuối) — đây là **đổi chuẩn**:
+     dò slot có sẵn trước (`Rule_Gate_85_ProposeChecked`), gửi đề xuất cho phiên zemory (`Rule_Gate_83_HarnessFromStore`)
    - folder rỗng / rác → **đề xuất xoá, chờ xác nhận** trước khi xoá, không tự xoá
    - đừng chỉnh script chấm cho hết kêu
 5. **Chạy lại** máy chấm → xác nhận hết lệch. Đã sửa → `05_CHANGES`; phần còn lệch → **báo, hỏi trước

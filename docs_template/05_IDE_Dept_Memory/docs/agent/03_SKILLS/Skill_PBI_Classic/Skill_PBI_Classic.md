@@ -1,9 +1,9 @@
 ---
 id: Skill_PBI_Classic
 name: pbi-classic
-version: 2
+version: 3
 description: Build the CLASSIC copy of a Power BI report - keep the OLD design exactly, move only the model onto the warehouse: map tables to Dim_*/Fact_*, port measures, rebind visuals, then MEASURE how far the numbers match the old one. Use whenever an old dashboard moves onto the warehouse, the old report serves as the warehouse's test, or the question is what the warehouse still lacks. Not for a new design. Vietnamese triggers - "bản classic", "tái tạo dashboard cũ", "đổi model sang DW", "so số với bản cũ", "kho còn thiếu gì".
-from: _Store/03_SKILLS/Skill_PBI_Classic @v2 #aab4b566fdde
+from: _Store/03_SKILLS/Skill_PBI_Classic @v3 #9735010ea194
 ---
 
 # Bản `Classic` — giữ nguyên thiết kế CŨ, chỉ đổi lớp model sang kho
@@ -165,7 +165,7 @@ Vá bằng cột dẫn xuất (`QuarterLabel = "Q" & Quarter`), **không sửa c
 - 🔴 **Ô không đối chiếu được (vì kho thiếu nguồn) KHÔNG tính là lệch** — xếp riêng thành nhóm *"chưa
   đối chiếu được"* kèm lý do. Gộp nó vào nhóm lệch là làm hỏng chính con số cần báo.
 - 🔴 **QUÉT FULL mọi kỳ × mọi đơn vị × mọi dòng** (`chuẩn phòng ban §7`), chia lô mà quét — đừng chọn
-  mẫu. API dò dữ liệu **cắt ở ~1.000 dòng mà không báo** (`HP điều 9`), nên không chia lô là ra số
+  mẫu. API dò dữ liệu **cắt ở `query_row_cap` dòng mà không báo** (`Skill_Task_Pull`), nên không chia lô là ra số
   thiếu trong im lặng.
 
 **Cách đo khớp:** `FULL OUTER JOIN` hai bên cùng instance, gom theo khoá kỳ + đơn vị + dòng, đếm ô
