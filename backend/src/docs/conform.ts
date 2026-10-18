@@ -25,6 +25,7 @@ import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, leafOf, listPar
 import { CORE_REINJECT_CAP } from "./rule-core.js";
 import { wiredHooks } from "./hook-wiring.js";
 import { precommitState } from "./guard-gen.js";
+import { editedHarnessCopies } from "./law-sync.js";
 import { viName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
 
@@ -309,6 +310,11 @@ export function conform(root: string): ConformReport {
     push("hook-command-dead", "blocking", "A hook command (.claude/settings.json or git pre-commit) runs a file that does not exist", dead,
       "restore the file, or drop the command if a rule of the set does the job now (`zemory sync --standard --apply` rewrites the tool's own pre-commit)");
   }
+
+  // ②sexies — Rule_Gate_83_HarnessFromStore (user 2026-10-18): a repo uses the harness, it does not own it — a part changes in
+  // the zemory store and is synced down; a copy edited here splits the one part into many.
+  push("harness-edited-here", "blocking", "A part of the harness (law · slot · skill) was edited in this repo, not in the zemory store", editedHarnessCopies(hp.agent),
+    "send the change to the zemory session: it runs `zemory impact <part>`, puts it in the store and syncs down; what only fits this repo becomes its own part, written by zemory once the user agrees");
 
   // ②quater — The laws no hook holds are read before the first action and put back after a compaction (folderCoreFiles).
   // Past the put-back cap the text is cut: name the biggest files, so the repo knows what to give a hook or trim.

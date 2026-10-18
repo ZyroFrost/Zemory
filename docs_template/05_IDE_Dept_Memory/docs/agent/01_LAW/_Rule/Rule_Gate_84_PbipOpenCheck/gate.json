@@ -1,0 +1,83 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Bash",
+      "PowerShell"
+    ]
+  },
+  "replaces_hooks": [
+    "pbi-open-gate.cjs"
+  ],
+  "block": [
+    {
+      "note": "opening a report whose open check finds a file breaker",
+      "files": {
+        "scripts/pbi_gate.py": "import sys\nprint(\"  X measure 'Sales' declared twice in Model.tmdl - Desktop will not open the file\")\nsys.exit(1)\n",
+        "reports/R_Mix/R.pbip": "{}\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {
+        "command": "Start-Process \"reports/R_Mix/R.pbip\""
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "opening a report the open check passes",
+      "files": {
+        "scripts/pbi_gate.py": "import sys\nprint(\"GATE GREEN\")\nsys.exit(0)\n",
+        "reports/R_Mix/R.pbip": "{}\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {
+        "command": "Start-Process \"reports/R_Mix/R.pbip\""
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a command that does not open a .pbip",
+      "files": {
+        "scripts/pbi_gate.py": "import sys\nprint(\"  X x\")\nsys.exit(1)\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {
+        "command": "git status"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "the open check cannot finish (incomplete)",
+      "files": {
+        "scripts/pbi_gate.py": "import sys\nprint(\"GATE INCOMPLETE\")\nsys.exit(3)\n",
+        "reports/R_Mix/R.pbip": "{}\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {
+        "command": "Start-Process \"reports/R_Mix/R.pbip\""
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    }
+  ]
+}

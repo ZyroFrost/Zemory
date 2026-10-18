@@ -579,6 +579,54 @@ function check(payload, root, policy) {
   // 02-82 — the agent never sends mail on its own: a command that can SEND MAIL is blocked unless the person allowed that one
   // send in the session (flag .allow-mail). Brought up from the department repos' docs/hooks/mail-gate.cjs (same detection),
   // where a move to the folder harness archived the file and left the host calling a path that was gone.
+  // 02-83 — a repo uses the harness, it does not own it (user 2026-10-18): every Write / Edit in the harness (01_LAW ·
+  // 02_STRUCTURE · 03_SKILLS · the skill builds in .claude/skills) is blocked, no flag. It is made in the zemory store and
+  // reaches the repo through zemory; the ledgers stay the repo's. The zemory repo (it holds the store) is where it is made.
+  hook("02-83_harness-from-store.cjs", String.raw`
+const HARNESS = /(^|\/)docs\/agent\/(01_LAW|02_STRUCTURE|03_SKILLS)\/|(^|\/)\.claude\/skills\//;
+function check(payload, root, policy) {
+  try {
+    const e = edit(payload, root);
+    if (!e || !HARNESS.test(e.rel)) return null;
+    if (fs.existsSync(path.join(root, "docs_template", "_Store"))) return null;
+    return blocked(root, policy, "02-83", e.rel + " is harness. A repo uses the harness, it does not own it: no change here " +
+      "without zemory - not to a law, a constitution article, a slot or a skill, the repo's own included. Send the change to " +
+      "the zemory session; zemory runs zemory impact, agrees it with the user, puts it in the store (or writes this repo's " +
+      "own part) and syncs it down.");
+  } catch { return null; }
+}`),
+
+  // 02-84 — a .pbip opens only when pbi_gate --open-check finds nothing that breaks the file (a department repo's own hook,
+  // up to the store 2026-10-18). Design and warehouse findings never block the opening. Bounded below the host's hook
+  // timeout: a guard killed by the host lets every other rule's check go with it.
+  hook("02-84_pbip-open-check.cjs", String.raw`
+const { spawnSync } = require("node:child_process");
+const OPEN_CAP_MS = 40000;
+function check(payload, root, policy) {
+  try {
+    const cmd = String((payload.tool_input || {}).command || "");
+    if (!/\.pbip\b/i.test(cmd) || !/start-process|invoke-item|\bstart\b|^\s*&\s*['"]/i.test(cmd)) return null;
+    const m = cmd.match(/["']([^"']*\.pbip)["']/i) || cmd.match(/(\S*\.pbip)/i);
+    if (!m) return null;
+    const gate = path.join(root, "scripts", "pbi_gate.py");
+    if (!fs.existsSync(gate)) return null;
+    const reportDir = path.dirname(path.isAbsolute(m[1]) ? m[1] : path.join(root, m[1]));
+    let strict = null;
+    try {
+      const cfg = JSON.parse(fs.readFileSync(path.join(root, "config", "pbi-gate.json"), "utf8"));
+      for (const [k, v] of Object.entries(cfg.strict_page || {})) if (reportDir.replace(/\\/g, "/").toLowerCase().includes(k.toLowerCase())) strict = v;
+    } catch { /* no settings: the light check */ }
+    const args = [gate, reportDir, "--open-check", ...(strict ? ["--page", strict] : [])];
+    const r = spawnSync("python", args, { cwd: root, encoding: "utf8", timeout: OPEN_CAP_MS, windowsHide: true,
+      env: Object.assign({}, process.env, { PYTHONIOENCODING: "utf-8" }) });
+    // the gate cannot run, ran out of time, or found nothing that breaks the file: do not block
+    if (r.error || r.status === null || r.status === 0 || r.status === 2 || r.status === 3) return null;
+    return blocked(root, policy, "02-84", "this opens " + path.basename(m[1]) + " while it is BROKEN (Desktop would refuse it or open it " +
+      "with issues). Fix these, then open again - python scripts/pbi_gate.py " + path.relative(root, reportDir) + " --open-check:\n\n" +
+      String(r.stdout || "").split("\n").filter((l) => /^\s+X /.test(l)).join("\n"));
+  } catch { return null; }
+}`, true),
+
   hook("02-82_mail-gate.cjs", String.raw`
 const SENDS = /smtplib|\bsend_message\s*\(|\bsendmail\s*\(|\/sendMail\b|Send-MailMessage|Send-MgUserMail/i;
 const MAIL_SCRIPT = /(^|[\\\/\s"'])([\w.-]*mail[\w.-]*|[\w.-]*send[\w.-]*|[\w.-]*alert[\w.-]*)\.(py|ps1|cmd|bat)\b/i;

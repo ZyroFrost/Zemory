@@ -8,6 +8,7 @@ import { currentProjectRoot, harnessPathsAt } from "../core/config.js";
 import { writeNoGateTop } from "../docs/no-gate.js";
 import { repoGateLines, repoGates, type RepoGates } from "../docs/repo-gates.js";
 import { listKnownProjects } from "../projects.js";
+import { partImpact } from "../docs/law-sync.js";
 
 export function cmdGates(args: string[]): void {
   const unknown = args.filter((a) => a !== "--all" && a !== "--json" && a !== "--write-top");
@@ -43,5 +44,30 @@ export function cmdGates(args: string[]): void {
     const lines = repoGateLines(g);
     console.log(`  ${lines.length ? "✗" : "✓"} ${g.name}  (forced reading: ${g.forced.toLocaleString("en-US")} chars)`);
     for (const l of lines) console.log(`      · ${l}`);
+  }
+}
+
+/** `zemory impact <part>` — before a store part (law · slot · skill) is edited or retired (Rule_Gate_83_HarnessFromStore):
+ *  every registered repo with a folder harness and the state of its copy. Read-only; exit 1 while a copy is edited here. */
+export function cmdImpact(args: string[]): void {
+  const [ref, ...rest] = args;
+  if (!ref || rest.length) {
+    console.log("  usage: zemory impact <part>   (folder Skill_PBI_Mix · Rule_Gate_83_HarnessFromStore · id Rule_83 · law number 83)");
+    process.exitCode = 1;
+    return;
+  }
+  const repos = listKnownProjects().filter((p) => existsSync(p.root)).map((p) => ({ name: p.name, root: p.root, agent: harnessPathsAt(p.root).agent }));
+  const r = partImpact(ref, repos);
+  if (!r.part) {
+    console.log(`zemory impact: no store part answers to "${ref}"`);
+    process.exitCode = 1;
+    return;
+  }
+  const carry = r.repos.filter((x) => x.state !== "absent");
+  console.log(`zemory impact ${r.part.folder} — carried by ${carry.length} of ${r.repos.length} folder-harness repo(s)`);
+  for (const x of r.repos) console.log(`  ${x.state.padEnd(7)} ${x.name}${x.folder && x.folder !== r.part.folder ? `  (as ${x.folder})` : ""}`);
+  if (r.repos.some((x) => x.state === "edited")) {
+    console.log("  edited = the repo changed its copy: bring that change up first, or the repo proposes a part of its own");
+    process.exitCode = 1;
   }
 }

@@ -4836,8 +4836,12 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
         DIAG_WARN[:] = []
         print('LEGACY (read-only original): only the folder / file-name rule is checked.')
     n_static = len(fail)
-    if layers in ('all', 'pre-open', 'open'):
+    if layers in ('all', 'pre-open'):
         check_dw(report_dir, fail)
+    elif layers == 'open':
+        # the open check blocks only what breaks the file: a warehouse finding never blocks the opening, and reading the
+        # warehouse took minutes on a 13-fact model - past the host's hook timeout, so the hook was killed and blocked nothing
+        LAYER_NOTES.append(('dw', 'deferred', 'the open check blocks only what breaks the file - the full gate reads the warehouse'))
     else:
         LAYER_NOTES.append(('dw', 'NOT CHECKED', '--static'))
     if layers == 'all':
