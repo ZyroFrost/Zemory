@@ -46,7 +46,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 11 | `.claude/skills/harness-plan-trim/SKILL.md` | 71 |
 | 12 | `.claude/skills/harness-reconcile/SKILL.md` | 86 |
 | 13 | `.claude/skills/harness-session-close/SKILL.md` | 201 |
-| 14 | `.claude/skills/harness-structure/SKILL.md` | 103 |
+| 14 | `.claude/skills/harness-structure/SKILL.md` | 122 |
 | 15 | `.claude/skills/harness-structure/references/conventions.md` | 151 |
 | 16 | `.claude/skills/harness-structure/scripts/check_structure.py` | 254 |
 | 17 | `.claude/skills/harness-sync-path/SKILL.md` | 108 |
@@ -102,7 +102,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 67 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.md` | 89 |
 | 68 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/gate.json` | 221 |
 | 69 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/hook.cjs` | 160 |
-| 70 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/Rule_Gate_85_ProposeChecked.md` | 69 |
+| 70 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/Rule_Gate_85_ProposeChecked.md` | 86 |
 | 71 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/gate.json` | 93 |
 | 72 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/hook.cjs` | 169 |
 | 73 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree/Rule_Gate_86_LawLayersAgree.md` | 72 |
@@ -247,10 +247,10 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 212 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Claude/harness-session-close/SKILL.md` | 201 |
 | 213 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.md` | 201 |
 | 214 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/gate.json` | 20 |
-| 215 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/SKILL.md` | 103 |
+| 215 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/SKILL.md` | 122 |
 | 216 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/references/conventions.md` | 151 |
 | 217 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/scripts/check_structure.py` | 254 |
-| 218 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Skill_Harness_Structure.md` | 103 |
+| 218 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Skill_Harness_Structure.md` | 122 |
 | 219 | `docs/agent/03_SKILLS/Skill_Harness_Structure/gate.json` | 3 |
 | 220 | `docs/agent/03_SKILLS/Skill_Harness_Structure/references/conventions.md` | 151 |
 | 221 | `docs/agent/03_SKILLS/Skill_Harness_Structure/scripts/check_structure.py` | 254 |

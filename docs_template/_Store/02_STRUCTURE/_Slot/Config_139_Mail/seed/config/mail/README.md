@@ -1,4 +1,4 @@
-# Kho mail của cụm
+# Bộ mail chung của cụm
 
 Danh bạ và hộp thư gửi dùng chung của mọi repo trong cụm. Agent đọc là chính; người dùng chỉ gõ mật khẩu hộp thư gửi một lần.
 
