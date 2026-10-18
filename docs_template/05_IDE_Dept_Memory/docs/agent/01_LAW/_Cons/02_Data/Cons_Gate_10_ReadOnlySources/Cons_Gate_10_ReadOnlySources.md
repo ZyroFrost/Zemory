@@ -1,11 +1,11 @@
 ---
 id: Cons_10
 name: read-only-sources
-version: 3
+version: 4
 kind: content
 code: 02_Data
 frame: true
-from: _Store/01_LAW/_Cons/02_Data/Cons_Gate_10_ReadOnlySources @v3 #ae077e97367d
+from: _Store/01_LAW/_Cons/02_Data/Cons_Gate_10_ReadOnlySources @v4 #692736b9b916
 ---
 # Cons_Gate_10_ReadOnlySources — Outside sources are read-only
 

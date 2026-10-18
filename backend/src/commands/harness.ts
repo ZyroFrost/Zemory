@@ -90,6 +90,7 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   const conflicts = printKitSteps(r, opts.apply);
   if (opts.apply && r.skillsBlock === "written") console.log("  ✔ 02_STRUCTURE/INDEX.md · 03_SKILLS/INDEX.md rewritten from the assembled parts");
   if (r.indexArchived.length) console.log(`  ✔ hand-written INDEX kept in the archive: ${r.indexArchived.join(" · ")}`);
+  if (r.consAdded.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}frame sections added to Cons.md (fill them): ${r.consAdded.join(" · ")}`);
   if (opts.apply) {
     try {
       const g = generateGuards(root);

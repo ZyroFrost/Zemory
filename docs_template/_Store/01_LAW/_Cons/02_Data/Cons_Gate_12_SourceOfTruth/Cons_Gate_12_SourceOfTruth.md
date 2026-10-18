@@ -1,7 +1,7 @@
 ---
 id: Cons_12
 name: source-of-truth
-version: 3
+version: 4
 kind: content
 code: 02_Data
 frame: true
@@ -18,7 +18,8 @@ derived (rebuilt, never edited by hand), which sources must match and how they a
 - A business term (a measure, a status, a period) is defined or its meaning changes.
 
 ## Do
-1. Fill the sections of `Cons.md`: origin · when they disagree · derived · must match · definitions.
+1. Fill the sections of `Cons.md`: origin · when they disagree · derived · must match · definitions (a table: term · meaning ·
+   identifier).
 2. Definitions: one line per business term — the term · what it means · the identifier it maps to (`Rule_Gate_35_OneHome`). How
    it is calculated, reconciled and its traps go into the repo's own skill, linked both ways.
 3. Keeps and reads no data ⇒ `status: n/a` with the reason.

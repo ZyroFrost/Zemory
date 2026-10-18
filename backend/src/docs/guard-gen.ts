@@ -25,6 +25,7 @@ import { SQL_GATE_FILE, SQL_GATE_SOURCE } from "./sql-gate-src.js";
 import { RULE_HOOKS, SECRET_VALUES } from "./rule-hooks-src.js";
 import { folderCoreFiles, isFolderHarness, isRetired, listParts, shelfDir, skillReadTriggers } from "./store.js";
 import { SHELF } from "./harness-names.js";
+import { consColumn } from "./cons-read.js";
 
 /**
  * Where the guard lives. File harness: `<agent>/../hooks`. Folder harness (plan/28 §0d · §0q): the folder of the read-first
@@ -167,6 +168,13 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     allowedSqlServers = strs(j.allowedSqlServers);
     // The repo's own gates for its constitution (Dept_FA 2026-10-07: they hand-edited .git/hooks/pre-commit to add one).
     repoGates = strs(j.repoGates);
+  }
+  // plan/29 §15: the constitution the repo wrote is the source — frame 10's `Server` column (servers SQL may reach) and
+  // frame 14's `File` column (secret file names). The marker keys still count while repos move their values over.
+  {
+    const agent = harnessPathsAt(root).agent;
+    allowedSqlServers = [...new Set([...allowedSqlServers, ...consColumn(agent, "Cons_Gate_10_ReadOnlySources", "Server")])];
+    secretExtra = [...new Set([...secretExtra, ...consColumn(agent, "Cons_Gate_14_Access", "File")])];
   }
   // READ BEFORE WRITE (user 2026-10-08) — the set every session must have read in full before it acts, plus the files the
   // action itself needs (a case's spec · the AGENTS.md triggers a machine can recognise). Paths are repo-relative, posix.
