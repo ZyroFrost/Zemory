@@ -1,0 +1,28 @@
+{
+  "senders": [
+    {
+      "address": "reports@example.com",
+      "purpose": "report mail of every department",
+      "env_file": "data/secrets/mail.env",
+      "env_keys": {
+        "host": "SMTP_HOST",
+        "port": "SMTP_PORT",
+        "user": "SMTP_USER",
+        "password": "SMTP_PASSWORD"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "dept_monthly_report",
+      "owner": "DEPT",
+      "purpose": "monthly report",
+      "to": [
+        "reader@example.com"
+      ],
+      "cc": [],
+      "source": "requested in the department session"
+    }
+  ],
+  "stores": []
+}

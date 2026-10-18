@@ -1,0 +1,20 @@
+{
+  "trigger": "đưa task lên VM · tự động hoá task · đặt lịch trên VM",
+  "prompt": {
+    "kind": "task-vm-automation",
+    "re": "\\b(len vm|tren vm|tu dong hoa task|dat lich|vm_deploy)\\b",
+    "text": "[zemory] VM task: follow skill task-vm-automation - IN or OUT, the three declarations in the repo, a dry run before the VM."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "đưa task này lên VM chạy tự động"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa tiêu đề báo cáo"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "trigger": "bản classic · tái tạo dashboard cũ · đổi model sang kho · so số với bản cũ",
+  "prompt": {
+    "kind": "pbi-classic",
+    "re": "\\b(classic|tai tao dashboard|doi model sang|so so voi ban cu|kho con thieu)\\b",
+    "text": "[zemory] Classic report: follow skill pbi-classic - clear the old model first, the UI keeps the old text, report the three numbers."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "dựng bản classic cho report"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "viết email báo cáo"
+    }
+  ]
+}
