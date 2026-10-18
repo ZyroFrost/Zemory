@@ -217,7 +217,7 @@ function resolveGate(id: string, mark: string, f: GateFacts): "ok" | "na" | stri
   }
   if (kind === "read-first") return existsSync(join(f.hooksDir, READ_FIRST_FILE)) && f.guardWired && f.policy?.read_first ? "ok" : "read-first latch not in place";
   if (kind === "hook") {
-    if (ref === "precommit-guard") return f.precommit === "guard" ? "ok" : f.precommit === "no-git" ? "na" : "pre-commit not wired";
+    if (ref === "precommit-guard") return f.precommit === "guard" ? "ok" : f.precommit === "no-git" ? "na" : f.precommit === "dead" ? "pre-commit calls a missing precommit-guard.cjs" : "pre-commit not wired";
     if (ref === "rule-reminders") return /zemory(\.cmd)? hook prompt/.test(f.userHooks) ? "ok" : "prompt hook not installed (zemory hook install)";
     if (ref === "send-guard") return /zemory(\.cmd)? hook send-guard/.test(f.userHooks) ? "ok" : "send-guard hook not installed";
     // the end-of-turn evidence check runs inside the Stop capture hook (plan/28 §0o)

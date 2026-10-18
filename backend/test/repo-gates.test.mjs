@@ -166,3 +166,31 @@ test("a folder without a zemory marker is not judged", (t) => {
   const root = tempDir(t, "zemory-gates-none-");
   assert.equal(repoGates(root, "X"), null);
 });
+
+test("a pre-commit calling a precommit-guard.cjs that is gone is DEAD, and `hook guard` rewrites every past tool form", (t) => {
+  // 2026-10-18: nine repos kept `node docs/hooks/precommit-guard.cjs` after the folder move - node failed on the missing
+  // file and every commit was refused, while `gates` matched the word "precommit-guard" and said wired.
+  for (const old of ["#!/bin/sh\nnode docs/hooks/precommit-guard.cjs\n",
+    "#!/bin/sh\n# guard layer 1\nexec node docs/hooks/precommit-guard.cjs\n",
+    "#!/bin/sh\n# machine-local\nnode \"docs/hooks/precommit-guard.cjs\" || exit 1\n"]) {
+    const root = repo(t);
+    const pc = join(root, ".git", "hooks", "pre-commit");
+    writeFileSync(pc, old);
+    assert.equal(precommitState(root), "dead", old);
+    const g = repoGates(root, "R");
+    assert.ok(g.gaps >= 1 && repoGateLines(g).some((l) => /precommit-guard\.cjs that is gone/.test(l)), "gates names it");
+    generateGuards(root);
+    assert.match(readFileSync(pc, "utf8"), /^#!\/bin\/sh\nexec node "\$\(git rev-parse --show-toplevel\)\/docs\/hooks\/precommit-guard\.cjs"\n$/);
+    assert.equal(precommitState(root), "guard", "rewritten to the file that is there");
+  }
+});
+
+test("a repo's own pre-commit that calls a gone guard among other things is not rewritten - it is reported dead", (t) => {
+  const root = repo(t);
+  const pc = join(root, ".git", "hooks", "pre-commit");
+  writeFileSync(pc, "#!/bin/sh\nnpm run lint\nnode old/precommit-guard.cjs\n");
+  assert.equal(precommitState(root), "dead");
+  const r = generateGuards(root);
+  assert.equal(readFileSync(pc, "utf8"), "#!/bin/sh\nnpm run lint\nnode old/precommit-guard.cjs\n");
+  assert.ok(r.kept.some((k) => /gone/.test(k)), "hook guard says so");
+});

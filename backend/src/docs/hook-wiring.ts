@@ -13,7 +13,17 @@ export interface WiredHook {
 
 const SETTINGS = [".claude", "settings.json"];
 
-type Settings = { hooks?: Record<string, Array<{ hooks?: Array<{ command?: string }> }>> };
+type Hook = { command?: string; args?: unknown[] };
+type Settings = { hooks?: Record<string, Array<{ hooks?: Hook[] }>> };
+
+/** The whole command line of a hook: `command` alone, or `command` + `args` (`{"command": "node", "args":
+ *  ["docs/hooks/mail-gate.cjs"]}`). Reading `command` alone missed the args form: a department's three own hooks were
+ *  archived by the move and the mail hook was never taken over (2026-10-18). */
+export function hookLine(h: Hook): string | null {
+  if (typeof h.command !== "string") return null;
+  const args = Array.isArray(h.args) ? h.args.map((a) => String(a)) : [];
+  return [h.command, ...args.map((a) => (/\s/.test(a) ?`"${a}"` : a))].join(" ");
+}
 
 function readSettings(root: string): Settings | null {
   const p = join(root, ...SETTINGS);
@@ -35,7 +45,8 @@ export function wiredHooks(root: string): WiredHook[] {
   const out: WiredHook[] = [];
   for (const [event, groups] of Object.entries(s?.hooks ?? {})) {
     for (const g of groups ?? []) for (const h of g.hooks ?? []) {
-      if (typeof h.command === "string") out.push({ event, command: h.command, file: commandFile(h.command) });
+      const line = hookLine(h);
+      if (line !== null) out.push({ event, command: line, file: commandFile(line) });
     }
   }
   return out;
@@ -49,8 +60,9 @@ export function unwireHooks(root: string, files: string[], apply: boolean): stri
   for (const event of Object.keys(s.hooks)) {
     s.hooks[event] = (s.hooks[event] ?? [])
       .map((g) => ({ ...g, hooks: (g.hooks ?? []).filter((h) => {
-        const hit = typeof h.command === "string" && files.includes(commandFile(h.command));
-        if (hit) dropped.push(String(h.command));
+        const line = hookLine(h);
+        const hit = line !== null && files.includes(commandFile(line));
+        if (hit) dropped.push(String(line));
         return !hit;
       }) }))
       .filter((g) => (g.hooks ?? []).length > 0);

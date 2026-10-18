@@ -24,6 +24,7 @@ import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "
 import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots } from "./store.js";
 import { CORE_REINJECT_CAP } from "./rule-core.js";
 import { wiredHooks } from "./hook-wiring.js";
+import { precommitState } from "./guard-gen.js";
 import { viName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
 
@@ -303,8 +304,10 @@ export function conform(root: string): ConformReport {
   // is let through — the gate stopped without a word (a department's mail gate, 2026-10-18). Any harness.
   {
     const dead = wiredHooks(root).filter((h) => h.file && !existsSync(join(root, h.file))).map((h) => `${h.event}: ${h.command}`);
-    push("hook-command-dead", "blocking", "A hook command in .claude/settings.json runs a file that does not exist", dead,
-      "restore the file, or drop the command if a rule of the set does the job now (`zemory sync --standard --apply`)");
+    // git's pre-commit too: one calling a precommit-guard.cjs the move took away refuses EVERY commit (nine repos, 2026-10-18)
+    if (precommitState(root) === "dead") dead.push("git pre-commit: calls a precommit-guard.cjs that is gone");
+    push("hook-command-dead", "blocking", "A hook command (.claude/settings.json or git pre-commit) runs a file that does not exist", dead,
+      "restore the file, or drop the command if a rule of the set does the job now (`zemory sync --standard --apply` rewrites the tool's own pre-commit)");
   }
 
   // ②quater — The laws no hook holds are read before the first action and put back after a compaction (folderCoreFiles).

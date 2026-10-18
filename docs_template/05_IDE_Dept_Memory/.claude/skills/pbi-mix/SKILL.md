@@ -1,10 +1,10 @@
 ---
 id: Skill_PBI_Mix
 name: pbi-mix
-version: 3
+version: 4
 description: Build the MIX copy of a Power BI report - warehouse model, the Main header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-main). Vietnamese triggers - "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
-installs: [scripts/mix_palette.py, scripts/card_icons.py]
-from: _Store/03_SKILLS/Skill_PBI_Mix @v3 #bbec438127de
+installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
+from: _Store/03_SKILLS/Skill_PBI_Mix @v4 #2133bb4faf07
 ---
 
 # Bản `Mix` — bố cục CŨ, khung nhận diện MỚI, chạy trên kho
@@ -320,11 +320,21 @@ visual, tên cột / legend, thư mục measure; giá trị dữ liệu (tên h�
 động từ ("Bán ..."), nói đúng mục đích trang. Cổng `ui-english` (hiện kiểm tên trang + tab; tiêu đề / cột: đợt 2).
 🔴 **Ô lọc TẮT cả header của slicer** *("filter lỗi ko xài dc")*: `objects.header.show false`. Bật header trong ô 40 px thì
 chỉ còn dòng chữ header ("Month", "Year"), dropdown bị đẩy ra ngoài, bấm không chọn được — tên ô là việc của nhãn phía trên. Lệnh
-`--slicers`, cổng `slicer-style` (thử đỏ 12/10: 14 ô DR Mix).
+`--slicers`, cổng `slicer-style` (thử đỏ 12/10: 14 ô DR Mix). Slicer chép từ Legacy giữ khối `header` có font/màu mà KHÔNG có `show` ⇒ mặc định BẬT, tên trường in lần hai trong ô: cổng `slicer-header`.
+🔴 **Một tháng so sánh = MỘT slicer "Compare With" trên `Parameter_Date[Year Month]`** *(13/10: "filter 2 cái select year thì sao
+chọn má? cái này nó là từ year tới year đúng ko")*: cặp slicer Year + Month của Legacy đọc thành "từ … đến …" ⇒ gộp làm một, giữ tháng
+đang chọn; cột so sánh gọi theo nó (`Compare Month` · `% Revenue Compare` · `Change` · `% Change`, KHÔNG `Base`/`Variance`). Hai slicer
+cùng cột mà mỗi ô lọc chart riêng (01 Total Bill On Month) ⇒ đặt tên theo chart (`Month A`/`Month B`), cấm hai ô cùng tên. Cổng
+`compare-month` + `slicer-unique` (hai ô cùng tên hiển thị, hoặc cùng tên cột ở hai bảng, là đỏ).
+🔴 **Slicer bảng lọc nối liền nhau theo bước cố định 65 px** (nhãn 20 + ô 40 + khe 5) *(13/10, 01 Product: "sao filter mới
+lại bị rỗng 1 hàng")*: bỏ / gộp một slicer thì kéo các ô bên dưới lên, không để hàng trống. Cổng `filter-rows`.
+🔴 **Filter "không trống" trên cột SỐ chỉ loại `null`** *(13/10)*: hai nhãn Kimball `'Unknown'`/`'Not Applicable'` là CHỮ — đặt lên cột số
+(Year) là slicer chết "CONTAINSROW does not support comparing values of type Text with values of type Integer". `not_blank_filter`
+đọc kiểu cột từ model; cổng `literal-type` chặn mọi giá trị filter khác kiểu cột (chữ trên số, số `5L` trên cột chữ `'05'`).
 🔴 **Mọi bảng / matrix kín khung: Auto-size behaviour = Grow to fit** *("so với tổng size của chính group chứa")*:
 `columnHeaders.autoSizeColumnWidth true` + `columnAdjustment 'growToFit'` (khuôn đọc từ chính Desktop) — Desktop tự giãn cột cho kín
 khung với bao nhiêu cột dữ liệu đưa ra; không đặt bề rộng tay (matrix Tháng × Kênh: kho 5 kênh, kỳ này 3 kênh có số ⇒ đếm cột
-trước là sai). Lệnh `mix_builder.py --grow-to-fit`, cổng `narrow-table`.
+trước là sai). Lệnh `mix_builder.py --grow-to-fit`, cổng `narrow-table`. Ngoại lệ: bảng đã đo trên engine bằng `matrix_fit.py` (auto-size tắt + bề rộng cho mọi measure, §5l-quinquies) — `narrow-table` · `header-wrap` bỏ qua nó, cổng `matrix-fit` lớp engine giữ.
 🔴 **Đổi chữ header (tên report / tên trang) ⇒ chạy lại `--fit-header`** *('Franchise' bị cắt còn 'Fra' ở nhiều trang — đổi tên tại chỗ giữ khung của tên cũ 'NQ' 40 px)*: khung tên report = grid5(chữ + lề), tên trang nối ngay sau, nhóm Title kết thúc ở cuối tên trang, khung tên trang = chữ + 20 px (`NAME_SLACK` — Desktop chừa khoảng trong khung chữ; 14/10 khung sát chữ 100 px hiện 'Overvie', 120 px hiện đủ). Cổng `header-text` chạy trên MỌI trang (trước chỉ trang strict ⇒ lọt) và báo khi nhóm Title chạm dải tab.
 🔴 **Tiêu đề cột dài ⇒ 2 dòng, công thức tự đổi** *("title quá dài ntn thì phải cắt ra 2 dòng ... mọi bảng luôn, bảng nào
 title dài thì đổi công thức tự động")*: Grow to fit đặt MỌI tiêu đề trên MỘT dòng (tên mặt hàng 300 px một cột). Bảng có tiêu đề > 150 px
@@ -852,6 +862,17 @@ Cổng: `pct-period` (dòng `Pct_` không nhãn thì format phải có chữ k�
   ⚠ Top 5 hiện 1 món KHÔNG phải lỗi khi tháng mới vừa bắt đầu (đo 01/10 sáng: 1 hoá đơn trong ngày) — chọn tháng trước để kiểm.
 - Mọi khoá đều do Desktop ghi (`columnHeaders.backColor` 356 lần, `values.backColorSecondary` 172, `subTotals.bold` 15…).
 
+- 🔴 **TÊN CỘT = CHỮ NGƯỜI ĐỌC, TIẾNG ANH TITLE CASE** *(chốt 13/10: "tên cột đang ko đúng chuẩn loạn xạ hết" → chọn tiếng Anh,
+  cùng giọng tiêu đề visual)*: mọi trường đang hiện trên bảng / matrix / chart (displayName, không có thì tên trường) — cấm gạch dưới
+  (`chi_tieu`, `ITEM_NAME`), số đuôi (`Revenue2`, `StoreName2`), chữ dính (`StoreName`, `Monthnumber`), từ ALL-CAPS không phải viết tắt
+  nghiệp vụ (`PARENT3NAME`, `DISCOUNT`), `%` trơn / `%1` (phải nói % của gì: `% Revenue`, `% Ebitda`). Đặt `displayName` ở projection,
+  tên measure giữ nguyên. Cổng `column-name` (Mix/Main; Classic giữ chữ Legacy). 03 Mix đã đặt: Line · Code · Cost Line · Store ·
+  Actual · % Revenue · Actual LY · Growth LY · Base Month · % Revenue Base · Variance · % Variance · LYTD.
+- 🔴 **MỖI % PHẢI ĐƯỢC KHAI: TỈ TRỌNG hay CÓ CHIỀU** *(13/10: "% đang ko có màu xanh đỏ đúng chuẩn lên xuống")*: tên `% … of Revenue /
+  of Total` không nói được — `%Actual of Revenue` là tỉ trọng của một dòng P&L (cột trộn doanh thu và chi phí ⇒ không màu), `%Ebitda of
+  Revenue` là biên lợi nhuận (> 0 xanh). Tỉ trọng ⇒ `pct_neutral` (pbi-gate.json), có chiều ⇒ `PALETTE['pct_threshold']` (mix_specs) —
+  nhãn % trên chart chỉ được tô khi measure nằm trong danh sách này. Cổng `pct-decided` (chưa khai ⇒ đỏ; % có chiều trên Y2 thiếu luật màu nhãn ⇒ đỏ).
+
 ### 4m. ICON TRÊN THẺ KPI — neo góc phải trên, màu của số, nét 17,5 px
 
 > *"khoảng trống bên phải của card giờ sẽ để icon, phần icon là phần khó và phải làm cho kỹ"* → sửa cùng ngày: *"chỉ offset 5 2
@@ -1093,6 +1114,34 @@ nghiệm thu**. Cổng `tab mac dinh` canh đúng việc đó.
   Promotion Increase Sale`. Đổi thứ tự trang thì **đánh số lại tiền tố bookmark** theo thứ tự mới.
 - Cổng: `canvas` · `legacy-parity` · `glossary` · `few-cards` — chạy `--page all` để kiểm nghiêm MỌI trang hiện.
 
+- 🔴 **Glossary gọi tên MỌI chữ người đọc thấy trên trang** *(13/10: "cái nút grossary ở mỗi trang có cổng kiểm là phải chú
+  thích đủ cho mọi từ xuất hiện trong dashboard trong trang đó chưa?")*: tiêu đề thẻ / chart / bảng, tên cột · trục · legend · tooltip,
+  nhãn bảng lọc, và chữ in hoa measure in ra trong ô (`STAR` · `HORSE` · `HIGH`…). Từ thường ngày (Store, Month, Revenue… danh sách
+  `GLOSSARY_COMMON`) miễn; viết tắt phải xuất hiện đúng như in. Cổng `glossary-cover` (gặp lần đầu: 01 Mix 16 trang · 02 Mix 13 · 03 Mix 5).
+  **Nguồn Glossary = `scripts/mix_glossary.py`** (mọi trang của 3 Mix): sửa ở đó rồi `python scripts/mix_glossary.py --apply <report>`;
+  `mix_builder` dựng lại trang cũng đọc từ đó (spec chỉ là dự phòng) — không còn sửa tay `Text_Glossary`.
+- 🔴 **Viết tắt ghi NGUYÊN GỐC đã tra, một lần mỗi trang** *(13/10: "từ viết tắt phải tra ra từ nguyên gốc và viết vào chứ,
+  cái này cũng phải có cổng kiểm")*: `TC (Transaction Count): số hoá đơn`, đặt ở dòng định nghĩa của mục VIẾT TẮT. Nguồn tra theo
+  thứ tự: bảng thuật ngữ nghiệp vụ của vùng (`glossary_dir`) → từ điển hệ cũ (`legacy_sources`) →
+  docs kho (`lineage_catalog`: COL = Cost Of Labor) → DAX của chính report. Từ điển nằm ở `pbi_gate.ACRONYM_ORIGIN`, mỗi mục
+  kèm nguồn; chữ chưa có nguồn công ty (TA, GA, ADS) ghi theo chuẩn ngành F&B và báo người dùng. ⚠ Cùng chữ khác nghĩa theo phòng:
+  `FC` của báo cáo Tài chính là Franchise, của báo cáo vận hành là Forecast (`#FC = SUMX(Dim_Store, [#Fore Cast Sale Month])`) — nghĩa
+  theo DAX của report. Cổng `acronym-origin`: viết tắt trong Glossary / trên trang chưa ghi nguyên gốc ⇒ đỏ; chữ chưa có trong
+  từ điển ⇒ đỏ, bắt tra trước.
+- 🔴 **Một định nghĩa một dòng** *(14/10: "mỗi 1 định nghĩa phải xuống dòng chứ ko có dính chùm ntn")*: mỗi gạch đầu dòng
+  của Glossary chứa đúng một câu dạng `X: …` / `X = …`; câu giải thích thêm đi liền sau định nghĩa của nó. Viết tắt đã nằm trong
+  ngoặc thì không lồng ngoặc: `…, DSR (Daily Sales Report), …`. Cổng `glossary-one-def` (`pbi_gate.split_definitions`;
+  `06:00` không tính là định nghĩa). Đợt 14/10 tách 218 dòng trên 36 trang.
+- 🔴 **Chú giải nằm TRONG Glossary, không ghim khung trên trang** *(13/10: "chú giải phải nằm trong nút grossary chứ?")*:
+  khung REMARKS của Product Mix (Star/Horse/Challenge/Dog) chuyển vào mục "Xếp nhóm món" của Glossary, kèm cách tính Popularity /
+  Profitability đọc từ DAX; bảng Product Detail chiếm trọn tab.
+- 🔴 **Từ cổng bắt được thì SỬA TÊN trước, giải thích sau**: chữ sai chính tả / dính chữ / tên trường thô (`Swith METRIX` ·
+  `%GrowvsLW` · `ADS To Archive TG` · `DatePart_Lable` · `PARENT2NAME` · `AMs` · `CapChiTieu`) là lỗi `column-name`, không phải từ
+  cần chú giải. Tên mới đọc từ DAX: `% Net Sale of Sale` thực ra là `(Net Sale − COGS) / doanh thu` ⇒ `% Net Margin of Revenue`;
+  `Item Cost` là % ⇒ `% COGS`; `GM` là số tiền ⇒ `Margin`. Nhãn bảng lọc đổi thì đặt cùng `displayName` cho trường của slicer
+  (cổng `panel-label` so nhãn với tên đó). `column-name` kiểm cả visual ẨN mặc định (nội dung tab) — trước 13/10 nó bỏ qua
+  nên ~85 tên mỗi Mix lọt.
+
 ## 5l. 🔴 CHART KHÔNG ĐƯỢC TỰ CUỘN · CHART DÀI HAI CÁI MỘT TAB, XẾP TRÊN DƯỚI
 
 > *"1 trang 4 chart là ko dc khi nó là chart dài, phải tách 1 trang 2 chart trên dưới thôi, mọi chart
@@ -1213,6 +1262,11 @@ cần                  = số nhóm x max(20, preferredCategoryWidth)      <= ph
 `tab-big-charts` bằng cách giữ mọi khung cao 325–660. Gộp thành `Người bán & Sàn`: 3 bảng người bán cao 410 +
 3 bảng kênh cao 245 ⇒ 5 tab còn 4, cổng vẫn xanh.
 
+🔴 **Đặt cạnh mà làm chart kia thành cột dọc trắng là SAI** *(13/10, 01 Monthly: "bạn để donut dài dọc cả 2 hàng làm
+cho donut group bị trắng")*: bản 02/10 thu combo Old/New Store về 860 rồi kéo donut Channel thành cột 405 × 565 ⇒ vòng tròn
+chỉ lấy bề ngang, nửa khối trắng. Donut/pie TRÒN ⇒ nằm MỘT hàng (Monthly: Trend 720 + Donut 545 cao 250, combo 1270 hàng
+dưới, `chart_width_exempt`). Cổng `donut-shape`: bỏ 60 px tiêu đề + legend, phần còn lại cao hơn bề ngang ⇒ đỏ.
+
 ### 5l-ter. 🔴 CHART CÙNG KIỂU PHẢI NẰM CÙNG MỘT DÃY
 
 > *"tự nhiên có 1 chart cũng chỉ 2 cột nằm ở trên trong khi 3 cái dưới cũng tương tự mà chia 3, nó phải nằm chung
@@ -1320,6 +1374,42 @@ python scripts/pbi_pixel.py reports/<report> --user-ok [--page <pageId>] [--tab 
   Lệnh nền có trần 2 giờ ⇒ chia lượt bằng `--tab "<a>,<b>,…"`; kết quả đọc ở output của lượt chạy (bản sao + ảnh xoá khi chạy xong).
 - ⚠ `mix_palette.py` từng KHÔNG idempotent: mỗi lần chạy nối thêm một mục màu % trùng (HEAD có tới 11 bản). Đã sửa 02/10 + dọn mục
   trùng; chạy lần hai phải ra `charts changed: 0`.
+
+- 🔴 **Bảng / matrix: cột vừa số dài nhất, tổng vừa khít khung — KHÔNG cuộn ngang, chỉ cuộn dọc** *(14/10: "toàn bộ
+  matrix phải tự cân chỉnh lại size cột … rộng tối đa = với số dài nhất của cột đó để nó ko nhảy xuống dòng … cột phải vừa khít
+  với chiều dài tổng … chỉ cho scroll dọc thôi")*. Công cụ `scripts/matrix_fit.py` — đo trên ENGINE, không ước lượng:
+  `measure <report> <plan.json ngoài repo> ["Trang,Trang"]` (Desktop đang MỞ file: dựng lại truy vấn của từng bảng theo bộ lọc
+  report / trang / visual + lựa chọn slicer, kể cả nội dung tab; lấy chuỗi ĐÃ ĐỊNH DẠNG dài nhất của mỗi measure, tính cả dòng /
+  cột tổng NẾU bảng hiện chúng; tiền tổng tính dư ×1,5 vì tháng còn chạy) → `apply <plan.json>` (Desktop ĐÓNG: ghi `columnWidth`
+  theo từng trường + `autoSizeColumnWidth false`; chỗ trống chia đều cho các cột số để vừa khít). Không vừa ⇒ **cách A (chốt
+  14/10): số ≥ 1 triệu chuyển sang triệu một số lẻ** (`columnFormatting.labelDisplayUnits 1000000D` + `labelPrecision 1L`, "111.4M").
+  ⚠ Matrix có trường Columns: Power BI cho MỘT độ rộng cho mọi cột của một measure ⇒ "mỗi cột" = mỗi measure; tên cột (Yesterday)
+  trải trên các measure dưới nó ⇒ chia đều. ⚠ Measure đổi theo ô Metric (`[~Selected Metric]`) KHÔNG khoá đơn vị trên cột (chọn
+  TC sẽ ra 0.0M) ⇒ measure TỰ chia: `VAR v = SWITCH(...) RETURN IF([~Selected Metric] IN {"Revenue","ADS"}, DIVIDE(v,1000000), v)`
+  + `formatStringDefinition = IF(... , "#,0.0""M""", "#,0")` (`~Metrix by Ty Hour`, chỉ matrix dùng). ⛔ Đã trả giá 14/10:
+  (a) dấu phẩy chia nghìn `#,0.0,,` Power BI KHÔNG hiểu — in nguyên ",,M"; (b) measure có `formatStringDefinition` thì PHẢI bỏ
+  `formatString` tĩnh — giữ cả hai Desktop báo "Issues were found" và không nạp model (cổng `measure-format-both`, chặn mở file);
+  (c) không đặt `///` trước `formatStringDefinition`. ⚠ Độ rộng kéo tay trên MỘT giá trị (selector `data`: giờ 11, 'Mon') đè độ
+  rộng theo trường ⇒ `apply` xoá chúng. ⚠ Số cột của trường Columns không phải ngày = mọi giá trị có số trong 12 tháng (giờ 0
+  và 7 lúc có lúc không: 16 → 18 cột); matrix MỘT measure không hiện dòng tên measure ⇒ tên đó không tính bề rộng. Cổng
+  `matrix-fit` ở lớp engine (khi file đang mở): số xuống dòng, tổng vượt khung, hay còn độ rộng kéo tay theo giá trị ⇒ đỏ.
+  Thử thật 14/10 trên 01 Daily & Hourly: 7 bảng vừa khung, tab CH × Giờ 18 giờ không cuộn ngang (render pbi_pixel).
+- 🔴 **Nút chuyển view đặt trên bảng KHÔNG được đè hàng tiêu đề cột** *(14/10, Daily & Hourly tab Chi tiết: "nút ở đây bị lỗi,
+  bị đè lên matrix")*: nút `BT_` 90 × 30 nằm trong dòng tiêu đề của bảng (~20) ⇒ thò 10 xuống header. Giữ nguyên khung bảng và
+  nút; cho bảng `visualContainerObjects.padding.top = 15D`. Cổng `button-over-table` (nút cùng nhóm, đè lên vùng bảng ⇒ lề trên ≥
+  đáy nút − đỉnh bảng − 20). Lần đầu bắt: 01 Daily 4 bảng (`BT_Store*`, `BT_HourWeekday*`), 02 Daily 2 bảng.
+  ⚠ Độ rộng cột người dùng kéo trong Desktop (`columnWidth`) là quyết định của người dùng — `table_overflow` đọc cả cột trường dòng (trước
+  14/10 nó tự ước 113 cho cột Day Part người dùng đặt 82, báo cuộn oan).
+- 🔴 **Đáy cột các chart cùng hàng nằm trên MỘT đường** *(13/10, Product Mix: "điểm đáy của mấy cái cột đang ko đều nhau so
+  với các chart khác, phải nhìn đều nhau hết chứ")*: nhãn trục (tên món) xuống dòng theo tên dài nhất của từng chart ⇒ mỗi chart
+  một vùng nhãn ⇒ đáy cột lệch (đo 13/10: 318 / 351 / 335 / 388 rồi 642 / 610 / 576). Sửa: (1) mọi chart cột trục chữ của một hàng
+  cùng trần nhãn `categoryAxis.maxMarginFactor` đủ thấp để tên nào cũng chạm trần (Product Mix + Product: `20L`; tên dài cắt "…",
+  rê chuột xem đủ) — cổng tĩnh `axis-cap`; (2) chart trục tháng nhãn một dòng không bao giờ chạm trần ⇒ thu chiều cao chart theo số
+  đo (245, lề dưới 25) và khai `baseline_align` trong `pbi-gate.json` kèm số đo — chỉ lề dưới được miễn; (3) chart số âm (Bottom
+  Margin = `−Margin`) có món còn lãi ⇒ cột cắm dưới vạch 0, trục giãn ⇒ vẽ cột bằng `MAX(loss, 0)` (`#Margin Loss Bar`), số thật ở
+  tooltip. ĐỪNG đặt `valueAxis.start = 0` bằng tay: Power BI bỏ khoảng trống trên, nhãn cột cao nhất đè lên thân cột.
+  Lớp pixel đo đáy cột (`baseline`): dòng thấp nhất còn màu cột (màu bão hoà, chữ/lưới xám không tính); các khối cùng hàng lệch
+  > 3 đơn vị ⇒ đỏ. `--copy-shots <thư mục ngoài repo>` giữ ảnh để soi.
 
 ## 5n. 🔴 BẢNG PIVOT KHÔNG CUỘN NGANG — CHỈ HIỆN CÁC KỲ GẦN NHẤT
 

@@ -1742,6 +1742,7 @@ export function generateGuards(projectRoot: string): GuardGenResult {
   const pc = wirePrecommit(projectRoot, `${hooksRel}/precommit-guard.cjs`);
   if (pc === "wired") added.push("pre-commit (precommit-guard wired)");
   else if (pc === "other") kept.push("pre-commit (the repo's own hook — add `node <hooks>/precommit-guard.cjs` to it by hand)");
+  else if (pc === "dead") kept.push(`pre-commit (the repo's own hook calls a precommit-guard.cjs that is gone — every commit fails; point it at ${hooksRel}/precommit-guard.cjs by hand)`);
   return { hooksDir, added, kept, protectedWrite: policy.protected_write as string[] };
 }
 
@@ -1767,18 +1768,37 @@ export function gitHooksDir(projectRoot: string): string | null {
   return join(gitDir, "hooks");
 }
 
-/** Is the commit-boundary guard actually run by git? "guard" = a pre-commit that calls precommit-guard.cjs · "other" = a
- *  pre-commit of the repo's own that does not · "none" = no pre-commit · "no-git" = not a git repo. */
-export function precommitState(projectRoot: string): "guard" | "other" | "none" | "no-git" {
+/** The repo-relative precommit-guard.cjs a pre-commit script runs (`node docs/hooks/precommit-guard.cjs` ·
+ *  `exec node "$(git rev-parse --show-toplevel)/docs/…/precommit-guard.cjs"`), or "" when it names none. */
+export function precommitTarget(script: string): string {
+  const m = /(?:show-toplevel\)\/)?((?:\.\/)?[\w./\\-]*precommit-guard\.cjs)/.exec(script);
+  return m ? m[1].replace(/\\/g, "/").replace(/^\.\//, "") : "";
+}
+
+/** Is the commit-boundary guard actually run by git? "guard" = a pre-commit that calls precommit-guard.cjs · "dead" = it
+ *  calls one that is not there (the latch moved): node fails and EVERY commit is refused (nine repos, 2026-10-18) · "other"
+ *  = a pre-commit of the repo's own that does not call it · "none" = no pre-commit · "no-git" = not a git repo. */
+export function precommitState(projectRoot: string): "guard" | "dead" | "other" | "none" | "no-git" {
   const dir = gitHooksDir(projectRoot);
   if (!dir) return "no-git";
   const p = join(dir, "pre-commit");
   if (!existsSync(p)) return "none";
   try {
-    return readFileSync(p, "utf8").includes("precommit-guard") ? "guard" : "other";
+    const t = readFileSync(p, "utf8");
+    if (!t.includes("precommit-guard")) return "other";
+    const target = precommitTarget(t);
+    return target && !existsSync(resolve(projectRoot, target)) ? "dead" : "guard";
   } catch {
     return "other";
   }
+}
+
+/** A pre-commit the tool wrote, in any of its past forms: every command line only runs a precommit-guard.cjs (with or
+ *  without `exec`, quotes, the rev-parse anchor, `|| exit 1`); comments and the shebang aside. */
+function toolPrecommit(script: string): boolean {
+  const cmds = script.replace(/\r\n/g, "\n").split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+  return cmds.length > 0 && cmds.every((l) =>
+    /^(?:exec\s+)?node\s+"?(?:\$\(git rev-parse --show-toplevel\)\/)?[\w./\\-]*precommit-guard\.cjs"?(?:\s*\|\|\s*exit\s+1)?$/.test(l));
 }
 
 /**
@@ -1787,16 +1807,17 @@ export function precommitState(projectRoot: string): "guard" | "other" | "none" 
  * "phủ cả người". Cùng lý lẽ với `wireGuard`: chốt sinh ra mà không cắm là luật bằng chữ. pre-commit CỦA REPO (không gọi
  * guard) thì để yên — ghép vào script của người khác là đoán; trả "other" để lệnh nói ra.
  */
-export function wirePrecommit(projectRoot: string, guardRel: string): "wired" | "guard" | "other" | "none" | "no-git" {
+export function wirePrecommit(projectRoot: string, guardRel: string): "wired" | "guard" | "dead" | "other" | "none" | "no-git" {
   const state = precommitState(projectRoot);
   const dir = gitHooksDir(projectRoot);
   const ours = `#!/bin/sh\nexec node "$(git rev-parse --show-toplevel)/${guardRel}"\n`;
-  if (state === "guard" && dir) {
-    // OUR one-line pre-commit pointing at an old guard path (the guard moved) is rewritten; a repo's own script that calls
-    // the guard among other things is left alone.
+  if ((state === "guard" || state === "dead") && dir) {
+    // OUR pre-commit - any form the tool ever wrote (`node docs/hooks/precommit-guard.cjs` before the anchored one) -
+    // pointing at an old guard path is rewritten: left alone it ran a file the move had taken away and refused every
+    // commit (2026-10-18). A repo's own script that calls the guard among other things is left alone.
     const p = join(dir, "pre-commit");
     const cur = readFileSync(p, "utf8");
-    if (/^#!\/bin\/sh\nexec node "\$\(git rev-parse --show-toplevel\)\/[^"]+precommit-guard\.cjs"\n$/.test(cur.replace(/\r\n/g, "\n")) && cur.replace(/\r\n/g, "\n") !== ours) {
+    if (toolPrecommit(cur) && cur.replace(/\r\n/g, "\n") !== ours) {
       writeFileSync(p, ours, { mode: 0o755 });
       return "wired";
     }
