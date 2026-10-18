@@ -2,9 +2,9 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 11
+version: 12
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_Dev_AppDesign @v11 #1d5df3f20c78
+from: _Store/03_SKILLS/Skill_Dev_AppDesign @v12 #102193d0a11d
 ---
 
 # app-design — chuẩn thiết kế APP (FE + BE)
@@ -224,8 +224,8 @@ dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_DesignChangeAppr
 
 Luật viết trong skill không tự thi hành: một luật đã chốt vẫn bị phạm lại khi không có máy canh.
 - Mỗi luật đo được của skill này (F0c chiều cao control · F2 cỡ hộp thoại · F4 nhãn và độ dài nhãn · F7 route · M1–M6) ⇒
-  một mã trong script kiểm của repo; build hoặc gate gọi script đó. Tên và lệnh chạy script là của repo, ghi trong mục riêng
-  của repo ở bản chép skill này.
+  một mã trong script kiểm của repo; build hoặc gate gọi script đó. Tên và lệnh chạy script là của repo, ghi ở mục routing
+  của `02_STRUCTURE/INDEX.md` trong repo — không ghi vào bản chép skill này (bản chép giữ y hệt kho, `Rule_Gate_83_HarnessFromStore`).
 - Mã thoát: 0 xanh · 1 lỗi (in từng chỗ) · **3 chưa kiểm đủ** (lớp cần trình duyệt không chạy được) — không bao giờ tính là xanh.
 - Tệp hệ cũ đóng băng ⇒ cảnh báo kèm danh sách nợ, không im. Miễn trừ khai kèm lý do; miễn trừ không còn khớp gì ⇒ lỗi.
 - Thêm một luật đo được vào skill ⇒ thêm mã vào bộ kiểm cùng lượt. Luật chưa đo được bằng máy (F0 · F0b) là việc của người duyệt.

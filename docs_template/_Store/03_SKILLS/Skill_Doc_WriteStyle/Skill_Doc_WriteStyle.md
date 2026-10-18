@@ -2,7 +2,7 @@
 id: Skill_Doc_WriteStyle
 aka: write-style
 name: doc-write-style
-version: 5
+version: 6
 description: Strict prose rules for reader-facing text (reports, emails, announcements, content, docs handed to people) — distilled from Wikipedia's "Signs of AI writing" into hard bans, so the result reads like a careful human wrote it. Use BEFORE drafting any text a person will read, and as a revision checklist afterwards. Do not use for code comments or the harness docs themselves (those follow the repo's own language rules). Vietnamese triggers - "viết văn bản", "soạn báo cáo", "viết email", "viết content", "viết bài", "văn phong", "giọng AI quá", "viết cho tự nhiên", "bớt giọng máy".
 ---
 
@@ -73,6 +73,23 @@ mỗi mục bằng một câu tổng kết mini.
 **§10 NÓI CÓ SỐ, CÓ TÊN, CÓ NGÀY.** Khẳng định đáng giá phải đi kèm dữ kiện kiểm được — "nhanh
 hơn 40% trên bộ đo X" thay cho "cải thiện hiệu năng đáng kể". Không có số thì hạ giọng khẳng định
 xuống đúng mức mình biết.
+
+## Mail báo cáo — bố cục cố định
+
+```
+Dear <tên>,
+
+<thân bài>
+
+Best regards,
+<chữ ký>
+```
+
+- `Dear <tên>,` đứng riêng một dòng, cách thân bài một dòng trống; `Best regards,` và chữ ký là hai dòng. HTML: mỗi khối một
+  `<p>`, chữ ký `<p>Best regards,<br>{chữ ký}</p>`.
+- Chữ ký và người nhận Cc mặc định lấy từ `values.json` của vùng: `mail_signature` · `mail_cc` cho mail gửi từ hộp thư cá nhân;
+  `shared_mailbox` · `shared_mailbox_signature` cho mail gửi từ hộp thư chung — mail đó ký tên đơn vị và không Cc mặc định.
+- Bố cục không phải giọng văn: cách xưng hô theo vai vế người nhận, chốt riêng từng case ở `spec.md`.
 
 ## Quy trình áp dụng
 

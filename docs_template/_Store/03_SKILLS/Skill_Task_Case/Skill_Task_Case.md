@@ -2,7 +2,7 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 7
+version: 8
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
   NON-APP). Dùng khi có một vấn đề mới cần điều tra, khi quay lại một vấn đề đã xử,
@@ -43,6 +43,11 @@ NẰM, không nói nó thuộc VIỆC gì.**
 4. Cập nhật INDEX `content/README.md`; metric mới (nếu có) → từ điển dữ liệu trong `02_STRUCTURE`;
    defect/spec dài (nếu có) → `docs/plan/`. Ba thứ này là **3 ngoại lệ** được nằm ngoài
    folder case.
+
+**Chủ và dời case.** Tiền tố mã phòng trên tên case là chủ sở hữu: dời việc giữa các repo thì lấy đúng các folder mang tiền tố
+của phòng đó, không mở nội dung ra phán lại. Dời là cắt, không chép: bản gốc biến mất trong cùng lượt (case + `data/<case>/`),
+INDEX bên kia ghi đã dời, mọi tham chiếu đường cũ được nắn — hai bản cùng sống là trạng thái cấm. Dời thì giữ nguyên tên: đổi
+tên là dời `project_root` trong bộ nhớ chung.
 
 ## ĐÓNG case
 

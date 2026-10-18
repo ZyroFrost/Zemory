@@ -37,7 +37,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 2 | `.claude/skills/doc-write-docx/SKILL.md` | 113 |
 | 3 | `.claude/skills/doc-write-docx/references/edit-traps.md` | 86 |
 | 4 | `.claude/skills/doc-write-docx/references/pagination-toc.md` | 118 |
-| 5 | `.claude/skills/doc-write-style/SKILL.md` | 95 |
+| 5 | `.claude/skills/doc-write-style/SKILL.md` | 112 |
 | 6 | `.claude/skills/harness-audit/SKILL.md` | 265 |
 | 7 | `.claude/skills/harness-audit/references/lang.md` | 155 |
 | 8 | `.claude/skills/harness-audit/scripts/lang-scan.mjs` | 228 |
@@ -52,7 +52,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 17 | `.claude/skills/harness-sync-path/SKILL.md` | 103 |
 | 18 | `.claude/skills/pbi-base/SKILL.md` | 34 |
 | 19 | `.claude/skills/task-fill/SKILL.md` | 41 |
-| 20 | `.claude/skills/task-pull/SKILL.md` | 34 |
+| 20 | `.claude/skills/task-pull/SKILL.md` | 44 |
 | 21 | `.claude/skills/task-upload/SKILL.md` | 33 |
 | 22 | `.gitattributes` | 7 |
 | 23 | `AGENTS.md` | 53 |
@@ -83,7 +83,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 48 | `docs/agent/01_LAW/_Cons/Cons_Gate_16_Dependencies/Cons_Gate_16_Dependencies.md` | 20 |
 | 49 | `docs/agent/01_LAW/_Cons/Cons_Gate_16_Dependencies/gate.json` | 3 |
 | 50 | `docs/agent/01_LAW/_Rule/Rule_Core_67_InterruptQueue/Rule_Core_67_InterruptQueue.md` | 19 |
-| 51 | `docs/agent/01_LAW/_Rule/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md` | 19 |
+| 51 | `docs/agent/01_LAW/_Rule/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md` | 21 |
 | 52 | `docs/agent/01_LAW/_Rule/Rule_Core_81_FollowExistingPattern/Rule_Core_81_FollowExistingPattern.md` | 18 |
 | 53 | `docs/agent/01_LAW/_Rule/Rule_Gate_01_DoneMeansRun/Rule_Gate_01_DoneMeansRun.md` | 24 |
 | 54 | `docs/agent/01_LAW/_Rule/Rule_Gate_01_DoneMeansRun/gate.json` | 91 |
@@ -115,7 +115,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 80 | `docs/agent/01_LAW/_Rule/Rule_Gate_31_NoBrokenVietnamese/hook.cjs` | 183 |
 | 81 | `docs/agent/01_LAW/_Rule/Rule_Gate_34_DocsFollowChange/Rule_Gate_34_DocsFollowChange.md` | 21 |
 | 82 | `docs/agent/01_LAW/_Rule/Rule_Gate_34_DocsFollowChange/gate.json` | 21 |
-| 83 | `docs/agent/01_LAW/_Rule/Rule_Gate_35_OneHome/Rule_Gate_35_OneHome.md` | 23 |
+| 83 | `docs/agent/01_LAW/_Rule/Rule_Gate_35_OneHome/Rule_Gate_35_OneHome.md` | 26 |
 | 84 | `docs/agent/01_LAW/_Rule/Rule_Gate_35_OneHome/gate.json` | 153 |
 | 85 | `docs/agent/01_LAW/_Rule/Rule_Gate_35_OneHome/hook.cjs` | 111 |
 | 86 | `docs/agent/01_LAW/_Rule/Rule_Gate_38_TodoDoor/Rule_Gate_38_TodoDoor.md` | 21 |
@@ -171,7 +171,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 136 | `docs/agent/02_STRUCTURE/_Slot/Data_131_Case/Data_131_Case.md` | 16 |
 | 137 | `docs/agent/02_STRUCTURE/_Slot/Data_132_01Raw/Data_132_01Raw.md` | 14 |
 | 138 | `docs/agent/02_STRUCTURE/_Slot/Data_133_02Processing/Data_133_02Processing.md` | 12 |
-| 139 | `docs/agent/02_STRUCTURE/_Slot/Data_134_03Output/Data_134_03Output.md` | 12 |
+| 139 | `docs/agent/02_STRUCTURE/_Slot/Data_134_03Output/Data_134_03Output.md` | 14 |
 | 140 | `docs/agent/02_STRUCTURE/_Slot/Design_114_Design/Design_114_Design.md` | 13 |
 | 141 | `docs/agent/02_STRUCTURE/_Slot/DocsPublic_074_DocsPublic/DocsPublic_074_DocsPublic.md` | 15 |
 | 142 | `docs/agent/02_STRUCTURE/_Slot/DocsVisual_073_DocsVisual/DocsVisual_073_DocsVisual.md` | 17 |
@@ -219,8 +219,8 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 184 | `docs/agent/03_SKILLS/Skill_Doc_WriteDocx/gate.json` | 3 |
 | 185 | `docs/agent/03_SKILLS/Skill_Doc_WriteDocx/references/edit-traps.md` | 86 |
 | 186 | `docs/agent/03_SKILLS/Skill_Doc_WriteDocx/references/pagination-toc.md` | 118 |
-| 187 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Claude/doc-write-style/SKILL.md` | 95 |
-| 188 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Skill_Doc_WriteStyle.md` | 95 |
+| 187 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Claude/doc-write-style/SKILL.md` | 112 |
+| 188 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Skill_Doc_WriteStyle.md` | 112 |
 | 189 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/gate.json` | 35 |
 | 190 | `docs/agent/03_SKILLS/Skill_Harness_Audit/Claude/harness-audit/SKILL.md` | 265 |
 | 191 | `docs/agent/03_SKILLS/Skill_Harness_Audit/Claude/harness-audit/references/lang.md` | 155 |
@@ -260,8 +260,8 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 225 | `docs/agent/03_SKILLS/Skill_Task_Fill/Claude/task-fill/SKILL.md` | 41 |
 | 226 | `docs/agent/03_SKILLS/Skill_Task_Fill/Skill_Task_Fill.md` | 41 |
 | 227 | `docs/agent/03_SKILLS/Skill_Task_Fill/gate.json` | 3 |
-| 228 | `docs/agent/03_SKILLS/Skill_Task_Pull/Claude/task-pull/SKILL.md` | 34 |
-| 229 | `docs/agent/03_SKILLS/Skill_Task_Pull/Skill_Task_Pull.md` | 34 |
+| 228 | `docs/agent/03_SKILLS/Skill_Task_Pull/Claude/task-pull/SKILL.md` | 44 |
+| 229 | `docs/agent/03_SKILLS/Skill_Task_Pull/Skill_Task_Pull.md` | 44 |
 | 230 | `docs/agent/03_SKILLS/Skill_Task_Pull/gate.json` | 3 |
 | 231 | `docs/agent/03_SKILLS/Skill_Task_Upload/Claude/task-upload/SKILL.md` | 33 |
 | 232 | `docs/agent/03_SKILLS/Skill_Task_Upload/Skill_Task_Upload.md` | 33 |

@@ -1,14 +1,16 @@
 ---
 id: Rule_80
 name: shared-change-impact
-version: 1
+version: 2
 kind: judgment
-from: _Store/01_LAW/_Rule/Rule_Core_80_SharedChangeImpact @v1 #03bf16fee18b
+from: _Store/01_LAW/_Rule/Rule_Core_80_SharedChangeImpact @v2 #4386def8d416
 ---
 # Rule_Core_80_SharedChangeImpact Sửa thứ dùng chung thì nêu và xử đủ mọi nơi dùng
 
 - Thứ dùng chung (nguồn dữ liệu · bảng · câu truy vấn · hàm · thành phần giao diện · cấu hình · mẫu) sắp bị sửa ⇒ trước khi sửa, liệt kê mọi nơi đang dùng nó và tác động lên từng nơi.
 - Đề xuất sửa phải kèm danh sách đó. Sửa một nơi dùng mà bỏ nơi khác cùng nguồn là lỗi.
+- Một nguồn đổ vào nhiều nhánh (file · bảng · model): ghi một nhánh mà còn nhánh chưa đổ ⇒ việc chưa xong, dù nhánh vừa ghi đúng.
+  Nhiều nơi dùng chung một file thì sửa một lần là đủ, nhưng mỗi dataset / model vẫn phải làm mới riêng.
 - Không liệt kê được đủ ⇒ nói rõ phần nào chưa dò được trước khi sửa.
 - Phép kiểm: phán đoán; khi có CLI, `zemory graph` tra nơi dùng.
 

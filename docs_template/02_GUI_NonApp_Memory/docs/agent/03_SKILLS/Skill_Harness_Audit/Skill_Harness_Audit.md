@@ -2,9 +2,9 @@
 id: Skill_Harness_Audit
 aka: audit
 name: harness-audit
-version: 13
+version: 14
 description: Run a full review of the project across every dimension, verifying each finding against real files before reporting it. Use only when explicitly asked for a thorough audit, or before a major milestone such as a release or a large batch of changes. This is not a quick check. Vietnamese triggers - "audit toàn diện", "soi hết", "kiểm tra toàn bộ", "rà lại hết", "review tổng thể".
-from: _Store/03_SKILLS/Skill_Harness_Audit @v13 #54b47f81740c
+from: _Store/03_SKILLS/Skill_Harness_Audit @v14 #0aa2a5c94a3c
 ---
 
 # audit — soi toàn diện
@@ -60,7 +60,7 @@ vào vùng 6 mặt cũ không nhìn tới**, vì chúng thuộc *"phần mềm c
 chết lặng · không mang đi được. **Mặt 11** thêm vì chín mặt trước đều soi MÁY, không mặt nào soi thứ
 **NGƯỜI ĐỌC** nhận. **Mặt 12** thêm vì mặt 11 soi chữ người dùng đọc, không mặt nào soi ngôn ngữ của
 chính MÃ — tên file · định danh · chú thích.)*
-1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo). **TẮT daemon/tiến trình nền trước**,
+1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo, ghi ở mục routing của `02_STRUCTURE/INDEX.md`). **TẮT daemon/tiến trình nền trước**,
    nếu không test nặng tranh RAM rồi đỏ lung tung ở chỗ không liên quan.
 2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
    nếu quá) · TODO còn mục nào đã xong mà chưa đóng không.

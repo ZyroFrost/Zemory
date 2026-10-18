@@ -1,7 +1,7 @@
 ---
 id: Skill_Dev_DbDesign
 name: dev-db-design
-version: 1
+version: 2
 description: Design or change tables in a database or data warehouse - one fact in one table, dimensional modelling, and a review of the whole schema before any new table or column. Use whenever a table, column, view or key is about to be created or changed. Vietnamese triggers - "tạo bảng", "thêm cột", "thiết kế bảng", "sửa schema", "mô hình dữ liệu", "dim", "fact".
 ---
 
@@ -26,6 +26,9 @@ description: Design or change tables in a database or data warehouse - one fact 
 - Khoá thay thế (surrogate) cho bảng chiều; khoá nghiệp vụ giữ làm cột riêng.
 - Số đo cộng được ở bảng sự kiện; tỉ lệ và trung bình tính lúc truy vấn, không lưu sẵn.
 - Thuộc tính đổi theo thời gian: chọn cách giữ lịch sử (ghi đè hay thêm dòng có hiệu lực từ–đến) và ghi vào từ điển.
+
+- Tên trong kho dùng chung: bảng `Dim_*` · `Fact_*` · `Bridge_*` (schema `dbo`), object vận hành `_<Tên>`, cột tiếng Anh sạch.
+  Kho là tài sản chung của mọi phòng: bảng thêm cho một phòng vẫn theo đúng chuẩn này.
 
 ## 3. Đổi cấu trúc
 
