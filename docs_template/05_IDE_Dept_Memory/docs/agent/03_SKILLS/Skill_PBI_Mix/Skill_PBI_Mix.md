@@ -1,16 +1,16 @@
 ---
 id: Skill_PBI_Mix
 name: pbi-mix
-version: 6
+version: 7
 type: process
 description: Build the MIX copy of a Power BI report - warehouse model, the Main header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-main). Vietnamese triggers - "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
 installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
-from: _Store/03_SKILLS/Skill_PBI_Mix @v6 #818a7c8aed36
+from: _Store/03_SKILLS/Skill_PBI_Mix @v7 #8142635c59b0
 ---
 
 # Bản `Mix` — bố cục CŨ, khung nhận diện MỚI, chạy trên kho
 
-> 🔴 **`Mix` = giá trị thứ tư của token LOẠI THIẾT KẾ (`chuẩn phòng ban §2b`).**
+> 🔴 **`Mix` = giá trị thứ tư của token LOẠI THIẾT KẾ (`Skill_PBI_Base` `reference/naming.md`).**
 > Bốn vế: **kho DW** + **header/màu theo `Main`** + **bố cục & điều hướng theo `Legacy`** + **lưới 5
 > toàn file**. Ba loại kia: `Legacy` không đụng · `Classic` giữ NGUYÊN thiết kế cũ để đo số ·
 > `Main` thiết kế mới hoàn toàn. `Mix` là bản duy nhất **cố ý trộn** ⇒ cũng là bản duy nhất có hai
@@ -43,7 +43,7 @@ nó; `Ori` có chuẩn tên chặt nhưng **không** có tab.
 | Mặt | Theo |
 |---|---|
 | Nguồn dữ liệu | **DW** |
-| Dải header, logo, bảng màu, theme | **`Main`** — dải `1280x50`, logo `150x50`, `§2d` |
+| Dải header, logo, bảng màu, theme | **`Main`** — dải `1280x50`, logo `150x50`, design.md §3.4 |
 | Vị trí khối nội dung, thứ tự trang, cách chia trang | **`Legacy`** — người đọc đã quen |
 | Lưới toạ độ | **lưới 5 toàn file**, áp cả cho khối chép từ Legacy |
 | Cột nav trái | **BỎ**, nút chức năng dồn lên header |
@@ -280,7 +280,7 @@ thì Power BI áp ảnh chụp lên **cả trang**, nên bấm phễu ở tab 2 
 thiếu cờ (0 bookmark trong mọi repo có nó) ⇒ đừng chép theo khuôn ở điểm này. Bộ dựng ghi cờ cho mọi bookmark có
 danh sách; lệnh `--scope-bookmarks` vá bookmark có sẵn. Cổng `bm-scope`.
 
-🔴 **Không slicer nào được hiện `(Blank)`** *(chuẩn thiết kế của vùng, nhắc lại 2026-09-27)*. Mọi cột
+🔴 **Không slicer nào được hiện `(Blank)`** *(design.md §2.4)*. Mọi cột
 mà slicer hiện đều gắn bộ lọc cấp visual **"is not blank"**: `Not (<cột> = null)`, đúng khuôn Desktop ghi (lấy từ slicer
 `IsCurrentYear` của Classic). Đo 27/09 trên kho, sau bộ lọc `BusinessUnit = Southern`: 16/23 cột nuôi slicer có
 `(Blank)` — 4 cửa hàng miền Nam chưa gán Area Manager (292 ADV · 172 THĐ · 334 TL10 · 594CMT8), còn lại là dòng
@@ -514,7 +514,7 @@ icon      nằm TRONG card, bên TRÁI, mỗi thẻ MỘT màu
 
 🔴 **Đừng tự ý đi viền màu.** Bản đầu để `border.color = #C51E24` ⇒ 6 thẻ viền đỏ, người dùng bác.
 
-**Màu thẻ lấy từ BẢNG MÀU ĐÓNG (chuẩn thiết kế của vùng Bảng 1+2), gán theo NGHĨA chứ không theo mắt:**
+**Màu thẻ lấy từ BẢNG MÀU ĐÓNG (design.md §1.1), gán theo NGHĨA chứ không theo mắt:**
 
 | Thẻ | HEX | Căn cứ trong bảng |
 |---|---|---|
@@ -528,7 +528,7 @@ icon      nằm TRONG card, bên TRÁI, mỗi thẻ MỘT màu
 ⚠ **Bảng màu là DANH SÁCH ĐÓNG** — thiếu màu thì **HỎI**, cấm tự pha.
 
 🔴 **XUNG ĐỘT CHƯA GIẢI — số trong thẻ có được tô màu không?**
-Ảnh mẫu người dùng đưa có **số tô màu theo thẻ**. Nhưng `chuẩn phòng ban §2d` ghi
+Ảnh mẫu người dùng đưa có **số tô màu theo thẻ**. Nhưng design.md §1.3 ghi
 *"MỌI chữ trên nền sáng → `#2D2D2D`, không có ngoại lệ"*. Hiện đang **chỉ tô icon, số để `#2D2D2D`**.
 Muốn tô số thì **phải sửa chuẩn ở repo quản lý vùng trước**, không phá lệ trong im lặng.
 
@@ -599,7 +599,7 @@ Hàng thẻ nằm ở dải `y=15..105`, khớp với `RevenueByChannel` bên c�
 | GA | `kpi_ga.png` | `#106898` | `#136C99` |
 
 Sáu màu đo được **trùng khít bảng màu đóng** ở §4b ⇒ không phải pha màu mới.
-🔴 Việc này **phá lệ `chuẩn phòng ban §2d`** ("mọi chữ trên nền sáng → `#2D2D2D`") — người dùng chốt miệng
+🔴 Việc này **phá lệ design.md §1.3** ("mọi chữ trên nền sáng → `#2D2D2D`") — người dùng chốt miệng
 2026-09-24; **phải sửa chuẩn ở repo quản lý vùng**, xem §4b.
 
 ⚠ Thẻ chỉ có nhãn + value + `%`: **nhãn `label.fontSize=10D` bold `#2D2D2D`**, value **`18D`** bold
@@ -673,7 +673,7 @@ trong khi header cao `50`.
 ⚠ Họ `%Grow … vs LMTD` là **họ duy nhất phủ đủ cả 4 chỉ số** — không có `%<X> of Target` cho
 TC/TA/GC/GA. Đừng bịa tên measure theo quy luật; **mở `#Measure.tmdl` đọc DAX rồi mới gán.**
 
-⚠ **Màu title của chart: `#2D2D2D`** (`chuẩn phòng ban §2d`). Bản Legacy để `#3300FF` — chép nguyên
+⚠ **Màu title của chart: `#2D2D2D`** (design.md §1.3). Bản Legacy để `#3300FF` — chép nguyên
 là lệch chuẩn; 9 chart đã phải sửa lại.
 
 ### 4f. 🔴 LƯỚI CÁCH ĐỀU 5 — luật hình học của cả trang
@@ -751,7 +751,7 @@ Một con số `55.73%` trần là sai, vì người đọc không biết nó so
    formatString: +0.00% "MoM";-0.00% "MoM";0.00% "MoM"
    ```
    **Không đổi format của measure gốc**: bảng và trục chart cũng dùng nó, đổi là mỗi ô mang thêm chữ `MoM`.
-   Làm **measure bọc** riêng cho dòng `Pct_`, tên theo `chuẩn phòng ban §2c ③c`:
+   Làm **measure bọc** riêng cho dòng `Pct_`, tên theo model.md §3:
    `%MoM <Chỉ số> with symbol = [<measure gốc>]`. Trang tuần dùng `%WoW …`; tỉ lệ so chỉ tiêu dùng
    `%<Chỉ số> vs Target with symbol` hoặc `%<Chỉ số> of Target with symbol`.
    Trang lọc tháng đang chạy thì so **MTD với cùng số ngày tháng trước (LMTD)**, đừng so nửa tháng với cả tháng.
@@ -888,7 +888,7 @@ Cổng: `pct-period` (dòng `Pct_` không nhãn thì format phải có chữ k�
 | Khung | **hình vuông neo góc PHẢI TRÊN**, cách mép trên và mép phải của nền thẻ (`BG_`) đúng **5 px**; phía dưới để trống | cạnh = 60% của `(cao − 10)`, làm tròn XUỐNG lưới 5 ⇒ **45 px**, y 20–65 |
 | Không chạm chữ | dòng % (hàng 3, `Pct_`) bắt đầu dưới đáy icon ≥ 5 px; hộp số (`Card_`, hàng 2) dừng trước icon 5 px | `Pct_` y 70 · `Card_` rộng = `x_icon − 5` |
 | Màu | **màu của chính số trên thẻ** (ô theme của thẻ đó) — sinh từ bản đen của kho, giữ alpha, tên `<icon>_<hex>.png` trong `RegisteredResources` của report | thẻ 1 → ô 1 của theme · thẻ 2 → ô 2 … |
-| Nét | MỌI icon cùng mốc của kho **17,0–18,0 px trên ảnh 512** (`2 × px đục / px viền`, chuẩn thiết kế của vùng §KHO ICON) | 11 icon đo 17,3–17,7 |
+| Nét | MỌI icon cùng mốc của kho **17,0–18,0 px trên ảnh 512** (`2 × px đục / px viền`, design.md §2.6) | 11 icon đo 17,3–17,7 |
 | Nội dung | một icon nói đúng chỉ số, outline ít nét, **Tabler (MIT)** | xem bảng dưới |
 
 | Thẻ | Icon | | Thẻ | Icon |
@@ -1333,7 +1333,7 @@ dưới, `chart_width_exempt`). Cổng `donut-shape`: bỏ 60 px tiêu đề + l
 python scripts/pbi_pixel.py reports/<report> --user-ok [--page <pageId>] [--tab <chữ>] [--as-of 2025-12-31]
 ```
 - 🔴 **HỎI NGƯỜI DÙNG TRƯỚC, rồi mới chạy với `--user-ok`** *("t chưa bao giờ đồng ý mấy cái tạo file kiểm thử vớ vẩn tùm lum,
-  t luôn cho file fix thẳng" · `chuẩn phòng ban §2` "KHÔNG BẢN NHÁP")*. Lớp này buộc phải có bản sao (ghim ngày, đổi trạng thái trang),
+  t luôn cho file fix thẳng" · `Skill_Task_Case` §Không bản nháp)*. Lớp này buộc phải có bản sao (ghim ngày, đổi trạng thái trang),
   nên bản sao nằm ở thư mục NGẮN ở gốc ổ, NGOÀI mọi repo (`D:\_pbx_<pid>` — không dùng `%TEMP%`: vượt MAX_PATH, Desktop cắt file
   lặng lẽ, `pbi-pbip`) và **tự xoá khi chạy xong** — không còn `data/_sbx_px`, không còn
   `--reuse-shots`, hook `pbi-open-gate` không miễn đường nào nữa. Cách làm: chép định nghĩa + `cache.abf` nhỏ (bỏ `*.bak`); mỗi
@@ -1479,7 +1479,7 @@ ngang cần ~ 150 (cột tên hàng) + số_kỳ x số_chỉ_số x 90 px      
   🔴 **`cultures`**: xoá mục `Entities` của measure **và** mọi mục `Relationships` có `Roles…Target.Entity`
   trỏ tới mục vừa xoá — để lại là trỏ vào khoảng trống.
 - **Giữ bảng nằm giữa đường quan hệ nối hai bảng đang dùng** dù không ai gọi tên nó — cắt là đổi số.
-- Giữ measure `~Placeholder` của thư mục trang còn sống (`chuẩn phòng ban §2c`).
+- Giữ measure `~Placeholder` của thư mục trang còn sống (model.md §2).
 
 ## 5o. SƠ ĐỒ MODEL — theo chuẩn `pbi-pbip` §1c
 
@@ -1536,9 +1536,9 @@ Cổng `single-page-overview` (lớp tĩnh): report một trang hiện mà tên 
 
 Power BI xếp tên thư mục theo **chữ**: `1.` `10.` `11.` `2.` … ⇒ số thứ tự trang vô dụng từ trang 10. Đổi sang chữ cái:
 `A. Calculation` (dùng chung) rồi `B.` … theo **đúng thứ tự trang hiện**, tên thư mục = **tên trang** (`B. Monthly Report
-ABC` … `P. MCP Report`). Trang chưa có measure giữ thư mục bằng `~Placeholder <key>` ẩn (`chuẩn phòng ban §2c`). Thư mục
+ABC` … `P. MCP Report`). Trang chưa có measure giữ thư mục bằng `~Placeholder <key>` ẩn (model.md §2). Thư mục
 của trang đã xoá (`10. Detail`) về `A. Calculation`. Đổi thứ tự trang ⇒ chạy lại `mix_builder.py --measure-folders`
-(bảng thư mục cũ → trang ở `MEASURE_FOLDER_PAGE`). Cổng `measure-folder`. ✅ `chuẩn phòng ban §2c②` đã đổi sang chữ cái (repo quản lý vùng, 28/09).
+(bảng thư mục cũ → trang ở `MEASURE_FOLDER_PAGE`). Cổng `measure-folder`. Luật thư mục: model.md §2.
 
 ## 6. Bẫy đã trả giá
 
@@ -1550,7 +1550,8 @@ của trang đã xoá (`10. Detail`) về `A. Calculation`. Đổi thứ tự tr
   khuôn từ một visual PBIR **đang render**. **`$schema` phải trùng phiên bản file đang khai.**
 - 🔴 **Desktop báo *"ran out of memory loading the data model"* KHÔNG phải lỗi file** — đo RAM trước
   khi kết luận, đừng đi sửa một file đang đúng.
-- 🔴 **`shape` mang `visualLink` không bấm được**; mọi link phải trỏ tới bookmark **có thật**.
+- 🔴 **`visualLink` nằm ở `visual.visualContainerObjects`** (đặt ở `visual.visualLink` thì nút im lặng); mọi link phải trỏ tới
+  bookmark **có thật** (design.md §2.2).
   ⚠ Ghi file **giữ đúng EOL đang có trên đĩa** (`Rule_Gate_24_EolKeep`) — Desktop ghi PBIR là **CRLF**.
 
 📌 Số đo + cách đọc hộp thoại khi title rỗng: [`reference/measured.md`](reference/measured.md) §2–§3.
@@ -1650,7 +1651,7 @@ python scripts/mix_builder.py <pageId> [<pageId> ...]
   python scripts/mix_builder.py --spread-cards <pageId>   # giãn đều thẻ sau khi bỏ
   python scripts/mix_builder.py --diagram             # xếp sơ đồ model theo DIAGRAM_POS (pbip §1c)
   ```
-- 🔴 **SỬA THẲNG FILE THẬT, KHÔNG chạy thử trên bản sao** *(`chuẩn phòng ban §2` "KHÔNG BẢN NHÁP" — thay luật cũ "chạy
+- 🔴 **SỬA THẲNG FILE THẬT, KHÔNG chạy thử trên bản sao** *(`Skill_Task_Case` §Không bản nháp — thay luật cũ "chạy
   thử trên bản sao `data/_sbx_<tên>`", luật đó đẻ ra 11 thư mục ≈ 2,2 GB không ai duyệt)*. Mốc an toàn = git: commit trạng thái hiện
   có (gồm bản Save của người dùng, §0a) TRƯỚC khi chạy lệnh, rồi chạy thẳng `MIX_ROOT=reports/<report>`; hỏng thì
   `git` đưa về. Lệnh nào quét cả report thì chạy `--dry` (nếu có) để thấy phạm vi trước.

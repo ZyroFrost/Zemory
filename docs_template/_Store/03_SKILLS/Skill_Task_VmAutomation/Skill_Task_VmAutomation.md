@@ -1,7 +1,7 @@
 ---
 id: Skill_Task_VmAutomation
 name: task-vm-automation
-version: 3
+version: 4
 type: process
 aka: vm-automation
 description: Put a periodic task (Daily / Weekly / Monthly) on the VM to RUN BY ITSELF - the vm_deploy.json manifest, the schedule, the Log_JobRun run log, results to the region's SharePoint, the _SharePoint.url shortcut. Use whenever a task goes onto the VM, is automated or scheduled, or its VM run is checked. Vietnamese triggers - "đưa task lên VM", "tự động hoá task", "đặt lịch trên VM", "task chạy trên VM chưa".
@@ -10,9 +10,9 @@ installs: [scripts/task_run.py, scripts/make_output_links.py, scripts/move_outpu
 
 # task-vm-automation — đưa task lên chạy tự động trên VM
 
-> Chuẩn gốc: repo `repo quản lý vùng` — `docs/plan/22_vm_pipeline_standard.md` (thiết kế) · `content/standard/chuẩn phòng ban.md §5c` + `§1b` (đầu vào) + `§1c` (đầu ra) (luật)
-> · `content/standard/SYNC_VM.md §H` (vận hành). Skill này là QUY TRÌNH; chỗ nào vênh với 3 file đó thì 3 file đó thắng.
-> Skill do công ty sở hữu, phát xuống mọi repo bằng `scripts/sync_skills.ps1` của repo kho — **không sửa bản chép ở repo phòng**.
+> Skill này là NHÀ của luật task chạy tự động: đầu vào và đầu ra thật, chỉ hệ mới, hai chiều, cổng đầu vào/đầu ra, lưới slot.
+> Thiết kế bản chạy trên VM: plan của tổng quản (`docs/plan/22_vm_pipeline_standard.md`). Đồng bộ repo lên VM: skill riêng của
+> tổng quản. Chia vai đầu vào giữa phòng và DW (ai chuẩn hoá, ai nạp, ai giữ luật nghiệp vụ): hiến pháp của tổng quản.
 
 ## Phạm vi — CHỈ task chạy trên VM ("cái này là chuẩn mới")
 
@@ -21,26 +21,26 @@ installs: [scripts/task_run.py, scripts/make_output_links.py, scripts/move_outpu
 | **Task định kỳ chạy trên VM** (có `tasks/<task>/vm_deploy.json`) | SharePoint `DataInput` hoặc kho DW | SharePoint `DataReport` | `01_raw` + `03_output` = **chỉ `_SharePoint.url`** · `02_processing` trống (nháp lúc chạy thử) |
 | **Case / việc lẻ chạy trên máy** | lấy từ đâu cũng được, như cũ | trên máy, như cũ | đủ 3 chặng `01_raw → 02_processing → 03_output` như trước |
 
-## 🔴 Không luồng giả · không Excel giả (`chuẩn phòng ban §1a`)
+## 🔴 Không luồng giả · không Excel giả
 
 File (Excel hay bất kỳ, trên `DataInput`/`DataReport`) chỉ được có khi là **đầu vào THẬT** — nhận từ ngoài task (hệ nguồn · người/phòng
 khác gửi · form kho dựng cho người khác nhập) — hoặc **đầu ra THẬT** — người/phòng khác YÊU CẦU và mở nó. Task **không tự tạo đầu vào
-hay đầu ra giả**: không Excel chứa luật không ai gửi (⇒ dữ liệu kho, §1b 5b) · không xuất file chỉ để task khác/chính nó đọc lại · không đẩy
+hay đầu ra giả**: không Excel chứa luật không ai gửi (⇒ dữ liệu trong DW, §Hai chiều) · không xuất file chỉ để task khác/chính nó đọc lại · không đẩy
 SharePoint "cho có" · không chép số kho ra file rồi nạp ngược. **Trước khi đề xuất/tạo file nào, hỏi:** *"Ai GỬI?"* (vào) · *"Ai YÊU
 CẦU và MỞ?"* (ra) — không chỉ ra được một người/phòng cụ thể ngoài task ⇒ không tạo. (Nháp `02_processing` và `reference/` không tính.)
 
-## 🔴 Chỉ dùng hệ mới · không đụng hệ cũ (`chuẩn phòng ban §1d`)
+## 🔴 Chỉ dùng hệ mới · không đụng hệ cũ
 
 Mã chạy của task chỉ đọc/ghi: bảng kho · site SharePoint của vùng (`sharepoint_site`) · `<vm_run_dir>\<Repo>\` · khoá `.env` của kho. **Cấm**: mọi mục ở
 `legacy_sources` (nguồn, site, thư mục, khoá của hệ cũ) · server nguồn đọc thẳng (việc của kho) · app chạy trên máy làm việc. **Không đụng hệ cũ** (không đọc/ghi/xoá gì ở đó). Thôi dùng thì gỡ —
 chỉ gỡ ở hệ mới (repo phòng + lịch VM), thứ ở hệ cũ để nguyên. Thiếu bảng ⇒ nhắn kho dựng, không lách về hệ cũ.
 
-## Hai chiều — mỗi task định kỳ là IN hoặc OUT (`chuẩn phòng ban §1c`)
+## Hai chiều — mỗi task định kỳ là IN hoặc OUT
 
 **Phép thử:** *"Task này đưa số VÀO kho hay lấy số RA khỏi kho?"* Khai ở khối đầu `spec.md`: `direction: in` hoặc `direction: out`.
 **Một task một chiều** — việc có cả hai thì tách hai task.
 
-| | `direction: in` (§1b) | `direction: out` (§1c) |
+| | `direction: in` | `direction: out` |
 |---|---|---|
 | Làm gì | văn bản phòng soạn → chuẩn hoá → `DataInput` → kho nạp | đọc kho → giao file/mail |
 | Đọc từ | file người nộp (SharePoint `DataInput/<PHÒNG>/<Việc>/`) | **bảng kho** (ưu tiên bảng gom/view dựng sẵn, vd `Agg_SaleDaily`) — không nguồn hệ cũ (`IPOS_Stage`, Fast…), không app nội bộ, không tự cộng lại số kho đã gom; thiếu bảng/cột ⇒ đặt kho dựng |
@@ -50,18 +50,18 @@ chỉ gỡ ở hệ mới (repo phòng + lịch VM), thứ ở hệ cũ để ng
 
 - **MỘT BÁO CÁO MỘT NƠI LÀM**: phòng sở hữu nghiệp vụ của con số làm bản giao; phòng khác cần thì **dùng lại đúng file/link đó**, không dựng lại.
   Vd GC (doanh thu · lượt khách theo ngày × nhà): ABC làm, XYZ gửi file ABC làm ra.
-- **Luật nghiệp vụ trong bản giao** (bậc VAT của doanh thu, cách đếm GC…): phòng quyết, kho áp trong bảng/view — không viết cứng trong SQL của task (§1b mục 5). **Excel chỉ có khi có người gửi**: luật không ai gửi ⇒ DỮ LIỆU trong kho đúng 5 loại bảng của hiến pháp kho (cột trên dim chủ · `Bridge_*` có hiệu lực theo ngày · `_Config`), không tiền tố tự chế, phòng nhắn kho đổi — KHÔNG tạo file mới để chứa luật; code phòng đọc luật từ kho, không chép số lại.
+- **Luật nghiệp vụ trong bản giao** (bậc VAT của doanh thu, cách đếm GC…): phòng quyết, kho áp trong bảng/view — không viết cứng trong SQL của task. **Excel chỉ có khi có người gửi**: luật không ai gửi ⇒ DỮ LIỆU trong kho đúng 5 loại bảng của hiến pháp kho (cột trên dim chủ · `Bridge_*` có hiệu lực theo ngày · `_Config`), không tiền tố tự chế, phòng nhắn kho đổi — KHÔNG tạo file mới để chứa luật; code phòng đọc luật từ kho, không chép số lại.
 
 ## Case vs task VM
 
 - Case giao kết quả cho NGƯỜI KHÁC xem ⇒ nên đẩy bản cuối lên `DataReport/<PHÒNG>/…` của phòng (người nhận mở một chỗ); bản làm việc vẫn ở máy.
 - Case **chuyển thành định kỳ** và lên VM ⇒ lúc đó mới áp chuẩn này: đầu vào nộp lên `DataInput`, khai `input_url` / `output_url`,
   chạy `move_outputs_to_vm.py`, trên máy chỉ còn shortcut.
-- **`input_url` = số gốc nằm ở đâu, ai nộp — KHÔNG phải task đọc từ đâu** (luật đủ: `chuẩn phòng ban §5c` mục 3).
+- **`input_url` = số gốc nằm ở đâu, ai nộp — KHÔNG phải task đọc từ đâu**.
   Số gốc là file người nộp ⇒ khai `input_url` trỏ thư mục gốc trên SharePoint, **kể cả khi task đọc bảng DW** nạp từ file đó
   (vd XYZ `ABC_Daily_StoreInventoryReport` đọc `Fact_InventoryDaily`, số gốc = form kiểm kê nhà hàng). Số từ hệ thống (POS · Fast · CRM)
   ⇒ không `input_url`, `01_raw` TRỐNG. Cả hai ⇒ liệt kê đủ thư mục file gốc (` | `). `make_output_links.py` chỉ bắt buộc `output_url`.
-- **File tham chiếu** code/test cần để dựng lại đúng bản giao (mẫu người khác gửi · bản mốc nghiệm thu) — không phải đầu vào của lượt chạy ⇒ xếp theo CHIỀU (05/10): mẫu/mốc của **ĐẦU RA** (khuôn người nhận gửi · bản kế toán để so số bản giao) ⇒ `data/<Task>/03_output/reference/`; mẫu/mốc của **ĐẦU VÀO** ⇒ `data/<Task>/01_raw/reference/`. Cả hai: trên máy, KHÔNG lên SharePoint/VM, không `input_url`; hai tool bỏ qua cả hai thư mục (`chuẩn phòng ban §5c` mục 3). Lỡ đẩy lên `DataInput` hoặc bị chuyển sang VM ⇒ kéo về `reference/` rồi gỡ bản ở chỗ sai.
+- **File tham chiếu** code/test cần để dựng lại đúng bản giao (mẫu người khác gửi · bản mốc nghiệm thu) — không phải đầu vào của lượt chạy ⇒ xếp theo CHIỀU (05/10): mẫu/mốc của **ĐẦU RA** (khuôn người nhận gửi · bản kế toán để so số bản giao) ⇒ `data/<Task>/03_output/reference/`; mẫu/mốc của **ĐẦU VÀO** ⇒ `data/<Task>/01_raw/reference/`. Cả hai: trên máy, KHÔNG lên SharePoint/VM, không `input_url`; hai tool bỏ qua cả hai thư mục. Lỡ đẩy lên `DataInput` hoặc bị chuyển sang VM ⇒ kéo về `reference/` rồi gỡ bản ở chỗ sai.
 - 🔴 **Đầu vào chỉ nộp ở SharePoint `DataInput`** — KHÔNG thả file vào `01_raw` (máy hay VM) rồi mong task đọc. `01_raw` không phải
   nguồn: lịch sử "lượt nào đọc số nào" = lịch sử phiên bản của file trên SharePoint.
 
@@ -97,11 +97,11 @@ xem) — không để lại trong `03_output`.
 4. **Mail**: người gửi + người nhận lấy từ kho mail của repo kho (`config/mail/mail_vault.json` — `senders[]` · `groups[]`), không viết địa chỉ vào code. Chưa có nhóm ⇒ nhắn phiên kho thêm, code DỪNG với lỗi rõ, không đoán địa chỉ.
    🔴 **Mail gửi NHÀ HÀNG chỉ tới hộp thư nhà hàng, KHÔNG CC ai** (vụ 45 mail CC nhầm phải thu hồi bằng Purview). Mặc định của mọi lệnh gửi: CHỈ gửi người chạy thử; gửi thật cần cờ riêng (`--send-real` / `live` / `--send`).
 5. **Mã thoát**: 0 = xanh, khác 0 = đỏ. Lỗi giữa chừng không được nuốt im.
-6. **Cổng đầu vào** (task có `input_url`, `chuẩn phòng ban §5c` mục 6): chặng kiểm đầu vào chạy TRƯỚC mọi chặng ghi, in
+6. **Cổng đầu vào** (task có `input_url`): chặng kiểm đầu vào chạy TRƯỚC mọi chặng ghi, in
    `INPUT_CHECK: OK|NONE|INVALID · <file> · <chi tiết>` cho mỗi đầu vào (`task_run.py` gom vào `Log_JobRun`); `INVALID` ⇒ thoát ≠ 0,
    không ghi gì. Dùng lại hàm đọc của chặng xử lý; chạy được với `--doc <file>` để agent kiểm file TRƯỚC khi nộp lên `DataInput`.
    Thử đỏ đủ 4 tầng (thiếu file · file hỏng · sai khuôn/tên · số không khớp) trước khi gọi là xong. Mẫu: `repo phòng ban` `00_check_input.py`.
-7. **Cổng đầu ra** (task `direction: out`, `chuẩn phòng ban §1c` mục 5): kiểm TRƯỚC khi giao (đẩy `DataReport` / gửi mail) — kỳ đã đủ
+7. **Cổng đầu ra** (task `direction: out`): kiểm TRƯỚC khi giao (đẩy `DataReport` / gửi mail) — kỳ đã đủ
    (đủ ngày · đủ nhà) và **tổng file = tổng bảng kho cùng kỳ**. In MỘT dòng `OUTPUT_CHECK: OK|INVALID · <file> · <chi tiết>`
    (`task_run.py` gom vào `Log_JobRun` như `INPUT_CHECK`; tra `Message LIKE N'%OUTPUT_CHECK: INVALID%'`); `INVALID` ⇒ không giao, thoát ≠ 0.
    Thử đỏ ít nhất 2 ca (kỳ thiếu ngày/nhà · tổng lệch kho) trước khi gọi là xong.
@@ -148,8 +148,8 @@ xem) — không để lại trong `03_output`.
 - `needs`: file của repo KHÁC phải có sẵn ở bản chạy (thường là của kho).
 - `schedule`: tên task = tên thư mục task (lượt phụ thêm hậu tố `_Night` / `_Close`…). Một trong `"daily": "HH:MM"` · `"weekly": {"day": "MON", "at": "HH:MM"}` · `"monthly": {"day": 1, "at": "HH:MM"}` · `"ondemand": true` (07/10: không trigger, chạy khi bấm — mẫu `repo quản lý vùng/tasks/DW_OnDemand_RunModels`).
 - `files` nhận mẫu `*` / `?` (07/10, vd `"models/*.sql"`) — giải trong repo nguồn mỗi vòng. Gỡ một mục `schedule` ⇒ `vm_deploy` ghi `ORPHAN` + TẮT task đó (không xoá; xoá do người dùng).
-- 🔴 **LƯỚI SLOT 30 PHÚT** (*"mọi task từ mọi phòng ban sẽ trải dài từ 12h đêm tới hết ngày, cứ cách nhau 30p … bỏ task vào theo slot"*): giờ chạy chỉ được `HH:00` hoặc `HH:30`, mỗi task MỘT slot, không chồng task của phòng khác. Trùng = cùng giờ, trừ hai lịch tuần khác thứ hoặc hai lịch tháng khác ngày (lịch ngày giữ slot mọi ngày). **Ngoại lệ cùng chuỗi việc** (*"lịch ko nhất thiết cấm trùng lịch, XYZ với ABC 2 mail nhưng chung loại job vẫn gửi chung dc"*): các lịch khai CÙNG `"slot_group": "<tên chuỗi>"` được chung slot (vd `store_inventory` = đợt cứu kho + mail ABC + XYZ lúc 01:00/13:00); khác nhóm hoặc không khai nhóm thì vẫn tính trùng. Máy canh: `vm_deploy` không đăng ký lịch mới/vừa đổi lệch lưới hoặc trùng slot, ghi `!! SLOT … not registered` vào `vm_deploy.log` ⇒ chọn slot khác. **THỨ TỰ ƯU TIÊN SLOT** (*"ưu tiên lịch ABC XYZ inventory trước, rồi mới tới XYZ và mấy lịch sau"*): ① task gắn GIỜ CHỐT nghiệp vụ trong ngày — chuỗi tồn kho (ABC night 01:00 · ABC close 13:00 · XYZ 13:30, ngay sau lượt cứu 01:00/13:00 của kho) · ② task hằng ngày khác · ③ báo cáo tuần · ④ tháng / quý. Mỗi phòng TỰ ĐỌC bảng slot và TỰ ĐIỀN vào slot trống (*"kể cả việc schedule, mỗi phòng ban tự đọc tự điền vào slot trống"*) — không xin kho. Muốn slot của task ưu tiên THẤP hơn ⇒ nhắn thẳng phiên của repo đó, repo ưu tiên thấp tự dời (vd XYZ Weekly thứ Sáu 01:00 → 02:30 để nhường ABC night). KHÔNG bao giờ đẩy task ưu tiên cao hơn. Task đọc số tồn kho của lượt cứu ⇒ đặt CÙNG slot cứu hoặc sau, và chờ `_Config.INVENTORY_RescueDoneAt` mới hơn giờ slot rồi mới đọc (cổng đầu vào §5c mục 6).
-**Chọn slot TRƯỚC khi khai:** `python <repo tổng quản vùng>\scripts\vm_schedule.py` (bảng slot đang dùng của mọi repo · trùng · lệch lưới · giờ trống, đọc thẳng mọi `vm_deploy.json` — không cần SSH) rồi `… --check daily 13:30` (hoặc `weekly FRI 02:30` · `monthly 1 02:00`) phải ra `TRỐNG`. Bản in sẵn: `repo quản lý vùng/content/standard/vm_schedule.md` (máy sinh). Task hệ cũ không tính (không đụng, sẽ cắt). Luật cũ "né phút :01/:31" BỎ — task hệ cũ `\Inventory day` đã xoá 07/10.
+- 🔴 **LƯỚI SLOT 30 PHÚT** (*"mọi task từ mọi phòng ban sẽ trải dài từ 12h đêm tới hết ngày, cứ cách nhau 30p … bỏ task vào theo slot"*): giờ chạy chỉ được `HH:00` hoặc `HH:30`, mỗi task MỘT slot, không chồng task của phòng khác. Trùng = cùng giờ, trừ hai lịch tuần khác thứ hoặc hai lịch tháng khác ngày (lịch ngày giữ slot mọi ngày). **Ngoại lệ cùng chuỗi việc** (*"lịch ko nhất thiết cấm trùng lịch, XYZ với ABC 2 mail nhưng chung loại job vẫn gửi chung dc"*): các lịch khai CÙNG `"slot_group": "<tên chuỗi>"` được chung slot (vd `store_inventory` = đợt cứu kho + mail ABC + XYZ lúc 01:00/13:00); khác nhóm hoặc không khai nhóm thì vẫn tính trùng. Máy canh: `vm_deploy` không đăng ký lịch mới/vừa đổi lệch lưới hoặc trùng slot, ghi `!! SLOT … not registered` vào `vm_deploy.log` ⇒ chọn slot khác. **THỨ TỰ ƯU TIÊN SLOT** (*"ưu tiên lịch ABC XYZ inventory trước, rồi mới tới XYZ và mấy lịch sau"*): ① task gắn GIỜ CHỐT nghiệp vụ trong ngày — chuỗi tồn kho (ABC night 01:00 · ABC close 13:00 · XYZ 13:30, ngay sau lượt cứu 01:00/13:00 của kho) · ② task hằng ngày khác · ③ báo cáo tuần · ④ tháng / quý. Mỗi phòng TỰ ĐỌC bảng slot và TỰ ĐIỀN vào slot trống (*"kể cả việc schedule, mỗi phòng ban tự đọc tự điền vào slot trống"*) — không xin kho. Muốn slot của task ưu tiên THẤP hơn ⇒ nhắn thẳng phiên của repo đó, repo ưu tiên thấp tự dời (vd XYZ Weekly thứ Sáu 01:00 → 02:30 để nhường ABC night). KHÔNG bao giờ đẩy task ưu tiên cao hơn. Task đọc số tồn kho của lượt cứu ⇒ đặt CÙNG slot cứu hoặc sau, và chờ `_Config.INVENTORY_RescueDoneAt` mới hơn giờ slot rồi mới đọc (cổng đầu vào §1 mục 6).
+**Chọn slot TRƯỚC khi khai:** `python <repo tổng quản vùng>\scripts\vm_schedule.py` (bảng slot đang dùng của mọi repo · trùng · lệch lưới · giờ trống, đọc thẳng mọi `vm_deploy.json` — không cần SSH) rồi `… --check daily 13:30` (hoặc `weekly FRI 02:30` · `monthly 1 02:00`) phải ra `TRỐNG`. Bản in sẵn do script sinh nằm ở tổng quản. Task hệ cũ không tính (không đụng, sẽ cắt). Luật cũ "né phút :01/:31" BỎ — task hệ cũ `\Inventory day` đã xoá 07/10.
 - Lệnh thật được dựng sẵn: `python scripts\task_run.py --task <Task> -- bin\<Task>.cmd <args> >> data\logs\<Task>.log`.
   Log trên VM luôn tên `data\logs\<tên task>.log` (task đăng ký tay trước chuẩn có thể còn file log tên khác, vd `…_close.log` —
   từ lượt bọc `task_run` trở đi log nằm ở tên mới).
@@ -194,8 +194,8 @@ Log đầy đủ một lượt: VM `<vm_run_dir>\<Repo>\data\logs\<Task>.log` ·
 - Đừng gửi thật lần đầu khi chưa in To/CC và chưa có lời người dùng.
 - 🔴 Đừng đề xuất TẠO Excel/sheet mới (`<PHÒNG>_<Luật>.xlsx` trên `DataInput`) để chứa một luật/ngưỡng/bảng mã mà không ai gửi
   (*"excel người ta gửi mới có, còn ko gửi thì nó đã nạp từ DW, tạo excel để làm gì??"*). Phép thử: *"Luật này có file
-  người ta gửi không?"* — có ⇒ sheet (`chuẩn phòng ban §1b` 5a) · không ⇒ nhắn phiên kho giữ luật thành dữ liệu kho — cột dim chủ · `Bridge_*` · `_Config` (5b; KHÔNG tự đặt tiền tố mới kiểu `Rule_`).
+  người ta gửi không?"* — có ⇒ sheet trên `DataInput` (§Hai chiều) · không ⇒ nhắn phiên kho giữ luật thành dữ liệu kho — cột dim chủ · `Bridge_*` · `_Config` (5b; KHÔNG tự đặt tiền tố mới kiểu `Rule_`).
   Rộng hơn: không đầu vào/đầu ra giả nào (§1a, mục đầu skill).
-- Đừng chép một ngưỡng/luật kho đang giữ vào code phòng (vd `LOOKBACK_DAYS = 184`) — đọc từ kho (§1b 5c).
+- Đừng chép một ngưỡng/luật kho đang giữ vào code phòng (vd `LOOKBACK_DAYS = 184`) — đọc từ DW (§Hai chiều).
 - Đừng tính kỳ đích theo ngày hôm nay (§1 mục 8) · đừng lặp lại stage SAU cổng khi dò lại (§1 mục 9) · đừng mail cảnh báo mỗi lượt dò
   3 giờ (§1 mục 11) · đừng đẩy `DataReport` trước khi ghi dấu "đã gửi" (§1 mục 10).

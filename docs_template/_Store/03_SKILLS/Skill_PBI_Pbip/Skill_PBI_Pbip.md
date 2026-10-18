@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 10
+version: 11
 type: process
 aka: pbip
 description: Edit a Power BI .pbip/PBIR report by writing its JSON directly - pages, visuals, bookmarks, buttons, icons, the coordinate grid - without breaking the file; the model diagram standard and the static gate. Use whenever a .pbip report is built or changed, a tab or bookmark is added, an icon or the grid is fixed, or Desktop reports issues. Vietnamese triggers - "sửa report", "sửa pbix", "dựng dashboard", "thêm tab", "gắn bookmark", "đổi icon", "căn lưới", "mở Desktop kiểm".
@@ -11,12 +11,12 @@ installs: [scripts/pbi_gate.py, scripts/pbi_diagram.py, scripts/diagram_order.js
 # Sửa `.pbip` mà không làm vỡ file
 
 > File này nói **CÁCH THAO TÁC**. Luật **THIẾT KẾ** (bảng màu · lưới 5 · màu icon · `visualLink`
-> ở `visualContainerObjects` · slicer tắt header) ở chuẩn thiết kế của vùng (`design_standard` trong giá trị vùng),
+> ở `visualContainerObjects` · slicer tắt header) ở `Skill_PBI_Base` `reference/design.md`,
 > icon ở kho icon của vùng (`icons_dir`). Đụng thiết kế → mở file kia trước.
 
 ## 0. BỐN LOẠI FILE PBI — luật khác nhau, đừng áp nhầm
 
-Tên thư mục khai loại (`chuẩn phòng ban §2b` · tên file chốt lại):
+Tên thư mục khai loại (`Skill_PBI_Base` `reference/naming.md`):
 ```
 thư mục   <PHÒNG>_<số><IP|DR>_<ChứcNăng>[<Bậc>]_<Loại>       ABC_02DR_StoreReportAM_Mix · ABC_03IP_IncomeStatementOM_Main
 file      <PHÒNG>_<số>_<CHỨC-NĂNG>[-<Bậc>]_<Live|Scheduled>  ABC_02_STORE-REPORT-AM_Live  (= tên trên Service, chỉ ASCII)
@@ -57,7 +57,7 @@ Giữ nguyên byte; nó là **mốc duy nhất** chứng minh bản `Classic` kh
 
 ### `Classic` — HAI TẦNG TÊN, chỗ hay áp nhầm nhất
 - 🔴 **Trong model theo CHUẨN MỚI:** tên bảng · cột · measure · thư mục measure — thứ chỉ người dựng nhìn thấy.
-  Áp đủ `chuẩn phòng ban §2c`: một bảng `#Measure`, thư mục mang chữ cái theo trang (`A.` dùng chung, 27/09), tiền tố `#/%/~`, bảng rời `Parameter_*`.
+  Áp đủ `Skill_PBI_Base` `reference/model.md`: một bảng `#Measure`, thư mục mang chữ cái theo trang (`A.` dùng chung, 27/09), tiền tố `#/%/~`, bảng rời `Parameter_*`.
 - 🔴 **Chữ NGƯỜI ĐỌC THẤY theo BẢN CŨ:** nhãn dòng/cột trên visual, tiêu đề, nhãn slicer — giữ nguyên văn bản cũ,
   kể cả khi trông "không chuẩn". Xung đột giữa hai tầng ⇒ **UI THẮNG**.
   *Ca thật `repo phòng ban` 19/09: ba dòng `MCP = COL+COGs+SEMI` · `PROFIT = SALE - MCP` · `Thực hiện Ebitda` — tên thô
@@ -70,13 +70,13 @@ Giữ nguyên byte; nó là **mốc duy nhất** chứng minh bản `Classic` kh
 Luật và quy trình: skill **`pbi-mix`**.
 
 ### `Main` — áp đủ chuẩn, không ngoại lệ
-`§2c` cấu trúc measure · `§2c③b` hai vùng tiêu đề · `§2d` bảng màu, theme, khoảng cách, lưới 5 ·
-`§2e` khung có sẵn chỉ thay dữ liệu. Không có "bản cũ" nào để viện dẫn: đây là thiết kế mới.
+model.md cấu trúc measure · design.md §3.4 hai vùng tiêu đề · design.md §1 và §3 màu, theme, khoảng cách, lưới 5 ·
+design.md §3.5 khung có sẵn chỉ thay dữ liệu. Không có "bản cũ" nào để viện dẫn: đây là thiết kế mới.
 
 🔬 **Luật chung cho cả bốn, không loại nào được miễn:** mọi measure nằm trong `#Measure` · bảng rời mang tiền tố
 `Parameter_` · **đổi tên bất cứ thứ gì trong model thì cổng nghiệm thu là chạy DAX THẬT trên engine** —
 `TMSCHEMA_MEASURES` phải `State = 1` toàn bộ và `EVALUATE ROW(...)` từng measure không lỗi. Đọc file KHÔNG
-chứng minh được gì (`§2c⑥`).
+chứng minh được gì (model.md §7).
 
 ## 1. Quy trình — không bỏ bước nào
 
@@ -126,7 +126,7 @@ nguồn hệ cũ              0 chỗ: mọi nguồn khai ở `legacy_sources`
   của kho (`#Discount Amount = SUM(Fact_Sale[NetDiscount])`, TransactionID là duy nhất). Cổng tĩnh không đo
   được ⇒ publish thử rồi mở từng trang.
 - ⚠ `.pbi/cache.abf` cũ **che** việc đổi chế độ: dấu hiệu là bảng DQ trả số cũ hơn kho ⇒ đổi tên cache rồi mở lại.
-- 🔴 **Không bản sao thử** *(`chuẩn phòng ban §2` "KHÔNG BẢN NHÁP" — thay luật cũ "bản sao đặt ở `data/_sbx_*`")*: sửa
+- 🔴 **Không bản sao thử** *(`Skill_Task_Case` §Không bản nháp — thay luật cũ "bản sao đặt ở `data/_sbx_*`")*: sửa
   thẳng file thật, mốc an toàn là git. Công cụ nào buộc phải có bản sao thì hỏi người dùng trước và đặt ở thư mục NGẮN ở gốc ổ ngoài mọi
   repo, xoá khi xong — ⚠ không dùng `%TEMP%`: vượt MAX_PATH, `tar`/Desktop cắt file **lặng lẽ** (bản trích thiếu visual mà không báo lỗi).
 - ⚠ **Quét tham chiếu visual TRƯỚC khi xoá một bảng** (`Entity` trong mọi `visual.json` + filter trang) —
@@ -288,7 +288,7 @@ n trang thật  ->  n cặp nút BT_Page_<X>_On/_Off ; cặp thứ i (theo pageO
 Bỏ một trang (hay tách thin report một trang) ⇒ **bỏ cặp nút của trang đó, dồn các cặp còn lại lên ô
 trên**, gỡ visual đã bỏ khỏi **MỌI** bookmark của trang, và co nhóm theo công thức. Ô trống phía trên
 nút là **lỗi bố cục**, không được viện "giữ nguyên toạ độ": toạ độ nút là **địa chỉ theo thứ tự trang**,
-trang đổi thì địa chỉ đổi theo — cùng doctrine với số thư mục measure (`chuẩn phòng ban §2c②`).
+trang đổi thì địa chỉ đổi theo — cùng doctrine với số thư mục measure (model.md §2).
 *Ca thật 2026-09-17: `ABC_IncomeStatement_AM` tách một trang, bỏ đúng 4 nút của hai trang kia nhưng để
 nút MCP nguyên ô 3 (`y=120`) với hai ô trống bên trên — bị bác: "chỉ có 1 trang thì phải đẩy nút
 bấm lên đầu chứ".*

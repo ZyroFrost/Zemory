@@ -66,7 +66,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Backend_056_Packaging`](_Slot/Backend_056_Packaging/Backend_056_Packaging.md) | `backend/resources/packaging/` | resource đóng gói exe / tray |
 | [`Backend_057_Locales`](_Slot/Backend_057_Locales/Backend_057_Locales.md) | `backend/resources/locales/` | file dịch phía server |
 | [`Backend_058_Run`](_Slot/Backend_058_Run/Backend_058_Run.md) | `backend/run.*` | entry chạy app |
-| [`Root_059_PackageJson`](_Slot/Root_059_PackageJson/Root_059_PackageJson.md) | `package.json \` · `pyproject.toml` | manifest |
+| [`Root_059_PackageJson`](_Slot/Root_059_PackageJson/Root_059_PackageJson.md) | `package.json \` · `pyproject.toml \` · `requirements.txt` | manifest |
 | [`Frontend_060_Assets`](_Slot/Frontend_060_Assets/Frontend_060_Assets.md) | `frontend/assets/` | media UI |
 | [`Frontend_061_Components`](_Slot/Frontend_061_Components/Frontend_061_Components.md) | `frontend/components/` | component UI dùng lại |
 | [`Frontend_062_Styles`](_Slot/Frontend_062_Styles/Frontend_062_Styles.md) | `frontend/styles/` | token + CSS/theme |

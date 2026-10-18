@@ -1,15 +1,15 @@
 ---
 id: Skill_PBI_Legacy
 name: pbi-legacy
-version: 2
+version: 3
 type: process
 description: Handle the LEGACY copy of a Power BI report - the old system's original file, kept to READ and COMPARE, never edited: dissect a .pbix, convert it to .pbip on a copy, prove a rebuild by md5. Use whenever an old .pbix must be read for its design, measures or sources, or a rebuild must be compared with the original. Not for building a report (that is pbi-classic / pbi-mix / pbi-main). Vietnamese triggers - "mổ file cũ", "đọc pbix hệ cũ", "chuyển pbix sang pbip", "so với bản gốc".
-from: _Store/03_SKILLS/Skill_PBI_Legacy @v2 #bde1213beb37
+from: _Store/03_SKILLS/Skill_PBI_Legacy @v3 #91859288c236
 ---
 
 # Bản `Legacy` — file gốc hệ cũ, CHỈ ĐỌC
 
-> 🔴 **`Legacy` = hệ cũ + thiết kế cũ, bản chưa ai đụng** (`chuẩn phòng ban §2b`).
+> 🔴 **`Legacy` = hệ cũ + thiết kế cũ, bản chưa ai đụng** (`Skill_PBI_Base` `reference/naming.md`).
 > Nó tồn tại vì đúng một lý do: **là mốc DUY NHẤT** chứng minh bản `Classic`/`Mix` không lệch thiết
 > kế và không lệch số. Sửa nó là mất mốc, và mất mốc thì không có cách nào lấy lại.
 
