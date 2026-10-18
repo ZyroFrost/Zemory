@@ -1,0 +1,290 @@
+{
+  "prompt": {
+    "kind": "Rule_29",
+    "re": "\\b(query|lenh cmd|ten bien|logic|comment|chu thich|commit|log|dat ten bien|code|script|ham|function|tieng viet|van noi|ban vn|hien vay ai hieu|phim tat|thong bao|title|dropdown|tieng anh|song ngu|dich|i18n|nhan hien thi|label|chu hien thi|english|en/vi|ngon ngu)\\b",
+    "text": "[zemory] Rule_Gate_29_CodeLanguage: Code is English: identifiers, file names, logs, commit messages, comments and CLI output; UI strings go through i18n with both dictionaries complete (Skill_Dev_AppDesign)."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "viết comment cho hàm này"
+    },
+    {
+      "note": "a Vietnamese comment in a TypeScript file",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/a.ts",
+        "content": "// kiểm tra kết quả trước khi ghi\nconst result = 1;\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a Vietnamese comment in a Python file",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "scripts/b.py",
+        "content": "x = 1  # tổng số dòng\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a new file with a non-ASCII name",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "báo-cáo.md",
+        "content": "x\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a Vietnamese identifier",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/a.ts",
+        "content": "const ketQua = 1;\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a new folder named in Vietnamese without marks",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Rule/Rule_Core_80_DieuMotBatBien/RULE.md",
+        "content": "x\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a new file named in Vietnamese without marks",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "scripts/bao-cao-thang.py",
+        "content": "x\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a Vietnamese identifier the old syllable list missed",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/b.ts",
+        "content": "const tongHopDoanhThu = 1;\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "mkdir of a Vietnamese name",
+      "files": {},
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "mkdir tasks/nhan-vien"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "an i18n request this rule's keywords catch",
+      "prompt": "thêm song ngữ cho nhãn hiển thị"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    },
+    {
+      "note": "an English comment, and Vietnamese inside a string (that is data)",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/c.ts",
+        "content": "// check the result before writing\nconst label = \"kết quả\";\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "Vietnamese in a docs file is not code",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/plan/a.md",
+        "content": "Kết quả đo.\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/.harness-state",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "an English comment and a Vietnamese-looking string: the string is data",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/c.ts",
+        "content": "// result of the measurement\nconst label = \"ketQua\";\nconst result = 1;\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "editing a file that already has its name",
+      "files": {
+        "cũ.md": "x\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "cũ.md",
+        "old_string": "x",
+        "new_string": "y"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "English names made of short words that also fit a Vietnamese syllable",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/get-lang.ts",
+        "content": "const mapPut = 1;\nconst getLang = 2;\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "an English part name",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Rule/Rule_Core_80_OneNameDictionary/RULE.md",
+        "content": "x\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "hook": [
+    "hook.cjs",
+    "hook-names.cjs"
+  ],
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "PowerShell"
+    ]
+  }
+}

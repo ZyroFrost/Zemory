@@ -1,0 +1,20 @@
+{
+  "trigger": "mổ file .pbix hệ cũ · chuyển .pbix sang .pbip · so với bản gốc",
+  "prompt": {
+    "kind": "pbi-legacy",
+    "re": "\\b(legacy|mo file cu|pbix he cu|ban goc)\\b",
+    "text": "[zemory] Legacy report: follow skill pbi-legacy - read only, convert on a copy, accept by md5."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "mổ file cũ bản legacy"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "thêm cột vào bảng"
+    }
+  ]
+}

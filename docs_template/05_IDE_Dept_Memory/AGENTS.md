@@ -9,7 +9,7 @@ Repo này dùng harness của zemory, hệ **DEPT**: repo của một phòng ban
 `docs/agent/`, mỗi luật và mỗi slot một folder; file này chỉ chỉ đường.
 
 ## Vào việc
-1. **Chưa có `docs/.harness.json`?** ⇒ hỏi trước: dự án là APP hay NON-APP (không tự đoán; repo phòng ban nhận dữ liệu từ kho của tổng quản và giao báo cáo cho người nhận là DEPT). DEPT ⇒
+1. **Chưa có `docs/.harness.json`?** ⇒ hỏi trước: dự án là APP hay NON-APP (không tự đoán; repo phòng ban nhận dữ liệu từ DW của tổng quản và giao báo cáo cho người nhận là DEPT). DEPT ⇒
    `zemory init --kit 05`;
    rồi `zemory doctor` xanh. Thiếu lệnh `zemory` ⇒ cài bằng một lệnh PowerShell:
    `irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install.ps1 | iex` (đặt `$env:ZEMORY_DIR` trước — hỏi nếu chưa rõ thư mục cài; kho
@@ -45,6 +45,7 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | yêu cầu chưa đủ rõ để làm đúng | `.claude/skills/harness-grill/SKILL.md` |
 | `zemory validate` báo plan vượt trần · "gọt plan" | `.claude/skills/harness-plan-trim/SKILL.md` |
 | repo lệch chuẩn, cần nắn lại | `.claude/skills/harness-reconcile/SKILL.md` |
+| nắn repo lên bộ chuẩn · áp chuẩn · chuyển repo sang bộ · sync --standard | `.claude/skills/harness-reshape/SKILL.md` |
 | được duyệt thêm hoặc sửa luật, khung hiến pháp, chốt máy | `.claude/skills/harness-rule-gate/SKILL.md` |
 | "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/harness-session-close/SKILL.md` |
 | sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác | `.claude/skills/harness-sync-path/SKILL.md` |
@@ -59,4 +60,3 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | kéo dữ liệu từ nguồn về | `.claude/skills/task-pull/SKILL.md` |
 | đẩy deliverable lên đích (BI · Drive · SharePoint) | `.claude/skills/task-upload/SKILL.md` |
 | đưa task lên VM · tự động hoá task · đặt lịch trên VM | `.claude/skills/task-vm-automation/SKILL.md` |
-| nắn repo lên bộ chuẩn · áp chuẩn · chuyển repo sang bộ · sync --standard | `.claude/skills/harness-reshape/SKILL.md` |
