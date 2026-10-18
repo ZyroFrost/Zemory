@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Mix
 name: pbi-mix
-version: 2
+version: 3
 description: Build the MIX copy of a Power BI report - warehouse model, the Main header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-main). Vietnamese triggers - "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
 installs: [scripts/mix_palette.py, scripts/card_icons.py]
 ---
@@ -387,6 +387,14 @@ thấy mỗi trang filter riêng nó bị rối" → chọn "bộ chung + đồn
   `mix_builder --filter-set` đọc lại). Cổng `filter-set`: ô tháng đồng bộ mà khác `'Current Month'` ⇒ đỏ · Monthly còn đồng bộ hoặc
   chọn sẵn ⇒ đỏ (thử âm 05/10: gài 3 ⇒ đỏ đúng 3). Ori không có "current" (một slicer khoảng ngày `Between`); slicer **Date Picker**
   (GA 08/2026, neo "Last date") là hướng thử sau — người dùng dựng mẫu trong Desktop trước, tuần thứ Sáu của ABC nó không làm được.
+- 🔴 **'Current …' là kỳ MỚI NHẤT trong danh sách — nhãn và bộ lọc của ô dùng CHUNG MỘT mốc ngày.** Ô kỳ có thành viên
+  'Current Month' / 'Current Year' / 'Current Week' thì không thành viên nào khác được chứa ngày sau ngày cuối của thành viên
+  'Current …' (dưới chính bộ lọc cấp visual của ô). Hỏng điển hình: nhãn 'Current Month' tính theo một mốc (tháng đã đóng sổ)
+  còn cột cờ lọc ô (`Flag_is_use`, `DateWithSale`…) tính theo mốc khác (tháng lớn nhất có số) ⇒ ô hiện 'Current Month' rồi
+  vẫn còn tháng sau nó — vô nghĩa. Sửa: nhãn và cờ lấy từ CÙNG một biểu thức mốc (trong SQL partition hoặc cùng một cột).
+  Muốn mặc định mở một kỳ khác kỳ mới nhất thì đó là quyết định trình bày, hỏi người dùng — không tách mốc. Cổng `slicer-current`
+  (lớp engine): mỗi ô trên bảng ngày, đếm thành viên khác 'Current …' có `MAX(ngày)` > ngày cuối của 'Current …' ⇒ > 0 là đỏ.
+  Dùng `MAX`, không `MIN`: thành viên tháng gộp nhiều năm ('10' = 10/2025 + 10/2026), ngày đầu che mất phần vượt.
 - **Một hình học:** nhãn 20 + ô 40, bước 65 từ `y = 65` ⇒ tối đa **10 ô**. Bản cũ co ô theo số ô (`step − 30`): Product
   10 ô còn 34 px trong khi trang 6 ô cao 50 — đúng cái người dùng gọi là "sai cả size box".
 - 🔴 **Nhãn phải đúng ô ngay dưới nó** *(ô Day của Daily nằm dưới nhãn "Area Manager")*. `--filter-set` thêm ô vị trí
@@ -1421,6 +1429,12 @@ Report đã là của phòng ⇒ tên trang **không** thêm `ABC`: `Monthly Rep
 Report` · `Operation` (không phải `... ABC`, `ABC Operation`). Tên ngắn, nói trang là gì. Đổi tên bằng
 `mix_builder.py --rename-page <pageId> "<tên mới>"` — sửa cùng lúc `page.json`, chữ trên header (kèm bề ngang
 khung) và thư mục measure chữ cái của trang. Cổng `page-name` báo đỏ khi tên trang còn mã phòng ban.
+
+🔴 **Report chỉ có MỘT trang hiện ⇒ trang đó tên `Overview`, không lặp tên report.** Header đã mang tên report; tên trang
+nhắc lại cùng chữ là thông tin rỗng. Đếm theo trang HIỆN (`HiddenInViewMode` không tính). Đổi bằng
+`mix_builder.py --rename-page <pageId> "Overview"`, đổi `key` trong `mix_specs` thành `Overview` rồi dựng lại trang (bookmark
+`01_Overview_*`, thư mục measure `B. Overview`). Tab đầu vẫn là `Summary` (`Overview` là tên TRANG, luật `tab-page-name`).
+Cổng `single-page-overview` (lớp tĩnh): report một trang hiện mà tên trang khác `Overview` ⇒ đỏ.
 
 ## 5q. THƯ MỤC MEASURE MANG CHỮ CÁI, KHÔNG MANG SỐ
 
