@@ -17,7 +17,7 @@
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { harnessPathsAt, readMarker } from "../core/config.js";
+import { archiveDirOf, harnessPathsAt, readMarker } from "../core/config.js";
 import { buildCodeGraph } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
@@ -159,10 +159,13 @@ export function conform(root: string): ConformReport {
   // is a gate, not off-standard source.
   const harnessAgent = harnessPathsAt(root).agent;
   const harnessRel = isFolderHarness(harnessAgent) ? normDir(relative(root, harnessAgent).replace(/\\/g, "/")) : null;
+  const archiveRel = normDir(relative(root, archiveDirOf(harnessAgent)).replace(/\\/g, "/"));
   const exempt = (dir: string): boolean => {
     if (!dir) return true;
     if (dir === "docs_template" || dir.startsWith("docs_template/")) return true;
     if (harnessRel && (normDir(dir) === harnessRel || normDir(dir).startsWith(harnessRel + "/"))) return true;
+    // the archive keeps retired parts as they were (a rule folder with its hook.cjs): history, not a code folder of the repo
+    if (harnessRel && (normDir(dir) === archiveRel || normDir(dir).startsWith(archiveRel + "/"))) return true;
     const seg = dir.split("/");
     const last = seg[seg.length - 1];
     if (seg.length === 1 && ["backend", "frontend", "docs"].includes(last)) return true;

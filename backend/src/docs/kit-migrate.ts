@@ -411,6 +411,12 @@ export function repointLinks(root: string, apply: boolean): string[] {
       });
       // A kit skill named by its old host name (`.claude/skills/case/`) after its build moved to the new one (task-case).
       for (const [aka, host] of hostRenames) n = n.split(`.claude/skills/${aka}/`).join(`.claude/skills/${host}/`);
+      // A ledger beside the archive linked it as `archive/x`; the archive left the harness folder (docs/archive), so the
+      // link climbs one level - only when the file is there and not still under the old place (a reshaped repo 2026-10-18).
+      if (dirname(p) === agentDir) {
+        n = n.replace(/\]\(archive\/([^)\s#]+)/g, (whole, rest: string) =>
+          existsSync(join(agentDir, "archive", rest)) || !existsSync(join(dirname(agentDir), "archive", rest)) ? whole : `](../archive/${rest}`);
+      }
       if (n !== t) {
         if (apply) writeFileSync(p, n);
         changed.push(relative(root, p).replace(/\\/g, "/"));
