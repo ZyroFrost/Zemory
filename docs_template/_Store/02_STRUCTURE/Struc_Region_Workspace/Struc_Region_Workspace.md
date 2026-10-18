@@ -1,7 +1,7 @@
 ---
 id: Struc_Region_Workspace
 name: region-workspace
-version: 2
+version: 3
 scope: region
 checked: [Struc_Repo_Dept]
 ---
@@ -16,7 +16,7 @@ là gì và hai loại quan hệ giữa các repo. Vai của một repo nằm tr
   nó thuộc quyền template nào (`managed_by`) · luật tổng quản (`owner`: `required` · `optional` · `none`) · dịch vụ nó cung
   cấp cho cụm (`provides`).
 - Repo chọn template là biết vai và nhiệm vụ của mình; marker không khai vai.
-- Slot của một dịch vụ chung (ví dụ kho mail) chỉ có trong template cung cấp dịch vụ đó; repo dùng dịch vụ không giữ bản riêng.
+- Slot của một dịch vụ chung (ví dụ bộ mail chung) chỉ có trong template cung cấp dịch vụ đó; repo dùng dịch vụ không giữ bản riêng.
 
 ## Hai loại quan hệ
 

@@ -1,10 +1,10 @@
 ---
 id: Struc_Repo_WorkspaceManager
 name: repo-workspace-manager
-version: 1
+version: 2
 profile: non-app
 label: WORKSPACE-MANAGER
-intro: : repo tổng quản của một cụm — giữ dữ liệu dùng chung (kho dữ liệu), giá trị của cụm, kho mail chung; quyết khung và chuẩn của các repo phòng ban nó quản
+intro: : repo tổng quản của một cụm — giữ dữ liệu dùng chung (DW, kho dữ liệu), giá trị của cụm, bộ mail chung; quyết khung và chuẩn của các repo phòng ban nó quản
 ask: ; repo giữ kho dữ liệu và chuẩn chung mà các repo phòng ban đọc là WORKSPACE-MANAGER
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
@@ -18,8 +18,8 @@ cung cấp cho cả cụm. Template này khác nhau theo từng cụm của ngư
 ## Vai
 
 - Quản: repo theo template `Struc_Repo_Dept` (khung, chuẩn báo cáo, bộ mẫu của phòng ban).
-- Cung cấp cho cả cụm: `data` (kho dữ liệu) · `workspace-values` (giá trị của cụm, slot `Data_140_WorkspaceValues`) · `mail`
-  (kho mail chung, slot `Config_139_Mail`).
+- Cung cấp cho cả cụm: `data` (DW, kho dữ liệu) · `workspace-values` (giá trị của cụm, slot `Data_140_WorkspaceValues`) · `mail`
+  (bộ mail chung, slot `Config_139_Mail`).
 - Không thuộc quyền repo nào (cấp cao nhất của cụm).
 
 ## Repo khác dùng dịch vụ thế nào

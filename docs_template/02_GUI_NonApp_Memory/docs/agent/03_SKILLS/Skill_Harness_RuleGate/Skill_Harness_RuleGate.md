@@ -1,10 +1,10 @@
 ---
 id: Skill_Harness_RuleGate
 name: harness-rule-gate
-version: 3
+version: 4
 type: process
 description: Write a new rule, constitution frame or skill for a harness, place it in the right home, and build its machine gate with positive and negative cases. Use once adding or changing a rule, a constitution frame or a gate has been approved. Vietnamese triggers - "thêm luật", "viết luật", "dựng cổng", "chốt máy cho luật", "xếp nhà luật".
-from: _Store/03_SKILLS/Skill_Harness_RuleGate @v3 #8cca41ab4c0e
+from: _Store/03_SKILLS/Skill_Harness_RuleGate @v4 #4bf9a1bb0d51
 ---
 
 # harness-rule-gate — viết luật và dựng chốt máy
@@ -16,7 +16,8 @@ from: _Store/03_SKILLS/Skill_Harness_RuleGate @v3 #8cca41ab4c0e
 
 - Câu nói về cách agent làm việc ở mọi repo ⇒ luật chung (`01_LAW/_Rule`).
 - Câu nói về chính sản phẩm của repo ⇒ `Cons.md` của khung tương ứng, hoặc điều riêng từ số 101.
-- Câu là cách làm một loại việc ⇒ skill. Câu là chỗ đặt file ⇒ slot. Câu là cơ chế công cụ theo hệ ⇒ `_Host`.
+- Câu là cách làm một loại việc ⇒ skill. Câu là chỗ đặt file ⇒ slot (đề xuất slot hay template mới: `Skill_Harness_Structure`
+  §5). Câu là cơ chế công cụ theo hệ ⇒ `_Host`.
 - Hai món nói cùng một điều ⇒ gộp vào món có sẵn; không đẻ món mới.
 
 ## 2. Phân loại theo câu hỏi: lúc vi phạm, máy thấy gì?

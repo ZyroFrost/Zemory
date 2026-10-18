@@ -1,7 +1,7 @@
 ---
 id: Slot_140
 name: workspace-values
-version: 1
+version: 2
 path: data/region/
 checked: [Data_094_Data, Config_075_Config]
 ---
@@ -10,6 +10,8 @@ checked: [Data_094_Data, Config_075_Config]
 - Vai trò: `data/region/values.json` — giá trị thật dùng chung của cả cụm, chỉ có trong template tổng quản
   (`Struc_Repo_WorkspaceManager`). Git không theo dõi `data/`. Tool và skill chỉ nêu TÊN KHOÁ, không bao giờ chép giá trị;
   repo phòng ban đọc qua `scripts/region_values.py` (tìm tổng quản theo `owner` trong marker).
+- Khác `Data_094_Data` (dữ liệu thật của chính repo): giá trị cụm có luật riêng — chỉ template tổng quản có nó, mọi repo
+  của cụm đọc nó qua `owner` (không chép), và tool chỉ được nêu TÊN khoá.
 - Thiếu một khoá ⇒ tool rơi về mặc định trung tính (danh sách rỗng, đường dẫn không tồn tại) và cổng liên quan báo thiếu; không tool
   nào tự điền giá trị công ty.
 - Khoá chung:
