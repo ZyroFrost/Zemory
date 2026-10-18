@@ -2,7 +2,7 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 17
+version: 18
 type: process
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
 ---
@@ -186,8 +186,9 @@ Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'   # ③ g�
 |---|---|
 | việc trong sổ | `04_TODO`: đóng hoặc thêm mục theo `Rule_Gate_38_TodoDoor` |
 | bất kỳ thứ gì đã được xác nhận | `05_CHANGES`: một entry, khuôn ở slot `Docs_005_Agent` |
-| cấu trúc · định nghĩa (slot · routing · từ điển) | `02_STRUCTURE/INDEX.md` và slot liên quan |
-| skill (thêm · bớt) | `03_SKILLS/INDEX.md` |
+| cấu trúc (slot) | đề xuất lên HS (`Rule_Gate_83_HarnessFromStore` · `Rule_Gate_85_ProposeChecked`); `02_STRUCTURE/INDEX.md` máy sinh lại khi sync |
+| định nghĩa nghiệp vụ | khung HP `Cons_Gate_12_SourceOfTruth` (mục Định nghĩa) · cách tính: skill riêng `Skill_Own_<Tên>` |
+| skill (thêm · bớt) | skill chung: đề xuất lên HS · skill riêng: thư mục `03_SKILLS/Skill_Own_<Tên>/`; `03_SKILLS/INDEX.md` máy sinh lại khi sync |
 | thiết kế | spec trong `docs/plan` (sửa tại chỗ thành hướng mới) |
 | chức năng có hướng dẫn trong sản phẩm | trang hướng dẫn của sản phẩm |
 
