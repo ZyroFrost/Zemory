@@ -943,8 +943,17 @@ test("a frame the store moved into its chapter moves in the repo on sync, and th
   mkdirSync(join(st.s, "01_LAW", "_Cons", "04_Security"), { recursive: true });
   renameSync(join(st.s, "01_LAW", "_Cons", "01-1_secrets"), join(st.s, "01_LAW", "_Cons", "04_Security", "01-1_secrets"));
   st.commit("chapters");
-  applyKit(root, { apply: true, storeDir: st.s });
+  // the repo's own text names the frame by its old path, as a link and as plain text; the archive keeps its words
+  const plan = "docs/plan/00_overview.md";
+  put(root, plan, "Xem [mục đích](../agent/01_LAW/_Cons/01-1_secrets/Cons.md) · `docs/agent/01_LAW/_Cons/01-1_secrets/Cons.md` · `01_LAW/_Cons/01-1_secretsX` khác.\n");
+  put(root, "docs/archive/old.md", "cũ: docs/agent/01_LAW/_Cons/01-1_secrets/Cons.md\n");
+  const r = applyKit(root, { apply: true, storeDir: st.s });
   const moved = join(root, "docs", "agent", "01_LAW", "_Cons", "04_Security", "01-1_secrets", "Cons.md");
   assert.ok(existsSync(moved) && !existsSync(flat), "the frame moved into its chapter, nothing left flat");
   assert.match(readFileSync(moved, "utf8"), /OUR-OWN-ANSWER/, "the repo's answer is kept");
+  assert.equal(readFileSync(join(root, plan), "utf8"),
+    "Xem [mục đích](../agent/01_LAW/_Cons/04_Security/01-1_secrets/Cons.md) · `docs/agent/01_LAW/_Cons/04_Security/01-1_secrets/Cons.md` · `01_LAW/_Cons/01-1_secretsX` khác.\n",
+    "link and text follow; a longer name that only starts the same is left");
+  assert.deepEqual(r.pathsFollowed, [plan]);
+  assert.match(readFileSync(join(root, "docs", "archive", "old.md"), "utf8"), /_Cons\/01-1_secrets\/Cons\.md/, "history keeps its words");
 });

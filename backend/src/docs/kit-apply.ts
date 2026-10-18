@@ -5,11 +5,13 @@
 // overwritten) → parts (plan, then write when `apply`) → the host plug → the skills block of 04_SKILLS/INDEX.md → the guard.
 // Reading is the default; nothing is written without `apply`.
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { CONFIG_FILE, findMarker, harnessPathsAt, readMarker } from "../core/config.js";
 import { DEFAULT_CONFIG } from "./adopt.js";
 import {
   applyAssembly,
+  listParts,
+  SHELVES,
   bodyOf,
   mainOf,
   readSource,
@@ -50,6 +52,8 @@ export interface KitApplyResult {
   written: AssemblyStep[];
   /** the two INDEX files (plan/29 §13): rewritten from what is assembled, or already current */
   skillsBlock: "written" | "current";
+  /** the repo's own files whose paths to a part that moved folder were brought along (repo-relative) */
+  pathsFollowed: string[];
   /** sections of a frame added to the repo's written Cons.md, "<frame>: + <section>" (plan/29 §13b) */
   consAdded: string[];
   /** hand-written INDEX files kept whole in the archive before the generated ones replaced them */
@@ -103,6 +107,8 @@ export function applyKit(
   const steps = planAssembly(parts, target);
   const bases = installBases(target, parts);
   const written = opts.apply ? applyAssembly(steps) : [];
+  // a part that moved folder (a frame into its chapter, a rule into its code): the repo's own text follows it
+  const pathsFollowed = followMovedParts(root, hp.agent, steps, opts.apply);
   // a section HS added to a frame after the repo wrote its Cons.md goes in with the template text (plan/29 §13b)
   const consAdded = addMissingSections(hp.agent, opts.apply, storeDir);
   // files the parts install where the repo runs them (scripts/...), after the parts themselves are current
@@ -117,7 +123,7 @@ export function applyKit(
   // copies have left; a hand-written one is archived whole the first time
   const index = writeIndexes(hp.agent, hp.skills, hp.archive, opts.projectName ?? basename(root), opts.apply);
   const skillsBlock: KitApplyResult["skillsBlock"] = index.written.length ? "written" : "current";
-  return { kit, createdMarker, ownAdded, steps, written, consAdded, skillsBlock, indexArchived: index.archived, renamedShelves, plug, retired, installed, hooksTakenOver };
+  return { kit, createdMarker, ownAdded, steps, written, pathsFollowed, consAdded, skillsBlock, indexArchived: index.archived, renamedShelves, plug, retired, installed, hooksTakenOver };
 }
 
 /**
@@ -281,6 +287,46 @@ function retireReplacedHooks(root: string, parts: Part[], apply: boolean): strin
   const hooksDir = join(root, "docs", "hooks");
   if (apply && existsSync(hooksDir) && !readdirSync(hooksDir).some((n) => !/^\.(allow-|seen\.json$|gitignore$)/.test(n))) rmSync(hooksDir, { recursive: true, force: true });
   return out;
+}
+
+/**
+ * A part that sync moved to another folder (a constitution frame into its chapter, a rule into its code of law — plan/29
+ * §4 · §5) leaves every path the repo wrote to it dead: measured 2026-10-18 on four departments, each plan or content file
+ * that named `_Cons/Cons_Gate_09_Purpose/Cons.md`. Each such path, written as a link or as text, follows the move. The
+ * assembled copies are not touched (they would read as edited here), nor is the archive (history keeps its words).
+ * Returns the repo-relative files changed (or that would change).
+ */
+function followMovedParts(root: string, agentDir: string, steps: AssemblyStep[], apply: boolean): string[] {
+  const moves = steps
+    .filter((s) => s.renameFrom && s.renameFrom !== s.target)
+    .map((s) => [relative(agentDir, s.renameFrom!).replace(/\\/g, "/"), relative(agentDir, s.target).replace(/\\/g, "/")] as const)
+    .filter(([a, b]) => a && b && !a.startsWith(".."));
+  if (!moves.length) return [];
+  const copies = new Set(SHELVES.flatMap((sh) => listParts(agentDir, sh).filter((p) => p.from).map((p) => p.dir)));
+  const archive = harnessPathsAt(root).archive;
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const out: string[] = [];
+  const walk = (d: string): void => {
+    let ents: import("node:fs").Dirent[];
+    try { ents = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) {
+        if (/^(\.git|node_modules|\.claude|attic)$/.test(e.name) || p === archive || copies.has(p)) continue;
+        walk(p);
+        continue;
+      }
+      if (!/\.md$/i.test(e.name)) continue;
+      const t = readFileSync(p, "utf8");
+      let n = t;
+      for (const [a, b] of moves) n = n.replace(new RegExp(`${esc(a)}(?=[/)\`\\s#]|$)`, "g"), b);
+      if (n === t) continue;
+      out.push(relative(root, p).replace(/\\/g, "/"));
+      if (apply) writeFileSync(p, n);
+    }
+  };
+  walk(root);
+  return out.sort();
 }
 
 /** The trigger table of the entry file follows host renames too (see followHostRenames). */
