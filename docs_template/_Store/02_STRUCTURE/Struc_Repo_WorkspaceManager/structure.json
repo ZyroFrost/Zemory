@@ -1,0 +1,20 @@
+{
+  "extends": "Struc_Repo_NonApp",
+  "slots": [
+    "Config_139_Mail",
+    "Data_140_WorkspaceValues"
+  ],
+  "role": {
+    "name": "workspace-manager",
+    "manages": [
+      "dept"
+    ],
+    "managed_by": [],
+    "owner": "none",
+    "provides": [
+      "data",
+      "workspace-values",
+      "mail"
+    ]
+  }
+}

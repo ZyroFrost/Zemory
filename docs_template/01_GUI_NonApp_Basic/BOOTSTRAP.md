@@ -158,7 +158,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 123 | `docs/agent/01_LAW/_Rule/04_Writing/Rule_Gate_31_NoBrokenVietnamese/hook.cjs` | 186 |
 | 124 | `docs/agent/02_STRUCTURE/INDEX.md` | 65 |
 | 125 | `docs/agent/02_STRUCTURE/Struc_Repo_NonApp/Struc_Repo_NonApp.md` | 16 |
-| 126 | `docs/agent/02_STRUCTURE/Struc_Repo_NonApp/structure.json` | 53 |
+| 126 | `docs/agent/02_STRUCTURE/Struc_Repo_NonApp/structure.json` | 60 |
 | 127 | `docs/agent/02_STRUCTURE/_Host/GUI/GUI.md` | 19 |
 | 128 | `docs/agent/02_STRUCTURE/_Slot/Assets_127_Assets/Assets_127_Assets.md` | 11 |
 | 129 | `docs/agent/02_STRUCTURE/_Slot/Attic_079_Attic/Attic_079_Attic.md` | 14 |

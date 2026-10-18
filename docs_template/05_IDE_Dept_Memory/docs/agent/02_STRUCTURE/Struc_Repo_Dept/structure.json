@@ -1,4 +1,13 @@
 {
   "extends": "Struc_Repo_NonApp",
-  "slots": []
+  "slots": [],
+  "role": {
+    "name": "dept",
+    "manages": [],
+    "managed_by": [
+      "workspace-manager"
+    ],
+    "owner": "required",
+    "provides": []
+  }
 }

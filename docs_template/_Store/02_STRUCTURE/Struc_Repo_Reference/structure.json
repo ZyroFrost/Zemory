@@ -1,0 +1,15 @@
+{
+  "extends": "Struc_Repo_NonApp",
+  "slots": [],
+  "role": {
+    "name": "reference",
+    "manages": [],
+    "managed_by": [],
+    "owner": "none",
+    "provides": [
+      "glossary",
+      "legacy",
+      "template"
+    ]
+  }
+}

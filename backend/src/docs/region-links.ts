@@ -1,21 +1,40 @@
-// Struc_Region_Workspace (user 2026-10-18): every repo of a workspace says in its marker which role it holds, who its one
-// owner is (the solid line) and whose services it uses by kind (the dotted lines). HS keeps the roles; the repo names stay
-// in the markers. This reads those declarations and checks them against the roles HS declares.
+// plan/29 §14b (user 2026-10-19): the workspace is the cluster; a repo's role belongs to the template it is assembled from
+// (structure.json › role: name · manages · managed_by · owner rule · provides). The marker names only WHICH repo is the owner
+// (the solid line) and whose services it uses by kind (the dotted lines). This reads those and checks them against the roles
+// of the templates on both ends.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { dirname, join } from "node:path";
 import { readMarker } from "../core/config.js";
-import { STORE_DIR } from "./store.js";
+import { findKit, kitStructure, STORE_DIR } from "./store.js";
 
-export interface RegionRole { manages: string[]; provides: string[] }
+export interface TemplateRole {
+  name: string;
+  manages: string[];
+  managed_by: string[];
+  /** required · optional · none */
+  owner: string;
+  provides: string[];
+}
 
-/** The roles HS declares (Struc_Region_Workspace/structure.json › roles); empty when the store has none. */
-export function regionRoles(storeDir = STORE_DIR): Record<string, RegionRole> {
+/** The role of a template (`structure.json › role` of a repo structure), or null when the template declares none. */
+export function templateRole(structureDir: string): TemplateRole | null {
   try {
-    const j = JSON.parse(readFileSync(join(storeDir, "02_STRUCTURE", "Struc_Region_Workspace", "structure.json"), "utf8")) as { roles?: Record<string, RegionRole> };
-    return j.roles ?? {};
+    const r = (JSON.parse(readFileSync(join(structureDir, "structure.json"), "utf8")) as { role?: Partial<TemplateRole> }).role;
+    if (!r || typeof r.name !== "string") return null;
+    const list = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+    return { name: r.name, manages: list(r.manages), managed_by: list(r.managed_by), owner: String(r.owner ?? "optional"), provides: list(r.provides) };
   } catch {
-    return {};
+    return null;
   }
+}
+
+/** The role of the repo at `root`: the role of the template of the set its marker names; null when it has no set. */
+export function repoRole(root: string, storeDir = STORE_DIR): TemplateRole | null {
+  const kitName = readMarker(root)?.data.kit;
+  if (typeof kitName !== "string" || !kitName) return null;
+  const kit = findKit(kitName, storeDir);
+  const struc = kit ? kitStructure(kit, storeDir) : null;
+  return struc ? templateRole(struc.dir) : null;
 }
 
 const isRepo = (d: string): boolean => existsSync(join(d, "docs", ".harness.json")) || existsSync(join(d, ".git"));
@@ -44,33 +63,43 @@ export function findRegionRepo(name: string, from: string): string | null {
   return null;
 }
 
-const roleOf = (root: string): string => String(readMarker(root)?.data.role ?? "");
-
-/** Wrong region declarations of the repo at `root` (blocking) and a missing role (advisory). */
-export function regionLinkFindings(root: string, storeDir = STORE_DIR): { wrong: string[]; missing: string[] } {
-  const roles = regionRoles(storeDir);
-  const m = readMarker(root)?.data ?? {};
+/**
+ * The workspace declarations of the repo at `root`: `wrong` (blocking) — the owner rule of its template broken, an owner whose
+ * template does not manage this one, a service from a repo whose template does not provide it, a name that is no repo, the old
+ * marker key `role`; `pending` (advisory) — a repo named whose template is not assembled yet, so it cannot be judged.
+ * A repo assembled from no set is not judged.
+ */
+export function regionLinkFindings(root: string, storeDir = STORE_DIR): { wrong: string[]; pending: string[] } {
   const wrong: string[] = [];
-  const role = typeof m.role === "string" ? m.role : "";
-  if (!role) return { wrong, missing: Object.keys(roles).length ? [`${basename(root)}: no role in the marker (Struc_Region_Workspace)`] : [] };
-  if (!roles[role]) { wrong.push(`role "${role}" is not a role of Struc_Region_Workspace (${Object.keys(roles).join(" · ")})`); return { wrong, missing: [] }; }
+  const pending: string[] = [];
+  const m = readMarker(root)?.data ?? {};
+  if (typeof m.role === "string") wrong.push(`the marker key "role" is gone — the role comes from the template (drop the key; sync does it)`);
+  const role = repoRole(root, storeDir);
+  if (!role) return { wrong, pending };
   const owner = m.owner;
   const uses = (m.uses && typeof m.uses === "object" ? m.uses : {}) as Record<string, unknown>;
-  if (role === "guest") {
-    if (owner || Object.keys(uses).length) wrong.push("a guest belongs to no one: no owner, no uses");
-    return { wrong, missing: [] };
-  }
+  const label = (at: string): string => repoRole(at, storeDir)?.name ?? "no template";
   if (Array.isArray(owner)) wrong.push("one owner only — owner is a single repo name");
   else if (typeof owner === "string" && owner) {
+    if (role.owner === "none") wrong.push(`a ${role.name} has no owner (its template says owner: none)`);
     const at = findRegionRepo(owner, root);
     if (!at) wrong.push(`owner "${owner}" is no repo of this workspace`);
-    else if (!(roles[roleOf(at)]?.manages ?? []).includes(role)) wrong.push(`owner "${owner}" (role ${roleOf(at) || "none"}) does not manage a ${role}`);
+    else {
+      const theirs = repoRole(at, storeDir);
+      if (!theirs) pending.push(`owner "${owner}" is assembled from no template yet — checked once it is`);
+      else if (!theirs.manages.includes(role.name)) wrong.push(`owner "${owner}" (${theirs.name}) does not manage a ${role.name}`);
+    }
+  } else if (role.owner === "required") {
+    wrong.push(`a ${role.name} must name its owner (a ${role.managed_by.join(" · ") || "manager"})`);
   }
   for (const [kind, target] of Object.entries(uses)) {
     if (typeof target !== "string" || !target) { wrong.push(`uses.${kind}: one repo name`); continue; }
     const at = findRegionRepo(target, root);
-    if (!at) wrong.push(`uses.${kind} "${target}" is no repo of this workspace`);
-    else if (!(roles[roleOf(at)]?.provides ?? []).includes(kind)) wrong.push(`uses.${kind} "${target}" (role ${roleOf(at) || "none"}) does not provide ${kind}`);
+    if (!at) { wrong.push(`uses.${kind} "${target}" is no repo of this workspace`); continue; }
+    const theirs = repoRole(at, storeDir);
+    if (!theirs) pending.push(`uses.${kind} "${target}" is assembled from no template yet — checked once it is`);
+    else if (!theirs.provides.includes(kind)) wrong.push(`uses.${kind} "${target}" (${label(at)}) does not provide ${kind}`);
   }
-  return { wrong, missing: [] };
+  return { wrong, pending };
 }
+
