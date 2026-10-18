@@ -9,6 +9,8 @@ import { writeNoGateTop } from "../docs/no-gate.js";
 import { repoGateLines, repoGates, type RepoGates } from "../docs/repo-gates.js";
 import { listKnownProjects } from "../projects.js";
 import { partImpact } from "../docs/law-sync.js";
+import { partLinks } from "../docs/law-links.js";
+import { leafOf } from "../docs/store.js";
 
 export function cmdGates(args: string[]): void {
   const unknown = args.filter((a) => a !== "--all" && a !== "--json" && a !== "--write-top");
@@ -66,6 +68,13 @@ export function cmdImpact(args: string[]): void {
   const carry = r.repos.filter((x) => x.state !== "absent");
   console.log(`zemory impact ${r.part.folder} — carried by ${carry.length} of ${r.repos.length} folder-harness repo(s)`);
   for (const x of r.repos) console.log(`  ${x.state.padEnd(7)} ${x.name}${x.folder && x.folder !== r.part.folder ? `  (as ${x.folder})` : ""}`);
+  // Rule_Gate_86_LawLayersAgree: the layers tied to this part are checked with it
+  const links = partLinks(leafOf(r.part.folder));
+  if (links.to.length || links.from.length) {
+    console.log("  tied to it (check these with the change):");
+    for (const l of links.to) console.log(`    → ${l.kind.padEnd(10)} ${l.name}`);
+    for (const l of links.from) console.log(`    ← ${l.kind.padEnd(10)} ${l.name}`);
+  }
   if (r.repos.some((x) => x.state === "edited")) {
     console.log("  edited = the repo changed its copy: bring that change up first, or the repo proposes a part of its own");
     process.exitCode = 1;

@@ -1510,6 +1510,13 @@ export function skillReadTriggers(skillsDir: string, agentDir?: string): Array<R
   return out;
 }
 
+/** A bilingual law (plan/29 §11) up to its Vietnamese half (`## Luật là gì`): what a block or a reminder quotes. A law not
+ *  yet bilingual is returned whole. */
+export function englishHalf(body: string): string {
+  const m = /^##\s+Luật là gì\s*$/m.exec(body);
+  return m ? body.slice(0, m.index) : body;
+}
+
 /** Prompt reminders a repo carries: from its skills and from the rule folders of a folder harness (`gate.json › prompt`). */
 export function promptGates(skillsDir: string, agentDir: string): PromptGate[] {
   const ok = (g: PromptGate | undefined): g is PromptGate => Boolean(g && g.re && g.text && g.kind);
@@ -1520,7 +1527,7 @@ export function promptGates(skillsDir: string, agentDir: string): PromptGate[] {
     for (const p of listParts(agentDir, shelf)) {
       const g = isRetired(p) ? undefined : gateOf(p.dir)?.prompt;
       if (!ok(g)) continue;
-      const body = bodyOf(readFileSync(mainPath(p.dir, mainOf(p)), "utf8")).trim();
+      const body = englishHalf(bodyOf(readFileSync(mainPath(p.dir, mainOf(p)), "utf8"))).trim();
       out.push({ ...g, text: body ? `${g.text}\n\nThe rule (${p.folder}):\n${body}` : g.text });
     }
   }

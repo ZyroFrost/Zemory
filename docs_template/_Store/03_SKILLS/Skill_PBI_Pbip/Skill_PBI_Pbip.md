@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 9
+version: 10
 type: process
 aka: pbip
 description: Edit a Power BI .pbip/PBIR report by writing its JSON directly - pages, visuals, bookmarks, buttons, icons, the coordinate grid - without breaking the file; the model diagram standard and the static gate. Use whenever a .pbip report is built or changed, a tab or bookmark is added, an icon or the grid is fixed, or Desktop reports issues. Vietnamese triggers - "sửa report", "sửa pbix", "dựng dashboard", "thêm tab", "gắn bookmark", "đổi icon", "căn lưới", "mở Desktop kiểm".
@@ -383,3 +383,6 @@ thân để thường; mỗi đoạn cách nhau một đoạn rỗng.
 
 [`reference/snippets.md`](reference/snippets.md) — toạ độ tuyệt đối · duyệt cây nhóm · dựng bookmark
 đầy đủ · khuôn nút bấm được · tắt/mở Desktop · chụp `PrintWindow` · đọc `.pbix` cũ bằng `zipfile`.
+
+## Implements · Thi hành luật
+- `Rule_Gate_84_PbipOpenCheck` — the report gate and how to fix what it finds · cổng báo cáo và cách sửa lỗi nó tìm ra

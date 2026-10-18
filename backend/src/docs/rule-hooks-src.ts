@@ -63,7 +63,10 @@ function ownRule(root) {
     const file = fs.existsSync(own) ? own : path.join(__dirname, "RULE.md");
     let lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
     if (lines[0] === "---") lines = lines.slice(lines.indexOf("---", 1) + 1);
-    const body = lines.filter((l, i) => i > 0 || l.trim()).slice(0, 20).map((l) => (l.length > 400 ? l.slice(0, 400) + "…" : l));
+    // a bilingual law (plan/29 §11): English first, the Vietnamese half under "## Luật là gì" - the block quotes the English
+    const vi = lines.findIndex((l) => /^##\s+Luật là gì\s*$/.test(l));
+    if (vi > 0) lines = lines.slice(0, vi);
+    const body = lines.filter((l, i) => i > 0 || l.trim()).slice(0, 30).map((l) => (l.length > 400 ? l.slice(0, 400) + "…" : l));
     return { rel: path.relative(root, file).replace(/\\/g, "/"), text: body.join("\n").trim() };
   } catch {
     return null;

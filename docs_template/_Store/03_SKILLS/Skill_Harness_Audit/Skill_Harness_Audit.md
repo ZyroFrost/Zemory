@@ -2,7 +2,7 @@
 id: Skill_Harness_Audit
 aka: audit
 name: harness-audit
-version: 15
+version: 16
 type: process
 description: Run a full review of the project across every dimension, verifying each finding against real files before reporting it. Use only when explicitly asked for a thorough audit, or before a major milestone such as a release or a large batch of changes. This is not a quick check. Vietnamese triggers - "audit toàn diện", "soi hết", "kiểm tra toàn bộ", "rà lại hết", "review tổng thể".
 ---
@@ -263,3 +263,8 @@ hết là nhồi sổ, mà sổ thì nạp MỌI phiên.
   Ba nguồn khớp mới kết luận; không chạm được một nguồn ⇒ ghi "chưa xác minh được" kèm nguồn đã thử. Máy đo:
   `zemory todo verify` (ký hiệu mục nêu có thật không · phép đo mục tự nêu còn đúng không · nguồn có đổi sau khi dòng sổ
   được viết không; exit ≠ 0 khi lệch).
+
+## Implements · Thi hành luật
+- `Rule_Gate_01_DoneMeansRun` — breaking code to see a check go red · phá mã để thấy phép kiểm báo đỏ
+- `Rule_Gate_31_NoBrokenVietnamese` — the language scan of a whole repo · máy soi ngôn ngữ cả repo
+- `Rule_Keys_11_VerifyClaims` — how to measure and the false-alarm traps · cách đo và bẫy báo oan
