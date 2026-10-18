@@ -1348,12 +1348,17 @@ export function retireCopies(t: AssemblyTarget, kitKeys: Set<string>, archiveDir
   // a retired slot leaves the same way (plan/29 §13, Docs_138); a skill also has a host build, so it is retired by hand
   for (const shelf of [SHELF.rules, SHELF.constitution, SHELF.structure] as const) {
     const retired = new Set(listParts(join(storeDir, ARCHIVE_SHELF), shelf).map((p) => p.key));
-    for (const p of listParts(t.agentDir, shelf)) {
-      if (!p.from || kitKeys.has(p.key) || !retired.has(p.key)) continue;
+    // listParts does not return the outer structures (Struc_*): read them too on the structure shelf
+    const candidates = shelf === SHELF.structure ? [...listParts(t.agentDir, shelf), ...listStructures(t.agentDir)] : listParts(t.agentDir, shelf);
+    for (const p of candidates) {
+      // a repo has ONE outer structure: when it moves to a set on another structure, the old one is still a live part of
+      // the store but has left this repo's set — it goes the same way (2026-10-19, _DB_Log moved to the log-center set)
+      const leftKit = shelf === SHELF.structure && isStructureFolder(p.folder) && !kitKeys.has(p.key);
+      if (!p.from || kitKeys.has(p.key) || (!retired.has(p.key) && !leftKit)) continue;
       const main = mainOf(p);
       const untouched = hashFiles(readPartFiles(p.dir, main), main) === p.from.hash;
       if (!untouched) { out.push({ folder: p.folder, shelf, movedTo: null }); continue; }
-      const dest = join(archiveDir, "retired", shelf, p.folder);
+      const dest = join(archiveDir, retired.has(p.key) ? "retired" : "left-kit", shelf, p.folder);
       if (apply && !existsSync(dest)) {
         mkdirSync(dirname(dest), { recursive: true });
         renameSync(p.dir, dest);

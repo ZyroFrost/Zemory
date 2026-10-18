@@ -606,6 +606,28 @@ test("a slot the store retires leaves the repo for its archive (plan/29 §13, Do
   assert.doesNotMatch(readFileSync(join(root, "docs", "agent", "02_STRUCTURE", "INDEX.md"), "utf8"), /03-3_dict/, "the contents follow");
 });
 
+test("a repo moved to a set on another structure: the old structure leaves for the archive (one outer structure); an edited one stays and is reported", (t) => {
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "03", apply: true, storeDir: st.s });
+  const strucDir = (c) => join(root, "docs", "agent", "02_STRUCTURE", `Struc_Repo_${c}`);
+  assert.ok(existsSync(strucDir("NonApp")));
+  const marker = join(root, "docs", ".harness.json");
+  const switchTo = (kit) => writeFileSync(marker, JSON.stringify({ ...JSON.parse(readFileSync(marker, "utf8")), kit }, null, 2));
+  switchTo("01_IDE_App_Memory");
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(existsSync(strucDir("App")), "the new structure is assembled");
+  assert.ok(!existsSync(strucDir("NonApp")), "the old structure left the harness");
+  assert.ok(existsSync(join(root, "docs", "archive", "left-kit", "02_STRUCTURE", "Struc_Repo_NonApp", "Struc_Repo_NonApp.md")), "kept in the archive");
+  assert.ok(r.retired.some((x) => x.folder === "Struc_Repo_NonApp" && x.movedTo));
+  // back, with the App structure edited in the repo: it stays where it is and is named
+  writeFileSync(join(strucDir("App"), "Struc_Repo_App.md"), readFileSync(join(strucDir("App"), "Struc_Repo_App.md"), "utf8") + "\nlocal note\n");
+  switchTo("03_IDE_NonApp_Memory");
+  const back = applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(existsSync(strucDir("App")), "an edited structure is never moved");
+  assert.ok(back.retired.some((x) => x.folder === "Struc_Repo_App" && x.movedTo === null), "and it is reported");
+});
+
 test("sync: the entry file's line about the structure INDEX follows it (a table of contents, no longer the repo's own text)", (t) => {
   const root = repo(t);
   applyKit(root, { kitRef: "05", apply: true });
