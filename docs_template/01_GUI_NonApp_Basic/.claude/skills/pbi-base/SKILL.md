@@ -1,12 +1,12 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 3
+version: 4
 type: process
 aka: dev-pbi
 replaces: [Skill_Dev_Pbi]
 description: Build or change a BI report - layout and chart choice, measures and queries kept in one named store, and the report file handled as a heavy binary. Use whenever a report, dashboard, measure or visual is created or changed. Vietnamese triggers - "báo cáo", "dashboard", "biểu đồ", "measure", "DAX", "Power Query", "pbix".
-from: _Store/03_SKILLS/Skill_PBI_Base @v3 #d6a6c3942964
+from: _Store/03_SKILLS/Skill_PBI_Base @v4 #f9ead5e45884
 ---
 
 # pbi-base — dựng và sửa báo cáo BI
@@ -33,3 +33,6 @@ from: _Store/03_SKILLS/Skill_PBI_Base @v3 #d6a6c3942964
 
 - `.pbix` là nhị phân nặng: đi qua LFS theo `.gitattributes`, không commit thẳng (`Rule_Gate_21_WhatEntersGit`).
 - Dữ liệu thật nằm ngoài git; repo chỉ giữ mẫu nhỏ đủ mở báo cáo.
+
+## Implements · Thi hành luật
+- `Rule_Keys_62_DesignChangeApproval` — the report design standard whose suggestions are shown first · chuẩn thiết kế báo cáo mà gợi ý phải trình trước

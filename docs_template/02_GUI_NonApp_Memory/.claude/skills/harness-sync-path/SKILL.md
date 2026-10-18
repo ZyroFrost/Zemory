@@ -2,10 +2,10 @@
 id: Skill_Harness_SyncPath
 aka: sync-path
 name: harness-sync-path
-version: 11
+version: 12
 type: process
 description: Declare and PROVE how every new artifact reaches a second machine - code, data layer, derived index, secret, model, config. Run before calling any build "done", when adding a new storage or index layer, when handing a repo to another PC, or when something works on one machine but not the other. Vietnamese triggers - "đồng bộ 2 máy", "máy thứ hai", "bàn giao máy mới", "pull về máy kia", "kẹt giữa 2 máy", "sync đa máy", "máy kia chạy được chưa".
-from: _Store/03_SKILLS/Skill_Harness_SyncPath @v11 #e6ffd0e68200
+from: _Store/03_SKILLS/Skill_Harness_SyncPath @v12 #ee460f2479e5
 ---
 
 # sync-path — mỗi thứ sinh ra phải có ĐƯỜNG sang máy khác, và phải ĐO được
@@ -102,3 +102,7 @@ Thêm một lớp lưu/chỉ mục mới mà **không** thêm được cổng ca
 - Giá trị thật ở `.env` / `*.local.*` hoặc slot bí mật, có `.gitignore` chặn; sang máy khác đi qua kênh đồng bộ, không qua
   git, kể cả khi đã mã hoá.
 - Đo ở máy nhận: đủ tên biến, đọc được giá trị, chạy được việc cần bí mật đó.
+
+## Implements · Thi hành luật
+- `Rule_Gate_01_DoneMeansRun` — the path to a second machine, measured at the receiving end · đường sang máy thứ hai, đo ở đầu nhận
+- `Rule_Gate_21_WhatEntersGit` — secrets travel by the sync channel, never by git · bí mật đi qua kênh đồng bộ, không qua git

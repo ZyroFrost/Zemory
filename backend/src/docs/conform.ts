@@ -26,6 +26,7 @@ import { CORE_REINJECT_CAP } from "./rule-core.js";
 import { wiredHooks } from "./hook-wiring.js";
 import { precommitState } from "./guard-gen.js";
 import { editedHarnessCopies } from "./law-sync.js";
+import { lawLinkFindings } from "./law-links.js";
 import { regionLinkFindings } from "./region-links.js";
 import { viName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
@@ -329,6 +330,13 @@ export function conform(root: string): ConformReport {
   // the zemory store and is synced down; a copy edited here splits the one part into many.
   push("harness-edited-here", "blocking", "A part of the harness (law · slot · skill) was edited in this repo, not in the zemory store", editedHarnessCopies(hp.agent),
     "send the change to the zemory session: it runs `zemory impact <part>`, puts it in the store and syncs down; what only fits this repo becomes its own part, written by zemory once the user agrees");
+
+  // ②septies — Rule_Gate_86_LawLayersAgree (plan/29 §6): every name under a law's `## Links` or a skill's `## Implements`
+  // is a living part, and an "Implements" line is answered from the other side when both parts are in the repo.
+  if (folder) {
+    push("law-links", "blocking", "A link between law, frame and skill points at nothing or is one-sided", lawLinkFindings(hp.agent),
+      "name a living part; a law that says a skill implements it is listed under that skill's ## Implements, and the other way round - in the store, then sync");
+  }
 
   // ②quater — The laws no hook holds are read before the first action and put back after a compaction (folderCoreFiles).
   // Past the put-back cap the text is cut: name the biggest files, so the repo knows what to give a hook or trim.

@@ -3,8 +3,7 @@
 // copies a repo edited since they were assembled (conform `harness-edited-here`), and, before a store part is edited or
 // retired, every repo that carries it and in what state (`zemory impact`).
 import { existsSync } from "node:fs";
-import { basename } from "node:path";
-import { isFolderHarness, frontMatter, hashFiles, listParts, mainOf, parseFrom, partHash, readPartFiles, SHELVES, STORE_DIR, type Part } from "./store.js";
+import { isFolderHarness, frontMatter, leafOf, hashFiles, listParts, mainOf, parseFrom, partHash, readPartFiles, SHELVES, STORE_DIR, type Part } from "./store.js";
 
 /** The `from:` reference of a copy, and whether its content still equals what was assembled. */
 function copyState(p: Part): { from: ReturnType<typeof parseFrom>; edited: boolean } {
@@ -32,8 +31,9 @@ export interface PartImpact {
 export function findStorePart(ref: string, storeDir = STORE_DIR): Part | null {
   const n = /^(?:02-|Rule_)?0*(\d+)$/i.exec(ref.trim())?.[1];
   for (const shelf of SHELVES) {
-    const hit = listParts(storeDir, shelf).find((p) => p.folder === ref || p.id === ref
-      || (n !== undefined && new RegExp(`^Rule_[A-Za-z]+_0*${n}_`).test(p.folder)));
+    // a rule or frame sits in its code / chapter folder (01_Harness/Rule_…): it answers to its own name as well
+    const hit = listParts(storeDir, shelf).find((p) => p.folder === ref || leafOf(p.folder) === ref || p.id === ref
+      || (n !== undefined && new RegExp(`^Rule_[A-Za-z]+_0*${n}_`).test(leafOf(p.folder))));
     if (hit) return hit;
   }
   return null;
@@ -49,7 +49,7 @@ export function partImpact(ref: string, repos: Array<{ name: string; root: strin
     if (!existsSync(r.agent) || !isFolderHarness(r.agent)) continue;
     const copy = listParts(r.agent, part.shelf).find((p) => {
       const f = copyState(p).from;
-      return f !== null && basename(f.folder) === part.folder;
+      return f !== null && leafOf(f.folder) === leafOf(part.folder);
     });
     if (!copy) { out.push({ name: r.name, root: r.root, state: "absent" }); continue; }
     const s = copyState(copy);

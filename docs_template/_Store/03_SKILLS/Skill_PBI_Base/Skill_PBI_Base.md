@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 3
+version: 4
 type: process
 aka: dev-pbi
 replaces: [Skill_Dev_Pbi]
@@ -32,3 +32,6 @@ description: Build or change a BI report - layout and chart choice, measures and
 
 - `.pbix` là nhị phân nặng: đi qua LFS theo `.gitattributes`, không commit thẳng (`Rule_Gate_21_WhatEntersGit`).
 - Dữ liệu thật nằm ngoài git; repo chỉ giữ mẫu nhỏ đủ mở báo cáo.
+
+## Implements · Thi hành luật
+- `Rule_Keys_62_DesignChangeApproval` — the report design standard whose suggestions are shown first · chuẩn thiết kế báo cáo mà gợi ý phải trình trước

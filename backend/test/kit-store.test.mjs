@@ -445,7 +445,8 @@ test("only the laws no hook holds are forced before acting; a new session is sil
   put(root, "docs/agent/01_LAW/_Cons/Cons_Gate_102_Held/gate.json", JSON.stringify({ hook: "hook.cjs" }));
   put(root, "docs/agent/01_LAW/_Cons/Cons_Gate_102_Held/hook.cjs", "module.exports = { check: () => null };\n");
   // a law with a keyword reminder: not forced, and the reminder carries it word for word
-  put(root, "docs/agent/01_LAW/_Cons/Cons_Keys_103_Nudged/Cons_Keys_103_Nudged.md", "---\nid: Cons_103\nname: nudged\nversion: 1\nkind: judgment\n---\n# nudged\n\nAsk before a mass send.\n");
+  // bilingual (plan/29 §11): the reminder quotes the English half only
+  put(root, "docs/agent/01_LAW/_Cons/Cons_Keys_103_Nudged/Cons_Keys_103_Nudged.md", "---\nid: Cons_103\nname: nudged\nversion: 1\nkind: judgment\n---\n# nudged\n\n## What\nAsk before a mass send.\n\n## Luật là gì\nHỏi trước khi gửi hàng loạt.\n");
   put(root, "docs/agent/01_LAW/_Cons/Cons_Keys_103_Nudged/gate.json", JSON.stringify({ prompt: { kind: "mass-send", re: "gửi hàng loạt", text: "[zemory] Mass send." } }));
   generateGuards(root);
   const pol = JSON.parse(readFileSync(join(root, "docs", "agent", "01_LAW", "_Rule", "02-55_hook-guard", "policy.json"), "utf8"));
@@ -458,6 +459,7 @@ test("only the laws no hook holds are forced before acting; a new session is sil
   assert.ok(!req.some((p) => p.includes("Cons_Keys_103_Nudged")), "a law with a reminder is NOT forced");
   const nudge = ruleReminders({ session_id: `nudge-${process.pid}-${Date.now()}`, cwd: root, prompt: "gửi hàng loạt cho mọi nhà hàng" });
   assert.match(nudge, /\[zemory\] Mass send\.[\s\S]*Ask before a mass send\./, "the reminder carries the law word for word");
+  assert.doesNotMatch(nudge, /Hỏi trước khi gửi hàng loạt/, "the Vietnamese half is the user's reading, not quoted to the agent");
   assert.ok(!req.some((p) => p.includes("02-2_beta") || p.includes("02-55_hook-guard")), "a rule a hook holds is NOT forced");
   assert.equal(handleHook("session-start", { cwd: root, source: "startup", session_id: "s1" }), "", "a new session: nothing handed over twice");
   const back = JSON.parse(handleHook("session-start", { cwd: root, source: "compact", session_id: "s1" })).hookSpecificOutput.additionalContext;
@@ -805,6 +807,35 @@ test("Rule_83: a harness part edited in a repo is red in conform; impact names e
   applyKit(b, { apply: true, storeDir: st.s });
   assert.equal(states("02-1_alpha").B, "current", "synced down = current");
   assert.equal(partImpact("no-such-part", repos, st.s).part, null);
+});
+
+test("a block quotes the English half of a bilingual law, not the Vietnamese one", async (t) => {
+  // plan/29 §11: one file, English first (the agent's reading), Vietnamese under "## Luật là gì" (the user's)
+  const { RULE_HOOKS } = await import("../../dist/docs/rule-hooks-src.js");
+  const root = tempDir(t, "zemory-bilingual-");
+  const dir = join(root, "docs", "agent", "01_LAW", "_Rule", "01_Harness", "Rule_Gate_38_TodoDoor");
+  put(root, "docs/agent/04_TODO.md", "# TODO\n- [ ] one\n");
+  put(root, "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_38_TodoDoor/Rule_Gate_38_TodoDoor.md",
+    "---\nid: Rule_38\n---\n# Rule_Gate_38_TodoDoor\n\n## What\nAsk before adding an item.\n\n## Luật là gì\nHỏi trước khi thêm mục.\n");
+  writeFileSync(join(dir, "hook.cjs"), RULE_HOOKS.find((h) => h.file === "02-38_todo-door.cjs").source);
+  const { check } = require(join(dir, "hook.cjs"));
+  const policy = { rules_file: "docs/agent/01_LAW/_Rule", todo_file: "docs/agent/04_TODO.md", flags_dir: "docs/hooks", flags: { todo: ".allow-todo" } };
+  const r = check({ tool_name: "Edit", tool_input: { file_path: join(root, "docs/agent/04_TODO.md"), old_string: "- [ ] one", new_string: "- [ ] one\n- [ ] two" } }, root, policy);
+  const msg = r && r.msg;
+  assert.match(String(msg), /Ask before adding an item\./, "the English half is quoted");
+  assert.doesNotMatch(String(msg), /Hỏi trước khi thêm mục|Luật là gì/, "the Vietnamese half is not");
+});
+
+test("impact finds a copy of a rule that lives in a code-of-law folder (01_Harness/…) by its own name", async (t) => {
+  // since the codes of law (plan/29 §4) a store rule's folder is "01_Harness/Rule_…" while a copy's from: names the same
+  // path; comparing a bare folder name with the coded one called every repo's copy absent
+  const { partImpact } = await import("../../dist/docs/law-sync.js");
+  const r = repo(t);
+  applyKit(r, { kitRef: "01", apply: true });
+  const repos = [{ name: "R", root: r, agent: join(r, "docs", "agent") }];
+  const imp = partImpact("Rule_Gate_38_TodoDoor", repos);
+  assert.ok(imp.part && imp.part.folder.includes("/"), "the store rule sits in its code folder");
+  assert.deepEqual(imp.repos.map((x) => x.state), ["current"], "a fresh copy is current, not absent");
 });
 
 test("a ledger's link into the archive follows it out of the harness folder (archive/x -> ../archive/x)", (t) => {

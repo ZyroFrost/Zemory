@@ -2,7 +2,7 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 13
+version: 14
 type: process
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
 ---
@@ -301,3 +301,7 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
 - **Thư mục tạm của test:** bộ chạy test gom thư mục tạm của mọi tiến trình con vào một thư mục cha của lượt chạy, xoá khi
   xong và dọn các lượt bỏ dở; số thư mục trong thư mục tạm của hệ thống trước và sau một lượt chạy bằng nhau
   (`Rule_Gate_04_ScratchFiles`).
+
+## Implements · Thi hành luật
+- `Cons_Gate_13_Architecture` — how the layers of an app are built · cách dựng các lớp của app
+- `Rule_Keys_62_DesignChangeApproval` — the design standard whose suggestions are shown first · chuẩn thiết kế mà gợi ý phải trình trước

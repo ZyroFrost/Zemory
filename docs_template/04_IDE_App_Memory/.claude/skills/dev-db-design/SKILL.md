@@ -1,10 +1,10 @@
 ---
 id: Skill_Dev_DbDesign
 name: dev-db-design
-version: 3
+version: 4
 type: process
 description: Design or change tables in a database or data warehouse - one fact in one table, dimensional modelling, and a review of the whole schema before any new table or column. Use whenever a table, column, view or key is about to be created or changed. Vietnamese triggers - "tạo bảng", "thêm cột", "thiết kế bảng", "sửa schema", "mô hình dữ liệu", "dim", "fact".
-from: _Store/03_SKILLS/Skill_Dev_DbDesign @v3 #f0847ec5b8fd
+from: _Store/03_SKILLS/Skill_Dev_DbDesign @v4 #116a17d3d80e
 ---
 
 # dev-db-design — thiết kế bảng và cột
@@ -37,3 +37,7 @@ from: _Store/03_SKILLS/Skill_Dev_DbDesign @v3 #f0847ec5b8fd
 - Đổi cấu trúc chỉ qua đường repo đã khai (thư mục mô hình + script), không sửa tay trên máy chủ.
 - Câu đổi cấu trúc, đổi quyền, sửa dữ liệu chạy khi người dùng ra lệnh.
 - Sau khi đổi: đo lại số dòng và đối chiếu với nguồn, bằng số (`Rule_Gate_01_DoneMeansRun`).
+
+## Implements · Thi hành luật
+- `Cons_Gate_11_WriteBoundary` — how structure changes are written and run · cách viết và chạy thay đổi cấu trúc
+- `Cons_Gate_14_Access` — how a column of personal data is encrypted and its key rotated · cách mã hoá cột dữ liệu cá nhân và xoay khoá
