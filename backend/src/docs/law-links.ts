@@ -38,14 +38,15 @@ export function implementsOf(text: string): string[] {
   return [...s.matchAll(/^-\s*`([^`\n]+)`/gm)].map((m) => m[1].trim());
 }
 
-interface Node { leaf: string; shelf: Shelf; text: string }
+// a frame (Skill_Frame_Own) carries placeholders where its links go: the shape, not links of its own
+interface Node { leaf: string; shelf: Shelf; text: string; frame?: boolean }
 
 function nodesAt(root: string): Map<string, Node> {
   const out = new Map<string, Node>();
   for (const shelf of SHELVES) {
     for (const p of listParts(root, shelf)) {
       const f = mainPath(p.dir, mainOf(p));
-      out.set(leafOf(p.folder), { leaf: leafOf(p.folder), shelf, text: existsSync(f) ? readFileSync(f, "utf8") : "" });
+      out.set(leafOf(p.folder), { leaf: leafOf(p.folder), shelf, text: existsSync(f) ? readFileSync(f, "utf8") : "", frame: shelf === SHELF.skills && String(p.meta.frame ?? "") === "true" });
     }
   }
   // a structure (Struc_*) can be named as related; it carries no link section of its own
@@ -66,6 +67,7 @@ export function lawLinkFindings(root: string = STORE_DIR, storeDir = STORE_DIR):
   const out: string[] = [];
   const known = (n: string): boolean => here.has(n) || store.has(n);
   for (const node of here.values()) {
+    if (node.frame) continue;
     if (node.shelf === SHELF.skills) {
       for (const law of implementsOf(node.text)) {
         if (!known(law)) { out.push(`${node.leaf}: ## Implements names ${law}, which is not a living part`); continue; }

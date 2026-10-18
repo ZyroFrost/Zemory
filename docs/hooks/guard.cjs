@@ -134,6 +134,9 @@ function checkWrite(rel) {
   if (isFlagFile(rel)) return;
   for (const prefix of POLICY.protected_write || []) {
     const hit = underProtected(rel, prefix);
+    // plan/29 §13b: what the repo fills in the harness (its ledgers, the Cons.md of each frame, its own skills) is the
+    // repo's to write; the shape of those files is held by hook 02-83, not by this door
+    if (hit && (POLICY.harness_write || []).includes(prefix) && (POLICY.fill_write || []).some((f) => underProtected(rel, f))) continue;
     if (hit) {
       if (consumeFlag("docs_write", rel)) return;
       deny("BLOCKED (guard layer 1): writing into `" + prefix + "` - " + writeReason(prefix) +

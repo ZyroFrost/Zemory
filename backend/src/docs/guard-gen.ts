@@ -24,7 +24,7 @@ import { LEGACY_READ_FIRST_FILE, READ_FIRST_FILE, READ_FIRST_SOURCE } from "./re
 import { SQL_GATE_FILE, SQL_GATE_SOURCE } from "./sql-gate-src.js";
 import { RULE_HOOKS, SECRET_VALUES } from "./rule-hooks-src.js";
 import { folderCoreFiles, isFolderHarness, isRetired, listParts, shelfDir, skillReadTriggers } from "./store.js";
-import { SHELF } from "./harness-names.js";
+import { CONS_REPO_FILE, SHELF } from "./harness-names.js";
 import { consColumn } from "./cons-read.js";
 
 /**
@@ -245,6 +245,10 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     // carries it. The one-use flags in flags_dir are exempt (writing a flag is how the user's approval is recorded).
     protected_write: [...new Set([...protectedWrite, ...harnessWrite])],
     harness_write: harnessWrite,
+    // the repo's own fills inside the harness folder (plan/29 §13b): written freely; hook 02-83 keeps their shape
+    fill_write: folder
+      ? [relp(hp.todo), relp(hp.changes), `${agentRel}/${SHELF.constitution}/*/${CONS_REPO_FILE}`, `${agentRel}/${SHELF.skills}/Skill_Own_*`]
+      : [relp(hp.todo), relp(hp.changes)],
     protected_write_reason: "a path declared `protected` in .harness.json — it belongs to the repo, the harness agent may not write into it",
     harness_write_reason:
       "the harness docs (Rule_Gate_79_HarnessEdit) — creating, editing, deleting or moving anything in them needs the user's approval in this session; the agent never creates a rule, article, slot, skill or layer on its own",
@@ -456,6 +460,9 @@ function checkWrite(rel) {
   if (isFlagFile(rel)) return;
   for (const prefix of POLICY.protected_write || []) {
     const hit = underProtected(rel, prefix);
+    // plan/29 §13b: what the repo fills in the harness (its ledgers, the Cons.md of each frame, its own skills) is the
+    // repo's to write; the shape of those files is held by hook 02-83, not by this door
+    if (hit && (POLICY.harness_write || []).includes(prefix) && (POLICY.fill_write || []).some((f) => underProtected(rel, f))) continue;
     if (hit) {
       if (consumeFlag("docs_write", rel)) return;
       deny("BLOCKED (guard layer 1): writing into \`" + prefix + "\` - " + writeReason(prefix) +

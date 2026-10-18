@@ -3,7 +3,7 @@
 import { homedir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readSync, readdirSync } from "node:fs";
-import { relative, resolve, join } from "node:path";
+import { basename, relative, resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
 import { currentProjectRoot, findProjectRoot, harnessPathsAt, ledgerFile, loadContext, readMarker } from "../core/config.js";
@@ -734,19 +734,22 @@ export function cmdArchive(args: string[] = []): void {
   if (dryRun) console.log("zemory archive — DRY RUN: nothing will be written.");
   // Both per-session logs get trimmed: 06_CHANGES by oldest ENTRY, 05_TODO by
   // closed ITEM. They fill up at different rates, so each has its own threshold.
+  // the ledgers by the names this repo really has (04_TODO / 05_CHANGES since the folder harness)
+  const chName = basename(ledgerFile(harnessPathsAt(root).agent, "changes"));
+  const todoName = basename(ledgerFile(harnessPathsAt(root).agent, "todo"));
   const r = archiveChanges(ctx, currentMemoryDb(), { dryRun });
   if (r.moved === 0) {
     if (r.skipped === "no-entries") {
       // Do NOT say "under threshold" here — the file is OVER it; the headings are the problem.
       console.log(
-        `zemory archive: 06_CHANGES.md = ${r.activeLines} lines (OVER threshold) but no dated entry was recognised.`,
+        `zemory archive: ${chName} = ${r.activeLines} lines (OVER threshold) but no dated entry was recognised.`,
       );
       console.log(
         "  Entry headings must look like `## [YYYY-MM-DD] — title` (square brackets). Fix them, then re-run.",
       );
     } else {
       console.log(
-        `zemory archive: nothing to do (06_CHANGES.md = ${r.activeLines} lines, under threshold).`,
+        `zemory archive: nothing to do (${chName} = ${r.activeLines} lines, under threshold).`,
       );
     }
   } else {
@@ -757,14 +760,14 @@ export function cmdArchive(args: string[] = []): void {
         ? `zemory archive: would archive ${r.moved} old entr(ies).`
         : `zemory archive: marked ${r.moved} old entr(ies) archived in global_memory.db.`,
     );
-    console.log(`  active 06_CHANGES.md ${dryRun ? "would be" : "now"} ${r.activeLines} lines (history remains searchable).`);
+    console.log(`  active ${chName} ${dryRun ? "would be" : "now"} ${r.activeLines} lines (history remains searchable).`);
   }
   const t = archiveTodo(ctx, currentMemoryDb(), { dryRun });
   if (t.moved === 0) {
-    console.log(`  05_TODO.md = ${t.activeLines} lines, 0 closed item(s) to move (this file has no threshold).`);
+    console.log(`  ${todoName} = ${t.activeLines} lines, 0 closed item(s) to move (this file has no threshold).`);
   } else {
-    console.log(`  ${dryRun ? "would move" : "moved"} ${t.moved} closed item(s) to docs/archive/05_TODO.md.`);
-    console.log(`  active 05_TODO.md ${dryRun ? "would be" : "now"} ${t.activeLines} lines (open work only).`);
+    console.log(`  ${dryRun ? "would move" : "moved"} ${t.moved} closed item(s) to docs/archive/${todoName}.`);
+    console.log(`  active ${todoName} ${dryRun ? "would be" : "now"} ${t.activeLines} lines (open work only).`);
   }
   // NEVER silent (2026-10-04): a 1,328-line ledger once answered "0 closed items" while holding 10+
   // closed hand-off blocks, and every agent read that as "clean". Say what was left and why.
@@ -778,7 +781,7 @@ export function cmdArchive(args: string[] = []): void {
     if (leftClosed.length > 20) console.log(`    … and ${leftClosed.length - 20} more`);
   }
   if ((t.handoffs ?? 0) > 1) {
-    console.log(`  ${t.handoffs} hand-off blocks are still in 05_TODO.md — only the latest should remain; close or remove the older ones.`);
+    console.log(`  ${t.handoffs} hand-off blocks are still in ${todoName} — only the latest should remain; close or remove the older ones.`);
   }
 }
 

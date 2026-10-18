@@ -74,6 +74,41 @@ export function frameShapeFindings(agentDir: string, storeDir = STORE_DIR): stri
   return out;
 }
 
+/**
+ * Each skill of the repo's own (`Skill_Own_*` on the skills shelf, no `from:`) checked against the frame `Skill_Frame_Own`
+ * (the repo's assembled copy, else the store's): the same sections in the same order, no template placeholder `<…>` left,
+ * a `type:` of process or design and a `description:` (the host opens a skill by it). "<skill>: <finding>" per problem.
+ */
+export function ownSkillFindings(agentDir: string, storeDir = STORE_DIR): string[] {
+  const own = listParts(agentDir, SHELF.skills).filter((p) => !p.from && /^Skill_Own_/.test(leafOf(p.folder)));
+  if (!own.length) return [];
+  const frameOf = (root: string): string | null => {
+    const p = listParts(root, SHELF.skills).find((x) => leafOf(x.folder) === "Skill_Frame_Own");
+    const f = p ? join(p.dir, "Skill_Frame_Own.md") : "";
+    return f && existsSync(f) ? readFileSync(f, "utf8") : null;
+  };
+  const frame = frameOf(agentDir) ?? frameOf(storeDir);
+  const out: string[] = [];
+  for (const p of own) {
+    const leaf = leafOf(p.folder);
+    if (!frame) { out.push(`${leaf}: the frame Skill_Frame_Own is not assembled — run zemory sync --standard`); continue; }
+    const f = join(p.dir, `${leaf}.md`);
+    const text = existsSync(f) ? readFileSync(f, "utf8") : "";
+    const want = headings(frame);
+    const got = headings(text);
+    const missing = want.filter((h) => !got.includes(h));
+    const extra = got.filter((h) => !want.includes(h));
+    if (missing.length) out.push(`${leaf}: section(s) of the frame missing: ${missing.map((h) => `"## ${h}"`).join(", ")}`);
+    if (extra.length) out.push(`${leaf}: section(s) not in the frame: ${extra.map((h) => `"## ${h}"`).join(", ")}`);
+    if (!missing.length && !extra.length && want.join("|") !== got.join("|")) out.push(`${leaf}: sections out of the frame's order`);
+    const left = /<[^<>\n`]{1,80}>/.exec(text.replace(/`[^`\n]*`/g, ""));
+    if (left) out.push(`${leaf}: template placeholder ${left[0]} left`);
+    if (!["process", "design"].includes(String(p.meta.type ?? ""))) out.push(`${leaf}: header type: must be process or design`);
+    if (!String(p.meta.description ?? "").trim()) out.push(`${leaf}: header description: missing (the host opens a skill by it)`);
+  }
+  return out;
+}
+
 /** The body of the section `## h` in `text` (up to the next `## `). */
 function sectionOf(text: string, h: string): string {
   const lines = text.split("\n");

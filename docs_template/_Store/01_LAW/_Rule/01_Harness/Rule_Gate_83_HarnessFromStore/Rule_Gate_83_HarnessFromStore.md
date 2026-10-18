@@ -1,7 +1,7 @@
 ---
 id: Rule_83
 name: harness-from-store
-version: 3
+version: 4
 kind: action
 code: 01_Harness
 ---

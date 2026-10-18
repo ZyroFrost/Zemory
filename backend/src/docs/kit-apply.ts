@@ -116,6 +116,12 @@ export function applyKit(
   const skills = parts.filter((p) => p.shelf === SHELF.skills);
   // the host plug: every assembled skill's host build, written from its source into the host's own skill folder
   const plug = opts.apply ? plugSkills(target, skills) : { plugged: [], skipped: [], removed: [] };
+  // the repo's own skills (Skill_Own_*, written on the frame Skill_Frame_Own, plan/29 §13b) are plugged the same way
+  if (opts.apply) {
+    const own = plugSkills(target, listParts(hp.agent, SHELF.skills).filter((p) => !p.from && /^Skill_Own_/.test(p.folder)));
+    plug.plugged.push(...own.plugged);
+    plug.skipped.push(...own.skipped);
+  }
   const hooksTakenOver = retireReplacedHooks(root, parts, opts.apply);
   if (opts.apply) followEntryRenames(root, skills, target);
   const retired = retireCopies(target, new Set(parts.map((p) => p.key)), hp.archive, opts.apply, storeDir);

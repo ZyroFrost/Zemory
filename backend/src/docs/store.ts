@@ -882,7 +882,12 @@ export function plugSkills(t: AssemblyTarget, skills: Part[]): PlugResult {
   for (const part of skills) {
     const src = targetDir(t, part);
     if (!hasMain(src, MAIN_FILE[SHELF.skills])) continue;
+    // a frame (Skill_Frame_Own) is what a repo's own skill is written on, not a skill to load
+    if (String(part.meta.frame ?? "") === "true") continue;
     const host = hostSkillOf(part);
+    // the build this tool wrote last time: a host folder equal to it is ours to replace (a repo's own skill has no from:)
+    const lastBuild = join(src, "Claude", host, MAIN_FILE[SHELF.skills]);
+    const last = existsSync(lastBuild) ? readFileSync(lastBuild, "utf8") : null;
     // the host build is named the host's way: the source's own-named header file becomes SKILL.md (Agent Skills)
     const srcMain = basename(mainPath(src, MAIN_FILE[SHELF.skills]));
     const installed = installsOf(part);
@@ -896,7 +901,8 @@ export function plugSkills(t: AssemblyTarget, skills: Part[]): PlugResult {
     }
     const dest = join(t.skillsDir, host);
     const destMain = join(dest, MAIN_FILE[SHELF.skills]);
-    if (existsSync(dest) && !(existsSync(destMain) && frontMatter(readFileSync(destMain, "utf8"))?.meta.from)) {
+    const ours = existsSync(destMain) && (Boolean(frontMatter(readFileSync(destMain, "utf8"))?.meta.from) || readFileSync(destMain, "utf8") === last);
+    if (existsSync(dest) && !ours) {
       res.skipped.push(host);
       continue;
     }

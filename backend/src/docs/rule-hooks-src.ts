@@ -419,7 +419,10 @@ function check(payload, root, policy) {
 const HARNESS = /(^|\/)((?:01_CONSTITUTION|02_RULES|03_STRUCTURE|04_SKILLS)\.md|(?:01_LAW|02_STRUCTURE|03_SKILLS|01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES|03_STRUCTURE|04_SKILLS)\/(?:[^/]+\/){0,3}[^/]+\.md|SKILL\.md)$/;
 // three levels on the law shelf since the codes of law / chapters (01_LAW/_Rule/01_Harness/<rule>/, plan/29 §4-5)
 // harness vocabulary (plan/29 §9): "kho" alone names two things - the data warehouse (DW) and the harness store (HS)
-const KHO = /(^|[^\p{L}])[Kk]ho(?![\p{L}])(?!\s+dữ\s+liệu)/u;
+const KHO = /(^|[^\p{L}])[Kk]ho(?![\p{L}])(?!\s+(?:dữ\s+liệu|hàng))/u;
+// the third meaning - goods in a stockroom (stock on hand, goods in or out, a stock count) - is plain business words, not the
+// ambiguous one
+const STOCK = /(tồn|nhập|xuất|kiểm)\s+kho(?![\p{L}])/giu;
 // a word quoted or in code is mentioned, not used: the vocabulary table itself names the banned word that way
 const QUOTED = /"[^"\n]*"|“[^”\n]*”|\x60[^\x60\n]*\x60/g;
 const VOICE = [
@@ -436,7 +439,7 @@ function check(payload, root, policy) {
   try {
     const e = edit(payload, root);
     if (!e || !HARNESS.test(e.rel)) return null;
-    const vocab = e.newLines.filter((l) => KHO.test(l.replace(QUOTED, "")));
+    const vocab = e.newLines.filter((l) => KHO.test(l.replace(QUOTED, "").replace(STOCK, "")));
     if (vocab.length) return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " say \"kho\" alone, which names two different things:\n" +
       vocab.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n") +
       "\nWrite DW (the data warehouse, \"kho dữ liệu\") or HS (the harness store, docs_template/_Store); other senses take their own word " +
@@ -595,13 +598,48 @@ function check(payload, root, policy) {
   // 02-83 — a repo uses the harness, it does not own it (user 2026-10-18): every Write / Edit in the harness (01_LAW ·
   // 02_STRUCTURE · 03_SKILLS · the skill builds in .claude/skills) is blocked, no flag. It is made in the zemory store and
   // reaches the repo through zemory; the ledgers stay the repo's. The zemory repo (it holds the store) is where it is made.
+  // plan/29 §13b: HS holds the frames, the repo fills them — a Cons.md and a skill of the repo's own (Skill_Own_*) are
+  // written freely as long as their sections stay the frame's (no section added, dropped or renamed).
   hook("02-83_harness-from-store.cjs", String.raw`
 const HARNESS = /(^|\/)docs\/agent\/(01_LAW|02_STRUCTURE|03_SKILLS)\/|(^|\/)\.claude\/skills\//;
+const CONS = /(^|\/)docs\/agent\/01_LAW\/_Cons\/(?:[^\/]+\/)?[^\/]+\/Cons\.md$/;
+const OWN = /(^|\/)docs\/agent\/03_SKILLS\/(Skill_Own_[A-Za-z0-9]+)\/(.+)$/;
+function heads(t) { return (String(t).replace(/\r\n/g, "\n").match(/^## .*$/gm) || []).map((s) => s.trim()); }
+// the file as it will be after this call
+function afterText(payload, abs, exists) {
+  const ti = payload.tool_input || {};
+  if (payload.tool_name === "Write") return String(ti.content || "");
+  let t = exists ? fs.readFileSync(abs, "utf8") : "";
+  const edits = payload.tool_name === "MultiEdit" ? ti.edits || [] : [ti];
+  for (const x of edits) t = x.replace_all ? t.split(String(x.old_string || "")).join(String(x.new_string || "")) : t.replace(String(x.old_string || ""), String(x.new_string || ""));
+  return t;
+}
+function shapeDiff(want, got) {
+  const missing = want.filter((h) => !got.includes(h)), extra = got.filter((h) => !want.includes(h));
+  return missing.length || extra.length || want.join("|") !== got.join("|")
+    ? (missing.length ? " missing: " + missing.join(" · ") + "." : "") + (extra.length ? " not in the frame: " + extra.join(" · ") + "." : "") + (!missing.length && !extra.length ? " the order differs from the frame." : "")
+    : "";
+}
 function check(payload, root, policy) {
   try {
     const e = edit(payload, root);
     if (!e || !HARNESS.test(e.rel)) return null;
     if (fs.existsSync(path.join(root, "docs_template", "_Store"))) return null;
+    const abs = path.isAbsolute(e.abs) ? e.abs : path.join(root, e.abs);
+    const how = " The frame's sections belong to HS: fill them; a section the repo needs and the frame lacks is proposed to the " +
+      "zemory session (Rule_Gate_85_ProposeChecked).";
+    if (CONS.test(e.rel) && e.exists) {
+      const diff = shapeDiff(heads(fs.readFileSync(abs, "utf8")), heads(afterText(payload, abs, true)));
+      return diff ? blocked(root, policy, "02-83", e.rel + " fills a constitution frame, and this change alters its sections:" + diff + how) : null;
+    }
+    const own = OWN.exec(e.rel);
+    if (own) {
+      if (own[3] !== own[2] + ".md") return null;                                  // the skill's other files are the repo's
+      const frame = path.join(root, "docs", "agent", "03_SKILLS", "Skill_Frame_Own", "Skill_Frame_Own.md");
+      if (!fs.existsSync(frame)) return blocked(root, policy, "02-83", e.rel + " is a skill of the repo's own, but the frame Skill_Frame_Own is not assembled here - run zemory sync --standard first.");
+      const diff = shapeDiff(heads(fs.readFileSync(frame, "utf8")), heads(afterText(payload, abs, e.exists)));
+      return diff ? blocked(root, policy, "02-83", e.rel + " is a skill of the repo's own and must keep the sections of Skill_Frame_Own:" + diff + how) : null;
+    }
     return blocked(root, policy, "02-83", e.rel + " is harness. A repo uses the harness, it does not own it: no change here " +
       "without zemory - not to a law, a constitution article, a slot or a skill, the repo's own included. Send the change to " +
       "the zemory session; zemory runs zemory impact, agrees it with the user, puts it in the store (or writes this repo's " +
