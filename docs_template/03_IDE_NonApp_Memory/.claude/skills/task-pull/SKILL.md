@@ -2,9 +2,10 @@
 id: Skill_Task_Pull
 aka: pull
 name: task-pull
-version: 5
+version: 6
+type: process
 description: Fetch fresh data from a source (SQL, VM, web, API) into the project so a deliverable can be built. Use when the deliverable needs newer numbers, when a scheduled task starts, or when asked to refresh, download, or retrieve source data. Vietnamese triggers - "kéo dữ liệu", "lấy số mới", "tải data về", "cập nhật nguồn", "pull dữ liệu", "làm mới số liệu".
-from: _Store/03_SKILLS/Skill_Task_Pull @v5 #8a436b33cd50
+from: _Store/03_SKILLS/Skill_Task_Pull @v6 #844321eab62a
 ---
 
 # pull — kéo dữ liệu từ nguồn

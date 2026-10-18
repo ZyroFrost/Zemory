@@ -846,3 +846,19 @@ test("a rule the store moved into its code's folder moves in the repo on sync, a
   const policy = JSON.parse(readFileSync(join(root, "docs", "agent", "01_LAW", "_Rule", "02-55_hook-guard", "policy.json"), "utf8"));
   assert.ok(policy.rule_dirs.includes("docs/agent/01_LAW/_Rule/01_Harness/02-2_beta"), policy.rule_dirs.join(" · "));
 });
+
+test("a frame the store moved into its chapter moves in the repo on sync, and the Cons.md the repo filled goes with it", (t) => {
+  // plan/29 §5: the constitution chapters are a folder layer; what the repo wrote in the frame is never lost
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const flat = join(root, "docs", "agent", "01_LAW", "_Cons", "01-1_secrets");
+  writeFileSync(join(flat, "Cons.md"), "---\nframe: 01-1_secrets\nstatus: written\n---\n# Secrets\n\nOUR-OWN-ANSWER\n");
+  mkdirSync(join(st.s, "01_LAW", "_Cons", "04_Security"), { recursive: true });
+  renameSync(join(st.s, "01_LAW", "_Cons", "01-1_secrets"), join(st.s, "01_LAW", "_Cons", "04_Security", "01-1_secrets"));
+  st.commit("chapters");
+  applyKit(root, { apply: true, storeDir: st.s });
+  const moved = join(root, "docs", "agent", "01_LAW", "_Cons", "04_Security", "01-1_secrets", "Cons.md");
+  assert.ok(existsSync(moved) && !existsSync(flat), "the frame moved into its chapter, nothing left flat");
+  assert.match(readFileSync(moved, "utf8"), /OUR-OWN-ANSWER/, "the repo's answer is kept");
+});

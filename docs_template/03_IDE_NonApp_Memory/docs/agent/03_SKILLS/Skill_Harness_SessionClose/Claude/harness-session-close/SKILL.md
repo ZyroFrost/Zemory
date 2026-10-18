@@ -2,9 +2,10 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 14
+version: 15
+type: process
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
-from: _Store/03_SKILLS/Skill_Harness_SessionClose @v14 #6bd0148ebd68
+from: _Store/03_SKILLS/Skill_Harness_SessionClose @v15 #339c3d24d0a6
 ---
 
 # session-close — chốt phiên / ghi sổ

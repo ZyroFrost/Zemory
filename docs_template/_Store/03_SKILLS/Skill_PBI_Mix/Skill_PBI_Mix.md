@@ -1,7 +1,8 @@
 ---
 id: Skill_PBI_Mix
 name: pbi-mix
-version: 5
+version: 6
+type: process
 description: Build the MIX copy of a Power BI report - warehouse model, the Main header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-main). Vietnamese triggers - "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
 installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
 ---

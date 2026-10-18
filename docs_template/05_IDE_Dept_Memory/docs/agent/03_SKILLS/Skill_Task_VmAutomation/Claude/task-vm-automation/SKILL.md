@@ -1,11 +1,12 @@
 ---
 id: Skill_Task_VmAutomation
 name: task-vm-automation
-version: 2
+version: 3
+type: process
 aka: vm-automation
 description: Put a periodic task (Daily / Weekly / Monthly) on the VM to RUN BY ITSELF - the vm_deploy.json manifest, the schedule, the Log_JobRun run log, results to the region's SharePoint, the _SharePoint.url shortcut. Use whenever a task goes onto the VM, is automated or scheduled, or its VM run is checked. Vietnamese triggers - "đưa task lên VM", "tự động hoá task", "đặt lịch trên VM", "task chạy trên VM chưa".
 installs: [scripts/task_run.py, scripts/make_output_links.py, scripts/move_outputs_to_vm.py]
-from: _Store/03_SKILLS/Skill_Task_VmAutomation @v2 #3a9ad3fb63e5
+from: _Store/03_SKILLS/Skill_Task_VmAutomation @v3 #7786e44a51e1
 ---
 
 # task-vm-automation — đưa task lên chạy tự động trên VM

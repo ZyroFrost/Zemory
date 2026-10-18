@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
 import { archiveDirOf } from "../core/config.js";
 import { relinkFrom } from "./relink.js";
-import { CONS_REPO_FILE, HOST_KIND, RULE_CODES, LEDGER, LEDGER_NAMES, LEGACY_LEDGER, LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
+import { CONS_CHAPTERS, CONS_REPO_FILE, HOST_KIND, RULE_CODES, LEDGER, LEDGER_NAMES, LEGACY_LEDGER, LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
 import { viName } from "./vi-name-judge.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
@@ -355,7 +355,8 @@ export function readPart(dir: string, shelf: Shelf, mainName = MAIN_FILE[shelf])
   // a slot read from the layer's older name is placed under the current one: assembly always writes `_Slot/`
   const layer = parent === LEGACY_SLOT_LAYER ? SLOT_LAYER : parent;
   const folder = shelf === SHELF.structure && INNER_LAYERS.includes(parent) ? `${layer}/${leaf}`
-    : shelf === SHELF.rules && (RULE_CODES as readonly string[]).includes(parent) ? `${parent}/${leaf}` : leaf;
+    : shelf === SHELF.rules && (RULE_CODES as readonly string[]).includes(parent) ? `${parent}/${leaf}`
+    : shelf === SHELF.constitution && (CONS_CHAPTERS as readonly string[]).includes(parent) ? `${parent}/${leaf}` : leaf;
   const str = (k: string): string => (typeof meta[k] === "string" ? (meta[k] as string) : "");
   const list = (k: string): string[] => (Array.isArray(meta[k]) ? (meta[k] as string[]) : str(k) ? [str(k)] : []);
   const from = str("from") ? parseFrom(str("from")) ?? undefined : undefined;
@@ -463,6 +464,8 @@ export function listParts(root: string, shelf: Shelf): Part[] {
   if (shelf === SHELF.structure) for (const l of [SLOT_LAYER, LEGACY_SLOT_LAYER]) if (existsSync(join(dir, l))) read(join(dir, l));
   // the codes of law: one folder per code inside the rules layer (a rule still flat on the shelf is read too — sync moves it)
   if (shelf === SHELF.rules) for (const c of RULE_CODES) if (existsSync(join(dir, c))) read(join(dir, c));
+  // the chapters of the constitution, the same way (plan/29 §5)
+  if (shelf === SHELF.constitution) for (const c of CONS_CHAPTERS) if (existsSync(join(dir, c))) read(join(dir, c));
   return out.sort(byId);
 }
 
@@ -1274,10 +1277,13 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
       const vi = viName(n.name);
       if (vi) wrong.push(`${where}: the name ${n.name} reads as Vietnamese without marks (${vi}) — names are English`);
       if (n.no !== undefined && p.key !== keyOf(n)) wrong.push(`${where}: the name says ${keyOf(n)} but the header id says ${p.key}`);
+      // plan/29 §3: a skill says from the start whether its steps are all due (process) or it only suggests (design, shown first)
+      if (n.code === "Skill" && !["process", "design"].includes(String(p.meta.type ?? ""))) wrong.push(`${where}: header type: must be process or design (has ${String(p.meta.type ?? "none")})`);
       if (n.code === "Rule" && !p.folder.includes("/")) wrong.push(`${where}: a rule lives in the folder of its code (${RULE_CODES.join(" · ")})`);
-      // the code is written twice on purpose - the folder (to look at) and the header (an assembled copy still says it)
-      if (n.code === "Rule" && p.folder.includes("/") && String(p.meta.code ?? "") !== p.folder.split("/")[0]) {
-        wrong.push(`${where}: header code: ${String(p.meta.code ?? "(none)")} but the rule lives in ${p.folder.split("/")[0]}`);
+      if (n.code === "Cons" && !p.folder.includes("/")) wrong.push(`${where}: an article lives in the folder of its chapter (${CONS_CHAPTERS.join(" · ")})`);
+      // the code / chapter is written twice on purpose - the folder (to look at) and the header (an assembled copy still says it)
+      if ((n.code === "Rule" || n.code === "Cons") && p.folder.includes("/") && String(p.meta.code ?? "") !== p.folder.split("/")[0]) {
+        wrong.push(`${where}: header code: ${String(p.meta.code ?? "(none)")} but it lives in ${p.folder.split("/")[0]}`);
       }
       if (n.code === "Rule" || n.code === "Cons") {
         let gate: Record<string, unknown> | null;
@@ -1298,11 +1304,13 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
       }
     }
   }
-  // inside the rules layer: the codes of law and nothing else (a rule folder still flat is named above)
-  const rulesDir = shelfDir(storeDir, SHELF.rules);
-  if (existsSync(rulesDir)) for (const e of readdirSync(rulesDir, { withFileTypes: true })) {
-    if (e.isDirectory() && !(RULE_CODES as readonly string[]).includes(e.name) && !readPart(join(rulesDir, e.name), SHELF.rules)) {
-      wrong.push(`${SHELF.rules}/${e.name}: neither a rule nor a code of law (${RULE_CODES.join(" · ")})`);
+  // inside the law layers: the codes of law / the chapters and nothing else (a part still flat is named above)
+  for (const [shelf, layers] of [[SHELF.rules, RULE_CODES], [SHELF.constitution, CONS_CHAPTERS]] as const) {
+    const d = shelfDir(storeDir, shelf);
+    if (existsSync(d)) for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (e.isDirectory() && !(layers as readonly string[]).includes(e.name) && !readPart(join(d, e.name), shelf)) {
+        wrong.push(`${shelf}/${e.name}: neither a part nor a ${shelf === SHELF.rules ? "code of law" : "chapter"} (${layers.join(" · ")})`);
+      }
     }
   }
   for (const s of listStructures(storeDir)) {

@@ -23,7 +23,7 @@ import { ruleBlocks } from "./rule-core.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { hpGateRows } from "./validate.js";
 import { historyOfRel, revText } from "./standard.js";
-import { ARCHIVE_SHELF, findKit, hostSkillOf, isFolderHarness, kitParts, listParts, mainPath, shelfDir, STORE_DIR, type Kit } from "./store.js";
+import { ARCHIVE_SHELF, findKit, hostSkillOf, isFolderHarness, kitParts, leafOf, listParts, mainPath, shelfDir, STORE_DIR, type Kit } from "./store.js";
 import { wiredHooks } from "./hook-wiring.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
 import { RULE_HOOKS } from "./rule-hooks-src.js";
@@ -247,7 +247,7 @@ export function migrateToKit(root: string, opts: { kitRef: string; apply: boolea
   if (purposeFrame && con.purpose.trim()) {
     const d = join(agent, SHELF.constitution, purposeFrame.folder);
     mkdirSync(d, { recursive: true });
-    writeFileSync(join(d, CONS_REPO_FILE), `---\nframe: ${purposeFrame.folder}\nstatus: written\n---\n# ${basename(root)} — Mục đích\n\n${con.purpose.trim()}\n`);
+    writeFileSync(join(d, CONS_REPO_FILE), `---\nframe: ${leafOf(purposeFrame.folder)}\nstatus: written\n---\n# ${basename(root)} — Mục đích\n\n${con.purpose.trim()}\n`);
   }
   for (const a of con.articles) {
     const no = OWN_ARTICLE_FROM - 1 + a.n;
@@ -467,7 +467,7 @@ export function normalizeOwnConstitution(root: string, apply: boolean): OwnConst
       out.purpose = true;
       if (apply) {
         const body = readFileSync(purposeFile, "utf8").replace(/^\uFEFF/, "").replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "").trim();
-        writeFileSync(consMd, `---\nframe: ${frame.folder}\nstatus: written\n---\n${body}\n`);
+        writeFileSync(consMd, `---\nframe: ${leafOf(frame.folder)}\nstatus: written\n---\n${body}\n`);
         mkdirSync(hp.archive, { recursive: true });
         cpSync(purposeFile, join(hp.archive, "PURPOSE.md"));
         rmSync(purposeFile, { force: true });

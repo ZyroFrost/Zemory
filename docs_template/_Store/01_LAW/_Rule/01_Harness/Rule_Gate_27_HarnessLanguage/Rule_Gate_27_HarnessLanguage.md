@@ -2,7 +2,7 @@
 id: Rule_27
 aka: 02-27
 name: harness-language
-version: 14
+version: 15
 kind: judgment
 code: 01_Harness
 ---
