@@ -27,7 +27,7 @@ import { wiredHooks } from "./hook-wiring.js";
 import { precommitState } from "./guard-gen.js";
 import { editedHarnessCopies } from "./law-sync.js";
 import { lawLinkFindings } from "./law-links.js";
-import { consColumn, frameShapeFindings } from "./cons-read.js";
+import { consColumn, frameShapeFindings, ownSkillFindings } from "./cons-read.js";
 import { regionLinkFindings } from "./region-links.js";
 import { viName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
@@ -342,6 +342,8 @@ export function conform(root: string): ConformReport {
   // ②octies — plan/29 §13b · §15: the shape of a frame is HS's, the repo fills it; and a value the guard now reads from the
   // written Cons.md has one home there, not a second copy in the marker.
   if (folder) {
+    push("own-skill-shape", "blocking", "A skill of the repo's own does not follow the frame Skill_Frame_Own", ownSkillFindings(hp.agent),
+      "keep exactly the frame's sections, fill every one, give the header type: and description:; a section the frame lacks is proposed to HS");
     push("cons-frame-shape", "blocking", "A constitution frame's section is missing from the Cons.md the repo wrote", frameShapeFindings(hp.agent),
       "sync puts the missing section in with the template text; fill it (the frame's sections are never removed or renamed)");
     const m = (readMarker(root)?.data ?? {}) as { allowedSqlServers?: unknown; secretNames?: unknown };

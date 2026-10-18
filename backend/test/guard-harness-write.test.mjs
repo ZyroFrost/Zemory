@@ -27,18 +27,21 @@ const bash = (r, command) => run(r, { tool_name: "Bash", tool_input: { command }
 
 test("a write into the harness docs is blocked without approval and names Rule_Gate_79; code outside them passes", (t) => {
   const r = repo(t);
-  for (const rel of ["docs/agent/05_TODO.md", "docs/agent/01_RULES/Rule_Core_90_New/RULE.md", "docs/plan/09_x.md", "AGENTS.md", "CLAUDE.md"]) {
+  for (const rel of ["docs/agent/02_RULES.md", "docs/agent/01_RULES/Rule_Core_90_New/RULE.md", "docs/plan/09_x.md", "AGENTS.md", "CLAUDE.md"]) {
     const out = write(r, rel);
     assert.equal(out.status, 2, `not blocked: ${rel}\n${out.stdout}${out.stderr}`);
     assert.match(out.stdout + out.stderr, /Rule_Gate_79_HarnessEdit/, rel);
   }
   assert.equal(write(r, "backend/src/a.ts").status, 0, "code outside the harness docs is not this rule's business");
+  // plan/29 §13b: the ledgers are the repo's memory, not harness - Rule_Gate_79 never holds them (other doors still may)
+  const ledger = write(r, "docs/agent/05_TODO.md");
+  assert.doesNotMatch(ledger.stdout + ledger.stderr, /Rule_Gate_79_HarnessEdit/, "the TODO ledger is the repo's to write");
 });
 
 test("shell writes into the harness docs are blocked: redirection, touch, mkdir, sed -i, git mv", (t) => {
   const r = repo(t);
-  for (const cmd of ["echo x > docs/agent/05_TODO.md", "touch docs/agent/01_RULES/x.md", "mkdir docs/agent/02_CONSTITUTION/Cons_Core_09_New",
-    "sed -i 's/a/b/' docs/agent/05_TODO.md", "git mv docs/plan/a.md docs/plan/b.md"]) {
+  for (const cmd of ["echo x > docs/agent/02_RULES.md", "touch docs/agent/01_RULES/x.md", "mkdir docs/agent/02_CONSTITUTION/Cons_Core_09_New",
+    "sed -i 's/a/b/' docs/agent/02_RULES.md", "git mv docs/plan/a.md docs/plan/b.md"]) {
     assert.equal(bash(r, cmd).status, 2, `not blocked: ${cmd}`);
   }
   assert.equal(bash(r, "grep -n todo docs/agent/05_TODO.md").status, 0, "reading is not writing");

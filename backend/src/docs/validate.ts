@@ -4,7 +4,7 @@
 // Read-only, deterministic, no LLM.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import type { Context } from "../core/types.js";
 import { archiveDirOf, ledgerFile } from "../core/config.js";
 import { foreignLayout } from "./conform.js";
@@ -101,7 +101,7 @@ export function validate(ctx: Context, opts: { paths?: boolean } = {}): Validate
   if (existsSync(chFile)) {
     const n = lineCount(chFile);
     if (n > chMax) {
-      issues.push({ level: "info", msg: `06_CHANGES.md is ${n} lines (> ${chMax}) — run \`zemory archive\`` });
+      issues.push({ level: "info", msg: `${basename(chFile)} is ${n} lines (> ${chMax}) — run \`zemory archive\`` });
     }
     const sup = (readFileSync(chFile, "utf8").match(/🔄\s*\*\*Supersede/gu) ?? []).length;
     issues.push({ level: "info", msg: `${sup} supersede marker(s) in changelog` });

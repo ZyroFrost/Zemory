@@ -260,6 +260,27 @@
           "outside": ".allow-outside"
         }
       }
+    },
+    {
+      "note": "stockroom words are business words, not the DW",
+      "files": {
+        "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md",
+        "old_string": "- text",
+        "new_string": "- text\n- Mail tồn kho nhà hàng; nhập kho, kiểm kho và kho hàng do OPS lo."
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
     }
   ],
   "prompt": {

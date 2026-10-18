@@ -2,10 +2,10 @@
 id: Rule_27
 aka: 02-27
 name: harness-language
-version: 16
+version: 17
 kind: judgment
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage @v16 #6821d4722e6a
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage @v17 #23c5dd6e53ca
 ---
 # Rule_Gate_27_HarnessLanguage — How harness docs are written, and the words they use
 
@@ -39,6 +39,7 @@ right below, in a plain specification voice, with one fixed word for each thing.
 | ledger | `04_TODO.md` · `05_CHANGES.md` — the repo's memory, not harness |
 | owner | the repo that decides the frame and standard of another repo (`Struc_Region_Workspace`) |
 | query set · icon library · glossary | named queries · the region's icons · the region's business glossary |
+| stock ("tồn kho" · "nhập kho" · "kho hàng") | goods in a stockroom — business words, not the DW |
 
 ## Example
 - Situation: a new law is added after a data-loss incident.
@@ -49,7 +50,8 @@ right below, in a plain specification voice, with one fixed word for each thing.
 
 ## Check
 - A hook blocks, in new lines of a harness doc: a quote of a person, a decision date, an e-mail, a path with a person's name,
-  and the word "kho" alone (it passes "kho dữ liệu").
+  and the word "kho" alone (it passes "kho dữ liệu" and the stockroom words "tồn kho" · "nhập kho" · "xuất kho" ·
+  "kiểm kho" · "kho hàng").
 - Broken Vietnamese (no diacritics) is blocked by `Rule_Gate_31_NoBrokenVietnamese`.
 - A store check reds a law that lacks a language, a section, or has a different number of steps between the two versions.
 - The voice itself is judgment.
@@ -84,6 +86,7 @@ ràng, mỗi thứ một chữ cố định. Không trích lời ai, không ghi 
 | sổ | `04_TODO.md` · `05_CHANGES.md` — trí nhớ của repo, không phải harness |
 | tổng quản | repo quyết khung và chuẩn của repo khác (`Struc_Region_Workspace`) |
 | bộ câu truy vấn · thư viện icon · bảng thuật ngữ | các câu truy vấn có tên · icon của vùng · bảng thuật ngữ nghiệp vụ của vùng |
+| tồn kho · nhập kho · kho hàng | hàng hoá trong kho hàng thật — từ nghiệp vụ, không phải DW |
 
 ## Ví dụ
 - Tình huống: thêm một luật mới sau một sự cố mất dữ liệu.
@@ -93,7 +96,8 @@ ràng, mỗi thứ một chữ cố định. Không trích lời ai, không ghi 
 
 ## Máy kiểm
 - Hook chặn, trong các dòng mới của docs harness: lời trích của một người, ngày chốt, email, đường dẫn mang tên người, và chữ "kho"
-  đứng trơn (cho qua "kho dữ liệu").
+  đứng trơn (cho qua "kho dữ liệu" và các từ kho hàng "tồn kho" · "nhập kho" · "xuất kho" · "kiểm kho" ·
+  "kho hàng").
 - Tiếng Việt mất dấu do `Rule_Gate_31_NoBrokenVietnamese` chặn.
 - Kiểm tra của HS báo đỏ luật thiếu một ngôn ngữ, thiếu một mục, hoặc số bước lệch giữa hai bản.
 - Giọng văn là phán đoán.

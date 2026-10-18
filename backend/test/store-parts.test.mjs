@@ -256,7 +256,11 @@ test("every built kit assembles from the real store into a repo that holds: conf
     assert.ok(!("error" in r), `${k.name}: ${r.error}`);
     const agents = readFileSync(join(root, "AGENTS.md"), "utf8");
     assert.doesNotMatch(agents, /<(STRUC_[A-Z_]+|SKILL_TRIGGERS|PROJECT|ZEMORY_RAW|ZEMORY_REPO)>/, `${k.name}: a placeholder is left in AGENTS.md`);
-    const skills = kitParts(k, STORE_DIR).filter((p) => p.shelf === "03_SKILLS");
+    // a frame (Skill_Frame_Own) is written on, never opened by a trigger, and is not plugged into the host
+    const skills = kitParts(k, STORE_DIR).filter((p) => p.shelf === "03_SKILLS" && String(p.meta.frame ?? "") !== "true");
+    for (const f of kitParts(k, STORE_DIR).filter((p) => p.shelf === "03_SKILLS" && String(p.meta.frame ?? "") === "true")) {
+      assert.ok(!existsSync(join(root, ".claude", "skills", String(f.meta.name))), `${k.name}: the frame ${f.folder} is not plugged`);
+    }
     for (const s of skills) {
       const host = String(s.meta.name);
       assert.equal(agents.split(`\`.claude/skills/${host}/SKILL.md\``).length - 1, 1, `${k.name}: AGENTS.md has one trigger row for ${host}`);

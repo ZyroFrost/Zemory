@@ -1,8 +1,8 @@
 // plan/29 §13b · §15 — the Cons.md a repo writes fills the frame HS holds: the guard reads the frame's tables (frame 10
 // `Server`, frame 14 `File`), a section of the frame never goes missing, and a section HS adds later reaches the repo.
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { addMissingSections, consColumn, frameShapeFindings, tableColumn } from "../../dist/docs/cons-read.js";
@@ -78,4 +78,61 @@ test("conform: a marker key whose values now live in the constitution is red (on
   put(root, f10, "---\nframe: Cons_Gate_10_ReadOnlySources\nstatus: written\n---\n# N\n\n## Nguồn\n\n| Nguồn | Loại | Server | Cách đọc được phép |\n|---|---|---|---|\n| DW | db | SRV-BI | SELECT |\n\n## Ngoại lệ ghi\nkhông có\n");
   assert.equal(item()?.level, "blocking");
   assert.deepEqual(item().samples, ["allowedSqlServers → Cons_Gate_10_ReadOnlySources › Server"]);
+});
+
+// plan/29 §13b: HS holds the frames, the repo fills them. The real guard of an assembled repo, fed one call at a time.
+function guardSays(root, payload) {
+  const guard = join(root, "docs", "agent", "01_LAW", "_Rule", "01_Harness", "Rule_Gate_59_ReadFirst", "guard.cjs");
+  assert.ok(existsSync(guard), "the repo has its guard");
+  const p = spawnSync(process.execPath, [guard], { input: JSON.stringify({ ...payload, cwd: root, session_id: "fill-" + Math.random() }), encoding: "utf8", cwd: root, env: { ...process.env, CLAUDE_PROJECT_DIR: root } });
+  let deny = p.status === 2;
+  try { deny = deny || JSON.parse(p.stdout).hookSpecificOutput?.permissionDecision === "deny"; } catch { /* plain text */ }
+  return { deny, text: p.stdout + p.stderr };
+}
+
+test("the repo writes its fills freely (ledgers, Cons.md, its own skill); a frame's shape and every other harness file stay shut", (t) => {
+  const root = deptRepo(t);
+  generateGuards(root);
+  const at = (rel) => join(root, rel);
+  const edit = (rel, a, b) => ({ tool_name: "Edit", tool_input: { file_path: at(rel), old_string: a, new_string: b } });
+  const changes = "docs/agent/05_CHANGES.md";
+  assert.equal(guardSays(root, edit(changes, readFileSync(at(changes), "utf8").split("\n")[0], readFileSync(at(changes), "utf8").split("\n")[0] + " ")).deny, false, "the changelog is the repo's");
+  assert.equal(guardSays(root, edit(f12, "<dữ liệu · file · hệ>", "DW")).deny, false, "a frame is filled without a flag");
+  const renamed = guardSays(root, edit(f12, "## Khi lệch", "## Khi hai nguồn lệch"));
+  assert.equal(renamed.deny, true, "renaming a frame's section is blocked");
+  assert.match(renamed.text, /missing: ## Khi lệch/);
+  const own = "docs/agent/03_SKILLS/Skill_Own_NetRevenue/Skill_Own_NetRevenue.md";
+  const frame = readFileSync(at("docs/agent/03_SKILLS/Skill_Frame_Own/Skill_Frame_Own.md"), "utf8");
+  const sections = [...frame.matchAll(/^## .*$/gm)].map((m) => m[0]).join("\nfilled\n\n") + "\nfilled\n";
+  const body = "---\nid: Skill_Own_NetRevenue\nname: own-net-revenue\nversion: 1\ntype: process\ndescription: How the department calculates net revenue.\n---\n# Skill_Own_NetRevenue\n\n" + sections;
+  assert.equal(guardSays(root, { tool_name: "Write", tool_input: { file_path: at(own), content: body } }).deny, false, "a skill on the frame's sections is the repo's to write");
+  assert.equal(guardSays(root, { tool_name: "Write", tool_input: { file_path: at(own), content: body + "\n## My notes\nx\n" } }).deny, true, "a section of its own is not");
+  const law = "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md";
+  assert.equal(guardSays(root, edit(law, "## What", "## What\n- local")).deny, true, "a law copy stays shut");
+  // conform holds the shape too, and sync plugs the repo's own skill where the host loads it, and keeps it current
+  put(root, own, body.replace("filled", "<still a template>"));
+  const shape = () => conform(root).items.find((i) => i.check === "own-skill-shape");
+  assert.ok(shape()?.samples.some((s) => /Skill_Own_NetRevenue: template placeholder/.test(s)), JSON.stringify(shape()));
+  put(root, own, body);
+  assert.equal(shape(), undefined, "a filled skill on the frame is clean");
+  applyKit(root, { apply: true });
+  const plugged = at(".claude/skills/own-net-revenue/SKILL.md");
+  assert.match(readFileSync(plugged, "utf8"), /How the department calculates net revenue/);
+  put(root, own, body.replace("How the department", "How OPS"));
+  applyKit(root, { apply: true });
+  assert.match(readFileSync(plugged, "utf8"), /How OPS calculates/, "the next sync rebuilds the repo's own skill (its own build, not someone's folder)");
+  assert.match(readFileSync(at("docs/agent/03_SKILLS/INDEX.md"), "utf8"), /Skill_Own_NetRevenue/);
+  assert.doesNotMatch(readFileSync(at("docs/agent/03_SKILLS/INDEX.md"), "utf8"), /Skill_Frame_Own/, "the frame is not listed as a skill to open");
+});
+
+test("validate names the changelog this repo has (05_CHANGES.md in a folder harness), not the old file name", async (t) => {
+  // reported by the Dept_HR session 2026-10-18: "06_CHANGES.md is 362 lines" while the repo's file is 05_CHANGES.md
+  const { validate } = await import("../../dist/docs/validate.js");
+  const { loadContext } = await import("../../dist/core/config.js");
+  const root = deptRepo(t);
+  const ch = join(root, "docs", "agent", "05_CHANGES.md");
+  writeFileSync(ch, readFileSync(ch, "utf8") + "\n" + Array.from({ length: 450 }, (_, i) => `- line ${i}`).join("\n") + "\n");
+  const msgs = validate(loadContext(root)).issues.map((i) => i.msg);
+  assert.ok(msgs.some((m) => /^05_CHANGES\.md is \d+ lines/.test(m)), JSON.stringify(msgs.filter((m) => /lines/.test(m))));
+  assert.ok(!msgs.some((m) => /06_CHANGES/.test(m)), "no message names a file the repo does not have");
 });

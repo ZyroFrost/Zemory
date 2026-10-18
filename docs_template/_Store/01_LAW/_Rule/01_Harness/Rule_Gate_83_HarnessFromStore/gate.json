@@ -94,6 +94,41 @@
         "flags_dir": "docs/hooks",
         "flags": {}
       }
+    },
+    {
+      "note": "a fill that renames a section of the frame",
+      "files": {
+        "docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons.md": "---\nframe: Cons_Gate_12_SourceOfTruth\nstatus: template\n---\n# Nguồn sự thật\n\n## Gốc\n<dữ liệu>\n\n## Khi lệch\n<nguồn A> thắng\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons.md",
+        "old_string": "## Khi lệch",
+        "new_string": "## Khi hai nguồn lệch"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a skill of the repo's own with a section the frame does not have",
+      "files": {
+        "docs/agent/03_SKILLS/Skill_Frame_Own/Skill_Frame_Own.md": "---\nid: Skill_Frame_Own\nframe: true\n---\n# frame\n\n## Used for · Dùng cho\n<x>\n\n## How · Cách làm\n<x>\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/agent/03_SKILLS/Skill_Own_Revenue/Skill_Own_Revenue.md",
+        "content": "---\nid: Skill_Own_Revenue\ntype: process\ndescription: net revenue\n---\n# Skill_Own_Revenue\n\n## Used for · Dùng cho\nOPS report\n\n## How · Cách làm\n1. sum\n\n## Notes\nmine\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
     }
   ],
   "pass": [
@@ -139,6 +174,41 @@
       "tool_input": {
         "file_path": "scripts/build.py",
         "content": "changed\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "the repo fills a constitution frame, its sections unchanged",
+      "files": {
+        "docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons.md": "---\nframe: Cons_Gate_12_SourceOfTruth\nstatus: template\n---\n# Nguồn sự thật\n\n## Gốc\n<dữ liệu>\n\n## Khi lệch\n<nguồn A> thắng\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons.md",
+        "old_string": "<dữ liệu>",
+        "new_string": "DW SASIN_DATA_WAREHOUSE"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a skill of the repo's own written on the frame's sections",
+      "files": {
+        "docs/agent/03_SKILLS/Skill_Frame_Own/Skill_Frame_Own.md": "---\nid: Skill_Frame_Own\nframe: true\n---\n# frame\n\n## Used for · Dùng cho\n<x>\n\n## How · Cách làm\n<x>\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/agent/03_SKILLS/Skill_Own_Revenue/Skill_Own_Revenue.md",
+        "content": "---\nid: Skill_Own_Revenue\ntype: process\ndescription: net revenue\n---\n# Skill_Own_Revenue\n\n## Used for · Dùng cho\nOPS report\n\n## How · Cách làm\n1. sum\n"
       },
       "policy": {
         "rules_file": "docs/agent/01_LAW/_Rule",
