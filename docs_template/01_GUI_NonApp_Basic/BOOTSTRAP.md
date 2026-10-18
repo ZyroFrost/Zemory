@@ -45,7 +45,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 10 | `.claude/skills/harness-grill/SKILL.md` | 46 |
 | 11 | `.claude/skills/harness-plan-trim/SKILL.md` | 71 |
 | 12 | `.claude/skills/harness-reconcile/SKILL.md` | 86 |
-| 13 | `.claude/skills/harness-session-close/SKILL.md` | 200 |
+| 13 | `.claude/skills/harness-session-close/SKILL.md` | 201 |
 | 14 | `.claude/skills/harness-structure/SKILL.md` | 103 |
 | 15 | `.claude/skills/harness-structure/references/conventions.md` | 151 |
 | 16 | `.claude/skills/harness-structure/scripts/check_structure.py` | 254 |
@@ -243,8 +243,8 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 208 | `docs/agent/03_SKILLS/Skill_Harness_Reconcile/Claude/harness-reconcile/SKILL.md` | 86 |
 | 209 | `docs/agent/03_SKILLS/Skill_Harness_Reconcile/Skill_Harness_Reconcile.md` | 86 |
 | 210 | `docs/agent/03_SKILLS/Skill_Harness_Reconcile/gate.json` | 3 |
-| 211 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Claude/harness-session-close/SKILL.md` | 200 |
-| 212 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.md` | 200 |
+| 211 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Claude/harness-session-close/SKILL.md` | 201 |
+| 212 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.md` | 201 |
 | 213 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/gate.json` | 20 |
 | 214 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/SKILL.md` | 103 |
 | 215 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/references/conventions.md` | 151 |
