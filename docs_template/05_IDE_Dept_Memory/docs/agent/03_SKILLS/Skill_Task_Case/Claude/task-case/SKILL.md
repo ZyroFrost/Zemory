@@ -2,20 +2,23 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 10
+version: 11
 type: process
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
   NON-APP). Dùng khi có một vấn đề mới cần điều tra, khi quay lại một vấn đề đã xử,
   hoặc khi được yêu cầu đóng/mở lại một case. Cụm hay gặp: "mở case", "lưu thành task",
   "task mới", "đóng case", "mở lại case", "vụ này lưu ở đâu".
-from: _Store/03_SKILLS/Skill_Task_Case @v10 #cf0b0e1e3403
+from: _Store/03_SKILLS/Skill_Task_Case @v11 #e9413dc22e03
 ---
 
 # case — mở · đóng · mở lại một case
 
 > Chuẩn slot + luật 1-case-1-folder: slot `Tasks_115_Tasks` `tasks/` · `Tasks_117_Case` `tasks/<case>/` · `Data_131_Case` `data/<case>/` (+ định nghĩa ở khung HP `Cons_Gate_12_SourceOfTruth`). Hồn của mẫu: mỗi vấn đề là
 > một MẠCH VIỆC quay lại nhiều lần — mọi thứ của nó phải nằm MỘT chỗ, mở một folder ra hết.
+>
+> Repo phòng ban: tên case, nhịp, tên việc, tên file, tên bản giao ⇒ [`reference/naming.md`](reference/naming.md) · khối khai báo đầu
+> `spec.md` và đóng case ⇒ [`reference/spec-block.md`](reference/spec-block.md).
 
 ## Trước khi mở case mới — TRA ĐÃ CÓ CHƯA
 
@@ -41,17 +44,27 @@ NẰM, không nói nó thuộc VIỆC gì.**
    **Mục lục file** · **Việc còn mở** · **§Mở lại case khi nào**.
 3. Dò → findings `<ngày>_<slug>.md` · fix script `<ngày>_<slug>.sql` (**ĐỀ XUẤT**, người có quyền tự
    chạy — không tự thi hành lên nguồn ngoài) · query riêng `check_*.sql`. Data thật →
-   `data/<tên_case>/` (gitignore, **mirror ĐÚNG TÊN**, chia 3 chặng theo slot `Data_132_01Raw`…`Data_134_03Output`).
+   `data/<tên_case>/` (gitignore, **mirror ĐÚNG TÊN**, chia 3 chặng theo slot `Data_132_01Raw`…`Data_134_03Output`). Mở case là
+   dựng đủ cả 3 chặng ngay, kể cả đang rỗng (`Data_131_Case`).
 4. Cập nhật INDEX `content/README.md`; metric mới (nếu có) → từ điển dữ liệu trong `02_STRUCTURE`;
    defect/spec dài (nếu có) → `docs/plan/`. Ba thứ này là **3 ngoại lệ** được nằm ngoài
    folder case.
 
-**Chủ và dời case.** Tiền tố mã phòng trên tên case là chủ sở hữu: dời việc giữa các repo thì lấy đúng các folder mang tiền tố
-của phòng đó, không mở nội dung ra phán lại. Dời là cắt, không chép: bản gốc biến mất trong cùng lượt (case + `data/<case>/`),
-INDEX bên kia ghi đã dời, mọi tham chiếu đường cũ được nắn — hai bản cùng sống là trạng thái cấm. Dời thì giữ nguyên tên: đổi
-tên là dời `project_root` trong bộ nhớ chung.
+**Chủ và dời case.**
+- Tiền tố mã chủ trên tên case là chủ sở hữu, không xét lại: dời việc giữa các repo thì lấy đúng các folder mang tiền tố của
+  phòng đó, không mở nội dung ra phán lại.
+- Gắn mã LẦN ĐẦU (hoặc mã đang có tự khai là tạm): phòng chủ là phòng ĐẶT HÀNG — bên nêu nhu cầu và chịu trách nhiệm về việc
+  được giao. Người NHẬN không quyết phòng chủ. Nội dung nói về nghiệp vụ của ai không bao giờ là căn cứ. Ba câu hỏi khác nhau,
+  không trộn; vế đặt hàng không mở đường xét lại một tiền tố đã gắn chính thức.
+- Dời là cắt, không chép: bản gốc biến mất trong cùng lượt (case + `data/<case>/`), INDEX bên kia ghi đã dời, mọi tham chiếu
+  đường cũ được nắn — hai bản cùng sống là trạng thái cấm. Ngoại lệ: file `.sql` hay script dùng chung thì CHÉP, để bên kia còn
+  chạy.
+- Dời thì giữ nguyên tên. Đổi tên case thì khai tên cũ ở `spec.md` (`reference/naming.md` §3).
 
 ## ĐÓNG case
+
+Đồng bộ cả spec trong cùng lượt, không chỉ đổi dấu trạng thái: `reference/spec-block.md` §Đóng case.
+
 
 Đổi Trạng thái → `🟢 ĐÓNG <ngày>` + ghi **vì sao đóng** (đã vá / đã chốt không sửa /
 không phải defect). **Việc còn mở KHÔNG được xoá** — chuyển thành *"đề xuất treo"* kèm điều
@@ -63,6 +76,16 @@ theo"** và đẩy sang `04_TODO` — đóng case không được nuốt mất v
 Đọc `§Mở lại case khi nào` trước — nó đã ghi sẵn dấu hiệu cần canh. Đổi Trạng thái về
 `🟡 MỞ`, **nối findings mới vào CUỐI** (KHÔNG sửa/xoá findings cũ — đó là bản ghi lịch sử),
 nêu rõ lần này khác lần trước ở đâu.
+
+## Không bản nháp
+
+- Sửa thẳng vào file thật (report · task · spec); mốc an toàn là git — commit trạng thái hiện có TRƯỚC khi sửa. Không chép report,
+  thư mục hay file ra một bản "để thử", trong hay ngoài repo, khi người dùng chưa đồng ý.
+- Không bản nháp nào trong repo: thư mục `_sbx_*` · `_tmp*` · `*_check` · `*_test` · `*_copy` · file `*_draft.*` · bản sao report ·
+  report mẫu tự dựng. Trong `data/` chỉ có `data/<case>/` · `data/extract/` · `data/adhoc/` (+ `data/logs/` của task chạy máy).
+- Công cụ BUỘC phải có bản sao ⇒ hỏi người dùng trước; bản sao đặt ở thư mục NGẮN ở gốc ổ, ngoài mọi repo, tự xoá khi chạy xong.
+  Không dùng `%TEMP%` cho report: đường PBIR vượt MAX_PATH, Desktop và `tar` cắt file lặng lẽ.
+- Nháp của lượt chạy trong `02_processing/` là file trung gian của pipeline, không phải bản nháp tay.
 
 ## Bất biến
 

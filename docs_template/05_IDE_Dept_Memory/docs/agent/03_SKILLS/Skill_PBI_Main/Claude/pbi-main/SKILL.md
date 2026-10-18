@@ -1,15 +1,15 @@
 ---
 id: Skill_PBI_Main
 name: pbi-main
-version: 3
+version: 4
 type: process
 description: Build the MAIN copy of a Power BI report - the warehouse model and the NEW design to the region's standard, with no old copy to cite. Use whenever a report is designed from scratch, the official copy replaces the old system, or the full design standard is applied to a file. Not when the old design is kept (pbi-classic or pbi-mix). Vietnamese triggers - "bản main", "dựng report mới", "thiết kế mới theo chuẩn", "bản chính thức".
-from: _Store/03_SKILLS/Skill_PBI_Main @v3 #2b961efe08ec
+from: _Store/03_SKILLS/Skill_PBI_Main @v4 #0213cc135f17
 ---
 
 # Bản `Main` — thiết kế MỚI trên kho, áp đủ chuẩn
 
-> 🔴 **`Main` = kho DW + thiết kế mới, bản chính thức** (`chuẩn phòng ban §2b`).
+> 🔴 **`Main` = kho DW + thiết kế mới, bản chính thức** (`Skill_PBI_Base` `reference/naming.md`).
 > Khác ba loại kia ở đúng một điểm: **không có "bản cũ" nào để viện dẫn.** `Classic` và `Mix` đều
 > được phép giữ thứ trông không chuẩn vì bản cũ làm vậy; ở đây **không có ngoại lệ đó**.
 
@@ -21,10 +21,10 @@ chết đi lang thang **suốt một tháng** sau khi chúng bị thay.
 
 | Cần gì | Mở |
 |---|---|
-| Bảng màu · theme · icon · nút bấm được · slicer | chuẩn thiết kế của vùng (`design_standard` trong giá trị vùng) |
-| Cấu trúc measure, thư mục đánh số, tiền tố `#/%/~`, bảng `Parameter_*` | `chuẩn phòng ban §2c` |
-| Bộ số khoảng cách, lưới 5, khung trắng, bảng màu | `chuẩn phòng ban §2d` |
-| Khung UI có sẵn — chỉ thay dữ liệu | `chuẩn phòng ban §2e` |
+| Bảng màu · theme · icon · nút bấm được · slicer | `Skill_PBI_Base` `reference/design.md` §1–§2 |
+| Cấu trúc measure, thư mục theo trang, tiền tố `#/%/~`, bảng `Parameter_*` | `Skill_PBI_Base` `reference/model.md` |
+| Bộ số khoảng cách, lưới 5, khung trắng | `Skill_PBI_Base` `reference/design.md` §3 |
+| Khung UI có sẵn — chỉ thay dữ liệu | `Skill_PBI_Base` `reference/design.md` §3.5 |
 | Thao tác sửa `.pbip` mà không vỡ file | `.claude/skills/pbi-pbip/SKILL.md` |
 | Tài sản ảnh, theme | thư mục `assets/` của repo tổng quản vùng (`theme_file` · `icons_dir` trong giá trị vùng) |
 
@@ -44,7 +44,7 @@ chết đi lang thang **suốt một tháng** sau khi chúng bị thay.
 
 ## 3. Trang thật, không trang mẫu
 
-🔴 **File thật chỉ chứa trang THẬT** (`§2c③b`). Khuôn mẫu ship sẵn 5 trang demo
+🔴 **File thật chỉ chứa trang THẬT** (design.md §3.4). Khuôn mẫu ship sẵn 5 trang demo
 (`Sales Overview` · `Payment & Channel` · `Customer Analysis` · `Product Performance` ·
 `Regional Insights`) — **không trang nào có thật**. Xem thì xem từ khuôn gốc, đừng để lại trong file.
 
@@ -54,7 +54,7 @@ trống phía trên — toạ độ nút là **địa chỉ theo thứ tự tran
 
 ## 4. Đổi tên trong model — cổng nghiệm thu là DAX chạy thật
 
-🔴 **Đọc file KHÔNG chứng minh được gì** (`§2c⑥`). Sau mọi lượt đổi tên bảng/cột/measure:
+🔴 **Đọc file KHÔNG chứng minh được gì** (model.md §7). Sau mọi lượt đổi tên bảng/cột/measure:
 
 ```
 TMSCHEMA_MEASURES   State = 1 toan bo
@@ -70,8 +70,8 @@ thay tên mù sẽ ăn vào chuỗi và đẻ ra cột tên lạ mà cổng tĩn
 ## 5. Nghiệm thu
 
 ```
-§2c  1 bảng #Measure · thư mục đánh số theo trang · tiền tố #/%/~ · bảng Parameter_* rời
-§2d  mọi mã màu thuộc bảng 15 mã · lưới 5 · khe 5 · nút cách 60
+model   1 bảng #Measure · thư mục chữ cái theo trang · tiền tố #/%/~ · bảng Parameter_* rời
+design  mọi mã màu thuộc bảng màu của cụm · lưới 5 · khe 5 · nút cách 60
      grep -rhoP '#[0-9A-Fa-f]{6}' <Tên>.Report/definition | sort -u
      -> tập con của bảng màu (trừ file theme, đó là nơi khai màu)
      0 slicer còn header bật · 0 visualLink nằm trên shape

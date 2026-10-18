@@ -1,10 +1,10 @@
 ---
 id: Skill_PBI_Classic
 name: pbi-classic
-version: 4
+version: 5
 type: process
 description: Build the CLASSIC copy of a Power BI report - keep the OLD design exactly, move only the model onto the warehouse: map tables to Dim_*/Fact_*, port measures, rebind visuals, then MEASURE how far the numbers match the old one. Use whenever an old dashboard moves onto the warehouse, the old report serves as the warehouse's test, or the question is what the warehouse still lacks. Not for a new design. Vietnamese triggers - "bản classic", "tái tạo dashboard cũ", "đổi model sang DW", "so số với bản cũ", "kho còn thiếu gì".
-from: _Store/03_SKILLS/Skill_PBI_Classic @v4 #a20aef85ba40
+from: _Store/03_SKILLS/Skill_PBI_Classic @v5 #7c7cdc6a9ce7
 ---
 
 # Bản `Classic` — giữ nguyên thiết kế CŨ, chỉ đổi lớp model sang kho
@@ -14,7 +14,7 @@ from: _Store/03_SKILLS/Skill_PBI_Classic @v4 #a20aef85ba40
 > KHÁC, sống song song và không đè nhau; lẫn hai cái là mất mốc so sánh duy nhất.
 >
 > File này nói **CÁCH DỰNG BẢN CLASSIC**. Thao tác file `.pbip` (bookmark · nút · icon · lưới) ở skill
-> **`pbi-pbip`**; luật THIẾT KẾ ở chuẩn thiết kế của vùng (`design_standard` trong giá trị vùng).
+> **`pbi-pbip`**; luật THIẾT KẾ ở `Skill_PBI_Base` `reference/design.md`.
 > Khác `pbi-pbip` ở chỗ: `pbi-pbip` sửa một report ĐANG là của mình, file này **chuyển một report của người
 > khác sang nền dữ liệu khác mà không được đổi hình hài nó**.
 
@@ -30,7 +30,7 @@ report đòi mà kho không đáp được.
 ## 1. Ba điều KHÔNG làm
 
 - **KHÔNG đổi thiết kế.** Toạ độ · cỡ chữ · bố cục · thứ tự trang giữ nguyên. Thấy chỗ xấu thì **BÁO**
-  (`chuẩn phòng ban §2e`). Lưới 5 và bảng màu của chuẩn **không áp** cho bản mô phỏng.
+  (`Skill_PBI_Base` `reference/design.md` §3.5). Lưới 5 và bảng màu của chuẩn **không áp** cho bản mô phỏng.
 - **KHÔNG bịa số.** Chỗ kho chưa đáp được thì để **trống có ghi chú**, không thay bằng ước lượng.
   *Bản cũ đã trả giá đúng chỗ này: `[COGs_PnL] = TotalSale × 0.39` — một tỷ lệ ước mang cái tên nghe
   như thật, và có người đi tìm chi phí trong đó.*
@@ -90,7 +90,7 @@ nhưng **`DirectQuery` không cho** ⇒ tắt auto date/time trước khi chuy�
 ```
 1. COPY bản cũ ra ngoài vùng mirror   _Legacy là Syncthing RECEIVEONLY:
                                       sửa tại chỗ sẽ bị revert, luôn copy ra trước
-2. Save As .pbip                      .pbix thì DAX bị nén XPress9, agent mù (chuẩn phòng ban 2b)
+2. Save As .pbip                      .pbix thì DAX bị nén XPress9, agent mù (naming.md §5)
 3. MỞ model cũ                        liệt kê: bảng · nguồn · measure · cột tính · binding
 4. THAY bảng                          xoá sạch bảng cũ -> kéo THẲNG bảng gốc của kho:
                                       Source{[Schema="dbo",Item="<Bảng>"]}[Data]
@@ -165,7 +165,7 @@ Vá bằng cột dẫn xuất (`QuarterLabel = "Q" & Quarter`), **không sửa c
 - 🔴 **"Port được" ≠ "đúng số".** Một measure chạy ra số vẫn có thể sai; **độ khớp số là cổng riêng**.
 - 🔴 **Ô không đối chiếu được (vì kho thiếu nguồn) KHÔNG tính là lệch** — xếp riêng thành nhóm *"chưa
   đối chiếu được"* kèm lý do. Gộp nó vào nhóm lệch là làm hỏng chính con số cần báo.
-- 🔴 **QUÉT FULL mọi kỳ × mọi đơn vị × mọi dòng** (`chuẩn phòng ban §7`), chia lô mà quét — đừng chọn
+- 🔴 **QUÉT FULL mọi kỳ × mọi đơn vị × mọi dòng** (`Rule_Keys_11_VerifyClaims` bước 7), chia lô mà quét — đừng chọn
   mẫu. API dò dữ liệu **cắt ở `query_row_cap` dòng mà không báo** (`Skill_Task_Pull`), nên không chia lô là ra số
   thiếu trong im lặng.
 

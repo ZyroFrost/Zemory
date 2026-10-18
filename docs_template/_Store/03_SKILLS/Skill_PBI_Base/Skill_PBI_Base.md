@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 4
+version: 5
 type: process
 aka: dev-pbi
 replaces: [Skill_Dev_Pbi]
@@ -32,6 +32,20 @@ description: Build or change a BI report - layout and chart choice, measures and
 
 - `.pbix` là nhị phân nặng: đi qua LFS theo `.gitattributes`, không commit thẳng (`Rule_Gate_21_WhatEntersGit`).
 - Dữ liệu thật nằm ngoài git; repo chỉ giữ mẫu nhỏ đủ mở báo cáo.
+
+## 4. Chuẩn report Power BI của repo phòng ban
+
+Repo phòng ban dựng report Power BI trên DW theo bốn loại (`Legacy` · `Classic` · `Mix` · `Main`, skill `pbi-pbip` §0). Chuẩn
+chung của bốn loại nằm ở ba file dưới; skill của từng loại chỉ nói phần riêng và trỏ về đây.
+
+| Cần gì | Mở |
+|---|---|
+| tên thư mục và file · số report · đổi tên · một report một thư mục · `.pbip` · bỏ hệ cũ | `reference/naming.md` |
+| `#Measure` · thư mục measure theo trang · tên measure · `Parameter_*` · Kimball của DW · hai tầng tên của `Classic` | `reference/model.md` |
+| màu · tương tác · icon · slicer · lưới 5 · khung · dải title · dựng trên khung có sẵn | `reference/design.md` |
+
+Giá trị thật của cụm (mã màu, theme, icon, khuôn gốc, máy chủ DW, nguồn hệ cũ) nằm ở tổng quản; file chuẩn chỉ nêu tên khoá
+trong giá trị cụm.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the report design standard whose suggestions are shown first · chuẩn thiết kế báo cáo mà gợi ý phải trình trước

@@ -1,7 +1,7 @@
 ---
 id: Slot_140
 name: workspace-values
-version: 2
+version: 3
 path: data/region/
 checked: [Data_094_Data, Config_075_Config]
 ---
@@ -20,7 +20,7 @@ checked: [Data_094_Data, Config_075_Config]
 |---|---|
 | `warehouse_server` · `warehouse_db` | chuỗi máy chủ của kho dữ liệu (gateway so khớp từng chữ) và tên cơ sở dữ liệu |
 | `theme_file` · `icons_dir` · `template_report` · `glossary_dir` | theme báo cáo · thư viện icon · khuôn gốc · bảng thuật ngữ — đường dẫn trong tổng quản |
-| `design_standard` · `dept_standard` | chuẩn thiết kế báo cáo và chuẩn phòng ban của cụm — đường dẫn trong tổng quản |
+| `design_values` | bảng giá trị thiết kế của cụm: mã màu theo vai, thông số khung, số đo trên trang gốc, logo — đường dẫn trong tổng quản (luật thiết kế: `Skill_PBI_Base`) |
 | `dept_codes` · `acronyms` | bộ mã phòng ban · từ viết tắt nghiệp vụ được giữ in hoa trong tiêu đề |
 | `legacy_sources` | nguồn, site, thư mục, khoá của hệ cũ mà model và task không được đọc |
 | `card_icons` | khoá thẻ KPI → tên icon, gộp lên bộ mặc định của `card_icons.py` |

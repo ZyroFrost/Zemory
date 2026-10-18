@@ -14,6 +14,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Docs_004_Docs`](_Slot/Docs_004_Docs/Docs_004_Docs.md) | `docs/` | harness tài liệu |
 | [`Docs_005_Agent`](_Slot/Docs_005_Agent/Docs_005_Agent.md) | `docs/agent/` | bộ tài liệu lõi cho agent |
 | [`Docs_006_Plan`](_Slot/Docs_006_Plan/Docs_006_Plan.md) | `docs/plan/` | spec / plan theo section |
+| [`Root_059_PackageJson`](_Slot/Root_059_PackageJson/Root_059_PackageJson.md) | `package.json \` · `pyproject.toml \` · `requirements.txt` | manifest |
 | [`DocsVisual_073_DocsVisual`](_Slot/DocsVisual_073_DocsVisual/DocsVisual_073_DocsVisual.md) | `docs_visual/` | bản xem trực quan cho người |
 | [`DocsPublic_074_DocsPublic`](_Slot/DocsPublic_074_DocsPublic/DocsPublic_074_DocsPublic.md) | `docs_public/` | media công khai kèm README |
 | [`Config_075_Config`](_Slot/Config_075_Config/Config_075_Config.md) | `config/` | file config operator tự sửa |

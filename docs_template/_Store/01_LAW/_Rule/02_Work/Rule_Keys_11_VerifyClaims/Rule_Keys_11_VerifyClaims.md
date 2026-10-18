@@ -2,7 +2,7 @@
 id: Rule_11
 aka: 02-11
 name: verify-claims
-version: 8
+version: 9
 kind: judgment
 code: 02_Work
 ---
@@ -33,6 +33,9 @@ unverified, never filled in by guessing.
    code/files · decision history · a real run. Applies at all times, not only at session close. Three agree ⇒ conclude; they
    differ ⇒ the newer wins; one source out of reach ⇒ write "not verified", never assume "not done". An item untouched for more
    than 7 days ⇒ suspect it. Asking again about something already settled is a fault.
+7. Checking a file, a deliverable or a table ⇒ read EVERY cell, row and column of the range concerned by machine (the whole used
+   range, from the first pass), never a sample. A statement sent out of the repo (a mail, a report) is copied from the scan output
+   and names the column and row; a sentence that does not trace to a line of that output is not written.
 
 How to measure, false-alarm traps: `.claude/skills/harness-audit/SKILL.md`. The ledger measure (with the CLI): `zemory todo verify`.
 
@@ -71,6 +74,9 @@ bề mặt thật · tra tài liệu ngoài. Thứ không truy được thì nó
    lịch sử quyết định · chạy thật. Áp mọi lúc, không chờ chốt phiên. Ba nguồn khớp ⇒ kết luận; lệch ⇒ cái mới hơn thắng; không
    chạm được một nguồn ⇒ ghi "chưa xác minh được", không mặc định "chưa làm". Mục quá 7 ngày không ai đụng ⇒ nghi ngờ. Hỏi lại
    một việc đã chốt là lỗi.
+7. Kiểm một file, một bản giao hay một bảng ⇒ máy đọc MỌI ô, dòng, cột của vùng liên quan (cả vùng đang dùng, ngay từ lượt đầu),
+   không chọn mẫu. Câu gửi ra khỏi repo (mail, báo cáo) chép từ kết quả quét và nêu đúng cột, dòng; câu nào không truy về được một
+   dòng của kết quả đó thì không viết.
 
 Cách đo, bẫy báo oan: `.claude/skills/harness-audit/SKILL.md`. Máy đo sổ (khi có CLI): `zemory todo verify`.
 

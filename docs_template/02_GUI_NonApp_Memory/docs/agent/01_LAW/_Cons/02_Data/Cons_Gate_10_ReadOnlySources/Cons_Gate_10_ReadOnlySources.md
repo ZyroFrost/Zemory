@@ -1,11 +1,11 @@
 ---
 id: Cons_10
 name: read-only-sources
-version: 4
+version: 5
 kind: content
 code: 02_Data
 frame: true
-from: _Store/01_LAW/_Cons/02_Data/Cons_Gate_10_ReadOnlySources @v4 #692736b9b916
+from: _Store/01_LAW/_Cons/02_Data/Cons_Gate_10_ReadOnlySources @v5 #910a542feb32
 ---
 # Cons_Gate_10_ReadOnlySources — Outside sources are read-only
 
@@ -21,6 +21,10 @@ service), how it may read it, and any write exception. Outside sources are read,
 1. Fill the source table of `Cons.md`: name · kind · allowed way of reading. A database server is named in the `Server` column.
 2. A write exception has an owner and a narrow scope: exactly one area, exactly one kind of action.
 3. Reads no outside system ⇒ `status: n/a` with the reason.
+4. A repo that reads many tables keeps a map for people at `docs/plan/01_source_map.md`: server · database · table or view · who
+   loads it and how often · the last freshness measured · which other report or branch it still feeds. Each line carries a
+   measured number or date, or says "not probed". The map is not merged with `sources/`: `sources/` is what the machine pulls
+   (editing it changes the numbers), the map changes no run.
 
 ## Example
 - Situation: an app that gathers documents from the company's shared drive fills the `Cons.md` of this frame.
@@ -45,6 +49,9 @@ thư · dịch vụ), cách đọc được phép, và ngoại lệ ghi nếu c�
 1. Điền bảng nguồn trong `Cons.md`: tên · loại · cách đọc được phép. Máy chủ cơ sở dữ liệu ghi ở cột `Server`.
 2. Ngoại lệ ghi phải có chủ và phạm vi hẹp: đúng một vùng, đúng một loại thao tác.
 3. Không đọc hệ ngoài nào ⇒ `status: n/a` kèm lý do.
+4. Repo đọc nhiều bảng giữ một bản đồ cho người đọc ở `docs/plan/01_source_map.md`: máy chủ · cơ sở dữ liệu · bảng hoặc view · ai
+   nạp và nhịp nào · lần tươi cuối đo được · nguồn đó còn nuôi report hay nhánh nào khác. Mỗi dòng có số hoặc ngày đo được, hoặc
+   ghi "chưa dò". Bản đồ không gộp với `sources/`: `sources/` là thứ máy kéo (sửa là số đổi), bản đồ không đổi lượt chạy nào.
 
 ## Ví dụ
 - Tình huống: một app tổng hợp tài liệu từ ổ chia sẻ của công ty điền `Cons.md` của khung này.
