@@ -27,6 +27,7 @@ import { wiredHooks } from "./hook-wiring.js";
 import { precommitState } from "./guard-gen.js";
 import { editedHarnessCopies } from "./law-sync.js";
 import { lawLinkFindings } from "./law-links.js";
+import { consColumn, frameShapeFindings } from "./cons-read.js";
 import { regionLinkFindings } from "./region-links.js";
 import { viName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
@@ -336,6 +337,23 @@ export function conform(root: string): ConformReport {
   if (folder) {
     push("law-links", "blocking", "A link between law, frame and skill points at nothing or is one-sided", lawLinkFindings(hp.agent),
       "name a living part; a law that says a skill implements it is listed under that skill's ## Implements, and the other way round - in the store, then sync");
+  }
+
+  // ②octies — plan/29 §13b · §15: the shape of a frame is HS's, the repo fills it; and a value the guard now reads from the
+  // written Cons.md has one home there, not a second copy in the marker.
+  if (folder) {
+    push("cons-frame-shape", "blocking", "A constitution frame's section is missing from the Cons.md the repo wrote", frameShapeFindings(hp.agent),
+      "sync puts the missing section in with the template text; fill it (the frame's sections are never removed or renamed)");
+    const m = (readMarker(root)?.data ?? {}) as { allowedSqlServers?: unknown; secretNames?: unknown };
+    const moved: string[] = [];
+    if (Array.isArray(m.allowedSqlServers) && m.allowedSqlServers.length && consColumn(hp.agent, "Cons_Gate_10_ReadOnlySources", "Server").length) {
+      moved.push("allowedSqlServers → Cons_Gate_10_ReadOnlySources › Server");
+    }
+    if (Array.isArray(m.secretNames) && m.secretNames.length && consColumn(hp.agent, "Cons_Gate_14_Access", "File").length) {
+      moved.push("secretNames → Cons_Gate_14_Access › File");
+    }
+    push("marker-key-in-cons", "blocking", "A marker key whose values now live in the constitution (two copies drift)", moved,
+      "move any value still only in the marker into the Cons.md table, then drop the key from docs/.harness.json and run `zemory hook guard`");
   }
 
   // ②quater — The laws no hook holds are read before the first action and put back after a compaction (folderCoreFiles).

@@ -39,6 +39,7 @@ import {
 import { SHELF } from "./harness-names.js";
 import { unwireHooks } from "./hook-wiring.js";
 import { writeIndexes } from "./harness-index.js";
+import { addMissingSections } from "./cons-read.js";
 
 export interface KitApplyResult {
   kit: Kit;
@@ -49,6 +50,8 @@ export interface KitApplyResult {
   written: AssemblyStep[];
   /** the two INDEX files (plan/29 §13): rewritten from what is assembled, or already current */
   skillsBlock: "written" | "current";
+  /** sections of a frame added to the repo's written Cons.md, "<frame>: + <section>" (plan/29 §13b) */
+  consAdded: string[];
   /** hand-written INDEX files kept whole in the archive before the generated ones replaced them */
   indexArchived: string[];
   /** Legacy shelf folders renamed to the current names by this pass (`02_RULES → 01_RULES` …). */
@@ -100,6 +103,8 @@ export function applyKit(
   const steps = planAssembly(parts, target);
   const bases = installBases(target, parts);
   const written = opts.apply ? applyAssembly(steps) : [];
+  // a section HS added to a frame after the repo wrote its Cons.md goes in with the template text (plan/29 §13b)
+  const consAdded = addMissingSections(hp.agent, opts.apply, storeDir);
   // files the parts install where the repo runs them (scripts/...), after the parts themselves are current
   const installed = installParts(target, root, opts.apply ? parts : [], bases, opts.apply);
   const skills = parts.filter((p) => p.shelf === SHELF.skills);
@@ -112,7 +117,7 @@ export function applyKit(
   // copies have left; a hand-written one is archived whole the first time
   const index = writeIndexes(hp.agent, hp.skills, hp.archive, opts.projectName ?? basename(root), opts.apply);
   const skillsBlock: KitApplyResult["skillsBlock"] = index.written.length ? "written" : "current";
-  return { kit, createdMarker, ownAdded, steps, written, skillsBlock, indexArchived: index.archived, renamedShelves, plug, retired, installed, hooksTakenOver };
+  return { kit, createdMarker, ownAdded, steps, written, consAdded, skillsBlock, indexArchived: index.archived, renamedShelves, plug, retired, installed, hooksTakenOver };
 }
 
 /**

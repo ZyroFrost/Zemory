@@ -109,7 +109,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Data_099_Tmp`](_Slot/Data_099_Tmp/Data_099_Tmp.md) | `data/tmp/` | file tạm |
 | [`Data_100_Snapshots`](_Slot/Data_100_Snapshots/Data_100_Snapshots.md) | `data/snapshots/` | snapshot dữ liệu |
 | [`Data_101_Models`](_Slot/Data_101_Models/Data_101_Models.md) | `data/models/` | model weight |
-| [`Data_102_Secrets`](_Slot/Data_102_Secrets/Data_102_Secrets.md) | `data/secrets/` | file key / salt / bundle |
+| [`Data_102_Secrets`](_Slot/Data_102_Secrets/Data_102_Secrets.md) | `data/secrets/` | mọi bí mật của repo: khoá · token · két mã hoá |
 | [`Data_103_Uploads`](_Slot/Data_103_Uploads/Data_103_Uploads.md) | `data/uploads/` | bytes file upload |
 | [`Generated_104_Generated`](_Slot/Generated_104_Generated/Generated_104_Generated.md) | `generated/` | code sinh tự động |
 | [`Dist_105_Dist`](_Slot/Dist_105_Dist/Dist_105_Dist.md) | `dist/` | output build |

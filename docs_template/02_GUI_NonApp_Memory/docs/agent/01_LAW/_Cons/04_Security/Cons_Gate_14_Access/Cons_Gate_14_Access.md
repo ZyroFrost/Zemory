@@ -1,11 +1,11 @@
 ---
 id: Cons_14
 name: access
-version: 3
+version: 4
 kind: content
 code: 04_Security
 frame: true
-from: _Store/01_LAW/_Cons/04_Security/Cons_Gate_14_Access @v3 #8042936ee6cb
+from: _Store/01_LAW/_Cons/04_Security/Cons_Gate_14_Access @v4 #788ba40949a5
 ---
 # Cons_Gate_14_Access — Access and security
 
@@ -21,7 +21,8 @@ contact · financial) is never stored or sent in clear text.
 
 ## Do
 1. Fill the sections of `Cons.md`: who uses it · guarded at · secrets (names) · personal data · network scope.
-2. Secrets: one line per secret NAME in the `Name` column; the value lives in `data/secrets/` (`Rule_Gate_21_WhatEntersGit`).
+2. Secrets: one row per secret: its NAME (`Name`), the file-name pattern it lives in (`File`, for example `*.sec`), its use;
+   the value lives in `data/secrets/` (`Rule_Gate_21_WhatEntersGit`).
 3. Personal data: which fields · encrypted with what · where the key lives. Keeps none ⇒ write `none` with the reason.
 4. Nobody signs in and no secrets ⇒ `status: n/a` with the reason.
 
@@ -34,7 +35,8 @@ contact · financial) is never stored or sent in clear text.
 
 ## Check
 - `conform` reds when `Cons.md` is missing, unwritten, or a template mark `<…>` is left.
-- The guard reads the `Name` column of the secrets table as the secret names (`secretNames`).
+- The guard reads the `File` column of the secrets table as secret file names (`secretNames`): such a file never enters a
+  commit.
 
 ## Luật là gì
 Mọi repo khai trong `Cons.md` của khung này: ai được dùng sản phẩm, gác quyền ở lớp nào, mặc định khi chưa khai quyền (chặn hay
@@ -47,7 +49,8 @@ trên máy. Dữ liệu cá nhân của người dùng (định danh · liên l�
 
 ## Phải làm gì
 1. Điền các mục của `Cons.md`: người dùng · gác ở · bí mật (tên) · dữ liệu cá nhân · phạm vi mạng.
-2. Bí mật: mỗi TÊN bí mật một dòng ở cột `Name`; giá trị nằm ở `data/secrets/` (`Rule_Gate_21_WhatEntersGit`).
+2. Bí mật: mỗi bí mật một dòng: TÊN (`Name`), mẫu tên file chứa nó (`File`, ví dụ `*.sec`), công dụng; giá trị nằm ở
+   `data/secrets/` (`Rule_Gate_21_WhatEntersGit`).
 3. Dữ liệu cá nhân: trường nào · mã hoá bằng gì · khoá ở đâu. Không giữ ⇒ ghi `không có` kèm lý do.
 4. Không có người dùng và bí mật nào ⇒ `status: n/a` kèm lý do.
 
@@ -60,7 +63,7 @@ trên máy. Dữ liệu cá nhân của người dùng (định danh · liên l�
 
 ## Máy kiểm
 - `conform` đỏ khi `Cons.md` thiếu, chưa viết, hoặc còn dấu mẫu `<…>`.
-- Guard đọc cột `Name` của bảng bí mật làm danh sách tên bí mật (`secretNames`).
+- Guard đọc cột `File` của bảng bí mật làm danh sách tên file bí mật (`secretNames`): file đó không bao giờ vào commit.
 
 ## Links · Liên kết
 - Implements · Thi hành: `Skill_Dev_DbDesign` — how a column is encrypted, the library, key rotation · cách mã hoá cột, thư viện, xoay khoá
