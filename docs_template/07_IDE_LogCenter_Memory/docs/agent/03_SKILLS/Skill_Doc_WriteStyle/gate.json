@@ -1,0 +1,35 @@
+{
+  "trigger": "cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi)",
+  "read": [
+    {
+      "when": "cmd_re",
+      "re": "(mail|smtp|email)[\\w.-]*\\.(py|ps1|js|mjs|cjs|cmd|bat)\\b"
+    },
+    {
+      "when": "script_re",
+      "re": "smtplib|send-mailmessage|smtpclient|sendmail\\(|send_message\\(|graph_mail|smtp_mail|/sendMail\\b"
+    }
+  ],
+  "block": [
+    {
+      "note": "running a mail script",
+      "command": "python scripts/send_mail.py --to team"
+    },
+    {
+      "note": "a script whose body sends mail",
+      "command": "python scripts/03_send.py",
+      "script": "import smtplib\n"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an ordinary script",
+      "command": "python scripts/01_pull.py",
+      "script": "print(1)\n"
+    },
+    {
+      "note": "a mail-named file only READ inside node -e, not run",
+      "command": "node -e \"console.log(require('fs').readFileSync('tests/test_sent_mail.py','utf8').split('\\n')[3])\""
+    }
+  ]
+}

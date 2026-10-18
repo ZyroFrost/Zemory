@@ -1,0 +1,27 @@
+---
+id: Slot_5
+aka: 03-5
+name: agent
+version: 8
+path: docs/agent/
+from: _Store/02_STRUCTURE/_Slot/Docs_005_Agent @v8 #f897b5b5e77e
+---
+# Docs_005_Agent agent — bộ tài liệu lõi cho agent
+
+- Vai trò:
+  - ★ `01_LAW/` (luật chung `_Rule/` · hiến pháp của repo `_Cons/`) · `02_STRUCTURE/` · `03_SKILLS/` · `04_TODO.md` · `05_CHANGES.md`.
+  - Mỗi file một vai; một nội dung sống ở một nhà, nơi khác dẫn chiếu (`Rule_Gate_35_OneHome`):
+    - `01_LAW/_Rule` luật chung · `01_LAW/_Cons` bất biến của chính sản phẩm (không đặt trong plan);
+    - `02_STRUCTURE` chỗ để file + từ điển tên · `03_SKILLS` quy trình thao tác (luật chỉ nêu điều phải làm và dẫn chiếu tới đây);
+    - `04_TODO` việc chưa làm · `05_CHANGES` changelog.
+  - `02_STRUCTURE/INDEX.md` · `03_SKILLS/INDEX.md`: mục lục máy sinh lúc sync từ các phần đã ráp; không ai sửa tay.
+  - Định nghĩa nghiệp vụ (chỉ số · trạng thái · kỳ): quyết định ở khung HP `Cons_Gate_12_SourceOfTruth` (mục Định nghĩa); cách
+    tính, cách đối chiếu, bẫy ở skill riêng của repo (`Skill_Own_<Tên>`); đổi định nghĩa ghi `05_CHANGES` (supersede nếu đảo
+    định nghĩa cũ).
+  - `docs/agent/` ≠ `backend/src/agents/`: đây là harness docs cho coding-agent đọc; `agents/` là code agent của app.
+- Khuôn `05_CHANGES` (cổng `validate`):
+  - entry mới nhất chèn ngay sau phần đầu, trên mọi entry cũ; tiêu đề `## [YYYY-MM-DD] — tiêu đề`;
+  - entry đảo hoặc thay một quyết định cũ mở đầu bằng `> 🔄 **Supersede:** thay [YYYY-MM-DDx] — "[đề mục]" — [lý do].`, nêu đúng khoá ngày của entry bị thay; không sửa, không xoá entry cũ;
+  - một entry tối đa khoảng 30 dòng, chỉ gồm đổi gì · vì sao · số đo; chi tiết thiết kế ⇒ plan.
+- Được chứa / không chứa: Không chứa: code agent của app (→ `backend/src/agents/`) · spec chi tiết (→ `docs/plan/`).
+- Khuôn tên: Đánh số `01_`…`05_` cố định như trên.

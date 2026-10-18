@@ -1,0 +1,1 @@
+{"conform":{"require":["AGENTS.md","CLAUDE.md"],"contains":{"CLAUDE.md":"@AGENTS.md"}},"block":[{"note":"no CLAUDE.md","files":{"AGENTS.md":"# x\n"}},{"note":"CLAUDE.md does not load AGENTS.md","files":{"AGENTS.md":"# x\n","CLAUDE.md":"hello\n"}}],"pass":[{"note":"both entries, CLAUDE.md imports AGENTS.md","files":{"AGENTS.md":"# x\n","CLAUDE.md":"@AGENTS.md\n"}}]}

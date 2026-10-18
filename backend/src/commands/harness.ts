@@ -66,7 +66,11 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   if (r.createdMarker) console.log("  + created .harness.json (kit recorded)");
   const moved = (r.retired ?? []).filter((x) => x.movedTo);
   const kept = (r.retired ?? []).filter((x) => !x.movedTo);
-  if (moved.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}retired by the store, moved to the archive: ${moved.map((x) => x.folder).join(" · ")}`);
+  // two reasons a copy leaves: the store retired the part, or the repo moved to a set on another structure
+  const leftKit = moved.filter((x) => String(x.movedTo).includes("/left-kit/"));
+  const byStore = moved.filter((x) => !leftKit.includes(x));
+  if (byStore.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}retired by the store, moved to the archive: ${byStore.map((x) => x.folder).join(" · ")}`);
+  if (leftKit.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}left this repo's set (one outer structure), moved to the archive: ${leftKit.map((x) => x.folder).join(" · ")}`);
   if (kept.length) console.log(`  ! retired by the store but edited here — merge into its new home by hand (Archive/ARCHIVE.md names it): ${kept.map((x) => x.folder).join(" · ")}`);
   if (r.renamedShelves.length) console.log(`  ✔ shelves renamed: ${r.renamedShelves.join(" · ")}`);
   // A first-generation folder repo's purpose and articles take the current shape (the same one the file move gives).
