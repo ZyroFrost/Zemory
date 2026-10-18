@@ -1,7 +1,8 @@
 ---
 id: Skill_PBI_Classic
 name: pbi-classic
-version: 3
+version: 4
+type: process
 description: Build the CLASSIC copy of a Power BI report - keep the OLD design exactly, move only the model onto the warehouse: map tables to Dim_*/Fact_*, port measures, rebind visuals, then MEASURE how far the numbers match the old one. Use whenever an old dashboard moves onto the warehouse, the old report serves as the warehouse's test, or the question is what the warehouse still lacks. Not for a new design. Vietnamese triggers - "bản classic", "tái tạo dashboard cũ", "đổi model sang DW", "so số với bản cũ", "kho còn thiếu gì".
 ---
 

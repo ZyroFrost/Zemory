@@ -2,9 +2,10 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 12
+version: 13
+type: process
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_Dev_AppDesign @v12 #102193d0a11d
+from: _Store/03_SKILLS/Skill_Dev_AppDesign @v13 #dcd926cf7774
 ---
 
 # app-design — chuẩn thiết kế APP (FE + BE)

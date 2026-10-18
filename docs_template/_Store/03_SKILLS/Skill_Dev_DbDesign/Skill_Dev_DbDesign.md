@@ -1,7 +1,8 @@
 ---
 id: Skill_Dev_DbDesign
 name: dev-db-design
-version: 2
+version: 3
+type: process
 description: Design or change tables in a database or data warehouse - one fact in one table, dimensional modelling, and a review of the whole schema before any new table or column. Use whenever a table, column, view or key is about to be created or changed. Vietnamese triggers - "tạo bảng", "thêm cột", "thiết kế bảng", "sửa schema", "mô hình dữ liệu", "dim", "fact".
 ---
 

@@ -1,9 +1,10 @@
 ---
 id: Skill_PBI_Legacy
 name: pbi-legacy
-version: 1
+version: 2
+type: process
 description: Handle the LEGACY copy of a Power BI report - the old system's original file, kept to READ and COMPARE, never edited: dissect a .pbix, convert it to .pbip on a copy, prove a rebuild by md5. Use whenever an old .pbix must be read for its design, measures or sources, or a rebuild must be compared with the original. Not for building a report (that is pbi-classic / pbi-mix / pbi-main). Vietnamese triggers - "mổ file cũ", "đọc pbix hệ cũ", "chuyển pbix sang pbip", "so với bản gốc".
-from: _Store/03_SKILLS/Skill_PBI_Legacy @v1 #7323cd307e33
+from: _Store/03_SKILLS/Skill_PBI_Legacy @v2 #bde1213beb37
 ---
 
 # Bản `Legacy` — file gốc hệ cũ, CHỈ ĐỌC

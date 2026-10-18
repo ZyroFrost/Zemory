@@ -1,7 +1,8 @@
 ---
 id: Skill_PBI_Main
 name: pbi-main
-version: 2
+version: 3
+type: process
 description: Build the MAIN copy of a Power BI report - the warehouse model and the NEW design to the region's standard, with no old copy to cite. Use whenever a report is designed from scratch, the official copy replaces the old system, or the full design standard is applied to a file. Not when the old design is kept (pbi-classic or pbi-mix). Vietnamese triggers - "bản main", "dựng report mới", "thiết kế mới theo chuẩn", "bản chính thức".
 ---
 

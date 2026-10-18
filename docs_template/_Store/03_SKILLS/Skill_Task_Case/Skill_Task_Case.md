@@ -2,7 +2,8 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 8
+version: 9
+type: process
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
   NON-APP). Dùng khi có một vấn đề mới cần điều tra, khi quay lại một vấn đề đã xử,

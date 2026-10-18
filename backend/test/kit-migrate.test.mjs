@@ -76,7 +76,9 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   assert.ok(viFinding && viFinding.samples.some((s) => /Cons_Core_101_DieuMotBatBien/.test(s)), JSON.stringify(viFinding));
   assert.equal(viFinding.level, "blocking");
   // the purpose becomes the written Cons.md of the purpose frame (plan/28 §0q)
-  const purpose = readFileSync(join(agent, "01_LAW", "_Cons", "Cons_Gate_09_Purpose", "Cons.md"), "utf8");
+  // the frame sits in its chapter (01_Scope/); its Cons.md names the frame by its own folder name, as the store's template does
+  const purpose = readFileSync(join(agent, "01_LAW", "_Cons", "01_Scope", "Cons_Gate_09_Purpose", "Cons.md"), "utf8");
+  assert.match(purpose, /^frame: Cons_Gate_09_Purpose$/m);
   assert.match(purpose, /^status: written$/m);
   assert.match(purpose, /Phục vụ bài toán A/);
   assert.match(purpose, /chỉ khi có phê duyệt/, "every non-article section is kept");
@@ -161,8 +163,9 @@ test("sync on a first-generation folder repo: the purpose fills the purpose fram
   assert.deepEqual(r.renamed.map((x) => x.from), ["01-2_data-tu-chua"]);
   const to = r.renamed[0].to;
   assert.match(to, /^Cons_Gate_102_/, "own article numbered 100+N, gated because its gate.json gates");
-  const frame = readdirSync(cons).find((f) => f.startsWith("Cons_Gate_09_"));
-  const consMd = readFileSync(join(cons, frame, "Cons.md"), "utf8");
+  const frame = readdirSync(join(cons, "01_Scope")).find((f) => f.startsWith("Cons_Gate_09_"));
+  const consMd = readFileSync(join(cons, "01_Scope", frame, "Cons.md"), "utf8");
+  assert.match(consMd, /^frame: Cons_Gate_09_Purpose$/m, "the header names the frame, not its chapter path");
   assert.match(consMd, /^status: written$/m);
   assert.match(consMd, /App giám sát hạ tầng/, "the purpose text moved over whole");
   assert.ok(!existsSync(join(cons, "PURPOSE.md")) && existsSync(join(root, "docs", "archive", "PURPOSE.md")), "old file archived, not lost");

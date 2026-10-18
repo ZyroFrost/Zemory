@@ -2,13 +2,14 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 8
+version: 9
+type: process
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
   NON-APP). Dùng khi có một vấn đề mới cần điều tra, khi quay lại một vấn đề đã xử,
   hoặc khi được yêu cầu đóng/mở lại một case. Cụm hay gặp: "mở case", "lưu thành task",
   "task mới", "đóng case", "mở lại case", "vụ này lưu ở đâu".
-from: _Store/03_SKILLS/Skill_Task_Case @v8 #dfff4df85d05
+from: _Store/03_SKILLS/Skill_Task_Case @v9 #3be840000f58
 ---
 
 # case — mở · đóng · mở lại một case

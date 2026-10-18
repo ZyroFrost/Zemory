@@ -112,7 +112,12 @@ const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 // File harness: 01–04 as files. Folder harness (plan/28 §0c) and the parts store: every file of a numbered shelf folder
 // (rule and article files, Cons.md, SLOT.md, INDEX.md — two levels deep on the law shelf: 01_LAW/_Rule/<rule>/). Skills
 // everywhere. The ledgers (04_TODO · 05_CHANGES) are not harness text: they carry dates by design.
-const HARNESS = /(^|\/)((?:01_CONSTITUTION|02_RULES|03_STRUCTURE|04_SKILLS)\.md|(?:01_LAW|02_STRUCTURE|03_SKILLS|01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES|03_STRUCTURE|04_SKILLS)\/(?:[^/]+\/){0,2}[^/]+\.md|SKILL\.md)$/;
+const HARNESS = /(^|\/)((?:01_CONSTITUTION|02_RULES|03_STRUCTURE|04_SKILLS)\.md|(?:01_LAW|02_STRUCTURE|03_SKILLS|01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES|03_STRUCTURE|04_SKILLS)\/(?:[^/]+\/){0,3}[^/]+\.md|SKILL\.md)$/;
+// three levels on the law shelf since the codes of law / chapters (01_LAW/_Rule/01_Harness/<rule>/, plan/29 §4-5)
+// harness vocabulary (plan/29 §9): "kho" alone names two things - the data warehouse (DW) and the harness store (HS)
+const KHO = /(^|[^\p{L}])[Kk]ho(?![\p{L}])(?!\s+dữ\s+liệu)/u;
+// a word quoted or in code is mentioned, not used: the vocabulary table itself names the banned word that way
+const QUOTED = /"[^"\n]*"|“[^”\n]*”|\x60[^\x60\n]*\x60/g;
 const VOICE = [
   /\buser\s+chốt\s+\d{4}-\d{2}-\d{2}/i,
   /\(\s*user\s+chốt\b/i,
@@ -127,6 +132,11 @@ function check(payload, root, policy) {
   try {
     const e = edit(payload, root);
     if (!e || !HARNESS.test(e.rel)) return null;
+    const vocab = e.newLines.filter((l) => KHO.test(l.replace(QUOTED, "")));
+    if (vocab.length) return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " say \"kho\" alone, which names two different things:\n" +
+      vocab.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n") +
+      "\nWrite DW (the data warehouse, \"kho dữ liệu\") or HS (the harness store, docs_template/_Store); other senses take their own word " +
+      "(bộ câu truy vấn · thư viện icon · bảng thuật ngữ).");
     const bad = e.newLines.filter((l) => VOICE.some((re) => re.test(l)));
     if (!bad.length) return null;
     return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " quote a person, date a decision or carry a personal detail:\n" +

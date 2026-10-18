@@ -136,6 +136,9 @@ test("negative: a name that lies about its enforcement, area, number or shelf is
   // the codes of law (user 2026-10-18): a rule lives in its code's folder and says the same code in its header
   put(s, "01_LAW/_Rule/02_Work/Rule_Core_08_V/RULE.md", "---\nid: Rule_8\nname: v\nversion: 1\ncode: 01_Harness\n---\nv\n");
   put(s, "01_LAW/_Rule/Misc/note.txt", "x\n");
+  // plan/29 §3: a skill declares whether every step is due (process) or it only suggests (design)
+  put(s, "03_SKILLS/Skill_Doc_Untyped/Skill_Doc_Untyped.md", "---\nname: doc-untyped\nversion: 1\ndescription: x\n---\n# x\n");
+  put(s, "03_SKILLS/Skill_Doc_Typed/Skill_Doc_Typed.md", "---\nname: doc-typed\nversion: 1\ntype: design\ndescription: x\n---\n# x\n");
   put(s, "01_LAW/_Rule/Rule_Core_06_Z/RULE.md", "---\nid: Rule_5\nname: z\nversion: 1\n---\nz\n"); // number disagrees with id
   put(s, "02_STRUCTURE/Slot_Frontend_012_Cmd/SLOT.md", "---\nid: Slot_12\nname: cmd\nversion: 1\npath: backend/src/commands/\n---\nc\n");
   put(s, "02_STRUCTURE/Rule_Core_04_W/SLOT.md", "---\nid: Rule_4\nname: w\nversion: 1\npath: x/\n---\nw\n");
@@ -149,8 +152,10 @@ test("negative: a name that lies about its enforcement, area, number or shelf is
   says(/Slot_Frontend_012_Cmd: area Frontend but path backend\/src\/commands\/ is in Backend/);
   says(/Rule_Core_04_W: code Rule does not belong on 02_STRUCTURE/);
   says(/01_LAW\/_Rule\/Rule_Keys_09_X: a rule lives in the folder of its code/);
-  says(/02_Work\/Rule_Core_08_V: header code: 01_Harness but the rule lives in 02_Work/);
-  says(/01_LAW\/_Rule\/Misc: neither a rule nor a code of law/);
+  says(/02_Work\/Rule_Core_08_V: header code: 01_Harness but it lives in 02_Work/);
+  says(/01_LAW\/_Rule\/Misc: neither a part nor a code of law/);
+  says(/Skill_Doc_Untyped: header type: must be process or design \(has none\)/);
+  assert.ok(!wrong.some((x) => /Skill_Doc_Typed/.test(x)), "a skill with a type passes");
   assert.ok(!wrong.some((x) => /Rule_Gate_07_Y/.test(x)), "a truthful name in its code's folder passes");
   assert.deepEqual(legacy, ["01_LAW/_Rule/02-3_old"]);
 });

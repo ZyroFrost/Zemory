@@ -1,9 +1,10 @@
 ---
 id: Skill_Harness_RuleGate
 name: harness-rule-gate
-version: 1
+version: 2
+type: process
 description: Write a new rule, constitution frame or skill for a harness, place it in the right home, and build its machine gate with positive and negative cases. Use once adding or changing a rule, a constitution frame or a gate has been approved. Vietnamese triggers - "thêm luật", "viết luật", "dựng cổng", "chốt máy cho luật", "xếp nhà luật".
-from: _Store/03_SKILLS/Skill_Harness_RuleGate @v1 #1ee8d0317b78
+from: _Store/03_SKILLS/Skill_Harness_RuleGate @v2 #9d27dfc039ae
 ---
 
 # harness-rule-gate — viết luật và dựng chốt máy

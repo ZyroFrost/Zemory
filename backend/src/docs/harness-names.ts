@@ -68,6 +68,10 @@ export type Code = (typeof CODE)[keyof typeof CODE];
  *  number stay as they are; the code is where it lives. */
 export const RULE_CODES = ["01_Harness", "02_Work", "03_Safety", "04_Writing", "05_Domain"] as const;
 
+/** The chapters of the constitution (plan/29 §5): one folder per chapter inside the constitution layer
+ *  (`01_LAW/_Cons/02_Data/Cons_Gate_10_ReadOnlySources/`), chosen by the question an article answers. Same rules as the codes. */
+export const CONS_CHAPTERS = ["01_Scope", "02_Data", "03_System", "04_Security"] as const;
+
 /** How a machine enforces a rule or article (plan/28 §0o): blocks · reminds by keyword · nothing (core text only). */
 export const ENFORCEMENT = ["Gate", "Keys", "Core"] as const;
 export type Enforcement = (typeof ENFORCEMENT)[number];
