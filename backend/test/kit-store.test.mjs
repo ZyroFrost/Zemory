@@ -777,3 +777,32 @@ test("a hook written as command + args is read like the string form: dead file r
   put(root, ".git/hooks/pre-commit", "#!/bin/sh\nnode docs/hooks/precommit-guard.cjs\n");
   assert.ok(dead().includes("git pre-commit: calls a precommit-guard.cjs that is gone"), "conform names a dead pre-commit");
 });
+
+test("Rule_83: a harness part edited in a repo is red in conform; impact names every repo's copy state", async (t) => {
+  // user 2026-10-18: a repo uses the harness, it does not own it - a part changes in the store and is synced down
+  const { partImpact, editedHarnessCopies } = await import("../../dist/docs/law-sync.js");
+  const st = store(t);
+  const [a, b, d] = [repo(t), repo(t), repo(t)];
+  for (const r of [a, b, d]) applyKit(r, { kitRef: "01", apply: true, storeDir: st.s });
+  const agent = (r) => join(r, "docs", "agent");
+  const edited = (r) => conform(r).items.find((i) => i.check === "harness-edited-here")?.samples ?? [];
+  assert.deepEqual(edited(a), [], "a fresh copy is not edited");
+  put(a, "docs/agent/01_LAW/_Rule/02-1_alpha/02-1_alpha.md", readFileSync(rule(a, "02-1_alpha"), "utf8") + "- a local line\n");
+  assert.deepEqual(edited(a), ["01_LAW/_Rule/02-1_alpha"], "the edited copy is named");
+  assert.deepEqual(editedHarnessCopies(agent(b)), []);
+  // a skill is harness too
+  const skill = join(agent(b), "03_SKILLS", "sk", "sk.md");
+  const skillText = readFileSync(skill, "utf8");
+  writeFileSync(skill, skillText + "- a local step\n");
+  assert.deepEqual(editedHarnessCopies(agent(b)), ["03_SKILLS/sk"], "an edited skill is named");
+  writeFileSync(skill, skillText);
+  rmSync(join(agent(d), "01_LAW", "_Rule", "02-1_alpha"), { recursive: true, force: true });
+  put(st.s, "01_LAW/_Rule/02-1_alpha/RULE.md", "---\nid: 02-1\nname: alpha\nversion: 2\nkind: judgment\n---\n# alpha\n\n- line one\n- line two changed\n- line three\n");
+  st.commit("alpha v2");
+  const repos = [["A", a], ["B", b], ["D", d]].map(([name, root]) => ({ name, root, agent: agent(root) }));
+  const states = (ref) => Object.fromEntries(partImpact(ref, repos, st.s).repos.map((x) => [x.name, x.state]));
+  assert.deepEqual(states("02-1_alpha"), { A: "edited", B: "behind", D: "absent" });
+  applyKit(b, { apply: true, storeDir: st.s });
+  assert.equal(states("02-1_alpha").B, "current", "synced down = current");
+  assert.equal(partImpact("no-such-part", repos, st.s).part, null);
+});

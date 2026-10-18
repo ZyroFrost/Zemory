@@ -195,7 +195,9 @@ test("regeneration: our own files are refreshed when they drift, files without o
   // 2026-10-14: + the nine rule hooks of plan/27 §3 (02-24 · 02-26 · 02-27 · 02-30 · 02-38, then the doors 02-1 · 02-2 ·
   // 02-13 and 02-47), each named after its rule.
   // + 02-29_code-english.cjs · 02-4_scratch-cap.cjs (2026-10-16) · 02-21_secret-value.cjs (2026-10-17)
-  assert.equal(r1.added.length, 18, r1.added.join(", "));
+  // + 02-83_harness-from-store.cjs (2026-10-18; a file harness gets it too - it passes where the store is kept)
+  assert.equal(r1.added.length, 19, r1.added.join(", "));
+  assert.ok(r1.added.includes("02-83_harness-from-store.cjs"), "the harness-from-store hook is generated");
   assert.ok(r1.added.includes("02-21_secret-value.cjs"), "the secret-value hook is generated");
   assert.ok(r1.added.includes(".claude/settings.json (guard wired)"));
   assert.ok(r1.added.includes("02-59_read-first.cjs"));

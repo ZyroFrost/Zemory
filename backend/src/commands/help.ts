@@ -37,6 +37,7 @@ function usageLines(): string[] {
       "  project   project move <from> <to> [--apply]: move a repo folder with its memory, Claude Code sessions and settings (dry run by default)",
       "  peers     which local session to message per repo: title ↔ address, ★ = send here (--repo · --json · --check = title gate)",
       "  gates     does each repo RUN its gates: guard wired · pre-commit wired · a row per constitution article · ungated rules on top (--all · --json · --write-top = write the top block here)",
+      "  impact    impact <part>: every repo carrying a store part (law · slot · skill) and its copy state (current · behind · edited · absent) - run before editing or retiring it in the store",
       "  grill     interrogate the plan before building (workflow)",
       "  graph     code-graph queries: impact <file> · callers <symbol> · fitness [--gate]",
       "  structure print the standard harness structure (target to conform to)",

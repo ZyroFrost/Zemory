@@ -1,0 +1,151 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit"
+    ]
+  },
+  "block": [
+    {
+      "note": "an Edit of a common law's copy",
+      "files": {
+        "docs/agent/01_LAW/_Rule/Rule_Gate_04_ScratchFiles/Rule_Gate_04_ScratchFiles.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Rule/Rule_Gate_04_ScratchFiles/Rule_Gate_04_ScratchFiles.md",
+        "old_string": "- text",
+        "new_string": "- changed"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "an Edit of the repo's own constitution article",
+      "files": {
+        "docs/agent/01_LAW/_Cons/Cons_Core_104_Exception/Cons_Core_104_Exception.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Cons/Cons_Core_104_Exception/Cons_Core_104_Exception.md",
+        "old_string": "- text",
+        "new_string": "- changed"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "an Edit of a skill",
+      "files": {
+        "docs/agent/03_SKILLS/Skill_PBI_Mix/Skill_PBI_Mix.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/03_SKILLS/Skill_PBI_Mix/Skill_PBI_Mix.md",
+        "old_string": "- text",
+        "new_string": "- changed"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "an Edit of a skill build",
+      "files": {
+        ".claude/skills/pbi-mix/SKILL.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": ".claude/skills/pbi-mix/SKILL.md",
+        "old_string": "- text",
+        "new_string": "- changed"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a Write of a new slot",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/agent/02_STRUCTURE/_Slot/Slot_Own_1/Slot_Own_1.md",
+        "content": "changed\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "the zemory repo, where the harness is made",
+      "files": {
+        "docs_template/_Store/03_SKILLS/Skill_PBI_Mix/Skill_PBI_Mix.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs_template/_Store/03_SKILLS/Skill_PBI_Mix/Skill_PBI_Mix.md",
+        "old_string": "- text",
+        "new_string": "- changed"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "the repo's ledger",
+      "files": {
+        "docs/agent/04_TODO.md": "# TODO\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/agent/04_TODO.md",
+        "content": "changed\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a file outside the harness",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "scripts/build.py",
+        "content": "changed\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    }
+  ]
+}
