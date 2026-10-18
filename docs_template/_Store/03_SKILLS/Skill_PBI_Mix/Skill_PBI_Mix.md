@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Mix
 name: pbi-mix
-version: 4
+version: 5
 description: Build the MIX copy of a Power BI report - warehouse model, the Main header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-main). Vietnamese triggers - "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
 installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
 ---
@@ -867,6 +867,10 @@ Cổng: `pct-period` (dòng `Pct_` không nhãn thì format phải có chữ k�
   nghiệp vụ (`PARENT3NAME`, `DISCOUNT`), `%` trơn / `%1` (phải nói % của gì: `% Revenue`, `% Ebitda`). Đặt `displayName` ở projection,
   tên measure giữ nguyên. Cổng `column-name` (Mix/Main; Classic giữ chữ Legacy). 03 Mix đã đặt: Line · Code · Cost Line · Store ·
   Actual · % Revenue · Actual LY · Growth LY · Base Month · % Revenue Base · Variance · % Variance · LYTD.
+- 🔴 **BIẾN TIẾNG ANH, DỮ LIỆU ĐƯỢC TIẾNG VIỆT** *(chốt 18/10)*: tên measure là biến ⇒ tiếng Anh, không dấu tiếng Việt
+  (`'Doanh Thu Thuần'` ⇒ `Net Revenue`; chữ người đọc cần đặt ở `displayName`) — cổng `measure-name` (Mix/Main). Chữ hiện ra mà là
+  NỘI DUNG dữ liệu thì giữ tiếng Việt: measure đếm đúng MỘT mặt hàng (DAX lọc một `ItemID`, vd `EcomComboQty_TGVI0087`) mang tiêu
+  đề là tên mặt hàng (`Mì trộn tương đen Super Cay (120gr/gói)`) — `column-name` và `glossary-cover` bỏ qua tiêu đề đó.
 - 🔴 **MỖI % PHẢI ĐƯỢC KHAI: TỈ TRỌNG hay CÓ CHIỀU** *(13/10: "% đang ko có màu xanh đỏ đúng chuẩn lên xuống")*: tên `% … of Revenue /
   of Total` không nói được — `%Actual of Revenue` là tỉ trọng của một dòng P&L (cột trộn doanh thu và chi phí ⇒ không màu), `%Ebitda of
   Revenue` là biên lợi nhuận (> 0 xanh). Tỉ trọng ⇒ `pct_neutral` (pbi-gate.json), có chiều ⇒ `PALETTE['pct_threshold']` (mix_specs) —

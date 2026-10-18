@@ -2036,6 +2036,8 @@ def split_definitions(b):
 
 def check_glossary_cover(report_dir, pages, visible, vis, fail):
     texts = measure_text_values(report_dir)
+    dd = glob.glob(os.path.join(report_dir, '*.Report', 'definition'))
+    per_item = item_measures(dd[0]) if dd else set()
     for pg in visible:
         gl = ' '.join(r.get('value', '') for (p2, i), d in vis.items() if p2 == pg and sel_name(d) == 'Text_Glossary'
                       for par in d['visual'].get('objects', {}).get('general', [{}])[0].get('properties', {}).get('paragraphs', [])
@@ -2070,6 +2072,8 @@ def check_glossary_cover(report_dir, pages, visible, vis, fail):
                 for p_ in r_.get('projections', []):
                     if p_.get('hidden') or 'NativeVisualCalculation' in p_.get('field', {}):
                         continue
+                    if p_.get('field', {}).get('Measure', {}).get('Property') in per_item:
+                        continue                        # a one-item measure's header is the item's name: data (user 18/10)
                     nm = p_.get('displayName') or p_.get('nativeQueryRef') or p_.get('queryRef', '').split('.')[-1]
                     if not nm.startswith('Divide('):
                         where.append(nm)
@@ -2738,6 +2742,38 @@ def column_name_problem(name):
     return None
 
 
+VI_LETTER = re.compile('[\u00c0-\u00c3\u00c8-\u00ca\u00cc\u00cd\u00d2-\u00d5\u00d9\u00da\u00dd\u00e0-\u00e3\u00e8-\u00ea\u00ec\u00ed'
+                       '\u00f2-\u00f5\u00f9\u00fa\u00fd\u0102\u0103\u0110\u0111\u0128\u0129\u0168\u0169\u01a0\u01a1\u01af\u01b0'
+                       '\u1ea0-\u1ef9]')
+
+
+def model_measures(d_def):
+    """{measure name: DAX text} of the report's own semantic model (a thin report has none)."""
+    out = {}
+    for t in glob.glob(os.path.join(d_def, '..', '..', '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        txt = open(t, encoding='utf-8').read()
+        for blk in re.split(r'(?m)^(?=\t(?:measure|column|partition|hierarchy)\s)', txt):
+            m = re.match(r"\tmeasure\s+('(?:[^']|'')+'|[^\s=]+)\s*=", blk)
+            if m:
+                out[m.group(1).strip("'").replace("''", "'")] = blk
+    return out
+
+
+def item_measures(d_def):
+    """Measures that count ONE item: their DAX filters a single ItemID (EcomComboQty_TGVI0087). The header a visual gives such
+    a measure is the item's name - data, not frame text (a department repo 18/10)."""
+    return {n for n, b in model_measures(d_def).items() if len(set(re.findall(r'\[ItemID\]\s*=\s*"([^"]+)"', b))) == 1}
+
+
+def check_measure_names(d_def, fail):
+    """measure-name (user 18/10): a measure is a variable - English name, no Vietnamese letters; the Vietnamese a reader needs
+    goes to the visual's displayName or comes from the data. Mix / Main only (Classic keeps the legacy names)."""
+    for n in sorted(model_measures(d_def)):
+        if VI_LETTER.search(n):
+            fail.append("measure %s is named in Vietnamese - a measure is a variable: give it an English name (the reader text "
+                        "goes to the visual's displayName) (measure-name)" % ascii(n))
+
+
 def check_column_names(d_def, fail):
     """column-name (a department repo 13/10, user: "tên cột đang ko đúng chuẩn loạn xạ hết, cái này cũng phải có trong skill và
     cổng kiểm"): every field a visible table / matrix / chart shows (its displayName, else the field name) reads as English
@@ -2746,6 +2782,7 @@ def check_column_names(d_def, fail):
     hidden = {os.path.basename(os.path.dirname(p)) for p in glob.glob(os.path.join(d_def, 'pages', '*', 'page.json'))
               if json.load(open(p, encoding='utf-8')).get('visibility') == 'HiddenInViewMode'}
     bad = {}
+    per_item = item_measures(d_def)
     for f in glob.glob(os.path.join(d_def, 'pages', '*', 'visuals', '*', 'visual.json')):
         if f.split(os.sep)[-4] in hidden:
             continue
@@ -2764,6 +2801,8 @@ def check_column_names(d_def, fail):
                 fld = p.get('field', {}); k = next(iter(fld), None)
                 if k == 'NativeVisualCalculation':
                     continue
+                if k == 'Measure' and fld['Measure'].get('Property') in per_item:
+                    continue        # the header of a one-item measure is the item's name: data (user 18/10)
                 name = p.get('displayName')
                 if name is None:
                     x = fld.get(k, {})
@@ -4733,6 +4772,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
     if not KEEP_OLD_DESIGN:
         check_kimball16(d_def, fail)
         check_column_names(d_def, fail)
+        check_measure_names(d_def, fail)
     elif os.path.basename(os.path.normpath(report_dir)).endswith('_Classic'):
         check_kimball16_classic(report_dir, fail)
     # visual titles: Mix / Main only - Classic keeps the old design (a department 14/10, newer than the 12/10 call

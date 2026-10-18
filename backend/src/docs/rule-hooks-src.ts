@@ -596,6 +596,56 @@ function check(payload, root, policy) {
   } catch { return null; }
 }`),
 
+  // 02-85 — a new harness part is proposed only after the store was searched (user 2026-10-18): the same thing already
+  // there ⇒ nothing new; it fits an existing part ⇒ that part is amended; only otherwise a new part. A Write that creates a
+  // new part folder in the store is blocked unless its header names, in `checked:`, the existing parts it was weighed
+  // against (each must exist); the block lists the closest ones. No flag.
+  hook("02-85_propose-checked.cjs", String.raw`
+const SHELF = /^docs_template\/_Store\/(01_LAW\/_Rule|01_LAW\/_Cons|02_STRUCTURE\/_Slot|02_STRUCTURE\/_Host|02_STRUCTURE|03_SKILLS)\/([^\/]+)\/[^\/]+$/;
+function tokens(s) {
+  return String(s).replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !/^\d+$/.test(w)
+    && !["rule", "cons", "skill", "slot", "struc", "gate", "core", "keys", "the"].includes(w));
+}
+function parts(store) {
+  const out = [];
+  for (const shelf of ["01_LAW/_Rule", "01_LAW/_Cons", "02_STRUCTURE/_Slot", "02_STRUCTURE", "03_SKILLS"]) {
+    let ents = [];
+    try { ents = fs.readdirSync(path.join(store, shelf), { withFileTypes: true }); } catch { continue; }
+    for (const e of ents) {
+      if (!e.isDirectory() || e.name.startsWith("_")) continue;
+      let title = "";
+      try { title = (/^#\s+(.*)$/m.exec(fs.readFileSync(path.join(store, shelf, e.name, e.name + ".md"), "utf8")) || ["", ""])[1]; } catch {}
+      out.push({ name: e.name, words: new Set(tokens(e.name + " " + title)) });
+    }
+  }
+  return out;
+}
+function check(payload, root, policy) {
+  try {
+    const e = edit(payload, root);
+    if (!e || e.tool !== "Write") return null;
+    const m = SHELF.exec(e.rel);
+    if (!m) return null;
+    const store = path.join(root, "docs_template", "_Store");
+    if (fs.existsSync(path.join(store, m[1], m[2]))) return null;            // an existing part: amended, not proposed
+    const head = /^---\r?\n([\s\S]*?)\r?\n---/.exec(e.added);
+    const checked = head ? (/^checked:\s*\[?([^\]\n]*)\]?/m.exec(head[1]) || [])[1] : "";
+    const all = parts(store);
+    const names = String(checked || "").split(/[,·]/).map((x) => x.trim()).filter(Boolean);
+    const known = new Set(all.map((p) => p.name));
+    if (names.length && names.every((n) => known.has(n))) return null;
+    const mine = new Set(tokens(m[2] + " " + e.added.slice(0, 2000)));
+    const near = all.map((p) => ({ p: p.name, n: [...p.words].filter((w) => mine.has(w)).length })).filter((x) => x.n > 0)
+      .sort((a, b) => b.n - a.n).slice(0, 5).map((x) => x.p);
+    const unknown = names.filter((n) => !known.has(n));
+    return blocked(root, policy, "02-85", "a NEW part " + m[2] + " is being created. First search the store: the same thing already " +
+      "there => add nothing; it fits an existing part => amend that part; only otherwise a new part. Say what was weighed: a header " +
+      "line checked: [<existing part>, ...] naming the parts you compared it with (they must exist), and in the text why it does " +
+      "not fit them." + (unknown.length ? " Not in the store: " + unknown.join(", ") + "." : "") +
+      (near.length ? " Closest now: " + near.join(", ") + "." : ""));
+  } catch { return null; }
+}`),
+
   // 02-84 — a .pbip opens only when pbi_gate --open-check finds nothing that breaks the file (a department repo's own hook,
   // up to the store 2026-10-18). Design and warehouse findings never block the opening. Bounded below the host's hook
   // timeout: a guard killed by the host lets every other rule's check go with it.
