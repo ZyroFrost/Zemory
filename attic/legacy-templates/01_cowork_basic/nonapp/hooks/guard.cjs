@@ -1042,7 +1042,8 @@ function main() {
     // Deleting the folder is a recursive delete (blocked above); rewriting or dropping the `id:` line is the other way
     // a number leaves, and the .md regex above never saw these files.
     // The header file is named after its folder (plan/28 §0p); an older copy still has RULE.md.
-    if (p && /(^|\/)(01_LAW\/_Rule|01_LAW\/_Cons|01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES)\/([^/]+)\/(RULE|\3)\.md$/i.test(relToRoot(p).replace(/\\/g, "/"))) {
+    // a law may sit one folder deeper, in its code of law / chapter (01_LAW/_Rule/01_Harness/<rule>/, plan/29)
+    if (p && /(^|\/)(01_LAW\/_Rule|01_LAW\/_Cons|01_RULES|02_CONSTITUTION|01_CONSTITUTION|02_RULES)\/(?:\d{2}_[A-Za-z]+\/)?([^/]+)\/(RULE|\3)\.md$/i.test(relToRoot(p).replace(/\\/g, "/"))) {
       const idOf = (s) => { const m = String(s || "").match(/^id:\s*(\S+)/m); return m ? m[1] : null; };
       let before = "", after = "";
       if (tool === "Write") {

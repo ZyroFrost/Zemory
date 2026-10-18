@@ -63,6 +63,11 @@ export const OWN_ARTICLE_FROM = 101;
 export const CODE = { rule: "Rule", constitution: "Cons", structure: "Struc", slot: "Slot", skill: "Skill", host: "Host" } as const;
 export type Code = (typeof CODE)[keyof typeof CODE];
 
+/** The codes of law (user 2026-10-18: "phân ra luật theo bộ như thật tế… chỉ phân folder thêm 1 lớp"): one folder per code
+ *  inside the rules layer (`01_LAW/_Rule/01_Harness/Rule_Gate_59_ReadFirst/`), the harness code first. A rule's name and
+ *  number stay as they are; the code is where it lives. */
+export const RULE_CODES = ["01_Harness", "02_Work", "03_Safety", "04_Writing", "05_Domain"] as const;
+
 /** How a machine enforces a rule or article (plan/28 §0o): blocks · reminds by keyword · nothing (core text only). */
 export const ENFORCEMENT = ["Gate", "Keys", "Core"] as const;
 export type Enforcement = (typeof ENFORCEMENT)[number];

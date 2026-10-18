@@ -189,7 +189,7 @@ test("02-10 (b), folder harness: changing or dropping the `id:` of a rule folder
   const ROOT = new URL("../../", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
   const tmp = mkdtempSync(join(tmpdir(), "zemory-guard-id-"));
   try {
-    const relRule = "docs_template/_Store/01_LAW/_Rule/Rule_Gate_38_TodoDoor/Rule_Gate_38_TodoDoor.md";
+    const relRule = "docs_template/_Store/01_LAW/_Rule/01_Harness/Rule_Gate_38_TodoDoor/Rule_Gate_38_TodoDoor.md";
     mkdirSync(join(tmp, relRule, ".."), { recursive: true });
     cpSync(join(ROOT, relRule), join(tmp, relRule));
     mkdirSync(join(tmp, "docs", "agent"), { recursive: true });
