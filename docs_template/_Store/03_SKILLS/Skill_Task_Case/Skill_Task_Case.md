@@ -2,7 +2,7 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 9
+version: 10
 type: process
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
@@ -13,7 +13,7 @@ description: >
 
 # case — mở · đóng · mở lại một case
 
-> Chuẩn slot + luật 1-case-1-folder: slot `Tasks_115_Tasks` `tasks/` · `Tasks_117_Case` `tasks/<case>/` · `Data_131_Case` `data/<case>/` (+ từ điển `Docs_138_DataDictionary`). Hồn của mẫu: mỗi vấn đề là
+> Chuẩn slot + luật 1-case-1-folder: slot `Tasks_115_Tasks` `tasks/` · `Tasks_117_Case` `tasks/<case>/` · `Data_131_Case` `data/<case>/` (+ định nghĩa ở khung HP `Cons_Gate_12_SourceOfTruth`). Hồn của mẫu: mỗi vấn đề là
 > một MẠCH VIỆC quay lại nhiều lần — mọi thứ của nó phải nằm MỘT chỗ, mở một folder ra hết.
 
 ## Trước khi mở case mới — TRA ĐÃ CÓ CHƯA

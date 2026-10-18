@@ -1,11 +1,11 @@
 ---
 id: Struc_Repo_App
 name: repo-app
-version: 3
+version: 4
 profile: app
 label: APP
 intro: (có code chạy: UI · server · CLI)
-index-role: thứ gì nằm đâu
+index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · thêm slot · `conform` báo lệch
 ---
 # Struc_Repo_App

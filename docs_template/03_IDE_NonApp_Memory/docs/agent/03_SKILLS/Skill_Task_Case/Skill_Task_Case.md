@@ -2,19 +2,19 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 9
+version: 10
 type: process
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
   NON-APP). Dùng khi có một vấn đề mới cần điều tra, khi quay lại một vấn đề đã xử,
   hoặc khi được yêu cầu đóng/mở lại một case. Cụm hay gặp: "mở case", "lưu thành task",
   "task mới", "đóng case", "mở lại case", "vụ này lưu ở đâu".
-from: _Store/03_SKILLS/Skill_Task_Case @v9 #3be840000f58
+from: _Store/03_SKILLS/Skill_Task_Case @v10 #cf0b0e1e3403
 ---
 
 # case — mở · đóng · mở lại một case
 
-> Chuẩn slot + luật 1-case-1-folder: slot `Tasks_115_Tasks` `tasks/` · `Tasks_117_Case` `tasks/<case>/` · `Data_131_Case` `data/<case>/` (+ từ điển `Docs_138_DataDictionary`). Hồn của mẫu: mỗi vấn đề là
+> Chuẩn slot + luật 1-case-1-folder: slot `Tasks_115_Tasks` `tasks/` · `Tasks_117_Case` `tasks/<case>/` · `Data_131_Case` `data/<case>/` (+ định nghĩa ở khung HP `Cons_Gate_12_SourceOfTruth`). Hồn của mẫu: mỗi vấn đề là
 > một MẠCH VIỆC quay lại nhiều lần — mọi thứ của nó phải nằm MỘT chỗ, mở một folder ra hết.
 
 ## Trước khi mở case mới — TRA ĐÃ CÓ CHƯA

@@ -2,7 +2,7 @@
 id: Slot_115
 aka: 03-115
 name: tasks
-version: 4
+version: 5
 path: tasks/
 ---
 # Tasks_115_Tasks tasks — đơn vị công việc: 1 case = 1 folder
@@ -11,7 +11,7 @@ path: tasks/
   - 1 CASE = 1 FOLDER — đơn vị công việc, CẢ định kỳ LẪN theo yêu cầu. Mọi file của MỘT case nằm cùng chỗ.
   - Vì sao: để phẳng thì findings + query + fix của một vấn đề rải 3 slot → tra phải mò 3 nơi và luôn sót.
   - Thứ này để đâu — hỏi đúng MỘT câu: nó thuộc MỘT case, hay dùng chung? Thuộc một case ⇒ `tasks/<case>/` (spec · findings · SQL · `pipeline/`) + `data/<case>/` (file nặng). Dùng chung nhiều case ⇒ `scripts/` · `sources/` · `queries/` · `measures/` theo vai trò. Code của người khác clone về ⇒ `external/`, kể cả khi trông giống pipeline.
-  - 3 ngoại lệ được nằm ngoài case: query dùng chung nhiều case → `queries/` · định nghĩa metric → từ điển dữ liệu (part `Docs_138_DataDictionary` data-dictionary) · defect/spec dài → `docs/plan`.
+  - 3 ngoại lệ được nằm ngoài case: query dùng chung nhiều case → `queries/` · định nghĩa metric → khung HP `Cons_Gate_12_SourceOfTruth` (mục Định nghĩa) · defect/spec dài → `docs/plan`.
   - Không gom các slot dùng chung vào một thư mục cha: ranh giới phòng ban đã là ranh giới repo (tên repo là tên phòng ban), một tầng nữa chỉ vẽ lại thứ đã có.
   - Con của `tasks/` là tự do theo chuẩn — không bị coi là lệch chuẩn. Repo tổ chức theo nguồn có thể không có `tasks/`.
 - Khuôn tên:

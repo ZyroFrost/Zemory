@@ -130,9 +130,9 @@ docs_visual ≠ docs    docs_visual/ nằm NGOÀI docs/ — agent KHÔNG tự đ
 ## Nguồn sự thật
 
 ```
-Từ điển dữ liệu   docs/agent/02_STRUCTURE/INDEX.md (Docs_138_DataDictionary) — định nghĩa metric/cột là nguồn
-                  sự thật, chống mỗi báo cáo tính một kiểu. MỘT từ điển cho cả dự
-                  án: tên-chỗ (§1) và tên-nghiệp-vụ (Docs_138_DataDictionary) ở chung một file.
+Định nghĩa        khung HP Cons_Gate_12_SourceOfTruth (mục Định nghĩa) — định nghĩa metric/cột là nguồn
+                  sự thật, chống mỗi báo cáo tính một kiểu; cách tính ở skill riêng Skill_Own_<Tên>.
+                  Mục lục slot (02_STRUCTURE/INDEX.md) do máy sinh, không chứa định nghĩa.
 Publish/refresh   Tự động hoá → scripts/ · bản render ra → exports/ (gitignore,
                   build lại được). Giữ bản trước khi đè vào attic/ để rollback.
 ```

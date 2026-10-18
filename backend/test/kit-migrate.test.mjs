@@ -96,14 +96,17 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   assert.doesNotMatch(readFileSync(join(agent, "01_LAW", "_Rule", r99, `${r99}.md`), "utf8"), /^from:/m, "a repo-only rule is the repo's own");
   assert.deepEqual(JSON.parse(readFileSync(join(agent, "01_LAW", "_Rule", r99, "gate.json"), "utf8")), { gate: "guard" });
   // structure + skills + entry
-  assert.equal(readFileSync(join(agent, "02_STRUCTURE", "INDEX.md"), "utf8"), oldStruct);
+  // the old structure file is in the archive byte for byte; the INDEX is the machine's table of contents (plan/29 §13)
+  assert.equal(readFileSync(join(arch, "03_STRUCTURE.md"), "utf8"), oldStruct);
+  assert.match(readFileSync(join(agent, "02_STRUCTURE", "INDEX.md"), "utf8"), /^<!-- zemory:generated/m);
   // an untouched shared skill takes the store copy: source in the harness, plugged under its host name; the old folder goes
   assert.match(readFileSync(join(root, "docs", "agent", "03_SKILLS", "Skill_Harness_Grill", "Skill_Harness_Grill.md"), "utf8"), /^from: _Store\/03_SKILLS\/Skill_Harness_Grill/m);
   assert.match(readFileSync(join(root, ".claude", "skills", "harness-grill", "SKILL.md"), "utf8"), /^from: _Store\/03_SKILLS\/Skill_Harness_Grill/m, "an untouched shared skill takes the store copy");
   assert.ok(!existsSync(join(root, ".claude", "skills", "grill")), "the untouched old copy does not stay beside the new one");
   const roster = readFileSync(join(agent, "03_SKILLS", "INDEX.md"), "utf8");
-  assert.match(roster, /\| `harness-grill\/` \|/, "the roster row follows the replaced skill to its host name");
+  assert.match(roster, /`\.claude\/skills\/harness-grill\/`/, "the generated list names the skill by its host folder");
   assert.doesNotMatch(roster, /`grill\/`/, "no row left pointing at the removed folder (conform: skill-roster-drift)");
+  assert.match(roster, /`\.claude\/skills\/pbi-main\/`/, "the repo's own host-only skill has its row");
   assert.match(readFileSync(join(root, ".claude", "skills", "audit", "SKILL.md"), "utf8"), /REPO EDIT/, "an edited shared skill is kept");
   assert.equal(readFileSync(join(root, ".claude", "skills", "pbi-main", "SKILL.md"), "utf8"), "---\nname: pbi-main\ndescription: x\n---\nown\n");
   assert.match(readFileSync(join(root, "AGENTS.md"), "utf8"), /pbi-main/, "the repo's own trigger row is carried");

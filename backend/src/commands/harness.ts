@@ -88,7 +88,8 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   if (r.plug.skipped.length) console.log(`  ! host folder taken by a skill of the repo's own, store build not plugged: ${r.plug.skipped.join(" · ")}`);
   if (r.installed.kept.length) console.log(`  ! kept, edited here (merge into the store part by hand): ${r.installed.kept.join(" · ")}`);
   const conflicts = printKitSteps(r, opts.apply);
-  if (opts.apply && r.skillsBlock === "written") console.log("  ✔ 03_SKILLS/INDEX.md skills block refreshed");
+  if (opts.apply && r.skillsBlock === "written") console.log("  ✔ 02_STRUCTURE/INDEX.md · 03_SKILLS/INDEX.md rewritten from the assembled parts");
+  if (r.indexArchived.length) console.log(`  ✔ hand-written INDEX kept in the archive: ${r.indexArchived.join(" · ")}`);
   if (opts.apply) {
     try {
       const g = generateGuards(root);

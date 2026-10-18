@@ -694,6 +694,7 @@ export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName
       const src = join(storeDir, name);
       const dst = join(agentDir, name);
       if (!existsSync(src) || existsSync(dst) || LEDGER_NAMES[name === LEDGER.todo ? "todo" : "changes"].some((n) => existsSync(join(agentDir, n)))) continue;
+      mkdirSync(agentDir, { recursive: true });
       writeFileSync(dst, fill(readFileSync(src, "utf8").replace(/\r\n/g, "\n")));
       added.push(relative(repoRoot, dst).replace(/\\/g, "/"));
     }
@@ -1338,7 +1339,8 @@ export interface RetiredCopy {
  */
 export function retireCopies(t: AssemblyTarget, kitKeys: Set<string>, archiveDir: string, apply: boolean, storeDir = STORE_DIR): RetiredCopy[] {
   const out: RetiredCopy[] = [];
-  for (const shelf of [SHELF.rules, SHELF.constitution] as const) {
+  // a retired slot leaves the same way (plan/29 §13, Docs_138); a skill also has a host build, so it is retired by hand
+  for (const shelf of [SHELF.rules, SHELF.constitution, SHELF.structure] as const) {
     const retired = new Set(listParts(join(storeDir, ARCHIVE_SHELF), shelf).map((p) => p.key));
     for (const p of listParts(t.agentDir, shelf)) {
       if (!p.from || kitKeys.has(p.key) || !retired.has(p.key)) continue;

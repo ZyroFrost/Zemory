@@ -72,3 +72,11 @@ repo tự viết theo luật khung `01_LAW/_Cons`.
 | Cons_Core_07_LayoutIsFixed | `Rule_Keys_62_DesignChangeApproval` · dòng tổng ở dưới: `Skill_Dev_AppDesign` |
 | Cons_Core_08_DoNowNotBacklog | `Rule_Gate_38_TodoDoor` |
 | PURPOSE.md | `Cons_Gate_09_Purpose` |
+
+## Đợt tầng luật (plan/29 §13)
+
+Cấu trúc (`02_STRUCTURE/_Slot`): mục lục `INDEX.md` thành mục lục máy sinh, không còn chỗ cho định nghĩa nghiệp vụ.
+
+| Linh kiện | Nội dung chuyển tới |
+|---|---|
+| Docs_138_DataDictionary | định nghĩa: khung HP `Cons_Gate_12_SourceOfTruth` (mục Định nghĩa) · cách tính: skill riêng của repo `Skill_Own_<Tên>` |
