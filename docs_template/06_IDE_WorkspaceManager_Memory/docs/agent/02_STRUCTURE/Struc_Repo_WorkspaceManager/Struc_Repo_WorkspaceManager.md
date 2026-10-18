@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_WorkspaceManager
 name: repo-workspace-manager
-version: 2
+version: 3
 profile: non-app
 label: WORKSPACE-MANAGER
 intro: : repo tổng quản của một cụm — giữ dữ liệu dùng chung (DW, kho dữ liệu), giá trị của cụm, bộ mail chung; quyết khung và chuẩn của các repo phòng ban nó quản
@@ -9,7 +9,8 @@ ask: ; repo giữ kho dữ liệu và chuẩn chung mà các repo phòng ban đ�
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_NonApp]
-from: _Store/02_STRUCTURE/Struc_Repo_WorkspaceManager @v2 #8519baa028d9
+installs: [scripts/region_values.py]
+from: _Store/02_STRUCTURE/Struc_Repo_WorkspaceManager @v3 #86e5d806c09f
 ---
 # Struc_Repo_WorkspaceManager
 
@@ -22,6 +23,8 @@ cung cấp cho cả cụm. Template này khác nhau theo từng cụm của ngư
 - Cung cấp cho cả cụm: `data` (DW, kho dữ liệu) · `workspace-values` (giá trị của cụm, slot `Data_140_WorkspaceValues`) · `mail`
   (bộ mail chung, slot `Config_139_Mail`).
 - Không thuộc quyền repo nào (cấp cao nhất của cụm).
+- Cài `scripts/region_values.py` như template phòng ban (bản chép từng byte của bản ở `Struc_Repo_Dept`, test giữ hai bản
+  bằng nhau): tool của skill PBI và task VM đọc giá trị cụm qua nó; chạy trong chính repo này thì nó nhận repo này là tổng quản.
 
 ## Repo khác dùng dịch vụ thế nào
 

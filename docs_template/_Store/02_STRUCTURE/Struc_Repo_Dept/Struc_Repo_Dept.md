@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_Dept
 name: repo-dept
-version: 7
+version: 8
 profile: non-app
 label: DEPT
 intro: : repo của một phòng ban trong một vùng có tổng quản — việc theo case (kéo · xử lý · giao báo cáo), báo cáo BI, tác vụ chạy định kỳ trên máy chủ; không phát triển app
