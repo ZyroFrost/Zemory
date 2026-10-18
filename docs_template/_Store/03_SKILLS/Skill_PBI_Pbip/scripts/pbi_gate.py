@@ -89,6 +89,7 @@ RULES = [
     ('card-row',    'Mix: the Card group holds card tiles only (BG_ + cardVisual/Card_ + Pct_); charts/tables in it are dropped'),
     ('pct-period',  'Mix: an unlabelled Pct_ line needs the period in the measure format ("MoM", "WoW", "vs Target")'),
     ('pct-color',   'Mix: a % on a card/table/chart label is coloured by a rule on THAT measure: up #007A36, down #C51E24'),
+    ('single-page-overview', 'Mix: a report with ONE visible page names it Overview - the header already carries the report name; the first tab stays Summary'),
     ('page-name',   'Mix: the page name says what the page is; generic department names (Phong ..., a department code, Report, Page 1) fail; no department code, no Report / Dashboard word - the header already says it (Monthly, not Monthly Report ABC)'),
     ('tab-big-charts', 'Mix: a tab holds at most 3 big charts (block height >= 250)'),
     ('axis-scroll', 'Mix: categories x 20px must not exceed the plot area (53 weeks, 31 days...) - a chart must not scroll by itself'),
@@ -134,6 +135,7 @@ RULES = [
     ('clear-filter', 'every filter panel keeps the Ori refresh button BT_ClearFilter (240,20 40x40) -> <Page>_ClearFilter: Data on, every panel slicer in its targets (any tier, every department)'),
     ('panel-title', 'Mix: every filter panel item (title, labels, slicers, buttons) sits above BG_FilterPanel - else the panel paints over it'),
     ('slicer-blank', 'Mix: every slicer column carries the visual filter "is not blank" - no slicer may show (Blank)'),
+    ('slicer-current', 'engine: a period slicer with a "Current ..." member lists NO member that starts after it - the label and the slicer filter share one reference date'),
     ('bm-number',   'Mix: bookmark prefix NN = real position of its page among visible pages; no bookmark of a deleted page'),
     ('measure-folder', 'Mix: #Measure folders lettered in page order: A. Calculation, then B.. = <page name> for every visible page'),
     ('measure-dup', 'two measures with the same name (case-insensitive) in a table - Desktop refuses to open the project'),
@@ -2160,6 +2162,12 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         elif re.search(r'(?i)\b(report|dashboard)\b', pages[p]['displayName']):
             fail.append("page '%s': 'Report' / 'Dashboard' repeats the header - drop the word (Monthly Report -> Monthly)"
                         % pages[p]['displayName'])
+    # single-page-overview: one visible page = Overview; the header already carries the report name, a page named after
+    # the report repeats it (a department report, 2026-10-18). HiddenInViewMode pages do not count.
+    if len(visible) == 1:
+        only = pages[next(iter(visible))]['displayName'].strip()
+        if only != 'Overview':
+            fail.append("page '%s': the only visible page is named Overview - the header already carries the report name" % only)
     check_card_row(pages, visible, vis, fail)
     # slicer-blank: no slicer may show (Blank) (the design standard, user 2026-09-10 / 2026-09-27)
     for (pg, i), d in vis.items():
@@ -3549,6 +3557,96 @@ def slicer_text_columns(report_dir):
     return sorted(out)
 
 
+def _dax_lit(v):
+    """PBIR literal -> DAX literal ('x' -> "x", 1L -> 1, null -> BLANK()); None when the shape is unknown."""
+    if not isinstance(v, str):
+        return None
+    if v == 'null':
+        return 'BLANK()'
+    if v.startswith("'") and v.endswith("'"):
+        return '"%s"' % v[1:-1].replace("''", "'").replace('"', '""')
+    m = re.fullmatch(r'(-?\d+(?:\.\d+)?)[LDM]?', v)
+    if m:
+        return m.group(1)
+    if v in ('true', 'false'):
+        return v.upper() + '()'
+    return None
+
+
+def _dax_cond(cond, ref):
+    """One PBIR filter condition on table `ref` -> DAX boolean, or None when a part is outside this table / unknown."""
+    if 'Not' in cond:
+        inner = _dax_cond(cond['Not'].get('Expression', {}), ref)
+        return None if inner is None else 'NOT ( %s )' % inner
+    if 'Comparison' in cond:
+        c = cond['Comparison']
+        col = c.get('Left', {}).get('Column', {}).get('Property')
+        lit_ = _dax_lit(c.get('Right', {}).get('Literal', {}).get('Value'))
+        if not col or lit_ is None or c.get('ComparisonKind', 0) != 0:
+            return None
+        return 'ISBLANK ( %s[%s] )' % (ref, col) if lit_ == 'BLANK()' else '%s[%s] = %s' % (ref, col, lit_)
+    if 'In' in cond:
+        ex = cond['In'].get('Expressions', [])
+        if len(ex) != 1 or not ex[0].get('Column', {}).get('Property'):
+            return None
+        vals = [_dax_lit(r[0].get('Literal', {}).get('Value')) for r in cond['In'].get('Values', []) if r]
+        if not vals or None in vals:
+            return None
+        return '%s[%s] IN { %s }' % (ref, ex[0]['Column']['Property'], ', '.join(vals))
+    return None
+
+
+def slicer_current_exprs(report_dir):
+    """slicer-current (a department report, 2026-10-18: the Month slicer listed 'Current Month' = 09 AND then '10' - the label
+    followed the last closed month while the slicer filter let the next month through). For every slicer on a date table
+    (a dateTime key column) one DAX scalar = the number of members, other than a 'Current ...' one, that hold ANY date
+    (MAX, under the slicer's own visual filters) after the last date of the 'Current ...' member. > 0 = red. MAX, not MIN:
+    a month member spans years ('10' = 10/2025 + 10/2026), so its first date hides the part that runs past Current.
+    Visual filters translated: =, IN, NOT, is blank on the slicer's own table; a filter on another table is skipped."""
+    keys = {}
+    for t in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        txt = open(t, encoding='utf-8').read()
+        tab = re.search(r"(?m)^table\s+('(?:[^']|'')+'|\S+)", txt)
+        tab = tab.group(1).strip("'").replace("''", "'") if tab else os.path.basename(t)[:-5]
+        for m in re.finditer(r"(?m)^\tcolumn\s+('(?:[^']|'')+'|[^\s=]+)\s*\n((?:\t\t.*\n|\s*\n)+?)(?=^\t\S|\Z)", txt):
+            if 'dataType: dateTime' in m.group(2) and re.search(r'(?m)^\t\tisKey\s*$', m.group(2)):
+                keys[tab] = m.group(1).strip("'").replace("''", "'")
+    out = []
+    for f in sorted(glob.glob(os.path.join(report_dir, '*.Report', 'definition', 'pages', '*', 'visuals', '*', 'visual.json'))):
+        try:
+            d = json.load(open(f, encoding='utf-8-sig'))
+        except Exception:
+            continue
+        v = d.get('visual', {})
+        if v.get('visualType') != 'slicer':
+            continue
+        projs = v.get('query', {}).get('queryState', {}).get('Values', {}).get('projections', [])
+        if len(projs) != 1:
+            continue
+        c = projs[0].get('field', {}).get('Column', {})
+        tab, col = c.get('Expression', {}).get('SourceRef', {}).get('Entity'), c.get('Property')
+        if tab not in keys or not col:
+            continue
+        ref = "'%s'" % tab.replace("'", "''")
+        conds = []
+        for fl in d.get('filterConfig', {}).get('filters', []):
+            for w in (fl.get('filter') or {}).get('Where', []):
+                dc = _dax_cond(w.get('Condition', {}), ref)
+                if dc:
+                    conds.append(dc)
+        # KEEPFILTERS: intersect with the member filter the context transition brings (a plain column predicate on the
+        # slicer's own column would REPLACE it and measure every member at once)
+        flt = ''.join(', KEEPFILTERS ( %s )' % x for x in conds)
+        tc, dk = '%s[%s]' % (ref, col), '%s[%s]' % (ref, keys[tab])
+        expr = ('VAR cur = CALCULATE ( MAX ( %s ), FILTER ( ALL ( %s ), LEFT ( %s, 8 ) = "Current " )%s ) '
+                'RETURN IF ( ISBLANK ( cur ), 0, COUNTROWS ( FILTER ( CALCULATETABLE ( VALUES ( %s )%s ), '
+                'LEFT ( %s, 8 ) <> "Current " && CALCULATE ( MAX ( %s )%s ) > cur ) ) + 0 )'
+                % (dk, tc, tc, flt, tc, flt, tc, dk, flt))
+        out.append(('slicer-current|%s|%s|%s[%s]' % (os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(f)))),
+                                                    d.get('name'), tab, col), expr))
+    return out
+
+
 FEW_ROWS = 6
 
 
@@ -3664,7 +3762,8 @@ def check_engine(report_dir, fail, wait=240):
     few = matrix_row_fields(report_dir)
     cols = cols + sorted(k for k in few if k not in slicer_cols)
     negf = os.path.join(tempfile.gettempdir(), 'pbi_gate_neg.txt')
-    open(negf, 'w', encoding='utf-8').write('\n'.join('%s\t%s' % x for x in neg_bar_exprs(report_dir)))
+    open(negf, 'w', encoding='utf-8').write('\n'.join('%s\t%s' % x for x in neg_bar_exprs(report_dir)
+                                                      + slicer_current_exprs(report_dir)))
     try:
         out = subprocess.run(['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ps,
                               '-Dir', os.path.abspath(report_dir), '-Wait', str(wait),
@@ -3681,6 +3780,14 @@ def check_engine(report_dir, fail, wait=240):
                                                              (e.get('msg') or '').strip()[:200]))
         if e.get('event') == 'close-failed':
             fail.append('engine: %s' % e.get('msg'))
+        if e.get('event') == 'neg' and (e.get('label') or '').startswith('slicer-current|'):
+            _, pg_, vn_, col_ = e['label'].split('|', 3)
+            if e.get('msg'):
+                fail.append('engine: slicer %s (%s) - the slicer-current query failed: %s' % (vn_, col_, e['msg']))
+            elif (e.get('v') or '0') not in ('', '0'):
+                fail.append("engine: slicer %s on %s shows %s member(s) reaching past its 'Current ...' member - the label "
+                            "and the slicer filter must use ONE reference date (skill pbi-mix 3d slicer-current)" % (vn_, col_, e['v']))
+            continue
         if e.get('event') == 'neg':
             try:
                 low = float(e.get('v') or 'nan')
