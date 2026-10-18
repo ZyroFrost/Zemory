@@ -9,7 +9,7 @@ ask: ; repo phòng ban nhận dữ liệu từ DW của tổng quản và giao b
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 installs: [scripts/region_values.py]
-from: _Store/02_STRUCTURE/Struc_Repo_Dept @v8 #570f2537e538
+from: _Store/02_STRUCTURE/Struc_Repo_Dept @v8 #23f50c943fe9
 ---
 # Struc_Repo_Dept
 

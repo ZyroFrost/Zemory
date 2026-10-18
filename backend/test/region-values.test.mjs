@@ -35,7 +35,8 @@ test("the manager is found from a dept repo, from itself, and on the server copi
   put("vm/Mgr/scripts/x.txt", "");
   put("vm/Dept_A/scripts/x.txt", "");
   const find = (from) => {
-    const r = spawnSync(python, ["-c", "import sys; sys.path.insert(0, sys.argv[1]); import region_values as r; print(r.manager_root(sys.argv[2]) or '')",
+    // -B: no __pycache__ written into the store part
+    const r = spawnSync(python, ["-B", "-c","import sys; sys.path.insert(0, sys.argv[1]); import region_values as r; print(r.manager_root(sys.argv[2]) or '')",
       dirname(DEPT_COPY), join(w, from)], { encoding: "utf8", windowsHide: true, env: { ...process.env, DW_REPO: "" } });
     assert.equal(r.status, 0, r.stderr);
     return r.stdout.trim();
