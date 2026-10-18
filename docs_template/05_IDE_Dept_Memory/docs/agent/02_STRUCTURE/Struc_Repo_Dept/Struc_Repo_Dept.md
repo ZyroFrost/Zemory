@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_Dept
 name: repo-dept
-version: 7
+version: 8
 profile: non-app
 label: DEPT
 intro: : repo của một phòng ban trong một vùng có tổng quản — việc theo case (kéo · xử lý · giao báo cáo), báo cáo BI, tác vụ chạy định kỳ trên máy chủ; không phát triển app
@@ -9,7 +9,7 @@ ask: ; repo phòng ban nhận dữ liệu từ DW của tổng quản và giao b
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 installs: [scripts/region_values.py]
-from: _Store/02_STRUCTURE/Struc_Repo_Dept @v7 #88840f07e942
+from: _Store/02_STRUCTURE/Struc_Repo_Dept @v8 #570f2537e538
 ---
 # Struc_Repo_Dept
 

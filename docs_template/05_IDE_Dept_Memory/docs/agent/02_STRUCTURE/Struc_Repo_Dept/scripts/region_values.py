@@ -5,7 +5,9 @@ The workspace manager is the repo that holds the shared warehouse and the worksp
   1. the environment variable DW_REPO (a path)
   2. the repo's own marker: docs/.harness.json names "owner": "<folder>" - that folder, looked for up to three levels above
      the repo and two levels below each of those (Struc_Region_Workspace)
-  3. a sibling repo whose .env holds WAREHOUSE_CONN, the current repo excepted (a server layout without the owner folder)
+  3. the repo the start sits in, when it IS the manager: it holds data/region/values.json, or (a server copy that carries
+     no data/region) its own .env holds WAREHOUSE_CONN and its marker names no owner
+  4. a sibling repo whose .env holds WAREHOUSE_CONN, the current repo excepted (a server layout without the owner folder)
 Real values live in <manager>/data/region/values.json (git does not track data/): warehouse_server · theme_file ·
 icons_dir · vm_ssh_alias. Nothing company-specific lives in the tools.
 """
@@ -79,12 +81,33 @@ def _env_has_conn(folder):
         return False
 
 
+def _marker_owner(folder):
+    try:
+        return json.load(open(os.path.join(folder, 'docs', '.harness.json'), encoding='utf-8-sig')).get('owner')
+    except Exception:
+        return None
+
+
+def _self_manager(start):
+    """The folder the start sits in (or one above it) that is the manager itself."""
+    cur = os.path.abspath(start)
+    while True:
+        if os.path.isfile(os.path.join(cur, 'data', 'region', 'values.json')):
+            return cur
+        if _env_has_conn(cur) and not _marker_owner(cur):
+            return cur
+        up = os.path.dirname(cur)
+        if up == cur:
+            return None
+        cur = up
+
+
 def manager_root(start):
     """The region manager's folder, or None."""
     if os.environ.get('DW_REPO') and os.path.isdir(os.environ['DW_REPO']):
         return os.environ['DW_REPO']
     start = os.path.abspath(start)
-    m = _owner(start)
+    m = _owner(start) or _self_manager(start)
     if m:
         return m
     # no owner found: a sibling of the repo the start sits in, holding the warehouse connection
