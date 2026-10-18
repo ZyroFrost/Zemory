@@ -58,7 +58,7 @@ export function repoGates(root: string, name: string): RepoGates | null {
   const rules = ruleCoverage(root, agentDir);
   const gaps =
     (wiring === null ? 1 : wiring.length ? 1 : 0) +
-    (precommit === "none" || precommit === "other" ? 1 : 0) +
+    (precommit === "none" || precommit === "other" || precommit === "dead" ? 1 : 0) +
     (hp && hp.missing.length ? 1 : 0) +
     (top.length ? 1 : 0) +
     (readFirst ? 0 : 1) +
@@ -86,6 +86,7 @@ export function repoGateLines(g: RepoGates): string[] {
   else if (g.wiring.length) out.push(`guard matcher skips ${g.wiring.join(" · ")} (\`zemory hook guard\`)`);
   if (g.precommit === "none") out.push("pre-commit not wired — git never runs precommit-guard.cjs (`zemory hook guard`)");
   if (g.precommit === "other") out.push("pre-commit is the repo's own and does not call precommit-guard.cjs — add it by hand");
+  if (g.precommit === "dead") out.push("pre-commit calls a precommit-guard.cjs that is gone — every commit fails (`zemory sync --standard --apply` rewrites the tool's own)");
   if (g.hp && !g.hp.table) out.push(`02_RULES has no "## Cổng cho hiến pháp" table (${g.hp.articles} article(s) to map)`);
   else if (g.hp && g.hp.missing.length) out.push(`constitution article(s) ${g.hp.missing.join(", ")} have no gate row (of ${g.hp.articles})`);
   for (const t of g.top) out.push(`${t} (\`zemory gates --write-top\`)`);

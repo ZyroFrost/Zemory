@@ -20,11 +20,11 @@ có mặt ở đó và khớp bản kho (dòng `from:`), và mọi folder ở đ
 | `Skill_Harness_SessionClose/` | `.claude/skills/harness-session-close/` | _Store/03_SKILLS/Skill_Harness_SessionClose @v13 #67ab654bf7f1 |
 | `Skill_Harness_SyncPath/` | `.claude/skills/harness-sync-path/` | _Store/03_SKILLS/Skill_Harness_SyncPath @v9 #ba1f734475c9 |
 | `Skill_PBI_Base/` | `.claude/skills/pbi-base/` | _Store/03_SKILLS/Skill_PBI_Base @v2 #839bb383ff9b |
-| `Skill_PBI_Classic/` | `.claude/skills/pbi-classic/` | _Store/03_SKILLS/Skill_PBI_Classic @v1 #bb00ec97b894 |
+| `Skill_PBI_Classic/` | `.claude/skills/pbi-classic/` | _Store/03_SKILLS/Skill_PBI_Classic @v2 #aab4b566fdde |
 | `Skill_PBI_Legacy/` | `.claude/skills/pbi-legacy/` | _Store/03_SKILLS/Skill_PBI_Legacy @v1 #7323cd307e33 |
 | `Skill_PBI_Main/` | `.claude/skills/pbi-main/` | _Store/03_SKILLS/Skill_PBI_Main @v1 #4c2dcb6a9b4e |
-| `Skill_PBI_Mix/` | `.claude/skills/pbi-mix/` | _Store/03_SKILLS/Skill_PBI_Mix @v3 #bbec438127de |
-| `Skill_PBI_Pbip/` | `.claude/skills/pbi-pbip/` | _Store/03_SKILLS/Skill_PBI_Pbip @v4 #06beb0cf247f |
+| `Skill_PBI_Mix/` | `.claude/skills/pbi-mix/` | _Store/03_SKILLS/Skill_PBI_Mix @v4 #2133bb4faf07 |
+| `Skill_PBI_Pbip/` | `.claude/skills/pbi-pbip/` | _Store/03_SKILLS/Skill_PBI_Pbip @v5 #15b2c082eb57 |
 | `Skill_Task_Case/` | `.claude/skills/task-case/` | _Store/03_SKILLS/Skill_Task_Case @v7 #44e16c19e67c |
 | `Skill_Task_Fill/` | `.claude/skills/task-fill/` | _Store/03_SKILLS/Skill_Task_Fill @v8 #8772aae04f3e |
 | `Skill_Task_Pull/` | `.claude/skills/task-pull/` | _Store/03_SKILLS/Skill_Task_Pull @v4 #3124d5a346ba |

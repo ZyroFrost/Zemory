@@ -748,3 +748,32 @@ test("a hook command whose file is gone is red in conform; a rule that took the 
   assert.deepEqual(after.hooks.PreToolUse.map((g) => g.hooks[0].command), ["node docs/hooks/gone.cjs"], "only the taken-over command goes");
   assert.ok(existsSync(join(root, "docs", "archive", "hooks", "mail-gate.cjs")) && !existsSync(join(root, "docs", "hooks")), "the copy is archived, the empty folder gone");
 });
+
+test("a hook written as command + args is read like the string form: dead file red, takeover drops it", (t) => {
+  // 2026-10-18: a department wired {"command": "node", "args": ["docs/hooks/x.cjs"]} - the reader saw only "node", so its
+  // three own hooks were archived by the move, the dead ones were not red and the mail hook was never taken over.
+  const st = store(t);
+  put(st.s, "01_LAW/_Rule/02-82_mail/RULE.md", "---\nid: 02-82\nname: mail\nversion: 1\nkind: action\n---\n# mail\n\n- never send mail on its own\n");
+  put(st.s, "01_LAW/_Rule/02-82_mail/gate.json", JSON.stringify({ hook: "hook.cjs", replaces_hooks: ["mail-gate.cjs"] }));
+  put(st.s, "01_LAW/_Rule/02-82_mail/hook.cjs", "module.exports = { check: () => null };\n");
+  const k = readKits(st.s).find((x) => x.no === "01");
+  assembleSet({ ...k, rules: [...k.rules, "02-82"] }, st.s);
+  st.commit("mail rule");
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const sp = join(root, ".claude", "settings.json");
+  put(root, ".claude/settings.json", JSON.stringify({ hooks: { PreToolUse: [
+    { matcher: "Bash", hooks: [{ type: "command", command: "node", args: ["docs/hooks/mail-gate.cjs"] }] },
+    { matcher: "Bash", hooks: [{ type: "command", command: "node", args: ["docs/hooks/gone.cjs"] }] },
+  ] } }, null, 2));
+  put(root, "docs/hooks/mail-gate.cjs", "process.exit(0);\n");
+  const dead = () => conform(root).items.find((i) => i.check === "hook-command-dead")?.samples ?? [];
+  assert.deepEqual(dead(), ["PreToolUse: node docs/hooks/gone.cjs"]);
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.deepEqual(r.hooksTakenOver, ["settings.json: node docs/hooks/mail-gate.cjs", "docs/hooks/mail-gate.cjs → docs/archive/hooks/"]);
+  assert.deepEqual(JSON.parse(readFileSync(sp, "utf8")).hooks.PreToolUse.map((g) => g.hooks[0].args[0]), ["docs/hooks/gone.cjs"]);
+  // git's pre-commit calling a latch that is gone refuses every commit: conform names it too
+  put(root, ".git/config", "[core]\n\tbare = false\n");
+  put(root, ".git/hooks/pre-commit", "#!/bin/sh\nnode docs/hooks/precommit-guard.cjs\n");
+  assert.ok(dead().includes("git pre-commit: calls a precommit-guard.cjs that is gone"), "conform names a dead pre-commit");
+});

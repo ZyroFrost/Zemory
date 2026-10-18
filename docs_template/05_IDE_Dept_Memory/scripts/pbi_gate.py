@@ -47,6 +47,8 @@ _K_BASE = {'up': 0.66, 'low': 0.52, 'sp': 0.28, 'dig': 0.60, 'amp': 0.78}
 K_SCALE = 1.271
 K_TEXT = dict((k, v * K_SCALE) for k, v in _K_BASE.items())
 STRUCT_GROUPS = ('BG_Header', 'BG_Glossary', 'BG_FilterPanel', 'BG_CloseFilter')
+FILTER_PITCH = 65          # filter panel: label 20 + slicer 40 + gap 5 (filter-rows)
+DONUT_HEAD = 60            # pie / donut: title + legend row; below it the ring is at most as tall as wide (donut-shape)
 
 
 RULES = [
@@ -257,7 +259,9 @@ KEEP_OLD_DESIGN = False
 # Findings that make Desktop refuse the file or open it with "report has issues" - the only ones --open-check blocks on.
 OPEN_BREAKERS = ('broken JSON', 'unknown root keys', 'visualLink in the WRONG PLACE', 'still has the singleVisualGroup key',
                  'image NOT on disk', 'image not declared', 'declared twice', 'points to a DELETED visual',
-                 'a GROUP sits in visualContainers', 'a LEAF sits in visualContainerGroups')
+                 'a GROUP sits in visualContainers', 'a LEAF sits in visualContainerGroups',
+                 'same field projected twice', 'm-step-comma', 'bookmark-filter-objects', 'filter-where-field', 'dead-entity', 'dead-field', 'literal-type',
+                 'measure-format-both', 'tmdl-multiline')
 
 
 def check_structure(vis, bms, groups, leaves, put, fail):
@@ -267,6 +271,16 @@ def check_structure(vis, bms, groups, leaves, put, fail):
             fail.append('%s: unknown root keys %s' % (i, sorted(bad)))
         if 'visualLink' in d.get('visual', {}):
             fail.append('%s: visualLink in the WRONG PLACE - it must be in visual.visualContainerObjects' % i)
+        # One field = one display name per visual: the same queryRef twice under two labels opens with "report has issues"
+        # (a department repo 12/10, 05 Classic visual 60606443608bcbf7d2bb: Fact_Headcount.JobPositionName as "IDJobTitle" and "Vị Trí").
+        for role, r in d.get('visual', {}).get('query', {}).get('queryState', {}).items():
+            seen = {}
+            for p in r.get('projections', []):
+                q = p.get('queryRef')
+                if q in seen and seen[q] != p.get('displayName'):
+                    fail.append('%s: same field projected twice in %s - %s as %s and %s'
+                                % (sel_name(d) or i, role, q, ascii(seen[q]), ascii(p.get('displayName'))))
+                seen.setdefault(q, p.get('displayName'))
 
     for n, b in bms.items():
         dn = b.get('displayName', n)
@@ -903,7 +917,12 @@ def check_names(vis, put):
             put(pg, '%s: name %r breaks the standard (%s)' % (i, nm, ', '.join(why) or 'does not match the regex'))
 
 
-def check_geometry(page_vis, fail):
+def check_geometry(page_vis, fail, folder=None):
+    # baseline_align (13/10, Product Mix): a column chart shortened so the foot of its columns stands on the row line
+    # (its axis labels are one line, the charts beside it cap theirs) keeps 5 on L/T/R; only its bottom inset is free -
+    # declared per visual in pbi-gate.json with the pixel measure that proves it
+    align = gate_cfg().get('baseline_align', {}).get(folder or '', {})
+
     def absrect(i):
         x = y = 0.0
         d = page_vis[i]
@@ -1008,6 +1027,8 @@ def check_geometry(page_vis, fail):
             off = (p['x'] - b['x'], PAD + p['y'] - top,
                    (b['x'] + b['width']) - (p['x'] + p['width']),
                    (b['y'] + b['height']) - (p['y'] + p['height']))
+            if k in align:
+                off = off[:3] + (PAD,) if off[3] >= PAD else off
             if any(abs(o - PAD) > 1e-6 for o in off):
                 fail.append('%s: inset from BG L/T/R/B=%s, must be %d on every side'
                             % (nmk or k, tuple(round(o, 2) for o in off), PAD))
@@ -1090,6 +1111,19 @@ def check_header(page_vis, fail):
     if pn['position']['x'] != x_need:
         fail.append('page name is detached: x=%s, it must join right after the report name frame = %s'
                     % (pn['position']['x'], x_need))
+    # the page name must END before the tab strip starts (gap >= 5) - a department repo 12/10: 'STORE REPORT AM' pushed the page
+    # name under the tabs on Weekly / DSR and the two checks above stayed green (they only compare the two title frames)
+    def ax(n):
+        x = 0
+        while n in page_vis:
+            x += page_vis[n]['position']['x']; n = page_vis[n].get('parentGroupName')
+        return x
+    tab = next((i for i, d in page_vis.items() if d.get('visualGroup', {}).get('displayName') == 'Tab'), None)
+    if tab:
+        pend, tstart = ax(pn['name']) + pn['position']['width'], ax(tab)
+        if tstart < pend + 5:
+            fail.append("page name '%s' runs into the tab strip: it ends at x=%s, the tabs start at x=%s (need a gap >= 5) "
+                        "- narrow the tabs to their labels or shorten the page name" % (t2, pend, tstart))
 
 
 TITLE_SMALL = {'by','vs', 'of', 'and', 'per', 'in', 'on', 'to', 'the', 'or', 'a', 'over'}
@@ -1209,7 +1243,7 @@ def check_typography(page_vis, fail, legend_warn):
                                lit(p.get('alignment', {}))))
             # title-font (user 13/10, Executive: "cổng kiểm title viết Bold và chung 1 loại font đâu má?"): one title
             # look on every chart / table - Segoe UI Semibold (skill pbi-mix 786); no font set = the theme's regular
-            # Segoe (01 Mix had 30, 02 Mix 18), bold false = a thin title. Same rule as a department repo (5 thin titles found in a department report)
+            # Segoe (01 Mix had 30, 02 Mix 18), bold false = a thin title
             fam = str(lit(p.get('fontFamily', {})) or '')
             if 'Segoe UI Semibold' not in fam or lit(p.get('bold', {})) == 'false':
                 fail.append("%s: title font %s%s - every chart / table title is Segoe UI Semibold (title-font)"
@@ -1721,6 +1755,8 @@ def table_overflow(d, mm):
         # its caption is the FIRST level's name only (a 19-char deeper field name gave a false alarm on 29/09)
         hdr = len(rows[0].get('displayName') or rows[0]['queryRef'].split('.', 1)[1])
         w = max(hdr * hpt, OVF_MEMBER_CHARS * vpt) * OVF_PX_PER_PT + 12 * (len(rows) - 1) + OVF_PAD
+        # a row header the USER sized in Desktop is that wide (14/10, Daily 'Revenue by Day Part': Day Part 82 was read as 113)
+        w = fixed.get(rows[0]['queryRef'], w)
         need += w
         parts.append(int(w))
     for p in q.get('Values', {}).get('projections', []):
@@ -1848,6 +1884,329 @@ def measures_in(o, acc=None):
 
 def hexes_in(o):
     return {h.upper() for h in re.findall(r"#[0-9A-Fa-f]{6}", json.dumps(o))}
+
+
+SHARE_RE = re.compile(r'\bof (Revenue|Total|Sales?)\b|\bShare\b|\bMix\b', re.I)
+
+
+def check_pct_decided(report_dir, folder, pages, visible, vis, fail):
+    """pct-decided (a department repo 13/10, user: "lỗi % đang ko có màu xanh đỏ đúng chuẩn lên xuống ... phải có trong skill và cổng"):
+    a '% ... of Revenue / of Total' measure is EITHER a share (no direction, pct_neutral) OR a margin (up/down, threshold)
+    - the name cannot tell (03 Mix: %Actual of Revenue = share of a P&L line, coloured green on every cost line;
+    %Ebitda of Revenue2 = margin, its chart labels uncoloured). Every such measure shown must be declared one or the other
+    (pbi-gate.json pct_neutral / mix_specs.PALETTE pct_threshold); a declared margin on a chart Y2 must have its label colour rule."""
+    neutral = gate_cfg().get('pct_neutral', {}).get(folder, {})
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        from mix_specs import PALETTE
+        thr = PALETTE.get('pct_threshold', {})
+    except Exception:
+        thr = {}
+    seen = set()
+    for (pg, i), d in vis.items():
+        if pg not in visible or d.get('isHidden'):
+            continue
+        v = d.get('visual', {})
+        for role, r in v.get('query', {}).get('queryState', {}).items():
+            for p in r.get('projections', []):
+                m = p.get('field', {}).get('Measure', {}).get('Property', '')
+                if not m.startswith('%') or not SHARE_RE.search(m) or m in neutral or m in thr or m in seen:
+                    continue
+                seen.add(m)
+                fail.append("%% measure %s ('%s', page '%s') reads like a share or a margin - declare it: share -> pbi-gate.json "
+                            "pct_neutral (no colour), margin -> mix_specs.PALETTE pct_threshold (up/down) (pct-decided)"
+                            % (ascii(m), p.get('displayName') or m, pages[pg]['displayName']))
+        if 'Chart' in str(v.get('visualType')):
+            labs = v.get('objects', {}).get('labels', [])
+            for p in v.get('query', {}).get('queryState', {}).get('Y2', {}).get('projections', []):
+                m = p.get('field', {}).get('Measure', {}).get('Property', '')
+                if m in thr and not any(e.get('selector', {}).get('metadata', '').endswith('.' + m) and 'color' in e.get('properties', {})
+                                        for e in labs):
+                    fail.append("chart %s: the %% line %s has no up/down label colour (mix_palette.py) (pct-decided)"
+                                % (ascii(sel_name(d) or d['name']), ascii(m)))
+
+
+# glossary-cover (user 13/10: "cái nút grossary ở mỗi trang có cổng kiểm là phải chú thích đủ cho mọi từ xuất hiện trong
+# dashboard trong trang đó chưa?"): every word a reader sees on a page - card, chart and table titles, column / axis /
+# legend names, slicer fields, the text values a measure prints (STAR, HORSE ...) - is named in that page's Glossary,
+# unless it is an everyday dashboard word below. Plural 's' and case are folded; an acronym must appear as written.
+GLOSSARY_COMMON = set('''
+a an and or of on in to by vs per with from for the at as all no not is be this that each every than
+store stores month months year years day days week weeks date hour hours time period weekday weekend
+revenue sale sales selling sold target total top bottom best bad worst high low new old last current this next
+product products item items name names quantity amount price value values count number average share rate
+channel channels district area manager region group category code line lines detail details actual compare change
+growth grow trend list overview summary report month year previous base before after up down left right
+daily weekly monthly yearly over
+'''.split())
+INTERNAL_TITLE = re.compile(r'^(Card|Slicer|Text|BG|BT|Chart|Pct|Icon|Line)_')
+
+
+def common_word(w):
+    lw = w.lower()
+    return lw in GLOSSARY_COMMON or (lw.endswith('s') and lw[:-1] in GLOSSARY_COMMON) or \
+        (lw.endswith('ies') and lw[:-3] + 'y' in GLOSSARY_COMMON)
+
+
+def words_of(s):
+    out = []
+    for tok in re.findall(r'[A-Za-z][A-Za-z0-9]*', s or ''):
+        if tok in TITLE_ACRO:                           # MoM, WoW stay whole
+            out.append(tok)
+            continue
+        # StoreName -> Store Name; COGS LT stays; ADS stays
+        out += re.findall(r'[A-Z]{2,}(?=[A-Z][a-z]|\b|[0-9])|[A-Z]?[a-z]+|[A-Z]+|[0-9]+', tok) if not tok.isupper() else [tok]
+    return [w for w in out if not w.isdigit()]
+
+
+def printed(s):
+    """Upper-case text literals a DAX line RETURNS (after '(' or ','), not the ones it compares (= "APP")."""
+    return {m.group(1) for m in re.finditer(r'"([A-Z]{3,})"', s) if s[:m.start()].rstrip()[-1:] in ('(', ',')}
+
+
+def measure_text_values(report_dir):
+    """measure -> the upper-case text values its DAX can print ("STAR", "HIGH" ...): what the reader sees in its cells."""
+    out, cur = {}, None
+    for f in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        for line in open(f, encoding='utf-8'):
+            line = line.rstrip('\r\n')
+            m = re.match(r"^\tmeasure\s+('(?:[^']|'')+'|\S+)\s*=(.*)$", line)
+            if m:
+                cur = m.group(1).strip("'").replace("''", "'")
+                out[cur] = printed(m.group(2))
+            elif cur and (line.startswith('\t\t') or not line.strip()) and not re.match(r'^\t\t[a-zA-Z]+:', line):
+                out[cur] |= printed(line)
+            elif re.match(r'^\t\S', line) or re.match(r'^\t\t[a-zA-Z]+:', line):
+                cur = None
+    return {k: v for k, v in out.items() if v}
+
+
+# acronym-origin (user 13/10: "từ viết tắt phải tra ra từ nguyên gốc và viết vào chứ, cái này cũng phải có cổng kiểm"): every
+# acronym the Glossary uses or the page shows is written out in the Glossary as 'ACR (Origin ...'. The origin is LOOKED UP, with
+# its source - a new acronym is added here only after it is found in one of them:
+#   [BG] the region's business glossary   [LD] the legacy system's dictionary
+#   [DW] the region manager's lineage / structure docs  [REPO] the department repo (docs, DAX)  [F&B] restaurant-industry standard, no
+#   company source yet (TA, GA, ADS - told to the user 13/10)  [VN] a Vietnamese abbreviation of this company
+ACRONYM_ORIGIN = dict(region_value(os.path.dirname(os.path.abspath(__file__)), 'acronym_origin', {}) or {})  # the region's acronyms and their origins
+
+# upper-case words that are not acronyms: class labels, code / table names quoted in a sentence
+NOT_ACRONYM = {'STAR', 'HORSE', 'CHALLENGE', 'DOG', 'HIGH', 'LOW', 'PROFIT', 'DATA', 'WAREHOUSE', 'DB', 'Q1', 'Q2', 'Q3', 'Q4'}
+NOT_ACRONYM |= set(region_value(os.path.dirname(os.path.abspath(__file__)), 'not_acronyms', []))  # the region's own words
+MIXED_ACRONYM = {'WoW', 'MoM', 'Ebitda', 'L4L', 'B2B', 'B2C'}
+
+
+def acronyms_in(s):
+    out = set()
+    for tok in re.findall(r'[A-Za-z][A-Za-z0-9]*', s or ''):
+        if tok in MIXED_ACRONYM or (tok.isupper() and len(tok) > 1 and tok not in NOT_ACRONYM
+                                    and sum(c.isalpha() for c in tok) > 1):
+            out.add('EBITDA' if tok.lower() == 'ebitda' else tok)
+    return out
+
+
+def acronym_written_out(acr, text):
+    o = ACRONYM_ORIGIN.get(acr)
+    pat = r'Ebitda|EBITDA' if acr == 'EBITDA' else re.escape(acr)
+    return bool(o) and bool(re.search(r'(?<![A-Za-z])(?:%s)\s*\(\s*%s' % (pat, re.escape(o)), text, re.I))
+
+
+# glossary-one-def (user 14/10: "mỗi 1 định nghĩa phải xuống dòng chứ ko có dính chùm ntn"): one bullet of the Glossary holds
+# ONE definition - 'TC (Transaction Count): ...' or 'TA = ...'. A definition is a sentence that opens with a term (up to ~60
+# characters, its origin in brackets allowed) and then ': ' or ' = '; '06:00' (a colon before a digit) is not one.
+DEF_START = re.compile(r'^\s*(?:%\s*)?[A-Za-z"][^:=.]{0,60}?(?::\s|\s=\s)')
+
+
+def glossary_sentences(b):
+    """A bullet cut into sentences at '. ' followed by a capital, a digit, '%' or a quote."""
+    return [s for s in re.split(r'(?<=\.)\s+(?=[A-Z0-9%"À-Ỹ])', b.strip()) if s]
+
+
+def split_definitions(b):
+    """One bullet -> bullets of one definition each; a sentence that is not a definition stays with the one before it."""
+    out = []
+    for s in glossary_sentences(b):
+        if out and DEF_START.match(s):
+            out.append(s)
+        elif out:
+            out[-1] += ' ' + s
+        else:
+            out.append(s)
+    return out
+
+
+def check_glossary_cover(report_dir, pages, visible, vis, fail):
+    texts = measure_text_values(report_dir)
+    for pg in visible:
+        gl = ' '.join(r.get('value', '') for (p2, i), d in vis.items() if p2 == pg and sel_name(d) == 'Text_Glossary'
+                      for par in d['visual'].get('objects', {}).get('general', [{}])[0].get('properties', {}).get('paragraphs', [])
+                      for r in par.get('textRuns', []))
+        if not gl:
+            continue
+        seen = {}                                       # word -> where the reader meets it
+        panels = {i for (p2, i), d in vis.items() if p2 == pg and 'visualGroup' in d
+                  and any(sel_name(x) == 'BG_FilterPanel' for (p3, k), x in vis.items() if p3 == pg and x.get('parentGroupName') == i)}
+        for (p2, i), d in vis.items():
+            v = d.get('visual', {})
+            vt = v.get('visualType', '')
+            if p2 != pg or not vt:
+                continue
+            if vt == 'shape' and d.get('parentGroupName') in panels and d['position']['height'] == 20:
+                lab = (lit(((v.get('visualContainerObjects', {}).get('title') or [{}])[0].get('properties', {})).get('text', {})) or '').strip("'")
+                for w in words_of(lab):                 # the label over a slicer is what the reader reads
+                    if not common_word(w):
+                        seen.setdefault(w, lab)
+                continue
+            if vt in ('textbox', 'shape', 'image', 'actionButton', 'slicer'):
+                continue
+            if vt == 'card' and lit((v.get('objects', {}).get('categoryLabels') or [{}])[0].get('properties', {}).get('show', {})) == 'false':
+                continue                                # a Pct_ line under a KPI tile shows its number only
+            where = []
+            tp = (v.get('visualContainerObjects', {}).get('title') or [{}])[0].get('properties', {})
+            t = lit(tp.get('text', {})) if 'Literal' in json.dumps(tp.get('text', {})) else ''
+            t = (t or '').strip("'")
+            if t and not INTERNAL_TITLE.match(t) and lit(tp.get('show', {})) != 'false':
+                where.append(t)
+            for r_ in v.get('query', {}).get('queryState', {}).values():
+                for p_ in r_.get('projections', []):
+                    if p_.get('hidden') or 'NativeVisualCalculation' in p_.get('field', {}):
+                        continue
+                    nm = p_.get('displayName') or p_.get('nativeQueryRef') or p_.get('queryRef', '').split('.')[-1]
+                    if not nm.startswith('Divide('):
+                        where.append(nm)
+                    ms = p_.get('field', {}).get('Measure', {}).get('Property')
+                    where += sorted(texts.get(ms, ()))
+            for s in where:
+                for w in words_of(s):
+                    if not common_word(w):
+                        seen.setdefault(w, s)
+        miss = []
+        for w, s in seen.items():
+            lw = w.lower()
+            if (w.isupper() and len(w) > 1) or w in TITLE_ACRO:
+                ok = re.search(r'(?<![A-Za-z])%s(?![a-z])' % re.escape(w), gl)
+            else:
+                stem = re.escape(w[:-3] + 'y' if lw.endswith('ies') else w[:-1] if lw.endswith('s') and len(w) > 3 else w)
+                ok = re.search(r'(?<![A-Za-z])%s' % stem, gl, re.I)
+            if not ok:
+                miss.append('%s (%s)' % (w, s) if w != s else w)
+        if miss:
+            fail.append("page '%s': the Glossary does not name %d word(s) the reader sees: %s - add them to the page's "
+                        "Glossary (glossary-cover)" % (pages[pg]['displayName'], len(miss), ', '.join(sorted(miss, key=str.lower))))
+        bullets = ' '.join(r.get('value', '') for (p2, i), d in vis.items() if p2 == pg and sel_name(d) == 'Text_Glossary'
+                           for par in d['visual'].get('objects', {}).get('general', [{}])[0].get('properties', {}).get('paragraphs', [])
+                           if par.get('listType') == 'bullet' for r in par.get('textRuns', []))
+        chained = [b for (p2, i), d in vis.items() if p2 == pg and sel_name(d) == 'Text_Glossary'
+                   for par in d['visual'].get('objects', {}).get('general', [{}])[0].get('properties', {}).get('paragraphs', [])
+                   if par.get('listType') == 'bullet'
+                   for b in [''.join(r.get('value', '') for r in par.get('textRuns', []))] if len(split_definitions(b)) > 1]
+        if chained:
+            fail.append("page '%s': %d Glossary line(s) chain several definitions, e.g. '%s' - one definition per line "
+                        "(glossary-one-def)" % (pages[pg]['displayName'], len(chained), chained[0][:80]))
+        acrs = acronyms_in(bullets).union(*(acronyms_in(w) for w in seen))
+        unknown = sorted(a for a in acrs if a not in ACRONYM_ORIGIN)
+        bare = sorted(a for a in acrs if a in ACRONYM_ORIGIN and not acronym_written_out(a, gl))
+        if unknown:
+            fail.append("page '%s': acronym(s) %s have no looked-up origin - find it (the region's business glossary, the legacy dictionary, "
+                        "the warehouse docs) and add it to ACRONYM_ORIGIN with its source (acronym-origin)"
+                        % (pages[pg]['displayName'], ', '.join(unknown)))
+        if bare:
+            fail.append("page '%s': the Glossary uses %s without writing them out - write 'TC (Transaction Count): ...' "
+                        "(acronym-origin)" % (pages[pg]['displayName'], ', '.join(bare)))
+
+
+TITLE_ROW = 20        # a 12D visual title takes ~20 units above the content
+
+
+def check_button_over_table(pages, visible, vis, fail):
+    """button-over-table (user 14/10, Daily & Hourly tab Chi tiet: "nút ở đây bị lỗi, bị đè lên matrix"): view-switch buttons
+    (BT_) laid over a table / matrix sit in its title row; a button taller than that row covers the column headers. The table
+    keeps its frame and gets visualContainerObjects.padding.top >= button bottom - table top - title row."""
+    def absr(pg, d):
+        x = y = 0; cur = d
+        while cur:
+            x += cur['position']['x']; y += cur['position']['y']
+            cur = vis.get((pg, cur.get('parentGroupName'))) if cur.get('parentGroupName') else None
+        return x, y, d['position']['width'], d['position']['height']
+    for (pg, i), t in vis.items():
+        tv = t.get('visual', {})
+        if pg not in visible or tv.get('visualType') not in ('pivotTable', 'tableEx'):
+            continue
+        tx, ty, tw, th = absr(pg, t)
+        title = TITLE_ROW if title_shown(t) else 0
+        pad = lit((tv.get('visualContainerObjects', {}).get('padding') or [{}])[0].get('properties', {}).get('top', {}))
+        pad = float(str(pad).rstrip('DL')) if pad not in (None, '') else 0
+        for (p2, k), b in vis.items():
+            if p2 != pg or b.get('parentGroupName') != t.get('parentGroupName') or not str(sel_name(b) or '').startswith('BT_'):
+                continue
+            bx, by, bw, bh = absr(pg, b)
+            if bx < tx + tw and bx + bw > tx and by < ty + th and by + bh > ty:
+                need = by + bh - ty - title
+                if need > pad:
+                    fail.append("page '%s': button %s covers the column headers of table %s (%g units below its title row, top "
+                                "padding %g) - padding.top >= %g (button-over-table)"
+                                % (pages[pg]['displayName'], sel_name(b), sel_name(t) or i, need, pad, need))
+                    break
+
+
+AXIS_CAP_CHARTS = ('columnChart', 'clusteredColumnChart', 'stackedColumnChart', 'hundredPercentStackedColumnChart')
+
+
+def check_axis_cap(pages, visible, vis, fail):
+    """axis-cap (user 13/10, Product Mix: "điểm đáy của mấy cái cột đang ko đều nhau so với các chart khác, phải nhìn đều
+    nhau hết chứ"): the axis labels under a column chart wrap to as many lines as its longest name, so two charts of one
+    row stand their columns at different heights. Column charts of one row whose axis is text (items, stores - not dates)
+    cap the label area at the SAME categoryAxis.maxMarginFactor; the render check is pbi_pixel 'baseline'."""
+    def top(pg, d):
+        y, cur = 0, d
+        while cur:
+            y += cur['position']['y']
+            cur = vis.get((pg, cur.get('parentGroupName'))) if cur.get('parentGroupName') else None
+        return round(y)
+    rows = {}
+    for (pg, i), d in vis.items():
+        v = d.get('visual', {})
+        if pg not in visible or v.get('visualType') not in AXIS_CAP_CHARTS:
+            continue
+        cat = v.get('query', {}).get('queryState', {}).get('Category', {}).get('projections', [])
+        if not cat or any(p['queryRef'].startswith(('Dim_Date.', 'Parameter_Date.')) for p in cat):
+            continue
+        par = vis.get((pg, d.get('parentGroupName')), d)
+        key = (pg, top(pg, par), round(par['position']['height']), d.get('isHidden', False))
+        cap = lit((v.get('objects', {}).get('categoryAxis') or [{}])[0].get('properties', {}).get('maxMarginFactor', {}))
+        rows.setdefault(key, []).append((sel_name(d) or i, cap))
+    for (pg, y, h, _), lst in rows.items():
+        if len(lst) > 1 and (len({c for _, c in lst}) > 1 or None in {c for _, c in lst}):
+            fail.append("page '%s' row at y %d: column charts %s cap their axis labels differently - one "
+                        "categoryAxis.maxMarginFactor for the row so the columns stand on one line (axis-cap)"
+                        % (pages[pg]['displayName'], y, ', '.join('%s=%s' % (n, c or 'auto') for n, c in lst)))
+
+
+def check_compare_slicers(pages, visible, vis, fail):
+    """compare-month + slicer-unique (a department repo 13/10, user: "filter 2 cái select year thì sao chọn má? cái này nó là từ year
+    tới year đúng ko" -> "phải ghi lại tên làm hiểu sai ... thêm cổng dò"): ONE comparison month is ONE slicer on
+    Parameter_Date[Year Month] labelled 'Compare With' - a Year + a Month slicer read as a range; and two slicers of one
+    page never filter columns of the same name (Year / Year, Month / Month: the reader cannot tell them apart)."""
+    by = {}
+    for (pg, i), d in vis.items():
+        if pg in visible and d.get('visual', {}).get('visualType') == 'slicer':
+            p = d['visual'].get('query', {}).get('queryState', {}).get('Values', {}).get('projections', [{}])[0]
+            by.setdefault(pg, []).append((p.get('queryRef', ''), sel_name(d) or i, p.get('displayName') or p.get('queryRef', '')))
+    for pg, lst in by.items():
+        refs = [q for q, _, _ in lst]
+        names = [n for _, _, n in lst]
+        for n in sorted({n for n in names if names.count(n) > 1}):
+            fail.append("page '%s': %d slicers read the same name '%s' - each one filters its own visuals, so name it after them "
+                        "(Month A / Month B ...) (slicer-unique)" % (pages[pg]['displayName'], names.count(n), n))
+        if 'Parameter_Date.Year' in refs and 'Parameter_Date.Month' in refs:
+            fail.append("page '%s': the comparison month is split into a Year and a Month slicer (reads as 'from .. to ..') - "
+                        "one slicer on Parameter_Date[Year Month] labelled 'Compare With' (compare-month)" % pages[pg]['displayName'])
+        seen = {}
+        for q, n, _ in lst:
+            seen.setdefault(q.split('.')[-1].lower(), []).append(q)
+        for k, qs in seen.items():
+            if len(set(qs)) > 1:
+                fail.append("page '%s': slicers on %s all read '%s' - the reader cannot tell them apart; merge them or give each its "
+                            "own meaning (slicer-unique)" % (pages[pg]['displayName'], ', '.join(sorted(set(qs))), k))
 
 
 def check_pct(report_dir, folder, pages, visible, vis, fail):
@@ -2074,6 +2433,410 @@ def check_fillrule(d_def, fail):
                         'form breaks Save/Publish in Desktop (fillrule-bare)' % (os.path.basename(os.path.dirname(f)), len(hits)))
 
 
+def check_bookmark_filter_objects(d_def, fail):
+    """bookmark-filter-objects (a department repo 12/10): a filter saved inside a bookmark may NOT carry 'objects' - Desktop opens
+    with "An additional property 'objects' was included in .../filters/byExpr/N" (94 issues on Mix 01, after the
+    inverted-selection flag of a visual filter was copied into the bookmark copies of the same filter)."""
+    def walk(x, out):
+        if isinstance(x, dict):
+            if 'filter' in x and 'objects' in x and 'name' in x:
+                out.append(x['name'])
+            for v in x.values():
+                walk(v, out)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v, out)
+    for f in glob.glob(os.path.join(d_def, 'bookmarks', '*.bookmark.json')):
+        out = []
+        walk(json.load(open(f, encoding='utf-8')).get('explorationState', {}), out)
+        if out:
+            fail.append("%s: %d filter(s) in the bookmark carry 'objects' - not allowed in a bookmark filter, Desktop reports "
+                        "'An additional property objects' (bookmark-filter-objects)" % (os.path.basename(f), len(out)))
+
+
+def check_m_steps(report_dir, fail):
+    """m-step-comma (a department repo 12/10): in a partition's Power Query 'let ... in', every step but the last ends with a
+    comma. A missing one opens the project with 'M Engine error: Token ',' expected' and the model does not load -
+    happened when a Clean step was appended under 'Source = Sql.Database(...)' in three Classic models."""
+    for t in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        txt = open(t, encoding='utf-8').read().replace('\r\n', '\n')
+        for m in re.finditer(r'\n(\t+)let\n(.*?)\n\1in\n', txt, re.S):
+            body = m.group(2).split('\n')
+            starts = [i for i, ln in enumerate(body) if re.match(r'^\t+ {4}#?"?[A-Za-z_][\w ]*"?\s*=\s', ln)]
+            for a, b in zip(starts, starts[1:]):
+                prev = body[b - 1].rstrip()
+                if not prev.endswith(','):
+                    fail.append("%s: Power Query step before '%s' does not end with a comma - Desktop stops with "
+                                "\"Token ',' expected\" (m-step-comma)" % (os.path.basename(t), body[b].strip()[:40]))
+
+
+def check_filter_where_field(d_def, fail):
+    """filter-where-field (a department repo 13/10): a filter's header 'field' and the column inside its Where must be the same.
+    Rebinding a legacy report renamed the header (CapChiTieu -> LineLevel, chi_tieu -> LineName, BU -> BusinessUnit ...)
+    but left the condition on the legacy column - Desktop draws "Something's wrong with one or more filters" in place of
+    the visual (03 IP Classic: 12 filters, P&L This Year blank) and all three layers stayed green."""
+    def cols(y, out):
+        if isinstance(y, dict):
+            if isinstance(y.get('Column'), dict) and 'Property' in y['Column']:
+                out.add(y['Column']['Property'])
+            for v in y.values():
+                cols(v, out)
+        elif isinstance(y, list):
+            for v in y:
+                cols(v, out)
+
+    def walk(x, f):
+        if isinstance(x, dict):
+            if isinstance(x.get('field'), dict) and isinstance(x.get('filter'), dict) and x['field']:
+                k = next(iter(x['field']))
+                hp = x['field'][k].get('Property') if isinstance(x['field'][k], dict) else None
+                got = set()
+                cols(x['filter'].get('Where', []), got)
+                if hp and k in ('Column', 'Hierarchy') and got and hp not in got:
+                    fail.append("%s: filter %s is on field '%s' but its condition reads '%s' - point the Where/From at the same "
+                                "column, Desktop shows \"Something's wrong with one or more filters\" (filter-where-field)"
+                                % (os.path.relpath(f, d_def), x.get('name'), hp, "', '".join(sorted(got))))
+            for v in x.values():
+                walk(v, f)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v, f)
+    for f in glob.glob(os.path.join(d_def, '**', '*.json'), recursive=True):
+        try:
+            walk(json.load(open(f, encoding='utf-8')), f)
+        except ValueError:
+            pass   # broken JSON has its own check
+
+
+def check_dead_entity(report_dir, d_def, fail):
+    """dead-entity (a department repo 13/10): every table a report file names (SourceRef Entity, From Entity, queryRefs
+    '<table>.<field>') must exist in the model. 03 IP Classic kept 5 page filters on the deleted legacy DimIndicator
+    and two matrices' expansionStates on DimIndicator.ma_so: the P&L pages errored and every gate layer was green."""
+    tabs = set()
+    for t in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        m = re.search(r"(?m)^table\s+('(?:[^']|'')+'|\S+)", open(t, encoding='utf-8').read())
+        if m:
+            tabs.add(m.group(1).strip("'").replace("''", "'"))
+    if not tabs:
+        return              # thin report (live connection): no local model to check against
+    bad = {}
+    hidden = {os.path.basename(os.path.dirname(p)) for p in glob.glob(os.path.join(d_def, 'pages', '*', 'page.json'))
+              if json.load(open(p, encoding='utf-8')).get('visibility') == 'HiddenInViewMode'}
+    for f in glob.glob(os.path.join(d_def, '**', '*.json'), recursive=True):
+        rel = os.path.relpath(f, d_def).split(os.sep)
+        if len(rel) > 1 and rel[0] == 'pages' and rel[1] in hidden:
+            continue        # a hidden legacy page nobody can open (old campaign pages of 12 North): not a viewer-facing break
+        s = open(f, encoding='utf-8').read()
+        names = set(re.findall(r'"Entity":\s*"([^"]+)"', s))
+        names |= {q.split('.', 1)[0] for q in re.findall(r'"queryRefs":\s*\[\s*"([^"]+)"', s) if '.' in q}
+        for n in names - tabs:
+            bad.setdefault(n, []).append(os.path.relpath(f, d_def))
+    for n, fs in sorted(bad.items()):
+        fail.append("table '%s' is named in %d report file(s) (e.g. %s) but is not in the model - Desktop errors on those "
+                    "visuals/filters; rebind to the warehouse table (dead-entity)" % (n, len(fs), fs[0]))
+
+
+def check_extension_ref(d_def, fail):
+    """extension-ref (a department repo 17/10, 04 IP Classic): a field with SourceRef "Schema": "extension" is a REPORT-level measure
+    (reportExtensions.json of a thin report). The legacy 04 measures were moved into the model and reportExtensions.json removed,
+    but 4 visuals kept "Schema": "extension" ⇒ after refresh "Something's wrong with one or more fields"; 'Fix this' then
+    DELETED the fields (3 columns of Revenue Yesterday of Store). Every page counts, hidden tooltip pages included."""
+    ext, have = os.path.join(d_def, 'reportExtensions.json'), set()
+    if os.path.exists(ext):
+        for e in json.load(open(ext, encoding='utf-8')).get('entities', []):
+            have |= {(e.get('name'), m.get('name')) for m in e.get('measures', [])}
+    bad = {}
+    def walk(o, f):
+        if isinstance(o, dict):
+            for kind in ('Measure', 'Column'):
+                n = o.get(kind)
+                if isinstance(n, dict) and isinstance(n.get('Expression'), dict):
+                    sr = n['Expression'].get('SourceRef', {})
+                    if sr.get('Schema') == 'extension' and (sr.get('Entity'), n.get('Property')) not in have:
+                        bad.setdefault('%s[%s]' % (sr.get('Entity'), n.get('Property')), []).append(f)
+            for v in o.values():
+                walk(v, f)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v, f)
+    for f in glob.glob(os.path.join(d_def, 'pages', '**', '*.json'), recursive=True):
+        try:
+            walk(json.load(open(f, encoding='utf-8')), os.path.relpath(f, d_def))
+        except ValueError:
+            pass
+    for k, fs in sorted(bad.items()):
+        fail.append('%s is referenced as a report-level (extension) measure in %d file(s) (e.g. %s) but reportExtensions.json does '
+                    'not define it - drop "Schema": "extension" when the measure lives in the model (extension-ref)' % (k, len(fs), fs[0]))
+
+
+def check_dead_field(report_dir, d_def, fail):
+    """dead-field (a department repo 13/10): every column / measure a report file names (with its table, through From aliases
+    too) must exist in that model table. 03 IP Classic: the PnL Report slicer kept its saved selection on
+    Dim_ProfitLossLine[CapChiTieu] (renamed LineLevel) - the matrix errored; dead-entity is blind to it (table exists)."""
+    fields = {}
+    for t in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        s = open(t, encoding='utf-8').read()
+        m = re.search(r"(?m)^table\s+('(?:[^']|'')+'|\S+)", s)
+        if not m:
+            continue
+        tab = m.group(1).strip("'").replace("''", "'")
+        names = re.findall(r"(?m)^\t(?:column|measure|hierarchy)\s+('(?:[^']|'')+'|[^\s=]+)", s)
+        fields[tab] = {n.strip("'").replace("''", "'").lower() for n in names}   # model names are case-insensitive
+    if not fields:
+        return
+    hidden = {os.path.basename(os.path.dirname(p)) for p in glob.glob(os.path.join(d_def, 'pages', '*', 'page.json'))
+              if json.load(open(p, encoding='utf-8')).get('visibility') == 'HiddenInViewMode'}
+    bad = {}
+
+    def walk(x, alias, f):
+        if isinstance(x, dict):
+            if isinstance(x.get('From'), list):
+                alias = dict(alias, **{s.get('Name'): s.get('Entity') for s in x['From'] if isinstance(s, dict)})
+            for kind in ('Column', 'Measure'):
+                c = x.get(kind)
+                if isinstance(c, dict) and isinstance(c.get('Expression'), dict) and 'Property' in c:
+                    sr = c['Expression'].get('SourceRef', {})
+                    tab = sr.get('Entity') or alias.get(sr.get('Source'))
+                    if tab in fields and c['Property'].lower() not in fields[tab]:
+                        bad.setdefault('%s[%s]' % (tab, c['Property']), []).append(f)
+            for v in x.values():
+                walk(v, alias, f)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v, alias, f)
+    for f in glob.glob(os.path.join(d_def, '**', '*.json'), recursive=True):
+        rel = os.path.relpath(f, d_def).split(os.sep)
+        if len(rel) > 1 and rel[0] == 'pages' and rel[1] in hidden:
+            continue
+        try:
+            walk(json.load(open(f, encoding='utf-8')), {}, os.path.relpath(f, d_def))
+        except ValueError:
+            pass
+    for k, fs in sorted(bad.items()):
+        fail.append("%s is named in %d report file(s) (e.g. %s) but the model table has no such column/measure - "
+                    "rebind it (dead-field)" % (k, len(fs), fs[0]))
+
+
+def check_literal_type(report_dir, d_def, fail):
+    """literal-type (a department repo 13/10): an In / Not In filter value must have the column's type. Text on a number column
+    (03 Mix: Year slicers' 'is not blank' also listed 'Unknown' / 'Not Applicable') or a number on a text column (03 Classic:
+    the SelectMonth slicer kept '05' while Parameter_Date[Month] had become a number) fails in Desktop with "CONTAINSROW
+    does not support comparing values of type Text with values of type Integer" - static and engine layers were green."""
+    types = {}
+    for t in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        s = open(t, encoding='utf-8').read()
+        m = re.search(r"(?m)^table\s+('(?:[^']|'')+'|\S+)", s)
+        if not m:
+            continue
+        tab = m.group(1).strip("'").replace("''", "'")
+        for c in re.finditer(r"(?m)^\tcolumn\s+('(?:[^']|'')+'|[^\s=]+)[^\n]*\n((?:\t\t[^\n]*\n)*)", s):
+            dt = re.search(r'dataType:\s*(\w+)', c.group(2))
+            if dt:
+                types[(tab, c.group(1).strip("'").replace("''", "'").lower())] = dt.group(1)
+    if not types:
+        return
+    bad = {}
+
+    def walk(x, alias, f):
+        if isinstance(x, dict):
+            if isinstance(x.get('From'), list):
+                alias = dict(alias, **{s.get('Name'): s.get('Entity') for s in x['From'] if isinstance(s, dict)})
+            inn = x.get('In')
+            if isinstance(inn, dict) and len(inn.get('Expressions', [])) == 1 and 'Column' in inn['Expressions'][0]:
+                col = inn['Expressions'][0]['Column']; sr = col.get('Expression', {}).get('SourceRef', {})
+                tab = sr.get('Entity') or alias.get(sr.get('Source'))
+                dt = types.get((tab, str(col.get('Property', '')).lower()))
+                for row in inn.get('Values', []):
+                    lv = (row[0].get('Literal', {}).get('Value') if row and isinstance(row[0], dict) else None) or ''
+                    if not dt or lv in ('', 'null'):
+                        continue
+                    is_txt = lv.startswith("'")
+                    if (dt == 'string') != is_txt and not (dt in ('dateTime',) and lv.startswith('datetime')):
+                        bad.setdefault('%s[%s] (%s) = %s' % (tab, col.get('Property'), dt, lv), []).append(f)
+                        break
+            for v in x.values():
+                walk(v, alias, f)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v, alias, f)
+    for f in glob.glob(os.path.join(d_def, '**', '*.json'), recursive=True):
+        try:
+            walk(json.load(open(f, encoding='utf-8')), {}, os.path.relpath(f, d_def))
+        except ValueError:
+            pass
+    for k, fs in sorted(bad.items()):
+        fail.append("filter on %s - the value's type is not the column's type, Desktop fails the visual (CONTAINSROW Text vs "
+                    "Integer); %d file(s), e.g. %s (literal-type)" % (k, len(fs), fs[0]))
+
+
+def check_bridge_bypass(report_dir, fail):
+    """bridge-bypass (a department repo 13/10): a fact that reaches a dim only through a bridge (some measure applies
+    TREATAS(SUMMARIZE(Bridge_*, ...), Fact[...])) must be aggregated through that bridge in EVERY measure. 05 Classic
+    '#Tenure Months' = SUM(Fact_Headcount[TenureMonths]) ignored Dim_Store, so the export table listed each employee
+    once per store (45 rows for one person) while the bridged '#Employee Distinct' total stayed right."""
+    for t in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        s = open(t, encoding='utf-8').read()
+        ms = re.findall(r"(?ms)^\tmeasure ('[^']+'|\S+) =(.*?)(?=^\t\t(?:formatString|displayFolder|lineageTag|annotation)|^\tmeasure |\Z)", s)
+        bridged = set(re.findall(r"TREATAS\s*\(\s*SUMMARIZE\s*\(\s*Bridge_\w+[^)]*\)\s*,\s*'?(\w+)'?\[", s))
+        for name, body in ms:
+            for fact in bridged:
+                if re.search(r"\b(?:SUM|COUNTROWS|DISTINCTCOUNT|COUNT|COUNTA|MAX|MIN|AVERAGE)X?\s*\(\s*'?%s'?\b" % fact, body) \
+                        and 'Bridge_' not in body:
+                    fail.append("measure %s aggregates %s directly but %s reaches the store/AM dims only through a bridge - "
+                                "wrap it in the same TREATAS(SUMMARIZE(Bridge_…)) or rows repeat per store (bridge-bypass)"
+                                % (name, fact, fact))
+
+
+WAREHOUSE_DB = region_value(os.path.dirname(os.path.abspath(__file__)), 'warehouse_db', '')  # the warehouse database name
+
+
+def check_kimball16_classic(report_dir, fail):
+    """kimball16-classic (a department repo 13/10): Classic maps the warehouse labels 'Unknown' / 'Not Applicable' back to null in
+    Power Query (the legacy report showed blank there). Every Dim_* that reads the warehouse needs that Clean step -
+    03 / 05 Classic missed it (slicer 'Area Manager' listed 'Unknown', 99 store + 107 P&L rows labelled)."""
+    for t in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', 'Dim_*.tmdl')):
+        if os.path.basename(t) == 'Dim_Date.tmdl':
+            continue   # the date dim has no labelled members
+        s = open(t, encoding='utf-8').read()
+        if WAREHOUSE_DB and WAREHOUSE_DB in s and '"Unknown", null' not in s:
+            fail.append("%s: reads the warehouse but has no Clean step mapping 'Unknown' / 'Not Applicable' to null - "
+                        "Classic shows blank where the legacy report did (kimball16-classic)" % os.path.basename(t))
+
+
+
+
+
+
+# legacy / warehouse field names written as ONE capitalised word, invisible to the camelCase test ('Monthnumber' on 03 Mix)
+JOINED_FIELD_WORDS = {'monthnumber', 'weeknum', 'weeknumber', 'weekperiod', 'storename', 'itemname', 'storeid', 'dateint',
+                      'yearmonth', 'dayofweek', 'dayofmonth', 'monthname', 'hourstart', 'parentname', 'groupcontract'}
+
+
+def column_name_problem(name):
+    """Why a header / legend name is not reader text, or None. English Title Case like the visual titles (user 13/10)."""
+    n = (name or '').strip().strip('"').strip()
+    if not n:
+        return 'empty'
+    if re.fullmatch(r'%\s*\d*', n):          # '%', '%1', '%2' (03 Mix 13/10)
+        return "a bare '%' - say what it is a share of ('% Revenue')"
+    if '_' in n:
+        return 'underscore'
+    if re.search(r'[A-Za-z]\d+$', n) and not re.search(r'\b(?:Q[1-4]|B2C|B2B|Top \d+)$', n):
+        return 'trailing number'
+    words = re.findall(r'[^\W\d_][^\W_]*', n)
+    for i, w in enumerate(words):
+        if w in TITLE_ACRO or w.upper() in TITLE_ACRO:
+            continue
+        if re.search(r'[a-z][A-Z]', w) or w.lower() in JOINED_FIELD_WORDS:
+            return "joined words '%s'" % w
+        if len(w) > 3 and w.isupper():
+            return "ALL-CAPS '%s'" % w
+        if w.lower() in TITLE_SMALL and (i > 0 or n.startswith('%')):     # '% vs Target': '%' is the first word
+            continue
+        if not w[:1].isupper():
+            return "lower-case word '%s'" % w
+    return None
+
+
+def check_column_names(d_def, fail):
+    """column-name (a department repo 13/10, user: "tên cột đang ko đúng chuẩn loạn xạ hết, cái này cũng phải có trong skill và
+    cổng kiểm"): every field a visible table / matrix / chart shows (its displayName, else the field name) reads as English
+    Title Case reader text - no warehouse/legacy names (chi_tieu, ChiPhi2, StoreName2, ITEM_NAME, PARENT3NAME), no bare
+    '%'. Slicers are labelled by their own label shapes. Mix / Main only (Classic keeps the legacy wording)."""
+    hidden = {os.path.basename(os.path.dirname(p)) for p in glob.glob(os.path.join(d_def, 'pages', '*', 'page.json'))
+              if json.load(open(p, encoding='utf-8')).get('visibility') == 'HiddenInViewMode'}
+    bad = {}
+    for f in glob.glob(os.path.join(d_def, 'pages', '*', 'visuals', '*', 'visual.json')):
+        if f.split(os.sep)[-4] in hidden:
+            continue
+        d = json.load(open(f, encoding='utf-8')); v = d.get('visual', {})
+        vt = v.get('visualType')
+        # a visual hidden by default is still read: the tabs show their content by bookmark (13/10: Operation 'Swith METRIX',
+        # Weekly 'vsWTDLW', Daily 'DatePart_Lable' all sat in tab groups hidden on open, so the check never saw them)
+        if vt in (None, 'slicer', 'shape', 'image', 'textbox', 'actionButton'):
+            continue
+        if vt == 'card' and lit((v.get('objects', {}).get('categoryLabels') or [{}])[0].get('properties', {}).get('show', {})) == 'false':
+            continue        # a Pct_ line under a KPI tile: the number only, its field name is never shown
+        for role, r in v.get('query', {}).get('queryState', {}).items():
+            for p in r.get('projections', []):
+                if p.get('hidden'):
+                    continue
+                fld = p.get('field', {}); k = next(iter(fld), None)
+                if k == 'NativeVisualCalculation':
+                    continue
+                name = p.get('displayName')
+                if name is None:
+                    x = fld.get(k, {})
+                    if k == 'Aggregation':
+                        x = x.get('Expression', {}).get('Column', {})
+                    name = x.get('Property') or x.get('Level') or p.get('queryRef', '')
+                    name = re.sub(r'^[#~]', '', name)
+                why = column_name_problem(name)
+                if why:
+                    bad.setdefault((sel_name(d) or d['name'], name), why)
+    for (vis, name), why in sorted(bad.items()):
+        fail.append("visual %s shows the field name %s - %s; give it a reader name (displayName) in English Title Case "
+                    "(column-name)" % (ascii(vis), ascii(name), why))
+
+
+def check_kimball16(d_def, fail):
+    """kimball16 (a department repo 12/10): the warehouse labels empty dim cells 'Unknown' / 'Not Applicable' (Kimball #16,
+    live since 09/10), so on a report that KEEPS the labels (Mix / Main) an 'is not blank' filter on a Dim_* column lets
+    those rows through. Every such filter (visual · page · report · bookmark) must also exclude both labels. Classic
+    maps the labels back to null in Power Query, so it is not checked there. 292 filters were found open on 2 Mix files."""
+    def walk(node, alias, out):
+        if isinstance(node, dict):
+            if isinstance(node.get('From'), list):
+                alias = dict(alias)
+                alias.update({x.get('Name'): x.get('Entity') for x in node['From'] if isinstance(x, dict)})
+            if 'Not' in node:
+                s = json.dumps(node['Not'])
+                if '"null"' in s and not ("'Unknown'" in s and "'Not Applicable'" in s):
+                    e = node['Not'].get('Expression', {})
+                    for c in e.get('In', {}).get('Expressions', []) + [e.get('Comparison', {}).get('Left', {})]:
+                        col = c.get('Column', {}); sr = col.get('Expression', {}).get('SourceRef', {})
+                        ent = sr.get('Entity') or alias.get(sr.get('Source'))
+                        if ent and ent.startswith('Dim_') and col.get('Property'):
+                            out.append('%s.%s' % (ent, col['Property']))
+            for v in node.values():
+                walk(v, alias, out)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v, alias, out)
+    # only TEXT columns of Dim_* tables (Dim_Date excluded): a date / number / true-false column never carries the labels,
+    # and Not In ['Unknown'] on it is a type error - the column types are read from the report's own model
+    text_cols = set()
+    for t in glob.glob(os.path.join(os.path.dirname(d_def), '..', '*.SemanticModel', 'definition', 'tables', 'Dim_*.tmdl')):
+        tb = os.path.basename(t)[:-5]
+        if tb == 'Dim_Date':
+            continue
+        for col, typ in re.findall(r"\n\tcolumn '?([A-Za-z0-9_]+)'?[^\n]*\n\t\tdataType: (\w+)", open(t, encoding='utf-8').read()):
+            if typ == 'string':
+                text_cols.add('%s.%s' % (tb, col))
+    hits = {}
+    for f in glob.glob(os.path.join(d_def, '**', '*.json'), recursive=True):
+        out = []
+        walk(json.load(open(f, encoding='utf-8')), {}, out)
+        for c in out:
+            if c in text_cols:
+                hits[c] = hits.get(c, 0) + 1
+    for c, n in sorted(hits.items()):
+        fail.append("%d 'is not blank' filter(s) on %s do not exclude 'Unknown' and 'Not Applicable' - the warehouse labels "
+                    "empty dim cells (Kimball #16); write Not In [null, 'Unknown', 'Not Applicable'] (kimball16)" % (n, c))
+
+
+def matrix_fitted(d):
+    """Sized by scripts/matrix_fit.py from the engine (autoSize off + a width for every measure): the static width rules
+    (scroll estimate, narrow-table, header-wrap) are guesses about a table that was measured - the engine gate matrix-fit
+    owns it."""
+    v = d.get('visual', {}); o = v.get('objects', {})
+    if lit((o.get('columnHeaders') or [{}])[0].get('properties', {}).get('autoSizeColumnWidth', {})) != 'false':
+        return False
+    widths = {e.get('selector', {}).get('metadata') for e in o.get('columnWidth', [])}
+    meas = [p['queryRef'] for p in v.get('query', {}).get('queryState', {}).get('Values', {}).get('projections', [])]
+    return bool(meas) and all(m in widths for m in meas)
+
+
 def check_report_level(report_dir, rep, d_def, vis, fail):
     check_clear_filter(d_def, vis, fail)
     folder = os.path.basename(os.path.normpath(report_dir))
@@ -2196,6 +2959,21 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
             if under:
                 fail.append("page '%s': filter panel items drawn under BG_FilterPanel (z <= %s): %s - the panel hides them"
                             % (pages[pg]['displayName'], b['position'].get('z', 0), ', '.join(sorted(map(str, under)))))
+    # filter-rows (user 13/10: "sao filter mới lại bị rỗng 1 hàng, cổng kiểm là filter phải nối liền nhau theo hàng chứ, vì
+    # số nối liền nhau là cố định rồi"): the slicers of a filter panel follow one another at the fixed pitch (label 20 +
+    # box 40 + gap 5 = 65) - removing or merging a slicer moves the ones below it up, no empty row is left
+    for (pg, i), d in vis.items():
+        if pg not in visible or 'visualGroup' not in d:
+            continue
+        kids = [v for (p2, k), v in vis.items() if p2 == pg and v.get('parentGroupName') == i]
+        if not any(sel_name(v) == 'BG_FilterPanel' for v in kids):
+            continue
+        ys = sorted(v['position']['y'] for v in kids if v.get('visual', {}).get('visualType') == 'slicer')
+        gaps = [(a, b_) for a, b_ in zip(ys, ys[1:]) if round(b_ - a) != FILTER_PITCH]
+        if gaps:
+            fail.append("page '%s': filter panel slicers are not one after another at %d px: %s - move the ones below up "
+                        "(filter-rows)" % (pages[pg]['displayName'], FILTER_PITCH,
+                                           ', '.join('y %g -> %g' % (a, b_) for a, b_ in gaps)))
     # slicer-style: one slicer look, the Main one (user 2026-09-27: filter colours differ between slicers)
     for (pg, i), d in vis.items():
         if pg not in visible or d.get('visual', {}).get('visualType') != 'slicer':
@@ -2214,12 +2992,13 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         size = {lit(e.get('properties', {}).get('textSize', {})) for e in o.get('items', []) if 'selector' not in e}
         hdr = lit((vc_.get('visualHeader') or [{}])[0].get('properties', {}).get('show', {}))
         frame = lit((vc_.get('background') or [{}])[0].get('properties', {}).get('show', {}))
-        # the slicer's own header (user 12/10: header on inside the 40 px box = only the caption shows, the dropdown is
-        # pushed out and the filter cannot be used; the panel label above names the box)
-        shdr = lit((o.get('header') or [{}])[0].get('properties', {}).get('show', {}))
-        if shdr != 'false':
-            fail.append("page '%s' slicer %s: slicer header %s - must be off, the panel label names the box and the header "
-                        "pushes the dropdown out of the 40 px box (mix_builder.py --slicers)" % (pages[pg]['displayName'], sel_name(d) or i, shdr or 'on'))
+        # the slicer's own header (objects.header) - no 'show' means ON: the field name printed again inside the box under
+        # the panel's own label shape (user 13/10, 03 Mix: "đã dùng filter rời thì ko dc bật filter của slicer")
+        own = lit((o.get('header') or [{}])[0].get('properties', {}).get('show', {}))
+        if own != 'false':
+            fail.append("page '%s' slicer %s: its own header is on (objects.header.show %s) - the panel label is a separate "
+                        "shape, the slicer must not print the field name again (mix_builder.py --slicers) (slicer-header)"
+                        % (pages[pg]['displayName'], sel_name(d) or i, own or 'unset'))
         if size != {SLICER_TEXT} or hdr != 'false' or frame != 'false':
             fail.append("page '%s' slicer %s: text size %s (must be %s), visual header %s, container frame %s - both "
                         "must be off (mix_builder.py --slicers)" % (pages[pg]['displayName'], sel_name(d) or i,
@@ -2373,6 +3152,10 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                 fail.append('%s: slicer %s is %s px high - every box is %d (one geometry on every page)'
                             % (where, sel_name(d), d['position']['height'], PANEL_BOX))
     check_pct(report_dir, folder, pages, visible, vis, fail)
+    check_pct_decided(report_dir, folder, pages, visible, vis, fail)
+    check_compare_slicers(pages, visible, vis, fail)
+    check_axis_cap(pages, visible, vis, fail)
+    check_button_over_table(pages, visible, vis, fail)
     # open-page: the file opens on the first page (Desktop Save writes the page being viewed as activePageName)
     pj = json.load(open(os.path.join(d_def, 'pages', 'pages.json'), encoding='utf-8'))
     # overview-first (user 14/10: "trang overview phải luôn ở đầu")
@@ -2482,6 +3265,8 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
             continue
         v_ = d.get('visual', {})
         if v_.get('visualType') in ('pivotTable', 'tableEx'):
+            if matrix_fitted(d):
+                continue
             ch_ = [e.get('properties', {}) for e in v_.get('objects', {}).get('columnHeaders', []) if 'selector' not in e]
             grow = any(lit(e.get('columnAdjustment', {})) == 'growToFit' and lit(e.get('autoSizeColumnWidth', {})) != 'false' for e in ch_)
             plan = column_plan(d)
@@ -2496,13 +3281,13 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                 off = [q for q, w in plan.items() if q not in rowq and abs(cur.get(q, -99) - w) > 1]
                 if auto or off:
                     fail.append("page '%s' %s '%s': a header is longer than %d px on one line - fixed widths, long headers on "
-                                "two lines, spread to the frame: %s (mix_builder.py --grow-to-fit) (header-wrap)"
+                                "two lines, spread to the frame: %s (mix_builder.py --grow-to-fit, or measure it: matrix_fit.py) (header-wrap)"
                                 % (pages[pg]['displayName'], v_.get('visualType'), sel_name(d) or i, HEADER_WRAP,
                                    'auto-size is on' if auto else '%d column(s) off the formula, e.g. %s' % (len(off), off[0])))
                 continue
             if not grow:
                 fail.append("page '%s' %s '%s': Auto-size behaviour is not Grow to fit - the columns stop short of the frame "
-                            "whenever the data brings fewer columns (mix_builder.py --grow-to-fit) (narrow-table)"
+                            "whenever the data brings fewer columns (mix_builder.py --grow-to-fit, or measure it: matrix_fit.py) (narrow-table)"
                             % (pages[pg]['displayName'], v_.get('visualType'), sel_name(d) or i))
             continue
         r = table_overflow(d, mm_sa)
@@ -2565,7 +3350,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                 cur = par
             long_by_tab.setdefault((pg, tab), set()).add(grp)
     for (pg, i), d in vis.items():
-        if pg not in visible or 'visualGroup' in d:
+        if pg not in visible or 'visualGroup' in d or matrix_fitted(d):
             continue
         est = matrix_scroll(d)
         ex = gate_cfg().get('matrix_exempt', {}).get(folder, {})
@@ -2580,7 +3365,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
     # table-overflow (user 2026-09-29): a SHORT overflow is fixed by widening / moving blocks, never left scrolling
     mm_o = model_measures(report_dir)
     for (pg, i), d in vis.items():
-        if pg not in visible or 'visualGroup' in d or matrix_scroll(d):
+        if pg not in visible or 'visualGroup' in d or matrix_scroll(d) or matrix_fitted(d):
             continue
         est = table_overflow(d, mm_o)
         if not est or est[0] <= est[1]:
@@ -2875,6 +3660,15 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         elif w > max(WIDTH_SLACK * need, MIN_CHART_W) and len(tab_blocks(pg, d)) > 1:
             fail.append("%s: %d %s on %s px - its categories need ~%d px; put it beside another chart instead of "
                         "stretching it (skill pbi-mix 5l-bis item 0)" % (where, n, field, w, need))
+    # donut-shape (user 13/10, 01 Monthly: "bạn để donut dài dọc cả 2 hàng làm cho donut group bị trắng"): a pie / donut is
+    # round - in a block much taller than wide the ring takes the width and the rest is white; it sits in ONE row
+    for (pg, i), d in vis.items():
+        if pg in visible and d.get('visual', {}).get('visualType') in ('pieChart', 'donutChart'):
+            w, h = d['position']['width'], d['position']['height']
+            if h - DONUT_HEAD > w:
+                fail.append("page '%s' chart %s: %s on %gx%g px - a round chart in a tall column leaves the block white; give "
+                            "it one row (wide, not tall) and let the chart beside it take the full width (donut-shape)"
+                            % (pages[pg]['displayName'], sel_name(d) or i, d['visual']['visualType'], w, h))
     # card-structure (user 2026-10-01: "cấu trúc card bạn cũng ko áp cho hết mọi trang, bộ dò ki vậy ko dò dc à"): a number
     # tile is the KPI card (BG_ + cardVisual Card_ + Pct_ + icon); an old 'card' grid (Operation 25, Promotion 12) is a defect
     for (pg, i), d in vis.items():
@@ -3015,6 +3809,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                 fail.append("Glossary of page '%s' is a verbatim copy of page '%s' - every page has its own glossary"
                             % (pages[pg]['displayName'], pages[seen[txt]]['displayName']))
             seen.setdefault(txt, pg)
+    check_glossary_cover(report_dir, pages, visible, vis, fail)
     # legacy-parity: every page / visual compared with the Legacy of the same number + tier
     pat = '%s_%s??_%s%s_Legacy' % (fm.group(1), num, fm.group(4), tier or '')
     leg = [x for x in glob.glob(os.path.join(os.path.dirname(os.path.normpath(report_dir)), pat))
@@ -3403,6 +4198,8 @@ def check_dw(report_dir, fail):
 
 ENGINE_PS = r"""
 param([string]$Dir, [int]$Wait = 240, [string]$Cols = '', [string]$NegFile = '')
+# UTF-8 out: Python reads utf-8; the console default (cp1252) turned 'năm' into 'nam' and 'tháng' into 'th?ng' (13/10)
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
 function Out($o) { '@@' + ($o | ConvertTo-Json -Compress -Depth 4) }
 $leaf = Split-Path $Dir -Leaf
 $pbip = (Get-ChildItem -LiteralPath $Dir -Filter *.pbip | Select-Object -First 1).FullName
@@ -3742,6 +4539,35 @@ def neg_bar_exprs(report_dir):
     return out
 
 
+def filter_literals(report_dir):
+    """filter-value-gone, engine half (a department repo 13/10): {(table, column): [(where, [text values])]} of every 'In' filter
+    (report · page · visual) that keeps rows by TEXT value. 05 Classic Export Data kept the legacy spelling 'Partime'
+    while the warehouse says 'Parttime' - the filter matched nothing and the table showed no row, every layer green."""
+    out = {}
+    d_def = glob.glob(os.path.join(report_dir, '*.Report', 'definition'))
+    if not d_def:
+        return out
+    files = [os.path.join(d_def[0], 'report.json')] + glob.glob(os.path.join(d_def[0], 'pages', '*', 'page.json')) + \
+        glob.glob(os.path.join(d_def[0], 'pages', '*', 'visuals', '*', 'visual.json'))
+    for f in files:
+        try:
+            d = json.load(open(f, encoding='utf-8-sig'))
+        except Exception:
+            continue
+        for x in d.get('filterConfig', {}).get('filters', []):
+            c = x.get('field', {}).get('Column')
+            if x.get('type') != 'Categorical' or not c or 'Entity' not in c.get('Expression', {}).get('SourceRef', {}):
+                continue
+            for w in x.get('filter', {}).get('Where', []):
+                rows = w.get('Condition', {}).get('In', {}).get('Values') or []     # Not In: a missing value hides nothing
+                lits = [r[0].get('Literal', {}).get('Value', '') for r in rows if r and 'Literal' in r[0]]
+                txt = [s[1:-1].replace("''", "'") for s in lits if s.startswith("'")]
+                if txt and len(txt) == len(lits):
+                    out.setdefault((c['Expression']['SourceRef']['Entity'], c['Property']), []).append(
+                        (os.path.relpath(f, d_def[0]), txt))
+    return out
+
+
 def check_engine(report_dir, fail, wait=240):
     """Layer 3 - the Desktop engine: measures / columns / partitions in error, and one row read through every
     DirectQuery table. Attaches to a Desktop that already has this report open, else opens one and closes it
@@ -3761,6 +4587,8 @@ def check_engine(report_dir, fail, wait=240):
     slicer_cols = set(cols)
     few = matrix_row_fields(report_dir)
     cols = cols + sorted(k for k in few if k not in slicer_cols)
+    flt = filter_literals(report_dir)
+    cols = cols + sorted(k for k in flt if k not in set(cols))
     negf = os.path.join(tempfile.gettempdir(), 'pbi_gate_neg.txt')
     open(negf, 'w', encoding='utf-8').write('\n'.join('%s\t%s' % x for x in neg_bar_exprs(report_dir)
                                                       + slicer_current_exprs(report_dir)))
@@ -3799,9 +4627,18 @@ def check_engine(report_dir, fail, wait=240):
                             "positive measure (e.g. the loss = -profit, label keeps the minus) (neg-bars)" % (vn_, m_, e.get('v')))
         if e.get('event') == 'vals' and (e['table'], e['name']) in few:
             n = len([x for x in (e.get('vals') or []) if (x or '').strip()])
-            if n <= FEW_ROWS:
+            # design rule: Classic keeps the old matrices; 0 values = table not loaded yet, not "a handful" (03 IP 13/10)
+            if 0 < n <= FEW_ROWS and not KEEP_OLD_DESIGN:
                 fail.append("engine: %s show(s) only %d values of %s[%s] - a matrix of a handful of lines is a chart "
                             "(matrix-few)" % (', '.join(few[(e['table'], e['name'])]), n, e['table'], e['name']))
+        if e.get('event') == 'vals' and (e['table'], e['name']) in flt:
+            have = {(x or '').strip().lower() for x in (e.get('vals') or [])}
+            if have - {''} and len(e.get('vals') or []) < 400:      # 400 = TOPN cap: a cut list proves nothing
+                for where, txt in flt[(e['table'], e['name'])]:
+                    if not any(t.strip().lower() in have for t in txt):
+                        fail.append("engine: %s filters %s[%s] on %s - no such value in the data (it has e.g. %s): the "
+                                    "filter keeps NO row (filter-value-gone)" % (where, e['table'], e['name'], ', '.join(
+                                        "'%s'" % t for t in txt), ', '.join("'%s'" % v for v in sorted(have - {''})[:4])))
         if e.get('event') == 'vals' and (e['table'], e['name']) in slicer_cols:
             nums = [x for x in (e.get('vals') or []) if re.fullmatch(r'-?\d+', x or '')]
             if len(nums) >= 2 and sorted(nums) != sorted(nums, key=int):
@@ -3815,6 +4652,18 @@ def check_engine(report_dir, fail, wait=240):
                             (' (%s)' % how if how else '')))
         return
     d = done[0]
+    # matrix-fit (user 14/10): no number of a table / matrix wraps, the columns fill the frame without a horizontal scroll
+    # bar. Needs the report OPEN (it reads every table's own query); when the gate opened + closed Desktop itself, deferred.
+    attached = any(e.get('event') == 'desktop' and not e.get('own') for e in ev)
+    if '_Mix' in os.path.basename(os.path.normpath(report_dir)) or '_Main' in os.path.basename(os.path.normpath(report_dir)):
+        if attached:
+            try:
+                import matrix_fit
+                matrix_fit.check(report_dir, fail)
+            except Exception as e:
+                LAYER_NOTES.append(('engine', 'matrix-fit NOT CHECKED', str(e).split('\n')[0][:160]))
+        else:
+            LAYER_NOTES.append(('engine', 'matrix-fit deferred', 'open the report in Desktop and run the gate again'))
     LAYER_NOTES.append(('engine', 'checked', '%s; %s DirectQuery tables read%s' % (
         how, d.get('directquery'), '; %s import partitions not loaded (their SQL is checked by layer dw)' % d.get('import_not_loaded')
         if d.get('import_not_loaded') else '')))
@@ -3837,6 +4686,21 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
             if k_ in seen_:
                 fail.append('measure %s declared twice in %s - Desktop will not open the file' % (nm_, os.path.basename(mt_)))
             seen_[k_] = 1
+        # measure-format-both (14/10, 01 Mix ~Metrix by Ty Hour): a measure with a formatStringDefinition must NOT keep its
+        # static formatString - Desktop opens with "Issues were found ... both FormatString property and FormatStringDefinition"
+        # and loads no model (every DirectQuery query then fails "Unable to convert an M query")
+        for blk_ in re.split(r'(?m)^(?=	(?:measure|column|partition|hierarchy)\s)', open(mt_, encoding='utf-8').read()):
+            mm_ = re.match(r"	measure\s+('(?:[^']|'')+'|[^\s=]+)", blk_)
+            if mm_ and re.search(r'(?m)^		formatString:', blk_) and re.search(r'(?m)^		formatStringDefinition\s*=', blk_):
+                fail.append('measure %s has both formatString and formatStringDefinition in %s - drop the static formatString '
+                            '(measure-format-both)' % (mm_.group(1), os.path.basename(mt_)))
+            # tmdl-multiline (17/10, 04 IP Classic '#Sale Yesterday LW'): code after "measure X =" on the SAME line and more code
+            # lines below - TMDL wants a multi-line expression to START on the next line. Desktop: "TMDL Format Error ...
+            # InvalidLineType - Unexpected line type: Other!" and loads no model
+            mh_ = re.match(r"	measure\s+(?:'(?:[^']|'')+'|[^\s=]+)\s*=[ \t]*(\S[^\n]*)\n((?:			[^\n]*\n)+)", blk_ or '')
+            if mm_ and mh_ and not mh_.group(1).startswith('```'):   # a ``` fence after "=" is valid TMDL (fenced expression)
+                fail.append('measure %s in %s starts its expression on the "=" line and continues below - move the whole expression '
+                            'to the lines under "=" (tmdl-multiline)' % (mm_.group(1), os.path.basename(mt_)))
     leaves = set(vis) - groups
 
     pmeta = page_meta(d_def)
@@ -3857,8 +4721,22 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
     check_report_level(report_dir, rep, d_def, vis, fail)
     check_fillrule(d_def, fail)
     check_field_refs(report_dir, d_def, fail)
-    # visual titles: Mix / Main only. a department repo user 14/10: "classic là giữ nguyên thiết kế, ko có chuẩn chỉnh UI nào áp lên
-    # Classic hết" (a department repo still calls it on Classic too, user 12/10 there - to settle in one rule)
+    check_m_steps(report_dir, fail)
+    check_bookmark_filter_objects(d_def, fail)
+    check_filter_where_field(d_def, fail)
+    if not os.path.basename(os.path.normpath(report_dir)).endswith('_Legacy'):
+        check_dead_entity(report_dir, d_def, fail)
+        check_extension_ref(d_def, fail)
+        check_dead_field(report_dir, d_def, fail)
+        check_literal_type(report_dir, d_def, fail)
+    check_bridge_bypass(report_dir, fail)
+    if not KEEP_OLD_DESIGN:
+        check_kimball16(d_def, fail)
+        check_column_names(d_def, fail)
+    elif os.path.basename(os.path.normpath(report_dir)).endswith('_Classic'):
+        check_kimball16_classic(report_dir, fail)
+    # visual titles: Mix / Main only - Classic keeps the old design (a department 14/10, newer than the 12/10 call
+    # to check Classic too); the Legacy original is exempt anyway
     if not KEEP_OLD_DESIGN:
         check_title_case(d_def, fail)
     f_rl_end = len(fail)
@@ -3933,14 +4811,19 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
     for sp in sorted(strict_set or []):
         page_vis = dict((i, d) for (pg, i), d in vis.items() if pg == sp)
         before = len(fail)
-        check_geometry(page_vis, fail)
+        if KEEP_OLD_DESIGN:
+            # Classic keeps the old layout on purpose (skill pbi-classic §1: grid 5 / header / typography do NOT apply).
+            # a department repo 13/10: '--page all' on 03 IP Classic gave 153 grid + title-size errors that nobody may fix.
+            continue
+        check_geometry(page_vis, fail, os.path.basename(os.path.normpath(report_dir)))
+        check_header(page_vis, fail)
         check_typography(page_vis, fail, legend_warn)
         check_dashboard(page_vis, fail)
         check_card(page_vis, fail)
         check_button_edge(page_vis, fail)
         if strict_page == 'all':
             fail[before:] = ["[%s] %s" % (pmeta[sp]['displayName'], x) for x in fail[before:]]
-    if strict_set:
+    if strict_set and not KEEP_OLD_DESIGN:   # Classic keeps the legacy bookmark names ('Summary', 'TC&TA' ...)
         check_bookmark_names(bms, fail)
 
     if legacy:
@@ -4023,6 +4906,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
 
 
 if __name__ == '__main__':
+    sys.stdout.reconfigure(errors='backslashreplace')   # Windows console is cp1252: a Vietnamese name must not crash the report
     argv = sys.argv[1:]
     if '--rules' in argv:
         print('The pbi_gate gate checks %d rule groups:' % len(RULES))

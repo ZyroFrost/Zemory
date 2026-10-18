@@ -1,11 +1,11 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 4
+version: 5
 aka: pbip
 description: Edit a Power BI .pbip/PBIR report by writing its JSON directly - pages, visuals, bookmarks, buttons, icons, the coordinate grid - without breaking the file; the model diagram standard and the static gate. Use whenever a .pbip report is built or changed, a tab or bookmark is added, an icon or the grid is fixed, or Desktop reports issues. Vietnamese triggers - "sửa report", "sửa pbix", "dựng dashboard", "thêm tab", "gắn bookmark", "đổi icon", "căn lưới", "mở Desktop kiểm".
 installs: [scripts/pbi_gate.py, scripts/pbi_diagram.py, scripts/diagram_order.js, scripts/package.json]
-from: _Store/03_SKILLS/Skill_PBI_Pbip @v4 #06beb0cf247f
+from: _Store/03_SKILLS/Skill_PBI_Pbip @v5 #15b2c082eb57
 ---
 
 # Sửa `.pbip` mà không làm vỡ file
@@ -308,6 +308,7 @@ cái cùng `x`. *Ca thật: bỏ khai 3/12 thành phần của dải ⇒ chuyể
 | Desktop đòi cài custom visual, ô rỗng | `visualType` không tồn tại (`stackedColumnChart`) | cột chồng là `columnChart`; tên lạ thì đọc `Report/Layout` của một `.pbix` chạy thật, đừng đoán |
 | File không mở, issues gọi tên khoá | khoá bịa (`wordWrap` trong `title`) | chỉ dùng khoá đã thấy chạy trong chính file |
 | File không mở, lỗi TMDL | neo sửa vào MỘT dòng ⇒ measure trước mất thuộc tính, measure mới lãnh hai `formatString`/`lineageTag` | neo **cả khối** measure + thuộc tính của nó; `lineageTag` duy nhất toàn file |
+| "TMDL Format Error … InvalidLineType – Unexpected line type: Other!" (17/10, 04 IP Classic) | measure viết `measure 'X' = CALCULATE(` rồi xuống dòng viết tiếp | công thức nhiều dòng **bắt đầu ở dòng DƯỚI** `=` (thụt 3 tab); một dòng thì được nằm ngay sau `=` — cổng `tmdl-multiline` chặn mở file |
 | Ảnh không hiện | chép PNG mà quên khai | thêm `{name, path, type:"Image"}` vào `resourcePackages` |
 | Một dãy cột rỗng | `Columns.showAll: true` hiện cả kỳ không có số | tắt ở **trục cột**; giữ ở **trục dòng** để dòng nào cũng hiện dù bằng 0 |
 | Mọi điểm dồn một chỗ, nhãn `0.2M` | cột kỳ `int64` bị hiểu là **thang số liên tục** | `objects.categoryAxis[0].properties.axisType = 'Categorical'` |

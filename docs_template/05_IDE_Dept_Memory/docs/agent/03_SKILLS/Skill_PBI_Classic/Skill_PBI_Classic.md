@@ -1,9 +1,9 @@
 ---
 id: Skill_PBI_Classic
 name: pbi-classic
-version: 1
+version: 2
 description: Build the CLASSIC copy of a Power BI report - keep the OLD design exactly, move only the model onto the warehouse: map tables to Dim_*/Fact_*, port measures, rebind visuals, then MEASURE how far the numbers match the old one. Use whenever an old dashboard moves onto the warehouse, the old report serves as the warehouse's test, or the question is what the warehouse still lacks. Not for a new design. Vietnamese triggers - "bản classic", "tái tạo dashboard cũ", "đổi model sang DW", "so số với bản cũ", "kho còn thiếu gì".
-from: _Store/03_SKILLS/Skill_PBI_Classic @v1 #bb00ec97b894
+from: _Store/03_SKILLS/Skill_PBI_Classic @v2 #aab4b566fdde
 ---
 
 # Bản `Classic` — giữ nguyên thiết kế CŨ, chỉ đổi lớp model sang kho
@@ -99,6 +99,12 @@ nhưng **`DirectQuery` không cho** ⇒ tắt auto date/time trước khi chuy�
 
 📌 **Số của một lượt thật (2026-09-15, `Store Dashboard Income Statement`)** để biết khối lượng:
 11 bảng cũ → **6 bảng kho** + 3 quan hệ · **53 measure → 92** · **319 binding** trên ~100 file visual.
+
+🔴 **Report MỎNG (thin, nối live model khác) có measure CẤP REPORT** trong `definition/reportExtensions.json`; visual trỏ tới chúng
+bằng `SourceRef` có **`"Schema": "extension"`**. Chuyển các measure đó vào model của bản Classic thì **gỡ luôn khoá `Schema`** ở mọi tham
+chiếu (cả trang tooltip ẩn). Giữ lại ⇒ refresh xong visual báo *"Something's wrong with one or more fields"*, và nút **Fix this XOÁ
+trường** thay vì nối lại *(04 IP Classic 17/10: mất 3 cột của "Revenue Yesterday of Store" + tooltip "Same Store SG LM")*. Cổng
+`extension-ref`.
 
 🔴 **Bước 3 phải ra một FILE bằng chứng**, không giữ trong đầu: bảng cũ đọc nguồn nào · measure nào
 tính gì · cột nào là cột tính tại chỗ. Không có file này thì bước 6 không biết nối về đâu, và cuối
