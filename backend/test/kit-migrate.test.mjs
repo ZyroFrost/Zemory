@@ -82,8 +82,11 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   assert.match(purpose, /chỉ khi có phê duyệt/, "every non-article section is kept");
   assert.ok(!existsSync(join(agent, "01_CONSTITUTION.md")));
   // rules
-  const r7 = readdirSync(join(agent, "01_LAW", "_Rule")).find((d) => d.startsWith("Rule_") && d.includes("_07_"));
-  const t7 = readFileSync(join(agent, "01_LAW", "_Rule", r7, `${r7}.md`), "utf8");
+  // a store rule sits in the folder of its code of law (01_Harness/ …); the repo's own rule stays flat
+  const rulesDir = join(agent, "01_LAW", "_Rule");
+  const ruleDirs = readdirSync(rulesDir).flatMap((d) => (/^\d{2}_/.test(d) ? readdirSync(join(rulesDir, d)).map((x) => `${d}/${x}`) : [d]));
+  const r7 = ruleDirs.find((d) => d.split("/").pop().startsWith("Rule_") && d.includes("_07_"));
+  const t7 = readFileSync(join(rulesDir, r7, `${r7.split("/").pop()}.md`), "utf8");
   assert.match(t7, /^from: _Store/m);
   assert.match(t7, /Bản của repo trước khi chuyển[\s\S]*REPO-ONLY-EDIT/, "the repo's wording is kept for a hand merge");
   const r99 = readdirSync(join(agent, "01_LAW", "_Rule")).find((d) => d.startsWith("Rule_Gate_99_"));
@@ -111,7 +114,7 @@ test("apply: everything lands, nothing is lost, the repo's own work is untouched
   assert.equal(fwd.status, 2, "the forwarder blocks through the new guard");
   assert.equal(JSON.parse(fwd.stdout).hookSpecificOutput.permissionDecision, "deny");
   const settings = readFileSync(join(root, ".claude", "settings.json"), "utf8");
-  assert.match(settings, /CLAUDE_PROJECT_DIR[^"]*\/docs\/agent\/01_LAW\/_Rule\/Rule_Gate_59_ReadFirst\/guard\.cjs/);
+  assert.match(settings, /CLAUDE_PROJECT_DIR[^"]*\/docs\/agent\/01_LAW\/_Rule\/01_Harness\/Rule_Gate_59_ReadFirst\/guard\.cjs/);
   assert.doesNotMatch(settings, /docs\/hooks\/guard\.cjs/, "no command left pointing at the old guard");
   assert.match(readFileSync(join(gitHooksDir(root), "pre-commit"), "utf8"), /Rule_Gate_59_ReadFirst\/precommit-guard\.cjs/);
   // and the next sync finds nothing to do

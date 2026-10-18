@@ -601,7 +601,8 @@ function check(payload, root, policy) {
   // new part folder in the store is blocked unless its header names, in `checked:`, the existing parts it was weighed
   // against (each must exist); the block lists the closest ones. No flag.
   hook("02-85_propose-checked.cjs", String.raw`
-const SHELF = /^docs_template\/_Store\/(01_LAW\/_Rule|01_LAW\/_Cons|02_STRUCTURE\/_Slot|02_STRUCTURE\/_Host|02_STRUCTURE|03_SKILLS)\/([^\/]+)\/[^\/]+$/;
+// a rule lives in the folder of its code of law (01_LAW/_Rule/01_Harness/<rule>/)
+const SHELF = /^docs_template\/_Store\/(01_LAW\/_Rule\/\d{2}_[A-Za-z]+|01_LAW\/_Rule|01_LAW\/_Cons|02_STRUCTURE\/_Slot|02_STRUCTURE\/_Host|02_STRUCTURE|03_SKILLS)\/([^\/]+)\/[^\/]+$/;
 function tokens(s) {
   return String(s).replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !/^\d+$/.test(w)
     && !["rule", "cons", "skill", "slot", "struc", "gate", "core", "keys", "the"].includes(w));
@@ -611,11 +612,20 @@ function parts(store) {
   for (const shelf of ["01_LAW/_Rule", "01_LAW/_Cons", "02_STRUCTURE/_Slot", "02_STRUCTURE", "03_SKILLS"]) {
     let ents = [];
     try { ents = fs.readdirSync(path.join(store, shelf), { withFileTypes: true }); } catch { continue; }
+    const add = (dir, name) => {
+      let title = "";
+      try { title = (/^#\s+(.*)$/m.exec(fs.readFileSync(path.join(dir, name, name + ".md"), "utf8")) || ["", ""])[1]; } catch {}
+      out.push({ name, words: new Set(tokens(name + " " + title)) });
+    };
     for (const e of ents) {
       if (!e.isDirectory() || e.name.startsWith("_")) continue;
-      let title = "";
-      try { title = (/^#\s+(.*)$/m.exec(fs.readFileSync(path.join(store, shelf, e.name, e.name + ".md"), "utf8")) || ["", ""])[1]; } catch {}
-      out.push({ name: e.name, words: new Set(tokens(e.name + " " + title)) });
+      if (shelf === "01_LAW/_Rule" && /^\d{2}_[A-Za-z]+$/.test(e.name)) {             // a code of law: its rules
+        let inner = [];
+        try { inner = fs.readdirSync(path.join(store, shelf, e.name), { withFileTypes: true }); } catch {}
+        for (const r of inner) if (r.isDirectory()) add(path.join(store, shelf, e.name), r.name);
+        continue;
+      }
+      add(path.join(store, shelf), e.name);
     }
   }
   return out;

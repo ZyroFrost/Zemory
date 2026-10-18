@@ -131,8 +131,11 @@ test("every renamed part name tells the truth: code, enforcement group, slot are
 test("negative: a name that lies about its enforcement, area, number or shelf is reported; a legacy name is listed apart", (t) => {
   const s = tempDir(t, "zemory-store-names-");
   put(s, "01_LAW/_Rule/Rule_Keys_09_X/RULE.md", "---\nid: Rule_9\nname: x\nversion: 1\n---\nx\n"); // no prompt gate: really Core
-  put(s, "01_LAW/_Rule/Rule_Gate_07_Y/RULE.md", "---\nid: Rule_7\nname: y\nversion: 1\n---\ny\n");
-  put(s, "01_LAW/_Rule/Rule_Gate_07_Y/gate.json", JSON.stringify({ hook: "hook.cjs" }));
+  put(s, "01_LAW/_Rule/01_Harness/Rule_Gate_07_Y/RULE.md", "---\nid: Rule_7\nname: y\nversion: 1\ncode: 01_Harness\n---\ny\n");
+  put(s, "01_LAW/_Rule/01_Harness/Rule_Gate_07_Y/gate.json", JSON.stringify({ hook: "hook.cjs" }));
+  // the codes of law (user 2026-10-18): a rule lives in its code's folder and says the same code in its header
+  put(s, "01_LAW/_Rule/02_Work/Rule_Core_08_V/RULE.md", "---\nid: Rule_8\nname: v\nversion: 1\ncode: 01_Harness\n---\nv\n");
+  put(s, "01_LAW/_Rule/Misc/note.txt", "x\n");
   put(s, "01_LAW/_Rule/Rule_Core_06_Z/RULE.md", "---\nid: Rule_5\nname: z\nversion: 1\n---\nz\n"); // number disagrees with id
   put(s, "02_STRUCTURE/Slot_Frontend_012_Cmd/SLOT.md", "---\nid: Slot_12\nname: cmd\nversion: 1\npath: backend/src/commands/\n---\nc\n");
   put(s, "02_STRUCTURE/Rule_Core_04_W/SLOT.md", "---\nid: Rule_4\nname: w\nversion: 1\npath: x/\n---\nw\n");
@@ -145,7 +148,10 @@ test("negative: a name that lies about its enforcement, area, number or shelf is
   says(/Rule_Core_06_Z: the name says Rule_6 but the header id says Rule_5/);
   says(/Slot_Frontend_012_Cmd: area Frontend but path backend\/src\/commands\/ is in Backend/);
   says(/Rule_Core_04_W: code Rule does not belong on 02_STRUCTURE/);
-  assert.ok(!wrong.some((x) => /Rule_Gate_07_Y/.test(x)), "a truthful name passes");
+  says(/01_LAW\/_Rule\/Rule_Keys_09_X: a rule lives in the folder of its code/);
+  says(/02_Work\/Rule_Core_08_V: header code: 01_Harness but the rule lives in 02_Work/);
+  says(/01_LAW\/_Rule\/Misc: neither a rule nor a code of law/);
+  assert.ok(!wrong.some((x) => /Rule_Gate_07_Y/.test(x)), "a truthful name in its code's folder passes");
   assert.deepEqual(legacy, ["01_LAW/_Rule/02-3_old"]);
 });
 

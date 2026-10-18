@@ -177,6 +177,14 @@
     {
       "file": "02-38_todo-door.cjs",
       "rule": "02-38"
+    },
+    {
+      "file": "02-83_harness-from-store.cjs",
+      "rule": "02-83"
+    },
+    {
+      "file": "02-85_propose-checked.cjs",
+      "rule": "02-85"
     }
   ],
   "rule_dirs": [],
@@ -216,7 +224,8 @@
     "discard": ".allow-discard",
     "overwrite": ".allow-overwrite",
     "outside": ".allow-outside",
-    "todo": ".allow-todo"
+    "todo": ".allow-todo",
+    "mail": ".allow-mail"
   },
   "flags_comment": "A flag = the user approving ONE job. The guard lets it through, then STAMPS `ZEMORY-USED <command fingerprint> <timestamp>` into the flag file itself — it is NOT deleted at once. Within 90 seconds THAT SAME command may be retried (a PreToolUse hook cannot know whether the command really ran; another host layer blocking it would cost the flag for nothing). Asking for a DIFFERENT job, or going past 90 seconds, REVOKES the flag and it must be requested again. An agent may only create a flag after the user has said so explicitly in the session."
 }

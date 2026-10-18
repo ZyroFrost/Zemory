@@ -828,3 +828,21 @@ test("a retired part kept in docs/archive (a rule folder with its hook.cjs) is h
   const off = conform(root).items.find((i) => i.check === "off-standard-dir")?.samples ?? [];
   assert.ok(!off.some((d) => d.startsWith("docs/archive")), off.join(" · "));
 });
+
+test("a rule the store moved into its code's folder moves in the repo on sync, and its hook is still called there", (t) => {
+  // user 2026-10-18: the codes of law are a folder layer (01_LAW/_Rule/01_Harness/<rule>/); a repo assembled before follows
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const flat = join(root, "docs", "agent", "01_LAW", "_Rule", "02-2_beta");
+  assert.ok(existsSync(flat), "premise: the copy is flat");
+  mkdirSync(join(st.s, "01_LAW", "_Rule", "01_Harness"), { recursive: true });
+  renameSync(join(st.s, "01_LAW", "_Rule", "02-2_beta"), join(st.s, "01_LAW", "_Rule", "01_Harness", "02-2_beta"));
+  st.commit("codes of law");
+  applyKit(root, { apply: true, storeDir: st.s });
+  const layered = join(root, "docs", "agent", "01_LAW", "_Rule", "01_Harness", "02-2_beta");
+  assert.ok(existsSync(join(layered, "hook.cjs")) && !existsSync(flat), "the copy moved into the code's folder, nothing left flat");
+  generateGuards(root);
+  const policy = JSON.parse(readFileSync(join(root, "docs", "agent", "01_LAW", "_Rule", "02-55_hook-guard", "policy.json"), "utf8"));
+  assert.ok(policy.rule_dirs.includes("docs/agent/01_LAW/_Rule/01_Harness/02-2_beta"), policy.rule_dirs.join(" · "));
+});
