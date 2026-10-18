@@ -23,7 +23,10 @@ function repoCons(agentDir: string, frame: string): string | null {
 }
 
 /** The cells of `column` in every markdown table of `text` that has it: code marks dropped, a cell may list several values
- *  (`a` · `b`, or a, b); a template placeholder `<…>` and an empty mark (— · -) are not values. */
+ *  (`a` · `b`, or a, b); a template placeholder `<…>` and an empty mark (— · -) are not values. A cell that opens with the
+ *  empty mark and goes on with a note (`— (through a linked server)`) is empty too, and a trailing note in brackets is not part
+ *  of a value (`192.0.2.10 (DW)` → `192.0.2.10`): the guard reads the Server column as the SQL servers it lets through, so a
+ *  note must never widen it (2026-10-19, a warehouse's frame 10). */
 export function tableColumn(text: string, column: string): string[] {
   const out: string[] = [];
   const lines = text.replace(/\r\n/g, "\n").split("\n");
@@ -35,8 +38,9 @@ export function tableColumn(text: string, column: string): string[] {
     for (; j < lines.length && /^\s*\|/.test(lines[j]); j++) {
       if (at < 0) continue;
       const cell = cells(lines[j])[at] ?? "";
+      if (/^[—–-](\s|$)/.test(cell)) continue;
       for (const v of cell.replace(/<[^<>]*>/g, "").split(/\s*(?:·|,)\s*/)) {
-        const s = v.replace(/`/g, "").trim();
+        const s = v.replace(/`/g, "").replace(/\s*\([^()]*\)\s*$/, "").trim();
         if (s && !/^<[^>]*>$/.test(s) && !/^[—–-]$/.test(s)) out.push(s);
       }
     }

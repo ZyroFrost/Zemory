@@ -32,6 +32,9 @@ test("a table column is read cell by cell: several values, code marks dropped, p
   assert.deepEqual(tableColumn(md, "Server"), ["SRV-BI", "SRV-DEV", "SRV-LOG"]);
   assert.deepEqual(tableColumn(md, "server"), ["SRV-BI", "SRV-DEV", "SRV-LOG"], "the column name is not case-bound");
   assert.deepEqual(tableColumn(md, "File"), [], "no such column, nothing");
+  // a note never becomes a value: the guard would let SQL reach "— (through a linked server)" as a server name
+  const noted = "| Nguồn | Server |\n|---|---|\n| DW | 192.0.2.10 (DW) |\n| nguồn gốc | — (qua linked server) |\n| hệ cũ | - cùng instance |\n";
+  assert.deepEqual(tableColumn(noted, "Server"), ["192.0.2.10"]);
 });
 
 test("the guard reads frame 10's Server and frame 14's File from the written Cons.md; a template is not read", (t) => {
