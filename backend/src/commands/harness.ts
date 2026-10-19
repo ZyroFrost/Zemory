@@ -125,7 +125,13 @@ function runManaged(root: string, apply: boolean, label: string): void {
       console.log(`\n  ${apply ? "✔" : "→"} ${r.name}: marker ${apply ? "now names" : "would name"} owner ${me} (the only manager of a ${r.role})`);
     }
     console.log("");
-    runKit(r.root, { apply, label: `${label} (managed by ${me})` });
+    // one repo that fails is reported and the exit code says so; the other managed repos still get their pass
+    try {
+      runKit(r.root, { apply, label: `${label} (managed by ${me})` });
+    } catch (e) {
+      console.log(`  ✗ ${r.name}: the pass stopped — ${e instanceof Error ? e.message : String(e)}`);
+      process.exitCode = 1;
+    }
   }
   if (ambiguous.length) console.log(`\n  ! names no owner and more than one repo manages its role — not synced, its conform asks it to name one: ${ambiguous.join(" · ")}`);
 }

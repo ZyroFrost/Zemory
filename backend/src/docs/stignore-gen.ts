@@ -10,7 +10,7 @@
 // (data · exports · .vault · *.local.* · docs/.harness-state) still win inside an allowed folder, and the closing `*` drops
 // the rest. A repo with no .stignore is not synced and gets nothing.
 
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, ftruncateSync, openSync, readdirSync, readFileSync, writeSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 export const STIGNORE_ALLOW_START = "// zemory:stignore-allow:start";
@@ -114,6 +114,21 @@ export interface StignoreAllowResult {
   entries: string[];
 }
 
+/**
+ * Rewrite an existing file through a handle opened for update. Windows refuses to open a Hidden file for writing with
+ * truncation (writeFileSync: EPERM), and Syncthing setups often mark .stignore Hidden (2026-10-19: BIZ · HR · IC · MKT ·
+ * OPS); opening the existing file `r+`, truncating and writing is allowed and keeps its attributes.
+ */
+function rewriteInPlace(p: string, text: string): void {
+  const fd = openSync(p, "r+");
+  try {
+    ftruncateSync(fd, 0);
+    writeSync(fd, text, 0, "utf8");
+  } finally {
+    closeSync(fd);
+  }
+}
+
 /** Put the block at the end of .stignore (replacing the previous one). No .stignore = the repo is not synced: nothing done. */
 export function writeStignoreAllow(root: string, apply: boolean): StignoreAllowResult {
   const p = join(root, ".stignore");
@@ -127,6 +142,6 @@ export function writeStignoreAllow(root: string, apply: boolean): StignoreAllowR
   const head = (s >= 0 && e > s ? [...lines.slice(0, s), ...lines.slice(e + 1)] : lines).join("\n").replace(/\s+$/, "");
   const next = `${head}\n\n${stignoreAllowBlock(entries)}\n`.replace(/\n/g, eol);
   if (next === text) return { state: "unchanged", entries };
-  if (apply) writeFileSync(p, next, "utf8");
+  if (apply) rewriteInPlace(p, next);
   return { state: "written", entries };
 }

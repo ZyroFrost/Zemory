@@ -858,8 +858,11 @@ export function installsOf(p: Part): string[] {
 export function installBases(t: AssemblyTarget, parts: Part[]): Map<string, string | null> {
   const out = new Map<string, string | null>();
   for (const p of parts) {
+    // the copy as it is BEFORE assembly — under an older folder name when the part took over another (replaces:), or the
+    // installed file looks hand-edited and is kept (2026-10-19: Skill_PBI_Mix -> Skill_PBI_White kept three scripts)
+    const dir = findCopy(t, p) ?? targetDir(t, p);
     for (const rel of installsOf(p)) {
-      const f = join(targetDir(t, p), rel);
+      const f = join(dir, rel);
       out.set(`${p.key}:${rel}`, existsSync(f) ? readFileSync(f, "utf8") : null);
     }
   }

@@ -980,6 +980,28 @@ test("a frame the store moved into its chapter moves in the repo on sync, and th
   assert.match(readFileSync(join(root, "docs", "archive", "old.md"), "utf8"), /_Cons\/01-1_secrets\/Cons\.md/, "history keeps its words");
 });
 
+test("a skill renamed with replaces: its installed tool, untouched in the repo, takes the new text (not kept as hand-edited)", (t) => {
+  // 2026-10-19: Skill_PBI_Mix -> Skill_PBI_White left scripts/mix_palette.py "kept, edited here" in every repo
+  const st = store(t);
+  const k = readKits(st.s).find((x) => x.no === "01");
+  put(st.s, "03_SKILLS/Skill_PBI_Old/Skill_PBI_Old.md", "---\nid: Skill_PBI_Old\nname: pbi-old\nversion: 1\ninstalls: [scripts/tool.py]\ndescription: x\n---\n# old\n");
+  put(st.s, "03_SKILLS/Skill_PBI_Old/scripts/tool.py", "print('old')\n");
+  assembleSet({ ...k, skills: [...k.skills, "Skill_PBI_Old"] }, st.s);
+  st.commit("old");
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  assert.equal(readFileSync(join(root, "scripts", "tool.py"), "utf8"), "print('old')\n");
+  rmSync(join(st.s, "03_SKILLS", "Skill_PBI_Old"), { recursive: true });
+  put(st.s, "03_SKILLS/Skill_PBI_New/Skill_PBI_New.md", "---\nid: Skill_PBI_New\nname: pbi-new\nversion: 2\naka: pbi-old\nreplaces: [Skill_PBI_Old]\ninstalls: [scripts/tool.py]\ndescription: x\n---\n# new\n");
+  put(st.s, "03_SKILLS/Skill_PBI_New/scripts/tool.py", "print('new')\n");
+  assembleSet({ ...k, skills: [...k.skills, "Skill_PBI_New"] }, st.s);
+  st.commit("rename");
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.ok(!("error" in r), JSON.stringify(r));
+  assert.deepEqual(r.installed.kept, [], "the repo never edited it");
+  assert.equal(readFileSync(join(root, "scripts", "tool.py"), "utf8"), "print('new')\n");
+});
+
 test("the trigger row of a store skill follows the skill's trigger; a doubled row goes; a row of the repo's own stays", (t) => {
   // 2026-10-19: pbi-mix renamed pbi-white kept its old words, and a second pass left two rows for one skill
   const st = store(t);
