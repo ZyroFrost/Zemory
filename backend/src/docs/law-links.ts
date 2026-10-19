@@ -3,8 +3,9 @@
 // decision) · `Related` (another part on the same matter); a skill names the laws it carries out under `## Implements`.
 // The one home of a link is that section in the body; no header field repeats it (Rule_Gate_35_OneHome).
 import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { leafOf, listParts, listStructures, mainOf, mainPath, SHELVES, STORE_DIR, type Shelf } from "./store.js";
-import { SHELF } from "./harness-names.js";
+import { CONS_REPO_FILE, SHELF } from "./harness-names.js";
 
 export type LinkKind = "implements" | "declares" | "related";
 export interface LawLink { kind: LinkKind; name: string }
@@ -38,15 +39,18 @@ export function implementsOf(text: string): string[] {
   return [...s.matchAll(/^-\s*`([^`\n]+)`/gm)].map((m) => m[1].trim());
 }
 
-// a frame (Skill_Frame_Own) carries placeholders where its links go: the shape, not links of its own
-interface Node { leaf: string; shelf: Shelf; text: string; frame?: boolean }
+// a frame (Skill_Frame_Own) carries placeholders where its links go: the shape, not links of its own.
+// `own` = the Cons.md a repo writes into a constitution frame: the frame's rule text is HS's, so a skill of the repo's own
+// (Skill_Own_*) is answered there - its definition rows name the skill (plan/29 §23) - not under the HS text's ## Links
+interface Node { leaf: string; shelf: Shelf; text: string; own?: string; frame?: boolean }
 
 function nodesAt(root: string): Map<string, Node> {
   const out = new Map<string, Node>();
   for (const shelf of SHELVES) {
     for (const p of listParts(root, shelf)) {
       const f = mainPath(p.dir, mainOf(p));
-      out.set(leafOf(p.folder), { leaf: leafOf(p.folder), shelf, text: existsSync(f) ? readFileSync(f, "utf8") : "", frame: shelf === SHELF.skills && String(p.meta.frame ?? "") === "true" });
+      const c = join(p.dir, CONS_REPO_FILE);
+      out.set(leafOf(p.folder), { leaf: leafOf(p.folder), shelf, text: existsSync(f) ? readFileSync(f, "utf8") : "", own: existsSync(c) ? readFileSync(c, "utf8") : undefined, frame: shelf === SHELF.skills && String(p.meta.frame ?? "") === "true" });
     }
   }
   // a structure (Struc_*) can be named as related; it carries no link section of its own
@@ -58,7 +62,7 @@ function nodesAt(root: string): Map<string, Node> {
  * Broken or one-sided links. `root` is the store or a repo's harness folder. In the store every name must be a living part
  * and every `Implements` must be answered by the skill (and the other way round). In a repo a name is dead only when neither
  * the repo nor the store has it (a repo carries part of the store), and the two directions are compared only when both parts
- * are in the repo. Returns "<part>: <finding>" lines.
+ * are in the repo; a skill of the repo's own is answered by the frame's Cons.md naming it. Returns "<part>: <finding>" lines.
  */
 export function lawLinkFindings(root: string = STORE_DIR, storeDir = STORE_DIR): string[] {
   const here = nodesAt(root);
@@ -74,7 +78,8 @@ export function lawLinkFindings(root: string = STORE_DIR, storeDir = STORE_DIR):
         const target = here.get(law);
         if (!target) continue;
         if (!/^(Rule|Cons)_/.test(law)) { out.push(`${node.leaf}: ## Implements names ${law}, which is not a law or a frame`); continue; }
-        if (!linksOf(target.text).some((l) => l.kind === "implements" && l.name === node.leaf)) {
+        const answeredInOwn = /^Skill_Own_/.test(node.leaf) && !!target.own && new RegExp("`" + node.leaf + "`").test(target.own);
+        if (!answeredInOwn && !linksOf(target.text).some((l) => l.kind === "implements" && l.name === node.leaf)) {
           out.push(`${node.leaf}: says it implements ${law}, but ${law} has no "Implements: ${node.leaf}" line under ## Links`);
         }
       }

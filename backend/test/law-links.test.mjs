@@ -73,6 +73,19 @@ test("in a repo a name the store holds is not dead, and the two sides are compar
   assert.ok(lawLinkFindings(agent, s).some((x) => /Skill_Own_Revenue: ## Implements names Cons_Gate_77_Nowhere, which is not a living part/.test(x)));
 });
 
+test("plan/29 §23: an own skill implementing an HS frame is answered by the repo's Cons.md naming it, not by the HS text", (t) => {
+  const s = store(t);
+  const agent = tempDir(t, "zemory-links-own-");
+  put(agent, "01_LAW/_Cons/01_Scope/Cons_Gate_09_Purpose/Cons_Gate_09_Purpose.md", BI("Cons_9"));
+  put(agent, "03_SKILLS/Skill_Own_Revenue/Skill_Own_Revenue.md", "---\nid: Skill_Own_Revenue\nversion: 1\ntype: process\n---\n# r\n\n## Implements · Thi hành luật\n- `Cons_Gate_09_Purpose` — x\n");
+  const oneSided = (f) => f.some((x) => /Skill_Own_Revenue: says it implements Cons_Gate_09_Purpose/.test(x));
+  assert.ok(oneSided(lawLinkFindings(agent, s)), "no Cons.md yet: one-sided");
+  put(agent, "01_LAW/_Cons/01_Scope/Cons_Gate_09_Purpose/Cons.md", "## Định nghĩa\n| Revenue | x | cách tính: `Skill_Own_RevenueOld` |\n");
+  assert.ok(oneSided(lawLinkFindings(agent, s)), "a longer name that only starts with the skill's is not an answer");
+  put(agent, "01_LAW/_Cons/01_Scope/Cons_Gate_09_Purpose/Cons.md", "## Định nghĩa\n| Revenue | x | cách tính: `Skill_Own_Revenue` |\n");
+  assert.deepEqual(lawLinkFindings(agent, s), [], "the definition row names the skill");
+});
+
 test("the bilingual shape: a missing section, the order, and a Do list that lost a step are named", (t) => {
   const s = store(t);
   put(s, "01_LAW/_Rule/02_Work/Rule_Core_92_NoVi/Rule_Core_92_NoVi.md", "---\nid: Rule_92\nversion: 1\n---\n# x\n\n## What\nw\n\n## When\n- w\n\n## Do\n1. a\n\n## Example\n- e\n\n## Check\n- c\n");
