@@ -2,10 +2,10 @@
 id: Skill_Harness_Reconcile
 aka: reconcile
 name: harness-reconcile
-version: 10
+version: 11
 type: process
 description: Bring a project folder back in line with the standard when files have drifted into the wrong places, or when adopting an existing messy folder. Produces a proposal table - never moves anything on its own. Use when taking over an unfamiliar folder, or when asked to reorganise, tidy up, or restructure. Vietnamese triggers - "sắp xếp lại", "dọn lại thư mục", "nắn về chuẩn", "folder đang lộn xộn", "áp chuẩn vào dự án có sẵn".
-from: _Store/03_SKILLS/Skill_Harness_Reconcile @v10 #1ff8a0b80a0d
+from: _Store/03_SKILLS/Skill_Harness_Reconcile @v11 #5e6c013a7f57
 ---
 
 # reconcile — nắn thư mục về chuẩn
@@ -41,10 +41,12 @@ from: _Store/03_SKILLS/Skill_Harness_Reconcile @v10 #1ff8a0b80a0d
      - **KHÔNG ép tạo `test/`** — chỉ khi có lõi logic dễ sai ngầm. Bắt buộc chỉ 4 vai trò:
        `backend(code)` · `frontend` · `docs` · `AGENTS.md`.
    - **NON-APP** (khung non-app):
-     - sản phẩm giao đi → `reports/`|`models/`|`content/`|`design/`. Định nghĩa nguồn → `sources/` ·
-       DAX → `measures/` · SQL/M gọi-tên → `queries/`.
-     - việc định kỳ → `tasks/NN_<tên>/`; data thật → `data/<task>/` (gitignore). File lẻ 1-lần →
-       `data/adhoc/`. Template điền → `templates/`.
+     - sản phẩm giao đi → `reports/`|`models/`|`content/`|`design/`.
+     - hỏi trước một câu (slot `Tasks_115_Tasks`): thuộc MỘT case hay dùng chung? Của một case (spec · SQL · config · findings
+       · `pipeline/`) → `tasks/<case>/`. Dùng chung từ hai case trở lên: định nghĩa nguồn → `sources/` · DAX → `measures/` ·
+       SQL/M gọi-tên → `queries/`.
+     - case (định kỳ lẫn theo yêu cầu) → `tasks/<MÃ PHÒNG>_<NHỊP>_<TênViệc>/`, không đánh số; data thật → `data/<case>/`
+       (gitignore). File lẻ 1-lần → `data/adhoc/`. Template điền → `templates/`.
      - raw kéo về / extract → `data/extract/` (gitignore). Render ra → `exports/` (gitignore).
        Secret → `.env`/`config/*.local.*` (gitignore).
      - **Bắt buộc chỉ 3 vai trò:** `docs` · `AGENTS.md` · ≥1 deliverable. KHÔNG ép `backend/`+`frontend/`

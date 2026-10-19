@@ -298,6 +298,8 @@ export const RETIRED_HARNESS_NAMES: Record<string, string> = {
   "docs/hooks/": "the rule folder that owns the hook",
 };
 const RETIRED_RE = /(?<![\w/])(DEPT_STANDARD|01_CONSTITUTION|02_RULES|03_STRUCTURE|04_SKILLS|05_TODO|06_CHANGES)(?!\w)|docs\/hooks\//g;
+/** The block `zemory sync` keeps in the TODO ledger (docs/kit-sync.ts); same markers, kept here to avoid an import cycle. */
+const STANDARD_TODO_BLOCK = /<!-- zemory:standard-todo:start[\s\S]*?<!-- zemory:standard-todo:end -->/g;
 const SCAN_SKIP_DIRS = new Set([".git", "node_modules", "__pycache__", "attic", "data", "docs_template", "dist", "build", "external", "vendor"]);
 
 /** Repo files the harness ships (skill and structure installs, the host's skill copies): changed in the store, not here. */
@@ -344,7 +346,8 @@ export function retiredNameFindings(root: string): string[] {
       } catch {
         continue;
       }
-      const text = readText(p) ?? "";
+      // the standard block `zemory sync` writes into the TODO ledger quotes these findings: it is the report, not the repo's text
+      const text = (readText(p) ?? "").replace(STANDARD_TODO_BLOCK, "");
       const names = new Set<string>();
       for (const m of text.matchAll(RETIRED_RE)) names.add(m[1] ?? "docs/hooks/");
       if (names.size) hits.push(`${r}: ${[...names].join(" · ")}`);

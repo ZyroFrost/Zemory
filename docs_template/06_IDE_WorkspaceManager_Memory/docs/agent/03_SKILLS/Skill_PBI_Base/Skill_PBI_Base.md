@@ -1,12 +1,12 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 5
+version: 6
 type: process
 aka: dev-pbi
 replaces: [Skill_Dev_Pbi]
 description: Build or change a BI report - layout and chart choice, measures and queries kept in one named store, and the report file handled as a heavy binary. Use whenever a report, dashboard, measure or visual is created or changed. Vietnamese triggers - "báo cáo", "dashboard", "biểu đồ", "measure", "DAX", "Power Query", "pbix".
-from: _Store/03_SKILLS/Skill_PBI_Base @v5 #a7a2ec3ca511
+from: _Store/03_SKILLS/Skill_PBI_Base @v6 #7bdb4e5bf6f3
 ---
 
 # pbi-base — dựng và sửa báo cáo BI
@@ -25,7 +25,8 @@ from: _Store/03_SKILLS/Skill_PBI_Base @v5 #a7a2ec3ca511
 ## 2. Measure và truy vấn
 
 - DAX · M · SQL của báo cáo gom ở kho câu của repo (`queries/` · `measures/`), mỗi câu có tên, gọi theo tên; không viết rải
-  trong từng visual (`Rule_Gate_35_OneHome`).
+  trong từng visual (`Rule_Gate_35_OneHome`). Câu chỉ MỘT case dùng ⇒ `tasks/<case>/check_*.sql`; `queries/` chỉ giữ câu từ hai
+  case trở lên dùng (slot `Queries_122_Queries`).
 - Đổi một measure dùng chung ⇒ liệt kê mọi visual và báo cáo dùng nó trước khi đổi (`Rule_Core_80_SharedChangeImpact`).
 - Sau khi đổi: làm mới dữ liệu và đối chiếu tổng với nguồn bằng số (`Rule_Gate_01_DoneMeansRun`).
 

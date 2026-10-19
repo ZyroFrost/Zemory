@@ -2,7 +2,7 @@
 id: Skill_Task_Pull
 aka: pull
 name: task-pull
-version: 6
+version: 7
 type: process
 description: Fetch fresh data from a source (SQL, VM, web, API) into the project so a deliverable can be built. Use when the deliverable needs newer numbers, when a scheduled task starts, or when asked to refresh, download, or retrieve source data. Vietnamese triggers - "kéo dữ liệu", "lấy số mới", "tải data về", "cập nhật nguồn", "pull dữ liệu", "làm mới số liệu".
 ---
@@ -16,7 +16,8 @@ description: Fetch fresh data from a source (SQL, VM, web, API) into the project
 
 ## Quy trình
 
-1. **Đọc `sources/`** — định nghĩa nguồn (M · connection spec · SQL kéo). Credential lấy từ `.env`
+1. **Đọc định nghĩa nguồn** (M · connection spec · SQL kéo): của MỘT case ⇒ ở `tasks/<case>/`; dùng chung từ hai case trở lên ⇒
+   `sources/` (slot `Tasks_115_Tasks`: hỏi "thuộc một case hay dùng chung?" trước khi đặt file). Credential lấy từ `.env`
    hoặc `config/`. **KHÔNG BAO GIỜ nhập mật khẩu vào công cụ** (kể cả `zemory`). Nguồn là web → mượn
    phiên đã đăng nhập trên trang thật.
 2. **Kéo raw về `data/extract/`** (gitignore). Đặt tên theo **nguồn + ngày**.

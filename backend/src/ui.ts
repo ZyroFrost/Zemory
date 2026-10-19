@@ -26,6 +26,8 @@ import {
 import { cacheDue, readUpdateCache } from "./update/remote-version.js";
 import { npmInvocation } from "./platform/npm.js";
 import { generateGuards } from "./docs/guard-gen.js";
+import { repoKit } from "./docs/kit-apply.js";
+import { kitSync } from "./docs/kit-sync.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { WEB_PLATFORMS, accountsOf, scanWeb, scanWebPlatforms, showLinkedPage } from "./memory/scanweb.js";
@@ -3069,6 +3071,23 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const known = listKnownProjects().find((k) => k.root.toLowerCase() === root.toLowerCase());
       if (!known) return json(res, { ok: false, error: "not a linked project" });
       if (!existsSync(known.root)) return json(res, { ok: false, error: "folder is gone" });
+      // A kit repo (folder harness): the same pass as `zemory sync` in that repo — docs/kit-sync.ts, one implementation.
+      if (repoKit(known.root)) {
+        try {
+          const ks = kitSync(known.root, { apply: true });
+          if ("error" in ks) return json(res, { ok: false, error: ks.error });
+          const steps = ks.assembly.steps;
+          const written = steps.filter((s) => s.verdict === "absent" || s.verdict === "clean" || s.verdict === "merged").length;
+          const conflicts = steps.filter((s) => s.verdict === "conflict").length;
+          const guard = Boolean(ks.guard && !("error" in ks.guard));
+          harnessUpdCache = null;
+          daemonLog(`[harness-apply] ${known.root}: kit ${ks.assembly.kit.name} · ${written} part(s) written / ${conflicts} conflict(s) · guard ${guard ? "ok" : "skipped"} · off-standard ${ks.todo?.items ?? 0}`);
+          // the dialog reads the file-harness fields: parts written count as written, a conflict is a part left for a hand fix
+          return json(res, { ok: true, kit: ks.assembly.kit.name, added: [], stdWritten: written, stdSkipped: conflicts, guard, offStandard: ks.todo?.items ?? 0 });
+        } catch (e) {
+          return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
+        }
+      }
       try {
         const r = ensureHarness(known.root);
         let guard = false;

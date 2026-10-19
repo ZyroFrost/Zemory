@@ -2,7 +2,7 @@
 id: Skill_Harness_Structure
 aka: structure
 name: harness-structure
-version: 15
+version: 16
 type: process
 description: Folder standard and routing table for a non-app project (BI, report, data, docs-only, design) — decides where every file belongs. Use before creating, naming, moving, or tidying any file or folder, or when asked where something should go. Vietnamese triggers - "để ở đâu", "đặt file này vào đâu", "sắp xếp lại thư mục", "tạo thư mục", "dọn cho gọn", "file này thuộc chỗ nào".
 ---
@@ -68,15 +68,16 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 | Có gì / cần làm | → Slot |
 |---|---|
 | báo cáo / model / nội dung / thiết kế giao đi | `reports/` \| `models/` \| `content/` \| `design/` ◆ |
-| **đơn vị công việc** (báo cáo tuần, đợt phân tích) | `tasks/NN_<tên>/spec.md` · data thật → `data/<task>/` |
-| **pipeline thực thi task** (stage đánh số) | `pipelines/NN_<tên>/` MIRROR `tasks/` · `common.py` + `00_`/`01_`/`02_` |
+| **đơn vị công việc** (báo cáo tuần, đợt phân tích) | `tasks/<MÃ PHÒNG>_<NHỊP>_<TênViệc>/spec.md`, không đánh số · data thật → `data/<case>/` |
+| **thứ của MỘT case** (SQL kéo · query check · config · findings) | `tasks/<case>/` — hỏi trước: thuộc một case hay dùng chung? (slot `Tasks_115_Tasks`) |
+| **pipeline thực thi task** (stage đánh số) | `tasks/<case>/pipeline/` · `common.py` + `00_`/`01_`/`02_`; ETL nhiều case dùng → `pipelines/<domain>/` |
 | **danh mục việc định kỳ** (nhịp + câu đã dán vào lịch) | `tasks/SCHEDULE.md` — MỘT dòng mỗi task |
-| **launcher chạy task** | `<tên>.cmd` ở GỐC — ASCII thuần |
+| **launcher chạy task** | `bin/<tên>.cmd` — ASCII thuần (slot `Bin_082_Bin`) |
 | **output stage / deliverable** | trung gian `data/<task>/NN_*` · deliverable tên nghiệp vụ (KHÔNG prefix số) |
 | **file mẫu chờ ĐIỀN** (report trống) | `templates/` |
-| **định nghĩa nguồn** (M / connection / SQL kéo) | `sources/` — trỏ TÊN env, KHÔNG secret thật |
+| **định nghĩa nguồn dùng chung** (M / connection / SQL kéo, từ hai case trở lên) | `sources/` — trỏ TÊN env, KHÔNG secret thật |
 | DAX / measure đặt tên | `measures/` |
-| SQL / DAX / M gọi theo tên | `queries/` — KHÔNG rải inline |
+| SQL / DAX / M gọi theo tên, từ hai case trở lên dùng | `queries/` — KHÔNG rải inline |
 | ETL / transform nhiều bước | `pipelines/` |
 | phân tích thăm dò | `notebooks/` |
 | data mẫu nhỏ mở được deliverable | `fixtures/` (tracked) |
