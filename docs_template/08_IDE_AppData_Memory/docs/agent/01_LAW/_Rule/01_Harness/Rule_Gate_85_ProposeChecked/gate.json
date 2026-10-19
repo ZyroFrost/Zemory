@@ -1,0 +1,93 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write"
+    ]
+  },
+  "prompt": {
+    "kind": "Rule_85",
+    "re": "\\b(them|de xuat|tao|bo sung|lap)\\b.{0,24}\\b(luat|dieu|hien phap|skill|slot)\\b|\\b(new|add|propose)\\b.{0,16}\\b(rule|skill|slot|article)\\b",
+    "text": "[zemory] Rule_Gate_85_ProposeChecked: before proposing a new law / article / slot / skill - search the store; the same thing there => add nothing; it fits an existing part => amend that part; only otherwise a new part, naming the parts weighed (checked:) and why they do not fit."
+  },
+  "block": [
+    {
+      "note": "a new part folder with no checked: line",
+      "files": {
+        "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md": "---\nid: Rule_10\n---\n# Rule_Gate_10_DestructiveOps Destructive operations\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_90_NoProcEdit/Rule_Gate_90_NoProcEdit.md",
+        "content": "---\nid: Rule_90\nname: no-proc-edit\nversion: 1\n---\n# Rule_Gate_90_NoProcEdit Never edit a source proc\n\n- text\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "checked: names a part that is not in the store",
+      "files": {
+        "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md": "---\nid: Rule_10\n---\n# Rule_Gate_10_DestructiveOps Destructive operations\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_90_NoProcEdit/Rule_Gate_90_NoProcEdit.md",
+        "content": "---\nid: Rule_90\nname: no-proc-edit\nversion: 1\nchecked: [Rule_Gate_99_Nowhere]\n---\n# Rule_Gate_90_NoProcEdit Never edit a source proc\n\n- text\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a request to add a rule",
+      "prompt": "thêm luật không sửa proc nguồn"
+    }
+  ],
+  "pass": [
+    {
+      "note": "a new part that names the parts it was weighed against",
+      "files": {
+        "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md": "---\nid: Rule_10\n---\n# Rule_Gate_10_DestructiveOps Destructive operations\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_90_NoProcEdit/Rule_Gate_90_NoProcEdit.md",
+        "content": "---\nid: Rule_90\nname: no-proc-edit\nversion: 1\nchecked: [Rule_Gate_10_DestructiveOps]\n---\n# Rule_Gate_90_NoProcEdit Never edit a source proc\n\n- text\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "amending an existing part",
+      "files": {
+        "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md": "---\nid: Rule_10\n---\n# Rule_Gate_10_DestructiveOps Destructive operations\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md",
+        "content": "---\nid: Rule_10\n---\n# x\n\n- more\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa report doanh thu tháng"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "extends": "Struc_Repo_NonApp",
+  "slots": [],
+  "role": {
+    "name": "app-data",
+    "manages": [],
+    "managed_by": [
+      "system-manager"
+    ],
+    "owner": "required",
+    "provides": [
+      "app-data"
+    ]
+  }
+}

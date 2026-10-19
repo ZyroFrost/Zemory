@@ -63,6 +63,23 @@ export function findRegionRepo(name: string, from: string): string | null {
   return null;
 }
 
+/** Every repo of the workspace `root` sits in: under the folder above it, and up to two levels below (the reach of findRegionRepo's first level). */
+export function regionRepos(root: string): string[] {
+  const out: string[] = [];
+  (function seek(d: string, depth: number): void {
+    let ents: string[];
+    try { ents = readdirSync(d); } catch { return; }
+    for (const e of ents) {
+      if (e.startsWith(".") || e === "node_modules") continue;
+      const p = join(d, e);
+      try { if (!statSync(p).isDirectory()) continue; } catch { continue; }
+      if (isRepo(p)) out.push(p);
+      else if (depth < 2) seek(p, depth + 1);
+    }
+  })(dirname(root), 0);
+  return out;
+}
+
 /**
  * The workspace declarations of the repo at `root`: `wrong` (blocking) — the owner rule of its template broken, an owner whose
  * template does not manage this one, a service from a repo whose template does not provide it, a name that is no repo, the old
@@ -90,7 +107,11 @@ export function regionLinkFindings(root: string, storeDir = STORE_DIR): { wrong:
       else if (!theirs.manages.includes(role.name)) wrong.push(`owner "${owner}" (${theirs.name}) does not manage a ${role.name}`);
     }
   } else if (role.owner === "required") {
-    wrong.push(`a ${role.name} must name its owner (a ${role.managed_by.join(" · ") || "manager"})`);
+    // no repo of the workspace holds a template that manages this role yet ⇒ the owner cannot be named: advisory until one does
+    // (2026-10-19: _DB_AppCore is app-data, and no system-manager repo exists)
+    const manager = regionRepos(root).some((at) => repoRole(at, storeDir)?.manages.includes(role.name));
+    if (manager) wrong.push(`a ${role.name} must name its owner (a ${role.managed_by.join(" · ") || "manager"})`);
+    else pending.push(`a ${role.name} names no owner — no repo of the workspace is a ${role.managed_by.join(" · ") || "manager"} yet`);
   }
   for (const [kind, target] of Object.entries(uses)) {
     if (typeof target !== "string" || !target) { wrong.push(`uses.${kind}: one repo name`); continue; }
