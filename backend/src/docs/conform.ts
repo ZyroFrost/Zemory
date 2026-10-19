@@ -33,7 +33,7 @@ import { viName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
 import {
   binLauncherFindings, caseHeaderFindings, caseIndexFindings, deadFlagFindings, ledgerDuplicateHeadings, ledgerTitleFindings,
-  reportsIndexFindings, RETIRED_HARNESS_NAMES, retiredNameFindings, sharedSlotFindings, vmTaskDataFindings,
+  reportsIndexFindings, RETIRED_HARNESS_NAMES, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmTaskDataFindings,
 } from "./case-checks.js";
 import { stateDirOf } from "./guard-gen.js";
 
@@ -45,6 +45,8 @@ export interface ConformItem {
   title: string;
   /** vài ví dụ đại diện — CỐ Ý không in hết, bảng phải NGẮN mới rẻ token */
   samples: string[];
+  /** every finding, for the off-standard block `zemory sync` writes into the repo's TODO (the repo fixes from it, no re-run) */
+  all?: string[];
   count: number;
   /** sửa ở đâu — agent đọc là biết đường, khỏi đoán */
   fix: string;
@@ -135,7 +137,7 @@ export function conform(root: string): ConformReport {
     fix: string,
   ): void => {
     if (!all.length) return;
-    items.push({ check, level, title, samples: all.slice(0, SAMPLE_CAP), count: all.length, fix });
+    items.push({ check, level, title, samples: all.slice(0, SAMPLE_CAP), all, count: all.length, fix });
   };
 
   // ① File nằm trong thư mục KHÔNG khớp slot nào của từ điển ⇒ lệch chuẩn thật.
@@ -434,6 +436,11 @@ export function conform(root: string): ConformReport {
     "merge the two sections into one; drop an empty one");
   push("retired-harness-name", "blocking", "Text names a harness file that no longer exists in a folder harness", retiredNameFindings(root),
     "point at the new home: " + Object.entries(RETIRED_HARNESS_NAMES).map(([k, v]) => `${k} → ${v}`).join(" · ") + " — a file the harness ships is fixed in the zemory store");
+  const superseded = supersededFactFindings(root);
+  push("superseded-fact", "blocking", "Text still states a fact of the region that changed (region values › superseded_facts)", superseded.blocking,
+    "replace the old fact with the one after the arrow; a change of the region is added to superseded_facts once and every repo is told by sync");
+  push("superseded-fact-history", "advisory", "Text names a fact of the region that changed — keep it where it tells history, replace it where it instructs",
+    superseded.advisory, "a line that says how things are or what to do takes the fact after the arrow; a line about what happened then stays");
   push("dead-flag", "advisory", "A used one-use flag left in the state folder (revoked, opens nothing)", deadFlagFindings(root, stateDirOf(root)),
     "delete the file; a flag is created anew for each approval");
 

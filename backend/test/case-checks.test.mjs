@@ -8,8 +8,9 @@ import test from "node:test";
 import { join } from "node:path";
 import {
   binLauncherFindings, caseHeaderFindings, caseIndexFindings, deadFlagFindings, ledgerDuplicateHeadings, ledgerTitleFindings,
-  reportsIndexFindings, retiredNameFindings, sharedSlotFindings, vmTaskDataFindings,
+  reportsIndexFindings, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmTaskDataFindings,
 } from "../../dist/docs/case-checks.js";
+import { standardTodoBlock } from "../../dist/docs/kit-sync.js";
 import { conform } from "../../dist/docs/conform.js";
 import { tempDir } from "./helpers.mjs";
 
@@ -231,6 +232,45 @@ test("NEGATIVE: retired-harness-name does not fire on a file harness (those name
   const root = dept(t);
   write(root, "docs/plan/01.md", "Xem 02_RULES.\n");
   assert.deepEqual(retiredNameFindings(root), []);
+});
+
+test("superseded-fact: a changed fact of the region listed once in values.json is caught in the repo's own text", (t) => {
+  const root = folderRepo(t);
+  write(root, "data/region/values.json", JSON.stringify({ superseded_facts: [
+    { old: "SRV-OLD", now: "SRV-NEW (task server)" },
+    { old: "App.exe", now: "python scripts/query.py", roles: ["dept"] },
+  ] }));
+  write(root, "docs/plan/01_sources.md", "Task chạy trên SRV-OLD lúc 01:00.\nBản sao ở `_Legacy\\SRV-OLD\\PWBI` giữ nguyên.\n");
+  write(root, "docs/agent/01_LAW/_Cons/01_Scope/Cons_Gate_09_Purpose/Cons.md", "Dò số bằng App.exe.\n");
+  write(root, "docs/archive/old.md", "SRV-OLD\n");
+  assert.deepEqual(supersededFactFindings(root).blocking, ["docs/plan/01_sources.md: SRV-OLD → SRV-NEW (task server)"],
+    "the archive is history; an entry limited to a role this repo lacks is not applied");
+});
+
+test("superseded-fact: an entry marked advisory (a name that also lives in history) is listed to look at, not blocking", (t) => {
+  const root = folderRepo(t);
+  write(root, "data/region/values.json", JSON.stringify({ superseded_facts: [{ old: "SRV-OLD", now: "SRV-NEW", level: "advisory" }] }));
+  write(root, "docs/plan/01_sources.md", "Hệ ETL cũ chạy trên SRV-OLD.\n");
+  assert.deepEqual(supersededFactFindings(root), { blocking: [], advisory: ["docs/plan/01_sources.md: SRV-OLD → SRV-NEW"] });
+});
+
+test("NEGATIVE: superseded-fact skips a path segment (the name of a mirror folder) and a word that only contains the old one", (t) => {
+  const root = folderRepo(t);
+  write(root, "data/region/values.json", JSON.stringify({ superseded_facts: [{ old: "SRV-OLD", now: "SRV-NEW" }] }));
+  write(root, "docs/plan/01_sources.md", "Bản sao ở `D:\\_Legacy\\SRV-OLD\\PWBI` · mirror `SRV-OLD/PWBI` · máy SRV-OLD-Maintain vẫn chạy.\n");
+  assert.deepEqual(supersededFactFindings(root), { blocking: [], advisory: [] });
+});
+
+test("the off-standard block lists EVERY place of a finding, so the repo fixes from it without running conform again", () => {
+  const all = Array.from({ length: 12 }, (_, i) => `docs/plan/0${i}.md: 02_RULES`);
+  const block = standardTodoBlock([{ check: "retired-harness-name", level: "blocking", title: "t", samples: all.slice(0, 6), all, count: 12, fix: "02_RULES → 01_LAW/_Rule/" }]);
+  assert.match(block, /- \[ \] `retired-harness-name` \(12\) t → 02_RULES → 01_LAW\/_Rule\//);
+  for (const s of all) assert.ok(block.includes(`  - ${s}`), `listed: ${s}`);
+  const both = standardTodoBlock([
+    { check: "case-index", level: "blocking", title: "a", samples: ["x"], all: ["x"], count: 1, fix: "f" },
+    { check: "superseded-fact-history", level: "advisory", title: "b", samples: ["y"], all: ["y"], count: 1, fix: "g" },
+  ]);
+  assert.match(both, /### Phải sửa\n- \[ \] `case-index`[\s\S]*### Nên xem[^\n]*\n- \[ \] `superseded-fact-history`/, "must-fix first, then to look at");
 });
 
 test("dead-flag: a used flag past its retry window and an unused one past the fresh window; a fresh one is alive", (t) => {

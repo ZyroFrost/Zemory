@@ -35,7 +35,7 @@ test("the off-standard block goes under the ledger's first heading; the repo's o
   assert.equal(r.state, "written");
   const text = ledger(root);
   assert.ok(text.startsWith("# Dept_XY — TODO\n\n" + STANDARD_TODO_START), "right under the heading");
-  assert.match(text, /- \[ \] `case-index` \(1\) title of case-index: content\/README\.md: no row for tasks\/A\/ → fix case-index/);
+  assert.match(text, /- \[ \] `case-index` \(1\) title of case-index → fix case-index\n {2}- content\/README\.md: no row for tasks\/A\//);
   assert.ok(text.endsWith(STANDARD_TODO_END + "\n\n## Việc mở\n- [ ] a\n"), "the repo's section follows untouched");
 });
 

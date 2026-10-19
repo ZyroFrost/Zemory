@@ -1,10 +1,10 @@
 ---
 id: Slot_140
 name: workspace-values
-version: 4
+version: 5
 path: data/region/
 checked: [Data_094_Data, Config_075_Config]
-from: _Store/02_STRUCTURE/_Slot/Data_140_WorkspaceValues @v4 #64782d637bf2
+from: _Store/02_STRUCTURE/_Slot/Data_140_WorkspaceValues @v5 #a3d52734d2e6
 ---
 # Data_140_WorkspaceValues workspace-values — giá trị thật của cụm
 
@@ -29,4 +29,5 @@ from: _Store/02_STRUCTURE/_Slot/Data_140_WorkspaceValues @v4 #64782d637bf2
 | `acronym_origin` · `not_acronyms` | nguyên gốc của từng từ viết tắt (kèm nguồn) · chữ in hoa không phải viết tắt |
 | `query_app` · `query_row_cap` | công cụ truy vấn chỉ đọc agent dùng để dò (tên, cách gọi) · trần dòng một lượt |
 | `query_client_dir` · `query_python` · `query_vault_file` · `query_warehouse_id` | thư mục client của công cụ truy vấn · python import được client đó · tên file tài khoản trong két mỗi repo (`data/secrets/vault/`) · `db_id` của DW trong công cụ — `scripts/query.py` của `Skill_Task_Pull` đọc các khoá này |
+| `superseded_facts` | dữ kiện của cụm đã đổi: `[{ old, now, roles? }]` — máy chủ đổi tên, app thay, thư mục gốc dời. `zemory conform` › `superseded-fact` báo mọi chỗ chữ của repo còn ghi `old`; `zemory sync` đưa vào sổ việc của repo. Đổi một dữ kiện của cụm ⇒ thêm một dòng ở đây, không sửa tay từng repo |
 | `mail_signature` · `mail_cc` · `shared_mailbox` · `shared_mailbox_signature` | chữ ký và Cc mặc định của mail báo cáo; hộp thư chung và chữ ký của nó |
