@@ -2,7 +2,7 @@
 id: Rule_27
 aka: 02-27
 name: harness-language
-version: 17
+version: 18
 kind: judgment
 code: 01_Harness
 ---
@@ -48,9 +48,10 @@ right below, in a plain specification voice, with one fixed word for each thing.
   to the changelog.
 
 ## Check
-- A hook blocks, in new lines of a harness doc: a quote of a person, a decision date, an e-mail, a path with a person's name,
-  and the word "kho" alone (it passes "kho dữ liệu" and the stockroom words "tồn kho" · "nhập kho" · "xuất kho" ·
-  "kiểm kho" · "kho hàng").
+- A hook blocks, in new lines of a harness doc: a quote of a person, a decision date, an e-mail, a path with a person's name.
+- The same hook blocks the word "kho" alone in new lines of EVERY prose file the repo writes — harness docs, plans, the two
+  ledgers, case specs, READMEs (archive and attic excepted): write DW or HS. It passes "kho dữ liệu" and the stockroom
+  words "tồn kho" · "nhập kho" · "xuất kho" · "kiểm kho" · "kho hàng".
 - Broken Vietnamese (no diacritics) is blocked by `Rule_Gate_31_NoBrokenVietnamese`.
 - A store check reds a law that lacks a language, a section, or has a different number of steps between the two versions.
 - The voice itself is judgment.
@@ -94,9 +95,10 @@ ràng, mỗi thứ một chữ cố định. Không trích lời ai, không ghi 
   ở changelog.
 
 ## Máy kiểm
-- Hook chặn, trong các dòng mới của docs harness: lời trích của một người, ngày chốt, email, đường dẫn mang tên người, và chữ "kho"
-  đứng trơn (cho qua "kho dữ liệu" và các từ kho hàng "tồn kho" · "nhập kho" · "xuất kho" · "kiểm kho" ·
-  "kho hàng").
+- Hook chặn, trong các dòng mới của docs harness: lời trích của một người, ngày chốt, email, đường dẫn mang tên người.
+- Cùng hook đó chặn chữ "kho" đứng trơn trong dòng mới của MỌI file văn xuôi repo viết — docs harness, plan, hai sổ, spec của
+  case, README (trừ archive và attic): viết DW hoặc HS. Cho qua "kho dữ liệu" và các từ kho hàng "tồn kho" · "nhập kho" ·
+  "xuất kho" · "kiểm kho" · "kho hàng".
 - Tiếng Việt mất dấu do `Rule_Gate_31_NoBrokenVietnamese` chặn.
 - Kiểm tra của HS báo đỏ luật thiếu một ngôn ngữ, thiếu một mục, hoặc số bước lệch giữa hai bản.
 - Giọng văn là phán đoán.
