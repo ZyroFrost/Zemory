@@ -152,6 +152,19 @@ test("02-10: every in-repo file delete asks first; temp folders, mentions and gi
   }
 });
 
+test("02-10: a variable set to a literal in the same command is expanded (AppCore · IT could not empty their scratch folder)", () => {
+  const sp = join(tmpdir(), "claude", "x", "scratchpad");
+  for (const cmd of [`$sp = "${sp}"; Remove-Item -LiteralPath "$sp\\translate\\a.py" -Confirm:$false`,
+    `S="${sp.replace(/\\/g, "/")}"; rm "$S/a.mjs" "\${S}/b.mjs"`]) {
+    const r = ask(bash(cmd));
+    assert.equal(r.blocked, false, `a temp target behind a literal variable must pass: ${cmd}\n${r.say}`);
+  }
+  for (const cmd of [`$sp = "backend/src"; Remove-Item "$sp\\ui.ts"`, `Remove-Item "$unknown\\a.py"`, `S="${sp.replace(/\\/g, "/")}"; rm "$S/a.mjs" README.md`]) {
+    const r = ask(bash(cmd));
+    assert.equal(r.blocked, true, `NEGATIVE: an in-repo target, an unresolved variable, or a second target in the repo still asks: ${cmd}`);
+  }
+});
+
 // 02-10 (b): a rule never disappears from a rule set without the user's word; retiring one keeps its number.
 test("02-10 (b): an edit that drops a rule number from 01/02 is blocked; keeping the number passes", () => {
   // A temp repo holding a copy of the old app template's rules and constitution as its harness: the harness docs are

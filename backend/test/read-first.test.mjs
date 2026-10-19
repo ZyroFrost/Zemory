@@ -116,6 +116,19 @@ test("NEGATIVE: our OWN Edit / Write after reading needs no re-read — the sess
   assert.equal(s.check(s.edit("x.md")), null, "a Write");
 });
 
+test("two Edits of one file in one turn: the second passes before the first one's result reaches the transcript (Dept_IT 2026-10-19)", (t) => {
+  const s = setup(t);
+  s.read("docs/agent/02_RULES.md", 1, 10, 10);
+  s.read("docs/plan/01_x.md", 1, 4, 4);
+  const first = { tool_name: "Edit", tool_input: { file_path: join(s.root, "docs/agent/02_RULES.md"), old_string: "line 7", new_string: "line 7 rewritten" } };
+  assert.equal(s.check(first), null, "the first Edit passes (everything read)");
+  const f = join(s.root, "docs/agent/02_RULES.md");
+  writeFileSync(f, readFileSync(f, "utf8").replace("line 7", "line 7 rewritten")); // the host applies it; no record yet
+  assert.equal(s.check(s.edit("docs/agent/02_RULES.md")), null, "the line the session just wrote is not asked for again");
+  writeFileSync(f, readFileSync(f, "utf8").replace("line 2", "line 2 by another session"));
+  assert.match(s.check(s.edit("x.md")), /still to read: lines 2\)/, "NEGATIVE: a line someone else changed still has to be read");
+});
+
 test("NEGATIVE: a context compaction does NOT void earlier reads (user 2026-10-08: the session already knows them)", (t) => {
   const s = setup(t);
   s.read("docs/agent/02_RULES.md", 1, 10, 10);

@@ -336,6 +336,9 @@ export function retiredNameFindings(root: string): string[] {
         continue;
       }
       if (!TEXT_EXT.has(extname(e.name).toLowerCase()) || shipped.has(r)) continue;
+      // a dated findings file of a case (tasks/<case>/<YYYY-MM-DD>_<slug>.md, slot Tasks_117) is a record of its day, like the
+      // CHANGES ledger: the names it quotes were the living files then
+      if (/^tasks\/[^/]+\/\d{4}-\d{2}-\d{2}_[^/]*\.md$/.test(r)) continue;
       // inside the harness the repo writes its Cons.md files and its TODO; every other shelf file is assembled from the store,
       // and the CHANGES ledger is history (it names what was moved where)
       const inShelf = shelves.some((s) => r === s || r.startsWith(s + "/"));
