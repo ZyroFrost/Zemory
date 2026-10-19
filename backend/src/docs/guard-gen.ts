@@ -26,6 +26,7 @@ import { RULE_HOOKS, SECRET_VALUES } from "./rule-hooks-src.js";
 import { folderCoreFiles, isFolderHarness, isRetired, listParts, shelfDir, skillReadTriggers } from "./store.js";
 import { CONS_REPO_FILE, SHELF } from "./harness-names.js";
 import { consColumn } from "./cons-read.js";
+import { repoRole } from "./region-links.js";
 
 /**
  * Where the guard lives. File harness: `<agent>/../hooks`. Folder harness (plan/28 §0d · §0q): the folder of the read-first
@@ -245,6 +246,8 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     // carries it. The one-use flags in flags_dir are exempt (writing a flag is how the user's approval is recorded).
     protected_write: [...new Set([...protectedWrite, ...harnessWrite])],
     harness_write: harnessWrite,
+    // the template's role says git is this repo's local backup (Struc_Repo_Dept: no remote, never pushed)
+    git_local: repoRole(root)?.git === "local",
     // the repo's own fills inside the harness folder (plan/29 §13b): written freely; hook 02-83 keeps their shape
     fill_write: folder
       ? [relp(hp.todo), relp(hp.changes), `${agentRel}/${SHELF.constitution}/*/${CONS_REPO_FILE}`, `${agentRel}/${SHELF.skills}/Skill_Own_*`]
@@ -344,8 +347,11 @@ const ROOT = path.resolve(HERE, ...(POLICY.hooks_dir || POLICY.flags_dir).split(
 
 // Block on BOTH channels. Measured 2026-10-14 (plan/28 §0m): on a machine without Git the host drops the exit
 // code, so exit 2 alone lets the call through; the JSON decision on stdout blocks with or without Git.
+// Why a flag that was on disk opened nothing (set by consumeFlag when it revokes one): said in the block, so nobody has to guess
+// why a flag created a moment ago did not work (Dept_PUR 2026-10-19: "the flag works one time and not the next").
+let FLAG_NOTE = "";
 function deny(msg) {
-  const why = String(msg).trim();
+  const why = String(msg).trim() + (FLAG_NOTE ? "\\n(" + FLAG_NOTE + ")" : "");
   process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: why } }));
   process.stderr.write(why + "\\n");
   process.exit(2);
@@ -392,6 +398,9 @@ function consumeFlag(name, subject) {
   if (m) {
     if (m[1] === mark && Date.now() - Number(m[2]) < FLAG_RETRY_MS) return true; // retry of the same job
     try { fs.unlinkSync(p); } catch {} // a different job or past the window => revoked, ask again
+    FLAG_NOTE = "the flag " + file + " was there but already used " + Math.round((Date.now() - Number(m[2])) / 1000) + " s ago " +
+      (m[1] === mark ? "(its retry window is 90 s)" : "for another job — a call blocked after taking it counts as that job") +
+      "; it is revoked: create it anew for THIS job";
     return false;
   }
   if (!m) {
@@ -399,6 +408,8 @@ function consumeFlag(name, subject) {
     try { mtime = fs.statSync(p).mtimeMs; } catch {}
     if (Date.now() - mtime > FLAG_FRESH_MS) {
       try { fs.unlinkSync(p); } catch {} // stale: never used while the approval was fresh => ask again
+      FLAG_NOTE = "the flag " + file + " was there but created " + Math.round((Date.now() - mtime) / 60000) + " min ago and never used " +
+        "(an approval holds 15 min); it is removed: create it anew";
       return false;
     }
   }
@@ -750,6 +761,13 @@ function versionClash() {
 function checkBash(cmd) {
   const bare = stripMessages(cmd);
 
+  // A repo whose git is its local backup (template role git: local — the department repos): it has no remote and is never
+  // pushed; copies to other machines go through zemory's backup and Syncthing. No flag: the user settled it for the role.
+  if (POLICY.git_local && hitsIn(bare, /^git$/, /\\bgit\\s+(?:-[A-Za-z]\\s+\\S+\\s+)*(push\\b|remote\\s+(add|set-url)\\b)/)) {
+    deny("BLOCKED (guard layer 1): this repo's git is its LOCAL BACKUP - no remote, never pushed (its template's role: git local). " +
+      "Commit as often as you like; another machine gets the repo through zemory's backup and Syncthing, not git. There is no flag for this.");
+  }
+
   if (hitsIn(bare, /^git$/, new RegExp(GIT_CMD + PUSH_ARG))) {
     const clash = versionClash();
     if (clash) {
@@ -917,7 +935,13 @@ function checkBash(cmd) {
         const toks = seg.split(/[\\s'"]+/).filter(Boolean);
         const at = toks.findIndex((t) => DEL_CMDS.test(t.toLowerCase()));
         if (at < 0) continue;
-        for (const t of toks.slice(at + 1)) {
+        // the value of a PowerShell parameter is no target: \`-ErrorAction SilentlyContinue\` deletes nothing called
+        // SilentlyContinue (Dept_PUR 2026-10-19). -Path / -LiteralPath name the target and are kept.
+        const VALUE_PARAMS = /^-(erroraction|warningaction|informationaction|progressaction|errorvariable|warningvariable|outvariable|pipelinevariable|filter|include|exclude|credential|stream)$/i;
+        const rest = toks.slice(at + 1);
+        for (let i = 0; i < rest.length; i++) {
+          const t = rest[i];
+          if (VALUE_PARAMS.test(t)) { i++; continue; }
           if (t.startsWith("-") || /^\\/[A-Za-z]$/.test(t)) continue;
           targets.push(expand(t));
         }

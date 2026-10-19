@@ -165,6 +165,17 @@ test("02-10: a variable set to a literal in the same command is expanded (AppCor
   }
 });
 
+test("02-10: the value of a PowerShell parameter is no delete target (-ErrorAction SilentlyContinue, Dept_PUR)", () => {
+  const tmp = join(tmpdir(), "zm-scratch-y.txt");
+  for (const cmd of [`Remove-Item -LiteralPath "${tmp}" -ErrorAction SilentlyContinue`, `Remove-Item "${tmp}" -Force -ErrorAction:SilentlyContinue`,
+    `Remove-Item -Path "${tmp}" -Include *.txt -ErrorAction Stop`]) {
+    const r = ask(bash(cmd));
+    assert.equal(r.blocked, false, `a temp delete with parameter values must pass: ${cmd}\n${r.say}`);
+  }
+  assert.equal(ask(bash("Remove-Item -ErrorAction SilentlyContinue backend/src/ui.ts")).blocked, true,
+    "NEGATIVE: the real target after the parameter value still asks");
+});
+
 // 02-10 (b): a rule never disappears from a rule set without the user's word; retiring one keeps its number.
 test("02-10 (b): an edit that drops a rule number from 01/02 is blocked; keeping the number passes", () => {
   // A temp repo holding a copy of the old app template's rules and constitution as its harness: the harness docs are

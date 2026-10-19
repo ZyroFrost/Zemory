@@ -120,6 +120,28 @@ test("sync rewrites the router half of AGENTS.md from the set (a repo that chang
   assert.doesNotMatch(run(root, ["sync"], db), /router half rewritten/, "a second pass has nothing to rewrite");
 });
 
+test("a department repo's git is its local backup: the guard blocks push and remote add, conform reports a remote (Dept_IT)", async (t) => {
+  const { spawnSync } = await import("node:child_process");
+  const { gitRemoteFindings } = await import("../../dist/docs/case-checks.js");
+  const base = tempDir(t, "zemory-kitsync-git-");
+  const root = join(base, "Dept_XY");
+  mkdirSync(root, { recursive: true });
+  run(root, ["init", "--kit", "05"], join(base, "t.db"));
+  const git = (...a) => spawnSync("git", a, { cwd: root, encoding: "utf8" });
+  git("init", "-q");
+  const guard = join(root, "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_59_ReadFirst/guard.cjs");
+  const ask = (command) => spawnSync(process.execPath, [guard], { input: JSON.stringify({ tool_name: "Bash", tool_input: { command } }), cwd: root, encoding: "utf8" });
+  for (const cmd of ["git push origin main", "git remote add origin https://example.com/x.git", "git -C . push"]) {
+    const r = ask(cmd);
+    assert.equal(r.status, 2, `must be blocked: ${cmd}`);
+    assert.match(r.stderr, /LOCAL BACKUP/);
+  }
+  assert.doesNotMatch(ask('git commit -m "push the backup"').stderr, /LOCAL BACKUP/, "NEGATIVE: a commit (even saying push) is the backup itself");
+  assert.deepEqual(gitRemoteFindings(root), [], "no remote: nothing to report");
+  git("remote", "add", "origin", "https://example.com/x.git");
+  assert.equal(gitRemoteFindings(root).length, 1, "a remote on a local-backup repo is reported");
+});
+
 test("NEGATIVE: `zemory sync --root <other repo>` without --apply writes nothing there", (t) => {
   const base = tempDir(t, "zemory-kitsync-cli-");
   const root = join(base, "Dept_XY");

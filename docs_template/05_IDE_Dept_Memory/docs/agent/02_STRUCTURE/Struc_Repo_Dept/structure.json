@@ -8,6 +8,7 @@
       "workspace-manager"
     ],
     "owner": "required",
-    "provides": []
+    "provides": [],
+    "git": "local"
   }
 }

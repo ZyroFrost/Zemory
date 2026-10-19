@@ -171,6 +171,22 @@ test("an UNUSED flag older than the fresh window is stale: blocked and deleted (
   assert.ok(!flagExists(r), "and it is removed, so it cannot open a later job either");
 });
 
+test("a block after a revoked flag says why it opened nothing (Dept_PUR: \"the flag works one time and not the next\")", (t) => {
+  const r = repo(t);
+  const say = (command) => spawnSync(process.execPath, [join(r.hooksDir, "guard.cjs")], {
+    input: JSON.stringify({ tool_name: "Bash", tool_input: { command } }), encoding: "utf8", cwd: join(r.hooksDir, "..", ".."),
+  }).stderr;
+  giveFlag(r);
+  assert.ok(!blocked(r, PUSH), "job A takes the flag");
+  assert.match(say(OTHER), /already used \d+ s ago for another job[\s\S]*create it anew for THIS job/);
+  giveFlag(r);
+  const f = join(r.hooksDir, ".allow-push");
+  const old = new Date(Date.now() - 20 * 60 * 1000);
+  utimesSync(f, old, old);
+  assert.match(say(PUSH), /created 20 min ago and never used/);
+  assert.doesNotMatch(say(PUSH), /already used|never used/, "NEGATIVE: with no flag on disk the block carries no flag note");
+});
+
 test("NEGATIVE CASE: an unused flag inside the fresh window still opens its job", (t) => {
   const r = repo(t);
   giveFlag(r);

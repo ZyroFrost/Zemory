@@ -316,6 +316,17 @@ test("part-name-vi: an article renamed into English that kept its old slug in na
   assert.doesNotMatch(hit(root), /Cons_Core_105/, "NEGATIVE: a digit between words is its own part (1-case-1-folder-tasks)");
 });
 
+test("part names mixing Vietnamese with a brand or English word are caught; English part names are not", async () => {
+  const { viPartName } = await import("../../dist/docs/vi-name-judge.js");
+  for (const vi of ["Cons_Core_102_PhamViGhiChiSasin", "Cons_Core_106_CaseItPhanLonKhong", "Cons_Core_103_NamingTrongDwGiuChuan", "Cons_Core_117_05TodoKhongPhaiCho"]) {
+    assert.ok(viPartName(vi), `Vietnamese without marks: ${vi}`);
+  }
+  for (const en of ["Cons_Core_102_WriteOnlyWarehouse", "Rule_Gate_59_ReadFirst", "Cons_Core_116_OneSourceManyBranches", "Cons_Core_105_1Case1FolderTasks",
+    "Skill_Task_VmAutomation", "Root_141_Stignore", "Cons_Gate_12_SourceOfTruth"]) {
+    assert.equal(viPartName(en), null, `NEGATIVE: English name — ${en}`);
+  }
+});
+
 test("STORE: every package.json a store part ships is named after its part, never after a department (FA: dept-ops-scripts)", () => {
   const store = new URL("../../docs_template/_Store/03_SKILLS/", import.meta.url).pathname.replace(/^\/(\w:)/, "$1");
   let seen = 0;

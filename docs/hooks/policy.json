@@ -20,6 +20,7 @@
     "CLAUDE.md",
     "docs_template/_Store"
   ],
+  "git_local": false,
   "fill_write": [
     "docs/agent/05_TODO.md",
     "docs/agent/06_CHANGES.md"

@@ -747,15 +747,51 @@ function check(payload, root, policy) {
 }`, true),
 
   hook("02-82_mail-gate.cjs", String.raw`
-const SENDS = /smtplib|\bsend_message\s*\(|\bsendmail\s*\(|\/sendMail\b|Send-MailMessage|Send-MgUserMail/i;
+const SENDS = /smtplib|\bsend_message\s*\(|\bsendmail\s*\(|\/sendMail\b|Send-MailMessage|Send-MgUserMail|\bgit\s+send-email\b/i;
 const MAIL_SCRIPT = /(^|[\\\/\s"'])([\w.-]*mail[\w.-]*|[\w.-]*send[\w.-]*|[\w.-]*alert[\w.-]*)\.(py|ps1|cmd|bat)\b/i;
 const LAUNCHER_SEND = /\bbin[\\\/][\w.-]+(\.cmd|\.bat)?\b[^\n;&|]*\s(live|send|--send|--send-real|--resend)\b/i;
 // the harness itself names the markers (this hook, the rule text): a file there is never "a script that sends mail"
 const HARNESS = /(^|[\\\/])(docs[\\\/]agent|\.claude|docs[\\\/]hooks)[\\\/]/i;
-function why(cmd, root) {
+// a pipeline stage that sends through the repo's mail helper names it rather than the mail API
+const SENDS_VIA = /smtplib|\bsend_message\s*\(|\bsendmail\s*\(|\/sendMail\b|Send-MailMessage|Send-MgUserMail|\bimport\s+\w*mail\w*|\bfrom\s+\w*mail\w*\s+import|\bsend_mail\s*\(/i;
+// What runs, not what is written about it: a heredoc body (a commit message, a file being written) and a git command (a
+// commit message saying "mail") are text, not a send (Dept_IT 2026-10-19: git commit blocked on its message). git send-email stays.
+function runnable(cmd) {
+  const noHeredoc = cmd.replace(/<<-?\s*['"]?(\w+)['"]?[^\n]*\n[\s\S]*?\n\s*\1\b/g, "");
+  return noHeredoc.split(/\n|&&|\|\||;/).filter((s) => !/^\s*git\s/.test(s) || /\bsend-email\b/.test(s)).join(" ; ");
+}
+// A launcher named in the command (bin\<Task>.cmd, also behind scripts\task_run.py ... --): it runs a pipeline, and a stage
+// of that pipeline may send — a test run mails the operator too (Dept_IT 2026-10-19: two real mails went out through
+// task_run with no "live" argument). The scripts the launcher names, and every script beside them, are read.
+function launcherSends(cmd, root) {
+  const launchers = cmd.match(/[^\s"'|;&<>]*bin[\\\/][\w.-]+\.(cmd|bat)/gi) || [];
+  for (const l of launchers) {
+    const full = path.isAbsolute(l) ? l : path.join(root, l);
+    let text = "";
+    try { text = fs.readFileSync(full, "utf8"); } catch { continue; }
+    const refs = text.replace(/%~dp0/gi, path.dirname(full) + path.sep).match(/[^\s"'|&<>]+\.(py|ps1)/gi) || [];
+    const dirs = new Set(refs.map((r) => path.dirname(path.resolve(path.isAbsolute(r) ? r : path.join(root, r)))));
+    for (const d of dirs) {
+      if (HARNESS.test(path.relative(root, d) + path.sep)) continue;
+      let names = [];
+      try { names = fs.readdirSync(d).filter((n) => /\.(py|ps1)$/i.test(n)); } catch { continue; }
+      for (const n of names) {
+        try {
+          if (SENDS_VIA.test(fs.readFileSync(path.join(d, n), "utf8"))) return "launcher " + l + " runs a pipeline whose " + path.relative(root, path.join(d, n)) + " sends mail";
+        } catch { /* unreadable: next */ }
+      }
+    }
+  }
+  return "";
+}
+function why(raw, root) {
+  const cmd = runnable(raw);
+  if (!cmd.trim()) return "";
   if (SENDS.test(cmd)) return "the command itself calls a mail API";
   if (MAIL_SCRIPT.test(cmd)) return "it runs a mail / send / alert script";
   if (LAUNCHER_SEND.test(cmd)) return "it runs a task launcher with a real-send argument";
+  const viaLauncher = launcherSends(cmd, root);
+  if (viaLauncher) return viaLauncher;
   // a script file named in the command whose own text sends mail (python x.py · & "x.ps1" · node x.cjs ...)
   const files = cmd.match(/[A-Za-z]:[\\\/][^\s"'|;&<>]+\.(py|ps1|cjs|js)|[^\s"'|;&<>]+\.(py|ps1|cjs|js)/gi) || [];
   for (const f of files) {

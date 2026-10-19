@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_Dept
 name: repo-dept
-version: 9
+version: 10
 profile: non-app
 label: DEPT
 intro: : repo của một phòng ban trong một vùng có tổng quản — việc theo case (kéo · xử lý · giao báo cáo), báo cáo BI, tác vụ chạy định kỳ trên máy chủ; không phát triển app
@@ -9,7 +9,7 @@ ask: ; repo phòng ban nhận dữ liệu từ DW của tổng quản và giao b
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 installs: [scripts/region_values.py]
-from: _Store/02_STRUCTURE/Struc_Repo_Dept @v9 #ab005d68b060
+from: _Store/02_STRUCTURE/Struc_Repo_Dept @v10 #e116e1206433
 ---
 # Struc_Repo_Dept
 
@@ -25,6 +25,9 @@ repo phòng ban. Slot nằm ở `_Slot/` và không mang hệ nào.
 - Giá trị thật của cụm (máy chủ · thư viện chia sẻ · hộp thư · bộ mã phòng) nằm ở tổng quản (slot `Data_140_WorkspaceValues`).
   `scripts/region_values.py` (template này cài vào repo) tìm tổng quản theo `owner` trong marker; tool và skill chỉ nêu TÊN KHOÁ.
 - Mail: người nhận, người gửi và khoá gửi nằm ở bộ mail chung của tổng quản (slot `Config_139_Mail`); repo phòng không giữ danh bạ.
+- Git là BẢN SAO LƯU TẠI MÁY (`role.git: local`): commit thường xuyên, không có remote, không push. Máy khác nhận repo qua sao lưu
+  của zemory và Syncthing, không qua git. Không bao giờ báo "chưa có remote / chưa push". Máy kiểm: guard chặn `git push` ·
+  `git remote add` · `git remote set-url` (không cờ); `conform` › `git-remote-on-backup-repo` đỏ khi repo có remote.
 
 ## Mở một repo phòng ban mới
 

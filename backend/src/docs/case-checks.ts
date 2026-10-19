@@ -7,6 +7,7 @@
 // headed with the repo's old name, ~120 mentions of harness files that no longer exist. Each function returns the samples
 // for one conform item; an empty list means clean. Pure reads.
 
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, extname, join, relative } from "node:path";
 import { archiveDirOf, harnessPathsAt, readMarker } from "../core/config.js";
@@ -422,6 +423,20 @@ export function supersededFactFindings(root: string): { blocking: string[]; advi
     }
   }
   return out;
+}
+
+/**
+ * A repo whose template says its git is the local backup (role git: local — the department repos) has no remote: a remote
+ * there is the first step to a push nobody wants. A missing remote is never a finding for such a repo. Fail-open without git.
+ */
+export function gitRemoteFindings(root: string): string[] {
+  if (repoRole(root)?.git !== "local" || !existsSync(join(root, ".git"))) return [];
+  try {
+    const out = execFileSync("git", ["remote", "-v"], { cwd: root, encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"] });
+    return [...new Set(out.split(/\r?\n/).filter(Boolean).map((l) => l.split(/\s+/).slice(0, 2).join(" ")))];
+  } catch {
+    return [];
+  }
 }
 
 /** How long a used one-use flag may be retried (guard-gen FLAG_RETRY_MS); past it the flag is dead. */
