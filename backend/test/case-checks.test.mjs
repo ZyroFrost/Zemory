@@ -111,10 +111,21 @@ test("vm-task-local-data: a task NOT on the VM keeps its three stages (a case ru
   assert.deepEqual(vmTaskDataFindings(root), []);
 });
 
-test("bin-launcher: an old alias (nq.cmd · weekly.cmd) belongs to no task and no tool (HR ④)", (t) => {
+test("NEGATIVE: bin-launcher accepts a stage launcher run by hand (slot Bin_082_Bin; FA weekly.cmd) and an external program", (t) => {
   const root = dept(t);
-  write(root, "bin/weekly.cmd", "@echo off\n");
-  assert.deepEqual(binLauncherFindings(root), ["bin/weekly.cmd: names no task in tasks/ and no tool in scripts/"]);
+  write(root, "bin/weekly.cmd", "@echo off\nrem old: tasks\\XY_Weekly_Gone\\run.py\npython \"%~dp0..\\tasks\\XY_Monthly_Sales\\pipeline\\run.py\" %*\n");
+  write(root, "bin/caddy_loop.cmd", "@echo off\n\"%~dp0..\\tools\\caddy.exe\" run\n");
+  assert.deepEqual(binLauncherFindings(root), [], "a launcher whose calls all exist is fine whatever its name; a rem line is history");
+});
+
+test("bin-launcher: a launcher calling a task or a script that is gone (HR ④: a launcher no task owns any more)", (t) => {
+  const root = dept(t);
+  write(root, "bin/weekly.cmd", "@echo off\npython \"%~dp0..\\tasks\\XY_Weekly_Gone\\pipeline\\run.py\"\n");
+  write(root, "bin/load.cmd", "@echo off\npython %~dp0..\\pipelines\\loader\\load.py\n");
+  assert.deepEqual(binLauncherFindings(root).sort(), [
+    "bin/load.cmd: calls pipelines/loader/load.py, not in the repo",
+    "bin/weekly.cmd: calls tasks/XY_Weekly_Gone, not in the repo",
+  ]);
 });
 
 test("shared-slot-case-file: a shared file named after a case, or read by one case only, belongs in that case (HR ①)", (t) => {
@@ -229,7 +240,7 @@ test("dead-flag: a used flag past its retry window and an unused one past the fr
 
 test("WIRING: conform reports the case checks under their codes", (t) => {
   const root = dept(t);
-  write(root, "bin/weekly.cmd", "@echo off\n");
+  write(root, "bin/weekly.cmd", "@echo off\npython %~dp0..\\tasks\\XY_Weekly_Gone\\run.py\n");
   write(root, "tasks/XY_Monthly_Target/spec.md", spec({ status: "open", direction: "in", cadence: "Monthly" }));
   const codes = conform(root).items.map((i) => i.check);
   for (const c of ["bin-launcher", "case-index"]) assert.ok(codes.includes(c), `${c} missing from conform`);
