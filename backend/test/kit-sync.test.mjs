@@ -156,3 +156,26 @@ test("NEGATIVE: `zemory sync --root <other repo>` without --apply writes nothing
   run(base, ["sync", "--root", root, "--apply"], db);
   assert.ok(existsSync(skill), "--apply writes it");
 });
+
+test("sync completes the lines a slot requires in a line-list file and drops the old ones; other files are left to conform", async (t) => {
+  // 2026-10-19: BIZ · IC · MKT · OPS all lacked docs/.harness-state and *.cmd eol=crlf, and still blocked docs/hooks/.allow-*
+  const { fixSlotLines } = await import("../../dist/docs/kit-sync.js");
+  const root = tempDir(t, "zemory-slotlines-");
+  write(root, "docs/.harness.json", JSON.stringify({ docs: "docs/agent" }));
+  write(root, "docs/agent/02_STRUCTURE/_Slot/Root_141_Stignore/gate.json", JSON.stringify({ conform: {
+    contains: { ".stignore": ["docs/.harness-state", "data"] }, absent: { ".stignore": ["docs/hooks/.allow-"] } } }));
+  write(root, "docs/agent/02_STRUCTURE/_Slot/Root_086_Gitattributes/gate.json", JSON.stringify({ conform: {
+    contains: { ".gitattributes": ["*.cmd text eol=crlf", "*.bat text eol=crlf"], "README.md": "never added" } } }));
+  write(root, ".stignore", "data\r\ndocs/hooks/.allow-*\r\n\r\n// zemory:stignore-allow:start · x\r\n!/tasks\r\n*\r\n// zemory:stignore-allow:end\r\n");
+  write(root, ".gitattributes", "* text=auto\n*.cmd text eol=crlf\n");
+  write(root, "README.md", "# x\n");
+  assert.deepEqual(fixSlotLines(root, false).sort(), [".gitattributes: + *.bat text eol=crlf", ".stignore: + docs/.harness-state", ".stignore: - docs/hooks/.allow-*"]);
+  assert.match(readFileSync(join(root, ".stignore"), "utf8"), /allow-/, "a dry run writes nothing");
+  fixSlotLines(root, true);
+  const st = readFileSync(join(root, ".stignore"), "utf8");
+  assert.ok(st.indexOf("docs/.harness-state") < st.indexOf("zemory:stignore-allow:start"), "the required line sits above the allow block");
+  assert.ok(!st.includes("docs/hooks/.allow-") && !/[^\r]\n/.test(st), "the old line is gone, CRLF kept");
+  assert.equal(readFileSync(join(root, ".gitattributes"), "utf8"), "* text=auto\n*.cmd text eol=crlf\n*.bat text eol=crlf\n");
+  assert.equal(readFileSync(join(root, "README.md"), "utf8"), "# x\n", "a file that is not a line list is the repo's to write");
+  assert.deepEqual(fixSlotLines(root, true), [], "a second pass changes nothing");
+});

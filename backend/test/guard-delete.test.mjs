@@ -157,7 +157,9 @@ test("02-10: a variable set to a literal in the same command is expanded (AppCor
   for (const cmd of [`$sp = "${sp}"; Remove-Item -LiteralPath "$sp\\translate\\a.py" -Confirm:$false`,
     `S="${sp.replace(/\\/g, "/")}"; rm "$S/a.mjs" "\${S}/b.mjs"`,
     // unquoted bash literal (2026-10-19, Zemory's own scratch clean-up was blocked)
-    `S=${sp.replace(/\\/g, "/")}; rm -f $S/a.mjs $S/b.js`]) {
+    `S=${sp.replace(/\\/g, "/")}; rm -f $S/a.mjs $S/b.js`,
+    // the Git Bash form of the same folder (/c/Users/...), as the session actually typed it
+    `S=${sp.replace(/\\/g, "/").replace(/^([A-Za-z]):/, (m, d) => "/" + d.toLowerCase())}; rm -f $S/t_ops.py $S/vmscan.js; ls $S`]) {
     const r = ask(bash(cmd));
     assert.equal(r.blocked, false, `a temp target behind a literal variable must pass: ${cmd}\n${r.say}`);
   }
@@ -335,5 +337,37 @@ test("a plain prefix still works exactly as before after the two matchers were m
     assert.doesNotMatch(ask(bash("rm database.md"), g.guard).say, /protected path/i, "`database.md` must not count as protected merely for starting with `data`");
   } finally {
     g.cleanup();
+  }
+});
+
+function askIn(cwd, payload) {
+  const r = spawnSync(process.execPath, [GUARD], { input: JSON.stringify(payload), encoding: "utf8", cwd });
+  return { blocked: r.status === 2, say: `${r.stdout}${r.stderr}` };
+}
+
+test("git restore --staged only unstages and passes; a restore that touches the working tree still asks (2026-10-19)", () => {
+  assert.equal(ask(bash("git restore --staged docs/x.md")).blocked, false, ask(bash("git restore --staged docs/x.md")).say);
+  assert.equal(ask(bash("git restore -S a.ts b.ts")).blocked, false);
+  for (const cmd of ["git restore docs/x.md", "git restore .", "git restore --staged --worktree docs/x.md", "git restore -S -W a.ts"]) {
+    assert.equal(ask(bash(cmd)).blocked, true, `NEGATIVE: ${cmd} discards working-tree changes`);
+  }
+});
+
+test("a relative write after cd is judged where it lands; a write after cd into the repo still meets the protected path (2026-10-19)", () => {
+  const scratch = mkdtempSync(join(tmpdir(), "zemory-cd-"));
+  try {
+    const r = askIn(GUARD_ROOT, bash(`cd "${scratch.replace(/\\/g, "/")}" && mkdir -p docs/agent/x && echo ok > docs/agent/x/a.txt`));
+    assert.equal(r.blocked, false, `the write lands in the temp folder:\n${r.say}`);
+    const back = askIn(scratch, bash(`cd "${GUARD_ROOT.replace(/\\/g, "/")}" && mkdir docs/agent/new_shelf`));
+    assert.equal(back.blocked, true, "NEGATIVE: after cd into the repo, docs/agent is the protected harness folder");
+  } finally { rmSync(scratch, { recursive: true, force: true }); }
+});
+
+test("python open() without a write mode reads and passes; with a write mode, also through a nested call, it is judged (2026-10-19)", () => {
+  const far = "Z:/elsewhere";
+  assert.equal(ask(bash(`python -c "import ast; ast.parse(open(r'${far}/x.py').read())"`)).blocked, false);
+  for (const cmd of [`python -c "open(r'${far}/x.txt','w').write('x')"`, `python -c "import os; open(os.path.join('${far}','x'), 'a')"`,
+    `python -c "import pathlib; pathlib.Path('${far}/x.txt').write_text('x')"`]) {
+    assert.equal(ask(bash(cmd)).blocked, true, `NEGATIVE: ${cmd} writes outside the project`);
   }
 });

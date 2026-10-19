@@ -5,16 +5,17 @@
 // repoint links into the old harness · drop marker entries the move replaced · regenerate the guard · write what is still
 // off the standard into the repo's TODO ledger, so the repo's next session finds it in the file it reads first.
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
+import { SHELF } from "./harness-names.js";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { conform, type ConformItem } from "./conform.js";
 import { generateGuards } from "./guard-gen.js";
 import { applyKit, type KitApplyResult } from "./kit-apply.js";
 import { normalizeOwnConstitution, pruneMarkerProtected, repointLinks } from "./kit-migrate.js";
 import { regionRepos, repoRole } from "./region-links.js";
-import { writeStignoreAllow, type StignoreAllowResult } from "./stignore-gen.js";
-import { STORE_DIR } from "./store.js";
+import { rewriteInPlace, STIGNORE_ALLOW_START, writeStignoreAllow, type StignoreAllowResult } from "./stignore-gen.js";
+import { SLOT_LAYER, STORE_DIR } from "./store.js";
 
 /** A repo the manager at `root` syncs: one that names it as owner, or names no owner while it is the only manager of its role. */
 export interface ManagedRepo {
@@ -79,6 +80,8 @@ export interface KitSyncResult {
   todo: StandardTodoResult | null;
   /** the machine-made allow list at the end of .stignore (slot Root_141_Stignore); null on a dry run */
   stignore: StignoreAllowResult | null;
+  /** lines a slot requires added to / forbids removed from a line-list file ("<file>: + <line>"); empty on a dry run */
+  slotLines: string[];
 }
 
 export function kitSync(root: string, opts: { kitRef?: string; apply: boolean }): KitSyncResult | { error: string } {
@@ -90,7 +93,11 @@ export function kitSync(root: string, opts: { kitRef?: string; apply: boolean })
   let guard: KitSyncResult["guard"] = null;
   let todo: StandardTodoResult | null = null;
   let stignore: StignoreAllowResult | null = null;
+  let slotLines: string[] = [];
   if (opts.apply) {
+    // the lines a slot requires in a line-list file (.stignore · .gitattributes · .gitignore) are added, the old ones it
+    // forbids are dropped — first, so the allow block below is written under a complete hand-written part
+    slotLines = fixSlotLines(root, true);
     // what travels to the VM follows the manifests every pass (slot Root_141_Stignore) — before conform measures it
     stignore = writeStignoreAllow(root, true);
     // pointers into the old harness follow it every pass (idempotent): links, paths written as text, old skill host names
@@ -104,7 +111,51 @@ export function kitSync(root: string, opts: { kitRef?: string; apply: boolean })
     // measured AFTER the parts are in place: what the pass could not fix is the repo's own work
     todo = writeStandardTodo(root, conform(root).items);
   }
-  return { assembly, own, repointed, dropped, guard, todo, stignore };
+  return { assembly, own, repointed, dropped, guard, todo, stignore, slotLines };
+}
+
+/** Files a slot gate may complete line by line: each line is one pattern, so a missing required text is one more line. */
+const LINE_FILES = new Set([".stignore", ".gitattributes", ".gitignore"]);
+
+/**
+ * Complete what the slots of the repo require in a line-list file (gate.json › conform: `contains` · `absent`): a required text
+ * the file lacks becomes a line of its own — in .stignore above the machine allow block, so it still wins there (first match) —
+ * and a line holding a forbidden old text goes. Other files are the repo's to write: conform reports them. The file is changed
+ * in place, so a Hidden .stignore is written too. Returns "<file>: + <line>" / "<file>: - <line>" for what changed.
+ */
+export function fixSlotLines(root: string, apply: boolean): string[] {
+  const slotsDir = join(harnessPathsAt(root).agent, SHELF.structure, SLOT_LAYER);
+  const out: string[] = [];
+  let slots: string[];
+  try { slots = readdirSync(slotsDir); } catch { return out; }
+  for (const s of slots) {
+    let c: { contains?: Record<string, unknown>; absent?: Record<string, unknown> } | undefined;
+    try { c = (JSON.parse(readFileSync(join(slotsDir, s, "gate.json"), "utf8")) as { conform?: typeof c }).conform; } catch { continue; }
+    if (!c) continue;
+    const list = (v: unknown): string[] => (Array.isArray(v) ? v : [v]).filter((x): x is string => typeof x === "string" && x.length > 0);
+    for (const rel of new Set([...Object.keys(c.contains ?? {}), ...Object.keys(c.absent ?? {})])) {
+      if (!LINE_FILES.has(rel)) continue;
+      const p = join(root, rel);
+      if (!existsSync(p)) continue;
+      const text = readFileSync(p, "utf8");
+      const eol = text.includes("\r\n") ? "\r\n" : "\n";
+      let lines = text.split(/\r?\n/);
+      const gone = list(c.absent?.[rel]);
+      const keep = lines.filter((l) => !gone.some((g) => l.includes(g)));
+      for (const l of lines) if (!keep.includes(l)) out.push(`${rel}: - ${l.trim()}`);
+      lines = keep;
+      const missing = list(c.contains?.[rel]).filter((n) => !lines.join("\n").includes(n));
+      if (missing.length) {
+        const at = lines.findIndex((l) => l.startsWith(STIGNORE_ALLOW_START));
+        const before = at >= 0 ? at : lines.length - (lines[lines.length - 1] === "" ? 1 : 0);
+        lines.splice(before, 0, ...missing, ...(at >= 0 ? [""] : []));
+        for (const m of missing) out.push(`${rel}: + ${m}`);
+      }
+      const next = lines.join(eol);
+      if (next !== text && apply) rewriteInPlace(p, next);
+    }
+  }
+  return out;
 }
 
 export const STANDARD_TODO_START = "<!-- zemory:standard-todo:start";
