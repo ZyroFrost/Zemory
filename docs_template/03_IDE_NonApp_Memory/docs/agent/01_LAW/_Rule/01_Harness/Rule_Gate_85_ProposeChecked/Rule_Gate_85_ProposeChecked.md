@@ -1,11 +1,11 @@
 ---
 id: Rule_85
 name: propose-checked
-version: 5
+version: 6
 kind: action
 code: 01_Harness
 checked: [Rule_Gate_83_HarnessFromStore, Rule_Core_80_SharedChangeImpact, Rule_Keys_62_DesignChangeApproval]
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked @v5 #54db8d826b79
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked @v6 #7b811c7e8265
 ---
 # Rule_Gate_85_ProposeChecked — Search HS before proposing a new part; amend an existing part when it fits
 
@@ -32,7 +32,7 @@ or can hold it. A new part is proposed only when nothing existing can take it.
 - ✗ Wrong: create a new constitution article for that repo straight away.
 - ✓ Right: search HS; `Cons_Gate_11_WriteBoundary` already holds what may be written and where ⇒ propose one more case in that
   frame; no new article is needed.
-- Situation: the workspace manager template needs `requirements.txt` and its shared standards in `content/standard/`.
+- Situation: the workspace manager template needs `requirements.txt` and its shared standards in a content folder of the repo.
 - ✗ Wrong: new slots `Root_142_Requirements` and `Content_141_WorkspaceStandard`.
 - ✓ Right: `requirements.txt` is a dependency manifest ⇒ extend the path of `Root_059_PackageJson`; shared standards belong
   in HS parts (laws, skills, frames) ⇒ dissolve the folder into them.
@@ -67,7 +67,7 @@ Chỉ đề xuất phần mới khi không phần nào có sẵn nhận được
 - ✗ Sai: tạo ngay một điều hiến pháp mới cho repo đó.
 - ✓ Đúng: dò HS; `Cons_Gate_11_WriteBoundary` đã giữ chuyện được ghi gì, ghi ở đâu ⇒ đề xuất thêm một ca vào khung đó; không cần
   điều mới.
-- Tình huống: template tổng quản cần `requirements.txt` và bộ chuẩn chung trong `content/standard/`.
+- Tình huống: template tổng quản cần `requirements.txt` và bộ chuẩn chung trong một thư mục nội dung của repo.
 - ✗ Sai: đẻ slot `Root_142_Requirements` và `Content_141_WorkspaceStandard`.
 - ✓ Đúng: `requirements.txt` là file khai phụ thuộc ⇒ mở rộng đường dẫn của `Root_059_PackageJson`; chuẩn chung thuộc về
   các phần HS (luật, skill, khung) ⇒ rã thư mục đó vào chúng.

@@ -67,6 +67,8 @@ export type UnresolvedReason =
   | "regex"
   /** named only to say NOT to use it (`KHÔNG tách \`docs/dictionary.md\``) */
   | "negated"
+  /** a string only a rule's test cases hold (`gate.json` › block · pass · partial) — an input made up for the case */
+  | "test-case"
   | "io-error";
 
 export interface PathsReport {
@@ -97,6 +99,38 @@ const LOCKFILE = /(^|\/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lo
  * Measured 2026-10-07: 4 of Dept_OPS's last 5 "dead" were exactly this. Not walked, not judged.
  */
 export const PBI_ARTEFACT = /(^|\/)[^/]+\.(Report|SemanticModel|Dataset)\//i;
+/**
+ * A file zemory writes and marks `"generator": "zemory"` (the guard's policy.json) — rebuilt from the repo on every sync; its
+ * alternative paths ("any copy of the skill counts") are candidates on purpose, most of them absent. Measured 2026-10-19:
+ * Dept_HR policy.json:122 · :133. Not judged.
+ */
+export const isZemoryGenerated = (text: string): boolean => /^\s*\{\s*"generator"\s*:\s*"zemory"/.test(text);
+/**
+ * The test cases of a rule (`gate.json` › block · pass · partial) feed the hook made-up inputs — `src/store/queries.ts`,
+ * `docs/agent/02_RULES.md` — that exist in no repo. Measured 2026-10-19: 54 of Dept_HR's 135 dead were these. Returns
+ * whether a candidate is held ONLY by a case: a string the gate's own keys hold (`hook` · `read`) is still judged.
+ */
+export function gateCaseOnly(text: string): ((cand: string) => boolean) | null {
+  let j: unknown;
+  try {
+    j = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  const cases: string[] = [];
+  const own: string[] = [];
+  const leaves = (v: unknown, into: string[]): void => {
+    if (typeof v === "string") into.push(v.replace(/\\/g, "/"));
+    else if (Array.isArray(v)) v.forEach((x) => leaves(x, into));
+    else if (v && typeof v === "object") Object.values(v).forEach((x) => leaves(x, into));
+  };
+  if (!j || typeof j !== "object" || Array.isArray(j)) return null;
+  for (const [k, v] of Object.entries(j)) leaves(v, ["block", "pass", "partial"].includes(k) ? cases : own);
+  return (cand) => {
+    const c = cand.replace(/\\/g, "/");
+    return cases.some((s) => s.includes(c)) && !own.some((s) => s.includes(c));
+  };
+}
 /** `s/^x=0$/x=1/` · `s|a|b|g` — a sed/perl substitution, not a path (2026-10-07: SasinFlow `setup_linux.sh`). */
 export const isSubstitution = (s: string): boolean => /^[sy]([/|#,])[^\s]*\1[^\s]*\1[gimsxe]*$/.test(s);
 /**
@@ -137,10 +171,19 @@ export function isDictionaryFile(relPath: string): boolean {
     // AGENTS.md is the template's router text: it names slots that exist LATER (`docs/archive/`,
     // `attic/dead-plans/`). Measured 2026-09-09 on Dept_IC — hand-count 0, machine said 2, both from here.
     /^AGENTS\.md$/.test(p) ||
-    /(^|\/)docs\/agent\/0[1-4]_[^/]+\.md$/.test(p) ||
+    // the four standard files of the file harness by NAME — in the folder harness `04_TODO.md` is the ledger, and it points
+    /(^|\/)docs\/agent\/0[1-4]_(CONSTITUTION|RULES|STRUCTURE|SKILLS)\.md$/.test(p) ||
     /(^|\/)docs_template\//.test(p) ||
     /(^|\/)\.claude\/skills\//.test(p) ||
-    /(^|\/)skills\/[^/]+\/(SKILL\.md|reference\/)/.test(p)
+    /(^|\/)skills\/[^/]+\/(SKILL\.md|reference\/)/.test(p) ||
+    // Folder harness (plan/28): the parts the store ships — rules, structure, skills, the frame templates — are the same
+    // standard text the 01–04 files were. The repo's own words still point and are judged: its fill (`Cons.md`), its own
+    // articles (`Cons_Core_*`), its own rules and skills (`*_Own_*`), a loose file (`_Rule/LEGACY.md`). Measured
+    // 2026-10-19: 111 of Dept_HR's 135 "dead" were store text.
+    /(^|\/)docs\/agent\/01_LAW\/_Rule\/(?:[^/]+\/)?Rule_(?!Own_)[^/]+\//.test(p) ||
+    /(^|\/)docs\/agent\/01_LAW\/_Cons\/(?:[^/]+\/)?Cons_Gate_[^/]+\/Cons_Gate_[^/]+\.md$/.test(p) ||
+    (/(^|\/)docs\/agent\/02_STRUCTURE\//.test(p) && !/\/Slot_Own_/.test(p)) ||
+    /(^|\/)docs\/agent\/03_SKILLS\/(?!Skill_Own_)[^/]+\//.test(p)
   );
 }
 
@@ -585,7 +628,9 @@ export function pathsCheck(ctx: Context): PathsReport {
       report.unresolved.push({ file: rel, line: 0, text: "", reason: "io-error" });
       continue;
     }
+    if (/\.json$/i.test(rel) && isZemoryGenerated(text)) continue;
     report.scanned.files++;
+    const caseOnly = /(^|\/)gate\.json$/i.test(rel) ? gateCaseOnly(text) : null;
     const histFile = isHistoryFile(rel);
     // + folders the REPO declares as a standard written for other repos (`pathCheck.dictionary`) — declared, never guessed.
     const dictionary = isDictionaryFile(rel) || dictDirs.some((d) => rel === d || rel.startsWith(d + "/"));
@@ -599,8 +644,12 @@ export function pathsCheck(ctx: Context): PathsReport {
       if (!cands.length) continue;
       report.scanned.strings += cands.length;
       for (const c of cands) {
-        const v = classify(c, abs, judge, { dictionary, line: lines[i], bases: jobCwd ? [jobCwd] : [] });
         const hit: PathHit = { file: rel, line: i + 1, text: c.text };
+        if (caseOnly?.(c.text)) {
+          report.unresolved.push({ ...hit, reason: "test-case" });
+          continue;
+        }
+        const v = classify(c, abs, judge, { dictionary, line: lines[i], bases: jobCwd ? [jobCwd] : [] });
         if (v.kind === "unresolved") report.unresolved.push({ ...hit, reason: v.reason });
         else if (v.kind === "dead") (histFile || isHistoryLine(lines[i]) ? report.history : report.dead).push({ ...hit, rels: v.rels });
         else alive.add(hitKey(hit));

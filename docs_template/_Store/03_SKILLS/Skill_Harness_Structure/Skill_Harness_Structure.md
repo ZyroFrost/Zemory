@@ -2,7 +2,7 @@
 id: Skill_Harness_Structure
 aka: structure
 name: harness-structure
-version: 13
+version: 14
 type: process
 description: Folder standard and routing table for a non-app project (BI, report, data, docs-only, design) — decides where every file belongs. Use before creating, naming, moving, or tidying any file or folder, or when asked where something should go. Vietnamese triggers - "để ở đâu", "đặt file này vào đâu", "sắp xếp lại thư mục", "tạo thư mục", "dọn cho gọn", "file này thuộc chỗ nào".
 ---
@@ -113,8 +113,8 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 6. Template cấu trúc mới: dò các `Struc_*` cùng cách; template có sẵn nhận thêm slot hay `role` được ⇒ sửa template đó.
 7. Đề xuất đi qua `Rule_Gate_85_ProposeChecked` và `Rule_Gate_83_HarnessFromStore`.
 
-- Ví dụ ✗: slot `Root_142_Requirements` cho `requirements.txt` và `Content_141_WorkspaceStandard` cho `content/standard/`.
-- Ví dụ ✓: thêm `requirements.txt` vào `path:` của `Root_059_PackageJson`; rã `content/standard/` vào luật và skill trên HS.
+- Ví dụ ✗: slot `Root_142_Requirements` cho `requirements.txt` và `Content_141_WorkspaceStandard` cho thư mục bộ chuẩn chung.
+- Ví dụ ✓: thêm `requirements.txt` vào `path:` của `Root_059_PackageJson`; rã thư mục bộ chuẩn chung vào luật và skill trên HS.
 - Máy kiểm: gate đỏ khi slot mới chồng lên slot cũ mà thiếu `checked:` hoặc thiếu dòng `Khác`.
 
 ## Implements · Thi hành luật
