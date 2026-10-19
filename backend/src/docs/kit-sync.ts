@@ -41,7 +41,7 @@ export function kitSync(root: string, opts: { kitRef?: string; apply: boolean })
       guard = { error: e instanceof Error ? e.message : String(e) };
     }
     // measured AFTER the parts are in place: what the pass could not fix is the repo's own work
-    todo = writeStandardTodo(root, conform(root).items.filter((i) => i.level === "blocking"));
+    todo = writeStandardTodo(root, conform(root).items);
   }
   return { assembly, own, repointed, dropped, guard, todo };
 }
@@ -54,17 +54,37 @@ const STANDARD_TODO_HEAD =
 export interface StandardTodoResult {
   /** written = block added or changed · removed = the repo is clean, the block left · unchanged · none = no ledger */
   state: "written" | "removed" | "unchanged" | "none";
+  /** blocking findings (must fix) · advisory ones listed to look at */
   items: number;
+  advisory: number;
   file: string | null;
 }
 
-/** The block of open standard work, one line per blocking conform finding with where to fix it. */
+const counts = (items: ConformItem[]): { items: number; advisory: number } => ({
+  items: items.filter((i) => i.level === "blocking").length,
+  advisory: items.filter((i) => i.level !== "blocking").length,
+});
+
+/** Findings listed under one item; past it the item says how many more and where to see them (conform), never silently cut. */
+const TODO_ROWS_CAP = 80;
+
+/**
+ * The block of open standard work: one item per blocking conform finding with how to fix it, then EVERY place it was found,
+ * one line each — the repo's session fixes from this block alone, as from a list a person hand-wrote for it.
+ */
 export function standardTodoBlock(items: ConformItem[]): string {
-  const lines = items.map((i) => {
-    const shown = i.samples.slice(0, 3).join(" · ") + (i.count > 3 ? ` (+${i.count - 3})` : "");
-    return `- [ ] \`${i.check}\` (${i.count}) ${i.title}: ${shown} → ${i.fix}`;
-  });
-  return [STANDARD_TODO_HEAD, "## Lệch chuẩn — `zemory sync` giao, tự xoá khi hết lệch", "", ...lines, STANDARD_TODO_END].join("\n");
+  const entry = (i: ConformItem): string[] => {
+    const all = i.all ?? i.samples;
+    const rows = all.slice(0, TODO_ROWS_CAP).map((s) => `  - ${s}`);
+    if (all.length > TODO_ROWS_CAP) rows.push(`  - (+${all.length - TODO_ROWS_CAP} more — \`zemory conform --json\` lists them all)`);
+    return [`- [ ] \`${i.check}\` (${i.count}) ${i.title} → ${i.fix}`, ...rows];
+  };
+  const must = items.filter((i) => i.level === "blocking");
+  const look = items.filter((i) => i.level !== "blocking");
+  const out = [STANDARD_TODO_HEAD, "## Lệch chuẩn — `zemory sync` giao, tự xoá khi hết lệch", ""];
+  if (must.length) out.push("### Phải sửa", ...must.flatMap(entry));
+  if (look.length) out.push(...(must.length ? [""] : []), "### Nên xem (máy không phân biệt được — người đọc quyết)", ...look.flatMap(entry));
+  return [...out, STANDARD_TODO_END].join("\n");
 }
 
 /**
@@ -73,7 +93,7 @@ export function standardTodoBlock(items: ConformItem[]): string {
  */
 export function writeStandardTodo(root: string, items: ConformItem[]): StandardTodoResult {
   const file = harnessPathsAt(root).todo;
-  if (!existsSync(file)) return { state: "none", items: items.length, file: null };
+  if (!existsSync(file)) return { state: "none", ...counts(items), file: null };
   const text = readFileSync(file, "utf8");
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const s = text.indexOf(STANDARD_TODO_START);
@@ -95,7 +115,7 @@ export function writeStandardTodo(root: string, items: ConformItem[]): StandardT
     const tail = rest.slice(at).replace(/^(\r?\n)+/, "");
     next = h1 ? `${head}${eol}${eol}${block}${eol}${eol}${tail}` : `${block}${eol}${eol}${tail}`;
   }
-  if (next === text) return { state: "unchanged", items: items.length, file };
+  if (next === text) return { state: "unchanged", ...counts(items), file };
   writeFileSync(file, next);
-  return { state: items.length ? "written" : "removed", items: items.length, file };
+  return { state: items.length ? "written" : "removed", ...counts(items), file };
 }

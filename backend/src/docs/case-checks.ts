@@ -9,7 +9,8 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, extname, join, relative } from "node:path";
-import { archiveDirOf, harnessPathsAt } from "../core/config.js";
+import { archiveDirOf, harnessPathsAt, readMarker } from "../core/config.js";
+import { findRegionRepo, repoRole } from "./region-links.js";
 import { CONS_REPO_FILE, LEDGER, SHELF } from "./harness-names.js";
 import { installsOf, isFolderHarness, listParts, listStructures, shelfDir } from "./store.js";
 
@@ -310,7 +311,13 @@ function shippedFiles(root: string, agent: string): Set<string> {
   return out;
 }
 
-export function retiredNameFindings(root: string): string[] {
+/**
+ * The text the repo writes itself, as [repo path, text]: its sources, plans, specs, READMEs, the Cons.md of each frame and its
+ * TODO — not what HS ships (assembled shelf parts, installed tools, host skill copies), not history (archive, attic, the
+ * CHANGES ledger, dated findings), not data. The block `zemory sync` keeps in the TODO is the report, so it is cut out.
+ * Folder harness only: on a file harness the old names are still the living files.
+ */
+export function ownTextFiles(root: string): [string, string][] {
   const hp = harnessPathsAt(root);
   if (!isFolderHarness(hp.agent)) return [];
   const agentRel = rel(root, hp.agent);
@@ -318,7 +325,7 @@ export function retiredNameFindings(root: string): string[] {
   const shelves = [SHELF.rules, SHELF.constitution, SHELF.structure, SHELF.skills].map((s) => rel(root, shelfDir(hp.agent, s)));
   const shipped = shippedFiles(root, hp.agent);
   const skillsRel = rel(root, hp.skills);
-  const hits: string[] = [];
+  const out: [string, string][] = [];
   const walk = (d: string): void => {
     let ents;
     try {
@@ -350,14 +357,67 @@ export function retiredNameFindings(root: string): string[] {
         continue;
       }
       // the standard block `zemory sync` writes into the TODO ledger quotes these findings: it is the report, not the repo's text
-      const text = (readText(p) ?? "").replace(STANDARD_TODO_BLOCK, "");
-      const names = new Set<string>();
-      for (const m of text.matchAll(RETIRED_RE)) names.add(m[1] ?? "docs/hooks/");
-      if (names.size) hits.push(`${r}: ${[...names].join(" · ")}`);
+      out.push([r, (readText(p) ?? "").replace(STANDARD_TODO_BLOCK, "")]);
     }
   };
   walk(root);
-  return hits.sort();
+  return out.sort((a, b) => (a[0] < b[0] ? -1 : 1));
+}
+
+export function retiredNameFindings(root: string): string[] {
+  const hits: string[] = [];
+  for (const [r, text] of ownTextFiles(root)) {
+    const names = new Set<string>();
+    for (const m of text.matchAll(RETIRED_RE)) names.add(m[1] ?? "docs/hooks/");
+    if (names.size) hits.push(`${r}: ${[...names].join(" · ")}`);
+  }
+  return hits;
+}
+
+/** The region's real values (<manager>/data/region/values.json, slot Data_140): the marker's owner, or the repo itself. */
+export function regionValues(root: string): Record<string, unknown> {
+  const own = join(root, "data", "region", "values.json");
+  let file = existsSync(own) ? own : "";
+  if (!file) {
+    const owner = (readMarker(root)?.data as { owner?: unknown } | undefined)?.owner;
+    const at = typeof owner === "string" && owner ? findRegionRepo(owner, root) : null;
+    if (at && existsSync(join(at, "data", "region", "values.json"))) file = join(at, "data", "region", "values.json");
+  }
+  try {
+    return file ? (JSON.parse(readFileSync(file, "utf8").replace(/^\uFEFF/, "")) as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+interface SupersededFact { old: string; now: string; roles?: string[]; level?: "advisory" }
+
+/**
+ * A fact of the region that changed — a server renamed, an app replaced, a root folder moved — listed once in region values
+ * (`superseded_facts`: [{ old, now, roles? }]) and caught in the repo's own text everywhere it still stands (2026-10-19: a
+ * renamed task server and a replaced query app kept living in three departments' constitutions until a person read them).
+ * `old` is matched as a whole word that is not a path segment (`_Legacy\SRV-BI\` is the name of a mirror folder, not the fact);
+ * `roles` limits an entry to repos whose template has that role (the app itself still names its own executable). An entry
+ * marked `level: "advisory"` is a name that also lives on in history ("the legacy ETL ran on SRV-BI"): it is listed for the
+ * repo to look at, not blocking. An instruction (an executable, an endpoint, a root path) stays blocking.
+ */
+export function supersededFactFindings(root: string): { blocking: string[]; advisory: string[] } {
+  const out = { blocking: [] as string[], advisory: [] as string[] };
+  const v = regionValues(root).superseded_facts;
+  const facts = (Array.isArray(v) ? v : []) as SupersededFact[];
+  const role = repoRole(root)?.name ?? "";
+  const live = facts.filter((f) => f && typeof f.old === "string" && f.old && (!Array.isArray(f.roles) || f.roles.includes(role)));
+  if (!live.length) return out;
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // not a path segment on either side: `_Legacy\SRV-BI\PWBI` and `SRV-BI/PWBI` name a mirror folder, not the fact
+  const res = live.map((f) => ({ f, re: new RegExp(`(?<![\\w\\\\/.-])${esc(f.old)}(?![\\w\\\\/-])`, "i") }));
+  for (const [r, text] of ownTextFiles(root)) {
+    for (const lvl of ["blocking", "advisory"] as const) {
+      const found = res.filter((x) => (x.f.level === "advisory" ? "advisory" : "blocking") === lvl && x.re.test(text)).map((x) => `${x.f.old} → ${x.f.now}`);
+      if (found.length) out[lvl].push(`${r}: ${found.join(" · ")}`);
+    }
+  }
+  return out;
 }
 
 /** How long a used one-use flag may be retried (guard-gen FLAG_RETRY_MS); past it the flag is dead. */

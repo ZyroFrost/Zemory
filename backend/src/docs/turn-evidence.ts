@@ -56,14 +56,57 @@ export function turnEvidence(transcriptText: string, ownGates: string[] = []): s
     "with its numbers — or say plainly that it was not run and why.";
 }
 
+// Rule 27's vocabulary in what the agent SAYS (2026-10-19: the file hook held the shelves and the prose files, and the sessions
+// kept saying "kho" to the user and to each other). The same pattern as hook 02-27 (rule-hooks-src.ts — a parity test holds the
+// two equal): "kho" alone names two things, the data warehouse (DW) and the harness store (HS).
+export const KHO_WORD = /(^|[^\p{L}])[Kk]ho(?![\p{L}])(?!\s+(?:dữ\s+liệu|hàng))/u;
+const KHO_STOCK = /(tồn|nhập|xuất|kiểm)\s+kho(?![\p{L}])/giu;
+const KHO_QUOTED = /"[^"\n]*"|“[^”\n]*”|`[^`\n]*`/g;
+
+/** What the agent wrote to the person this turn (its text blocks since the person last typed), oldest first. */
+export function replyThisTurn(transcriptText: string): string {
+  let parts: string[] = [];
+  for (const line of transcriptText.split("\n")) {
+    if (!line.trim()) continue;
+    let j: { type?: string; message?: { content?: unknown }; isMeta?: boolean };
+    try { j = JSON.parse(line); } catch { continue; }
+    const content = j.message?.content;
+    if (j.type === "user" && !j.isMeta) {
+      const typed = typeof content === "string" ? content.trim() !== "" && !/^<(task-notification|system-reminder)/.test(content.trim())
+        : Array.isArray(content) && content.some((c: { type?: string; text?: string }) => c?.type === "text" && !/^\s*<(task-notification|system-reminder)/.test(c.text ?? ""));
+      if (typed) parts = [];
+      continue;
+    }
+    if (j.type === "assistant" && Array.isArray(content)) {
+      for (const c of content as Array<{ type?: string; text?: string }>) if (c?.type === "text" && c.text) parts.push(c.text);
+    }
+  }
+  return parts.join("\n");
+}
+
+/** null = the reply keeps the vocabulary · string = the lines that say "kho" alone (code and quotes are mentions, not uses). */
+export function replyVocab(text: string): string | null {
+  const prose = text.replace(/```[\s\S]*?```/g, "");
+  const bad = prose.split("\n").filter((l) => KHO_WORD.test(l.replace(KHO_QUOTED, "").replace(KHO_STOCK, "")));
+  if (!bad.length) return null;
+  return "Rule_Gate_27_HarnessLanguage: this reply says \"kho\" alone, which names two different things — write DW (the data " +
+    "warehouse) or HS (the harness store) and send it again:\n" + bad.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n");
+}
+
 /** The Stop hook's answer: a block decision once per turn, nothing otherwise (fail-open on any error). */
-export function stopDecision(payload: { transcript_path?: unknown; stop_hook_active?: unknown }, ownGates: string[] = []): string {
+export function stopDecision(
+  payload: { transcript_path?: unknown; stop_hook_active?: unknown },
+  ownGates: string[] = [],
+  checks: { evidence?: boolean; vocab?: boolean } = { evidence: true },
+): string {
   if (payload.stop_hook_active === true) return "";
   const p = typeof payload.transcript_path === "string" ? payload.transcript_path : "";
   if (!p) return "";
   try {
-    const why = turnEvidence(readFileSync(p, "utf8"), ownGates);
-    return why ? JSON.stringify({ decision: "block", reason: why }) : "";
+    const text = readFileSync(p, "utf8");
+    const why = [checks.evidence ? turnEvidence(text, ownGates) : null, checks.vocab ? replyVocab(replyThisTurn(text)) : null]
+      .filter((x): x is string => Boolean(x));
+    return why.length ? JSON.stringify({ decision: "block", reason: why.join("\n\n") }) : "";
   } catch {
     return "";
   }

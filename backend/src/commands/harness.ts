@@ -95,7 +95,9 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   else if (ks.guard) console.log(`  guard: ${ks.guard.added.length ? ks.guard.added.join(" · ") : "already in place"}`);
   if (ks.todo && ks.todo.state !== "none") {
     const where = ks.todo.file ? relative(root, ks.todo.file).replace(/\\/g, "/") : "";
-    if (ks.todo.items) console.log(`  ⚠ ${ks.todo.items} finding(s) still off the standard — ${ks.todo.state === "unchanged" ? "already listed" : "listed"} in ${where} for this repo's session to fix`);
+    if (ks.todo.items || ks.todo.advisory) {
+      console.log(`  ⚠ ${ks.todo.items} finding(s) to fix · ${ks.todo.advisory} to look at — ${ks.todo.state === "unchanged" ? "already listed" : "listed"} in ${where} for this repo's session`);
+    }
     else if (ks.todo.state === "removed") console.log(`  ✔ on the standard: the off-standard block left ${where}`);
   }
   if (conflicts) {

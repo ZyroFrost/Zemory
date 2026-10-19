@@ -472,10 +472,14 @@ export function endOfTurnVerdict(payload: any): string {
     const cwd = String(payload?.cwd ?? "");
     const hp = cwd ? harnessPathsAt(cwd) : null;
     if (!hp || !isFolderHarness(hp.agent)) return "";
+    const rules = listParts(hp.agent, SHELF.rules).filter((p) => !isRetired(p));
     // the evidence clause belongs to rule 1 (done means run, plan/28 §0q); a repo not yet re-assembled still has it in rule 11
-    if (!listParts(hp.agent, SHELF.rules).some((p) => (p.key === "Rule_1" || p.key === "Rule_11") && !isRetired(p))) return "";
+    const evidence = rules.some((p) => p.key === "Rule_1" || p.key === "Rule_11");
+    // rule 27's vocabulary in the reply itself ("kho" alone: DW or HS) — every repo whose set carries rule 27
+    const vocab = rules.some((p) => p.key === "Rule_27");
+    if (!evidence && !vocab) return "";
     const own = (readMarker(cwd)?.data as { repoGates?: unknown } | undefined)?.repoGates;
-    return stopDecision(payload, Array.isArray(own) ? own.filter((x): x is string => typeof x === "string") : []);
+    return stopDecision(payload, Array.isArray(own) ? own.filter((x): x is string => typeof x === "string") : [], { evidence, vocab });
   } catch {
     return "";
   }
