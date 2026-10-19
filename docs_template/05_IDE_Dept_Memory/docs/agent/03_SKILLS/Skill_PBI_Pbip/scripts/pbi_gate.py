@@ -773,7 +773,8 @@ def check_topn(vis, put):
         t = v.get('visualContainerObjects', {}).get('title', [{}])
         title = str(lit((t[0].get('properties', {}) if t else {}).get('text', {})) or '')
         filters = d.get('filterConfig', {}).get('filters', [])
-        topn = [f for f in filters if f.get('type') == 'TopN']
+        # an unset TopN (Desktop writes name / field / type, no 'filter') filters nothing (a department repo 19/10)
+        topn = [f for f in filters if f.get('type') == 'TopN' and isinstance(f.get('filter'), dict)]
         m = TOPN_TITLE.search(title)
         nm = sel_name(d) or i
         # 2026-10-04: an exact-N MEASURE filter (ALLSELECTED) went blank - it did not see the chart's own filters.
@@ -1810,12 +1811,13 @@ CFG_PATH = next((p for p in (os.path.join(os.path.dirname(os.path.abspath(__file
 
 def twin_keys(cfg):
     """The IP and DR builds of one report share its settings (user 2026-09-28: the IP build is a copy of the DR one):
-    every per-folder key <..>_<num>DR_<..> also answers for <..>_<num>IP_<..> and back, unless that key is set itself."""
+    every per-folder key <..>_DR_<Type> also answers for <..>_IP_<Type> and back, unless that key is set itself (the folder
+    shape of 2026-10-19; the old <..>_<num>DR_<..> match no longer paired the new names - a department repo 19/10)."""
     for sect, v in list(cfg.items()):
         if isinstance(v, dict):
             for k in list(v):
                 for a_, b_ in (('DR', 'IP'), ('IP', 'DR')):
-                    t = re.sub(r'_(\d\d)%s_' % a_, r'_\g<1>%s_' % b_, k)
+                    t = re.sub(r'_%s_(Legacy|Classic|White|Red)$' % a_, r'_%s_\1' % b_, k)
                     if t != k and t not in v:
                         v[t] = v[k]
     return cfg
@@ -2753,8 +2755,10 @@ VI_LETTER = re.compile('[\u00c0-\u00c3\u00c8-\u00ca\u00cc\u00cd\u00d2-\u00d5\u00
                        '\u1ea0-\u1ef9]')
 
 
-def model_measures(d_def):
-    """{measure name: DAX text} of the report's own semantic model (a thin report has none)."""
+def model_measure_dax(d_def):
+    """{measure name: DAX text} of the report's own semantic model (a thin report has none). Named apart from
+    model_measures(report_dir): the same name defined twice shadowed that one, and legacy-parity saw no wrapper measure
+    (a department repo 19/10: 18 % cards reported lost on each White report)."""
     out = {}
     for t in glob.glob(os.path.join(d_def, '..', '..', '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
         txt = open(t, encoding='utf-8').read()
@@ -2768,13 +2772,13 @@ def model_measures(d_def):
 def item_measures(d_def):
     """Measures that count ONE item: their DAX filters a single ItemID (EcomComboQty_TGVI0087). The header a visual gives such
     a measure is the item's name - data, not frame text (a department repo 18/10)."""
-    return {n for n, b in model_measures(d_def).items() if len(set(re.findall(r'\[ItemID\]\s*=\s*"([^"]+)"', b))) == 1}
+    return {n for n, b in model_measure_dax(d_def).items() if len(set(re.findall(r'\[ItemID\]\s*=\s*"([^"]+)"', b))) == 1}
 
 
 def check_measure_names(d_def, fail):
     """measure-name (user 18/10): a measure is a variable - English name, no Vietnamese letters; the Vietnamese a reader needs
     goes to the visual's displayName or comes from the data. White / Red only (Classic keeps the legacy names)."""
-    for n in sorted(model_measures(d_def)):
+    for n in sorted(model_measure_dax(d_def)):
         if VI_LETTER.search(n):
             fail.append("measure %s is named in Vietnamese - a measure is a variable: give it an English name (the reader text "
                         "goes to the visual's displayName) (measure-name)" % ascii(n))
@@ -3949,6 +3953,17 @@ ROW_WRAP = 300       # px, row-wrap (user 14/10 combo matrix): a row-header colu
                      # to half that name + CELL_PAD, two lines - long names no longer push the other columns off the frame
 
 
+def calc_columns(report_dir):
+    """'Table.Column' of the model's calculated columns (TMDL `column X = <DAX>`). The DW has no such column, so the
+    row-wrap read of the DW skips them (a department repo 19/10: Dim_Date.DayOfMonth - Invalid column name)."""
+    out = set()
+    for f in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        tb = os.path.basename(f)[:-5]
+        for m in re.finditer(r"(?m)^\tcolumn\s+('(?:[^']|'')+'|[^\s=]+)\s*=", open(f, encoding='utf-8').read()):
+            out.add(tb + '.' + m.group(1).strip("'").replace("''", "'"))
+    return out
+
+
 def row_long_px(report_dir, d, cur, cache=None):
     """{queryRef: (one-line px, two-line px)} of the longest warehouse values of each text row field of a table / matrix (matrix Rows; table: the text
     columns of Values), read from the dimension itself (active rows when it has IsActive - 2026-10-19, the fact filter
@@ -3968,11 +3983,13 @@ def row_long_px(report_dir, d, cur, cache=None):
                 tt, tc = to.split('.', 1)
                 rel.setdefault(tt.strip("'"), []).append((ft.strip("'"), fc.strip("'"), tc.strip("'")))
         cache['rel'] = rel
+    if 'calc' not in cache:
+        cache['calc'] = calc_columns(report_dir)
     out = {}
     for q, _, role in table_headers(d):
         if role != 'row' and v.get('visualType') == 'pivotTable':
             continue
-        if q.startswith('#Measure.') or '.' not in q:
+        if q.startswith('#Measure.') or '.' not in q or q in cache['calc']:
             continue
         names = dw_longest(q, cur, cache)
         if names:
@@ -4106,7 +4123,8 @@ def col_member_plan(report_dir, d, cur, cache):
     size, bold = header_font(d)
     need = 0.0
     for p in qs['Columns']['projections']:
-        names = dw_all_names(p.get('queryRef', ''), cur, cache) if '.' in p.get('queryRef', '') else None
+        qr = p.get('queryRef', '')
+        names = dw_all_names(qr, cur, cache) if '.' in qr and qr not in cache.get('calc', set()) else None
         if names:
             need = max(need, balanced_width(names, size, bold))
     vals = [p.get('queryRef') for p in qs.get('Values', {}).get('projections', [])]
@@ -4571,11 +4589,15 @@ def neg_bar_exprs(report_dir):
             continue
         cref = "'%s'[%s]" % (cats[0]['Expression']['SourceRef']['Entity'], cats[0]['Property'])
         rows = 'VALUES(%s)' % cref
-        top = next((x for x in d.get('filterConfig', {}).get('filters', []) if x.get('type') == 'TopN'), None)
+        top = next((x for x in d.get('filterConfig', {}).get('filters', [])
+                    if x.get('type') == 'TopN' and isinstance(x.get('filter'), dict)), None)
         if top:
-            sq = top['filter']['From'][0]['Expression']['Subquery']['Query']
-            ob = sq['OrderBy'][0]
-            km = ob['Expression'].get('Measure', {}).get('Property')
+            try:
+                sq = top['filter']['From'][0]['Expression']['Subquery']['Query']
+                ob = sq['OrderBy'][0]
+                km = ob['Expression'].get('Measure', {}).get('Property')
+            except (KeyError, IndexError, TypeError):    # a Top N of another shape: the whole value list is checked
+                km = None
             if km:
                 rows = 'TOPN(%d, FILTER(VALUES(%s), NOT ISBLANK([%s])), [%s], %s)' % (
                     int(sq['Top']), cref, km, km, 'ASC' if ob['Direction'] == 1 else 'DESC')

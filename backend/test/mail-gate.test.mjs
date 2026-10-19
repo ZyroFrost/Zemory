@@ -47,6 +47,10 @@ test("NEGATIVE: a launcher whose pipeline sends nothing passes", (t) => {
 test("NEGATIVE: a commit message that says mail / live / 03_alert.py is text, not a send — and git send-email is still a send", (t) => {
   const s = setup(t);
   assert.equal(s.ask('git commit -m "fix 03_alert.py: send the mail live"'), null);
+  // a message holding ";" or a new line (Dept_FA 19/10: blocked on smtp_mail.py in the message)
+  assert.equal(s.ask('git commit -m "vault: move; scripts/smtp_mail.py reads data/secrets/vault"'), null);
+  assert.equal(s.ask('git commit -m "line one\nscripts/smtp_mail.py now reads the new vault"'), null);
+  assert.notEqual(s.ask('git commit -m "x; y" && python scripts/smtp_mail.py'), null, "NEGATIVE: a real run after the commit is still judged");
   assert.equal(s.ask("git add -A && git commit -q -F - <<'EOF'\nmail gate: bin\\XY_Monthly_Sales.cmd live sends mail\nEOF\ngit log --oneline -1"), null);
   assert.ok(s.ask("git send-email --to=a@example.com 0001.patch"), "git send-email sends");
   assert.ok(s.ask("git status && python 03_alert.py"), "a mail script after a git command is still caught");

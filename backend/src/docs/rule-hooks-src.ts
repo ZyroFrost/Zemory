@@ -764,7 +764,11 @@ const SENDS_VIA = /smtplib|\bsend_message\s*\(|\bsendmail\s*\(|\/sendMail\b|Send
 // commit message saying "mail") are text, not a send (Dept_IT 2026-10-19: git commit blocked on its message). git send-email stays.
 function runnable(cmd) {
   const noHeredoc = cmd.replace(/<<-?\s*['"]?(\w+)['"]?[^\n]*\n[\s\S]*?\n\s*\1\b/g, "");
-  return noHeredoc.split(/\n|&&|\|\||;/).filter((s) => !/^\s*git\s/.test(s) || /\bsend-email\b/.test(s)).join(" ; ");
+  // a git command goes whole, its quoted arguments included, BEFORE the split: a commit message holding ";" or a new line
+  // left "... smtp_mail.py" as a segment of its own (Dept_FA 2026-10-19: git commit -m blocked on the file name)
+  const noGit = noHeredoc.replace(/(^|[\n;&|]\s*)git\b(?:[^"'\n;&|]|"(?:\\.|[^"\\])*"|'[^']*')*/g,
+    (m, pre) => (/\bsend-email\b/.test(m) ? m : pre + "git"));
+  return noGit.split(/\n|&&|\|\||;/).filter((s) => !/^\s*git\s/.test(s) || /\bsend-email\b/.test(s)).join(" ; ");
 }
 // A launcher named in the command (bin\<Task>.cmd, also behind scripts\task_run.py ... --): it runs a pipeline, and a stage
 // of that pipeline may send — a test run mails the operator too (Dept_IT 2026-10-19: two real mails went out through
