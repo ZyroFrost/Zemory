@@ -127,7 +127,7 @@ export function applyKit(
   }
   const hooksTakenOver = retireReplacedHooks(root, parts, opts.apply);
   const entryRefreshed = refreshEntryRouter(root, seedTextOf("AGENTS.md", kit, parts, opts.projectName ?? basename(root), storeDir), opts.apply);
-  if (opts.apply) followEntryRenames(root, skills, target);
+  if (opts.apply) followEntryRenames(root, skills, target, listParts(hp.agent, SHELF.skills).filter((p) => !p.from && /^Skill_Own_/.test(p.folder)));
   const retired = retireCopies(target, new Set(parts.map((p) => p.key)), hp.archive, opts.apply, storeDir);
   // plan/29 §13: both INDEX files are tables of contents the machine writes from what is assembled - last, once retired
   // copies have left; a hand-written one is archived whole the first time
@@ -366,7 +366,7 @@ function refreshEntryRouter(root: string, seed: string | null, apply: boolean): 
 }
 
 /** The trigger table of the entry file follows host renames too (see followHostRenames). */
-function followEntryRenames(root: string, skills: Part[], t: AssemblyTarget): void {
+function followEntryRenames(root: string, skills: Part[], t: AssemblyTarget, ownSkills: Part[] = []): void {
   const p = join(root, "AGENTS.md");
   if (!existsSync(p)) return;
   const text = readFileSync(p, "utf8");
@@ -397,7 +397,13 @@ function followEntryRenames(root: string, skills: Part[], t: AssemblyTarget): vo
   }).join(eolOf);
   // A skill the set gained after the repo was assembled has no trigger row (the table is written once, from the seed): the
   // agent would never know when to open it. Its row goes in after the last skill row; a row already there is not doubled.
-  const missing = [...canon].filter(([host]) => !next.includes(`.claude/skills/${host}/`)).map(([, row]) => row);
+  // A skill of the repo's own with a gate.json trigger gets its row the same way (plan/29 §23: the DW and the departments
+  // got Skill_Own_* on 20/10 and conform saw no row for them); once written, its row is the repo's.
+  const own = ownSkills
+    .map((s) => [hostSkillOf(s), gateOf(s.dir)?.trigger] as const)
+    .filter((e): e is readonly [string, string] => typeof e[1] === "string" && Boolean(e[1]))
+    .map(([host, trig]) => [host, `| ${trig} | \`.claude/skills/${host}/SKILL.md\` |`] as const);
+  const missing = [...canon, ...own].filter(([host]) => !next.includes(`.claude/skills/${host}/`)).map(([, row]) => row);
   if (missing.length) {
     const lines = next.split(/\r?\n/);
     let last = -1;
