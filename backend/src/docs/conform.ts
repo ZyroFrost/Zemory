@@ -422,8 +422,8 @@ export function conform(root: string): ConformReport {
     caseHeaderFindings(root), "front block: status: open|done|closed|retired · cadence: as in <DEPT>_<Cadence>_<Name> · direction: in|out for Daily/Weekly/Monthly/Quarterly");
   push("vm-task-local-data", "blocking", "A task on the VM keeps files on the work PC (01_raw / 03_output may hold only _SharePoint.url and reference/)",
     vmTaskDataFindings(root), "python scripts/move_outputs_to_vm.py (dry run) then --apply: results to SharePoint + VM, working data to the VM; the local copy goes once both are verified");
-  push("bin-launcher", "blocking", "A launcher in bin/ belongs to no task and no tool", binLauncherFindings(root),
-    "name it bin/<Task>.cmd after its task, or after the scripts/<tool> it runs; an old alias goes (callers use the task's launcher)");
+  push("bin-launcher", "blocking", "A launcher in bin/ calls a repo path that is gone (a task renamed or retired, a script moved)", binLauncherFindings(root),
+    "point the launcher at the task's current folder / the script's new place, or drop the launcher if its task is retired");
   push("shared-slot-case-file", "blocking", "A file in a shared slot (sources/ · config/ · queries/) belongs to one case", sharedSlotFindings(root),
     "move it into tasks/<case>/ and fix the reader's path; shared slots hold what two cases or more read");
   push("reports-index", "blocking", "A report folder in reports/ has no line in reports/README.md", reportsIndexFindings(root),

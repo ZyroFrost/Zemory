@@ -164,18 +164,30 @@ export function vmTaskDataFindings(root: string): string[] {
   return out;
 }
 
-/** bin/*.cmd is a launcher of one task (`bin/<Task>.cmd`) or of one tool the repo has (`scripts/<name>.*`). */
+/**
+ * A launcher in bin/ points at what it runs (slot Bin_082_Bin: `bin/<Task>.cmd` for the VM, `bin/<name>.cmd <stage>` run by
+ * hand, a lane into pipelines/). It is stale when a repo path it calls is gone — a task renamed or retired, a script moved:
+ * the launcher still looks fine and fails the day someone runs it. Its NAME is free (a stage launcher `weekly.cmd` runs
+ * tasks/FA_Weekly_SalesReport/pipeline/ by design); an external program (caddy.exe) is not a repo path.
+ */
 export function binLauncherFindings(root: string): string[] {
-  const launchers = files(join(root, "bin")).filter((f) => /\.(cmd|bat)$/i.test(f));
-  if (!launchers.length) return [];
-  const tasks = new Set(taskNames(root));
-  const tools = new Set(files(join(root, "scripts")).map((f) => f.slice(0, f.length - extname(f).length)));
-  return launchers
-    .filter((f) => {
-      const stem = f.slice(0, f.length - extname(f).length);
-      return !tasks.has(stem) && !tools.has(stem);
-    })
-    .map((f) => `bin/${f}: names no task in tasks/ and no tool in scripts/`);
+  const out: string[] = [];
+  for (const f of files(join(root, "bin")).filter((n) => /\.(cmd|bat|sh|ps1)$/i.test(n))) {
+    const text = readText(join(root, "bin", f)) ?? "";
+    const missing = new Set<string>();
+    for (const line of text.split(/\r?\n/)) {
+      if (/^\s*(@?rem\b|::|#)/i.test(line)) continue; // a comment names history, not a call
+      for (const m of line.matchAll(/(?:^|[\\/"'\s=(])((?:tasks|pipelines|scripts|bin)[\\/][^\s"'%&|<>()^]+)/gi)) {
+        const p = m[1].replace(/\\/g, "/").replace(/\/+$/, "");
+        const parts = p.split("/");
+        // a task folder must exist; a path with an extension must exist as a file; a bare folder must exist
+        const target = parts[0].toLowerCase() === "tasks" ? parts.slice(0, 2).join("/") : p;
+        if (!existsSync(join(root, target))) missing.add(target);
+      }
+    }
+    if (missing.size) out.push(`bin/${f}: calls ${[...missing].slice(0, 3).join(", ")}, not in the repo`);
+  }
+  return out;
 }
 
 const SHARED_SLOTS = ["sources", "config", "queries"];
