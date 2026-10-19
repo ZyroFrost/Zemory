@@ -11,6 +11,7 @@ import { conform, type ConformItem } from "./conform.js";
 import { generateGuards } from "./guard-gen.js";
 import { applyKit, type KitApplyResult } from "./kit-apply.js";
 import { normalizeOwnConstitution, pruneMarkerProtected, repointLinks } from "./kit-migrate.js";
+import { writeStignoreAllow, type StignoreAllowResult } from "./stignore-gen.js";
 
 export interface KitSyncResult {
   assembly: KitApplyResult;
@@ -21,6 +22,8 @@ export interface KitSyncResult {
   guard: { added: string[] } | { error: string } | null;
   /** the standard block of the TODO ledger after the pass (apply only) */
   todo: StandardTodoResult | null;
+  /** the machine-made allow list at the end of .stignore (slot Root_141_Stignore); null on a dry run */
+  stignore: StignoreAllowResult | null;
 }
 
 export function kitSync(root: string, opts: { kitRef?: string; apply: boolean }): KitSyncResult | { error: string } {
@@ -31,7 +34,10 @@ export function kitSync(root: string, opts: { kitRef?: string; apply: boolean })
   let dropped: string[] = [];
   let guard: KitSyncResult["guard"] = null;
   let todo: StandardTodoResult | null = null;
+  let stignore: StignoreAllowResult | null = null;
   if (opts.apply) {
+    // what travels to the VM follows the manifests every pass (slot Root_141_Stignore) — before conform measures it
+    stignore = writeStignoreAllow(root, true);
     // pointers into the old harness follow it every pass (idempotent): links, paths written as text, old skill host names
     repointed = repointLinks(root, true);
     dropped = pruneMarkerProtected(root, true);
@@ -43,7 +49,7 @@ export function kitSync(root: string, opts: { kitRef?: string; apply: boolean })
     // measured AFTER the parts are in place: what the pass could not fix is the repo's own work
     todo = writeStandardTodo(root, conform(root).items);
   }
-  return { assembly, own, repointed, dropped, guard, todo };
+  return { assembly, own, repointed, dropped, guard, todo, stignore };
 }
 
 export const STANDARD_TODO_START = "<!-- zemory:standard-todo:start";

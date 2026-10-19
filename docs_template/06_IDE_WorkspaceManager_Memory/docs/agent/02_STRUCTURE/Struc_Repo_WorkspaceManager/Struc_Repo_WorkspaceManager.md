@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_WorkspaceManager
 name: repo-workspace-manager
-version: 3
+version: 4
 profile: non-app
 label: WORKSPACE-MANAGER
 intro: : repo tổng quản của một cụm — giữ dữ liệu dùng chung (DW, kho dữ liệu), giá trị của cụm, bộ mail chung; quyết khung và chuẩn của các repo phòng ban nó quản
@@ -10,7 +10,7 @@ index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_NonApp]
 installs: [scripts/region_values.py]
-from: _Store/02_STRUCTURE/Struc_Repo_WorkspaceManager @v3 #86e5d806c09f
+from: _Store/02_STRUCTURE/Struc_Repo_WorkspaceManager @v4 #2e31e8c73527
 ---
 # Struc_Repo_WorkspaceManager
 
@@ -23,6 +23,10 @@ cung cấp cho cả cụm. Template này khác nhau theo từng cụm của ngư
 - Cung cấp cho cả cụm: `data` (DW, kho dữ liệu) · `workspace-values` (giá trị của cụm, slot `Data_140_WorkspaceValues`) · `mail`
   (bộ mail chung, slot `Config_139_Mail`).
 - Không thuộc quyền repo nào (cấp cao nhất của cụm).
+- **Sửa chuẩn chung là việc của repo này.** Một quy tắc áp cho mọi repo của cụm (slot · luật · skill · khối máy sinh) ⇒ repo
+  này sửa ở HS rồi chạy `zemory sync` xuống từng repo; `conform` của mỗi repo bắt phần còn lệch. Không nhắn từng repo tự sửa tay,
+  không để repo nào sửa trước chuẩn. Chạy `zemory sync` trong repo phòng là ngoại lệ duy nhất của luật chỉ-đo-không-ghi; mọi
+  thay đổi khác trong repo phòng vẫn là việc của phiên repo đó.
 - Cài `scripts/region_values.py` như template phòng ban (bản chép từng byte của bản ở `Struc_Repo_Dept`, test giữ hai bản
   bằng nhau): tool của skill PBI và task VM đọc giá trị cụm qua nó; chạy trong chính repo này thì nó nhận repo này là tổng quản.
 

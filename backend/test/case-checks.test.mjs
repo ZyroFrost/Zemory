@@ -8,7 +8,7 @@ import test from "node:test";
 import { join } from "node:path";
 import {
   binLauncherFindings, caseHeaderFindings, caseIndexFindings, deadFlagFindings, ledgerDuplicateHeadings, ledgerTitleFindings,
-  reportsIndexFindings, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmTaskDataFindings,
+  reportsIndexFindings, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmDeployIgnoredFindings, vmTaskDataFindings,
 } from "../../dist/docs/case-checks.js";
 import { standardTodoBlock } from "../../dist/docs/kit-sync.js";
 import { conform } from "../../dist/docs/conform.js";
@@ -92,6 +92,20 @@ test("case-header: missing status/cadence, a cadence the name contradicts, a per
     "tasks/XY_Monthly_Sales/spec.md: cadence: Weekly, the name says Monthly",
     "tasks/XY_Monthly_Sales/spec.md: a Weekly task with no direction: in|out",
   ]);
+});
+
+test("vm-deploy-ignored: a file a VM task needs under a .stignore line is caught; anchored and ../ paths are judged right (DW 19/10)", (t) => {
+  const root = dept(t);
+  write(root, "tasks/XY_Monthly_Sales/vm_deploy.json", JSON.stringify({
+    files: ["bin/XY_Monthly_Sales.cmd", "tasks/XY_Monthly_Sales/pipeline/run.py", "assets/logo.png", "tasks/XY_Monthly_Sales/reports/x.xlsx", "docs_visual2/a.txt"],
+    needs: ["../_DB_DataWarehouse/.env", "attic/old.py"] }));
+  assert.deepEqual(vmDeployIgnoredFindings(root), [], "no .stignore: the repo is not synced by Syncthing");
+  write(root, ".stignore", "// c\n(?d)__pycache__\n" + DATA + "\nreports\n*.pbix\nassets\n/attic\ndocs_visual\n!keep\n");
+  assert.deepEqual(vmDeployIgnoredFindings(root), [
+    "tasks/XY_Monthly_Sales/vm_deploy.json: assets/logo.png (.stignore: assets)",
+    "tasks/XY_Monthly_Sales/vm_deploy.json: tasks/XY_Monthly_Sales/reports/x.xlsx (.stignore: reports)",
+    "tasks/XY_Monthly_Sales/vm_deploy.json: attic/old.py (.stignore: /attic)",
+  ], "a bare name matches any segment, /attic only at the root; docs_visual2 and ../ paths pass");
 });
 
 test("vm-task-local-data: a VM task keeping a file on the PC is caught; the shortcut and reference/ are not (HR ②, reference kept on PC + VM)", (t) => {

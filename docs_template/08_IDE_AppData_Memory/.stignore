@@ -17,3 +17,9 @@ exports
 
 // guard state of this machine (one-use flags, read tracking)
 docs/.harness-state
+
+// below: the allow list, written by `zemory sync` from every vm_deploy.json — only what automation on the VM uses travels
+// zemory:stignore-allow:start · written by `zemory sync` from every vm_deploy.json (slot Root_141_Stignore) — do not edit by hand
+// only what automation on the VM uses travels; everything else stays on the work PC
+*
+// zemory:stignore-allow:end
