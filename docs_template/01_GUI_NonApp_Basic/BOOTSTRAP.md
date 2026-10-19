@@ -72,7 +72,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 37 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_11_WriteBoundary/Cons_Gate_11_WriteBoundary.md` | 58 |
 | 38 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_11_WriteBoundary/gate.json` | 3 |
 | 39 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons.md` | 17 |
-| 40 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons_Gate_12_SourceOfTruth.md` | 66 |
+| 40 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons_Gate_12_SourceOfTruth.md` | 70 |
 | 41 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/gate.json` | 3 |
 | 42 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_15_DataLifecycle/Cons.md` | 17 |
 | 43 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_15_DataLifecycle/Cons_Gate_15_DataLifecycle.md` | 57 |
@@ -182,7 +182,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 147 | `docs/agent/02_STRUCTURE/_Slot/Design_114_Design/Design_114_Design.md` | 13 |
 | 148 | `docs/agent/02_STRUCTURE/_Slot/DocsPublic_074_DocsPublic/DocsPublic_074_DocsPublic.md` | 15 |
 | 149 | `docs/agent/02_STRUCTURE/_Slot/DocsVisual_073_DocsVisual/DocsVisual_073_DocsVisual.md` | 17 |
-| 150 | `docs/agent/02_STRUCTURE/_Slot/Docs_004_Docs/Docs_004_Docs.md` | 18 |
+| 150 | `docs/agent/02_STRUCTURE/_Slot/Docs_004_Docs/Docs_004_Docs.md` | 20 |
 | 151 | `docs/agent/02_STRUCTURE/_Slot/Docs_005_Agent/Docs_005_Agent.md` | 27 |
 | 152 | `docs/agent/02_STRUCTURE/_Slot/Docs_006_Plan/Docs_006_Plan.md` | 20 |
 | 153 | `docs/agent/02_STRUCTURE/_Slot/Exports_135_Exports/Exports_135_Exports.md` | 13 |
