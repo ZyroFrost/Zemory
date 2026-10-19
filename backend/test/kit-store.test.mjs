@@ -979,3 +979,21 @@ test("a frame the store moved into its chapter moves in the repo on sync, and th
   assert.deepEqual(r.pathsFollowed, [plan]);
   assert.match(readFileSync(join(root, "docs", "archive", "old.md"), "utf8"), /_Cons\/01-1_secrets\/Cons\.md/, "history keeps its words");
 });
+
+test("the trigger row of a store skill follows the skill's trigger; a doubled row goes; a row of the repo's own stays", (t) => {
+  // 2026-10-19: pbi-mix renamed pbi-white kept its old words, and a second pass left two rows for one skill
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  writeFileSync(join(root, "AGENTS.md"), "# X\n\n## Mở khi trúng trigger\n\n| Mở khi | Đọc |\n|---|---|\n" +
+    "| old words | `.claude/skills/sk/SKILL.md` |\n| mine | `.claude/skills/own-sk/SKILL.md` |\n| older words | `.claude/skills/sk/SKILL.md` |\n");
+  put(st.s, "03_SKILLS/sk/gate.json", JSON.stringify({ trigger: "new words", read: [{ when: "path_prefix", prefix: "frontend" }],
+    prompt: { kind: "sk-door", re: "mở cửa sk", text: "[zemory] SK REMINDER" },
+    block: [{ path: "frontend/a.js" }], pass: [{ path: "backend/a.ts" }] }));
+  st.commit("trigger");
+  applyKit(root, { apply: true, storeDir: st.s });
+  const text = readFileSync(join(root, "AGENTS.md"), "utf8");
+  assert.equal((text.match(/\.claude\/skills\/sk\//g) ?? []).length, 1, "one row per store skill");
+  assert.match(text, /\| new words \| `\.claude\/skills\/sk\/SKILL\.md` \|/, "the row carries the current trigger");
+  assert.match(text, /\| mine \| `\.claude\/skills\/own-sk\/SKILL\.md` \|/, "the repo's own row is kept as written");
+});

@@ -1,11 +1,11 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 12
+version: 13
 type: process
 aka: pbip
 description: Edit a Power BI .pbip/PBIR report by writing its JSON directly - pages, visuals, bookmarks, buttons, icons, the coordinate grid - without breaking the file; the model diagram standard and the static gate. Use whenever a .pbip report is built or changed, a tab or bookmark is added, an icon or the grid is fixed, or Desktop reports issues. Vietnamese triggers - "sửa report", "sửa pbix", "dựng dashboard", "thêm tab", "gắn bookmark", "đổi icon", "căn lưới", "mở Desktop kiểm".
-installs: [scripts/pbi_gate.py, scripts/pbi_diagram.py, scripts/diagram_order.js, scripts/package.json]
+installs: [scripts/pbi_gate.py, scripts/pbi_diagram.py, scripts/diagram_order.js, scripts/package.json, scripts/rename_reports.py]
 ---
 
 # Sửa `.pbip` mà không làm vỡ file
@@ -18,38 +18,46 @@ installs: [scripts/pbi_gate.py, scripts/pbi_diagram.py, scripts/diagram_order.js
 
 Tên thư mục khai loại (`Skill_PBI_Base` `reference/naming.md`):
 ```
-thư mục   <PHÒNG>_<số><IP|DR>_<ChứcNăng>[<Bậc>]_<Loại>       ABC_02DR_StoreReportAM_Mix · ABC_03IP_IncomeStatementOM_Main
-file      <PHÒNG>_<số>_<CHỨC-NĂNG>[-<Bậc>]_<Live|Scheduled>  ABC_02_STORE-REPORT-AM_Live  (= tên trên Service, chỉ ASCII)
-IP = Import (kể cả bản nối thẳng model trên Service, như Legacy) -> Scheduled · DR = DirectQuery -> Live
-Loại ∈ {Legacy · Classic · Mix · Main}   Bậc ∈ {AM · OM} TUỲ CHỌN - chỉ khi report phân theo chức danh, KHÔNG có 'All'
+thư mục   <PHÒNG>_<số>_<CHỨC-NĂNG>[-<Bậc>]_<IP|DR>_<Loại>            ABC_02_STORE-REPORT-AM_DR_White · ABC_03_INCOME-STATEMENT-OM_IP_Red
+file      <PHÒNG>_<số>_<CHỨC-NĂNG>[-<Bậc>]_<Live|Scheduled>[_V<n>]    ABC_02_STORE-REPORT-AM_Live  (= tên trên Service, chỉ ASCII)
+IP = Import (kể cả bản nối thẳng model trên Service, như Legacy: luôn _IP_Legacy) -> Scheduled · DR = DirectQuery -> Live
+Loại ∈ {Legacy · Classic · White · Red}   Bậc ∈ {AM · OM} TUỲ CHỌN - chỉ khi report phân theo chức danh, KHÔNG có 'All'
 ```
-Các biến thể thiết kế (Legacy/Classic/Mix/Main) **cùng cách nạp** chung một tên file ⇒ publish đè đúng một item.
-Report quan trọng giữ **hai bản song song khác cách nạp** — bản `Live` và bản `Scheduled` dự phòng (kho sập vẫn xem được
-số của lần làm mới gần nhất): cùng số, khác hậu tố ⇒ hai item trên web. Thư mục viết `Bậc` dính cuối tên chức năng
-(`StoreReportAM`); file: `_` ngăn các phần, chức năng IN HOA nối chữ bằng `-`, bậc là chữ cuối của chức năng (`STORE-REPORT-AM`, bậc là 1 phần của tên). Cổng `file-name` kiểm hai
-khuôn và tên file suy đúng từ thư mục; cổng `storage-mode` kiểm `IP`/`DR` khớp cách nạp thật của model. Script tìm file
-theo **đuôi** (`*.Report`), không ghi cứng tên.
-> 🔄 Thay bản đầu 05/10 `<PHÒNG>-<số>-<CHỨC_NĂNG>[-<Bậc>]-<Live|Scheduled>` (viết ngược dấu ngăn), khuôn file 04/10 `<PHÒNG>-<số>-<ChứcNăng>[<Bậc>]-<Live|Refresh>` và 28/09 `<PHÒNG>-<số><IP|DR>-<ChứcNăng>[<Bậc>]`
+Thư mục và file cùng một phần chức năng (`STORE-REPORT-AM`): `_` ngăn các phần, chức năng IN HOA nối chữ bằng `-`, bậc là
+chữ cuối của chức năng. Thư mục thêm mã cách nạp rồi loại ở cuối; file thay hai phần đó bằng hậu tố cách nạp.
+Các biến thể thiết kế (Legacy/Classic/White/Red) **cùng cách nạp** chung một tên file ⇒ publish đè đúng một item.
+Report quan trọng giữ **hai bản song song khác cách nạp** — bản `Live` và bản `Scheduled` dự phòng (DW sập vẫn xem được
+số của lần làm mới gần nhất): cùng số, khác hậu tố ⇒ hai item trên web. Hai bản cùng số **và** cùng cách nạp cần sống song
+song trên Service ⇒ file thêm `_V<n>` (`ABC_02_STORE-REPORT-AM_Live_V2`); không có nhu cầu đó thì không có `_V<n>`.
+Cổng `file-name` kiểm hai khuôn và tên file suy đúng từ thư mục (`_IP` ↔ `Scheduled`, `_DR` ↔ `Live`); thư mục không khớp
+khuôn nào là ĐỎ. Cổng `storage-mode` kiểm `IP`/`DR` khớp cách nạp thật của model. Script tìm file theo **đuôi**
+(`*.Report`), không ghi cứng tên.
+Đổi tên thư mục cũ sang khuôn này: `python scripts/rename_reports.py` (chạy thử, in mọi lần dời và mọi file sẽ sửa) rồi
+`--apply` (`git mv` từng thư mục, sửa mọi chỗ nhắc tên cũ — kể cả khoá trong `config/pbi-gate.json`). Tắt Desktop trước.
+Đổi tên FILE (thêm `_V<n>`, đổi chức năng) = đổi tên item trên Service — cả Report lẫn Semantic model — TRƯỚC lần publish kế
+(`Skill_PBI_Base` `reference/naming.md` §3).
+> 🔄 Thư mục 19/10 thay khuôn `<PHÒNG>_<số><IP|DR>_<ChứcNăng>[<Bậc>]_<Loại>` (`ABC_02DR_StoreReportAM_Mix`); loại `Mix` →
+> `White`, `Main` → `Red`. Thay bản đầu 05/10 `<PHÒNG>-<số>-<CHỨC_NĂNG>[-<Bậc>]-<Live|Scheduled>` (viết ngược dấu ngăn), khuôn file 04/10 `<PHÒNG>-<số>-<ChứcNăng>[<Bậc>]-<Live|Refresh>` và 28/09 `<PHÒNG>-<số><IP|DR>-<ChứcNăng>[<Bậc>]`
 > (27/09: `<PHÒNG>-<số>-<ChứcNăng>[<Bậc>]-<Tên tiếng Việt>`).
 **Đọc token đó TRƯỚC khi sửa bất cứ thứ gì** — bốn loại bốn bộ luật, áp nhầm là hỏng đúng thứ đang cần giữ.
 
 🔴 **Mỗi loại có SKILL RIÊNG — file này chỉ nói THAO TÁC chung, không nói luật của từng loại.**
 Xác định loại xong thì **mở skill của nó** rồi mới làm:
 
-| | `Legacy` | `Classic` | `Mix` | `Main` |
+| | `Legacy` | `Classic` | `White` | `Red` |
 |---|---|---|---|---|
-| Là gì | file GỐC của hệ cũ, copy về | kho DW + thiết kế **CŨ** — bản mô phỏng để ĐO kho | kho DW + header/màu **Main** + bố cục **Legacy** | kho DW + thiết kế **MỚI** — bản chính thức |
+| Là gì | file GỐC của hệ cũ, copy về | kho DW + thiết kế **CŨ** — bản mô phỏng để ĐO kho | kho DW + header/màu **Red** + bố cục **Legacy** | kho DW + thiết kế **MỚI** — bản chính thức |
 | Model đọc | nguồn cũ | DW | DW | DW |
 | Được sửa | **KHÔNG** — chỉ đọc và `diff` | model theo chuẩn · UI giữ bản cũ | khung theo chuẩn · vị trí khối theo bản cũ | mọi thứ theo chuẩn |
 | Xung đột chuẩn ↔ bản cũ | — | **UI thắng** | **chuẩn thắng** | không có bản cũ |
 | Nghiệm thu | `md5` khớp bản gốc | **đối chiếu SỐ với hệ cũ, quét FULL** | bộ cổng tĩnh + mở Desktop nhìn | bộ kiểm chuẩn + mở Desktop nhìn |
-| Skill | `pbi-legacy/` | `pbi-classic/` | `pbi-mix/` | `pbi-main/` |
+| Skill | `pbi-legacy/` | `pbi-classic/` | `pbi-white/` | `pbi-red/` |
 
 ⚠ **Hai ô "xung đột" ngược nhau, và đó là chỗ hay áp nhầm nhất:** `Classic` sinh ra để ĐO kho nên
-chữ người đọc thấy phải y bản cũ; `Mix` sinh ra để khoác khung mới nên gặp mâu thuẫn thì theo chuẩn.
+chữ người đọc thấy phải y bản cũ; `White` sinh ra để khoác khung mới nên gặp mâu thuẫn thì theo chuẩn.
 
 ⚠ **Một khác biệt hay quên: bảng màu 15 mã và lưới 5 KHÔNG áp cho `Classic`** (nó mô phỏng bố cục cũ —
-thấy chỗ xấu thì BÁO, đừng nắn), nhưng **CÓ áp cho `Mix`** (lưới 5 là một trong bốn vế định nghĩa nó).
+thấy chỗ xấu thì BÁO, đừng nắn), nhưng **CÓ áp cho `White`** (lưới 5 là một trong bốn vế định nghĩa nó).
 
 ### `Legacy` — chỉ đọc
 Giữ nguyên byte; nó là **mốc duy nhất** chứng minh bản `Classic` không lệch. Cần đọc phần model thì chuyển
@@ -66,10 +74,10 @@ Giữ nguyên byte; nó là **mốc duy nhất** chứng minh bản `Classic` kh
 - ⚠ **Bảng màu 15 mã và lưới 5 KHÔNG áp** cho loại này — nó mô phỏng bố cục cũ. Thấy chỗ xấu thì **BÁO**, đừng nắn.
 - Quy trình dựng + bộ kiểm tĩnh + ba con số phải báo: skill **`pbi-classic`**.
 
-### `Mix` — kho DW + khung nhận diện `Main` + bố cục `Legacy`
-Luật và quy trình: skill **`pbi-mix`**.
+### `White` — kho DW + khung nhận diện `Red` + bố cục `Legacy`
+Luật và quy trình: skill **`pbi-white`**.
 
-### `Main` — áp đủ chuẩn, không ngoại lệ
+### `Red` — áp đủ chuẩn, không ngoại lệ
 model.md cấu trúc measure · design.md §3.4 hai vùng tiêu đề · design.md §1 và §3 màu, theme, khoảng cách, lưới 5 ·
 design.md §3.5 khung có sẵn chỉ thay dữ liệu. Không có "bản cũ" nào để viện dẫn: đây là thiết kế mới.
 
@@ -138,11 +146,11 @@ nguồn hệ cũ              0 chỗ: mọi nguồn khai ở `legacy_sources`
 cột phụ thuộc nó `State = 7`, visual trống mà cổng tĩnh không thấy. `IN {"a","b"}` với danh sách chữ cố định thì
 được. **Logic phân tích chuỗi đưa vào câu SQL của partition** (bọc câu cũ thành bảng con + `CROSS APPLY` + `CASE`),
 cột trong model đổi thành cột dữ liệu `sourceColumn`, giữ `lineageTag`. Ca thật: `Dim_ProfitLossLine[LineLevel]`
-của `ABC_02` Classic/Mix. Kiểm: `SELECT [ExplicitName],[State],[ErrorMessage] FROM $SYSTEM.TMSCHEMA_COLUMNS WHERE [State] <> 1`.
+của `ABC_02` Classic/White. Kiểm: `SELECT [ExplicitName],[State],[ErrorMessage] FROM $SYSTEM.TMSCHEMA_COLUMNS WHERE [State] <> 1`.
 
 ## 1c. 🔴 CHUẨN SƠ ĐỒ MODEL — xếp như đi dây server
 
-Áp cho **mọi report, mọi bậc** (Legacy chuyển `.pbip` · Classic · Mix · Main). Mẫu: `ABC_02DR_StoreReportAM_Mix`.
+Áp cho **mọi report, mọi bậc** (Legacy chuyển `.pbip` · Classic · White · Red). Mẫu: `ABC_02_STORE-REPORT-AM_DR_White`.
 **Công cụ:** `python scripts/pbi_diagram.py <thư mục report>` (thêm `--dry` để xem trước) — đọc model, tự phân loại,
 tự xếp theo đúng các luật dưới, ghi `diagramLayout.json` (một tab "All tables"). Chọn tầng riêng của từng report ở
 `config/pbi-diagram.json`. Cổng `diagram` của `pbi_gate.py` canh.
@@ -179,7 +187,7 @@ tầng dưới   fact, CANH ĐỈNH (thẻ dài kéo xuống; bảng tra cứu n
    install`; không có thì barycenter), rồi **thẻ cao nhất ra hai rìa**, thẻ ngắn vào giữa — thẻ dài ở rìa không chắn dây
    của ai.
 5. **Quá 8 fact cho một hàng:** fact chỉ nối dim trung tâm + một dim nhỏ không có dây đi xuống được **nhét dưới dim nhỏ
-   đó**, các fact nhét đặt so le để dây ngang sang dim trung tâm không cắt nhau (Mix: `Fact_PromotionTarget`,
+   đó**, các fact nhét đặt so le để dây ngang sang dim trung tâm không cắt nhau (White: `Fact_PromotionTarget`,
    `Fact_PromotionMetricTarget`).
 6. **Bảng tra cứu** (một-phía, chỉ một fact dùng): ngay dưới fact ở tầng dưới / ngay trên fact ở tầng trên, trong 13 cột.
 7. **Bảng lẻ** (không quan hệ — `Parameter_*`): lấp khoảng trống TRONG lưới (trên thẻ ngắn tầng trên, dưới thẻ ngắn tầng
@@ -187,14 +195,14 @@ tầng dưới   fact, CANH ĐỈNH (thẻ dài kéo xuống; bảng tra cứu n
 8. ⚠ **Model view vẽ dây CHẬM**: model DirectQuery nạp xong ~2 phút mới có dây. Đừng kết luận "mất quan hệ" sớm — kiểm
    DMV `TMSCHEMA_RELATIONSHIPS`.
 9. ⚠ **Quan hệ nhiều-nhiều viết tay:** không repo nào có bản Desktop ghi để chép khuôn ⇒ đi bảng cầu bằng `TREATAS` trong
-   measure (`pbi-mix` §5p), kho vẫn giữ bảng cầu nguyên vẹn.
+   measure (`pbi-white` §5p), kho vẫn giữ bảng cầu nguyên vẹn.
 10. **Đã thử và bỏ (27/09):** mọi dim một hàng + mọi fact một hàng (dây chui dưới dim) · cột sống dim bên trái (dây gọn
     nhưng quá rộng) · `pbi-model-layout` (fact một cột dọc — quá cao) · ELK dọc (quá cao) · ELK nguyên bản (dây chéo, thẻ
     vuông cùng cỡ). Thuật toán "Arrange Tables" của SSMS không công bố mã.
 
 - Desktop phải đóng khi chạy công cụ; mở lại rồi chờ dây. File là CRLF, thụt 2 dấu cách.
 - Cổng `diagram`: thiếu node · chồng nhau · lệch lưới 20 px · quá 13 cột · `#Measure` không đứng riêng cột cuối hoặc không
-  dài hết sơ đồ. Bản Mix báo đỏ; bậc khác cảnh báo cho tới khi được nắn.
+  dài hết sơ đồ. Bản White báo đỏ; bậc khác cảnh báo cho tới khi được nắn.
 
 ## 2. Bố cục & toạ độ
 

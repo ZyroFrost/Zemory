@@ -13,7 +13,7 @@ out every spot. This file turns the MEASURABLE rules into checks a machine runs.
 
     python scripts/pbi_gate.py <report folder> [--page <pageId>] [--pre-open | --static]
 
-  <report folder>   folder that holds *.Report  (e.g. reports/ABC_02DR_StoreReportAM_Mix)
+  <report folder>   folder that holds *.Report  (e.g. reports/ABC_02_STORE-REPORT-AM_DR_White)
   --page            page that gets the FULL standard; other pages only warn
   --verbose         print every warning line (default: summary only)
 
@@ -26,7 +26,7 @@ warehouse) · engine (Desktop: objects in error + one row through every DirectQu
 Exit 0 = green on every layer that applies. Exit 1 = errors, each spot printed. Exit 3 = INCOMPLETE: no
 error found but a layer could not run (named, with the reason) - never reported as green.
 Never edits report files. The engine layer may open Desktop and closes it without saving.
-Rule source: .claude/skills/pbi-mix/SKILL.md  §3b §4f §4g §5b §7
+Rule source: .claude/skills/pbi-white/SKILL.md  §3b §4f §4g §5b §7
 """
 import json
 import glob
@@ -60,7 +60,7 @@ RULES = [
     ('bm-default',  'a scoped bookmark must declare exactly 1 visible in every _On/_Off pair'),
     ('bm-name',     'bookmark name: <NN>_<PageKey>_<Action>'),
     ('bm-main',     '<Page>_Main must match the default tab bookmark exactly'),
-    ('enum-real',   'every enum value must be one Desktop has already written in a Legacy/Classic/Main file'),
+    ('enum-real',   'every enum value must be one Desktop has already written in a Legacy/Classic/Red file'),
     ('default-main', 'the state WHEN THE FILE OPENS must match bookmark <Page>_Main exactly'),
     ('axis-sort',   'a week axis (WeekPeriod) must declare sortDefinition by WeekFridayStart'),
     ('images',      'every ItemName has a real file AND is declared in report.json'),
@@ -73,7 +73,7 @@ RULES = [
     ('grid5',       'every x·y·width·height is divisible by 5 - except an EQUAL split that lands on .5 (660 or 1270 with a 5 px gap = 327.5 / 632.5): a block with a same-size sibling, the block right after it, and what sits inside it'),
     ('equal-split', 'two neighbour blocks of one column (same x + width) or one row (same y + height) that differ by <= 5 px are an unequal split - split exactly (327.5 + 5 + 327.5), never push the remainder into one block (user 2026-10-08)'),
     ('matrix-few',  'a matrix / table never shows little: no row field (= ONE row) -> card; one row field with <= 6 values and no column field -> a chart (user 2026-10-08)'),
-    ('field-ref',   'every field named OUTSIDE the query - selector.metadata (column formats, colour scales), FillRule Input SelectRef.ExpressionName, expansionStates queryRefs - exists in the model; a dangling one shows nothing and Power BI says nothing. Classic / Mix / Main (a department repo 2026-10-17: every colour scale of MKT_01 Classic gone)'),
+    ('field-ref',   'every field named OUTSIDE the query - selector.metadata (column formats, colour scales), FillRule Input SelectRef.ExpressionName, expansionStates queryRefs - exists in the model; a dangling one shows nothing and Power BI says nothing. Classic / White / Red (a department repo 2026-10-17: every colour scale of MKT_01 Classic gone)'),
     ('bg-inset',    'inside a dashboard group: the chart is inset from its BG by exactly 5 on every side'),
     ('page-margin', 'a BG_ frame stays >= 5 from the page edge'),
     ('dashboard',   'every dashboard = 1 group with EXACTLY ONE BG_ background'),
@@ -81,53 +81,53 @@ RULES = [
     ('button-edge', "a block's button sits a multiple of 5 from the right edge of its frame"),
     ('header-text', 'report name frame = grid5(W_text + padding); the page name joins right after it - on EVERY visible page (user 2026-10-14: Franchise cut to Fra)'),
     ('title-style', 'chart title: 12D · left aligned · #2D2D2D'),
-    ('file-name',   'folder <DEPT>_<num><IP|DR>_<Function>[<Tier>]_<Kind> · file <DEPT>_<num>_<FUNCTION>[-<Tier>]_<Live|Scheduled> (= Service name; tier is part of the function; DR = Live, IP = Scheduled; underscore between parts, hyphen joins words inside a part, function UPPER)'),
+    ('file-name',   'folder <DEPT>_<num>_<FUNCTION>[-<Tier>]_<IP|DR>_<Legacy|Classic|White|Red> · file <DEPT>_<num>_<FUNCTION>[-<Tier>]_<Live|Scheduled>[_V<n>] (= Service name; same function as the folder; DR = Live, IP = Scheduled; _V<n> only when two builds share the number and the load mode; underscore between parts, hyphen joins words inside a part, function UPPER)'),
     ('storage-mode', 'IP = every warehouse table Import, DR = every one DirectQuery; a live connection to a Service model is IP'),
     ('dw-model',    'tables reading SQL: server uses the gateway string · no legacy source'),
     ('dw-only-tables', 'keep the warehouse Kimball structure: every Dim_/Fact_/Bridge_/Agg_ is the warehouse table of the same name (no self-made table; the report owns only #Measure · Parameter_* · @) and every relationship between warehouse tables matches a warehouse foreign key; selecting columns/rows is free - user 2026-10-10'),
-    ('canvas',      'Mix: every visible page is 1280x720'),
+    ('canvas',      'White: every visible page is 1280x720'),
     ('fillrule-bare', 'a FillRule gradient stop (min/mid/max color, nullColoringStrategy) is a BARE Literal - an expr wrapper kills Save/Publish'),
-    ('few-cards',   'Mix: page with 1-3 cards: self-made cards are dropped, Legacy cards are topped up to 4'),
-    ('card-row',    'Mix: the Card group holds card tiles only (BG_ + cardVisual/Card_ + Pct_); charts/tables in it are dropped'),
-    ('pct-period',  'Mix: an unlabelled Pct_ line needs the period in the measure format ("MoM", "WoW", "vs Target")'),
-    ('pct-color',   'Mix: a % on a card/table/chart label is coloured by a rule on THAT measure: up #007A36, down #C51E24'),
-    ('single-page-overview', 'Mix: a report with ONE visible page names it Overview - the header already carries the report name; the first tab stays Summary'),
-    ('page-name',   'Mix: the page name says what the page is; generic department names (Phong ..., a department code, Report, Page 1) fail; no department code, no Report / Dashboard word - the header already says it (Monthly, not Monthly Report ABC)'),
-    ('tab-big-charts', 'Mix: a tab holds at most 3 big charts (block height >= 250)'),
-    ('axis-scroll', 'Mix: categories x 20px must not exceed the plot area (53 weeks, 31 days...) - a chart must not scroll by itself'),
-    ('long-chart',  'Mix: long charts (>= 28 categories) at most 2 blocks per tab, stacked top/bottom; X axis concatenateLabels=true'),
-    ('matrix-scroll', 'Mix: a pivot whose COLUMNS spread over week/day/month must not overflow its frame (filter ~Recent 4 Weeks = 1)'),
-    ('matrix-style', 'Mix: every matrix / table has ONE look - header bold white on #44546A, banded rows, bold totals on #E3E8EE, and every % column (by its FORMAT) coloured up #007A36 / down #C51E24 by its own measure (scripts/mix_palette.py --matrices)'),
-    ('table-overflow', 'Mix: a table/pivot whose columns (header or typical value, the wider) add up to more than its frame scrolls sideways - widen the frame / move blocks; a truly long table goes to matrix_exempt with a reason (estimate)'),
+    ('few-cards',   'White: page with 1-3 cards: self-made cards are dropped, Legacy cards are topped up to 4'),
+    ('card-row',    'White: the Card group holds card tiles only (BG_ + cardVisual/Card_ + Pct_); charts/tables in it are dropped'),
+    ('pct-period',  'White: an unlabelled Pct_ line needs the period in the measure format ("MoM", "WoW", "vs Target")'),
+    ('pct-color',   'White: a % on a card/table/chart label is coloured by a rule on THAT measure: up #007A36, down #C51E24'),
+    ('single-page-overview', 'White: a report with ONE visible page names it Overview - the header already carries the report name; the first tab stays Summary'),
+    ('page-name',   'White: the page name says what the page is; generic department names (Phong ..., a department code, Report, Page 1) fail; no department code, no Report / Dashboard word - the header already says it (Monthly, not Monthly Report ABC)'),
+    ('tab-big-charts', 'White: a tab holds at most 3 big charts (block height >= 250)'),
+    ('axis-scroll', 'White: categories x 20px must not exceed the plot area (53 weeks, 31 days...) - a chart must not scroll by itself'),
+    ('long-chart',  'White: long charts (>= 28 categories) at most 2 blocks per tab, stacked top/bottom; X axis concatenateLabels=true'),
+    ('matrix-scroll', 'White: a pivot whose COLUMNS spread over week/day/month must not overflow its frame (filter ~Recent 4 Weeks = 1)'),
+    ('matrix-style', 'White: every matrix / table has ONE look - header bold white on #44546A, banded rows, bold totals on #E3E8EE, and every % column (by its FORMAT) coloured up #007A36 / down #C51E24 by its own measure (scripts/mix_palette.py --matrices)'),
+    ('table-overflow', 'White: a table/pivot whose columns (header or typical value, the wider) add up to more than its frame scrolls sideways - widen the frame / move blocks; a truly long table goes to matrix_exempt with a reason (estimate)'),
     ('param-groupby', 'a field-parameter table has relatedColumnDetails groupByColumn Parameter Fields on its display column - user 2026-10-14'),
     ('param-value', 'a slicer / bookmark selects only fields the field parameter really lists (NAMEOF) - user 2026-10-14'),
     ('title-font', 'every shown chart / table title is Segoe UI Semibold, not bold-off (same rule as a department repo 13/10) - on every visible page'),
-    ('title-case', 'visual titles: each word capitalised, no ALL-CAPS word except a business acronym, joining words lower case (same rule as a department repo 12/10); Mix / Main only - Classic keeps its design'),
+    ('title-case', 'visual titles: each word capitalised, no ALL-CAPS word except a business acronym, joining words lower case (same rule as a department repo 12/10); White / Red only - Classic keeps its design'),
     ('overview-first', 'a page named Overview is the first page of the report - user 2026-10-14'),
     ('tab-page-name', 'a tab label is never also a page name (page Overview + tab Overview read twice; first tab = Summary) - user 2026-10-14'),
     ('ui-english','page and tab names are English (labels / titles / column names English; only data values stay Vietnamese - the warehouse delivers English names) - user 2026-10-14'),
     ('tab-case', 'every word of a tab label starts with a capital (Tổng Quan, Theo Tháng) - one way on every tab - user 2026-10-14'),
     ('sort-order', "a sort field is one of the visual's own fields (else Desktop drops it), and a bar chart by category runs from the largest value down - user 2026-10-14"),
-    ('tab-label',   'Mix: a tab label is at most 10 characters - bold 12pt in a 90-125px button, longer is cut off ("Nguoi ban &..")'),
-    ('theme-standard', 'Mix: the report theme carries the company theme data colours + good/neutral/bad (the region manager/assets/theme/the region theme file = Theme1 of the Original template)'),
-    ('compare-grey', 'Mix: a comparison series (LY / LM / LMTD / LW / PY / Last / Target, not a %) is grey #A2A2A2 (a second one #595959; 3-4 on one chart add #7F7F7F / #3F3F3F), never a theme slot'),
-    ('tab-hole',    'Mix: inside a tab every 10x10 px spot is covered by a block - blocks of one row end on the same bottom (user 08/10, Delivery)'),
-    ('row-wrap', 'Mix/Main, dw: every text column of a table / matrix fits its text - max(longest warehouse value, header) + padding, half of it (two lines) over ROW_WRAP px; no spare room (Stepped matrix: one shared column) - user 2026-10-14'),
+    ('tab-label',   'White: a tab label is at most 10 characters - bold 12pt in a 90-125px button, longer is cut off ("Nguoi ban &..")'),
+    ('theme-standard', 'White: the report theme carries the company theme data colours + good/neutral/bad (the region manager/assets/theme/the region theme file = Theme1 of the Original template)'),
+    ('compare-grey', 'White: a comparison series (LY / LM / LMTD / LW / PY / Last / Target, not a %) is grey #A2A2A2 (a second one #595959; 3-4 on one chart add #7F7F7F / #3F3F3F), never a theme slot'),
+    ('tab-hole',    'White: inside a tab every 10x10 px spot is covered by a block - blocks of one row end on the same bottom (user 08/10, Delivery)'),
+    ('row-wrap', 'White/Red, dw: every text column of a table / matrix fits its text - max(longest warehouse value, header) + padding, half of it (two lines) over ROW_WRAP px; no spare room (Stepped matrix: one shared column) - user 2026-10-14'),
     ('header-wrap', 'a table / matrix with a column header longer than HEADER_WRAP px on one line takes fixed widths: long headers at half their text + padding (two lines), measures >= VALUE_MIN, spread to the frame; auto-size off - user 2026-10-14'),
-    ('narrow-table', 'Mix: every table / matrix fills its frame - Auto-size behaviour Grow to fit (columnHeaders autoSizeColumnWidth true + columnAdjustment growToFit; Desktop spreads the room over whatever columns the data brings) (user 08/10 Promotion, 14/10 "so với tổng size của chính group chứa")'),
-    ('panel-label', 'Mix: the label right above a filter-panel slicer says that slicer\'s field caption (user 08/10, Daily Day slicer under "Area Manager")'),
-    ('pct-label', 'Mix: the % line labels are bold, labelPosition Above, without a background box'),
-    ('matrix-grid', 'Mix: a matrix draws horizontal grid lines only'),
-    ('topn-column', 'Mix: a Top / Bottom N chart is a vertical column chart, not horizontal bars'),
-    ('card-icon', 'Mix: every KPI card carries its icon - a square 5 px in from the card, the colour of the card value, from the icon library at the 17.0-18.0 px stroke mark (scripts/card_icons.py)'),
-    ('chart-fill-shape', 'Mix: a chart with ONE measure on its main axis keeps its colour in the selector-less dataPoint entry - Desktop ignores a metadata selector there and draws theme colour 1'),
-    ('chart-palette', 'Mix: chart data colours by ROLE only - accent #256ABF, accent2 #86B6EF, accent3 #184F95, compare grey #A6A6A6, % line #595959 (+ the ramp for pies); red/green/black are system colours, never a series; data colours as THEME references ColorId 2..9 like the Original template'),
-    ('open-page',   'Mix: activePageName = the first page (Desktop Save often changes it)'),
-    ('display-option', 'Mix: visible pages use displayOption FitToWidth like page 1'),
-    ('glossary',    'Mix: every page has its own glossary, not a verbatim copy'),
-    ('legacy-parity', 'Mix: every Legacy page and visual is present (a card counts if its measure is still on a card); drops go to dropped_visuals'),
+    ('narrow-table', 'White: every table / matrix fills its frame - Auto-size behaviour Grow to fit (columnHeaders autoSizeColumnWidth true + columnAdjustment growToFit; Desktop spreads the room over whatever columns the data brings) (user 08/10 Promotion, 14/10 "so với tổng size của chính group chứa")'),
+    ('panel-label', 'White: the label right above a filter-panel slicer says that slicer\'s field caption (user 08/10, Daily Day slicer under "Area Manager")'),
+    ('pct-label', 'White: the % line labels are bold, labelPosition Above, without a background box'),
+    ('matrix-grid', 'White: a matrix draws horizontal grid lines only'),
+    ('topn-column', 'White: a Top / Bottom N chart is a vertical column chart, not horizontal bars'),
+    ('card-icon', 'White: every KPI card carries its icon - a square 5 px in from the card, the colour of the card value, from the icon library at the 17.0-18.0 px stroke mark (scripts/card_icons.py)'),
+    ('chart-fill-shape', 'White: a chart with ONE measure on its main axis keeps its colour in the selector-less dataPoint entry - Desktop ignores a metadata selector there and draws theme colour 1'),
+    ('chart-palette', 'White: chart data colours by ROLE only - accent #256ABF, accent2 #86B6EF, accent3 #184F95, compare grey #A6A6A6, % line #595959 (+ the ramp for pies); red/green/black are system colours, never a series; data colours as THEME references ColorId 2..9 like the Original template'),
+    ('open-page',   'White: activePageName = the first page (Desktop Save often changes it)'),
+    ('display-option', 'White: visible pages use displayOption FitToWidth like page 1'),
+    ('glossary',    'White: every page has its own glossary, not a verbatim copy'),
+    ('legacy-parity', 'White: every Legacy page and visual is present (a card counts if its measure is still on a card); drops go to dropped_visuals'),
     ('bm-scope',    'bookmark with a target list: options.applyOnlyToTargetVisuals = true (else it resets the tab)'),
-    ('slicer-style', 'Mix: every slicer takes the Main design - item box #E8E8E8, text #2D2D2D, container #E8E8E8'),
+    ('slicer-style', 'White: every slicer takes the Red design - item box #E8E8E8, text #2D2D2D, container #E8E8E8'),
     ('target-stack', 'Target is never stacked on revenue (the stack would add them) - clustered columns -VAT / +VAT / Target side by side - user 2026-10-12/14'),
     ('axis-invisible', 'an axis that is shown must not print in the background colour (white labels on white take room, read nothing) - user 2026-10-12'),
     ('row-uniform', 'column charts side by side in one row share one column width (categoryAxis innerPadding) and one legend setting - user 2026-10-12'),
@@ -135,13 +135,13 @@ RULES = [
     ('legend-plain', 'a chart series / legend name is the field name only - no explanation in brackets (the Glossary button explains) - user 2026-10-12'),
     ('label-overlap', 'data labels of a column/bar chart must fit: plot width / (categories x labelled series) >= one label - else label fewer series - user 2026-10-12'),
     ('clear-filter', 'every filter panel keeps the Ori refresh button BT_ClearFilter (240,20 40x40) -> <Page>_ClearFilter: Data on, every panel slicer in its targets (any tier, every department)'),
-    ('panel-title', 'Mix: every filter panel item (title, labels, slicers, buttons) sits above BG_FilterPanel - else the panel paints over it'),
-    ('slicer-blank', 'Mix: every slicer column carries the visual filter "is not blank" - no slicer may show (Blank)'),
+    ('panel-title', 'White: every filter panel item (title, labels, slicers, buttons) sits above BG_FilterPanel - else the panel paints over it'),
+    ('slicer-blank', 'White: every slicer column carries the visual filter "is not blank" - no slicer may show (Blank)'),
     ('slicer-current', 'engine: a period slicer with a "Current ..." member lists NO member that starts after it - the label and the slicer filter share one reference date'),
-    ('bm-number',   'Mix: bookmark prefix NN = real position of its page among visible pages; no bookmark of a deleted page'),
-    ('measure-folder', 'Mix: #Measure folders lettered in page order: A. Calculation, then B.. = <page name> for every visible page'),
+    ('bm-number',   'White: bookmark prefix NN = real position of its page among visible pages; no bookmark of a deleted page'),
+    ('measure-folder', 'White: #Measure folders lettered in page order: A. Calculation, then B.. = <page name> for every visible page'),
     ('measure-dup', 'two measures with the same name (case-insensitive) in a table - Desktop refuses to open the project'),
-    ('diagram',     'model diagram (pbip 1c): every table has a node, no overlap, 20px grid, <= 13 columns, #Measure alone in the last column full length (Mix fails, other tiers warn)'),
+    ('diagram',     'model diagram (pbip 1c): every table has a node, no overlap, 20px grid, <= 13 columns, #Measure alone in the last column full length (White fails, other tiers warn)'),
     ('legend',      'legend of an axis chart = Top (left anchored), donut/pie = RightCenter; TopLeft is NOT valid - WARNING'),
 ]
 
@@ -516,7 +516,7 @@ def caption_exempt(vis):
 
 TEMPLATE = ['#2A78D6', '#EB6834', '#169A6B', '#4A3AA7', '#D95F8E', '#015A80', '#B8A365', '#199900', '#5E9AD7', '#13678A', '#127369', '#34517B', '#15274B', '#A2A2A2', '#595959']   # 30/09: cards set B; charts = Original template Theme1 + greys
 PALETTE = set(TEMPLATE) | {'#C51E24', '#136C99', '#2D2D2D', '#FFFFFF', '#E8E8E8', '#007A36'}
-PCT_UP, PCT_DOWN = '#007A36', '#C51E24'   # pbi-mix 4j (user 2026-09-27); up darker 30/09 (was #00B050)
+PCT_UP, PCT_DOWN = '#007A36', '#C51E24'   # pbi-white 4j (user 2026-09-27); up darker 30/09 (was #00B050)
 PCT_UP_ON_BARS = '#4ADE80'   # chart % labels over dark columns: brighter up green (user 2026-10-01)
 
 
@@ -677,7 +677,7 @@ def check_tab_default(vis, put):
 
 ENUM_RX = re.compile(r"^'[A-Za-z][A-Za-z0-9]*'$")
 ENUM_SKIP = {'text', 'displayName', 'fontFamily', 'name', 'heading', 'imageType', 'bookmark', 'navigationSection', 'url'}
-ENUM_SOURCES = ('Legacy', 'Classic', 'Main')   # files written BY Desktop itself -> the vocabulary of valid values
+ENUM_SOURCES = ('Legacy', 'Classic', 'Red')   # files written BY Desktop itself -> the vocabulary of valid values
 # match on TOKENS of the folder name <DEPT>_<num>_<Function>[<Tier>]_<DesignKind> - the design kind is the last token
 
 
@@ -740,7 +740,7 @@ AXIS_NEED_SORT = {
 
 def check_axis_sort(vis, put):
     """An axis column without sortByColumn on a visual without sortDefinition -> Power BI sorts by the
-    measure value (weeks 19 16 29 38...). Born from the Weekly Mix page 2026-09-25."""
+    measure value (weeks 19 16 29 38...). Born from the Weekly White page 2026-09-25."""
     for (pg, i), d in vis.items():
         q = (d.get('visual') or {}).get('query') or {}
         cat = [p.get('queryRef') for p in q.get('queryState', {}).get('Category', {}).get('projections', [])]
@@ -797,7 +797,7 @@ def check_topn(vis, put):
 
 def check_fillrule_dead(vis, put):
     """fillrule-dead (2026-10-04): a colour scale (FillRule) whose selector names a field the table does not have shows
-    NOTHING and Power BI says nothing. Mix carried 54 such entries: 33 lost by a rebinding that renamed the rule's Input
+    NOTHING and Power BI says nothing. White carried 54 such entries: 33 lost by a rebinding that renamed the rule's Input
     but not its selector (colour gone vs Legacy), 21 dead since Legacy. Fix: mix_palette --repair-fillrules."""
     for (pg, i), d in vis.items():
         v = d.get('visual', {})
@@ -1056,7 +1056,7 @@ def pad_of(d):
 
 
 def G_w(t):
-    """Tab label width: Segoe UI bold 12 (the Mix tab font)."""
+    """Tab label width: Segoe UI bold 12 (the White tab font)."""
     return w_text(t, 12, True, False)
 
 
@@ -1177,9 +1177,9 @@ def check_field_params(report_dir, d_def, fail):
 
 def check_title_case(d_def, fail):
     """title-case (a department repo 12/10, user: "cấu trúc tên bảng phải đồng nhất"; a department repo 14/10: "1 chuẩn duy nhất là viết
-    hoa caption đầu"): on Mix / Main every shown visual title follows the company template style ('Total Revenue by
+    hoa caption đầu"): on White / Red every shown visual title follows the company template style ('Total Revenue by
     Brand'): each word capitalised, never a whole word in capitals unless it is a business acronym, joining words lower
-    case except first. 02 Mix had 34 ALL-CAPS + 40 Title Case. Same rule and name as a department repo - one rule for every department."""
+    case except first. 02 White had 34 ALL-CAPS + 40 Title Case. Same rule and name as a department repo - one rule for every department."""
     bad = []
     for f in glob.glob(os.path.join(d_def, 'pages', '*', 'visuals', '*', 'visual.json')):
         vis = json.load(open(f, encoding='utf-8')).get('visual', {})
@@ -1242,8 +1242,8 @@ def check_typography(page_vis, fail, legend_warn):
                             % (sel_name(d) or i, lit(p.get('fontSize', {})),
                                lit(p.get('alignment', {}))))
             # title-font (user 13/10, Executive: "cổng kiểm title viết Bold và chung 1 loại font đâu má?"): one title
-            # look on every chart / table - Segoe UI Semibold (skill pbi-mix 786); no font set = the theme's regular
-            # Segoe (01 Mix had 30, 02 Mix 18), bold false = a thin title
+            # look on every chart / table - Segoe UI Semibold (skill pbi-white 786); no font set = the theme's regular
+            # Segoe (01 White had 30, 02 White 18), bold false = a thin title
             fam = str(lit(p.get('fontFamily', {})) or '')
             if 'Segoe UI Semibold' not in fam or lit(p.get('bold', {})) == 'false':
                 fail.append("%s: title font %s%s - every chart / table title is Segoe UI Semibold (title-font)"
@@ -1300,7 +1300,7 @@ def legend_position(v):
 # Naming rule of 2026-09-28 (user): the folder glues the storage mode to the number - IP = Import, DR = DirectQuery.
 # 2026-10-04 (user): the FILE (= the name on the Service) carries the storage mode as a readable SUFFIX instead, so a
 # reader knows what kind of report it is; the folder keeps the short code (the repo reads it fine):
-#   folder <DEPT>_<num><IP|DR>_<Function>[<Tier>]_<Kind>        ABC_02DR_StoreReportAM_Mix
+#   folder <DEPT>_<num><IP|DR>_<Function>[<Tier>]_<Kind>        (the 2026-10-04 folder, replaced 2026-10-19 below)
 #   file   <DEPT>_<num>_<FUNCTION>[-<Tier>]_<Live|Scheduled>    OPS_02_STORE-REPORT-AM_Live
 # 2026-10-05 (user, a department repo): the suffix pairs two STATES - Live (reads the warehouse) / Scheduled (Import, refreshed
 # on a schedule) - instead of the verb 'Refresh'; the function is UPPER CASE so it catches the eye on the Service,
@@ -1308,8 +1308,14 @@ def legend_position(v):
 # PARTS, '-' joins words INSIDE a part (StoreReport -> STORE-REPORT); the tier is PART OF the function (user 2026-10-05: 'bậc là 1 phần của tên', as the folder StoreReportAM).
 # Two builds of one report with different storage (a DR report kept with an IP backup that still shows the last
 # refresh when the warehouse is down) share the number and differ in the suffix - two items on the Service.
-FOLDER_RX = re.compile(r'^([A-Z]{2,4})_(\d\d)(IP|DR)_([A-Z][A-Za-z0-9]*?)(AM|OM)?_(Legacy|Classic|Mix|Main)$')
-ARTIFACT_RX = re.compile(r'^([A-Z]{2,4})_(\d\d)_([A-Z0-9]+(?:-[A-Z0-9]+)*)_(Live|Scheduled)$')
+# 2026-10-19 (a department repo): the folder takes the file's own shape and ends in storage code + kind (the code where the file has its load mode); the kinds Mix and
+# Main are renamed White and Red. A file name gets _V<n> only when two builds share the number and the load mode:
+#   folder <DEPT>_<num>_<FUNCTION>[-<Tier>]_<IP|DR>_<Kind>                 OPS_02_STORE-REPORT-AM_DR_White
+#   file   <DEPT>_<num>_<FUNCTION>[-<Tier>]_<Live|Scheduled>[_V<n>]        OPS_02_STORE-REPORT-AM_Live
+# groups: 1 dept · 2 num · 3 function (tier included) · 4 storage code · 5 kind
+KINDS = ('Legacy', 'Classic', 'White', 'Red')
+FOLDER_RX = re.compile(r'^([A-Z]{2,4})_(\d\d)_([A-Z0-9]+(?:-[A-Z0-9]+)*)_(IP|DR)_(Legacy|Classic|White|Red)$')
+ARTIFACT_RX = re.compile(r'^([A-Z]{2,4})_(\d\d)_([A-Z0-9]+(?:-[A-Z0-9]+)*)_(Live|Scheduled)(?:_V(\d+))?$')
 MODE_SUFFIX = {'DR': 'Live', 'IP': 'Scheduled'}    # folder code -> file suffix
 
 
@@ -1552,7 +1558,7 @@ CHART_FILLS = {'#015A80', '#B8A365', '#199900', '#5E9AD7', '#13678A', '#127369',
 THEME_IDS = set(range(2, 10))   # ThemeDataColor ColorId 2..9 = theme dataColors[0..7] (0 background, 1 foreground; measured 01/10)
 # table-overflow estimate (user 2026-09-29: "quá ngắn thì phải cân chỉnh sao cho mất luôn scroll bar"):
 # a column is as wide as its header or its typical value, whichever is wider; px per char ~ 0.73 x font pt.
-# Calibrated on a department Mix: a 5-column table at 445px and a 2-column table at 340px scrolled (caught), 625px did not.
+# Calibrated on a department White: a 5-column table at 445px and a 2-column table at 340px scrolled (caught), 625px did not.
 OVF_PX_PER_PT, OVF_PAD, OVF_VALUE_CHARS, OVF_PCT_CHARS, OVF_MEMBER_CHARS = 0.73, 14, 11, 7, 12
 
 
@@ -1565,7 +1571,7 @@ LABEL_AXIS_PX = 50   # own name: AXIS_PX is the chart-width rule's
 CATEGORY_COUNT = {'QuarterLabel': 4, 'Quarter': 4, 'QuarterNumber': 4, 'MonthNumber': 12, 'MonthName': 12, 'MonthLabel': 12,
                   'Month': 12, 'DayName': 7, 'WeekdayName': 7}
 LABEL_CHARTS = {'clusteredColumnChart', 'columnChart', 'lineClusteredColumnComboChart', 'clusteredBarChart', 'barChart'}
-SLICER_TEXT = '10D'  # slicer-style: the one item text size (Main default; mix_builder.SLICER_TEXT)
+SLICER_TEXT = '10D'  # slicer-style: the one item text size (Red default; mix_builder.SLICER_TEXT)
 # (key, page) kept OUT of the sync group (user 2026-10-05): Legacy Monthly selects no month, so its month charts show the
 # year; synced with the 'Current Month' pages it would inherit one month. mix_builder --filter-set reads this too.
 # Department data, so it lives in config/pbi-gate.json key "filter_unsynced" (DW review 2026-10-05: a page name
@@ -1892,7 +1898,7 @@ SHARE_RE = re.compile(r'\bof (Revenue|Total|Sales?)\b|\bShare\b|\bMix\b', re.I)
 def check_pct_decided(report_dir, folder, pages, visible, vis, fail):
     """pct-decided (a department repo 13/10, user: "lỗi % đang ko có màu xanh đỏ đúng chuẩn lên xuống ... phải có trong skill và cổng"):
     a '% ... of Revenue / of Total' measure is EITHER a share (no direction, pct_neutral) OR a margin (up/down, threshold)
-    - the name cannot tell (03 Mix: %Actual of Revenue = share of a P&L line, coloured green on every cost line;
+    - the name cannot tell (03 White: %Actual of Revenue = share of a P&L line, coloured green on every cost line;
     %Ebitda of Revenue2 = margin, its chart labels uncoloured). Every such measure shown must be declared one or the other
     (pbi-gate.json pct_neutral / mix_specs.PALETTE pct_threshold); a declared margin on a chart Y2 must have its label colour rule."""
     neutral = gate_cfg().get('pct_neutral', {}).get(folder, {})
@@ -2214,7 +2220,7 @@ def check_compare_slicers(pages, visible, vis, fail):
 
 
 def check_pct(report_dir, folder, pages, visible, vis, fail):
-    """pct-period + pct-color (pbi-mix 4j)."""
+    """pct-period + pct-color (pbi-white 4j)."""
     mm = model_measures(report_dir)
     cfg = gate_cfg()
     neutral = cfg.get('pct_neutral', {}).get(folder, {})
@@ -2287,7 +2293,7 @@ def check_pct(report_dir, folder, pages, visible, vis, fail):
 
 
 def check_card_row(pages, visible, vis, fail):
-    """card-row: the Card group holds card tiles only (pbi-mix 4i)."""
+    """card-row: the Card group holds card tiles only (pbi-white 4i)."""
     kids = {}
     for (pg, i), d in vis.items():
         if d.get('parentGroupName'):
@@ -2418,7 +2424,7 @@ def check_fillrule(d_def, fail):
     """fillrule-bare (2026-10-05): inside a FillRule (linearGradient2/3) the stops are bare {"Literal": ...}. A stop
     wrapped as {"expr": {"Literal": ...}} still renders, but Desktop cannot rebuild the report on Save: Save, Save As
     and Publish die silently (NullReferenceException in ReportViewDocumentProvider.GetEnhancedReportDocument) -
-    the two Mix reports lost Save for a day this way (84cb1304)."""
+    the two White reports lost Save for a day this way (84cb1304)."""
     def walk(o, inside, hits):
         if isinstance(o, dict):
             for k, v in o.items():
@@ -2439,7 +2445,7 @@ def check_fillrule(d_def, fail):
 
 def check_bookmark_filter_objects(d_def, fail):
     """bookmark-filter-objects (a department repo 12/10): a filter saved inside a bookmark may NOT carry 'objects' - Desktop opens
-    with "An additional property 'objects' was included in .../filters/byExpr/N" (94 issues on Mix 01, after the
+    with "An additional property 'objects' was included in .../filters/byExpr/N" (94 issues on White 01, after the
     inverted-selection flag of a visual filter was copied into the bookmark copies of the same filter)."""
     def walk(x, out):
         if isinstance(x, dict):
@@ -2623,7 +2629,7 @@ def check_dead_field(report_dir, d_def, fail):
 
 def check_literal_type(report_dir, d_def, fail):
     """literal-type (a department repo 13/10): an In / Not In filter value must have the column's type. Text on a number column
-    (03 Mix: Year slicers' 'is not blank' also listed 'Unknown' / 'Not Applicable') or a number on a text column (03 Classic:
+    (03 White: Year slicers' 'is not blank' also listed 'Unknown' / 'Not Applicable') or a number on a text column (03 Classic:
     the SelectMonth slicer kept '05' while Parameter_Date[Month] had become a number) fails in Desktop with "CONTAINSROW
     does not support comparing values of type Text with values of type Integer" - static and engine layers were green."""
     types = {}
@@ -2711,7 +2717,7 @@ def check_kimball16_classic(report_dir, fail):
 
 
 
-# legacy / warehouse field names written as ONE capitalised word, invisible to the camelCase test ('Monthnumber' on 03 Mix)
+# legacy / warehouse field names written as ONE capitalised word, invisible to the camelCase test ('Monthnumber' on 03 White)
 JOINED_FIELD_WORDS = {'monthnumber', 'weeknum', 'weeknumber', 'weekperiod', 'storename', 'itemname', 'storeid', 'dateint',
                       'yearmonth', 'dayofweek', 'dayofmonth', 'monthname', 'hourstart', 'parentname', 'groupcontract'}
 
@@ -2721,7 +2727,7 @@ def column_name_problem(name):
     n = (name or '').strip().strip('"').strip()
     if not n:
         return 'empty'
-    if re.fullmatch(r'%\s*\d*', n):          # '%', '%1', '%2' (03 Mix 13/10)
+    if re.fullmatch(r'%\s*\d*', n):          # '%', '%1', '%2' (03 White 13/10)
         return "a bare '%' - say what it is a share of ('% Revenue')"
     if '_' in n:
         return 'underscore'
@@ -2767,7 +2773,7 @@ def item_measures(d_def):
 
 def check_measure_names(d_def, fail):
     """measure-name (user 18/10): a measure is a variable - English name, no Vietnamese letters; the Vietnamese a reader needs
-    goes to the visual's displayName or comes from the data. Mix / Main only (Classic keeps the legacy names)."""
+    goes to the visual's displayName or comes from the data. White / Red only (Classic keeps the legacy names)."""
     for n in sorted(model_measures(d_def)):
         if VI_LETTER.search(n):
             fail.append("measure %s is named in Vietnamese - a measure is a variable: give it an English name (the reader text "
@@ -2778,7 +2784,7 @@ def check_column_names(d_def, fail):
     """column-name (a department repo 13/10, user: "tên cột đang ko đúng chuẩn loạn xạ hết, cái này cũng phải có trong skill và
     cổng kiểm"): every field a visible table / matrix / chart shows (its displayName, else the field name) reads as English
     Title Case reader text - no warehouse/legacy names (chi_tieu, ChiPhi2, StoreName2, ITEM_NAME, PARENT3NAME), no bare
-    '%'. Slicers are labelled by their own label shapes. Mix / Main only (Classic keeps the legacy wording)."""
+    '%'. Slicers are labelled by their own label shapes. White / Red only (Classic keeps the legacy wording)."""
     hidden = {os.path.basename(os.path.dirname(p)) for p in glob.glob(os.path.join(d_def, 'pages', '*', 'page.json'))
               if json.load(open(p, encoding='utf-8')).get('visibility') == 'HiddenInViewMode'}
     bad = {}
@@ -2820,9 +2826,9 @@ def check_column_names(d_def, fail):
 
 def check_kimball16(d_def, fail):
     """kimball16 (a department repo 12/10): the warehouse labels empty dim cells 'Unknown' / 'Not Applicable' (Kimball #16,
-    live since 09/10), so on a report that KEEPS the labels (Mix / Main) an 'is not blank' filter on a Dim_* column lets
+    live since 09/10), so on a report that KEEPS the labels (White / Red) an 'is not blank' filter on a Dim_* column lets
     those rows through. Every such filter (visual · page · report · bookmark) must also exclude both labels. Classic
-    maps the labels back to null in Power Query, so it is not checked there. 292 filters were found open on 2 Mix files."""
+    maps the labels back to null in Power Query, so it is not checked there. 292 filters were found open on 2 White files."""
     def walk(node, alias, out):
         if isinstance(node, dict):
             if isinstance(node.get('From'), list):
@@ -2881,20 +2887,21 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
     folder = os.path.basename(os.path.normpath(report_dir))
     art = os.path.basename(rep)[:-len('.Report')]
     fm, am = FOLDER_RX.match(folder), ARTIFACT_RX.match(art)
-    # file-name (user 2026-09-28, suffix 2026-10-04, UPPER function + Scheduled 2026-10-05): folder
-    # <DEPT>_<num><IP|DR>_<Function>[<Tier>]_<Kind> / file <DEPT>_<num>_<FUNCTION>[-<Tier>]_<Live|Scheduled>
+    # file-name (user 2026-09-28, suffix 2026-10-04, UPPER function + Scheduled 2026-10-05, folder in the file's shape
+    # 2026-10-19): folder <DEPT>_<num>_<FUNCTION>[-<Tier>]_<IP|DR>_<Kind> / file <DEPT>_<num>_<FUNCTION>[-<Tier>]_<Live|Scheduled>[_V<n>]
     if not fm:
-        fail.append("folder name %r breaks the pattern <DEPT>_<num><IP|DR>_<Function>[AM|OM]_<Legacy|Classic|Mix|Main> "
-                    "(e.g. ABC_02DR_StoreReportAM_Mix)" % folder)
+        fail.append("folder name %r breaks the pattern <DEPT>_<num>_<FUNCTION>[-AM|-OM]_<IP|DR>_<Legacy|Classic|White|Red> "
+                    "(e.g. ABC_02_STORE-REPORT-AM_DR_White; scripts/rename_reports.py moves an old name)" % folder)
     if not am:
-        fail.append("file name %r breaks the pattern <DEPT>_<num>_<FUNCTION>[-AM|-OM]_<Live|Scheduled> "
+        fail.append("file name %r breaks the pattern <DEPT>_<num>_<FUNCTION>[-AM|-OM]_<Live|Scheduled>[_V<n>] "
                     "(e.g. OPS_02_STORE-REPORT-AM_Live) - ASCII, no spaces, it is the name on the Service" % art)
     if not (fm and am):
         return
-    num, mode, kind, tier = fm.group(2), fm.group(3), fm.group(6), fm.group(5)
-    want = '%s_%s_%s%s_%s' % (fm.group(1), num, file_function(fm.group(4)), '-' + tier if tier else '', MODE_SUFFIX[mode])
-    if art != want:
-        fail.append('folder %r and file %r differ - a %s folder needs the file %r' % (folder, art, mode, want))
+    num, mode, kind = fm.group(2), fm.group(4), fm.group(5)
+    want = '%s_%s_%s_%s' % (fm.group(1), num, fm.group(3), MODE_SUFFIX[mode])
+    if art != want and not re.match(r'^%s_V\d+$' % re.escape(want), art):
+        fail.append('folder %r and file %r differ - a %s folder needs the file %r (or %r_V<n> when two builds share '
+                    'the number and the load mode)' % (folder, art, mode, want, want))
     dept = re.search(r'Dept_([A-Z]+)', os.path.abspath(report_dir))
     if am.group(1) not in DEPT_CODES or (dept and dept.group(1) != am.group(1)):
         fail.append('file name %r: prefix %r must be the department code%s'
@@ -2904,7 +2911,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
     live = any('byConnection' in open(p, encoding='utf-8').read()
                for p in glob.glob(os.path.join(report_dir, '*.Report', 'definition.pbir')))
     # aggregations: a table that is alternateOf another needs that base table in DirectQuery - else Desktop refuses
-    # the whole model (IP copy of the Mix, 2026-09-28: 'partition Fact_Sale ... must be set to DirectQuery')
+    # the whole model (IP copy of the White, 2026-09-28: 'partition Fact_Sale ... must be set to DirectQuery')
     for sm in glob.glob(os.path.join(report_dir, '*.SemanticModel')):
         tdir = os.path.join(sm, 'definition', 'tables')
         for f in glob.glob(os.path.join(tdir, '*.tmdl')):
@@ -2928,7 +2935,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                         % (os.path.basename(f)[:-5], '/'.join(sorted(tm)), mode, mode, want))
     if kind == 'Legacy':
         return
-    check_diagram(report_dir, kind == 'Mix', fail)
+    check_diagram(report_dir, kind == 'White', fail)
     # model: read the warehouse with DirectQuery, server string equal to the gateway, no legacy source left
     for f in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
         t = open(f, encoding='utf-8').read()
@@ -2941,7 +2948,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                 if DW_SERVER and srv != DW_SERVER:
                     fail.append('table %s: server %r - must use exactly the gateway string %r' % (tb, srv, DW_SERVER))
     check_dw_only_tables(report_dir, fail)
-    if kind != 'Mix':
+    if kind != 'White':
         return
     pages = page_meta(d_def)
     visible = {p for p, m in pages.items() if m.get('visibility') != 'HiddenInViewMode'}
@@ -2949,7 +2956,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
     for p in visible:
         m = pages[p]
         if (m.get('width'), m.get('height')) != (1280, 720):
-            fail.append("page '%s' %sx%s - every Mix page is 1280x720 (split long content into tabs)"
+            fail.append("page '%s' %sx%s - every White page is 1280x720 (split long content into tabs)"
                         % (m['displayName'], m.get('width'), m.get('height')))
     # page-name: the name says what the page is, not which department owns it (user 2026-09-27)
     for p in visible:
@@ -3013,7 +3020,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
             fail.append("page '%s': filter panel slicers are not one after another at %d px: %s - move the ones below up "
                         "(filter-rows)" % (pages[pg]['displayName'], FILTER_PITCH,
                                            ', '.join('y %g -> %g' % (a, b_) for a, b_ in gaps)))
-    # slicer-style: one slicer look, the Main one (user 2026-09-27: filter colours differ between slicers)
+    # slicer-style: one slicer look, the Red one (user 2026-09-27: filter colours differ between slicers)
     for (pg, i), d in vis.items():
         if pg not in visible or d.get('visual', {}).get('visualType') != 'slicer':
             continue
@@ -3022,7 +3029,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                for e in o.get('items', []) if 'selector' not in e}
         bad = hexes_in(d['visual']) - {'#E8E8E8', '#2D2D2D', '#FFFFFF', '#A8161C'}
         if box != {'#E8E8E8'} or bad:
-            fail.append("page '%s' slicer %s: not the Main slicer design (item box %s, other colours %s)"
+            fail.append("page '%s' slicer %s: not the Red slicer design (item box %s, other colours %s)"
                         % (pages[pg]['displayName'], sel_name(d) or i, ', '.join(sorted(x or '-' for x in box)) or '-',
                            ', '.join(sorted(bad)) or '-'))
         # one size, no hover bar, no frame-in-frame (user 01/10: "lỗi tùm lum ... sai cả size box ... trỏ chuột vào nó bị
@@ -3032,7 +3039,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         hdr = lit((vc_.get('visualHeader') or [{}])[0].get('properties', {}).get('show', {}))
         frame = lit((vc_.get('background') or [{}])[0].get('properties', {}).get('show', {}))
         # the slicer's own header (objects.header) - no 'show' means ON: the field name printed again inside the box under
-        # the panel's own label shape (user 13/10, 03 Mix: "đã dùng filter rời thì ko dc bật filter của slicer")
+        # the panel's own label shape (user 13/10, 03 White: "đã dùng filter rời thì ko dc bật filter của slicer")
         own = lit((o.get('header') or [{}])[0].get('properties', {}).get('show', {}))
         if own != 'false':
             fail.append("page '%s' slicer %s: its own header is on (objects.header.show %s) - the panel label is a separate "
@@ -3209,7 +3216,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
     # display-option: the same display mode as page 1 (FitToWidth) - ActualSize shows scrollbars (user 2026-09-26)
     for p in visible:
         if pages[p].get('displayOption') != 'FitToWidth':
-            fail.append("page '%s' displayOption=%s - Mix uses FitToWidth like page 1 (ActualSize shows scrollbars)"
+            fail.append("page '%s' displayOption=%s - White uses FitToWidth like page 1 (ActualSize shows scrollbars)"
                         % (pages[p]['displayName'], pages[p].get('displayOption')))
     # tab-big-charts: do not cram 4 BIG charts (height >= 250) into one tab/screen (user 2026-09-26)
     kids = {}
@@ -3269,7 +3276,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
             # đầy thông tin, thì tab riêng"); a few-row table that only scrolls sideways shares a tab
             if r and r[1] >= SCROLL_BIG:
                 fail.append("page '%s' %s: table '%s' scrolls a lot (%.1fx wide, %.1fx tall) but shares the tab with "
-                            "%d other block(s) - a big-scroll table sits ALONE in its own tab (skill pbi-mix 5l-bis)"
+                            "%d other block(s) - a big-scroll table sits ALONE in its own tab (skill pbi-white 5l-bis)"
                             % (pages[pg]['displayName'], sel_name(d), sel_name(vis[(pg, c)]) or c, r[0], r[1],
                                len(blocks) - 1))
     # tab-hole (user 2026-10-08, Delivery: "cái 1 group lệch kì vậy" - DeliveryAM ended 120 px above its row neighbour and
@@ -3295,7 +3302,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         if holes:
             xs, ys = [h[0] for h in holes], [h[1] for h in holes]
             fail.append("page '%s' %s: a hole no block covers, about x %d-%d y %d-%d - blocks of one row end on the same "
-                        "bottom and fill the tab (skill pbi-mix 5l-bis rule 0)" % (pages[pg]['displayName'], sel_name(d),
+                        "bottom and fill the tab (skill pbi-white 5l-bis rule 0)" % (pages[pg]['displayName'], sel_name(d),
                         min(xs) * 5, (max(xs) + 2) * 5, min(ys) * 5, (max(ys) + 2) * 5))
     # narrow-table (user 2026-10-08, Promotion quantity tab: a ~300 px table alone in a 1260 px frame): a table narrower
     # short of its frame by more than FILL_SLACK leaves the right side empty - widen its columns (mix_builder --fit-columns)
@@ -3418,7 +3425,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                     "move blocks so it fits; only a truly long table may scroll (matrix_exempt + reason)"
                     % (pages[pg]['displayName'], sel_name(d) or i, est[0], '+'.join(map(str, est[2])), est[1]))
     # matrix-style (user 2026-09-30: "matrix đang quá xấu, ko có cả header bold, màu header, rồi màu condition - phải đưa
-    # vào luật và skill áp dụng cho mọi matrix"): one look for every pivot / table (skill pbi-mix 4l)
+    # vào luật và skill áp dụng cho mọi matrix"): one look for every pivot / table (skill pbi-white 4l)
     def colr(x):
         try:
             return x['solid']['color']['expr']['Literal']['Value'].strip("'").upper()
@@ -3467,7 +3474,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         if bad:
             fail.append("page '%s' matrix %s breaks the matrix look: %s - run scripts/mix_palette.py --matrices"
                         % (pages[pg]['displayName'], sel_name(d) or i, '; '.join(bad)))
-    # 01/10 "mấy cái skill đều phải lên script dò dc hết": the remaining skill rules of pbi-mix 4k / 4l as machine checks
+    # 01/10 "mấy cái skill đều phải lên script dò dc hết": the remaining skill rules of pbi-white 4k / 4l as machine checks
     # theme-standard: the report's theme carries the company theme's data colours (Theme1 of the Original template)
     std = region_path(report_dir, 'theme_file')
     mine = glob.glob(os.path.join(report_dir, '*.Report', 'StaticResources', 'RegisteredResources', os.path.basename(std)))
@@ -3478,7 +3485,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         for k in ('dataColors', 'good', 'neutral', 'bad'):
             a_, b_ = m_t.get(k), s_t.get(k)
             if norm(a_) != norm(b_):
-                fail.append("theme %s = %s - the company theme (the region manager/assets/theme/the region theme file) has %s (skill pbi-mix 4k)"
+                fail.append("theme %s = %s - the company theme (the region manager/assets/theme/the region theme file) has %s (skill pbi-white 4k)"
                             % (k, a_, b_))
     compare_rx = re.compile(r'(\bLY\b|\bLM\b|LMTD|\bLW\b|\bPY\b|Last|Previous|Target|\bTG\b)')
     for (pg, i), d in vis.items():
@@ -3493,7 +3500,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         if vt == 'clusteredBarChart' and re.match(r'(?i)(top|bottom) ?\d', str(sel_name(d) or '')):
             fail.append('%s: a Top/Bottom N chart drawn as horizontal bars - it is a column chart (mix_palette.py --bars-to-columns)'
                         % where)
-        # matrix-grid: horizontal lines only (pbi-mix 4l)
+        # matrix-grid: horizontal lines only (pbi-white 4l)
         if vt in ('pivotTable', 'tableEx'):
             g = next((e.get('properties', {}) for e in o.get('grid', []) if 'selector' not in e), {})
             if lit(g.get('gridVertical', {})) != 'false':
@@ -3514,7 +3521,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                 ent = next((e for e in dp if not e.get('selector') and 'fill' in e.get('properties', {})), None)
             fc = json.dumps(ent['properties']['fill']) if ent else ''
             if ent and not re.search(r"'#(A2A2A2|7F7F7F|595959|3F3F3F)'", fc, re.I):
-                fail.append("%s: comparison series '%s' is not grey #A2A2A2 / #7F7F7F / #595959 / #3F3F3F (skill pbi-mix 4k)"
+                fail.append("%s: comparison series '%s' is not grey #A2A2A2 / #7F7F7F / #595959 / #3F3F3F (skill pbi-white 4k)"
                             % (where, name))
         # pct-label: the % line labels are bold, above the point, without a box (a box hid the line - user 01/10)
         for qr in y2:
@@ -3541,7 +3548,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                 fail.append("%s: %% label '%s' must be bold, labelPosition Above, enableBackground false in its "
                             "metadata entry (mix_palette.py)" % (where, qr.split('.', 1)[-1]))
     # card-icon (user 2026-10-01): every KPI card carries an icon on its right - a SQUARE 5 px in from the visible card
-    # (its BG_), the colour of the card's value, drawn from the icon library at the ~17.5 px stroke mark (skill pbi-mix 4m)
+    # (its BG_), the colour of the card's value, drawn from the icon library at the ~17.5 px stroke mark (skill pbi-white 4m)
     reg_dir = glob.glob(os.path.join(report_dir, '*.Report', 'StaticResources', 'RegisteredResources'))
     reg_items = set()
     for rp in json.load(open(os.path.join(d_def, 'report.json'), encoding='utf-8')).get('resourcePackages', []):
@@ -3698,7 +3705,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
             MATRIX_WARN.append("chart %s exempt from chart-width: %s" % (sel_name(d) or i, why))
         elif w > max(WIDTH_SLACK * need, MIN_CHART_W) and len(tab_blocks(pg, d)) > 1:
             fail.append("%s: %d %s on %s px - its categories need ~%d px; put it beside another chart instead of "
-                        "stretching it (skill pbi-mix 5l-bis item 0)" % (where, n, field, w, need))
+                        "stretching it (skill pbi-white 5l-bis item 0)" % (where, n, field, w, need))
     # donut-shape (user 13/10, 01 Monthly: "bạn để donut dài dọc cả 2 hàng làm cho donut group bị trắng"): a pie / donut is
     # round - in a block much taller than wide the ring takes the width and the rest is white; it sits in ONE row
     for (pg, i), d in vis.items():
@@ -3741,7 +3748,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
             if b != ['true']:
                 fail.append("page '%s' card %% line %s is not bold (scripts/mix_palette.py --cards)"
                             % (pages[pg]['displayName'], sel_name(d)))
-    # chart-palette (user 2026-09-29): one colour map for every chart, by the role of the number (pbi-mix 4k)
+    # chart-palette (user 2026-09-29): one colour map for every chart, by the role of the number (pbi-white 4k)
     def is_chart(v):        # treemap / funnel carry no 'Chart' in their type (01/10: Daily treemaps kept Legacy colours)
         return 'Chart' in v.get('visualType', '') or v.get('visualType') in ('treemap', 'funnel')
     for (pg, i), d in vis.items():
@@ -3850,7 +3857,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
             seen.setdefault(txt, pg)
     check_glossary_cover(report_dir, pages, visible, vis, fail)
     # legacy-parity: every page / visual compared with the Legacy of the same number + tier
-    pat = '%s_%s??_%s%s_Legacy' % (fm.group(1), num, fm.group(4), tier or '')
+    pat = '%s_%s_%s_??_Legacy' % (fm.group(1), num, fm.group(3))
     leg = [x for x in glob.glob(os.path.join(os.path.dirname(os.path.normpath(report_dir)), pat))
            if FOLDER_RX.match(os.path.basename(x))]
     if not leg:
@@ -3862,7 +3869,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
     dropped_v = gate_cfg().get('dropped_visuals', {}).get(folder, {})
     mm = model_measures(report_dir)
     cls = glob.glob(os.path.join(os.path.dirname(os.path.normpath(report_dir)),
-                                 '%s_%s??_%s%s_Classic' % (fm.group(1), num, fm.group(4), tier or ''), '*.Report', 'definition'))
+                                 '%s_%s_%s_??_Classic' % (fm.group(1), num, fm.group(3)), '*.Report', 'definition'))
     on_cards = {}
     # a measure declared equivalent (same number from another table, e.g. a warehouse aggregation) stands for it
     equiv = gate_cfg().get('equivalent_measures', {}).get(folder, {})
@@ -3875,7 +3882,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         if m['displayName'] in gate_cfg().get('dropped_pages', {}).get(folder, {}):
             continue                      # dropped on purpose, reason in pbi-gate.json
         if p not in pages:
-            fail.append("missing Legacy page '%s' - the Mix version must take over every page" % m['displayName'])
+            fail.append("missing Legacy page '%s' - the White version must take over every page" % m['displayName'])
             continue
         for f in glob.glob(os.path.join(ld[0], 'pages', p, 'visuals', '*', 'visual.json')):
             v = json.load(open(f, encoding='utf-8'))
@@ -3935,7 +3942,7 @@ def dw_conn_string(report_dir):
 
 def _kind(report_dir):
     m = FOLDER_RX.match(os.path.basename(os.path.normpath(report_dir)))
-    return m.group(6) if m else None
+    return m.group(5) if m else None
 
 
 ROW_WRAP = 300       # px, row-wrap (user 14/10 combo matrix): a row-header column whose longest name is wider than this goes
@@ -3944,8 +3951,8 @@ ROW_WRAP = 300       # px, row-wrap (user 14/10 combo matrix): a row-header colu
 
 def row_long_px(report_dir, d, cur, cache=None):
     """{queryRef: (one-line px, two-line px)} of the longest warehouse values of each text row field of a table / matrix (matrix Rows; table: the text
-    columns of Values), counted only over the dimension rows a fact of the model points at (the item list holds laptops
-    no sales report shows). Font = rowHeaders (matrix) / values (table) font. Fields without a fact link are skipped."""
+    columns of Values), read from the dimension itself (active rows when it has IsActive - 2026-10-19, the fact filter
+    held the warehouse). Font = rowHeaders (matrix) / values (table) font. Fields of a table no fact links are skipped."""
     cache = {} if cache is None else cache
     v = d.get('visual', {})
     obj = 'rowHeaders' if v.get('visualType') == 'pivotTable' else 'values'
@@ -3983,19 +3990,52 @@ def dw_longest(q, cur, cache):
         return None
     key = (t, c)
     if key not in cache:
-        # one condition per dimension key: facts point at Dim_Material by MaterialKey AND by MaterialCode
-        by_key = {}
-        for ft, fc, tc in links:
-            by_key.setdefault(tc, []).append('select [%s] from dbo.[%s]' % (fc, ft))
-        cond = ' or '.join('[%s] in (%s)' % (tc, ' union '.join(subs)) for tc, subs in by_key.items())
+        # a department repo 2026-10-19: the old query kept only the rows a fact points at, by a UNION over every linked
+        # fact - on Fact_SaleDetail it ran 30+ minutes and its locks blocked the warehouse load jobs. The dimension alone
+        # is read (its active rows when it has IsActive), with a query timeout. The longest names WITH TIES: a plain
+        # TOP 30 picked a different 30 among equal lengths each run, and the gate flipped between red and green.
         try:
-            # the 30 longest names, not one: a shorter name with longer words can need the wider two-line column
-            cur.execute("select distinct top 30 [%s], len([%s]) from dbo.[%s] where (%s) and [%s] is not null "
-                        "order by len([%s]) desc" % (c, c, t, cond, c, c))
-            cache[key] = [r[0] for r in cur.fetchall() if isinstance(r[0], str)] or None
-        except Exception:
+            cache[key] = [r[0] for r in dw_rows(cur, "select top 30 with ties [%s] from (select distinct [%s] from dbo.[%s]"
+                                                "%s) v where [%s] is not null order by len([%s]) desc"
+                                                % (c, c, t, dim_active(cur, t), c, c)) if isinstance(r[0], str)] or None
+        except Exception as e:
+            dw_skip('row-wrap', '%s: %s' % (q, str(e).splitlines()[0][:100]))
             cache[key] = None
     return cache[key]
+
+
+DW_QUERY_TIMEOUT = 60   # s, one gate query; the gate must never hold the warehouse (a department repo 2026-10-19)
+
+
+def dw_rows(cur, sql):
+    """Run a read of the gate: no shared locks and no waiting on a lock (READ UNCOMMITTED, LOCK_TIMEOUT), and a
+    query timeout on the connection, so a load job is never blocked by a report check."""
+    try:
+        cur.connection.timeout = DW_QUERY_TIMEOUT
+    except Exception:
+        pass
+    cur.execute('set transaction isolation level read uncommitted; set lock_timeout 5000; ' + sql)
+    return cur.fetchall()
+
+
+def dim_active(cur, t):
+    """' where IsActive = 1' when dimension t has an IsActive column, else ''."""
+    k = ('active', t)
+    if k not in DW_SEEN:
+        try:
+            DW_SEEN[k] = bool(dw_rows(cur, "select 1 from INFORMATION_SCHEMA.COLUMNS where TABLE_SCHEMA='dbo' and "
+                                           "TABLE_NAME='%s' and COLUMN_NAME='IsActive'" % t.replace("'", "''")))
+        except Exception:
+            DW_SEEN[k] = False
+    return ' where IsActive = 1' if DW_SEEN[k] else ''
+
+
+DW_SEEN = {}
+
+
+def dw_skip(check, why):
+    """A warehouse read that failed leaves its check NOT CHECKED, never silently green."""
+    LAYER_NOTES.append(('dw', 'NOT CHECKED', '%s - %s' % (check, why)))
 
 
 MEMBER_MAX_LINES = 4        # col-member (user 14/10: "size cột bị dài vô lý ... số ít thì đâu cần title dài" -> chose 3, then "bề rộng vẫn rộng" -> 4):
@@ -4016,7 +4056,7 @@ def wrap_lines(text, w, size, bold=False):
 
 
 def dw_all_names(q, cur, cache, limit=5000):
-    """Every warehouse value of `q` a fact of the model points at (the distribution, not only the longest)."""
+    """Every warehouse value of `q` (active dimension rows) - the distribution, not only the longest."""
     key = ('all',) + tuple(q.split('.', 1))
     if key not in cache:
         t, c = q.split('.', 1)
@@ -4024,14 +4064,12 @@ def dw_all_names(q, cur, cache, limit=5000):
         if not links:
             cache[key] = None
             return None
-        by_key = {}
-        for ft, fc, tc in links:
-            by_key.setdefault(tc, []).append('select [%s] from dbo.[%s]' % (fc, ft))
-        cond = ' or '.join('[%s] in (%s)' % (tc, ' union '.join(subs)) for tc, subs in by_key.items())
         try:
-            cur.execute("select distinct top %d [%s] from dbo.[%s] where (%s) and [%s] is not null" % (limit, c, t, cond, c))
-            cache[key] = [r[0] for r in cur.fetchall() if isinstance(r[0], str)] or None
-        except Exception:
+            act = dim_active(cur, t)
+            cache[key] = [r[0] for r in dw_rows(cur, "select distinct top %d [%s] from dbo.[%s]%s%s [%s] is not null order by [%s]"
+                                                % (limit, c, t, act, ' and' if act else ' where', c, c)) if isinstance(r[0], str)] or None
+        except Exception as e:
+            dw_skip('row-wrap', '%s: %s' % (q, str(e).splitlines()[0][:100]))
             cache[key] = None
     return cache[key]
 
@@ -4115,7 +4153,7 @@ def row_plan(longest, d=None):
 def check_dw_row_wrap(report_dir, cur, fail):
     """row-wrap (user 2026-10-14, 'Số Lượng Combo Theo Cửa Hàng': "tên sản phẩm quá dài cũng nên tách làm 2, chia đôi ra
     để đừng có đẩy phần cột khác quá dài"): a row-header column with names longer than ROW_WRAP px is fixed at half the
-    longest name + CELL_PAD (mix_builder.py --grow-to-fit writes it). Mix / Main only: Classic keeps the old design."""
+    longest name + CELL_PAD (mix_builder.py --grow-to-fit writes it). White / Red only: Classic keeps the old design."""
     if _kind(report_dir) in ('Classic', 'Legacy'):
         return
     cache = {}
@@ -4653,7 +4691,7 @@ def check_engine(report_dir, fail, wait=240):
                 fail.append('engine: slicer %s (%s) - the slicer-current query failed: %s' % (vn_, col_, e['msg']))
             elif (e.get('v') or '0') not in ('', '0'):
                 fail.append("engine: slicer %s on %s shows %s member(s) reaching past its 'Current ...' member - the label "
-                            "and the slicer filter must use ONE reference date (skill pbi-mix 3d slicer-current)" % (vn_, col_, e['v']))
+                            "and the slicer filter must use ONE reference date (skill pbi-white 3d slicer-current)" % (vn_, col_, e['v']))
             continue
         if e.get('event') == 'neg':
             try:
@@ -4682,7 +4720,7 @@ def check_engine(report_dir, fail, wait=240):
             nums = [x for x in (e.get('vals') or []) if re.fullmatch(r'-?\d+', x or '')]
             if len(nums) >= 2 and sorted(nums) != sorted(nums, key=int):
                 fail.append("engine: slicer column %s[%s] sorts as TEXT (%s) - give it a numeric sortByColumn "
-                            "(skill pbi-mix 3d slicer-sort)" % (e['table'], e['name'], ', '.join(sorted(nums)[:6]) + ' ...'))
+                            "(skill pbi-white 3d slicer-sort)" % (e['table'], e['name'], ', '.join(sorted(nums)[:6]) + ' ...'))
     done = [e for e in ev if e.get('event') == 'done']
     how = next(('attached to the open Desktop' if not e.get('own') else 'opened + closed without saving'
                 for e in ev if e.get('event') == 'desktop'), '')
@@ -4725,7 +4763,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
             if k_ in seen_:
                 fail.append('measure %s declared twice in %s - Desktop will not open the file' % (nm_, os.path.basename(mt_)))
             seen_[k_] = 1
-        # measure-format-both (14/10, 01 Mix ~Metrix by Ty Hour): a measure with a formatStringDefinition must NOT keep its
+        # measure-format-both (14/10, 01 White ~Metrix by Ty Hour): a measure with a formatStringDefinition must NOT keep its
         # static formatString - Desktop opens with "Issues were found ... both FormatString property and FormatStringDefinition"
         # and loads no model (every DirectQuery query then fails "Unable to convert an M query")
         for blk_ in re.split(r'(?m)^(?=	(?:measure|column|partition|hierarchy)\s)', open(mt_, encoding='utf-8').read()):
@@ -4775,7 +4813,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
         check_measure_names(d_def, fail)
     elif os.path.basename(os.path.normpath(report_dir)).endswith('_Classic'):
         check_kimball16_classic(report_dir, fail)
-    # visual titles: Mix / Main only - Classic keeps the old design (a department 14/10, newer than the 12/10 call
+    # visual titles: White / Red only - Classic keeps the old design (a department 14/10, newer than the 12/10 call
     # to check Classic too); the Legacy original is exempt anyway
     if not KEEP_OLD_DESIGN:
         check_title_case(d_def, fail)
@@ -4840,7 +4878,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
         pv_ = dict((i, d) for (pg, i), d in vis.items() if pg == sp)
         check_header(pv_, hf)
         if sp not in (strict_set or ()) and not KEEP_OLD_DESIGN:
-            check_typography(pv_, tf, [])           # title size / align / Semibold on every Mix / Main page (14/10)
+            check_typography(pv_, tf, [])           # title size / align / Semibold on every White / Red page (14/10)
         grp_ = dict((d['visualGroup'].get('displayName'), d) for d in pv_.values() if 'visualGroup' in d)
         if 'Title' in grp_ and 'Tab' in grp_ and grp_['Tab']['position']['x'] < grp_['Title']['position']['width'] + 5:
             hf.append("the Title group ends at %s, the tab strip starts at %s - the name runs under the tabs (shorter name, or "
@@ -4958,7 +4996,7 @@ if __name__ == '__main__':
             print('  %-15s %s' % (k, v))
         print('')
         print('Full rules (with the why, diagrams, JSON templates, examples already paid for): '
-              '.claude/skills/pbi-mix/SKILL.md')
+              '.claude/skills/pbi-white/SKILL.md')
         sys.exit(0)
     page = None
     if '--page' in argv:

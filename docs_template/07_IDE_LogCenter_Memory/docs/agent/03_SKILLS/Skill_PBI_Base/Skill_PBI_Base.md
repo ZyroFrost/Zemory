@@ -1,12 +1,12 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 6
+version: 7
 type: process
 aka: dev-pbi
 replaces: [Skill_Dev_Pbi]
 description: Build or change a BI report - layout and chart choice, measures and queries kept in one named store, and the report file handled as a heavy binary. Use whenever a report, dashboard, measure or visual is created or changed. Vietnamese triggers - "báo cáo", "dashboard", "biểu đồ", "measure", "DAX", "Power Query", "pbix".
-from: _Store/03_SKILLS/Skill_PBI_Base @v6 #7bdb4e5bf6f3
+from: _Store/03_SKILLS/Skill_PBI_Base @v7 #07dc8853041d
 ---
 
 # pbi-base — dựng và sửa báo cáo BI
@@ -37,7 +37,7 @@ from: _Store/03_SKILLS/Skill_PBI_Base @v6 #7bdb4e5bf6f3
 
 ## 4. Chuẩn report Power BI của repo phòng ban
 
-Repo phòng ban dựng report Power BI trên DW theo bốn loại (`Legacy` · `Classic` · `Mix` · `Main`, skill `pbi-pbip` §0). Chuẩn
+Repo phòng ban dựng report Power BI trên DW theo bốn loại (`Legacy` · `Classic` · `White` · `Red`, skill `pbi-pbip` §0). Chuẩn
 chung của bốn loại nằm ở ba file dưới; skill của từng loại chỉ nói phần riêng và trỏ về đây.
 
 | Cần gì | Mở |

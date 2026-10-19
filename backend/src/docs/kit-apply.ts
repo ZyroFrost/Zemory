@@ -376,12 +376,28 @@ function followEntryRenames(root: string, skills: Part[], t: AssemblyTarget): vo
   // the structure INDEX is a table of contents the machine writes (plan/29 §13): the line that called it the repo's own
   // "where things are, data dictionary" follows
   next = next.replace(/(`INDEX\.md`: )thứ gì nằm đâu(?:, từ điển dữ liệu của repo)?;/g, "$1mục lục slot do máy sinh lúc sync, không sửa tay;");
+  // The row of a store skill is the skill's: its words are the skill's current trigger (2026-10-19, pbi-mix renamed
+  // pbi-white kept the trigger "bản mix" and never learned "bản white"), and a skill has one row - a second row for the
+  // same host build goes. A row naming a skill of the repo's own is the repo's and stays as written.
+  const canon = new Map(skills
+    .map((s) => [hostSkillOf(s), gateOf(s.dir)?.trigger] as const)
+    .filter((e): e is readonly [string, string] => typeof e[1] === "string" && Boolean(e[1]))
+    .map(([host, trig]) => [host, `| ${trig} | \`.claude/skills/${host}/SKILL.md\` |`]));
+  const eolOf = next.includes("\r\n") ? "\r\n" : "\n";
+  const seen = new Set<string>();
+  next = next.split(/\r?\n/).filter((l) => {
+    const host = /^\|.*`\.claude\/skills\/([^/`]+)\/SKILL\.md`\s*\|\s*$/.exec(l)?.[1];
+    if (!host || !canon.has(host)) return true;
+    if (seen.has(host)) return false;
+    seen.add(host);
+    return true;
+  }).map((l) => {
+    const host = /^\|.*`\.claude\/skills\/([^/`]+)\/SKILL\.md`\s*\|\s*$/.exec(l)?.[1];
+    return host && canon.has(host) ? canon.get(host)! : l;
+  }).join(eolOf);
   // A skill the set gained after the repo was assembled has no trigger row (the table is written once, from the seed): the
   // agent would never know when to open it. Its row goes in after the last skill row; a row already there is not doubled.
-  const missing = skills
-    .map((s) => [gateOf(s.dir)?.trigger, hostSkillOf(s)] as const)
-    .filter(([trig, host]) => typeof trig === "string" && trig && !next.includes(`.claude/skills/${host}/`))
-    .map(([trig, host]) => `| ${trig} | \`.claude/skills/${host}/SKILL.md\` |`);
+  const missing = [...canon].filter(([host]) => !next.includes(`.claude/skills/${host}/`)).map(([, row]) => row);
   if (missing.length) {
     const lines = next.split(/\r?\n/);
     let last = -1;

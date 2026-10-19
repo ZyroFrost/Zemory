@@ -52,8 +52,8 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | dựng · sửa báo cáo, dashboard, measure, visual | `.claude/skills/pbi-base/SKILL.md` |
 | bản classic · tái tạo dashboard cũ · đổi model sang kho · so số với bản cũ | `.claude/skills/pbi-classic/SKILL.md` |
 | mổ file .pbix hệ cũ · chuyển .pbix sang .pbip · so với bản gốc | `.claude/skills/pbi-legacy/SKILL.md` |
-| bản main · dựng report mới · thiết kế mới theo chuẩn | `.claude/skills/pbi-main/SKILL.md` |
-| bản mix · giữ bố cục cũ nhưng header mới · trộn hai bản | `.claude/skills/pbi-mix/SKILL.md` |
+| bản red · bản main · dựng report mới · thiết kế mới theo chuẩn | `.claude/skills/pbi-red/SKILL.md` |
+| bản white · bản mix · giữ bố cục cũ nhưng header mới · trộn hai bản | `.claude/skills/pbi-white/SKILL.md` |
 | sửa report .pbip · thêm tab · gắn bookmark · đổi icon · Desktop báo lỗi report | `.claude/skills/pbi-pbip/SKILL.md` |
 | "mở case" · "lưu thành task" · "đóng case" · "mở lại case" · "vụ này lưu ở đâu" | `.claude/skills/task-case/SKILL.md` |
 | điền số vào template → xuất deliverable | `.claude/skills/task-fill/SKILL.md` |

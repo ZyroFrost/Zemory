@@ -1,6 +1,6 @@
 # Thiết kế report Power BI — màu, tương tác, bố cục
 
-> Phần của `Skill_PBI_Base`. Áp đủ cho `Main` và `Mix`; `Classic` giữ thiết kế cũ (thấy chỗ trái chuẩn thì BÁO, không nắn);
+> Phần của `Skill_PBI_Base`. Áp đủ cho `Red` và `White`; `Classic` giữ thiết kế cũ (thấy chỗ trái chuẩn thì BÁO, không nắn);
 > `Legacy` không đụng. Luật ở đây nói theo VAI; giá trị thật (mã màu · thông số khung · số đo trên trang gốc · logo) nằm ở tổng
 > quản: bảng giá trị thiết kế (khoá `design_values`), theme (`theme_file`), thư viện icon (`icons_dir`), khuôn gốc
 > (`template_report`) trong giá trị cụm. Thao tác JSON: skill `pbi-pbip`. Máy canh: các cổng `pbi_gate.py` nêu ở từng mục.
@@ -33,7 +33,7 @@
   còn lại không đổi màu); `(Blank)` màu xám kỳ so.
 - Chart MỘT chuỗi: màu ở mục `dataPoint` KHÔNG selector — gắn `selector.metadata` thì Desktop lờ đi và vẽ ô 1.
 - Combo chart không tô được từng cột (`showAllDataPoints` không tác dụng) ⇒ muốn mỗi cột một màu thì dùng `columnChart` thuần.
-- Máy làm: `mix_palette.py` (skill `pbi-mix`); máy canh: `chart-palette` · `chart-fill-shape` · `compare-grey`.
+- Máy làm: `mix_palette.py` (skill `pbi-white`); máy canh: `chart-palette` · `chart-fill-shape` · `compare-grey`.
 
 ### 1.3 Màu chữ — hai lựa chọn, không có xám
 
@@ -84,13 +84,13 @@ khối nội dung                     trắng, viền nhấn chính
 Header cột nền header matrix, chữ trắng đậm `10D` · cột tên hàng màu chữ trên trắng · hàng xen kẽ hai nền (heat-map `FillRule`
 giữ) · total/subtotal đậm trên nền nhạt · cột % theo FORMAT measure, tô tăng/giảm theo chính measure đó (measure khai
 `pct_neutral` thì không) · chỉ kẻ ngang · tiêu đề giống chart: hiện, trái, Segoe UI Semibold `12D`, màu chữ, không nền; không hiện
-tên kỹ thuật `Table_…`. Máy làm: `mix_palette.py --matrices`; máy canh: `matrix-style` · `title-style`. Chi tiết: skill `pbi-mix` §4l.
+tên kỹ thuật `Table_…`. Máy làm: `mix_palette.py --matrices`; máy canh: `matrix-style` · `title-style`. Chi tiết: skill `pbi-white` §4l.
 
 ### 1.8 Icon trên thẻ KPI
 
 Vuông, neo góc phải trên cách mép trên và phải của nền thẻ 5 px, cạnh = 60 % của (cao thẻ − 10) làm tròn xuống lưới 5; hộp số dừng
 trước icon 5 px; màu = ô theme của số trên thẻ; icon lấy từ thư viện của cụm; một icon nói đúng một chỉ số. Máy làm:
-`card_icons.py render | place`; máy canh: `card-icon`. Chi tiết: skill `pbi-mix` §4m.
+`card_icons.py render | place`; máy canh: `card-icon`. Chi tiết: skill `pbi-white` §4m.
 
 ## 2. Visual và tương tác
 

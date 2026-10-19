@@ -1,6 +1,6 @@
 # Model Power BI — cấu trúc measure và bảng
 
-> Phần của `Skill_PBI_Base`. Áp cho mọi loại report đọc DW (`Classic` · `Mix` · `Main`); `Legacy` chỉ đọc. Khuôn gốc của cụm:
+> Phần của `Skill_PBI_Base`. Áp cho mọi loại report đọc DW (`Classic` · `White` · `Red`); `Legacy` chỉ đọc. Khuôn gốc của cụm:
 > khoá `template_report` trong giá trị cụm. Máy canh: `pbi_gate.py` — cổng `measure-folder` · `measure-dup` · `dw-only-tables` ·
 > `field-ref` (skill `pbi-pbip`).
 
@@ -88,7 +88,7 @@ Chỉ hai thứ là sai cấu trúc:
 
 ## 6. `Classic`: hai tầng tên
 
-Chỉ áp cho thư mục `…_Classic` — bản dựng lại thiết kế cũ trên DW. `Main`/`Mix` theo chuẩn; `Legacy` không đụng.
+Chỉ áp cho thư mục `…_Classic` — bản dựng lại thiết kế cũ trên DW. `Red`/`White` theo chuẩn; `Legacy` không đụng.
 
 - Theo chuẩn mới: tên bảng · cột · measure · thư mục measure — thứ chỉ người dựng model thấy.
 - Theo bản cũ: nhãn dòng/cột trên visual · tiêu đề · nhãn slicer — thứ người đọc report thấy.

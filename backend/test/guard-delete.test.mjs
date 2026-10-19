@@ -155,11 +155,14 @@ test("02-10: every in-repo file delete asks first; temp folders, mentions and gi
 test("02-10: a variable set to a literal in the same command is expanded (AppCore · IT could not empty their scratch folder)", () => {
   const sp = join(tmpdir(), "claude", "x", "scratchpad");
   for (const cmd of [`$sp = "${sp}"; Remove-Item -LiteralPath "$sp\\translate\\a.py" -Confirm:$false`,
-    `S="${sp.replace(/\\/g, "/")}"; rm "$S/a.mjs" "\${S}/b.mjs"`]) {
+    `S="${sp.replace(/\\/g, "/")}"; rm "$S/a.mjs" "\${S}/b.mjs"`,
+    // unquoted bash literal (2026-10-19, Zemory's own scratch clean-up was blocked)
+    `S=${sp.replace(/\\/g, "/")}; rm -f $S/a.mjs $S/b.js`]) {
     const r = ask(bash(cmd));
     assert.equal(r.blocked, false, `a temp target behind a literal variable must pass: ${cmd}\n${r.say}`);
   }
-  for (const cmd of [`$sp = "backend/src"; Remove-Item "$sp\\ui.ts"`, `Remove-Item "$unknown\\a.py"`, `S="${sp.replace(/\\/g, "/")}"; rm "$S/a.mjs" README.md`]) {
+  for (const cmd of [`$sp = "backend/src"; Remove-Item "$sp\\ui.ts"`, `Remove-Item "$unknown\\a.py"`, `S="${sp.replace(/\\/g, "/")}"; rm "$S/a.mjs" README.md`,
+    `S=$HOME; rm $S/a.mjs`, `S=backend/src; rm $S/ui.ts`]) {
     const r = ask(bash(cmd));
     assert.equal(r.blocked, true, `NEGATIVE: an in-repo target, an unresolved variable, or a second target in the repo still asks: ${cmd}`);
   }

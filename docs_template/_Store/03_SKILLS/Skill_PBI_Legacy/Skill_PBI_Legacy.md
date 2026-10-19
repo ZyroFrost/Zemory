@@ -1,15 +1,15 @@
 ---
 id: Skill_PBI_Legacy
 name: pbi-legacy
-version: 3
+version: 4
 type: process
-description: Handle the LEGACY copy of a Power BI report - the old system's original file, kept to READ and COMPARE, never edited: dissect a .pbix, convert it to .pbip on a copy, prove a rebuild by md5. Use whenever an old .pbix must be read for its design, measures or sources, or a rebuild must be compared with the original. Not for building a report (that is pbi-classic / pbi-mix / pbi-main). Vietnamese triggers - "mổ file cũ", "đọc pbix hệ cũ", "chuyển pbix sang pbip", "so với bản gốc".
+description: Handle the LEGACY copy of a Power BI report - the old system's original file, kept to READ and COMPARE, never edited: dissect a .pbix, convert it to .pbip on a copy, prove a rebuild by md5. Use whenever an old .pbix must be read for its design, measures or sources, or a rebuild must be compared with the original. Not for building a report (that is pbi-classic / pbi-white / pbi-red). Vietnamese triggers - "mổ file cũ", "đọc pbix hệ cũ", "chuyển pbix sang pbip", "so với bản gốc".
 ---
 
 # Bản `Legacy` — file gốc hệ cũ, CHỈ ĐỌC
 
 > 🔴 **`Legacy` = hệ cũ + thiết kế cũ, bản chưa ai đụng** (`Skill_PBI_Base` `reference/naming.md`).
-> Nó tồn tại vì đúng một lý do: **là mốc DUY NHẤT** chứng minh bản `Classic`/`Mix` không lệch thiết
+> Nó tồn tại vì đúng một lý do: **là mốc DUY NHẤT** chứng minh bản `Classic`/`White` không lệch thiết
 > kế và không lệch số. Sửa nó là mất mốc, và mất mốc thì không có cách nào lấy lại.
 
 ## 1. Luật cứng — ba điều
@@ -89,5 +89,5 @@ md5(<Tên>.pbix) == md5(bản gốc trên mirror)      -> BẮT BUỘC, không c
 git status trên thư mục Legacy                    -> rỗng, ngoài lần copy đầu tiên
 ```
 
-Muốn chứng minh bản `Classic`/`Mix` không lệch thiết kế: `diff` thư mục `definition/` của bản đó với
+Muốn chứng minh bản `Classic`/`White` không lệch thiết kế: `diff` thư mục `definition/` của bản đó với
 bản `Legacy` đã chuyển `.pbip`. Lúc mới tách phải ra **0 lệch**.
