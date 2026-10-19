@@ -58,5 +58,25 @@ function viName(name) {
 }
 `;
 
+/**
+ * A looser judge for the name of a harness part only (a law, an article, a slot folder): such a name mixes Vietnamese with a
+ * brand or English word (`PhamViGhiChiSasin`, `CaseItPhanLonKhong`), which the strict judge lets through because NOT every
+ * part is a Vietnamese syllable (2026-10-19: 80 article folders in six departments). Vietnamese when at least three parts
+ * are Vietnamese syllables that are no English word, they make at least 60% of the parts, and one carries a Vietnamese
+ * mark. Measured on the 2,528 part names of HS and 19 repos: no English name caught. Not used on code identifiers.
+ */
+const LOOSE = new Function(`${VI_NAME_JUDGE}\nreturn { viSyllable, viMarked, VI_EN };`)() as {
+  viSyllable: (w: string) => boolean; viMarked: (w: string) => boolean; VI_EN: Set<string>;
+};
+const LOOSE_MARK = new Set(["trong", "chuan", "giu", "pham", "ghi", "lam", "lien", "moi", "nhieu", "nguon", "dung", "chung"]);
+export function viPartName(name: string): string | null {
+  const comp = String(name).split("_").pop() ?? "";
+  const parts = comp.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Za-z])([0-9])/g, "$1 $2")
+    .split(/[^A-Za-z]+/).filter(Boolean).map((w) => w.toLowerCase());
+  const vi = parts.filter((p) => LOOSE.viSyllable(p) && !LOOSE.VI_EN.has(p));
+  if (vi.length < 3 || vi.length / parts.length < 0.6) return null;
+  return vi.some((p) => LOOSE.viMarked(p) || LOOSE_MARK.has(p)) ? vi.join(" ") : null;
+}
+
 /** The same judge for TypeScript callers, built from the same text the hook runs. */
 export const viName: (name: string) => string | null = new Function(`${VI_NAME_JUDGE}\nreturn viName;`)() as (name: string) => string | null;

@@ -1,0 +1,19 @@
+// .stignore - what Syncthing never carries to another machine (slot Root_141_Stignore).
+// Syncthing does not sync this file itself: change it on BOTH ends, same text.
+
+// made on each machine
+(?d)__pycache__
+(?d)*.pyc
+(?d)Thumbs.db
+(?d).venv
+(?d)node_modules
+(?d).stversions
+
+// run data, exports, secrets, per-machine config
+data
+exports
+.vault
+*.local.*
+
+// guard state of this machine (one-use flags, read tracking)
+docs/.harness-state

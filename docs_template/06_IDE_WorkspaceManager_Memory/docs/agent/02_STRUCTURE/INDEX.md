@@ -62,6 +62,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Root_136_Principles`](_Slot/Root_136_Principles/Root_136_Principles.md) | `.` | nguyên tắc chung của chuẩn cấu trúc |
 | [`Config_139_Mail`](_Slot/Config_139_Mail/Config_139_Mail.md) | `config/mail/` | bộ mail chung của cụm: danh bạ, người gửi, khoá gửi |
 | [`Data_140_WorkspaceValues`](_Slot/Data_140_WorkspaceValues/Data_140_WorkspaceValues.md) | `data/region/` | giá trị thật của cụm |
+| [`Root_141_Stignore`](_Slot/Root_141_Stignore/Root_141_Stignore.md) | `.stignore` | what Syncthing never carries to another machine |
 
 | Host note · Ghi chú host | About · Về |
 |---|---|

@@ -1467,7 +1467,7 @@ export function folderCoreFiles(agentDir: string): string[] {
 export function slotGateFailures(root: string, slotDir: string): string[] {
   const p = join(slotDir, "gate.json");
   if (!existsSync(p)) return [];
-  let c: { require?: unknown; contains?: unknown } | undefined;
+  let c: { require?: unknown; contains?: unknown; absent?: unknown } | undefined;
   try {
     c = (JSON.parse(readFileSync(p, "utf8")) as { conform?: typeof c }).conform;
   } catch {
@@ -1482,7 +1482,22 @@ export function slotGateFailures(root: string, slotDir: string): string[] {
     for (const [rel, needle] of Object.entries(c.contains as Record<string, unknown>)) {
       const f = join(root, rel);
       if (!existsSync(f)) continue; // already reported by require when it is required
-      if (typeof needle === "string" && !readFileSync(f, "utf8").includes(needle)) out.push(`${rel} does not contain ${needle}`);
+      // one text, or several (`.gitattributes` keeps .cmd and .bat CRLF: two lines)
+      const text = readFileSync(f, "utf8");
+      for (const n of Array.isArray(needle) ? needle : [needle]) {
+        if (typeof n === "string" && !text.includes(n)) out.push(`${rel} does not contain ${n}`);
+      }
+    }
+  }
+  // text a file must NOT hold any more (an old path the file still names: `.stignore` blocking docs/hooks/.allow-*)
+  if (c.absent && typeof c.absent === "object") {
+    for (const [rel, needles] of Object.entries(c.absent as Record<string, unknown>)) {
+      const f = join(root, rel);
+      if (!existsSync(f)) continue;
+      const text = readFileSync(f, "utf8");
+      for (const n of Array.isArray(needles) ? needles : [needles]) {
+        if (typeof n === "string" && text.includes(n)) out.push(`${rel} still holds ${n}`);
+      }
     }
   }
   return out;

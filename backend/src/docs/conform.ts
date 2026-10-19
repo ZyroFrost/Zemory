@@ -29,10 +29,10 @@ import { editedHarnessCopies } from "./law-sync.js";
 import { lawLinkFindings } from "./law-links.js";
 import { consColumn, frameShapeFindings, ownSkillFindings } from "./cons-read.js";
 import { regionLinkFindings } from "./region-links.js";
-import { viName } from "./vi-name-judge.js";
+import { viName, viPartName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
 import {
-  binLauncherFindings, caseHeaderFindings, caseIndexFindings, deadFlagFindings, ledgerDuplicateHeadings, ledgerTitleFindings,
+  binLauncherFindings, caseHeaderFindings, gitRemoteFindings, caseIndexFindings, deadFlagFindings, ledgerDuplicateHeadings, ledgerTitleFindings,
   reportsIndexFindings, RETIRED_HARNESS_NAMES, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmTaskDataFindings,
 } from "./case-checks.js";
 import { stateDirOf } from "./guard-gen.js";
@@ -399,7 +399,7 @@ export function conform(root: string): ConformReport {
     const viParts: string[] = [];
     for (const shelf of [SHELF.rules, SHELF.constitution, SHELF.structure] as const) {
       for (const p of listParts(hp.agent, shelf)) {
-        const vi = viName(leafOf(p.folder));
+        const vi = viName(leafOf(p.folder)) ?? viPartName(leafOf(p.folder));
         if (vi) viParts.push(`${shelf}/${p.folder} (${vi})`);
         // a law's or an article's header name: is the kebab of its folder's name component (done-means-run ↔ DoneMeansRun);
         // a folder renamed into English kept its old Vietnamese slug there in five repos (2026-10-19). Slots name a real
@@ -441,6 +441,8 @@ export function conform(root: string): ConformReport {
     "replace the old fact with the one after the arrow; a change of the region is added to superseded_facts once and every repo is told by sync");
   push("superseded-fact-history", "advisory", "Text names a fact of the region that changed — keep it where it tells history, replace it where it instructs",
     superseded.advisory, "a line that says how things are or what to do takes the fact after the arrow; a line about what happened then stays");
+  push("git-remote-on-backup-repo", "blocking", "A repo whose git is its local backup (template role git: local) has a remote", gitRemoteFindings(root),
+    "remove it (`git remote remove <name>`): this repo is never pushed; another machine gets it through zemory's backup and Syncthing");
   push("dead-flag", "advisory", "A used one-use flag left in the state folder (revoked, opens nothing)", deadFlagFindings(root, stateDirOf(root)),
     "delete the file; a flag is created anew for each approval");
 

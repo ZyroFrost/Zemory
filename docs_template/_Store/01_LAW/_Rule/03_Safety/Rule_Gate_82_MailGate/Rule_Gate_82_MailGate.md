@@ -1,7 +1,7 @@
 ---
 id: Rule_82
 name: mail-gate
-version: 3
+version: 4
 kind: action
 code: 03_Safety
 ---
@@ -31,7 +31,9 @@ this mail to this person.
 - The guard blocks commands that can send mail: a direct call to a mail API (`smtplib` · `send_message(` · `sendmail(` ·
   `/sendMail` · `Send-MailMessage` · `Send-MgUserMail`) · running a script whose name contains mail / send / alert · running a
   launcher `bin\*` with a real-send argument (`live` · `send` · `--send` · `--send-real` · `--resend`) · running a script whose
-  content calls a mail send.
+  content calls a mail send · running a launcher `bin\*` — directly or behind `scripts/task_run.py ... --` — whose pipeline has
+  a script that sends (a test run mails the operator too) · `git send-email`.
+- Text is not a send: a heredoc body and a git command (a commit message that says "mail") are not judged.
 
 ## Luật là gì
 Agent không gửi mail vì bất kỳ lý do gì của chính nó. Mail chỉ đi khi người dùng nói rõ, trong phiên này, gửi mail này cho người
@@ -56,7 +58,10 @@ này.
 ## Máy kiểm
 - Guard chặn lệnh có thể gửi mail: gọi thẳng API mail (`smtplib` · `send_message(` · `sendmail(` · `/sendMail` ·
   `Send-MailMessage` · `Send-MgUserMail`) · chạy script tên chứa mail / send / alert · chạy launcher `bin\*` với đối số gửi thật
-  (`live` · `send` · `--send` · `--send-real` · `--resend`) · chạy một script mà chính nội dung có lời gọi gửi mail.
+  (`live` · `send` · `--send` · `--send-real` · `--resend`) · chạy một script mà chính nội dung có lời gọi gửi mail · chạy
+  launcher `bin\*` — trực tiếp hoặc sau `scripts/task_run.py ... --` — mà pipeline của nó có script gửi mail (lượt thử cũng gửi
+  tới người vận hành) · `git send-email`.
+- Chữ không phải lệnh gửi: thân heredoc và lệnh git (commit message có chữ "mail") không bị soát.
 
 ## Links · Liên kết
 - Related · Liên quan: `Skill_Doc_WriteStyle` — how a mail is written when it is sent · cách viết mail khi được gửi

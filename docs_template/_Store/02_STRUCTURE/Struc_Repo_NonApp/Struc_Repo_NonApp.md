@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_NonApp
 name: repo-nonapp
-version: 7
+version: 8
 profile: non-app
 label: NON-APP
 intro: : sản phẩm / tài sản — agent đọc · dò · kéo · điền · xuất FILE (BI/report · data · docs-only · design), không phát triển app; không có luật UI

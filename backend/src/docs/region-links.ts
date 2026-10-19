@@ -14,6 +14,8 @@ export interface TemplateRole {
   /** required · optional · none */
   owner: string;
   provides: string[];
+  /** "local": git is the repo's backup on this machine — no remote, never pushed (Struc_Repo_Dept, user 2026-10-19) */
+  git?: string;
 }
 
 /** The role of a template (`structure.json › role` of a repo structure), or null when the template declares none. */
@@ -22,7 +24,8 @@ export function templateRole(structureDir: string): TemplateRole | null {
     const r = (JSON.parse(readFileSync(join(structureDir, "structure.json"), "utf8")) as { role?: Partial<TemplateRole> }).role;
     if (!r || typeof r.name !== "string") return null;
     const list = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
-    return { name: r.name, manages: list(r.manages), managed_by: list(r.managed_by), owner: String(r.owner ?? "optional"), provides: list(r.provides) };
+    return { name: r.name, manages: list(r.manages), managed_by: list(r.managed_by), owner: String(r.owner ?? "optional"), provides: list(r.provides),
+      ...(typeof r.git === "string" ? { git: r.git } : {}) };
   } catch {
     return null;
   }
