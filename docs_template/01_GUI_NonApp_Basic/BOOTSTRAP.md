@@ -48,7 +48,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 13 | `.claude/skills/harness-session-close/SKILL.md` | 201 |
 | 14 | `.claude/skills/harness-structure/SKILL.md` | 122 |
 | 15 | `.claude/skills/harness-structure/references/conventions.md` | 151 |
-| 16 | `.claude/skills/harness-structure/scripts/check_structure.py` | 254 |
+| 16 | `.claude/skills/harness-structure/scripts/check_structure.py` | 259 |
 | 17 | `.claude/skills/harness-sync-path/SKILL.md` | 108 |
 | 18 | `.claude/skills/pbi-base/SKILL.md` | 52 |
 | 19 | `.claude/skills/pbi-base/reference/design.md` | 220 |
@@ -253,11 +253,11 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 218 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/gate.json` | 20 |
 | 219 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/SKILL.md` | 122 |
 | 220 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/references/conventions.md` | 151 |
-| 221 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/scripts/check_structure.py` | 254 |
+| 221 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/scripts/check_structure.py` | 259 |
 | 222 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Skill_Harness_Structure.md` | 122 |
 | 223 | `docs/agent/03_SKILLS/Skill_Harness_Structure/gate.json` | 3 |
 | 224 | `docs/agent/03_SKILLS/Skill_Harness_Structure/references/conventions.md` | 151 |
-| 225 | `docs/agent/03_SKILLS/Skill_Harness_Structure/scripts/check_structure.py` | 254 |
+| 225 | `docs/agent/03_SKILLS/Skill_Harness_Structure/scripts/check_structure.py` | 259 |
 | 226 | `docs/agent/03_SKILLS/Skill_Harness_SyncPath/Claude/harness-sync-path/SKILL.md` | 108 |
 | 227 | `docs/agent/03_SKILLS/Skill_Harness_SyncPath/Skill_Harness_SyncPath.md` | 108 |
 | 228 | `docs/agent/03_SKILLS/Skill_Harness_SyncPath/gate.json` | 3 |

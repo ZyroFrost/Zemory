@@ -44,7 +44,10 @@ def fold(s):
     out = unicodedata.normalize("NFD", s).lower()
     out = "".join(c for c in out if not unicodedata.combining(c))
     return out.replace("đ", "d")  # a crossed d does not decompose under NFD
-REQUIRED_DOCS = ["01_CONSTITUTION.md", "02_RULES.md", "05_TODO.md", "06_CHANGES.md"]
+# The folder harness: the law shelf (rules + constitution frames), the structure and skill shelves, two ledgers.
+# A repo still on the file harness keeps the four files of that layout; both are accepted, the folder one first.
+REQUIRED_DOCS = ["01_LAW/", "02_STRUCTURE/", "03_SKILLS/", "04_TODO.md", "05_CHANGES.md"]
+REQUIRED_DOCS_FILE_HARNESS = ["01_CONSTITUTION.md", "02_RULES.md", "05_TODO.md", "06_CHANGES.md"]
 MUST_IGNORE = ["data/", "exports/", ".env"]
 # Tooling and OS folders that legitimately sit at the root.
 ROOT_EXEMPT = {".git", ".github", ".vscode", ".idea", ".claude", "node_modules", "__pycache__"}
@@ -81,8 +84,10 @@ def check_docs(root):
     if not os.path.isdir(agent):
         add("BLOCK", "docs", "docs/agent/ is missing")
         return
-    for name in REQUIRED_DOCS:
-        if not os.path.isfile(os.path.join(agent, name)):
+    folder = os.path.isdir(os.path.join(agent, "01_LAW"))
+    for name in (REQUIRED_DOCS if folder else REQUIRED_DOCS_FILE_HARNESS):
+        path = os.path.join(agent, name.rstrip("/"))
+        if not (os.path.isdir(path) if name.endswith("/") else os.path.isfile(path)):
             add("BLOCK", "docs", "docs/agent/%s is missing" % name)
     harness = os.path.join(root, "docs", ".harness.json")
     if not os.path.isfile(harness):

@@ -15,11 +15,14 @@ Per file, in order — the local copy is removed ONLY when both copies are verif
      overwritten (it may be the file the task publishes now): reported as CONFLICT, local copy kept, user decides.
      Verified by downloading it back: byte-identical, or for .xlsx identical cell values on every sheet (SharePoint rewrites
      Office files on upload — property promotion — so bytes never match).
-    (01_raw/reference/ and 03_output/reference/ — reference files code/tests rebuild against, received from others — are never
-    touched: they stay on the PC. 01_raw/reference = templates of an INPUT, 03_output/reference = of the DELIVERABLE, 05/10.)
+     SKIPPED — VM only — for a task that does not publish its own file: `delivers_to: mail`, or an `output_url` in another
+     department's folder (it resends the file that department made; pushing there would put a second copy in their folder).
   2. VM, E:\\Automation\\<Repo>\\data\\<Task>\\03_output\\ (the task's working data): same name + same content -> nothing to do;
      same name + DIFFERENT content -> stored as `<stem>__local<ext>` (never overwritten); verified by SHA-256 on the VM.
   3. both verified -> local file removed.
+  reference/ (01_raw/reference = templates of an INPUT, 03_output/reference = of the DELIVERABLE: the files a run is rebuilt
+  against, written once): COPIED to the same path on the VM, never to SharePoint, verified by SHA-256 — and the local copy
+  STAYS. The VM is the backup of the PC; both keep it (user HR 19/10).
 Needs: the VM's SSH alias (region value vm_ssh_alias) · SHAREPOINT_* keys in ..\\the region manager\\.env. Only tasks with tasks/<task>/vm_deploy.json.
 Shipped by zemory: store part Skill_Task_VmAutomation (its installs). Change the store part, never the repo copy.
 """
@@ -203,19 +206,66 @@ if "--fix-archive" in sys.argv:
     print("%s: %d to move · %d left (name taken in the folder)" % ("APPLIED" if APPLY else "dry run", n_move, n_conf))
     sys.exit(0)
 
+def vm_only_reason(task, spec):
+    """Why 03_output of a task goes to the VM only (never SharePoint), or None. A task that mails a file, or resends a
+    file another department made (output_url in that department's DataReport folder), publishes nothing of its own."""
+    h = header(spec) if spec.exists() else {}
+    if (h.get("delivers_to") or "").strip().lower() == "mail":
+        return "delivers_to: mail"
+    own = task.split("_")[0].upper()
+    for u in (h.get("output_url") or "").split("|"):
+        m = re.search(r"/DataReport/([^/]+)", urllib.parse.unquote(u.strip()))
+        if m and m.group(1).upper() != own:
+            return "output_url is the folder of %s" % m.group(1)
+    return None
+
+
+def copy_reference(task, sub):
+    """reference/ -> the same path on the VM, verified by SHA-256; the local copy STAYS (the VM is the PC's backup)."""
+    src = ROOT / "data" / task / sub / "reference"
+    files = sorted(f for f in src.rglob("*") if f.is_file()) if src.is_dir() else []
+    if not files:
+        return 0
+    print("== %s/%s/reference (%d file) -> VM %s, local kept" % (task, sub, len(files), HOST))
+    bad = 0
+    for f in files:
+        part = f.relative_to(src).parent
+        rdir = "E:\\Automation\\%s\\data\\%s\\%s\\reference%s" % (REPO, task, sub, "" if str(part) == "." else "\\" + str(part).replace("/", "\\"))
+        h = sha(f.read_bytes())
+        rh = vm_hash(rdir + "\\" + f.name)
+        if rh == h:
+            note = "VM: already there (identical)"
+        elif rh != "MISSING":
+            note, bad = "VM: CONFLICT — %s has DIFFERENT content there, not overwritten (user decides)" % f.name, bad + 1
+        elif not APPLY:
+            note = "VM: would copy"
+        else:
+            ssh_ps("New-Item -ItemType Directory -Force -Path '%s' | Out-Null" % rdir)
+            r = subprocess.run(["scp", "-q", str(f), "%s:%s/" % (HOST, rdir.replace("\\", "/"))], capture_output=True, text=True)
+            ok = r.returncode == 0 and vm_hash(rdir + "\\" + f.name) == h
+            note, bad = ("VM: copied" if ok else "VM: copied (VERIFY FAILED)"), bad + (0 if ok else 1)
+        print("   %s %-42s %s" % ("COPY " if APPLY else "plan ", f.relative_to(src).as_posix(), note))
+    return bad
+
+
 moved = kept = 0
 # user 04/10 (new standard): a task that runs on the VM keeps no data on the work PC. Results (03_output) go to SharePoint AND
 # the VM; working data (01_raw = what was read · 02_processing = scratch) goes to the VM only — it is nobody's deliverable.
 FOLDERS = (("01_raw", False), ("02_processing", False), ("03_output", True))     # (folder, also to SharePoint)
 for vm_json in sorted(ROOT.glob("tasks/*/vm_deploy.json")):
     task = vm_json.parent.name
+    vm_only = vm_only_reason(task, vm_json.parent / "spec.md")
     for sub, to_sp in FOLDERS:
+        if to_sp and vm_only:
+            to_sp = False
+        if sub in ("01_raw", "03_output"):
+            kept += copy_reference(task, sub)
         src = ROOT / "data" / task / sub
         files = sorted(f for f in src.rglob("*") if f.is_file() and not f.name.startswith("_SharePoint")) if src.is_dir() else []
         files = [f for f in files if f.parent == src]                  # top level only; sub-folders listed, moved by hand
         nested = sorted({str(f.parent.relative_to(src)) for f in src.rglob("*") if f.is_file() and f.parent != src}) if src.is_dir() else []
-        # 01_raw/reference/ stays on the PC by design (reference files code/tests rebuild against — user 04/10): never moved
-        nested = [n for n in nested if not (sub in ("01_raw", "03_output") and Path(n).parts[0] == "reference")]   # + 03_output/reference/ (05/10, §5c mục 3)
+        # reference/ is copied above and stays on the PC (user HR 19/10): not a leftover
+        nested = [n for n in nested if not (sub in ("01_raw", "03_output") and Path(n).parts[0] == "reference")]
         if nested:
             print("== %s/%s: sub-folder(s) %s — not handled, move by hand" % (task, sub, ", ".join(nested[:5])))
         if not files:
@@ -235,7 +285,7 @@ for vm_json in sorted(ROOT.glob("tasks/*/vm_deploy.json")):
             data = f.read_bytes(); h = sha(data)
             # 1) SharePoint (results only)
             if not to_sp:
-                sp_note, sp_ok = "SP: - (working data, VM only)", True
+                sp_note, sp_ok = "SP: - (%s, VM only)" % (vm_only if sub == "03_output" and vm_only else "working data"), True
             else:
                 dest = "%s/%s" % (folder, f.name)
                 _, main = sp_get(drive, dest)
