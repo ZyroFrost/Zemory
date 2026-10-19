@@ -2,7 +2,7 @@
 id: Rule_62
 aka: 02-62
 name: design-change-approval
-version: 12
+version: 13
 kind: judgment
 code: 02_Work
 ---
@@ -23,7 +23,7 @@ not move on its own. Fixing a technical fault needs no approval.
 3. No need to show: fixing a technical fault (misaligned · overflowing · broken) · filling numbers into an existing template.
 4. The given direction leaves design details open ⇒ show options for the open part. A suggestion from a design skill is shown,
    never applied on its own.
-5. Concrete conventions: `.claude/skills/dev-app-design/SKILL.md` · `.claude/skills/pbi-base/SKILL.md` · the conventions slot
+5. Concrete conventions: `Skill_Dev_AppDesign` · `Skill_PBI_Base` (the skills the repo carries) · the conventions slot
    and the UI name dictionary.
 
 ## Example
@@ -49,7 +49,7 @@ cần duyệt.
 2. Bố cục đã chốt không đổi: không tự dời vị trí hay thứ tự.
 3. Không cần trình: sửa lỗi kỹ thuật (lệch · tràn · hỏng) · điền số theo mẫu có sẵn.
 4. Hướng được giao còn hở chi tiết thiết kế ⇒ trình phương án cho phần hở. Gợi ý từ skill thiết kế thì trình, không tự áp.
-5. Quy ước cụ thể: `.claude/skills/dev-app-design/SKILL.md` · `.claude/skills/pbi-base/SKILL.md` · slot quy ước và từ điển tên UI.
+5. Quy ước cụ thể: `Skill_Dev_AppDesign` · `Skill_PBI_Base` (skill repo mang theo) · slot quy ước và từ điển tên UI.
 
 ## Ví dụ
 - Tình huống: agent được giao cập nhật số tháng mới vào một dashboard bán hàng.
