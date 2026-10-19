@@ -11,8 +11,11 @@ of output. So "did it run, was its input there and valid, was it green, where is
 automated job, SQL Agent or not.
 
 Rules: the task's exit code is returned AS IS · a run-log failure never fails the task (it prints a warning) ·
-the warehouse connection comes from the sibling warehouse repo `..\\the region manager\\.env` (WAREHOUSE_CONN) — the
-same file the task already reads; nothing secret lives here. Shipped by zemory: store part Skill_Task_VmAutomation (its installs);
+the run log goes to the database of the repo whose DATA the running repo uses: a `dept` repo logs to the DW (WAREHOUSE_CONN
+in the DW repo's .env), an `app` repo to the `app-data` repo (APPCORE_CONN in its .env), a data repo to its own database.
+That repo is found by: env RUNLOG_REPO · the marker's `uses.app-data` · `uses.data` · `owner` (work PC) · the repo itself · the
+region manager · the first sibling `_DB_*` repo whose .env holds one of the keys (the VM, where docs/ is not deployed and one data
+repo sits beside the task). Nothing secret lives here. Shipped by zemory: store part Skill_Task_VmAutomation (its installs);
 change the store part, never the repo copy.
 """
 import argparse
@@ -25,36 +28,67 @@ import time
 from pathlib import Path
 
 
-def dw_env():
-    """WAREHOUSE_CONN from the region manager's .env (region_values.py finds the manager: DW_REPO, the region root, or the
-    sibling repo holding WAREHOUSE_CONN - the server layout)."""
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from region_values import manager_root
-    mgr = manager_root(str(Path(__file__).resolve().parent))
-    for c in ([Path(mgr)] if mgr else []):
-        f = c / ".env"
-        if f.exists():
-            env = {}
-            for line in f.read_text(encoding="utf-8").splitlines():
-                if "=" in line and not line.lstrip().startswith("#"):
-                    k, v = line.split("=", 1)
-                    env[k.strip()] = v.strip().strip('"').strip("'")
-            return env
-    return {}
+CONN_KEYS = ("WAREHOUSE_CONN", "APPCORE_CONN")     # the DW (role workspace-manager) · the app-data repo (role app-data)
+
+
+def read_env(folder):
+    f = Path(folder) / ".env"
+    env = {}
+    if f.is_file():
+        for line in f.read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.lstrip().startswith("#"):
+                k, v = line.split("=", 1)
+                env[k.strip()] = v.strip().strip('"').strip("'")
+    return env
+
+
+def run_log_conn():
+    """(key, connection string, repo) of the database that holds this repo's run log, or None."""
+    repo = Path(__file__).resolve().parent.parent
+    cands = [Path(os.environ["RUNLOG_REPO"])] if os.environ.get("RUNLOG_REPO") else []
+    try:                                                # work PC: the marker names the repo whose data it uses
+        import json
+        m = json.loads((repo / "docs" / ".harness.json").read_text(encoding="utf-8-sig"))
+        uses = m.get("uses") if isinstance(m.get("uses"), dict) else {}
+        for name in (uses.get("app-data"), uses.get("data"), m.get("owner")):
+            if isinstance(name, str) and name:
+                cands.append(repo.parent / name)
+    except Exception:
+        pass
+    cands.append(repo)                                  # a data repo (DW, the app-data repo) logs to its own database
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from region_values import manager_root
+        mgr = manager_root(str(Path(__file__).resolve().parent))
+        if mgr:
+            cands.append(Path(mgr))
+    except Exception:
+        pass
+    try:                                                # the VM: the one managing repo deployed beside this one
+        cands += sorted(p for p in repo.parent.iterdir() if p.is_dir() and p.name.startswith("_DB_"))
+    except Exception:
+        pass
+    for c in cands:
+        env = read_env(c)
+        for k in CONN_KEYS:
+            if env.get(k):
+                return k, env[k], c.name
+    return None
 
 
 def log_run(task, started, seconds, rc, message):
     try:
         import pyodbc
-        conn = dw_env().get("WAREHOUSE_CONN")
-        if not conn:
-            print("[task_run] WARNING: no WAREHOUSE_CONN found — run not logged", flush=True)
+        found = run_log_conn()
+        if not found:
+            print("[task_run] WARNING: no %s found — run not logged" % " / ".join(CONN_KEYS), flush=True)
             return
+        key, conn, where = found
         cn = pyodbc.connect(conn, timeout=30, autocommit=True)
         cn.execute("EXEC dbo._LogTaskRun @TaskName=?, @StartedAt=?, @DurationSeconds=?, @ExitCode=?, @Message=?, @ServerName=?",
                    task, started.replace(microsecond=0), int(seconds), int(rc), message[:4000], socket.gethostname())
         cn.close()
-        print("[task_run] logged to Log_JobRun: %s exit %d (%ds)" % (task, rc, seconds), flush=True)
+        print("[task_run] logged to Log_JobRun (%s of %s): %s exit %d (%ds)" % (key, where, task, rc, seconds), flush=True)
     except Exception as e:                                    # never fail the task because the log could not be written
         print("[task_run] WARNING: run log not written: %s" % e, flush=True)
 
