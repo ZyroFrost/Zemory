@@ -56,9 +56,8 @@ for spec in sorted(ROOT.glob("tasks/*/spec.md")):
                 (d / name).write_text("[InternetShortcut]\r\nURL=%s\r\n" % u, encoding="ascii", errors="ignore")
                 made += 1
             print("link  %-45s %-10s -> %s" % (task, folder, " | ".join(urls)))
-        # 01_raw/reference/ = reference files received from others that code/tests rebuild against (not a run input) — stays
-        # on the PC by design (user 04/10), so it is not an extra. 05/10 (the department standard §5c mục 3, xếp theo CHIỀU §1c):
-        # 03_output/reference/ = templates / benchmarks of the DELIVERABLE — same rule, also not an extra
+        # reference/ = the files a run is rebuilt against (01_raw: templates of an INPUT · 03_output: of the DELIVERABLE), written
+        # once: the PC keeps it and move_outputs_to_vm.py copies it to the VM as its backup (user HR 19/10) — never an extra
         extra = sorted(f.name for f in d.iterdir() if not f.name.startswith("_SharePoint")
                        and not (folder in ("01_raw", "03_output") and f.name == "reference" and f.is_dir())) if d.is_dir() else []
         if extra:

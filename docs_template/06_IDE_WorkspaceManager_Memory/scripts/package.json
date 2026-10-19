@@ -1,5 +1,5 @@
 {
-  "name": "dept-ops-scripts",
+  "name": "pbi-pbip-scripts",
   "private": true,
   "description": "Node helpers for scripts/pbi_diagram.py (model diagram order). Install: cd scripts && npm install",
   "dependencies": {

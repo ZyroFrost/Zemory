@@ -31,6 +31,11 @@ import { consColumn, frameShapeFindings, ownSkillFindings } from "./cons-read.js
 import { regionLinkFindings } from "./region-links.js";
 import { viName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
+import {
+  binLauncherFindings, caseHeaderFindings, caseIndexFindings, deadFlagFindings, ledgerDuplicateHeadings, ledgerTitleFindings,
+  reportsIndexFindings, RETIRED_HARNESS_NAMES, retiredNameFindings, sharedSlotFindings, vmTaskDataFindings,
+} from "./case-checks.js";
+import { stateDirOf } from "./guard-gen.js";
 
 export interface ConformItem {
   /** mã kiểm, ổn định để CI bám */
@@ -394,11 +399,43 @@ export function conform(root: string): ConformReport {
       for (const p of listParts(hp.agent, shelf)) {
         const vi = viName(leafOf(p.folder));
         if (vi) viParts.push(`${shelf}/${p.folder} (${vi})`);
+        // a law's or an article's header name: is the kebab of its folder's name component (done-means-run ↔ DoneMeansRun);
+        // a folder renamed into English kept its old Vietnamese slug there in five repos (2026-10-19). Slots name a real
+        // file (package.json · .gitignore), so they are not held to it.
+        if (shelf !== SHELF.structure) {
+          const comp = leafOf(p.folder).split("_").pop() ?? "";
+          const want = comp.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+            .replace(/([A-Za-z])([0-9])/g, "$1-$2").toLowerCase();
+          if (p.name && p.name !== want && p.name !== comp && p.name !== leafOf(p.folder)) viParts.push(`${shelf}/${p.folder} name: ${p.name} (want ${want})`);
+        }
       }
     }
-    push("part-name-vi", "blocking", "Part name reads as Vietnamese without marks (rule 30: names are English)", viParts,
-      "rename the name component of the folder in English; keep the code and the number");
+    push("part-name-vi", "blocking", "Part name reads as Vietnamese without marks, or its header name: is not its folder's name (rule 30: names are English)", viParts,
+      "rename the name component of the folder in English, keep the code and the number; set name: to the kebab of that component (keep id/aka)");
   }
+
+  // ②nonies — A repo of cases and tasks (2026-10-19, Dept_FA · Dept_HR): after a reshape every gate was green and a hand
+  // check still found these. Each reads files only; a repo without the folder in question gets nothing.
+  push("case-index", "blocking", "content/README.md does not match tasks/ (a case missing, a row with no case, a status the spec contradicts)",
+    caseIndexFindings(root), "one row per tasks/<case>/, linked to its spec.md; the status cell says closed exactly when the spec's status: is done/closed");
+  push("case-header", "blocking", "A spec.md front block lacks status/cadence, its cadence differs from the task name, or a periodic task has no direction",
+    caseHeaderFindings(root), "front block: status: open|done|closed|retired · cadence: as in <DEPT>_<Cadence>_<Name> · direction: in|out for Daily/Weekly/Monthly/Quarterly");
+  push("vm-task-local-data", "blocking", "A task on the VM keeps files on the work PC (01_raw / 03_output may hold only _SharePoint.url and reference/)",
+    vmTaskDataFindings(root), "python scripts/move_outputs_to_vm.py (dry run) then --apply: results to SharePoint + VM, working data to the VM; the local copy goes once both are verified");
+  push("bin-launcher", "blocking", "A launcher in bin/ belongs to no task and no tool", binLauncherFindings(root),
+    "name it bin/<Task>.cmd after its task, or after the scripts/<tool> it runs; an old alias goes (callers use the task's launcher)");
+  push("shared-slot-case-file", "blocking", "A file in a shared slot (sources/ · config/ · queries/) belongs to one case", sharedSlotFindings(root),
+    "move it into tasks/<case>/ and fix the reader's path; shared slots hold what two cases or more read");
+  push("reports-index", "blocking", "A report folder in reports/ has no line in reports/README.md", reportsIndexFindings(root),
+    "add a row for the folder (and drop a row that says it is not on disk yet)");
+  push("ledger-title", "blocking", "A ledger's heading names another repo (the name before a rename)", ledgerTitleFindings(root),
+    "start the heading with the repo's folder name");
+  push("ledger-duplicate-heading", "advisory", "The same heading twice in the TODO ledger", ledgerDuplicateHeadings(root),
+    "merge the two sections into one; drop an empty one");
+  push("retired-harness-name", "blocking", "Text names a harness file that no longer exists in a folder harness", retiredNameFindings(root),
+    "point at the new home: " + Object.entries(RETIRED_HARNESS_NAMES).map(([k, v]) => `${k} → ${v}`).join(" · ") + " — a file the harness ships is fixed in the zemory store");
+  push("dead-flag", "advisory", "A used one-use flag left in the state folder (revoked, opens nothing)", deadFlagFindings(root, stateDirOf(root)),
+    "delete the file; a flag is created anew for each approval");
 
   // ③ Điều hiến pháp KHÔNG được doc nào trích dẫn ⇒ luật có nguy cơ chết/bị quên.
   //    Advisory: có điều đúng là nền tảng, không cần ai nhắc.

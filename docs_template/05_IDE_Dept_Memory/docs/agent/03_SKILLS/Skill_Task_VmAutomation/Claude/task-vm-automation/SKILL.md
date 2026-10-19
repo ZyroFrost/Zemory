@@ -1,12 +1,12 @@
 ---
 id: Skill_Task_VmAutomation
 name: task-vm-automation
-version: 4
+version: 5
 type: process
 aka: vm-automation
 description: Put a periodic task (Daily / Weekly / Monthly) on the VM to RUN BY ITSELF - the vm_deploy.json manifest, the schedule, the Log_JobRun run log, results to the region's SharePoint, the _SharePoint.url shortcut. Use whenever a task goes onto the VM, is automated or scheduled, or its VM run is checked. Vietnamese triggers - "đưa task lên VM", "tự động hoá task", "đặt lịch trên VM", "task chạy trên VM chưa".
 installs: [scripts/task_run.py, scripts/make_output_links.py, scripts/move_outputs_to_vm.py]
-from: _Store/03_SKILLS/Skill_Task_VmAutomation @v4 #40e0c478da7c
+from: _Store/03_SKILLS/Skill_Task_VmAutomation @v5 #6b7612ad169c
 ---
 
 # task-vm-automation — đưa task lên chạy tự động trên VM
@@ -19,7 +19,7 @@ from: _Store/03_SKILLS/Skill_Task_VmAutomation @v4 #40e0c478da7c
 
 | Loại việc | Đầu vào | Kết quả | `data\<task>\` trên máy làm việc |
 |---|---|---|---|
-| **Task định kỳ chạy trên VM** (có `tasks/<task>/vm_deploy.json`) | SharePoint `DataInput` hoặc kho DW | SharePoint `DataReport` | `01_raw` + `03_output` = **chỉ `_SharePoint.url`** · `02_processing` trống (nháp lúc chạy thử) |
+| **Task định kỳ chạy trên VM** (có `tasks/<task>/vm_deploy.json`) | SharePoint `DataInput` hoặc DW | SharePoint `DataReport` | `01_raw` + `03_output` = **chỉ `_SharePoint.url`** + `reference/` (máy và VM cùng giữ) · `02_processing` trống (nháp lúc chạy thử) |
 | **Case / việc lẻ chạy trên máy** | lấy từ đâu cũng được, như cũ | trên máy, như cũ | đủ 3 chặng `01_raw → 02_processing → 03_output` như trước |
 
 ## 🔴 Không luồng giả · không Excel giả
@@ -62,7 +62,8 @@ chỉ gỡ ở hệ mới (repo phòng + lịch VM), thứ ở hệ cũ để ng
   Số gốc là file người nộp ⇒ khai `input_url` trỏ thư mục gốc trên SharePoint, **kể cả khi task đọc bảng DW** nạp từ file đó
   (vd XYZ `ABC_Daily_StoreInventoryReport` đọc `Fact_InventoryDaily`, số gốc = form kiểm kê nhà hàng). Số từ hệ thống (POS · Fast · CRM)
   ⇒ không `input_url`, `01_raw` TRỐNG. Cả hai ⇒ liệt kê đủ thư mục file gốc (` | `). `make_output_links.py` chỉ bắt buộc `output_url`.
-- **File tham chiếu** code/test cần để dựng lại đúng bản giao (mẫu người khác gửi · bản mốc nghiệm thu) — không phải đầu vào của lượt chạy ⇒ xếp theo CHIỀU (05/10): mẫu/mốc của **ĐẦU RA** (khuôn người nhận gửi · bản kế toán để so số bản giao) ⇒ `data/<Task>/03_output/reference/`; mẫu/mốc của **ĐẦU VÀO** ⇒ `data/<Task>/01_raw/reference/`. Cả hai: trên máy, KHÔNG lên SharePoint/VM, không `input_url`; hai tool bỏ qua cả hai thư mục. Lỡ đẩy lên `DataInput` hoặc bị chuyển sang VM ⇒ kéo về `reference/` rồi gỡ bản ở chỗ sai.
+- **File tham chiếu** code/test cần để dựng lại đúng bản giao (mẫu người khác gửi · bản mốc nghiệm thu) — không phải đầu vào của lượt chạy ⇒ xếp theo CHIỀU (05/10): mẫu/mốc của **ĐẦU RA** (khuôn người nhận gửi · bản kế toán để so số bản giao) ⇒ `data/<Task>/03_output/reference/`; mẫu/mốc của **ĐẦU VÀO** ⇒ `data/<Task>/01_raw/reference/`. Cả hai: **máy và VM cùng giữ** — VM là bản sao lưu của máy; `reference/` chỉ chứa file lần đầu để dựng lại, không phình theo kỳ như `03_output`/`02_processing`. `move_outputs_to_vm.py` CHÉP `reference/` lên đúng đường đó trên VM (so SHA-256), KHÔNG gỡ bản máy; `make_output_links.py` không tính `reference/` là `EXTRA`. KHÔNG lên SharePoint, không `input_url`. Lỡ đẩy lên `DataInput` ⇒ kéo về `reference/` rồi gỡ bản ở `DataInput`.
+- **Task chỉ GỬI LẠI file phòng khác làm** (MỘT BÁO CÁO MỘT NƠI LÀM — vd XYZ gửi mail đúng file GC do ABC làm): `output_url` = thư mục `DataReport/<PHÒNG LÀM FILE>/…` (nơi file thật nằm, không phải thư mục của mình) · `delivers_to: mail` · task KHÔNG tạo bản thứ hai, KHÔNG đẩy gì vào thư mục phòng khác. `move_outputs_to_vm.py` tự nhận ca này (`delivers_to: mail` hoặc `output_url` ngoài thư mục phòng mình) ⇒ `03_output` sót chỉ lên VM, không SharePoint.
 - 🔴 **Đầu vào chỉ nộp ở SharePoint `DataInput`** — KHÔNG thả file vào `01_raw` (máy hay VM) rồi mong task đọc. `01_raw` không phải
   nguồn: lịch sử "lượt nào đọc số nào" = lịch sử phiên bản của file trên SharePoint.
 
@@ -81,7 +82,7 @@ máy làm việc  ──Syncthing──▶  VM  <vm_work_dir>\<Repo>\      CHỞ
 | File người dùng nộp vào (đầu vào) | SharePoint `DataLake/DataInput/<PHÒNG>/…` | task đọc thẳng |
 | Kết quả cuối (deliverable) | SharePoint (`sharepoint_site` trong giá trị vùng)`/<PHÒNG>/…` — task tự đẩy (PUT ghi đè, giữ phiên bản) | người nhận mở ở đó |
 | Dữ liệu làm việc của task (log · trạng thái · bản chép kết quả) | VM `<vm_run_dir>\<Repo>\data\<Task>\…` | sao lưu VM; tra khi cần |
-| `data\<Task>\01_raw` · `03_output` trên máy làm việc | **ĐÚNG 1 file mỗi thư mục: `_SharePoint.url`** — `01_raw` trỏ `DataInput`, `03_output` trỏ `DataReport`; `02_processing` trống | bấm shortcut ra nguồn / kết quả thật |
+| `data\<Task>\01_raw` · `03_output` trên máy làm việc | **ĐÚNG 1 file mỗi thư mục: `_SharePoint.url`** (cộng `reference/` nếu có — VM giữ bản sao) — `01_raw` trỏ `DataInput`, `03_output` trỏ `DataReport`; `02_processing` trống. Cổng: `zemory conform` › `vm-task-local-data` | bấm shortcut ra nguồn / kết quả thật |
 
 🔴 **"Mỗi kỳ 1 file" là chuyện của SHAREPOINT, không phải của máy.** Task đẩy mỗi lượt 1 file lên `DataReport` (vd XYZ NQ: `NQ T9-2026.xlsx`,
 `NQ T10-2026.xlsx` … nằm cạnh nhau) hoặc ghi đè 1 file (vd XYZ `ABC_SummaryInventoryResult.xlsx`, lịch sử ở phiên bản SharePoint). Còn
@@ -170,7 +171,8 @@ xem) — không để lại trong `03_output`.
    ko xóa"* · *"đẩy VM lẫn đẩy lên SP"*): `python scripts\move_outputs_to_vm.py` (chạy khô) → `--apply`. Mỗi file: SharePoint (ĐÚNG thư mục
    `output_url` — file sót là bản giao chính thức nằm nhầm chỗ, không phải lưu trữ; KHÔNG có `_Archive/` — ; trùng tên khác
    nội dung ⇒ KHÔNG ghi đè, báo `CONFLICT`, giữ bản máy chờ người dùng) + VM (`<vm_run_dir>\<Repo>\data\<Task>\03_output\`; trùng tên khác nội dung ⇒ `__local`),
-   cả hai kiểm khớp mới gỡ bản ở máy. Excel so theo giá trị ô (SharePoint tự sửa file Office khi nhận).
+   cả hai kiểm khớp mới gỡ bản ở máy. Excel so theo giá trị ô (SharePoint tự sửa file Office khi nhận). Task `delivers_to: mail` hoặc
+   `output_url` ở thư mục phòng khác ⇒ bỏ bước SharePoint, chỉ VM. `reference/` ⇒ chép lên VM, giữ bản máy (mục File tham chiếu).
 4. Commit repo phòng (pathspec, chỉ file của task).
 
 ## 4. Lên VM — tự động

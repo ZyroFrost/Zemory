@@ -36,6 +36,10 @@ function deny(msg) {
 // 90 seconds: enough for one immediate retry, far shorter than the gap between two
 // real decisions by the user. Once the window closes the flag is dead for good.
 const FLAG_RETRY_MS = 90 * 1000;
+// An approval belongs to the moment it was given: a flag created and never used within this window is stale (a session
+// that stopped, a job dropped) and opens nothing. Measured 2026-10-19: a flag left unused by an earlier session let two
+// writes into the store through in a later session that never asked.
+const FLAG_FRESH_MS = 15 * 60 * 1000;
 
 function consumeFlag(name, subject) {
   // A flag name MISSING from the policy means an OLD policy paired with a NEW guard (the cowork set is
@@ -63,6 +67,14 @@ function consumeFlag(name, subject) {
     if (m[1] === mark && Date.now() - Number(m[2]) < FLAG_RETRY_MS) return true; // retry of the same job
     try { fs.unlinkSync(p); } catch {} // a different job or past the window => revoked, ask again
     return false;
+  }
+  if (!m) {
+    let mtime = 0;
+    try { mtime = fs.statSync(p).mtimeMs; } catch {}
+    if (Date.now() - mtime > FLAG_FRESH_MS) {
+      try { fs.unlinkSync(p); } catch {} // stale: never used while the approval was fresh => ask again
+      return false;
+    }
   }
   // First time: do NOT delete at once, only stamp it used. The flag dies when the window closes or when
   // someone asks for a different job - so it is still 'one flag for one job', it merely forgives one retry.
@@ -579,6 +591,9 @@ function checkBash(cmd) {
       }
       const inRepo = targets.filter((t) => {
         if (/^\/tmp\//i.test(t)) return false;
+        // a one-use flag in the flags folder: deleting it only takes a permission away (2026-10-19 — asking for a delete
+        // flag to remove a dead flag left a new dead flag behind, round after round)
+        if (isFlagFile(path.relative(ROOT, path.resolve(ROOT, t)).replace(/\\/g, "/"))) return false;
         if (!isAbsTok(t, false)) return true;
         const c = canonPath(t);
         return !tempRoots.some((r) => c === r || c.startsWith(r + "/"));

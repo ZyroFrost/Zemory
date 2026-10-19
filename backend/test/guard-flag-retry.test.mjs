@@ -161,6 +161,36 @@ test("NEGATIVE CASE: one delete flag does NOT open the door for the rest of the 
   );
 });
 
+test("an UNUSED flag older than the fresh window is stale: blocked and deleted (2026-10-19: one left by an earlier session let writes through)", (t) => {
+  const r = repo(t);
+  giveFlag(r);
+  const f = join(r.hooksDir, ".allow-push");
+  const old = new Date(Date.now() - 16 * 60 * 1000);
+  utimesSync(f, old, old);
+  assert.ok(blocked(r, PUSH), "a flag nobody used for 16 minutes is no approval of this job");
+  assert.ok(!flagExists(r), "and it is removed, so it cannot open a later job either");
+});
+
+test("NEGATIVE CASE: an unused flag inside the fresh window still opens its job", (t) => {
+  const r = repo(t);
+  giveFlag(r);
+  const f = join(r.hooksDir, ".allow-push");
+  const recent = new Date(Date.now() - 5 * 60 * 1000);
+  utimesSync(f, recent, recent);
+  assert.ok(!blocked(r, PUSH), "approved five minutes ago ⇒ still passes");
+});
+
+test("deleting a flag file needs no flag: it only takes a permission away (a dead flag no longer breeds another)", (t) => {
+  const r = repo(t);
+  // a real dead flag: stamped used ten minutes ago, untouched since
+  const used = Date.now() - 10 * 60 * 1000;
+  writeFileSync(join(r.hooksDir, ".allow-delete"), `ZEMORY-USED 0123456789abcdef ${used}\n`);
+  utimesSync(join(r.hooksDir, ".allow-delete"), new Date(used), new Date(used));
+  assert.ok(!blocked(r, "rm " + "docs/hooks/.allow-delete"), "removing the flag itself passes without asking");
+  assert.ok(blocked(r, "rm " + "docs/hooks/guard.cjs"), "NEGATIVE: any other file in the flags folder still needs the word");
+  assert.ok(blocked(r, "rm " + "docs/hooks/.allow-delete README.md"), "NEGATIVE: a flag on the line does not carry another target through");
+});
+
 test("once the window closes the flag is dead for good - it cannot be forgotten and reused later", async (t) => {
   const r = repo(t);
   giveFlag(r);
