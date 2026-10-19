@@ -802,6 +802,24 @@ test("a skill the set gains later gets its trigger row in AGENTS.md: after the l
   assert.deepEqual(conform(root).items.find((i) => i.check === "skill-no-trigger")?.samples ?? [], [], "conform sees the row");
 });
 
+test("a skill of the repo's own with a gate.json trigger gets its row once; the row the repo then edits is the repo's", (t) => {
+  // plan/29 §23, 20/10: the DW got Skill_Own_DwStructure and conform said skill-no-trigger - nothing wrote its row
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  writeFileSync(join(root, "AGENTS.md"), "| Mở khi | Đọc |\n|---|---|\n| sk work | `.claude/skills/sk/SKILL.md` |\n\nAfter the table.\n");
+  put(root, "docs/agent/03_SKILLS/Skill_Own_Dict/Skill_Own_Dict.md", "---\nid: Skill_Own_Dict\nname: own-dict\nversion: 1\ntype: process\ndescription: x\n---\n# dict\n");
+  put(root, "docs/agent/03_SKILLS/Skill_Own_Dict/gate.json", JSON.stringify({ trigger: "what a column means" }));
+  applyKit(root, { apply: true, storeDir: st.s });
+  const want = "| Mở khi | Đọc |\n|---|---|\n| sk work | `.claude/skills/sk/SKILL.md` |\n" +
+    "| what a column means | `.claude/skills/own-dict/SKILL.md` |\n\nAfter the table.\n";
+  assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), want);
+  const edited = want.replace("what a column means", "what a column means · cột này là gì");
+  writeFileSync(join(root, "AGENTS.md"), edited);
+  applyKit(root, { apply: true, storeDir: st.s });
+  assert.equal(readFileSync(join(root, "AGENTS.md"), "utf8"), edited, "the repo's edit stays, nothing doubled");
+});
+
 test("a hook command whose file is gone is red in conform; a rule that took the hook over drops the command and archives the copy", (t) => {
   // 2026-10-18: a department's mail gate went silent — settings.json called a file the move had archived; nothing was red.
   const st = store(t);
