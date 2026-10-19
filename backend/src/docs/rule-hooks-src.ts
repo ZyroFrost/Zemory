@@ -435,15 +435,23 @@ const VOICE = [
   /(?<![\w.])[\w.+-]+@(?![\w.-]*\bexample\b)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/,
   /\b[A-Za-z]:[\\\/](?:Users[\\\/](?![<*])[^\\\/\s\x60]+|[a-z]+\.[a-z]+[\\\/])/i,
 ];
+// The vocabulary holds wherever the repo writes prose, not only on the harness shelves: plans, the two ledgers, case specs,
+// READMEs (2026-10-19: sessions kept writing "kho" in plan and ledger lines the shelf-only scope never saw). History
+// (archive, attic) and data are left as they are.
+const PROSE = /\.md$/i;
+const PROSE_SKIP = /(^|\/)(archive|attic|data|external|node_modules|docs_template)\//;
 function check(payload, root, policy) {
   try {
     const e = edit(payload, root);
-    if (!e || !HARNESS.test(e.rel)) return null;
+    if (!e) return null;
+    const harness = HARNESS.test(e.rel);
+    if (!harness && !(PROSE.test(e.rel) && !PROSE_SKIP.test(e.rel))) return null;
     const vocab = e.newLines.filter((l) => KHO.test(l.replace(QUOTED, "").replace(STOCK, "")));
     if (vocab.length) return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " say \"kho\" alone, which names two different things:\n" +
       vocab.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n") +
       "\nWrite DW (the data warehouse, \"kho dữ liệu\") or HS (the harness store, docs_template/_Store); other senses take their own word " +
       "(bộ câu truy vấn · thư viện icon · bảng thuật ngữ).");
+    if (!harness) return null; // the voice of a specification is the shelves' rule; a ledger carries dates by design
     const bad = e.newLines.filter((l) => VOICE.some((re) => re.test(l)));
     if (!bad.length) return null;
     return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " quote a person, date a decision or carry a personal detail:\n" +

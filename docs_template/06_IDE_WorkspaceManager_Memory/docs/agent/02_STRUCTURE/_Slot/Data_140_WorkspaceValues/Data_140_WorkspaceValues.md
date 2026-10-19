@@ -1,10 +1,10 @@
 ---
 id: Slot_140
 name: workspace-values
-version: 3
+version: 4
 path: data/region/
 checked: [Data_094_Data, Config_075_Config]
-from: _Store/02_STRUCTURE/_Slot/Data_140_WorkspaceValues @v3 #2a74edb93396
+from: _Store/02_STRUCTURE/_Slot/Data_140_WorkspaceValues @v4 #64782d637bf2
 ---
 # Data_140_WorkspaceValues workspace-values — giá trị thật của cụm
 
@@ -28,4 +28,5 @@ from: _Store/02_STRUCTURE/_Slot/Data_140_WorkspaceValues @v3 #2a74edb93396
 | `vm_ssh_alias` · `vm_run_dir` · `vm_work_dir` · `sharepoint_site` | máy chủ chạy task và chỗ giao kết quả |
 | `acronym_origin` · `not_acronyms` | nguyên gốc của từng từ viết tắt (kèm nguồn) · chữ in hoa không phải viết tắt |
 | `query_app` · `query_row_cap` | công cụ truy vấn chỉ đọc agent dùng để dò (tên, cách gọi) · trần dòng một lượt |
+| `query_client_dir` · `query_python` · `query_vault_file` · `query_warehouse_id` | thư mục client của công cụ truy vấn · python import được client đó · tên file tài khoản trong két mỗi repo (`data/secrets/vault/`) · `db_id` của DW trong công cụ — `scripts/query.py` của `Skill_Task_Pull` đọc các khoá này |
 | `mail_signature` · `mail_cc` · `shared_mailbox` · `shared_mailbox_signature` | chữ ký và Cc mặc định của mail báo cáo; hộp thư chung và chữ ký của nó |

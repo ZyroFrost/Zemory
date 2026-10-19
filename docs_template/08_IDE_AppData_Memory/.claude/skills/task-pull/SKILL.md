@@ -2,10 +2,11 @@
 id: Skill_Task_Pull
 aka: pull
 name: task-pull
-version: 7
+version: 8
 type: process
+installs: [scripts/query.py]
 description: Fetch fresh data from a source (SQL, VM, web, API) into the project so a deliverable can be built. Use when the deliverable needs newer numbers, when a scheduled task starts, or when asked to refresh, download, or retrieve source data. Vietnamese triggers - "kéo dữ liệu", "lấy số mới", "tải data về", "cập nhật nguồn", "pull dữ liệu", "làm mới số liệu".
-from: _Store/03_SKILLS/Skill_Task_Pull @v7 #0e3eec8c37c3
+from: _Store/03_SKILLS/Skill_Task_Pull @v8 #d8eda027cc4d
 ---
 
 # pull — kéo dữ liệu từ nguồn
@@ -33,6 +34,13 @@ from: _Store/03_SKILLS/Skill_Task_Pull @v7 #0e3eec8c37c3
 - Dò cấu trúc, tra cứu, đối chiếu: agent tự chạy câu chỉ-đọc qua công cụ truy vấn của vùng (`values.json` › `query_app`), không
   đưa SQL cho người dùng chạy tay, không xin mật khẩu (mật khẩu nằm ở két). Mã chạy của task trên máy chủ đọc kho bằng biến
   kết nối (`WAREHOUSE_CONN`), không qua công cụ dò.
+- Cách gọi — một công cụ, không tự viết client khác: `python scripts\query.py <db_id> "<SELECT …>"` (mỗi dòng kết quả một
+  JSON) · `--map` (danh sách `db_id` = `<máy chủ>.<CSDL>`) · `--check` (đăng nhập + `SELECT 1`). Công cụ đọc client, python
+  và tên file két từ giá trị vùng (`query_client_dir` · `query_python` · `query_vault_file`); tài khoản là của CHÍNH repo, ở
+  `data/secrets/vault/<query_vault_file>` (một phòng một tài khoản: nhật ký của app ghi đúng phòng dò). Không dùng két của repo
+  khác, không chép mật khẩu ra chữ. Két chưa có hoặc không giải được ⇒ báo người dùng cấp mật khẩu tạm.
+- Truyền câu SQL qua công cụ hoặc script Python, không ghép chuỗi qua shell (dấu `'` bị nuốt). Lỗi mạng (bắt tay quá hạn) là
+  đường mạng tới máy chủ của app (LAN văn phòng hoặc VPN), không phải lỗi app.
 - Một câu `SELECT` / `WITH`, không `;`, không từ khoá ghi. Nguồn ngoài kho đọc kèm `WITH (NOLOCK)`.
 - Công cụ trả tối đa `query_row_cap` dòng một lượt ⇒ chia lô (`OFFSET … FETCH NEXT`) rồi gộp; trang cuối vẫn đầy ⇒ dữ liệu chưa đủ,
   không kết luận. Không chia lô thì số ra thiếu mà không ai thấy.

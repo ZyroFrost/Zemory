@@ -90,6 +90,29 @@ test("02-27: a new line in the rule set that quotes the user or dates a decision
   assert.doesNotMatch(s.fire(...W(s.root, "notes.md", "User chốt 2026-10-14: làm luôn.\n")).say, /02-27/, "only the harness rule files");
 });
 
+test("02-27 vocabulary: \"kho\" alone is blocked in every prose file the repo writes (plan · ledger · README), not only the shelves", (t) => {
+  const s = repo(t);
+  const todo = "docs/agent/05_TODO.md"; // exists in the fixture: an Edit, not a Write (a Write would be an overwrite)
+  const writes = [
+    W(s.root, "docs/plan/01_x.md", "# x\nSửa ở kho rồi đẩy xuống.\n"),
+    E(s.root, todo, "- [ ] two", "- [ ] two — sửa ở kho"),
+    W(s.root, "content/README.md", "# x\nSửa ở kho rồi đẩy xuống.\n"),
+    W(s.root, "tasks/A_Case_X/spec.md", "# x\nSửa ở kho rồi đẩy xuống.\n"),
+  ];
+  for (const w of writes) {
+    s.flag("docs-write"); // Rule_Gate_79 asks for the user's word on plan files first; this rule still judges the line
+    const r = s.fire(...w);
+    assert.equal(r.blocked, true, `"kho" alone in ${w[1].file_path} must be blocked\n${r.say}`);
+    assert.match(r.say, /names two different things/);
+  }
+  for (const w of [W(s.root, "docs/plan/02_y.md", "Tồn kho cuối ngày lấy từ DW.\n"), W(s.root, "docs/archive/old.md", "Sửa ở kho.\n"),
+    E(s.root, todo, "- [ ] two", "- [ ] two (user chốt 2026-10-19, HS)"), W(s.root, "notes.txt", "kho\n")]) {
+    s.flag("docs-write");
+    const r = s.fire(...w);
+    assert.doesNotMatch(r.say, /02-27/, `NEGATIVE: rule 27 must let it pass — ${w[1].file_path}\n${r.say}`);
+  }
+});
+
 test("02-10 (b): dropping a rule from the rules file is blocked; moving it within the file is not a loss", (t) => {
   const s = repo(t);
   s.flag("docs-write"); // the user approved editing the harness docs (Rule_Gate_79)
