@@ -131,3 +131,36 @@ test("sync drops the old marker key role (the template gives it); owner and uses
   assert.equal(after.owner, "_DB_DataWarehouse");
   assert.deepEqual(after.uses, { data: "_DB_DataWarehouse" });
 });
+
+test("a manager syncs the repos it manages: owner named, or none named while it is the only manager; never another's or a malformed one", async (t) => {
+  // user 2026-10-19: the manager fixes the standard and its sync reaches every repo it manages, each on its own set
+  const { managedRepos, writeOwner } = await import("../../dist/docs/kit-sync.js");
+  const s = store(t);
+  const w = tempDir(t, "zemory-managed-");
+  const repo = (rel, marker) => { put(w, `${rel}/docs/.harness.json`, JSON.stringify({ docs: "docs/agent", ...marker }, null, 2) + "\r\n"); return join(w, rel); };
+  const dw = repo("_DB_DataWarehouse", { kit: "01_IDE_WorkspaceManager_Memory" });
+  repo("_DB_Log", { kit: "03_IDE_LogCenter_Memory" });
+  repo("Dept_A", { kit: "02_IDE_Dept_Memory", owner: "_DB_DataWarehouse" });
+  const b = repo("Dept_B", { kit: "02_IDE_Dept_Memory" });
+  repo("Dept_C", { kit: "02_IDE_Dept_Memory", owner: "_DB_Log" });
+  repo("Dept_D", { kit: "02_IDE_Dept_Memory", owner: ["_DB_DataWarehouse", "_DB_Log"] });
+  repo("Dept_N", {});
+  const log = join(w, "_DB_Log");
+  const got = managedRepos(dw, s);
+  assert.deepEqual(got.repos.map((r) => [r.name, r.ownerMissing]), [["Dept_A", false], ["Dept_B", true]],
+    "named owner and the unnamed one (only manager); another's, a list and a repo with no set are left");
+  assert.deepEqual(got.ambiguous, []);
+  assert.deepEqual(managedRepos(log, s), { repos: [], ambiguous: [] }, "a repo that manages nothing syncs nobody");
+  assert.ok(writeOwner(b, "_DB_DataWarehouse"));
+  const text = readFileSync(join(b, "docs", ".harness.json"), "utf8");
+  assert.equal(JSON.parse(text).owner, "_DB_DataWarehouse");
+  assert.equal(JSON.parse(text).kit, "02_IDE_Dept_Memory", "the other keys stay");
+  assert.ok(text.endsWith("\r\n") && !/[^\r]\n/.test(text), "line ends kept");
+  assert.deepEqual(managedRepos(dw, s).repos.map((r) => [r.name, r.ownerMissing]), [["Dept_A", false], ["Dept_B", false]]);
+  // a second manager of the same role: an unnamed repo is no longer certain
+  repo("_Other_Manager", { kit: "01_IDE_WorkspaceManager_Memory" });
+  repo("Dept_E", { kit: "02_IDE_Dept_Memory" });
+  const two = managedRepos(dw, s);
+  assert.deepEqual(two.repos.map((r) => r.name), ["Dept_A", "Dept_B"], "named repos still follow their owner");
+  assert.deepEqual(two.ambiguous, ["Dept_E"], "the machine does not guess between two managers");
+});

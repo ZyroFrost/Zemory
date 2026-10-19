@@ -6,12 +6,67 @@
 // off the standard into the repo's TODO ledger, so the repo's next session finds it in the file it reads first.
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { harnessPathsAt } from "../core/config.js";
+import { basename, resolve } from "node:path";
+import { harnessPathsAt, readMarker } from "../core/config.js";
 import { conform, type ConformItem } from "./conform.js";
 import { generateGuards } from "./guard-gen.js";
 import { applyKit, type KitApplyResult } from "./kit-apply.js";
 import { normalizeOwnConstitution, pruneMarkerProtected, repointLinks } from "./kit-migrate.js";
+import { regionRepos, repoRole } from "./region-links.js";
 import { writeStignoreAllow, type StignoreAllowResult } from "./stignore-gen.js";
+import { STORE_DIR } from "./store.js";
+
+/** A repo the manager at `root` syncs: one that names it as owner, or names no owner while it is the only manager of its role. */
+export interface ManagedRepo {
+  root: string;
+  name: string;
+  /** the role of the repo's template (dept …) */
+  role: string;
+  /** the marker names no owner yet: the manager's sync writes it (it is the only repo of the workspace managing this role) */
+  ownerMissing: boolean;
+}
+
+/**
+ * The repos a workspace manager syncs down (user 2026-10-19: the manager fixes the shared standard and its sync reaches every
+ * repo it manages, each assembled from ITS OWN set, so each stays on its own structure). A repo of the workspace counts when
+ * the template of `root` manages its role and either its marker names `root` as owner, or it names no owner and `root` is
+ * the only repo managing that role (the owner is then certain). With two managers of one role an unnamed repo is listed in
+ * `ambiguous`: the machine does not guess — conform asks that repo to name its owner. A repo that is no manager gets nothing.
+ */
+export function managedRepos(root: string, storeDir = STORE_DIR): { repos: ManagedRepo[]; ambiguous: string[] } {
+  const me = repoRole(root, storeDir);
+  if (!me?.manages.length) return { repos: [], ambiguous: [] };
+  const name = basename(resolve(root));
+  const region = regionRepos(root);
+  const roles = new Map(region.map((at) => [at, repoRole(at, storeDir)] as const));
+  const repos: ManagedRepo[] = [];
+  const ambiguous: string[] = [];
+  for (const at of region) {
+    if (resolve(at) === resolve(root)) continue;
+    const r = roles.get(at);
+    if (!r || !me.manages.includes(r.name)) continue;
+    const owner = readMarker(at)?.data.owner;
+    if (owner === name) repos.push({ root: at, name: basename(at), role: r.name, ownerMissing: false });
+    // another repo's, or a malformed owner (a list) — conform reports that one; never overwritten here
+    else if (owner !== undefined && owner !== null && owner !== "") continue;
+    else {
+      const managers = region.filter((x) => roles.get(x)?.manages.includes(r.name));
+      if (managers.length === 1) repos.push({ root: at, name: basename(at), role: r.name, ownerMissing: true });
+      else ambiguous.push(basename(at));
+    }
+  }
+  return { repos: repos.sort((a, b) => a.name.localeCompare(b.name)), ambiguous: ambiguous.sort() };
+}
+
+/** Write `owner` into a repo's marker (docs/.harness.json), keeping its other keys and its line ends. */
+export function writeOwner(root: string, owner: string): boolean {
+  const m = readMarker(root);
+  if (!m) return false;
+  const text = readFileSync(m.path, "utf8");
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  writeFileSync(m.path, (JSON.stringify({ ...m.data, owner }, null, 2) + "\n").replace(/\n/g, eol));
+  return true;
+}
 
 export interface KitSyncResult {
   assembly: KitApplyResult;

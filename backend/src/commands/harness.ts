@@ -33,7 +33,7 @@ import { sweepScratchpads } from "../jobs/scratchpad.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, stampRepo, standardDiff } from "../docs/standard.js";
 import { applyKit, repoKit, type KitApplyResult } from "../docs/kit-apply.js";
 import { migrateToKit } from "../docs/kit-migrate.js";
-import { kitSync } from "../docs/kit-sync.js";
+import { kitSync, managedRepos, writeOwner } from "../docs/kit-sync.js";
 
 /** One line per assembled part: what was (or would be) done. */
 function printKitSteps(r: KitApplyResult, apply: boolean): number {
@@ -106,6 +106,28 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
     console.log("  ✗ conflicting parts must be merged BY HAND in that repo — the tool does not guess.");
     process.exitCode = 1;
   }
+}
+
+/**
+ * A workspace manager's sync goes on to every repo it manages (managedRepos), each assembled from its own set — the manager
+ * fixes the standard once and one `zemory sync` brings it down (user 2026-10-19). An owner the marker lacks is written first
+ * when the manager is the only one of that role; a repo two managers could own is named and left to conform. `--self` stops
+ * at the manager.
+ */
+function runManaged(root: string, apply: boolean, label: string): void {
+  const { repos, ambiguous } = managedRepos(root);
+  if (!repos.length && !ambiguous.length) return;
+  const me = basename(resolve(root));
+  console.log(`\n${label} — ${me} manages ${repos.length} repo(s): ${repos.map((r) => r.name).join(" · ")}`);
+  for (const r of repos) {
+    if (r.ownerMissing) {
+      if (apply) writeOwner(r.root, me);
+      console.log(`\n  ${apply ? "✔" : "→"} ${r.name}: marker ${apply ? "now names" : "would name"} owner ${me} (the only manager of a ${r.role})`);
+    }
+    console.log("");
+    runKit(r.root, { apply, label: `${label} (managed by ${me})` });
+  }
+  if (ambiguous.length) console.log(`\n  ! names no owner and more than one repo manages its role — not synced, its conform asks it to name one: ${ambiguous.join(" · ")}`);
 }
 
 export function cmdInit(args: string[]): void {
@@ -276,13 +298,16 @@ export function cmdSync(args: string[] = process.argv): void {
   // A kit repo: plain `zemory sync` IS the update from the store (user 2026-10-19: "khi cần t chỉ gọi sync") — assemble,
   // guard, and the off-standard block in the TODO ledger. `--standard` stays the dry run that shows what a pass would do.
   // Writing into ANOTHER repo (`--root`) still needs `--apply`.
-  const extraFlags = args.filter((a) => a.startsWith("--") && a !== "--root" && a !== "--apply");
+  const extraFlags = args.filter((a) => a.startsWith("--") && a !== "--root" && a !== "--apply" && a !== "--self");
   if (!extraFlags.length && repoKit(root)) {
-    runKit(root, { apply: ri < 0 || args.includes("--apply"), label: "zemory sync" });
+    const apply = ri < 0 || args.includes("--apply");
+    runKit(root, { apply, label: "zemory sync" });
+    if (!args.includes("--self")) runManaged(root, apply, "zemory sync");
     return;
   }
   if (args.includes("--standard") && repoKit(root)) {
     runKit(root, { apply: args.includes("--apply"), label: "zemory sync --standard" });
+    if (!args.includes("--self")) runManaged(root, args.includes("--apply"), "zemory sync --standard");
     return;
   }
   if (args.includes("--check") && repoKit(root)) {

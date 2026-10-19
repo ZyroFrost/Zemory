@@ -62,4 +62,9 @@ test("the vocabulary in the gate: HS files only get better than HEAD (a script c
   assert.ok(f.some((x) => /Skill_A\.md: 1 line\(s\) with bare "kho" \(HEAD had 0\)/.test(x)), "a new file: none allowed");
   assert.ok(f.some((x) => /Skill_B\.md: 2 line\(s\) .*HEAD had 1/.test(x)), "an old file may not get worse");
   assert.ok(!f.some((x) => /Skill_C/.test(x)), "getting better passes");
+  const { hybridLabelLines } = await import("../../dist/docs/harness-words.js");
+  assert.equal(hybridLabelLines("ráp từng repo con\nRepo cha quyết\nrepo có vai `dept` · \"repo con\" · repository").length, 2,
+    "the two hybrid labels are counted; the role identifier, a mention and an English word are not");
+  put(s, "03_SKILLS/Skill_D/Skill_D.md", "x\nráp từng repo con\n");
+  assert.ok(harnessWordFindings(s, () => null).some((x) => /Skill_D\.md: 1 line\(s\) with a half-English label/.test(x)), "a new HS file: none allowed");
 });

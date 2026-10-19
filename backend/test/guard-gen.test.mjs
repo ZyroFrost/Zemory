@@ -164,6 +164,14 @@ test("precommit-guard: a secret in staging exits 1 naming it; clean staging exit
   assert.match(out.stderr, /\.env/, "phải nêu tên file phạm luật");
 });
 
+test("precommit-guard: every read of the staged list has room for a large commit (Dept_OPS 19/10: ENOBUFS past ~7,000 paths)", (t) => {
+  const r = generateGuards(repo(t));
+  const src = readFileSync(join(r.hooksDir, "precommit-guard.cjs"), "utf8");
+  const calls = src.split("\n").filter((l) => /execSync\("git (diff --cached|ls-files)/.test(l));
+  assert.ok(calls.length >= 2, "the staged-list reads are found");
+  for (const l of calls) assert.match(l, /maxBuffer:\s*\d/, `no maxBuffer: ${l.trim().slice(0, 120)}`);
+});
+
 test("precommit-guard: a secret VALUE in a staged change blocks (02-21); env lookups, placeholders and test files pass", (t) => {
   // 2026-10-17: the latch knew secret FILE NAMES only — a password typed into a tracked config went to git untouched.
   const root = repo(t);

@@ -1564,7 +1564,8 @@ const POLICY = JSON.parse(fs.readFileSync(path.join(__dirname, "policy.json"), "
 function globToRe(pat) {
   return new RegExp("^" + pat.replace(/[.+^$(){}|[\\]\\\\]/g, "\\\\$&").replace(/\\*/g, ".*").replace(/\\?/g, ".") + "$", "i");
 }
-const staged = cp.execSync("git diff --cached --name-only", { encoding: "utf8", windowsHide: true }).split(/\\r?\\n/).filter(Boolean);
+// maxBuffer: the 1 MB default died with ENOBUFS once ~7,000 paths were staged (Dept_OPS 2026-10-19, a 9,323-file rename)
+const staged = cp.execSync("git diff --cached --name-only", { encoding: "utf8", windowsHide: true, maxBuffer: 256 * 1024 * 1024 }).split(/\\r?\\n/).filter(Boolean);
 const bad = [];
 for (const f of staged) {
   const name = f.replace(/\\\\/g, "/").split("/").pop() || "";
@@ -1611,7 +1612,7 @@ if (SV && Array.isArray(SV.patterns)) {
 // HP 2 / 7 (plan/27 §0b, 2026-10-14): runtime data, the memory store and model weights never enter git, even under a
 // name that is not a secret. Only files ADDED or CHANGED count - removing such a file from git must stay possible.
 const DATA_RE = /^(data\\/|global-memory\\/)|\\.(db|db-wal|db-shm|sqlite|sqlite3|onnx|safetensors|gguf|ckpt)$/i;
-const addedOrChanged = cp.execSync("git diff --cached --name-only --diff-filter=ACMR", { encoding: "utf8", windowsHide: true }).split(/\\r?\\n/).filter(Boolean);
+const addedOrChanged = cp.execSync("git diff --cached --name-only --diff-filter=ACMR", { encoding: "utf8", windowsHide: true, maxBuffer: 256 * 1024 * 1024 }).split(/\\r?\\n/).filter(Boolean);
 const dataBad = addedOrChanged.filter((f) => DATA_RE.test(f.replace(/\\\\/g, "/")));
 if (dataBad.length) {
   process.stderr.write("BLOCKED (pre-commit): runtime data / the memory store / model weights in staging - they never enter git (HP 2, 7):\\n  " +

@@ -2,10 +2,10 @@
 id: Rule_27
 aka: 02-27
 name: harness-language
-version: 18
+version: 19
 kind: judgment
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage @v18 #34d074ce156a
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage @v19 #33083dae1d6d
 ---
 # Rule_Gate_27_HarnessLanguage — How harness docs are written, and the words they use
 
@@ -26,6 +26,9 @@ right below, in a plain specification voice, with one fixed word for each thing.
 4. No quotes of what someone said, no decision dates, no personal names or e-mails, no paths carrying a person's name. Words,
    dates and incidents go to `05_CHANGES` and Global Memory.
 5. Use the words of the table below; never "kho" alone — write DW or HS.
+6. Call a thing that has a name in the system (a role, a command, a part, a key) by its English identifier, in every language:
+   `workspace-manager`, `dept`, `zemory sync`. A name is written whole in one language: never a label half English, half
+   Vietnamese for a named thing ("repo con"). The prose around it is plain and professional.
 
 | Word | Means |
 |---|---|
@@ -38,6 +41,7 @@ right below, in a plain specification voice, with one fixed word for each thing.
 | code of law · chapter | the folder grouping laws (`01_Harness` …) · frames (`01_Scope` …) by subject |
 | ledger | `04_TODO.md` · `05_CHANGES.md` — the repo's memory, not harness |
 | owner | the repo that decides the frame and standard of another repo (`Struc_Region_Workspace`) |
+| `workspace-manager` · `dept` | the roles of a workspace's managing repo and of the department repos it manages (`role.name` of their structures) |
 | query set · icon library · glossary | named queries · the region's icons · the region's business glossary |
 | stock ("tồn kho" · "nhập kho" · "kho hàng") | goods in a stockroom — business words, not the DW |
 
@@ -53,6 +57,8 @@ right below, in a plain specification voice, with one fixed word for each thing.
 - The same hook blocks the word "kho" alone in new lines of EVERY prose file the repo writes — harness docs, plans, the two
   ledgers, case specs, READMEs (archive and attic excepted): write DW or HS. It passes "kho dữ liệu" and the stockroom
   words "tồn kho" · "nhập kho" · "xuất kho" · "kiểm kho" · "kho hàng".
+- The same hook blocks the hybrid labels "repo con" · "repo cha" in new lines of the same files: name the role (`dept`), or say
+  what the repo is in one language. The HS gate counts the same words: an HS file may not get worse than HEAD.
 - Broken Vietnamese (no diacritics) is blocked by `Rule_Gate_31_NoBrokenVietnamese`.
 - A store check reds a law that lacks a language, a section, or has a different number of steps between the two versions.
 - The voice itself is judgment.
@@ -74,6 +80,9 @@ ràng, mỗi thứ một chữ cố định. Không trích lời ai, không ghi 
 4. Không trích lời ai, không ghi ngày chốt, không tên người hay email, không đường dẫn mang tên người. Lời gốc, ngày và sự cố ghi
    ở `05_CHANGES` và Global Memory.
 5. Dùng đúng chữ trong bảng dưới; không bao giờ viết "kho" trơn — viết DW hoặc HS.
+6. Thứ đã có tên trong hệ thống (vai, lệnh, phần, khoá) gọi bằng định danh tiếng Anh của nó, ở mọi ngôn ngữ: `workspace-manager`,
+   `dept`, `zemory sync`. Một tên viết trọn một ngôn ngữ: không đặt nhãn nửa Anh nửa Việt cho thứ đã có tên ("repo con"). Văn
+   quanh nó viết rõ ràng, chuyên nghiệp.
 
 | Chữ | Nghĩa |
 |---|---|
@@ -86,6 +95,7 @@ ràng, mỗi thứ một chữ cố định. Không trích lời ai, không ghi 
 | bộ luật · chương | thư mục chia luật (`01_Harness` …) · chia khung (`01_Scope` …) theo chủ đề |
 | sổ | `04_TODO.md` · `05_CHANGES.md` — trí nhớ của repo, không phải harness |
 | tổng quản | repo quyết khung và chuẩn của repo khác (`Struc_Region_Workspace`) |
+| `workspace-manager` · `dept` | vai của repo tổng quản một cụm và của các repo phòng ban nó quản (`role.name` trong structure của chúng) |
 | bộ câu truy vấn · thư viện icon · bảng thuật ngữ | các câu truy vấn có tên · icon của vùng · bảng thuật ngữ nghiệp vụ của vùng |
 | tồn kho · nhập kho · kho hàng | hàng hoá trong kho hàng thật — từ nghiệp vụ, không phải DW |
 
@@ -100,6 +110,8 @@ ràng, mỗi thứ một chữ cố định. Không trích lời ai, không ghi 
 - Cùng hook đó chặn chữ "kho" đứng trơn trong dòng mới của MỌI file văn xuôi repo viết — docs harness, plan, hai sổ, spec của
   case, README (trừ archive và attic): viết DW hoặc HS. Cho qua "kho dữ liệu" và các từ kho hàng "tồn kho" · "nhập kho" ·
   "xuất kho" · "kiểm kho" · "kho hàng".
+- Cùng hook đó chặn nhãn ghép "repo con" · "repo cha" trong dòng mới của cùng các file: gọi bằng vai (`dept`), hoặc nói repo đó
+  là gì bằng một ngôn ngữ. Cổng HS đếm cùng các chữ đó: một file HS không được tệ hơn HEAD.
 - Tiếng Việt mất dấu do `Rule_Gate_31_NoBrokenVietnamese` chặn.
 - Kiểm tra của HS báo đỏ luật thiếu một ngôn ngữ, thiếu một mục, hoặc số bước lệch giữa hai bản.
 - Giọng văn là phán đoán.
