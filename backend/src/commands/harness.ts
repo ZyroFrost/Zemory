@@ -94,6 +94,7 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   if (r.consAdded.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}frame sections added to Cons.md (fill them): ${r.consAdded.join(" · ")}`);
   if (ks.guard && "error" in ks.guard) console.log(`  ⚠ guard not generated (${ks.guard.error}) — run \`zemory hook guard\``);
   else if (ks.guard) console.log(`  guard: ${ks.guard.added.length ? ks.guard.added.join(" · ") : "already in place"}`);
+  if (ks.slotLines.length) console.log(`  ✔ lines the slots require: ${ks.slotLines.join(" · ")}`);
   if (ks.stignore && ks.stignore.state === "written") console.log(`  ✔ .stignore: allow list rewritten from vm_deploy.json — carries ${ks.stignore.entries.join(" · ") || "nothing"} (change it on the other end too)`);
   if (ks.todo && ks.todo.state !== "none") {
     const where = ks.todo.file ? relative(root, ks.todo.file).replace(/\\/g, "/") : "";

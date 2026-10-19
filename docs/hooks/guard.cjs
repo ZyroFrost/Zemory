@@ -239,6 +239,43 @@ function outsideRoots() {
   return OUTSIDE_OK;
 }
 
+// A variable set to a literal in the same command (`$sp = "C:\…"` · `S="/c/…"` · `S=/c/…`, 2026-10-19) is replaced by its value;
+// a value naming another variable is no literal and stays as written. $env:TEMP / %TEMP% at the start become the temp folder.
+function literalExpander(bare) {
+  const vars = {};
+  for (const m of bare.matchAll(/(?:^|[\s;&|(])\$([A-Za-z_]\w*)\s*=\s*(["'])([^"'\n]+)\2/g)) vars[m[1].toLowerCase()] = m[3];
+  for (const m of bare.matchAll(/(?:^|[\s;&|(])([A-Za-z_]\w*)=(["'])([^"'\n]+)\2/g)) vars[m[1].toLowerCase()] = m[3];
+  for (const m of bare.matchAll(/(?:^|[\s;&|(])([A-Za-z_]\w*)=([^\s;&|"'$=]+)(?=[\s;&|]|$)/g)) if (!(m[1].toLowerCase() in vars)) vars[m[1].toLowerCase()] = m[2];
+  return (t) => String(t).replace(/\$\{?([A-Za-z_]\w*)\}?/g, (all, n) => (n.toLowerCase() in vars ? vars[n.toLowerCase()] : all))
+    .replace(/^\$env:(TEMP|TMP)/i, process.env.TEMP || "").replace(/^%(TEMP|TMP)%/i, process.env.TEMP || "");
+}
+
+// The folder a segment runs in: a `cd` / `Set-Location` / `pushd` segment moves it for the segments after it (2026-10-19:
+// `cd <scratch> && mkdir x` was judged against the session's folder and blocked as a write into a protected path).
+function segmentFolders(bare, expand) {
+  let base = process.cwd();
+  const out = new Map();
+  for (const seg of splitSegments(bare)) {
+    out.set(seg, base);
+    const m = /^\s*(?:cd|set-location|sl|pushd|chdir)\s+(?:-path\s+|-literalpath\s+)?("[^"]+"|'[^']+'|\S+)/i.exec(seg);
+    if (m) {
+      let d = expand(m[1].replace(/^["']|["']$/g, ""));
+      if (process.platform === "win32") { const w = /^\/([A-Za-z])(\/|$)/.exec(d); if (w) d = w[1] + ":/" + d.slice(3); }
+      if (/^~([\\/]|$)/.test(d)) d = os.homedir() + d.slice(1);
+      if (d && d !== "-") base = path.resolve(base, d);
+    }
+  }
+  return out;
+}
+
+// A path token of a segment as an absolute path: variables expanded, a relative path joined to the segment's folder.
+function inFolder(tok, base, expand) {
+  let t = expand(String(tok).replace(/^["']|["']$/g, ""));
+  if (process.platform === "win32") { const w = /^\/([A-Za-z])(\/|$)/.exec(t); if (w) t = w[1] + ":/" + t.slice(3); }
+  if (!t || path.isAbsolute(t) || /^[A-Za-z]:/.test(t) || /^~/.test(t)) return t;
+  return base === process.cwd() ? t : path.join(base, t);
+}
+
 function isOutside(tok, strict) {
   const t = String(tok).replace(/^["']|["']$/g, "").trim();
   if (!t || DEVICE_OK.test(t) || /^\/tmp\//i.test(t)) return false;
@@ -259,7 +296,8 @@ function isOutside(tok, strict) {
 const TEXT_ARGS = String.raw`\((?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^()"'])*\)`;
 function dropTextOps(s) {
   return String(s)
-    .replace(new RegExp("\\.(replace|replaceAll|startswith|endswith|startsWith|endsWith|split|join|rsplit|find|rfind|index|count|includes|strip|lstrip|rstrip)\\s*" + TEXT_ARGS, "g"), ".$1()")
+    // (?<!path): os.path.join / path.join build the write path and keep their arguments (2026-10-19, a write slipped through)
+    .replace(new RegExp("(?<!path)\\.(replace|replaceAll|startswith|endswith|startsWith|endsWith|split|join|rsplit|find|rfind|index|count|includes|strip|lstrip|rstrip)\\s*" + TEXT_ARGS, "g"), ".$1()")
     .replace(new RegExp("\\b(re\\.sub|re\\.search|re\\.match|re\\.findall|print|console\\.log)\\s*" + TEXT_ARGS, "g"), "$1()");
 }
 
@@ -518,7 +556,9 @@ function checkBash(cmd) {
   // `git reset --hard` and `git checkout -- .` sailed through. Losing uncommitted work is losing it
   // for good - git cannot rescue what never entered git.
   const DISCARD =
-    /\bgit\s+reset\b[^\n]*--hard\b|\bgit\s+checkout\b[^\n]*--\s|\bgit\s+checkout\s+\.|\bgit\s+restore\b[^\n]*(\.|--staged)|\bgit\s+stash\s+(drop|clear)\b/;
+    // `git restore --staged <path>` only unstages (the index); it discards work when it also touches the working tree
+    // (--worktree / -W, or no --staged at all) — 2026-10-19, an unstage was blocked as a discard
+    /\bgit\s+reset\b[^\n]*--hard\b|\bgit\s+checkout\b[^\n]*--\s|\bgit\s+checkout\s+\.|\bgit\s+restore\b(?=[^\n;&|]*(?:--worktree|\s-W\b))|\bgit\s+restore\b(?![^\n;&|]*(?:--staged|\s-S\b))|\bgit\s+stash\s+(drop|clear)\b/;
   if (hitsIn(bare, /^git$/, DISCARD) && !consumeFlag("discard", bare)) {
     deny("BLOCKED (guard layer 1): a command DISCARDING uncommitted work - Rule_Gate_50_Git requires asking the user first." +
       flagTip("discard"));
@@ -595,14 +635,7 @@ function checkBash(cmd) {
       // A variable set to a literal in the same command (`$sp = "C:\…\scratchpad"; Remove-Item "$sp\x"` · `S="/c/…"; rm "$S/x"`)
       // is expanded, so the target is judged by its real path (2026-10-19: two repos blocked from emptying their own
       // scratch folder). A variable with no literal assignment stays unresolved => in the repo => blocked, as before.
-      const vars = {};
-      for (const m of bare.matchAll(/(?:^|[\s;&|(])\$([A-Za-z_]\w*)\s*=\s*(["'])([^"'\n]+)\2/g)) vars[m[1].toLowerCase()] = m[3];
-      for (const m of bare.matchAll(/(?:^|[\s;&|(])([A-Za-z_]\w*)=(["'])([^"'\n]+)\2/g)) vars[m[1].toLowerCase()] = m[3];
-      // bash also takes an unquoted literal (`S=/c/…/scratchpad; rm $S/x`, 2026-10-19 Zemory); a value naming another
-      // variable is no literal and stays unresolved
-      for (const m of bare.matchAll(/(?:^|[\s;&|(])([A-Za-z_]\w*)=([^\s;&|"'$=]+)(?=[\s;&|]|$)/g)) if (!(m[1].toLowerCase() in vars)) vars[m[1].toLowerCase()] = m[2];
-      const expandVars = (t) => t.replace(/\$\{?([A-Za-z_]\w*)\}?/g, (all, n) => (n.toLowerCase() in vars ? vars[n.toLowerCase()] : all));
-      const expand = (t) => expandVars(t).replace(/^\$env:(TEMP|TMP)/i, process.env.TEMP || "").replace(/^%(TEMP|TMP)%/i, process.env.TEMP || "");
+      const expand = literalExpander(bare);
       const targets = [];
       for (const seg of bare.split(/[\n;|&]+/)) {
         if (!ANY_DEL.test(seg)) continue;
@@ -699,7 +732,9 @@ function checkBash(cmd) {
   // (file permissions / ACL), not here. This branch only closes the EASIEST road.
   const REDIRECT = /(?:^|[\s;&|])>{1,2}\s*(["']?)([^\s"'|;&]+)\1/g;
   const MOVERS = /^(mv|move|move-item|mi|rename|ren|cp|copy|copy-item|robocopy|rsync)$/;
-  const WRITE_VERB = /\b(open\s*\(|write|writeFile|appendFile|writeFileSync|appendFileSync|Set-Content|Add-Content|Out-File|dump|save)\b/i;
+  // `open(` writes only with a write mode (2026-10-19: `ast.parse(open(p).read())` was blocked as a write); write_text /
+  // write_bytes were missed by `\bwrite\b` (the next character is a word character)
+  const WRITE_VERB = /\bopen\s*\((?:[^()\n]|\([^()\n]*\))*,\s*(?:mode\s*=\s*)?[rbuU]?["'][rbt]*[wax+][rbt+]*["']|\b(write|write_text|write_bytes|writeFile|appendFile|writeFileSync|appendFileSync|Set-Content|Add-Content|Out-File|dump|save)\b/i;
 
   // 🔴 FINGERPRINT PER COMMAND, NOT PER PATH (fixed 2026-09-04, reported from the Dept_OPS repo).
   // This spot used to call `consumeFlag("docs_write", rel)` — the fingerprint was computed over ONE path.
@@ -717,9 +752,13 @@ function checkBash(cmd) {
   // Now: one flag covers the WHOLE COMMAND (`bare`), the same shape every other branch in this file already
   // uses (`push`/`delete`/`discard`/`git_add_all` all fingerprint the command). It is still "one use
   // for one job": change the command => a different fingerprint => revoked.
+  const EXPAND = literalExpander(bare);
+  const FOLDERS = segmentFolders(bare, EXPAND);
+  let CUR_BASE = process.cwd();
   const flagWritePath = (raw, how) => {
-    const tok = String(raw).replace(/^["']|["']$/g, "");
-    if (!tok || tok.startsWith("-")) return;
+    const tok0 = String(raw).replace(/^["']|["']$/g, "");
+    if (!tok0 || tok0.startsWith("-")) return;
+    const tok = inFolder(tok0, CUR_BASE, EXPAND);
     const rel = relToRoot(tok.replace(/\\/g, "/").replace(/^\.\//, ""));
     if (isFlagFile(rel)) return;
     for (const prefix of POLICY.protected_write || []) {
@@ -733,6 +772,7 @@ function checkBash(cmd) {
   };
 
   for (const seg of splitSegments(bare)) {
+    CUR_BASE = FOLDERS.get(seg) || process.cwd();
     const word = cmdWordOf(seg);
     // 1 redirection `>`/`>>` — the target is a file being overwritten or appended to, whatever command stands in front.
     let m;
@@ -818,10 +858,14 @@ function checkBash(cmd) {
   const PS_WRITERS = /^(new-item|ni|set-content|sc|add-content|ac|out-file|tee-object)$/;
   const PS_PATH_PARAM = /^-(path|filepath|literalpath|pspath)$/i;
   const PS_SWITCH = /^-(force|nonewline|append|noclobber|passthru|whatif|confirm|asbytestream|verbose)$/i;
+  // a plain path argument is judged where the segment runs (after a `cd`) and with literal variables expanded; a payload
+  // token (strict) is judged as written
   const outsideHit = (tok, how, strict) => {
-    if (isOutside(tok, strict)) denyOutside(how + " `" + String(tok) + "` - that is OUTSIDE the project", bare);
+    const t = strict ? tok : inFolder(tok, CUR_BASE, EXPAND);
+    if (isOutside(t, strict)) denyOutside(how + " `" + String(tok) + "` - that is OUTSIDE the project", bare);
   };
   for (const seg of splitSegments(bare)) {
+    CUR_BASE = FOLDERS.get(seg) || process.cwd();
     const word = cmdWordOf(seg);
     let m;
     REDIRECT.lastIndex = 0;

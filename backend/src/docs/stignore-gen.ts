@@ -119,7 +119,7 @@ export interface StignoreAllowResult {
  * truncation (writeFileSync: EPERM), and Syncthing setups often mark .stignore Hidden (2026-10-19: BIZ · HR · IC · MKT ·
  * OPS); opening the existing file `r+`, truncating and writing is allowed and keeps its attributes.
  */
-function rewriteInPlace(p: string, text: string): void {
+export function rewriteInPlace(p: string, text: string): void {
   const fd = openSync(p, "r+");
   try {
     ftruncateSync(fd, 0);

@@ -138,6 +138,11 @@ test("NEGATIVE: bin-launcher accepts a stage launcher run by hand (slot Bin_082_
   write(root, "bin/weekly.cmd", "@echo off\nrem old: tasks\\XY_Weekly_Gone\\run.py\npython \"%~dp0..\\tasks\\XY_Monthly_Sales\\pipeline\\run.py\" %*\n");
   write(root, "bin/caddy_loop.cmd", "@echo off\n\"%~dp0..\\tools\\caddy.exe\" run\n");
   assert.deepEqual(binLauncherFindings(root), [], "a launcher whose calls all exist is fine whatever its name; a rem line is history");
+  // Windows runs bin\turnover as bin\turnover.cmd: the usage line of a launcher names itself without its extension (OPS 19/10)
+  write(root, "bin/turnover.cmd", "@echo off\necho   bin\\turnover all 2026-07\ncall bin\\weekly %*\n");
+  assert.deepEqual(binLauncherFindings(root), [], "a launcher called without its extension is present");
+  write(root, "bin/gone.cmd", "@echo off\ncall bin\\nothing_here %*\n");
+  assert.deepEqual(binLauncherFindings(root), ["bin/gone.cmd: calls bin/nothing_here, not in the repo"], "a name with no launcher behind it is still missing");
 });
 
 test("bin-launcher: a launcher calling a task or a script that is gone (HR ④: a launcher no task owns any more)", (t) => {

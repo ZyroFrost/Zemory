@@ -236,7 +236,10 @@ export function binLauncherFindings(root: string): string[] {
         const parts = p.split("/");
         // a task folder must exist; a path with an extension must exist as a file; a bare folder must exist
         const target = parts[0].toLowerCase() === "tasks" ? parts.slice(0, 2).join("/") : p;
-        if (!existsSync(join(root, target))) missing.add(target);
+        // Windows runs `bin\turnover` as bin\turnover.cmd (PATHEXT): a launcher named without its extension is present
+        // (Dept_OPS 2026-10-19: the usage lines of bin/turnover.cmd and bin/vault.cmd were reported as missing calls)
+        const viaExt = !extname(target) && [".cmd", ".bat", ".ps1", ".sh", ".py"].some((e) => existsSync(join(root, target + e)));
+        if (!existsSync(join(root, target)) && !viaExt) missing.add(target);
       }
     }
     if (missing.size) out.push(`bin/${f}: calls ${[...missing].slice(0, 3).join(", ")}, not in the repo`);
