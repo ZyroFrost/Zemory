@@ -3,6 +3,7 @@
 // a sibling repo's `../<repo>/` need opens the folder here, a re-run changes nothing, a repo without .stignore is left alone.
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
@@ -95,4 +96,15 @@ test("CRLF files keep CRLF", (t) => {
   writeStignoreAllow(ops, true);
   const text = readFileSync(join(ops, ".stignore"), "utf8");
   assert.ok(!/[^\r]\n/.test(text), "every line ends CRLF");
+});
+
+test("a Hidden .stignore is rewritten in place (Windows refuses writeFileSync on it: EPERM, BIZ · HR · IC · MKT · OPS)", { skip: process.platform !== "win32" }, (t) => {
+  const { ops } = estate(t);
+  const p = join(ops, ".stignore");
+  execFileSync("attrib", ["+h", p], { windowsHide: true });
+  assert.throws(() => writeFileSync(p, "x"), /EPERM/, "the failure this guards against is real on this machine");
+  const r = writeStignoreAllow(ops, true);
+  assert.equal(r.state, "written");
+  assert.match(readFileSync(p, "utf8"), new RegExp(STIGNORE_ALLOW_START), "the block is in the Hidden file");
+  assert.match(execFileSync("attrib", [p], { encoding: "utf8", windowsHide: true }), /^[A-Z ]*\bH\b/, "the file stays Hidden");
 });
