@@ -1,11 +1,11 @@
 ---
 id: Cons_12
 name: source-of-truth
-version: 4
+version: 5
 kind: content
 code: 02_Data
 frame: true
-from: _Store/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth @v4 #c6e1a9d31fa4
+from: _Store/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth @v5 #221a50204d4a
 ---
 # Cons_Gate_12_SourceOfTruth — The source of truth
 
@@ -23,7 +23,9 @@ derived (rebuilt, never edited by hand), which sources must match and how they a
    identifier).
 2. Definitions: one line per business term — the term · what it means · the identifier it maps to (`Rule_Gate_35_OneHome`). How
    it is calculated, reconciled and its traps go into the repo's own skill, linked both ways.
-3. Keeps and reads no data ⇒ `status: n/a` with the reason.
+3. A term whose meaning another repo owns is not defined again: its row names that repo (a warehouse that keeps the structure
+   points each business metric to the department that owns it). A repo that keeps structure only says so in this section.
+4. Keeps and reads no data ⇒ `status: n/a` with the reason.
 
 ## Example
 - Situation: a revenue reconciliation app fills the `Cons.md` of this frame.
@@ -49,7 +51,9 @@ không sửa tay), các nguồn nào phải khớp và so theo cách nào, và c
 1. Điền các mục của `Cons.md`: gốc · khi lệch · dẫn xuất · phải khớp · định nghĩa.
 2. Định nghĩa: mỗi thuật ngữ nghiệp vụ một dòng — thuật ngữ · nghĩa · định danh nó ánh xạ tới (`Rule_Gate_35_OneHome`). Cách tính,
    cách đối chiếu và bẫy của nó nằm ở skill riêng của repo, liên kết hai chiều.
-3. Không giữ và không đọc dữ liệu nào ⇒ `status: n/a` kèm lý do.
+3. Thuật ngữ mà repo khác làm chủ nghĩa thì không định nghĩa lại: dòng đó ghi tên repo làm chủ (DW giữ cấu trúc thì trỏ mỗi chỉ số
+   nghiệp vụ về phòng làm chủ nó). Repo chỉ giữ cấu trúc thì ghi rõ như vậy ở mục này.
+4. Không giữ và không đọc dữ liệu nào ⇒ `status: n/a` kèm lý do.
 
 ## Ví dụ
 - Tình huống: một app đối soát doanh thu điền `Cons.md` của khung này.
