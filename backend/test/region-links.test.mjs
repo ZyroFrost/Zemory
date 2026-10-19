@@ -29,8 +29,11 @@ function store(t) {
   struc("Struc_Repo_Dept", { name: "dept", manages: [], managed_by: ["workspace-manager"], owner: "required", provides: [] });
   struc("Struc_Repo_LogCenter", { name: "log-center", manages: [], managed_by: [], owner: "none", provides: ["log"] });
   struc("Struc_Repo_App", { name: "app", manages: [], managed_by: ["system-manager"], owner: "optional", provides: [] });
+  struc("Struc_Repo_AppData", { name: "app-data", manages: [], managed_by: ["system-manager"], owner: "required", provides: ["app-data"] });
+  struc("Struc_Repo_SystemManager", { name: "system-manager", manages: ["app", "app-data"], managed_by: [], owner: "none", provides: [] });
   const sets = [["01", "01_IDE_WorkspaceManager_Memory", "Struc_Repo_WorkspaceManager"], ["02", "02_IDE_Dept_Memory", "Struc_Repo_Dept"],
-    ["03", "03_IDE_LogCenter_Memory", "Struc_Repo_LogCenter"], ["04", "04_IDE_App_Memory", "Struc_Repo_App"]];
+    ["03", "03_IDE_LogCenter_Memory", "Struc_Repo_LogCenter"], ["04", "04_IDE_App_Memory", "Struc_Repo_App"],
+    ["05", "05_IDE_AppData_Memory", "Struc_Repo_AppData"], ["06", "06_IDE_SystemManager_Memory", "Struc_Repo_SystemManager"]];
   for (const [no, name, structure] of sets) {
     assembleSet({ no, name, structure, tier: "Memory", host: "IDE", status: "built", legacy: [], requires: [], tools: [], constitution: [], rules: [], skills: [] }, s);
   }
@@ -100,6 +103,18 @@ test("region-links: the role comes from the template; right declarations pass, e
   assert.equal(wrong(w.pendingOwner), "", "an owner not on a template yet is not wrong");
   assert.match(f(w.pendingOwner).pending.join(" | "), /owner "_DB_AppCore" is assembled from no template yet/);
   assert.deepEqual(f(w.noSet), { wrong: [], pending: [] }, "a repo on no set is not judged");
+});
+
+test("a required owner no repo of the workspace can be yet is advisory; once a manager exists it is red", (t) => {
+  const s = store(t);
+  const w = tempDir(t, "zemory-appdata-");
+  put(w, "_DB_AppCore/docs/.harness.json", JSON.stringify({ docs: "docs/agent", kit: "05_IDE_AppData_Memory" }));
+  put(w, "_Project/ERP/AppA/docs/.harness.json", JSON.stringify({ docs: "docs/agent", kit: "04_IDE_App_Memory" }));
+  const core = join(w, "_DB_AppCore");
+  assert.equal(regionLinkFindings(core, s).wrong.join(" | "), "", "no system-manager in the workspace: the owner cannot be named yet");
+  assert.match(regionLinkFindings(core, s).pending.join(" | "), /app-data names no owner — no repo of the workspace is a system-manager yet/);
+  put(w, "_Apps_Manager/docs/.harness.json", JSON.stringify({ docs: "docs/agent", kit: "06_IDE_SystemManager_Memory" }));
+  assert.match(regionLinkFindings(core, s).wrong.join(" | "), /an app-data must name its owner|a app-data must name its owner/);
 });
 
 test("sync drops the old marker key role (the template gives it); owner and uses stay", async (t) => {

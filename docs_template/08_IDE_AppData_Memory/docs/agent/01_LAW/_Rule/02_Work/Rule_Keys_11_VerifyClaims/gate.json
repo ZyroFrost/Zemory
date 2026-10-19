@@ -1,0 +1,43 @@
+{
+  "prompt": {
+    "kind": "Rule_11",
+    "re": "(?:(?:(?:\\b(con gi|con viec|con sot|con thieu|con lai|soat so|todo|list can lam|viec can lam|lam gi (nua|tiep)|tiep theo|toi dau|tien do|het (roi|chua|gi)|con 1 task|sao nua|xong het)\\b)|(?:\\b(hom qua|lan truoc|phien (truoc|khac)|session (truoc|sau|khac)|da (lam|noi|chot|quyet|sync|fix|chay) (roi|chua)|nho (ko|khong|la|da|dang)|t nho|tui nho|ben kia|repo khac|ban nãy|hồi xưa|truoc do|viec truoc|lam tiep|lam do|quay lai|cua ai|da (noi|bao) (roi|ma)|t tuong|tui tuong)\\b))|(?:\\b(ghi so|note lai|chot phien|ban giao|bao cao|audit|doi session|doi sesion|docs lai|cap nhap docs|ghi lai (het|toan bo)|tom tat)\\b))|(?:\\b(đo|benchmark|test|kiem thu|toc do|hieu nang|so lieu|nhanh hon|cham hon|bao lau|mat bao)\\b)",
+    "text": "[zemory] Rule_Keys_11_VerifyClaims: a claim needs a source you measured — the ledger is re-measured from all three sources (code · Global Memory `zemory memory search --all` · a real run); a probe copies the official measure; older than 7 days = suspect."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "còn gì chưa làm không"
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "hôm qua đã làm tới đâu rồi"
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "chốt phiên, ghi sổ lại"
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "benchmark tốc độ truy vấn"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "thêm cột ngày vào bảng"
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "thêm nút lưu"
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    }
+  ]
+}

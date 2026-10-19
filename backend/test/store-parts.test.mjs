@@ -291,7 +291,9 @@ test("a repo marked with an old kit name finds the set that replaced it; an old 
   for (const [old, no] of Object.entries(want)) assert.equal(findKit(old, STORE_DIR)?.no, no, old);
   // 05 was the old register's app kit; no repo is marked with the bare number any more (searched 2026-10-18), so the
   // department set took it
-  for (const gone of ["08", "05_IDE_App_Basic"]) assert.equal(findKit(gone, STORE_DIR), null, gone);
+  for (const gone of ["05_IDE_App_Basic"]) assert.equal(findKit(gone, STORE_DIR), null, gone);
+  // 08: no repo is marked with the bare number (searched 2026-10-19; _DB_AppCore carries the full old name, which still finds 03)
+  assert.equal(findKit("08", STORE_DIR)?.name, "08_IDE_AppData_Memory");
   assert.equal(findKit("05", STORE_DIR)?.name, "05_IDE_Dept_Memory");
   // 06 likewise: no repo is marked with the bare number (searched 2026-10-19), the workspace manager set took it
   assert.equal(findKit("06", STORE_DIR)?.name, "06_IDE_WorkspaceManager_Memory");
