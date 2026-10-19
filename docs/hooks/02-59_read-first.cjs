@@ -246,7 +246,33 @@ function ledger(transcript, keys) {
       }
     }
   }
+  // what this session's own writes put in, recorded when the guard let them through (writeCache): a second Edit of a file in
+  // the same turn runs its hook before the first one's result reaches the transcript
+  const cache = readCache(transcript);
+  for (const k of Object.keys(cache)) add(k, cache[k]);
   return { known };
+}
+
+// The session's own writes, by file: the lines each Edit / Write let through will put in (2026-10-19: the guard asked to read
+// again the very line the agent had just edited, twice in one turn). Kept in the OS temp folder, one small file per transcript.
+function cacheFile(transcript) {
+  const h = require("crypto").createHash("sha1").update(norm(transcript)).digest("hex").slice(0, 16);
+  return path.join(require("os").tmpdir(), "zemory-read-cache", h + ".json");
+}
+function readCache(transcript) {
+  try { return JSON.parse(fs.readFileSync(cacheFile(transcript), "utf8")) || {}; } catch { return {}; }
+}
+function writeCache(transcript, abs, texts) {
+  try {
+    const all = readCache(transcript);
+    const k = norm(abs);
+    const set = new Set(all[k] || []);
+    for (const t of texts) for (const l of splitLines(t)) if (l.trim() !== "") set.add(l);
+    all[k] = [...set].slice(-5000);
+    const f = cacheFile(transcript);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify(all));
+  } catch {} // fail-open: without the cache the transcript still carries every finished edit
 }
 
 // The lines (1-based) a SECTION demand covers (plan/27 §3), or null when the file has none of the named parts — then the
@@ -335,12 +361,23 @@ function readFirst(payload, root, policy) {
     const rel = path.relative(root, path.resolve(root, p)).replace(/\\/g, "/");
     if (!p || rel.startsWith("..") || path.isAbsolute(rel)) return null; // outside the repo: not this latch's business
     targets.push(rel);
+    const verdict = readFirstVerdict(root, rf, transcript, targets, "");
+    if (verdict === null) {
+      const texts = [ti.new_string, ti.content, ti.new_source].concat((Array.isArray(ti.edits) ? ti.edits : []).map((e) => e && e.new_string))
+        .filter((t) => typeof t === "string");
+      writeCache(transcript, path.resolve(root, p), texts);
+    }
+    return verdict;
   } else if (typeof ti.command === "string" && ti.command) {
     cmd = ti.command;
     if (!shellActs(cmd)) return null;
   } else {
     return null; // Read · Glob · Grep · everything that only looks
   }
+  return readFirstVerdict(root, rf, transcript, targets, cmd);
+}
+
+function readFirstVerdict(root, rf, transcript, targets, cmd) {
   const extra = extraFor(rf, root, targets, cmd);
   const groups = extra.filter((x) => x && typeof x === "object");
   const need = expand(root, rf.required.concat(extra.filter((x) => typeof x === "string")));

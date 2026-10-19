@@ -220,6 +220,13 @@ test("retired-harness-name: the repo's own text naming a harness file that is go
   ]);
 });
 
+test("NEGATIVE: retired-harness-name skips a case's dated findings file (a record of its day); the case's spec still counts", (t) => {
+  const root = folderRepo(t);
+  write(root, "tasks/XY_Case_Audit/2026-07-27_rotation-plan.md", "Theo DEPT_STANDARD §2b và 05_TODO lúc đó.\n");
+  write(root, "tasks/XY_Case_Audit/spec.md", "---\nstatus: done\ncadence: Case\n---\nxem 02_RULES\n");
+  assert.deepEqual(retiredNameFindings(root), ["tasks/XY_Case_Audit/spec.md: 02_RULES"]);
+});
+
 test("NEGATIVE: retired-harness-name does not fire on a file harness (those names are its living files)", (t) => {
   const root = dept(t);
   write(root, "docs/plan/01.md", "Xem 02_RULES.\n");

@@ -577,7 +577,14 @@ function checkBash(cmd) {
     // open, because a delete cannot be undone.
     if (!recursive) {
       const tempRoots = [os.tmpdir(), process.env.TEMP, process.env.TMP].filter(Boolean).map(canonPath);
-      const expand = (t) => t.replace(/^\$env:(TEMP|TMP)/i, process.env.TEMP || "").replace(/^%(TEMP|TMP)%/i, process.env.TEMP || "");
+      // A variable set to a literal in the same command (`$sp = "C:\…\scratchpad"; Remove-Item "$sp\x"` · `S="/c/…"; rm "$S/x"`)
+      // is expanded, so the target is judged by its real path (2026-10-19: two repos blocked from emptying their own
+      // scratch folder). A variable with no literal assignment stays unresolved => in the repo => blocked, as before.
+      const vars = {};
+      for (const m of bare.matchAll(/(?:^|[\s;&|(])\$([A-Za-z_]\w*)\s*=\s*(["'])([^"'\n]+)\2/g)) vars[m[1].toLowerCase()] = m[3];
+      for (const m of bare.matchAll(/(?:^|[\s;&|(])([A-Za-z_]\w*)=(["'])([^"'\n]+)\2/g)) vars[m[1].toLowerCase()] = m[3];
+      const expandVars = (t) => t.replace(/\$\{?([A-Za-z_]\w*)\}?/g, (all, n) => (n.toLowerCase() in vars ? vars[n.toLowerCase()] : all));
+      const expand = (t) => expandVars(t).replace(/^\$env:(TEMP|TMP)/i, process.env.TEMP || "").replace(/^%(TEMP|TMP)%/i, process.env.TEMP || "");
       const targets = [];
       for (const seg of bare.split(/[\n;|&]+/)) {
         if (!ANY_DEL.test(seg)) continue;
