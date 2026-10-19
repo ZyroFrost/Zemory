@@ -33,7 +33,7 @@ import { viName, viPartName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
 import {
   binLauncherFindings, caseHeaderFindings, gitRemoteFindings, caseIndexFindings, deadFlagFindings, ledgerDuplicateHeadings, ledgerTitleFindings,
-  reportsIndexFindings, RETIRED_HARNESS_NAMES, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmTaskDataFindings,
+  reportsIndexFindings, RETIRED_HARNESS_NAMES, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmDeployIgnoredFindings, vmTaskDataFindings,
 } from "./case-checks.js";
 import { stateDirOf } from "./guard-gen.js";
 
@@ -424,6 +424,8 @@ export function conform(root: string): ConformReport {
     caseHeaderFindings(root), "front block: status: open|done|closed|retired · cadence: as in <DEPT>_<Cadence>_<Name> · direction: in|out for Daily/Weekly/Monthly/Quarterly");
   push("vm-task-local-data", "blocking", "A task on the VM keeps files on the work PC (01_raw / 03_output may hold only _SharePoint.url and reference/)",
     vmTaskDataFindings(root), "python scripts/move_outputs_to_vm.py (dry run) then --apply: results to SharePoint + VM, working data to the VM; the local copy goes once both are verified");
+  push("vm-deploy-ignored", "blocking", "A file a VM task needs (vm_deploy.json files / needs) sits under a .stignore line - Syncthing never carries it to the VM",
+    vmDeployIgnoredFindings(root), "move the file out of the ignored folder (and fix vm_deploy.json), or narrow the .stignore line so it no longer covers it");
   push("bin-launcher", "blocking", "A launcher in bin/ calls a repo path that is gone (a task renamed or retired, a script moved)", binLauncherFindings(root),
     "point the launcher at the task's current folder / the script's new place, or drop the launcher if its task is retired");
   push("shared-slot-case-file", "blocking", "A file in a shared slot (sources/ · config/ · queries/) belongs to one case", sharedSlotFindings(root),

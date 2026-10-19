@@ -166,6 +166,56 @@ export function vmTaskDataFindings(root: string): string[] {
   return out;
 }
 
+/** A .stignore line as a test on a repo path (Syncthing: a name without `/` matches any path segment, one with `/` is
+ *  anchored at the folder root; `*` stays inside a segment, `**` crosses them). Comments, negations and `#include` give null. */
+function stignoreTest(line: string): ((path: string) => boolean) | null {
+  const p = line.trim().replace(/^(\(\?[di]\))+/, "");
+  if (!p || p.startsWith("//") || p.startsWith("!") || p.startsWith("#")) return null;
+  const glob = (g: string): string => g.split("**").map((x) => x.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]")).join(".*");
+  if (!p.replace(/^\/|\/$/g, "").includes("/") && !p.startsWith("/")) {
+    const re = new RegExp(`^${glob(p.replace(/\/$/, ""))}$`, "i");
+    return (path) => path.split("/").some((seg) => re.test(seg));
+  }
+  const re = new RegExp(`^${glob(p.replace(/^\//, "").replace(/\/$/, ""))}(/|$)`, "i");
+  return (path) => re.test(path);
+}
+
+/**
+ * A file a VM task needs (tasks/<task>/vm_deploy.json `files` / `needs`) must travel to the VM: a .stignore line above it
+ * keeps it on the work PC and the task fails on the VM (DW 2026-10-19, when reports · *.pbix · assets joined the list).
+ * Paths outside the repo (`../`) are not this repo's to carry.
+ */
+export function vmDeployIgnoredFindings(root: string): string[] {
+  const ign = readText(join(root, ".stignore"));
+  if (ign === null) return [];
+  // Syncthing takes the FIRST pattern that matches; a `!` pattern lets the path travel. The machine-made allow list
+  // (slot Root_141_Stignore: `!/tasks` … then `*`) only reads right in order, negations included.
+  const ordered = ign.split(/\r?\n/).map((l) => {
+    const raw = l.trim().replace(/^(\(\?[di]\))+/, "");
+    const neg = raw.startsWith("!");
+    return [l.trim(), stignoreTest(neg ? raw.slice(1) : l), neg] as const;
+  }).filter((e): e is readonly [string, (p: string) => boolean, boolean] => Boolean(e[1]));
+  /** the line that keeps this path on the work PC, or undefined when it travels */
+  const ignoredBy = (path: string): string | undefined => {
+    const first = ordered.find(([, test]) => test(path));
+    return first && !first[2] ? first[0] : undefined;
+  };
+  const out: string[] = [];
+  for (const t of taskNames(root)) {
+    const spec = readText(join(root, "tasks", t, "vm_deploy.json"));
+    if (spec === null) continue;
+    let j: { files?: unknown; needs?: unknown };
+    try { j = JSON.parse(spec); } catch { continue; }
+    for (const f of [j.files, j.needs].flatMap((v) => (Array.isArray(v) ? v : [])).filter((v): v is string => typeof v === "string")) {
+      const path = f.replace(/\\/g, "/").replace(/^\.\//, "");
+      if (path.startsWith("../")) continue;
+      const hit = ignoredBy(path);
+      if (hit) out.push(`tasks/${t}/vm_deploy.json: ${path} (.stignore: ${hit})`);
+    }
+  }
+  return out;
+}
+
 /**
  * A launcher in bin/ points at what it runs (slot Bin_082_Bin: `bin/<Task>.cmd` for the VM, `bin/<name>.cmd <stage>` run by
  * hand, a lane into pipelines/). It is stale when a repo path it calls is gone — a task renamed or retired, a script moved:
