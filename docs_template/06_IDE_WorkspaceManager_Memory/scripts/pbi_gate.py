@@ -62,7 +62,7 @@ RULES = [
     ('bm-main',     '<Page>_Main must match the default tab bookmark exactly'),
     ('enum-real',   'every enum value must be one Desktop has already written in a Legacy/Classic/Red file'),
     ('default-main', 'the state WHEN THE FILE OPENS must match bookmark <Page>_Main exactly'),
-    ('axis-sort',   'a week axis (WeekPeriod) must declare sortDefinition by WeekFridayStart'),
+    ('axis-sort',   'a week axis (WeekPeriod) must declare sortDefinition by WeekFridayStart, unless the model sorts it (sortByColumn)'),
     ('images',      'every ItemName has a real file AND is declared in report.json'),
     ('on-off-pair', '_On/_Off pair: exactly 1 visible · x·y·w·h match number for number · z(_On)>z(_Off)'),
     ('tab-default', 'page default: ONLY ONE tab group is visible'),
@@ -734,18 +734,34 @@ def check_enums(vis, put, warn_list):
                                       % (sel_name(d) or i, k, val)))
 
 AXIS_NEED_SORT = {
-    # the axis column repeats across years so it CANNOT take a sortByColumn (must be 1:1) -> the visual must declare its own sort
+    # the axis column usually repeats across years so it cannot take a sortByColumn (must be 1:1) -> the visual must declare
+    # its own sort; a model that does give it one (a year + week key) is already sorted and passes
     'Dim_Date.WeekPeriod': 'Dim_Date.WeekFridayStart',
 }
 
-def check_axis_sort(vis, put):
+
+def sorted_columns(report_dir):
+    """'Table.Column' of every model column that declares a sortByColumn in its TMDL."""
+    out = set()
+    for t in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        txt = open(t, encoding='utf-8').read()
+        tab = re.search(r"(?m)^table\s+('(?:[^']|'')+'|\S+)", txt)
+        tab = tab.group(1).strip("'").replace("''", "'") if tab else os.path.basename(t)[:-5]
+        for m in re.finditer(r"(?m)^\tcolumn\s+('(?:[^']|'')+'|[^\s=]+)[^\n]*\n((?:\t\t.*\n|\s*\n)+?)(?=^\t\S|\Z)", txt):
+            if re.search(r'(?m)^\t\tsortByColumn:', m.group(2)):
+                out.add('%s.%s' % (tab, m.group(1).strip("'").replace("''", "'")))
+    return out
+
+
+def check_axis_sort(vis, put, model_sorted=frozenset()):
     """An axis column without sortByColumn on a visual without sortDefinition -> Power BI sorts by the
-    measure value (weeks 19 16 29 38...). Born from the Weekly White page 2026-09-25."""
+    measure value (weeks 19 16 29 38...). Born from the Weekly White page 2026-09-25. A column the model sorts
+    (sortByColumn in its TMDL - a department repo 20/10: WeekPeriod by WeekPeriodSort) needs nothing on the visual."""
     for (pg, i), d in vis.items():
         q = (d.get('visual') or {}).get('query') or {}
         cat = [p.get('queryRef') for p in q.get('queryState', {}).get('Category', {}).get('projections', [])]
         for ax, by in AXIS_NEED_SORT.items():
-            if ax not in cat:
+            if ax not in cat or ax in model_sorted:
                 continue
             ent, prop = by.split('.', 1)
             srt = q.get('sortDefinition', {}).get('sort', [])
@@ -2886,6 +2902,24 @@ def matrix_fitted(d):
     return bool(meas) and all(m in widths for m in meas)
 
 
+ONE_SERIES_TYPES = ('lineChart', 'areaChart', 'clusteredColumnChart', 'clusteredBarChart', 'columnChart', 'barChart',
+                    'stackedAreaChart')
+
+
+def one_series_chart(d):
+    """A chart of ONE series: one measure and no legend split by time. A legend split by TIME (one line per year -
+    Seasonal) is many series; a split by another field can be filtered down to one value (Promotion: DISCOUNTNAME under
+    the campaign filter) and still reads as one series."""
+    v = d.get('visual', {})
+    if v.get('visualType', '') not in ONE_SERIES_TYPES:
+        return False
+    q_ = v.get('query', {}).get('queryState', {})
+    n_meas = sum(len(q_.get(r, {}).get('projections', [])) for r in ('Y', 'Y2', 'Values'))
+    by_time = any(p_['queryRef'].startswith('Dim_Date.') or p_['queryRef'] in MULTI_SPLIT
+                  for p_ in q_.get('Series', {}).get('projections', []))
+    return n_meas <= 1 and not by_time
+
+
 def check_report_level(report_dir, rep, d_def, vis, fail):
     check_clear_filter(d_def, vis, fail)
     folder = os.path.basename(os.path.normpath(report_dir))
@@ -3305,9 +3339,18 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
                  if not (cov[yy][xx] or cov[yy][xx + 1] or cov[yy + 1][xx] or cov[yy + 1][xx + 1])]
         if holes:
             xs, ys = [h[0] for h in holes], [h[1] for h in holes]
-            fail.append("page '%s' %s: a hole no block covers, about x %d-%d y %d-%d - blocks of one row end on the same "
-                        "bottom and fill the tab (skill pbi-white 5l-bis rule 0)" % (pages[pg]['displayName'], sel_name(d),
-                        min(xs) * 5, (max(xs) + 2) * 5, min(ys) * 5, (max(ys) + 2) * 5))
+            # a one-series chart in the tab cannot be stretched to close the hole: chart-size holds it at CHART_ONE_H (a
+            # department repo 20/10, Monthly Franchise / Summary: an area chart of one measure beside a two-measure line)
+            def leaves(c):
+                sub = kids.get((pg, c))
+                return [x for k in sub for x in leaves(k)] if sub else [c]
+            held = [sel_name(vis[(pg, c)]) or c for c in leaves(i) if one_series_chart(vis[(pg, c)])]
+            fail.append("page '%s' %s: a hole no block covers, about x %d-%d y %d-%d - %s (skill pbi-white 5l-bis rule 0)"
+                        % (pages[pg]['displayName'], sel_name(d), min(xs) * 5, (max(xs) + 2) * 5, min(ys) * 5, (max(ys) + 2) * 5,
+                           "blocks of one row end on the same bottom and fill the tab; %s shows one series, so chart-size "
+                           "holds it at %d px - give it a second series (last year), put other content under it, or move "
+                           "it to a tab with other content" % (', '.join(held), CHART_ONE_H) if held
+                           else "blocks of one row end on the same bottom and fill the tab"))
     # narrow-table (user 2026-10-08, Promotion quantity tab: a ~300 px table alone in a 1260 px frame): a table narrower
     # short of its frame by more than FILL_SLACK leaves the right side empty - widen its columns (mix_builder --fit-columns)
     for (pg, i), d in vis.items():
@@ -3728,19 +3771,10 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
     # chart-size (user 01/10: "chart by day thông tin ko có gì thì ai lại để 1 cái chart to đùng chiếm hết chỗ"): a chart of
     # ONE series (one measure, no legend split) is at most CHART_ONE_H tall - its space goes to other content
     for (pg, i), d in vis.items():
-        v = d.get('visual', {})
-        vt = v.get('visualType', '')
-        if pg not in visible or vt not in ('lineChart', 'areaChart', 'clusteredColumnChart', 'clusteredBarChart',
-                                            'columnChart', 'barChart', 'stackedAreaChart'):
+        if pg not in visible or not one_series_chart(d):
             continue
-        q_ = v.get('query', {}).get('queryState', {})
-        n_meas = sum(len(q_.get(r, {}).get('projections', [])) for r in ('Y', 'Y2', 'Values'))
-        n_split = len(q_.get('Series', {}).get('projections', []))
-        # a legend split by TIME (one line per year - Seasonal) is many series; a split by another field can be filtered
-        # down to one value (Promotion: DISCOUNTNAME under the campaign filter) and still reads as one series
-        by_time = any(p_['queryRef'].startswith('Dim_Date.') or p_['queryRef'] in MULTI_SPLIT
-                      for p_ in q_.get('Series', {}).get('projections', []))
-        if n_meas <= 1 and not by_time and d['position']['height'] > CHART_ONE_H:
+        n_split = len(d['visual'].get('query', {}).get('queryState', {}).get('Series', {}).get('projections', []))
+        if d['position']['height'] > CHART_ONE_H:
             fail.append("page '%s' chart %s shows one series%s in %s px - at most %d tall, give the room to other content"
                         % (pages[pg]['displayName'], sel_name(d) or i, ' (split by a legend)' if n_split else '',
                            d['position']['height'], CHART_ONE_H))
@@ -4754,7 +4788,7 @@ def check_engine(report_dir, fail, wait=240):
     # matrix-fit (user 14/10): no number of a table / matrix wraps, the columns fill the frame without a horizontal scroll
     # bar. Needs the report OPEN (it reads every table's own query); when the gate opened + closed Desktop itself, deferred.
     attached = any(e.get('event') == 'desktop' and not e.get('own') for e in ev)
-    if '_Mix' in os.path.basename(os.path.normpath(report_dir)) or '_Main' in os.path.basename(os.path.normpath(report_dir)):
+    if _kind(report_dir) in ('White', 'Red'):
         if attached:
             try:
                 import matrix_fit
@@ -4844,7 +4878,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
     #  file-name rule applies; every design rule (Selection names, geometry, bookmarks ...) is for the versions we
     #  BUILD. a department repo 28/09: 81 and 203 false errors on two department Legacy files -> gate noise nobody may fix.
     legacy = os.path.basename(os.path.normpath(report_dir)).endswith('_Legacy')
-    if '_Mix' in os.path.basename(os.path.normpath(report_dir)):
+    if _kind(report_dir) == 'White':
         # measure-folder (user 2026-09-27): Power BI sorts folders as text (1, 10, 11, 2) -> letters in page order
         mt = glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '#Measure.tmdl'))
         if mt:
@@ -4873,7 +4907,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
                 if not dn_.startswith(want + '_'):
                     fail.append("%s: prefix must be %s (page '%s' is page %d of %d) - run mix_builder --renumber-bookmarks"
                                 % (dn_, want, pm[pg_]['displayName'], visible_order.index(pg_) + 1, len(visible_order)))
-    for n_, b_ in (bms.items() if '_Mix' in os.path.basename(os.path.normpath(report_dir)) else []):
+    for n_, b_ in (bms.items() if _kind(report_dir) == 'White' else []):
         o_ = b_.get('options', {})
         if o_.get('targetVisualNames') and o_.get('applyOnlyToTargetVisuals') is not True:
             fail.append('%s: has a target list but no applyOnlyToTargetVisuals=true - Power BI applies it to the '
@@ -4885,10 +4919,10 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
     check_names(vis, put)
     check_tab_default(vis, put)
     check_default_vs_main(vis, bms, put)
-    check_axis_sort(vis, put)
+    check_axis_sort(vis, put, sorted_columns(report_dir))
     if not os.path.basename(os.path.normpath(report_dir)).endswith(('_Legacy', '_Classic')):
         check_topn(vis, put)       # Legacy/Classic keep the old behaviour on purpose (the number match is their test)
-    if '_Mix' in os.path.basename(os.path.normpath(report_dir)) or '_Main' in os.path.basename(os.path.normpath(report_dir)):
+    if _kind(report_dir) in ('White', 'Red'):
         check_fillrule_dead(vis, put)
     enum_warn = []
     check_enums(vis, put, enum_warn)
