@@ -32,7 +32,8 @@ import { getDriveDir } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, stampRepo, standardDiff } from "../docs/standard.js";
 import { applyKit, repoKit, type KitApplyResult } from "../docs/kit-apply.js";
-import { migrateToKit, normalizeOwnConstitution, pruneMarkerProtected, repointLinks } from "../docs/kit-migrate.js";
+import { migrateToKit } from "../docs/kit-migrate.js";
+import { kitSync } from "../docs/kit-sync.js";
 
 /** One line per assembled part: what was (or would be) done. */
 function printKitSteps(r: KitApplyResult, apply: boolean): number {
@@ -56,12 +57,13 @@ function printKitSteps(r: KitApplyResult, apply: boolean): number {
 
 /** `init --kit` and `sync --standard` on a kit repo: assemble, then (when writing) regenerate the guard. */
 function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: string }): void {
-  const r = applyKit(root, { kitRef: opts.kitRef, apply: opts.apply });
-  if ("error" in r) {
-    console.log(`${opts.label} — ✗ ${r.error}`);
+  const ks = kitSync(root, { kitRef: opts.kitRef, apply: opts.apply });
+  if ("error" in ks) {
+    console.log(`${opts.label} — ✗ ${ks.error}`);
     process.exitCode = 1;
     return;
   }
+  const r = ks.assembly;
   console.log(`${opts.label}${opts.apply ? "" : " (DRY-RUN)"} — ${root} · kit ${r.kit.name}`);
   if (r.createdMarker) console.log("  + created .harness.json (kit recorded)");
   const moved = (r.retired ?? []).filter((x) => x.movedTo);
@@ -74,17 +76,11 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   if (kept.length) console.log(`  ! retired by the store but edited here — merge into its new home by hand (Archive/ARCHIVE.md names it): ${kept.map((x) => x.folder).join(" · ")}`);
   if (r.renamedShelves.length) console.log(`  ✔ shelves renamed: ${r.renamedShelves.join(" · ")}`);
   // A first-generation folder repo's purpose and articles take the current shape (the same one the file move gives).
-  const own = normalizeOwnConstitution(root, opts.apply);
+  const own = ks.own;
   if (own.purpose) console.log(`  ✔ ${opts.apply ? "" : "would be "}purpose moved into the purpose frame's ${"Cons.md"} (old PURPOSE.md archived)`);
   if (own.renamed.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}own articles renamed: ${own.renamed.map((x) => `${x.from} → ${x.to}`).join(" · ")}`);
-  if (opts.apply) {
-    // Pointers into the old harness follow it, every pass (idempotent): a pointer left by an earlier tool, or written by
-    // the repo after the move, is caught too — links, paths written as text, old skill host names, the marker.
-    const moved = repointLinks(root, true);
-    if (moved.length) console.log(`  ✔ pointers repointed in ${moved.length} file(s): ${moved.slice(0, 5).join(" · ")}`);
-    const dropped = pruneMarkerProtected(root, true);
-    if (dropped.length) console.log(`  ✔ marker: protected entries for files the move replaced dropped: ${dropped.join(" · ")}`);
-  }
+  if (ks.repointed.length) console.log(`  ✔ pointers repointed in ${ks.repointed.length} file(s): ${ks.repointed.slice(0, 5).join(" · ")}`);
+  if (ks.dropped.length) console.log(`  ✔ marker: protected entries for files the move replaced dropped: ${ks.dropped.join(" · ")}`);
   if (r.ownAdded.length) console.log(`  + own files: ${r.ownAdded.join(" · ")}`);
   if (r.installed.written.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}installed by their parts: ${r.installed.written.join(" · ")}`);
   if (r.hooksTakenOver.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}repo hooks taken over by a store rule: ${r.hooksTakenOver.join(" · ")}`);
@@ -95,13 +91,12 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   if (opts.apply && r.skillsBlock === "written") console.log("  ✔ 02_STRUCTURE/INDEX.md · 03_SKILLS/INDEX.md rewritten from the assembled parts");
   if (r.indexArchived.length) console.log(`  ✔ hand-written INDEX ${opts.apply ? "kept" : "would be kept"} in the archive: ${r.indexArchived.join(" · ")}`);
   if (r.consAdded.length) console.log(`  ✔ ${opts.apply ? "" : "would be "}frame sections added to Cons.md (fill them): ${r.consAdded.join(" · ")}`);
-  if (opts.apply) {
-    try {
-      const g = generateGuards(root);
-      console.log(`  guard: ${g.added.length ? g.added.join(" · ") : "already in place"}`);
-    } catch (e) {
-      console.log(`  ⚠ guard not generated (${(e as Error).message}) — run \`zemory hook guard\``);
-    }
+  if (ks.guard && "error" in ks.guard) console.log(`  ⚠ guard not generated (${ks.guard.error}) — run \`zemory hook guard\``);
+  else if (ks.guard) console.log(`  guard: ${ks.guard.added.length ? ks.guard.added.join(" · ") : "already in place"}`);
+  if (ks.todo && ks.todo.state !== "none") {
+    const where = ks.todo.file ? relative(root, ks.todo.file).replace(/\\/g, "/") : "";
+    if (ks.todo.items) console.log(`  ⚠ ${ks.todo.items} finding(s) still off the standard — ${ks.todo.state === "unchanged" ? "already listed" : "listed"} in ${where} for this repo's session to fix`);
+    else if (ks.todo.state === "removed") console.log(`  ✔ on the standard: the off-standard block left ${where}`);
   }
   if (conflicts) {
     console.log("  ✗ conflicting parts must be merged BY HAND in that repo — the tool does not guess.");
@@ -272,6 +267,14 @@ export function cmdSync(args: string[] = process.argv): void {
     if (r.assembly) printKitSteps(r.assembly, true);
     if (r.guard) console.log(`  guard: ${r.guard.join(" · ") || "already in place"}`);
     if (!apply) console.log("  — add `--apply` to move");
+    return;
+  }
+  // A kit repo: plain `zemory sync` IS the update from the store (user 2026-10-19: "khi cần t chỉ gọi sync") — assemble,
+  // guard, and the off-standard block in the TODO ledger. `--standard` stays the dry run that shows what a pass would do.
+  // Writing into ANOTHER repo (`--root`) still needs `--apply`.
+  const extraFlags = args.filter((a) => a.startsWith("--") && a !== "--root" && a !== "--apply");
+  if (!extraFlags.length && repoKit(root)) {
+    runKit(root, { apply: ri < 0 || args.includes("--apply"), label: "zemory sync" });
     return;
   }
   if (args.includes("--standard") && repoKit(root)) {

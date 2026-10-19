@@ -2,7 +2,7 @@
 id: Rule_38
 aka: 02-38
 name: todo-door
-version: 11
+version: 12
 kind: action
 code: 01_Harness
 ---
@@ -25,6 +25,9 @@ leaves the ledger in the same turn. This is the only law about the TODO ledger; 
 4. Done marks the machine moves: `- [x]` · `- ✅` · `N. [x]` · a heading `## [x]` (the whole block moves when no `[ ]` / `[~]`
    is left inside). Another way of writing "done" is invisible to the machine.
 5. `zemory archive` at session close is the last net, not the place to pile up finished items.
+6. The block between `<!-- zemory:standard-todo:start` and `<!-- zemory:standard-todo:end -->` is written by `zemory sync` from
+   `zemory conform`: what still keeps the repo off its standard. The machine rewrites it every run and removes it once the repo
+   is clean. The agent never edits it: it fixes the repo, then runs `zemory sync`.
 
 ## Example
 - Situation: the manager has just settled a new rule; writing it into the law file takes a few minutes.
@@ -52,6 +55,9 @@ leaves the ledger in the same turn. This is the only law about the TODO ledger; 
 4. Dấu xong máy dời được: `- [x]` · `- ✅` · `N. [x]` · tiêu đề `## [x]` (dời cả khối khi bên trong không còn `[ ]` / `[~]`).
    Viết "xong" kiểu khác thì máy không thấy.
 5. `zemory archive` lúc chốt phiên là lưới vét cuối, không phải chỗ để dồn mục đã xong.
+6. Khối giữa `<!-- zemory:standard-todo:start` và `<!-- zemory:standard-todo:end -->` do `zemory sync` ghi từ `zemory conform`:
+   những gì còn làm repo lệch chuẩn. Máy viết lại khối mỗi lượt và xoá khi repo hết lệch. Agent không sửa khối: sửa repo, rồi
+   chạy `zemory sync`.
 
 ## Ví dụ
 - Tình huống: quản lý vừa chốt một quy định mới; đưa vào file luật chỉ mất vài phút.
