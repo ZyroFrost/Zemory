@@ -4,6 +4,9 @@
     python scripts\\make_output_links.py            (lists EXTRA files per task)
     python scripts\\move_outputs_to_vm.py           dry run: what would go where
     python scripts\\move_outputs_to_vm.py --apply   do it
+    python scripts\\move_outputs_to_vm.py --reference [--apply]
+                                                    reference/ only: every file the PC has and the VM lacks or holds
+                                                    different; exit 1 when one is missing or differs (no SharePoint login)
     python scripts\\move_outputs_to_vm.py --fix-archive [--apply [--delete-empty]]
                                                     move files an older version put in `<output_url>/_Archive/` up into the
                                                     output_url folder itself (Graph PATCH: item id + version history kept)
@@ -41,6 +44,8 @@ from region_values import manager_root, value as region_value  # noqa: E402
 HOST = region_value(str(Path.cwd()), "vm_ssh_alias", "")
 ROOT = Path.cwd()
 APPLY = "--apply" in sys.argv
+REF_ONLY = "--reference" in sys.argv     # Dept_HR 19/10: report reference/ the VM lacks
+REF = {"missing": 0, "differ": 0}
 if not (ROOT / "tasks").is_dir():
     sys.exit("run from the repo root (no tasks/ here: %s)" % ROOT)
 REPO = ROOT.name
@@ -59,9 +64,9 @@ def env_file(p):
 
 if not HOST or not manager_root(str(ROOT)):
     sys.exit("region not declared: no VM alias or region manager (region_values.py)")
-E = env_file(Path(manager_root(str(ROOT))) / ".env")
 G = "https://graph.microsoft.com/v1.0"
-TOK = json.loads(urllib.request.urlopen(urllib.request.Request(
+E = {} if REF_ONLY else env_file(Path(manager_root(str(ROOT))) / ".env")
+TOK = "" if REF_ONLY else json.loads(urllib.request.urlopen(urllib.request.Request(
     "https://login.microsoftonline.com/%s/oauth2/v2.0/token" % E["SHAREPOINT_TENANT_ID"],
     data=urllib.parse.urlencode({"client_id": E["SHAREPOINT_CLIENT_ID"], "client_secret": E["SHAREPOINT_CLIENT_SECRET"],
                                  "scope": "https://graph.microsoft.com/.default", "grant_type": "client_credentials"}).encode()),
@@ -237,8 +242,10 @@ def copy_reference(task, sub):
             note = "VM: already there (identical)"
         elif rh != "MISSING":
             note, bad = "VM: CONFLICT — %s has DIFFERENT content there, not overwritten (user decides)" % f.name, bad + 1
+            REF["differ"] += 1
         elif not APPLY:
-            note = "VM: would copy"
+            note = "VM: MISSING — would copy"
+            REF["missing"] += 1
         else:
             ssh_ps("New-Item -ItemType Directory -Force -Path '%s' | Out-Null" % rdir)
             r = subprocess.run(["scp", "-q", str(f), "%s:%s/" % (HOST, rdir.replace("\\", "/"))], capture_output=True, text=True)
@@ -249,6 +256,13 @@ def copy_reference(task, sub):
 
 
 moved = kept = 0
+if REF_ONLY:
+    for vm_json in sorted(ROOT.glob("tasks/*/vm_deploy.json")):
+        for sub in ("01_raw", "03_output"):
+            copy_reference(vm_json.parent.name, sub)
+    print("reference/: %d missing on the VM · %d different%s" % (REF["missing"], REF["differ"],
+          "" if APPLY or not REF["missing"] else " — run again with --apply to copy the missing ones"))
+    sys.exit(1 if REF["missing"] or REF["differ"] else 0)
 # user 04/10 (new standard): a task that runs on the VM keeps no data on the work PC. Results (03_output) go to SharePoint AND
 # the VM; working data (01_raw = what was read · 02_processing = scratch) goes to the VM only — it is nobody's deliverable.
 FOLDERS = (("01_raw", False), ("02_processing", False), ("03_output", True))     # (folder, also to SharePoint)
