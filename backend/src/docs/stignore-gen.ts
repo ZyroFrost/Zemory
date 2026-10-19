@@ -17,7 +17,8 @@ export const STIGNORE_ALLOW_START = "// zemory:stignore-allow:start";
 export const STIGNORE_ALLOW_END = "// zemory:stignore-allow:end";
 
 const MANIFEST_HOMES = ["tasks", "pipelines"];
-const PATH_KEYS = ["files", "needs", "wrapper", "check"];
+// every key vm_deploy.ps1 resolves to a repo path; `schedule[].launcher` is read separately (its siblings are names and times)
+const PATH_KEYS = ["files", "needs", "wrapper", "check", "build"];
 
 function readJson(p: string): Record<string, unknown> | null {
   try {
@@ -28,7 +29,7 @@ function readJson(p: string): Record<string, unknown> | null {
 }
 
 /** Every vm_deploy.json of a repo: tasks/<task>/ and pipelines/<lane>/. */
-function manifests(root: string): string[] {
+export function manifests(root: string): string[] {
   const out: string[] = [];
   for (const home of MANIFEST_HOMES) {
     let ents: string[];
@@ -51,10 +52,14 @@ function strings(v: unknown): string[] {
 }
 
 /** Every path a manifest names, posix, relative to the repo the manifest lives in. */
-function manifestPaths(m: Record<string, unknown>): string[] {
+export function manifestPaths(m: Record<string, unknown>): string[] {
   const out = PATH_KEYS.flatMap((k) => strings(m[k]));
   const sec = m.secrets;
   if (sec && typeof sec === "object" && !Array.isArray(sec)) out.push(...Object.keys(sec));
+  for (const s of Array.isArray(m.schedule) ? m.schedule : []) {
+    const l = (s as { launcher?: unknown } | null)?.launcher;
+    if (typeof l === "string") out.push(l);
+  }
   return out.map((p) => p.replace(/\\/g, "/").replace(/^\.\//, "")).filter(Boolean);
 }
 

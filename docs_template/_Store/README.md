@@ -82,8 +82,8 @@ Cons_Gate_10_ReadOnlySources/
 1. Mỗi luật khung trong `01_LAW/_Cons/` có một `Cons.md` mẫu (`status: template`). Viết lại cho sản phẩm, đặt
    `status: written`; không áp ⇒ `status: n/a` và một dòng lý do.
 2. Bất biến không thuộc loại khung nào ⇒ điều riêng `Cons_<Loại>_<101+>_<Tên>/Cons_<Loại>_<101+>_<Tên>.md`.
-3. Hệ nhiều repo cùng chung bất biến ⇒ viết một lần ở repo trung tâm; repo con ghi `Cons.md` trỏ về repo đó và chỉ thêm
-   phần riêng.
+3. Hệ nhiều repo cùng chung bất biến ⇒ viết một lần ở repo trung tâm; mỗi repo dùng bất biến đó ghi `Cons.md` trỏ về repo
+   trung tâm và chỉ thêm phần riêng.
 4. Hiến pháp chỉ siết thêm luật chung, không nới hay trái luật chung.
 5. `conform` đỏ khi còn khung chưa viết; read-first đòi đọc mọi `Cons.md` đã viết trước lần ghi đầu.
 

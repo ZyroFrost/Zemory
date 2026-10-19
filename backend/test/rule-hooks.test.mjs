@@ -113,6 +113,23 @@ test("02-27 vocabulary: \"kho\" alone is blocked in every prose file the repo wr
   }
 });
 
+test("02-27 step 6: a half-English label for a named thing (\"repo con\") is blocked in prose; the role identifier and a mention pass", (t) => {
+  const s = repo(t);
+  for (const w of [W(s.root, "docs/plan/03_z.md", "# z\nSync ráp từng repo con theo bộ của nó.\n"),
+    W(s.root, "content/README.md", "# x\nRepo cha quyết chuẩn.\n")]) {
+    s.flag("docs-write");
+    const r = s.fire(...w);
+    assert.equal(r.blocked, true, `a hybrid label in ${w[1].file_path} must be blocked\n${r.say}`);
+    assert.match(r.say, /half English, half Vietnamese/);
+  }
+  for (const w of [W(s.root, "docs/plan/04_w.md", "Sync ráp từng repo có vai `dept` theo bộ của nó.\n"),
+    W(s.root, "docs/plan/05_v.md", "Không viết \"repo con\"; repository config stays.\n")]) {
+    s.flag("docs-write");
+    const r = s.fire(...w);
+    assert.doesNotMatch(r.say, /02-27/, `NEGATIVE: ${w[1].file_path}\n${r.say}`);
+  }
+});
+
 test("02-10 (b): dropping a rule from the rules file is blocked; moving it within the file is not a loss", (t) => {
   const s = repo(t);
   s.flag("docs-write"); // the user approved editing the harness docs (Rule_Gate_79)

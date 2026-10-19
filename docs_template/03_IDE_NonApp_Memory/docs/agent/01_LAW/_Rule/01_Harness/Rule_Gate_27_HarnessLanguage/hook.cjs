@@ -122,6 +122,8 @@ const KHO = /(^|[^\p{L}])[Kk]ho(?![\p{L}])(?!\s+(?:dữ\s+liệu|hàng))/u;
 // the third meaning - goods in a stockroom (stock on hand, goods in or out, a stock count) - is plain business words, not the
 // ambiguous one
 const STOCK = /(tồn|nhập|xuất|kiểm)\s+kho(?![\p{L}])/giu;
+// a label half English, half Vietnamese for a named thing (rule 27 step 6): the role has an English identifier (dept)
+const HYBRID = /(^|[^\p{L}])repo\s+(?:con|cha)(?![\p{L}])/iu;
 // a word quoted or in code is mentioned, not used: the vocabulary table itself names the banned word that way
 const QUOTED = /"[^"\n]*"|“[^”\n]*”|\x60[^\x60\n]*\x60/g;
 const VOICE = [
@@ -150,6 +152,10 @@ function check(payload, root, policy) {
       vocab.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n") +
       "\nWrite DW (the data warehouse, \"kho dữ liệu\") or HS (the harness store, docs_template/_Store); other senses take their own word " +
       "(bộ câu truy vấn · thư viện icon · bảng thuật ngữ).");
+    const hybrid = e.newLines.filter((l) => HYBRID.test(l.replace(QUOTED, "")));
+    if (hybrid.length) return blocked(root, policy, "02-27", "new line(s) in " + e.rel + " use a label half English, half Vietnamese for a named thing:\n" +
+      hybrid.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n") +
+      "\nCall it by its English identifier (the role: dept, workspace-manager), or say what the repo is in one language.");
     if (!harness) return null; // the voice of a specification is the shelves' rule; a ledger carries dates by design
     const bad = e.newLines.filter((l) => VOICE.some((re) => re.test(l)));
     if (!bad.length) return null;

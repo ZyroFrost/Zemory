@@ -36,6 +36,15 @@ test("allow list = manifest homes + paths the manifests name + what a sibling ne
   assert.deepEqual(stignoreAllowEntries(ops), ["bin", "tasks"]);
 });
 
+test("a build script and a schedule launcher travel too: vm_deploy.ps1 reads both", (t) => {
+  const { ops } = estate(t);
+  put(ops, "tasks/OPS_Daily_Y/vm_deploy.json", JSON.stringify({
+    files: ["tasks/OPS_Daily_Y/pipeline/a.py"], build: "tools/tls_build.ps1",
+    schedule: [{ task: "OPS_Daily_Y", daily: "08:00", launcher: "launch/OPS_Daily_Y.cmd" }],
+  }));
+  assert.deepEqual(stignoreAllowEntries(ops), ["launch", "tasks", "tools"], "a task name or a time is not a path");
+});
+
 test("the block goes last, closes with *, keeps the hand-written never-carry lines above it, and a re-run changes nothing", (t) => {
   const { ops } = estate(t);
   const first = writeStignoreAllow(ops, true);

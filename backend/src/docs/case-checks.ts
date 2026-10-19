@@ -12,6 +12,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, extname, join, relative } from "node:path";
 import { archiveDirOf, harnessPathsAt, readMarker } from "../core/config.js";
 import { findRegionRepo, repoRole } from "./region-links.js";
+import { manifestPaths, manifests } from "./stignore-gen.js";
 import { CONS_REPO_FILE, LEDGER, SHELF } from "./harness-names.js";
 import { installsOf, isFolderHarness, listParts, listStructures, shelfDir } from "./store.js";
 
@@ -201,16 +202,17 @@ export function vmDeployIgnoredFindings(root: string): string[] {
     return first && !first[2] ? first[0] : undefined;
   };
   const out: string[] = [];
-  for (const t of taskNames(root)) {
-    const spec = readText(join(root, "tasks", t, "vm_deploy.json"));
+  // the same manifests and the same keys the allow list is written from (tasks/ and pipelines/; files · needs · secrets ·
+  // wrapper · check · build · schedule[].launcher) — one reader, so the check never judges a different list than sync wrote
+  for (const man of manifests(root)) {
+    const spec = readText(join(root, man));
     if (spec === null) continue;
-    let j: { files?: unknown; needs?: unknown };
-    try { j = JSON.parse(spec); } catch { continue; }
-    for (const f of [j.files, j.needs].flatMap((v) => (Array.isArray(v) ? v : [])).filter((v): v is string => typeof v === "string")) {
-      const path = f.replace(/\\/g, "/").replace(/^\.\//, "");
+    let j: Record<string, unknown>;
+    try { j = JSON.parse(spec.replace(/^\uFEFF/, "")) as Record<string, unknown>; } catch { continue; }
+    for (const path of manifestPaths(j)) {
       if (path.startsWith("../")) continue;
       const hit = ignoredBy(path);
-      if (hit) out.push(`tasks/${t}/vm_deploy.json: ${path} (.stignore: ${hit})`);
+      if (hit) out.push(`${man}: ${path} (.stignore: ${hit})`);
     }
   }
   return out;

@@ -86,9 +86,9 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 51 | `docs/agent/01_LAW/_Cons/04_Security/Cons_Gate_14_Access/Cons.md` | 17 |
 | 52 | `docs/agent/01_LAW/_Cons/04_Security/Cons_Gate_14_Access/Cons_Gate_14_Access.md` | 71 |
 | 53 | `docs/agent/01_LAW/_Cons/04_Security/Cons_Gate_14_Access/gate.json` | 3 |
-| 54 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage/Rule_Gate_27_HarnessLanguage.md` | 110 |
+| 54 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage/Rule_Gate_27_HarnessLanguage.md` | 122 |
 | 55 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage/gate.json` | 291 |
-| 56 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage/hook.cjs` | 161 |
+| 56 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage/hook.cjs` | 167 |
 | 57 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_34_DocsFollowChange/Rule_Gate_34_DocsFollowChange.md` | 60 |
 | 58 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_34_DocsFollowChange/gate.json` | 21 |
 | 59 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome/Rule_Gate_35_OneHome.md` | 77 |

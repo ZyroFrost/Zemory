@@ -106,6 +106,13 @@ test("vm-deploy-ignored: a file a VM task needs under a .stignore line is caught
     "tasks/XY_Monthly_Sales/vm_deploy.json: tasks/XY_Monthly_Sales/reports/x.xlsx (.stignore: reports)",
     "tasks/XY_Monthly_Sales/vm_deploy.json: attic/old.py (.stignore: /attic)",
   ], "a bare name matches any segment, /attic only at the root; docs_visual2 and ../ paths pass");
+  // the keys the allow list is written from count too, and pipelines/ manifests (one reader with stignore-gen)
+  write(root, "pipelines/lane_a/vm_deploy.json", JSON.stringify({ build: "assets/build.ps1",
+    schedule: [{ task: "lane_a", daily: "08:00", launcher: "attic/lane_a.cmd" }] }));
+  const more = vmDeployIgnoredFindings(root);
+  assert.ok(more.includes("pipelines/lane_a/vm_deploy.json: assets/build.ps1 (.stignore: assets)"), more.join("\n"));
+  assert.ok(more.includes("pipelines/lane_a/vm_deploy.json: attic/lane_a.cmd (.stignore: /attic)"), more.join("\n"));
+  assert.ok(!more.some((l) => /08:00|: lane_a \(/.test(l)), "a task name or a time is no path");
 });
 
 test("vm-task-local-data: a VM task keeping a file on the PC is caught; the shortcut and reference/ are not (HR ②, reference kept on PC + VM)", (t) => {
