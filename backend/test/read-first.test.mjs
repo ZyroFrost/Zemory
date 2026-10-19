@@ -129,6 +129,23 @@ test("two Edits of one file in one turn: the second passes before the first one'
   assert.match(s.check(s.edit("x.md")), /still to read: lines 2\)/, "NEGATIVE: a line someone else changed still has to be read");
 });
 
+test("an Edit that changes PART of a line: the whole resulting line is remembered; a line another session changed is not", (t) => {
+  const s = setup(t);
+  s.read("docs/agent/02_RULES.md", 1, 10, 10);
+  s.read("docs/plan/01_x.md", 1, 4, 4);
+  const f = join(s.root, "docs/agent/02_RULES.md");
+  writeFileSync(f, readFileSync(f, "utf8").replace("line 3", "line 3 by another session")); // unseen by this session
+  const mid = { tool_name: "Edit", tool_input: { file_path: f, old_string: "ne 8", new_string: "ne 8 (edited mid-line)" } };
+  assert.match(s.check(mid) ?? "", /still to read: lines 3\)/, "the other session's line blocks first");
+  s.read("docs/agent/02_RULES.md", 3, 1, 10);
+  assert.equal(s.check(mid), null, "read it ⇒ the mid-line edit passes");
+  writeFileSync(f, readFileSync(f, "utf8").replace("line 8", "line 8 (edited mid-line)")); // the host applies it
+  writeFileSync(f, readFileSync(f, "utf8").replace("line 9", "line 9 by another session"));
+  const msg = s.check(s.edit("x.md")) ?? "";
+  assert.doesNotMatch(msg, /lines 8\b/, "the whole line the edit produced counts as seen");
+  assert.match(msg, /still to read: lines 9\)/, "NEGATIVE: a line someone else changed after the edit is still due");
+});
+
 test("NEGATIVE: a context compaction does NOT void earlier reads (user 2026-10-08: the session already knows them)", (t) => {
   const s = setup(t);
   s.read("docs/agent/02_RULES.md", 1, 10, 10);

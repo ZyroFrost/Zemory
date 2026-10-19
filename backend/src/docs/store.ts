@@ -632,6 +632,34 @@ export function kitStructure(kit: Pick<Kit, "structure">, storeDir = STORE_DIR):
  * one row per skill whose gate.json carries a `trigger`).
  */
 export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName: string, storeDir = STORE_DIR, agentDir?: string): string[] {
+  const fill = seedFill(kit, parts, projectName, storeDir);
+  const added: string[] = [];
+  for (const slot of parts.filter((p) => p.shelf === SHELF.structure && !isStructureFolder(p.folder))) {
+    const src = join(slot.dir, SEED_DIR);
+    if (!existsSync(src)) continue;
+    for (const rel of seedList(src)) {
+      const dst = join(repoRoot, rel);
+      if (existsSync(dst)) continue;
+      mkdirSync(dirname(dst), { recursive: true });
+      const eol = "\n";
+      writeFileSync(dst, fill(readFileSync(join(src, rel), "utf8").replace(/\r\n/g, eol)));
+      added.push(rel);
+    }
+  }
+  return seedShelfFiles(fill, repoRoot, storeDir, agentDir, added);
+}
+
+/** The seed of a repo file as this set writes it (placeholders filled), or null when no slot of the set seeds it. */
+export function seedTextOf(rel: string, kit: Kit, parts: Part[], projectName: string, storeDir = STORE_DIR): string | null {
+  for (const slot of parts.filter((p) => p.shelf === SHELF.structure && !isStructureFolder(p.folder))) {
+    const f = join(slot.dir, SEED_DIR, rel);
+    if (existsSync(f)) return seedFill(kit, parts, projectName, storeDir)(readFileSync(f, "utf8").replace(/\r\n/g, "\n"));
+  }
+  return null;
+}
+
+/** The placeholder filler of a set's seeds: project, tool address, structure header values, skill trigger rows. */
+function seedFill(kit: Kit, parts: Part[], projectName: string, storeDir: string): (text: string) => string {
   const source = readSource(storeDir);
   const struc = parts.find((p) => p.shelf === SHELF.structure && isStructureFolder(p.folder));
   const m = (k: string): string => String(struc?.meta[k] ?? "");
@@ -660,19 +688,10 @@ export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName
       .replace(/<STRUC_TRIGGER>/g, m("trigger"))
       .replace(/<STRUC_KITS>/g, kits)
       .replace(/<SKILL_TRIGGERS>\r?\n?/g, triggers ? triggers + "\n" : "");
-  const added: string[] = [];
-  for (const slot of parts.filter((p) => p.shelf === SHELF.structure && !isStructureFolder(p.folder))) {
-    const src = join(slot.dir, SEED_DIR);
-    if (!existsSync(src)) continue;
-    for (const rel of seedList(src)) {
-      const dst = join(repoRoot, rel);
-      if (existsSync(dst)) continue;
-      mkdirSync(dirname(dst), { recursive: true });
-      const eol = "\n";
-      writeFileSync(dst, fill(readFileSync(join(src, rel), "utf8").replace(/\r\n/g, eol)));
-      added.push(rel);
-    }
-  }
+  return fill;
+}
+
+function seedShelfFiles(fill: (text: string) => string, repoRoot: string, storeDir: string, agentDir: string | undefined, added: string[]): string[] {
   // The files a store shelf carries beside its parts (02_CONSTITUTION/PURPOSE.md: the frame of every constitution, plan/28
   // §0o) land on the same shelf of the repo harness, once.
   if (agentDir) {

@@ -6,7 +6,8 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import type { Context } from "../core/types.js";
-import { archiveDirOf, ledgerFile } from "../core/config.js";
+import { archiveDirOf, harnessPathsAt, ledgerFile } from "../core/config.js";
+import { isFolderHarness } from "./store.js";
 import { foreignLayout } from "./conform.js";
 import { isClosedItemLine } from "./archive.js";
 import { pathsCheck, pathsSummary, type PathsReport } from "./paths.js";
@@ -272,13 +273,16 @@ function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue
 
   if (!has("docs")) out.push({ level: "warn", msg: "structure: missing `docs/` (harness)" });
   if (!has("AGENTS.md")) out.push({ level: "warn", msg: "structure: missing root `AGENTS.md` (harness entry)" });
+  // where the structure standard of THIS repo is: the folder harness keeps it as the structure shelf (2026-10-19: the hints
+  // pointed every folder-harness repo at a 03_STRUCTURE.md that no longer exists)
+  const structRef = isFolderHarness(harnessPathsAt(root).agent) ? "docs/agent/02_STRUCTURE/INDEX.md" : "docs/agent/03_STRUCTURE.md";
 
   if (profile === "non-app") {
     // non-app: a deliverable-asset project (BI/data/docs/design) — no app code expected.
     if (!deliverables.length) {
       out.push({
         level: "warn",
-        msg: "structure[non-app]: no deliverable folder (`reports/`|`models/`|`content/`|`design/`) — see docs/agent/03_STRUCTURE.md §1 (3 vai trò bắt buộc)",
+        msg: `structure[non-app]: no deliverable folder (\`reports/\`|\`models/\`|\`content/\`|\`design/\`) — see ${structRef} (3 vai trò bắt buộc)`,
       });
     }
     const present = [
@@ -309,7 +313,7 @@ function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue
     } else if (hasAnyCode(root)) {
       out.push({
         level: "warn",
-        msg: "structure: own code not under `backend/` (or `src/`) — see docs/agent/03_STRUCTURE.md; reconcile via docs/agent/03_STRUCTURE.md §8",
+        msg: `structure: own code not under \`backend/\` (or \`src/\`) — see ${structRef}; reconcile with the skill reconcile`,
       });
     } else {
       // DỰ ÁN TRẮNG — vừa `zemory init`, CHƯA có dòng code nào. Không có code thì không thể
@@ -324,7 +328,7 @@ function checkStructure(root: string, profile: "app" | "non-app"): ValidateIssue
     }
   }
   if (!has("frontend") && ownCode) {
-    out.push({ level: "warn", msg: "structure: missing `frontend/` (apps ship a UI) — see docs/agent/03_STRUCTURE.md" });
+    out.push({ level: "warn", msg: `structure: missing \`frontend/\` (apps ship a UI) — see ${structRef}` });
   }
   const present = [
     ownCode,
