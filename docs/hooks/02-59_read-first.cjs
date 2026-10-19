@@ -363,9 +363,25 @@ function readFirst(payload, root, policy) {
     targets.push(rel);
     const verdict = readFirstVerdict(root, rf, transcript, targets, "");
     if (verdict === null) {
-      const texts = [ti.new_string, ti.content, ti.new_source].concat((Array.isArray(ti.edits) ? ti.edits : []).map((e) => e && e.new_string))
-        .filter((t) => typeof t === "string");
-      writeCache(transcript, path.resolve(root, p), texts);
+      // the lines the file will hold after this write: an Edit that changes part of a line yields a whole line that is not
+      // its new_string (Dept_IT 2026-10-19), so the edit is applied to the file as it is now and the result is remembered
+      const abs = path.resolve(root, p);
+      const texts = [ti.content, ti.new_source].filter((t) => typeof t === "string");
+      const edits = (Array.isArray(ti.edits) ? ti.edits : [ti]).filter((e) => e && typeof e.old_string === "string" && typeof e.new_string === "string");
+      if (edits.length) {
+        let before = "";
+        try { before = fs.readFileSync(abs, "utf8").split("\r\n").join("\n"); } catch {}
+        let cur = before;
+        for (const e of edits) {
+          const from = e.old_string.split("\r\n").join("\n"), to = e.new_string.split("\r\n").join("\n");
+          cur = e.replace_all ? cur.split(from).join(to) : cur.replace(from, () => to);
+          texts.push(to);
+        }
+        // only the lines this write creates: a line someone else changed and the agent never read stays unseen
+        const had = new Set(before.split("\n"));
+        texts.push(cur.split("\n").filter((l) => !had.has(l)).join("\n"));
+      }
+      writeCache(transcript, abs, texts);
     }
     return verdict;
   } else if (typeof ti.command === "string" && ti.command) {

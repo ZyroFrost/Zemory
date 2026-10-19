@@ -1,7 +1,7 @@
 ---
 id: Slot_140
 name: workspace-values
-version: 5
+version: 6
 path: data/region/
 checked: [Data_094_Data, Config_075_Config]
 ---
@@ -28,5 +28,5 @@ checked: [Data_094_Data, Config_075_Config]
 | `acronym_origin` · `not_acronyms` | nguyên gốc của từng từ viết tắt (kèm nguồn) · chữ in hoa không phải viết tắt |
 | `query_app` · `query_row_cap` | công cụ truy vấn chỉ đọc agent dùng để dò (tên, cách gọi) · trần dòng một lượt |
 | `query_client_dir` · `query_python` · `query_vault_file` · `query_warehouse_id` | thư mục client của công cụ truy vấn · python import được client đó · tên file tài khoản trong két mỗi repo (`data/secrets/vault/`) · `db_id` của DW trong công cụ — `scripts/query.py` của `Skill_Task_Pull` đọc các khoá này |
-| `superseded_facts` | dữ kiện của cụm đã đổi: `[{ old, now, roles? }]` — máy chủ đổi tên, app thay, thư mục gốc dời. `zemory conform` › `superseded-fact` báo mọi chỗ chữ của repo còn ghi `old`; `zemory sync` đưa vào sổ việc của repo. Đổi một dữ kiện của cụm ⇒ thêm một dòng ở đây, không sửa tay từng repo |
+| `superseded_facts` | dữ kiện của cụm đã đổi: `[{ old, now, roles?, level?, files? }]` — máy chủ đổi tên, app thay, thư mục gốc dời. `level: "advisory"` = tên còn sống trong lịch sử, chỉ nhắc · `files: "prose"` = chỉ soát chữ hướng dẫn (`.md`), không soát code của task. `zemory conform` › `superseded-fact` báo mọi chỗ chữ của repo còn ghi `old`; `zemory sync` đưa vào sổ việc của repo. Đổi một dữ kiện của cụm ⇒ thêm một dòng ở đây, không sửa tay từng repo |
 | `mail_signature` · `mail_cc` · `shared_mailbox` · `shared_mailbox_signature` | chữ ký và Cc mặc định của mail báo cáo; hộp thư chung và chữ ký của nó |

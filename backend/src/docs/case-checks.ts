@@ -390,7 +390,9 @@ export function regionValues(root: string): Record<string, unknown> {
   }
 }
 
-interface SupersededFact { old: string; now: string; roles?: string[]; level?: "advisory" }
+/** `files: "prose"` — the entry is about what an agent is told (an instruction in a .md), not about a task's own code: the
+ *  desktop app's /api/vault in a pipeline is not fixed by the agent's probing tool (Dept_IT 2026-10-19). */
+interface SupersededFact { old: string; now: string; roles?: string[]; level?: "advisory"; files?: "prose" }
 
 /**
  * A fact of the region that changed — a server renamed, an app replaced, a root folder moved — listed once in region values
@@ -413,7 +415,9 @@ export function supersededFactFindings(root: string): { blocking: string[]; advi
   const res = live.map((f) => ({ f, re: new RegExp(`(?<![\\w\\\\/.-])${esc(f.old)}(?![\\w\\\\/-])`, "i") }));
   for (const [r, text] of ownTextFiles(root)) {
     for (const lvl of ["blocking", "advisory"] as const) {
-      const found = res.filter((x) => (x.f.level === "advisory" ? "advisory" : "blocking") === lvl && x.re.test(text)).map((x) => `${x.f.old} → ${x.f.now}`);
+      const found = res
+        .filter((x) => (x.f.level === "advisory" ? "advisory" : "blocking") === lvl && (x.f.files !== "prose" || /\.md$/i.test(r)) && x.re.test(text))
+        .map((x) => `${x.f.old} → ${x.f.now}`);
       if (found.length) out[lvl].push(`${r}: ${found.join(" · ")}`);
     }
   }

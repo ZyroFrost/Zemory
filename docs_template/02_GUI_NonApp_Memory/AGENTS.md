@@ -10,7 +10,7 @@ Repo này dùng harness của zemory, hệ **NON-APP**: sản phẩm / tài sả
 
 ## Vào việc
 1. **Chưa có `docs/.harness.json`?** ⇒ hỏi trước: dự án là APP hay NON-APP (không tự đoán; mở một `.pbix` ra dò, đổ số vào template là NON-APP). NON-APP ⇒
-   `zemory init --kit 02`;
+   `zemory init --kit 02` hoặc `zemory init --kit 03`;
    rồi `zemory doctor` xanh. Thiếu lệnh `zemory` ⇒ cài bằng một lệnh PowerShell:
    `irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install.ps1 | iex` (đặt `$env:ZEMORY_DIR` trước — hỏi nếu chưa rõ thư mục cài; kho
    nhớ không nằm trong thư mục cài). Tab Code của Claude Desktop không đọc PowerShell profile ⇒ cài xong mở lại app.

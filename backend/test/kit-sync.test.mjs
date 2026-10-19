@@ -100,6 +100,26 @@ test("plain `zemory sync` in a kit repo puts back a part that fell behind, and l
   assert.match(todo, /`case-header`/, "the spec without a front block is listed for the repo's session");
 });
 
+test("sync rewrites the router half of AGENTS.md from the set (a repo that changed set kept the old one); the trigger rows stay", (t) => {
+  const base = tempDir(t, "zemory-kitsync-cli-");
+  const root = join(base, "Dept_XY");
+  mkdirSync(root, { recursive: true });
+  const db = join(base, "t.db");
+  run(root, ["init", "--kit", "05"], db);
+  const p = join(root, "AGENTS.md");
+  const fresh = readFileSync(p, "utf8");
+  const stale = fresh.replace(/hệ \*\*[^*]+\*\*/, "hệ **NON-APP**").replace(/`zemory init --kit \d+`/, "`zemory init --kit 02`")
+    + "| việc riêng của repo | `.claude/skills/own-thing/SKILL.md` |\n";
+  writeFileSync(p, stale);
+  const out = run(root, ["sync"], db);
+  const now = readFileSync(p, "utf8");
+  assert.match(out, /AGENTS\.md: the router half rewritten/);
+  assert.doesNotMatch(now, /--kit 02`/, "the init command is the set's again");
+  assert.ok(now.startsWith(fresh.split("\n## Mở khi trúng trigger")[0]), "the router half equals the set's");
+  assert.match(now, /own-thing\/SKILL\.md/, "a trigger row the repo added stays");
+  assert.doesNotMatch(run(root, ["sync"], db), /router half rewritten/, "a second pass has nothing to rewrite");
+});
+
 test("NEGATIVE: `zemory sync --root <other repo>` without --apply writes nothing there", (t) => {
   const base = tempDir(t, "zemory-kitsync-cli-");
   const root = join(base, "Dept_XY");

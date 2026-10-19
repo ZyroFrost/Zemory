@@ -254,6 +254,14 @@ test("superseded-fact: an entry marked advisory (a name that also lives in histo
   assert.deepEqual(supersededFactFindings(root), { blocking: [], advisory: ["docs/plan/01_sources.md: SRV-OLD → SRV-NEW"] });
 });
 
+test("superseded-fact: an entry about what the agent is told (files: prose) is not applied to a task's code (Dept_IT)", (t) => {
+  const root = folderRepo(t);
+  write(root, "data/region/values.json", JSON.stringify({ superseded_facts: [{ old: "/api/vault", now: "python scripts/query.py", files: "prose" }] }));
+  write(root, "docs/plan/01_sources.md", "Mở két qua /api/vault trước khi dò.\n");
+  write(root, "tasks/XY_Daily_Check/pipeline/00_ready.py", "url = base + '/api/vault'\n");
+  assert.deepEqual(supersededFactFindings(root).blocking, ["docs/plan/01_sources.md: /api/vault → python scripts/query.py"]);
+});
+
 test("NEGATIVE: superseded-fact skips a path segment (the name of a mirror folder) and a word that only contains the old one", (t) => {
   const root = folderRepo(t);
   write(root, "data/region/values.json", JSON.stringify({ superseded_facts: [{ old: "SRV-OLD", now: "SRV-NEW" }] }));

@@ -29,6 +29,7 @@ import {
   renameLegacyShelves,
   retireCopies,
   seedFiles,
+  seedTextOf,
   setDir,
   STORE_DIR,
   type AssemblyStep,
@@ -68,6 +69,8 @@ export interface KitApplyResult {
   installed: InstallResult;
   /** repo hooks a part took over (replaces_hooks): settings.json commands dropped, old copies archived */
   hooksTakenOver: string[];
+  /** AGENTS.md's router half was rewritten from the set's seed (refreshEntryRouter) */
+  entryRefreshed?: boolean;
 }
 
 /** The kit a repo's marker names, or null (a repo still on the file harness). */
@@ -123,13 +126,14 @@ export function applyKit(
     plug.skipped.push(...own.skipped);
   }
   const hooksTakenOver = retireReplacedHooks(root, parts, opts.apply);
+  const entryRefreshed = refreshEntryRouter(root, seedTextOf("AGENTS.md", kit, parts, opts.projectName ?? basename(root), storeDir), opts.apply);
   if (opts.apply) followEntryRenames(root, skills, target);
   const retired = retireCopies(target, new Set(parts.map((p) => p.key)), hp.archive, opts.apply, storeDir);
   // plan/29 §13: both INDEX files are tables of contents the machine writes from what is assembled - last, once retired
   // copies have left; a hand-written one is archived whole the first time
   const index = writeIndexes(hp.agent, hp.skills, hp.archive, opts.projectName ?? basename(root), opts.apply);
   const skillsBlock: KitApplyResult["skillsBlock"] = index.written.length ? "written" : "current";
-  return { kit, createdMarker, ownAdded, steps, written, pathsFollowed, consAdded, skillsBlock, indexArchived: index.archived, renamedShelves, plug, retired, installed, hooksTakenOver };
+  return { kit, createdMarker, ownAdded, steps, written, pathsFollowed, consAdded, skillsBlock, indexArchived: index.archived, renamedShelves, plug, retired, installed, hooksTakenOver, entryRefreshed };
 }
 
 /**
@@ -335,6 +339,30 @@ function followMovedParts(root: string, agentDir: string, steps: AssemblyStep[],
   };
   walk(root);
   return out.sort();
+}
+
+/** The heading that ends the router half of the entry file; the trigger table below it is the repo's to extend. */
+const ENTRY_TRIGGERS = "\n## Mở khi trúng trigger";
+
+/**
+ * The router half of AGENTS.md (title line kept, up to the trigger heading) is the set's: it names the system, the init
+ * command, where the laws and slots are. It was written once from the seed, so a repo that changed set or outlived a shelf
+ * rename kept the old text (2026-10-19: _DB_Log on set 07 still said NON-APP and `--kit 02/03`; seven ERP repos still
+ * pointed at 02_RULES · 05_TODO). Every pass rewrites it from the set's seed; the trigger section and its rows stay the
+ * repo's. A file without the trigger heading is the repo's own and is left alone. Returns whether it was rewritten.
+ */
+function refreshEntryRouter(root: string, seed: string | null, apply: boolean): boolean {
+  const p = join(root, "AGENTS.md");
+  if (!seed || !existsSync(p)) return false;
+  const text = readFileSync(p, "utf8");
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const lf = text.replace(/\r\n/g, "\n");
+  const at = lf.indexOf(ENTRY_TRIGGERS), sat = seed.indexOf(ENTRY_TRIGGERS), nl = lf.indexOf("\n");
+  if (at < 0 || sat < 0 || nl < 0 || nl > at) return false;
+  const next = (lf.slice(0, nl) + seed.slice(seed.indexOf("\n"), sat) + lf.slice(at)).split("\n").join(eol);
+  if (next === text) return false;
+  if (apply) writeFileSync(p, next);
+  return true;
 }
 
 /** The trigger table of the entry file follows host renames too (see followHostRenames). */
