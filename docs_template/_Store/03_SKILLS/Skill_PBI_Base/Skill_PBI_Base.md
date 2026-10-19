@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 6
+version: 7
 type: process
 aka: dev-pbi
 replaces: [Skill_Dev_Pbi]
@@ -36,7 +36,7 @@ description: Build or change a BI report - layout and chart choice, measures and
 
 ## 4. Chuẩn report Power BI của repo phòng ban
 
-Repo phòng ban dựng report Power BI trên DW theo bốn loại (`Legacy` · `Classic` · `Mix` · `Main`, skill `pbi-pbip` §0). Chuẩn
+Repo phòng ban dựng report Power BI trên DW theo bốn loại (`Legacy` · `Classic` · `White` · `Red`, skill `pbi-pbip` §0). Chuẩn
 chung của bốn loại nằm ở ba file dưới; skill của từng loại chỉ nói phần riêng và trỏ về đây.
 
 | Cần gì | Mở |

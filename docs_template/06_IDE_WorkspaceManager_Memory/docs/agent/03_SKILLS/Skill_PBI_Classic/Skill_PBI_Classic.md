@@ -1,10 +1,10 @@
 ---
 id: Skill_PBI_Classic
 name: pbi-classic
-version: 5
+version: 6
 type: process
 description: Build the CLASSIC copy of a Power BI report - keep the OLD design exactly, move only the model onto the warehouse: map tables to Dim_*/Fact_*, port measures, rebind visuals, then MEASURE how far the numbers match the old one. Use whenever an old dashboard moves onto the warehouse, the old report serves as the warehouse's test, or the question is what the warehouse still lacks. Not for a new design. Vietnamese triggers - "bản classic", "tái tạo dashboard cũ", "đổi model sang DW", "so số với bản cũ", "kho còn thiếu gì".
-from: _Store/03_SKILLS/Skill_PBI_Classic @v5 #7c7cdc6a9ce7
+from: _Store/03_SKILLS/Skill_PBI_Classic @v6 #99de6eec7bca
 ---
 
 # Bản `Classic` — giữ nguyên thiết kế CŨ, chỉ đổi lớp model sang kho
@@ -40,12 +40,12 @@ report đòi mà kho không đáp được.
 - 🔴 **KHÔNG "chuẩn hoá" chữ NGƯỜI ĐỌC THẤY.** Bản `Classic` chạy **hai tầng tên**:
   **trong model** (bảng · cột · measure · thư mục) theo **chuẩn mới**; **nhãn trên visual, tiêu đề, nhãn
   slicer** giữ **nguyên văn bản cũ**. Xung đột ⇒ **UI THẮNG** — đổi nhãn cho "đúng chuẩn" là làm bản mô
-  phỏng khác bản cũ ở đúng chỗ người dùng nhìn. Bảng đối chiếu bốn loại file `Legacy`/`Classic`/`Mix`/`Main`:
+  phỏng khác bản cũ ở đúng chỗ người dùng nhìn. Bảng đối chiếu bốn loại file `Legacy`/`Classic`/`White`/`Red`:
   skill `pbi-pbip` §0.
 
 ## 1b. 🔴 XOÁ SẠCH MODEL CŨ TRƯỚC KHI DỰNG — không phải dọn sau
 
-Áp cho **mọi bậc đọc kho**: `Classic` · `Mix` · `Main`. Bậc `Legacy` thì không — nó *là* bản hệ cũ.
+Áp cho **mọi bậc đọc kho**: `Classic` · `White` · `Red`. Bậc `Legacy` thì không — nó *là* bản hệ cũ.
 
 ```
 SAI:  đổi nguồn từng bảng -> bảng nào không ai dùng thì ĐỂ LẠI
@@ -76,11 +76,11 @@ grep -lE '<mọi mục của legacy_sources, nối bằng |>' tables/*.tmdl   ->
 `DimStore <Tên công ty>`, và `DimStore_<ten_cong_ty>` trong lược đồ ngôn ngữ). Khớp theo **ranh giới từ**, đừng
 khớp chuỗi con.
 
-🔴 **Classic KHÔNG nhận luật chỉnh UI nào** *("classic là giữ nguyên thiết kế, ko có chuẩn chỉnh UI nào áp lên Classic hết" — tiêu đề Classic bị đổi font / viết hoa theo luật Mix rồi phải trả lại)*: font, cỡ, canh lề, viết hoa tiêu đề, bề rộng cột, màu, bố cục… giữ như bản cũ. Classic chỉ đổi lớp DỮ LIỆU (model → kho, measure, khoá nối). Cổng: mọi luật thiết kế Mix/Main (`title-font` · `title-case` · `row-wrap` · `header-wrap` · `narrow-table` …) bỏ qua `_Classic` / `_Legacy`.
+🔴 **Classic KHÔNG nhận luật chỉnh UI nào** *("classic là giữ nguyên thiết kế, ko có chuẩn chỉnh UI nào áp lên Classic hết" — tiêu đề Classic bị đổi font / viết hoa theo luật White rồi phải trả lại)*: font, cỡ, canh lề, viết hoa tiêu đề, bề rộng cột, màu, bố cục… giữ như bản cũ. Classic chỉ đổi lớp DỮ LIỆU (model → kho, measure, khoá nối). Cổng: mọi luật thiết kế White/Red (`title-font` · `title-case` · `row-wrap` · `header-wrap` · `narrow-table` …) bỏ qua `_Classic` / `_Legacy`.
 
 🔴 **Bảng và đường nối CHỈ theo kho** *(chuẩn kho sửa lại 13/10)*: mọi `Dim_/Fact_/Bridge_/Agg_` của model là
 bảng kho CÙNG TÊN (không bảng DAX tự dựng, không bảng ghép tay); mọi relationship đi đúng khoá ngoại kho có. Kho thiếu bảng / khoá
-⇒ xin kho thêm, KHÔNG tự dựng tạm. Áp cho Classic · Mix · Main. Cổng `dw-only-tables` (lớp static + dw).
+⇒ xin kho thêm, KHÔNG tự dựng tạm. Áp cho Classic · White · Red. Cổng `dw-only-tables` (lớp static + dw).
 
 ⚠ **Desktop tự sinh `LocalDateTable` mỗi lần refresh** (auto date/time). Với `Import` thì vô hại,
 nhưng **`DirectQuery` không cho** ⇒ tắt auto date/time trước khi chuyển bậc.
@@ -128,7 +128,7 @@ của mọi phòng. Dựng ở Power Query của report, mang đúng mã cũ đ�
 
 > 🔴 **Luật model đọc kho (DirectQuery · chuỗi server gateway `<warehouse_server>` · 0 nguồn hệ cũ ·
 > DAX chạy được trên web) ở `pbip §1b`** — cổng `dw-model` + `file-name` của `scripts/pbi_gate.py` chạy cho
-> mọi bản Classic/Mix/Main.
+> mọi bản Classic/White/Red.
 
 Mỗi lỗi Desktop từng bắt đều đẻ ra một phép kiểm ở đây, để lần sau bắt **trước** khi mở:
 

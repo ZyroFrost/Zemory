@@ -1,0 +1,20 @@
+{
+  "trigger": "bản red · bản main · dựng report mới · thiết kế mới theo chuẩn",
+  "prompt": {
+    "kind": "pbi-red",
+    "re": "\\b(ban red|red report|ban main|report moi|thiet ke moi theo chuan|ban chinh thuc)\\b",
+    "text": "[zemory] Red report: follow skill pbi-red - the full standard, real pages, renames checked by DAX on the engine."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "dựng report mới bản main"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi tên file excel"
+    }
+  ]
+}

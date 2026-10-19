@@ -3,7 +3,7 @@
   "prompt": {
     "kind": "pbi-pbip",
     "re": "\\b(pbip|pbix|bookmark|them tab|doi icon|can luoi|report has issues|sua report)\\b",
-    "text": "[zemory] Power BI report: follow skill pbi-pbip - close Desktop before editing, reopen it last, run scripts/pbi_gate.py; then open the skill of the report's kind (Legacy / Classic / Mix / Main)."
+    "text": "[zemory] Power BI report: follow skill pbi-pbip - close Desktop before editing, reopen it last, run scripts/pbi_gate.py; then open the skill of the report's kind (Legacy / Classic / White / Red)."
   },
   "block": [
     {

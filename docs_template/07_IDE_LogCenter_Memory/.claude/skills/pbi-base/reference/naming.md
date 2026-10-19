@@ -7,15 +7,17 @@
 
 | Tầng | Khuôn | Ví dụ |
 |---|---|---|
-| Thư mục | `<MÃ>_<số><IP\|DR>_<ChứcNăng>[<Bậc>]_<Loại>` | `ABC_02DR_StoreReportAM_Mix` · `ABC_03IP_IncomeStatementOM_Main` |
-| File = tên item trên Service | `<MÃ>_<số>_<CHỨC-NĂNG>[-<Bậc>]_<Live\|Scheduled>` | `ABC_02_STORE-REPORT-AM_Live` · `ABC_03_INCOME-STATEMENT-OM_Scheduled` |
+| Thư mục | `<MÃ>_<số>_<CHỨC-NĂNG>[-<Bậc>]_<IP\|DR>_<Loại>` | `ABC_02_STORE-REPORT-AM_DR_White` · `ABC_03_INCOME-STATEMENT-OM_IP_Red` |
+| File = tên item trên Service | `<MÃ>_<số>_<CHỨC-NĂNG>[-<Bậc>]_<Live\|Scheduled>[_V<n>]` | `ABC_02_STORE-REPORT-AM_Live` · `ABC_03_INCOME-STATEMENT-OM_Scheduled` |
 | Workspace | `<MÃ> - <tên phòng bằng tiếng bản địa>` | `ABC - Kinh Doanh` |
 
-- Thứ tự cố định: mã chủ → số → chức năng → bậc → cách nạp. Chỉ ASCII, không khoảng trắng, ở cả hai tầng.
-- Thư mục: `<ChứcNăng>` PascalCase, `<Bậc>` dính cuối chức năng, mã cách nạp dính số (`02DR`), cuối là `_<Loại>`.
-- File: `_` ngăn các phần; chức năng IN HOA, chữ trong nó nối bằng `-`; bậc là chữ cuối của chức năng (`STORE-REPORT-AM`).
-  Đổi thư mục → file: tách PascalCase, in hoa, nối `-` (`StoreReport` → `STORE-REPORT`, `B2CSales` → `B2C-SALES`) — máy làm:
-  `file_function()` của `pbi_gate.py`.
+- Thứ tự cố định: mã chủ → số → chức năng (bậc ở cuối) → cách nạp [→ loại]. Chỉ ASCII, không khoảng trắng, ở cả hai tầng.
+- Hai tầng chung một phần chức năng: `_` ngăn các phần; chức năng IN HOA, chữ trong nó nối bằng `-`; bậc là chữ cuối của
+  chức năng (`STORE-REPORT-AM`). Thư mục kết thúc bằng `_<IP|DR>_<Loại>` (mã cách nạp đứng chỗ hậu tố cách nạp của file); file kết thúc bằng `_<Live|Scheduled>`.
+- `_V<n>` chỉ ở tên file, chỉ khi hai bản cùng số và cùng cách nạp phải sống song song trên Service (`_Live_V2`).
+- Thư mục theo khuôn cũ (`ABC_02DR_StoreReportAM_Mix`, trước 19/10) đổi bằng `scripts/rename_reports.py` của skill
+  `pbi-pbip`: chạy thử in mọi lần dời và mọi file sẽ sửa, `--apply` thì `git mv` và sửa mọi chỗ nhắc tên cũ (khoá trong
+  `config/pbi-gate.json` · `reports/README.md` · ghi chú task). Tên file bên trong không đổi.
 - Cách nạp — danh sách đóng, một cặp mã ↔ hậu tố:
 
   | Thư mục | File | Nghĩa |
@@ -24,11 +26,12 @@
   | `DR` | `Live` | DirectQuery — đọc thẳng DW lúc xem |
 
 - `<Bậc>` — danh sách đóng `AM` (quản lý vùng) · `OM` (quản lý vận hành); bỏ trống là report chung. Không có token `All`.
-- `<Loại>` — danh sách đóng `Legacy` · `Classic` · `Mix` · `Main`; nghĩa và bộ luật riêng của từng loại: skill `pbi-pbip` §0.
+- `<Loại>` — danh sách đóng `Legacy` · `Classic` · `White` · `Red` (tên trước 19/10: `Mix` = `White`, `Main` = `Red`); nghĩa và bộ
+  luật riêng của từng loại: skill `pbi-pbip` §0. `Legacy` luôn là `_IP_Legacy` (nối model trên Service = Import).
 - Loại thiết kế chỉ nằm ở thư mục, không nằm ở tên file ⇒ các biến thể cùng cách nạp trùng tên file và publish đè đúng một
   item. Report quan trọng giữ thêm bản `Scheduled` dự phòng: cùng số, khác hậu tố ⇒ hai item trên web.
-- Cấm trong tên: dấu cách · dấu tiếng Việt · en dash · `(%)` · mọi hậu tố phiên bản (`- Copy` · `_BK<ngày>` · `_TEST` · `1`).
-  Phiên bản là việc của git.
+- Cấm trong tên: dấu cách · dấu tiếng Việt · en dash · `(%)` · mọi hậu tố phiên bản khác `_V<n>` (`- Copy` · `_BK<ngày>` ·
+  `_TEST` · `1`). Lịch sử là việc của git.
 - Workspace: không chữ "Phòng" trong tên, không token tiếng Anh (mã đã là chữ ASCII). Mô tả workspace viết theo phòng, không theo
   danh sách report; câu đầu: *"Phòng <tên bản địa> (<tên tiếng Anh> · <MÃ>) — <phạm vi việc>. Các báo cáo trong workspace này do
   phòng <tên bản địa> làm chủ."* Tên tiếng Anh của phòng do phòng chốt, không đoán.
@@ -51,6 +54,8 @@
   - Cần: giấy phép Pro/PPU · vai trò Admin/Member/Contributor (Viewer không đủ) · quyền sửa report đó. `My workspace` không có.
 
 ## 3. Đổi tên là đổi sáu chỗ trong file và hai item trên Service
+
+- Đổi tên FILE (kể cả thêm `_V<n>`) = đổi tên item trên Service; đổi tên THƯ MỤC thì Service không đổi gì.
 
 - Trong file: `<Tên>.pbip` · `<Tên>.Report/` · `<Tên>.SemanticModel/` · `<Tên>.pbix` · `displayName` trong hai `.platform` ·
   `artifacts` trong `.pbip` · `byPath` trong `definition.pbir`. Thiếu một chỗ ⇒ Desktop mở ra lỗi.
@@ -84,7 +89,7 @@
 
 ## 6. Loại đọc DW bỏ hẳn hệ cũ — xoá trước, dựng sau
 
-Áp cho `Classic` · `Mix` · `Main` (`Legacy` miễn — nó là bản hệ cũ).
+Áp cho `Classic` · `White` · `Red` (`Legacy` miễn — nó là bản hệ cũ).
 
 - Trình tự: xoá hết bảng đọc hệ cũ → rồi mới kéo bảng DW về. Không đổi nguồn từng bảng rồi để lại bảng thừa.
 - "Không visual nào dùng" không phải lý do giữ một bảng hệ cũ: report khai đọc DW mà còn bảng trỏ nguồn cũ thì tên nói dối nội

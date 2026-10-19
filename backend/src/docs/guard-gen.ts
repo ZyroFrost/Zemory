@@ -927,6 +927,9 @@ function checkBash(cmd) {
       const vars = {};
       for (const m of bare.matchAll(/(?:^|[\\s;&|(])\\$([A-Za-z_]\\w*)\\s*=\\s*(["'])([^"'\\n]+)\\2/g)) vars[m[1].toLowerCase()] = m[3];
       for (const m of bare.matchAll(/(?:^|[\\s;&|(])([A-Za-z_]\\w*)=(["'])([^"'\\n]+)\\2/g)) vars[m[1].toLowerCase()] = m[3];
+      // bash also takes an unquoted literal (\`S=/c/…/scratchpad; rm $S/x\`, 2026-10-19 Zemory); a value naming another
+      // variable is no literal and stays unresolved
+      for (const m of bare.matchAll(/(?:^|[\\s;&|(])([A-Za-z_]\\w*)=([^\\s;&|"'$=]+)(?=[\\s;&|]|$)/g)) if (!(m[1].toLowerCase() in vars)) vars[m[1].toLowerCase()] = m[2];
       const expandVars = (t) => t.replace(/\\$\\{?([A-Za-z_]\\w*)\\}?/g, (all, n) => (n.toLowerCase() in vars ? vars[n.toLowerCase()] : all));
       const expand = (t) => expandVars(t).replace(/^\\$env:(TEMP|TMP)/i, process.env.TEMP || "").replace(/^%(TEMP|TMP)%/i, process.env.TEMP || "");
       const targets = [];

@@ -47,11 +47,11 @@
     {
       "note": "an Edit of a skill",
       "files": {
-        "docs/agent/03_SKILLS/Skill_PBI_Mix/Skill_PBI_Mix.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
+        "docs/agent/03_SKILLS/Skill_PBI_White/Skill_PBI_White.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": "docs/agent/03_SKILLS/Skill_PBI_Mix/Skill_PBI_Mix.md",
+        "file_path": "docs/agent/03_SKILLS/Skill_PBI_White/Skill_PBI_White.md",
         "old_string": "- text",
         "new_string": "- changed"
       },
@@ -65,11 +65,11 @@
     {
       "note": "an Edit of a skill build",
       "files": {
-        ".claude/skills/pbi-mix/SKILL.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
+        ".claude/skills/pbi-white/SKILL.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": ".claude/skills/pbi-mix/SKILL.md",
+        "file_path": ".claude/skills/pbi-white/SKILL.md",
         "old_string": "- text",
         "new_string": "- changed"
       },
@@ -135,11 +135,11 @@
     {
       "note": "the zemory repo, where the harness is made",
       "files": {
-        "docs_template/_Store/03_SKILLS/Skill_PBI_Mix/Skill_PBI_Mix.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
+        "docs_template/_Store/03_SKILLS/Skill_PBI_White/Skill_PBI_White.md": "---\nid: x\nname: x\nversion: 1\n---\n# x\n\n- text\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": "docs_template/_Store/03_SKILLS/Skill_PBI_Mix/Skill_PBI_Mix.md",
+        "file_path": "docs_template/_Store/03_SKILLS/Skill_PBI_White/Skill_PBI_White.md",
         "old_string": "- text",
         "new_string": "- changed"
       },

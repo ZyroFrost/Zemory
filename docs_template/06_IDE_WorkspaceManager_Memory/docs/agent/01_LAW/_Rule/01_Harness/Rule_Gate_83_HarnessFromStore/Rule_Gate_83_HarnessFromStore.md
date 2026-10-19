@@ -1,10 +1,10 @@
 ---
 id: Rule_83
 name: harness-from-store
-version: 4
+version: 5
 kind: action
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore @v4 #ca54cc246ca5
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore @v5 #ddd535ba2ea6
 ---
 # Rule_Gate_83_HarnessFromStore — A repo uses the harness, it does not own it
 
@@ -33,10 +33,10 @@ and copied into the repo. The repo uses its copy; it never changes it. The repo 
 
 ## Example
 - Situation: the OPS session finds a better step for the skill that builds a report.
-- ✗ Wrong: edit `.claude/skills/pbi-mix/SKILL.md` in the OPS repo. The other departments never get the step, and the next sync
+- ✗ Wrong: edit `.claude/skills/pbi-white/SKILL.md` in the OPS repo. The other departments never get the step, and the next sync
   meets a copy that differs from HS.
 - ✓ Right: check on HS whether every department building that report needs the step. Yes ⇒ send the proposal to the zemory
-  session; zemory runs `zemory impact Skill_PBI_Mix`, adds the step to the skill on HS once the requester approves, and syncs it to
+  session; zemory runs `zemory impact Skill_PBI_White`, adds the step to the skill on HS once the requester approves, and syncs it to
   every repo.
 
 ## Check
@@ -71,10 +71,10 @@ repo. Repo dùng bản chép; không bao giờ sửa nó. Repo chỉ điền và
 
 ## Ví dụ
 - Tình huống: phiên của OPS tìm ra một bước hay hơn cho skill dựng báo cáo.
-- ✗ Sai: sửa `.claude/skills/pbi-mix/SKILL.md` trong repo OPS. Các phòng khác không bao giờ có bước đó, và lần sync sau gặp một
+- ✗ Sai: sửa `.claude/skills/pbi-white/SKILL.md` trong repo OPS. Các phòng khác không bao giờ có bước đó, và lần sync sau gặp một
   bản chép lệch với HS.
 - ✓ Đúng: dò trên HS xem mọi phòng dựng loại báo cáo đó có cần bước này không. Có ⇒ gửi đề xuất cho phiên zemory; zemory chạy
-  `zemory impact Skill_PBI_Mix`, thêm bước vào skill trên HS sau khi người dùng duyệt, rồi sync xuống mọi repo.
+  `zemory impact Skill_PBI_White`, thêm bước vào skill trên HS sau khi người dùng duyệt, rồi sync xuống mọi repo.
 
 ## Máy kiểm
 - Guard của repo chặn mọi Write / Edit dưới bốn thư mục harness, không có cờ vượt; lần điền khung được qua khi các mục của khung
