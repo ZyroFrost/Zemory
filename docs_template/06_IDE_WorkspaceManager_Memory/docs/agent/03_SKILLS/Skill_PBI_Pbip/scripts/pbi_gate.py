@@ -1983,25 +1983,59 @@ def words_of(s):
     return [w for w in out if not w.isdigit()]
 
 
+def switch_case_spans(s):
+    """(start, end) of every case-value argument of each SWITCH in a DAX text: SWITCH(expr, v1, r1, v2, r2 [, else]) -
+    v1, v2 ... are compared, r1, r2 ... and else are returned. Strings and nested brackets are skipped while splitting."""
+    out = []
+    for m in re.finditer(r'(?i)\bSWITCH\s*\(', s):
+        args, depth, start, i, q = [], 1, m.end(), m.end(), False
+        while i < len(s) and depth:
+            c = s[i]
+            if q:
+                if c == '"' and s[i + 1:i + 2] == '"':
+                    i += 1                              # "" is a quote inside the string
+                elif c == '"':
+                    q = False
+            elif c == '"':
+                q = True
+            elif c in '([{':
+                depth += 1
+            elif c in ')]}':
+                depth -= 1
+                if not depth:
+                    args.append((start, i))
+            elif c == ',' and depth == 1:
+                args.append((start, i))
+                start = i + 1
+            i += 1
+        n_pairs = (len(args) - 1) // 2
+        out += [args[1 + 2 * k] for k in range(n_pairs)]
+    return out
+
+
 def printed(s):
-    """Upper-case text literals a DAX line RETURNS (after '(' or ','), not the ones it compares (= "APP")."""
-    return {m.group(1) for m in re.finditer(r'"([A-Z]{3,})"', s) if s[:m.start()].rstrip()[-1:] in ('(', ',')}
+    """Upper-case text literals a DAX measure RETURNS (after '(' or ','), not the ones it compares: = "APP", or a SWITCH
+    case value - SWITCH(x, "ROYALTY", [NetRevenueFR]) prints the measure, not the word (a department repo 20/10)."""
+    cases = switch_case_spans(s)
+    return {m.group(1) for m in re.finditer(r'"([A-Z]{3,})"', s) if s[:m.start()].rstrip()[-1:] in ('(', ',')
+            and not any(a <= m.start() and m.end() <= b and s[a:b].strip() == m.group(0) for a, b in cases)}
 
 
 def measure_text_values(report_dir):
     """measure -> the upper-case text values its DAX can print ("STAR", "HIGH" ...): what the reader sees in its cells."""
-    out, cur = {}, None
+    body, cur = {}, None                            # the whole DAX of each measure: a SWITCH spans lines
     for f in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
         for line in open(f, encoding='utf-8'):
             line = line.rstrip('\r\n')
             m = re.match(r"^\tmeasure\s+('(?:[^']|'')+'|\S+)\s*=(.*)$", line)
             if m:
                 cur = m.group(1).strip("'").replace("''", "'")
-                out[cur] = printed(m.group(2))
+                body[cur] = m.group(2)
             elif cur and (line.startswith('\t\t') or not line.strip()) and not re.match(r'^\t\t[a-zA-Z]+:', line):
-                out[cur] |= printed(line)
+                body[cur] += '\n' + line
             elif re.match(r'^\t\S', line) or re.match(r'^\t\t[a-zA-Z]+:', line):
                 cur = None
+    out = {k: printed(v) for k, v in body.items()}
     return {k: v for k, v in out.items() if v}
 
 
