@@ -71,6 +71,22 @@ test("a frame section the written Cons.md lacks is red; sync puts it back with t
   assert.deepEqual(applyKit(root, { apply: true }).consAdded.filter((x) => x.startsWith("Cons_Gate_12")), [], "a second sync adds nothing");
 });
 
+test("a Cons.md still at status template follows the store's template whole; a written one is never replaced (20/10)", (t) => {
+  const root = deptRepo(t);
+  const agent = join(root, "docs", "agent");
+  const old = "---\nframe: Cons_Gate_12_SourceOfTruth\nstatus: template\n---\n# Nguồn sự thật\n\n## Gốc\n<dữ liệu>\n";
+  put(root, f12, old);
+  assert.deepEqual(addMissingSections(agent, false).filter((x) => x.startsWith("Cons_Gate_12")), ["Cons_Gate_12_SourceOfTruth: template refreshed"]);
+  assert.equal(readFileSync(join(root, f12), "utf8"), old, "dry run writes nothing");
+  addMissingSections(agent, true);
+  assert.match(readFileSync(join(root, f12), "utf8"), /## Định nghĩa/, "the template the store has now");
+  assert.deepEqual(addMissingSections(agent, true).filter((x) => x.startsWith("Cons_Gate_12")), [], "a second pass changes nothing");
+  const mine = "---\nframe: Cons_Gate_12_SourceOfTruth\nstatus: written\n---\n# Nguồn sự thật\n\n## Gốc\nDW\n";
+  put(root, f12, mine);
+  addMissingSections(agent, true);
+  assert.match(readFileSync(join(root, f12), "utf8"), /## Gốc\nDW\n/, "the repo's own text stays");
+});
+
 test("conform: a marker key whose values now live in the constitution is red (one home)", (t) => {
   const root = deptRepo(t);
   const marker = join(root, "docs", ".harness.json");

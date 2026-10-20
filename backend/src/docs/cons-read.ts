@@ -131,6 +131,17 @@ export function addMissingSections(agentDir: string, apply: boolean, storeDir = 
   for (const p of listParts(agentDir, SHELF.constitution)) {
     if (!isFrame(p)) continue;
     const file = join(p.dir, CONS_REPO_FILE);
+    // a Cons.md still at status template carries nothing of the repo's: it IS the template, so it follows the store's whole
+    // (20/10: every set and seven unwritten repos kept a template without "## Định nghĩa" / "## Dữ liệu cá nhân")
+    if (existsSync(file) && String(frontMatter(readFileSync(file, "utf8"))?.meta.status ?? "") === "template") {
+      const fresh = template(leafOf(p.folder), storeDir);
+      const cur = readFileSync(file, "utf8");
+      if (fresh && cur.replace(/\r\n/g, "\n") !== fresh) {
+        if (apply) writeFileSync(file, cur.includes("\r\n") ? fresh.replace(/\n/g, "\r\n") : fresh);
+        out.push(`${leafOf(p.folder)}: template refreshed`);
+      }
+      continue;
+    }
     const raw = written(file);
     const tpl = raw ? template(leafOf(p.folder), storeDir) : null;
     if (!raw || !tpl) continue;
