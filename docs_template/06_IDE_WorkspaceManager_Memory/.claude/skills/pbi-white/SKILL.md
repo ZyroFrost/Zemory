@@ -1,13 +1,13 @@
 ---
 id: Skill_PBI_White
 name: pbi-white
-version: 8
+version: 9
 aka: pbi-mix
 replaces: [Skill_PBI_Mix]
 type: process
 description: Build the WHITE copy (named Mix before 2026-10-19) of a Power BI report - warehouse model, the Red header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-red). Vietnamese triggers - "bản white", "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
 installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
-from: _Store/03_SKILLS/Skill_PBI_White @v8 #1fdf596fef52
+from: _Store/03_SKILLS/Skill_PBI_White @v9 #82043af3e477
 ---
 
 # Bản `White` — bố cục CŨ, khung nhận diện MỚI, chạy trên DW

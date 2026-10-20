@@ -17,7 +17,7 @@ Per chart (visualType contains 'Chart'):
     PALETTE['pct_threshold']) without a background box; every other label colour becomes PALETTE['label'].
 Other properties of those objects (transparency, precision, position...) are kept. Re-runnable.
 """
-import copy, glob, json, os, re, sys
+import glob, json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import mix_builder as B  # noqa: E402

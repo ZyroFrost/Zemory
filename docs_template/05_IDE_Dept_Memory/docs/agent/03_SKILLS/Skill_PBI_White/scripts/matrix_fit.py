@@ -267,7 +267,7 @@ def table_plan(eng, d, flt, fmts, switches=frozenset()):
             groups.append([])                        # grand total
     else:
         groups.append([])
-    seen, data = set(), []
+    data = []
     for g in groups:
         args = list(dict.fromkeys(g)) + flt + vf + ['"m%d", %s' % (i, m) for i, m in enumerate(mdax)]
         res = eng.q('EVALUATE SUMMARIZECOLUMNS(%s)' % ', '.join(args))
