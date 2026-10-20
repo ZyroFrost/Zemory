@@ -149,6 +149,13 @@ export function cmdInit(args: string[]): void {
     runKit(process.cwd(), { kitRef: args[ki + 1], apply: true, label: "zemory init --kit" });
     return;
   }
+  // A new repo gets the folder harness of its set: app → 04_IDE_App_Memory, non-app → 03_IDE_NonApp_Memory. Measured
+  // 20/10: a plain `zemory init` still built the file harness (01_CONSTITUTION.md …) while every AGENTS.md told agents to run
+  // exactly that. The file-template path below stays only for a repo that already carries a marker (gap-fill, never reshape).
+  if (!args.includes("--fresh") && !existsSync(join(process.cwd(), "docs", ".harness.json"))) {
+    runKit(process.cwd(), { kitRef: args.includes("--non-app") ? "03" : "04", apply: true, label: "zemory init" });
+    return;
+  }
   if (args.includes("--fresh")) {
     const r = freshHarness(process.cwd());
     if (r.renamedTo) console.log(`zemory init --fresh — kept old docs → ${r.renamedTo}`);
