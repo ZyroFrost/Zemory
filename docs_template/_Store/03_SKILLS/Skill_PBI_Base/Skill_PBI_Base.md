@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 7
+version: 8
 type: process
 aka: dev-pbi
 replaces: [Skill_Dev_Pbi]

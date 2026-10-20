@@ -7,7 +7,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { listParts, SHELVES, slotGateFailures, STORE_DIR, type Part } from "./store.js";
-import { promptMatches } from "./harness-names.js";
+import { promptMatches, SHELF } from "./harness-names.js";
 import { READ_FIRST_SOURCE } from "./read-first-src.js";
 
 interface Example {
@@ -106,12 +106,24 @@ function blocks(part: Part, gate: Gate, ex: Example): boolean {
   });
 }
 
+function skillHasDoor(gatePath: string): boolean {
+  try {
+    const g = JSON.parse(readFileSync(gatePath, "utf8")) as Gate & { read?: unknown };
+    return Boolean(g.prompt || g.read || g.hook);
+  } catch {
+    return false;
+  }
+}
+
 /** Findings for every part of a store (or a repo harness): an example that behaves the other way, or a gate with none. */
 export function gateExampleFindings(root = STORE_DIR): string[] {
   const out: string[] = [];
   for (const shelf of SHELVES) {
     for (const part of listParts(root, shelf)) {
       const p = join(part.dir, "gate.json");
+      // plan/27 §2c: no skill without a gate — a door on a tool call (`read` · `hook`) or on the words of a request (`prompt`).
+      // A frame (`frame: true`) is copied and filled, never run, so it has nothing to open.
+      if (shelf === SHELF.skills && part.meta.frame !== "true" && !skillHasDoor(p)) out.push(`${part.id} ${part.name}: a skill without a gate`);
       if (!existsSync(p)) continue;
       let gate: Gate;
       try {

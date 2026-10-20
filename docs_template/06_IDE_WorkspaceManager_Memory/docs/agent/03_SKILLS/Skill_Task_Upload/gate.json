@@ -1,3 +1,20 @@
 {
-  "trigger": "đẩy deliverable lên đích (BI · Drive · SharePoint)"
+  "trigger": "đẩy deliverable lên đích (BI · Drive · SharePoint)",
+  "prompt": {
+    "kind": "task-upload",
+    "re": "\\b(day len|publish|up bao cao|dua len workspace|gui ban cuoi|dang len)\\b",
+    "text": "[zemory] Publishing a deliverable: follow skill task-upload — only a finished deliverable goes to its destination."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "đưa lên workspace bản cuối"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

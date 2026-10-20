@@ -1,3 +1,20 @@
 {
-  "trigger": "\"mở case\" · \"lưu thành task\" · \"đóng case\" · \"mở lại case\" · \"vụ này lưu ở đâu\""
+  "trigger": "\"mở case\" · \"lưu thành task\" · \"đóng case\" · \"mở lại case\" · \"vụ này lưu ở đâu\"",
+  "prompt": {
+    "kind": "task-case",
+    "re": "\\b(mo case|luu thanh task|task moi|dong case|mo lai case|vu nay luu o dau)\\b",
+    "text": "[zemory] Case work: follow skill task-case — one case is one folder under tasks/."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "mở case mới cho vụ lệch số"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

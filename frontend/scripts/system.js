@@ -319,6 +319,9 @@
     return [guard,pre,rules,hp,top,rf,sw];
   }
   function gatesDialog(){
+    // The dialog opens at once on the rows the chip already holds and says it is re-checking; the fresh pass (~5 s over
+    // 20 repos) redraws it when it lands. Waiting for that pass before opening read as a dead button (7.9 s, 2026-10-20).
+    var open=function(){var d=zid('zDlg');return !!d&&d.classList.contains('on')&&d.dataset.dlg==='gates';};
     function draw(note){
       var rows=(GATES||[]).slice().sort(function(a,b){return (b.gaps>0)-(a.gaps>0)||a.name.localeCompare(b.name);});
       var cell=function(c){return '<span class="'+(c.na?'na':c.ok?'ok':'no')+'"'+(c.tip?' title="'+stdEsc(c.tip)+'"':'')+'>'+stdEsc(c.txt)+'</span>';};
@@ -326,8 +329,8 @@
         '</span><span>'+stdEsc(t('gates.colRules'))+'</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span><span>'+stdEsc(t('gates.colSweep'))+'</span></div>';
       var body=rows.length?head+rows.map(function(g){
         return '<div class="gchk"><b title="'+stdEsc(g.root||'')+'">'+stdEsc(g.name)+'</b>'+gateCells(g).map(cell).join('')+'</div>';
-      }).join(''):'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';
-      zDialog({iconHtml:ZICON.gates,size:'lg',title:t('gates.title'),bodyHtml:'<div style="font-size:12.5px">'+body+'</div>',
+      }).join(''):GATES===null?'':'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';
+      zDialog({iconHtml:ZICON.gates,size:'lg',tag:'gates',title:t('gates.title'),bodyHtml:'<div style="font-size:12.5px">'+body+'</div>',
         okLabel:t('gates.recheck'),onOk:function(){
           var okb=zid('zDlgOk');if(okb)okb.disabled=true;zDlgMsg(t('upd.rechecking'));
           refreshRepoGates(true).then(function(r){draw(checkedNote(r));})
@@ -343,7 +346,9 @@
       var hh=('0'+at.getHours()).slice(-2)+':'+('0'+at.getMinutes()).slice(-2);
       return (n?t('gates.checkedBad').replace('{n}',n):t('gates.checkedOk')).replace('{t}',hh);
     }
-    refreshRepoGates(true).then(function(){draw();},function(){draw(t('upd.recheckErr'));});
+    draw(t('upd.rechecking'));
+    var okb=zid('zDlgOk');if(okb)okb.disabled=true;
+    refreshRepoGates(true).then(function(r){if(open())draw(checkedNote(r));},function(){if(open()){zDlgMsg(t('upd.recheckErr'));if(okb)okb.disabled=false;}});
   }
   document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#railGates'))gatesDialog();});
   function refreshHarnessUpdates(){
@@ -506,9 +511,17 @@
       okLabel:app?t('upd.btn'):t('upd.recheck'),
       onOk:app?function(){
         var okb=zid('zDlgOk');if(okb)okb.disabled=true;zDlgMsg(t('upd.running'));
-        zPost('/selfupdate').then(function(r){
+        // A second press after the clash list (plan/27 §2f) carries the answer: ticked = keep the local version.
+        var boxes=document.querySelectorAll('#updClash input[type=checkbox]'),q='';
+        if(boxes.length)q='?keep='+encodeURIComponent(JSON.stringify([].filter.call(boxes,function(b){return b.checked;}).map(function(b){return b.value;})));
+        zPost('/selfupdate'+q).then(function(r){
           r=r||{};
-          if(r.dirty){zDlgMsg(t('upd.dirty'));if(okb)okb.disabled=false;return;}
+          if(r.clash){
+            zid('zDlgBody').innerHTML='<div id="updClash" style="font-size:12.5px"><div style="margin-bottom:6px">'+stdEsc(t('upd.clashHead').replace('{n}',r.clash.length))+'</div>'
+              +r.clash.map(function(p){return '<label style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="checkbox" checked value="'+stdEsc(p)+'"><code>'+stdEsc(p)+'</code></label>';}).join('')
+              +'<div class="muted" style="font-size:11px;margin-top:6px">'+stdEsc(t('upd.clashKept'))+'</div></div>';
+            zDlgMsg('');if(okb)okb.disabled=false;return;
+          }
           if(!r.ok){zDlgMsg(t('upd.fail').replace('{e}',r.error||''));if(okb)okb.disabled=false;return;}
           // Bàn giao ≠ xong. Việc dựng mới bắt đầu Ở TIẾN TRÌNH KHÁC sau khi daemon thoát;
           // nói "đã cập nhật" ngay đây là nói dối, và nếu bước dựng hỏng thì không còn bề mặt nào

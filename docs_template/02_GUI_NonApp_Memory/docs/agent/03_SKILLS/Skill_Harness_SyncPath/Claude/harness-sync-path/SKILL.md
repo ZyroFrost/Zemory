@@ -2,10 +2,10 @@
 id: Skill_Harness_SyncPath
 aka: sync-path
 name: harness-sync-path
-version: 12
+version: 13
 type: process
 description: Declare and PROVE how every new artifact reaches a second machine - code, data layer, derived index, secret, model, config. Run before calling any build "done", when adding a new storage or index layer, when handing a repo to another PC, or when something works on one machine but not the other. Vietnamese triggers - "đồng bộ 2 máy", "máy thứ hai", "bàn giao máy mới", "pull về máy kia", "kẹt giữa 2 máy", "sync đa máy", "máy kia chạy được chưa".
-from: _Store/03_SKILLS/Skill_Harness_SyncPath @v12 #ee460f2479e5
+from: _Store/03_SKILLS/Skill_Harness_SyncPath @v13 #7f7ea13016ed
 ---
 
 # sync-path — mỗi thứ sinh ra phải có ĐƯỜNG sang máy khác, và phải ĐO được

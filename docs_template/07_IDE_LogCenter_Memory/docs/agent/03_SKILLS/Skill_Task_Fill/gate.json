@@ -1,3 +1,20 @@
 {
-  "trigger": "điền số vào template → xuất deliverable"
+  "trigger": "điền số vào template → xuất deliverable",
+  "prompt": {
+    "kind": "task-fill",
+    "re": "\\b(dien so vao mau|xuat bao cao|do so lieu|len report|ra file cuoi|lam bao cao)\\b",
+    "text": "[zemory] Filling a template: follow skill task-fill — real numbers into the blank template, then export the deliverable."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "điền số vào mẫu rồi xuất báo cáo"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

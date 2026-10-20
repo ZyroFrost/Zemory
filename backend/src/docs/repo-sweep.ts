@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { loadContext, readMarker } from "../core/config.js";
 import { currentMemoryDir } from "../memory/db.js";
 import { listKnownProjects } from "../projects.js";
+import { repoGateLines, repoGates, type RepoGates } from "./repo-gates.js";
 import { writeJsonAtomic } from "../util/fs-atomic.js";
 import { conform } from "./conform.js";
 import { verifyTodo } from "./todo-verify.js";
@@ -98,4 +99,26 @@ export function sweepLines(r: SweepRow): string[] {
   line(r.todo, "todo verify finding(s)", "todo verify");
   for (const f of r.failed ?? []) out.push(`sweep check did not run — ${f.slice(0, 160)}`);
   return out;
+}
+
+export type RepoGateRow = RepoGates & { lines: string[]; sweep: SweepRow | null };
+
+/**
+ * Every registered repo's gates with the last sweep joined in: what the rail's gates chip shows. About 5 s over 20 repos
+ * (measured 2026-10-20), all synchronous file reads — the daemon runs it in a worker so the cockpit never freezes on it.
+ */
+export function repoGateRows(): RepoGateRow[] {
+  const rows: RepoGateRow[] = [];
+  const swept = new Map((loadRepoSweep()?.rows ?? []).map((r) => [r.root, r]));
+  for (const proj of listKnownProjects()) {
+    if (!existsSync(proj.root)) continue;
+    const g = repoGates(proj.root, proj.name);
+    if (!g) continue;
+    // null = not swept yet (new repo, or the first sweep has not run) — shown as "—", never as clean. The UI labels the row
+    // through i18n; `lines` keeps the English CLI text for `zemory gates`-style readers.
+    const row = swept.get(proj.root) ?? null;
+    const extra = row ? sweepLines(row) : [];
+    rows.push({ ...g, gaps: g.gaps + extra.length, lines: [...repoGateLines(g), ...extra], sweep: row });
+  }
+  return rows;
 }

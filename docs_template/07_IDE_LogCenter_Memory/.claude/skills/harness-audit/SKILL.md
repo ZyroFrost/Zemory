@@ -2,10 +2,10 @@
 id: Skill_Harness_Audit
 aka: audit
 name: harness-audit
-version: 17
+version: 18
 type: process
 description: Run a full review of the project across every dimension, verifying each finding against real files before reporting it. Use only when explicitly asked for a thorough audit, or before a major milestone such as a release or a large batch of changes. This is not a quick check. Vietnamese triggers - "audit toàn diện", "soi hết", "kiểm tra toàn bộ", "rà lại hết", "review tổng thể".
-from: _Store/03_SKILLS/Skill_Harness_Audit @v17 #28b4d15e3d1d
+from: _Store/03_SKILLS/Skill_Harness_Audit @v18 #ff2c5b22d375
 ---
 
 # audit — soi toàn diện

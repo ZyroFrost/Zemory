@@ -1,3 +1,20 @@
 {
-  "trigger": "repo lệch chuẩn, cần nắn lại"
+  "trigger": "repo lệch chuẩn, cần nắn lại",
+  "prompt": {
+    "kind": "harness-reconcile",
+    "re": "\\b(sap xep lai|don lai thu muc|nan ve chuan|lon xon|ap chuan vao)\\b",
+    "text": "[zemory] Bringing a folder back to the standard: follow skill harness-reconcile — a proposal table first, nothing moves on its own."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "dọn lại thư mục cho đúng chuẩn"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

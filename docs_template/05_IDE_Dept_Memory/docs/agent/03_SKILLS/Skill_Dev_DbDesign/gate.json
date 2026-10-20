@@ -1,3 +1,20 @@
 {
-  "trigger": "tạo · đổi bảng, cột, khoá, view trong cơ sở dữ liệu"
+  "trigger": "tạo · đổi bảng, cột, khoá, view trong cơ sở dữ liệu",
+  "prompt": {
+    "kind": "db-design",
+    "re": "\\b(tao bang|them cot|thiet ke bang|sua schema|doi schema|mo hinh du lieu|bang dim|bang fact|dim_\\w+|fact_\\w+)\\b",
+    "text": "[zemory] Table or column change: follow skill dev-db-design — review the whole schema first, one fact in one table."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "thêm cột ngày vào bảng fact"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

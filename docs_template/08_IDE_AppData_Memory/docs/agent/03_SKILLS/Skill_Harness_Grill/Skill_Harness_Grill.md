@@ -2,10 +2,10 @@
 id: Skill_Harness_Grill
 aka: grill
 name: harness-grill
-version: 9
+version: 10
 type: process
 description: Clarify an ambiguous request before doing any work - stop, read what can be read, then ask one question at a time with your own proposal attached. Use whenever a request is ambiguous, uses terms with several meanings, lacks facts, has undefined scope, carries an unstated assumption, contains contradictory demands, or precedes a hard-to-undo action. Vietnamese triggers - "grill", "chưa rõ", "làm sao", "ý là gì", or any request you cannot execute correctly without guessing.
-from: _Store/03_SKILLS/Skill_Harness_Grill @v9 #d2e3f52cef6e
+from: _Store/03_SKILLS/Skill_Harness_Grill @v10 #3c124b8a6faf
 ---
 
 # grill — làm rõ yêu cầu trước khi làm

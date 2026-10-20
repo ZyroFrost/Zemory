@@ -1,0 +1,20 @@
+{
+  "trigger": "nhận một repo CÓ SẴN cấu trúc riêng vào harness mà không nắn repo",
+  "prompt": {
+    "kind": "harness-adopt",
+    "re": "\\b(adopt|nhan repo|repo co san|khong nan repo|anh xa slot|bang anh xa)\\b",
+    "text": "[zemory] Taking in a repo with its own structure: follow skill harness-adopt — never move its folders; propose the slot map and wait for approval."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "nhận repo có sẵn vào harness"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
+}

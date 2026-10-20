@@ -1,3 +1,20 @@
 {
-  "trigger": "được duyệt thêm hoặc sửa luật, khung hiến pháp, chốt máy"
+  "trigger": "được duyệt thêm hoặc sửa luật, khung hiến pháp, chốt máy",
+  "prompt": {
+    "kind": "rule-gate",
+    "re": "\\b(them luat|viet luat|sua luat|dung cong|chot may|xep nha luat)\\b",
+    "text": "[zemory] Writing a rule, frame or gate: follow skill harness-rule-gate — the right home, then a machine gate with a block and a pass case."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "thêm luật mới cho repo"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

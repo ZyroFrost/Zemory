@@ -1,3 +1,20 @@
 {
-  "trigger": "yêu cầu chưa đủ rõ để làm đúng"
+  "trigger": "yêu cầu chưa đủ rõ để làm đúng",
+  "prompt": {
+    "kind": "harness-grill",
+    "re": "\\b(grill|chua ro|y la gi|y ban la gi)\\b",
+    "text": "[zemory] Unclear request: follow skill harness-grill — read what can be read, then ask one question at a time with a proposal attached."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "ý là gì, chưa rõ lắm"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

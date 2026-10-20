@@ -1,3 +1,20 @@
 {
-  "trigger": "kéo dữ liệu từ nguồn về"
+  "trigger": "kéo dữ liệu từ nguồn về",
+  "prompt": {
+    "kind": "task-pull",
+    "re": "\\b(keo du lieu|lay so moi|tai data ve|cap nhat nguon|pull du lieu|lam moi so lieu)\\b",
+    "text": "[zemory] Fetching source data: follow skill task-pull — fresh data from its source (SQL, VM, web, API) into the project."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "kéo dữ liệu tháng mới về"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

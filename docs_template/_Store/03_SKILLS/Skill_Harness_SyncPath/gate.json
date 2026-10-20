@@ -1,3 +1,20 @@
 {
-  "trigger": "sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác"
+  "trigger": "sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác",
+  "prompt": {
+    "kind": "sync-path",
+    "re": "\\b(dong bo 2 may|may thu hai|ban giao may|may kia|sync da may|pull ve may)\\b",
+    "text": "[zemory] Second machine: follow skill harness-sync-path — declare and prove how each new artifact reaches the other machine."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "máy kia chạy được chưa"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }
