@@ -57,7 +57,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 22 | `.claude/skills/task-fill/SKILL.md` | 42 |
 | 23 | `.claude/skills/task-pull/SKILL.md` | 54 |
 | 24 | `.claude/skills/task-upload/SKILL.md` | 34 |
-| 25 | `.gitattributes` | 7 |
+| 25 | `.gitattributes` | 9 |
 | 26 | `.stignore` | 25 |
 | 27 | `AGENTS.md` | 53 |
 | 28 | `CLAUDE.md` | 1 |
