@@ -19,6 +19,17 @@ function put(root, rel, text) {
   writeFileSync(p, text);
 }
 
+test("a byte-compiled cache beside a part's script is not part content (20/10: pbi_gate.py run once in HS)", async (t) => {
+  const { partFiles, isBuildCache } = await import("../../dist/docs/store.js");
+  const d = tempDir(t, "zemory-part-cache-");
+  put(d, "Skill_X.md", "---\nid: Skill_X\nversion: 1\n---\n# x\n");
+  put(d, "scripts/tool.py", "print(1)\n");
+  put(d, "scripts/__pycache__/tool.cpython-312.pyc", "\u0000bytes");
+  put(d, "scripts/old.pyc", "\u0000bytes");
+  assert.deepEqual(partFiles(d), ["Skill_X.md", "scripts/tool.py"]);
+  assert.ok(isBuildCache("__pycache__") && isBuildCache("a.pyc") && isBuildCache("a.pyo") && !isBuildCache("a.py"));
+});
+
 test("the store has every shelf, each numbered shelf with at least one part (plan/28 §0p A1)", () => {
   assert.deepEqual(storeShelfFindings(STORE_DIR), []);
 });

@@ -25,6 +25,7 @@ import {
   plugSkills,
   installBases,
   installParts,
+  isBuildCache,
   type InstallResult,
   renameLegacyShelves,
   retireCopies,
@@ -43,6 +44,7 @@ import { SHELF } from "./harness-names.js";
 import { unwireHooks } from "./hook-wiring.js";
 import { writeIndexes } from "./harness-index.js";
 import { addMissingSections } from "./cons-read.js";
+import { fixSlotLines } from "./kit-sync.js";
 
 export interface KitApplyResult {
   kit: Kit;
@@ -148,6 +150,9 @@ export function assembleSet(kit: Kit, storeDir = STORE_DIR): KitApplyResult | { 
   // A set is a template, not a repo with a history: what a pass retires or replaces in it is already kept in the store's
   // Archive, and an archive folder in the set would be copied into every new repo (and listed in its BOOTSTRAP).
   rmSync(join(dir, "docs", "archive"), { recursive: true, force: true });
+  // a seed is written only when its file is absent, so a line a slot came to require later (slot 86: *.cmd / *.bat eol=crlf)
+  // never reached the set's copy and every repo built from it started red (20/10) - the set completes them as sync does
+  if (!("error" in r)) fixSlotLines(dir, true);
   if (!("error" in r)) writeFileSync(join(dir, BOOTSTRAP_FILE), setBootstrap(kit, storeDir));
   return r;
 }
@@ -160,6 +165,7 @@ function setFiles(dir: string): string[] {
   const out: string[] = [];
   const walk = (d: string, rel: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (isBuildCache(e.name)) continue;
       const r = rel ? `${rel}/${e.name}` : e.name;
       if (e.isDirectory()) walk(join(d, e.name), r);
       else if (r !== BOOTSTRAP_FILE) out.push(r);

@@ -295,11 +295,20 @@ function withoutFrom(text: string): string {
 export const HOST_BUILD_DIRS = ["Claude", "Codex"] as const;
 const NOT_CONTENT: readonly string[] = [...HOST_BUILD_DIRS, SEED_DIR];
 
+/**
+ * A byte-compiled cache an interpreter leaves beside a script (`__pycache__/`, `*.pyc`): not content. Running a part's
+ * script once in HS (20/10, pbi_gate.py) wrote one; it reddened the version check and was copied into 23 places.
+ */
+export function isBuildCache(name: string): boolean {
+  return name === "__pycache__" || /\.py[co]$/.test(name);
+}
+
 export function partFiles(dir: string): string[] {
   const out: string[] = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
+      if (isBuildCache(e.name)) continue;
       if (e.isDirectory()) {
         if (d === dir && NOT_CONTENT.includes(e.name)) continue;
         walk(p);
@@ -726,6 +735,7 @@ export function seedList(dir: string): string[] {
   const out: string[] = [];
   const walk = (d: string): void => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (isBuildCache(e.name)) continue;
       if (e.isDirectory()) walk(join(d, e.name));
       else out.push(relative(dir, join(d, e.name)).replace(/\\/g, "/"));
     }
