@@ -26,17 +26,20 @@ for (const kind of ["app", "non-app"]) {
     spawnSync("git", ["init", "-q", root]);
     const r = run(root, dir, "init", ...(kind === "non-app" ? ["--non-app"] : []));
     assert.equal(r.status, 0, r.stdout + r.stderr);
-    assert.match(r.stdout, /guard: /, "init reports the guard step");
+    // 20/10: a plain init builds the folder harness of a set (app → 04, non-app → 03); the guard lives in its rule's folder
+    assert.match(r.stdout, kind === "non-app" ? /kit 03_IDE_NonApp_Memory/ : /kit 04_IDE_App_Memory/, "init assembles the set of its kind");
     for (const f of ["guard.cjs", "policy.json", "02-59_read-first.cjs", "precommit-guard.cjs"]) {
-      assert.ok(existsSync(join(root, "docs", "hooks", f)), `init left no docs/hooks/${f}`);
+      assert.ok(existsSync(join(root, RULE59, f)), `init left no ${RULE59}/${f}`);
     }
-    const pol = JSON.parse(readFileSync(join(root, "docs", "hooks", "policy.json"), "utf8"));
-    assert.deepEqual(pol.read_first.required, ["docs/agent/05_TODO.md"]);
-    assert.equal(pol.read_first.sections[0].file, "docs/agent/02_RULES.md");
+    assert.ok(!existsSync(join(root, "docs", "agent", "02_RULES.md")), "no file harness beside the folder harness");
+    const pol = JSON.parse(readFileSync(join(root, RULE59, "policy.json"), "utf8"));
+    assert.ok(pol.read_first.required.includes("docs/agent/04_TODO.md"), JSON.stringify(pol.read_first.required));
+    assert.ok(pol.read_first.required.some((f) => /\/Rule_Core_\d+_/.test(f)), "the Core laws are forced reading");
     assert.match(readFileSync(join(root, ".claude", "settings.json"), "utf8"), /guard\.cjs/, "the guard is wired into PreToolUse");
-    assert.match(readFileSync(join(root, "docs", "agent", "02_RULES.md"), "utf8"), /zemory:core:start/, "the rule set carries the core");
   });
 }
+
+const RULE59 = join("docs", "agent", "01_LAW", "_Rule", "01_Harness", "Rule_Gate_59_ReadFirst");
 
 test("doctor reports a repo WITHOUT a guard even when it declares no `protected` path; with the guard it does not", (t) => {
   const dir = tempDir(t, "zemory-doctor-guard-");
@@ -44,6 +47,6 @@ test("doctor reports a repo WITHOUT a guard even when it declares no `protected`
   spawnSync("git", ["init", "-q", root]);
   assert.equal(run(root, dir, "init").status, 0);
   assert.doesNotMatch(run(root, dir, "doctor").stdout, /NO machine guard/, "a guarded repo is not reported");
-  rmSync(join(root, "docs", "hooks"), { recursive: true, force: true });
+  rmSync(join(root, RULE59, "guard.cjs"), { force: true });
   assert.match(run(root, dir, "doctor").stdout, /NO machine guard yet/, "a repo without the guard is reported");
 });
