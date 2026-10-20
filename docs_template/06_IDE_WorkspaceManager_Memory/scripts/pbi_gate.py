@@ -402,7 +402,7 @@ def check_states(vis, bms, put, fail):
         # Exception: tab pairs (BT_Tab<n>_...) - the user designed the active tab to stick out TALLER.
         if re.match(r'^BT_Tab\d+_', base):
             continue
-        (_ia, da), (_ib, db) = st['_On'], st['_Off']
+        da, db = st['_On'][1], st['_Off'][1]
         ra = tuple(da['position'].get(k) for k in ('x', 'y', 'width', 'height'))
         rb = tuple(db['position'].get(k) for k in ('x', 'y', 'width', 'height'))
         if ra != rb:
