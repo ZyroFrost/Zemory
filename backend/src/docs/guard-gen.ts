@@ -757,10 +757,25 @@ function cmdWordOf(seg) {
   return "";
 }
 
-// The region a rule MUST SCAN. An interpreter means the whole line. Otherwise only the segments with that name.
+// An interpreter segment CARRIES CODE when it takes code inline (\`-c\` · \`-e\` · \`--eval\` · \`-Command\` · \`/c\` · \`-\`) or names
+// no script and so reads its code from stdin (\`echo … | bash\`). One that runs a script file or a module hands the rest
+// of the line to that program as DATA: \`node tool.js '{"cmd":"rm build.log"}'\` deletes nothing (2026-10-19, a JSON
+// payload was blocked as a delete). Flags inside quotes are data too; a quoted script name stays "carries code".
+function interpCarriesCode(seg) {
+  const toks = seg.replace(/'[^']*'|"(?:[^"\\\\]|\\\\.)*"/g, " Q ").trim().split(/\\s+/);
+  const at = toks.findIndex((t) => SEG_INTERP.test(t.replace(/\\\\/g, "/").split("/").pop() || ""));
+  if (at < 0) return true;
+  const rest = toks.slice(at + 1);
+  if (rest.some((t) => /^(-c|-e|--eval|-p|--print|-command|-encodedcommand|-ec|\\/c|\\/k|-)$/i.test(t) || /^--eval=/i.test(t))) return true;
+  if (rest.some((t) => /\\.(c?js|mjs|ts|py|sh|ps1|pl|rb)$/i.test(t) || /^(-m|-file)$/i.test(t))) return false;
+  return true;
+}
+
+// The region a rule MUST SCAN. An interpreter that carries code means the whole line. Otherwise only the segments with
+// that name.
 function zonesFor(cmd, nameRe) {
   const segs = splitSegments(cmd);
-  if (segs.some((s) => SEG_INTERP.test(cmdWordOf(s)))) return [cmd];
+  if (segs.some((s) => SEG_INTERP.test(cmdWordOf(s)) && interpCarriesCode(s))) return [cmd];
   return segs.filter((s) => nameRe.test(cmdWordOf(s)));
 }
 const hitsIn = (cmd, nameRe, re) => zonesFor(cmd, nameRe).some((z) => re.test(z));
