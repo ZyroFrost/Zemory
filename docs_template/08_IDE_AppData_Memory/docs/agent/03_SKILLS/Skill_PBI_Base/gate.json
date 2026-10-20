@@ -1,3 +1,20 @@
 {
-  "trigger": "dựng · sửa báo cáo, dashboard, measure, visual"
+  "trigger": "dựng · sửa báo cáo, dashboard, measure, visual",
+  "prompt": {
+    "kind": "pbi-base",
+    "re": "\\b(dashboard|bieu do|measure|dax|power query|pbix|pbip|visual)\\b",
+    "text": "[zemory] Report work: follow skill pbi-base — measures and queries in one named store, the report file handled as a heavy binary."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "thêm measure doanh thu vào dashboard"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

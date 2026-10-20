@@ -31,6 +31,7 @@ import { syncCheck } from "../docs/adopt.js";
 import { coreForCompaction } from "../docs/rule-core.js";
 import { isFolderHarness, isRetired, listParts, promptGates } from "../docs/store.js";
 import { stopDecision } from "../docs/turn-evidence.js";
+import { AUTO_COMMIT_LINES, autoCommit } from "../docs/auto-commit.js";
 import { promptMatches, SHELF } from "../docs/harness-names.js";
 import { findProjectRoot, harnessPathsAt, readMarker } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
@@ -457,11 +458,32 @@ export function handleHook(event: HookEventName, payload: any): string {
           /* fail-open: phép đo không bao giờ được làm hỏng lượt nạp (điều 9) */
         }
       }
+      // plan/27 §2e: a turn that ends clean (no evidence block) commits the session's own work locally once it passes the
+      // line limit. Said to the person, never pushed.
+      if (event === "stop" && !verdict && path) {
+        const note = endOfTurnAutoCommit(payload, path);
+        if (note) return JSON.stringify({ systemMessage: note });
+      }
       return verdict;
     }
     return "";
   } catch {
     return ""; // never break the host
+  }
+}
+
+/** The local auto-commit at the end of a turn (plan/27 §2e): the line the person sees, or "" when nothing happened. */
+export function endOfTurnAutoCommit(payload: any, transcriptPath: string): string {
+  try {
+    const cwd = String(payload?.cwd ?? "");
+    if (!cwd) return "";
+    const r = autoCommit(cwd, readFileSync(transcriptPath, "utf8"));
+    if (!r || (!r.committed && !r.note.startsWith("commit refused"))) return "";
+    return r.committed
+      ? `[zemory] Auto-committed locally, not pushed: ${r.lines} uncommitted lines in ${r.files.length} file(s) of this session passed ${AUTO_COMMIT_LINES}. Undo with \`git reset --soft HEAD~1\`.`
+      : `[zemory] Auto-commit of ${r.lines} lines in ${r.files.length} file(s) was refused — ${r.note.slice("commit refused: ".length)}`;
+  } catch {
+    return "";
   }
 }
 

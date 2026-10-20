@@ -2,10 +2,10 @@
 id: Skill_Harness_PlanTrim
 aka: plan-trim
 name: harness-plan-trim
-version: 8
+version: 9
 type: process
 description: Trim the specs in docs/plan when they grow past the cap, WITHOUT losing ideas — back up, draft outside the repo, have an independent reviewer restore every lost idea against the original and the code, then apply. Use when `zemory validate` warns that a spec or docs/plan is over the line cap, or when asked to shorten, trim or tidy the plans. Vietnamese triggers - "gọt plan", "dọn plan", "plan dài quá", "rút gọn plan", "plan vượt trần", "plan quá trần".
-from: _Store/03_SKILLS/Skill_Harness_PlanTrim @v8 #91f56b6f0022
+from: _Store/03_SKILLS/Skill_Harness_PlanTrim @v9 #9197876fab65
 ---
 
 # plan-trim — gọt plan vượt trần mà không mất ý

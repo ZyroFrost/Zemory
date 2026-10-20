@@ -1,3 +1,20 @@
 {
-  "trigger": "kiểm độ bám chuẩn"
+  "trigger": "kiểm độ bám chuẩn",
+  "prompt": {
+    "kind": "harness-conform",
+    "re": "\\b(soi chuan|kiem chuan|dung chuan khong|check cau truc|bam chuan)\\b",
+    "text": "[zemory] Conformance check: follow skill harness-conform — `zemory conform` scores, the agent judges each finding."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "soi chuẩn repo này"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

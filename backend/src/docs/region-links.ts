@@ -74,7 +74,7 @@ export function findRegionRepo(name: string, from: string): string | null {
 export function regionBase(root: string, storeDir = STORE_DIR): string {
   let up = dirname(resolve(root));
   for (let i = 0; i < 4; i++) {
-    let ents: string[] = [];
+    let ents: string[];
     try { ents = readdirSync(up); } catch { break; }
     for (const e of ents) {
       const p = join(up, e);

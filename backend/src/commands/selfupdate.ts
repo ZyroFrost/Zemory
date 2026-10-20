@@ -18,6 +18,8 @@ import { cmpSemver } from "../util/semver.js";
 import { npmInvocation } from "../platform/npm.js";
 import { uiPort } from "../ui.js";
 import { refreshRemoteVersion } from "../update/remote-version.js";
+import { localChangePlan, restoreKept, setAsideClashes } from "../update/local-changes.js";
+import { createInterface } from "node:readline/promises";
 
 /** Gốc repo của chính công cụ (dist/commands/… → lên hai bậc). */
 function toolRoot(): string {
@@ -85,11 +87,27 @@ function diagnosePull(root: string): string | null {
   return null;
 }
 
+/** One question per clashing file on a terminal; Enter = keep yours (the answer that loses nothing). */
+async function askEach(paths: string[]): Promise<string[]> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const keep: string[] = [];
+  try {
+    for (const p of paths) {
+      const a = (await rl.question(`    ${p} — [k]eep yours / [t]ake the new one? (k) `)).trim().toLowerCase();
+      if (a !== "t") keep.push(p);
+    }
+  } finally {
+    rl.close();
+  }
+  return keep;
+}
+
 export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
-  const bad = args.filter((a) => a.startsWith("--") && a !== "--dry-run" && a !== "--check");
-  if (bad.length) {
-    console.log(`zemory selfupdate: unknown flag ${bad.join(" ")}`);
-    console.log("  usage: zemory selfupdate [--check] [--dry-run]");
+  const known = ["--dry-run", "--check", "--keep-local", "--take-new"];
+  const bad = args.filter((a) => a.startsWith("--") && !known.includes(a));
+  if (bad.length || (args.includes("--keep-local") && args.includes("--take-new"))) {
+    console.log(`zemory selfupdate: ${bad.length ? `unknown flag ${bad.join(" ")}` : "--keep-local and --take-new are opposite answers"}`);
+    console.log("  usage: zemory selfupdate [--check] [--dry-run] [--keep-local | --take-new]");
     process.exitCode = 1;
     return;
   }
@@ -123,27 +141,36 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
     return;
   }
 
-  // ── CHỐT 1: CÂY PHẢI SẠCH ───────────────────────────────────────────────────
-  // Đây là chốt quan trọng nhất của cả lệnh. `git pull` lên một cây có sửa chưa commit
-  // là cách mất việc của người khác — và repo công cụ THƯỜNG có phiên agent đang mở.
-  // Thà dừng và bảo người ta tự xử còn hơn "cố cho xong".
-  const status = run("git", ["status", "--porcelain"], root);
-  if (!status.ok) {
-    console.log(`  ✗ could not run git status: ${status.out}`);
+  // ── LATCH 1: LOCAL EDITS — ASK, NEVER OVERWRITE (plan/27 §2f) ──────────────
+  // A pull over uncommitted edits is how someone else's work gets lost — the tool's repo often has an agent session
+  // open. Only the files the update ALSO changes need an answer; an edit the update does not touch rides through intact.
+  const plan = localChangePlan(root);
+  if (!plan.ok) {
+    console.log(`  ✗ could not compare local edits with the update: ${plan.error}`);
     process.exitCode = 1;
     return;
   }
-  if (status.out) {
-    const n = status.out.split(/\r?\n/).filter(Boolean).length;
-    console.log(`  ✗ STOP — the working tree still has ${n} uncommitted change(s). Updating would overwrite them.`);
-    for (const l of status.out.split(/\r?\n/).filter(Boolean).slice(0, 10)) console.log(`      ${l}`);
-    console.log("    → commit or stash first, then run again.");
-    process.exitCode = 1;
-    return;
+  let keep: string[] = [];
+  if (plan.dirty.length) {
+    console.log(`  · ${plan.dirty.length} uncommitted change(s); ${plan.clash.length} of them also changed by the update.`);
+    if (plan.clash.length) {
+      const all = plan.clash.map((c) => c.path);
+      if (args.includes("--keep-local")) keep = all;
+      else if (args.includes("--take-new")) keep = [];
+      else if (process.stdin.isTTY && !dryRun) keep = await askEach(all);
+      else {
+        for (const p of all) console.log(`      ${p}`);
+        console.log("    ? keep your version of these files, or take the new one? Run again with one of:");
+        console.log("        zemory selfupdate --keep-local   your version stays on top of the update");
+        console.log("        zemory selfupdate --take-new     the new version; yours is kept in data/selfupdate-keep/");
+        process.exitCode = 1;
+        return;
+      }
+    }
   }
 
   if (dryRun) {
-    console.log("  (--dry-run) tree is clean ⇒ would run: git pull --ff-only · npm install · npm run build · npm link");
+    console.log(`  (--dry-run) would run: git pull --ff-only · npm install · npm run build · npm link${plan.clash.length ? ` · keep ${keep.length}, take ${plan.clash.length - keep.length}` : ""}`);
     return;
   }
 
@@ -164,11 +191,18 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
     ["npm run build", npmInv.cmd, [...npmInv.args, "run", "build"], npmInv.shell],
     ["npm link", npmInv.cmd, [...npmInv.args, "link"], npmInv.shell],
   ];
+  const aside = plan.clash.length ? setAsideClashes(root, plan.clash, keep) : null;
+  if (aside) console.log(`  · local versions of ${plan.clash.length} clashing file(s) copied to ${aside}`);
   for (const [label, cmd, a, sh] of steps) {
     process.stdout.write(`  · ${label} … `);
     const r = run(cmd, a, root, sh);
+    const back = aside && cmd === "git" ? restoreKept(root, aside, !r.ok) : [];
+    const backLine = (what: string): void => {
+      if (back.length) console.log(`    ${what} ${back.length} file(s): ${back.slice(0, 5).join(" · ")}${back.length > 5 ? " …" : ""}`);
+    };
     if (!r.ok) {
       console.log("FAILED");
+      backLine("the pull failed — put back your version of");
       console.log(r.out.split(/\r?\n/).slice(-12).join("\n"));
       const why = cmd === "git" ? diagnosePull(root) : null;
       if (why) console.log(`    🔴 ${why}`);
@@ -178,6 +212,7 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
       return;
     }
     console.log("ok");
+    backLine("kept your version of");
   }
 
   const after = appVersion();

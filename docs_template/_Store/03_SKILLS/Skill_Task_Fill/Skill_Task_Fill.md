@@ -2,7 +2,7 @@
 id: Skill_Task_Fill
 aka: fill
 name: task-fill
-version: 9
+version: 10
 type: process
 description: Fill a blank template with real numbers and export the finished deliverable (report, sheet, document). Use when a template exists and the data is ready, or when asked to produce, generate, or make a report from existing figures. Vietnamese triggers - "làm báo cáo", "điền số vào mẫu", "xuất báo cáo", "đổ số liệu", "lên report", "ra file cuối".
 ---

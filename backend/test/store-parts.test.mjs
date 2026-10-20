@@ -200,6 +200,21 @@ test("negative: every kind of dead pointer is caught, and a pointer that lands i
   assert.match(f.find((x) => x.kind === "retired").note, /replaced by Rule_Core_05_Live/);
 });
 
+test("plan/27 §2c: a skill with no door is reported; a frame, a prompt door and a read door are not", (t) => {
+  const s = tempDir(t, "zemory-store-skillgate-");
+  const skill = (n, head, gate) => {
+    put(s, `03_SKILLS/${n}/${n}.md`, `---\nid: ${n}\nname: ${n.toLowerCase()}\nversion: 1\n${head}---\nx\n`);
+    if (gate) put(s, `03_SKILLS/${n}/gate.json`, JSON.stringify(gate));
+  };
+  skill("Skill_A_None", "", null);
+  skill("Skill_A_Trigger", "", { trigger: "words only" });
+  skill("Skill_A_Frame", "frame: true\n", null);
+  skill("Skill_A_Prompt", "", { prompt: { kind: "a", re: "\\b(alpha)\\b", text: "t" }, block: [{ prompt: "alpha" }], pass: [{ prompt: "beta" }] });
+  skill("Skill_A_Read", "", { read: [{ when: "path_prefix", prefix: "frontend" }], block: [{ path: "frontend/a.js" }], pass: [{ path: "b.ts" }] });
+  const f = gateExampleFindings(s).filter((x) => /a skill without a gate/.test(x));
+  assert.deepEqual(f.map((x) => x.split(" ")[0]).sort(), ["Skill_A_None", "Skill_A_Trigger"], f.join("\n"));
+});
+
 test("negative: a wrong example, a gate with no examples and a private line are all reported", (t) => {
   const s = tempDir(t, "zemory-store-neg-");
   put(s, "01_LAW/_Rule/02-9_x/RULE.md", "---\nid: 02-9\nname: x\nversion: 1\nkind: content\n---\nx\n");

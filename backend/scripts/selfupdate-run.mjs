@@ -13,8 +13,8 @@
 // Nó CỐ TÌNH ngu: cách gọi npm do bên gọi tính sẵn rồi truyền xuống (`--npm-*`). Một bản sao
 // logic đó ở đây sẽ là NGUỒN TRÙNG thứ ba, mà chính nguồn trùng là thứ đã làm hai chỗ cùng hỏng.
 import { execFileSync, spawn } from "node:child_process";
-import { appendFileSync, mkdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { appendFileSync, copyFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 const argv = process.argv.slice(2);
 const opt = (name, dflt = null) => {
@@ -28,6 +28,9 @@ const RELAUNCH = opt("--relaunch", "0") === "1";
 const NPM_CMD = opt("--npm-cmd");
 const NPM_PREFIX = JSON.parse(opt("--npm-prefix", "[]"));
 const NPM_SHELL = opt("--npm-shell", "0") === "1";
+// The daemon copied the local version of every file the update also changes into this folder (update/local-changes.ts)
+// and cleared them from the tree; manifest.json says which ones win over the new version.
+const KEEP_DIR = opt("--keep-dir");
 if (!ROOT || !NPM_CMD) { console.error("selfupdate-run: thieu --root hoac --npm-cmd"); process.exit(2); }
 
 const LOG_DIR = join(ROOT, "data", "logs");
@@ -84,7 +87,10 @@ const npm = (args) => step(`npm ${args.join(" ")}`, NPM_CMD, [...NPM_PREFIX, ...
   // người thợ thoát, và người dùng mất hẳn app — daemon đã tắt từ trước mà không ai bật lại.
   // Bỏ người ta ngồi với màn hình trống là kiểu hỏng tệ hơn cả việc cập nhật không thành.
   const bail = (code) => { say(`  → update did not complete. Relaunching the daemon on the current build.`); relaunch(); process.exit(code); };
-  if (!step("git pull --ff-only", "git", ["pull", "--ff-only"])) {
+  const pulled = step("git pull --ff-only", "git", ["pull", "--ff-only"]);
+  // A failed pull puts every clash back as it was; a good one puts back only the files answered `keep`.
+  if (KEEP_DIR) restoreKept(!pulled);
+  if (!pulled) {
     say("    🔴 a branch with no upstream leaves `git pull` nothing to pull from — set it with");
     say("       `git branch --set-upstream-to=origin/<branch>`; if history was rewritten, clone again.");
     bail(4);
@@ -97,6 +103,24 @@ const npm = (args) => step(`npm ${args.join(" ")}`, NPM_CMD, [...NPM_PREFIX, ...
   cleanupSelf();
   process.exit(0);
 })().catch((e) => { say(`=== selfupdate crashed: ${e && e.stack ? e.stack : e}`); cleanupSelf(); process.exit(1); });
+
+function restoreKept(all) {
+  try {
+    const m = JSON.parse(readFileSync(join(KEEP_DIR, "manifest.json"), "utf8"));
+    const files = all ? [...m.keep, ...m.take] : m.keep;
+    let n = 0;
+    for (const p of files) {
+      const src = join(KEEP_DIR, p);
+      if (!existsSync(src)) continue;
+      mkdirSync(dirname(join(ROOT, p)), { recursive: true });
+      copyFileSync(src, join(ROOT, p));
+      n++;
+    }
+    say(`  ✓ ${all ? "put back" : "kept the local version of"} ${n} file(s) — copies stay in ${KEEP_DIR}`);
+  } catch (e) {
+    say(`  ✗ could not restore local versions from ${KEEP_DIR}: ${e && e.message} — they are still there, copy them back by hand`);
+  }
+}
 
 /**
  * Phóng daemon trở lại. Gọi ở CẢ đường thành công lẫn đường hỏng — daemon đã bị tắt từ đầu lượt,

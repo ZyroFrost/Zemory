@@ -2,7 +2,7 @@
 id: Rule_50
 aka: 02-50
 name: git
-version: 6
+version: 7
 kind: action
 code: 03_Safety
 ---
@@ -17,7 +17,8 @@ command. History is never rewritten or destroyed without asking first.
 - About to push, force-push, rewrite history, delete a remote tag or branch, or discard uncommitted work.
 
 ## Do
-1. Commit locally in the repo's commit style; no need to ask.
+1. Commit locally in the repo's commit style; no need to ask. A session's own uncommitted work past 300 lines is committed
+   locally at the end of the turn by the hook (only the files the session wrote, through the pre-commit check, never pushed).
 2. Push only when the request contains a push command. Work done ⇒ run the check, report, stop. One push command covers the whole
    batch in progress: later fixes of the same batch are pushed without asking again.
 3. Writing the changelog · committing · "it's done" is not a push command. Pushing is not how a fix takes effect on the running
@@ -32,6 +33,7 @@ command. History is never rewritten or destroyed without asking first.
 
 ## Check
 - The guard blocks `git push` without a command and the history-breaking commands (flag `discard`).
+- The end-of-turn hook commits the session's own files locally once their uncommitted lines pass 300, and says so in one line.
 
 ## Luật là gì
 Commit cục bộ đảo được nên agent commit không cần xin. Push không gỡ được nên chỉ làm khi người dùng ra lệnh. Lịch sử không bao giờ
@@ -42,7 +44,8 @@ bị viết lại hay phá khi chưa hỏi trước.
 - Sắp push, force-push, viết lại lịch sử, xoá tag hay nhánh trên remote, hoặc bỏ việc chưa commit.
 
 ## Phải làm gì
-1. Commit cục bộ theo phong cách commit của repo; không cần xin.
+1. Commit cục bộ theo phong cách commit của repo; không cần xin. Việc chưa commit của phiên vượt 300 dòng thì hook cuối lượt tự
+   commit cục bộ (chỉ các file phiên đã ghi, đi qua phép kiểm pre-commit, không bao giờ push).
 2. Chỉ push khi lời yêu cầu có lệnh push. Xong việc ⇒ chạy phép kiểm, báo, dừng. Một lệnh push phủ cả đợt đang làm: các bản vá kế
    tiếp của cùng đợt push luôn, không hỏi lại.
 3. Ghi changelog · commit · "xong rồi" không phải lệnh push. Push không phải cách để bản sửa có hiệu lực trên máy đang chạy: build
@@ -57,6 +60,7 @@ bị viết lại hay phá khi chưa hỏi trước.
 
 ## Máy kiểm
 - Guard chặn `git push` chưa có lệnh và nhóm lệnh phá lịch sử (cờ `discard`).
+- Hook cuối lượt tự commit cục bộ các file của phiên khi số dòng chưa commit vượt 300, và báo một dòng.
 
 ## Links · Liên kết
 - Related · Liên quan: `Rule_Gate_10_DestructiveOps` — discarding work is destroying · bỏ việc chưa commit là phá dữ liệu

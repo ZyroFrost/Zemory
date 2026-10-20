@@ -714,7 +714,8 @@ zemory ui                               Background daemon + cockpit (port 4444, 
 zemory mcp                              MCP stdio server (17 tools: recall · specs · graph · control)
 zemory setup                            Print the setup runbook; offer the shortcuts
 zemory sweep [--dry-run]                Close leftover browser processes zemory started
-zemory selfupdate [--check]             Pull + rebuild this install; stops if the tree is dirty
+zemory selfupdate [--check]             Pull + rebuild this install; a local edit the update also changes is
+                                        asked about (--keep-local · --take-new), the local copy kept aside
 zemory hook install                     Install the 0-token capture hooks
 zemory hook guard                       Regenerate the layer-1 machine locks (init and sync also run it)
 zemory project move <from> <to>         Move a repo folder with its memory, sessions and settings (dry run by default)

@@ -2,7 +2,7 @@
 id: Skill_Harness_Reconcile
 aka: reconcile
 name: harness-reconcile
-version: 11
+version: 12
 type: process
 description: Bring a project folder back in line with the standard when files have drifted into the wrong places, or when adopting an existing messy folder. Produces a proposal table - never moves anything on its own. Use when taking over an unfamiliar folder, or when asked to reorganise, tidy up, or restructure. Vietnamese triggers - "sắp xếp lại", "dọn lại thư mục", "nắn về chuẩn", "folder đang lộn xộn", "áp chuẩn vào dự án có sẵn".
 ---

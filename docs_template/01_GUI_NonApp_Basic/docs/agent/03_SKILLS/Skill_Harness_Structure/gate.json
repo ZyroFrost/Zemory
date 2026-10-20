@@ -1,3 +1,20 @@
 {
-  "trigger": "cần đặt · tạo · dời file · hỏi \"để ở đâu\""
+  "trigger": "cần đặt · tạo · dời file · hỏi \"để ở đâu\"",
+  "prompt": {
+    "kind": "harness-structure",
+    "re": "\\b(de o dau|dat file nay vao dau|dat o dau|tao thu muc|file nay thuoc cho nao)\\b",
+    "text": "[zemory] Where a file belongs: follow skill harness-structure — the routing table decides, not a guess."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "file này để ở đâu"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

@@ -2,7 +2,7 @@
 id: Skill_Harness_Adopt
 aka: adopt
 name: harness-adopt
-version: 5
+version: 6
 type: process
 description: Nhận một repo CÓ SẴN cấu trúc riêng vào harness mà KHÔNG nắn repo — đọc cây thật, đề xuất bảng ánh xạ slot, chờ người duyệt, rồi khoá vào .harness.json. Dùng khi repo là của bên thứ ba / làm nhóm / có CI-import khoá cứng theo tên folder, hoặc khi `conform` báo cấu trúc gốc đã đổi.
 ---

@@ -1,3 +1,20 @@
 {
-  "trigger": "`zemory validate` báo plan vượt trần · \"gọt plan\""
+  "trigger": "`zemory validate` báo plan vượt trần · \"gọt plan\"",
+  "prompt": {
+    "kind": "plan-trim",
+    "re": "\\b(got plan|don plan|plan dai qua|rut gon plan|plan vuot tran|plan qua tran)\\b",
+    "text": "[zemory] Trimming plans: follow skill harness-plan-trim — back up, draft outside the repo, an independent reviewer restores every lost idea."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "gọt plan 24 đi"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

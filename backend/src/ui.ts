@@ -52,8 +52,8 @@ import { gatherStatus } from "./status.js";
 import { buildFolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, standardDiff } from "./docs/standard.js";
-import { repoGateLines, repoGates, type RepoGates } from "./docs/repo-gates.js";
-import { loadRepoSweep, sweepLines, type SweepRow } from "./docs/repo-sweep.js";
+import { repoGateRows, type RepoGateRow } from "./docs/repo-sweep.js";
+import { localChangePlan, restoreKept, setAsideClashes } from "./update/local-changes.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
 /**
@@ -120,7 +120,8 @@ function lanAddresses(): Array<{ addr: string; iface: string; fixed: boolean }> 
 }
 
 let harnessUpdCache: { at: number; stale: Array<{ root: string; name: string; missing: number; guardStale: number }> } | null = null;
-let repoGatesCache: { at: number; rows: Array<RepoGates & { lines: string[]; sweep: SweepRow | null }> } | null = null;
+let repoGatesCache: { at: number; rows: RepoGateRow[] } | null = null;
+let repoGatesRun: Promise<RepoGateRow[]> | null = null;
 /**
  * LÀM MỚI số phiên bản của remote — ở TIẾN TRÌNH CON, không bao giờ trong vòng lặp sự kiện.
  *
@@ -3114,22 +3115,32 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       }
     }
     if (req.method === "POST" && p === "/selfupdate") {
-      // Nút "Cập nhật ngay" trong hộp cập nhật (user 2026-08-29: kiểu VS Code — có bản mới thì bấm, tự kéo về).
-      // Cùng bốn bước và cùng CHỐT với `zemory selfupdate`: cây mã có sửa chưa commit ⇒ DỪNG, không đè.
-      // Dựng xong thì tự phóng daemon mới (detached) rồi thoát — cửa sổ app nối lại theo nhịp tim.
+      // The "Update now" button of the update dialog: the same steps and the same latch as `zemory selfupdate` — a local
+      // edit the update also changes is asked about, never overwritten. Once built the updater launches the new daemon
+      // (detached) and this one exits; the app window reconnects on its heartbeat.
       const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-      const run = (cmd: string, args: string[]): { ok: boolean; out: string } => {
-        try {
-          return { ok: true, out: String(execFileSync(cmd, args, { cwd: root, encoding: "utf8", stdio: "pipe", timeout: 15 * 60_000, windowsHide: true })).trim() };
-        } catch (e) {
-          const err = e as { stdout?: string; stderr?: string; message?: string };
-          return { ok: false, out: (String(err.stdout ?? "") + String(err.stderr ?? "")).trim() || (err.message ?? "failed") };
-        }
-      };
       if (!existsSync(join(root, ".git"))) return json(res, { ok: false, error: "not a source install (no .git)" });
-      const st = run("git", ["status", "--porcelain"]);
-      if (!st.ok) return json(res, { ok: false, error: `git status: ${st.out.slice(0, 200)}` });
-      if (st.out.split(/\r?\n/).filter(Boolean).length) return json(res, { ok: false, dirty: true });
+      // Local edits (plan/27 §2f): only a file the update ALSO changes needs an answer. Without one the dialog gets the list
+      // back and asks per file; `?keep=<json list>` is the answer (every other clash takes the new version — its local copy
+      // is kept in data/selfupdate-keep/ either way).
+      const plan = localChangePlan(root);
+      if (!plan.ok) return json(res, { ok: false, error: `git: ${plan.error}` });
+      let keepDir = "";
+      if (plan.clash.length) {
+        const ans = u.searchParams.get("keep");
+        if (ans === null) return json(res, { ok: false, clash: plan.clash.map((c) => c.path), dirty: plan.dirty.length });
+        let keep: string[];
+        try {
+          keep = (JSON.parse(ans) as unknown[]).map(String);
+        } catch {
+          return json(res, { ok: false, error: "keep: not a JSON list" });
+        }
+        keepDir = setAsideClashes(root, plan.clash, keep);
+      }
+      // the updater never started ⇒ every clash goes back as it was
+      const putBack = (): void => {
+        if (keepDir) restoreKept(root, keepDir, true);
+      };
       const have = appVersion();
       // BÀN GIAO ra một tiến trình NGOÀI daemon — không dựng tại chỗ được, và đây là lý do:
       // daemon chạy dưới `dist/zemory.exe`, Windows KHOÁ ảnh đang nạp, nên `npm run build` gọi
@@ -3140,7 +3151,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Người thợ nằm ở `backend/scripts/` chứ KHÔNG phải `dist/`: để trong `dist/` thì bước
       // `clean` xoá mất chính nó giữa chừng.
       const helper = join(root, "backend", "scripts", "selfupdate-run.mjs");
-      if (!existsSync(helper)) return json(res, { ok: false, error: `missing updater: ${helper}` });
+      if (!existsSync(helper)) {
+        putBack();
+        return json(res, { ok: false, error: `missing updater: ${helper}` });
+      }
       // Cách gọi npm do ĐÂY tính (một nguồn duy nhất: `platform/npm.ts`) rồi truyền xuống. Người
       // thợ cố tình không tự quyết — thêm một bản sao logic nữa chính là thứ đã làm hai chỗ cùng hỏng.
       const inv = npmInvocation([]);
@@ -3153,6 +3167,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       try {
         copyFileSync(process.execPath, updaterExe);
       } catch (e) {
+        putBack();
         return json(res, { ok: false, error: `cannot stage updater binary: ${e instanceof Error ? e.message : String(e)}` });
       }
       try {
@@ -3165,8 +3180,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
           "--npm-cmd", inv.cmd,
           "--npm-prefix", JSON.stringify(inv.args),
           "--npm-shell", inv.shell ? "1" : "0",
+          ...(keepDir ? ["--keep-dir", keepDir] : []),
         ], { detached: true, stdio: "ignore", cwd: root, windowsHide: true }).unref();
       } catch (e) {
+        putBack();
         return json(res, { ok: false, error: `cannot start updater: ${e instanceof Error ? e.message : String(e)}` });
       }
       daemonLog(`[selfupdate] bàn giao cho ${helper} (npm qua ${inv.via}) — thoát để nhả khoá dist/`);
@@ -4143,25 +4160,21 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // a row per constitution article. Same function as `zemory gates --all`. Cached 5′ like /harness-updates.
       const now = Date.now();
       if (!repoGatesCache || now - repoGatesCache.at > 300_000 || u.searchParams.get("fresh") === "1") {
-        const rows: Array<RepoGates & { lines: string[]; sweep: SweepRow | null }> = [];
-        try {
-          // The daemon's 6-hour sweep (conform · validate · todo verify) joins each repo's gaps: one chip, one list.
-          const sweep = loadRepoSweep();
-          const swept = new Map((sweep?.rows ?? []).map((r) => [r.root, r]));
-          for (const proj of listKnownProjects()) {
-            if (!existsSync(proj.root)) continue;
-            const g = repoGates(proj.root, proj.name);
-            if (!g) continue;
-            // null = not swept yet (new repo, or the first sweep has not run) — shown as "—", never as clean. The UI
-            // labels the row through i18n; `lines` keeps the English CLI text for `zemory gates`-style readers.
-            const row = swept.get(proj.root) ?? null;
-            const extra = row ? sweepLines(row) : [];
-            rows.push({ ...g, gaps: g.gaps + extra.length, lines: [...repoGateLines(g), ...extra], sweep: row });
-          }
-        } catch {
-          /* fail-open — a reminder surface must not die */
-        }
-        repoGatesCache = { at: now, rows };
+        // The daemon's 6-hour sweep (conform · validate · todo verify) joins each repo's gaps: one chip, one list. ~5 s of
+        // synchronous reads over 20 repos froze every other request (the chip's dialog opened after 7.9 s, 2026-10-20) ⇒ a
+        // worker; requests that arrive while it runs share the one pass.
+        repoGatesRun ??= runInWorker<RepoGateRow[]>("docs/repo-sweep.js", "repoGateRows", [])
+          .then((w) => {
+            if (w.ok) return w.value;
+            try {
+              return repoGateRows();
+            } catch {
+              return []; // fail-open — a reminder surface must not die
+            }
+          })
+          .finally(() => (repoGatesRun = null));
+        const rows = await repoGatesRun;
+        repoGatesCache = { at: Date.now(), rows };
       }
       return json(res, { checkedAt: new Date(repoGatesCache.at).toISOString(), repos: repoGatesCache.rows });
     }

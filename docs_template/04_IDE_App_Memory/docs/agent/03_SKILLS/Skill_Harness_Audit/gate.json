@@ -1,3 +1,20 @@
 {
-  "trigger": "lời gọi \"audit toàn diện\" / \"soi hết\""
+  "trigger": "lời gọi \"audit toàn diện\" / \"soi hết\"",
+  "prompt": {
+    "kind": "harness-audit",
+    "re": "\\b(audit toan dien|soi het|kiem tra toan bo|ra lai het|review tong the)\\b",
+    "text": "[zemory] Full audit: follow skill harness-audit — every finding verified against the real files before it is reported."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "audit toàn diện repo này"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

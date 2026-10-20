@@ -1,3 +1,20 @@
 {
-  "trigger": "cần ĐỌC `.xlsx .xls .docx .pptx .pdf`"
+  "trigger": "cần ĐỌC `.xlsx .xls .docx .pptx .pdf`",
+  "prompt": {
+    "kind": "read-office",
+    "re": "\\b(doc file excel|xem bang tinh|mo file word|mo file excel|doc pdf|doc file pdf|lay so tu file)\\b|\\.(xlsx|xls|pptx|pdf)\\b",
+    "text": "[zemory] Office or PDF file to read: follow skill doc-read-office — pick the cheapest conversion, never dump raw XML."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "đọc file excel doanh thu tháng 9"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

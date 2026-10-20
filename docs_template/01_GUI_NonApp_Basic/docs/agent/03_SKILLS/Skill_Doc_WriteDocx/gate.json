@@ -1,3 +1,20 @@
 {
-  "trigger": "cần SỬA / TẠO file Word `.docx`"
+  "trigger": "cần SỬA / TẠO file Word `.docx`",
+  "prompt": {
+    "kind": "write-docx",
+    "re": "\\b(sua file word|ghi file word|tao file word|doi chu trong file word|thay anh trong docx|chen anh vao file word|xuat file word|cap nhat tai lieu word)\\b",
+    "text": "[zemory] Word file to change: follow skill doc-write-docx — keep tables, pictures, styles and page setup intact."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "sửa file word hợp đồng"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
 }

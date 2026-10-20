@@ -2,10 +2,10 @@
 id: Skill_Harness_Conform
 aka: conform
 name: harness-conform
-version: 10
+version: 11
 type: process
 description: Measure how closely the project folder follows the declared standard - machine scores, agent judges. Run before closing a session, after restructuring, when taking over an unfamiliar folder, or periodically. Not needed after every small edit. Vietnamese triggers - "soi chuẩn", "kiểm chuẩn", "có đúng chuẩn không", "check cấu trúc", "dự án này có bám chuẩn không".
-from: _Store/03_SKILLS/Skill_Harness_Conform @v10 #8f0a3aa4a143
+from: _Store/03_SKILLS/Skill_Harness_Conform @v11 #f4d614af4d0c
 ---
 
 # conform — soi độ bám chuẩn
