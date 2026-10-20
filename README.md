@@ -97,7 +97,7 @@ standard workspace.
 
 | | |
 |---|---|
-| 🏗️ **Parts store + sets** | One store of versioned parts in `docs_template/_Store`: 33 laws, 8 constitution frames, 138 structure slots, 9 repo structures, 29 skills. Eight **sets** assemble them for a kind of repo (app, non-app, department, workspace manager, log center, app data, and two GUI-host sets). `zemory init` builds a repo's folder harness from a set; `zemory sync` keeps it current with a three-way merge, so what the repo wrote is never overwritten. Scaffolds anything from a CRUD service to an **LLM agent app** (`ai/` · `agents/` · `tools/` · `evals/` slots). |
+| 🏗️ **Parts store + sets** | One store of versioned parts in `docs_template/_Store`: 33 laws, 8 constitution frames, 138 structure slots, 9 repo structures, 29 skills. Nine **sets** assemble them for a kind of repo (app, non-app, department, workspace manager, system manager, log center, app data, and two GUI-host sets). `zemory init` builds a repo's folder harness from a set; `zemory sync` keeps it current with a three-way merge, so what the repo wrote is never overwritten. Scaffolds anything from a CRUD service to an **LLM agent app** (`ai/` · `agents/` · `tools/` · `evals/` slots). |
 | ⚖️ **Laws that hold themselves** | Three kinds. **Gate**: a hook or a test blocks the violation. **Keys**: a keyword in the request brings the law into view. **Core**: no machine can judge it, so it is the only text every session must read, capped at 22,000 characters and put back after a context compaction. A law that gains a gate leaves the forced reading. |
 | 📜 **A constitution per repo** | Eight frames (purpose · read-only sources · write boundary · source of truth · architecture · access · data lifecycle · dependencies). The frame's rule is shared; the repo writes its own answer in `Cons.md`, and the guard reads it: the SQL servers frame 10 allows, the secret files frame 14 names. |
 | 🧠 **Global Memory** | Eleven ingest lanes in one local SQLite database, deduped, secret-redacted, digested — six on-disk agents (Claude Code, Codex, Continue, LM Studio, VS Code Copilot Chat, curated memory files) and five web platforms. |
@@ -331,7 +331,7 @@ would remove the only way to answer *why won't it connect*.
 ![Harness — docs](docs_public/ui/05-harness-docs.png)
 
 This screen renders the shared standard so a person can read it without opening the files. The
-screenshots predate the parts store: they show the five file-harness bundles that the eight sets
+screenshots predate the parts store: they show the five file-harness bundles that the nine sets
 (see [The harness](#the-harness-a-parts-store-sets-and-a-folder-harness-per-repo)) have since replaced.
 Sub-tab **Docs harness** renders the template documents; the second sub-tab is the structure
 standard itself:
@@ -446,7 +446,7 @@ has one (`gate.json`, a `hook.cjs`, or block/pass examples a test replays), so t
 that holds it travel together.
 
 **Sets.** A set is a folder beside the store, named `NN_<Host>_<Structure>_<Tier>`, holding the parts one
-kind of repo needs. Eight are built:
+kind of repo needs. Nine are built:
 
 | set | for |
 |---|---|
@@ -456,6 +456,7 @@ kind of repo needs. Eight are built:
 | `05_IDE_Dept_Memory` | a department repo in a region (reports, cases, scheduled tasks) |
 | `06_IDE_WorkspaceManager_Memory` | the repo that manages a region's department repos |
 | `07_IDE_LogCenter_Memory` · `08_IDE_AppData_Memory` | a region's log store · the data repo behind a family of apps |
+| `09_IDE_SystemManager_Memory` | the repo that manages a family of apps and their data repo |
 
 `zemory init` takes set 04 (or 03 with `--non-app`); `zemory init --kit <NN>` takes any other. A set folder is
 itself a template a Basic install can fetch file by file (`BOOTSTRAP.md` lists them with line counts).
@@ -501,7 +502,9 @@ a shared skill. The constitution states the rule and names the skill; the skill 
 (`structure.json` › `role`). A repo names its manager and the repos whose data it uses in its marker
 (`docs/.harness.json`: `owner`, `uses`), and `conform` checks those names against the roles (`region-links`). The
 role that pays off daily is the workspace manager: `zemory sync` run there brings itself up to the store, then
-goes on to every repo it manages, so a fix made once in the store reaches a whole region with one command. Shared
+goes on to every repo it manages, so a fix made once in the store reaches a whole region with one command. A system
+manager does the same for a family of apps and the data repo behind them. The region is read from the folder that
+holds the workspace manager, so a manager nested in a project folder (`_Project/ERP/<hub>`) still sees every repo. Shared
 reference repos of a region (a glossary, legacy material, report templates) are declared as plain folders of the
 manager's structure and need no harness of their own.
 
@@ -894,7 +897,7 @@ backend/                server-side: 100% first-party code + thin entry surfaces
   test/                 tests for logic that can silently break
 frontend/               the UI (served static by the daemon, no bundler):
   pages/ · styles/ · components/ · scripts/ · assets/
-docs_template/          the standard: _Store/ (the parts store) + the eight set folders built from it
+docs_template/          the standard: _Store/ (the parts store) + the nine set folders built from it
 docs_public/            images published with this README
 external/skills/        vendored third-party skills (kept verbatim)
 AGENTS.md               thin router into docs/
