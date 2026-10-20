@@ -164,3 +164,23 @@ test("a manager syncs the repos it manages: owner named, or none named while it 
   assert.deepEqual(two.repos.map((r) => r.name), ["Dept_A", "Dept_B"], "named repos still follow their owner");
   assert.deepEqual(two.ambiguous, ["Dept_E"], "the machine does not guess between two managers");
 });
+
+test("a system manager two levels below the workspace reads the whole workspace and manages the app-data repo beside the DW", async (t) => {
+  // 20/10: SasinHub (_Project/ERP) could not see _DB_AppCore (beside the DW) - the workspace was read from its own parent
+  const { managedRepos } = await import("../../dist/docs/kit-sync.js");
+  const { regionBase, regionRepos } = await import("../../dist/docs/region-links.js");
+  const s = store(t);
+  const w = tempDir(t, "zemory-sysman-");
+  const repo = (rel, marker) => { put(w, `${rel}/docs/.harness.json`, JSON.stringify({ docs: "docs/agent", ...marker })); return join(w, rel); };
+  repo("_DB_DataWarehouse", { kit: "01_IDE_WorkspaceManager_Memory" });
+  const core = repo("_DB_AppCore", { kit: "05_IDE_AppData_Memory" });
+  const hub = repo("_Project/ERP/Hub", { kit: "06_IDE_SystemManager_Memory" });
+  const app = repo("_Project/ERP/Flow", { kit: "04_IDE_App_Memory" });
+  assert.equal(regionBase(hub, s), w, "the base is the folder that holds the workspace manager");
+  assert.ok(regionRepos(hub, s).includes(core));
+  assert.deepEqual(managedRepos(hub, s).repos.map((r) => r.root).sort(), [app, core].sort());
+  // without a workspace manager above, the base stays the repo's own parent
+  const lone = tempDir(t, "zemory-lone-");
+  put(lone, "a/b/docs/.harness.json", JSON.stringify({ docs: "docs/agent", kit: "04_IDE_App_Memory" }));
+  assert.equal(regionBase(join(lone, "a", "b"), s), join(lone, "a"));
+});

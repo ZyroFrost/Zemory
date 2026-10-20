@@ -1,0 +1,20 @@
+{
+  "trigger": "sắp đẩy hoặc đóng gói một bản build · chọn số version",
+  "prompt": {
+    "kind": "release",
+    "re": "\\b(version|phien ban|bump|release|phat hanh|push|publish|pushlish|pbulish|dong goi|build|exe|deploy|day len|up len|ban moi|cai lai ban|v?\\d{1,2}\\.\\d{1,2}(\\.\\d{1,2})?)\\b",
+    "text": "[zemory] Release or push: follow skill dev-release — read the version running where it ships, pick the number by its table; one push, one new number."
+  },
+  "block": [
+    {
+      "note": "a release request",
+      "prompt": "bump version rồi release"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    }
+  ]
+}

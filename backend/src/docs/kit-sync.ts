@@ -38,7 +38,7 @@ export function managedRepos(root: string, storeDir = STORE_DIR): { repos: Manag
   const me = repoRole(root, storeDir);
   if (!me?.manages.length) return { repos: [], ambiguous: [] };
   const name = basename(resolve(root));
-  const region = regionRepos(root);
+  const region = regionRepos(root, storeDir);
   const roles = new Map(region.map((at) => [at, repoRole(at, storeDir)] as const));
   const repos: ManagedRepo[] = [];
   const ambiguous: string[] = [];
