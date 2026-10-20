@@ -1042,7 +1042,9 @@ function planOne(part: Part, t: AssemblyTarget, target = targetDir(t, part)): As
   // Edited here, but the part has not changed since it was assembled (or last merged): nothing to bring, the edit stays.
   if (from.hash === theirsHash) return oldName ? renameOnly() : { part, target, verdict: "current", reason: "edited here; the store part has not changed since" };
   // Edited here: three-way, per file, against the part as it was at assembly time.
-  const base = baseFiles(part, from.hash);
+  // A hash recorded while the part's folder held a build cache is in no commit (20/10: `__pycache__` beside pbi_gate.py made
+  // nine untouched copies look edited, then conflict): the commit whose header carries the recorded version is the base.
+  const base = baseFiles(part, from.hash) ?? baseByVersion(part, from.version);
   if (!base) return { part, target, verdict: "conflict", reason: `edited here, and the base #${from.hash} is not in zemory's history` };
   const out = new Map<string, string>();
   for (const f of new Set([...base.keys(), ...mine.keys(), ...theirs.keys()])) {
@@ -1165,6 +1167,22 @@ export function baseFiles(part: Part, hash: string): Map<string, string> | null 
   if (!found) found = baseAcrossRenames(part, matches);
   baseCache.set(key, found);
   return found;
+}
+
+/** The part's files at the newest commit of its own folder whose header carries `version`, or null. */
+function baseByVersion(part: Part, version: number): Map<string, string> | null {
+  const pg = partGit(part.dir);
+  if (!pg) return null;
+  const main = mainOf(part);
+  try {
+    for (const sha of pg.git(["log", "--format=%H", "--", "."]).split(/\r?\n/).filter(Boolean)) {
+      const files = filesAt(pg, sha, main);
+      if (Number(frontMatter(files.get(main) ?? "")?.meta.version ?? 0) === version) return files;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function baseAcrossRenames(part: Part, matches: (files: Map<string, string>) => boolean): Map<string, string> | null {
