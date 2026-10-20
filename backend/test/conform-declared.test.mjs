@@ -91,6 +91,19 @@ test("extraDirOk: declared or conventional means true; arbitrary means false (no
   assert.ok(!extraDirOk("backend/app/junkzone", root, d), "junkzone bừa ⇒ KHÔNG được exempt");
 });
 
+test("extraDirOk (20/10): a package under any `backend` folder, and a child of `modules`, follow the standard; nothing else loosens", (t) => {
+  const root = repo(t);
+  const d = declaredSlots(root);
+  mkdirSync(join(root, "apps/hub/backend/hub"), { recursive: true });
+  writeFileSync(join(root, "apps/hub/backend/hub/__init__.py"), "\n");
+  mkdirSync(join(root, "apps/hub/backend/notpkg"), { recursive: true });
+  assert.ok(extraDirOk("apps/hub/backend/hub", root, d), "a monorepo app's package root keeps the backend/<pkg> convention");
+  assert.ok(!extraDirOk("apps/hub/backend/notpkg", root, d), "a folder without __init__.py is no package");
+  assert.ok(extraDirOk("backend/app/modules/dw", root, d), "a domain unit under modules (Backend_044_Modules)");
+  assert.ok(extraDirOk("frontend/modules/web", root, d), "the same slot name on the frontend");
+  assert.ok(!extraDirOk("backend/app/modules/dw/helpers", root, d), "inside a domain, a subfolder still takes a dictionary name");
+});
+
 test("conform: a fully declared concern goes green; an arbitrary dir STAYS RED (the gate can still fire)", (t) => {
   const root = repo(t);
   const off = conform(root).items.find((i) => i.check === "off-standard-dir");

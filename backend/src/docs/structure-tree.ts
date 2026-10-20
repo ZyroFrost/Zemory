@@ -220,7 +220,7 @@ export function declaredSlots(root: string): Set<string> {
 /**
  * A directory that is NOT a baseline `SLOT_ROLES` slot but is STILL on-standard because
  * the repo declared it (§3) or it matches a standard convention the checker must know.
- * Four ways in, none of which loosen the gate for an UNdeclared, meaningless code dir:
+ * Five ways in, none of which loosen the gate for an UNdeclared, meaningless code dir:
  *   ① declared LEAF slot — last segment ∈ §3 (same last-segment model as `SLOT_ROLES`);
  *   ① declared FREEFORM parent — a top-level dir declared in §3 that is NOT a standard
  *      slot/root (e.g. `workspaces/`) owns its whole subtree (children are the repo's
@@ -238,7 +238,12 @@ export function extraDirOk(relDir: string, root: string, declared: Set<string>):
   if (declared.has(last)) return true; // ① declared leaf slot
   const first = segs[0];
   if (declared.has(first) && !SLOT_ROLES[first] && !ROOT_ROLES[first]) return true; // ① declared freeform parent
-  if (segs.length === 2 && segs[0] === "backend" && existsSync(join(root, segs[0], segs[1], "__init__.py"))) return true; // ② python pkg root
+  // ② python pkg root: a package right under a `backend` folder, at any depth - a monorepo app (`apps/<app>/backend/<pkg>`)
+  // keeps the same convention as `backend/<pkg>` (20/10, SasinHub `apps/hub/backend/hub`)
+  if (segs.length >= 2 && segs[segs.length - 2] === "backend" && existsSync(join(root, ...segs, "__init__.py"))) return true;
+  // ④ a domain unit: a child of the slot `modules` (Backend_044_Modules: "packages by domain/feature, the same slot
+  // dictionary nested inside") - its files are the domain's own; its subfolders still take dictionary names
+  if (segs.length >= 2 && segs[segs.length - 2] === "modules") return true;
   if (/^v\d+$/.test(last) && segs.length >= 2 && segs[segs.length - 2] === "api") return true; // ③ api/vN
   return false;
 }
