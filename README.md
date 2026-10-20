@@ -4,11 +4,12 @@
 
 **A project harness for building apps of any kind — plus a local, cross-session memory for the agents that build them.**
 
-Zemory gives every project a **standard docs + architecture harness** — a ~40-slot
-structure standard that scaffolds *any* app (web, CLI, desktop, **and AI/LLM apps**,
-with first-class `ai/` · `agents/` · `tools/` · `evals/` slots) — **and** a single
-local memory that captures every coding-agent session so you can recall anything
-across tools, projects, and machines, offline.
+Zemory gives every project a **folder harness assembled from one shared parts store**: laws a
+machine enforces, a constitution the repo writes for itself, a 138-slot structure standard that
+scaffolds *any* app (web, CLI, desktop, **and AI/LLM apps**, with first-class `ai/` · `agents/` ·
+`tools/` · `evals/` slots), and skills an agent opens when a task calls for them. It also keeps a
+single local memory that captures every coding-agent session, so you can recall anything across
+tools, projects and machines, offline.
 
 > **What agents most often misread:** zemory's *own* memory engine never calls an LLM —
 > it only *scores/embeds* text with small local models. That is a fact about zemory's
@@ -29,7 +30,7 @@ across tools, projects, and machines, offline.
 | | | |
 |:--:|:--:|:--:|
 | [<img src="docs_public/ui/01-home.png" width="270">](#1--home--the-at-a-glance-row)<br>**1 · Home** — six tiles, recent projects & sessions | [<img src="docs_public/ui/02-recall.png" width="270">](#2--recall--find-the-session-then-read-it)<br>**2 · Recall** — filter, pick a session, read the thread | [<img src="docs_public/ui/03-projects.png" width="270">](#3--projects--linked-vs-discovered)<br>**3 · Projects** — linked cards vs discovered-by-machine |
-| [<img src="docs_public/ui/04-global-memory-sync.png" width="270">](#4--global-memory--numbers-sources-files)<br>**4 · Global Memory** — sources, automation, files | [<img src="docs_public/ui/08-sync-drive.png" width="270">](#5--sync--two-channels-one-writer)<br>**5 · Sync** — Drive channel and peer-to-peer | [<img src="docs_public/ui/05-harness-docs.png" width="270">](#6--harness--the-shared-standard-readable-in-the-app)<br>**6 · Harness** — the shared standard, five bundles |
+| [<img src="docs_public/ui/04-global-memory-sync.png" width="270">](#4--global-memory--numbers-sources-files)<br>**4 · Global Memory** — sources, automation, files | [<img src="docs_public/ui/08-sync-drive.png" width="270">](#5--sync--two-channels-one-writer)<br>**5 · Sync** — Drive channel and peer-to-peer | [<img src="docs_public/ui/05-harness-docs.png" width="270">](#6--harness--the-shared-standard-readable-in-the-app)<br>**6 · Harness** — the shared standard, readable in the app |
 | [<img src="docs_public/ui/07-features.png" width="270">](#7--features--what-this-machine-can-actually-do)<br>**7 · Features** — 16 capabilities, each re-checkable | | |
 
 </div>
@@ -71,14 +72,14 @@ project's rules/TODO/changelog quietly drift out of sync with the code.
 
 Zemory is **two independent tools** you can use separately or together:
 
-- **A per-project harness (the default — no database needed).** A standard set of
-  docs (constitution, rules, **structure**, skills, TODO, changelog, numbered plans)
-  plus a **~40-slot folder standard** that scaffolds *any* app and keeps the agent's
-  work aligned with the code. The structure standard covers every concern of a modern
-  app — API, store, jobs, auth, i18n, UI — **including the slots for building AI/LLM
-  apps**: `ai/` (model provider), `agents/` (agent loop / planning), `tools/`
-  (LLM tool-calling), `evals/` (quality gates). The same harness scaffolds a CRUD
-  service or an LLM agent app.
+- **A per-project harness (the default — no database needed).** A folder harness built
+  from one parts store: shared laws, most of them held by a hook or a test; a constitution
+  the repo writes for itself; a **138-slot structure standard**; skills; a TODO and a
+  changelog. The structure standard covers every concern of a modern app — API, store,
+  jobs, auth, i18n, UI — **including the slots for building AI/LLM apps**: `ai/` (model
+  provider), `agents/` (agent loop / planning), `tools/` (LLM tool-calling), `evals/`
+  (quality gates), and a non-app variant for deliverable repos (reports, data, docs). A
+  fix made once in the store reaches every repo on its next `zemory sync`.
 - **A Global Memory (optional).** Every agent session on your machine ingested into a
   single local SQLite database you can search by keyword or meaning — across every
   project and machine.
@@ -96,7 +97,9 @@ standard workspace.
 
 | | |
 |---|---|
-| 🏗️ **App harness & standard** | A ~40-slot architecture standard + curated docs (constitution ↔ rules ↔ structure ↔ skills ↔ TODO ↔ changelog ↔ numbered plans) that scaffolds *any* app — from a CRUD service to an **LLM agent app** (`ai/` · `agents/` · `tools/` · `evals/` slots). Five ready bundles ship in `docs_template/`. `.md` is the source (file wins); the DB is a derived index. |
+| 🏗️ **Parts store + sets** | One store of versioned parts in `docs_template/_Store`: 33 laws, 8 constitution frames, 138 structure slots, 9 repo structures, 29 skills. Eight **sets** assemble them for a kind of repo (app, non-app, department, workspace manager, log center, app data, and two GUI-host sets). `zemory init` builds a repo's folder harness from a set; `zemory sync` keeps it current with a three-way merge, so what the repo wrote is never overwritten. Scaffolds anything from a CRUD service to an **LLM agent app** (`ai/` · `agents/` · `tools/` · `evals/` slots). |
+| ⚖️ **Laws that hold themselves** | Three kinds. **Gate**: a hook or a test blocks the violation. **Keys**: a keyword in the request brings the law into view. **Core**: no machine can judge it, so it is the only text every session must read, capped at 22,000 characters and put back after a context compaction. A law that gains a gate leaves the forced reading. |
+| 📜 **A constitution per repo** | Eight frames (purpose · read-only sources · write boundary · source of truth · architecture · access · data lifecycle · dependencies). The frame's rule is shared; the repo writes its own answer in `Cons.md`, and the guard reads it: the SQL servers frame 10 allows, the secret files frame 14 names. |
 | 🧠 **Global Memory** | Eleven ingest lanes in one local SQLite database, deduped, secret-redacted, digested — six on-disk agents (Claude Code, Codex, Continue, LM Studio, VS Code Copilot Chat, curated memory files) and five web platforms. |
 | 🔎 **Hybrid recall** | FTS5 keyword (word **+ trigram**, so substrings and non-Latin work) fused with a local vector index (EmbeddingGemma via Transformers.js — no Python, no GPU) through RRF, plus an "I don't know" gate that answers *nothing* rather than confident noise. Every stage **fails open** to FTS. |
 | 🌐 **Web-chat capture** | Pull **ChatGPT**, **Gemini**, **claude.ai**, **Claude Cowork** and **Microsoft 365 Copilot** history through a login-once browser window — no password ever touches zemory. Several accounts per platform, each under its own e-mail; the daemon watches the login window and pulls as soon as you are in. Background pulls run off-screen. |
@@ -108,8 +111,8 @@ standard workspace.
 | 🔐 **Two sync channels** | A shared **Drive folder** carrying an encrypted, append-only segment chain, **or** a direct **machine-to-machine** channel (TLS 1.3, identity by certificate fingerprint, LAN discovery, block-level transfer). Read from both, write to exactly one — two writers is what corrupts a store. |
 | 🔌 **MCP server** | 17 tools for any MCP client: recall (`memory_search` · `memory_show` · `memory_context`), specs (`plan_search` · `plan_show`), graph (`graph_impact` · `graph_neighbors`), and control (`memory_jobs` · `memory_scan` · `memory_embed` · `project_merge` · `session_pin`). Control tools only delegate to what the CLI already does; a busy write-gate answers "busy" with the holder's name instead of racing it. |
 | 🕵️ **Privacy tools** | Forget, re-redact, back up, restore, and salvage a corrupted store — all local, dry-run by default, backed up before deleting. |
-| 🛡️ **Layer-1 guardrails** | `zemory hook guard` generates real machine locks (PreToolUse + pre-commit) from your `protected` / `secretNames` markers: recursive and mass deletes, discarding uncommitted work, secrets reaching a commit. One-shot `.allow-*` flags. **A safety net for when the agent forgets a rule — not permission to skip asking you.** |
-| 📐 **Gates, not promises** | `conform` (standard drift) · `validate` (docs) · `todo verify` (re-measures every backlog item against the code) · `paths check --gate` · `graph fitness --gate` · a 10-dimension audit playbook. The repo's own doctrine: *what stops drift is code, not a rule someone must remember.* |
+| 🛡️ **Layer-1 guardrails** | `init` and `sync` generate real machine locks (PreToolUse + pre-commit) from the marker and the repo's constitution: deletes, discarding uncommitted work, secrets reaching a commit, writes outside the repo, edits to the harness, SQL against a server the constitution does not allow, and a read-first latch on the Core laws. Approval is a one-use `.allow-*` flag. **A safety net for when the agent forgets a rule, not permission to skip asking you.** |
+| 📐 **Gates, not promises** | `conform` (standard drift) · `gates` (does each repo actually run its gates) · `impact <part>` (every repo carrying a store part, and in what state) · `validate` (docs) · `todo verify` · `paths check --gate` · `graph fitness --gate`. The repo's own doctrine: *what stops drift is code, not a rule someone must remember.* |
 
 ---
 
@@ -148,8 +151,9 @@ $env:ZEMORY_NO_SHORTCUT = "1"         # no Start Menu / Desktop shortcuts
 $env:ZEMORY_NO_EMBED = "1"            # build the vector index later with `zemory memory embed --all`
 ```
 
-Then, in each project folder: `zemory init` (an app) or `zemory init --non-app`, and `zemory doctor`
-there — `doctor` checks a project's harness, so it reports *not connected* when run anywhere else.
+Then, in each project folder: `zemory init` (an app, set 04) or `zemory init --non-app` (set 03), or
+`zemory init --kit <NN>` for any other set, and `zemory doctor` there — `doctor` checks a project's
+harness, so it reports *not connected* when run anywhere else.
 
 **macOS / Linux:** install `git` and Node ≥ 20 (`brew install node git` · `apt` · `dnf`), then in the
 folder of your choice:
@@ -190,15 +194,16 @@ at all. The script fetches the same asset through the release **API** and drops 
 executes a dependency's install script before the root package's `preinstall`, so no lifecycle
 hook fires early enough. It is safe to skip on unrestricted networks, and safe to re-run.
 
-**Add a docs harness to a project (optional):**
+**Add a harness to a project (optional):**
 
 ```bash
 cd your-project
-zemory init && zemory doctor
+zemory init && zemory doctor          # an app; `--non-app` for a deliverable repo, `--kit <NN>` for another set
 ```
 
-Any project can query the shared memory even with no harness; `zemory init` only
-adds the curated constitution/rules/structure/TODO/changelog/plan docs.
+Any project can query the shared memory even with no harness. `zemory init` assembles the folder
+harness of a set, generates the guard, and leaves eight constitution frames for the repo to write;
+until they are written, `zemory conform` says so and nothing else.
 
 ---
 
@@ -325,10 +330,11 @@ would remove the only way to answer *why won't it connect*.
 
 ![Harness — docs](docs_public/ui/05-harness-docs.png)
 
-Five bundles ship in `docs_template/`, and this screen renders all of them: the **app** and
-**non-app** standards, two Cowork kits, and an **adapt** profile for a repo whose structure must
-not be reshaped. Sub-tab **Docs harness** renders the template documents; the second sub-tab is
-the structure standard itself:
+This screen renders the shared standard so a person can read it without opening the files. The
+screenshots predate the parts store: they show the five file-harness bundles that the eight sets
+(see [The harness](#the-harness-a-parts-store-sets-and-a-folder-harness-per-repo)) have since replaced.
+Sub-tab **Docs harness** renders the template documents; the second sub-tab is the structure
+standard itself:
 
 > **Language, stated plainly:** the app is bilingual VI/EN, but the shipped standard documents are
 > written in Vietnamese — that is what the two screenshots here show. Translating them is open work,
@@ -419,34 +425,103 @@ Multi-query (`--also`) is a **high-variance** lever, not a free win: a rephrasin
 original's specificity lifted `@10` by about 21 points, while a vaguer one dropped MRR **below**
 asking nothing at all. Send one good rephrasing, or none.
 
-### The harness (standard + per-project)
+### The harness: a parts store, sets, and a folder harness per repo
 
-`docs_template/` is the **shared, generic standard** shipped with zemory — the canonical rules and
-the *method* for storing them, in five bundles (app, non-app, two Cowork kits, and adapt). Its
-`03_STRUCTURE` is a ~40-slot dictionary covering every concern of a modern app — including the
-AI/LLM slots (`ai/` · `agents/` · `tools/` · `evals/`) — so the *same* harness scaffolds a plain
-service or an LLM-centric app. Installing the harness into a project is not a blind copy: zemory
-scaffolds the **structure**, and the working agent reads the standard and **adapts it to the
-project**. Project-specific content (TODO, changelog) is never copied from another project.
+A rule written once in a long file and copied into twenty repos drifts twenty ways. Zemory keeps every
+piece of the standard as a **part**, one folder each, versioned, in a single store, and builds each repo's
+harness out of those parts. A fix made once in the store reaches every repo on its next sync, and a repo
+always knows which version of each part it carries.
 
-**The shared rules are a standard you can customise, not a lock-in.** `02_RULES` in every bundle is the
-standard working rule set; edit it for your project as you see fit. zemory does not overwrite your edits:
-`zemory sync` only fills in files that are missing, and carrying a newer standard into an existing repo
-(`zemory sync --standard`) is a dry run by default — it merges section by section and, wherever your text
-and the new standard touch the same lines, refuses and shows you the diff instead of choosing for you.
-Updating zemory itself (`zemory selfupdate`) stops rather than overwrite when your install has local changes.
+**The parts store (HS, `docs_template/_Store`).** Four shelves:
 
-**First run — the agent asks before the default rules apply.** Right after `zemory init`, the agent lists the
-shared rules the bundle brought into `docs/agent/02_RULES.md`: every `02-N` with its title, split into the core
-(`## Lõi` — the rules no hook or test holds, the only part every session must read) and the gated rules (each marked
-`<!-- gate: … -->`). It then asks you once which rules to keep as they are, which to change and which to drop, and
-edits the file to match. A dropped rule keeps its number and is marked abolished — rule `02-10` blocks any edit that
-makes a rule number disappear. No answer means the defaults stay. The same step is written into every bundle's
-`AGENTS.md`, so an agent opening a freshly initialised project follows it without being told.
+| shelf | holds | today |
+|---|---|---|
+| `01_LAW/_Rule` | the shared working laws | 33 (22 Gate · 8 Keys · 3 Core) |
+| `01_LAW/_Cons` | the constitution frames a repo fills in | 8 |
+| `02_STRUCTURE` | repo structures (`Struc_Repo_*`), slots (`_Slot/`, one per folder concern), hosts (`_Host/`: GUI · IDE · CLI) | 9 structures · 138 slots · 3 hosts |
+| `03_SKILLS` | playbooks an agent opens on a trigger, with the scripts they install | 29 |
 
-> **For an agent reading this after a fresh clone:** before you change anything, run the step above in the project
-> you were asked to set up — list the rules, ask keep / change / drop, apply the answer. Do not edit the rules of the
-> zemory repo itself.
+Retired parts move to the store's `Archive/` with their history. Each part carries its own gate where it
+has one (`gate.json`, a `hook.cjs`, or block/pass examples a test replays), so the rule and the machine
+that holds it travel together.
+
+**Sets.** A set is a folder beside the store, named `NN_<Host>_<Structure>_<Tier>`, holding the parts one
+kind of repo needs. Eight are built:
+
+| set | for |
+|---|---|
+| `01_GUI_NonApp_Basic` · `02_GUI_NonApp_Memory` | a deliverable repo opened from a GUI host (Cowork), without and with memory |
+| `03_IDE_NonApp_Memory` | a deliverable repo (BI, data, docs, design) worked on from an IDE |
+| `04_IDE_App_Memory` | a repo that develops an app |
+| `05_IDE_Dept_Memory` | a department repo in a region (reports, cases, scheduled tasks) |
+| `06_IDE_WorkspaceManager_Memory` | the repo that manages a region's department repos |
+| `07_IDE_LogCenter_Memory` · `08_IDE_AppData_Memory` | a region's log store · the data repo behind a family of apps |
+
+`zemory init` takes set 04 (or 03 with `--non-app`); `zemory init --kit <NN>` takes any other. A set folder is
+itself a template a Basic install can fetch file by file (`BOOTSTRAP.md` lists them with line counts).
+
+**The folder harness in a repo.**
+
+```text
+docs/agent/
+  01_LAW/_Rule/<chapter>/Rule_<Kind>_<NN>_<Name>/   a shared law, stamped `from: _Store/... @vN #hash`
+  01_LAW/_Cons/<chapter>/Cons_Gate_<NN>_<Frame>/    a constitution frame + the repo's own Cons.md
+  01_LAW/_Cons/Cons_Core_<1NN>_<Name>/              an article only this repo has
+  02_STRUCTURE/                                     the repo's structure, its slots, INDEX.md (machine-written)
+  03_SKILLS/                                        shared skills + Skill_Own_* (the repo's own), INDEX.md
+  04_TODO.md · 05_CHANGES.md                        the backlog and the changelog
+docs/plan/                                          numbered specs, searched with `zemory plan search`
+AGENTS.md                                           the thin entry: what to read, which skill opens when
+```
+
+**Three kinds of law, sorted by what holds them.** A **Gate** law is held by a machine: a hook blocks the
+call or a test goes red, so an agent cannot break it by forgetting. A **Keys** law is held by a keyword: when
+a request mentions its subject, the law is put in front of the agent. A **Core** law has nothing that can judge
+it, so it is the only text every session must read, and `conform` caps the Core text at 22,000 characters
+because it is re-injected after every context compaction. The practical gain: an agent reads a few
+thousand characters per session instead of the whole rulebook, and the rules that matter most cannot be
+skipped.
+
+**A constitution the repo writes.** Each of the eight frames asks one question: what the product is for and
+what wins in a conflict (09), which sources are read-only (10), where writing is allowed (11), what the source
+of truth is and the business terms it defines (12), the layers and what may not skip them (13), who gets in,
+which secrets exist by name, and what personal data is kept (14), what is never deleted or only appended (15),
+and what the product depends on (16). The frame's rule text belongs to the store; the repo's answer lives in
+`Cons.md` next to it and is never overwritten. A repo can add articles of its own (`Cons_Core_1NN_*`). The
+guard reads the answers: frame 10's `Server` column becomes the list of SQL servers commands may target, frame
+14's `File` column becomes the secret-file patterns no commit may carry. A repo's constitution is therefore
+enforced, not just documented.
+
+**Skills of the repo's own.** Work only one repo does (how a department calculates a measure, a warehouse's
+structure dictionary) goes into a `Skill_Own_<Name>` written on the frame `Skill_Frame_Own`. Sync plugs it into
+the host's skill folder and writes its trigger row into `AGENTS.md`, so the agent finds it the same way it finds
+a shared skill. The constitution states the rule and names the skill; the skill holds the steps and the checks.
+
+**Roles in a region.** A structure can declare a role: what it manages, who manages it, and what it provides
+(`structure.json` › `role`). A repo names its manager and the repos whose data it uses in its marker
+(`docs/.harness.json`: `owner`, `uses`), and `conform` checks those names against the roles (`region-links`). The
+role that pays off daily is the workspace manager: `zemory sync` run there brings itself up to the store, then
+goes on to every repo it manages, so a fix made once in the store reaches a whole region with one command. Shared
+reference repos of a region (a glossary, legacy material, report templates) are declared as plain folders of the
+manager's structure and need no harness of their own.
+
+**Keeping a repo current: `zemory sync`.** Each part is compared three ways: the version the repo was built
+from (named by its `from:` line), the store's current version, and the repo's copy. An untouched copy is
+replaced; a part the repo edited is merged against its base; an edit that collides with a store change is
+reported as a conflict and nothing is written. Files a part installs (scripts) that the repo changed are kept and
+reported as *kept, edited here*. Sync also adds lines a slot requires to `.gitattributes` · `.gitignore` ·
+`.stignore`, rewrites both `INDEX.md` files, regenerates the guard, and writes whatever still deviates from the
+standard into a machine-kept block of the repo's `04_TODO.md`, where the repo's own session picks it up. Updating
+zemory itself (`zemory selfupdate`) stops rather than overwrite a dirty install.
+
+**First run: the constitution, then the laws.** Right after `zemory init`, the agent writes each frame's
+`Cons.md` for this product with the user. It then lists every shared law the set brought, by full name, and asks
+once which to keep, change or drop. Dropping a law adds `retired: true` to its header; the folder and the number
+stay. No answer means the defaults stay. The same steps are written into every set's `AGENTS.md`, so an agent
+opening a freshly initialised project follows them without being told.
+
+> **For an agent reading this after a fresh clone:** do the first-run step in the project you were asked to set up.
+> Do not edit the laws in this repo's store unless the user asked for a change to the standard itself.
 
 ---
 
@@ -482,20 +557,30 @@ path, `git push` before you asked, a recursive delete. Prose alone catches those
 happen — so zemory generates actual locks:
 
 ```bash
-zemory hook guard        # writes policy.json + guard.cjs + precommit-guard.cjs into <harness>/hooks/
-                         # prints how to wire them — YOU approve and wire; the tool never self-installs
+zemory hook guard        # regenerate policy.json + guard.cjs + precommit-guard.cjs + the read-first latch
+                         # (init and sync run it too); they live in the folder of the law that owns them,
+                         # Rule_Gate_59_ReadFirst, and merge into .claude/settings.json without overwriting it
 ```
 
-`policy.json` is generated from the `protected` / `secretNames` markers in `.harness.json`, so the
-rules follow your repo instead of a hardcoded list (`protected_write` takes globs, for example
-`data/*/01_raw`, because case names are not known in advance). Measured coverage: **22 of 28**
-deletion shapes blocked, including the ones that look nothing like `rm -rf` — `find -delete`,
-`find -exec rm`, `fs.rmSync(recursive)` inside `node -e`, `shutil.rmtree`, `git clean -fdx`,
-`robocopy /MIR`, `xargs rm`, a piped `Get-ChildItem | Remove-Item` — plus `git reset --hard` and
-`git checkout -- .`, which destroy work that was never in git to begin with.
+`policy.json` is generated from the marker (`protected` paths, globs such as `data/*/01_raw`) and from
+the repo's constitution: the SQL servers frame 10 lists, the secret-file patterns frame 14 lists. The rules
+follow the repo instead of a hardcoded list. What it blocks:
 
-The remaining 6 pass **on purpose**: deleting a single ordinary file, `>` redirection, `mv`. A gate
-that fires on everyday work is a gate people route around, and then it protects nothing.
+- **Deletes.** Every delete of a file inside the repo asks first (since 14/10; the OS temp folder and used flag
+  files are exempt), plus the mass deletes that look nothing like `rm -rf`: `find -delete`, `find -exec rm`,
+  `fs.rmSync(recursive)` inside `node -e`, `shutil.rmtree`, `git clean -fdx`, `robocopy /MIR`, `xargs rm`, a
+  piped `Get-ChildItem | Remove-Item`. An interpreter that runs a script file hands the rest of the line to it
+  as data, so `node tool.js '{"cmd":"rm x"}'` is not a delete; `node -e`, `bash -c` and `echo … | bash` are read
+  as code.
+- **Lost work.** `git reset --hard`, `git checkout -- .`, `git restore` of the working tree, `git stash drop`.
+- **Secrets.** A file matching a secret pattern reaching a commit, or being deleted.
+- **Scope.** Writes outside the repo, and SQL aimed at a server the constitution does not allow.
+- **The harness itself.** Creating, editing or moving anything under `docs/agent`, `docs/plan`, `AGENTS.md`.
+- **Read first.** The Core laws and the TODO must have been read in the session before the agent acts.
+
+Approval is a flag file (`.allow-delete`, `.allow-outside`, `.allow-docs-write`…) created only after the user
+says yes. It holds for 15 minutes and for one job: the guard stamps it on first use, lets the same command retry
+for 90 seconds, and revokes it for anything else.
 
 > **Read the role correctly.** These hooks are a **safety net for when the agent misses or forgets a
 > rule** — they are neither a ban on deleting nor a licence to delete. **Deletion always goes
@@ -604,12 +689,17 @@ zemory graph docs                       The docs layer on its own
 zemory graph export [--json] [--out f]  Versioned graph contract for external tools
 
 # Harness & docs (.md is the source; DB = derived index)
-zemory init | sync                      Scaffold / gap-fill the project harness
+zemory init [--non-app | --kit <NN>]    Assemble the folder harness of a set (app: 04 · non-app: 03) + the guard
+zemory sync [--self]                    Bring the repo up to its set (three-way); a workspace manager goes on
+                                        to every repo it manages (--self: this repo only)
+zemory impact <part>                    Every repo carrying a store part, and its state (current · behind · edited · absent)
+zemory gates [--all]                    Does each repo run its gates: guard wired · pre-commit · a row per article
+zemory peers [--repo X]                 Which local agent session to message for a repo
 zemory structure                        Print the repo structure standard (+ routing)
 zemory validate                         Lint the docs harness (links, length, supersede)
 zemory conform [--gate]                 Score how closely the folder follows the standard
 zemory paths check|sweep|fix            Dead paths in docs and config
-zemory todo verify                      Re-measure every 05_TODO item against the code; print drift
+zemory todo verify                      Re-measure every TODO item against the code; print drift
 zemory doctor                           Verify docs, providers, capabilities
 zemory plan ls | search | show          Search project specs
 zemory changelog ls | search            Search the changelog
@@ -623,7 +713,8 @@ zemory setup                            Print the setup runbook; offer the short
 zemory sweep [--dry-run]                Close leftover browser processes zemory started
 zemory selfupdate [--check]             Pull + rebuild this install; stops if the tree is dirty
 zemory hook install                     Install the 0-token capture hooks
-zemory hook guard                       Generate the layer-1 machine locks (you wire them yourself)
+zemory hook guard                       Regenerate the layer-1 machine locks (init and sync also run it)
+zemory project move <from> <to>         Move a repo folder with its memory, sessions and settings (dry run by default)
 ```
 
 > **`import` vs `import --merge` is the one command pair worth reading twice.** Merge only ever
@@ -758,15 +849,16 @@ cleanup pass removes them silently. Anyone who can read the share key can decryp
 
 ## For agents — the harness & standard
 
-If you are an agent working **in a project that uses zemory**, read the harness in
-order: `AGENTS.md` (the thin router at the repo root) → `docs/agent/01_CONSTITUTION.md`
-(architectural invariants, supreme) → `02_RULES.md` (work rules) → `03_STRUCTURE.md`
-(folder standard + routing) → `04_SKILLS.md` (playbooks) → `05_TODO.md` → `06_CHANGES.md`.
-Everything you need is in `docs/` — `AGENTS.md` only points the way.
+If you are an agent working **in a project that uses zemory**, start at `AGENTS.md` (the thin router at the
+repo root). Read `docs/agent/04_TODO.md` and every written `Cons.md` under `docs/agent/01_LAW/_Cons/` before
+acting; the guard holds you to the Core laws it lists. Everything else is looked up when a task touches it:
+the laws under `01_LAW/_Rule/` (a Gate law blocks you anyway, a Keys law appears when your request names its
+subject), the structure dictionary under `02_STRUCTURE/` (open `INDEX.md`, not every slot), and a skill when its
+trigger row in `AGENTS.md` matches. Change the shared laws, slots or skills only through the store, never in the
+repo's copy: the next sync would report the copy as edited.
 
-If you are an agent working **in *this* repo (zemory itself)**: it is the canonical
-source other repos copy from. Read `docs_template/` (the blank standard) and apply
-it **in your own repo** — do not write here or run `zemory` with this as the cwd
+If you are an agent working **in *this* repo (zemory itself)**: it holds the store other repos are built from.
+Read `docs_template/` and apply it **in your own repo** — do not write here or run `zemory` with this as the cwd
 unless the user explicitly allows it (another session may be working here).
 
 Recall from other sessions on demand — do not guess:
@@ -802,7 +894,7 @@ backend/                server-side: 100% first-party code + thin entry surfaces
   test/                 tests for logic that can silently break
 frontend/               the UI (served static by the daemon, no bundler):
   pages/ · styles/ · components/ · scripts/ · assets/
-docs_template/          the BLANK standard other repos copy — five bundles
+docs_template/          the standard: _Store/ (the parts store) + the eight set folders built from it
 docs_public/            images published with this README
 external/skills/        vendored third-party skills (kept verbatim)
 AGENTS.md               thin router into docs/
