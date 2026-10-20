@@ -193,6 +193,23 @@ test("a local edit with the part unchanged stays current; a store change merges 
   assert.equal(verdicts(applyKit(root, { apply: false, storeDir: st.s }))["02-1_alpha"], "current", "no false conflict after a merge");
 });
 
+test("a from: hash no commit carries (recorded beside a build cache) falls back to the base of its version", (t) => {
+  // 20/10: __pycache__ beside pbi_gate.py entered the part hash; once it was gone nine untouched copies read as edited and
+  // the next store version became a conflict
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const f = rule(root, "02-1_alpha");
+  writeFileSync(f, readFileSync(f, "utf8").replace(/(from: \S+ @v1 #)[0-9a-f]+/, "$1000000000000"));
+  const p = join(st.s, "01_LAW", "_Rule", "02-1_alpha", "RULE.md");
+  writeFileSync(p, readFileSync(p, "utf8").replace("version: 1", "version: 2").replace("- line one", "- line one, revised"));
+  st.commit("v2");
+  const r = applyKit(root, { apply: true, storeDir: st.s });
+  assert.equal(verdicts(r)["02-1_alpha"], "merged", JSON.stringify(r.steps.find((s) => s.part.folder === "02-1_alpha")?.reason));
+  assert.match(readFileSync(f, "utf8"), /line one, revised/, "the store's version arrived");
+  assert.equal(verdicts(applyKit(root, { apply: false, storeDir: st.s }))["02-1_alpha"], "current", "and the next pass is current");
+});
+
 test("the same line changed on both sides is a conflict and nothing is written", (t) => {
   const st = store(t);
   const root = repo(t);
