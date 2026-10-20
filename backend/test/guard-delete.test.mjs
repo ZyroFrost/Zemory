@@ -35,6 +35,22 @@ function ask(payload, guard = GUARD) {
 }
 const bash = (command) => ({ tool_name: "Bash", tool_input: { command } });
 
+test("an interpreter that runs a script file hands the rest as data; inline code is still read (2026-10-19 JSON payload)", () => {
+  for (const c of [
+    `node tool.js '{"cmd":"rm build.log"}'`,
+    `python run.py --payload "{\\"action\\": \\"rm -rf cache\\"}"`,
+    `echo '{"a":"rm x"}' | node tool.js`,
+    `python -m pkg.tool --note "rm -rf cache"`,
+  ]) assert.equal(ask(bash(c)).blocked, false, c);
+  for (const c of [
+    `bash -c "rm -rf build"`,
+    `echo "rm -rf build" | bash`,
+    `node -e "require('fs').rmSync('build',{recursive:true})"`,
+    `powershell -NoProfile -Command "Remove-Item -Recurse build"`,
+    `python -c "import os; os.remove('build.log')"`,
+  ]) assert.equal(ask(bash(c)).blocked, true, c);
+});
+
 test("mass deletion that uses none of the rm -r keywords: all eight paths are blocked", () => {
   const forms = [
     "find . -name '*.ts' -delete",
