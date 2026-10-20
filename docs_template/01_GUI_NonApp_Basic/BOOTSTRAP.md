@@ -71,7 +71,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 36 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_11_WriteBoundary/Cons.md` | 14 |
 | 37 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_11_WriteBoundary/Cons_Gate_11_WriteBoundary.md` | 58 |
 | 38 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_11_WriteBoundary/gate.json` | 3 |
-| 39 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons.md` | 17 |
+| 39 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons.md` | 23 |
 | 40 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons_Gate_12_SourceOfTruth.md` | 70 |
 | 41 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/gate.json` | 3 |
 | 42 | `docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_15_DataLifecycle/Cons.md` | 17 |
@@ -83,7 +83,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 48 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_16_Dependencies/Cons.md` | 17 |
 | 49 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_16_Dependencies/Cons_Gate_16_Dependencies.md` | 58 |
 | 50 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_16_Dependencies/gate.json` | 3 |
-| 51 | `docs/agent/01_LAW/_Cons/04_Security/Cons_Gate_14_Access/Cons.md` | 17 |
+| 51 | `docs/agent/01_LAW/_Cons/04_Security/Cons_Gate_14_Access/Cons.md` | 23 |
 | 52 | `docs/agent/01_LAW/_Cons/04_Security/Cons_Gate_14_Access/Cons_Gate_14_Access.md` | 71 |
 | 53 | `docs/agent/01_LAW/_Cons/04_Security/Cons_Gate_14_Access/gate.json` | 3 |
 | 54 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage/Rule_Gate_27_HarnessLanguage.md` | 122 |

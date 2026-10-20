@@ -15,3 +15,9 @@ status: template
 
 ## Phải khớp
 <A = B>, so theo <khoá>
+
+## Định nghĩa
+
+| Thuật ngữ | Nghĩa | Định danh |
+|---|---|---|
+| <tên nghiệp vụ> | <nghĩa> | <measure · cột> |
