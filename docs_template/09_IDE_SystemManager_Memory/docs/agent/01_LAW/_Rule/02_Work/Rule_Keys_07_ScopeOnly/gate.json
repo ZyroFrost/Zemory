@@ -1,0 +1,19 @@
+{
+  "prompt": {
+    "kind": "Rule_7",
+    "re": "\\b(ai (muon|keu|bao|kiu)|tu y|tra lai|nhu cu|nhu ban dau|y nhu|lien quan (gi|deo)|chua (yeu cau|kiu|keu)|ko (co )?(kiu|keu|bao)|khong yeu cau|đừng|chỉ (can|tao|lam|viec|fix)|thôi\\b|truoc di|lam bot|ko can|khong can|xàm|tao lao|hieu sai|quai|đụng|lam gi (vay|quai)|mắc gì|mac gi|ko dc tu)",
+    "text": "[zemory] Rule_Keys_07_ScopeOnly: Do exactly what was asked; anything beyond it is asked first, never done and reported after."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "chỉ sửa đúng cái nút này thôi"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đọc giúp file này"
+    }
+  ]
+}

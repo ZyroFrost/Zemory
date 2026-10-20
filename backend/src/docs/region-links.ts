@@ -3,7 +3,7 @@
 // (the solid line) and whose services it uses by kind (the dotted lines). This reads those and checks them against the roles
 // of the templates on both ends.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { readMarker } from "../core/config.js";
 import { findKit, kitStructure, STORE_DIR } from "./store.js";
 
@@ -66,8 +66,30 @@ export function findRegionRepo(name: string, from: string): string | null {
   return null;
 }
 
-/** Every repo of the workspace `root` sits in: under the folder above it, and up to two levels below (the reach of findRegionRepo's first level). */
-export function regionRepos(root: string): string[] {
+/**
+ * The folder a workspace is read from: the nearest folder above `root` (up to four levels) that directly holds a repo of
+ * the role workspace-manager, else the folder above `root`. 20/10: SasinHub (system-manager, `_Project/ERP/`) could not see
+ * the app-data repo it manages (`_DB_AppCore`, beside the DW) because the workspace was read from its own parent only.
+ */
+export function regionBase(root: string, storeDir = STORE_DIR): string {
+  let up = dirname(resolve(root));
+  for (let i = 0; i < 4; i++) {
+    let ents: string[] = [];
+    try { ents = readdirSync(up); } catch { break; }
+    for (const e of ents) {
+      const p = join(up, e);
+      if (e.startsWith(".") || resolve(p) === resolve(root) || !isRepo(p)) continue;
+      if (repoRole(p, storeDir)?.name === "workspace-manager") return up;
+    }
+    const next = dirname(up);
+    if (next === up) break;
+    up = next;
+  }
+  return dirname(resolve(root));
+}
+
+/** Every repo of the workspace `root` sits in: under its base (regionBase), and up to two levels below. */
+export function regionRepos(root: string, storeDir = STORE_DIR): string[] {
   const out: string[] = [];
   (function seek(d: string, depth: number): void {
     let ents: string[];
@@ -79,7 +101,7 @@ export function regionRepos(root: string): string[] {
       if (isRepo(p)) out.push(p);
       else if (depth < 2) seek(p, depth + 1);
     }
-  })(dirname(root), 0);
+  })(regionBase(root, storeDir), 0);
   return out;
 }
 
@@ -112,7 +134,7 @@ export function regionLinkFindings(root: string, storeDir = STORE_DIR): { wrong:
   } else if (role.owner === "required") {
     // no repo of the workspace holds a template that manages this role yet ⇒ the owner cannot be named: advisory until one does
     // (2026-10-19: _DB_AppCore is app-data, and no system-manager repo exists)
-    const manager = regionRepos(root).some((at) => repoRole(at, storeDir)?.manages.includes(role.name));
+    const manager = regionRepos(root, storeDir).some((at) => repoRole(at, storeDir)?.manages.includes(role.name));
     if (manager) wrong.push(`a ${role.name} must name its owner (a ${role.managed_by.join(" · ") || "manager"})`);
     else pending.push(`a ${role.name} names no owner — no repo of the workspace is a ${role.managed_by.join(" · ") || "manager"} yet`);
   }
