@@ -9,24 +9,21 @@ import { shortcutStale } from "../../dist/platform/autostart.js";
 const ICON = "D:\\Workspace\\Personal\\Zemory\\backend\\resources\\packaging\\zemory.ico";
 const OLD = "D:\\huy.nguyen\\Project\\Personal\\Zemory\\backend\\resources\\packaging\\zemory.ico";
 const VBS = "C:\\Users\\u\\AppData\\Roaming\\zemory\\launch.vbs";
-const onDisk = (set) => (p) => set.includes(p);
-
-test("a shortcut whose icon is another install's path is stale, even when that old file still exists", () => {
-  assert.equal(shortcutStale({ path: "x.lnk", icon: OLD, args: `"${VBS}"` }, ICON, VBS, onDisk([ICON])), true, "old path gone");
-  assert.equal(shortcutStale({ path: "x.lnk", icon: OLD, args: `"${VBS}"` }, ICON, VBS, onDisk([ICON, OLD])), true, "old path still there");
+test("a shortcut whose icon is another install's path is stale", () => {
+  assert.equal(shortcutStale({ path: "x.lnk", icon: OLD, args: `"${VBS}"` }, ICON, VBS), true);
 });
 
 test("a shortcut with no icon, or one that does not run this launcher, is stale", () => {
-  assert.equal(shortcutStale({ path: "x.lnk", icon: "", args: `"${VBS}"` }, ICON, VBS, onDisk([ICON])), true);
-  assert.equal(shortcutStale({ path: "x.lnk", icon: ICON, args: '"C:\\old\\launch.vbs"' }, ICON, VBS, onDisk([ICON])), true);
+  assert.equal(shortcutStale({ path: "x.lnk", icon: "", args: `"${VBS}"` }, ICON, VBS), true);
+  assert.equal(shortcutStale({ path: "x.lnk", icon: ICON, args: '"C:\\old\\launch.vbs"' }, ICON, VBS), true);
 });
 
 test("NEGATIVE: this install's icon (any case) and this launcher is current", () => {
-  assert.equal(shortcutStale({ path: "x.lnk", icon: ICON.toLowerCase(), args: `"${VBS}"` }, ICON, VBS, onDisk([ICON.toLowerCase(), ICON])), false);
+  assert.equal(shortcutStale({ path: "x.lnk", icon: ICON.toLowerCase(), args: `"${VBS}"` }, ICON, VBS), false);
 });
 
 test("an install without its own icon file judges the launcher only", () => {
-  assert.equal(shortcutStale({ path: "x.lnk", icon: OLD, args: `"${VBS}"` }, null, VBS, onDisk([])), false);
+  assert.equal(shortcutStale({ path: "x.lnk", icon: OLD, args: `"${VBS}"` }, null, VBS), false);
 });
 
 test("the daemon start rewrites stale shortcuts (source anchor)", () => {

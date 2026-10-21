@@ -147,7 +147,7 @@ export function launchFacts(): LaunchFacts | null {
     launcherVbs: readIfExists(vbs),
     // the icon a shortcut REALLY points at, not only whether this install has one: a moved repo leaves the old path behind
     iconMissing: desktopShortcutStatus().exists &&
-      (winIconPath() === null || winShortcutFacts().some((f) => shortcutStale(f, winIconPath(), vbs, existsSync))),
+      (winIconPath() === null || winShortcutFacts().some((f) => shortcutStale(f, winIconPath(), vbs))),
     strays,
   };
 }
@@ -567,9 +567,11 @@ export interface LnkFacts {
  * D:\Workspace\…, launch.vbs was rewritten by the launcher check but the .lnk kept the old icon path, so the Start Menu
  * showed a blank white icon. Pure: facts in, verdict out.
  */
-export function shortcutStale(f: LnkFacts, wantIcon: string | null, vbs: string, exists: (p: string) => boolean): boolean {
+export function shortcutStale(f: LnkFacts, wantIcon: string | null, vbs: string): boolean {
   const norm = (p: string): string => resolve(p).toLowerCase();
-  if (wantIcon !== null && (!f.icon || !exists(f.icon) || norm(f.icon) !== norm(wantIcon))) return true;
+  // wantIcon is only ever an existing file (winIconPath), so an icon equal to it exists too; an empty icon resolves to
+  // the working folder, which never equals it
+  if (wantIcon !== null && norm(f.icon) !== norm(wantIcon)) return true;
   return !f.args.toLowerCase().includes(vbs.toLowerCase());
 }
 
@@ -600,7 +602,7 @@ export function reconcileShortcuts(): string[] {
   const fixed: string[] = [];
   try {
     const vbs = winLauncherVbs();
-    const stale = winShortcutFacts().filter((f) => shortcutStale(f, winIconPath(), vbs, existsSync));
+    const stale = winShortcutFacts().filter((f) => shortcutStale(f, winIconPath(), vbs));
     if (!stale.length) return [];
     const { exe } = launchParts();
     if (launcherStale(readIfExists(vbs), exe, cwdDirective()) || !existsSync(vbs)) winWriteLauncher();
