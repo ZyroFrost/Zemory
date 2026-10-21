@@ -1,10 +1,11 @@
 ---
 id: Skill_PBI_White
 name: pbi-white
-version: 11
+version: 12
 aka: pbi-mix
 replaces: [Skill_PBI_Mix]
 type: process
+checked: [Rule_Keys_62_DesignChangeApproval, Skill_PBI_Base, Skill_PBI_Pbip]
 description: Build the WHITE copy (named Mix before 2026-10-19) of a Power BI report - warehouse model, the Red header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-red). Vietnamese triggers - "bản white", "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
 installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
 ---
@@ -397,9 +398,14 @@ thấy mỗi trang filter riêng nó bị rối" → chọn "bộ chung + đồn
   mà không lấy thì ghi lý do. Trước khi đặt ô, đo ô đó lọc tới được fact nào của trang (quan hệ + DAX của measure): ô chỉ lọc được
   một phần số mà không báo là sai. Trùng nghĩa với ô có sẵn ⇒ giữ ô có sẵn, đổi nhãn + gắn sync, không thêm ô thứ hai. Máy làm:
   `scripts/add_filter_set.py`. Máy canh: cổng `filter-set`; quét cả repo: `pbi_gate.py --audit`.
-- 🔴 **Mọi ô lọc chọn được nhiều giá trị đều có dòng "Select all"** (`objects.selection.selectAllCheckboxEnabled = true`) — ô
-  không có đường chọn tất cả là người đọc kẹt ở một lựa chọn. Miễn: ô chọn-một (`singleSelect` · `strictSingleSelect`, vd field
-  parameter). Cổng `select-all`.
+- 🔴 **Mọi ô lọc đều chọn được nhiều giá trị và có dòng "Select all"** (`objects.selection.selectAllCheckboxEnabled = true`, không
+  `singleSelect` / `strictSingleSelect`) — ô không có đường chọn tất cả là người đọc kẹt ở một lựa chọn; ô kỳ (Year / Month) vẫn chọn
+  sẵn `Current Year` / `Current Month`. Miễn duy nhất: field parameter (`Parameter_*`, một trường mỗi lần). Cổng `select-all`.
+- 🔴 **Một ô lọc = MỘT cách gom** — giá trị của một ô không được là giá trị của ô khác trong bộ chung (ô Team Leader liệt kê kênh
+  "E-Commerce" giữa tên người là trộn hai cách gom). Sửa ở dữ liệu: cột nào giữ cách gom nào (kênh ở cột kênh, trưởng nhóm chỉ là
+  người); giá trị phải nằm lại nhưng không thuộc ô (thành viên không có dòng nào) thì khai `exclude` cho mục của ô trong `filter_set`,
+  kèm lý do — `scripts/add_filter_set.py` đưa nó vào bộ lọc "không trống" của ô và mọi bookmark chụp ô. Cổng `filter-mixed` (lớp dw,
+  so với bộ từ vựng `filter_set` của cả repo).
 - **Đồng bộ** = `visual.syncGroup {groupName: 'FilterSet_<Key>', fieldChanges: true, filterChanges: true}` (khuôn Desktop ghi,
   13 ô Combo/khác). `Month` **chỉ** có ở trang theo tháng (Monthly · Daily · Product · Product Mix · Operation · DSR) — KHÔNG
   thêm vào Weekly / Executive: Month mặc định `Current Month`, ép lên Weekly là Weekly chỉ còn tuần của tháng đó. Trang khuyến
@@ -1668,3 +1674,6 @@ python scripts/mix_builder.py <pageId> [<pageId> ...]
   thử trên bản sao `data/_sbx_<tên>`", luật đó đẻ ra 11 thư mục ≈ 2,2 GB không ai duyệt)*. Mốc an toàn = git: commit trạng thái hiện
   có (gồm bản Save của người dùng, §0a) TRƯỚC khi chạy lệnh, rồi chạy thẳng `MIX_ROOT=reports/<report>`; hỏng thì
   `git` đưa về. Lệnh nào quét cả report thì chạy `--dry` (nếu có) để thấy phạm vi trước.
+
+## Implements · Thi hành luật
+- `Rule_Keys_62_DesignChangeApproval` — the White design standard a report keeps once approved (frame, filters, grid) · chuẩn thiết kế White mà report giữ sau khi được duyệt (khung, bộ lọc, lưới)
