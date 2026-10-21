@@ -6,12 +6,12 @@ description: Trim the specs in docs/plan when they grow past the cap, WITHOUT lo
 # plan-trim — gọt plan vượt trần mà không mất ý
 
 > Luật nằm ở `02_RULES §Tài liệu` (gạch **PLAN PHẢI GỌN**): plan giữ hướng đã chốt + điểm còn mở, lịch sử
-> sang `06_CHANGES`, trần một spec / cả `docs/plan` do `zemory validate` canh. Skill này chỉ là **cách làm**.
+> sang `06_CHANGES`, trần một spec do `zemory validate` canh (cả `docs/plan` không có trần). Skill này chỉ là **cách làm**.
 > Sinh từ hai đợt gọt thật: 2026-10-05 (lượt soát bắt ~120 ý bị mất) và 2026-10-08 (bốn spec, soát lại ~140 ý,
 > bắt 5 chỗ spec nói sai so với code).
 
 ## Khi nào dùng
-- `zemory validate` báo `plan: N spec(s) over … lines` hoặc `docs/plan is … lines`.
+- `zemory validate` báo `plan: N spec(s) over … lines`.
 - User bảo gọt / dọn / rút gọn plan.
 - **Chỉ gọt spec ĐANG VƯỢT trần.** Spec dưới trần thì để yên — gọt cho đẹp là đổi rủi ro mất ý lấy không gì cả.
 
@@ -47,7 +47,7 @@ bản nháp, đi từng mục:
 dòng là không gọn thật — nội dung không đổi, chỉ khó đọc hơn. Đo kèm số ký tự để biết bản nháp thật sự nhỏ đi.
 
 **6. Không xuống được trần mà không mất ý ⇒ DỪNG ở mức trung thực và đề xuất.** Báo số dòng thật + ý nào sẽ phải
-bỏ nếu ép tiếp; đề xuất nâng trần (khoá `thresholds.plan_spec_lines` / `plan_total_lines`) hoặc tách spec nếu
+bỏ nếu ép tiếp; đề xuất nâng trần (khoá `thresholds.plan_spec_lines`) hoặc tách spec nếu
 nó gánh hai bài toán khác nhau. **User quyết** — không tự bỏ ý để đạt số, không tự đổi trần.
 
 **7. Áp.** Thay file trong repo bằng bản đã soát. Ghi đè cả file cần lời cho phép của user (cờ guard

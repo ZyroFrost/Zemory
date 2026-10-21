@@ -158,19 +158,18 @@ test("④b a plan holds spec, not open work: open checkboxes in docs/plan are fo
   assert.deepEqual(planOpenItems(join(ROOT, "docs", "plan")), [], "this repo's plans carry no open work");
 });
 
-test("④c plans must stay small: a spec over the cap and a folder over the total are named; NEGATIVE: within caps is silent (2026-10-08)", async (t) => {
+test("④c plans must stay small: a spec over the cap is named; NEGATIVE: a large folder of specs within the cap is silent (2026-10-08 · total dropped 2026-10-21)", async (t) => {
   const { planSizeIssues } = await import("../../dist/docs/validate.js");
   const { tempDir } = await import("./helpers.mjs");
   const { writeFileSync } = await import("node:fs");
   const d = tempDir(t, "zemory-plansize-");
   const lines = (n) => Array.from({ length: n }, (_, i) => `l${i}`).join("\n") + "\n";
-  writeFileSync(join(d, "01_a.md"), lines(5));
-  writeFileSync(join(d, "02_b.md"), lines(8));
-  assert.deepEqual(planSizeIssues(d, 10, 20), [], "both specs and the folder within the caps");
-  writeFileSync(join(d, "03_c.md"), lines(12));
-  const out = planSizeIssues(d, 10, 20);
-  assert.match(out.join("\n"), /1 spec\(s\) over 10 lines: 03_c\.md \(12\)/);
-  assert.match(out.join("\n"), /docs\/plan is 25 lines \(> 20\)/);
+  for (let i = 1; i <= 6; i++) writeFileSync(join(d, `0${i}_s.md`), lines(9));
+  assert.deepEqual(planSizeIssues(d, 10), [], "54 lines across six specs, each within the cap: no cap on the folder");
+  writeFileSync(join(d, "07_c.md"), lines(12));
+  const out = planSizeIssues(d, 10);
+  assert.equal(out.length, 1);
+  assert.match(out[0], /1 spec\(s\) over 10 lines: 07_c\.md \(12\)/);
 });
 
 test("④d no machine-generated block inside docs/plan; NEGATIVE: prose saying 'máy sinh' and fenced examples pass (2026-10-08)", async (t) => {
