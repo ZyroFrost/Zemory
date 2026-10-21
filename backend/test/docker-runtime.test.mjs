@@ -24,6 +24,15 @@ test("the store is the named volume; transcripts are mounted read-only", () => {
   assert.match(c, /\/\.claude:\/home\/node\/\.claude:ro/);
 });
 
+test("compose tells the daemon where the host's transcripts are mounted (hook payloads name host paths)", () => {
+  assert.match(read("../../docker-compose.yml"), /ZEMORY_PATH_MAP: "\$\{HOST_HOME\}\/\.claude=>\/home\/node\/\.claude"/);
+});
+
+test("the dependency layer is built from the manifests alone, before the sources are copied", () => {
+  const d = read("../../Dockerfile");
+  assert.ok(d.indexOf("npm ci --ignore-scripts") < d.indexOf("COPY . ."), "deps first, so a code change reuses the layer");
+});
+
 test("the image listens on every interface inside the container; the native default stays 127.0.0.1", () => {
   assert.match(read("../../Dockerfile"), /ENV ZEMORY_UI_HOST=0\.0\.0\.0/);
   assert.match(read("../src/ui.ts"), /server\.listen\(port, process\.env\.ZEMORY_UI_HOST\?\.trim\(\) \|\| "127\.0\.0\.1"\)/);

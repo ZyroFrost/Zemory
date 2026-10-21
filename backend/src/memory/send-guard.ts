@@ -318,7 +318,9 @@ function alive(pid: number): boolean {
 }
 
 /** Live local sessions with their titles, and the chosen one per repo. */
-export function listPeers(): PeerSession[] {
+// `isAlive`: inside the Docker container the host pids cannot be probed, so the host client sends the live ones
+// (memory/hook-relay.ts); everywhere else the pid is probed here.
+export function listPeers(isAlive: (pid: number) => boolean = alive): PeerSession[] {
   const home = claudeHome();
   const sdir = join(home, "sessions");
   if (!existsSync(sdir)) return [];
@@ -333,7 +335,7 @@ export function listPeers(): PeerSession[] {
       continue;
     }
     const pid = Number(j.pid ?? basename(f, ".json"));
-    if (!pid || !alive(pid)) continue;
+    if (!pid || !isAlive(pid)) continue;
     const sessionId = String(j.sessionId ?? "");
     const name = String(j.name ?? "");
     const nameSource = String(j.nameSource ?? "");

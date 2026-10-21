@@ -6,9 +6,14 @@ WORKDIR /app
 # a C++ toolchain only for the case fetch-prebuilds cannot fetch a native binary; git for the build's own scripts
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
+# dependencies first, from the manifests only, so a code change reuses this layer (the first build took 23 min)
+COPY package.json package-lock.json ./
+COPY backend/scripts/fetch-prebuilds.mjs backend/scripts/fetch-prebuilds.mjs
+# fetch-prebuilds BEFORE the install (README: a throttled github.com pushes better-sqlite3 into node-gyp); the root
+# package's own `prepare` (the build) needs the sources, so it is skipped here and the dependencies' scripts run by rebuild
+RUN node backend/scripts/fetch-prebuilds.mjs && npm ci --ignore-scripts && npm rebuild
 COPY . .
-# fetch-prebuilds BEFORE npm ci (README: a throttled github.com pushes better-sqlite3 into node-gyp); prepare builds dist/
-RUN node backend/scripts/fetch-prebuilds.mjs && npm ci && npm prune --omit=dev
+RUN npm run build && npm prune --omit=dev
 
 FROM node:22-bookworm-slim
 WORKDIR /app
