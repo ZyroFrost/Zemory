@@ -1,9 +1,10 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 20
+version: 21
 type: process
 aka: pbip
+checked: [Rule_Gate_84_PbipOpenCheck, Skill_PBI_White]
 description: Edit a Power BI .pbip/PBIR report by writing its JSON directly - pages, visuals, bookmarks, buttons, icons, the coordinate grid - without breaking the file; the model diagram standard and the static gate. Use whenever a .pbip report is built or changed, a tab or bookmark is added, an icon or the grid is fixed, or Desktop reports issues. Vietnamese triggers - "sửa report", "sửa pbix", "dựng dashboard", "thêm tab", "gắn bookmark", "đổi icon", "căn lưới", "mở Desktop kiểm".
 installs: [scripts/pbi_gate.py, scripts/fix_literal_type.py, scripts/add_filter_set.py, scripts/pbi_diagram.py, scripts/diagram_order.js, scripts/package.json, scripts/rename_reports.py]
 ---
