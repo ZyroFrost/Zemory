@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 import { currentProjectRoot } from "../core/config.js";
 import { generateGuards, GUARD_MATCHER, guardCommand } from "../docs/guard-gen.js";
 import { handleHook, installCodexHooks, installHooks, uninstallHooks } from "../memory/capture-hook.js";
-import { judgeSendTarget } from "../memory/send-guard.js";
+import { judgeSendPurpose, judgeSendTarget } from "../memory/send-guard.js";
 import { readStdin } from "./_shared.js";
 
 export async function cmdHook(args: string[]): Promise<void> {
@@ -87,14 +87,15 @@ export async function cmdHook(args: string[]): Promise<void> {
   }
   if (sub === "send-guard") {
     // PreToolUse on SendMessage (wired at user level by `zemory hook install`). exit 2 = block, stderr goes to the agent.
-    let payload: { tool_input?: { to?: unknown } } = {};
+    let payload: { tool_input?: { to?: unknown; message?: unknown }; transcript_path?: unknown } = {};
     try {
       // Strip a BOM: a PowerShell 5.1 pipe prepends U+FEFF to stdin (same fix as guard.cjs).
       payload = JSON.parse((await readStdin()).replace(new RegExp("^" + String.fromCharCode(0xfeff)), "") || "{}");
     } catch {
       // unreadable payload => nothing to judge, let it through (the host decides; this latch only narrows)
     }
-    const why = judgeSendTarget(payload.tool_input?.to);
+    const why = judgeSendTarget(payload.tool_input?.to) ??
+      judgeSendPurpose(payload.tool_input ?? {}, typeof payload.transcript_path === "string" ? payload.transcript_path : "");
     if (why) {
       // Both channels: without Git the host drops the exit code, the JSON decision still blocks (plan/28 §0m).
       process.stdout.write(

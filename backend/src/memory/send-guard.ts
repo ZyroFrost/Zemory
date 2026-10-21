@@ -388,6 +388,68 @@ export function listPeers(): PeerSession[] {
   return out.sort((a, b) => a.repo.localeCompare(b.repo) || Number(b.chosen) - Number(a.chosen));
 }
 
+/** Does the file contain any of the needles? Read in 4 MB chunks with an overlap, so a transcript of hundreds of MB is
+ *  never held whole. Unreadable ⇒ false. */
+export function fileHasAny(path: string, needles: string[]): boolean {
+  if (!path || !needles.length) return false;
+  const bufs = needles.map((n) => Buffer.from(n, "utf8"));
+  const keep = Math.max(...bufs.map((b) => b.length));
+  let fd: number;
+  try {
+    fd = openSync(path, "r");
+  } catch {
+    return false;
+  }
+  try {
+    const chunk = Buffer.alloc(4 * 1024 * 1024);
+    let tail = Buffer.alloc(0);
+    for (;;) {
+      const n = readSync(fd, chunk, 0, chunk.length, null);
+      if (n <= 0) return false;
+      const hay = Buffer.concat([tail, chunk.subarray(0, n)]);
+      if (bufs.some((b) => hay.includes(b))) return true;
+      tail = hay.subarray(Math.max(0, hay.length - keep));
+    }
+  } finally {
+    closeSync(fd);
+  }
+}
+
+// Rule_Gate_89_MessageOnlyWithWork: a message to another session's agent carries work for it, or answers it.
+const WORK_LINE = /^(?:Cần|Need)\s+[^:\n]{1,80}:\s*\S/i;
+
+/**
+ * null = let through; otherwise the reason to block. Judged only for a local peer session (a subagent, `main`, a
+ * teammate is not this latch's business). Passes: a reply by `uds:` address · a session that has messaged this one (its
+ * name or address appears as the sender of a cross-session message in this session's transcript) · a first line naming
+ * the recipient's work (`Cần <repo>: <việc>`) · an idle subscription with no text.
+ */
+export function judgeSendPurpose(
+  input: { to?: unknown; message?: unknown },
+  transcriptPath: string,
+  peers: PeerSession[] = listPeers(),
+  hasSpoken: (path: string, needles: string[]) => boolean = fileHasAny,
+): string | null {
+  const to = typeof input.to === "string" ? input.to.trim() : "";
+  const text = typeof input.message === "string" ? input.message : "";
+  if (!to || /^uds:/i.test(to) || !text.trim()) return null;
+  const name = to.replace(/\s*\[[0-9a-f]+\]$/i, "");
+  const target = peers.find((p) => p.name === name || p.title === name);
+  if (!target) return null;
+  const first = text.split(/\r?\n/).find((l) => l.trim()) ?? "";
+  if (WORK_LINE.test(first.trim())) return null;
+  const names = [...new Set([name, target.name, target.title].filter((x): x is string => Boolean(x)))];
+  const needles = names.flatMap((n) => [`from-name="${n}"`, `from-name=\\"${n}\\"`]);
+  if (hasSpoken(transcriptPath, needles)) return null;
+  return (
+    `BLOCKED (send guard, Rule_Gate_89_MessageOnlyWithWork): \`${name}\` has not messaged this session and the message ` +
+    `names no work for it. A session in another repo is busy with its own task: message it only when it must do ` +
+    `something, or to answer what it asked.\n` +
+    `Has work for it? Put it on the FIRST line: \`Cần <repo>: <việc>\` (or \`Need <repo>: <task>\`). Only a status ` +
+    `update with nothing for it to do? Do not send it.`
+  );
+}
+
 /** null = let through; otherwise the reason to block. */
 export function judgeSendTarget(to: unknown, peers: PeerSession[] = listPeers()): string | null {
   const raw = typeof to === "string" ? to.trim() : "";

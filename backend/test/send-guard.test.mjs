@@ -269,9 +269,10 @@ test("CLI: `zemory hook send-guard` exits 2 with the address to use; 0 for a rep
   add({ name: "dept-biz-d1", cwd: "D:/w/Dept_BIZ", jsonl: false });
   const cli = new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\//, "");
   const env = { ...process.env, ZEMORY_CLAUDE_HOME: home, ZEMORY_PEER_TITLE_CACHE: join(home, "c.json") };
-  const run = (to) =>
+  // the message names work for the recipient (Rule_Gate_89): this test is about WHICH session, not why
+  const run = (to, message = "Cần BIZ: x") =>
     spawnSync(process.execPath, [cli, "hook", "send-guard"], {
-      input: JSON.stringify({ tool_name: "SendMessage", tool_input: { to, message: "x" } }),
+      input: JSON.stringify({ tool_name: "SendMessage", tool_input: { to, message } }),
       encoding: "utf8",
       env,
       timeout: 60_000,
@@ -286,6 +287,9 @@ test("CLI: `zemory hook send-guard` exits 2 with the address to use; 0 for a rep
     "a block also carries the JSON deny decision (exit code is dropped on a machine without Git)",
   );
   assert.equal(run("dept-biz-b2").status, 0, "đúng session ⇒ qua");
+  const fyi = run("dept-biz-b2", "status only");
+  assert.equal(fyi.status, 2, "the right session, but no work for it and it never wrote here ⇒ blocked (Rule_Gate_89)");
+  assert.match(fyi.stderr, /Rule_Gate_89_MessageOnlyWithWork/);
   assert.equal(run("uds:\\\\.\\pipe\\LOCAL\\cc-msg-x").status, 0, "trả lời qua from ⇒ qua");
   const list = spawnSync(process.execPath, [cli, "peers"], { encoding: "utf8", env, timeout: 60_000 });
   assert.match(list.stdout, /★ Dept_BIZ\s+dept-biz-b2/, "`zemory peers` đánh dấu ★ đúng phiên");
