@@ -2835,6 +2835,33 @@ def check_dead_visual(d_def, fail):
                             % (pid, n, d['visual'].get('visualType')))
 
 
+def check_own_background(d_def, fail):
+    """own-background (a department repo 21/10: one block read grey among white ones): the colour of a dashboard is its BG_
+    shape. A visual inside a group that holds a BG_ shape keeps visualContainerObjects.background off - its own background
+    (a theme colour darkened 10 %, or #FAFAFA over the frame) paints a second colour over the frame. 7 + 3 visuals on four
+    White copies had it on; the 'dashboard' check only counted the BG_ shapes."""
+    for pdir in glob.glob(os.path.join(d_def, 'pages', '*', '')):
+        V = {}
+        for f in glob.glob(os.path.join(pdir, 'visuals', '*', 'visual.json')):
+            try:
+                d = json.load(open(f, encoding='utf-8'))
+            except ValueError:
+                continue
+            V[d.get('name')] = d
+        framed = {d.get('parentGroupName') for d in V.values()
+                  if d.get('visual', {}).get('visualType') == 'shape' and str(sel_name(d) or '').startswith('BG_')}
+        framed.discard(None)
+        for n, d in V.items():
+            v = d.get('visual', {})
+            if not v.get('visualType') or v['visualType'] == 'shape' or d.get('parentGroupName') not in framed:
+                continue
+            bgp = ((v.get('visualContainerObjects', {}).get('background') or [{}])[0] or {}).get('properties', {})
+            if lit(bgp.get('show')) == 'true':
+                fail.append("page %s: visual %s (%s %s) paints its own background inside a BG_ frame - turn "
+                            "visualContainerObjects.background.show off, the frame gives the colour (own-background)"
+                            % (os.path.basename(os.path.normpath(pdir)), n, v['visualType'], ascii(sel_name(d) or '')))
+
+
 def check_user_save(report_dir, fail):
     """user-save (a department repo 21/10: a Save the user made must never be lost): files of the report changed on disk and not in git are
     a Desktop Save of the user (or an agent edit not yet checkpointed). Before any agent write they go into the index
@@ -5091,6 +5118,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
     check_user_save(report_dir, fail)
     check_bridge_bypass(report_dir, fail)
     if not KEEP_OLD_DESIGN:
+        check_own_background(d_def, fail)
         check_kimball16(d_def, fail)
         check_column_names(d_def, fail)
         check_measure_names(d_def, fail)

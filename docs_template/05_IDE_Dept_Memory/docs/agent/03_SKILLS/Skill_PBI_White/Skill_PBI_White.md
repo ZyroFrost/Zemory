@@ -1,14 +1,14 @@
 ---
 id: Skill_PBI_White
 name: pbi-white
-version: 12
+version: 13
 aka: pbi-mix
 replaces: [Skill_PBI_Mix]
 type: process
 checked: [Rule_Keys_62_DesignChangeApproval, Skill_PBI_Base, Skill_PBI_Pbip]
 description: Build the WHITE copy (named Mix before 2026-10-19) of a Power BI report - warehouse model, the Red header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-red). Vietnamese triggers - "bản white", "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
 installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
-from: _Store/03_SKILLS/Skill_PBI_White @v12 #54222d7bf291
+from: _Store/03_SKILLS/Skill_PBI_White @v13 #3d3a6fb40bb1
 ---
 
 # Bản `White` — bố cục CŨ, khung nhận diện MỚI, chạy trên DW
@@ -174,7 +174,9 @@ bộ dựng tự lấy số từ vị trí trang (`key` trong spec không mang s
 
 🔴 **MỌI dashboard đều phải có NỀN LÀ SHAPE RIÊNG.** Không dùng `background` của chính visual —
 shape rời mới sửa được. Một dashboard = **một nhóm** gồm: **nền + visual chính + mọi nút/mảnh lẻ
-phục vụ nó**. Thẻ KPI cũng là dashboard: nhóm nó gồm **nền + thẻ + phần trăm**.
+phục vụ nó**. Thẻ KPI cũng là dashboard: nhóm nó gồm **nền + thẻ + phần trăm**. Visual trong nhóm có `BG_` để
+`visualContainerObjects.background.show = false` — nền riêng của nó (màu theme làm tối 10%, `#FAFAFA`…) phủ lên khung, khối đó
+ra màu khác các khối bên cạnh. Cổng `own-background` (cổng `dashboard` chỉ đếm số `BG_`).
 
 🔴 **Mọi tên trong Selection theo đúng một dạng: `<LoạiTínhNăng>_<Tên>`.**
 
