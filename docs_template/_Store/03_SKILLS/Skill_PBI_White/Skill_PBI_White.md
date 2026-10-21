@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_White
 name: pbi-white
-version: 12
+version: 13
 aka: pbi-mix
 replaces: [Skill_PBI_Mix]
 type: process
@@ -173,7 +173,9 @@ bộ dựng tự lấy số từ vị trí trang (`key` trong spec không mang s
 
 🔴 **MỌI dashboard đều phải có NỀN LÀ SHAPE RIÊNG.** Không dùng `background` của chính visual —
 shape rời mới sửa được. Một dashboard = **một nhóm** gồm: **nền + visual chính + mọi nút/mảnh lẻ
-phục vụ nó**. Thẻ KPI cũng là dashboard: nhóm nó gồm **nền + thẻ + phần trăm**.
+phục vụ nó**. Thẻ KPI cũng là dashboard: nhóm nó gồm **nền + thẻ + phần trăm**. Visual trong nhóm có `BG_` để
+`visualContainerObjects.background.show = false` — nền riêng của nó (màu theme làm tối 10%, `#FAFAFA`…) phủ lên khung, khối đó
+ra màu khác các khối bên cạnh. Cổng `own-background` (cổng `dashboard` chỉ đếm số `BG_`).
 
 🔴 **Mọi tên trong Selection theo đúng một dạng: `<LoạiTínhNăng>_<Tên>`.**
 
