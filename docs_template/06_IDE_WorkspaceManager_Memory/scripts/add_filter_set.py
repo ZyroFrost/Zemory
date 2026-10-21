@@ -4,7 +4,8 @@
     python scripts/add_filter_set.py <report folder> --apply
 
 The set = the gate's location keys (pbi_gate.FILTER_SET, minus filter_skip of the page) + the repo's own list in
-config/pbi-gate.json 'filter_set' ({"<folder>": [{"key", "field": "Table.Column", "caption", "pages": "*" | [names]}]}).
+config/pbi-gate.json 'filter_set' ({"<folder>": [{"key", "field": "Table.Column", "caption", "pages": "*" | [names],
+"exclude": [values the box never lists, e.g. a member with no rows], "why": "..."}]}).
 For each page with a Filter_Panel group:
   - a missing box = a copy of the panel's Year slicer and its label: field, caption (label text + projection displayName),
     no selection, the visual filter 'not blank' (null + the warehouse labels on a text column), syncGroup FilterSet_<key>;
@@ -49,8 +50,9 @@ def col(ent, prop, source=None):
     return {'Column': {'Expression': {'SourceRef': ({'Source': source} if source else {'Entity': ent})}, 'Property': prop}}
 
 
-def not_blank(ent, prop, is_text):
-    vals = LABELS if is_text else ['null']
+def not_blank(ent, prop, is_text, exclude=()):
+    """The box's 'not blank' filter: null (+ the empty-cell labels and the entry's exclude values on a text column)."""
+    vals = (LABELS + ["'%s'" % str(x).replace("'", "''") for x in exclude]) if is_text else ['null']
     return {'Version': 2, 'From': [{'Name': 'd1', 'Entity': ent, 'Type': 0}],
             'Where': [{'Condition': {'Not': {'Expression': {'In': {
                 'Expressions': [col(ent, prop, 'd1')], 'Values': [[{'Literal': {'Value': v}}] for v in vals]}}}}}]}
@@ -106,6 +108,16 @@ def set_key(ref, folder, page):
         if e['field'] == ref:
             return e['key']
     return {'Dim_Date.CurrentYearLabel': 'Year', 'Dim_Date.CurrentMonthLabel': 'Month'}.get(ref)
+
+
+def entry_of(folder, field):
+    """The repo's filter_set entry of a field, else {}."""
+    return next((e for e in G.gate_cfg().get('filter_set', {}).get(folder, []) if e['field'] == field), {})
+
+
+def is_not_blank(f):
+    s = json.dumps(f.get('filter', {}))
+    return f.get('type') == 'Advanced' and '"Not"' in s and '"null"' in s
 
 
 def order_rank(key, folder):
@@ -177,7 +189,8 @@ def run(report_dir, apply):
             s['filterConfig'] = {'filters': [
                 {'name': nid(), 'field': col(ent, prop), 'type': 'Categorical'},
                 {'name': nid(), 'field': col(ent, prop), 'type': 'Advanced',
-                 'filter': not_blank(ent, prop, cols[field] == 'string'), 'howCreated': 'User'}]}
+                 'filter': not_blank(ent, prop, cols[field] == 'string', entry_of(folder, field).get('exclude', ())),
+                 'howCreated': 'User'}]}
             set_title(s, 'Slicer_%s' % key)
             lab = copy.deepcopy(V[tpl_label])
             lab['name'] = nid()
@@ -207,15 +220,36 @@ def run(report_dir, apply):
                 if V[s]['visual'].get('syncGroup') != sg:
                     V[s]['visual']['syncGroup'] = sg
                     changed.add(s)
+        # an existing box of the repo's set whose 'not blank' filter lacks the entry's exclude values gets the right one
+        refreshed = {}
+        for s in slicers:
+            fld = slicer_field(V[s])
+            ex = entry_of(folder, fld).get('exclude')
+            if not ex or s in [a[0] for a in added]:
+                continue
+            ent, prop = fld.split('.', 1)
+            want = not_blank(ent, prop, cols.get(fld) == 'string', ex)
+            for fc in V[s].get('filterConfig', {}).get('filters', []):
+                if is_not_blank(fc) and fc.get('filter') != want:
+                    fc['filter'] = want
+                    refreshed[fc.get('name')] = want
+                    changed.add(s)
+                    print('page %s: box %s - not-blank filter now also excludes %s' % (pname, fld, ', '.join(ex)))
         for n in changed:
             writes[FILES[n]] = dump(V[n], RAW[n])
-        if not added:
+        if not added and not refreshed:
             continue
         for bf in bm_files:
             b, raw = writes.get(bf + '#obj') or read(bf)
             vc = b.get('explorationState', {}).get('sections', {}).get(pid, {}).get('visualContainers')
             if vc is None:
                 continue
+            hit = False
+            for e in vc.values():
+                for fx in (e.get('filters') or {}).get('byExpr', []):
+                    if fx.get('name') in refreshed and fx.get('filter') != refreshed[fx['name']]:
+                        fx['filter'] = refreshed[fx['name']]
+                        hit = True
             tg = b.get('options', {}).get('targetVisualNames')
             for s, lab, key in added:
                 ent, prop = slicer_field(V[s]).split('.', 1)
@@ -239,7 +273,8 @@ def run(report_dir, apply):
                         tg.append(s)
                     if tpl_label in tg:
                         tg.append(lab)
-            writes[bf + '#obj'] = (b, raw)
+            if added or hit:
+                writes[bf + '#obj'] = (b, raw)
     out = {}
     for k, v in writes.items():
         if k.endswith('#obj'):

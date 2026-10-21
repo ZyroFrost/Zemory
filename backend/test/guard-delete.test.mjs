@@ -197,6 +197,41 @@ test("02-10: the value of a PowerShell parameter is no delete target (-ErrorActi
     "NEGATIVE: the real target after the parameter value still asks");
 });
 
+// plan/27 §2h (c): what the agent made to work is deleted without asking - the session's scratch folder and any _scratch_* path,
+// recursive and globs included - and the target is read the way the shell reads it (cd · "$S"/x · $TEMP · $env:TEMP · a
+// Get-ChildItem -Filter piped into Remove-Item $_). Six forms of one session's own clean-up were blocked before (2026-10-21).
+test("02-10 (c): the agent's own scratch is deleted without asking; anything else on the line still asks", () => {
+  const sp = join(tmpdir(), "claude", "proj", "sess", "scratchpad");
+  const spF = sp.replace(/\\/g, "/");
+  mkdirSync(join(sp, "shots"), { recursive: true });
+  for (const cmd of [
+    `cd "${spF}" && rm -f a.mjs b.log`,
+    `S="${spF}"; rm -f "$S"/shots/*.png && rmdir "$S/shots"`,
+    `rm -rf "${spF}/sub"`,
+    `rm -f "$TEMP/_scratch_g.err"`,
+    // passes only when $TEMP is expanded: no _scratch_ name, the session's scratch folder reached through the variable
+    `rm -rf "$TEMP/claude/proj/sess/scratchpad/sub"`,
+    `Remove-Item "$env:TEMP\\_scratch_levels-1" -Recurse -Force -Confirm:$false`,
+    `Get-ChildItem $env:TEMP -Directory -Filter '_scratch_levels-*' | ForEach-Object { Remove-Item $_.FullName -Recurse -Force -Confirm:$false }`,
+    "rm -f docs_template/_Store/x/_scratch_pbi_gate.py.orig",
+    "rm -rf _scratch_build",
+  ]) {
+    const r = ask(bash(cmd));
+    assert.equal(r.blocked, false, `the agent's own scratch must go through: ${cmd}\n${r.say}`);
+  }
+  for (const cmd of [
+    "cd backend && rm ui.ts",
+    `rm -rf "${spF}/sub" backend/src`,
+    `Get-ChildItem $env:TEMP -Directory -Filter 'zemory-levels-*' | ForEach-Object { Remove-Item $_.FullName -Recurse -Force }`,
+    "rm -rf backend/_scratch",
+    `rm -rf "${join(tmpdir(), "claude", "proj", "notes").replace(/\\/g, "/")}"`,
+  ]) {
+    const r = ask(bash(cmd));
+    assert.equal(r.blocked, true, `NEGATIVE: a target that is not the agent's scratch still asks: ${cmd}`);
+  }
+  rmSync(sp, { recursive: true, force: true });
+});
+
 // 02-10 (b): a rule never disappears from a rule set without the user's word; retiring one keeps its number.
 test("02-10 (b): an edit that drops a rule number from 01/02 is blocked; keeping the number passes", () => {
   // A temp repo holding a copy of the old app template's rules and constitution as its harness: the harness docs are

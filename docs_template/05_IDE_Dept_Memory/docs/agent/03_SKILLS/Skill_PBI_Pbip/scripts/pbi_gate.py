@@ -2766,9 +2766,10 @@ def check_literal_type(report_dir, d_def, fail):
 
 
 def check_select_all(d_def, fail):
-    """select-all (a department repo 21/10: every filter offers All): a slicer that may hold several values has the 'Select all'
-    row (objects.selection selectAllCheckboxEnabled true). A single-choice slicer (singleSelect / strictSingleSelect, e.g. a
-    field parameter) has no 'all' and is not judged. Measured on a White copy: 34 of 48 slicers lacked the row."""
+    """select-all (a department repo 21/10: every filter offers All): every slicer is multi-choice with the 'Select all' row
+    (objects.selection selectAllCheckboxEnabled true, no singleSelect / strictSingleSelect). Only a field parameter
+    (Parameter_*, one field at a time) stays single-choice. Measured on a White copy: 34 of 48 slicers lacked the row; on
+    another, 20 single-choice Year / Month boxes and copies of them had passed as exempt."""
     for f in sorted(glob.glob(os.path.join(d_def, 'pages', '*', 'visuals', '*', 'visual.json'))):
         try:
             d = json.load(open(f, encoding='utf-8'))
@@ -2778,13 +2779,15 @@ def check_select_all(d_def, fail):
         if v.get('visualType') != 'slicer':
             continue
         sel = ((v.get('objects', {}).get('selection') or [{}])[0] or {}).get('properties', {})
-        if lit(sel.get('singleSelect')) == 'true' or lit(sel.get('strictSingleSelect')) == 'true':
+        refs = [x.get('queryRef') for x in v.get('query', {}).get('queryState', {}).get('Values', {}).get('projections', [])]
+        if all(str(r or '').startswith('Parameter_') for r in refs) and refs:
             continue
-        if lit(sel.get('selectAllCheckboxEnabled')) != 'true':
-            refs = [x.get('queryRef') for x in v.get('query', {}).get('queryState', {}).get('Values', {}).get('projections', [])]
+        if lit(sel.get('selectAllCheckboxEnabled')) != 'true' or lit(sel.get('singleSelect')) == 'true' \
+                or lit(sel.get('strictSingleSelect')) == 'true':
             page = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(f))))
-            fail.append("page %s: slicer %s (%s) has no 'Select all' row - set objects.selection selectAllCheckboxEnabled true "
-                        "(select-all)" % (page, d.get('name'), '+'.join(r for r in refs if r) or '?'))
+            fail.append("page %s: slicer %s (%s) has no 'Select all' row or is single-choice - drop singleSelect / "
+                        "strictSingleSelect, set objects.selection selectAllCheckboxEnabled true; only a field parameter stays "
+                        "single (select-all)" % (page, d.get('name'), '+'.join(r for r in refs if r) or '?'))
 
 
 def check_dead_visual(d_def, fail):
@@ -4404,6 +4407,58 @@ def check_dw_row_wrap(report_dir, cur, fail):
                                w, CELL_PAD, ROW_WRAP, 'spare room' if have is not None and have > w else 'too narrow / not set'))
 
 
+EMPTY_LABELS = {'unknown', 'not applicable', '#na', '#unknown'}
+
+
+def check_dw_filter_mixed(report_dir, cur, fail):
+    """filter-mixed (a department repo 21/10: the Team Leader box listed 'E-Commerce', a channel, among the people): one box
+    of the common set holds ONE grouping. A value of a filter_set field (live warehouse values, empty-cell labels and the
+    entry's 'exclude' left out) that is also a value of another filter_set field of the report means the box mixes two
+    groupings - exclude the value in pbi-gate.json filter_set (exclude: [...], with the reason) or fix the data."""
+    folder = os.path.basename(os.path.normpath(report_dir))
+    mine = gate_cfg().get('filter_set', {}).get(folder, [])
+    if not mine:
+        return
+    # the other boxes come from the department's whole vocabulary (every report's filter_set), so a channel listed in a
+    # person box is caught even on a report that has no channel box
+    ents, seen = list(mine), {e['field'] for e in mine}
+    for f_, lst in gate_cfg().get('filter_set', {}).items():
+        for e in (lst if isinstance(lst, list) else []):
+            if e['field'] not in seen:
+                ents.append(dict(e, _other=True))
+                seen.add(e['field'])
+    src = {}
+    for t in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        m = re.search(r'Item\s*=\s*"(\w+)"', open(t, encoding='utf-8').read())
+        if m:
+            src[os.path.basename(t)[:-5]] = m.group(1)
+    vals = {}
+    for e in ents:
+        tab, colname = e['field'].split('.', 1)
+        if tab not in src and not e.get('_other'):
+            continue
+        try:
+            rows = dw_rows(cur, 'select distinct cast([%s] as nvarchar(400)) from dbo.[%s]' % (colname.replace(']', ']]'),
+                                                                                             src.get(tab, tab).replace(']', ']]')))
+        except Exception as ex:
+            dw_skip('filter-mixed %s' % e['key'], str(ex).splitlines()[0][:120])
+            continue
+        drop = {str(x).lower() for x in e.get('exclude', [])} | EMPTY_LABELS
+        vals[e['key']] = {str(r[0]).strip(): e for r in rows if r[0] is not None and str(r[0]).strip().lower() not in drop}
+    keys = list(vals)
+    own = {e['key'] for e in mine}
+    for i, a in enumerate(keys):
+        for b in keys[i + 1:]:
+            if a not in own and b not in own:
+                continue
+            both = sorted(set(x.lower() for x in vals[a]) & set(x.lower() for x in vals[b]))
+            for v in both:
+                fail.append("filter box %s (%s) and box %s (%s) both list '%s' - one box mixes two groupings; exclude it from "
+                            "the box it does not belong to (pbi-gate.json filter_set exclude) or fix the data (filter-mixed)"
+                            % (a, vals[a][next(x for x in vals[a] if x.lower() == v)]['field'], b,
+                               vals[b][next(x for x in vals[b] if x.lower() == v)]['field'], v))
+
+
 def check_dw(report_dir, fail):
     """Layer 2 - every warehouse-backed table: native SQL must run (sp_describe_first_result_set), a navigated table
     must exist, and every sourceColumn / SelectColumns name must exist in the warehouse or be built in the query."""
@@ -4434,6 +4489,7 @@ def check_dw(report_dir, fail):
         return
     check_dw_relationships(report_dir, cur, fail)
     check_dw_row_wrap(report_dir, cur, fail)
+    check_dw_filter_mixed(report_dir, cur, fail)
     n_tab, n_col, unknown = 0, 0, []
     for tbl, s in tables:
         src = s[s.find('\tpartition '):]

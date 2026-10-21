@@ -597,6 +597,54 @@ function segmentFolders(bare, expand) {
   return out;
 }
 
+// SCRATCH (plan/27 §2h c): what the agent made to work and may delete without asking - anything in the session's scratch folder
+// (<tmp>/claude/<project>/<session>/scratchpad) and any path with a segment named _scratch_* (the one name for a temp file or
+// folder the agent has to put elsewhere, a mkdtemp prefix included). Anything else still asks.
+const SCRATCH_DIR = /\\/claude\\/[^/]+\\/[^/]+\\/scratchpad(\\/|$)/;
+function isScratchPath(p) {
+  const c = canonPath(p);
+  if (/(^|\\/)_scratch_[^/]*(\\/|$)/.test(c)) return true;
+  if (!SCRATCH_DIR.test(c)) return false;
+  return [os.tmpdir(), process.env.TEMP, process.env.TMP].filter(Boolean).map(canonPath).some((r) => c.startsWith(r + "/"));
+}
+// The targets of the delete commands on a line, resolved to absolute paths: a quote glued to a word is dropped ("$S"/x -> $S/x),
+// a variable set in the command and $TEMP / $TMP / $env:TEMP are expanded, a relative target is taken from the folder its
+// segment runs in (cd), a Get-ChildItem -Filter is joined to its path, and the items of a pipeline ($_) are its source's.
+const DEL_VALUE_PARAMS = /^-(erroraction|warningaction|informationaction|progressaction|errorvariable|warningvariable|outvariable|pipelinevariable|exclude|credential|stream|depth)$/i;
+function deleteTargets(bare, cmds) {
+  const expand0 = literalExpander(bare);
+  const expand = (t) => expand0(t).replace(/\\$\\{?(?:env:)?(TEMP|TMP)\\}?/gi, (all, v) => process.env[v.toUpperCase()] || all);
+  const folders = segmentFolders(bare, expand);
+  const out = [];
+  for (const seg of splitSegments(bare)) {
+    const glued = seg.replace(/(["'])([^"'\\s]*)\\1(?=[^\\s;&|])/g, "$2").replace(/([^\\s"'])(["'])([^"'\\s]*)\\2/g, "$1$3");
+    // a PowerShell block brace ({ Remove-Item … }) is no target, a \${VAR} is kept whole
+    const toks = glued.split(/[\\s'"()]+/).map((t) => (/\\$\\{/.test(t) ? t : t.replace(/^\\{+|\\}+$/g, ""))).filter(Boolean);
+    const at = toks.findIndex((t) => cmds.test(t.toLowerCase()));
+    if (at < 0) continue;
+    const here = folders.get(seg) || process.cwd();
+    const rest = toks.slice(at + 1);
+    let last = -1;
+    for (let i = 0; i < rest.length; i++) {
+      const t = rest[i];
+      if (/^-(filter|include)$/i.test(t) && rest[i + 1]) {
+        if (last >= 0) out[last] = path.join(out[last], expand(rest[i + 1]));
+        i++;
+        continue;
+      }
+      if (DEL_VALUE_PARAMS.test(t)) { i++; continue; }
+      if (t.startsWith("-") || /^\\/[A-Za-z]$/.test(t) || /^\\$(_|psitem)\\b/i.test(t)) continue;
+      if (cmds.test(t.toLowerCase()) || /^(foreach-object|%|where-object|\\?)$/i.test(t)) continue;
+      let x = expand(t);
+      if (process.platform === "win32") { const w = /^\\/([A-Za-z])(\\/|$)/.exec(x); if (w) x = w[1] + ":/" + x.slice(3); }
+      out.push(isAbsTok(x, false) ? x : path.resolve(here, x));
+      last = out.length - 1;
+    }
+  }
+  return out;
+}
+const scratchOnly = (targets) => targets.length > 0 && targets.every(isScratchPath);
+
 // A path token of a segment as an absolute path: variables expanded, a relative path joined to the segment's folder.
 function inFolder(tok, base, expand) {
   let t = expand(String(tok).replace(/^["']|["']$/g, ""));
@@ -890,7 +938,10 @@ function checkBash(cmd) {
   const MASS_DEL =
     /\\bfind\\b[^\\n]*\\s-delete\\b|\\bfind\\b[^\\n]*\\s-exec[^\\n]*\\brm\\b|\\bgit\\s+clean\\b[^\\n]*-[a-z]*[fdx]|\\brobocopy\\b[^\\n]*\\/(MIR|PURGE)\\b|\\brmSync\\s*\\([^)]*recursive|\\brmtree\\s*\\(|\\bxargs\\b[^\\n]*\\brm\\b|\\bGet-ChildItem\\b[^\\n]*\\|[^\\n]*\\bRemove-Item\\b/i;
   const MASS_CMDS = /^(find|git|robocopy|xargs|get-childitem|gci|ls|dir|remove-item|ri|rm)$/;
-  if ((anyCmdIs(bare, MASS_CMDS) || SEG_INTERP.test(cmdWordOf(bare))) && MASS_DEL.test(bare) && !consumeFlag("delete", bare)) {
+  // a sweep of the agent's own scratch (the session's folder, a _scratch_* path) is no user data: no flag (plan/27 §2h c)
+  const MASS_TARGET_CMDS = /^(find|get-childitem|gci|ls|dir|remove-item|ri|rm|rmdir|rd|del|erase|xargs)$/;
+  if ((anyCmdIs(bare, MASS_CMDS) || SEG_INTERP.test(cmdWordOf(bare))) && MASS_DEL.test(bare) &&
+      !scratchOnly(deleteTargets(bare, MASS_TARGET_CMDS)) && !consumeFlag("delete", bare)) {
     deny("BLOCKED (guard layer 1): MASS deletion (a whole-tree sweep) - irreversible, and Rule_Gate_10_DestructiveOps requires asking the user first." +
       flagTip("delete"));
   }
@@ -966,7 +1017,8 @@ function checkBash(cmd) {
       }
       }
     }
-    if (recursive && !delFlagOk()) {
+    const targets = deleteTargets(bare, DEL_CMDS);
+    if (recursive && !scratchOnly(targets) && !delFlagOk()) {
       deny("BLOCKED (guard layer 1): a RECURSIVE delete - an irreversible operation, and Rule_Gate_10_DestructiveOps requires asking the user first." +
         flagTip("delete"));
     }
@@ -976,29 +1028,12 @@ function checkBash(cmd) {
     // open, because a delete cannot be undone.
     if (!recursive) {
       const tempRoots = [os.tmpdir(), process.env.TEMP, process.env.TMP].filter(Boolean).map(canonPath);
-      // A variable set to a literal in the same command (\`$sp = "C:\\…\\scratchpad"; Remove-Item "$sp\\x"\` · \`S="/c/…"; rm "$S/x"\`)
-      // is expanded, so the target is judged by its real path (2026-10-19: two repos blocked from emptying their own
-      // scratch folder). A variable with no literal assignment stays unresolved => in the repo => blocked, as before.
-      const expand = literalExpander(bare);
-      const targets = [];
-      for (const seg of bare.split(/[\\n;|&]+/)) {
-        if (!ANY_DEL.test(seg)) continue;
-        const toks = seg.split(/[\\s'"]+/).filter(Boolean);
-        const at = toks.findIndex((t) => DEL_CMDS.test(t.toLowerCase()));
-        if (at < 0) continue;
-        // the value of a PowerShell parameter is no target: \`-ErrorAction SilentlyContinue\` deletes nothing called
-        // SilentlyContinue (Dept_PUR 2026-10-19). -Path / -LiteralPath name the target and are kept.
-        const VALUE_PARAMS = /^-(erroraction|warningaction|informationaction|progressaction|errorvariable|warningvariable|outvariable|pipelinevariable|filter|include|exclude|credential|stream)$/i;
-        const rest = toks.slice(at + 1);
-        for (let i = 0; i < rest.length; i++) {
-          const t = rest[i];
-          if (VALUE_PARAMS.test(t)) { i++; continue; }
-          if (t.startsWith("-") || /^\\/[A-Za-z]$/.test(t)) continue;
-          targets.push(expand(t));
-        }
-      }
+      // The targets come from deleteTargets: a variable set to a literal in the same command, $TEMP / $env:TEMP, the folder
+      // a \`cd\` moved to, a quote glued to a word - all resolved, so a target is judged by its real path (2026-10-19 · 10-21:
+      // repos blocked from emptying their own scratch folder). A variable with no literal value stays unresolved => blocked.
       const inRepo = targets.filter((t) => {
         if (/^\\/tmp\\//i.test(t)) return false;
+        if (isScratchPath(t)) return false;
         // a one-use flag in the flags folder: deleting it only takes a permission away (2026-10-19 — asking for a delete
         // flag to remove a dead flag left a new dead flag behind, round after round)
         if (isFlagFile(path.relative(ROOT, path.resolve(ROOT, t)).replace(/\\\\/g, "/"))) return false;
