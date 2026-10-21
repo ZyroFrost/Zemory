@@ -232,6 +232,7 @@ import { getPathsWatch, setPathsWatch } from "./config/settings.js";
 import { getShortcutPrompted, setShortcutPrompted } from "./config/settings.js";
 import { type ScopeLane, markConnectionsStale, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
+import { parsePathMap, relayHook } from "./memory/hook-relay.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
 import { deepSearchChild } from "./jobs/searchjob.js";
 import { heavyStatsChild, type HeavyStats } from "./jobs/statsjob.js";
@@ -2588,6 +2589,24 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     // hybrid/rerank/scope/pathsWatch. Đây là lời gọi RẺ NHẤT của app (~100 ms) và là lượt đầu
     // tiên FE phát ra, nên công tắc sáng đúng ngay lần vẽ đầu thay vì chờ `/memory-status`.
     if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid, version: APP_VERSION, host: hostname(), ...liveFlags() });
+    // Hooks over HTTP (plan/30 §5 ②): the host client posts the payload Claude Code handed it; the answer is what the
+    // `zemory hook <event>` process would have printed and exited with.
+    if (req.method === "POST" && p.startsWith("/hook/")) {
+      const chunks: Buffer[] = [];
+      let total = 0;
+      for await (const c of req) {
+        total += (c as Buffer).length;
+        if (total > 4 * 1024 * 1024) break;
+        chunks.push(c as Buffer);
+      }
+      let payload: Record<string, unknown> = {};
+      try {
+        payload = JSON.parse(Buffer.concat(chunks).toString("utf8").replace(new RegExp("^" + String.fromCharCode(0xfeff)), "") || "{}");
+      } catch {
+        // an unreadable payload is nothing to judge: let it through, as the stdin hook does
+      }
+      return json(res, relayHook(decodeURIComponent(p.slice("/hook/".length)), payload, parsePathMap(process.env.ZEMORY_PATH_MAP)));
+    }
     if (req.method === "POST" && p === "/gate-acquire") {
       // A CLI is about to write the memory — pause the scheduler so they don't
       // collide on SQLite (plan 14 §C write gate). Auto-expires; see writegate.ts.

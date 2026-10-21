@@ -14,6 +14,9 @@ services:
     hostname: ${ZEMORY_HOSTNAME:?set ZEMORY_HOSTNAME to this machine's name}
     ports:
       - "127.0.0.1:${ZEMORY_PORT:-4444}:4444"
+    environment:
+      # a hook payload names host paths; the daemon reads them under the mounts below (memory/hook-relay.ts)
+      ZEMORY_PATH_MAP: "${HOST_HOME}/.claude=>/home/node/.claude"
     volumes:
       - zemory-data:/home/node/.zemory
       - ${HOST_HOME:?set HOST_HOME to your home folder}/.claude:/home/node/.claude:ro
