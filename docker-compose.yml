@@ -1,0 +1,23 @@
+# zemory in Docker (docs/plan/30) - a parallel path to the native install.
+#   docker compose up -d --build     # build the image and start the daemon
+#   http://127.0.0.1:4444            # the cockpit
+# Set before `up` (the installer writes them into .env beside this file):
+#   HOST_HOME        the user's home on the host (Windows: %USERPROFILE%, Linux: $HOME) - transcripts mounted read-only
+#   ZEMORY_HOSTNAME  this machine's name: every session is stamped with it (`host`), so it must be the machine, not
+#                    the container (measured 2026-10-22: a container id was written as the host)
+#   ZEMORY_PORT      the host port (default 4444; another port while a native daemon holds 4444)
+# The store is the named volume zemory-data.
+services:
+  zemory:
+    build: .
+    image: zemory:local
+    hostname: ${ZEMORY_HOSTNAME:?set ZEMORY_HOSTNAME to this machine's name}
+    ports:
+      - "127.0.0.1:${ZEMORY_PORT:-4444}:4444"
+    volumes:
+      - zemory-data:/home/node/.zemory
+      - ${HOST_HOME:?set HOST_HOME to your home folder}/.claude:/home/node/.claude:ro
+    restart: unless-stopped
+
+volumes:
+  zemory-data:

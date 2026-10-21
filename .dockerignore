@@ -1,0 +1,15 @@
+# what the image build never takes: build output, deps (rebuilt inside), runtime data, secrets, history, private docs
+node_modules
+dist
+data
+global-memory
+share
+.git
+.env
+*.log
+docs/plan
+docs/archive
+docs/agent/05_TODO.md
+docs/agent/06_CHANGES.md
+docs/hooks/.allow-*
+docs_visual

@@ -2465,7 +2465,9 @@ function listenOn(server: ReturnType<typeof createServer>, port: number): Promis
     };
     server.once("error", onError);
     server.once("listening", onOk);
-    server.listen(port, "127.0.0.1");
+    // ZEMORY_UI_HOST: the Docker image listens on 0.0.0.0 inside the container (compose publishes it on the host's
+    // 127.0.0.1 only, plan/30); a native install keeps 127.0.0.1
+    server.listen(port, process.env.ZEMORY_UI_HOST?.trim() || "127.0.0.1");
   });
 }
 
