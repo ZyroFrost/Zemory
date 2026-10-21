@@ -97,7 +97,7 @@
 <!-- zemory:core:end -->
 
 ## Hành xử
-- `02-10` **Thao tác xóa phải được user xác nhận trước.** Xóa file, code, hàm, lệnh, chức năng, nội dung docs hoặc folder được coi là bất khả đảo ngược: nêu đối tượng và lý do, chờ chấp thuận rồi mới thực hiện; không tự xóa rồi báo sau. Thành phần dư thừa hoặc không còn dùng: đề xuất, không tự xóa. Bổ sung/mở rộng không cần xác nhận; xóa/thu hẹp luôn cần. **Chốt máy:** guard chặn mọi lệnh xoá file trong repo (`rm` · `del` · `Remove-Item` · `git rm` · xoá trong script) và mọi lần sửa làm MẤT một số luật trong `01`/`02`, khi chưa có cờ `.allow-delete`; thư mục tạm được miễn; bãi bỏ một luật thì giữ số. <!-- gate: guard -->
+- `02-10` **Thao tác xóa phải được user xác nhận trước.** Xóa file, code, hàm, lệnh, chức năng, nội dung docs hoặc folder được coi là bất khả đảo ngược: nêu đối tượng và lý do, chờ chấp thuận rồi mới thực hiện; không tự xóa rồi báo sau. Thành phần dư thừa hoặc không còn dùng: đề xuất, không tự xóa. Bổ sung/mở rộng không cần xác nhận; xóa/thu hẹp luôn cần. **Chốt máy:** guard chặn mọi lệnh xoá file trong repo (`rm` · `del` · `Remove-Item` · `git rm` · xoá trong script) và mọi lần sửa làm MẤT một số luật trong `01`/`02`, khi chưa có cờ `.allow-delete`; miễn không cần cờ: thư mục tạm, thư mục nháp của phiên và mọi đường có đoạn `_scratch_*` (kể cả xoá đệ quy · mẫu `*`); bãi bỏ một luật thì giữ số. <!-- gate: guard -->
 - `02-4` **File tạm có đường chết.** Thứ tạo ra để làm việc mà không phải sản phẩm (script dò · dữ liệu đo ·
   model tải về · ảnh chụp · bản sao thử) nằm trong thư mục nháp của phiên, không nằm trong repo. Dùng xong một file
   tạm ⇒ xoá ngay; trần: một phiên giữ tối đa 5 file tạm cùng lúc, sắp vượt ⇒ xoá file cũ trước. Thứ giữ lại phải nhỏ
@@ -109,8 +109,8 @@
   xong rồi tạo lại. `scratchTick` quét thư mục nháp mỗi 6 giờ, dọn phiên quá 7 ngày hoặc khi tổng vượt 2 GB (cũ nhất
   trước), không đụng phiên đang chạy hay thư mục vừa ghi trong 6 giờ, fail-open. <!-- gate: guard -->
 - `02-5` **`.gitignore` là giấu, không phải dọn.** File nháp ghi ra thư mục nháp ngoài repo. Buộc phải ghi
-  trong repo (công cụ ép đường dẫn · script cần cwd) ⇒ đặt tên `_scratch_*` và xoá trong cùng lượt (lệnh xoá đi qua
-  chốt `02-10`). Thêm pattern vào `.gitignore` không tính là đã dọn: file vẫn nằm trên đĩa và vẫn lớn lên. <!-- gate: hook:precommit-guard -->
+  trong repo (công cụ ép đường dẫn · script cần cwd) ⇒ đặt tên `_scratch_*` và xoá trong cùng lượt (xoá đường
+  `_scratch_*` không cần cờ, `02-10`). Thêm pattern vào `.gitignore` không tính là đã dọn: file vẫn nằm trên đĩa và vẫn lớn lên. <!-- gate: hook:precommit-guard -->
 - `02-1` **Xong = có đường sang máy thứ hai, đã đo.** Thứ vừa dựng (lớp lưu · chỉ mục · bí mật · tài sản giao
   đi) phải khai được đường sang máy khác, và đường đó phải được đo. Chưa khai hoặc chưa đo ⇒ việc còn dở, kể cả khi
   cổng xanh. Quy trình: `.claude/skills/sync-path/SKILL.md`. <!-- gate: guard -->
