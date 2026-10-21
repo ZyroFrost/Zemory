@@ -2,22 +2,23 @@
 
 # zemory
 
-**A project harness for building apps of any kind — plus a local, cross-session memory for the agents that build them.**
+**A project harness for building apps of any kind, plus a local, cross-session memory for the agents that build them.**
 
-Zemory gives every project a **folder harness assembled from one shared parts store**: laws a
-machine enforces, a constitution the repo writes for itself, a 138-slot structure standard that
-scaffolds *any* app (web, CLI, desktop, **and AI/LLM apps**, with first-class `ai/` · `agents/` ·
-`tools/` · `evals/` slots), and skills an agent opens when a task calls for them. It also keeps a
-single local memory that captures every coding-agent session, so you can recall anything across
-tools, projects and machines, offline.
+Zemory gives every project a **folder harness assembled from one shared parts store**: laws a machine
+enforces, a constitution the repo writes for itself, a 138-slot structure standard that scaffolds *any*
+app (web, CLI, desktop, **and AI/LLM apps**, with first-class `ai/` · `agents/` · `tools/` · `evals/`
+slots), and skills an agent opens when a task calls for them. It also keeps one local memory that
+captures every coding-agent session, so you can recall anything across tools, projects and machines,
+offline.
 
-> **What agents most often misread:** zemory's *own* memory engine never calls an LLM —
-> it only *scores/embeds* text with small local models. That is a fact about zemory's
-> internals, **not** an anti-LLM philosophy and **not** a constraint on the apps you
-> build with the harness. **Scaffolding LLM/AI apps is a first-class use of the
-> harness.** Use the harness alone, the memory alone, or both.
+> **What agents most often misread:** zemory *limits* its own model calls. Its memory engine scores
+> and embeds text with small local models and never generates text or proxies a model API. That is a
+> rule about zemory's internals. It is **not** an anti-LLM philosophy and places **no** constraint on
+> the apps you build with the harness: scaffolding LLM/AI apps is a first-class use. Use the harness
+> alone, the memory alone, or both.
 
-![Node](https://img.shields.io/badge/node-%E2%89%A520-3c873a)
+![Version](https://img.shields.io/badge/version-4.1.0-informational)
+![Node](https://img.shields.io/badge/node-%E2%89%A520.11%20%3C25-3c873a)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
 ![Status](https://img.shields.io/badge/status-alpha-orange)
@@ -25,13 +26,13 @@ tools, projects and machines, offline.
 
 ![zemory cockpit](docs_public/ui/01-home.png)
 
-**Seven screens, captured from a running instance** — [full tour below ↓](#the-cockpit--a-screen-by-screen-tour)
+**Seven screens, captured from a running instance.** [Full tour below ↓](#the-cockpit-a-screen-by-screen-tour)
 
 | | | |
 |:--:|:--:|:--:|
-| [<img src="docs_public/ui/01-home.png" width="270">](#1--home--the-at-a-glance-row)<br>**1 · Home** — six tiles, recent projects & sessions | [<img src="docs_public/ui/02-recall.png" width="270">](#2--recall--find-the-session-then-read-it)<br>**2 · Recall** — filter, pick a session, read the thread | [<img src="docs_public/ui/03-projects.png" width="270">](#3--projects--linked-vs-discovered)<br>**3 · Projects** — linked cards vs discovered-by-machine |
-| [<img src="docs_public/ui/04-global-memory-sync.png" width="270">](#4--global-memory--numbers-sources-files)<br>**4 · Global Memory** — sources, automation, files | [<img src="docs_public/ui/08-sync-drive.png" width="270">](#5--sync--two-channels-one-writer)<br>**5 · Sync** — Drive channel and peer-to-peer | [<img src="docs_public/ui/05-harness-docs.png" width="270">](#6--harness--the-shared-standard-readable-in-the-app)<br>**6 · Harness** — the shared standard, readable in the app |
-| [<img src="docs_public/ui/07-features.png" width="270">](#7--features--what-this-machine-can-actually-do)<br>**7 · Features** — 16 capabilities, each re-checkable | | |
+| [<img src="docs_public/ui/01-home.png" width="270">](#1--home)<br>**1 · Home**: six tiles, recent projects and sessions | [<img src="docs_public/ui/02-recall.png" width="270">](#2--recall)<br>**2 · Recall**: filter, pick a session, read the thread | [<img src="docs_public/ui/03-projects.png" width="270">](#3--projects)<br>**3 · Projects**: linked cards and what each machine discovered |
+| [<img src="docs_public/ui/04-global-memory-sync.png" width="270">](#4--global-memory)<br>**4 · Global Memory**: sources, automation, files | [<img src="docs_public/ui/08-sync-drive.png" width="270">](#5--sync)<br>**5 · Sync**: Drive channel and peer-to-peer | [<img src="docs_public/ui/05-harness-docs.png" width="270">](#6--harness)<br>**6 · Harness**: the shared standard, readable in the app |
+| [<img src="docs_public/ui/07-features.png" width="270">](#7--features)<br>**7 · Features**: 16 capabilities, each re-checkable | | |
 
 </div>
 
@@ -42,21 +43,22 @@ tools, projects and machines, offline.
 - [Why zemory](#why-zemory)
 - [Highlights](#highlights)
 - [Quickstart](#quickstart)
-- [The cockpit — a screen-by-screen tour](#the-cockpit--a-screen-by-screen-tour)
+- [The cockpit, a screen-by-screen tour](#the-cockpit-a-screen-by-screen-tour)
 - [Core concepts](#core-concepts)
+- [The harness: a parts store, sets, and a folder harness per repo](#the-harness-a-parts-store-sets-and-a-folder-harness-per-repo)
 - [Where things live on disk](#where-things-live-on-disk)
 - [Guardrails (layer-1 machine locks)](#guardrails-layer-1-machine-locks)
 - [The graph](#the-graph)
 - [Dead paths](#dead-paths)
 - [CLI reference](#cli-reference)
 - [Web-chat capture](#web-chat-capture)
-- [Scoped sync & recall](#scoped-sync--recall)
+- [Scoped sync and recall](#scoped-sync-and-recall)
 - [Cross-machine sync](#cross-machine-sync)
-- [Privacy & retention](#privacy--retention)
-- [For agents — the harness & standard](#for-agents--the-harness--standard)
+- [Privacy and retention](#privacy-and-retention)
+- [For agents](#for-agents)
 - [Repository structure](#repository-structure)
 - [Development](#development)
-- [Architecture & safety model (constitution)](#architecture--safety-model-constitution)
+- [Architecture and safety model (constitution)](#architecture-and-safety-model-constitution)
 - [Roadmap](#roadmap)
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
@@ -65,31 +67,25 @@ tools, projects and machines, offline.
 
 ## Why zemory
 
-Coding agents (Claude Code, Codex, Continue, LM Studio, Copilot Chat, and web chats like
-ChatGPT or Gemini) each keep their own memory in their own place. Across a week you lose
-track of *what you decided, why a fix worked, or where a session ran* — and every
-project's rules/TODO/changelog quietly drift out of sync with the code.
+Coding agents (Claude Code, Codex, Continue, LM Studio, Copilot Chat, and web chats such as ChatGPT or
+Gemini) each keep their own memory in their own place. Across a week you lose track of what you
+decided, why a fix worked, or where a session ran. Meanwhile every project's rules, TODO and changelog
+drift away from the code.
 
 Zemory is **two independent tools** you can use separately or together:
 
-- **A per-project harness (the default — no database needed).** A folder harness built
-  from one parts store: shared laws, most of them held by a hook or a test; a constitution
-  the repo writes for itself; a **138-slot structure standard**; skills; a TODO and a
-  changelog. The structure standard covers every concern of a modern app — API, store,
-  jobs, auth, i18n, UI — **including the slots for building AI/LLM apps**: `ai/` (model
-  provider), `agents/` (agent loop / planning), `tools/` (LLM tool-calling), `evals/`
-  (quality gates), and a non-app variant for deliverable repos (reports, data, docs). A
-  fix made once in the store reaches every repo on its next `zemory sync`.
-- **A Global Memory (optional).** Every agent session on your machine ingested into a
-  single local SQLite database you can search by keyword or meaning — across every
-  project and machine.
+- **A per-project harness (no database needed).** A folder harness built from one parts store: shared
+  laws, most of them held by a hook or a test; a constitution the repo writes for itself; a 138-slot
+  structure standard; skills; a TODO and a changelog. The structure standard covers the concerns of a
+  modern app (API, store, jobs, auth, i18n, UI) including the slots for AI/LLM apps: `ai/` (model
+  provider), `agents/` (agent loop and planning), `tools/` (LLM tool-calling), `evals/` (quality gates).
+  Deliverable repos (reports, data, docs) get a non-app variant. A fix made once in the store reaches
+  every repo on its next `zemory sync`.
+- **A Global Memory (optional).** Every agent session on your machine goes into one local SQLite
+  database you can search by keyword or by meaning, across every project and machine.
 
-**About "never calls a model API".** This is a rule for zemory's *own* memory
-engine: it *scores/embeds* text with small local ONNX models; it never *generates*
-text and never proxies a model API. It says **nothing** about the apps you build with
-the harness — those can be as LLM-centric as you want. The "intelligence" is the agent
-already driving your terminal; zemory gives it durable memory and a disciplined,
-standard workspace.
+The intelligence is the agent already driving your terminal. Zemory gives it durable memory and a
+disciplined, standard workspace.
 
 ---
 
@@ -97,53 +93,54 @@ standard workspace.
 
 | | |
 |---|---|
-| 🏗️ **Parts store + sets** | One store of versioned parts in `docs_template/_Store`: 33 laws, 8 constitution frames, 138 structure slots, 9 repo structures, 29 skills. Nine **sets** assemble them for a kind of repo (app, non-app, department, workspace manager, system manager, log center, app data, and two GUI-host sets). `zemory init` builds a repo's folder harness from a set; `zemory sync` keeps it current with a three-way merge, so what the repo wrote is never overwritten. Scaffolds anything from a CRUD service to an **LLM agent app** (`ai/` · `agents/` · `tools/` · `evals/` slots). |
-| ⚖️ **Laws that hold themselves** | Three kinds. **Gate**: a hook or a test blocks the violation. **Keys**: a keyword in the request brings the law into view. **Core**: no machine can judge it, so it is the only text every session must read, capped at 22,000 characters and put back after a context compaction. A law that gains a gate leaves the forced reading. |
-| 📜 **A constitution per repo** | Eight frames (purpose · read-only sources · write boundary · source of truth · architecture · access · data lifecycle · dependencies). The frame's rule is shared; the repo writes its own answer in `Cons.md`, and the guard reads it: the SQL servers frame 10 allows, the secret files frame 14 names. |
-| 🧠 **Global Memory** | Eleven ingest lanes in one local SQLite database, deduped, secret-redacted, digested — six on-disk agents (Claude Code, Codex, Continue, LM Studio, VS Code Copilot Chat, curated memory files) and five web platforms. |
-| 🔎 **Hybrid recall** | FTS5 keyword (word **+ trigram**, so substrings and non-Latin work) fused with a local vector index (EmbeddingGemma via Transformers.js — no Python, no GPU) through RRF, plus an "I don't know" gate that answers *nothing* rather than confident noise. Every stage **fails open** to FTS. |
-| 🌐 **Web-chat capture** | Pull **ChatGPT**, **Gemini**, **claude.ai**, **Claude Cowork** and **Microsoft 365 Copilot** history through a login-once browser window — no password ever touches zemory. Several accounts per platform, each under its own e-mail; the daemon watches the login window and pulls as soon as you are in. Background pulls run off-screen. |
-| 📎 **Attachment store** | Images and documents sent in a chat are kept, deduped by `sha256`, and written to `global-memory/files/` as real files on disk — browsable per session or across the whole memory, and carried to other machines with the rest. |
-| 🧭 **Provenance lanes** | Every session is stamped with `origin` (local/web), `host` (machine), and `source` (agent) — one column, not a second store. Filter, roll up, and **exclude** lanes. |
-| 🕸️ **Code & docs graph** | On-demand import graph (TS/JS/Python + six more grammars loaded on demand), tree-sitter symbols, an FE↔BE `api` seam, `graph impact` (blast radius), `graph fitness`, `graph export --json`. A **derived** layer — declared and inferred edges never mix. |
-| 🧹 **Dead-path detection** | `zemory paths check` finds path strings in docs and config that no longer point anywhere, judged only under roots you declared. It reports **newly dead** rather than everything, proposes a fix when exactly one target matches, and never writes without your click. |
-| 🖥️ **Background daemon** | A single instance on fixed port **4444** that opens in a native app window with its own taskbar icon, a system-tray icon, optional start-with-OS, an idle scheduler (scan → embed → digest → dead-path sweep → backup), and a write-gate that serializes DB writes. One app, one window: a stale window closes itself when the daemon behind it is replaced. |
-| 🔐 **Two sync channels** | A shared **Drive folder** carrying an encrypted, append-only segment chain, **or** a direct **machine-to-machine** channel (TLS 1.3, identity by certificate fingerprint, LAN discovery, block-level transfer). Read from both, write to exactly one — two writers is what corrupts a store. |
-| 🔌 **MCP server** | 17 tools for any MCP client: recall (`memory_search` · `memory_show` · `memory_context`), specs (`plan_search` · `plan_show`), graph (`graph_impact` · `graph_neighbors`), and control (`memory_jobs` · `memory_scan` · `memory_embed` · `project_merge` · `session_pin`). Control tools only delegate to what the CLI already does; a busy write-gate answers "busy" with the holder's name instead of racing it. |
-| 🕵️ **Privacy tools** | Forget, re-redact, back up, restore, and salvage a corrupted store — all local, dry-run by default, backed up before deleting. |
-| 🛡️ **Layer-1 guardrails** | `init` and `sync` generate real machine locks (PreToolUse + pre-commit) from the marker and the repo's constitution: deletes, discarding uncommitted work, secrets reaching a commit, writes outside the repo, edits to the harness, SQL against a server the constitution does not allow, and a read-first latch on the Core laws. Approval is a one-use `.allow-*` flag. **A safety net for when the agent forgets a rule, not permission to skip asking you.** |
-| 📐 **Gates, not promises** | `conform` (standard drift) · `gates` (does each repo actually run its gates) · `impact <part>` (every repo carrying a store part, and in what state) · `validate` (docs) · `todo verify` · `paths check --gate` · `graph fitness --gate`. The repo's own doctrine: *what stops drift is code, not a rule someone must remember.* |
+| 🏗️ **Parts store + sets** | One store of versioned parts in `docs_template/_Store`: 33 laws, 8 constitution frames, 138 structure slots, 8 repo structures plus a region structure, 29 skills, 3 hosts. Nine **sets** assemble them for a kind of repo. `zemory init` builds a repo's folder harness from a set; `zemory sync` keeps it current with a three-way merge, so what the repo wrote is never overwritten. |
+| ⚖️ **Laws that hold themselves** | Three kinds. **Gate**: a hook or a test blocks the violation. **Keys**: a keyword in the request brings the law into view. **Core**: no machine can judge it, so it is the only text every session must read, capped at 22,000 characters and put back after a context compaction. |
+| 📜 **A constitution per repo** | Eight frames (purpose, read-only sources, write boundary, source of truth, architecture, access, data lifecycle, dependencies). The frame's rule is shared; the repo writes its own answer in `Cons.md`, and the guard reads it: the SQL servers frame 10 allows, the secret files frame 14 names. |
+| 🧠 **Global Memory** | Six on-disk agents (Claude Code, Codex, Continue, LM Studio, VS Code Copilot Chat, curated memory files) and six web platforms in one local SQLite database, deduped, secret-redacted, digested. |
+| 🔎 **Hybrid recall** | FTS5 keyword search (word **and trigram**, so substrings and non-Latin scripts work) fused with a local vector index (EmbeddingGemma 2 through Transformers.js; no Python, no GPU) by RRF, plus an "I don't know" gate that returns nothing rather than confident noise. Every stage **fails open** to FTS. |
+| 🌐 **Web-chat capture** | Pull **ChatGPT**, **Gemini**, **claude.ai**, **Claude Cowork**, **Microsoft 365 Copilot** and **GitHub Copilot** history through a login-once browser window. No password ever touches zemory. Several accounts per platform, each under its own e-mail. |
+| 📎 **Attachment store** | Images and documents sent in a chat are kept, deduped by `sha256`, written out as real files, browsable per session or across the memory, and carried to other machines with the rest. |
+| 🧭 **Provenance lanes** | Every session is stamped with `origin` (local/web), `host` (machine) and `source` (agent). Filter, roll up, and exclude lanes. |
+| 🕸️ **Four-level graph** | Workspace → repo → folder → code. The repo level draws the folder harness itself (set, structure, slots, laws, frames, skills, gates, hooks); the code level draws imports, symbols and an FE↔BE `api` seam. Derived, 0 LLM, declared and inferred edges never mixed. |
+| 🧹 **Dead-path detection** | `zemory paths check` finds paths in docs and config that no longer point anywhere, judged only under roots you declared, and reports what is **newly** dead. |
+| 🖥️ **Background daemon** | Single instance on port **4444**, opened in a native app window with its own taskbar icon, a tray icon, optional start-with-OS, an idle scheduler (scan → embed → digest → dead-path sweep → backup) and a write-gate that serialises DB writes. |
+| 🔐 **Two sync channels** | A shared **Drive folder** carrying an encrypted, append-only segment chain, or a direct **machine-to-machine** channel (TLS 1.3, identity by certificate fingerprint) that works across networks: LAN discovery, port mapping, global discovery, NAT hole punching and a public relay. A new message reaches the paired machine within seconds. |
+| 🔌 **MCP server** | 17 tools for any MCP client, over stdio or HTTP. `zemory setup mcp` wires them into Claude Code, Claude Desktop, Cursor, Windsurf or Gemini. |
+| 🛡️ **Layer-1 guardrails** | `init` and `sync` generate real machine locks (PreToolUse + pre-commit) from the marker and the repo's constitution, plus one hook per law that has one. Approval is a one-use `.allow-*` flag. A safety net for when the agent forgets a rule, not permission to skip asking you. |
+| 📐 **Gates, not promises** | `conform` (standard drift) · `gates` (does each repo run its gates) · `impact <part>` (every repo carrying a store part, and in what state) · `sync --check` (is this repo behind the store) · `validate` · `todo verify` · `paths check --gate` · `graph fitness --gate`. |
 
 ---
 
 ## Quickstart
 
-**Requirements:** **Git**, Node **≥ 20**, and on Windows the **Visual C++ 2015–2022 x64
-runtime** — without it the ONNX model cannot load and `memory embed` quietly embeds
-0 messages. A C/C++ toolchain (Xcode CLT on macOS · `build-essential` on Linux · MSVC
-Build Tools on Windows) is needed **only** if `fetch-prebuilds` below cannot fetch the
-prebuilt `better-sqlite3` binary. The embedding and rerank models download on first `memory embed`
-(cached under `<repo>/data/models`, never committed — about 4.4 GB once both are
-fetched). On Windows the cockpit uses the system **WebView2** runtime for its native
-window and falls back to an Edge app window if it is absent. No GPU, no Python, and no
-network at runtime beyond that one-time model fetch.
+**Requirements:** **Git**, Node **≥ 20.11 and < 25**, and on Windows the **Visual C++ 2015–2022 x64
+runtime** (without it the ONNX model cannot load and `memory embed` quietly embeds 0 messages). A C/C++
+toolchain is needed **only** if `fetch-prebuilds` below cannot fetch the prebuilt `better-sqlite3`
+binary. The embedding and rerank models download on the first `memory embed` into the data folder
+(`~/.zemory/models` on a fresh install; never committed). On Windows the cockpit uses the system
+**WebView2** runtime for its window and falls back to an Edge app window when it is absent. No GPU,
+no Python, and no network at runtime beyond that one-time model fetch.
 
-Zemory is installed **once per machine** and shared by every project. It is not on
-a public npm registry yet — install from this repo.
+Zemory is installed **once per machine** and shared by every project. It is not published on npm, and
+`npm i -g github:…` does not work either (a global install skips devDependencies, so `tsc` is missing).
+Install from this repo.
 
-**Windows** — one line in **PowerShell**:
+**Windows**, one line in **PowerShell**:
 
 ```powershell
 irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install.ps1 | iex
 ```
 
-It **asks where to install** (Enter keeps the default `%LOCALAPPDATA%\Programs\Zemory`; a missing drive
-or a non-empty folder that is not a zemory install is refused and asked again), installs whatever is missing (Git, Node.js LTS, the Visual C++ runtime — via `winget`, or each vendor's
-official installer when the machine has no `winget`), clones and builds zemory, links the global
-`zemory` command, then builds this machine's memory (shortcuts, scan, capture hooks, vector index).
-Run it again any time to update: an existing install is found and updated in place, without asking.
+It asks where to install. Enter keeps `%LOCALAPPDATA%\Programs\Zemory` (`%LOCALAPPDATA%\Zemory` is
+taken: it holds the WebView2 profile of the app window). A folder that already holds other files gets a
+`Zemory` subfolder (`Zemory-2`, … if that is taken too), and only a drive that does not exist is asked
+again. The memory store does **not** live in the install folder, so any folder works. The script then
+installs whatever is missing (Git, Node.js LTS, the Visual C++ runtime, through `winget` or each
+vendor's official installer), clones and builds zemory, links the global `zemory` command, and builds
+this machine's memory (shortcuts, scan, capture hooks, vector index). Run it again any time to update:
+an existing install is found and updated in place.
 
-Options — set them first, in the same window:
+Options, set first in the same window:
 
 ```powershell
 $env:ZEMORY_DIR = "E:\Tools\Zemory"   # install folder, without being asked
@@ -151,12 +148,7 @@ $env:ZEMORY_NO_SHORTCUT = "1"         # no Start Menu / Desktop shortcuts
 $env:ZEMORY_NO_EMBED = "1"            # build the vector index later with `zemory memory embed --all`
 ```
 
-Then, in each project folder: `zemory init` (an app, set 04) or `zemory init --non-app` (set 03), or
-`zemory init --kit <NN>` for any other set, and `zemory doctor` there — `doctor` checks a project's
-harness, so it reports *not connected* when run anywhere else.
-
-**macOS / Linux:** install `git` and Node ≥ 20 (`brew install node git` · `apt` · `dnf`), then in the
-folder of your choice:
+**macOS / Linux:** install `git` and Node (`brew install node git` · `apt` · `dnf`), then:
 
 ```bash
 git clone https://github.com/ZyroFrost/Zemory.git && cd Zemory
@@ -164,216 +156,166 @@ node backend/scripts/fetch-prebuilds.mjs && npm ci && npm run build && npm insta
 zemory setup --shortcut && zemory memory scan && zemory hook install && zemory memory embed --all
 ```
 
-Because `npm install -g .` links the repo, a later `npm run build` updates the
-global `zemory` command in place — no reinstall needed. From **3.3.2** the cockpit's
-*Update now* button does the whole pull-rebuild-restart cycle for you on Windows too.
+`npm install -g .` links the repo, so a later `npm run build` updates the global `zemory` command in
+place. The cockpit's *Update now* button runs the whole pull, rebuild and restart cycle.
 
-**Shortcuts (asked, never assumed).** zemory runs as a background daemon, so it needs a way to
-open its window. `zemory setup` prints exactly what it would create and where, then asks — and
-creates nothing until you answer:
+**Why `fetch-prebuilds` comes first.** `better-sqlite3` downloads its prebuilt binary from
+`github.com/<repo>/releases/download/…`. On networks that block or throttle that host (one corporate
+network, measured: 1 of 10 attempts succeeded while `api.github.com` succeeded 10 of 10) it falls back
+to `node-gyp rebuild`, which needs a C++ toolchain, so a clean clone does not install at all. The script
+fetches the same asset through the release **API** and puts it in the `prebuild-install` cache. It has
+to run before `npm ci`: npm runs a dependency's install script before the root package's `preinstall`,
+so no lifecycle hook fires early enough. Skipping it on an open network is safe, and so is re-running it.
+
+**Shortcuts are asked, never assumed.** `zemory setup` prints what it would create and where, then
+asks. The prompt only appears when a real terminal is attached; install scripts, CI and agent sessions
+decide up front with `--shortcut` or `--no-shortcut`. The switch stays in **Settings → Shortcuts**, and
+turning it off removes what it created.
 
 | target | path (Windows) |
 |---|---|
 | Start Menu entry | `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Zemory.lnk` |
-| Desktop icon | your Desktop folder (the **redirected** one if the machine puts Desktop in OneDrive) |
+| Desktop icon | your Desktop folder (the redirected one if Desktop lives in OneDrive) |
 
-Both launch a hidden `.vbs` so no console window appears; neither touches the registry and no
-service is installed. On Linux a `.desktop` entry is written, on macOS a `.command` file.
-
-The prompt only appears when a real terminal is attached — install scripts, CI and agent sessions
-are never blocked waiting for an answer. For those, decide up front with `zemory setup --shortcut`
-or `--no-shortcut`. Either way the switch stays in **Settings → Shortcuts**, and turning it off
-removes what it created.
-
-**Why `fetch-prebuilds` comes first.** `better-sqlite3` downloads its prebuilt binary from
-`github.com/<repo>/releases/download/…`. Networks that block or throttle that host (measured on
-one corporate network: 1 of 10 attempts succeeded, while `api.github.com` succeeded 10 of 10)
-push it into `node-gyp rebuild`, which needs a C++ toolchain — so a clean clone fails to install
-at all. The script fetches the same asset through the release **API** and drops it into the
-`prebuild-install` disk cache, so `npm ci` finds it locally. It must run *before* `npm ci`: npm
-executes a dependency's install script before the root package's `preinstall`, so no lifecycle
-hook fires early enough. It is safe to skip on unrestricted networks, and safe to re-run.
+Both launch a hidden `.vbs`, so no console window appears; neither touches the registry. Linux gets a
+`.desktop` entry, macOS a `.command` file.
 
 **Add a harness to a project (optional):**
 
 ```bash
 cd your-project
-zemory init && zemory doctor          # an app; `--non-app` for a deliverable repo, `--kit <NN>` for another set
+zemory init && zemory doctor     # an app (set 04); --non-app for a deliverable repo (set 03); --kit <NN> for another set
 ```
 
-Any project can query the shared memory even with no harness. `zemory init` assembles the folder
-harness of a set, generates the guard, and leaves eight constitution frames for the repo to write;
-until they are written, `zemory conform` says so and nothing else.
+`doctor` checks a project's harness, so run it inside the project. Any project can query the shared
+memory with no harness at all. `zemory init` assembles the folder harness of a set, generates the guard,
+and leaves eight constitution frames for the repo to write; until they are written, `zemory conform`
+says so.
 
 ---
 
-## The cockpit — a screen-by-screen tour
+## The cockpit, a screen-by-screen tour
 
 ```bash
-zemory ui
+zemory ui              # daemon + window
+zemory ui --no-window  # daemon only
 ```
 
-Starts (or attaches to) the background daemon on `http://127.0.0.1:4444` and opens a
-**native app window** with its own taskbar icon. It is **single-instance**: a second
-`zemory ui` focuses the running window instead of spawning a duplicate, and a window
-whose daemon has been replaced closes itself rather than sitting there looking alive.
-A system-tray icon offers Open and Quit. Override the port with `ZEMORY_UI_PORT`.
+Starts (or attaches to) the background daemon on `http://127.0.0.1:4444` and opens a native app window.
+It is single-instance: a second `zemory ui` focuses the running window, and a window whose daemon was
+replaced closes itself. The tray icon offers Open and Quit. `ZEMORY_UI_PORT` overrides the port.
 
-Navigation is a **left rail with seven screens**. The guiding rule: *a screen that does
-several things gets sub-tabs — it never spawns another rail entry*, and **one number
-lives in exactly one place**; anywhere else links to it. Two themes (dark default,
-light monochrome) and full VI/EN i18n; every user-visible string goes through both
-dictionaries, with technical terms (Recall, Hybrid, FTS5, vector, embed, token)
-deliberately left untranslated.
+Navigation is a left rail with seven screens. A screen that does several things gets sub-tabs instead of
+another rail entry, and each number lives in exactly one place; anywhere else links to it. Two themes
+(dark default, light monochrome) and full VI/EN i18n, with technical terms (Recall, Hybrid, FTS5,
+vector, embed, token) left untranslated.
 
-> The screenshots below are **captured by a script** against a **scrubbed copy** of a real
-> store: `node backend/scripts/shoot-ui.mjs` drives a headless browser over CDP, clicks each
-> rail entry and sub-tab, verifies the tab actually became active, and only then writes the
-> file. Counts, sizes and coverage are the real ones; project names, session titles, machine
-> names and account e-mails are replaced. Documentation images that need a human to remember
-> to retake them go stale, and a stale screenshot describes a product that no longer exists.
+> The screenshots are captured by a script against a scrubbed copy of a real store:
+> `node backend/scripts/shoot-ui.mjs` drives a headless browser over CDP, clicks each rail entry and
+> sub-tab, checks the tab really became active, and only then writes the file. Counts and sizes are
+> real; project names, session titles, machine names and e-mails are replaced. The Harness screenshots
+> predate the parts store and still show the older file-harness bundles.
 
-### 1 · Home — the at-a-glance row
+### 1 · Home
 
 ![Home](docs_public/ui/01-home.png)
 
-Six tiles answer "is the memory healthy?" in one look: **Messages · Sessions · Projects · Last
-Sync · Vectors · Storage**. Below them, recent projects and recent sessions. The chips at the
-bottom of the rail are the standing alarms: zemory's own version, how many linked repos have
-fallen behind the standard, and the rolled-up health of the 16 feature checks.
+Six tiles answer "is the memory healthy?" at a glance: **Messages · Sessions · Projects · Last Sync ·
+Vectors · Storage**, then recent projects and sessions. The chips at the bottom of the rail are the
+standing alarms, and each one hides when there is nothing to do:
 
-### 2 · Recall — find the session, then read it
+- **App**: another machine published a newer zemory. Opens the update box (pull, rebuild, restart).
+- **Standard**: linked repos that fell behind the parts store, measured the same way as `zemory sync
+  --check`. Opens a box listing those repos with a checkbox each; your click is the permission to write
+  into them, for those repos, this once.
+- **Gates**: repos whose guard, pre-commit hook or per-article gate rows are missing (`zemory gates`).
+- **Health**: the rolled-up result of the 16 feature checks.
+
+### 2 · Recall
 
 ![Recall](docs_public/ui/02-recall.png)
 
-Two sub-tabs: **Search** (across messages) and **Sessions** (browse whole threads). Filters cover
-*has-images · time · origin · agent · machine*, with the live count (`120/3,050 sessions`) so a
-filter never silently hides everything. Pick a session on the left and the whole conversation
-opens in the middle, exportable to `.md`; a third column lists **that session's files**.
+Two sub-tabs: **Search** (across messages) and **Sessions** (whole threads). Filters cover has-images,
+time, origin, agent and machine, with a live count (`120/3,050 sessions`) so a filter never silently
+hides everything. Pick a session and the conversation opens in the middle, exportable to `.md`; a third
+column lists that session's files.
 
-Display rule worth knowing: prose renders **in full, exactly as chatted**, while code blocks and
-`tool_use`/`tool_result` are **collapsed** behind a click. That split came from a measurement, not
-taste — **52.5%** of 167,738 messages contained tool traffic, and that is what makes a transcript
-unreadable, not message length.
+Prose renders in full, exactly as chatted, while code blocks and `tool_use`/`tool_result` are collapsed
+behind a click. That split came from a measurement: 52.5% of 167,738 messages contained tool traffic,
+and that is what makes a transcript unreadable, not message length.
 
-### 3 · Projects — linked vs discovered
+### 3 · Projects
 
 ![Projects](docs_public/ui/03-projects.png)
 
-Two tabs. **Projects** holds the linked cards (App / Non-app badge, sessions, messages, agents,
-last update) with a search box, type filter, sort, **pin** and **remove** — removing only drops a
-card from the picker; the folder, its docs and its memory are untouched. A card whose harness is
-behind the current standard carries an **⚠ outdated** badge, the same measurement the rail chip
-uses. Each card keeps its three action buttons pinned to the top-right corner at every width.
+**Projects** holds the linked cards (App / Non-app badge, sessions, messages, agents, last update) with
+search, type filter, sort, pin and remove. Removing only drops the card; the folder, its docs and its
+memory are untouched. A card whose harness is behind the store carries an **⚠ outdated** badge, the same
+measurement as the Standard chip.
 
-**Add project** holds everything zemory has *seen but not linked*, **tabbed by machine**, each row
-offering **Add** (zemory manages it) or **Merge** (fold its sessions into another project), plus one
-**Rescan** button and **Prune missing**. Prune shows what it will do before it does it: drop linked
-projects whose folder is gone, **merge** old roots into the linked project with the same folder name
-(a repo you moved or renamed), and fold the rest into a collapsed *folders gone* group. Sessions are
-never deleted — a root is only re-pointed and pinned so the next scan does not split it again.
+A project's detail view opens on its **graph**, at the repo level (see [The graph](#the-graph)).
 
-### 4 · Global Memory — numbers, sources, files
+**Add project** holds what zemory has seen but not linked, tabbed by machine, each row offering **Add**
+or **Merge** (fold its sessions into another project), plus **Rescan** and **Prune missing**. Prune
+shows its plan first: drop linked projects whose folder is gone, merge old roots into the linked project
+with the same folder name (a repo you moved), and fold the rest into a collapsed *folders gone* group.
+Sessions are never deleted; a root is only re-pointed and pinned.
 
-![Global Memory — sources & automation](docs_public/ui/04-global-memory-sync.png)
+### 4 · Global Memory
 
-Three sub-tabs. **Memory** holds the statistics. **Sources & Automation** holds the provenance
-tree and the switches that decide what the daemon does on its own. **Files** is the attachment
-store.
+![Global Memory, sources and automation](docs_public/ui/04-global-memory-sync.png)
 
-- **Sources** — the provenance tree (Local → machine → agent, Web → platform → **account**) with
-  live counts, collapsible groups and a legend. A tick means *this lane may enter the memory
-  and be embedded*; untick it and zemory stops pulling it, leaves its existing rows out of the embed
-  queue, and drops it from sync and recall. It is a *filter, never a delete*. Web accounts are keyed
-  by the **e-mail the site reports at login**, never by browser slot — sign a second account in and
-  it becomes its own row with its own history. Status marks follow two rules: web is binary (✓ linked
-  · ⚠ signed out — click to reconnect); local on this machine is ✓ store on disk · ⚠ store gone;
-  local from another machine is ✓ still syncing in, greyed once that machine has been quiet for 30
-  days. Parent rows roll their children up.
-- **This Machine** — *Scan Known* vs *Deep Scan*, the disks it can see, and the automation
-  switches with their real behaviour spelled out: save-every-message-live, the context-warning
-  threshold, and the background safety net.
+Three sub-tabs: **Memory** (statistics), **Files** (the attachment store) and **Sources & Automation**.
 
-**Files** is every image and document that ever went through a chat, pulled out of the database
-and written to `global-memory/files/` as real files, sorted into `images/`, `documents/` and
-`other/` by month. One content equals one file on disk: the name carries the first eight
-characters of its `sha256`, so the same picture sent five times costs one copy. Filter by kind,
-search by name, click through to the exact message it came from. Files you add by hand (drag-drop
-or *Add file…*) have no originating message, so that jump button is hidden rather than dead.
+- **Sources** is the provenance tree (Local → machine → agent, Web → platform → account) with live
+  counts. A tick means *this lane may enter the memory and be embedded*; untick it and zemory stops
+  pulling it, leaves its rows out of the embed queue, and drops it from sync and recall. It is a filter,
+  never a delete. Web accounts are keyed by the e-mail the site reports at login, never by browser slot.
+- **This Machine** holds *Scan Known* vs *Deep Scan*, the disks it can see, and the automation switches:
+  save every message live, the context-warning threshold, the background safety net.
+- **Files** is every image and document that went through a chat, written out as real files sorted into
+  `images/`, `documents/` and `other/` by month. The file name carries the first eight characters of its
+  `sha256`, so the same picture sent five times costs one copy. Click through to the message it came
+  from; files you added by hand have no message, so that button is hidden.
 
-### 5 · Sync — two channels, one writer
+### 5 · Sync
 
-![Sync — Drive channel](docs_public/ui/08-sync-drive.png)
+![Sync, Drive channel](docs_public/ui/08-sync-drive.png)
 
-Sync is its own screen with two channel tabs and a log. The left panel is the same on both:
-what the newest message is, when the last push happened, how much is pushed of the total, and
-the split of the store by source and by project.
+Sync has two channel tabs and a log. The left panel is shared: the newest message, the last push, how
+much is pushed of the total, and the split by source and project.
 
-The **Drive channel** writes an encrypted, append-only chain of segments into a shared cloud
-folder. Appending is a real append — a routine sync adds a few hundred kilobytes rather than
-rewriting the store — and a segment that fills up is sealed for good, so the cloud client never
-re-uploads it again. Depth is a choice: **Lean (−74%)** carries source rows, **Full** carries the
-derived layer for disaster restore, and **With images** adds attachment bytes.
+The **Drive channel** writes an encrypted, append-only chain of segments into a shared cloud folder. A
+routine sync adds a few hundred kilobytes rather than rewriting the store, and a full segment is sealed
+for good so the cloud client never re-uploads it. Depth is a choice: **Lean** carries source rows,
+**Full** carries the derived layer too, **With images** adds attachment bytes.
 
-The second tab, **peer-to-peer**, skips the cloud entirely. Two machines authenticate each other by
-**certificate fingerprint** over TLS 1.3, find each other on the LAN by UDP discovery, compare the
-set of blocks each already holds, and ship only what is missing. Identity, pairing code and the
-sync direction for each pair live here, next to a read-only tail of the daemon log — which exists
-because the daemon window is deliberately hidden, and hiding the console without offering the log
-would remove the only way to answer *why won't it connect*.
+The **peer-to-peer** tab skips the cloud. Identity, pairing code, the sync direction for each pair, the
+approval queue for incoming folder changes and a read-only tail of the daemon log live here. The log
+exists because the daemon window is deliberately hidden, and hiding the console without the log would
+remove the only way to answer *why won't it connect*.
 
-> **Read both, write one.** Enabling a channel controls what zemory will *accept*; the write
-> target is a single choice. Two writers into one store is what corrupted this project's database
-> twice, and is why article 11 exists.
+### 6 · Harness
 
-### 6 · Harness — the shared standard, readable in the app
+![Harness, docs](docs_public/ui/05-harness-docs.png)
 
-![Harness — docs](docs_public/ui/05-harness-docs.png)
+Renders the shared standard so a person can read it without opening the files. The shipped standard
+documents are written in Vietnamese; folder names, slot names and routing targets are ASCII English, so
+the structure is usable before the prose is translated.
 
-This screen renders the shared standard so a person can read it without opening the files. The
-screenshots predate the parts store: they show the five file-harness bundles that the nine sets
-(see [The harness](#the-harness-a-parts-store-sets-and-a-folder-harness-per-repo)) have since replaced.
-Sub-tab **Docs harness** renders the template documents; the second sub-tab is the structure
-standard itself:
-
-> **Language, stated plainly:** the app is bilingual VI/EN, but the shipped standard documents are
-> written in Vietnamese — that is what the two screenshots here show. Translating them is open work,
-> not a decision against English; the folder names, slot names and routing targets are ASCII English
-> throughout, so the structure is usable before the prose is.
-
-![Harness — folder structure](docs_public/ui/06-harness-structure.png)
-
-The full slot tree beside the **routing table** — *"changing X → goes where"*. This is the part
-that saves tokens in daily work: an agent reads the routing line and opens the right folder
-instead of grepping the repo. Note the first-class AI slots — `ai/` · `agents/` · `tools/` ·
-`evals/` — the same standard scaffolds a CRUD service or an LLM agent app.
-
-### 7 · Features — what this machine can actually do
+### 7 · Features
 
 ![Features](docs_public/ui/07-features.png)
 
-Sixteen capabilities with live status, grouped into *memory & search core*, *sync & storage* and
-*harness (docs)*. Every badge uses one vocabulary — **On / Off** for switches, **Healthy /
-Warning / Off** for everything else — and figures such as `2 pending · auto-embedding` sit in grey
-after the name, not inside the badge. The vector index counts as healthy while the background
-scheduler is on, however long the queue is: a store that receives messages all day never reaches
-zero, so the question worth asking is *is something draining it*, not *is it empty*. Click a row
-and the right pane explains **what it is · how it works · the details that bite**. Each row has a
-**Check** button that re-measures instead of repeating what a config file claims, and rows with
-something to switch carry the switch on the row itself.
+Sixteen capabilities with live status, grouped into memory and search, sync and storage, and harness.
+Badges use one vocabulary (**On / Off** for switches, **Healthy / Warning / Off** for the rest), and
+figures such as `2 pending · auto-embedding` sit in grey after the name. The vector index counts as
+healthy while the scheduler is on, however long its queue: a store that receives messages all day never
+reaches zero, so the useful question is whether something is draining it. Click a row for *what it is ·
+how it works · the details that bite*; **Check** re-measures instead of repeating what a config file
+claims.
 
-The update chip at the bottom of the rail is the same idea for the tool. It is always visible:
-green when nothing needs doing, orange when another machine has published a newer zemory or a
-linked repo has fallen behind the standard. Clicking it opens an **Update** box: the top half
-pulls, rebuilds and restarts the daemon; the bottom half lists the repos behind the standard with
-a checkbox each and applies the same gap-fill `zemory sync` and `zemory hook guard` would run
-inside that repo. Writing into another project is otherwise forbidden — here your click is the
-permission, for those repos, this once. Both halves also have a plain **re-check** button, so you
-never have to wait out the ten-minute poll to see a repo you just fixed.
-
-Any region with two or more adjacent panels has a **drag-to-resize** seam; sizes persist across
-sessions. The markdown docs remain the **source** — edit the `.md` directly (file wins); the DB is
-a derived search index rebuilt from those files.
+Any region with two or more adjacent panels has a drag-to-resize seam, and sizes persist.
 
 ---
 
@@ -381,72 +323,70 @@ a derived search index rebuilt from those files.
 
 ### Global Memory
 
-One SQLite database at **`<repo>/global-memory/global_memory.db`** (schema v25), with the
-attachment files beside it in `global-memory/files/`. `zemory memory scan` ingests agent
-transcripts incrementally and idempotently; the daemon's scheduler keeps it current with zero
-extra tokens, and `zemory hook install` is the optional path when you want lower latency than
-the 30-minute sweep. Messages are deduped, secret-redacted, and summarized into per-session
-digests for cheap recall. **Never** put the live database in a cloud-synced folder — a WAL
-database synced by a cloud client corrupts, which is how this project learned the rule.
+One SQLite database, `global_memory.db` (schema v27), with the attachment files beside it. `zemory
+memory scan` ingests agent transcripts incrementally and idempotently. The daemon keeps it current, and
+`zemory hook install` adds capture hooks (Claude Code, Codex) for lower latency than the scheduled
+sweep. Messages are deduped, secret-redacted and summarised into per-session digests. **Never** put the
+live database in a cloud-synced folder: a WAL database synced by a cloud client corrupts, which is how
+this project learned the rule.
 
-### Provenance & origin
+### Provenance and origin
 
-Every session carries `origin` (`local` = agent transcripts on disk, `web` =
-captured web chat), `host` (the producing machine), and `source` (the tool). This
-is what powers filtering, per-machine rollups, and scoped sync — with **one
-column, not a second store**. Scope selectors only *filter*; they never rewrite or
-merge a session's provenance.
+Every session carries `origin` (`local` = transcripts on disk, `web` = captured web chat), `host` (the
+producing machine) and `source` (the tool). That one column set powers filtering, per-machine rollups and
+scoped sync. Scope selectors only filter; they never rewrite or merge a session's provenance.
 
 ### Recall (hybrid)
 
-Recall fuses two FTS5 streams (word + trigram) with a local vector stream through Reciprocal
-Rank Fusion, blended with a recency signal. Every added stage **fails open** — if the model is
-unavailable, recall degrades to keyword FTS instead of breaking. FTS5 is always the baseline; the
-semantic layer only *adds*.
+Recall fuses two FTS5 streams (word and trigram) with a local vector stream through Reciprocal Rank
+Fusion, blended with recency. Every added stage fails open: if the model is unavailable, recall degrades
+to keyword FTS instead of breaking.
 
-Vectors are **768-dimensional, fp32** (EmbeddingGemma via Transformers.js). An earlier build
-truncated them to 256d to halve the file; re-measuring later showed the cut had cost `recall@1`
-**91% → 74%**, with 44% of questions unreachable at any depth — bought back with 43 hours of
-re-embedding. Hence the standing rule in this repo: **capacity is never bought with quality, and
-trimming a layer must clear the same gate as adding one.**
+New indexes embed with **EmbeddingGemma 2** (`onnx-community/embeddinggemma-2-ONNX`); an existing index
+stays pinned to the model it was built with, and a BGE-M3 profile is available. Vectors are kept at full
+width. An earlier build truncated them to 256 dimensions to halve the file; re-measuring showed the cut
+had cost `recall@1` **91% → 74%**, with 44% of questions unreachable at any depth, and buying it back
+took 43 hours of re-embedding. Hence the standing rule here: capacity is never bought with quality, and
+trimming a layer must clear the same gate as adding one.
 
-Cross-encoder **rerank ships off by default**, because it was measured here rather than assumed:
-on this corpus it *lowered* recall (`@10` 35% → 28%) while costing **11.6×** the latency. A far
-cheaper reranker — mixing in cosine over vectors already stored — won at about 119 ms and is on.
-Two scoreboards are reported side by side: *strict* (the exact labelled message) and *equivalent*
-(any near-duplicate that answers the question). They can disagree, and using the wrong one leads
-to wrong decisions.
+The cross-encoder **rerank ships off**, because measured on this corpus it lowered recall (`@10` 35% →
+28%) at **11.6×** the latency. A cheaper reranker that mixes in cosine over vectors already stored won
+at about 119 ms and is on. Two scoreboards are reported side by side: *strict* (the labelled message)
+and *equivalent* (any near-duplicate that answers the question).
 
-An **"I don't know" gate** is on by default: when the nearest vector is far enough away, recall
-says so instead of returning forty confident-looking rows. On a 108-label corpus it blocked 17 of
-20 held-out nonsense questions while costing nothing that was already being answered.
+An **"I don't know" gate** is on: when the nearest vector is far enough away, recall says so instead of
+returning forty confident-looking rows. On a 108-label corpus it blocked 17 of 20 held-out nonsense
+questions without losing anything that was already answered.
 
-Multi-query (`--also`) is a **high-variance** lever, not a free win: a rephrasing that keeps the
-original's specificity lifted `@10` by about 21 points, while a vaguer one dropped MRR **below**
-asking nothing at all. Send one good rephrasing, or none.
+Multi-query (`--also`) is a high-variance lever. A rephrasing that keeps the original's specificity
+lifted `@10` by about 21 points; a vaguer one dropped MRR below asking nothing at all. Send one good
+rephrasing, or none.
 
-### The harness: a parts store, sets, and a folder harness per repo
+---
 
-A rule written once in a long file and copied into twenty repos drifts twenty ways. Zemory keeps every
-piece of the standard as a **part**, one folder each, versioned, in a single store, and builds each repo's
-harness out of those parts. A fix made once in the store reaches every repo on its next sync, and a repo
-always knows which version of each part it carries.
+## The harness: a parts store, sets, and a folder harness per repo
 
-**The parts store (HS, `docs_template/_Store`).** Four shelves:
+A rule written once in a long file and copied into twenty repos drifts twenty ways. Zemory keeps each
+piece of the standard as a **part**, one folder each, versioned, in a single store (HS, the harness
+store), and builds each repo's harness out of those parts. A fix made once in the store reaches every
+repo on its next sync, and a repo always knows which version of each part it carries.
+
+**The parts store, `docs_template/_Store`:**
 
 | shelf | holds | today |
 |---|---|---|
-| `01_LAW/_Rule` | the shared working laws | 33 (22 Gate · 8 Keys · 3 Core) |
-| `01_LAW/_Cons` | the constitution frames a repo fills in | 8 |
-| `02_STRUCTURE` | repo structures (`Struc_Repo_*`), slots (`_Slot/`, one per folder concern), hosts (`_Host/`: GUI · IDE · CLI) | 9 structures · 138 slots · 3 hosts |
+| `01_LAW/_Rule` | shared working laws, in five chapters: `01_Harness` · `02_Work` · `03_Safety` · `04_Writing` · `05_Domain` | 33 (22 Gate · 8 Keys · 3 Core) |
+| `01_LAW/_Cons` | constitution frames a repo fills in, in four chapters: `01_Scope` · `02_Data` · `03_System` · `04_Security` | 8 |
+| `02_STRUCTURE` | repo structures (`Struc_Repo_*`, plus `Struc_Region_Workspace`), slots (`_Slot/`, one per folder concern), hosts (`_Host/`: GUI · IDE · CLI) | 9 structures · 138 slots · 3 hosts |
 | `03_SKILLS` | playbooks an agent opens on a trigger, with the scripts they install | 29 |
+| `04_TODO.md` · `05_CHANGES.md` | the frames of a repo's backlog and changelog, written once at init | — |
 
-Retired parts move to the store's `Archive/` with their history. Each part carries its own gate where it
-has one (`gate.json`, a `hook.cjs`, or block/pass examples a test replays), so the rule and the machine
-that holds it travel together.
+Retired parts move to the store's `Archive/` with their history. A part carries its own gate where it
+has one (`gate.json`, a `hook.cjs`, block/pass examples a test replays), so a rule and the machine that
+holds it travel together.
 
-**Sets.** A set is a folder beside the store, named `NN_<Host>_<Structure>_<Tier>`, holding the parts one
-kind of repo needs. Nine are built:
+**Sets.** A set is a folder beside the store, `NN_<Host>_<Structure>_<Tier>`, holding the parts one kind
+of repo needs. Nine are built:
 
 | set | for |
 |---|---|
@@ -458,183 +398,217 @@ kind of repo needs. Nine are built:
 | `07_IDE_LogCenter_Memory` · `08_IDE_AppData_Memory` | a region's log store · the data repo behind a family of apps |
 | `09_IDE_SystemManager_Memory` | the repo that manages a family of apps and their data repo |
 
-`zemory init` takes set 04 (or 03 with `--non-app`); `zemory init --kit <NN>` takes any other. A set folder is
-itself a template a Basic install can fetch file by file (`BOOTSTRAP.md` lists them with line counts).
+`zemory init` takes set 04 (03 with `--non-app`); `zemory init --kit <NN>` takes any other. A set folder
+is also a template a Basic install can fetch file by file (`BOOTSTRAP.md` lists them with line counts).
 
-**The folder harness in a repo.**
+**The folder harness in a repo:**
 
 ```text
 docs/agent/
-  01_LAW/_Rule/<chapter>/Rule_<Kind>_<NN>_<Name>/   a shared law, stamped `from: _Store/... @vN #hash`
-  01_LAW/_Cons/<chapter>/Cons_Gate_<NN>_<Frame>/    a constitution frame + the repo's own Cons.md
-  01_LAW/_Cons/Cons_Core_<1NN>_<Name>/              an article only this repo has
-  02_STRUCTURE/                                     the repo's structure, its slots, INDEX.md (machine-written)
-  03_SKILLS/                                        shared skills + Skill_Own_* (the repo's own), INDEX.md
-  04_TODO.md · 05_CHANGES.md                        the backlog and the changelog
-docs/plan/                                          numbered specs, searched with `zemory plan search`
-AGENTS.md                                           the thin entry: what to read, which skill opens when
+  01_LAW/_Rule/<chapter>/Rule_<Kind>_<NN>_<Name>/      a shared law, stamped `from: _Store/... @vN #hash`
+  01_LAW/_Cons/<chapter>/Cons_Gate_<NN>_<Frame>/       a constitution frame + the repo's own Cons.md
+  01_LAW/_Cons/Cons_<Gate|Keys|Core>_<1NN>_<Name>/     an article only this repo has (numbers from 101)
+  02_STRUCTURE/                                        the repo's structure, its slots, INDEX.md (machine-written)
+  03_SKILLS/                                           shared skills + Skill_Own_* (the repo's own), INDEX.md
+  04_TODO.md · 05_CHANGES.md                           the backlog and the changelog
+docs/.harness-state/                                   one-use approval flags and per-session state (not in git)
+docs/plan/                                             numbered specs, searched with `zemory plan search`
+AGENTS.md · CLAUDE.md                                  the thin entry (CLAUDE.md only says @AGENTS.md)
 ```
 
 **Three kinds of law, sorted by what holds them.** A **Gate** law is held by a machine: a hook blocks the
-call or a test goes red, so an agent cannot break it by forgetting. A **Keys** law is held by a keyword: when
-a request mentions its subject, the law is put in front of the agent. A **Core** law has nothing that can judge
-it, so it is the only text every session must read, and `conform` caps the Core text at 22,000 characters
-because it is re-injected after every context compaction. The practical gain: an agent reads a few
+call or a test goes red, so an agent cannot break it by forgetting. A **Keys** law is held by a keyword:
+when a request mentions its subject, the law is put in front of the agent. A **Core** law has nothing
+that can judge it, so it is the only text every session must read, and `conform` caps the Core text at
+22,000 characters because it is re-injected after every context compaction. An agent reads a few
 thousand characters per session instead of the whole rulebook, and the rules that matter most cannot be
 skipped.
 
-**A constitution the repo writes.** Each of the eight frames asks one question: what the product is for and
-what wins in a conflict (09), which sources are read-only (10), where writing is allowed (11), what the source
-of truth is and the business terms it defines (12), the layers and what may not skip them (13), who gets in,
-which secrets exist by name, and what personal data is kept (14), what is never deleted or only appended (15),
-and what the product depends on (16). The frame's rule text belongs to the store; the repo's answer lives in
-`Cons.md` next to it and is never overwritten. A repo can add articles of its own (`Cons_Core_1NN_*`). The
-guard reads the answers: frame 10's `Server` column becomes the list of SQL servers commands may target, frame
-14's `File` column becomes the secret-file patterns no commit may carry. A repo's constitution is therefore
-enforced, not just documented.
+**A constitution the repo writes.** Each frame asks one question: what the product is for and what wins
+in a conflict (09), which sources are read-only (10), where writing is allowed (11), what the source of
+truth is and which business terms it defines (12), the layers and what may not skip them (13), who gets
+in, which secrets exist by name and what personal data is kept (14), what is never deleted or only
+appended (15), and what the product depends on (16). The frame's rule text belongs to the store; the
+repo's answer lives in `Cons.md` beside it and is never overwritten. The guard reads the answers: frame
+10's `Server` column becomes the list of SQL servers commands may target, frame 14's `File` column
+becomes the secret-file patterns no commit may carry. A repo can add articles of its own; one with a
+hook (`Cons_Gate_1NN_*`) is enforced like any shared law.
 
-**Skills of the repo's own.** Work only one repo does (how a department calculates a measure, a warehouse's
-structure dictionary) goes into a `Skill_Own_<Name>` written on the frame `Skill_Frame_Own`. Sync plugs it into
-the host's skill folder and writes its trigger row into `AGENTS.md`, so the agent finds it the same way it finds
-a shared skill. The constitution states the rule and names the skill; the skill holds the steps and the checks.
+**Skills of the repo's own.** Work only one repo does (how a department calculates a measure, a
+warehouse's structure dictionary) goes into a `Skill_Own_<Name>` written on the frame `Skill_Frame_Own`.
+Sync plugs it into the host's skill folder and writes its trigger row into `AGENTS.md`, so an agent
+finds it the same way it finds a shared skill. Every skill has a `prompt` gate, so its trigger is
+tested rather than assumed.
 
-**Roles in a region.** A structure can declare a role: what it manages, who manages it, and what it provides
+**Roles in a region.** A structure can declare a role: what it manages, who manages it, what it provides
 (`structure.json` › `role`). A repo names its manager and the repos whose data it uses in its marker
-(`docs/.harness.json`: `owner`, `uses`), and `conform` checks those names against the roles (`region-links`). The
-role that pays off daily is the workspace manager: `zemory sync` run there brings itself up to the store, then
-goes on to every repo it manages, so a fix made once in the store reaches a whole region with one command. A system
-manager does the same for a family of apps and the data repo behind them. The region is read from the folder that
-holds the workspace manager, so a manager nested in a project folder (`_Project/ERP/<hub>`) still sees every repo. Shared
-reference repos of a region (a glossary, legacy material, report templates) are declared as plain folders of the
-manager's structure and need no harness of their own.
+(`docs/.harness.json`: `owner`, `uses`), and `conform` checks those names against the roles. The role
+that pays off daily is the workspace manager: `zemory sync` run there brings itself up to the store,
+then goes on to every repo it manages, so one command updates a whole region. A system manager does the
+same for a family of apps and their data repo. Shared reference folders of a region (a glossary, legacy
+material, report templates) are declared in the manager's structure and need no harness of their own.
 
-**Keeping a repo current: `zemory sync`.** Each part is compared three ways: the version the repo was built
-from (named by its `from:` line), the store's current version, and the repo's copy. An untouched copy is
-replaced; a part the repo edited is merged against its base; an edit that collides with a store change is
-reported as a conflict and nothing is written. Files a part installs (scripts) that the repo changed are kept and
-reported as *kept, edited here*. Sync also adds lines a slot requires to `.gitattributes` · `.gitignore` ·
-`.stignore`, rewrites both `INDEX.md` files, regenerates the guard, and writes whatever still deviates from the
-standard into a machine-kept block of the repo's `04_TODO.md`, where the repo's own session picks it up. Updating
-zemory itself (`zemory selfupdate`) stops rather than overwrite a dirty install.
+**Keeping a repo current: `zemory sync`.** Each part is compared three ways: the version the repo was
+built from (its `from:` line), the store's current version, and the repo's copy. An untouched copy is
+replaced; a part the repo edited is merged against its base; an edit that collides with a store change
+is reported as a conflict and nothing is written. Script files a part installs that the repo changed are
+kept and reported as *kept, edited here*. Sync also adds the lines a slot requires to `.gitattributes` ·
+`.gitignore` · `.stignore`, rewrites both `INDEX.md` files, regenerates the guard, and writes whatever
+still deviates into a machine-kept block of the repo's `04_TODO.md`, where the repo's own session picks
+it up.
+
+```bash
+zemory sync                       # this repo; a manager goes on to every repo it manages (--self: stop at this one)
+zemory sync --check               # is this repo behind the store? exit 1 if so (the same measurement as the Standard chip)
+zemory sync --root <repo> --apply # bring another repo up to the store
+zemory sync --standard [--apply]  # dry run by default; --kit <NN> moves a file-harness repo onto a set
+```
+
+**Changing the standard.** Laws, slots and skills are changed in the store, never in a repo's copy: the
+guard blocks edits to the shared parts of a folder harness, and the next sync would report the copy as
+edited anyway. Before a part is added, or an existing part gains a new law, the author searches the store
+for what already covers it. The hook of `Rule_Gate_85` blocks the write until the part names what it
+checked (`checked:`), raises its version above the committed one, and, for a skill, says which law it
+implements (`## Implements`). Run `zemory impact <part>` before editing or retiring a part: it lists
+every repo carrying it and in what state (current · behind · edited · absent). Letting each repo propose
+and apply such changes to the store itself, with the user's approval and without two repos overwriting
+each other, is the work in progress (see [Roadmap](#roadmap)).
 
 **First run: the constitution, then the laws.** Right after `zemory init`, the agent writes each frame's
-`Cons.md` for this product with the user. It then lists every shared law the set brought, by full name, and asks
-once which to keep, change or drop. Dropping a law adds `retired: true` to its header; the folder and the number
-stay. No answer means the defaults stay. The same steps are written into every set's `AGENTS.md`, so an agent
-opening a freshly initialised project follows them without being told.
-
-> **For an agent reading this after a fresh clone:** do the first-run step in the project you were asked to set up.
-> Do not edit the laws in this repo's store unless the user asked for a change to the standard itself.
+`Cons.md` with the user. It then lists every shared law the set brought, by full name, and asks once
+which to keep, change or drop. Dropping a law adds `retired: true` to its header; the folder and the
+number stay. No answer means the defaults stay. These steps are written into every set's `AGENTS.md`.
 
 ---
 
 ## Where things live on disk
 
-Two folders, and the split is the whole point: one travels with you, one never leaves the machine.
+Two roles, and the split is the point: one travels to your other machines, one never leaves this one.
+
+On a fresh install both live in **`~/.zemory/`**. `zemory memory relocate <dir>` moves them elsewhere
+(off the system drive, for example), and `~/.zemory/location.json` then points at the two places:
 
 ```text
-<repo>/global-memory/        ← the memory. This is what reaches your other machines.
+<memory root>/               ← the memory. This is what reaches your other machines.
   global_memory.db           SQLite store (+ -wal / -shm)
   files/                     attachment bytes: images/ · documents/ · other/, by month
-  channel/                   encrypted segments for the peer-to-peer channel
+  channel/                   encrypted segments of the sync channel
 
-<repo>/data/                 ← this machine only. Article 14: never git, never a cloud folder.
+<data dir>/                  ← this machine only: never git, never a cloud folder.
   share.key · secrets/       the identity that decrypts your bundles
   browser/                   signed-in browser profiles for web capture
   models/                    embedding + rerank weights, fetched at runtime
   backups/                   rotating local backups of the store
+  selfupdate-keep/           local edits set aside by `zemory selfupdate`
   config.json · logs/        settings and the daemon log
 
-~/.zemory/location.json      ← the only thing left in $HOME: a pointer holding both paths.
+~/.zemory/location.json      ← a pointer holding both paths; it holds no secret.
 ```
 
-Move the whole cluster with `zemory memory relocate`. The pointer holds no secret, which is why
-it is allowed to stay in `$HOME` — keeping it beside the store would be circular.
+The pointer stays in `$HOME` because keeping it beside the store would be circular.
 
 ---
 
 ## Guardrails (layer-1 machine locks)
 
-Some rules cannot be repaired after the fact: a secret reaching a commit, a write into a protected
-path, `git push` before you asked, a recursive delete. Prose alone catches those **after** they
-happen — so zemory generates actual locks:
+Some mistakes cannot be repaired afterwards: a secret reaching a commit, a write into a protected path,
+`git push` before you asked, a recursive delete. Prose catches those after they happen, so zemory
+generates locks:
 
 ```bash
-zemory hook guard        # regenerate policy.json + guard.cjs + precommit-guard.cjs + the read-first latch
-                         # (init and sync run it too); they live in the folder of the law that owns them,
-                         # Rule_Gate_59_ReadFirst, and merge into .claude/settings.json without overwriting it
+zemory hook guard    # regenerate policy.json + guard.cjs + precommit-guard.cjs + the read-first latch
+                     # (init and sync run it too) and merge them into .claude/settings.json without overwriting it
 ```
 
-`policy.json` is generated from the marker (`protected` paths, globs such as `data/*/01_raw`) and from
-the repo's constitution: the SQL servers frame 10 lists, the secret-file patterns frame 14 lists. The rules
-follow the repo instead of a hardcoded list. What it blocks:
+In a folder harness the guard lives in the folder of the law that owns it, `Rule_Gate_59_ReadFirst`; in
+a file harness (such as this repo) it lives in `docs/hooks/`. `policy.json` is generated from the marker
+(`protected` paths and globs such as `data/*/01_raw`) and from the repo's constitution (frame 10's SQL
+servers, frame 14's secret-file patterns), so the rules follow the repo. What it blocks:
 
-- **Deletes.** Every delete of a file inside the repo asks first (since 14/10; the OS temp folder and used flag
-  files are exempt), plus the mass deletes that look nothing like `rm -rf`: `find -delete`, `find -exec rm`,
-  `fs.rmSync(recursive)` inside `node -e`, `shutil.rmtree`, `git clean -fdx`, `robocopy /MIR`, `xargs rm`, a
-  piped `Get-ChildItem | Remove-Item`. An interpreter that runs a script file hands the rest of the line to it
-  as data, so `node tool.js '{"cmd":"rm x"}'` is not a delete; `node -e`, `bash -c` and `echo … | bash` are read
-  as code.
-- **Lost work.** `git reset --hard`, `git checkout -- .`, `git restore` of the working tree, `git stash drop`.
+- **Deletes.** Every delete of a file inside the repo asks first, including mass deletes that look
+  nothing like `rm -rf`: `find -delete`, `find -exec rm`, `fs.rmSync(recursive)` inside `node -e`,
+  `shutil.rmtree`, `git clean -fdx`, `robocopy /MIR`, `xargs rm`, a piped `Get-ChildItem | Remove-Item`.
+  The guard resolves targets the way the shell would (`cd`, quoted variables, `$TEMP` / `$env:TEMP`,
+  variables set earlier in the same command). The agent's own scratch is exempt, recursive and globbed
+  deletes included: the session scratch folder and any path with a `_scratch_*` segment. An interpreter
+  running a script file treats the rest of the line as data, so `node tool.js '{"cmd":"rm x"}'` is not a
+  delete; `node -e`, `bash -c` and `echo … | bash` are read as code.
+- **Lost work.** `git reset --hard`, `git checkout -- .`, `git restore` of the working tree, `git stash
+  drop`.
+- **Git.** `git push` and `git add -A` need the user's word.
 - **Secrets.** A file matching a secret pattern reaching a commit, or being deleted.
 - **Scope.** Writes outside the repo, and SQL aimed at a server the constitution does not allow.
-- **The harness itself.** Creating, editing or moving anything under `docs/agent`, `docs/plan`, `AGENTS.md`.
+- **The harness itself.** In a folder harness, edits to the shared parts (`docs/agent/01_LAW`,
+  `02_STRUCTURE`, `03_SKILLS`, `.claude/skills/`) are blocked outright; filling a `Cons.md` without
+  changing its sections and writing a `Skill_Own_*` are allowed. A file harness asks before writing
+  `docs/agent`, `docs/plan` or `AGENTS.md`.
 - **Read first.** The Core laws and the TODO must have been read in the session before the agent acts.
+- **Per-law hooks.** The guard also calls the `hook*.cjs` of every law that ships one, among them the
+  harness language, one home per fact, the TODO door, the store-only harness, the check before a store
+  change, done means run, scratch files, what enters git, repo scope, mail, reader-facing text,
+  line-ending preservation, code language, broken Vietnamese, and the Power BI open-check.
 
-Approval is a flag file (`.allow-delete`, `.allow-outside`, `.allow-docs-write`…) created only after the user
-says yes. It holds for 15 minutes and for one job: the guard stamps it on first use, lets the same command retry
-for 90 seconds, and revokes it for anything else.
+`hook send-guard` holds messages an agent sends to another session to the same rules. The Stop hook
+commits locally (never pushes) once a session's uncommitted files pass 300 lines, so a crash cannot take
+a large batch of work with it.
 
-> **Read the role correctly.** These hooks are a **safety net for when the agent misses or forgets a
-> rule** — they are neither a ban on deleting nor a licence to delete. **Deletion always goes
-> through the user.** *The hook staying quiet ≠ you may proceed* (it only knows the shapes it was
-> taught); *the hook firing ≠ you're done* (go ask, don't route around it, don't mint your own
-> flag). Prose is the deciding layer; the machine is the catching layer — drop either one and the
-> other cannot carry it alone.
+Approval is a flag file created only after the user says yes: `.allow-delete` · `.allow-discard` ·
+`.allow-docs-write` · `.allow-git-add-all` · `.allow-mail` · `.allow-outside` · `.allow-overwrite` ·
+`.allow-push` · `.allow-todo`. A flag holds for 15 minutes and for one job: the guard stamps it on first
+use, lets the same command retry for 90 seconds, and revokes it for anything else.
+
+> **Read the role correctly.** These hooks are a safety net for when the agent misses or forgets a
+> rule. They are neither a ban on deleting nor a licence to delete; deletion goes through the user.
+> The hook staying quiet does not mean you may proceed (it only knows the shapes it was taught), and
+> the hook firing does not mean you are done (go ask; do not route around it or mint your own flag).
+> Prose is the deciding layer and the machine is the catching layer. Neither can carry the other.
 
 ---
 
 ## The graph
 
-Zemory builds a **derived** graph over your repo — rebuildable from `.md` + code +
-memory at any time, with **0 LLM** calls. Two edge classes never mix: **declared**
-(deterministic — imports, doc references, supersede markers, routing entries, session
-digest touches) and **inferred** (fail-open overlay — cosine `semantic_neighbor`, name-matched
-`calls`, and an `api` seam matching the routes the frontend calls against the routes the backend
-serves, each with an honest confidence label that is never self-promoted).
+Zemory builds a **derived** graph, rebuildable from `.md` + code + memory at any time with **0 LLM**
+calls. Two edge classes never mix: **declared** (deterministic: imports, doc references, supersede
+markers, routing entries, session-digest touches, the parts a set assembles) and **inferred** (a
+fail-open overlay: cosine `semantic_neighbor`, name-matched `calls`, an `api` seam matching the routes
+the frontend calls against those the backend serves, each with an honest confidence label).
 
-Besides files, the graph carries the **standard itself** as nodes: constitution articles, skills,
-numbered plans, harness docs, slots and the routing concerns that point at them. That is what lets
-it answer *"which file is carrying a dead path"* and *"which concern owns this folder"* rather than
-only *"who imports whom"*.
+The cockpit shows it in **four levels**, each opened from the one above:
+
+| level | nodes | edges |
+|---|---|---|
+| 1 · Workspace | every linked repo, coloured by role | `owner` (who manages whom), `uses` (whose data a repo reads) |
+| 2 · Repo | the folder harness: set → structure → slots, laws, constitution frames, skills, gates, hooks | `assembled`, `implements`, `checked`, `declares` |
+| 3 · Folder | the files of one slot | containment, doc references |
+| 4 · Code | files and symbols | `imports` (declared); `calls`, `api` (inferred, dashed) |
+
+A breadcrumb shows where you are; *Workspace* goes back to level 1, and *Open level below* steps down.
+Because a folder harness declares its structure, levels 1–3 need no inference at all; only level 4 does.
 
 ```bash
 zemory graph impact <file>     # blast radius: who imports this (direct + transitive), hub flag, touched-by
 zemory graph callers <symbol>  # call sites of a function / Class.method, with confidence
-zemory graph path <a> <b>      # shortest link between two files across all three edge layers
-zemory graph fitness [--gate]  # hub% · isolated% · util-purity (exit 1 on fail → CI-able)
-zemory graph export --json     # contract v2: nodes(+symbols+touchedBy) · edges · orphans · fitness
+zemory graph path <a> <b>      # shortest link between two files across the edge layers
+zemory graph fitness [--gate]  # hub% · isolated% · util-purity (exit 1 on fail, CI-able)
+zemory graph docs              # the docs layer on its own
+zemory graph export --json     # contract v2: nodes (+symbols, touchedBy) · edges · orphans · fitness
 ```
 
-In the cockpit, the **Graph** sub-tab of a project lights up the graph and the folder tree
-together, sizes nodes by fan-in, colours them by structural slot, and marks the files that carry
-dead paths.
+Code parsing covers TS/JS and Python, with bash, Java, Go, Rust and C# grammars loaded on demand.
 
 ---
 
 ## Dead paths
 
-Folders get renamed and moved; the paths written about them in docs and config quietly stop
-pointing anywhere, and nothing notices until a session walks into one. `zemory paths check` is the
-deterministic sweep for that, and the design is mostly about **not crying wolf**:
+Folders get renamed and moved; the paths written about them in docs and config stop pointing anywhere,
+and nothing notices until a session walks into one. `zemory paths check` is the deterministic sweep for
+that, designed mostly around not crying wolf:
 
-- It judges only what sits under a root you declared, and **says so** when it cannot judge
-  something rather than guessing.
-- It reports **newly dead** paths, not every dead-looking string — a sentence describing a design
-  that was rejected two months ago is not a broken link. The first run records a baseline.
-- A newly dead path needs **evidence it was once alive**: either a previous sweep saw it resolve,
-  or git records the file being deleted or renamed. Without evidence it is listed but never
-  coloured.
+- It judges only what sits under a root you declared, and says so when it cannot judge something.
+- It reports **newly** dead paths, not every dead-looking string; a sentence describing a design that
+  was rejected two months ago is not a broken link. The first run records a baseline.
+- A newly dead path needs evidence it was once alive: a previous sweep saw it resolve, or git records
+  the file being deleted or renamed. Without evidence it is listed but not coloured.
 - `paths fix` proposes a replacement only when exactly one file in the repo carries that name, and
   writes only on `--apply` or your click.
 
@@ -644,154 +618,149 @@ zemory paths sweep                           # every linked project, records sta
 zemory paths fix [--apply]                   # propose (and on request apply) unique-name repairs
 ```
 
-The daemon runs the sweep as part of its maintenance chain, the Features screen carries the
-switch, and the graph tints the files that are carrying dead paths.
-
 ---
 
 ## CLI reference
 
 ```text
 # Memory
-zemory memory scan [--deep]              Ingest agent transcripts (deep = walk the disk)
-zemory memory scan-web --platform X      Capture web chat (chatgpt | gemini | claude | m365copilot)
-zemory memory scan-web ... --account 2   Pull a second account of the same platform (its own slot)
-zemory memory borrow-cookies --platform  Reuse the session already signed in in your own browser
-zemory memory promote                    Find repeated corrections in episodic memory; proposes, never writes
-zemory memory search "q" [--all]         Recall (this project | everywhere)
-zemory memory search "q" --also "..."    Add a rephrasing — fused by RRF (see the warning above)
-zemory memory embed [--all] [--rebuild]  Build/refresh the semantic vector index
-zemory memory bench --recall             Score recall against the labeled corpus (strict + equivalent)
-zemory memory scope [exclude|include]    Provenance tree; exclude a lane from sync+recall
-zemory memory hosts                      Sessions by machine -> agent -> project
-zemory memory digest <session>           Show a session's summary digest
-zemory memory files ls|extract|add|collect|verify|gc
-                                         The attachment store: list, pull bytes out of the DB,
-                                         add your own, harvest agent-written files, check, clean
-zemory memory channel id|status|pair|sync|probe
-                                         The machine-to-machine channel: identity, pairing, transfer
-zemory memory sync --dir <folder>        Cross-machine sync through a Drive folder (append-only)
-zemory memory vectors-catchup            Ship vectors the channel is missing, without rewriting it
-zemory memory export <f.enc> [--full]    Encrypted bundle out (--full also carries the vector index)
-zemory memory import <f.enc> [--merge]   In: default REPLACES the store; --merge only ADDS source rows
-zemory memory keygen | key show|set|path Share key = your identity; `key show` prints only a fingerprint
-zemory memory forget [--session id]      Privacy: forget rows (dry-run by default, backup on --force)
-zemory memory redact                     Re-apply redaction to rows already stored
-zemory memory backup / restore           Raw local SQLite backup / restore
-zemory memory verify | audit             Is the store intact · counts that look wrong
-zemory memory salvage <db> <out>         Rescue readable rows out of a corrupted store
-zemory memory relocate <dir>             Move the store and its cluster somewhere else
+zemory memory scan [--deep]               Ingest agent transcripts (deep = walk the disk)
+zemory memory scan-web --platform X       Capture web chat (chatgpt · gemini · claude · m365copilot · copilot)
+                       [--account N] [--limit N] [--refresh] [--delay ms]
+zemory memory borrow-cookies --platform X Reuse a session already signed in in your own browser (--from · --profile · --list)
+zemory memory search "q" [--all]          Recall (this project | everywhere); --also "..." adds a rephrasing
+zemory memory show <#id>                  Open one message in full
+zemory memory embed [--all] [--rebuild]   Build or refresh the vector index
+zemory memory bench --recall              Score recall against the labelled corpus (strict + equivalent)
+zemory memory promote                     Find repeated corrections in episodic memory; proposes, never writes
+zemory memory scope [exclude|include]     Provenance tree; exclude a lane from ingest, sync and recall
+zemory memory hosts                       Sessions by machine → agent → project
+zemory memory digest <session>            A session's summary digest
+zemory memory reopen [--all]              Reopen ingest for sessions missing messages, so `scan` pulls them again
+zemory memory files ls|extract|add|collect|fetch|verify|gc
+                                          The attachment store
+zemory memory channel id|status|pair|unpair|on|off|sync|probe
+                                          The machine-to-machine channel (sync --punch tries NAT hole punching)
+zemory memory channel mirror [list|approve|dismiss|direction]
+                                          Folder mirroring over the channel and its approval queue
+zemory memory sync --dir <folder>         Sync through a Drive folder (append-only); --compact · --prune-host
+zemory memory vectors-catchup [--dry-run] Ship vectors the channel is missing, without rewriting it
+zemory memory export <f.enc> [--full]     Encrypted bundle out
+zemory memory import <f.enc> [--merge]    In: default REPLACES the store (old one kept as .bak-*); --merge only adds
+zemory memory keygen | key show|set|path  Share key = your identity; `key show` prints only a fingerprint
+zemory memory forget [--session id]       Forget rows (dry run by default, backup on --force)
+zemory memory redact                      Re-apply redaction to stored rows
+zemory memory backup | restore            Raw local SQLite backup / restore
+zemory memory verify | audit              Is the store intact · counts that look wrong
+zemory memory salvage <db> <out>          Rescue readable rows from a corrupted store
+zemory memory relocate <dir>              Move the store and its cluster
 zemory memory where | info | stats | vacuum
 
 # Graph (derived, 0 LLM)
-zemory graph impact <file>              Blast radius for a change
-zemory graph callers <symbol>           Call sites of a symbol (confidence-labeled)
-zemory graph path <a> <b>               Shortest link between two files
-zemory graph fitness [--gate]           Structural fitness metrics (+ CI gate)
-zemory graph docs                       The docs layer on its own
-zemory graph export [--json] [--out f]  Versioned graph contract for external tools
+zemory graph impact|callers|path|fitness|docs|export
 
-# Harness & docs (.md is the source; DB = derived index)
-zemory init [--non-app | --kit <NN>]    Assemble the folder harness of a set (app: 04 · non-app: 03) + the guard
-zemory sync [--self]                    Bring the repo up to its set (three-way); a workspace manager goes on
-                                        to every repo it manages (--self: this repo only)
-zemory impact <part>                    Every repo carrying a store part, and its state (current · behind · edited · absent)
-zemory gates [--all]                    Does each repo run its gates: guard wired · pre-commit · a row per article
-zemory peers [--repo X]                 Which local agent session to message for a repo
-zemory structure                        Print the repo structure standard (+ routing)
-zemory validate                         Lint the docs harness (links, length, supersede)
-zemory conform [--gate]                 Score how closely the folder follows the standard
-zemory paths check|sweep|fix            Dead paths in docs and config
-zemory todo verify                      Re-measure every TODO item against the code; print drift
-zemory doctor                           Verify docs, providers, capabilities
-zemory plan ls | search | show          Search project specs
-zemory changelog ls | search            Search the changelog
-zemory reindex                          Rebuild the docs search index from .md (read-only)
-zemory archive                          Trim an over-long changelog into the archive
+# Harness and docs (.md is the source; the DB is a derived index)
+zemory init [--non-app | --kit <NN> | --fresh]
+                                          Assemble the folder harness of a set (app 04 · non-app 03) + the guard
+zemory sync [--self | --check | --root <repo> --apply | --standard [--apply] [--kit <NN>]]
+                                          Bring a repo up to its set (three-way); a manager goes on to its repos
+zemory impact <part>                      Every repo carrying a store part, and its state
+zemory gates [--all] [--json]             Does each repo run its gates: guard · pre-commit · a row per article
+zemory peers [--repo X] [--check]         Which local agent session to message for a repo
+zemory conform [--gate]                   Score how closely the folder follows the standard
+zemory validate                           Lint the docs (links, length caps, supersede)
+zemory structure                          Print the structure standard
+zemory paths check|sweep|fix              Dead paths in docs and config
+zemory todo verify                        Re-measure every TODO item against the code; print drift
+zemory plan ls|search|show                Search project specs
+zemory changelog ls|search                Search the changelog
+zemory docs ls                            The docs search index
+zemory reindex                            Rebuild the docs index from .md (never writes .md)
+zemory archive                            Move old changelog blocks into the archive
+zemory migrate                            Analyse existing docs before adopting a harness (no changes)
+zemory grill                              Interrogate a plan before building
+zemory doctor                             Check this project: wired? docs? features?
 
-# Interfaces
-zemory ui                               Background daemon + cockpit (port 4444, single-instance)
-zemory mcp                              MCP stdio server (17 tools: recall · specs · graph · control)
-zemory setup                            Print the setup runbook; offer the shortcuts
-zemory sweep [--dry-run]                Close leftover browser processes zemory started
-zemory selfupdate [--check]             Pull + rebuild this install; a local edit the update also changes is
-                                        asked about (--keep-local · --take-new), the local copy kept aside
-zemory hook install                     Install the 0-token capture hooks
-zemory hook guard                       Regenerate the layer-1 machine locks (init and sync also run it)
-zemory project move <from> <to>         Move a repo folder with its memory, sessions and settings (dry run by default)
+# Interfaces and the install
+zemory ui [--no-window]                   Background daemon + cockpit (port 4444, single instance)
+zemory mcp [--http [--port N]]            MCP server, stdio or HTTP (17 tools)
+zemory setup [mcp [agent]] [--shortcut]   The setup runbook; wire MCP into an agent; offer the shortcuts
+zemory hook install [--host all|claude|codex] [--project] | uninstall
+                                          The 0-token capture hooks
+zemory hook guard                         Regenerate the layer-1 locks (init and sync run it too)
+zemory selfupdate [--check]               Pull + rebuild; a local edit the update also changes is asked about
+                                          (--keep-local · --take-new), the local copy kept aside
+zemory sweep [--dry-run] [--all]          Close leftover browser processes zemory started
+zemory project move <from> <to> [--apply] Move a repo folder with its memory, sessions and settings (dry run by default)
+zemory --version
 ```
 
-> **`import` vs `import --merge` is the one command pair worth reading twice.** Merge only ever
-> reads four tables (`schema_version` · `sessions` · `messages` · `known_stores`) — so a `--full`
-> bundle that is *merged* still drops the vector index, which is most of the file. Plain `import`
-> replaces the store wholesale (the old one is renamed aside as `.bak-*`), and that is the only
-> path that carries the semantic layer to another machine.
+The 17 MCP tools: recall (`memory_search` · `memory_show` · `memory_context`), specs (`plan_search` ·
+`plan_show` · `changelog_search`), graph (`graph_impact` · `graph_neighbors`), status (`memory_stats` ·
+`memory_doctor` · `memory_conflicts` · `project_current`) and control (`memory_jobs` · `memory_scan` ·
+`memory_embed` · `project_merge` · `session_pin`). Control tools only delegate to what the CLI already
+does; a busy write-gate answers "busy" with the holder's name instead of racing it.
 
 ---
 
 ## Web-chat capture
 
-Web chats live on the server — there is no file on disk for `memory scan` to read. Zemory captures
-them with a **browser-connector**. **ChatGPT**, **Gemini**, **claude.ai**, **Claude Cowork** and
-**Microsoft 365 Copilot** all pull today; six further platforms are wired for sign-in and will pull
-once someone with an account measures their listing shape.
+Web chats live on the server; there is no file on disk for `memory scan` to read. Zemory captures them
+through a browser connector. Six platforms pull today: **ChatGPT**, **Gemini**, **claude.ai**, **Claude
+Cowork**, **Microsoft 365 Copilot** and **GitHub Copilot**. Seven more (Microsoft Copilot, Grok,
+DeepSeek, Perplexity, Mistral, Qwen, Kimi) are wired for sign-in and will pull once someone with an
+account measures their listing format.
 
 ```bash
-zemory memory scan-web --platform chatgpt # opens a login-once window; log in ONCE
-zemory memory scan-web --platform gemini
-zemory memory scan-web --platform claude  # claude.ai (+ Cowork sessions)
-zemory memory scan-web --limit 5          # pull just the newest 5 (quick verify)
+zemory memory scan-web --platform chatgpt   # opens a login-once window; log in ONCE
+zemory memory scan-web --platform claude    # claude.ai (+ Cowork sessions)
+zemory memory scan-web --limit 5            # pull just the newest 5 (quick check)
 ```
 
-Zemory opens a dedicated browser profile (`<repo>/data/browser/<platform>`, in your machine's
-default browser — Chrome, Edge or Brave), you log in on the real site (id/password/2FA go to
-OpenAI, Google or Anthropic, **never** to zemory), and zemory drives that logged-in tab over CDP to
-read the site's own conversation API — running inside the real browser so it passes Cloudflare.
-Pulls are **batched and resume-safe** and paced to ease rate limits. Captured chats land in the same
-memory under `origin=web` and are fully searchable, attachments included.
+Zemory opens a dedicated browser profile under the data folder (`browser/<platform>`, in your default
+Chrome, Edge or Brave). You log in on the real site, so id, password and 2FA go to the platform and
+never to zemory. Zemory then drives that logged-in tab over CDP to read the site's own conversation API;
+running inside the real browser is what passes Cloudflare. Pulls are batched, resume-safe and paced.
+Captured chats land in the same memory under `origin=web`, attachments included.
 
-**Signing in is a two-step loop, and the daemon closes it.** From the cockpit, click the ⚠ mark on
-a web row: a window opens on the login page, the daemon polls it every 5 seconds for up to 15
-minutes, and the moment you are in it records the account, pulls the conversations, and navigates
-that same tab to a **"✓ linked as you@example.com — pulled N of M"** page so you know it worked.
-The poll only reads; it never closes tabs (an earlier version did, and killed the browser
-mid-OAuth). Automatic pulls run in an **off-screen** window that closes when done; the only time a
-visible window appears is when you asked to link an account.
+**The daemon closes the sign-in loop.** In the cockpit, click the ⚠ mark on a web row: a window opens on
+the login page, the daemon polls it every 5 seconds for up to 15 minutes, and once you are in it records
+the account, pulls the conversations and shows *"✓ linked as you@example.com, pulled N of M"* in the
+same tab. The poll only reads and never closes tabs (an earlier version did, and killed the browser
+mid-OAuth). Automatic pulls run in an off-screen window.
 
 **Accounts are identities, not browser slots.** Each session is stamped with the e-mail the site
-reports, so a second account of the same platform gets its own row and its own history, and a slot
-later signed in with a different account cannot "take over" the old one. Claude accounts belonging
-to several organisations are enumerated across every org that has chat enabled. When an old
-conversation reappears in a fresh listing it is re-attached to the account that listed it, which is
-how history moves to the right row after a re-login; conversations already deleted on the site stay
-in an *unassigned* row until you decide.
+reports, so a second account gets its own row and history, and a slot later signed in with another
+account cannot take over the old one. Claude accounts in several organisations are enumerated across
+every org with chat enabled. Conversations already deleted on the site stay in an *unassigned* row until
+you decide.
 
-> ⚠️ Captured conversations and attachments contain real personal data and are **never
-> committed** — only code and the blank templates live in this repo.
+> ⚠️ Captured conversations and attachments contain real personal data and are never committed. Only
+> code and blank templates live in this repo.
 
 ---
 
-## Scoped sync & recall
+## Scoped sync and recall
 
-Some lanes are shared or noisy and you don't want them in your personal memory's
-sync or recall. Untick them in the cockpit's **Sources** tree, or use the CLI:
+Untick a lane in the cockpit's **Sources** tree, or use the CLI:
 
 ```bash
-zemory memory scope                        # show the Local/Web x machine x agent tree
-zemory memory scope exclude --source codex # leave codex out of ingest, sync and recall
-zemory memory scope exclude --origin web   # leave all web chat out
-zemory memory scope include --source codex # undo
+zemory memory scope                         # the Local/Web × machine × agent tree
+zemory memory scope exclude --source codex  # leave codex out of ingest, sync and recall
+zemory memory scope exclude --origin web    # leave all web chat out
+zemory memory scope include --source codex  # undo
 ```
 
-Exclusion is a **filter, not a delete** — the data stays in the local store; it is
-simply left out of ingest, exported bundles, incoming merges, and recall results.
+Exclusion is a filter, not a delete: the data stays in the local store and is left out of ingest,
+exported bundles, incoming merges and recall.
 
 ---
 
 ## Cross-machine sync
 
-Each machine keeps its own local store, and that local copy is always the complete one. A channel
-is only where machines meet: losing it loses nothing.
+Each machine keeps its own local store, and that local copy is always the complete one. A channel is
+only where machines meet; losing it loses nothing. Sync carries the **whole retrieval stack**: messages,
+their vectors and attachments, so a receiving machine never has to re-embed anything.
 
 **Drive channel.** Point every machine at the same cloud folder and give them the same share key.
 
@@ -799,40 +768,53 @@ is only where machines meet: losing it loses nothing.
 zemory memory sync --dir "G:\My Drive\Global Memory"
 ```
 
-The channel holds **one logical store** written as a chain of sealed segments. A sync appends the
-blocks this machine has that the channel does not, then merges everything it has not seen. Append
-is genuinely an append: nothing is overwritten, every session keeps the `host` that produced it,
-and re-merging the same block adds zero. Segments are capped at 256 MB and sealed when full,
-because a cloud client re-uploads a whole changed file — appending 0.3 MB to a 2 GB file once cost
-this project two frozen sync clients in an hour.
+The channel holds one logical store written as a chain of sealed segments. A sync appends the blocks
+this machine has that the channel lacks, then merges what it has not seen. Nothing is overwritten, every
+session keeps the `host` that produced it, and re-merging the same block adds nothing. Two machines may
+write to the same chain; a FIFO write lock queues them. Segments are capped at 256 MB and sealed when
+full, because a cloud client re-uploads a whole changed file: appending 0.3 MB to a 2 GB file once froze
+two sync clients in an hour.
 
-**Peer-to-peer channel.** No cloud at all. Each machine has a device ID derived from its own
-self-signed certificate; pair them once, and from then on they authenticate by fingerprint over
-TLS 1.3, discover each other on the LAN, exchange the set of block signatures they hold, and ship
-only the difference. Machines on different networks need one side reachable — a forwarded port or
-an existing VPN — since neither of the automatic port-opening protocols answered on the networks
-measured here.
+**Peer-to-peer channel.** No cloud. Each machine has a device ID derived from its own self-signed
+certificate; pair once, and from then on the two authenticate by fingerprint over TLS 1.3, exchange the
+set of blocks each holds, and ship only the difference. Finding each other is tried from cheapest to
+most expensive:
 
-### Bringing a second machine up so it works immediately
+1. **LAN discovery** by UDP broadcast.
+2. **Port mapping** through NAT-PMP, then UPnP.
+3. **Global discovery** through the public Syncthing discovery servers (`discovery.syncthing.net`).
+   Zemory's device ID uses the same scheme, so no account is needed.
+4. **Relay** through the public Syncthing relay pool (`relays.syncthing.net`) when neither side can be
+   reached directly.
 
-Four things must arrive, and they travel by **four different channels** — miss one and the machine
-comes up half-working:
+STUN measures the NAT type, and `memory channel sync --punch` tries a NAT hole punch before falling back
+to the relay. A live link carries new messages as they are written: the daemon seals a block after a
+short quiet spell and offers it to the other machine in the same second, then embeds in a separate lane
+(message first, vector after). The target is under 10 seconds from typing on one machine to finding the
+message on the other.
 
-| what | channel | note |
+The channel can also **mirror folders** (`docs`, `docs_visual`, `attic`, the file store), with a sync
+direction per pair (two-way or one-way), an approval queue for incoming changes, and an optional
+auto-approve. The share key and the database never travel as mirrored files.
+
+### Bringing a second machine up
+
+Four things must arrive, by four different routes; miss one and the machine comes up half-working:
+
+| what | route | note |
 |---|---|---|
 | source, templates, hooks | **git** | never any data or secret |
-| store **+ semantic index** | **a `--full` bundle**, restored with `memory import` | `sync`/`--merge` carries source rows only |
+| store, vectors, attachments | **a sync channel** (Drive or peer-to-peer), or an exported bundle | the receiver does not re-embed |
 | the share key | **carried by hand** (`memory key set`, reads stdin) | compare `key show` fingerprints on both ends |
-| models (~4.4 GB) | **downloaded at runtime** | needed at **query** time too — without them recall silently falls back to keyword |
+| models | **downloaded at runtime** | needed at query time too; without them recall falls back to keyword |
 
-Verify a bundle the way the receiving machine will consume it — decrypt it to a scratch path and
-count rows, coverage and `vec_config`. "The file exists" is not evidence, and a file sitting in a
-cloud folder has not necessarily **left the machine** — check the sync client's own queue, not the
-folder listing.
+Verify a bundle the way the receiving machine will consume it: decrypt it to a scratch path and count
+rows, coverage and `vec_config`. A file sitting in a cloud folder has not necessarily left the machine;
+check the sync client's own queue, not the folder listing.
 
 ---
 
-## Privacy & retention
+## Privacy and retention
 
 ```text
 zemory memory backup [out.db]             Raw local SQLite backup
@@ -840,32 +822,32 @@ zemory memory restore <backup.db> --force Restore a raw backup (renames the old 
 zemory memory forget --project .          Dry-run forget for the current project
 zemory memory forget --session <id> --force
 zemory memory redact --force              Re-apply secret redaction to old rows
-zemory memory files gc                    Drop stored files nothing points at (dry-run first)
+zemory memory files gc                    Drop stored files nothing points at (dry run first)
 ```
 
-`forget` is a dry-run unless `--force`, and always backs up before deleting. It removes rows from
-zemory's derived memory and vector index; it does not delete the agent's original transcript files.
-Attachment bytes pulled from a web platform are treated as a **second-source original** — the
-platform may have deleted the conversation, which makes the local copy the only one left — so no
-cleanup pass removes them silently. Anyone who can read the share key can decrypt the bundles.
+`forget` is a dry run unless `--force`, and backs up before deleting. It removes rows from zemory's
+derived memory and vector index; it does not delete the agent's original transcript files. Attachment
+bytes pulled from a web platform count as a second-source original (the platform may have deleted the
+conversation, leaving the local copy as the only one), so no cleanup pass removes them silently. Anyone
+who can read the share key can decrypt the bundles.
 
 ---
 
-## For agents — the harness & standard
+## For agents
 
-If you are an agent working **in a project that uses zemory**, start at `AGENTS.md` (the thin router at the
-repo root). Read `docs/agent/04_TODO.md` and every written `Cons.md` under `docs/agent/01_LAW/_Cons/` before
-acting; the guard holds you to the Core laws it lists. Everything else is looked up when a task touches it:
-the laws under `01_LAW/_Rule/` (a Gate law blocks you anyway, a Keys law appears when your request names its
-subject), the structure dictionary under `02_STRUCTURE/` (open `INDEX.md`, not every slot), and a skill when its
-trigger row in `AGENTS.md` matches. Change the shared laws, slots or skills only through the store, never in the
-repo's copy: the next sync would report the copy as edited.
+If you are an agent working **in a project that uses zemory**, start at `AGENTS.md` at the repo root.
+Read `docs/agent/04_TODO.md` and every written `Cons.md` under `docs/agent/01_LAW/_Cons/` before acting;
+the guard holds you to the Core laws it lists. Everything else is looked up when a task touches it: the
+laws under `01_LAW/_Rule/` (a Gate law blocks you anyway, a Keys law appears when your request names its
+subject), the structure dictionary under `02_STRUCTURE/` (open `INDEX.md`, not every slot), and a skill
+when its trigger row in `AGENTS.md` matches. Change shared laws, slots or skills only in the store, after
+asking the user, and run `zemory impact <part>` first.
 
-If you are an agent working **in *this* repo (zemory itself)**: it holds the store other repos are built from.
-Read `docs_template/` and apply it **in your own repo** — do not write here or run `zemory` with this as the cwd
-unless the user explicitly allows it (another session may be working here).
+If you are an agent **in *this* repo (zemory itself)**: it holds the store other repos are built from.
+To learn from it, read `docs_template/` and apply it in your own repo. Do not write here or run `zemory`
+with this as the working directory unless the user allows it; another session may be working here.
 
-Recall from other sessions on demand — do not guess:
+Recall from other sessions on demand instead of guessing:
 
 ```bash
 zemory memory search "<what a past session decided>" --all
@@ -875,41 +857,42 @@ zemory memory search "<what a past session decided>" --all
 
 ## Repository structure
 
-Zemory follows the same standard it ships. Four roles are required — `backend/` (code),
-`frontend/` (UI), `docs/` (harness), `AGENTS.md` (entry) — and code is arranged **domain-first**:
+Code is arranged **domain-first**. This repo still runs the older file harness (`docs/agent/01_…06_*.md`
+and `docs/hooks/`); moving it onto its own set is open work.
 
 ```text
-backend/                server-side: 100% first-party code + thin entry surfaces
+backend/                server side: 100% first-party code + thin entry surfaces
   src/
     memory/             the memory domain: store · ingest/search/digest · embed/rerank
       adapters/         one per agent or web platform
-      channel/          the peer-to-peer transport
-      graph/            the derived code + docs graph
-    docs/               the harness domain: plan · changelog · validate · conform · paths
+      channel/          the peer-to-peer transport (discovery, relay, punch, mirror)
+      graph/            the derived code + docs + harness graph
+    docs/               the harness domain: parts store · sets · sync · guard · plan · changelog · conform · paths
     core/               composition root: registry · router · runtime (wiring, no business logic)
     modules/            capability providers (memory · search · harness · health)
-    config/ · i18n/     cross-cutting (settings, localization)
-    commands/           one file per CLI verb (thin — wire into a domain)
-    platform/           OS integration: tray icon · native window · start-with-OS · process sweep
-    jobs/               background: scheduler · write-gate · sync runner
+    commands/           one file per CLI verb
+    jobs/               background work: scheduler · write-gate · sync runner · fast lane
     tools/              the MCP tool surface
+    platform/           OS integration: tray · native window · start-with-OS · process sweep
+    evals/ · logging/ · update/ · config/ · i18n/ · util/
+    cli.ts · ui.ts · mcp.ts · mcphttp.ts · mcpsetup.ts    entry surfaces
   resources/            bundled tracked assets (packaging icons, seeds)
-  scripts/              build and capture helpers
+  scripts/              install, build, capture and gate helpers
   test/                 tests for logic that can silently break
-frontend/               the UI (served static by the daemon, no bundler):
-  pages/ · styles/ · components/ · scripts/ · assets/
-docs_template/          the standard: _Store/ (the parts store) + the nine set folders built from it
+frontend/               the UI, served static by the daemon, no bundler: pages/ · styles/ · components/ · scripts/ · assets/
+docs_template/          the standard: _Store/ (the parts store) + the nine sets built from it
 docs_public/            images published with this README
+docs_visual/            hand-drawn and interactive diagrams for people
+attic/                  retired code and templates, kept for history
 external/skills/        vendored third-party skills (kept verbatim)
-AGENTS.md               thin router into docs/
+.github/workflows/      CI
+AGENTS.md · CLAUDE.md   the thin entry
 ```
 
-> This repo's own `docs/` is **not** published: it is the private record of one installation —
-> its plans, backlog and changelog — and nothing in it helps a stranger use zemory. What a
-> stranger needs is `docs_template/`, which is blank and tracked. Runtime data, secrets and build
-> output (`data/`, `global-memory/`, `.env`, `dist/`) are gitignored. Non-app deliverable projects
-> (BI/report, data, docs-only) follow the non-app standard instead — `docs/` + `AGENTS.md` + a
-> deliverable folder, no `backend/`/`frontend/`.
+Of this repo's own `docs/`, the marker, the four standing harness documents and the hooks are tracked;
+its plans, backlog, changelog and archive are the private record of one installation and are not
+published. Runtime data, secrets and build output (`data/`, `global-memory/`, `.env`, `dist/`) are
+gitignored.
 
 ---
 
@@ -917,124 +900,127 @@ AGENTS.md               thin router into docs/
 
 ```bash
 npm ci
-npm run check         # strict typecheck + lint + tests (temp SQLite DBs)
-npm pack --dry-run
+npm run check         # preflight → typecheck → lint → tests → conform --gate → todo verify → validate
+npm run check:clone   # build from a clean clone, each step's exit code checked
 ```
 
-- `backend/src/` is 100% first-party code; external libs and models are called through adapters or
-  vendored under `external/`, never pasted into `backend/`.
-- Docs: the `.md` file is the source (file wins); the DB is a derived search index, droppable and
-  rebuildable with `zemory reindex`.
-- UI strings go through i18n with both a VI and an EN entry (no hardcoded user-facing strings);
-  technical terms (Recall, Hybrid, FTS5, vector, embed) are kept, not translated. Identifiers and
-  file names are ASCII English.
-- Tests run against throwaway databases; no network anywhere. The full gate runs each heavy file in
-  its own process inside a 4 GB job object, because the suite once ate 16 GB and took the session
-  down with it.
+- `npm run check` refuses to start while the daemon is running (it holds the store), and runs each heavy
+  test file in its own process inside a 4 GB job object, because the suite once ate 16 GB.
+- `npm pack --dry-run` and `npm ci --dry-run` run `prepare`, which rebuilds `dist/`; do not run them
+  beside a gate that reads `dist/`.
+- `backend/src/` is 100% first-party code; external libraries and models are called through adapters or
+  vendored under `external/`.
+- Docs: the `.md` file is the source (file wins); the DB is a derived search index, rebuildable with
+  `zemory reindex`.
+- UI strings go through i18n with a VI and an EN entry. Identifiers, file names, comments and CLI output
+  are ASCII English.
+- Tests run against throwaway databases, with no network.
 
 ---
 
-## Architecture & safety model (constitution)
+## Architecture and safety model (constitution)
 
-The binding invariants live in this project's own constitution; a violation is a design bug even
-when the code runs. In brief:
+The binding invariants live in this project's own constitution; breaking one is a design bug even when
+the code runs. In brief:
 
-1. **Save tokens above all** — prefer calling or extending the best existing tool over rewriting
-   it; a rule serves the goal, not the reverse.
-2. **First-party vs third-party** — `backend/src/` is 100% yours; external engines are
-   dependencies or adapters, never pasted in. Model weights are fetched at runtime, not committed.
-3. **One source per layer; every index is derived.** Curated docs: the `.md` is the source (file
-   wins), the DB is a rebuildable index. Episodic: the host transcript is the source;
-   `sessions`/`messages`/FTS/vector/digest are derived — never edit the originals.
-4. **One capability = one slot = one provider** (the registry rejects conflicts; vector and rerank
-   are internal engines of `search`, not new slots).
-5. **Tool is separate from project data.** Installed machine-wide; reads a project's docs. Root
-   needs only `AGENTS.md`; config lives in `docs/.harness.json`.
-6. **zemory's memory engine never calls an LLM.** No model proxy, no history rewrite, no text
-   generation; local embed and rerank only *score*. This binds zemory's *own* internals — it places
-   **no** constraint on apps built with the harness.
-7. **Local-only + privacy by default.** Data stays on the machine; the only thing that leaves is a
-   user-initiated **encrypted** bundle. Credentials are redacted at ingest; web passwords and 2FA
-   never enter zemory. No real data or PII in git.
-8. **Recall on demand + progressive disclosure — no auto-inject.**
-9. **Fail-open at every optional layer.** Vector, rerank, digest or graph missing → recall degrades
-   to FTS or heuristic, never dies.
-10. **Mechanical capture, 0 tokens, no host over-reach.** Hooks read transcript files
-    incrementally; they never call a model or bypass host permissions.
-11. **Cross-machine sync is additive; provenance never mixes.** Merge only adds; the live store
-    never lives in a cloud-synced folder.
-12. **Honest measurement + a gate before defaults.** No counterfactual numbers; a new layer ships
-    as default only after benchmark, tests, safe migration and a fallback.
-13. **The graph is a derived layer; declared and inferred edges never mix.** Rebuilt
-    deterministically from `.md` + code + memory, with no LLM; inferred edges are labeled and never
-    masquerade as declared.
-14. **Secrets live inside the repo tree, and "out of git" is not "out of the repo".** The store, the
-    key and the vaults sit under the project; what protects them is `.gitignore` plus the sync
-    scope, not their distance from the code.
-15. **Retrieval quality is the top goal; capacity is never bought with quality.** Cutting a layer
-    must clear the same gate as adding one, and raising one must be measured on a copy first.
-16. **Sync carries the whole retrieval stack.** A message that reaches the shared channel brings its
-    vectors with it; a machine that receives it never has to re-embed anything.
+1. *(repealed 2026-10-14; the number is kept.)*
+2. **First-party vs third-party.** `backend/src/` is 100% first-party; external engines are dependencies
+   or adapters. Model weights are fetched at runtime, never committed, and new dependencies are checked
+   for an Apache-2.0-compatible licence.
+3. **One source per layer; every index is derived.** Curated docs: the `.md` is the source, the DB a
+   rebuildable index. Episodic: the host transcript is the source; sessions, messages, FTS, vectors and
+   digests are derived, and optimisation never deletes or edits the originals.
+4. **One capability = one slot = one provider.** Vector and rerank are internal engines of `search`.
+5. **The tool is separate from project data.** Installed machine-wide; a project needs only `AGENTS.md`
+   and `docs/.harness.json`.
+6. **zemory limits its own LLM calls.** No model proxy and no text generation in the core. When a task
+   seems to need a model: a deterministic script first, then the agent already in the session, and only
+   then a model call that is measured to help, approved by the user, and fails open. Local embed and
+   rerank only score. This binds zemory's own internals, not the apps built with the harness.
+7. **Local-only, private by default.** Data stays on the machine; what leaves is an encrypted bundle or
+   channel the user set up. Credentials are redacted at ingest; web passwords and 2FA never enter zemory.
+   No real data or PII in git.
+8. **Recall on demand, progressive disclosure, no auto-inject.**
+9. **Fail open at every optional layer.** Vector, rerank, digest or graph missing → recall degrades to FTS
+   or heuristics, never dies.
+10. **Mechanical capture, 0 tokens, no host overreach.** Hooks read transcript files incrementally; they
+    never call a model or bypass host permissions.
+11. **Cross-machine sync is additive; provenance never mixes.** Merge only adds; the live store never
+    lives in a cloud-synced folder.
+12. **Honest measurement and a gate before defaults.** No counterfactual numbers; a new layer becomes the
+    default only after a benchmark win, tests, a safe migration and a fallback.
+13. **The graph is derived; declared and inferred edges never mix.** Rebuilt deterministically with no
+    LLM; inferred edges are labelled and never pass as declared. The machine builds the derived layer;
+    an agent changes the source and lets the machine rebuild.
+14. **Secrets live inside the memory and data folders, and "out of git" is not "out of the repo".** What protects
+    the store, the key and the vaults is `.gitignore` plus the sync scope, not their distance from the
+    code. Never git, never any online backup, never pushed to a deployment target.
+15. **Retrieval quality is the top goal; capacity is never bought with quality.**
+16. **Sync carries the whole retrieval stack.** A message that reaches a channel brings its vectors and
+    attachments; a receiving machine never re-embeds. What must stay invariant is the set of blocks, not
+    their byte order.
+17. **One function = one command.** Everything a user can call has exactly one entry point across CLI,
+    UI, HTTP, MCP and scripts; a second door to the same job is a design bug.
 
 ---
 
 ## Roadmap
 
-**Shipped since this list was last written** — kept visible so the roadmap does not quietly claim
-work that is already done: Gemini and Microsoft 365 Copilot capture · the VS Code Copilot Chat
-local adapter · the attachment file store and web attachment download · the machine-to-machine
-sync channel · segmented append-only Drive storage · dead-path detection with repair proposals ·
-the standard layer in the graph · one-button self-update (working on Windows from 3.3.2) ·
-leftover-process cleanup · a separate Sync screen with a per-channel write target.
+**Shipped recently:** the parts store and nine sets (4.0.0), with `init` building from a set, three-way
+`sync`, `sync --check`, the Standard and Gates chips, `gates` · `impact` · `peers` · the four-level graph
+(trial) · the check before a store change (`Rule_Gate_85`) · free deletion of the agent's own scratch ·
+global discovery, public relay and NAT hole punching for the peer-to-peer channel · folder mirroring with
+an approval queue · the fast lane (seconds, not half an hour, between machines) · EmbeddingGemma 2 ·
+per-file questions in `selfupdate` · the 300-line local auto-commit · `setup mcp` and `mcp --http`.
 
-**Actually open:**
+**Open:**
 
-- **Carrying files over the peer-to-peer channel** — the memory blocks travel; the four shared
-  folders (docs, visuals, attic, file store) are specified with an approval queue and conflict
-  rules, but not yet written.
-- **A relay for the case where both machines sit behind NAT** — the only path left when neither
-  side can open a port, and it needs a host with a public address rather than more code.
-- **Graph readability** — on this repo the graph draws 494 nodes and 2,487 edges into one canvas.
-  The fix is a lens (code / standard / tests), inferred edges off by default, clustering by folder
-  and labels that appear as you zoom.
-- **Flagging throw-away sessions** (a few typed characters, a chat sent to the wrong project) so
-  they stop surfacing in recall. The rule would be mechanical and would *flag*, never delete.
-- **Late interaction / ColBERT** to lift the candidate-pool ceiling — blocked on a model, not on
-  the architecture: of 100 surveyed, exactly two understand Vietnamese, and each fails a different
-  requirement (licence versus runtime support).
-- Extending semantic retrieval beyond agent memory to first-party data and knowledge.
-- Deeper graph resolution (tsserver/pyright `resolved` edges) once real usage justifies it.
-- New host adapters (Cursor · Windsurf · JetBrains) — deliberately waiting for real transcript
-  fixtures rather than guessing a format. Cursor and Windsurf keep chat in SQLite, not JSONL, so
-  they need a decoder rather than a copy of the existing shape.
+- **Repos changing the store themselves.** Any repo may propose and apply a change to the shared parts
+  after asking the user, rebuild the sets and sync every repo `zemory impact` lists, without two repos
+  overwriting each other. Missing today: a command for a repo to rebuild the sets itself, overwrite
+  protection, and filtering `*.orig` / `*.rej` out of parts.
+- **Acceptance by a real run** of the 4.0.0 harness: a brand-new repo built from a set (app and non-app)
+  passing `conform` and `gates` with its hooks blocking for real, and the same in Claude Desktop.
+- **The four-level graph**, after review: status colours from `conform` / `gates` on levels 1–3, and an
+  Obsidian-style local view for level 4 (inferred edges off by default, slots as colour groups, labels by
+  zoom).
+- **A cross-network acceptance run** of the peer-to-peer channel between two real networks.
+- **This repo onto its own set**, out of the file harness.
+- **Translating the shipped standard documents** into English.
+- **Flagging throw-away sessions** (a few typed characters, a chat sent to the wrong project) so they
+  stop surfacing in recall; mechanical, flag only, never delete.
+- **Late interaction / ColBERT**, blocked on a model: of 100 surveyed, two understand Vietnamese, and
+  each fails a different requirement (licence or runtime support).
+- **New host adapters** (Cursor · Windsurf · JetBrains), waiting for real transcript fixtures. Cursor and
+  Windsurf keep chat in SQLite, so they need a decoder.
 
 ---
 
 ## Acknowledgements
 
-Zemory is first-party code that stands on a small, carefully-licensed stack — every
-dependency is Apache-2.0-compatible and called through an adapter, never pasted into
-`backend/`:
+Zemory is first-party code on a small stack; every dependency is Apache-2.0-compatible and called
+through an adapter:
 
 | Layer | Project | License |
 |---|---|---|
 | Storage | [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) · [sqlite-vec](https://github.com/asg017/sqlite-vec) | MIT · Apache-2.0/MIT |
-| Embeddings / rerank | [🤗 Transformers.js](https://github.com/huggingface/transformers.js), [EmbeddingGemma](https://huggingface.co/google/embeddinggemma-300m) (Gemma terms), [BGE reranker](https://huggingface.co/BAAI/bge-reranker-base) | Apache-2.0 · Gemma · MIT |
+| Embeddings / rerank | [🤗 Transformers.js](https://github.com/huggingface/transformers.js), [EmbeddingGemma 2](https://huggingface.co/onnx-community/embeddinggemma-2-ONNX), [BGE-M3](https://huggingface.co/BAAI/bge-m3), [BGE reranker](https://huggingface.co/BAAI/bge-reranker-base) | Apache-2.0 · Apache-2.0 · MIT · MIT |
 | Code graph | [tree-sitter](https://github.com/tree-sitter/tree-sitter) (`web-tree-sitter`, `tree-sitter-wasms`) | MIT |
 | Desktop shell | [@nativewindow/webview](https://www.npmjs.com/package/@nativewindow/webview) (wry/tao) · [systray2](https://github.com/felixhao28/node-systray) · [koffi](https://github.com/Koromix/koffi) | MIT |
 
-The peer-to-peer channel borrows **ideas** from [Syncthing](https://syncthing.net) — identity as a
-certificate fingerprint, LAN discovery, block-level transfer — and implements them here in about
-seven files with no new dependency. No Syncthing code is used, wrapped or shipped.
+The peer-to-peer channel borrows ideas from [Syncthing](https://syncthing.net) (identity as a certificate
+fingerprint, LAN discovery, block-level transfer) and implements them in first-party code with no new
+dependency. No Syncthing code is used, wrapped or shipped; the channel does use Syncthing's public
+discovery and relay servers to find and reach machines on other networks.
 
-Model weights are fetched and cached at runtime — **never committed** — and every
-vendored third-party skill under `external/skills/` keeps its original `LICENSE`.
+Model weights are fetched and cached at runtime, never committed, and every vendored skill under
+`external/skills/` keeps its original `LICENSE`.
 
 ---
 
 ## License
 
-Licensed under the **Apache License 2.0** — see [LICENSE](LICENSE).
+Licensed under the **Apache License 2.0**; see [LICENSE](LICENSE).
 
 ```
 Copyright 2026 Nguyen Duc Huy (zemory contributors)

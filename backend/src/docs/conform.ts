@@ -33,7 +33,7 @@ import { viName, viPartName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
 import {
   binLauncherFindings, caseHeaderFindings, gitRemoteFindings, caseIndexFindings, deadFlagFindings, ledgerDuplicateHeadings, ledgerTitleFindings,
-  reportsIndexFindings, RETIRED_HARNESS_NAMES, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmDeployIgnoredFindings, vmTaskDataFindings,
+  ownTextFiles, reportsIndexFindings, RETIRED_HARNESS_NAMES, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmDeployIgnoredFindings, vmTaskDataFindings,
 } from "./case-checks.js";
 import { stateDirOf } from "./guard-gen.js";
 
@@ -436,9 +436,10 @@ export function conform(root: string): ConformReport {
     "start the heading with the repo's folder name");
   push("ledger-duplicate-heading", "advisory", "The same heading twice in the TODO ledger", ledgerDuplicateHeadings(root),
     "merge the two sections into one; drop an empty one");
-  push("retired-harness-name", "blocking", "Text names a harness file that no longer exists in a folder harness", retiredNameFindings(root),
+  const ownText = ownTextFiles(root);
+  push("retired-harness-name", "blocking", "Text names a harness file that no longer exists in a folder harness", retiredNameFindings(root, ownText),
     "point at the new home: " + Object.entries(RETIRED_HARNESS_NAMES).map(([k, v]) => `${k} → ${v}`).join(" · ") + " — a file the harness ships is fixed in the zemory store");
-  const superseded = supersededFactFindings(root);
+  const superseded = supersededFactFindings(root, ownText);
   push("superseded-fact", "blocking", "Text still states a fact of the region that changed (region values › superseded_facts)", superseded.blocking,
     "replace the old fact with the one after the arrow; a change of the region is added to superseded_facts once and every repo is told by sync");
   push("superseded-fact-history", "advisory", "Text names a fact of the region that changed — keep it where it tells history, replace it where it instructs",

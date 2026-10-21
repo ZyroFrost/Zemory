@@ -708,6 +708,11 @@ function checkBash(cmd) {
         // a one-use flag in the flags folder: deleting it only takes a permission away (2026-10-19 — asking for a delete
         // flag to remove a dead flag left a new dead flag behind, round after round)
         if (isFlagFile(path.relative(ROOT, path.resolve(ROOT, t)).replace(/\\/g, "/"))) return false;
+        // a file of the repo stays a file of the repo even when the repo itself sits in the temp folder: the temp exemption
+        // is for things outside the repo (a resolved relative target used to land under tempRoots and pass - 2026-10-21)
+        const inRoot = canonPath(path.resolve(ROOT, t));
+        const rootC = canonPath(ROOT);
+        if (inRoot === rootC || inRoot.startsWith(rootC + "/")) return true;
         if (!isAbsTok(t, false)) return true;
         const c = canonPath(t);
         return !tempRoots.some((r) => c === r || c.startsWith(r + "/"));

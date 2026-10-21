@@ -14,7 +14,7 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
 import { archiveDirOf } from "../core/config.js";
@@ -330,9 +330,42 @@ export function hashFiles(files: Map<string, string>, main: string): string {
   return h.digest("hex").slice(0, 12);
 }
 
+// ── read cache for the store while a sync runs ───────────────────────────────────────────────────────────────────────
+// A region sync read the store and all nine sets again for every repo it passed (`findKit` → `readKits` reads every file
+// of every set; `listParts` re-reads the store per check): measured 2026-10-21, 181 s of a 369 s sync of 9 repos went to
+// parts read again. A sync writes only into repos, never under `docs_template/`, so inside `withStoreReadCache` every part
+// read below that folder is read once. Anything else — the repo copies a sync writes — is always read fresh.
+let storeCache: { base: string; parts: Map<string, Part | null>; files: Map<string, Map<string, string>> } | null = null;
+
+const underBase = (dir: string): boolean => {
+  if (!storeCache) return false;
+  const d = resolve(dir).toLowerCase();
+  return d === storeCache.base || d.startsWith(storeCache.base + sep);
+};
+
+export function withStoreReadCache<T>(fn: () => T, base = dirname(STORE_DIR)): T {
+  if (storeCache) return fn();
+  storeCache = { base: resolve(base).toLowerCase(), parts: new Map(), files: new Map() };
+  try {
+    return fn();
+  } finally {
+    storeCache = null;
+  }
+}
+
 /** A part's files, minus the ones its header lists as `generated:` (written by a zemory command in the repo copy — the
  *  guard and its policy in `02-55` — so they never count as a local edit and are never merged). */
 export function readPartFiles(dir: string, main?: string): Map<string, string> {
+  if (storeCache && underBase(dir)) {
+    const key = `${resolve(dir)}|${main ?? ""}`;
+    let hit = storeCache.files.get(key);
+    if (!hit) storeCache.files.set(key, (hit = readPartFilesFresh(dir, main)));
+    return new Map(hit);
+  }
+  return readPartFilesFresh(dir, main);
+}
+
+function readPartFilesFresh(dir: string, main?: string): Map<string, string> {
   const m = new Map<string, string>();
   const own = ownMainName(dir);
   const files = partFiles(dir);
@@ -354,6 +387,15 @@ export function partHash(dir: string, shelf: Shelf, main = MAIN_FILE[shelf]): st
 
 /** One part folder. `folder` is the path below the shelf: `_Slot/<Area>_<NNN>_<Name>` for a slot, `_Host/<kind>` for a host. */
 export function readPart(dir: string, shelf: Shelf, mainName = MAIN_FILE[shelf]): Part | null {
+  if (storeCache && underBase(dir)) {
+    const key = `${resolve(dir)}|${shelf}|${mainName}`;
+    if (!storeCache.parts.has(key)) storeCache.parts.set(key, readPartFresh(dir, shelf, mainName));
+    return storeCache.parts.get(key) ?? null;
+  }
+  return readPartFresh(dir, shelf, mainName);
+}
+
+function readPartFresh(dir: string, shelf: Shelf, mainName: string): Part | null {
   const main = mainPath(dir, mainName);
   if (!existsSync(main)) return null;
   const text = readFileSync(main, "utf8");
