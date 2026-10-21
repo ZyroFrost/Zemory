@@ -211,3 +211,91 @@ test("the S4 routing separates SLOT from LAYER correctly (a layer is never calle
   const ghosts = g.nodes.filter((n) => /\.[a-z0-9]+\/$/i.test(n.label)).map((n) => n.label);
   assert.deepEqual(ghosts, [], "file bị gắn dấu / thành thư mục ma");
 });
+
+// Folder harness (plan/28 · plan/29): the graph reads the parts, not the single files of the file harness.
+function folderScaffold(t) {
+  const root = tempDir(t, "zemory-gstd-folder-");
+  const agent = join(root, "docs", "agent");
+  const part = (rel, head, body = "", gate = null, extra = {}) => {
+    const dir = join(agent, rel);
+    mkdirSync(dir, { recursive: true });
+    const leaf = rel.split("/").pop();
+    writeFileSync(join(dir, `${leaf}.md`), ["---", ...head, "---", `# ${leaf}`, body].join("\n"));
+    if (gate) writeFileSync(join(dir, "gate.json"), JSON.stringify(gate));
+    for (const [f, txt] of Object.entries(extra)) writeFileSync(join(dir, f), txt);
+  };
+  writeFileSync(join(root, "AGENTS.md"), "# Repo\n");
+  mkdirSync(agent, { recursive: true });
+  writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ docs: "docs/agent", kit: "05_IDE_Dept_Memory" }));
+  const from = (shelf, leaf) => `from: _Store/${shelf}/${leaf} @v1 #0123456789ab`;
+  part(
+    "01_LAW/_Rule/01_Harness/Rule_Gate_83_FromStore",
+    ["id: Rule_83", "kind: action", "checked: [Rule_Keys_62_Approval]", from("01_LAW/_Rule", "01_Harness/Rule_Gate_83_FromStore")],
+    ["## Links · Liên kết", "- Implements: `Skill_Harness_Grill`", "- Related: `Rule_Keys_62_Approval`", "- Repo declares: `Cons_Gate_10_ReadOnly`"].join("\n"),
+    { hook: "hook.cjs" },
+    { "hook.cjs": "module.exports = () => null;\n" },
+  );
+  // a repo's own part: no `from:` line, so no `assembled` edge from the set
+  part("01_LAW/_Rule/02_Work/Rule_Keys_62_Approval", ["id: Rule_62", "kind: judgment"], "", { prompt: { kind: "k", re: "x", text: "y" } });
+  part("01_LAW/_Rule/02_Work/Rule_Gate_07_Old", ["id: Rule_7", "kind: action", "retired: true"]);
+  part("01_LAW/_Cons/02_Data/Cons_Gate_10_ReadOnly", ["id: Cons_10", from("01_LAW/_Cons", "02_Data/Cons_Gate_10_ReadOnly")], "", { gate: "test:foo" });
+  // the skill names the rule too: the rule's "Implements:" line and this one are ONE tie
+  part("03_SKILLS/Skill_Harness_Grill", ["id: Skill_Harness_Grill", "name: harness-grill"], "## Implements\n- `Rule_Gate_83_FromStore`\n", {
+    read: [{ when: "new_dir" }],
+  });
+  part("03_SKILLS/Skill_Frame_Own", ["id: Skill_Frame_Own", "frame: true"]);
+  part("02_STRUCTURE/_Slot/Backend_010_Api", ["id: Slot_10", "name: api", "path: backend/src/api/"]);
+  part("02_STRUCTURE/_Slot/Data_094_Data", ["id: Slot_94", "name: data", "path: data/"]);
+  part("02_STRUCTURE/Struc_Repo_Dept", ["id: Struc_Repo_Dept"], "", null, { "structure.json": JSON.stringify({ slots: ["Data_094_Data"] }) });
+  writeFileSync(join(agent, "04_TODO.md"), "# TODO\n");
+  return root;
+}
+
+const FOLDER_FILES = [{ id: "backend/src/api/r.ts", slot: "api" }];
+
+test("folder harness: parts become rule/cons/skill/slot/structure nodes; a retired rule is left out", (t) => {
+  const g = buildStandardGraph(folderScaffold(t), FOLDER_FILES);
+  assert.deepEqual(byType(g, "rule").map((n) => n.id).sort(), ["rule:Rule_62", "rule:Rule_83"]);
+  assert.deepEqual(byType(g, "cons").map((n) => n.id), ["cons:Cons_10"]);
+  assert.deepEqual(byType(g, "skill").map((n) => n.id), ["skill:Skill_Harness_Grill"]);
+  assert.deepEqual(byType(g, "slot").map((n) => n.id), ["slot:api"], "a slot with a file is `slot`");
+  assert.deepEqual(byType(g, "slot_unused").map((n) => n.id), ["slot:data"]);
+  assert.deepEqual(byType(g, "structure").map((n) => n.id), ["structure:Struc_Repo_Dept"]);
+  assert.deepEqual(byType(g, "hp_dieu"), [], "no file-harness article parsing on a folder harness");
+  assert.ok(g.nodes.some((n) => n.id === "doc:docs/agent/04_TODO.md"), "the ledger is a harness doc");
+});
+
+test("folder harness: the set assembles only the parts that carry a from: line", (t) => {
+  const g = buildStandardGraph(folderScaffold(t), FOLDER_FILES);
+  assert.deepEqual(byType(g, "set").map((n) => n.id), ["set:05_IDE_Dept_Memory"]);
+  assert.deepEqual(edgesOf(g, "assembled").map((e) => e.to).sort(), ["cons:Cons_10", "rule:Rule_83"]);
+});
+
+test("folder harness: gate.json ties a part to its hook file and to the shared mechanism", (t) => {
+  const g = buildStandardGraph(folderScaffold(t), FOLDER_FILES);
+  const hook = "hook:docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_FromStore/hook.cjs";
+  const gate = edgesOf(g, "gate").map((e) => `${e.from} > ${e.to}`).sort();
+  assert.deepEqual(gate, [
+    "cons:Cons_10 > gate:test:foo",
+    `${hook} > gate:guard`,
+    "rule:Rule_62 > gate:prompt",
+    `rule:Rule_83 > ${hook}`,
+    "skill:Skill_Harness_Grill > gate:read-first",
+  ]);
+});
+
+test("folder harness: a tie written on both sides is ONE implements edge, skill to law; links and checked are read", (t) => {
+  const g = buildStandardGraph(folderScaffold(t), FOLDER_FILES);
+  assert.deepEqual(edgesOf(g, "implements").map((e) => `${e.from} > ${e.to}`), ["skill:Skill_Harness_Grill > rule:Rule_83"]);
+  assert.deepEqual(edgesOf(g, "related").map((e) => `${e.from} > ${e.to}`), ["rule:Rule_83 > rule:Rule_62"]);
+  assert.deepEqual(edgesOf(g, "declares").map((e) => `${e.from} > ${e.to}`), ["rule:Rule_83 > cons:Cons_10"]);
+  assert.deepEqual(edgesOf(g, "checked").map((e) => `${e.from} > ${e.to}`), ["rule:Rule_83 > rule:Rule_62"]);
+});
+
+test("folder harness: structure contains its slots, a slot contains its files, no edge dangles", (t) => {
+  const g = buildStandardGraph(folderScaffold(t), FOLDER_FILES);
+  const contains = edgesOf(g, "contains").map((e) => `${e.from} > ${e.to}`).sort();
+  assert.deepEqual(contains, ["slot:api > backend/src/api/r.ts", "structure:Struc_Repo_Dept > slot:data"]);
+  const ids = new Set([...g.nodes.map((n) => n.id), ...FOLDER_FILES.map((f) => f.id)]);
+  assert.deepEqual(g.edges.filter((e) => !ids.has(e.from) || !ids.has(e.to)), []);
+});

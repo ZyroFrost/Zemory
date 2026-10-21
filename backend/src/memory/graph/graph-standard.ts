@@ -17,9 +17,13 @@
 // (bắt buộc mọi project = cố định NỘI DUNG docs = trái điều 3).
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, relative } from "node:path";
-import { harnessPathsAt } from "../../core/config.js";
+import { basename, dirname, join, relative } from "node:path";
+import { harnessPathsAt, readMarker } from "../../core/config.js";
 import { constitutionArticles } from "../../docs/validate.js";
+import { isFolderHarness, isRetired, leafOf, listParts, listStructures, mainOf, mainPath, structureSlots, type Part } from "../../docs/store.js";
+import { implementsOf, linksOf } from "../../docs/law-links.js";
+import { hooksOf } from "../../docs/rule-core.js";
+import { LEDGER, SHELF } from "../../docs/harness-names.js";
 import { slotDictFor } from "./graph.js";
 
 /** Từ điển slot §3 — thước duy nhất để phân biệt SLOT với TẦNG.
@@ -29,7 +33,11 @@ import { slotDictFor } from "./graph.js";
 // `slot` = slot chuẩn CÓ file thật trong repo · `slot_unused` = chuẩn có khai nhưng project
 // này chưa dùng. Tách 2 loại vì chuẩn nói rõ "INDEX = TỪ ĐIỂN TÊN, KHÔNG phải checklist phải
 // tạo — app điển hình chỉ 4–10 slot hiện diện": gộp chung sẽ trông như repo thiếu 48 folder.
-export type StdNodeType = "harness_doc" | "plan_spec" | "hp_dieu" | "skill" | "slot" | "slot_unused" | "layer" | "concern";
+// Folder harness (plan/28 · plan/29): `rule` · `cons` · `structure` are parts, `set` is the kit the marker names, `gate` is an
+// enforcement mechanism shared by many parts (guard · read-first · prompt · conform · test:…), `hook` is one hook file.
+export type StdNodeType =
+  | "harness_doc" | "plan_spec" | "hp_dieu" | "skill" | "slot" | "slot_unused" | "layer" | "concern"
+  | "rule" | "cons" | "structure" | "set" | "gate" | "hook";
 
 export interface StdNode {
   id: string;
@@ -44,14 +52,19 @@ export interface StdNode {
 export interface StdEdge {
   from: string;
   to: string;
-  /** contains = chứa · routing = concern→slot (bảng 03 §4) · references = nhắc tới */
-  kind: "contains" | "routing" | "references";
+  /** contains · routing = concern → slot (03 §4 table) · references = a doc names an article.
+   *  Folder harness: assembled = set → part with a `from:` line · gate = part → hook/gate, hook → guard · implements =
+   *  skill → law · declares / related = a law's `## Links` · checked = a part's `checked:` header. */
+  kind: "contains" | "routing" | "references" | "assembled" | "gate" | "implements" | "declares" | "related" | "checked";
 }
 
 export interface StandardGraph {
   nodes: StdNode[];
   edges: StdEdge[];
-  stats: { hpDieu: number; skills: number; plans: number; slots: number; slotsUnused: number; concerns: number };
+  stats: {
+    hpDieu: number; skills: number; plans: number; slots: number; slotsUnused: number; concerns: number;
+    rules: number; cons: number; gates: number; hooks: number;
+  };
 }
 
 const AGENT_DOCS = [
@@ -142,8 +155,12 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
   const PLAN = rel(hp.plan);
   const SKILLS = rel(hp.skills);
 
-  // ── harness docs (01..06 + AGENTS.md) — cửa vào của mọi thứ bên dưới
-  for (const f of AGENT_DOCS) {
+  // A folder harness has none of the single files below: its parts are read by addFolderParts.
+  const folder = isFolderHarness(hp.agent);
+  if (folder) addFolderParts(root, hp.agent, rel, add, edges, slotType);
+
+  // harness docs (01..06 + AGENTS.md): the entry to everything below
+  for (const f of folder ? [] : AGENT_DOCS) {
     if (read(root, join(AGENT,f)) === null) continue;
     add({ id: `doc:agent/${f}`, label: f.replace(/\.md$/, ""), type: "harness_doc", dir: AGENT, src: `${AGENT}/${f}` });
   }
@@ -151,7 +168,7 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
 
   // ── hp_dieu: CHỈ danh sách đánh số nằm SAU "## Điều khoản".
   //    Bẫy: §Mục đích phía trên cũng có list "1. … 2. …" — quét cả file sẽ đẻ điều giả.
-  const consti = read(root, join(AGENT,"01_CONSTITUTION.md"));
+  const consti = folder ? null : read(root, join(AGENT,"01_CONSTITUTION.md"));
   if (consti) {
     const body = sectionBody(consti, /^##\s*Điều khoản/m);
     if (body) {
@@ -172,13 +189,13 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
   //    · CŨ   — playbook inline: dùng dòng tự khai ("Skill inline hiện có: `a` · `b`")
   //      nên không phải đoán heading nào là skill, heading nào là luật.
   const skillsDir = hp.skills;
-  const skillDirs = existsSync(skillsDir)
+  const skillDirs = !folder && existsSync(skillsDir)
     ? readdirSync(skillsDir, { withFileTypes: true })
         .filter((e) => e.isDirectory() && existsSync(join(skillsDir, e.name, "SKILL.md")))
         .map((e) => e.name)
         .sort()
     : [];
-  const skills = read(root, join(AGENT,"04_SKILLS.md"));
+  const skills = folder ? null : read(root, join(AGENT,"04_SKILLS.md"));
   if (skillDirs.length) {
     for (const name of skillDirs) {
       const id = `skill:${slug(name)}`;
@@ -307,6 +324,117 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
       slots: count("slot"),
       slotsUnused: count("slot_unused"),
       concerns: count("concern"),
+      rules: count("rule"),
+      cons: count("cons"),
+      gates: count("gate"),
+      hooks: count("hook"),
     },
   };
+}
+
+type GateJson = { hook?: string | string[]; gate?: unknown; prompt?: unknown; read?: unknown; conform?: unknown };
+
+function gateJson(dir: string): GateJson | null {
+  try {
+    return JSON.parse(readFileSync(join(dir, "gate.json"), "utf8")) as GateJson;
+  } catch {
+    return null; // absent or unreadable: conform reports an unreadable one, the graph just has no gate edge
+  }
+}
+
+/**
+ * The parts of a folder harness as nodes, and the declared ties between them: the set that assembled each part (`from:`),
+ * structure → slot, part → gate/hook (`gate.json`), skill → law (`## Implements` and a law's `Implements:` line, one edge),
+ * a law's `Repo declares` / `Related` links, and a part's `checked:` list. Every tie is parsed from the files, never guessed.
+ * Slot nodes keep the `slot:<name>` id the file layer uses, so `slot → file` edges are added by the caller's loop.
+ */
+function addFolderParts(
+  root: string,
+  agentDir: string,
+  rel: (abs: string) => string,
+  add: (n: StdNode) => void,
+  edges: StdEdge[],
+  slotType: (s: string) => StdNodeType,
+): void {
+  const seenEdge = new Set<string>();
+  const edge = (from: string, to: string, kind: StdEdge["kind"]): void => {
+    const k = `${from}\0${to}\0${kind}`;
+    if (from === to || seenEdge.has(k)) return;
+    seenEdge.add(k);
+    edges.push({ from, to, kind });
+  };
+
+  const kit = readMarker(root)?.data.kit;
+  const setId = typeof kit === "string" && kit ? `set:${kit}` : null;
+  if (setId) add({ id: setId, label: String(kit), type: "set", dir: ".", src: "docs/.harness.json" });
+
+  const byLeaf = new Map<string, string>();
+  const placed: Array<{ p: Part; id: string }> = [];
+  const put = (p: Part, id: string, label: string, type: StdNodeType): void => {
+    add({ id, label, type, dir: rel(dirname(p.dir)), src: rel(mainPath(p.dir, mainOf(p))) });
+    byLeaf.set(leafOf(p.folder), id);
+    placed.push({ p, id });
+    if (setId && p.from) edge(setId, id, "assembled");
+  };
+
+  for (const p of listParts(agentDir, SHELF.rules)) if (!isRetired(p)) put(p, `rule:${p.key}`, leafOf(p.folder), "rule");
+  for (const p of listParts(agentDir, SHELF.constitution)) if (!isRetired(p)) put(p, `cons:${p.key}`, leafOf(p.folder), "cons");
+  // a frame (Skill_Frame_Own) is the shape a repo's own skill is written in, not a skill: the host builds nothing from it
+  for (const p of listParts(agentDir, SHELF.skills)) {
+    if (String(p.meta.frame ?? "") !== "true") put(p, `skill:${leafOf(p.folder)}`, leafOf(p.folder), "skill");
+  }
+  const slots = listParts(agentDir, SHELF.structure).filter((p) => p.meta.kind !== "guide");
+  for (const p of slots) put(p, `slot:${p.name}`, String(p.meta.path || `${p.name}/`), slotType(p.name));
+  for (const s of listStructures(agentDir)) {
+    const id = `structure:${leafOf(s.folder)}`;
+    put(s, id, leafOf(s.folder), "structure");
+    for (const slot of structureSlots(s, slots).slots) edge(id, `slot:${slot.name}`, "contains");
+  }
+
+  for (const { p, id } of placed) {
+    const g = gateJson(p.dir);
+    if (g) {
+      const mech = (mark: string): void => {
+        add({ id: `gate:${mark}`, label: mark, type: "gate", dir: "gate", src: "gate.json" });
+        edge(id, `gate:${mark}`, "gate");
+      };
+      for (const h of hooksOf(g)) {
+        const file = rel(join(p.dir, h));
+        add({ id: `hook:${file}`, label: basename(h), type: "hook", dir: rel(p.dir), src: file });
+        edge(id, `hook:${file}`, "gate");
+        // a part's hook file is called by the guard
+        add({ id: "gate:guard", label: "guard", type: "gate", dir: "gate", src: "gate.json" });
+        edge(`hook:${file}`, "gate:guard", "gate");
+      }
+      if (typeof g.gate === "string" && g.gate) mech(g.gate);
+      if (g.prompt) mech("prompt");
+      if (g.read) mech("read-first");
+      if (g.conform) mech("conform");
+    }
+    const text = read(root, relative(root, mainPath(p.dir, mainOf(p)))) ?? "";
+    if (p.shelf === SHELF.skills) {
+      for (const law of implementsOf(text)) {
+        const to = byLeaf.get(law);
+        if (to) edge(id, to, "implements");
+      }
+    } else {
+      for (const l of linksOf(text)) {
+        const other = byLeaf.get(l.name);
+        if (!other) continue;
+        // one direction for one tie: implements always runs skill → law, whichever side wrote it
+        if (l.kind === "implements") edge(other, id, "implements");
+        else edge(id, other, l.kind);
+      }
+    }
+    const checked = p.meta.checked;
+    for (const name of Array.isArray(checked) ? checked : typeof checked === "string" && checked ? [checked] : []) {
+      const to = byLeaf.get(name);
+      if (to) edge(id, to, "checked");
+    }
+  }
+
+  for (const f of [LEDGER.todo, LEDGER.changes]) {
+    const abs = join(agentDir, f);
+    if (existsSync(abs)) add({ id: `doc:${rel(abs)}`, label: f.replace(/\.md$/, ""), type: "harness_doc", dir: rel(agentDir), src: rel(abs) });
+  }
 }

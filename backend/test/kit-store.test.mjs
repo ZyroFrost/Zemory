@@ -9,6 +9,7 @@ import { dirname, join } from "node:path";
 import test from "node:test";
 import { applyKit, assembleSet } from "../../dist/docs/kit-apply.js";
 import { pruneMarkerProtected, repointLinks } from "../../dist/docs/kit-migrate.js";
+import { kitBehind } from "../../dist/docs/kit-sync.js";
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
@@ -208,6 +209,24 @@ test("a from: hash no commit carries (recorded beside a build cache) falls back 
   assert.equal(verdicts(r)["02-1_alpha"], "merged", JSON.stringify(r.steps.find((s) => s.part.folder === "02-1_alpha")?.reason));
   assert.match(readFileSync(f, "utf8"), /line one, revised/, "the store's version arrived");
   assert.equal(verdicts(applyKit(root, { apply: false, storeDir: st.s }))["02-1_alpha"], "current", "and the next pass is current");
+});
+
+test("kitBehind counts what sync --check counts: current = 0, a newer store part = drift, a removed copy = missing", (t) => {
+  // The app chip and the session hook used the file-harness diff on kit repos and reported a constant 21 missing / 15 drift.
+  const st = store(t);
+  const root = repo(t);
+  applyKit(root, { kitRef: "01", apply: true, storeDir: st.s });
+  const kb = kitBehind(root, st.s);
+  assert.deepEqual([kb.kit, kb.missing, kb.drift, kb.manual], ["01_IDE_App_Memory", 0, 0, 0], "an assembled repo is current");
+  const p = join(st.s, "01_LAW", "_Rule", "02-1_alpha", "RULE.md");
+  writeFileSync(p, readFileSync(p, "utf8").replace("version: 1", "version: 2").replace("- line one", "- line one, revised"));
+  st.commit("v2");
+  assert.equal(kitBehind(root, st.s).drift, 1, "a part the store moved ahead is behind");
+  rmSync(join(root, "docs", "agent", "01_LAW", "_Rule", "02-2_beta"), { recursive: true });
+  assert.equal(kitBehind(root, st.s).missing, 1, "a copy the repo lost is missing");
+  const plain = repo(t);
+  put(plain, "docs/.harness.json", JSON.stringify({ docs: "docs/agent" }));
+  assert.equal(kitBehind(plain, st.s), null, "a file-harness repo is not measured here");
 });
 
 test("the same line changed on both sides is a conflict and nothing is written", (t) => {

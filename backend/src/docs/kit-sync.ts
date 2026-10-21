@@ -10,12 +10,24 @@ import { basename, join, resolve } from "node:path";
 import { SHELF } from "./harness-names.js";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { conform, type ConformItem } from "./conform.js";
-import { generateGuards } from "./guard-gen.js";
-import { applyKit, type KitApplyResult } from "./kit-apply.js";
+import { generateGuards, guardDrift } from "./guard-gen.js";
+import { applyKit, repoKit, type KitApplyResult } from "./kit-apply.js";
 import { normalizeOwnConstitution, pruneMarkerProtected, repointLinks } from "./kit-migrate.js";
 import { regionRepos, repoRole } from "./region-links.js";
 import { rewriteInPlace, STIGNORE_ALLOW_START, writeStignoreAllow, type StignoreAllowResult } from "./stignore-gen.js";
 import { SLOT_LAYER, STORE_DIR } from "./store.js";
+
+/**
+ * How far a kit repo is behind HS, measured as `zemory sync --check` measures it (a dry assembly + a stale guard): the one
+ * count the app's "repo standard" chip and the session hook show. null = not a kit repo (the file-harness check applies).
+ */
+export function kitBehind(root: string, storeDir = STORE_DIR): { kit: string; missing: number; drift: number; manual: number; guardStale: string[] } | null {
+  if (!repoKit(root, storeDir)) return null;
+  const k = applyKit(root, { apply: false, storeDir });
+  if ("error" in k) return null;
+  const count = (...vs: string[]): number => k.steps.filter((s) => vs.includes(s.verdict)).length;
+  return { kit: k.kit.name, missing: count("absent"), drift: count("clean", "merged"), manual: count("conflict"), guardStale: guardDrift(root) };
+}
 
 /** A repo the manager at `root` syncs: one that names it as owner, or names no owner while it is the only manager of its role. */
 export interface ManagedRepo {

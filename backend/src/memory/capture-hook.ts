@@ -28,6 +28,8 @@ import { tryWriteTurnSync } from "../jobs/writeturn.js";
 const HOOK_TURN_WAIT_MS = 3_000;
 import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
+import { kitBehind } from "../docs/kit-sync.js";
+import { repoKit } from "../docs/kit-apply.js";
 import { coreForCompaction } from "../docs/rule-core.js";
 import { isFolderHarness, isRetired, listParts, promptGates } from "../docs/store.js";
 import { stopDecision } from "../docs/turn-evidence.js";
@@ -355,7 +357,18 @@ export function handleHook(event: HookEventName, payload: any): string {
               const where = u.source === "git" ? `git commit ${u.from || "?"}` : `${u.from} đóng dấu ${u.at}`;
               notes.push(`[zemory] ⚠ zemory ${u.have} — có bản MỚI ${u.latest} (${where}). Áp bằng MỘT lệnh: \`zemory selfupdate\`.`);
             }
-            if (r.connected && (r.missing.length > 0 || r.guardStale.length > 0)) {
+            // A kit repo (folder harness) is measured against its set, not the old single files: the file-harness check
+            // reported the same 21 "missing" files in every folder repo, synced or not.
+            const kb = r.connected ? kitBehind(cwd) : null;
+            if (kb) {
+              const parts = [
+                kb.missing ? `${kb.missing} phần chưa có` : "",
+                kb.drift ? `${kb.drift} phần cũ hơn HS` : "",
+                kb.manual ? `${kb.manual} phần xung đột (gộp tay)` : "",
+                kb.guardStale.length ? `guard lỗi thời (${kb.guardStale.join(" · ")})` : "",
+              ].filter(Boolean);
+              if (parts.length) notes.push(`[zemory] ⚠ Harness repo này sau bộ ${kb.kit} — ${parts.join(" · ")}. Chạy \`zemory sync\` khi tiện.`);
+            } else if (r.connected && !repoKit(cwd) && (r.missing.length > 0 || r.guardStale.length > 0)) {
               const parts = [
                 r.missing.length ? `${r.missing.length} file chuẩn mới chưa nhận` : "",
                 r.guardStale.length ? `guard lỗi thời (${r.guardStale.join(" · ")})` : "",
