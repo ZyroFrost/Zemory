@@ -9,7 +9,7 @@
 // It drives Edge/Chrome headless over CDP (the same path `memory scan-web` already uses), waits for the UI to load,
 // then clicks each nav item. The app router keeps the current screen in localStorage rather than in the
 // hash, so it must really CLICK - a URL cannot be loaded straight into a screen.
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -73,6 +73,19 @@ const BROWSERS = [
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Stop the browser this run started. On Windows `child.kill()` ends only the launcher: the browser processes live on and
+ * keep the CDP port, so the next run talks to the OLD browser and captures its old page. Every process carrying this run's
+ * own profile folder is ended instead (the folder is per run, so a user's own browser is never touched).
+ */
+function stopBrowser(child, profile) {
+  if (process.platform !== "win32") { child.kill(); return; }
+  const tag = profile.split(/[\\/]/).pop();
+  spawnSync("powershell", ["-NoProfile", "-Command",
+    `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match '${tag}' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`],
+    { stdio: "ignore", windowsHide: true });
+}
+
 async function cdpTargets() {
   const r = await fetch(`http://127.0.0.1:${CDP_PORT}/json/list`);
   return r.json();
@@ -111,11 +124,12 @@ async function main() {
   for (let i = 0; i < 40 && !ws; i++) {
     await sleep(500);
     const list = await cdpTargets().catch(() => null);
-    const page = list?.find((t) => t.type === "page");
+    // the app's own page: a new profile may open others first (Edge's sign-in / sync confirmation)
+    const page = list?.find((t) => t.type === "page" && String(t.url).startsWith(`http://127.0.0.1:${PORT}`));
     if (page) ws = page.webSocketDebuggerUrl;
   }
   if (!ws) {
-    child.kill();
+    stopBrowser(child, profile);
     console.error("The browser did not open the CDP port.");
     process.exit(1);
   }
@@ -176,7 +190,7 @@ async function main() {
     console.log("  x the numbers did NOT arrive within 150 s — NOT capturing a loading page.");
     console.log("    the page currently holds:", d?.result?.result?.value ?? "(unreadable)");
     sock.close();
-    child.kill();
+    stopBrowser(child, profile);
     process.exit(1);
   }
   await sleep(1500); // let the rest of the page finish painting
@@ -281,7 +295,7 @@ async function main() {
   if (bad) console.log(`\n⚠ ${bad}/${SHOTS.length} screens could NOT be captured — see the reasons above.`);
 
   sock.close();
-  child.kill();
+  stopBrowser(child, profile);
   await sleep(500);
   try {
     rmSync(profile, { recursive: true, force: true });

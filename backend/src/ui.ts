@@ -166,7 +166,7 @@ async function runCheckOffLoop(feature: string, rootArg?: string): Promise<unkno
 import { getCodeGraph } from "./memory/graph/graph-cache.js";
 import { fitnessHistory, recordFitness } from "./memory/graph/fitness-log.js";
 import { buildTouchIndex, touchesFor } from "./memory/graph/graph-memory.js";
-import { buildStandardGraph } from "./memory/graph/graph-standard.js";
+import { buildStandardGraph, buildWorkspaceGraph } from "./memory/graph/graph-standard.js";
 import { buildSeamEdges } from "./memory/graph/graph-seam.js";
 import { resolveCalls } from "./memory/graph/graph-symbols.js";
 import { edgeId } from "./memory/graph/graph.js";
@@ -2744,6 +2744,14 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     if (p === "/folder-tree") {
       // Annotated folder tree for the project's Graph sub-tab (structure view).
       return json(res, buildFolderTree(target));
+    }
+    if (p === "/workspace-graph") {
+      // Level 1 of the four-level graph (plan/13 §0c): the repos of this repo's workspace and the owner / uses lines.
+      try {
+        return json(res, buildWorkspaceGraph(target));
+      } catch (e) {
+        return json(res, { base: "", nodes: [], edges: [], error: e instanceof Error ? e.message : String(e) });
+      }
     }
     if (p === "/graph-fitness-history") {
       // Xu hướng fitness theo thời gian. Một hàng mỗi lần graph dựng lại thật, nên

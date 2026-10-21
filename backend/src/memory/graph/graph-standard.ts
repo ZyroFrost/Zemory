@@ -24,6 +24,7 @@ import { isFolderHarness, isRetired, leafOf, listParts, listStructures, mainOf, 
 import { implementsOf, linksOf } from "../../docs/law-links.js";
 import { hooksOf } from "../../docs/rule-core.js";
 import { LEDGER, SHELF } from "../../docs/harness-names.js";
+import { findRegionRepo, regionBase, regionRepos, repoRole } from "../../docs/region-links.js";
 import { slotDictFor } from "./graph.js";
 
 /** Từ điển slot §3 — thước duy nhất để phân biệt SLOT với TẦNG.
@@ -330,6 +331,48 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
       hooks: count("hook"),
     },
   };
+}
+
+export interface WorkspaceGraph {
+  /** The folder the workspace is read from (regionBase); empty when the repo belongs to no workspace. */
+  base: string;
+  nodes: Array<{ id: string; label: string; type: string; dir: string; root: string }>;
+  edges: Array<{ from: string; to: string; kind: "owner" | "uses"; label?: string }>;
+}
+
+/**
+ * Level 1 of the four-level graph (plan/13 §0c): the repos of the workspace `root` sits in, each typed by the role of its
+ * template, tied by what the markers declare — `owner` (the manager → the repo it manages) and `uses.<kind>` (the repo → the
+ * provider). Read with the same functions conform's region check uses; a name that resolves to no repo draws no edge.
+ */
+export function buildWorkspaceGraph(root: string): WorkspaceGraph {
+  const repos = regionRepos(root);
+  if (repos.length < 2) return { base: "", nodes: [], edges: [] };
+  const base = regionBase(root);
+  const id = (abs: string): string => `repo:${basename(abs)}`;
+  const nodes = repos.map((abs) => ({
+    id: id(abs),
+    label: basename(abs),
+    type: repoRole(abs)?.name ?? "no-set",
+    dir: relative(base, dirname(abs)).replace(/\\/g, "/") || ".",
+    root: abs,
+  }));
+  // sibling folders with no set are not a workspace (a personal folder of loose repos)
+  if (!nodes.some((n) => n.type !== "no-set")) return { base: "", nodes: [], edges: [] };
+  const edges: WorkspaceGraph["edges"] = [];
+  for (const abs of repos) {
+    const m = readMarker(abs)?.data ?? {};
+    if (typeof m.owner === "string" && m.owner) {
+      const at = findRegionRepo(m.owner, abs);
+      if (at) edges.push({ from: id(at), to: id(abs), kind: "owner" });
+    }
+    const uses = (m.uses && typeof m.uses === "object" ? m.uses : {}) as Record<string, unknown>;
+    for (const [kind, target] of Object.entries(uses)) {
+      const at = typeof target === "string" && target ? findRegionRepo(target, abs) : null;
+      if (at) edges.push({ from: id(abs), to: id(at), kind: "uses", label: kind });
+    }
+  }
+  return { base, nodes, edges };
 }
 
 type GateJson = { hook?: string | string[]; gate?: unknown; prompt?: unknown; read?: unknown; conform?: unknown };

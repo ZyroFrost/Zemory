@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import test from "node:test";
 import { join } from "node:path";
-import { buildStandardGraph } from "../../dist/memory/graph/graph-standard.js";
+import { buildStandardGraph, buildWorkspaceGraph } from "../../dist/memory/graph/graph-standard.js";
 import { tempDir } from "./helpers.mjs";
 
 /**
@@ -298,4 +298,34 @@ test("folder harness: structure contains its slots, a slot contains its files, n
   assert.deepEqual(contains, ["slot:api > backend/src/api/r.ts", "structure:Struc_Repo_Dept > slot:data"]);
   const ids = new Set([...g.nodes.map((n) => n.id), ...FOLDER_FILES.map((f) => f.id)]);
   assert.deepEqual(g.edges.filter((e) => !ids.has(e.from) || !ids.has(e.to)), []);
+});
+
+// Level 1 of the four-level graph (plan/13 §0c): the workspace, read from the markers with the HS sets' roles.
+function workspace(t, repos) {
+  const base = tempDir(t, "zemory-ws-");
+  for (const [name, marker] of Object.entries(repos)) {
+    mkdirSync(join(base, name, "docs"), { recursive: true });
+    writeFileSync(join(base, name, "docs", ".harness.json"), JSON.stringify({ docs: "docs/agent", ...marker }));
+  }
+  return base;
+}
+
+test("workspace graph: repos typed by their set's role, owner and uses lines, a name that is no repo draws nothing", (t) => {
+  const base = workspace(t, {
+    Mgr: { kit: "06_IDE_WorkspaceManager_Memory" },
+    Dept_A: { kit: "05_IDE_Dept_Memory", owner: "Mgr", uses: { log: "Log", data: "Mgr", glossary: "Nowhere" } },
+    Log: { kit: "07_IDE_LogCenter_Memory" },
+  });
+  const g = buildWorkspaceGraph(join(base, "Dept_A"));
+  assert.deepEqual(g.nodes.map((n) => `${n.label}:${n.type}`).sort(), ["Dept_A:dept", "Log:log-center", "Mgr:workspace-manager"]);
+  assert.deepEqual(g.edges.map((e) => `${e.from} ${e.kind}${e.label ? ":" + e.label : ""} ${e.to}`).sort(), [
+    "repo:Dept_A uses:data repo:Mgr",
+    "repo:Dept_A uses:log repo:Log",
+    "repo:Mgr owner repo:Dept_A",
+  ]);
+});
+
+test("workspace graph: loose repos with no set are not a workspace", (t) => {
+  const base = workspace(t, { A: {}, B: {} });
+  assert.deepEqual(buildWorkspaceGraph(join(base, "A")), { base: "", nodes: [], edges: [] });
 });
