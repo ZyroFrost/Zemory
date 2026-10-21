@@ -382,3 +382,26 @@ test("every part the store's own text names is a live part (a renamed or retired
   assert.deepEqual(partMentionFindings(s), ["01_LAW/_Rule/Rule_Gate_01_Alpha/Rule_Gate_01_Alpha.md: Rule_Gate_02_Gone",
     "01_LAW/_Rule/Rule_Gate_01_Alpha/Rule_Gate_01_Alpha.md: Skill_PBI_Gone"]);
 });
+
+// plan/29 §14f — no hidden gate: every check a skill's script reports under a label ("… (select-all)") is named by the text of a
+// skill, so a reader of the skills knows the gate exists. The labels below predate the check: the list may only shrink.
+const UNNAMED_LABELS_ALLOWED = new Set(["bookmark-filter-objects", "m-step-comma", "filter-where-field", "dead-entity", "dead-field",
+  "bridge-bypass", "kimball16-classic", "filter-value-gone"]);
+test("every labelled check in a skill's script is named by a skill's text (no hidden gate)", async () => {
+  const { readdirSync, statSync } = await import("node:fs");
+  const skills = join(STORE_DIR, "03_SKILLS");
+  const walk = (d, out = []) => {
+    for (const e of readdirSync(d)) { const p = join(d, e); if (statSync(p).isDirectory()) { if (e !== "Claude") walk(p, out); } else out.push(p); }
+    return out;
+  };
+  const files = walk(skills);
+  const text = files.filter((f) => f.endsWith(".md")).map((f) => readFileSync(f, "utf8")).join("\n");
+  const labels = new Set();
+  for (const f of files.filter((f) => /\.(py|cjs|mjs|js)$/.test(f))) {
+    for (const m of readFileSync(f, "utf8").matchAll(/\((?:[a-z][a-z0-9]*-)+[a-z0-9]+\)["']/g)) labels.add(m[0].slice(1, -2));
+  }
+  assert.ok(labels.size >= 50, `labels found: ${labels.size}`);
+  const unnamed = [...labels].filter((l) => !new RegExp("\\b" + l + "\\b").test(text)).sort();
+  assert.deepEqual(unnamed.filter((l) => !UNNAMED_LABELS_ALLOWED.has(l)), [], "a new check the skills never name - name it in the skill that teaches it");
+  for (const l of UNNAMED_LABELS_ALLOWED) assert.ok(!labels.has(l) || unnamed.includes(l), `${l} is named now - drop it from UNNAMED_LABELS_ALLOWED`);
+});

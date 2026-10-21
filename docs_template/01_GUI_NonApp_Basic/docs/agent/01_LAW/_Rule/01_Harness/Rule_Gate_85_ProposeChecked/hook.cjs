@@ -113,7 +113,9 @@ const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|03_SKIL
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 
 // a rule lives in the folder of its code of law (01_LAW/_Rule/01_Harness/<rule>/)
-const SHELF = /^docs_template\/_Store\/(01_LAW\/_Rule\/\d{2}_[A-Za-z]+|01_LAW\/_Rule|01_LAW\/_Cons|02_STRUCTURE\/_Slot|02_STRUCTURE\/_Host|02_STRUCTURE|03_SKILLS)\/([^\/]+)\/[^\/]+$/;
+const SHELF = /^(01_LAW\/_Rule\/\d{2}_[A-Za-z]+|01_LAW\/_Rule|01_LAW\/_Cons|02_STRUCTURE\/_Slot|02_STRUCTURE\/_Host|02_STRUCTURE|03_SKILLS)\/([^\/]+)\/([^\/]+)$/;
+const STORE_MARK = "/docs_template/_Store/";
+const GATE_KEYS = ["hook", "gate", "prompt", "read", "conform"];
 function tokens(s) {
   return String(s).replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2 && !/^\d+$/.test(w)
     && !["rule", "cons", "skill", "slot", "struc", "gate", "core", "keys", "the"].includes(w));
@@ -141,29 +143,118 @@ function parts(store) {
   }
   return out;
 }
+// the store a path sits in, read from the ABSOLUTE path (a repo of the workspace writing HS has its own root, not zemory's)
+function inStore(root, abs) {
+  const norm = path.resolve(root, abs).replace(/\\/g, "/");
+  const i = norm.indexOf(STORE_MARK);
+  if (i < 0) return null;
+  return { store: norm.slice(0, i + STORE_MARK.length - 1), rel: norm.slice(i + STORE_MARK.length), abs: norm };
+}
+// what a file tool adds (lines not already there, trimmed) and the file as it will be after the call
+function change(payload, abs) {
+  const tool = payload.tool_name || "";
+  const ti = payload.tool_input || {};
+  let before = "";
+  try { before = fs.readFileSync(abs, "utf8"); } catch { before = ""; }
+  let added = "", removed = "", after = before;
+  const swap = (text, o, n, all) => (all ? text.split(o).join(n) : text.replace(o, () => n));
+  if (tool === "Write") { added = String(ti.content || ""); removed = before; after = added; }
+  else if (tool === "Edit") { added = String(ti.new_string || ""); removed = String(ti.old_string || ""); after = swap(before, removed, added, ti.replace_all); }
+  else if (tool === "MultiEdit") {
+    for (const x of ti.edits || []) {
+      added += "\n" + (x.new_string || ""); removed += "\n" + (x.old_string || "");
+      after = swap(after, String(x.old_string || ""), String(x.new_string || ""), x.replace_all);
+    }
+  } else return null;
+  const seen = new Map();
+  for (const l of removed.split(/\r?\n/)) { const k = l.trim(); if (k) seen.set(k, (seen.get(k) || 0) + 1); }
+  const newLines = [];
+  for (const l of added.split(/\r?\n/)) {
+    const k = l.trim();
+    if (!k) continue;
+    const n = seen.get(k) || 0;
+    if (n > 0) seen.set(k, n - 1); else newLines.push(k);
+  }
+  return { tool, before, after, newLines };
+}
+function headerOf(text) { const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text || ""); return m ? m[1] : ""; }
+function fieldOf(head, key) { const m = new RegExp("^" + key + ":\\s*(.*)$", "m").exec(head); return m ? m[1].trim() : ""; }
+function listOf(v) { return String(v || "").replace(/^\[|\]$/g, "").split(/[,·]/).map((x) => x.trim()).filter(Boolean); }
+// the version the header file had at the last commit; null when git cannot tell (no repo, a new file) - then not judged
+function headVersion(file) {
+  try {
+    const r = require("node:child_process").spawnSync("git", ["show", "HEAD:./" + path.basename(file)],
+      { cwd: path.dirname(file), encoding: "utf8", windowsHide: true, timeout: 5000 });
+    if (r.status !== 0) return null;
+    const v = Number(fieldOf(headerOf(r.stdout), "version"));
+    return Number.isFinite(v) ? v : null;
+  } catch { return null; }
+}
+function implementsOf(text) {
+  const lines = String(text || "").split(/\r?\n/);
+  const at = lines.findIndex((l) => /^##\s+Implements\b/.test(l));
+  if (at < 0) return [];
+  const out = [];
+  for (const l of lines.slice(at + 1)) {
+    if (/^##?\s/.test(l)) break;
+    const m = /^-\s*\x60([^\x60]+)\x60/.exec(l);
+    if (m) out.push(m[1]);
+  }
+  return out;
+}
 function check(payload, root, policy) {
   try {
-    const e = edit(payload, root);
-    if (!e || e.tool !== "Write") return null;
-    const m = SHELF.exec(e.rel);
+    const ti = payload.tool_input || {};
+    const file = ti.file_path || ti.notebook_path || "";
+    if (!file) return null;
+    const s = inStore(root, file);
+    if (!s) return null;
+    const m = SHELF.exec(s.rel);
     if (!m) return null;
-    const store = path.join(root, "docs_template", "_Store");
-    if (fs.existsSync(path.join(store, m[1], m[2]))) return null;            // an existing part: amended, not proposed
-    const head = /^---\r?\n([\s\S]*?)\r?\n---/.exec(e.added);
-    const checked = head ? (/^checked:\s*\[?([^\]\n]*)\]?/m.exec(head[1]) || [])[1] : "";
-    const all = parts(store);
-    const names = String(checked || "").split(/[,·]/).map((x) => x.trim()).filter(Boolean);
+    const c = change(payload, s.abs);
+    if (!c) return null;
+    const partDir = path.join(s.store, m[1], m[2]);
+    const all = parts(s.store);
     const known = new Set(all.map((p) => p.name));
-    if (names.length && names.every((n) => known.has(n))) return null;
-    const mine = new Set(tokens(m[2] + " " + e.added.slice(0, 2000)));
-    const near = all.map((p) => ({ p: p.name, n: [...p.words].filter((w) => mine.has(w)).length })).filter((x) => x.n > 0)
-      .sort((a, b) => b.n - a.n).slice(0, 5).map((x) => x.p);
+    if (!fs.existsSync(partDir)) {
+      if (c.tool !== "Write") return null;
+      const names = listOf(fieldOf(headerOf(c.after), "checked"));
+      if (names.length && names.every((n) => known.has(n))) return null;
+      const mine = new Set(tokens(m[2] + " " + c.after.slice(0, 2000)));
+      const near = all.map((p) => ({ p: p.name, n: [...p.words].filter((w) => mine.has(w)).length })).filter((x) => x.n > 0)
+        .sort((a, b) => b.n - a.n).slice(0, 5).map((x) => x.p);
+      const unknown = names.filter((n) => !known.has(n));
+      return blocked(root, policy, "02-85", "a NEW part " + m[2] + " is being created. First search the store: the same thing already " +
+        "there => add nothing; it fits an existing part => amend that part; only otherwise a new part. Say what was weighed: a header " +
+        "line checked: [<existing part>, ...] naming the parts you compared it with (they must exist), and in the text why it does " +
+        "not fit them." + (unknown.length ? " Not in the store: " + unknown.join(", ") + "." : "") +
+        (near.length ? " Closest now: " + near.join(", ") + "." : ""));
+    }
+    // an existing part that is given a NEW law: a 🔴 line in its header file, or a new gate key in its gate.json
+    const mainFile = path.join(partDir, m[2] + ".md").replace(/\\/g, "/");
+    const isMain = s.abs === mainFile;
+    const isGate = m[3] === "gate.json";
+    let adds = false;
+    if (isMain) adds = c.newLines.some((l) => l.includes("\u{1F534}"));
+    else if (isGate) adds = GATE_KEYS.some((k) => { const re = new RegExp('"' + k + '"\\s*:'); return re.test(c.after) && !re.test(c.before); });
+    if (!adds) return null;
+    let mainText = c.after;
+    if (!isMain) { try { mainText = fs.readFileSync(mainFile, "utf8"); } catch { mainText = ""; } }
+    const head = headerOf(mainText);
+    const missing = [];
+    const names = listOf(fieldOf(head, "checked")).filter((n) => n !== m[2]);
     const unknown = names.filter((n) => !known.has(n));
-    return blocked(root, policy, "02-85", "a NEW part " + m[2] + " is being created. First search the store: the same thing already " +
-      "there => add nothing; it fits an existing part => amend that part; only otherwise a new part. Say what was weighed: a header " +
-      "line checked: [<existing part>, ...] naming the parts you compared it with (they must exist), and in the text why it does " +
-      "not fit them." + (unknown.length ? " Not in the store: " + unknown.join(", ") + "." : "") +
-      (near.length ? " Closest now: " + near.join(", ") + "." : ""));
+    if (!names.length || unknown.length) missing.push("a header line checked: [<laws and skills weighed>] naming existing parts" +
+      (unknown.length ? " (not in the store: " + unknown.join(", ") + ")" : ""));
+    const hv = headVersion(mainFile);
+    const v = Number(fieldOf(head, "version"));
+    if (hv !== null && !(v > hv)) missing.push("version above " + hv + " (the last commit)");
+    if (m[1] === "03_SKILLS" && fieldOf(head, "frame") !== "true" && !implementsOf(mainText).length)
+      missing.push("## Implements naming the law or constitution frame this skill carries out (none holds it => propose it in a law)");
+    if (!missing.length) return null;
+    return blocked(root, policy, "02-85", "this adds a law to the existing part " + m[2] + " (" + (isGate ? "a new gate in gate.json" :
+      "a new \u{1F534} line") + "). First search the store's laws and the skills tied to it: the same thing already there => add " +
+      "nothing; a law already holds it => point at that law; otherwise propose it in the law. Then, in the part: " + missing.join(" · ") + ".");
   } catch { return null; }
 }
 module.exports = { check };

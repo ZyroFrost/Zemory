@@ -2,7 +2,9 @@
   "hook": "hook.cjs",
   "match": {
     "tool": [
-      "Write"
+      "Write",
+      "Edit",
+      "MultiEdit"
     ]
   },
   "prompt": {
@@ -48,6 +50,83 @@
     {
       "note": "a request to add a rule",
       "prompt": "thêm luật không sửa proc nguồn"
+    },
+    {
+      "note": "a new law line in an existing skill that names nothing it was weighed against",
+      "files": {
+        "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md": "---\nid: Rule_10\n---\n# Rule_Gate_10_DestructiveOps Destructive operations\n",
+        "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md": "---\nid: Skill_PBI_Demo\nname: pbi-demo\nversion: 2\n---\n# demo\n\n- step one\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md",
+        "old_string": "- step one",
+        "new_string": "- step one\n- 🔴 **Every box offers Select all.**"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a new gate key in the gate.json of an existing skill that names nothing it was weighed against",
+      "files": {
+        "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md": "---\nid: Rule_10\n---\n# Rule_Gate_10_DestructiveOps Destructive operations\n",
+        "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md": "---\nid: Skill_PBI_Demo\nname: pbi-demo\nversion: 2\n---\n# demo\n\n- step one\n",
+        "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/gate.json": "{}\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/gate.json",
+        "old_string": "{}",
+        "new_string": "{\"prompt\": {\"kind\": \"k\", \"re\": \"x\", \"text\": \"y\"}}"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a new law line in a skill that carries out a law but names nothing it was weighed against",
+      "files": {
+        "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md": "---\nid: Rule_10\n---\n# Rule_Gate_10_DestructiveOps Destructive operations\n",
+        "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md": "---\nid: Skill_PBI_Demo\nname: pbi-demo\nversion: 2\n---\n# demo\n\n- step one\n\n## Implements\n- `Rule_Gate_10_DestructiveOps`\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md",
+        "old_string": "- step one",
+        "new_string": "- step one\n- 🔴 **Every box offers Select all.**"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a new law line in a skill that was weighed but names no law it carries out",
+      "files": {
+        "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md": "---\nid: Rule_10\n---\n# Rule_Gate_10_DestructiveOps Destructive operations\n",
+        "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md": "---\nid: Skill_PBI_Demo\nname: pbi-demo\nversion: 2\nchecked: [Rule_Gate_10_DestructiveOps]\n---\n# demo\n\n- step one\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md",
+        "old_string": "- step one",
+        "new_string": "- step one\n- 🔴 **Every box offers Select all.**"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
     }
   ],
   "pass": [
@@ -88,6 +167,44 @@
     {
       "note": "an unrelated request",
       "prompt": "sửa report doanh thu tháng"
+    },
+    {
+      "note": "a new law line in a skill that names what it was weighed against and the law it carries out",
+      "files": {
+        "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md": "---\nid: Rule_10\n---\n# Rule_Gate_10_DestructiveOps Destructive operations\n",
+        "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md": "---\nid: Skill_PBI_Demo\nname: pbi-demo\nversion: 2\nchecked: [Rule_Gate_10_DestructiveOps]\n---\n# demo\n\n- step one\n\n## Implements\n- `Rule_Gate_10_DestructiveOps`\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md",
+        "old_string": "- step one",
+        "new_string": "- step one\n- 🔴 **Every box offers Select all.**"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a plain line in an existing skill (no new law)",
+      "files": {
+        "docs_template/_Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md": "---\nid: Rule_10\n---\n# Rule_Gate_10_DestructiveOps Destructive operations\n",
+        "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md": "---\nid: Skill_PBI_Demo\nname: pbi-demo\nversion: 2\n---\n# demo\n\n- step one\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs_template/_Store/03_SKILLS/Skill_PBI_Demo/Skill_PBI_Demo.md",
+        "old_string": "- step one",
+        "new_string": "- step one\n- step two"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
     }
   ]
 }
