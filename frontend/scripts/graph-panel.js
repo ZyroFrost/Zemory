@@ -80,5 +80,6 @@
     try{var ss=localStorage.getItem('zemory.pgspacing');if(ss&&zid('gSpacing')){zid('gSpacing').value=ss;var lv=zid('gSpacingVal');if(lv)lv.textContent=parseFloat(ss).toFixed(1)+'×';}}catch(_){}
     if(!force&&gLoadedRoot===root&&gData){paintProjGraph(gData);gPaintTree(gTreeCache);return;}
     box.innerHTML='<div class="muted" style="padding:20px">'+t('gp.building')+'</div>';
-    gLoadTree(root);gLoadTrend(root);
+    if(!force){gLevel='repo';gLevelSlot='';}
+    gLoadTree(root);gLoadTrend(root);gLoadWorkspace(root);
     zGet('/code-graph?root='+encodeURIComponent(root)).then(function(d){gLoadedRoot=root;paintProjGraph(d);}).catch(function(){box.innerHTML='<div class="muted" style="padding:20px">'+t('gp.buildErr')+'</div>';});}
