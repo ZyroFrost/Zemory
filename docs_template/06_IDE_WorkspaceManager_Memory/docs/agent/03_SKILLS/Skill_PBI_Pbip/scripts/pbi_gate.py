@@ -2972,6 +2972,62 @@ def check_own_background(d_def, fail):
                             % (os.path.basename(os.path.normpath(pdir)), n, v['visualType'], ascii(sel_name(d) or '')))
 
 
+MEASURE_PAD = 18      # px around the widest text of a measure column (the user's hand width 72.7 = bold '17,638M' 54.7 + 18)
+MEASURE_BALANCE = 4   # px, the measure columns of one matrix may differ by at most this much
+
+
+def check_measure_fit(report_dir, d_def, fail):
+    """measure-fit (a department repo 21/10, the user narrowed 'DT NQ' and '% Sell In / Sell Out' of a matrix by hand to ~72 px:
+    the long header wraps to two lines, the number and the % never do): in a matrix with a column field, the measure columns
+    that carry a fixed width are (1) wide enough for their own cell text, bold like the Total row - a lower bound from the
+    format ('999.99%' for a percentage, '9,999M' for a number; real values are longer, never shorter) and (2) of one width,
+    within MEASURE_BALANCE px. The long header wraps by itself; it is never a reason to widen the column. White / Red only.
+    Not measured here (needs the data): the exact widest cell - mix_builder.py --member-width reads it from the engine."""
+    fmt = {}
+    for mf in glob.glob(os.path.join(report_dir, '*.SemanticModel', 'definition', 'tables', '*.tmdl')):
+        s = open(mf, encoding='utf-8').read()
+        for m in re.finditer(r"(?ms)^\tmeasure\s+('(?:[^']|'')+'|[^\s=]+)\s*=(.*?)(?=^\tmeasure |\Z)", s):
+            fs = re.search(r'(?m)^\t\tformatString:\s*(.+?)\s*$', m.group(2))
+            fmt[m.group(1).strip("'").replace("''", "'")] = fs.group(1) if fs else ''
+    for f in glob.glob(os.path.join(d_def, 'pages', '*', 'visuals', '*', 'visual.json')):
+        try:
+            d = json.load(open(f, encoding='utf-8'))
+        except ValueError:
+            continue
+        v = d.get('visual', {})
+        if v.get('visualType') != 'pivotTable':
+            continue
+        qs = v.get('query', {}).get('queryState', {})
+        if not qs.get('Columns', {}).get('projections'):
+            continue
+        size, _bold = header_font(d)
+        widths = {}
+        for e in v.get('objects', {}).get('columnWidth', []):
+            md = e.get('selector', {}).get('metadata')
+            val = lit(e.get('properties', {}).get('value', {}))
+            if md and val:
+                widths[md] = float(val.rstrip('D'))
+        mine = {}
+        for p in qs.get('Values', {}).get('projections', []):
+            m = p.get('field', {}).get('Measure', {}).get('Property')
+            if m and p.get('queryRef') in widths:
+                mine[p['queryRef']] = (m, widths[p['queryRef']])
+        if not mine:
+            continue
+        where = "matrix %s" % ascii(sel_name(d) or d.get('name'))
+        for q, (m, w) in mine.items():
+            f_ = fmt.get(m, '')
+            worst = '999.99%' if '%' in f_ else '9,999M'
+            need = math.ceil(w_text(worst, size, True, False)) + MEASURE_PAD
+            if w < need:
+                fail.append("%s: measure column %s is %dpx, its own cells need >= %dpx ('%s' bold + %d) - a number or a %% "
+                            "never wraps (measure-fit)" % (where, ascii(m), w, need, worst, MEASURE_PAD))
+        ws = [w for _m, w in mine.values()]
+        if len(ws) > 1 and max(ws) - min(ws) > MEASURE_BALANCE:
+            fail.append("%s: measure columns are %s px - one width for all of them, within %d px; the long header wraps "
+                        "to two lines instead (measure-fit)" % (where, ' / '.join('%d' % w for w in sorted(ws)), MEASURE_BALANCE))
+
+
 def check_user_save(report_dir, fail):
     """user-save (a department repo 21/10: a Save the user made must never be lost): files of the report changed on disk and not in git are
     a Desktop Save of the user (or an agent edit not yet checkpointed). Before any agent write they go into the index
@@ -5284,6 +5340,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
     check_bridge_bypass(report_dir, fail)
     if not KEEP_OLD_DESIGN:
         check_own_background(d_def, fail)
+        check_measure_fit(report_dir, d_def, fail)
         check_kimball16(d_def, fail)
         check_column_names(d_def, fail)
         check_measure_names(d_def, fail)
