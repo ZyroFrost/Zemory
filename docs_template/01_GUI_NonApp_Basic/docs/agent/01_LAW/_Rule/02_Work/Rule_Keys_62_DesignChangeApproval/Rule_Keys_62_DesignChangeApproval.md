@@ -2,10 +2,10 @@
 id: Rule_62
 aka: 02-62
 name: design-change-approval
-version: 13
+version: 14
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval @v13 #95d288af177f
+from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval @v14 #e022650f2ab9
 ---
 # Rule_Keys_62_DesignChangeApproval — Changing the look of something others use: show it first
 
@@ -63,4 +63,5 @@ cần duyệt.
 ## Links · Liên kết
 - Implements · Thi hành: `Skill_Dev_AppDesign` — the app design standard · chuẩn thiết kế app
 - Implements · Thi hành: `Skill_PBI_Base` — the report design standard · chuẩn thiết kế báo cáo
+- Implements · Thi hành: `Skill_PBI_White` — the White design standard a report keeps once approved · chuẩn thiết kế White report giữ sau khi duyệt
 - Related · Liên quan: `Rule_Gate_63_SkillTrigger` — a design skill only suggests · skill thiết kế chỉ gợi ý

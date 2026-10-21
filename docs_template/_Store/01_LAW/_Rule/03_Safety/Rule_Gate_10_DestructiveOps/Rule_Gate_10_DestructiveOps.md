@@ -2,7 +2,7 @@
 id: Rule_10
 aka: 02-10
 name: destructive-ops
-version: 7
+version: 8
 kind: action
 code: 03_Safety
 ---
@@ -23,7 +23,7 @@ approval before doing it. Original inputs received from outside are only read, n
 1. Overwriting is deleting too: adding a feature ⇒ extend the old one, do not replace it; replace only when the request says so.
 2. Before deleting or overwriting ⇒ name the target and the reason, wait for approval, then do it; never do it and report after.
 3. Something unused or redundant ⇒ propose it; never delete it on your own. Adding · extending needs no approval; deleting ·
-   narrowing always does.
+   narrowing always does. Files the agent made to work (scratch, `Rule_Gate_04_ScratchFiles`) are not that: it deletes them itself.
 4. An original input ⇒ read-only: no editing, overwriting or deleting; clean a copy instead. A lost input is gone for good and has
    to be asked for again. Where originals and intermediate copies live: the slots of `02_STRUCTURE`.
 5. Retiring a law ⇒ keep its number and mark it *retired*.
@@ -38,7 +38,10 @@ approval before doing it. Original inputs received from outside are only read, n
 
 ## Check
 - The guard blocks a delete command in the repo (`rm` · `del` · `Remove-Item` · `git rm` · a delete inside a script) and an edit
-  that removes a law number, until the flag `.allow-delete` exists; temporary folders are exempt.
+  that removes a law number, until the flag `.allow-delete` exists. Exempt with no flag: the agent's own scratch - the session's
+  scratch folder and any path with a `_scratch_*` segment, recursive and globs too - and other targets in a temp folder. The
+  target is read the way the shell reads it: a `cd` before it, quotes glued to a word, `$TEMP` / `$env:TEMP`, a variable set in
+  the command, a `Get-ChildItem -Filter` piped into `Remove-Item $_`. A target that is not scratch on the same line still asks.
 - Original inputs: the marker key `protected` (globs, for example `data/*/01_raw`).
 
 ## Luật là gì
@@ -55,6 +58,7 @@ chỉ được đọc, không bao giờ bị sửa.
 1. Ghi đè cũng là xoá: thêm chức năng ⇒ mở rộng cái cũ, không thay cái cũ; chỉ thay khi yêu cầu nói rõ.
 2. Trước khi xoá hoặc ghi đè ⇒ nêu đối tượng và lý do, chờ chấp thuận rồi mới làm; không làm rồi báo sau.
 3. Thứ dư thừa hoặc không còn dùng ⇒ đề xuất; không tự xoá. Bổ sung · mở rộng không cần xác nhận; xoá · thu hẹp luôn cần.
+   File agent tạo ra để làm việc (nháp, `Rule_Gate_04_ScratchFiles`) không thuộc loại này: agent tự xoá.
 4. Đầu vào gốc ⇒ chỉ đọc: không sửa, không ghi đè, không xoá; làm sạch trên bản chép. Mất đầu vào là mất hẳn, phải xin lại bên
    gửi. Chỗ đặt đầu vào gốc và bản trung gian: các slot của `02_STRUCTURE`.
 5. Bãi bỏ một luật ⇒ giữ số, ghi *bãi bỏ*.
@@ -68,7 +72,10 @@ chỉ được đọc, không bao giờ bị sửa.
 
 ## Máy kiểm
 - Guard chặn lệnh xoá file trong repo (`rm` · `del` · `Remove-Item` · `git rm` · xoá trong script) và lần sửa làm mất số luật, khi
-  chưa có cờ `.allow-delete`; thư mục tạm được miễn.
+  chưa có cờ `.allow-delete`. Miễn, không cần cờ: nháp của chính agent — thư mục nháp của phiên và mọi đường có một đoạn
+  `_scratch_*`, kể cả xoá đệ quy và mẫu `*` — cùng đích khác nằm trong thư mục tạm. Đích được đọc như shell đọc: `cd` đứng trước,
+  dấu nháy dính vào chữ, `$TEMP` / `$env:TEMP`, biến gán trong cùng lệnh, `Get-ChildItem -Filter` nối sang `Remove-Item $_`. Một
+  đích không phải nháp trên cùng dòng vẫn phải hỏi.
 - Đầu vào gốc: khoá `protected` của marker (glob, ví dụ `data/*/01_raw`).
 
 ## Links · Liên kết

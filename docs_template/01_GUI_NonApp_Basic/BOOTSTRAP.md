@@ -132,12 +132,12 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 97 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_11_VerifyClaims/gate.json` | 43 |
 | 98 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_22_FailLoud/Rule_Keys_22_FailLoud.md` | 54 |
 | 99 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_22_FailLoud/gate.json` | 19 |
-| 100 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval/Rule_Keys_62_DesignChangeApproval.md` | 66 |
+| 100 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval/Rule_Keys_62_DesignChangeApproval.md` | 67 |
 | 101 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval/gate.json` | 20 |
 | 102 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_04_ScratchFiles/Rule_Gate_04_ScratchFiles.md` | 78 |
 | 103 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_04_ScratchFiles/gate.json` | 179 |
 | 104 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_04_ScratchFiles/hook.cjs` | 171 |
-| 105 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md` | 77 |
+| 105 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md` | 84 |
 | 106 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/gate.json` | 21 |
 | 107 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/Rule_Gate_21_WhatEntersGit.md` | 86 |
 | 108 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/gate.json` | 74 |
