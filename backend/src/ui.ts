@@ -27,7 +27,7 @@ import { cacheDue, readUpdateCache } from "./update/remote-version.js";
 import { npmInvocation } from "./platform/npm.js";
 import { generateGuards } from "./docs/guard-gen.js";
 import { repoKit } from "./docs/kit-apply.js";
-import { kitSync } from "./docs/kit-sync.js";
+import { kitBehind, kitSync } from "./docs/kit-sync.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { WEB_PLATFORMS, accountsOf, scanWeb, scanWebPlatforms, showLinkedPage } from "./memory/scanweb.js";
@@ -4191,6 +4191,18 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
           // Công tắc "kiểm repo khác dùng chuẩn" tắt ⇒ không đo vòng repo, chip chỉ còn bản zemory.
           for (const proj of getRepoStdCheck() ? listKnownProjects() : []) {
             if (!existsSync(proj.root)) continue;
+            // A kit repo (folder harness) is measured the way `zemory sync --check` measures it: the parts whose copy is not
+            // current, plus a stale guard. The file-harness diff below compares it with the OLD single files and reported the
+            // same 21 missing / 15 drift for every folder repo, synced or not.
+            const kb = kitBehind(proj.root);
+            if (kb) {
+              const { missing, drift, manual } = kb, guardStale = kb.guardStale.length;
+              if (missing || drift || manual || guardStale) {
+                stale.push({ root: proj.root, name: proj.name, missing, guardStale, drift, manual, locked: !missing && !drift && !guardStale && manual > 0 });
+              }
+              continue;
+            }
+            if (repoKit(proj.root)) continue; // a kit repo whose dry assembly failed: the file-harness diff would report it falsely
             const r = syncCheck(proj.root);
             if (!r.connected) continue;
             // Lệch CHỮ (plan/26 bước ④): file CÓ SẴN nhưng đứng ở bản chuẩn cũ. Trước đây hộp này chỉ đếm file
