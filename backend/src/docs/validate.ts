@@ -24,21 +24,18 @@ export interface ValidateReport {
   paths?: PathsReport;
 }
 
-/** Plan size caps (02_RULES §Tài liệu — "plan phải gọn"). One message per breach; empty = within the caps. */
-export function planSizeIssues(planDir: string, specMax: number, planMax: number): string[] {
+/** Plan size cap per spec (02-37, "plans stay small"): a spec is read in full whenever it is edited. There is no cap on
+ *  the whole folder: no session reads docs/plan whole — a spec is looked up with `plan search` or opened from the
+ *  plan/NN §section a gate message names (user 2026-10-21, dropping the 5,000-line total). Empty = within the cap. */
+export function planSizeIssues(planDir: string, specMax: number): string[] {
   if (!existsSync(planDir)) return [];
-  const out: string[] = [];
-  let total = 0;
   const big: string[] = [];
   for (const f of readdirSync(planDir).filter((x) => x.toLowerCase().endsWith(".md")).sort()) {
     const txt = readFileSync(join(planDir, f), "utf8");
     const n = txt.split("\n").length - (txt.endsWith("\n") ? 1 : 0); // `wc -l` count — the number a reader sees
-    total += n;
     if (n > specMax) big.push(`${f} (${n})`);
   }
-  if (big.length) out.push(`plan: ${big.length} spec(s) over ${specMax} lines: ${big.join(" · ")} — keep the CURRENT direction + open points; history goes to 06_CHANGES`);
-  if (total > planMax) out.push(`plan: docs/plan is ${total} lines (> ${planMax}) — every session must read it in full; trim it`);
-  return out;
+  return big.length ? [`plan: ${big.length} spec(s) over ${specMax} lines: ${big.join(" · ")} — keep the CURRENT direction + open points; history goes to 06_CHANGES`] : [];
 }
 
 /** `paths: false` skips the dead-path scan — the periodic repo sweep has its own paths sweep and must stay cheap. */
@@ -81,9 +78,9 @@ export function validate(ctx: Context, opts: { paths?: boolean } = {}): Validate
     });
   }
   // Spec cap 1000 (user 2026-10-08, "vậy chắc trần cho 1k"): trimmed with no idea lost, plan/24 still holds ~64k characters
-  // = ~700 lines at the normal wrap; 300 then 500 were experiments. Total cap 5000 (user 2026-10-08, "ok 5k"): zemory's
-  // 23 specs hold 4,425 lines after the same trim.
-  for (const msg of planSizeIssues(join(agentDir, "..", "plan"), ctx.config.thresholds?.plan_spec_lines ?? 1000, ctx.config.thresholds?.plan_total_lines ?? 5000)) {
+  // = ~700 lines at the normal wrap; 300 then 500 were experiments. The total cap (5000, 2026-10-08) was dropped 2026-10-21:
+  // nothing reads the folder whole any more.
+  for (const msg of planSizeIssues(join(agentDir, "..", "plan"), ctx.config.thresholds?.plan_spec_lines ?? 1000)) {
     issues.push({ level: "warn", msg });
   }
 

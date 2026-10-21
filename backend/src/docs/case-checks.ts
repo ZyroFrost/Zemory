@@ -9,7 +9,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { basename, extname, join, relative } from "node:path";
+import { basename, extname, join, relative, resolve } from "node:path";
 import { archiveDirOf, harnessPathsAt, readMarker } from "../core/config.js";
 import { findRegionRepo, repoRole } from "./region-links.js";
 import { manifestPaths, manifests } from "./stignore-gen.js";
@@ -18,7 +18,32 @@ import { installsOf, isFolderHarness, listParts, listStructures, shelfDir } from
 
 const rel = (root: string, abs: string): string => relative(root, abs).replace(/\\/g, "/");
 
-function readText(p: string): string | null {
+// One conform pass reads each text file once, however many checks scan it: the scans of the repo's text (own text,
+// shared-slot readers, ledgers) each read every file again (measured 2026-10-21: 92 + 85 s of a 465 s region sync). Conform
+// writes nothing, so inside `withTextCache` a file read once stays read.
+let textCache: Map<string, string | null> | null = null;
+
+export function withTextCache<T>(fn: () => T): T {
+  if (textCache) return fn();
+  textCache = new Map();
+  try {
+    return fn();
+  } finally {
+    textCache = null;
+  }
+}
+
+export function readText(p: string): string | null {
+  if (textCache) {
+    // one file reached by `a\b` and `a/b` is one entry
+    const k = resolve(p);
+    if (!textCache.has(k)) textCache.set(k, readTextFresh(p));
+    return textCache.get(k) ?? null;
+  }
+  return readTextFresh(p);
+}
+
+function readTextFresh(p: string): string | null {
   try {
     return readFileSync(p, "utf8");
   } catch {

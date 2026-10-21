@@ -33,7 +33,7 @@ import { viName, viPartName } from "./vi-name-judge.js";
 import { LEDGER, SHELF } from "./harness-names.js";
 import {
   binLauncherFindings, caseHeaderFindings, gitRemoteFindings, caseIndexFindings, deadFlagFindings, ledgerDuplicateHeadings, ledgerTitleFindings,
-  ownTextFiles, reportsIndexFindings, RETIRED_HARNESS_NAMES, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmDeployIgnoredFindings, vmTaskDataFindings,
+  ownTextFiles, withTextCache, reportsIndexFindings, RETIRED_HARNESS_NAMES, retiredNameFindings, sharedSlotFindings, supersededFactFindings, vmDeployIgnoredFindings, vmTaskDataFindings,
 } from "./case-checks.js";
 import { stateDirOf } from "./guard-gen.js";
 
@@ -122,6 +122,10 @@ export function foreignLayout(root: string): ForeignLayout | null {
 }
 
 export function conform(root: string): ConformReport {
+  return withTextCache(() => conformRun(root));
+}
+
+function conformRun(root: string): ConformReport {
   const g = buildCodeGraph(root);
   const std = buildStandardGraph(
     root,
