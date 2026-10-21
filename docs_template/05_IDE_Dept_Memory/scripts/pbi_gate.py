@@ -85,6 +85,7 @@ RULES = [
     ('file-name',   'folder <DEPT>_<num>_<FUNCTION>[-<Tier>]_<IP|DR>_<Legacy|Classic|White|Red> · file <DEPT>_<num>_<FUNCTION>[-<Tier>]_<Live|Scheduled>[_V<n>] (= Service name; same function as the folder; DR = Live, IP = Scheduled; _V<n> only when two builds share the number and the load mode; underscore between parts, hyphen joins words inside a part, function UPPER)'),
     ('storage-mode', 'IP = every warehouse table Import, DR = every one DirectQuery; a live connection to a Service model is IP'),
     ('dw-model',    'tables reading SQL: server uses the gateway string · no legacy source'),
+    ('header-color', "Classic: a table's hardcoded header backColor must trace to the same (page, visual) in Legacy with the same value - a page Legacy never had has no colour to borrow without saying so (pbi-gate.json color_borrowed)"),
     ('dw-only-tables', 'keep the warehouse Kimball structure: every Dim_/Fact_/Bridge_/Agg_ is the warehouse table of the same name (no self-made table; the report owns only #Measure · Parameter_* · @) and every relationship between warehouse tables matches a warehouse foreign key; selecting columns/rows is free - user 2026-10-10'),
     ('canvas',      'White: every visible page is 1280x720'),
     ('fillrule-bare', 'a FillRule gradient stop (min/mid/max color, nullColoringStrategy) is a BARE Literal - an expr wrapper kills Save/Publish'),
@@ -100,6 +101,8 @@ RULES = [
     ('matrix-scroll', 'White: a pivot whose COLUMNS spread over week/day/month must not overflow its frame (filter ~Recent 4 Weeks = 1)'),
     ('matrix-style', 'White: every matrix / table has ONE look - header bold white on #44546A, banded rows, bold totals on #E3E8EE, and every % column (by its FORMAT) coloured up #007A36 / down #C51E24 by its own measure (scripts/mix_palette.py --matrices)'),
     ('table-overflow', 'White: a table/pivot whose columns (header or typical value, the wider) add up to more than its frame scrolls sideways - widen the frame / move blocks; a truly long table goes to matrix_exempt with a reason (estimate)'),
+    ('stale-default', "White: a page's own slicers must not default to a FIXED value/range next to another defaulting to 'Current Year/Month/Week' - the intersection goes empty once the fixed one falls behind now, the page silently shows no data"),
+    ('subtotal-width', "a pivotTable with row subtotals has a fixed columnWidth on its outermost row column narrower than its own 'Grand Total' caption - wraps one letter per line"),
     ('param-groupby', 'a field-parameter table has relatedColumnDetails groupByColumn Parameter Fields on its display column - user 2026-10-14'),
     ('param-value', 'a slicer / bookmark selects only fields the field parameter really lists (NAMEOF) - user 2026-10-14'),
     ('title-font', 'every shown chart / table title is Segoe UI Semibold, not bold-off (same rule as a department repo 13/10) - on every visible page'),
@@ -813,6 +816,53 @@ def check_topn(vis, put):
             put(pg, "%s: title '%s' promises %s %s but no Top N filter limits it" % (nm, title, m.group(1), m.group(2)))
 
 
+def check_header_color(report_dir, pmeta, vis, fail):
+    """header-color (user 20/10, 02 Classic 'MCP Report for AM'): a Classic table's columnHeaders/rowHeaders backColor,
+    when it is a literal hex (not the theme default), must trace to the SAME (page, visual) in Legacy carrying the SAME
+    value. A page Legacy never had has nothing to justify an invented colour - 02's MCP page (no Legacy counterpart at
+    all, built fresh 19/09) quietly borrowed 03's financial-table blue '#136C99' with no page of its own behind it, and
+    no gate caught it: field-ref / fillrule-dead only catch a colour rule that DIED (points at nothing), never one that
+    was never grounded in the first place. Declare a deliberate cross-report borrow in config/pbi-gate.json
+    'color_borrowed': {"<folder>": {"<visual id>": "reason"}} (same shape as matrix_exempt) to silence this."""
+    folder = os.path.basename(os.path.normpath(report_dir))
+    if _kind(report_dir) != 'Classic':
+        return
+    fm = FOLDER_RX.match(folder)
+    if not fm:
+        return
+    leg = [x for x in glob.glob(os.path.join(os.path.dirname(os.path.normpath(report_dir)),
+                                             '%s_%s_%s_??_Legacy' % (fm.group(1), fm.group(2), fm.group(3))))
+           if FOLDER_RX.match(os.path.basename(x))]
+    ld = glob.glob(os.path.join(leg[0], '*.Report', 'definition')) if leg else []
+    if not ld:
+        return   # no Legacy .Report converted yet (12: .pbix only) - nothing to compare against, not a verdict either way
+    borrowed = gate_cfg().get('color_borrowed', {}).get(folder, {})
+
+    def lit_color(objs, key):
+        bc = (objs.get(key) or [{}])[0].get('properties', {}).get('backColor', {})
+        return bc.get('solid', {}).get('color', {}).get('expr', {}).get('Literal', {}).get('Value')
+
+    leg_cache = {}
+    for (pg, i), d in vis.items():
+        v = d.get('visual', {})
+        if v.get('visualType') not in ('pivotTable', 'tableEx') or pg not in pmeta:
+            continue
+        for key in ('columnHeaders', 'rowHeaders'):
+            own = lit_color(v.get('objects', {}), key)
+            if not own or d['name'] in borrowed:
+                continue
+            if (pg, d['name']) not in leg_cache:
+                lf = os.path.join(ld[0], 'pages', pg, 'visuals', d['name'], 'visual.json') if ld else None
+                leg_cache[(pg, d['name'])] = json.load(open(lf, encoding='utf-8')) if lf and os.path.exists(lf) else None
+            lv = leg_cache[(pg, d['name'])]
+            lval = lit_color(lv.get('visual', {}).get('objects', {}), key) if lv else None
+            if lval != own:
+                fail.append("page '%s' %s %s: %s backColor %s has no Legacy source (%s) - plain colour, or declare "
+                            "color_borrowed with a reason (header-color)"
+                            % (pmeta[pg]['displayName'], v['visualType'], sel_name(d) or i, key, own,
+                               'page/visual not in Legacy' if lv is None else 'Legacy uses %s' % (lval or 'nothing')))
+
+
 def check_fillrule_dead(vis, put):
     """fillrule-dead (2026-10-04): a colour scale (FillRule) whose selector names a field the table does not have shows
     NOTHING and Power BI says nothing. White carried 54 such entries: 33 lost by a rebinding that renamed the rule's Input
@@ -850,6 +900,12 @@ def check_field_refs(report_dir, d_def, fail):
     plain = re.compile(r'^(?:\w+\()?([^().\[\]]+\.[^()\[\]]+)\)?$')
     for f in glob.glob(os.path.join(d_def, 'pages', '*', 'visuals', '*', 'visual.json')):
         dead = set()
+        vj = json.load(open(f, encoding='utf-8-sig'))
+        # selector.metadata names a projection by its queryRef, and a queryRef is a label Desktop keeps from the field's first
+        # name ('#Measure.%' on the measure '% Target By Customer Type') - a ref equal to a queryRef of the visual's own query
+        # is bound, not dangling (a department repo 21/10: 20 such were reported on two White copies)
+        qrefs = {p.get('queryRef') for st in vj.get('visual', {}).get('query', {}).get('queryState', {}).values()
+                 for p in st.get('projections', []) if p.get('queryRef')}
 
         def walk(o, key=None):
             if isinstance(o, dict):
@@ -860,9 +916,9 @@ def check_field_refs(report_dir, d_def, fail):
                     walk(v, key)
             elif isinstance(o, str) and key in ('metadata', 'ExpressionName', 'queryRefs') and '.' in o:
                 m = plain.match(o)
-                if m and m.group(1) not in fields:
+                if m and m.group(1) not in fields and m.group(1) not in qrefs and o not in qrefs:
                     dead.add(o)
-        walk(json.load(open(f, encoding='utf-8-sig')))
+        walk(vj)
         if dead:
             fail.append('%s: %d field reference(s) outside the query point at nothing in the model (%s) - colour scale / '
                         'column format / expand state silently lost; rebind them to the model names (field-ref)'
@@ -2052,12 +2108,21 @@ ACRONYM_ORIGIN = dict(region_value(os.path.dirname(os.path.abspath(__file__)), '
 # upper-case words that are not acronyms: class labels, code / table names quoted in a sentence
 NOT_ACRONYM = {'STAR', 'HORSE', 'CHALLENGE', 'DOG', 'HIGH', 'LOW', 'PROFIT', 'DATA', 'WAREHOUSE', 'DB', 'Q1', 'Q2', 'Q3', 'Q4'}
 NOT_ACRONYM |= set(region_value(os.path.dirname(os.path.abspath(__file__)), 'not_acronyms', []))  # the region's own words
+# a department writes its own Glossary, so it declares its own acronyms beside the region's (pbi-gate.json 'acronyms':
+# {"origin": {"NQ": "Nhượng Quyền"}, "source": {"NQ": "[VN] ..."}, "not_acronyms": ["COMBO"]}) - a department repo 21/10:
+# its words (DT, NQ, CAM ...) are its own business, not the region's
+_REPO_ACR = gate_cfg().get('acronyms', {}) if isinstance(gate_cfg().get('acronyms'), dict) else {}
+ACRONYM_ORIGIN.update({k: v for k, v in (_REPO_ACR.get('origin') or {}).items() if k not in ACRONYM_ORIGIN})
+NOT_ACRONYM |= set(_REPO_ACR.get('not_acronyms') or [])
 MIXED_ACRONYM = {'WoW', 'MoM', 'Ebitda', 'L4L', 'B2B', 'B2C'}
 
 
 def acronyms_in(s):
     out = set()
-    for tok in re.findall(r'[A-Za-z][A-Za-z0-9]*', s or ''):
+    # whole Unicode words: 'TÊN KHÁCH HÀNG' is three Vietnamese words, not the acronyms KH and NG (a department repo 21/10)
+    for tok in re.findall(r'[^\W_]+', s or ''):
+        if not tok.isascii() or not tok[0].isalpha():
+            continue
         if tok in MIXED_ACRONYM or (tok.isupper() and len(tok) > 1 and tok not in NOT_ACRONYM
                                     and sum(c.isalpha() for c in tok) > 1):
             out.add('EBITDA' if tok.lower() == 'ebitda' else tok)
@@ -2094,6 +2159,15 @@ def split_definitions(b):
     return out
 
 
+def reader_words(s):
+    """The words of a reader text the Glossary must name. Vietnamese text (it carries letters outside ASCII) is plain
+    language: only its acronyms count, read as whole Unicode words - the ASCII split cut 'Nhiều' into 'Nhi' + 'u' and
+    'TÊN KHÁCH HÀNG' into 'KH', 'NG' (a department repo 21/10)."""
+    if re.search(r'[^\x00-\x7f]', s or ''):
+        return [w for w in re.findall(r'[^\W\d_]+', s) if w.isascii() and ((w.isupper() and len(w) > 1) or w in TITLE_ACRO)]
+    return words_of(s)
+
+
 def check_glossary_cover(report_dir, pages, visible, vis, fail):
     texts = measure_text_values(report_dir)
     dd = glob.glob(os.path.join(report_dir, '*.Report', 'definition'))
@@ -2114,7 +2188,7 @@ def check_glossary_cover(report_dir, pages, visible, vis, fail):
                 continue
             if vt == 'shape' and d.get('parentGroupName') in panels and d['position']['height'] == 20:
                 lab = (lit(((v.get('visualContainerObjects', {}).get('title') or [{}])[0].get('properties', {})).get('text', {})) or '').strip("'")
-                for w in words_of(lab):                 # the label over a slicer is what the reader reads
+                for w in reader_words(lab):             # the label over a slicer is what the reader reads
                     if not common_word(w):
                         seen.setdefault(w, lab)
                 continue
@@ -2140,7 +2214,7 @@ def check_glossary_cover(report_dir, pages, visible, vis, fail):
                     ms = p_.get('field', {}).get('Measure', {}).get('Property')
                     where += sorted(texts.get(ms, ()))
             for s in where:
-                for w in words_of(s):
+                for w in reader_words(s):
                     if not common_word(w):
                         seen.setdefault(w, s)
         miss = []
@@ -2788,6 +2862,42 @@ def check_select_all(d_def, fail):
             fail.append("page %s: slicer %s (%s) has no 'Select all' row or is single-choice - drop singleSelect / "
                         "strictSingleSelect, set objects.selection selectAllCheckboxEnabled true; only a field parameter stays "
                         "single (select-all)" % (page, d.get('name'), '+'.join(r for r in refs if r) or '?'))
+
+
+def check_stale_default_filter(d_def, fail):
+    """stale-default (a department repo 21/10, 01 White Overview): a slicer's own default selection (objects.general[].
+    properties.filter) that is a FIXED date range (a Comparison against a datetime literal) sitting on the same page as
+    another slicer whose default selects a dynamic 'Current Year' / 'Current Month' / 'Current Week' label intersects to
+    zero rows once the fixed range falls behind "now" - every visual on the page goes blank with no error anywhere.
+    Measured case: a DateKey slicer carried over from a merged page defaulted to 2025-03-01..2025-04-01 while the page's
+    own Year/Month slicers defaulted to Current Year/Current Month (2026-10) - found only by querying the live engine."""
+    CURRENT_LABELS = ('Current Year', 'Current Month', 'Current Week')
+    for pg_dir in glob.glob(os.path.join(d_def, 'pages', '*', '')):
+        pid = os.path.basename(os.path.normpath(pg_dir))
+        fixed, current = [], []
+        for f in glob.glob(os.path.join(pg_dir, 'visuals', '*', 'visual.json')):
+            try:
+                d = json.load(open(f, encoding='utf-8'))
+            except ValueError:
+                continue
+            v = d.get('visual', {})
+            if v.get('visualType') != 'slicer':
+                continue
+            gf = next((e['properties']['filter'] for e in v.get('objects', {}).get('general', [])
+                      if 'filter' in e.get('properties', {})), None)
+            if not gf:
+                continue
+            s = json.dumps(gf, ensure_ascii=False)
+            name = sel_name(d) or d.get('name')
+            if '"Comparison"' in s and re.search(r"datetime'\d{4}-\d{2}-\d{2}", s):
+                fixed.append(name)
+            elif any("'%s'" % lab in s for lab in CURRENT_LABELS):
+                current.append(name)
+        if fixed and current:
+            fail.append("page %s: slicer(s) %s default to a FIXED date range while slicer(s) %s default to 'Current ...' "
+                        "- once the fixed range falls behind now, every visual on the page intersects to zero rows and "
+                        "shows no error (stale-default); drop the fixed-range default or the slicer itself"
+                        % (pid, '+'.join(fixed), '+'.join(current)))
 
 
 def check_dead_visual(d_def, fail):
@@ -3555,6 +3665,11 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         if v_.get('visualType') in ('pivotTable', 'tableEx'):
             if matrix_fitted(d):
                 continue
+            ex_hw = gate_cfg().get('matrix_exempt', {}).get(folder, {})
+            why_hw = ex_hw.get(i) or ex_hw.get(str(sel_name(d) or ''))
+            if why_hw:
+                MATRIX_WARN.append("table %s exempt from header-wrap: %s" % (sel_name(d) or i, why_hw))
+                continue
             ch_ = [e.get('properties', {}) for e in v_.get('objects', {}).get('columnHeaders', []) if 'selector' not in e]
             grow = any(lit(e.get('columnAdjustment', {})) == 'growToFit' and lit(e.get('autoSizeColumnWidth', {})) != 'false' for e in ch_)
             plan = column_plan(d)
@@ -3666,6 +3781,39 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         fail.append("page '%s' table %s WILL SCROLL SIDEWAYS: columns ~%dpx (%s) > frame %dpx - widen the frame or "
                     "move blocks so it fits; only a truly long table may scroll (matrix_exempt + reason)"
                     % (pages[pg]['displayName'], sel_name(d) or i, est[0], '+'.join(map(str, est[2])), est[1]))
+    # subtotal-width (a department repo 21/10, 01 White Dayofweek): a pivotTable with row subtotals enabled renders the
+    # caption 'Grand Total' on its OUTERMOST row-header column; a fixed columnWidth narrower than that text wraps it
+    # one letter per line (Desktop has no word to break on - a whole-word wrap needs a word, 'Grand Total' is two).
+    # Measured: Dim_Store.Total columnWidth 45px while 'Grand Total' bold needs ~94px - every letter of the caption
+    # stacked down the column, found only by the user opening Desktop. autoSizeColumnWidth (Grow to fit) is unaffected:
+    # Desktop sizes that column itself.
+    GRAND_TOTAL = 'Grand Total'
+    for (pg, i), d in vis.items():
+        if pg not in visible or 'visualGroup' in d:
+            continue
+        v = d.get('visual', {})
+        if v.get('visualType') != 'pivotTable':
+            continue
+        st = {k: lit(x) for e in v.get('objects', {}).get('subTotals', []) if 'selector' not in e
+              for k, x in e.get('properties', {}).items()}
+        if st.get('rowSubtotals') != 'true':
+            continue
+        rows = v.get('query', {}).get('queryState', {}).get('Rows', {}).get('projections', [])
+        if not rows:
+            continue
+        qr = rows[0].get('queryRef')
+        w = next((lit(e['properties']['value']) for e in v.get('objects', {}).get('columnWidth', [])
+                  if e.get('selector', {}).get('metadata') == qr), None)
+        if w is None:
+            continue   # Grow to fit / auto-size - Desktop sizes it itself
+        size, _ = header_font(d)
+        bold = st.get('bold') == 'true' and st.get('applyToHeaders') == 'true'
+        need = w_text(GRAND_TOTAL, size, bold, False) + CELL_PAD
+        px = float(w.rstrip('D'))
+        if px < need:
+            fail.append("page '%s' matrix %s: row column %s is %dpx, too narrow for its own 'Grand Total' row - "
+                        "wraps one letter per line (subtotal-width); widen columnWidth to >= %dpx"
+                        % (pages[pg]['displayName'], sel_name(d) or i, qr, px, math.ceil(need)))
     # matrix-style (user 2026-09-30: "matrix đang quá xấu, ko có cả header bold, màu header, rồi màu condition - phải đưa
     # vào luật và skill áp dụng cho mọi matrix"): one look for every pivot / table (skill pbi-white 4l)
     def colr(x):
@@ -4227,6 +4375,20 @@ def row_long_px(report_dir, d, cur, cache=None):
     return out
 
 
+def dw_has_column(cur, cache, t, c):
+    """False when warehouse table dbo.t has no column c. A column the model builds itself (Dim_Date.QuarterLabel, a calculated
+    column) has nothing to read - not a failed read; sending it anyway left the whole row-wrap check NOT CHECKED (a department
+    repo 21/10). Unknown (the column list could not be read) counts as present, so the read itself reports the failure."""
+    tk = ('cols', t)
+    if tk not in cache:
+        try:
+            cache[tk] = {r[0].lower() for r in dw_rows(cur, "select COLUMN_NAME from INFORMATION_SCHEMA.COLUMNS where "
+                                                            "TABLE_SCHEMA='dbo' and TABLE_NAME='%s'" % t.replace("'", "''"))}
+        except Exception:
+            cache[tk] = None
+    return cache[tk] is None or c.lower() in cache[tk]
+
+
 def dw_longest(q, cur, cache):
     """The 30 longest warehouse values of field `q` ('Table.Column') over the dimension rows a fact of the model points
     at (cache['rel'] from row_long_px); None when the field has no fact link or no text."""
@@ -4235,6 +4397,8 @@ def dw_longest(q, cur, cache):
     if not links:
         return None
     key = (t, c)
+    if not dw_has_column(cur, cache, t, c):
+        return None
     if key not in cache:
         # a department repo 2026-10-19: the old query kept only the rows a fact points at, by a UNION over every linked
         # fact - on Fact_SaleDetail it ran 30+ minutes and its locks blocked the warehouse load jobs. The dimension alone
@@ -4307,7 +4471,7 @@ def dw_all_names(q, cur, cache, limit=5000):
     if key not in cache:
         t, c = q.split('.', 1)
         links = cache['rel'].get(t)
-        if not links:
+        if not links or not dw_has_column(cur, cache, t, c):
             cache[key] = None
             return None
         try:
@@ -5115,6 +5279,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
         if _kind(report_dir) == 'White':
             check_dead_visual(d_def, fail)
             check_select_all(d_def, fail)
+            check_stale_default_filter(d_def, fail)
     check_user_save(report_dir, fail)
     check_bridge_bypass(report_dir, fail)
     if not KEEP_OLD_DESIGN:
@@ -5179,6 +5344,7 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
         check_topn(vis, put)       # Legacy/Classic keep the old behaviour on purpose (the number match is their test)
     if _kind(report_dir) in ('White', 'Red'):
         check_fillrule_dead(vis, put)
+    check_header_color(report_dir, pmeta, vis, fail)
     enum_warn = []
     check_enums(vis, put, enum_warn)
 

@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_White
 name: pbi-white
-version: 13
+version: 14
 aka: pbi-mix
 replaces: [Skill_PBI_Mix]
 type: process
@@ -1153,7 +1153,9 @@ nghiệm thu**. Cổng `tab mac dinh` canh đúng việc đó.
   kèm nguồn; chữ chưa có nguồn công ty (TA, GA, ADS) ghi theo chuẩn ngành F&B và báo người dùng. ⚠ Cùng chữ khác nghĩa theo phòng:
   `FC` của báo cáo Tài chính là Franchise, của báo cáo vận hành là Forecast (`#FC = SUMX(Dim_Store, [#Fore Cast Sale Month])`) — nghĩa
   theo DAX của report. Cổng `acronym-origin`: viết tắt trong Glossary / trên trang chưa ghi nguyên gốc ⇒ đỏ; chữ chưa có trong
-  từ điển ⇒ đỏ, bắt tra trước.
+  từ điển ⇒ đỏ, bắt tra trước. Mỗi phòng tự viết Glossary của mình: chữ viết tắt riêng của phòng (NQ, DT, CAM…) khai ở khoá
+  `acronyms` của `config/pbi-gate.json` (`origin` + `source` ghi chỗ đã tra), không đợi từ điển chung của vùng. Câu tiếng Việt trên
+  trang là lời văn: cổng `glossary-cover` chỉ đòi định nghĩa chữ viết tắt trong đó, đọc theo chữ trọn vẹn (không cắt "Nhiều" thành "Nhi").
 - 🔴 **Một định nghĩa một dòng** *(14/10: "mỗi 1 định nghĩa phải xuống dòng chứ ko có dính chùm ntn")*: mỗi gạch đầu dòng
   của Glossary chứa đúng một câu dạng `X: …` / `X = …`; câu giải thích thêm đi liền sau định nghĩa của nó. Viết tắt đã nằm trong
   ngoặc thì không lồng ngoặc: `…, DSR (Daily Sales Report), …`. Cổng `glossary-one-def` (`pbi_gate.split_definitions`;

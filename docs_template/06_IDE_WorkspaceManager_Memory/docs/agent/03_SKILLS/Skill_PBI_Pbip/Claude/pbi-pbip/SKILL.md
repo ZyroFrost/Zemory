@@ -1,13 +1,13 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 22
+version: 26
 type: process
 aka: pbip
-checked: [Rule_Gate_84_PbipOpenCheck, Skill_PBI_White]
+checked: [Rule_Gate_84_PbipOpenCheck, Skill_PBI_White, Rule_Keys_87_NoSilentBlankPage]
 description: Edit a Power BI .pbip/PBIR report by writing its JSON directly - pages, visuals, bookmarks, buttons, icons, the coordinate grid - without breaking the file; the model diagram standard and the static gate. Use whenever a .pbip report is built or changed, a tab or bookmark is added, an icon or the grid is fixed, or Desktop reports issues. Vietnamese triggers - "sửa report", "sửa pbix", "dựng dashboard", "thêm tab", "gắn bookmark", "đổi icon", "căn lưới", "mở Desktop kiểm".
 installs: [scripts/pbi_gate.py, scripts/fix_literal_type.py, scripts/add_filter_set.py, scripts/pbi_diagram.py, scripts/diagram_order.js, scripts/package.json, scripts/rename_reports.py]
-from: _Store/03_SKILLS/Skill_PBI_Pbip @v22 #2acf2da3049c
+from: _Store/03_SKILLS/Skill_PBI_Pbip @v26 #fb95f320b409
 ---
 
 # Sửa `.pbip` mà không làm vỡ file
@@ -74,10 +74,16 @@ Giữ nguyên byte; nó là **mốc duy nhất** chứng minh bản `Classic` kh
   trong DB là `MCP`/`Thực hiện EBITDA`/`StoreEbitda`. Đổi theo DB là làm bản mô phỏng khác bản cũ ở đúng ba dòng
   người dùng nhìn thấy ⇒ GIỮ nhãn cũ.*
 - ⚠ **Bảng màu 15 mã và lưới 5 KHÔNG áp** cho loại này — nó mô phỏng bố cục cũ. Thấy chỗ xấu thì **BÁO**, đừng nắn.
+- 🔴 **Màu header bảng phải có nguồn Legacy:** `columnHeaders`/`rowHeaders` `backColor` viết cứng trên một bảng Classic phải
+  trùng đúng màu của cùng (trang, visual) bên Legacy. Trang Legacy không có thì không có màu để mượn — mượn có chủ ý (màu
+  người dùng chốt) thì khai `config/pbi-gate.json` › `color_borrowed` › `<thư mục>` › `<visual id>`: lý do. Cổng `header-color`
+  (chỉ chạy khi Legacy đã có `.Report`; Legacy mới là `.pbix` thì bỏ qua, không phán).
 - Quy trình dựng + bộ kiểm tĩnh + ba con số phải báo: skill **`pbi-classic`**.
 
 ### `White` — kho DW + khung nhận diện `Red` + bố cục `Legacy`
 Luật và quy trình: skill **`pbi-white`**.
+Bảng đã khai `matrix_exempt` (bảng dài cố ý, có lý do) được miễn cả cổng `header-wrap`, không chỉ `matrix-scroll` /
+`table-overflow`; công cụ nới cột của repo (`mix_builder --grow-to-fit`) phải bỏ qua chúng để giữ độ rộng cột người dùng đặt.
 
 ### `Red` — áp đủ chuẩn, không ngoại lệ
 model.md cấu trúc measure · design.md §3.4 hai vùng tiêu đề · design.md §1 và §3 màu, theme, khoảng cách, lưới 5 ·
@@ -333,6 +339,8 @@ cái cùng `x`. *Ca thật: bỏ khai 3/12 thành phần của dải ⇒ chuyể
 | Chữ title lệch giữa các trang mà `position` đo ra **giống nhau** | `padding` của shape khác nhau — nó không nằm trong `position` nên **cổng lưới 5 không soi** | chép NGUYÊN khối title của trang gốc; số + phép diff: chuẩn thiết kế của vùng §Dải title |
 | Trục thời gian hiện `202601` | lấy **cột khoá** (`YearMonth`) làm nhãn | cột nhãn `PeriodLabel` `MM/YYYY` + **`sortByColumn: YearMonth`**; quét CẢ report, không chỉ trang đang mở — chuẩn thiết kế của vùng §Nhãn trục thời gian |
 | Vừa thêm cột vào dim, chart **rỗng** + banner *"incomplete or no data"* | model **Import**: cột mới chưa có trong bộ nhớ đệm | bấm Refresh một lần. Đây là bước giữa ĐÚNG, đừng chẩn thành lỗi rồi sửa ngược |
+| Cả trang rỗng số sau khi gộp trang, refresh lại vẫn rỗng (21/10, 01 White Overview) | một slicer ẩn mang theo mặc định khoảng ngày CỐ ĐỊNH, giao nhau ra rỗng với slicer Year/Month mặc định 'Current Year'/'Current Month' | bỏ mặc định cố định hoặc bỏ cả slicer; cổng tĩnh `stale-default` (`check_stale_default_filter`, `Rule_Keys_87_NoSilentBlankPage`) chặn trước khi tới tay người đọc |
+| Một cột của matrix hiện từng CHỮ CÁI một xuống dòng (21/10, 01 White Dayofweek) | matrix có bật dòng tổng; cột hàng ngoài cùng đo theo tên dài nhất trong DW (45px), không đo lại theo chữ 'Grand Total' Desktop thêm cho dòng tổng (~94px) | nới `columnWidth` theo đúng chữ caption; cổng tĩnh `subtotal-width` (`Rule_Keys_88_MatrixCaptionFit`) chặn trước khi tới tay người đọc |
 
 ## 5. Hai panel bật/tắt — ai chứa gì
 
@@ -401,3 +409,5 @@ thân để thường; mỗi đoạn cách nhau một đoạn rỗng.
 
 ## Implements · Thi hành luật
 - `Rule_Gate_84_PbipOpenCheck` — the report gate and how to fix what it finds · cổng báo cáo và cách sửa lỗi nó tìm ra
+- `Rule_Keys_87_NoSilentBlankPage` — the stale-default check and how to fix it · phép kiểm stale-default và cách sửa
+- `Rule_Keys_88_MatrixCaptionFit` — the subtotal-width check and how to fix it · phép kiểm subtotal-width và cách sửa
