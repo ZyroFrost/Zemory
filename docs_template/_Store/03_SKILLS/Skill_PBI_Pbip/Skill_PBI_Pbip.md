@@ -1,11 +1,11 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 17
+version: 18
 type: process
 aka: pbip
 description: Edit a Power BI .pbip/PBIR report by writing its JSON directly - pages, visuals, bookmarks, buttons, icons, the coordinate grid - without breaking the file; the model diagram standard and the static gate. Use whenever a .pbip report is built or changed, a tab or bookmark is added, an icon or the grid is fixed, or Desktop reports issues. Vietnamese triggers - "sửa report", "sửa pbix", "dựng dashboard", "thêm tab", "gắn bookmark", "đổi icon", "căn lưới", "mở Desktop kiểm".
-installs: [scripts/pbi_gate.py, scripts/pbi_diagram.py, scripts/diagram_order.js, scripts/package.json, scripts/rename_reports.py]
+installs: [scripts/pbi_gate.py, scripts/fix_literal_type.py, scripts/pbi_diagram.py, scripts/diagram_order.js, scripts/package.json, scripts/rename_reports.py]
 ---
 
 # Sửa `.pbip` mà không làm vỡ file
@@ -99,6 +99,11 @@ chứng minh được gì (model.md §7).
 🔴 **Mở lại Desktop là BƯỚC CUỐI — mở rồi mà còn sửa file là mất việc.** Desktop giữ bản cũ trong bộ
 nhớ; người dùng bấm Save *hoặc* Refresh là nó ghi đè nguyên lượt sửa của bạn. Cần sửa tiếp ⇒ **tắt lại từ
 bước 1**. *(Giá đã trả 2026-09-10: mất trọn một commit — 4 chart phải vá lại.)*
+🔴 **Người dùng đã Save thì bản Save đó phải còn — agent không bao giờ làm mất.** Trước MỌI lần agent ghi vào một report:
+① tắt Desktop bằng `CloseMainWindow()` (hiện hộp thoại hỏi lưu ⇒ DỪNG, báo người dùng) · ② `git add reports/<thư mục>` — chụp mốc
+đúng bản trên đĩa, gồm mọi file Desktop vừa ghi · ③ sửa ĐÈ LÊN bản đó. Cấm trên thư mục còn file chưa vào git: chép/dựng lại report
+từ bản khác đè lên · `git checkout`/`restore`/`stash`/`reset` · đóng Desktop chọn *Don't save* khi người dùng còn sửa dở. Cổng
+`user-save` đỏ khi thư mục report có file đổi trên đĩa mà chưa vào git.
 🔴 **Sau MỖI lần người dùng tự Save trong Desktop, phải dò lại MẶC ĐỊNH TRANG**: Desktop ghi *trạng thái
 đang xem* thành mặc định ⇒ trang mở ra sai tab, có khi **cả 3 vạch đỏ cùng hiện**. Nắn bằng cách **áp
 trạng thái của chính bookmark tab 1** làm mặc định, đừng khai tay. Nó cũng ghi `activePageName` =

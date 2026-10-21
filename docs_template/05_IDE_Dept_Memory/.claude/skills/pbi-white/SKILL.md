@@ -1,13 +1,13 @@
 ---
 id: Skill_PBI_White
 name: pbi-white
-version: 9
+version: 10
 aka: pbi-mix
 replaces: [Skill_PBI_Mix]
 type: process
 description: Build the WHITE copy (named Mix before 2026-10-19) of a Power BI report - warehouse model, the Red header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-red). Vietnamese triggers - "bản white", "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
 installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
-from: _Store/03_SKILLS/Skill_PBI_White @v9 #82043af3e477
+from: _Store/03_SKILLS/Skill_PBI_White @v10 #ab8fdd02e062
 ---
 
 # Bản `White` — bố cục CŨ, khung nhận diện MỚI, chạy trên DW
@@ -333,7 +333,10 @@ cùng cột mà mỗi ô lọc chart riêng (01 Total Bill On Month) ⇒ đặt 
 lại bị rỗng 1 hàng")*: bỏ / gộp một slicer thì kéo các ô bên dưới lên, không để hàng trống. Cổng `filter-rows`.
 🔴 **Filter "không trống" trên cột SỐ chỉ loại `null`** *(13/10)*: hai nhãn Kimball `'Unknown'`/`'Not Applicable'` là CHỮ — đặt lên cột số
 (Year) là slicer chết "CONTAINSROW does not support comparing values of type Text with values of type Integer". `not_blank_filter`
-đọc kiểu cột từ model; cổng `literal-type` chặn mọi giá trị filter khác kiểu cột (chữ trên số, số `5L` trên cột chữ `'05'`).
+đọc kiểu cột từ model; cổng `literal-type` chặn mọi giá trị filter khác kiểu cột (chữ trên số, số `5L` trên cột chữ `'05'`), ở cả dạng `In` lẫn
+dạng so sánh `Not(cột = 'Unknown')`. Vá hàng loạt: `scripts/fix_literal_type.py` (chạy thử trước, `--apply` mới ghi).
+🔴 **Không visual dữ liệu nào bị ẩn ở MỌI trạng thái trong khi khung nền của nó hiện** — khung trống, người đọc thấy "mất
+dashboard". Visual theo đúng trạng thái của `BG_` cùng nhóm trong từng bookmark. Cổng `dead-visual`.
 🔴 **Mọi bảng / matrix kín khung: Auto-size behaviour = Grow to fit** *("so với tổng size của chính group chứa")*:
 `columnHeaders.autoSizeColumnWidth true` + `columnAdjustment 'growToFit'` (khuôn đọc từ chính Desktop) — Desktop tự giãn cột cho kín
 khung với bao nhiêu cột dữ liệu đưa ra; không đặt bề rộng tay (matrix Tháng × Kênh: DW 5 kênh, kỳ này 3 kênh có số ⇒ đếm cột

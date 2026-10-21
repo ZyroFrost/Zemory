@@ -34,6 +34,7 @@ import os
 import re
 import sys
 import math
+import subprocess
 
 ROOT_KEYS_OK = {'$schema', 'name', 'position', 'visual', 'visualGroup',
                 'parentGroupName', 'howCreated', 'isHidden', 'filterConfig'}
@@ -2679,6 +2680,29 @@ def check_dead_field(report_dir, d_def, fail):
                     "rebind it (dead-field)" % (k, len(fs), fs[0]))
 
 
+LITERAL_KINDS = {'string': ('text',), 'int64': ('int', 'num'), 'double': ('num', 'int'), 'decimal': ('num', 'int'),
+                 'dateTime': ('date',), 'boolean': ('bool',)}
+
+
+def literal_fits(dt, lv):
+    """A filter literal fits a column type: 'x' text · 5L int · 5D / 5.0 / 5M number · datetime'..' date · true / false."""
+    if dt not in LITERAL_KINDS:
+        return True
+    if lv.startswith("'"):
+        k = 'text'
+    elif lv.startswith('datetime'):
+        k = 'date'
+    elif lv in ('true', 'false'):
+        k = 'bool'
+    elif re.fullmatch(r'-?\d+L', lv):
+        k = 'int'
+    elif re.fullmatch(r'-?[\d.]+[DM]?', lv):
+        k = 'num'
+    else:
+        return True
+    return k in LITERAL_KINDS[dt]
+
+
 def check_literal_type(report_dir, d_def, fail):
     """literal-type (a department repo 13/10): an In / Not In filter value must have the column's type. Text on a number column
     (03 White: Year slicers' 'is not blank' also listed 'Unknown' / 'Not Applicable') or a number on a text column (03 Classic:
@@ -2703,6 +2727,16 @@ def check_literal_type(report_dir, d_def, fail):
         if isinstance(x, dict):
             if isinstance(x.get('From'), list):
                 alias = dict(alias, **{s.get('Name'): s.get('Entity') for s in x['From'] if isinstance(s, dict)})
+            # a Comparison (column = literal) too: 'is not blank' written as Not(col = null) And Not(col = 'Unknown') on
+            # Dim_Date.DateKey / Year (a department repo 21/10, 4 White files) - the In-only walk let all 8 terms through
+            cmp_ = x.get('Comparison')
+            if isinstance(cmp_, dict) and 'Column' in cmp_.get('Left', {}):
+                col = cmp_['Left']['Column']; sr = col.get('Expression', {}).get('SourceRef', {})
+                tab = sr.get('Entity') or alias.get(sr.get('Source'))
+                dt = types.get((tab, str(col.get('Property', '')).lower()))
+                lv = cmp_.get('Right', {}).get('Literal', {}).get('Value') or ''
+                if dt and lv not in ('', 'null') and not literal_fits(dt, lv):
+                    bad.setdefault('%s[%s] (%s) = %s' % (tab, col.get('Property'), dt, lv), []).append(f)
             inn = x.get('In')
             if isinstance(inn, dict) and len(inn.get('Expressions', [])) == 1 and 'Column' in inn['Expressions'][0]:
                 col = inn['Expressions'][0]['Column']; sr = col.get('Expression', {}).get('SourceRef', {})
@@ -2712,8 +2746,7 @@ def check_literal_type(report_dir, d_def, fail):
                     lv = (row[0].get('Literal', {}).get('Value') if row and isinstance(row[0], dict) else None) or ''
                     if not dt or lv in ('', 'null'):
                         continue
-                    is_txt = lv.startswith("'")
-                    if (dt == 'string') != is_txt and not (dt in ('dateTime',) and lv.startswith('datetime')):
+                    if not literal_fits(dt, lv):
                         bad.setdefault('%s[%s] (%s) = %s' % (tab, col.get('Property'), dt, lv), []).append(f)
                         break
             for v in x.values():
@@ -2729,6 +2762,71 @@ def check_literal_type(report_dir, d_def, fail):
     for k, fs in sorted(bad.items()):
         fail.append("filter on %s - the value's type is not the column's type, Desktop fails the visual (CONTAINSROW Text vs "
                     "Integer); %d file(s), e.g. %s (literal-type)" % (k, len(fs), fs[0]))
+
+
+def check_dead_visual(d_def, fail):
+    """dead-visual (a department repo 21/10, 01 IP White): a visual with a query that is hidden in visual.json AND in every
+    bookmark of its page, while a sibling in its group (the BG_ shape) is shown, is a dashboard nobody can ever see - the
+    frame shows empty. The copy brought back from attic had the Franchise combo chart (Overview) and the product bar chart
+    (In-Store) hidden this way; the Live White of the same report shows both. A visual whose whole group is hidden too
+    (the off state of a button pair, a closed panel) is not counted."""
+    bms = []
+    for f in glob.glob(os.path.join(d_def, 'bookmarks', '*.bookmark.json')):
+        try:
+            bms.append(json.load(open(f, encoding='utf-8')))
+        except ValueError:
+            pass
+
+    def mode(vc, k):
+        if k not in vc:
+            return None
+        return ((vc[k].get('singleVisual') or vc[k].get('visualContainerGroup') or {}).get('display') or {}).get('mode', 'shown')
+
+    for pdir in glob.glob(os.path.join(d_def, 'pages', '*', '')):
+        pid = os.path.basename(os.path.normpath(pdir))
+        V = {}
+        for f in glob.glob(os.path.join(pdir, 'visuals', '*', 'visual.json')):
+            try:
+                d = json.load(open(f, encoding='utf-8'))
+            except ValueError:
+                continue
+            V[d.get('name')] = d
+        pb = [b['explorationState']['sections'][pid].get('visualContainers', {}) for b in bms
+              if pid in b.get('explorationState', {}).get('sections', {})]
+
+        def ever_shown(n):
+            return (not V[n].get('isHidden')) or any(mode(vc, n) == 'shown' for vc in pb)
+        for n, d in V.items():
+            if 'visualGroup' in d or not d.get('isHidden') or not d.get('visual', {}).get('query'):
+                continue
+            if any(mode(vc, n) == 'shown' for vc in pb):
+                continue
+            sib = [m for m, e in V.items() if m != n and 'visualGroup' not in e
+                   and e.get('parentGroupName') == d.get('parentGroupName')]
+            if d.get('parentGroupName') and any(ever_shown(m) for m in sib):
+                fail.append("page %s: visual %s (%s) is hidden in visual.json and in every bookmark while its group's frame is "
+                            "shown - an empty dashboard; show it in the states its BG_ shape shows (dead-visual)"
+                            % (pid, n, d['visual'].get('visualType')))
+
+
+def check_user_save(report_dir, fail):
+    """user-save (a department repo 21/10: a Save the user made must never be lost): files of the report changed on disk and not in git are
+    a Desktop Save of the user (or an agent edit not yet checkpointed). Before any agent write they go into the index
+    (`git add <report folder>`), so the user's save is always kept and every agent step starts from a known state. The
+    gate only reads `git status`; no git ⇒ not checked."""
+    try:
+        out = subprocess.run(['git', 'status', '--porcelain', '--untracked-files=all', '--', '.'], cwd=report_dir,
+                             capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return
+    if out.returncode != 0:
+        return
+    dirty = [ln for ln in out.stdout.splitlines() if len(ln) > 3 and (ln[1] != ' ' or ln[:2] == '??')
+             and not re.search(r'[\\/](\.pbi[\\/](cache\.abf|localSettings\.json)|\.gitignore)$', ln)]
+    if dirty:
+        fail.append("%d file(s) of this report changed on disk and are not in git (a Desktop Save?), e.g. %s - keep them: "
+                    "git add %s before any agent write (user-save)"
+                    % (len(dirty), dirty[0][3:].strip(), os.path.normpath(report_dir)))
 
 
 def check_bridge_bypass(report_dir, fail):
@@ -4896,6 +4994,8 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
         check_extension_ref(d_def, fail)
         check_dead_field(report_dir, d_def, fail)
         check_literal_type(report_dir, d_def, fail)
+        check_dead_visual(d_def, fail)
+    check_user_save(report_dir, fail)
     check_bridge_bypass(report_dir, fail)
     if not KEEP_OLD_DESIGN:
         check_kimball16(d_def, fail)
