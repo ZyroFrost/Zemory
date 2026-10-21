@@ -2,11 +2,16 @@
 #   docker compose up -d --build     # build the image and start the daemon
 #   http://127.0.0.1:4444            # the cockpit
 # Set before `up` (the installer writes them into .env beside this file):
-#   HOST_HOME        the user's home on the host (Windows: %USERPROFILE%, Linux: $HOME) - transcripts mounted read-only
+#   HOST_HOME        the user's home as Docker sees it - transcripts mounted read-only (Linux: $HOME; compose run from
+#                    Ubuntu on Windows: /mnt/c/Users/<u>)
+#   HOST_HOME_NATIVE the same home as the agents write it into hook payloads (Windows: C:\Users\<u>; Linux: unset)
+#   HOST_WORKSPACE   the folder holding the repos as Docker sees it (Ubuntu on Windows: /mnt/d/Workspace)
+#   HOST_WORKSPACE_NATIVE  the same folder as the store names it (Windows: D:\Workspace; Linux: unset)
 #   ZEMORY_HOSTNAME  this machine's name: every session is stamped with it (`host`), so it must be the machine, not
 #                    the container (measured 2026-10-22: a container id was written as the host)
 #   ZEMORY_PORT      the host port (default 4444; another port while a native daemon holds 4444)
-# The store is the named volume zemory-data.
+#   ZEMORY_STORE     the store folder on the host's Linux file system (plan/30 §3c): /home/<user>/zemory - on Windows
+#                    run compose from Ubuntu (WSL) so this is ext4, never an NTFS folder (WAL breaks on it)
 services:
   zemory:
     build: .
@@ -16,11 +21,10 @@ services:
       - "127.0.0.1:${ZEMORY_PORT:-4444}:4444"
     environment:
       # a hook payload names host paths; the daemon reads them under the mounts below (memory/hook-relay.ts)
-      ZEMORY_PATH_MAP: "${HOST_HOME}/.claude=>/home/node/.claude"
+      ZEMORY_PATH_MAP: "${HOST_HOME_NATIVE:-${HOST_HOME}}/.claude=>/home/node/.claude;${HOST_WORKSPACE_NATIVE:-${HOST_WORKSPACE}}=>/host/workspace"
     volumes:
-      - zemory-data:/home/node/.zemory
+      - ${ZEMORY_STORE:?set ZEMORY_STORE to /home/<user>/zemory}:/home/node/zemory
       - ${HOST_HOME:?set HOST_HOME to your home folder}/.claude:/home/node/.claude:ro
+      # the repos: project roots are stored as host paths and looked up here (util/hostpath.ts)
+      - ${HOST_WORKSPACE:?set HOST_WORKSPACE to the folder holding your repos}:/host/workspace:ro
     restart: unless-stopped
-
-volumes:
-  zemory-data:

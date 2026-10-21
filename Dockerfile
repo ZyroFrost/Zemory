@@ -20,12 +20,14 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates git \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=build --chown=node:node /app /app
+# the store is /home/node/zemory, bind-mounted from the host's Linux file system (WSL ext4 on Windows), never NTFS
+# (plan/30 §3c): global-memory/ travels to other machines, data/ stays on this one - the pointer names both
 RUN ln -s /app/dist/cli.js /usr/local/bin/zemory && chmod +x /app/dist/cli.js \
-  && mkdir -p /home/node/.zemory && chown node:node /home/node/.zemory
+  && mkdir -p /home/node/.zemory /home/node/zemory \
+  && printf '{"dataDir":"/home/node/zemory/data","memoryRoot":"/home/node/zemory/global-memory"}\n' > /home/node/.zemory/location.json \
+  && chown -R node:node /home/node/.zemory /home/node/zemory
 # inside the container the daemon listens on every interface; compose publishes it on the host's 127.0.0.1 only
 ENV ZEMORY_UI_HOST=0.0.0.0 NODE_ENV=production
 USER node
-# the store lives in a named volume (Linux file system of the VM), never a bind mount from NTFS (plan/30 §3 b)
-VOLUME /home/node/.zemory
 EXPOSE 4444
 CMD ["node", "/app/dist/cli.js", "ui", "--no-window"]
