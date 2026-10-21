@@ -166,6 +166,14 @@ def run(report_dir, apply):
             for e in vis.get('objects', {}).get('general', []):
                 e.get('properties', {}).pop('filter', None)
             vis['objects']['data'] = [{'properties': {'mode': {'expr': {'Literal': {'Value': "'Dropdown'"}}}}}]
+            # a common box takes several values, so it offers 'Select all' even when the copied Year box does not (gate select-all)
+            sel_list = vis['objects'].setdefault('selection', [])
+            if not sel_list:
+                sel_list.append({})
+            sel = sel_list[0].setdefault('properties', {})
+            for k in ('singleSelect', 'strictSingleSelect'):
+                sel.pop(k, None)
+            sel['selectAllCheckboxEnabled'] = {'expr': {'Literal': {'Value': 'true'}}}
             s['filterConfig'] = {'filters': [
                 {'name': nid(), 'field': col(ent, prop), 'type': 'Categorical'},
                 {'name': nid(), 'field': col(ent, prop), 'type': 'Advanced',
