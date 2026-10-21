@@ -420,9 +420,11 @@ export function ownTextFiles(root: string): [string, string][] {
   return out.sort((a, b) => (a[0] < b[0] ? -1 : 1));
 }
 
-export function retiredNameFindings(root: string): string[] {
+// `files`: conform reads the repo's own text once and hands it to every check that scans it (each walk read every text
+// file of the repo — measured 2026-10-21: 99 s of a 369 s region sync)
+export function retiredNameFindings(root: string, files: [string, string][] = ownTextFiles(root)): string[] {
   const hits: string[] = [];
-  for (const [r, text] of ownTextFiles(root)) {
+  for (const [r, text] of files) {
     const names = new Set<string>();
     for (const m of text.matchAll(RETIRED_RE)) names.add(m[1] ?? "docs/hooks/");
     if (names.size) hits.push(`${r}: ${[...names].join(" · ")}`);
@@ -459,7 +461,7 @@ interface SupersededFact { old: string; now: string; roles?: string[]; level?: "
  * marked `level: "advisory"` is a name that also lives on in history ("the legacy ETL ran on SRV-BI"): it is listed for the
  * repo to look at, not blocking. An instruction (an executable, an endpoint, a root path) stays blocking.
  */
-export function supersededFactFindings(root: string): { blocking: string[]; advisory: string[] } {
+export function supersededFactFindings(root: string, files?: [string, string][]): { blocking: string[]; advisory: string[] } {
   const out = { blocking: [] as string[], advisory: [] as string[] };
   const v = regionValues(root).superseded_facts;
   const facts = (Array.isArray(v) ? v : []) as SupersededFact[];
@@ -469,7 +471,7 @@ export function supersededFactFindings(root: string): { blocking: string[]; advi
   const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   // not a path segment on either side: `_Legacy\SRV-BI\PWBI` and `SRV-BI/PWBI` name a mirror folder, not the fact
   const res = live.map((f) => ({ f, re: new RegExp(`(?<![\\w\\\\/.-])${esc(f.old)}(?![\\w\\\\/-])`, "i") }));
-  for (const [r, text] of ownTextFiles(root)) {
+  for (const [r, text] of files ?? ownTextFiles(root)) {
     for (const lvl of ["blocking", "advisory"] as const) {
       const found = res
         .filter((x) => (x.f.level === "advisory" ? "advisory" : "blocking") === lvl && (x.f.files !== "prose" || /\.md$/i.test(r)) && x.re.test(text))

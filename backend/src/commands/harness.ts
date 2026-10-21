@@ -34,6 +34,7 @@ import { applySkills, applyStandard, isStandardSource, skillDiff, stampRepo, sta
 import { applyKit, repoKit, type KitApplyResult } from "../docs/kit-apply.js";
 import { migrateToKit } from "../docs/kit-migrate.js";
 import { kitSync, managedRepos, writeOwner } from "../docs/kit-sync.js";
+import { withStoreReadCache } from "../docs/store.js";
 
 /** One line per assembled part: what was (or would be) done. */
 function printKitSteps(r: KitApplyResult, apply: boolean): number {
@@ -251,7 +252,12 @@ function printSkillApply(sk: Array<{ skill: string; file: string; action: string
   console.log(`  skills: ${apply ? "wrote" : "would write"} ${w} · edited locally ${k}${apply ? "" : "  — add `--apply` to write"}`);
 }
 
+// A sync writes repos, never the store: its store reads are cached for the length of the command (store.ts).
 export function cmdSync(args: string[] = process.argv): void {
+  withStoreReadCache(() => cmdSyncRun(args));
+}
+
+function cmdSyncRun(args: string[]): void {
   const ri = args.indexOf("--root");
   const root = ri >= 0 && args[ri + 1] ? resolve(args[ri + 1]) : currentProjectRoot();
   // `--standard` = áp BẢN SỬA của chuẩn vào file ĐÃ CÓ (plan/26 bước ③). Không phải lệnh mới:
