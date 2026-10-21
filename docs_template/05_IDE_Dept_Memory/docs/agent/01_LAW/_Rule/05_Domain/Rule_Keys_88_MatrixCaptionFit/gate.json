@@ -1,0 +1,20 @@
+{
+  "partial": true,
+  "prompt": {
+    "kind": "pbi",
+    "re": "\\b(matrix|ma trận|columnWidth|bề rộng cột|độ rộng cột|Grand Total|subtotal|dòng tổng|grow to fit|header-wrap)\\b",
+    "text": "[zemory] Rule_Keys_88_MatrixCaptionFit: a table/matrix column with a fixed columnWidth must fit every caption Desktop renders in it, the 'Grand Total' subtotal row included, not only the DW values measured. The `subtotal-width` check of scripts/pbi_gate.py must pass."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "nới columnWidth cột hàng của matrix có dòng Grand Total"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi tên bảng Dim_Date"
+    }
+  ]
+}
