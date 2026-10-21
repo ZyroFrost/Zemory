@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripBom } from "../util/read-text.js";
+import { toLocalPath } from "../util/hostpath.js";
 import type { Context, HarnessConfig, HarnessPaths } from "./types.js";
 import { LEDGER_NAMES } from "../docs/harness-names.js";
 
@@ -60,7 +61,8 @@ export function uiPort(): number {
  *  ở chỗ khác, vì làm vậy là mù với hai bậc kia của thang. */
 export function findMarker(projectRoot: string): string | null {
   for (const rel of MARKER_CANDIDATES) {
-    const p = join(projectRoot, rel);
+    // a host root is looked up where this process sees it - under a mount in the Docker container (util/hostpath.ts)
+    const p = toLocalPath(join(projectRoot, rel));
     if (existsSync(p)) return p;
   }
   return null;

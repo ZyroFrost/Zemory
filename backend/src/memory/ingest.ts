@@ -18,6 +18,7 @@ import { pruneOrphanAttachments } from "./attachments.js";
 import { isExcluded } from "./scope.js";
 import { getScopeExclude, type ScopeLane } from "../config/settings.js";
 import { Q } from "./store/queries.js";
+import { toHostPath, toLocalPath } from "../util/hostpath.js";
 
 // v4 (2026-07-26): GỠ `clip()` 4.000 ký tự khỏi mọi adapter (lớp `messages` phải ĐẦY theo
 // `plan/06 §6`; đang mất 16,8% khối lượng) + nạp `attachment.type="file"` (file người dùng
@@ -338,10 +339,12 @@ export function refreshSessionTitles(dbPath: string = currentMemoryDb(), limit =
     const set = db.prepare("UPDATE sessions SET title = ? WHERE id = ?");
 
     for (const r of rows) {
-      const st = safeStatFile(r.path);
+      // stored as the host path; opened where this process sees it (util/hostpath.ts)
+      const local = toLocalPath(r.path);
+      const st = safeStatFile(local);
       if (!st) continue; // file của máy khác / đã bị xoá → bỏ qua (fail-open)
       checked++;
-      const tail = readTail(r.path, Math.min(TAIL_BYTES, st.size));
+      const tail = readTail(local, Math.min(TAIL_BYTES, st.size));
       if (!tail) continue;
       // Bỏ mảnh đầu (có thể bị cắt giữa dòng do đọc từ giữa file), quét từ CUỐI lên.
       const lines = tail.split("\n").slice(1);
@@ -660,9 +663,12 @@ function writeSession(db: MemoryDB, a: WriteSessionArgs): number {
 
 function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileResult {
   const sessionId = adapter.sessionId(file.path);
+  // the key is the HOST path (util/hostpath.ts): in the Docker container the file is opened under a mount, but the
+  // ingest record must be the one the native install (or `project move`) wrote, or every file is re-read as new
+  const stateKey = toHostPath(file.path);
   const prev = db
     .prepare("SELECT size, mtime_ms, last_line, parser_version FROM ingest_state WHERE file_path = ?")
-    .get(file.path) as
+    .get(stateKey) as
     | { size: number; mtime_ms: number; last_line: number; parser_version: number }
     | undefined;
 
@@ -708,7 +714,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
          ON CONFLICT(file_path) DO UPDATE SET
            source = @source, session_id = @sid, size = @size, mtime_ms = @mtime,
            last_line = 0, updated_at = @now, parser_version = @pv`,
-      ).run({ path: file.path, source: file.source, sid: `multi:${parsed.length}`, size: file.size, mtime: file.mtimeMs, now: new Date().toISOString(), pv: PARSER_VERSION });
+      ).run({ path: stateKey, source: file.source, sid: `multi:${parsed.length}`, size: file.size, mtime: file.mtimeMs, now: new Date().toISOString(), pv: PARSER_VERSION });
     });
     tx();
     return { changed: total > 0, sessions: reports };
@@ -807,7 +813,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
          source = @source, session_id = @sid, size = @size, mtime_ms = @mtime,
          last_line = @lastLine, updated_at = @now, parser_version = @parserVersion`,
     ).run({
-      path: file.path,
+      path: stateKey,
       source: file.source,
       sid: sessionId,
       size: file.size,

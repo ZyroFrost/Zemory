@@ -18,14 +18,22 @@ test("compose publishes the cockpit on the host's loopback only", () => {
   assert.doesNotMatch(c, /^\s*-\s*"?4444:4444/m, "NEGATIVE: a port published on every interface");
 });
 
-test("the store is the named volume; transcripts are mounted read-only", () => {
+test("the store is the host's Linux folder mounted at /home/node/zemory; the pointer names both roles", () => {
   const c = read("../../docker-compose.yml");
-  assert.match(c, /-\s*zemory-data:\/home\/node\/\.zemory\b/);
+  assert.match(c, /-\s*\$\{ZEMORY_STORE:\?[^}]*\}:\/home\/node\/zemory\b/);
   assert.match(c, /\/\.claude:\/home\/node\/\.claude:ro/);
+  assert.doesNotMatch(c, /zemory-data:/, "NEGATIVE: the store is not a Docker volume hidden in the VM (plan/30 §3c)");
+  const d = read("../../Dockerfile");
+  assert.match(d, /"dataDir":"\/home\/node\/zemory\/data","memoryRoot":"\/home\/node\/zemory\/global-memory"/);
 });
 
 test("compose tells the daemon where the host's transcripts are mounted (hook payloads name host paths)", () => {
-  assert.match(read("../../docker-compose.yml"), /ZEMORY_PATH_MAP: "\$\{HOST_HOME\}\/\.claude=>\/home\/node\/\.claude"/);
+  // the map's host side is the path the agent writes (Windows C:\Users\…), not the mount source compose sees from Ubuntu
+  const c = read("../../docker-compose.yml");
+  assert.match(c, /ZEMORY_PATH_MAP: "\$\{HOST_HOME_NATIVE:-\$\{HOST_HOME\}\}\/\.claude=>\/home\/node\/\.claude;/);
+  // project roots are host paths too: the repos folder is mapped and mounted read-only
+  assert.match(c, /;\$\{HOST_WORKSPACE_NATIVE:-\$\{HOST_WORKSPACE\}\}=>\/host\/workspace"/);
+  assert.match(c, /\$\{HOST_WORKSPACE:\?[^}]*\}:\/host\/workspace:ro/);
 });
 
 test("the dependency layer is built from the manifests alone, before the sources are copied", () => {
