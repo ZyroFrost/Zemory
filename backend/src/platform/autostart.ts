@@ -111,7 +111,7 @@ export function judgeLaunch(f: LaunchFacts): string[] {
   }
   if (f.startupVbs !== null && !f.startupVbs.includes(f.brandedExe)) out.push("the Startup launcher does not start dist/zemory.exe");
   if (f.launcherVbs !== null && !f.launcherVbs.includes(f.brandedExe)) out.push("the Start Menu/Desktop launcher does not start dist/zemory.exe");
-  if (f.iconMissing) out.push("a Zemory shortcut exists but its icon file (zemory.ico) is missing");
+  if (f.iconMissing) out.push("a Zemory shortcut points at an icon or launcher that is not this install's (the daemon rewrites it on start)");
   for (const s of f.strays) out.push(`leftover launcher file ${s} — not used by Zemory, remove it`);
   return out;
 }
@@ -145,7 +145,9 @@ export function launchFacts(): LaunchFacts | null {
     uiProcesses,
     startupVbs: startup ? readIfExists(startup) : null,
     launcherVbs: readIfExists(vbs),
-    iconMissing: desktopShortcutStatus().exists && winIconPath() === null,
+    // the icon a shortcut REALLY points at, not only whether this install has one: a moved repo leaves the old path behind
+    iconMissing: desktopShortcutStatus().exists &&
+      (winIconPath() === null || winShortcutFacts().some((f) => shortcutStale(f, winIconPath(), vbs, existsSync))),
     strays,
   };
 }
@@ -550,6 +552,70 @@ function readIfExists(p: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** What one .lnk on disk points at: its icon file (without the ",N" index) and its arguments. */
+export interface LnkFacts {
+  path: string;
+  icon: string;
+  args: string;
+}
+
+/**
+ * A shortcut on disk no longer matches what we would write today: its icon file is not this install's zemory.ico (or is
+ * gone), or it does not run this install's launcher. Measured 2026-10-21: the repo moved D:\huy.nguyen\Project\… →
+ * D:\Workspace\…, launch.vbs was rewritten by the launcher check but the .lnk kept the old icon path, so the Start Menu
+ * showed a blank white icon. Pure: facts in, verdict out.
+ */
+export function shortcutStale(f: LnkFacts, wantIcon: string | null, vbs: string, exists: (p: string) => boolean): boolean {
+  const norm = (p: string): string => resolve(p).toLowerCase();
+  if (wantIcon !== null && (!f.icon || !exists(f.icon) || norm(f.icon) !== norm(wantIcon))) return true;
+  return !f.args.toLowerCase().includes(vbs.toLowerCase());
+}
+
+/** Read the icon and arguments of the Zemory shortcuts that exist (Windows; one PowerShell call). */
+function winShortcutFacts(): LnkFacts[] {
+  const lnks = [winStartMenuLnk(), winDesktopLnk()].filter((p) => existsSync(p));
+  if (!lnks.length) return [];
+  const ps = [
+    "$w = New-Object -ComObject WScript.Shell;",
+    ...lnks.map((p) => `$s = $w.CreateShortcut('${psq(p)}'); '{0}|{1}|{2}' -f '${psq(p)}', $s.IconLocation, $s.Arguments;`),
+  ].join(" ");
+  try {
+    return String(execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8", windowsHide: true }))
+      .split(/\r?\n/)
+      .filter((l) => l.includes("|"))
+      .map((l) => {
+        const [path, icon, ...rest] = l.split("|");
+        return { path, icon: icon.replace(/,-?\d+$/, "").trim(), args: rest.join("|") };
+      });
+  } catch {
+    return [];
+  }
+}
+
+/** Rewrite every Zemory shortcut that points at another install's icon or launcher (called on daemon start). */
+export function reconcileShortcuts(): string[] {
+  if (platform() !== "win32") return [];
+  const fixed: string[] = [];
+  try {
+    const vbs = winLauncherVbs();
+    const stale = winShortcutFacts().filter((f) => shortcutStale(f, winIconPath(), vbs, existsSync));
+    if (!stale.length) return [];
+    const { exe } = launchParts();
+    if (launcherStale(readIfExists(vbs), exe, cwdDirective()) || !existsSync(vbs)) winWriteLauncher();
+    for (const f of stale) {
+      try {
+        winWriteShortcut(f.path, vbs);
+        fixed.push(f.path);
+      } catch {
+        /* one unwritable target does not cost the other */
+      }
+    }
+  } catch {
+    /* best-effort */
+  }
+  return fixed;
 }
 
 export function reconcileAutostart(wanted: boolean): void {

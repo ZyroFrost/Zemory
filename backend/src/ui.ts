@@ -170,7 +170,7 @@ import { buildStandardGraph, buildWorkspaceGraph } from "./memory/graph/graph-st
 import { buildSeamEdges } from "./memory/graph/graph-seam.js";
 import { resolveCalls } from "./memory/graph/graph-symbols.js";
 import { edgeId } from "./memory/graph/graph.js";
-import { autostartStatus, desktopShortcutStatus, reconcileAutostart, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
+import { autostartStatus, desktopShortcutStatus, reconcileAutostart, reconcileShortcuts, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
 import { schedulerChildRunning, startScheduler, stopScheduler, webLaneKey } from "./jobs/scheduler.js";
 import { setEmbedLaneProbe, startSyncJob, stopSyncJob, syncJobRunning, syncJobStatus, SYNC_WATCHDOG_EMBED_MS } from "./jobs/syncjob.js";
 import { FastLane } from "./jobs/fastlane.js";
@@ -4404,6 +4404,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   void linkTick(root());
   setInterval(() => void linkTick(root()), 30_000).unref();
   reconcileAutostart(getAutostart());
+  // a shortcut still pointing at a moved install's icon/launcher is rewritten; one PowerShell call, kept off the start path
+  setTimeout(() => reconcileShortcuts(), 5_000).unref();
   startScheduler();
   // GỬI LIỀN (plan/24 §12): a cheap poll every 2 s — seal this machine's new messages into the p2p channel and land
   // received blocks, each in a child process through the job slot. Off unless p2p is on and a machine is paired.
