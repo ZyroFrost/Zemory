@@ -1598,7 +1598,8 @@ SLICER_TEXT = '10D'  # slicer-style: the one item text size (Red default; mix_bu
 # ('09', saved by a Desktop Save on 04/10) froze six pages on September
 MONTH_ROLLING = "'Current Month'"
 # filter-set (mix_builder.FILTER_SET): (key, own field, accepted equivalents); location keys must be on every panel
-FILTER_SET = [('Year', ['Dim_Date.IsCurrentYear'], []), ('Month', ['Dim_Date.IsCurrentMonth'], []),
+FILTER_SET = [('Year', ['Dim_Date.IsCurrentYear'], [['Dim_Date.CurrentYearLabel']]),
+              ('Month', ['Dim_Date.IsCurrentMonth'], [['Dim_Date.CurrentMonthLabel']]),
               ('AreaManager', ['Dim_Store.AreaManagerShortName'], [['Dim_Store.AreaManager']]),
               ('District', ['Dim_Store.District'], []), ('StoreName', ['Dim_Store.ShortName'], []),
               ('Channel', ['Dim_Channel.ChannelGroup', 'Dim_Channel.ChannelNameStandard'],
@@ -2764,6 +2765,28 @@ def check_literal_type(report_dir, d_def, fail):
                     "Integer); %d file(s), e.g. %s (literal-type)" % (k, len(fs), fs[0]))
 
 
+def check_select_all(d_def, fail):
+    """select-all (a department repo 21/10: every filter offers All): a slicer that may hold several values has the 'Select all'
+    row (objects.selection selectAllCheckboxEnabled true). A single-choice slicer (singleSelect / strictSingleSelect, e.g. a
+    field parameter) has no 'all' and is not judged. Measured on a White copy: 34 of 48 slicers lacked the row."""
+    for f in sorted(glob.glob(os.path.join(d_def, 'pages', '*', 'visuals', '*', 'visual.json'))):
+        try:
+            d = json.load(open(f, encoding='utf-8'))
+        except ValueError:
+            continue
+        v = d.get('visual', {})
+        if v.get('visualType') != 'slicer':
+            continue
+        sel = ((v.get('objects', {}).get('selection') or [{}])[0] or {}).get('properties', {})
+        if lit(sel.get('singleSelect')) == 'true' or lit(sel.get('strictSingleSelect')) == 'true':
+            continue
+        if lit(sel.get('selectAllCheckboxEnabled')) != 'true':
+            refs = [x.get('queryRef') for x in v.get('query', {}).get('queryState', {}).get('Values', {}).get('projections', [])]
+            page = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(f))))
+            fail.append("page %s: slicer %s (%s) has no 'Select all' row - set objects.selection selectAllCheckboxEnabled true "
+                        "(select-all)" % (page, d.get('name'), '+'.join(r for r in refs if r) or '?'))
+
+
 def check_dead_visual(d_def, fail):
     """dead-visual (a department repo 21/10, 01 IP White): a visual with a query that is hidden in visual.json AND in every
     bookmark of its page, while a sibling in its group (the BG_ shape) is shown, is a dashboard nobody can ever see - the
@@ -3326,25 +3349,35 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
             continue
         sl = sorted([d for (p, i), d in vis.items() if p == pg and d.get('visual', {}).get('visualType') == 'slicer'],
                     key=lambda d: d['position']['y'])
+        # the department's own common set (pbi-gate.json 'filter_set', user 2026-10-21 in a department repo: every fixed,
+        # short list the page's numbers are cut by gets a synced box) comes after the location keys
+        own_set = [e for e in gate_cfg().get('filter_set', {}).get(folder, [])
+                   if e.get('pages', '*') == '*' or pages[pg]['displayName'] in e.get('pages', [])]
+        order = [x[0] for x in FILTER_SET] + [e['key'] for e in gate_cfg().get('filter_set', {}).get(folder, [])]
+
         def fkey(d):
             r = [x['queryRef'] for x in d['visual'].get('query', {}).get('queryState', {}).get('Values', {}).get('projections', [])]
             for key, refs, eq in FILTER_SET:
                 if r == refs:
                     return key, True
                 if r in eq:
-                    return key, False
+                    return key, key in ('Year', 'Month')   # the period boxes are synced whichever date column they read
+            for e in gate_cfg().get('filter_set', {}).get(folder, []):
+                if r == [e['field']]:
+                    return e['key'], True
             return None, False
         keys = [fkey(d) for d in sl]
         where = "page '%s' filter panel" % pages[pg]['displayName']
         miss = [k for k in FILTER_ADD if k not in {x[0] for x in keys}
                 and k not in FILTER_SKIP.get(pages[pg]['displayName'], ())
                 and k not in filter_skip(folder, pages[pg]['displayName'])]
+        miss += ['%s (%s)' % (e['key'], e['field']) for e in own_set if e['key'] not in {x[0] for x in keys}]
         if miss:
-            fail.append('%s lacks %s (mix_builder.py --filter-set)' % (where, ', '.join(miss)))
-        ranks = [[x[0] for x in FILTER_SET].index(k) if k else len(FILTER_SET) for k, _e in keys]
+            fail.append('%s lacks %s (add_filter_set.py)' % (where, ', '.join(miss)))
+        ranks = [order.index(k) if k in order else len(order) for k, _e in keys]
         if ranks != sorted(ranks):
-            fail.append('%s is not in the common order Year, Month, Area Manager, District, StoreName, Channel, then the '
-                        "page's own (%s) - rebuild the page" % (where, ', '.join(k or 'own' for k, _e in keys)))
+            fail.append("%s is not in the common order %s, then the page's own (%s) - rebuild the page"
+                        % (where, ', '.join(order), ', '.join(k or 'own' for k, _e in keys)))
         for d, (k, exact) in zip(sl, keys):
             free = (k, pages[pg]['displayName']) in filter_unsynced(folder)
             grp = (d['visual'].get('syncGroup') or {}).get('groupName')
@@ -4994,7 +5027,11 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
         check_extension_ref(d_def, fail)
         check_dead_field(report_dir, d_def, fail)
         check_literal_type(report_dir, d_def, fail)
-        check_dead_visual(d_def, fail)
+        # design rules of the White copy (its BG_ frames by group, its filter panel); literal-type above is a file error and
+        # runs on every tier
+        if _kind(report_dir) == 'White':
+            check_dead_visual(d_def, fail)
+            check_select_all(d_def, fail)
     check_user_save(report_dir, fail)
     check_bridge_bypass(report_dir, fail)
     if not KEEP_OLD_DESIGN:
@@ -5177,6 +5214,33 @@ def run(report_dir, strict_page=None, verbose=False, layers='all'):
     return 0
 
 
+def audit(root, verbose=False):
+    """--audit (a department repo 21/10: the gate must find on its own every report that falls short): the static layer over
+    EVERY report folder under <root> (default reports/), one table - errors per report, the filter-panel findings
+    (missing boxes · order · sync) named page by page - so the files off the standard are found without opening each.
+    Each report runs in its own process (the gate keeps per-report globals). Exit 1 when any report has an error."""
+    folders = sorted(os.path.dirname(p) for p in glob.glob(os.path.join(root, '*', '*.Report')))
+    if not folders:
+        print('no report folder (*/*.Report) under', root)
+        return 2
+    worst = 0
+    print('%-40s %7s %7s' % ('report', 'errors', 'filter'))
+    detail = []
+    for f in folders:
+        out = subprocess.run([sys.executable, os.path.abspath(__file__), f, '--static', '--verbose'],
+                             capture_output=True, text=True, encoding='utf-8', errors='backslashreplace')
+        lines = [ln.strip()[2:] for ln in out.stdout.splitlines() if ln.strip().startswith('X ')]
+        m = re.search(r'LAYER static\s*:\s*(\d+) errors', out.stdout)
+        n = int(m.group(1)) if m else (0 if 'checked' in out.stdout else -1)
+        flt = [ln for ln in lines if 'filter panel' in ln]
+        print('%-40s %7s %7d' % (os.path.basename(f), n if n >= 0 else '?', len(flt)))
+        detail += [(os.path.basename(f), ln) for ln in (lines if verbose else flt)]
+        worst = max(worst, 1 if n else 0)
+    for rep, ln in detail:
+        print('  %s: %s' % (rep, ln))
+    return worst
+
+
 if __name__ == '__main__':
     sys.stdout.reconfigure(errors='backslashreplace')   # Windows console is cp1252: a Vietnamese name must not crash the report
     argv = sys.argv[1:]
@@ -5197,6 +5261,8 @@ if __name__ == '__main__':
     layers = ('open' if '--open-check' in argv else 'pre-open' if '--pre-open' in argv
               else 'static' if '--static' in argv else 'all')
     pos = [a for a in argv if not a.startswith('--')]
+    if '--audit' in argv:
+        sys.exit(audit(pos[0] if pos else 'reports', verbose))
     if not pos:
         print(__doc__)
         sys.exit(2)

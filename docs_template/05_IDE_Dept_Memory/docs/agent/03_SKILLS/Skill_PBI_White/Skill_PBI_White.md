@@ -1,13 +1,13 @@
 ---
 id: Skill_PBI_White
 name: pbi-white
-version: 10
+version: 11
 aka: pbi-mix
 replaces: [Skill_PBI_Mix]
 type: process
 description: Build the WHITE copy (named Mix before 2026-10-19) of a Power BI report - warehouse model, the Red header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-red). Vietnamese triggers - "bản white", "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
 installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
-from: _Store/03_SKILLS/Skill_PBI_White @v10 #ab8fdd02e062
+from: _Store/03_SKILLS/Skill_PBI_White @v11 #b61ccd67c347
 ---
 
 # Bản `White` — bố cục CŨ, khung nhận diện MỚI, chạy trên DW
@@ -392,6 +392,15 @@ thấy mỗi trang filter riêng nó bị rối" → chọn "bộ chung + đồn
   bảng lọc** — thiếu thì chép từ ô cùng trường ở Monthly, bỏ lựa chọn. Miễn có lý do: `Channel` ở MCP và Power Consumption
   (P&L, chi phí điện: không có chiều kênh). Trường tương đương được tính là có, không đồng bộ: `Dim_Store.AreaManager` (MCP),
   `ChannelType+ChannelName` (DSR).
+- 🔴 **Mọi chiều phân loại cố định, ít giá trị mà số trên trang cắt được theo nó đều có ô lọc** — cột chữ của Dim có 2–40 giá trị
+  nghiệp vụ trên DW (không tính `null` / `'Unknown'` / `'Not Applicable'` / `'#NA'`), không phải cột kỹ thuật (mã, thuế, tài khoản,
+  trạng thái, liên lạc, ghi chú). Phòng khai bộ của mình ở `filter_set` (`config/pbi-gate.json`) sau các khoá vị trí; cột ít giá trị
+  mà không lấy thì ghi lý do. Trước khi đặt ô, đo ô đó lọc tới được fact nào của trang (quan hệ + DAX của measure): ô chỉ lọc được
+  một phần số mà không báo là sai. Trùng nghĩa với ô có sẵn ⇒ giữ ô có sẵn, đổi nhãn + gắn sync, không thêm ô thứ hai. Máy làm:
+  `scripts/add_filter_set.py`. Máy canh: cổng `filter-set`; quét cả repo: `pbi_gate.py --audit`.
+- 🔴 **Mọi ô lọc chọn được nhiều giá trị đều có dòng "Select all"** (`objects.selection.selectAllCheckboxEnabled = true`) — ô
+  không có đường chọn tất cả là người đọc kẹt ở một lựa chọn. Miễn: ô chọn-một (`singleSelect` · `strictSingleSelect`, vd field
+  parameter). Cổng `select-all`.
 - **Đồng bộ** = `visual.syncGroup {groupName: 'FilterSet_<Key>', fieldChanges: true, filterChanges: true}` (khuôn Desktop ghi,
   13 ô Combo/khác). `Month` **chỉ** có ở trang theo tháng (Monthly · Daily · Product · Product Mix · Operation · DSR) — KHÔNG
   thêm vào Weekly / Executive: Month mặc định `Current Month`, ép lên Weekly là Weekly chỉ còn tuần của tháng đó. Trang khuyến
@@ -401,7 +410,7 @@ thấy mỗi trang filter riêng nó bị rối" → chọn "bộ chung + đồn
   Cột `Dim_Date.IsCurrentMonth` gắn nhãn chữ `Current Month` cho tháng có bán cuối (`MaxSale`) ⇒ chọn nhãn đó là trang tự lăn sang
   tháng mới. Trang **Monthly** theo Legacy **không chọn tháng nào** (4 chart theo tháng ra cả năm) nên **không** nằm trong
   `FilterSet_Month` — đồng bộ là nó nhận luôn một tháng của trang khác. Danh sách miễn: `pbi_gate.FILTER_UNSYNCED` (một nguồn,
-  `mix_builder --filter-set` đọc lại). Cổng `filter-set`: ô tháng đồng bộ mà khác `'Current Month'` ⇒ đỏ · Monthly còn đồng bộ hoặc
+  `scripts/add_filter_set.py` đọc lại). Cổng `filter-set`: ô tháng đồng bộ mà khác `'Current Month'` ⇒ đỏ · Monthly còn đồng bộ hoặc
   chọn sẵn ⇒ đỏ (thử âm 05/10: gài 3 ⇒ đỏ đúng 3). Ori không có "current" (một slicer khoảng ngày `Between`); slicer **Date Picker**
   (GA 08/2026, neo "Last date") là hướng thử sau — người dùng dựng mẫu trong Desktop trước, tuần thứ Sáu của ABC nó không làm được.
 - 🔴 **'Current …' là kỳ MỚI NHẤT trong danh sách — nhãn và bộ lọc của ô dùng CHUNG MỘT mốc ngày.** Ô kỳ có thành viên
@@ -420,7 +429,7 @@ thấy mỗi trang filter riêng nó bị rối" → chọn "bộ chung + đồn
   phải khớp tên field của ô (hoặc tên tương đương trong `PANEL_ALIASES`: Month ~ IsCurrentMonth, Area Manager ~ AreaManagerShortName…).
   Thêm ô mới thì **thêm nhãn cùng lúc**.
 - Operation từng có **hai ô Week** (`SortWeekToDate` lọc Tuần + WoW, `IsCurrentWeek` chỉ lọc WoW) ⇒ giữ `SortWeekToDate`.
-- **Máy làm:** `mix_builder.py --filter-set` (thêm ô + syncGroup) → dựng lại trang (bộ dựng xếp theo `filter_rank`) hoặc
+- **Máy làm:** `scripts/add_filter_set.py` (thêm ô + nhãn + syncGroup, vá bookmark) → dựng lại trang (bộ dựng xếp theo `filter_rank`) hoặc
   `--panel-layout` cho trang không có spec (Monthly). **Máy canh:** cổng `filter-set` (thiếu ô · sai thứ tự · chưa đồng bộ ·
   ô khác 40 px). Thử đỏ 01/10: AM 145 / OM 180 lỗi → 0.
 - ⚠ Bẫy đã trả giá khi làm: đổi chiều cao nhãn làm bộ dựng không tìm ra mẫu nhãn trên Weekly (`StopIteration`) ⇒ mọi trang
