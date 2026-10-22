@@ -41,6 +41,18 @@ test("the dependency layer is built from the manifests alone, before the sources
   assert.ok(d.indexOf("npm ci --ignore-scripts") < d.indexOf("COPY . ."), "deps first, so a code change reuses the layer");
 });
 
+// 2026-10-22, the Docker trial: the workspace graph got the host root (D:\Workspace\...), listed its siblings on a
+// disk that does not exist in the container, fell back to the install and drew the nine sets as "repos".
+test("the cockpit's project root is opened where the daemon sees it; the store keys stay host paths", () => {
+  const ui = read("../src/ui.ts");
+  assert.match(ui, /const targetLocal = toLocalPath\(target\);/);
+  for (const call of ["buildWorkspaceGraph(targetLocal)", "getCodeGraph(targetLocal)", "buildFolderTree(targetLocal)", "listHarnessFiles(targetLocal)", "buildStandardGraph(targetLocal"]) {
+    assert.ok(ui.includes(call), `disk readers take the local path: ${call}`);
+  }
+  assert.match(ui, /root: toHostPath\(n\.root\)/, "repos go back to the cockpit as host paths");
+  for (const call of ["buildTouchIndex(target)", "fitnessHistory(target)"]) assert.ok(ui.includes(call), `store lookups keep the host path: ${call}`);
+});
+
 test("the image listens on every interface inside the container; the native default stays 127.0.0.1", () => {
   assert.match(read("../../Dockerfile"), /ENV ZEMORY_UI_HOST=0\.0\.0\.0/);
   assert.match(read("../src/ui.ts"), /server\.listen\(port, process\.env\.ZEMORY_UI_HOST\?\.trim\(\) \|\| "127\.0\.0\.1"\)/);

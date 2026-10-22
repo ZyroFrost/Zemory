@@ -233,6 +233,7 @@ import { getShortcutPrompted, setShortcutPrompted } from "./config/settings.js";
 import { type ScopeLane, markConnectionsStale, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
 import { parsePathMap, relayHook } from "./memory/hook-relay.js";
+import { toHostPath, toLocalPath } from "./util/hostpath.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
 import { deepSearchChild } from "./jobs/searchjob.js";
 import { heavyStatsChild, type HeavyStats } from "./jobs/statsjob.js";
@@ -2579,6 +2580,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     const p = u.pathname;
     const rootP = u.searchParams.get("root") || undefined;
     const target = rootP ?? root();
+    // `target` is the host path (the store keys projects by it); `targetLocal` is where this process opens it - the
+    // same path natively, a mount in the Docker container (plan/30 §3 a, util/hostpath.ts)
+    const targetLocal = toLocalPath(target);
     // Identity probe: lets a second `zemory ui` tell "our UI already owns
     // this port" from "some other app grabbed 4444" — cheap, no work done.
     // `lang` rides on /ping — the FIRST and cheapest call the shell makes — so the UI can fix its
@@ -2725,10 +2729,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       return json(res, probeDriveFresh(path));
     }
     if (p === "/doc") {
-      return json(res, readDoc(target, u.searchParams.get("file") ?? ""));
+      return json(res, readDoc(targetLocal, u.searchParams.get("file") ?? ""));
     }
     if (p === "/harness-files") {
-      return json(res, listHarnessFiles(target));
+      return json(res, listHarnessFiles(targetLocal));
     }
     if (p === "/standard-bundles") {
       // MỌI bộ mẫu trên đĩa + cây file đọc được của từng bộ. Màn Harness vẽ chip và cây
@@ -2764,12 +2768,14 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     }
     if (p === "/folder-tree") {
       // Annotated folder tree for the project's Graph sub-tab (structure view).
-      return json(res, buildFolderTree(target));
+      return json(res, buildFolderTree(targetLocal));
     }
     if (p === "/workspace-graph") {
       // Level 1 of the four-level graph (plan/13 §0c): the repos of this repo's workspace and the owner / uses lines.
       try {
-        return json(res, buildWorkspaceGraph(target));
+        // the repos come back as host paths: the cockpit sends one back as `?root=` when a repo is opened
+        const wg = buildWorkspaceGraph(targetLocal);
+        return json(res, { ...wg, base: wg.base && toHostPath(wg.base), nodes: wg.nodes.map((n) => ({ ...n, root: toHostPath(n.root) })) });
       } catch (e) {
         return json(res, { base: "", nodes: [], edges: [], error: e instanceof Error ? e.message : String(e) });
       }
@@ -2784,7 +2790,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Derived graph (nodes=files) + fitness (plan 13 §9 Phase A) + AST symbols
       // (Phase B, fail-open). Cached per project + source signature so a graph-tab
       // open doesn't re-parse every file each poll.
-      const { graph: g, fitness, builtAt, sig } = await getCodeGraph(target);
+      const { graph: g, fitness, builtAt, sig } = await getCodeGraph(targetLocal);
       // Ghi mốc fitness Ở ĐÂY, không phải trong getCodeGraph: daemon phục vụ graph của
       // một project là chỗ duy nhất quan sát được "project này vừa đổi code". Đặt trong
       // getCodeGraph thì mọi test dựng repo tạm cũng ghi vào global_memory.db THẬT.
@@ -2824,7 +2830,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // api seam (plan 13 §4): FE gọi endpoint nào của BE — hai bờ nói chuyện qua HTTP
         // nên import-graph không có lấy một cạnh nào giữa chúng. Nhãn inferred/textual
         // (điều 13 — khớp chuỗi route, không phải contract). Fail-open cùng khối try này.
-        for (const s of buildSeamEdges(target, g.nodes)) {
+        for (const s of buildSeamEdges(targetLocal, g.nodes)) {
           edges.push({ from: s.from, to: s.to, kind: "api", rel: "inferred", confidence: s.confidence, count: s.count, routes: s.routes });
         }
       } catch {
@@ -2858,7 +2864,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // references. Toàn bộ hạng KHAI BÁO — parse tất định, 0 LLM (điều 6/13).
       let stdStats: unknown = null;
       try {
-        const std = buildStandardGraph(target, g.nodes.map((n) => ({ id: n.id, slot: n.slot })));
+        const std = buildStandardGraph(targetLocal, g.nodes.map((n) => ({ id: n.id, slot: n.slot })));
         for (const n of std.nodes) nodes.push({ ...n, loc: 0, bytes: 0, symbols: [], fanIn: 0, fanOut: 0, touchedBy: 0 });
         for (const e of std.edges) edges.push({ from: e.from, to: e.to, kind: e.kind, rel: "declared" });
         stdStats = std.stats;
