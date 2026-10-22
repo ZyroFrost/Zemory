@@ -27,6 +27,7 @@ import { folderCoreFiles, isFolderHarness, isRetired, listParts, shelfDir, skill
 import { CONS_REPO_FILE, SHELF } from "./harness-names.js";
 import { consColumn } from "./cons-read.js";
 import { repoRole } from "./region-links.js";
+import { listDir } from "../util/list-dir.js";
 
 /**
  * Where the guard lives. File harness: `<agent>/../hooks`. Folder harness (plan/28 §0d · §0q): the folder of the read-first
@@ -104,21 +105,8 @@ export function findSqlStores(root: string): string[] {
   const out: string[] = [];
   const walk = (dir: string, depth: number): void => {
     if (depth > 7) return;
-    let names: string[];
-    try {
-      names = readdirSync(dir);
-    } catch {
-      return;
-    }
-    for (const n of names) {
+    for (const { name: n, abs: p, isDir } of listDir(dir) ?? []) {
       if (STORE_SKIP.has(n) || n.startsWith(".")) continue;
-      const p = join(dir, n);
-      let isDir: boolean;
-      try {
-        isDir = statSync(p).isDirectory();
-      } catch {
-        continue;
-      }
       if (isDir) walk(p, depth + 1);
       else if (STORE_FILE_RE.test(n) && /[\\/]store$/.test(dir)) out.push(relative(root, p).replace(/\\/g, "/"));
     }

@@ -17,7 +17,7 @@ offline.
 > the apps you build with the harness: scaffolding LLM/AI apps is a first-class use. Use the harness
 > alone, the memory alone, or both.
 
-![Version](https://img.shields.io/badge/version-4.1.1-informational)
+![Version](https://img.shields.io/badge/version-4.2.0-informational)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520.11%20%3C25-3c873a)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
@@ -158,6 +158,27 @@ zemory setup --shortcut && zemory memory scan && zemory hook install && zemory m
 
 `npm install -g .` links the repo, so a later `npm run build` updates the global `zemory` command in
 place. The cockpit's *Update now* button runs the whole pull, rebuild and restart cycle.
+
+**Docker (preview, Windows and Linux).** A second way to install, beside the native one above, never
+together with it: both serve port 4444, and a native `zemory ui` refuses to start while the Docker one
+holds the port. The image carries Node, the native modules and the models, so the machine needs only
+Docker. The memory store lives on the Linux file system (`/home/<user>/zemory`; on Windows inside
+Ubuntu on WSL, never on an NTFS folder, where SQLite's WAL breaks). The repos and `~/.claude` are mounted
+read-only, and every path is stored the way the host writes it.
+
+```bash
+# from Ubuntu (WSL) on Windows, or a Linux shell; see docker-compose.yml for each variable
+export HOST_HOME=/mnt/c/Users/<you> HOST_HOME_NATIVE='C:\Users\<you>'
+export HOST_WORKSPACE=/mnt/d/Workspace HOST_WORKSPACE_NATIVE='D:\Workspace'
+export ZEMORY_HOSTNAME=<this machine> ZEMORY_STORE=/home/<user>/zemory
+docker compose up -d --build     # then open http://127.0.0.1:4444
+```
+
+Still open before it can replace a native install: web-chat capture and the peer-to-peer channel inside
+the container, moving an existing store over, a one-command installer, and the speed of reading repos
+from a Windows drive (every file operation crosses the mount; a tree walk now asks one question per
+folder instead of one per file). On Windows, cap the WSL VM in `%USERPROFILE%\.wslconfig`
+(`memory=4GB`), since WSL takes half the machine's RAM by default.
 
 **Why `fetch-prebuilds` comes first.** `better-sqlite3` downloads its prebuilt binary from
 `github.com/<repo>/releases/download/…`. On networks that block or throttle that host (one corporate
@@ -975,6 +996,9 @@ per-file questions in `selfupdate` · the 300-line local auto-commit · `setup m
 
 **Open:**
 
+- **Docker as a full install** (Windows and Linux): web-chat capture and the peer-to-peer channel in the
+  container, moving a native store over, a one-command installer, acceptance on two clean machines, and
+  a native-vs-Docker comparison of every path-driven surface that comes out the same.
 - **Repos changing the store themselves.** Any repo may propose and apply a change to the shared parts
   after asking the user, rebuild the sets and sync every repo `zemory impact` lists, without two repos
   overwriting each other. Missing today: a command for a repo to rebuild the sets itself, overwrite

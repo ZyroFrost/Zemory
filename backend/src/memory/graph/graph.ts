@@ -9,9 +9,10 @@
 // tool dependency-free. Fail-open: unreadable files are skipped, never fatal.
 
 import { createHash } from "node:crypto";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, join, relative } from "node:path";
 import { declaredSlots, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "../../docs/structure-tree.js";
+import { listDir } from "../../util/list-dir.js";
 
 /**
  * Từ điển slot CỦA MỘT REPO = bảng chuẩn APP (`SLOT_ROLES`) ∪ slot repo đó tự khai ở
@@ -197,21 +198,8 @@ export interface CodeGraph {
 /** Collect every source file under a root (bounded, ignoring output/vendor dirs). */
 function collectFiles(absRoot: string, absDir: string, out: string[], depth: number): void {
   if (depth > 8) return;
-  let entries: string[];
-  try {
-    entries = readdirSync(absDir);
-  } catch {
-    return;
-  }
-  for (const name of entries) {
+  for (const { name, abs, isDir } of listDir(absDir) ?? []) {
     if (name.startsWith(".") || IGNORE.has(name)) continue;
-    const abs = join(absDir, name);
-    let isDir: boolean;
-    try {
-      isDir = statSync(abs).isDirectory();
-    } catch {
-      continue;
-    }
     if (isDir) collectFiles(absRoot, abs, out, depth + 1);
     else if (isSourceLeaf(name)) out.push(abs); // MỘT định nghĩa, dùng chung với cây folder
   }

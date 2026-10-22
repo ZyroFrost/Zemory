@@ -7,12 +7,13 @@
 // Deterministic, 0 LLM (HP điều 6). It only READS the tree; it never moves files
 // (reconcile is agent-driven — 03_STRUCTURE §8).
 
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { harnessPathsAt } from "../core/config.js";
 import { isSourceLeaf } from "../memory/graph/graph.js";
 import { isFolderHarness, listParts, shelfDir } from "./store.js";
 import { SHELF } from "./harness-names.js";
+import { listDir } from "../util/list-dir.js";
 
 /**
  * The standard slot dictionary — one line per concern, mirroring 03_STRUCTURE
@@ -291,23 +292,12 @@ function roleFor(name: string, depth: number): { slot?: string; role?: string; k
 
 function walk(absDir: string, relDir: string, depth: number, root: string, declared: Set<string>): TreeNode[] {
   if (depth > MAX_DEPTH) return [];
-  let entries: string[];
-  try {
-    entries = readdirSync(absDir);
-  } catch {
-    return [];
-  }
+  const entries = listDir(absDir);
+  if (!entries) return [];
   const dirs: TreeNode[] = [];
   const files: TreeNode[] = [];
-  for (const name of entries) {
+  for (const { name, abs, isDir } of entries) {
     if (name.startsWith(".") || IGNORE.has(name)) continue;
-    const abs = join(absDir, name);
-    let isDir: boolean;
-    try {
-      isDir = statSync(abs).isDirectory();
-    } catch {
-      continue;
-    }
     const rel = relDir ? relDir + "/" + name : name;
     if (isDir) {
       let meta = roleFor(name, depth);
