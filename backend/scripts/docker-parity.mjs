@@ -14,6 +14,7 @@
 // along; 1 = a difference, a leak or a slow/unanswered ping; 2 = could not run.
 
 import { execFileSync } from "node:child_process";
+import { Worker } from "node:worker_threads";
 import { readFileSync, writeFileSync } from "node:fs";
 import { listKnownProjects } from "../../dist/projects.js";
 
@@ -144,13 +145,18 @@ const repos = listKnownProjects().map((p) => p.root).filter((r) => !ONLY || r.to
 // event loop sat in 9p calls for minutes and the cockpit would not load - the checker measured correctness only. Now a
 // ping runs every second through the whole run; one slower than PING_LIMIT_MS (or none) is a failure of its own.
 const PING_LIMIT_MS = 3000;
+// The pinger runs in a worker thread: this script asks the CLI through execFileSync, which blocks its own event loop -
+// a pinger on that loop measured those waits as the daemon's (a "28 s" stall that the daemon's profile did not have).
+const PINGER_SRC = `
+const { parentPort, workerData } = require("node:worker_threads");
 const pings = { n: 0, slow: 0, worst: 0, failed: 0 };
-let pinging = true;
-const pinger = (async () => {
-  while (pinging) {
+let on = true;
+parentPort.on("message", (m) => { if (m === "stop") on = false; });
+(async () => {
+  while (on) {
     const t0 = Date.now();
     try {
-      const r = await fetch(`http://127.0.0.1:${PORT}/ping`, { signal: AbortSignal.timeout(30_000) });
+      const r = await fetch("http://127.0.0.1:" + workerData.port + "/ping", { signal: AbortSignal.timeout(30000) });
       if (!r.ok) pings.failed++;
     } catch {
       pings.failed++;
@@ -158,10 +164,14 @@ const pinger = (async () => {
     const ms = Date.now() - t0;
     pings.n++;
     pings.worst = Math.max(pings.worst, ms);
-    if (ms > PING_LIMIT_MS) pings.slow++;
+    if (ms > workerData.limit) pings.slow++;
     await new Promise((r) => setTimeout(r, 1000));
   }
+  parentPort.postMessage(pings);
 })();
+`;
+const pingWorker = new Worker(PINGER_SRC, { eval: true, workerData: { port: PORT, limit: PING_LIMIT_MS } });
+const pingResult = new Promise((r) => pingWorker.once("message", r));
 const answers = {};
 const GLOBAL = "(global)";
 answers[GLOBAL] = {};
@@ -177,8 +187,9 @@ for (const root of repos) {
   }
 }
 
-pinging = false;
-await pinger;
+pingWorker.postMessage("stop");
+const pings = await pingResult;
+await pingWorker.terminate();
 const unresponsive = pings.slow + pings.failed;
 const pingLine = `cockpit responsiveness: ${pings.n} ping(s), worst ${pings.worst} ms, ${pings.slow} over ${PING_LIMIT_MS} ms, ${pings.failed} failed`;
 
