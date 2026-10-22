@@ -52,7 +52,7 @@ import { gatherStatus } from "./status.js";
 import type { FolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
 import { applySkills, applyStandard } from "./docs/standard.js";
-import { repoGateRows, type RepoGateRow } from "./docs/repo-sweep.js";
+import type { RepoGateRow } from "./docs/repo-sweep.js";
 import { localChangePlan, restoreKept, setAsideClashes } from "./update/local-changes.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
@@ -160,6 +160,8 @@ const checkCache = new Map<string, { at: number; r: unknown }>();
 async function runCheckOffLoop(feature: string, rootArg?: string): Promise<unknown> {
   const w = await runInWorker<unknown>("checks.js", "runCheck", rootArg === undefined ? [feature] : [feature, rootArg], 180_000);
   if (w.ok) return w.value;
+  // too slow for the worker ⇒ far too slow for the event loop: say so instead of freezing the daemon
+  if (w.timedOut) return { feature, ok: false, error: `check ran past its limit (${w.error})` };
   daemonLog(`[check] ${feature}: worker hỏng — chạy tại chỗ: ${w.error}`);
   return runCheck(feature, rootArg);
 }
@@ -4216,15 +4218,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // The daemon's 6-hour sweep (conform · validate · todo verify) joins each repo's gaps: one chip, one list. ~5 s of
         // synchronous reads over 20 repos froze every other request (the chip's dialog opened after 7.9 s, 2026-10-20) ⇒ a
         // worker; requests that arrive while it runs share the one pass.
-        repoGatesRun ??= runInWorker<RepoGateRow[]>("docs/repo-sweep.js", "repoGateRows", [])
-          .then((w) => {
-            if (w.ok) return w.value;
-            try {
-              return repoGateRows();
-            } catch {
-              return []; // fail-open — a reminder surface must not die
-            }
-          })
+        // never re-run on the event loop when the worker fails: that is the very freeze the worker exists to avoid
+        repoGatesRun ??= runInWorker<RepoGateRow[]>("docs/repo-sweep.js", "repoGateRows", [], 600_000)
+          .then((w) => (w.ok ? w.value : (repoGatesCache?.rows ?? []))) // fail-open — a reminder surface must not die
           .finally(() => (repoGatesRun = null));
         const rows = await repoGatesRun;
         repoGatesCache = { at: Date.now(), rows };
