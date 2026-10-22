@@ -72,6 +72,9 @@ test("poll: counts only THIS machine's messages above the p2p watermark — the 
   seed(db, ME, "sm2", ["m2"]);
   const mine = ownPendingMax(db, ME);
   assert.ok(mine > first, "the newest own message is the one reported");
+  // the tick looks only at the ids that arrived since the last one: what it found before still stands
+  seed(db, "OTHER-PC", "so", ["o4"]);
+  assert.equal(ownPendingMax(db, ME), mine, "only the other machine's messages since ⇒ our pending message is still pending");
   const conn = openMemory(db);
   try {
     const wmHost = ME.replace(/[^A-Za-z0-9._-]/g, "_");

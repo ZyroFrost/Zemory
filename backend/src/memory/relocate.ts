@@ -24,6 +24,7 @@ import {
   MEMORY_DB_PINNED_BY_ENV,
   HOME_ZEMORY_DIR,
   LOCATION_POINTER,
+  clearStoragePointerCache,
   currentMemoryDb,
   currentMemoryDir,
   currentStoreRoot,
@@ -198,6 +199,7 @@ function setStoragePointer(dataDir: string | null, paths: StoragePaths = livePat
   // là âm thầm kéo gốc kho về lại thư mục máy — và kéo theo cả kho đi sang máy khác.
   const keep = readPointerAt(paths.pointer).memoryRoot;
   writeJsonAtomic(paths.pointer, keep ? { dataDir, memoryRoot: keep } : { dataDir });
+  clearStoragePointerCache();
 }
 
 /** Đọc con trỏ TẠI ĐƯỜNG ĐƯỢC TRUYỀN. Cố ý KHÔNG dùng `readStoragePointer()`: hàm đó
@@ -619,4 +621,5 @@ function setStoreRootPointer(memoryRoot: string | null, paths: StoragePaths = li
   else next.dataDir = paths.dir;
   if (memoryRoot) next.memoryRoot = memoryRoot;
   writeJsonAtomic(paths.pointer, next);
+  clearStoragePointerCache();
 }

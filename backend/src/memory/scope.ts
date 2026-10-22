@@ -13,7 +13,7 @@ import { getScopeExclude, getWebAuth, getWebPull, type ScopeLane } from "../conf
 import { accountsOf, isEmail, slotOfIdentity, webLaneLinked } from "./webslots.js";
 import { findBorrowSource } from "./borrowcookies.js";
 import { tr } from "../i18n/index.js";
-import { type ConnectionRow, listConnections } from "./connections.js";
+import { type ConnectionRow } from "./connections.js";
 
 export type { ScopeLane };
 
@@ -631,9 +631,10 @@ function safeConnections(dbPath: string): ConnectionRow[] {
       if (Date.now() - connCache.at > CONN_TTL_MS) refreshConnections(dbPath);
       return connCache.rows;
     }
-    const rows = listConnections(dbPath);
-    connCache = { at: Date.now(), dbPath, rows };
-    return rows;
+    // first ask: the worker builds it, the tree is drawn without the connection states this once (the next refresh has
+    // them). Built here it held the event loop 2.5-4.8 s (cookie jars, transcript folders; profiled 2026-10-23).
+    refreshConnections(dbPath);
+    return [];
   } catch {
     return []; // fail-open (điều 9): không dò được kho thì cây vẫn phải dựng được
   }
