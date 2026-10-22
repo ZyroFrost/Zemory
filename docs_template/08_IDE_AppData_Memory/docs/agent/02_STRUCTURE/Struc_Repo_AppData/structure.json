@@ -1,6 +1,8 @@
 {
   "extends": "Struc_Repo_NonApp",
-  "slots": [],
+  "slots": [
+    "Models_142_Database"
+  ],
   "role": {
     "name": "app-data",
     "manages": [],
