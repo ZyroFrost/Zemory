@@ -1,7 +1,7 @@
 ---
 id: Skill_Task_VmAutomation
 name: task-vm-automation
-version: 7
+version: 8
 type: process
 aka: vm-automation
 description: Put a periodic task (Daily / Weekly / Monthly) on the VM to RUN BY ITSELF - the vm_deploy.json manifest, the schedule, the Log_JobRun run log, results to the region's SharePoint, the _SharePoint.url shortcut. Use whenever a task goes onto the VM, is automated or scheduled, or its VM run is checked. Vietnamese triggers - "đưa task lên VM", "tự động hoá task", "đặt lịch trên VM", "task chạy trên VM chưa".
@@ -62,7 +62,7 @@ chỉ gỡ ở hệ mới (repo phòng + lịch VM), thứ ở hệ cũ để ng
   (vd XYZ `ABC_Daily_StoreInventoryReport` đọc `Fact_InventoryDaily`, số gốc = form kiểm kê nhà hàng). Số từ hệ thống (POS · Fast · CRM)
   ⇒ không `input_url`, `01_raw` TRỐNG. Cả hai ⇒ liệt kê đủ thư mục file gốc (` | `). `make_output_links.py` chỉ bắt buộc `output_url`.
 - **Nhật ký chạy (`task_run.py`) vào DB của repo giữ dữ liệu mà repo đang chạy dùng:** repo `dept` → DW (`WAREHOUSE_CONN`), repo
-  `app` → repo `app-data` (`APPCORE_CONN`, khai ở `uses.app-data` của marker), repo dữ liệu → DB của chính nó; một bản `task_run.py`
+  `app` → repo `app-data` (`APPDATA_CONN`, khai ở `uses.app-data` của marker), repo dữ liệu → DB của chính nó; một bản `task_run.py`
   cho mọi repo, không chép tay biến thể. Repo dữ liệu đặt khoá tên khác ⇒ khai trong `.env` của nó `RUNLOG_CONN_KEY=<TÊN KHOÁ>`
   (`task_run` đọc khoá đó trước khoá mặc định; trên VM chỉ `.env` đi theo nên khai ở đây, không ở marker) — và đưa cả hai khoá vào
   `.env` của `vm_deploy.json`.
