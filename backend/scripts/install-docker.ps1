@@ -101,6 +101,9 @@ function Install-ZemoryDocker {
   Say "building and starting the container (the first build takes a while)"
   wsl.exe -d $distro -- sh -c "cd '$(WslPath $dir)' && docker compose up -d --build"
   Native "docker compose up"
+  # every rebuild leaves a layer of build cache and an untagged old image in Docker's disk: 24.6 GB after a day of
+  # rebuilds on one machine (measured 2026-10-22). Keep a day of cache, drop the rest.
+  wsl.exe -d $distro -- sh -c "docker builder prune -f --filter until=24h >/dev/null; docker image prune -f >/dev/null"
   for ($i = 0; $i -lt 60; $i++) { try { $ping = Invoke-RestMethod "http://127.0.0.1:4444/ping" -TimeoutSec 3; if ($ping.runtime -eq "docker") { break } } catch { }; Start-Sleep 2 }
   if (-not $ping -or $ping.runtime -ne "docker") { throw "the container did not answer on http://127.0.0.1:4444 - see 'docker logs zemory'" }
   Say "ok  the cockpit answers on http://127.0.0.1:4444"
