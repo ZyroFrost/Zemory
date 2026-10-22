@@ -12,10 +12,10 @@ export const Q = {
   // ── messages ──────────────────────────────────────────────────────────────
   countMessages: "SELECT COUNT(*) c FROM messages",
   maxMessageId: "SELECT COALESCE(MAX(id),0) m FROM messages",
-  // the highest id above a watermark that THIS machine originated (host = ?, or NULL / 'unknown' for pre-v4 rows), walked
-  // down the primary key and stopped at the first hit - MAX() over the join read every row above the watermark
-  ownMaxMessageAbove:
-    "SELECT m.id AS m FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id > ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown') ORDER BY m.id DESC LIMIT 1",
+  // the highest id in (from, to] that THIS machine originated (host = ?, or NULL / 'unknown' for pre-v4 rows), walked down
+  // the primary key and stopped at the first hit; the fast lane asks only for the ids that arrived since its last tick
+  ownMaxMessageBetween:
+    "SELECT m.id AS m FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id > ? AND m.id <= ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown') ORDER BY m.id DESC LIMIT 1",
   countSessionMessages: "SELECT COUNT(*) c FROM messages WHERE session_id = ?",
   messageIdByUuid: "SELECT id FROM messages WHERE session_id = ? AND uuid = ?",
   insertMessage: `INSERT OR IGNORE INTO messages (session_id, uuid, role, content, tool_name, timestamp)

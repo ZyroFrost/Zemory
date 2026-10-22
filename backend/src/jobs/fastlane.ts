@@ -81,6 +81,9 @@ export function fastSendDecide(prev: FastSendState, pendingMax: number, now: num
  * the same rule as the delta export (`buildRowsSnapshot`): `host` = this machine, or NULL / 'unknown' (pre-v4 rows) — a
  * message merged from the other machine is never a reason to seal a block. Read-only, one indexed range query.
  */
+/** Per store + host: the watermark the scan started from, the highest id already looked at, the newest own id found. */
+const pendingScan = new Map<string, { wm: number; scannedTo: number; best: number }>();
+
 export function ownPendingMax(dbPath: string, host: string): number {
   let db: Database.Database | null = null;
   try {
@@ -89,10 +92,20 @@ export function ownPendingMax(dbPath: string, host: string): number {
     // The watermark key uses the SANITISED name (`wmKeyFor` via `sanitizeHost`), `sessions.host` the raw one — as the export.
     const wmHost = (host || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
     const wm = (db.prepare("SELECT last_message_id AS v FROM sync_state WHERE bundle = ?").get(`p2p:${wmHost}`) as { v: number } | undefined)?.v ?? 0;
-    // MAX() over the join read every message above the watermark: 4.1 s on the daemon's event loop at start (profiled
-    // 2026-10-22, 642k messages); the named query walks the primary key down and stops at the first hit
-    const r = db.prepare(Q.ownMaxMessageAbove).get(wm, host) as { m: number | null } | undefined;
-    return r?.m ?? 0;
+    // Each tick looks only at the ids that arrived since the last one. A walk of everything above the watermark took
+    // 4-8 s on the event loop whenever many messages merged from the other machine sat above it (profiled 2026-10-23,
+    // natively and in Docker). Ids only grow, so the newest own id seen so far stays the answer until the watermark moves.
+    const top = (db.prepare(Q.maxMessageId).get() as { m: number }).m;
+    const key = `${dbPath}\u0000${host}`;
+    let c = pendingScan.get(key);
+    if (!c || c.wm !== wm || top < c.scannedTo) c = { wm, scannedTo: wm, best: 0 };
+    if (top > c.scannedTo) {
+      const r = db.prepare(Q.ownMaxMessageBetween).get(c.scannedTo, top, host) as { m: number | null } | undefined;
+      if (r?.m) c.best = Math.max(c.best, r.m);
+      c.scannedTo = top;
+    }
+    pendingScan.set(key, c);
+    return c.best > wm ? c.best : 0;
   } catch {
     return 0; // no store / locked / old schema ⇒ nothing to say (fail-open, art. 9)
   } finally {

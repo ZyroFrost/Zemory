@@ -7,7 +7,7 @@
 // transmitted anywhere — local-only by construction.
 
 import Database from "better-sqlite3";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { Q } from "./store/queries.js";
@@ -44,18 +44,35 @@ export interface StoragePointer {
   memoryRoot?: string;
 }
 
+// Re-read only when the file changed (size + mtime): the daemon resolves the data dir on every tick of every job, and
+// reading + parsing the pointer each time added up to 2.1 s of a 60 s profile on the event loop (2026-10-23). A stat
+// stays per call, so a relocate made by ANOTHER process is still followed at once (store-root.test, 2026-09-14).
+let pointerCache: { key: string; v: StoragePointer } | null = null;
+export function clearStoragePointerCache(): void {
+  pointerCache = null;
+}
+
 export function readStoragePointer(): StoragePointer {
+  let key = "none";
+  try {
+    const st = statSync(LOCATION_POINTER);
+    key = `${st.size}:${st.mtimeMs}`;
+  } catch {
+    /* no pointer: key "none" */
+  }
+  if (pointerCache && pointerCache.key === key) return { ...pointerCache.v };
+  let out: StoragePointer = {};
   try {
     const parsed = JSON.parse(readFileSync(LOCATION_POINTER, "utf8")) as Record<string, unknown>;
-    const out: StoragePointer = {};
     for (const k of ["dataDir", "memoryRoot"] as const) {
       const v = parsed[k];
       if (typeof v === "string" && v.trim()) out[k] = v.trim();
     }
-    return out;
   } catch {
-    return {}; // no pointer (or unreadable) → caller falls back to the home default
+    out = {}; // no pointer (or unreadable) → caller falls back to the home default
   }
+  pointerCache = { key, v: out };
+  return { ...out };
 }
 
 /** True when one path sits inside the other (or they are equal). Case-insensitive

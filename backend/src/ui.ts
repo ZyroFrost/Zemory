@@ -672,7 +672,10 @@ const lastProbeAt = new Map<string, number>();
 const LANE_PROBE_TTL_MS = 10 * 60_000;
 
 async function liveConnections(): Promise<ReturnType<typeof listConnections>> {
-  const rows = listConnections();
+  // in a worker: it reads the browsers' cookie jars and every adapter's transcript folder (2.9-4.8 s on the event loop,
+  // profiled 2026-10-23); only a worker that could not start falls back to here - never one that ran too long
+  const w = await runInWorker<ReturnType<typeof listConnections>>("memory/connections.js", "listConnections", [], 120_000);
+  const rows = w.ok ? w.value : w.timedOut ? [] : listConnections();
   for (const r of rows) if (r.kind === "web" && r.platform) r.watching = loginWatch.has(webLaneKey(r.platform, r.account ?? "main"));
   await Promise.all(
     rows.map(async (r) => {
