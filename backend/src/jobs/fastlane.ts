@@ -22,6 +22,7 @@
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { dirname, join } from "node:path";
+import { constants, setPriority } from "node:os";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 import { claimDaemonJob, daemonJobBusy, endEmbedLane, releaseDaemonJob, startEmbedLane, yieldDaemonJob } from "./writegate.js";
@@ -256,6 +257,16 @@ export class FastLane {
     let c: ChildProcess;
     try {
       c = spawn(process.execPath, [runnerEntry(), mode], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, env: backgroundChildEnv(process.env, false) });
+      // The embed lane loads the model (~2 GB) and runs it flat out: below-normal priority yields the CPU to the daemon,
+      // which answers the cockpit. Measured 2026-10-23 in the Docker VM: an embed round at normal priority and the daemon
+      // shared 4 cores and /ping stalled 10-30 s. Push and merge keep normal priority (seconds between machines).
+      if (mode === "vectors" && c.pid) {
+        try {
+          setPriority(c.pid, constants.priority.PRIORITY_BELOW_NORMAL);
+        } catch {
+          /* no right to lower it: it still runs, it only does not yield */
+        }
+      }
     } catch (e) {
       this.d.log(`[fastlane] ${mode}: could not start (${String(e).slice(0, 120)})`);
       return null;
