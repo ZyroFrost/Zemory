@@ -72,6 +72,9 @@ test("the image draws the capture browser on a virtual display and shows it thro
   const e = read("../scripts/docker-entrypoint.sh");
   assert.ok(!e.includes("\r"), "LF only: a CR breaks sh in the container");
   assert.match(e, /Xvfb "\$DISPLAY"/);
+  // a restart keeps /tmp: the old lock must go first, or Xvfb exits at once and the browser has no display
+  assert.ok(e.indexOf('rm -f "/tmp/.X${n}-lock"') >= 0 && e.indexOf('rm -f "/tmp/.X${n}-lock"') < e.indexOf('Xvfb "$DISPLAY"'));
+  assert.match(read("../../docker-compose.yml"), /^\s*init: true$/m);
   assert.match(e, /x11vnc [^\n]*-localhost/, "VNC itself stays on the container's loopback");
   assert.match(e, /websockify --web \/usr\/share\/novnc 0\.0\.0\.0:6080 127\.0\.0\.1:5900/);
   assert.match(e, /exec "\$@"$/m, "the daemon is the container's main process");

@@ -651,8 +651,11 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       // Đọc từ STDIN (dán rồi Ctrl+Z trên Windows, hoặc pipe từ file). KHÔNG nhận chìa qua
       // đối số dòng lệnh: đối số đi vào history của shell VÀ vào transcript của agent, tức
       // rò đúng kiểu vừa đi vá.
+      // `--from <file>`: the key of another install on this machine (moving native → Docker, plan/30 §5 ⑤). zemory reads
+      // the file itself, so the value never crosses a shell, an output or a transcript - only its fingerprint is printed.
+      const from = flagValue(args, "--from");
       try {
-        const r = setShareKey(readFileSync(0, "utf8"), { force: args.includes("--force") });
+        const r = setShareKey(readFileSync(from ? from : 0, "utf8"), { force: args.includes("--force") });
         console.log(`zemory memory key set — ${r.replaced ? "REPLACED" : "wrote"} ${r.path}`);
         console.log(`  fingerprint: ${r.fingerprint}`);
         console.log("  Compare this fingerprint with the source machine (`zemory memory key show`) — if they differ, it was mistyped.");
@@ -662,7 +665,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       }
       return;
     }
-    console.log("usage: zemory memory key [show|set|path] [--force]");
+    console.log("usage: zemory memory key [show|set|path] [--from <key file>] [--force]");
     console.log("  show  fingerprint + path of the key in use (NEVER prints the key)");
     console.log("  set   enter an existing key, READ FROM STDIN (paste then Ctrl+Z, or pipe from a file)");
     console.log("  path  print the standard key path (next to the DB, NOT inside the repo)");
