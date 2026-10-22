@@ -12,7 +12,7 @@ automated job, SQL Agent or not.
 
 Rules: the task's exit code is returned AS IS · a run-log failure never fails the task (it prints a warning) ·
 the run log goes to the database of the repo whose DATA the running repo uses: a `dept` repo logs to the DW (WAREHOUSE_CONN
-in the DW repo's .env), an `app` repo to the `app-data` repo (APPCORE_CONN in its .env), a data repo to its own database.
+in the DW repo's .env), an `app` repo to the `app-data` repo (APPDATA_CONN in its .env), a data repo to its own database.
 A data repo whose key has another name points to it in its .env: RUNLOG_CONN_KEY=<KEY> (read before the default keys).
 That repo is found by: env RUNLOG_REPO · the marker's `uses.app-data` · `uses.data` · `owner` (work PC) · the repo itself · the
 region manager · the first sibling `_DB_*` repo whose .env holds one of the keys (the VM, where docs/ is not deployed and one data
@@ -29,7 +29,7 @@ import time
 from pathlib import Path
 
 
-CONN_KEYS = ("WAREHOUSE_CONN", "APPCORE_CONN")     # the DW (role workspace-manager) · the app-data repo (role app-data)
+CONN_KEYS = ("WAREHOUSE_CONN", "APPDATA_CONN")     # the DW (role workspace-manager) · the app-data repo (role app-data)
 POINTER_KEY = "RUNLOG_CONN_KEY"                    # a data repo names its own key in its .env: RUNLOG_CONN_KEY=<KEY>
 
 
