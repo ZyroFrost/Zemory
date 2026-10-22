@@ -13,6 +13,7 @@ automated job, SQL Agent or not.
 Rules: the task's exit code is returned AS IS · a run-log failure never fails the task (it prints a warning) ·
 the run log goes to the database of the repo whose DATA the running repo uses: a `dept` repo logs to the DW (WAREHOUSE_CONN
 in the DW repo's .env), an `app` repo to the `app-data` repo (APPCORE_CONN in its .env), a data repo to its own database.
+A data repo whose key has another name points to it in its .env: RUNLOG_CONN_KEY=<KEY> (read before the default keys).
 That repo is found by: env RUNLOG_REPO · the marker's `uses.app-data` · `uses.data` · `owner` (work PC) · the repo itself · the
 region manager · the first sibling `_DB_*` repo whose .env holds one of the keys (the VM, where docs/ is not deployed and one data
 repo sits beside the task). Nothing secret lives here. Shipped by zemory: store part Skill_Task_VmAutomation (its installs);
@@ -29,6 +30,13 @@ from pathlib import Path
 
 
 CONN_KEYS = ("WAREHOUSE_CONN", "APPCORE_CONN")     # the DW (role workspace-manager) · the app-data repo (role app-data)
+POINTER_KEY = "RUNLOG_CONN_KEY"                    # a data repo names its own key in its .env: RUNLOG_CONN_KEY=<KEY>
+
+
+def keys_of(env):
+    """The keys to try in one .env: the one it names first, then the defaults."""
+    named = env.get(POINTER_KEY)
+    return ([named] if named else []) + [k for k in CONN_KEYS if k != named]
 
 
 def read_env(folder):
@@ -70,7 +78,7 @@ def run_log_conn():
         pass
     for c in cands:
         env = read_env(c)
-        for k in CONN_KEYS:
+        for k in keys_of(env):
             if env.get(k):
                 return k, env[k], c.name
     return None
@@ -81,7 +89,7 @@ def log_run(task, started, seconds, rc, message):
         import pyodbc
         found = run_log_conn()
         if not found:
-            print("[task_run] WARNING: no %s found — run not logged" % " / ".join(CONN_KEYS), flush=True)
+            print("[task_run] WARNING: no %s (or a key named by %s) found — run not logged" % (" / ".join(CONN_KEYS), POINTER_KEY), flush=True)
             return
         key, conn, where = found
         cn = pyodbc.connect(conn, timeout=30, autocommit=True)
