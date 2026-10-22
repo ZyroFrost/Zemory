@@ -17,10 +17,11 @@
 // minh MỚI, đúng thứ nó sinh ra để diệt.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { extname, join, posix, relative, sep } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { extname, posix, relative, sep } from "node:path";
 import { harnessPathsAt } from "../core/config.js";
 import { readTextFile } from "../util/read-text.js";
+import { listDir } from "../util/list-dir.js";
 
 export type TodoStatus = "open" | "doing" | "done";
 
@@ -126,22 +127,9 @@ function findFile(root: string, needle: string): string {
   let hit = "";
   const walk = (dir: string, depth: number): void => {
     if (hit || depth > 6) return;
-    let entries: string[];
-    try {
-      entries = readdirSync(dir);
-    } catch {
-      return;
-    }
-    for (const name of entries) {
+    for (const { name, abs, isDir } of listDir(dir) ?? []) {
       if (hit) return;
       if (SKIP.has(name)) continue;
-      const abs = join(dir, name);
-      let isDir: boolean;
-      try {
-        isDir = statSync(abs).isDirectory();
-      } catch {
-        continue;
-      }
       if (isDir) {
         walk(abs, depth + 1);
         continue;
@@ -161,21 +149,8 @@ function loadSourceBlob(root: string): { text: string; byFile: Map<string, strin
   const EXT = new Set([".ts", ".mjs", ".js", ".py", ".json"]);
   const walk = (dir: string, depth: number): void => {
     if (depth > 6) return;
-    let entries: string[];
-    try {
-      entries = readdirSync(dir);
-    } catch {
-      return;
-    }
-    for (const name of entries) {
+    for (const { name, abs, isDir } of listDir(dir) ?? []) {
       if (SKIP.has(name)) continue;
-      const abs = join(dir, name);
-      let isDir: boolean;
-      try {
-        isDir = statSync(abs).isDirectory();
-      } catch {
-        continue;
-      }
       if (isDir) {
         walk(abs, depth + 1);
       } else if (EXT.has(extname(name))) {
