@@ -15,14 +15,14 @@ export const searchKeyword: Module = {
   run(ctx, op, payload) {
     const input = payload as SearchPayload;
     if (!input?.query) throw new Error("Search requires a query.");
-    const project = input.all ? undefined : ctx.projectRoot;
+    const project = input.all ? undefined : ctx.hostRoot ?? ctx.projectRoot;
     if (op === "memory") return search(input.query, { project, all: input.all, limit: input.limit });
     if (op === "plan") return searchSections(input.query, { project, limit: input.limit });
     if (op === "changelog") return searchChangelog(input.query, { project, limit: input.limit });
     throw new Error(`Unsupported search operation: ${op}`);
   },
   check(ctx) {
-    searchSections("the", { project: ctx.projectRoot, limit: 1 });
+    searchSections("the", { project: ctx.hostRoot ?? ctx.projectRoot, limit: 1 });
     return { ok: true, detail: "FTS5 word + trigram provider ready" };
   },
 };

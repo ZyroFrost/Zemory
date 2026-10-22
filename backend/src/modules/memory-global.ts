@@ -19,7 +19,7 @@ export const memoryGlobal: Module = {
     if (op === "search") {
       const input = payload as SearchPayload;
       return recall(input.query, {
-        project: ctx.projectRoot,
+        project: ctx.hostRoot ?? ctx.projectRoot,
         all: input.all,
         limit: input.limit,
       });

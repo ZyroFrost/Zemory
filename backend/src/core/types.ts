@@ -77,8 +77,11 @@ export interface HarnessConfig {
 
 /** Shared context handed to every module call. */
 export interface Context {
-  /** Absolute project root (dir containing .harness.json). */
+  /** Absolute project root (dir containing .harness.json), where this process opens it - a mount in the Docker
+   *  container (util/hostpath.ts). */
   projectRoot: string;
+  /** The same root as the HOST writes it: what the store keys a project by (doc index, memory scope). Absent = projectRoot. */
+  hostRoot?: string;
   /** Absolute path to the docs harness dir. */
   docsDir: string;
   config: HarnessConfig;

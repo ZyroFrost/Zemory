@@ -12,4 +12,7 @@ docs/archive
 docs/agent/05_TODO.md
 docs/agent/06_CHANGES.md
 docs/hooks/.allow-*
+# the install in the image is not a working repo: without its marker /app is no project of the daemon (the real zemory
+# repo is seen through the workspace mount, as natively) - measured 2026-10-22: /app showed up as an extra repo "app"
+docs/.harness.json
 docs_visual

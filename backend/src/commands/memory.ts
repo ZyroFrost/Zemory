@@ -9,6 +9,7 @@ import { currentMemoryDb, openMemory } from "../memory/db.js";
 import { scanHiddenChars } from "../memory/redact.js";
 import { appVersion, currentProjectRoot } from "../core/config.js";
 import { uiPort } from "../ui.js";
+import { foreignRuntime, otherRuntimeMessage, type Runtime } from "../util/runtime.js";
 import { type ScanReport, memoryHostTree, memoryInfo, scan } from "../memory/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "../memory/digest.js";
 import { embedConfig, embedProfileSpec } from "../memory/embed.js";
@@ -226,6 +227,15 @@ export function rejectUnknownFlags(sub: string, args: string[]): boolean {
   process.exitCode = 1;
   return true;
 }
+/** The other install's runtime when it answers on the zemory port (plan/30 §0), else null. */
+async function otherInstall(): Promise<Runtime | null> {
+  try {
+    const r = await fetch(`http://127.0.0.1:${uiPort()}/ping`, { signal: AbortSignal.timeout(400) });
+    return foreignRuntime((await r.json()) as { app?: string; runtime?: string });
+  } catch {
+    return null;
+  }
+}
 async function daemonPort(): Promise<number | null> {
   const port = uiPort();
   try {
@@ -271,6 +281,15 @@ export async function cmdMemory(args: string[]): Promise<void> {
     }
     await cmdMemoryInner(args);
     return;
+  }
+  // the other install (native vs Docker) holds the port: its store is the live one, never write this one beside it
+  if (HEAVY_WRITES.has(sub)) {
+    const other = await otherInstall();
+    if (other) {
+      console.error(`zemory memory ${sub}: ${otherRuntimeMessage(other, uiPort())}`);
+      process.exitCode = 1;
+      return;
+    }
   }
   let gated = false;
   let heartbeat: ReturnType<typeof setInterval> | null = null;

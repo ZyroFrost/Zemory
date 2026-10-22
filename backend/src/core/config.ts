@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripBom } from "../util/read-text.js";
-import { toLocalPath } from "../util/hostpath.js";
+import { toHostPath, toLocalPath } from "../util/hostpath.js";
 import type { Context, HarnessConfig, HarnessPaths } from "./types.js";
 import { LEDGER_NAMES } from "../docs/harness-names.js";
 
@@ -209,7 +209,10 @@ export function daemonProjectRoot(here: string, own: string, connected: (p: stri
 }
 
 /** Load the project context (config + resolved docs dir) from a project root. */
-export function loadContext(projectRoot: string): Context {
+export function loadContext(rootIn: string): Context {
+  // every file is opened at the local path; the host path is kept for the store (plan/30 §3e) - one path natively
+  const projectRoot = toLocalPath(rootIn);
+  const hostRoot = toHostPath(projectRoot);
   const markerPath = findMarker(projectRoot) ?? join(projectRoot, CONFIG_FILE);
   const markerRel = relative(projectRoot, markerPath).replace(/\\/g, "/");
   let raw: unknown;
@@ -242,6 +245,7 @@ export function loadContext(projectRoot: string): Context {
   const config = assertConfig(raw, markerRel);
   return {
     projectRoot,
+    hostRoot,
     docsDir: resolve(projectRoot, config.docs),
     config,
     log: (msg) => console.log(msg),
@@ -281,9 +285,11 @@ export function harnessPathsAt(projectRoot: string): HarnessPaths {
     // nếp cũ — KHÔNG chép tay bộ đường ở đây. Bản đầu của hàm này chép tay 5 đường và đó
     // đúng là lớp lỗi "5 bản norm đã lệch nhau" (audit F4): đổi mặc định trong
     // harnessPaths() là bản chép quên theo, mà fallback thì không test nào soi thường xuyên.
+    const local = toLocalPath(projectRoot);
     return harnessPaths({
-      projectRoot,
-      docsDir: join(projectRoot, "docs", "agent"),
+      projectRoot: local,
+      hostRoot: toHostPath(local),
+      docsDir: join(local, "docs", "agent"),
       config: { docs: join("docs", "agent"), adapters: {}, thresholds: {} },
       log: () => {},
     });

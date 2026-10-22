@@ -306,8 +306,8 @@ export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions =
   // Separator của OS, KHÔNG chuẩn hoá posix — phải khớp dạng `reindex` đang ghi, nếu không
   // một file có hai hàng index (xem ghi chú trong `cmdReindex`).
   const rel = (p: string) => relative(ctx.projectRoot, p);
-  importDoc(mainPath, rel(mainPath), ctx.projectRoot, "agent", dbPath);
-  importDoc(archivePath, rel(archivePath), ctx.projectRoot, "agent-archive", dbPath);
+  importDoc(mainPath, rel(mainPath), ctx.hostRoot ?? ctx.projectRoot, "agent", dbPath);
+  importDoc(archivePath, rel(archivePath), ctx.hostRoot ?? ctx.projectRoot, "agent-archive", dbPath);
   return { moved: closed.length, activeLines: keptText.split(/\r?\n/).length, archivePath, ...report };
 }
 
@@ -365,8 +365,8 @@ export function archiveChanges(
   // and the archive that just grew. Without the second call the moved entries fall
   // out of the index entirely — they stop being searchable the moment they are
   // archived, which defeats the point of keeping them.
-  importChangelog(mainPath, ctx.projectRoot, dbPath, { replace: true });
-  importChangelog(archivePath, ctx.projectRoot, dbPath, { replace: true, archived: true });
+  importChangelog(mainPath, ctx.hostRoot ?? ctx.projectRoot, dbPath, { replace: true });
+  importChangelog(archivePath, ctx.hostRoot ?? ctx.projectRoot, dbPath, { replace: true, archived: true });
   return { moved, activeLines: keptText.split(/\r?\n/).length, archivePath };
 }
 
