@@ -24,7 +24,7 @@ import { isFolderHarness, isRetired, leafOf, listParts, listStructures, mainOf, 
 import { implementsOf, linksOf } from "../../docs/law-links.js";
 import { hooksOf } from "../../docs/rule-core.js";
 import { LEDGER, SHELF } from "../../docs/harness-names.js";
-import { findRegionRepo, regionBase, regionRepos, repoRole } from "../../docs/region-links.js";
+import { findRegionRepo as findRegionRepoOnDisk, regionBase, regionRepos, repoRole } from "../../docs/region-links.js";
 import { slotDictFor } from "./graph.js";
 
 /** Từ điển slot §3 — thước duy nhất để phân biệt SLOT với TẦNG.
@@ -360,6 +360,10 @@ export function buildWorkspaceGraph(root: string): WorkspaceGraph {
   // sibling folders with no set are not a workspace (a personal folder of loose repos)
   if (!nodes.some((n) => n.type !== "no-set")) return { base: "", nodes: [], edges: [] };
   const edges: WorkspaceGraph["edges"] = [];
+  // a named repo is looked up among the region's repos already found; only a name not among them walks the tree again
+  // (a walk per owner/uses link through a Docker drive mount made one graph take 588 s, measured 2026-10-23)
+  const byName = new Map(repos.map((abs) => [basename(abs), abs]));
+  const findRegionRepo = (name: string, from: string): string | null => byName.get(name) ?? findRegionRepoOnDisk(name, from);
   for (const abs of repos) {
     const m = readMarker(abs)?.data ?? {};
     if (typeof m.owner === "string" && m.owner) {

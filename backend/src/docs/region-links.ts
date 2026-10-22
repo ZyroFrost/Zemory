@@ -2,10 +2,11 @@
 // (structure.json › role: name · manages · managed_by · owner rule · provides). The marker names only WHICH repo is the owner
 // (the solid line) and whose services it uses by kind (the dotted lines). This reads those and checks them against the roles
 // of the templates on both ends.
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { readMarker } from "../core/config.js";
 import { findKit, kitStructure, STORE_DIR } from "./store.js";
+import { listDir } from "../util/list-dir.js";
 
 export interface TemplateRole {
   name: string;
@@ -47,12 +48,8 @@ export function findRegionRepo(name: string, from: string): string | null {
   let up = dirname(from);
   for (let level = 0; level < 3; level++) {
     const hit = (function seek(d: string, depth: number): string | null {
-      let ents: string[];
-      try { ents = readdirSync(d); } catch { return null; }
-      for (const e of ents) {
-        if (e.startsWith(".") || e === "node_modules") continue;
-        const p = join(d, e);
-        try { if (!statSync(p).isDirectory()) continue; } catch { continue; }
+      for (const { name: e, abs: p, isDir } of listDir(d) ?? []) {
+        if (e.startsWith(".") || e === "node_modules" || !isDir) continue;
         if (e === name && isRepo(p)) return p;
         if (depth < 2 && !isRepo(p)) { const deeper = seek(p, depth + 1); if (deeper) return deeper; }
       }
@@ -92,12 +89,8 @@ export function regionBase(root: string, storeDir = STORE_DIR): string {
 export function regionRepos(root: string, storeDir = STORE_DIR): string[] {
   const out: string[] = [];
   (function seek(d: string, depth: number): void {
-    let ents: string[];
-    try { ents = readdirSync(d); } catch { return; }
-    for (const e of ents) {
-      if (e.startsWith(".") || e === "node_modules") continue;
-      const p = join(d, e);
-      try { if (!statSync(p).isDirectory()) continue; } catch { continue; }
+    for (const { name: e, abs: p, isDir } of listDir(d) ?? []) {
+      if (e.startsWith(".") || e === "node_modules" || !isDir) continue;
       if (isRepo(p)) out.push(p);
       else if (depth < 2) seek(p, depth + 1);
     }

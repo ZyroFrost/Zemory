@@ -2809,7 +2809,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Annotated folder tree for the project's Graph sub-tab (structure view).
       // in a worker: a tree walk through a Docker mount is minutes, and the daemon must keep answering meanwhile
       const w = await runInWorker<FolderTree>("docs/structure-tree.js", "buildFolderTree", [targetLocal], 600_000);
-      return json(res, w.ok ? w.value : { root: targetLocal, usedSlots: [], unknownDirs: [], tree: [], error: w.error });
+      // the root goes back as the host names it (the parity run caught /host/zemory leaking out)
+      return json(res, w.ok ? { ...w.value, root: toHostPath(w.value.root) } : { root: target, usedSlots: [], unknownDirs: [], tree: [], error: w.error });
     }
     if (p === "/workspace-graph") {
       // Level 1 of the four-level graph (plan/13 §0c): the repos of this repo's workspace and the owner / uses lines.
