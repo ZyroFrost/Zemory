@@ -20,7 +20,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { harnessPathsAt, readMarker } from "../../core/config.js";
 import { constitutionArticles } from "../../docs/validate.js";
-import { isFolderHarness, isRetired, leafOf, listParts, listStructures, mainOf, mainPath, structureSlots, type Part } from "../../docs/store.js";
+import { isFolderHarness, isRetired, leafOf, listParts, listStructures, mainOf, mainPath, structureSlots, withStoreReadCache, type Part } from "../../docs/store.js";
 import { implementsOf, linksOf } from "../../docs/law-links.js";
 import { hooksOf } from "../../docs/rule-core.js";
 import { LEDGER, SHELF } from "../../docs/harness-names.js";
@@ -346,6 +346,11 @@ export interface WorkspaceGraph {
  * provider). Read with the same functions conform's region check uses; a name that resolves to no repo draws no edge.
  */
 export function buildWorkspaceGraph(root: string): WorkspaceGraph {
+  // one read of HS for the whole graph (sets, structures): each repo's role used to read it again
+  return withStoreReadCache(() => buildWorkspaceGraphOnce(root));
+}
+
+function buildWorkspaceGraphOnce(root: string): WorkspaceGraph {
   const repos = regionRepos(root);
   if (repos.length < 2) return { base: "", nodes: [], edges: [] };
   const base = regionBase(root);
