@@ -234,6 +234,7 @@ import { type ScopeLane, markConnectionsStale, scopeTree, toggleLane } from "./m
 import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
 import { parsePathMap, relayHook } from "./memory/hook-relay.js";
 import { toHostPath, toLocalPath } from "./util/hostpath.js";
+import { otherRuntimeMessage, RUNTIME, runtimeOf, type Runtime } from "./util/runtime.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
 import { deepSearchChild } from "./jobs/searchjob.js";
 import { heavyStatsChild, type HeavyStats } from "./jobs/statsjob.js";
@@ -2486,12 +2487,12 @@ function listenOn(server: ReturnType<typeof createServer>, port: number): Promis
  *    exactly what the write gate exists to prevent (measured 2026-07-21).
  *    Timeout ≠ absent: back off instead of starting a rival.
  */
-async function probeZemoryUi(port: number): Promise<{ pid: number } | null | "busy"> {
+async function probeZemoryUi(port: number): Promise<{ pid: number; runtime: Runtime } | null | "busy"> {
   try {
     const res = await fetch(`http://127.0.0.1:${port}/ping`, { signal: AbortSignal.timeout(2500) });
     if (!res.ok) return "busy"; // something is there, just not healthy
-    const body = (await res.json()) as { app?: string; pid?: number };
-    return body?.app === "zemory" ? { pid: body.pid ?? 0 } : "busy";
+    const body = (await res.json()) as { app?: string; pid?: number; runtime?: string };
+    return body?.app === "zemory" ? { pid: body.pid ?? 0, runtime: runtimeOf(body) } : "busy";
   } catch (error) {
     // AbortError/TimeoutError = someone listening but slow. ECONNREFUSED = free.
     const name = error instanceof Error ? error.name : "";
@@ -2592,7 +2593,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     // `...liveFlags()` mang theo cả `lang` (đường cũ, giữ nguyên tên khoá) lẫn ba công tắc
     // hybrid/rerank/scope/pathsWatch. Đây là lời gọi RẺ NHẤT của app (~100 ms) và là lượt đầu
     // tiên FE phát ra, nên công tắc sáng đúng ngay lần vẽ đầu thay vì chờ `/memory-status`.
-    if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid, version: APP_VERSION, host: hostname(), ...liveFlags() });
+    if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid, version: APP_VERSION, host: hostname(), runtime: RUNTIME, ...liveFlags() });
     // Hooks over HTTP (plan/30 §5 ②): the host client posts the payload Claude Code handed it; the answer is what the
     // `zemory hook <event>` process would have printed and exited with.
     if (req.method === "POST" && p.startsWith("/hook/")) {
@@ -4384,6 +4385,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       console.log(`zemory ui — port ${wanted} is held and not responding (busy daemon?).`);
       console.log(`  Not starting a rival instance. Open ${url}, or stop that process and retry.`);
       autoOpen(url);
+      server.close();
+      return;
+    }
+    // the OTHER install (native vs Docker) is never joined: they are backups of each other, one runs (plan/30 §0)
+    if (running.runtime !== RUNTIME) {
+      console.log(`zemory ui — ${otherRuntimeMessage(running.runtime, wanted)}`);
+      process.exitCode = 1;
       server.close();
       return;
     }

@@ -27,7 +27,8 @@ RUN ln -s /app/dist/cli.js /usr/local/bin/zemory && chmod +x /app/dist/cli.js \
   && printf '{"dataDir":"/home/node/zemory/data","memoryRoot":"/home/node/zemory/global-memory"}\n' > /home/node/.zemory/location.json \
   && chown -R node:node /home/node/.zemory /home/node/zemory
 # inside the container the daemon listens on every interface; compose publishes it on the host's 127.0.0.1 only
-ENV ZEMORY_UI_HOST=0.0.0.0 NODE_ENV=production
+# ZEMORY_RUNTIME: /ping says "docker", so a native zemory on this machine refuses to run beside it (plan/30 §0)
+ENV ZEMORY_UI_HOST=0.0.0.0 NODE_ENV=production ZEMORY_RUNTIME=docker
 USER node
 EXPOSE 4444
 CMD ["node", "/app/dist/cli.js", "ui", "--no-window"]
