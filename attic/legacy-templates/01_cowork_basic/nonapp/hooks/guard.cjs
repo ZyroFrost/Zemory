@@ -661,7 +661,11 @@ function checkBash(cmd) {
       if (!tok || tok.startsWith("-") || tok.startsWith("/")) continue;
       const rel = tok.replace(/\\/g, "/").replace(/^\.\//, "");
       const name = rel.split("/").pop();
-      if (name && !nameMatches(name, POLICY.secret_allow || []) && nameMatches(name, POLICY.secret_names || [])) {
+      // a secret-named copy inside the agent's scratch (session scratch folder, any _scratch_* segment) is deleted
+      // freely, as every scratch file (Rule_Gate_10 v8): removing it is what keeps the secret out of reach, and the
+      // name rule exists to keep secrets out of commits, which a scratch folder never enters (2026-10-22: a 5.4 GB
+      // store copy in _scratch_trial could not be cleaned up)
+      if (name && !isScratchPath(tok) && !nameMatches(name, POLICY.secret_allow || []) && nameMatches(name, POLICY.secret_names || [])) {
         deny("BLOCKED (guard layer 1): a delete command touching the secret file `" + name + "` - " + POLICY.secret_reason);
       }
       for (const prefix of POLICY.protected_write || []) {

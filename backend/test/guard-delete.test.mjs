@@ -232,6 +232,22 @@ test("02-10 (c): the agent's own scratch is deleted without asking; anything els
   rmSync(sp, { recursive: true, force: true });
 });
 
+// A secret-named copy the agent made in scratch is scratch too (2026-10-22: a 5.4 GB store copy in _scratch_trial
+// could not be cleaned up - the secret-name rule ran before the scratch exemption).
+test("02-10 (c): a secret-named copy in the agent's scratch is deleted; the same name outside scratch is still refused", (t) => {
+  const root = mkdtempSync(join(tmpdir(), "zemory-guard-secret-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "docs", "agent"), { recursive: true });
+  writeFileSync(join(root, "docs", ".harness.json"), JSON.stringify({ layout: "app", docs: "docs/agent", secretNames: ["global_memory.db"] }));
+  const guard = join(generateGuards(root).hooksDir, "guard.cjs");
+  const scratch = ask(bash("rm -f C:/Users/u/AppData/Local/Temp/_scratch_trial/global_memory.db"), guard);
+  assert.equal(scratch.blocked, false, scratch.say);
+  // outside scratch: the temp folder alone does not exempt a secret name - only the secret rule refuses this one
+  const outside = ask(bash("rm -f C:/Users/u/AppData/Local/Temp/trial/global_memory.db"), guard);
+  assert.equal(outside.blocked, true, "NEGATIVE: a secret-named file outside scratch");
+  assert.match(outside.say, /secret file `global_memory\.db`/);
+});
+
 // 02-10 (b): a rule never disappears from a rule set without the user's word; retiring one keeps its number.
 test("02-10 (b): an edit that drops a rule number from 01/02 is blocked; keeping the number passes", () => {
   // A temp repo holding a copy of the old app template's rules and constitution as its harness: the harness docs are
