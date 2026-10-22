@@ -2,11 +2,11 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 16
+version: 17
 type: process
 checked: [Rule_Gate_35_OneHome, Skill_Dev_DbDesign, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_Dev_AppDesign @v16 #7a53d845024c
+from: _Store/03_SKILLS/Skill_Dev_AppDesign @v17 #66f494629379
 ---
 
 # app-design — chuẩn thiết kế APP (FE + BE)
@@ -299,6 +299,11 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
 - **App của một hệ** (`Rule_Keys_90_AppFamilyContract`): dữ liệu ở DB chung của hệ (repo `app-data` giữ, app không DB riêng, không
   DDL) · vai cấp ở màn quản trị chung của `system-manager` (app không dựng màn quản trị) · log sáu nhóm sự kiện bằng mã trong bảng
   hợp đồng của repo `app-data`.
+  - Kiểm phiên đăng nhập: nhớ kết quả kiểm một phiên trong bộ nhớ app tối đa 10 giây, bỏ ngay khi đăng xuất · thu hồi · khoá ·
+    đổi mật khẩu · đổi vai — kiểm mỗi request bằng câu SQL làm máy DB gánh vô ích. Thu hồi trên màn chung có hiệu lực ở app chậm
+    tối đa một chu kỳ nhớ đó.
+  - Nối DB có hạn chờ: một lượt nối treo bị bỏ lại sau 60 giây, tối đa vài lượt treo cùng lúc; một lượt nối treo không được chặn
+    đăng nhập của mọi người tới khi khởi động lại.
 - **Bảo mật gác ở máy chủ, mặc định chặn:** thêm chức năng ghi mới ⇒ chặn mọi vai chưa khai cho phép; ẩn nút trên giao diện
   không tính là bảo mật. Mọi endpoint trả dữ liệu đứng sau lớp đăng nhập.
 - **Câu truy vấn có tên trong mã chạy dạng chuỗi:** worker nạp bằng eval không import được kho câu ⇒ truyền câu có tên qua
