@@ -515,12 +515,16 @@ export interface GraphFitness {
   utilViolations: { from: string; to: string }[];
 }
 
+// a byte order, not localeCompare: the same answer on every OS and locale
+const cmpId = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
+
 /** Score a built graph against the gates. Pure function — no I/O. */
 export function graphFitness(g: CodeGraph): GraphFitness {
   const files = g.nodes.length;
   const hubs = g.nodes
     .filter((n) => n.fanIn >= HUB_FANIN)
-    .sort((a, b) => b.fanIn - a.fanIn)
+    // ties broken by id: node order follows the directory walk, which differs between NTFS and a Docker mount
+    .sort((a, b) => b.fanIn - a.fanIn || cmpId(a.id, b.id))
     .map((n) => ({ id: n.id, fanIn: n.fanIn }));
   const hubPct = files ? Math.round((hubs.length / files) * 1000) / 10 : 0;
   // isolated_pct CHỈ tính trên node có LỚP CẠNH IMPORT (2026-08-21): ngôn ngữ mở rộng chưa có
@@ -530,14 +534,15 @@ export function graphFitness(g: CodeGraph): GraphFitness {
   // 65 file test + 17 script chiếm 82/88 "cô lập", tức cổng đo SỐ FILE TEST chứ không đo code chết.
   const excluded = g.nodes.filter((n) => !countsForImportHealth(n));
   const eligible = g.nodes.filter((n) => countsForImportHealth(n));
-  const isolated = eligible.filter((n) => n.fanIn === 0 && n.fanOut === 0);
+  const isolated = eligible.filter((n) => n.fanIn === 0 && n.fanOut === 0).sort((a, b) => cmpId(a.id, b.id));
   const isolatedPct = eligible.length ? Math.round((isolated.length / eligible.length) * 1000) / 10 : 0;
 
   const isUtil = (id: string) => {
     const n = g.nodes.find((x) => x.id === id);
     return n?.slot === "util" || /(^|\/)util\.(ts|tsx|js|jsx|mjs|cjs|py)$/.test(id);
   };
-  const utilViolations = g.edges.filter((e) => isUtil(e.from) && !isUtil(e.to)).map((e) => ({ from: e.from, to: e.to }));
+  const utilViolations = g.edges.filter((e) => isUtil(e.from) && !isUtil(e.to)).map((e) => ({ from: e.from, to: e.to }))
+    .sort((a, b) => cmpId(a.from, b.from) || cmpId(a.to, b.to));
 
   const metrics: FitnessMetric[] = [
     {
