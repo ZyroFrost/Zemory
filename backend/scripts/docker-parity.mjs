@@ -50,7 +50,7 @@ const canon = (s) => {
   return t;
 };
 // values that differ between two runs of the SAME install: time, process, cache, run length
-const VOLATILE = /^(ms|took|elapsed|builtAt|sig|pid|at|ts|time|updatedAt|generatedAt|lastActive|startedAt|mtime|mtimeMs|age|ageMs|now|checkedAt|cached|cache|fresh|durationMs|runtime)$/i;
+const VOLATILE = /^(ms|took|elapsed|builtAt|sig|pid|at|ts|time|updatedAt|generatedAt|lastActive|startedAt|mtime|mtimeMs|age|ageMs|now|checkedAt|cached|cache|fresh|durationMs|runtime|forced)$/i;
 const order = (x, y) => {
   const a = JSON.stringify(x);
   const b = JSON.stringify(y);

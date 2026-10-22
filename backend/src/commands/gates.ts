@@ -28,7 +28,7 @@ export function cmdGates(args: string[]): void {
     return;
   }
   const targets = args.includes("--all")
-    ? listKnownProjects().filter((p) => existsSync(p.root)).map((p) => ({ root: p.root, name: p.name }))
+    ? listKnownProjects().filter((p) => existsSync(p.local)).map((p) => ({ root: p.local, name: p.name }))
     : [{ root: currentProjectRoot(), name: basename(currentProjectRoot()) }];
   const rows = targets.map((t) => repoGates(t.root, t.name)).filter((g): g is RepoGates => g !== null);
   const open = rows.filter((g) => g.gaps > 0);
@@ -58,7 +58,7 @@ export function cmdImpact(args: string[]): void {
     process.exitCode = 1;
     return;
   }
-  const repos = listKnownProjects().filter((p) => existsSync(p.root)).map((p) => ({ name: p.name, root: p.root, agent: harnessPathsAt(p.root).agent }));
+  const repos = listKnownProjects().filter((p) => existsSync(p.local)).map((p) => ({ name: p.name, root: p.local, agent: harnessPathsAt(p.local).agent }));
   const r = partImpact(ref, repos);
   if (!r.part) {
     console.log(`zemory impact: no store part answers to "${ref}"`);

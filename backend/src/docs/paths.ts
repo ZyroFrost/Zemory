@@ -28,6 +28,7 @@ import type { Context } from "../core/types.js";
 import { currentMemoryDir } from "../memory/db.js";
 import { writeJsonAtomic } from "../util/fs-atomic.js";
 import { standardNames } from "./structure-tree.js";
+import { toLocalPath } from "../util/hostpath.js";
 
 export interface PathHit {
   /** repo-relative (posix) path of the file that contains the string */
@@ -189,7 +190,9 @@ export function isDictionaryFile(relPath: string): boolean {
 
 const posix = (p: string): string => p.replace(/\\/g, "/");
 /** Case-insensitive on Windows (drive letters and folder names both); exact elsewhere. */
-const canon = (p: string): string => (process.platform === "win32" ? resolve(p).toLowerCase() : resolve(p));
+// a host path is taken to where this process sees it first: in the container the paths state is keyed by the mount
+// (the sweep's root), and the cockpit asks with the host's path (plan/30 §3e: patch at the door). Identity natively.
+const canon = (p: string): string => (process.platform === "win32" ? resolve(toLocalPath(p)).toLowerCase() : resolve(toLocalPath(p)));
 const under = (abs: string, root: string): boolean => {
   const a = canon(abs), r = canon(root);
   return a === r || a.startsWith(r.endsWith("/") || r.endsWith("\\") ? r : r + (process.platform === "win32" ? "\\" : "/"));

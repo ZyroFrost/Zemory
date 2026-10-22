@@ -3243,8 +3243,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // nhóm "folder đã mất". `?dry=1` chỉ liệt kê để hộp xác nhận in từng dòng trước khi làm.
       const dry = u.searchParams.get("dry") === "1";
       const host = hostname();
-      const linked = listKnownProjects().filter((k) => existsSync(k.root));
-      const byName = new Map(linked.map((k) => [basename(k.root).toLowerCase(), k.root]));
+      const linked = listKnownProjects().filter((k) => existsSync(k.local));
+      const byName = new Map(linked.map((k) => [k.name.toLowerCase(), k.root]));
       const linkedKeys = new Set(linked.map((k) => k.root.toLowerCase()));
       const db = openMemory(currentMemoryDb());
       const merges: { from: string; to: string; n: number }[] = [];
@@ -3690,7 +3690,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // ⚠ `known_stores` ĐI THEO ĐỒNG BỘ, nên nó chứa cả gốc store của MÁY KHÁC. Panel này tên là
       // "Máy này" ⇒ chỉ được nói về máy này. Đo 2026-09-17: sổ 27 hàng, chỉ 8 hàng có thật ở đây —
       // 19 hàng còn lại là của user/máy khác. Bày cả 27 là nói dối bằng một danh sách đúng-kiểu.
-      const here = rows.filter((r) => { try { return existsSync(r.root); } catch { return false; } });
+      // the store keeps host paths; in the container they are looked up under their mounts
+      const here = rows.filter((r) => { try { return existsSync(toLocalPath(r.root)); } catch { return false; } });
       // Nguồn WEB không có store riêng: mọi nền đều đổ vào CÙNG một thư mục `imports/`. Liệt kê từng
       // nền là sáu dòng cho đúng một chỗ (user 2026-09-17: *"toàn nằm trong import"*) ⇒ gộp lại một
       // dòng cho mỗi thư mục imports, kèm số nền đang nằm trong đó.
@@ -4238,11 +4239,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         try {
           // Công tắc "kiểm repo khác dùng chuẩn" tắt ⇒ không đo vòng repo, chip chỉ còn bản zemory.
           for (const proj of getRepoStdCheck() ? listKnownProjects() : []) {
-            if (!existsSync(proj.root)) continue;
+            if (!existsSync(proj.local)) continue;
             // A kit repo (folder harness) is measured the way `zemory sync --check` measures it: the parts whose copy is not
             // current, plus a stale guard. The file-harness diff below compares it with the OLD single files and reported the
             // same 21 missing / 15 drift for every folder repo, synced or not.
-            const kb = kitBehind(proj.root);
+            const kb = kitBehind(proj.local);
             if (kb) {
               const { missing, drift, manual } = kb, guardStale = kb.guardStale.length;
               if (missing || drift || manual || guardStale) {
@@ -4250,17 +4251,17 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
               }
               continue;
             }
-            if (repoKit(proj.root)) continue; // a kit repo whose dry assembly failed: the file-harness diff would report it falsely
-            const r = syncCheck(proj.root);
+            if (repoKit(proj.local)) continue; // a kit repo whose dry assembly failed: the file-harness diff would report it falsely
+            const r = syncCheck(proj.local);
             if (!r.connected) continue;
             // Lệch CHỮ (plan/26 bước ④): file CÓ SẴN nhưng đứng ở bản chuẩn cũ. Trước đây hộp này chỉ đếm file
             // THIẾU, nên một repo thiếu 63 dòng chuẩn vẫn đọc ra "khớp chuẩn". Repo nguồn thì không có gì để chở.
-            const v = isStandardSource(proj.root) ? [] : standardDiff(proj.root).files;
+            const v = isStandardSource(proj.local) ? [] : standardDiff(proj.local).files;
             // Skill CHUNG cũ (thay được / thiếu) cũng là lệch chuẩn; skill đã sửa tay thì không tính — bấm áp không ghi nó.
-            const skillDrift = isStandardSource(proj.root) ? 0 : skillDiff(proj.root).filter((s) => s.verdict === "clean" || s.verdict === "absent").length;
+            const skillDrift = isStandardSource(proj.local) ? 0 : skillDiff(proj.local).filter((s) => s.verdict === "clean" || s.verdict === "absent").length;
             // Ask the SAME merge the apply button runs (dry-run): a `local` file whose hunks overlap is refused there, so
             // counting it as "appliable" made the box invite a click that never wrote anything (2026-10-08, 3 repos).
-            const dry = v.some((f) => f.verdict === "clean" || f.verdict === "local") ? applyStandard(proj.root, { apply: false }) : [];
+            const dry = v.some((f) => f.verdict === "clean" || f.verdict === "local") ? applyStandard(proj.local, { apply: false }) : [];
             const drift = dry.filter((f) => f.action === "would-write").length + skillDrift;
             const manual = dry.filter((f) => f.action === "skipped").length + v.filter((f) => f.verdict === "unknown").length;
             if (r.missing.length || r.guardStale.length || drift || manual) {

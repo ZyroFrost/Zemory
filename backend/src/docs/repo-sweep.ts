@@ -12,6 +12,7 @@ import { writeJsonAtomic } from "../util/fs-atomic.js";
 import { conform } from "./conform.js";
 import { verifyTodo } from "./todo-verify.js";
 import { validate } from "./validate.js";
+import { toHostPath } from "../util/hostpath.js";
 
 export interface SweepCheck {
   /** Count of red findings (conform blocking · validate errors · todo findings). */
@@ -52,7 +53,8 @@ export function loadRepoSweep(file = repoSweepFile()): SweepState | null {
 /** Sweep one repo. Every check runs on its own: one that throws is named in `failed`, the others still report. */
 export function sweepRepo(root: string, name: string): SweepRow | null {
   if (!readMarker(root)) return null;
-  const row: SweepRow = { root, name };
+  // the row is looked up by the host's path (the cockpit's project key); `root` is where the files are opened here
+  const row: SweepRow = { root: toHostPath(root), name };
   const failed: string[] = [];
   try {
     const items = conform(root).items.filter((i) => i.level === "blocking");
@@ -80,8 +82,8 @@ export function sweepRepo(root: string, name: string): SweepRow | null {
 export function sweepRepos(file = repoSweepFile()): { repos: number; red: number } {
   const rows: SweepRow[] = [];
   for (const p of listKnownProjects()) {
-    if (!existsSync(p.root)) continue;
-    const r = sweepRepo(p.root, p.name);
+    if (!existsSync(p.local)) continue;
+    const r = sweepRepo(p.local, p.name);
     if (r) rows.push(r);
   }
   writeJsonAtomic(file, { version: 1, at: new Date().toISOString(), rows } satisfies SweepState);
@@ -111,8 +113,8 @@ export function repoGateRows(): RepoGateRow[] {
   const rows: RepoGateRow[] = [];
   const swept = new Map((loadRepoSweep()?.rows ?? []).map((r) => [r.root, r]));
   for (const proj of listKnownProjects()) {
-    if (!existsSync(proj.root)) continue;
-    const g = repoGates(proj.root, proj.name);
+    if (!existsSync(proj.local)) continue;
+    const g = repoGates(proj.local, proj.name);
     if (!g) continue;
     // null = not swept yet (new repo, or the first sweep has not run) — shown as "—", never as clean. The UI labels the row
     // through i18n; `lines` keeps the English CLI text for `zemory gates`-style readers.
