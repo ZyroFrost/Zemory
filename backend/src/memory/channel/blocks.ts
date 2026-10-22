@@ -8,7 +8,9 @@
  * Đọc rẻ: mỗi khối chỉ chạm 64 KB đầu để lấy `kdf.salt` trong header plaintext —
  * KHÔNG giải mã. Đo (plan/24 §6b): 50 khối ⇒ danh sách 2,0 KB.
  */
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, statSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync, statSync, readdirSync } from "node:fs";
+import { writeJsonAtomic } from "../../util/fs-atomic.js";
+import { currentMemoryDir, currentStoreRoot } from "../db.js";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { MAX_FRAME_BYTES } from "./wire.js";
@@ -45,7 +47,32 @@ export interface BlockRef {
  */
 const segCache = new Map<string, { size: number; mtimeMs: number; refs: BlockRef[] }>();
 
+// The cache also lives on disk, for THIS machine's channel only (the machine dir: it never travels). Rebuilt from nothing
+// at every daemon start it read 64 KB of each of 4,243 blocks - 11.6 s on the event loop, the cockpit silent meanwhile
+// (profiled 2026-10-22 in the container). A test's temporary channel folder never reads or writes it.
+let diskCacheLoaded = false;
+function diskCacheFile(channelDir: string): string | null {
+  try {
+    return resolve(channelDir) === resolve(join(currentStoreRoot(), "channel")) ? join(currentMemoryDir(), "channel-inventory.json") : null;
+  } catch {
+    return null;
+  }
+}
+function loadDiskCache(file: string): void {
+  if (diskCacheLoaded) return;
+  diskCacheLoaded = true;
+  try {
+    const rows = JSON.parse(readFileSync(file, "utf8")) as Record<string, { size: number; mtimeMs: number; refs: BlockRef[] }>;
+    for (const [seg, v] of Object.entries(rows)) if (!segCache.has(seg) && v && Array.isArray(v.refs)) segCache.set(seg, v);
+  } catch {
+    /* no cache yet, or unreadable: rebuilt as before */
+  }
+}
+
 export function inventory(channelDir: string): BlockRef[] {
+  const cacheFile = diskCacheFile(channelDir);
+  if (cacheFile) loadDiskCache(cacheFile);
+  let rebuilt = false;
   const out: BlockRef[] = [];
   for (const seg of listChannelSegments(channelDir)) {
     if (!isContainer(seg.path)) continue;
@@ -71,8 +98,19 @@ export function inventory(channelDir: string): BlockRef[] {
       const id = chunkBlockId(seg.path, chunk);
       if (id) refs.push({ id, segment: seg.path, chunk });
     }
-    if (st) segCache.set(seg.path, { size: st.size, mtimeMs: st.mtimeMs, refs });
+    if (st) {
+      segCache.set(seg.path, { size: st.size, mtimeMs: st.mtimeMs, refs });
+      rebuilt = true;
+    }
     out.push(...refs);
+  }
+  if (cacheFile && rebuilt) {
+    try {
+      const keep = Object.fromEntries([...segCache].filter(([seg]) => resolve(dirname(seg)) === resolve(channelDir)));
+      writeJsonAtomic(cacheFile, keep);
+    } catch {
+      /* a cache that cannot be written is rebuilt next start - never a reason to fail the inventory */
+    }
   }
   return out;
 }
