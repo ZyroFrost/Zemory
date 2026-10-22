@@ -103,9 +103,9 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 68 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger/gate.json` | 21 |
 | 69 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/Rule_Gate_79_HarnessEdit.md` | 67 |
 | 70 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/gate.json` | 1 |
-| 71 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.md` | 89 |
+| 71 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.md` | 93 |
 | 72 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/gate.json` | 221 |
-| 73 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/hook.cjs` | 160 |
+| 73 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/hook.cjs` | 171 |
 | 74 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/Rule_Gate_85_ProposeChecked.md` | 118 |
 | 75 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/gate.json` | 210 |
 | 76 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/hook.cjs` | 260 |
