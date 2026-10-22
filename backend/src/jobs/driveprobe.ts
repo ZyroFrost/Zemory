@@ -7,7 +7,7 @@
 // and the dashboard turned into a stale screenshot with no red anywhere — the exact "empty shell"
 // failure 02_RULES bans. A stuck syscall cannot be interrupted in-process, but a stuck CHILD can
 // be killed (execFile timeout → TerminateProcess, verified working on the real hang today).
-import { readdirSync, rmSync, statSync, statfsSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync, statSync, statfsSync, writeFileSync } from "node:fs";
 import { join, parse } from "node:path";
 
 export interface DriveProbe {
@@ -29,6 +29,23 @@ export interface DriveProbe {
   storeBytes: number;
 }
 
+/** The file system type of the mount holding `path` (the longest mount point that prefixes it), from a mounts table in
+ *  /proc/mounts form; null when there is no table (not Linux). */
+export function mountTypeOf(path: string, table?: string): string | null {
+  let text = table;
+  if (text === undefined) {
+    try { text = readFileSync("/proc/mounts", "utf8"); } catch { return null; }
+  }
+  let best: { at: string; type: string } | null = null;
+  for (const line of text.split("\n")) {
+    const [, at, type] = line.split(" ");
+    if (!at || !type) continue;
+    const mp = at.replace(/\\040/g, " ");
+    if ((path === mp || path.startsWith(mp.endsWith("/") ? mp : mp + "/")) && (!best || mp.length > best.at.length)) best = { at: mp, type };
+  }
+  return best?.type ?? null;
+}
+
 export function probeDriveFs(dir: string): DriveProbe {
   const path = dir.trim();
   if (!path) return { path: "", linked: false, exists: false, writable: false, bundles: 0, error: null, volume: null, storeBytes: 0 };
@@ -39,6 +56,16 @@ export function probeDriveFs(dir: string): DriveProbe {
     if (!statSync(path).isDirectory()) return { path, linked: true, exists: true, writable: false, bundles: 0, error: "not a folder", volume: null, storeBytes: 0 };
   } catch {
     return { path, linked: true, exists: false, writable: false, bundles: 0, error: "folder not found", volume: null, storeBytes: 0 };
+  }
+  // Docker on Windows (plan/30 §3i): the Drive folder reaches the container through Ubuntu's drvfs mount of the drive
+  // letter. When Google Drive comes up after WSL, that mount misses and Docker binds an EMPTY folder of its own in its
+  // place - writable, holding no bundle, and silently not Drive. A folder that should come from Windows but is not a 9p
+  // mount is that case.
+  const fromWindows = process.env.ZEMORY_DRIVE_FROM_WINDOWS?.trim();
+  const fsType = fromWindows && /^[A-Za-z]:/.test(fromWindows) ? mountTypeOf(path) : null;
+  if (fromWindows && fsType !== null && fsType !== "9p") {
+    return { path, linked: true, exists: true, writable: false, bundles: 0, volume: null, storeBytes: 0,
+      error: `the Drive folder ${fromWindows} is not mounted in the container (Ubuntu did not mount ${fromWindows.slice(0, 2)} - is Google Drive running?): start Drive, then restart the container` };
   }
   let writable = false;
   const probe = join(path, ".zemory-write-probe");
