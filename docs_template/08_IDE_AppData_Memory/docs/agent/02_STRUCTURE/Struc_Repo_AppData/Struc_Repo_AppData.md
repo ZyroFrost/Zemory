@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_AppData
 name: repo-app-data
-version: 1
+version: 2
 profile: non-app
 label: APP-DATA
 intro: : repo giữ cơ sở dữ liệu dùng chung của các app trong một hệ — mô hình, script đổi cấu trúc; không chứa app
@@ -9,11 +9,12 @@ ask: ; repo chỉ giữ cơ sở dữ liệu cho các app khác dùng là APP-DA
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_NonApp]
-from: _Store/02_STRUCTURE/Struc_Repo_AppData @v1 #7cd2112d1311
+from: _Store/02_STRUCTURE/Struc_Repo_AppData @v2 #92e53f71875f
 ---
 # Struc_Repo_AppData
 
-Chuẩn cấu trúc của repo dữ liệu app: mọi slot của `Struc_Repo_NonApp` (khai `extends`). Slot riêng đo khi ráp repo đầu tiên.
+Chuẩn cấu trúc của repo dữ liệu app: mọi slot của `Struc_Repo_NonApp` (khai `extends`) cộng slot riêng
+`Models_142_Database` — `models/<database>/`, mỗi cơ sở dữ liệu repo quản một folder.
 
 ## Vai
 
