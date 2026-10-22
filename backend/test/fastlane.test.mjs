@@ -65,8 +65,13 @@ test("poll: counts only THIS machine's messages above the p2p watermark — the 
   seed(db, "OTHER-PC", "so", ["o1", "o2"]);
   assert.equal(ownPendingMax(db, ME), 0, "only the other machine's messages ⇒ nothing to seal");
   seed(db, ME, "sm", ["m1"]);
+  const first = ownPendingMax(db, ME);
+  assert.ok(first > 0, "a message of this machine above the watermark");
+  // the HIGHEST own id, not the first one met: a later own message behind another machine's still counts
+  seed(db, "OTHER-PC", "so", ["o2b"]);
+  seed(db, ME, "sm2", ["m2"]);
   const mine = ownPendingMax(db, ME);
-  assert.ok(mine > 0, "a message of this machine above the watermark");
+  assert.ok(mine > first, "the newest own message is the one reported");
   const conn = openMemory(db);
   try {
     const wmHost = ME.replace(/[^A-Za-z0-9._-]/g, "_");

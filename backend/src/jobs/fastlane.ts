@@ -27,6 +27,7 @@ import Database from "better-sqlite3";
 import { claimDaemonJob, daemonJobBusy, endEmbedLane, releaseDaemonJob, startEmbedLane, yieldDaemonJob } from "./writegate.js";
 import { backgroundChildEnv } from "./childenv.js";
 import { hasQueuedIngest } from "./ingestqueue.js";
+import { Q } from "../memory/store/queries.js";
 
 /** Quiet spell after the last new message before a block is sealed. */
 export const FAST_QUIET_MS = 3_000;
@@ -87,12 +88,9 @@ export function ownPendingMax(dbPath: string, host: string): number {
     // The watermark key uses the SANITISED name (`wmKeyFor` via `sanitizeHost`), `sessions.host` the raw one — as the export.
     const wmHost = (host || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
     const wm = (db.prepare("SELECT last_message_id AS v FROM sync_state WHERE bundle = ?").get(`p2p:${wmHost}`) as { v: number } | undefined)?.v ?? 0;
-    const r = db
-      .prepare(
-        `SELECT MAX(m.id) AS m FROM messages m JOIN sessions s ON s.id = m.session_id
-          WHERE m.id > ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown')`,
-      )
-      .get(wm, host) as { m: number | null };
+    // MAX() over the join read every message above the watermark: 4.1 s on the daemon's event loop at start (profiled
+    // 2026-10-22, 642k messages); the named query walks the primary key down and stops at the first hit
+    const r = db.prepare(Q.ownMaxMessageAbove).get(wm, host) as { m: number | null } | undefined;
     return r?.m ?? 0;
   } catch {
     return 0; // no store / locked / old schema ⇒ nothing to say (fail-open, art. 9)
