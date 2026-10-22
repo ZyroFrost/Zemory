@@ -81,3 +81,17 @@ test("ingest keys a transcript by its HOST path, so a native record is found and
   // a lookup by the mount path would miss the host-path record and write a second one beside it
   assert.deepEqual(keys(), ["C:\\Users\\u\\.claude\\projects\\d--proj\\s1.jsonl"], "still ONE record: found by its host path");
 });
+
+// The Drive sync folder (plan/30 §3e): the config keeps the host's path, a folder name with spaces on a drive letter; the
+// container opens it under /host/drive. getDriveDir is the one door every Drive reader and writer goes through.
+test("the Drive folder maps to its mount and back, spaces and all; getDriveDir translates at the door", async () => {
+  const { readFileSync } = await import("node:fs");
+  const map = parsePathMap(String.raw`X:\Cloud Drive\Global Memory=>/host/drive;=>/nothing`);
+  assert.equal(map.length, 1, "an empty host side (no Drive on this machine) drops out");
+  assert.equal(mapHostPath(String.raw`X:\Cloud Drive\Global Memory\channel\a.blk`, map), "/host/drive/channel/a.blk");
+  assert.equal(unmapToHost("/host/drive", map), String.raw`X:\Cloud Drive\Global Memory`);
+  const src = readFileSync(new URL("../src/config/settings.ts", import.meta.url), "utf8");
+  assert.match(src, /export function getDriveDir\(\): string \{\n\s+return toLocalPath\(read\(\)\.drive \?\? ""\);/);
+  const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
+  assert.match(ui, /path: toHostPath\(probe\.path\)/, "the cockpit shows the host's name of the folder");
+});

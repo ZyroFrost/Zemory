@@ -7,6 +7,8 @@
 #   HOST_HOME_NATIVE the same home as the agents write it into hook payloads (Windows: C:\Users\<u>; Linux: unset)
 #   HOST_WORKSPACE   the folder holding the repos as Docker sees it (Ubuntu on Windows: /mnt/d/Workspace)
 #   HOST_WORKSPACE_NATIVE  the same folder as the store names it (Windows: D:\Workspace; Linux: unset)
+#   HOST_DRIVE       (optional) the Drive sync folder as Docker sees it (Ubuntu on Windows: /mnt/g/My Drive/<folder>)
+#   HOST_DRIVE_NATIVE (optional) the same folder as the config names it (Windows: G:\My Drive\<folder>)
 #   ZEMORY_HOSTNAME  this machine's name: every session is stamped with it (`host`), so it must be the machine, not
 #                    the container (measured 2026-10-22: a container id was written as the host)
 #   ZEMORY_PORT      the host port (default 4444; another port while a native daemon holds 4444)
@@ -21,12 +23,31 @@ services:
     hostname: ${ZEMORY_HOSTNAME:?set ZEMORY_HOSTNAME to this machine's name}
     ports:
       - "127.0.0.1:${ZEMORY_PORT:-4444}:4444"
+      # the sign-in view of the web-capture browser (noVNC, no password): this machine's loopback only
+      - "127.0.0.1:${ZEMORY_VIEW_PORT:-6080}:6080"
+      # the peer-to-peer channel (TLS, both sides prove a device key): every interface, as the native daemon listens. The
+      # channel is for machines on OTHER networks (global discovery + relay go out from the container); LAN discovery's
+      # UDP broadcast does not cross Docker's NAT and is not needed for that.
+      - "${ZEMORY_P2P_PORT:-21038}:21038"
+    # Chromium's shared memory; Docker's default 64 MB crashes tabs
+    shm_size: "1gb"
     environment:
+      ZEMORY_VIEW_PORT: "${ZEMORY_VIEW_PORT:-6080}"
       # a hook payload names host paths; the daemon reads them under the mounts below (memory/hook-relay.ts)
-      ZEMORY_PATH_MAP: "${HOST_HOME_NATIVE:-${HOST_HOME}}/.claude=>/home/node/.claude;${HOST_WORKSPACE_NATIVE:-${HOST_WORKSPACE}}=>/host/workspace"
+      # the Drive sync folder (config keeps the host's path) is the third pair; unset on a machine with no Drive channel
+      ZEMORY_PATH_MAP: "${HOST_HOME_NATIVE:-${HOST_HOME}}/.claude=>/home/node/.claude;${HOST_WORKSPACE_NATIVE:-${HOST_WORKSPACE}}=>/host/workspace;${HOST_DRIVE_NATIVE:-}=>/host/drive"
     volumes:
       - ${ZEMORY_STORE:?set ZEMORY_STORE to /home/<user>/zemory}:/home/node/zemory
       - ${HOST_HOME:?set HOST_HOME to your home folder}/.claude:/home/node/.claude:ro
-      # the repos: project roots are stored as host paths and looked up here (util/hostpath.ts)
-      - ${HOST_WORKSPACE:?set HOST_WORKSPACE to the folder holding your repos}:/host/workspace:ro
+      # the repos: project roots are stored as host paths and looked up here (util/hostpath.ts). Writable: `zemory sync`,
+      # `init`, `archive`, `paths fix` write into a repo here as the native CLI does; the agent's own edits are guarded
+      # on the host (docs/hooks/guard.cjs runs there), not here
+      - ${HOST_WORKSPACE:?set HOST_WORKSPACE to the folder holding your repos}:/host/workspace
+      # the Drive sync folder, written to (the channel appends its blocks there). Docker Desktop cannot see a Google Drive
+      # letter (G:) and silently mounts an empty folder instead (measured 2026-10-22): mount it in Ubuntu first
+      # (/etc/fstab: `G: /mnt/g drvfs metadata,noatime 0 0`) and name the Ubuntu path here
+      - ${HOST_DRIVE:-${ZEMORY_STORE}/no-drive}:/host/drive
+      # HS history: a three-way sync finds a copy's base in the git history of docs_template (docs/store.ts baseFiles);
+      # the image carries no .git (457 MB), so the clone this image was built from lends its own, read-only
+      - ./.git:/app/.git:ro
     restart: unless-stopped

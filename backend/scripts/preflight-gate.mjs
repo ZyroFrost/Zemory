@@ -124,7 +124,10 @@ export function syncCutNote(runAt, now, daemonAlive) {
 // the import itself probing the daemon and setting `process.exitCode = 1` — which would turn every
 // test file that imports this into a spurious red on any machine where the daemon happens to be up.
 async function main() {
-const [auto, sync] = await Promise.all([ask("/automation"), ask("/sync-status")]);
+const [auto, sync, ping] = await Promise.all([ask("/automation"), ask("/sync-status"), ask("/ping")]);
+// The Docker install (plan/30): its daemon runs its own dist/ inside the image and its own store, so the gate can neither
+// delete the files under its feet nor share its database. A job in flight still competes for CPU and is waited for.
+const docker = ping?.app === "zemory" && ping?.runtime === "docker";
 const busy = [];
 if (auto?.embedRunning) busy.push("embed");
 if (sync?.running) busy.push("sync");
@@ -133,7 +136,8 @@ if (sync?.running) busy.push("sync");
 // RAM trống nhảy 352 → 4.414 MB) ⇒ máy 16 GB tràn, phiên agent chết giữa gate — lần thứ hai. Và
 // scheduler của daemon có thể phóng job GIỮA lúc gate đang chạy, tức "rảnh lúc kiểm" không bảo đảm
 // "rảnh suốt gate". Tắt daemon trước, chạy gate, bật lại — hoặc ZEMORY_GATE_FORCE=1 nếu chấp nhận.
-if (auto && !busy.length) busy.push("daemon sống (rảnh, nhưng giữ RAM và có thể phóng job giữa gate)");
+if (auto && !busy.length && docker) console.log("[preflight] the Docker zemory is up and idle: its dist/ and store are its own, the gate runs beside it.");
+if (auto && !busy.length && !docker) busy.push("daemon sống (rảnh, nhưng giữ RAM và có thể phóng job giữa gate)");
 
 // Đọc SỔ BỀN, không hỏi daemon: câu này phải nói được ĐÚNG LÚC daemon đã tắt (xem khối THIRD THING).
 const cutNote = syncCutNote(readAutosyncRunAt(), Date.now(), Boolean(auto));
@@ -164,6 +168,7 @@ if (!busy.length) {
   console.error("");
   console.error("  Cách đi tiếp:");
   console.error("   · chờ job xong — xem `curl 127.0.0.1:4444/sync-status` và `/automation`;");
+  if (docker) console.error("   · the Docker zemory: `docker compose stop` in the zemory folder, then `docker compose start` after the gate;");
   console.error("   · hoặc chạy phần KHÔNG đụng dist: `npx tsc && npx eslint …` rồi `node --test <file>`;");
   console.error("   · thật sự muốn chạy đè: ZEMORY_GATE_FORCE=1 (và nói rõ là đã đè).");
   process.exitCode = 1;

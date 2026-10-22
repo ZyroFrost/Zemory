@@ -6,6 +6,7 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { writeJsonAtomic } from "../util/fs-atomic.js";
 import { dirname, join } from "node:path";
 import { currentMemoryDir } from "../memory/db.js";
+import { toLocalPath } from "../util/hostpath.js";
 
 // Resolved per call (not a module const) so a `memory relocate` mid-process makes
 // every subsequent read/write hit the config.json that moved with the data dir.
@@ -783,9 +784,11 @@ export function setWebPull(lane: string, v: { ok: boolean; status: string; pulle
   write(c);
 }
 
-/** Drive sync folder (where encrypted bundles live). Empty = not linked. */
+/** Drive sync folder (where encrypted bundles live), as THIS process opens it. Empty = not linked.
+ *  The config keeps the host's path (G:\My Drive\…); in the container the folder is mounted, so the path is translated
+ *  here, the one door every Drive reader and writer goes through (plan/30 §3e rule: patch at the door). */
 export function getDriveDir(): string {
-  return read().drive ?? "";
+  return toLocalPath(read().drive ?? "");
 }
 
 /**

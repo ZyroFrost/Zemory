@@ -32,8 +32,12 @@ test("compose tells the daemon where the host's transcripts are mounted (hook pa
   const c = read("../../docker-compose.yml");
   assert.match(c, /ZEMORY_PATH_MAP: "\$\{HOST_HOME_NATIVE:-\$\{HOST_HOME\}\}\/\.claude=>\/home\/node\/\.claude;/);
   // project roots are host paths too: the repos folder is mapped and mounted read-only
-  assert.match(c, /;\$\{HOST_WORKSPACE_NATIVE:-\$\{HOST_WORKSPACE\}\}=>\/host\/workspace"/);
-  assert.match(c, /\$\{HOST_WORKSPACE:\?[^}]*\}:\/host\/workspace:ro/);
+  assert.match(c, /;\$\{HOST_WORKSPACE_NATIVE:-\$\{HOST_WORKSPACE\}\}=>\/host\/workspace;/);
+  // the Drive folder is the third pair, and mounted writable (the channel appends blocks); an empty host side drops out
+  assert.match(c, /;\$\{HOST_DRIVE_NATIVE:-\}=>\/host\/drive"/);
+  assert.match(c, /-\s*\$\{HOST_DRIVE:-\$\{ZEMORY_STORE\}\/no-drive\}:\/host\/drive$/m);
+  // writable: sync / init / archive / paths fix write into a repo as the native CLI does
+  assert.match(c, /\$\{HOST_WORKSPACE:\?[^}]*\}:\/host\/workspace$/m);
 });
 
 test("the dependency layer is built from the manifests alone, before the sources are copied", () => {
@@ -56,4 +60,54 @@ test("the cockpit's project root is opened where the daemon sees it; the store k
 test("the image listens on every interface inside the container; the native default stays 127.0.0.1", () => {
   assert.match(read("../../Dockerfile"), /ENV ZEMORY_UI_HOST=0\.0\.0\.0/);
   assert.match(read("../src/ui.ts"), /server\.listen\(port, process\.env\.ZEMORY_UI_HOST\?\.trim\(\) \|\| "127\.0\.0\.1"\)/);
+});
+
+// Web capture in the container (plan/30 §3h), measured 2026-10-22: a headless Chromium gets Cloudflare's "Just a moment..."
+// on chatgpt.com and claude.ai; a windowed one on a virtual display gets the real pages. The user signs in through noVNC.
+test("the image draws the capture browser on a virtual display and shows it through noVNC", () => {
+  const d = read("../../Dockerfile");
+  for (const pkg of ["chromium", "xvfb", "x11vnc", "novnc", "websockify", "procps"]) assert.ok(d.split(/\s+/).includes(pkg), pkg);
+  assert.match(d, /ENV [^\n]*ZEMORY_BROWSER=\/usr\/bin\/chromium[^\n]*DISPLAY=:99/);
+  assert.match(d, /ENTRYPOINT \["\/usr\/local\/bin\/zemory-entrypoint"\]/);
+  const e = read("../scripts/docker-entrypoint.sh");
+  assert.ok(!e.includes("\r"), "LF only: a CR breaks sh in the container");
+  assert.match(e, /Xvfb "\$DISPLAY"/);
+  assert.match(e, /x11vnc [^\n]*-localhost/, "VNC itself stays on the container's loopback");
+  assert.match(e, /websockify --web \/usr\/share\/novnc 0\.0\.0\.0:6080 127\.0\.0\.1:5900/);
+  assert.match(e, /exec "\$@"$/m, "the daemon is the container's main process");
+  assert.match(read("../../.gitattributes"), /^\*\.sh text eol=lf$/m);
+});
+
+test("compose publishes the sign-in view on the host's loopback only and gives Chromium its shared memory", () => {
+  const c = read("../../docker-compose.yml");
+  assert.match(c, /"127\.0\.0\.1:\$\{ZEMORY_VIEW_PORT:-6080\}:6080"/);
+  assert.doesNotMatch(c, /^\s*-\s*"?6080:6080/m, "NEGATIVE: a password-less VNC view on every interface");
+  assert.match(c, /shm_size: "1gb"/);
+  // a three-way sync reads HS history (store.ts baseFiles): the clone's .git is lent, read-only
+  assert.match(c, /-\s*\.\/\.git:\/app\/\.git:ro$/m);
+  assert.match(read("../../Dockerfile"), /git config --system --add safe\.directory '\*'/);
+  // the p2p channel listens where the native daemon does (getP2pPort's default)
+  assert.match(c, /"\$\{ZEMORY_P2P_PORT:-21038\}:21038"/);
+  assert.match(read("../src/config/settings.ts"), /: 21038;/);
+  assert.match(c, /ZEMORY_VIEW_PORT: "\$\{ZEMORY_VIEW_PORT:-6080\}"/);
+});
+
+test("in the container the browser runs without the sandbox and /dev/shm; natively it does not", async () => {
+  const { browserArgs } = await import("../../dist/memory/scanweb.js");
+  const dk = browserArgs("/p", 9333, "https://x", true, "docker");
+  assert.ok(dk.includes("--no-sandbox") && dk.includes("--disable-dev-shm-usage"));
+  const nv = browserArgs("/p", 9333, "https://x", true, "native");
+  assert.ok(!nv.includes("--no-sandbox"), "NEGATIVE: the native browser keeps its sandbox");
+});
+
+test("the daemon names the sign-in view only when the window is on the container's display", async () => {
+  const { loginViewUrl } = await import("../../dist/util/runtime.js");
+  assert.equal(loginViewUrl("native"), null);
+  assert.equal(loginViewUrl("docker", {}), "http://127.0.0.1:6080/vnc.html?autoconnect=1&resize=scale&reconnect=1");
+  assert.match(loginViewUrl("docker", { ZEMORY_VIEW_PORT: "6090" }), /^http:\/\/127\.0\.0\.1:6090\//);
+  const ui = read("../src/ui.ts");
+  assert.equal((ui.match(/loginView: signInView\(/g) || []).length, 3, "/connect (twice) and /add-account");
+  const fe = read("../../frontend/scripts/sources.js");
+  assert.equal((fe.match(/openSignInView\(r\);/g) || []).length, 3, "every sign-in flow opens it");
+  assert.match(fe, /a\.target='zemory-signin'/, "a blocked popup falls back to a link the user clicks");
 });
