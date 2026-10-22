@@ -159,7 +159,7 @@ function check(payload, root, policy) {
       // a part stamped 'from:' came from HS: it is a copy whatever its number; the repo may not stamp one either
       const before = e.exists ? fs.readFileSync(abs, "utf8") : "";
       if (!FROM.test(before) && !FROM.test(afterText(payload, abs, e.exists))) {
-        return { flag: "docs-write", subject: e.rel, msg: blocked(root, policy, "02-83", e.rel + " is an article of this repo's own " +
+        return { flag: "docs_write", subject: e.rel, msg: blocked(root, policy, "02-83", e.rel + " is an article of this repo's own " +
           "constitution: the repo writes it, after the user approves the article in this session.") };
       }
     }
