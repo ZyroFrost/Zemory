@@ -24,7 +24,10 @@ import { viName } from "./vi-name-judge.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
 // the constant from adopt would read it before adopt has run.
-export const STORE_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "docs_template", "_Store");
+// HS is read where the clone is. Natively that is the install itself; in the container (plan/30 §3i) it is the clone the
+// image was built from, mounted at ZEMORY_SELF, so a change made to HS on the host is what a sync in the container
+// assembles - not the copy frozen into the image at build time.
+export const STORE_DIR = join(process.env.ZEMORY_SELF?.trim() || join(dirname(fileURLToPath(import.meta.url)), "..", ".."), "docs_template", "_Store");
 /** Shelves in reading order (plan/28 §0o): common rules above the repo's own constitution. A legacy shelf folder
  *  (`02_RULES` · `01_CONSTITUTION`) is still READ through `shelfDir`; everything is WRITTEN under these names. */
 export const SHELVES = [SHELF.rules, SHELF.constitution, SHELF.structure, SHELF.skills] as const;

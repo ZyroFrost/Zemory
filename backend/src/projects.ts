@@ -13,7 +13,7 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isConnected, projectKey, readMarker } from "./core/config.js";
 import { currentMemoryDir } from "./memory/db.js";
-import { toLocalPath } from "./util/hostpath.js";
+import { samePlace, toLocalPath } from "./util/hostpath.js";
 
 /** The pre-2026-08-05 location, kept ONLY so an existing registry still loads. */
 function legacyRegistryFile(): string {
@@ -54,6 +54,9 @@ function registryReadFile(): string {
 let selfRootCache: string | null = null;
 export function selfRepoRoot(): string {
   if (selfRootCache !== null) return selfRootCache;
+  // the container (plan/30 §3i): zemory's own repo is the clone mounted at ZEMORY_SELF, not the image's /app
+  const mounted = process.env.ZEMORY_SELF?.trim();
+  if (mounted && existsSync(join(mounted, "package.json"))) return (selfRootCache = mounted);
   selfRootCache = "";
   try {
     let dir = dirname(fileURLToPath(import.meta.url));
@@ -74,7 +77,9 @@ export function selfRepoRoot(): string {
 /** Is this the repo zemory itself lives in? Compared by the same key as the registry. */
 export function isSelfRoot(root: string): boolean {
   const self = selfRepoRoot();
-  return !!self && !!root && projectKey(self) === projectKey(root);
+  // the registry keeps host paths; in the container self is a mount (and the same repo may sit under a second one)
+  if (!self || !root) return false;
+  return process.env.ZEMORY_PATH_MAP ? samePlace(self, root) : projectKey(self) === projectKey(root);
 }
 
 export interface ProjectEntry {

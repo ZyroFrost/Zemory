@@ -39,6 +39,7 @@ mkdir -p "$STORE/global-memory" "$STORE/data" "$STORE/no-drive"
   echo "HOST_WORKSPACE=$WS"
   echo "ZEMORY_HOSTNAME=$(hostname)"
   echo "ZEMORY_STORE=$STORE"
+  echo "ZEMORY_SELF_NATIVE=$DIR"
   if [ -n "${ZEMORY_DRIVE:-}" ]; then echo "HOST_DRIVE=$ZEMORY_DRIVE"; echo "HOST_DRIVE_NATIVE=$ZEMORY_DRIVE"; fi
 } > "$ENVF"
 say "wrote $ENVF"

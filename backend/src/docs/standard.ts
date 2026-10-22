@@ -14,6 +14,7 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { templateDir } from "./adopt.js";
 import { harnessPathsAt } from "../core/config.js";
 import { projectProfile, selfRepoRoot } from "../projects.js";
+import { samePlace } from "../util/hostpath.js";
 
 /**
  * Files the revision mechanism carries — only text that is genuinely SHARED across projects.
@@ -294,6 +295,7 @@ function changedLines(a: string[], b: string[]): number {
 export function isStandardSource(root: string): boolean {
   const self = selfRepoRoot();
   if (!self) return false;
+  if (process.env.ZEMORY_PATH_MAP) return samePlace(self, root); // the container: compared as the host names them
   const n = (p: string): string => {
     const r = resolve(p).replace(/[\\/]+$/, "");
     return process.platform === "win32" ? r.toLowerCase() : r;

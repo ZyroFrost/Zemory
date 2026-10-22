@@ -30,7 +30,7 @@ test("the store is the host's Linux folder mounted at /home/node/zemory; the poi
 test("compose tells the daemon where the host's transcripts are mounted (hook payloads name host paths)", () => {
   // the map's host side is the path the agent writes (Windows C:\Users\…), not the mount source compose sees from Ubuntu
   const c = read("../../docker-compose.yml");
-  assert.match(c, /ZEMORY_PATH_MAP: "\$\{HOST_HOME_NATIVE:-\$\{HOST_HOME\}\}\/\.claude=>\/home\/node\/\.claude;/);
+  assert.match(c, /ZEMORY_PATH_MAP: "[^"]*;\$\{HOST_HOME_NATIVE:-\$\{HOST_HOME\}\}\/\.claude=>\/home\/node\/\.claude;/);
   // project roots are host paths too: the repos folder is mapped and mounted read-only
   assert.match(c, /;\$\{HOST_WORKSPACE_NATIVE:-\$\{HOST_WORKSPACE\}\}=>\/host\/workspace;/);
   // the Drive folder is the third pair, and mounted writable (the channel appends blocks); an empty host side drops out
@@ -83,8 +83,14 @@ test("compose publishes the sign-in view on the host's loopback only and gives C
   assert.match(c, /"127\.0\.0\.1:\$\{ZEMORY_VIEW_PORT:-6080\}:6080"/);
   assert.doesNotMatch(c, /^\s*-\s*"?6080:6080/m, "NEGATIVE: a password-less VNC view on every interface");
   assert.match(c, /shm_size: "1gb"/);
-  // a three-way sync reads HS history (store.ts baseFiles): the clone's .git is lent, read-only
-  assert.match(c, /-\s*\.\/\.git:\/app\/\.git:ro$/m);
+  // zemory's own repo is the mounted clone: HS is read there (not the image's frozen copy) and its .git gives the history
+  // a three-way sync reads (store.ts baseFiles); its pair leads the path map so the longer prefix wins
+  assert.match(c, /-\s*\.:\/host\/zemory$/m);
+  assert.match(c, /ZEMORY_SELF: \/host\/zemory/);
+  assert.match(c, /ZEMORY_PATH_MAP: "\$\{ZEMORY_SELF_NATIVE:-\}=>\/host\/zemory;/);
+  assert.doesNotMatch(c, /\.git:\/app\/\.git/, "NEGATIVE: one way to reach the history, not two");
+  assert.match(read("../src/docs/store.ts"), /process\.env\.ZEMORY_SELF\?\.trim\(\)/);
+  for (const inst of ["../scripts/install-docker.ps1", "../scripts/install-docker.sh"]) assert.match(read(inst), /ZEMORY_SELF_NATIVE=/, inst);
   assert.match(read("../../Dockerfile"), /git config --system --add safe\.directory '\*'/);
   // the p2p channel listens where the native daemon does (getP2pPort's default)
   assert.match(c, /"\$\{ZEMORY_P2P_PORT:-21038\}:21038"/);

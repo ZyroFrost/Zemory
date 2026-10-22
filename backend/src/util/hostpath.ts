@@ -62,6 +62,17 @@ export function toLocalPath(hostPath: string): string {
   return mapHostPath(hostPath, envMap());
 }
 
+/** Do two paths name the same folder? Compared as the host names them: in the container one repo can be reached under
+ *  two mounts (the clone at /host/zemory and the same folder inside the workspace mount). A drive-letter path compares
+ *  case-insensitively with either separator; any other path as given. */
+export function samePlace(a: string, b: string): boolean {
+  const key = (p: string): string => {
+    const h = unmapToHost(p, envMap()).replace(/\\/g, "/").replace(/\/+$/, "");
+    return /^[A-Za-z]:/.test(h) || process.platform === "win32" ? h.toLowerCase() : h;
+  };
+  return !!a && !!b && key(a) === key(b);
+}
+
 /** Path opened here ⇒ the host path to store (identity on a native install). */
 export function toHostPath(localPath: string): string {
   return unmapToHost(localPath, envMap());

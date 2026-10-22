@@ -58,7 +58,7 @@ function Install-ZemoryDocker {
   $envLines = @(
     "HOST_HOME=$(WslPath $env:USERPROFILE)", "HOST_HOME_NATIVE=$env:USERPROFILE",
     "HOST_WORKSPACE=$(WslPath $ws)", "HOST_WORKSPACE_NATIVE=$ws",
-    "ZEMORY_HOSTNAME=$env:COMPUTERNAME", "ZEMORY_STORE=$store"
+    "ZEMORY_HOSTNAME=$env:COMPUTERNAME", "ZEMORY_STORE=$store", "ZEMORY_SELF_NATIVE=$dir"
   )
   # the Drive sync folder of the native config, if any: Docker Desktop cannot see a Google Drive letter, so Ubuntu mounts
   # it (drvfs, /etc/fstab) and compose binds the Ubuntu path

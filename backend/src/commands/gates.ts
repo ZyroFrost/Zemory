@@ -10,7 +10,8 @@ import { repoGateLines, repoGates, type RepoGates } from "../docs/repo-gates.js"
 import { listKnownProjects } from "../projects.js";
 import { partImpact } from "../docs/law-sync.js";
 import { partLinks } from "../docs/law-links.js";
-import { leafOf } from "../docs/store.js";
+import { leafOf, readKits } from "../docs/store.js";
+import { assembleSet } from "../docs/kit-apply.js";
 
 export function cmdGates(args: string[]): void {
   const unknown = args.filter((a) => a !== "--all" && a !== "--json" && a !== "--write-top");
@@ -79,4 +80,29 @@ export function cmdImpact(args: string[]): void {
     console.log("  edited = the repo changed its copy: bring that change up first, or the repo proposes a part of its own");
     process.exitCode = 1;
   }
+}
+
+/**
+ * `zemory store assemble` - rebuild every set folder (docs_template/NN_*) from HS. A repo that changes a part on HS runs
+ * it, then commits the part together with the sets it changed: a part edited without the sets leaves every set behind
+ * HS, and the gate's "every set folder is up to date with the store" goes red for the next person (2026-10-22: twice in
+ * one day, a slot and a skill written by two repos).
+ */
+export function cmdStore(args: string[]): void {
+  const [sub, ...rest] = args;
+  if (sub !== "assemble" || rest.length) {
+    console.log("  usage: zemory store assemble   (rebuild every set folder from HS, then commit the part with the sets)");
+    process.exitCode = 1;
+    return;
+  }
+  const changed: string[] = [];
+  const failed: string[] = [];
+  for (const kit of readKits()) {
+    const r = assembleSet(kit);
+    if ("error" in r) failed.push(`${kit.name}: ${r.error}`);
+    else if (r.written.length || r.skillsBlock === "written" || r.ownAdded.length) changed.push(`${kit.name} (${r.written.length} part(s))`);
+  }
+  console.log(`zemory store assemble — ${changed.length ? `rebuilt: ${changed.join(" · ")}` : "every set already matches HS"}`);
+  for (const f of failed) console.log(`  ✗ ${f}`);
+  if (failed.length) process.exitCode = 1;
 }

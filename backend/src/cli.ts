@@ -35,6 +35,8 @@ try {
     (await import("./commands/peers.js")).cmdPeers(args);
   } else if (cmd === "gates") {
     (await import("./commands/gates.js")).cmdGates(args);
+  } else if (cmd === "store") {
+    (await import("./commands/gates.js")).cmdStore(args);
   } else if (cmd === "impact") {
     (await import("./commands/gates.js")).cmdImpact(args);
   } else if (cmd === "project") {
