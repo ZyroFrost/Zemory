@@ -1,7 +1,7 @@
 ---
 id: Rule_83
 name: harness-from-store
-version: 6
+version: 7
 kind: action
 code: 01_Harness
 ---
@@ -25,7 +25,7 @@ and copied into the repo. The repo uses its copy; it never changes it. The repo 
       `zemory impact <part>`, the requester approves, zemory changes HS and syncs it down to every repo;
    b. only this repo needs it different ⇒ a part of its own: an article of its own constitution goes in
       `01_LAW/_Cons/Cons_<Gate|Keys|Core>_1NN_<Name>/` (numbered from 101, no `from:` line); the repo writes it once the requester
-      approves the article in the session (one-use flag `docs-write`). A copy of a shared part is never edited here.
+      approves the article in the session (one-use flag `.allow-docs-write`). A copy of a shared part is never edited here.
 4. A frame that lacks a section the repo needs ⇒ propose adding the section to the frame on HS (as in step 3).
 5. Retiring a part keeps its number and marks it retired; sync carries that state to every repo.
 6. The ledgers (`04_TODO.md`, `05_CHANGES.md`) are the repo's memory, not harness: the repo writes them, under
@@ -42,7 +42,7 @@ and copied into the repo. The repo uses its copy; it never changes it. The repo 
 ## Check
 - The repo's guard blocks every Write / Edit under the four harness folders, no flag; a fill of a frame passes when the frame's
   sections stay as they are; an article of the repo's own (`Cons_*_1NN`, no `from:`) passes with the requester's one-use flag
-  `docs-write`. The zemory repo, which holds HS, is not blocked.
+  `.allow-docs-write`. The zemory repo, which holds HS, is not blocked.
 - conform `harness-edited-here`: a copy that differs from what was assembled is red.
 - `zemory impact <part>` lists every repo carrying the part and its state (`current` · `behind` · `edited` · `absent`); exit 1
   while a copy is edited in a repo.
@@ -64,7 +64,7 @@ repo. Repo dùng bản chép; không bao giờ sửa nó. Repo chỉ điền và
    a. phần đó sai hoặc thiếu với mọi repo đang dùng nó ⇒ đề xuất sửa phần chung trên HS; zemory chạy `zemory impact <phần>`,
       người dùng duyệt, zemory sửa HS rồi sync xuống mọi repo;
    b. chỉ repo này cần khác ⇒ một phần riêng: điều hiến pháp riêng nằm ở `01_LAW/_Cons/Cons_<Gate|Keys|Core>_1NN_<Tên>/`
-      (số từ 101, không có dòng `from:`); repo tự ghi sau khi người dùng duyệt điều đó trong phiên (cờ một lần `docs-write`).
+      (số từ 101, không có dòng `from:`); repo tự ghi sau khi người dùng duyệt điều đó trong phiên (cờ một lần `.allow-docs-write`).
       Bản chép của phần chung không bao giờ sửa ở đây.
 4. Khung thiếu mục repo cần ⇒ đề xuất bổ sung mục đó vào khung trên HS (như bước 3).
 5. Bãi bỏ một phần thì giữ số và đánh dấu bãi bỏ; sync đưa trạng thái đó xuống mọi repo.
@@ -80,7 +80,7 @@ repo. Repo dùng bản chép; không bao giờ sửa nó. Repo chỉ điền và
 
 ## Máy kiểm
 - Guard của repo chặn mọi Write / Edit dưới bốn thư mục harness, không có cờ vượt; lần điền khung được qua khi các mục của khung
-  giữ nguyên; điều riêng của repo (`Cons_*_1NN`, không `from:`) qua khi có cờ một lần `docs-write` của người dùng. Repo zemory,
+  giữ nguyên; điều riêng của repo (`Cons_*_1NN`, không `from:`) qua khi có cờ một lần `.allow-docs-write` của người dùng. Repo zemory,
   nơi giữ HS, không bị chặn.
 - conform `harness-edited-here`: bản chép khác bản lúc ráp thì đỏ.
 - `zemory impact <phần>` liệt kê mọi repo đang mang phần đó và trạng thái (`current` · `behind` · `edited` · `absent`); thoát 1
