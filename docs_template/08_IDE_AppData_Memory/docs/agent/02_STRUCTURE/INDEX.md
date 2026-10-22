@@ -61,7 +61,6 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Exports_135_Exports`](_Slot/Exports_135_Exports/Exports_135_Exports.md) | `exports/` | bản render / publish sinh ra |
 | [`Root_136_Principles`](_Slot/Root_136_Principles/Root_136_Principles.md) | `.` | nguyên tắc chung của chuẩn cấu trúc |
 | [`Root_141_Stignore`](_Slot/Root_141_Stignore/Root_141_Stignore.md) | `.stignore` | what Syncthing never carries to another machine |
-| [`Models_142_Database`](_Slot/Models_142_Database/Models_142_Database.md) | `models/<database>/` | chuỗi đổi cấu trúc của MỘT cơ sở dữ liệu |
 
 | Host note · Ghi chú host | About · Về |
 |---|---|
