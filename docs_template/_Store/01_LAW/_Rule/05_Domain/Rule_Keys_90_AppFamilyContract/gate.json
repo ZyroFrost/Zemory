@@ -1,0 +1,27 @@
+{
+  "prompt": {
+    "kind": "Rule_90",
+    "re": "\\b(db rieng|database rieng|co so du lieu rieng|own database|separate database|man quan tri|trang quan tri|admin screen|admin page|cap vai|cap quyen|grant role|auth_userapprole|log_operation|log van hanh|ma log|log code|actionname)\\b",
+    "text": "[zemory] Rule_Keys_90_AppFamilyContract: an app of a family uses the family's ONE database (kept by the app-data repo; no database of its own, never DDL), the system-manager's ONE admin screen for roles (no admin screen in the app), and logs the six event groups with the app-data repo's codes."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "tạo db riêng cho app mới"
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "thêm màn quản trị để cấp vai trong app"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "chạy lại bộ test"
+    }
+  ]
+}
