@@ -50,6 +50,10 @@ fi
 
 say "building and starting the container (the first build takes a while)"
 (cd "$DIR" && docker compose up -d --build)
+# every rebuild leaves build cache and an untagged old image behind (24.6 GB after a day of rebuilds, measured
+# 2026-10-22): keep a day of cache, drop the rest
+docker builder prune -f --filter until=24h >/dev/null || true
+docker image prune -f >/dev/null || true
 i=0
 until curl -fsS -m 3 http://127.0.0.1:4444/ping 2>/dev/null | grep -q '"runtime":"docker"'; do
   i=$((i + 1)); [ "$i" -gt 60 ] && die "the container did not answer on http://127.0.0.1:4444 - see 'docker logs zemory'"; sleep 2

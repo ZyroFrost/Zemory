@@ -2438,11 +2438,19 @@ async function channelSyncOnce(
   return ({ ok: false, ...last });
 }
 
+let channelInventoryWarm = false;
 async function refreshChannelServer(): Promise<void> {
   try {
     const ch = await import("./memory/channel/index.js");
     const { resolveShareKey } = await import("./memory/share.js");
     const keyFile = resolveShareKey(currentProjectRoot());
+    // Warm the block inventory in a worker BEFORE the first session asks for it: built on the event loop it read 64 KB of
+    // every block (11 s for 4,243) and the cockpit went silent at start. The worker writes the disk cache the loop reads.
+    if (!channelInventoryWarm) {
+      channelInventoryWarm = true;
+      const w = await runInWorker<string[]>("memory/channel/blocks.js", "inventoryIds", [ch.channelDir()], 600_000);
+      if (!w.ok) daemonLog(`[channel] block inventory warm-up in a worker failed - the first session builds it: ${w.error}`);
+    }
     const r = await ch.startChannelServer({
       shareKey: keyFile && existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : null,
       appVersion: appVersion(),

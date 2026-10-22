@@ -97,7 +97,11 @@ test("compose publishes the sign-in view on the host's loopback only and gives C
   assert.match(c, /ZEMORY_PATH_MAP: "\$\{ZEMORY_SELF_NATIVE:-\}=>\/host\/zemory;/);
   assert.doesNotMatch(c, /\.git:\/app\/\.git/, "NEGATIVE: one way to reach the history, not two");
   assert.match(read("../src/docs/store.ts"), /process\.env\.ZEMORY_SELF\?\.trim\(\)/);
-  for (const inst of ["../scripts/install-docker.ps1", "../scripts/install-docker.sh"]) assert.match(read(inst), /ZEMORY_SELF_NATIVE=/, inst);
+  for (const inst of ["../scripts/install-docker.ps1", "../scripts/install-docker.sh"]) {
+    assert.match(read(inst), /ZEMORY_SELF_NATIVE=/, inst);
+    // a rebuild leaves build cache + an untagged image: 24.6 GB in a day (2026-10-22) - the installers prune after building
+    assert.match(read(inst), /docker builder prune -f --filter until=24h/, inst);
+  }
   assert.match(read("../../Dockerfile"), /git config --system --add safe\.directory '\*'/);
   // the p2p channel listens where the native daemon does (getP2pPort's default)
   assert.match(c, /"\$\{ZEMORY_P2P_PORT:-21038\}:21038"/);

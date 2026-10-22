@@ -50,7 +50,9 @@ const segCache = new Map<string, { size: number; mtimeMs: number; refs: BlockRef
 // The cache also lives on disk, for THIS machine's channel only (the machine dir: it never travels). Rebuilt from nothing
 // at every daemon start it read 64 KB of each of 4,243 blocks - 11.6 s on the event loop, the cockpit silent meanwhile
 // (profiled 2026-10-22 in the container). A test's temporary channel folder never reads or writes it.
-let diskCacheLoaded = false;
+// re-read whenever the file changed: a worker warms it at daemon start (ui.ts refreshChannelServer), and the event loop
+// must then pick up what the worker wrote even if it looked once before
+let diskCacheMtime = -1;
 function diskCacheFile(channelDir: string): string | null {
   try {
     return resolve(channelDir) === resolve(join(currentStoreRoot(), "channel")) ? join(currentMemoryDir(), "channel-inventory.json") : null;
@@ -59,11 +61,21 @@ function diskCacheFile(channelDir: string): string | null {
   }
 }
 function loadDiskCache(file: string): void {
-  if (diskCacheLoaded) return;
-  diskCacheLoaded = true;
+  let mt: number;
+  try {
+    mt = statSync(file).mtimeMs;
+  } catch {
+    return; // no cache yet
+  }
+  if (mt === diskCacheMtime) return;
+  diskCacheMtime = mt;
   try {
     const rows = JSON.parse(readFileSync(file, "utf8")) as Record<string, { size: number; mtimeMs: number; refs: BlockRef[] }>;
-    for (const [seg, v] of Object.entries(rows)) if (!segCache.has(seg) && v && Array.isArray(v.refs)) segCache.set(seg, v);
+    // inventory() still checks each entry against the container's real (size, mtime), so a disk entry can only help
+    for (const [seg, v] of Object.entries(rows)) {
+      const cur = segCache.get(seg);
+      if (v && Array.isArray(v.refs) && (!cur || cur.size !== v.size || cur.mtimeMs !== v.mtimeMs)) segCache.set(seg, v);
+    }
   } catch {
     /* no cache yet, or unreadable: rebuilt as before */
   }
