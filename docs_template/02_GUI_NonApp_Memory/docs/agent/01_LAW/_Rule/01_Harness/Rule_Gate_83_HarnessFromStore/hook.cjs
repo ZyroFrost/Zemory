@@ -115,6 +115,9 @@ const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 const HARNESS = /(^|\/)docs\/agent\/(01_LAW|02_STRUCTURE|03_SKILLS)\/|(^|\/)\.claude\/skills\//;
 const CONS = /(^|\/)docs\/agent\/01_LAW\/_Cons\/(?:[^\/]+\/)?[^\/]+\/Cons\.md$/;
 const OWN = /(^|\/)docs\/agent\/03_SKILLS\/(Skill_Own_[A-Za-z0-9]+)\/(.+)$/;
+// an article of the repo's own constitution: numbered from 101, inside the constitution shelf (any chapter)
+const OWN_ART = /(^|\/)docs\/agent\/01_LAW\/_Cons\/(?:[^\/]+\/)?Cons_(?:Gate|Keys|Core)_(\d{3})_[A-Za-z0-9]+\/[^\/]+$/;
+const FROM = /^from:/m;
 function heads(t) { return (String(t).replace(/\r\n/g, "\n").match(/^## .*$/gm) || []).map((s) => s.trim()); }
 // the file as it will be after this call
 function afterText(payload, abs, exists) {
@@ -151,10 +154,18 @@ function check(payload, root, policy) {
       const diff = shapeDiff(heads(fs.readFileSync(frame, "utf8")), heads(afterText(payload, abs, e.exists)));
       return diff ? blocked(root, policy, "02-83", e.rel + " is a skill of the repo's own and must keep the sections of Skill_Frame_Own:" + diff + how) : null;
     }
+    const art = OWN_ART.exec(e.rel);
+    if (art && Number(art[2]) >= 101) {
+      // a part stamped 'from:' came from HS: it is a copy whatever its number; the repo may not stamp one either
+      const before = e.exists ? fs.readFileSync(abs, "utf8") : "";
+      if (!FROM.test(before) && !FROM.test(afterText(payload, abs, e.exists))) {
+        return { flag: "docs-write", subject: e.rel, msg: blocked(root, policy, "02-83", e.rel + " is an article of this repo's own " +
+          "constitution: the repo writes it, after the user approves the article in this session.") };
+      }
+    }
     return blocked(root, policy, "02-83", e.rel + " is harness. A repo uses the harness, it does not own it: no change here " +
-      "without zemory - not to a law, a constitution article, a slot or a skill, the repo's own included. Send the change to " +
-      "the zemory session; zemory runs zemory impact, agrees it with the user, puts it in the store (or writes this repo's " +
-      "own part) and syncs it down.");
+      "without zemory - not to a shared law, constitution frame, slot or skill. Change the part on HS (ask the user, run " +
+      "zemory impact, sync every repo that carries it); an article of the repo's own goes in a Cons_<Kind>_1NN_<Name> folder.");
   } catch { return null; }
 }
 module.exports = { check };
