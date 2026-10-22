@@ -4440,7 +4440,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   setInterval(() => void linkTick(root()), 30_000).unref();
   reconcileAutostart(getAutostart());
   // a shortcut still pointing at a moved install's icon/launcher is rewritten; one PowerShell call, kept off the start path
-  setTimeout(() => reconcileShortcuts(), 5_000).unref();
+  setTimeout(() => void reconcileShortcuts(), 5_000).unref();
   startScheduler();
   // GỬI LIỀN (plan/24 §12): a cheap poll every 2 s — seal this machine's new messages into the p2p channel and land
   // received blocks, each in a child process through the job slot. Off unless p2p is on and a machine is paired.

@@ -6,7 +6,13 @@
 // Everything is best-effort and reversible; failures fail-open with a reason so
 // the UI can show "not supported here" instead of crashing.
 
-import { execFileSync, spawn } from "node:child_process";
+import { execFile, execFileSync, spawn } from "node:child_process";
+import { promisify } from "node:util";
+
+// Every PowerShell call is bounded (2026-10-22: after the machine ran out of RAM, PowerShell/WMI hung for minutes, and an
+// unbounded synchronous call at daemon start froze the daemon - no request answered, connections piling in CLOSE_WAIT).
+const PS_TIMEOUT_MS = 15_000;
+const execFileP = promisify(execFile);
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -125,7 +131,7 @@ export function launchFacts(): LaunchFacts | null {
     const ps =
       "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*cli.js*' -and $_.CommandLine -match '\\sui(\\s|$)' } | " +
       "ForEach-Object { $_.ExecutablePath }";
-    uiProcesses = String(execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8", windowsHide: true }))
+    uiProcesses = String(execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8", windowsHide: true, timeout: PS_TIMEOUT_MS }))
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter(Boolean);
@@ -452,7 +458,7 @@ function winWriteShortcut(lnkPath: string, vbs: string): void {
     "$s.Save()",
   ].join(" ");
   try {
-    execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: ["ignore", "ignore", "pipe"], windowsHide: true });
+    execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { stdio: ["ignore", "ignore", "pipe"], timeout: PS_TIMEOUT_MS, windowsHide: true });
   } catch (error) {
     // stdio "ignore" used to swallow the REASON — a redirected Desktop reports
     // DirectoryNotFoundException, but all the UI ever saw was "Command failed".
@@ -575,34 +581,56 @@ export function shortcutStale(f: LnkFacts, wantIcon: string | null, vbs: string)
   return !f.args.toLowerCase().includes(vbs.toLowerCase());
 }
 
-/** Read the icon and arguments of the Zemory shortcuts that exist (Windows; one PowerShell call). */
-function winShortcutFacts(): LnkFacts[] {
+/** The PowerShell that reads the icon and arguments of the Zemory shortcuts that exist; null = none exists. */
+function shortcutFactsScript(): string | null {
   const lnks = [winStartMenuLnk(), winDesktopLnk()].filter((p) => existsSync(p));
-  if (!lnks.length) return [];
-  const ps = [
+  if (!lnks.length) return null;
+  return [
     "$w = New-Object -ComObject WScript.Shell;",
     ...lnks.map((p) => `$s = $w.CreateShortcut('${psq(p)}'); '{0}|{1}|{2}' -f '${psq(p)}', $s.IconLocation, $s.Arguments;`),
   ].join(" ");
+}
+
+function parseShortcutFacts(out: string): LnkFacts[] {
+  return out
+    .split(/\r?\n/)
+    .filter((l) => l.includes("|"))
+    .map((l) => {
+      const [path, icon, ...rest] = l.split("|");
+      return { path, icon: icon.replace(/,-?\d+$/, "").trim(), args: rest.join("|") };
+    });
+}
+
+/** Read the Zemory shortcuts (Windows; one bounded PowerShell call). For the launch gate. */
+function winShortcutFacts(): LnkFacts[] {
+  const ps = shortcutFactsScript();
+  if (!ps) return [];
   try {
-    return String(execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8", windowsHide: true }))
-      .split(/\r?\n/)
-      .filter((l) => l.includes("|"))
-      .map((l) => {
-        const [path, icon, ...rest] = l.split("|");
-        return { path, icon: icon.replace(/,-?\d+$/, "").trim(), args: rest.join("|") };
-      });
+    return parseShortcutFacts(String(execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8", windowsHide: true, timeout: PS_TIMEOUT_MS })));
+  } catch {
+    return [];
+  }
+}
+
+/** The same read without blocking: for the daemon, which must keep answering while PowerShell works (or hangs). */
+async function winShortcutFactsAsync(): Promise<LnkFacts[]> {
+  const ps = shortcutFactsScript();
+  if (!ps) return [];
+  try {
+    const { stdout } = await execFileP("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8", windowsHide: true, timeout: PS_TIMEOUT_MS });
+    return parseShortcutFacts(String(stdout));
   } catch {
     return [];
   }
 }
 
 /** Rewrite every Zemory shortcut that points at another install's icon or launcher (called on daemon start). */
-export function reconcileShortcuts(): string[] {
+export async function reconcileShortcuts(): Promise<string[]> {
   if (platform() !== "win32") return [];
   const fixed: string[] = [];
   try {
     const vbs = winLauncherVbs();
-    const stale = winShortcutFacts().filter((f) => shortcutStale(f, winIconPath(), vbs));
+    const stale = (await winShortcutFactsAsync()).filter((f) => shortcutStale(f, winIconPath(), vbs));
     if (!stale.length) return [];
     const { exe } = launchParts();
     if (launcherStale(readIfExists(vbs), exe, cwdDirective()) || !existsSync(vbs)) winWriteLauncher();
