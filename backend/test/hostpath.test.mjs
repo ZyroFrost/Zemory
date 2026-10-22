@@ -95,3 +95,29 @@ test("the Drive folder maps to its mount and back, spaces and all; getDriveDir t
   const ui = readFileSync(new URL("../src/ui.ts", import.meta.url), "utf8");
   assert.match(ui, /path: toHostPath\(probe\.path\)/, "the cockpit shows the host's name of the folder");
 });
+
+// 2026-10-22 parity run: the container keyed the paths state by the mount (the sweep's root) and the cockpit asked with
+// the host's path, so every repo showed 0 dead paths in Docker against 6-11 natively. canon() maps before keying.
+test("dead paths swept under the mount are found when asked with the host's path", async (t) => {
+  const { deadPathsByFile, deadPathsSummary } = await import("../../dist/docs/paths.js");
+  const { resolve } = await import("node:path");
+  const mount = tempDir(t, "zhp-dead-");
+  const key = process.platform === "win32" ? resolve(mount).toLowerCase() : resolve(mount);
+  const state = { version: 1, projects: { [key]: { baseline: [], where: { "docs/gone.md": { file: "AGENTS.md", line: 3 } }, firstSeen: { "docs/gone.md": "2026-10-22" } } } };
+  const prev = process.env.ZEMORY_PATH_MAP;
+  const HOST = String.raw`X:\Repo`;
+  process.env.ZEMORY_PATH_MAP = `${HOST}=>${mount}`;
+  t.after(() => { if (prev === undefined) delete process.env.ZEMORY_PATH_MAP; else process.env.ZEMORY_PATH_MAP = prev; });
+  assert.equal(deadPathsByFile(state, HOST).get("AGENTS.md")?.length, 1);
+  assert.equal(deadPathsSummary(state, [{ root: HOST, name: "Repo" }])[0]?.newlyDead, 1);
+  assert.equal(deadPathsByFile(state, String.raw`X:\Other`).size, 0, "NEGATIVE: another host path finds nothing");
+});
+
+test("a linked repo carries where it is opened here, and its name splits a Windows path on any OS", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(new URL("../src/projects.ts", import.meta.url), "utf8");
+  assert.ok(src.includes(String.raw`name: basename(e.root.replace(/\\/g, "/")), local: toLocalPath(e.root)`));
+  for (const [f, call] of [["../src/commands/gates.ts", "existsSync(p.local)"], ["../src/docs/repo-sweep.ts", "sweepRepo(p.local, p.name)"], ["../src/docs/repo-sweep.ts", "repoGates(proj.local, proj.name)"], ["../src/ui.ts", "kitBehind(proj.local)"]]) {
+    assert.ok(readFileSync(new URL(f, import.meta.url), "utf8").includes(call), `${f}: ${call}`);
+  }
+});

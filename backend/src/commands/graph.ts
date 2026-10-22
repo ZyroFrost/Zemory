@@ -344,7 +344,7 @@ export async function cmdGraph(args: string[]): Promise<void> {
       const projects: Awaited<ReturnType<typeof buildOne>>[] = [];
       for (const p of listKnownProjects()) {
         try {
-          const e = await buildOne(p.root, semantic);
+          const e = await buildOne(p.local, semantic);
           if (e.stats.files || e.docs.stats.docs) projects.push(e); // skip empty/dead roots
         } catch {
           /* skip a project that fails to build */

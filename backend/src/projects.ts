@@ -13,6 +13,7 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isConnected, projectKey, readMarker } from "./core/config.js";
 import { currentMemoryDir } from "./memory/db.js";
+import { toLocalPath } from "./util/hostpath.js";
 
 /** The pre-2026-08-05 location, kept ONLY so an existing registry still loads. */
 function legacyRegistryFile(): string {
@@ -86,6 +87,9 @@ export interface ProjectEntry {
 
 export interface KnownProject extends ProjectEntry {
   name: string;
+  /** Where this process opens the repo on disk: the root itself natively, its mount in the container (plan/30). `root`
+   *  stays the host's path, the key every store row and the cockpit use. */
+  local: string;
   /** Structure standard the project declares in docs/.harness.json (default "app"). */
   profile: "app" | "non-app";
   /** zemory's OWN repo — pinned for good, and the pin button is locked (user rule 2026-09-17). */
@@ -223,7 +227,8 @@ export function listKnownProjects(): KnownProject[] {
       const self = isSelfRoot(e.root);
       // Ghim CỨNG, không đọc cờ trong registry: kể cả file bị sửa tay thành `pinned:false`
       // thì nhà của chính công cụ vẫn đứng đầu — một nguồn sự thật, không hai đường rẽ.
-      return { ...e, name: basename(e.root), profile: projectProfile(e.root), pinned: self || e.pinned, locked: self || undefined };
+      // the name from a `/` path: in the container (Linux) basename does not split a Windows host path on `\`
+      return { ...e, name: basename(e.root.replace(/\\/g, "/")), local: toLocalPath(e.root), profile: projectProfile(e.root), pinned: self || e.pinned, locked: self || undefined };
     })
     .sort((a, b) => {
       if (!!a.locked !== !!b.locked) return a.locked ? -1 : 1;
