@@ -12,10 +12,12 @@
 #   ZEMORY_PORT      the host port (default 4444; another port while a native daemon holds 4444)
 #   ZEMORY_STORE     the store folder on the host's Linux file system (plan/30 §3c): /home/<user>/zemory - on Windows
 #                    run compose from Ubuntu (WSL) so this is ext4, never an NTFS folder (WAL breaks on it)
+name: zemory
 services:
   zemory:
     build: .
     image: zemory:local
+    container_name: zemory
     hostname: ${ZEMORY_HOSTNAME:?set ZEMORY_HOSTNAME to this machine's name}
     ports:
       - "127.0.0.1:${ZEMORY_PORT:-4444}:4444"
