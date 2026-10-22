@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { mapHostPath, parsePathMap, toHostPath, toLocalPath, unmapToHost } from "../../dist/util/hostpath.js";
+import { mapHostPath, parsePathMap, samePlace, toHostPath, toLocalPath, unmapToHost } from "../../dist/util/hostpath.js";
 import { tempDir } from "./helpers.mjs";
 
 const MAP = parsePathMap("C:\\Users\\u\\.claude=>/home/node/.claude;D:\\Workspace=>/host/workspace;/home/u/repos=>/host/repos");
@@ -120,4 +120,17 @@ test("a linked repo carries where it is opened here, and its name splits a Windo
   for (const [f, call] of [["../src/commands/gates.ts", "existsSync(p.local)"], ["../src/docs/repo-sweep.ts", "sweepRepo(p.local, p.name)"], ["../src/docs/repo-sweep.ts", "repoGates(proj.local, proj.name)"], ["../src/ui.ts", "kitBehind(proj.local)"]]) {
     assert.ok(readFileSync(new URL(f, import.meta.url), "utf8").includes(call), `${f}: ${call}`);
   }
+});
+
+// The clone inside the workspace is reachable under two mounts in the container (/host/zemory and the workspace mount):
+// zemory must still know its own repo (pinned first, the standard's source, never diffed against itself).
+test("one folder under two mounts is the same place; a sibling is not", (t) => {
+  const prev = process.env.ZEMORY_PATH_MAP;
+  process.env.ZEMORY_PATH_MAP = String.raw`D:\Workspace\Personal\Zemory=>/host/zemory;D:\Workspace=>/host/workspace`;
+  t.after(() => { if (prev === undefined) delete process.env.ZEMORY_PATH_MAP; else process.env.ZEMORY_PATH_MAP = prev; });
+  assert.equal(samePlace("/host/zemory", "/host/workspace/Personal/Zemory"), true);
+  assert.equal(samePlace("/host/zemory", String.raw`d:\workspace\personal\zemory\ `.trim()), true, "the host's path, any case");
+  assert.equal(samePlace("/host/zemory", "/host/workspace/Personal/ZemoryOld"), false, "NEGATIVE: a sibling folder");
+  assert.equal(samePlace("", "/host/zemory"), false);
+  assert.equal(toLocalPath(String.raw`D:\Workspace\Personal\Zemory\docs`), "/host/zemory/docs", "the clone's pair wins over the workspace's");
 });
