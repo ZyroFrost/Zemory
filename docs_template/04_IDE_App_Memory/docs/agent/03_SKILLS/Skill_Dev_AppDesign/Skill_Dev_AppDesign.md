@@ -2,10 +2,11 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 15
+version: 16
 type: process
+checked: [Rule_Gate_35_OneHome, Skill_Dev_DbDesign, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_Dev_AppDesign @v15 #de5c5612dca4
+from: _Store/03_SKILLS/Skill_Dev_AppDesign @v16 #7a53d845024c
 ---
 
 # app-design — chuẩn thiết kế APP (FE + BE)
@@ -295,6 +296,9 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
   hardcode; thuật ngữ kỹ thuật giữ nguyên. Từ điển UI: slot `Frontend_137_UiDictionary`.
 - **Tách lớp:** giao diện chỉ gọi API của máy chủ; nghiệp vụ, truy vấn, gọi dịch vụ ngoài nằm ở máy chủ. Giao diện gửi tên
   truy vấn + tham số, không gửi câu truy vấn thô.
+- **App của một hệ** (`Rule_Keys_90_AppFamilyContract`): dữ liệu ở DB chung của hệ (repo `app-data` giữ, app không DB riêng, không
+  DDL) · vai cấp ở màn quản trị chung của `system-manager` (app không dựng màn quản trị) · log sáu nhóm sự kiện bằng mã trong bảng
+  hợp đồng của repo `app-data`.
 - **Bảo mật gác ở máy chủ, mặc định chặn:** thêm chức năng ghi mới ⇒ chặn mọi vai chưa khai cho phép; ẩn nút trên giao diện
   không tính là bảo mật. Mọi endpoint trả dữ liệu đứng sau lớp đăng nhập.
 - **Câu truy vấn có tên trong mã chạy dạng chuỗi:** worker nạp bằng eval không import được kho câu ⇒ truyền câu có tên qua
@@ -306,3 +310,4 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
 ## Implements · Thi hành luật
 - `Cons_Gate_13_Architecture` — how the layers of an app are built · cách dựng các lớp của app
 - `Rule_Keys_62_DesignChangeApproval` — the design standard whose suggestions are shown first · chuẩn thiết kế mà gợi ý phải trình trước
+- `Rule_Keys_90_AppFamilyContract` — an app of a family: one database, one admin screen, the family's log codes · app của một hệ: một DB, một màn quản trị, mã log của hệ
