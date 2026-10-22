@@ -33,12 +33,23 @@ export function templateRole(structureDir: string): TemplateRole | null {
 }
 
 /** The role of the repo at `root`: the role of the template of the set its marker names; null when it has no set. */
+// The role of a set, by set name, for a minute: finding it reads every set of HS, and a region asks it once per repo -
+// 14 s a repo through the Docker drive mount, 272 s for one workspace graph (measured 2026-10-23). HS changes a few
+// times a day; a minute is how long a change can take to show here.
+const roleMemo = new Map<string, { at: number; role: TemplateRole | null }>();
+const ROLE_TTL_MS = 60_000;
+
 export function repoRole(root: string, storeDir = STORE_DIR): TemplateRole | null {
   const kitName = readMarker(root)?.data.kit;
   if (typeof kitName !== "string" || !kitName) return null;
+  const key = `${storeDir}\u0000${kitName}`;
+  const hit = roleMemo.get(key);
+  if (hit && Date.now() - hit.at < ROLE_TTL_MS) return hit.role;
   const kit = findKit(kitName, storeDir);
   const struc = kit ? kitStructure(kit, storeDir) : null;
-  return struc ? templateRole(struc.dir) : null;
+  const role = struc ? templateRole(struc.dir) : null;
+  roleMemo.set(key, { at: Date.now(), role });
+  return role;
 }
 
 const isRepo = (d: string): boolean => existsSync(join(d, "docs", ".harness.json")) || existsSync(join(d, ".git"));
