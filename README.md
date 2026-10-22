@@ -159,26 +159,53 @@ zemory setup --shortcut && zemory memory scan && zemory hook install && zemory m
 `npm install -g .` links the repo, so a later `npm run build` updates the global `zemory` command in
 place. The cockpit's *Update now* button runs the whole pull, rebuild and restart cycle.
 
-**Docker (preview, Windows and Linux).** A second way to install, beside the native one above, never
-together with it: both serve port 4444, and a native `zemory ui` refuses to start while the Docker one
-holds the port. The image carries Node, the native modules and the models, so the machine needs only
-Docker. The memory store lives on the Linux file system (`/home/<user>/zemory`; on Windows inside
-Ubuntu on WSL, never on an NTFS folder, where SQLite's WAL breaks). The repos and `~/.claude` are mounted
-read-only, and every path is stored the way the host writes it.
+**Docker (Windows and Linux).** A second way to install, beside the native one above. A machine runs
+one of them, never both: they serve the same port 4444, a native `zemory ui` refuses to start while the
+Docker one holds it, and each installer turns the other one off (its autostart, its global command, its
+hooks). The image carries Node, the native modules, the models and a browser for web-chat capture; the
+memory store lives on the Linux file system (`/home/<user>/zemory`; on Windows inside Ubuntu on WSL,
+never on an NTFS folder, where SQLite's WAL breaks).
 
-```bash
-# from Ubuntu (WSL) on Windows, or a Linux shell; see docker-compose.yml for each variable
-export HOST_HOME=/mnt/c/Users/<you> HOST_HOME_NATIVE='C:\Users\<you>'
-export HOST_WORKSPACE=/mnt/d/Workspace HOST_WORKSPACE_NATIVE='D:\Workspace'
-export ZEMORY_HOSTNAME=<this machine> ZEMORY_STORE=/home/<user>/zemory
-docker compose up -d --build     # then open http://127.0.0.1:4444
+Windows needs WSL 2 with an Ubuntu distro and Docker Desktop with WSL integration turned on for it; the
+installer checks both and does not install them (each needs an administrator, a restart, or a licence
+decision). Then, in PowerShell:
+
+```powershell
+$env:ZEMORY_WORKSPACE = "D:\Workspace"   # the folder holding your repos
+irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install-docker.ps1 | iex
 ```
 
-Still open before it can replace a native install: web-chat capture and the peer-to-peer channel inside
-the container, moving an existing store over, a one-command installer, and the speed of reading repos
-from a Windows drive (every file operation crosses the mount; a tree walk now asks one question per
-folder instead of one per file). On Windows, cap the WSL VM in `%USERPROFILE%\.wslconfig`
-(`memory=4GB`), since WSL takes half the machine's RAM by default.
+Linux needs Docker Engine with the compose plugin, git and Node.js 20 or later:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install-docker.sh | ZEMORY_WORKSPACE=~/work sh
+```
+
+What the installer sets up:
+
+- **The container** (`docker compose up -d --build` from the clone), restarted by Docker. It mounts the
+  repos folder (writable: `sync`, `init`, `archive` write into repos as natively), `~/.claude` read-only,
+  the clone itself (HS is read there, so a change made to HS on the host is what a sync in the container
+  sees), and the Drive sync folder when the native config names one. Docker Desktop cannot see a Google
+  Drive letter (it silently mounts an empty folder), so the installer mounts it in Ubuntu first.
+- **The host side**, small Node scripts with no native module: the `zemory` command forwards into the
+  container in the container's view of the current folder (so `zemory sync`, `zemory conform` and the
+  `zemory mcp` server entries keep working), and the Claude Code hooks post to the container.
+- **The memory store**: the native one is copied in once when the Docker one is still empty (browser
+  profiles are not: each web-chat source signs in again once). The share key is set with
+  `zemory memory key set --from <file>`, which prints only the fingerprint.
+- **Web-chat capture**: the chat sites refuse a headless browser, so Chromium draws on a virtual display
+  in the container; the sign-in window is shown as a web page at `http://127.0.0.1:6080` (this machine
+  only), and the cockpit opens it when a source needs to sign in.
+- **The peer-to-peer channel**: global discovery and the public relays work from the container (measured:
+  linked with a peer on another network through a relay). LAN discovery's broadcast does not cross
+  Docker's network and is not needed for that.
+
+Reading repos on a Windows drive crosses the mount for every file operation: a tree walk now asks one
+question per folder instead of one per file (4.8 s instead of 66 s for 2,119 entries), but the first
+build of a large repo's code graph is still several times slower than natively. On Windows, cap the WSL
+VM in `%USERPROFILE%\.wslconfig` (`memory=4GB`), since WSL takes half the machine's RAM by default.
+`backend/scripts/docker-parity.mjs` compares the two installs repo by repo (one up at a time).
 
 **Why `fetch-prebuilds` comes first.** `better-sqlite3` downloads its prebuilt binary from
 `github.com/<repo>/releases/download/…`. On networks that block or throttle that host (one corporate
@@ -669,6 +696,7 @@ zemory memory vectors-catchup [--dry-run] Ship vectors the channel is missing, w
 zemory memory export <f.enc> [--full]     Encrypted bundle out
 zemory memory import <f.enc> [--merge]    In: default REPLACES the store (old one kept as .bak-*); --merge only adds
 zemory memory keygen | key show|set|path  Share key = your identity; `key show` prints only a fingerprint
+zemory memory key set --from <file>       Take the key file of another install on this machine (native → Docker)
 zemory memory forget [--session id]       Forget rows (dry run by default, backup on --force)
 zemory memory redact                      Re-apply redaction to stored rows
 zemory memory backup | restore            Raw local SQLite backup / restore
@@ -686,6 +714,7 @@ zemory init [--non-app | --kit <NN> | --fresh]
 zemory sync [--self | --check | --root <repo> --apply | --standard [--apply] [--kit <NN>]]
                                           Bring a repo up to its set (three-way); a manager goes on to its repos
 zemory impact <part>                      Every repo carrying a store part, and its state
+zemory store assemble                     Rebuild every set from HS (after changing a part; commit them together)
 zemory gates [--all] [--json]             Does each repo run its gates: guard · pre-commit · a row per article
 zemory peers [--repo X] [--check]         Which local agent session to message for a repo
 zemory conform [--gate]                   Score how closely the folder follows the standard
@@ -987,7 +1016,8 @@ the code runs. In brief:
 
 ## Roadmap
 
-**Shipped recently:** the parts store and nine sets (4.0.0), with `init` building from a set, three-way
+**Shipped recently:** the Docker install for Windows and Linux, with one-command installers, web-chat
+capture on a virtual display and `zemory store assemble` (4.3.0) · the parts store and nine sets (4.0.0), with `init` building from a set, three-way
 `sync`, `sync --check`, the Standard and Gates chips, `gates` · `impact` · `peers` · the four-level graph
 (trial) · the check before a store change (`Rule_Gate_85`) · free deletion of the agent's own scratch ·
 global discovery, public relay and NAT hole punching for the peer-to-peer channel · folder mirroring with
@@ -996,13 +1026,12 @@ per-file questions in `selfupdate` · the 300-line local auto-commit · `setup m
 
 **Open:**
 
-- **Docker as a full install** (Windows and Linux): web-chat capture and the peer-to-peer channel in the
-  container, moving a native store over, a one-command installer, acceptance on two clean machines, and
-  a native-vs-Docker comparison of every path-driven surface that comes out the same.
+- **Docker, acceptance on two clean machines** (Windows and Linux) by the installers alone, and a first
+  web-chat sign-in through the in-container browser for each source.
 - **Repos changing the store themselves.** Any repo may propose and apply a change to the shared parts
-  after asking the user, rebuild the sets and sync every repo `zemory impact` lists, without two repos
-  overwriting each other. Missing today: a command for a repo to rebuild the sets itself, overwrite
-  protection, and filtering `*.orig` / `*.rej` out of parts.
+  after asking the user, rebuild the sets (`zemory store assemble`) and sync every repo `zemory impact`
+  lists, without two repos overwriting each other. Missing today: overwrite protection, and filtering
+  `*.orig` / `*.rej` out of parts.
 - **Acceptance by a real run** of the 4.0.0 harness: a brand-new repo built from a set (app and non-app)
   passing `conform` and `gates` with its hooks blocking for real, and the same in Claude Desktop.
 - **The four-level graph**, after review: status colours from `conform` / `gates` on levels 1–3, and an

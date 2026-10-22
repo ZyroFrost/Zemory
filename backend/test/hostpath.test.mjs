@@ -117,7 +117,7 @@ test("a linked repo carries where it is opened here, and its name splits a Windo
   const { readFileSync } = await import("node:fs");
   const src = readFileSync(new URL("../src/projects.ts", import.meta.url), "utf8");
   assert.ok(src.includes(String.raw`name: basename(e.root.replace(/\\/g, "/")), local: toLocalPath(e.root)`));
-  for (const [f, call] of [["../src/commands/gates.ts", "existsSync(p.local)"], ["../src/docs/repo-sweep.ts", "sweepRepo(p.local, p.name)"], ["../src/docs/repo-sweep.ts", "repoGates(proj.local, proj.name)"], ["../src/ui.ts", "kitBehind(proj.local)"]]) {
+  for (const [f, call] of [["../src/commands/gates.ts", "existsSync(p.local)"], ["../src/docs/repo-sweep.ts", "sweepRepo(p.local, p.name)"], ["../src/docs/repo-sweep.ts", "repoGates(proj.local, proj.name)"], ["../src/docs/harness-updates.ts", "kitBehind(proj.local)"]]) {
     assert.ok(readFileSync(new URL(f, import.meta.url), "utf8").includes(call), `${f}: ${call}`);
   }
 });

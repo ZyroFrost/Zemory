@@ -50,7 +50,7 @@ test("the dependency layer is built from the manifests alone, before the sources
 test("the cockpit's project root is opened where the daemon sees it; the store keys stay host paths", () => {
   const ui = read("../src/ui.ts");
   assert.match(ui, /const targetLocal = toLocalPath\(target\);/);
-  for (const call of ["buildWorkspaceGraph(targetLocal)", "getCodeGraph(targetLocal)", "buildFolderTree(targetLocal)", "listHarnessFiles(targetLocal)", "buildStandardGraph(targetLocal"]) {
+  for (const call of ['"buildWorkspaceGraph", [targetLocal]', "codeGraphParts(targetLocal)", '"buildFolderTree", [targetLocal]', "listHarnessFiles(targetLocal)"]) {
     assert.ok(ui.includes(call), `disk readers take the local path: ${call}`);
   }
   assert.match(ui, /root: toHostPath\(n\.root\)/, "repos go back to the cockpit as host paths");
@@ -123,4 +123,18 @@ test("the daemon names the sign-in view only when the window is on the container
   const fe = read("../../frontend/scripts/sources.js");
   assert.equal((fe.match(/openSignInView\(r\);/g) || []).length, 3, "every sign-in flow opens it");
   assert.match(fe, /a\.target='zemory-signin'/, "a blocked popup falls back to a link the user clicks");
+});
+
+// 2026-10-22: through the Docker mount the synchronous repo walks held the daemon's event loop for minutes and the
+// cockpit would not load (/ping silent, the main thread in p9_client_rpc). The heavy disk halves run in worker threads.
+test("the cockpit's repo-walking surfaces run in worker threads, not on the daemon's event loop", () => {
+  const ui = read("../src/ui.ts");
+  for (const call of ['runInWorker<FolderTree>("docs/structure-tree.js", "buildFolderTree"', 'runInWorker<WorkspaceGraph>("memory/graph/graph-standard.js", "buildWorkspaceGraph"',
+    '"memory/graph/graph-disk.js", "codeGraphDisk"', 'runInWorker<HarnessStaleRow[]>("docs/harness-updates.js", "harnessStaleRows"']) {
+    assert.ok(ui.includes(call), call);
+  }
+  for (const direct of ["buildFolderTree(", "buildWorkspaceGraph(", "getCodeGraph(", "resolveCalls(", "kitBehind("]) {
+    assert.ok(!ui.includes(direct), `NEGATIVE: ${direct} called on the event loop`);
+  }
+  assert.match(read("../scripts/docker-parity.mjs"), /PING_LIMIT_MS = 3000/, "the parity run measures the cockpit's answers too");
 });
