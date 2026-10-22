@@ -16,3 +16,9 @@ docs/hooks/.allow-*
 # repo is seen through the workspace mount, as natively) - measured 2026-10-22: /app showed up as an extra repo "app"
 docs/.harness.json
 docs_visual
+# HS and the sets are read from the clone mounted at /host/zemory (ZEMORY_SELF, plan/30 §3i), never from the image; and
+# the attic is 1.2 GB of history. Sent over the Windows-drive mount they made the build context fail with "cannot
+# allocate memory" (measured 2026-10-22). Only the legacy templates `adopt` reads stay.
+docs_template
+attic
+!attic/legacy-templates

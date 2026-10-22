@@ -89,6 +89,10 @@ test("compose publishes the sign-in view on the host's loopback only and gives C
   // zemory's own repo is the mounted clone: HS is read there (not the image's frozen copy) and its .git gives the history
   // a three-way sync reads (store.ts baseFiles); its pair leads the path map so the longer prefix wins
   assert.match(c, /-\s*\.:\/host\/zemory$/m);
+  const ign = read("../../.dockerignore");
+  assert.match(ign, /^docs_template$/m, "HS comes from the mounted clone, not the image");
+  assert.match(ign, /^attic$/m);
+  assert.match(ign, /^!attic\/legacy-templates$/m, "adopt still reads the legacy templates");
   assert.match(c, /ZEMORY_SELF: \/host\/zemory/);
   assert.match(c, /ZEMORY_PATH_MAP: "\$\{ZEMORY_SELF_NATIVE:-\}=>\/host\/zemory;/);
   assert.doesNotMatch(c, /\.git:\/app\/\.git/, "NEGATIVE: one way to reach the history, not two");
