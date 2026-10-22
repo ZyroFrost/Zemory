@@ -10,7 +10,8 @@
 //   1. native up:  node backend/scripts/docker-parity.mjs --mode native --record <file>   [--repo <name>]
 //   2. stop native, start Docker:
 //                  node backend/scripts/docker-parity.mjs --mode docker --against <file> [--container <name>] [--json]
-// The repos are asked one at a time. Exit 0 = every cell the same and no leak; 1 = a difference or a leak; 2 = could not run.
+// The repos are asked one at a time. Exit 0 = every cell the same, no leak, and the cockpit answered a ping within 3 s all
+// along; 1 = a difference, a leak or a slow/unanswered ping; 2 = could not run.
 
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -139,6 +140,28 @@ if ((ping.runtime === "docker" ? "docker" : "native") !== MODE) {
   process.exit(2);
 }
 const repos = listKnownProjects().map((p) => p.root).filter((r) => !ONLY || r.toLowerCase().endsWith(ONLY.toLowerCase()));
+// The cockpit must keep answering while the heavy surfaces are asked. 2026-10-22: the answers were right, but the daemon's
+// event loop sat in 9p calls for minutes and the cockpit would not load - the checker measured correctness only. Now a
+// ping runs every second through the whole run; one slower than PING_LIMIT_MS (or none) is a failure of its own.
+const PING_LIMIT_MS = 3000;
+const pings = { n: 0, slow: 0, worst: 0, failed: 0 };
+let pinging = true;
+const pinger = (async () => {
+  while (pinging) {
+    const t0 = Date.now();
+    try {
+      const r = await fetch(`http://127.0.0.1:${PORT}/ping`, { signal: AbortSignal.timeout(30_000) });
+      if (!r.ok) pings.failed++;
+    } catch {
+      pings.failed++;
+    }
+    const ms = Date.now() - t0;
+    pings.n++;
+    pings.worst = Math.max(pings.worst, ms);
+    if (ms > PING_LIMIT_MS) pings.slow++;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+})();
 const answers = {};
 const GLOBAL = "(global)";
 answers[GLOBAL] = {};
@@ -154,7 +177,13 @@ for (const root of repos) {
   }
 }
 
+pinging = false;
+await pinger;
+const unresponsive = pings.slow + pings.failed;
+const pingLine = `cockpit responsiveness: ${pings.n} ping(s), worst ${pings.worst} ms, ${pings.slow} over ${PING_LIMIT_MS} ms, ${pings.failed} failed`;
+
 if (RECORD) {
+  console.log(`  ${pingLine}`);
   writeFileSync(RECORD, JSON.stringify({ mode: MODE, repos, answers }));
   console.log(`recorded ${MODE}: ${repos.length} repo(s) x ${SURFACES.length} surface(s) -> ${RECORD}`);
   process.exit(0);
@@ -188,7 +217,7 @@ try {
 const bad = rows.filter((r) => !r.same);
 const leaked = leaks.filter((l) => l.n !== 0);
 if (JSON_OUT) {
-  console.log(JSON.stringify({ rows, leaks }, null, 2));
+  console.log(JSON.stringify({ rows, leaks, pings }, null, 2));
 } else {
   const names = SURFACES.map(([n]) => n);
   console.log(`docker parity - ${repos.length} repo(s) x ${names.length} surface(s) + ${IMPACT_PARTS.length} impact(s), docker vs ${AGAINST}`);
@@ -200,6 +229,9 @@ if (JSON_OUT) {
   }
   for (const r of bad) console.log(`\n  DIFF ${r.repo} · ${r.surface}\n    ${r.diff.join("\n    ")}`);
   console.log(`\n  store leak scan: ${leaks.map((l) => `${l.col}=${l.n}`).join(" · ")}`);
-  console.log(bad.length || leaked.length ? `\n  ✗ ${bad.length} difference(s), ${leaked.length} leak(s)` : "\n  ✓ every cell the same, no leak");
+  console.log(`  ${pingLine}`);
+  console.log(bad.length || leaked.length || unresponsive
+    ? `\n  ✗ ${bad.length} difference(s), ${leaked.length} leak(s), ${unresponsive} slow or unanswered ping(s)`
+    : "\n  ✓ every cell the same, no leak, the cockpit kept answering");
 }
-process.exitCode = bad.length || leaked.length ? 1 : 0;
+process.exitCode = bad.length || leaked.length || unresponsive ? 1 : 0;

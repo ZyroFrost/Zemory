@@ -18,7 +18,6 @@ import {
   listBundleDocs,
   appUpdateStatus,
   ensureHarness,
-  syncCheck,
 } from "./docs/adopt.js";
 // `refreshRemoteVersion` đã rời khỏi đây cùng lượt bàn giao selfupdate 2026-09-18: việc dựng nay
 // xảy ra ở tiến trình NGOÀI, nên daemon này không còn "sau khi dựng xong" để mà đo lại. Daemon MỚI
@@ -27,7 +26,8 @@ import { cacheDue, readUpdateCache } from "./update/remote-version.js";
 import { npmInvocation } from "./platform/npm.js";
 import { generateGuards } from "./docs/guard-gen.js";
 import { repoKit } from "./docs/kit-apply.js";
-import { kitBehind, kitSync } from "./docs/kit-sync.js";
+import type { HarnessStaleRow } from "./docs/harness-updates.js";
+import { kitSync } from "./docs/kit-sync.js";
 import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { WEB_PLATFORMS, accountsOf, scanWeb, scanWebPlatforms, showLinkedPage } from "./memory/scanweb.js";
@@ -49,9 +49,9 @@ import { appVersion, currentProjectRoot, daemonProjectRoot, harnessPathsAt, isCo
 import { deadProjectEntries, forgetProject, listKnownProjects, pinProject, projectIsAdapt, projectProfile, pruneDeadProjects, rememberProject } from "./projects.js";
 import { applyFix, deadPathsByFile, deadPathsSummary, loadPathsState, monitorPaths, pathsFixProposals, pathsStateFile, unprovenPathsSummary } from "./docs/paths.js";
 import { gatherStatus } from "./status.js";
-import { buildFolderTree } from "./docs/structure-tree.js";
+import type { FolderTree } from "./docs/structure-tree.js";
 import { readStandardSpec } from "./docs/standard-spec.js";
-import { applySkills, applyStandard, isStandardSource, skillDiff, standardDiff } from "./docs/standard.js";
+import { applySkills, applyStandard } from "./docs/standard.js";
 import { repoGateRows, type RepoGateRow } from "./docs/repo-sweep.js";
 import { localChangePlan, restoreKept, setAsideClashes } from "./update/local-changes.js";
 
@@ -163,12 +163,10 @@ async function runCheckOffLoop(feature: string, rootArg?: string): Promise<unkno
   daemonLog(`[check] ${feature}: worker hỏng — chạy tại chỗ: ${w.error}`);
   return runCheck(feature, rootArg);
 }
-import { getCodeGraph } from "./memory/graph/graph-cache.js";
+import type { CodeGraphParts } from "./memory/graph/graph-disk.js";
 import { fitnessHistory, recordFitness } from "./memory/graph/fitness-log.js";
 import { buildTouchIndex, touchesFor } from "./memory/graph/graph-memory.js";
-import { buildStandardGraph, buildWorkspaceGraph } from "./memory/graph/graph-standard.js";
-import { buildSeamEdges } from "./memory/graph/graph-seam.js";
-import { resolveCalls } from "./memory/graph/graph-symbols.js";
+import type { WorkspaceGraph } from "./memory/graph/graph-standard.js";
 import { edgeId } from "./memory/graph/graph.js";
 import { autostartStatus, desktopShortcutStatus, reconcileAutostart, reconcileShortcuts, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
 import { schedulerChildRunning, startScheduler, stopScheduler, webLaneKey } from "./jobs/scheduler.js";
@@ -1523,6 +1521,26 @@ function windowPidFile(): string {
  * REUSED pid (the file survives manual window closes and reboots) can never
  * take down an unrelated process (audit 2026-07-21).
  */
+// The code graph's disk half (memory/graph/graph-disk.ts) runs in a worker; the daemon keeps the last build per root and
+// its source signature, and one build per root at a time (two tabs asking at once share it).
+const graphPartsCache = new Map<string, CodeGraphParts>();
+const graphPartsInflight = new Map<string, Promise<CodeGraphParts | null>>();
+async function codeGraphParts(root: string): Promise<CodeGraphParts | null> {
+  const running = graphPartsInflight.get(root);
+  if (running) return running;
+  const p = (async (): Promise<CodeGraphParts | null> => {
+    const known = graphPartsCache.get(root);
+    const w = await runInWorker<{ same: true; sig: string } | ({ same: false } & CodeGraphParts)>("memory/graph/graph-disk.js", "codeGraphDisk", [root, known?.sig ?? null], 600_000);
+    if (!w.ok) return known ?? null;
+    if (w.value.same) return known ?? null;
+    const { same: _same, ...parts } = w.value; // eslint-disable-line @typescript-eslint/no-unused-vars
+    graphPartsCache.set(root, parts);
+    return parts;
+  })().finally(() => graphPartsInflight.delete(root));
+  graphPartsInflight.set(root, p);
+  return p;
+}
+
 function closePrevWindow(): void {
   try {
     const f = windowPidFile();
@@ -2776,13 +2794,17 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     }
     if (p === "/folder-tree") {
       // Annotated folder tree for the project's Graph sub-tab (structure view).
-      return json(res, buildFolderTree(targetLocal));
+      // in a worker: a tree walk through a Docker mount is minutes, and the daemon must keep answering meanwhile
+      const w = await runInWorker<FolderTree>("docs/structure-tree.js", "buildFolderTree", [targetLocal], 600_000);
+      return json(res, w.ok ? w.value : { root: targetLocal, usedSlots: [], unknownDirs: [], tree: [], error: w.error });
     }
     if (p === "/workspace-graph") {
       // Level 1 of the four-level graph (plan/13 §0c): the repos of this repo's workspace and the owner / uses lines.
       try {
         // the repos come back as host paths: the cockpit sends one back as `?root=` when a repo is opened
-        const wg = buildWorkspaceGraph(targetLocal);
+        const w = await runInWorker<WorkspaceGraph>("memory/graph/graph-standard.js", "buildWorkspaceGraph", [targetLocal], 600_000);
+        if (!w.ok) throw new Error(w.error);
+        const wg = w.value;
         return json(res, { ...wg, base: wg.base && toHostPath(wg.base), nodes: wg.nodes.map((n) => ({ ...n, root: toHostPath(n.root) })) });
       } catch (e) {
         return json(res, { base: "", nodes: [], edges: [], error: e instanceof Error ? e.message : String(e) });
@@ -2798,7 +2820,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Derived graph (nodes=files) + fitness (plan 13 §9 Phase A) + AST symbols
       // (Phase B, fail-open). Cached per project + source signature so a graph-tab
       // open doesn't re-parse every file each poll.
-      const { graph: g, fitness, builtAt, sig } = await getCodeGraph(targetLocal);
+      // the disk half runs in a worker: through a Docker mount the synchronous build held the event loop for minutes
+      const parts = await codeGraphParts(targetLocal);
+      if (!parts) return json(res, { nodes: [], edges: [], error: "code graph build failed" });
+      const { graph: g, fitness, builtAt, sig } = parts;
       // Ghi mốc fitness Ở ĐÂY, không phải trong getCodeGraph: daemon phục vụ graph của
       // một project là chỗ duy nhất quan sát được "project này vừa đổi code". Đặt trong
       // getCodeGraph thì mọi test dựng repo tạm cũng ghi vào global_memory.db THẬT.
@@ -2819,30 +2844,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         /** id ổn định để trích dẫn — đóng dấu sau khi gộp đủ 3 lớp cạnh */
         eid?: string;
       }[] = g.edges.map((e) => ({ ...e, kind: "imports", rel: "declared" as const }));
-      try {
-        // calls: gộp về mức FILE (nhiều call-site giữa 2 file = 1 cạnh, giữ count),
-        // bỏ self-call, và bỏ cặp đã có cạnh import để không vẽ chồng hai lần.
-        const seen = new Set(edges.map((e) => `${e.from}\u0000${e.to}`));
-        const agg = new Map<string, { from: string; to: string; count: number; confidence: string }>();
-        for (const c of resolveCalls(g)) {
-          if (c.fromFile === c.toFile) continue;
-          const key = `${c.fromFile}\u0000${c.toFile}`;
-          if (seen.has(key)) continue;
-          const cur = agg.get(key);
-          if (cur) {
-            cur.count += c.count;
-            if (cur.confidence === "textual" && c.confidence === "inferred") cur.confidence = "inferred";
-          } else agg.set(key, { from: c.fromFile, to: c.toFile, count: c.count, confidence: c.confidence });
-        }
-        for (const v of agg.values()) edges.push({ ...v, kind: "calls", rel: "inferred" });
-        // api seam (plan 13 §4): FE gọi endpoint nào của BE — hai bờ nói chuyện qua HTTP
-        // nên import-graph không có lấy một cạnh nào giữa chúng. Nhãn inferred/textual
-        // (điều 13 — khớp chuỗi route, không phải contract). Fail-open cùng khối try này.
-        for (const s of buildSeamEdges(targetLocal, g.nodes)) {
-          edges.push({ from: s.from, to: s.to, kind: "api", rel: "inferred", confidence: s.confidence, count: s.count, routes: s.routes });
-        }
-      } catch {
-        /* fail-open (điều 9): thiếu tree-sitter thì vẫn còn nguyên lane imports */
+      // calls (one edge per file pair, none where an import edge exists) and the api seam (plan 13 §4: which BE route
+      // an FE file calls), both inferred - built in the worker (memory/graph/graph-disk.ts)
+      for (const v of parts.calls) edges.push({ ...v, kind: "calls", rel: "inferred" });
+      for (const s of parts.seams) {
+        edges.push({ from: s.from, to: s.to, kind: "api", rel: "inferred", confidence: s.confidence, count: s.count, routes: s.routes });
       }
       // touchedBy = số phiên agent từng đụng file (graph ↔ memory, 0 LLM). Là THUỘC
       // TÍNH của node, KHÔNG dựng thành cạnh: nối mọi cặp file cùng-một-phiên sẽ nổ N².
@@ -2862,7 +2868,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // and unrendered in the page, so they stay out of the payload.
       // `type` của node FILE = VAI TRÒ SLOT đã khai trong chuẩn (SLOT_ROLES, 68 slot).
       // Trước đây graph chỉ có đúng một loại node ("file") dù vai trò đã nằm sẵn đó.
-      const nodes: Record<string, unknown>[] = g.nodes.map(({ callSites: _cs, ...n }) => ({
+      const nodes: Record<string, unknown>[] = g.nodes.map((n) => ({
         ...n,
         type: n.slot ?? "(ngoài chuẩn)",
         touchedBy: touched[n.id] ?? 0,
@@ -2871,13 +2877,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // hp_dieu · skill · plan_spec · harness_doc · slot · concern + cạnh routing/contains/
       // references. Toàn bộ hạng KHAI BÁO — parse tất định, 0 LLM (điều 6/13).
       let stdStats: unknown = null;
-      try {
-        const std = buildStandardGraph(targetLocal, g.nodes.map((n) => ({ id: n.id, slot: n.slot })));
+      const std = parts.standard;
+      if (std) {
         for (const n of std.nodes) nodes.push({ ...n, loc: 0, bytes: 0, symbols: [], fanIn: 0, fanOut: 0, touchedBy: 0 });
         for (const e of std.edges) edges.push({ from: e.from, to: e.to, kind: e.kind, rel: "declared" });
         stdStats = std.stats;
-      } catch {
-        /* fail-open (điều 9): hỏng lớp chuẩn thì code-graph vẫn nguyên vẹn */
       }
       // ── TRẠNG THÁI NODE: ĐƯỜNG DẪN CHẾT (plan/13 §4c — user chốt 2026-09-16 "báo cáo dạng
       //    node status"). Nguồn = state của sweep, KHÔNG quét sống: cùng tập `newlyDead` mà chip
@@ -4235,45 +4239,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const now = Date.now();
       // `fresh=1` sau khi vừa áp chuẩn cho một repo: đo lại ngay, không đợi hết 5′ cache.
       if (!harnessUpdCache || now - harnessUpdCache.at > 300_000 || u.searchParams.get("fresh") === "1") {
-        const stale: Array<{ root: string; name: string; missing: number; guardStale: number; drift: number; manual: number; locked: boolean }> = [];
-        try {
-          // Công tắc "kiểm repo khác dùng chuẩn" tắt ⇒ không đo vòng repo, chip chỉ còn bản zemory.
-          for (const proj of getRepoStdCheck() ? listKnownProjects() : []) {
-            if (!existsSync(proj.local)) continue;
-            // A kit repo (folder harness) is measured the way `zemory sync --check` measures it: the parts whose copy is not
-            // current, plus a stale guard. The file-harness diff below compares it with the OLD single files and reported the
-            // same 21 missing / 15 drift for every folder repo, synced or not.
-            const kb = kitBehind(proj.local);
-            if (kb) {
-              const { missing, drift, manual } = kb, guardStale = kb.guardStale.length;
-              if (missing || drift || manual || guardStale) {
-                stale.push({ root: proj.root, name: proj.name, missing, guardStale, drift, manual, locked: !missing && !drift && !guardStale && manual > 0 });
-              }
-              continue;
-            }
-            if (repoKit(proj.local)) continue; // a kit repo whose dry assembly failed: the file-harness diff would report it falsely
-            const r = syncCheck(proj.local);
-            if (!r.connected) continue;
-            // Lệch CHỮ (plan/26 bước ④): file CÓ SẴN nhưng đứng ở bản chuẩn cũ. Trước đây hộp này chỉ đếm file
-            // THIẾU, nên một repo thiếu 63 dòng chuẩn vẫn đọc ra "khớp chuẩn". Repo nguồn thì không có gì để chở.
-            const v = isStandardSource(proj.local) ? [] : standardDiff(proj.local).files;
-            // Skill CHUNG cũ (thay được / thiếu) cũng là lệch chuẩn; skill đã sửa tay thì không tính — bấm áp không ghi nó.
-            const skillDrift = isStandardSource(proj.local) ? 0 : skillDiff(proj.local).filter((s) => s.verdict === "clean" || s.verdict === "absent").length;
-            // Ask the SAME merge the apply button runs (dry-run): a `local` file whose hunks overlap is refused there, so
-            // counting it as "appliable" made the box invite a click that never wrote anything (2026-10-08, 3 repos).
-            const dry = v.some((f) => f.verdict === "clean" || f.verdict === "local") ? applyStandard(proj.local, { apply: false }) : [];
-            const drift = dry.filter((f) => f.action === "would-write").length + skillDrift;
-            const manual = dry.filter((f) => f.action === "skipped").length + v.filter((f) => f.verdict === "unknown").length;
-            if (r.missing.length || r.guardStale.length || drift || manual) {
-              // `locked`: the only thing left is what the tool refuses to write (no stamp · overlapping hunks) ⇒ a click
-              // writes nothing. The tick is locked — a button that writes nothing is a button that lies.
-              const locked = !r.missing.length && !r.guardStale.length && !drift && manual > 0;
-              stale.push({ root: proj.root, name: proj.name, missing: r.missing.length, guardStale: r.guardStale.length, drift, manual, locked });
-            }
-          }
-        } catch {
-          /* fail-open — bề mặt nhắc, không được chết */
-        }
+        // in a worker (docs/harness-updates.ts): it reads every linked repo's harness, minutes through a Docker mount
+        const w = await runInWorker<HarnessStaleRow[]>("docs/harness-updates.js", "harnessStaleRows", [], 600_000);
+        const stale = w.ok ? w.value : (harnessUpdCache?.stale ?? []); // fail-open: a reminder surface must not die
         harnessUpdCache = { at: now, stale };
       }
       // `appUpdate` là sự thật cấp MÁY (bản zemory này cũ hơn bản đã phát hành), KHÔNG cache theo
