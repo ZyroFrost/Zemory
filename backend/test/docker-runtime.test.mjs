@@ -138,3 +138,14 @@ test("the cockpit's repo-walking surfaces run in worker threads, not on the daem
   }
   assert.match(read("../scripts/docker-parity.mjs"), /PING_LIMIT_MS = 3000/, "the parity run measures the cockpit's answers too");
 });
+
+// Profiled 2026-10-22 in the container: a peer session's mirror scan (scanMirror → walk, a stat per file through the
+// drive mount) held the event loop 10-18 s every round. Production reads the inventory a long-lived worker keeps fresh.
+test("the mirror inventory comes from a worker; not ready yet skips the mirror phase instead of declaring an empty machine", () => {
+  const st = read("../src/memory/channel/mirrorstate.ts");
+  assert.ok(st.includes("const cached = mirrorInventoryCached();"), "production inventory from the worker");
+  assert.match(st, /if \(!cached\) throw new Error\(/, "NEGATIVE: an empty list would make the peer ship everything");
+  const ms = read("../src/memory/channel/mirror-scan.ts");
+  assert.match(ms, /new Worker\(WORKER_SRC/);
+  assert.match(ms, /worker\.unref\(\)/, "a CLI that touched the channel still exits");
+});

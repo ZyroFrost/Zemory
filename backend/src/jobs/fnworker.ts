@@ -18,7 +18,9 @@ import(workerData.mod)
   .catch((e) => parentPort.postMessage({ ok: false, error: String((e && e.message) || e) }));
 `;
 
-export type WorkerResult<T> = { ok: true; value: T } | { ok: false; error: string };
+// `timedOut`: the work ran past its limit. A caller must NOT then run it on the event loop: work too slow for a worker
+// (a repo walk through a Docker mount) freezes the daemon there - measured 2026-10-22, /ping silent for 30 s at a time.
+export type WorkerResult<T> = { ok: true; value: T } | { ok: false; error: string; timedOut?: boolean };
 
 /**
  * `modFromDist` là đường tương đối dưới `dist/`, ví dụ `"platform/browsersweep.js"`.
@@ -42,7 +44,7 @@ export function runInWorker<T>(modFromDist: string, fn: string, args: unknown[] 
       void w.terminate().catch(() => {});
       resolve(r);
     };
-    const timer = setTimeout(() => finish({ ok: false, error: `quá ${Math.round(timeoutMs / 1000)} s` }), timeoutMs);
+    const timer = setTimeout(() => finish({ ok: false, error: `quá ${Math.round(timeoutMs / 1000)} s`, timedOut: true }), timeoutMs);
     timer.unref?.();
     w.once("message", (m: WorkerResult<T>) => finish(m));
     w.once("error", (e) => finish({ ok: false, error: e instanceof Error ? e.message : String(e) }));

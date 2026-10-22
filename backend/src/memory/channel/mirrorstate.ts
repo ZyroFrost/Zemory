@@ -47,6 +47,7 @@ import {
   type MirrorEntry,
 } from "./mirror.js";
 import { Q } from "../store/queries.js";
+import { mirrorInventoryCached } from "./mirror-scan.js";
 
 /**
  * Kết luận cho MỘT đường dẫn, nhìn từ máy NHẬN.
@@ -609,6 +610,14 @@ export function mirrorHooks(opts: {
   loadSent(sentFile);
   return {
     inventory: () => {
+      // Production (no injected roots): the inventory a worker keeps fresh (mirror-scan.ts) - a scan on the event loop
+      // froze the daemon for seconds per round. Not ready yet ⇒ throw: the session skips the mirror phase this round
+      // (an empty list would tell the peer we hold nothing, and it would ship everything again).
+      if (!opts.repoRoot && !opts.storeRoot) {
+        const cached = mirrorInventoryCached();
+        if (!cached) throw new Error("the mirror inventory is still being built - mirror skipped this round");
+        return cached;
+      }
       try {
         return scanMirror(opts).entries;
       } catch {
@@ -853,7 +862,9 @@ export function setPeerDirection(
       if (pending > 0) return { ok: false, reason: "pending", count: pending };
       const inv = peerInventory(peerId, opts.inventoryFile);
       if (!inv) return { ok: false, reason: "no-inventory" };
-      const mine = opts.mine ?? scanMirror({ repoRoot: opts.repoRoot, storeRoot: opts.storeRoot }).entries;
+      // production: the worker's inventory when it has one (a fresh scan on the event loop is seconds through a mount)
+      const cached = !opts.repoRoot && !opts.storeRoot ? mirrorInventoryCached() : null;
+      const mine = opts.mine ?? cached ?? scanMirror({ repoRoot: opts.repoRoot, storeRoot: opts.storeRoot }).entries;
       const diff = divergentCount(mine, inv.entries as MirrorEntry[]);
       if (diff > 0) return { ok: false, reason: "diverged", count: diff, at: inv.at };
     }
