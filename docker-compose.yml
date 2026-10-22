@@ -54,3 +54,5 @@ services:
       # holds the history a three-way sync reads (docs/store.ts baseFiles)
       - .:/host/zemory
     restart: unless-stopped
+    # a reaper as PID 1: the daemon does not wait on the browser's and the display's children, which stayed <defunct>
+    init: true
