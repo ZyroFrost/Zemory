@@ -22,6 +22,7 @@ import { findBorrowSource, jarHasSession } from "./borrowcookies.js";
 import { getScopeExclude, getWebAuth, setWebAuth, setWebPull } from "../config/settings.js";
 import { daemonLog } from "../logging/daemon-log.js";
 import { Q } from "./store/queries.js";
+import { RUNTIME, type Runtime } from "../util/runtime.js";
 
 const g = globalThis as unknown as { fetch: (u: string, o?: unknown) => Promise<any>; WebSocket: any };
 
@@ -1178,9 +1179,12 @@ async function awaitOrigin(cdp: Cdp, siteUrl: string, log: (m: string) => void, 
   return false;
 }
 
-export function browserArgs(profileDir: string, port: number, url: string, hidden = false): string[] {
+export function browserArgs(profileDir: string, port: number, url: string, hidden = false, runtime: Runtime = RUNTIME): string[] {
   return [
     `--remote-debugging-port=${port}`,
+    // In the container (plan/30 §3h) the browser runs as the image's user with no user namespaces, so Chromium's sandbox
+    // cannot start, and /dev/shm is Docker's 64 MB: without these two flags it dies at launch.
+    ...(runtime === "docker" ? ["--no-sandbox", "--disable-dev-shm-usage"] : []),
     `--user-data-dir=${profileDir}`,
     "--no-first-run",
     "--no-default-browser-check",

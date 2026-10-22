@@ -17,3 +17,6 @@ global_memory.*.enc filter=lfs diff=lfs merge=lfs -text
 *.html text eol=lf
 *.json text eol=lf
 *.md text eol=lf
+
+# Shell scripts run inside the Linux container, where a CRLF line ending breaks `sh`. Always LF.
+*.sh text eol=lf

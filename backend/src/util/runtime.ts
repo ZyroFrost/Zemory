@@ -18,6 +18,17 @@ export function foreignRuntime(ping: { app?: unknown; runtime?: unknown } | null
   return r === RUNTIME ? null : r;
 }
 
+/**
+ * Where the user sees the web-capture browser's sign-in window, or null when it opens on the user's own screen (native).
+ * In the container the browser draws on a virtual display; noVNC shows that display as a web page on the published port
+ * (docker-compose.yml: ZEMORY_VIEW_PORT, default 6080, bound to the host's loopback only).
+ */
+export function loginViewUrl(runtime: Runtime = RUNTIME, env: NodeJS.ProcessEnv = process.env): string | null {
+  if (runtime !== "docker") return null;
+  const port = Number(env.ZEMORY_VIEW_PORT) || 6080;
+  return `http://127.0.0.1:${port}/vnc.html?autoconnect=1&resize=scale&reconnect=1`;
+}
+
 /** What to tell the user when the other install is running. */
 export function otherRuntimeMessage(other: Runtime, port: number): string {
   const how = other === "docker"

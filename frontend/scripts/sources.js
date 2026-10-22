@@ -90,7 +90,7 @@
         connPending[plat]=true;
         zPost('/connect?platform='+encodeURIComponent(plat)+'&account='+encodeURIComponent(c.account||'main'))
           .then(function(r){
-            zDlgClose();CONN_ROWS=(r&&r.rows)||CONN_ROWS;
+            zDlgClose();CONN_ROWS=(r&&r.rows)||CONN_ROWS;openSignInView(r);
             zGet('/memory-status?fresh=1').then(renderMem);
             // Khớp theo `detailArgs.who` (mã + tham số), không dò chuỗi `detail` — server không còn ghép câu chữ cho web (2026-09-07).
             var row=(r&&r.rows||[]).filter(function(x){return x.platform===plat&&x.connected&&(!c.who||(x.detailArgs&&x.detailArgs.who===c.who));})[0];
@@ -544,6 +544,16 @@
       }).catch(function(){connPoll(left-1);});
     },5000);
   }
+  // Docker (plan/30 §3h): the sign-in window opens on the container's virtual display, so the daemon names the page that
+  // shows it (`loginView`). A tab opened after a fetch can be blocked as a popup; then a link the user clicks opens it.
+  function openSignInView(r){
+    if(!r||!r.loginView)return;
+    if(window.open(r.loginView,'zemory-signin'))return;
+    var box=zid('zToasts');if(!box)return;
+    var a=document.createElement('a');a.className='ztoast on';a.href=r.loginView;a.target='zemory-signin';a.rel='noopener';
+    a.textContent=t('conn.view');a.addEventListener('click',function(){setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);},0);});
+    box.appendChild(a);
+  }
   var connPending={};
   // Thêm TÀI KHOẢN cho một nền: mở profile mới để đăng nhập tài khoản khác, KHÔNG đụng
   // tài khoản đang có. Hội thoại nằm theo tài khoản, nên đây là đường duy nhất lấy được
@@ -555,6 +565,7 @@
     zPost('/add-account?platform='+encodeURIComponent(p)).then(function(r){
       renderConn(r);
       if(r&&r.ok===false){zToast('✗ '+(r.error||''));return;}
+      openSignInView(r);
       zToast(t('conn.acctAdded').replace('{n}',(r&&r.account)||'?'));
       connPending[p]=true;connPoll(36);
     }).catch(function(){a.textContent=o;a.disabled=false;});
@@ -569,6 +580,7 @@
       CONN_ROWS=(r&&r.rows)||CONN_ROWS;
       renderConn(r);
       if(r&&r.ok===false)zToast('✗ '+(r.error||''));
+      openSignInView(r);
       zGet('/memory-status?fresh=1').then(renderMem);
       var row=(r&&r.rows||[]).filter(function(x){return x.platform===p&&(x.account||'main')===acct;})[0];
       if(row&&row.connected)delete connPending[p];

@@ -613,16 +613,41 @@ export function hooksInstalled(settingsPath: string = CLAUDE_SETTINGS): boolean 
   try {
     const hooks = (readJsonObject(settingsPath).hooks ?? {}) as Record<string, HookCmd[]>;
     const groups = Array.isArray(hooks.Stop) ? hooks.Stop : [];
-    return groups.some((g) => (g.hooks ?? []).some((h) => h.command === "zemory hook stop"));
+    // native: `zemory hook stop`; Docker: the host client posting to the container (backend/scripts/host-hook.mjs)
+    return groups.some((g) => (g.hooks ?? []).some((h) => h.command === "zemory hook stop" || (DOCKER_HOOK_RE.test(h.command ?? "") && / stop$/.test(h.command ?? ""))));
   } catch {
     return false;
   }
+}
+
+/** The Docker install's hook commands: the host client posting to the container (backend/scripts/host-hook.mjs). */
+export const DOCKER_HOOK_RE = /host-hook\.mjs"?\s+[a-z-]+$/;
+
+/** A machine runs ONE install (plan/30 §0): installing the native hooks takes the Docker install's ones out, as the
+ *  Docker installer takes these out. The user's own hooks are never touched. */
+function dropDockerHooks(settingsPath: string): void {
+  if (!existsSync(settingsPath)) return;
+  const document = readJsonObject(settingsPath);
+  const hooks = (document.hooks ?? {}) as Record<string, HookCmd[]>;
+  let changed = false;
+  for (const [event, groups] of Object.entries(hooks)) {
+    if (!Array.isArray(groups)) continue;
+    const kept = groups
+      .map((g) => ({ ...g, hooks: (g.hooks ?? []).filter((h) => !DOCKER_HOOK_RE.test(h.command ?? "")) }))
+      .filter((g) => g.hooks.length > 0);
+    if (JSON.stringify(kept) === JSON.stringify(groups)) continue;
+    changed = true;
+    if (kept.length) hooks[event] = kept;
+    else delete hooks[event];
+  }
+  if (changed) writeJsonAtomic(settingsPath, document);
 }
 
 /** Add zemory's hooks to Claude Code settings.json, merging (never overwriting). */
 export function installHooks(settingsPath: string = CLAUDE_SETTINGS): InstallResult {
   const added: string[] = [];
   const present: string[] = [];
+  dropDockerHooks(settingsPath);
   for (const { event, command, matcher } of ZEMORY_HOOKS) {
     const result = mergeCommandHook(settingsPath, "hooks", event, command, matcher);
     added.push(...result.added);

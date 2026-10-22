@@ -88,15 +88,30 @@ const toContainer = (host) => {
   for (const [h, i] of PAIRS) if (h && t.toLowerCase().startsWith(h.toLowerCase())) t = i + t.slice(h.length).replace(/\\/g, "/");
   return t;
 };
-function cli(root, args) {
+/** stdout and exit code of one zemory command run in `root` by the install that is up */
+function run(root, args) {
+  const opts = { encoding: "utf8", windowsHide: true, maxBuffer: 64 << 20 };
   try {
     const out = MODE === "native"
-      ? execFileSync(process.execPath, [new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"), ...args], { cwd: root, encoding: "utf8", windowsHide: true, maxBuffer: 64 << 20 })
-      : execFileSync(DOCKER_BIN, ["exec", "-w", toContainer(root), CONTAINER, "zemory", ...args], { encoding: "utf8", windowsHide: true, maxBuffer: 64 << 20, env: { ...process.env, MSYS_NO_PATHCONV: "1" } });
-    return JSON.parse(out);
+      ? execFileSync(process.execPath, [new URL("../../dist/cli.js", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"), ...args], { ...opts, cwd: root })
+      : execFileSync(DOCKER_BIN, ["exec", "-w", toContainer(root), CONTAINER, "zemory", ...args], { ...opts, env: { ...process.env, MSYS_NO_PATHCONV: "1" } });
+    return { out, code: 0 };
   } catch (e) {
-    return { __error: String(e.stdout || e.message).slice(0, 200) };
+    return { out: String(e.stdout ?? ""), code: e.status ?? -1, err: e.stdout ? undefined : String(e.message).slice(0, 200) };
   }
+}
+function cli(root, args) {
+  const r = run(root, args);
+  try {
+    return JSON.parse(r.out);
+  } catch {
+    return { __error: (r.err ?? r.out).slice(0, 200) };
+  }
+}
+/** a text command: its lines as a set (path-normalised by norm) plus the exit code */
+function cliText(root, args) {
+  const r = run(root, args);
+  return { code: r.code, lines: r.out.split(/\r?\n/).map((l) => l.trimEnd()).filter(Boolean), ...(r.err ? { err: r.err } : {}) };
 }
 
 const q = (root) => `?root=${encodeURIComponent(root)}`;
@@ -106,7 +121,12 @@ const SURFACES = [
   ["code-graph", (root) => get(`/code-graph${q(root)}`)],
   ["harness-files", (root) => get(`/harness-files${q(root)}`)],
   ["conform", (root) => cli(root, ["conform", "--json"])],
+  ["gates", (root) => cli(root, ["gates", "--json"])],
+  // dry run: what a sync would change in this repo, read against HS
+  ["sync-check", (root) => cliText(root, ["sync", "--check"])],
 ];
+// asked once, not per repo: which repos carry a part, and the law layers tied to it (Rule_Gate_86)
+const IMPACT_PARTS = ["Rule_Gate_83_HarnessFromStore", "Rule_Gate_10_DestructiveOps", "Skill_PBI_White", "Skill_Doc_WriteStyle", "Cons_Core_106_ReportRecipients", "Struc_Repo_Dept"];
 
 // answers of the install that is up, one repo at a time
 const ping = await get("/ping").catch(() => null);
@@ -120,6 +140,9 @@ if ((ping.runtime === "docker" ? "docker" : "native") !== MODE) {
 }
 const repos = listKnownProjects().map((p) => p.root).filter((r) => !ONLY || r.toLowerCase().endsWith(ONLY.toLowerCase()));
 const answers = {};
+const GLOBAL = "(global)";
+answers[GLOBAL] = {};
+for (const part of IMPACT_PARTS) answers[GLOBAL][`impact:${part}`] = norm(cliText(repos[0], ["impact", part]));
 for (const root of repos) {
   answers[root] = {};
   for (const [name, ask] of SURFACES) {
@@ -139,6 +162,10 @@ if (RECORD) {
 
 const base = JSON.parse(readFileSync(AGAINST, "utf8"));
 const rows = [];
+for (const name of Object.keys(answers[GLOBAL])) {
+  const d = diff(base.answers[GLOBAL]?.[name], answers[GLOBAL][name]);
+  rows.push({ repo: GLOBAL, surface: name, same: d.length === 0, diff: d });
+}
 for (const root of repos) {
   for (const [name] of SURFACES) {
     const d = diff(base.answers[root]?.[name], answers[root][name]);
@@ -164,7 +191,9 @@ if (JSON_OUT) {
   console.log(JSON.stringify({ rows, leaks }, null, 2));
 } else {
   const names = SURFACES.map(([n]) => n);
-  console.log(`docker parity - ${repos.length} repo(s) x ${names.length} surface(s), docker vs ${AGAINST}`);
+  console.log(`docker parity - ${repos.length} repo(s) x ${names.length} surface(s) + ${IMPACT_PARTS.length} impact(s), docker vs ${AGAINST}`);
+  const g = rows.filter((r) => r.repo === GLOBAL);
+  console.log(`  ${"impact".padEnd(22)} ${g.map((r) => `${r.surface.slice(7)}:${r.same ? "ok" : "DIFF"}`).join("  ")}`);
   for (const root of repos) {
     const cells = names.map((n) => (rows.find((r) => r.repo === root && r.surface === n)?.same ? "ok" : "DIFF"));
     console.log(`  ${root.split(/[\\/]/).pop().padEnd(22)} ${cells.map((c, i) => `${names[i]}:${c}`).join("  ")}`);

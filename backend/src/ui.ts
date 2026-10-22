@@ -234,7 +234,7 @@ import { type ScopeLane, markConnectionsStale, scopeTree, toggleLane } from "./m
 import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
 import { parsePathMap, relayHook } from "./memory/hook-relay.js";
 import { toHostPath, toLocalPath } from "./util/hostpath.js";
-import { otherRuntimeMessage, RUNTIME, runtimeOf, type Runtime } from "./util/runtime.js";
+import { loginViewUrl, otherRuntimeMessage, RUNTIME, runtimeOf, type Runtime } from "./util/runtime.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
 import { deepSearchChild } from "./jobs/searchjob.js";
 import { heavyStatsChild, type HeavyStats } from "./jobs/statsjob.js";
@@ -561,7 +561,9 @@ function driveHealthNow(prog: DriveProgress): ReturnType<typeof syncHealthOf> {
 
 async function driveSummary(): Promise<DriveSummary> {
   const prog = await driveSyncProgressAsync();
-  return { ...probeDrive(getDriveDir()), on: getDriveOn(), level: getSyncLevel(), atts: getSyncAttachments(), ...prog, health: driveHealthNow(prog) };
+  const probe = probeDrive(getDriveDir());
+  // the cockpit shows the folder the way the user named it on the host, not the container's mount of it
+  return { ...probe, path: toHostPath(probe.path), on: getDriveOn(), level: getSyncLevel(), atts: getSyncAttachments(), ...prog, health: driveHealthNow(prog) };
 }
 
 // `WebScanRow` · `WEB_PLATFORMS` · `platformsInUse` · `accountsOf` · `scanWebPlatforms`
@@ -624,6 +626,11 @@ function freeAccountSlot(platform: string): string {
  * `webAuth`, KÉO ngay qua chính cửa sổ đang mở (`scanWebPlatforms` — attach, không mở thêm cửa sổ
  * nhờ luật MỘT KHE = MỘT CỬA SỔ), ghi `webPull`, làm tươi dashboard. UI chỉ vẽ lại theo `/connections`.
  */
+/** The page that shows a sign-in window the daemon just opened, when the user cannot see it on their screen (Docker). */
+function signInView(web: { status?: string }[] | undefined): string | null {
+  return web?.some((w) => w?.status === "need-login") ? loginViewUrl() : null;
+}
+
 const loginWatch = new Map<string, { since: number }>();
 const LOGIN_WATCH_MS = 15 * 60_000;
 const LOGIN_WATCH_EVERY_MS = 5_000;
@@ -3288,7 +3295,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const account = nextAccountSlot(platform);
       const web = await scanWebPlatforms([platform], account);
       invalidateDashboard();
-      return json(res, { ok: true, account, web, rows: await liveConnections() });
+      return json(res, { ok: true, account, web, loginView: signInView(web), rows: await liveConnections() });
     }
     if (p === "/linked") {
       // Trang tĩnh một màn, hiện trong CHÍNH cửa sổ đăng nhập sau khi daemon nhận + kéo xong
@@ -3345,13 +3352,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
           const after = await scanWebPlatforms([platform], account);
           if (after[0]?.status === "need-login") startLoginWatch(platform, account);
           invalidateDashboard();
-          return json(res, { ok: true, borrowed: null, borrowFailed: true, web: after, rows: await liveConnections() });
+          return json(res, { ok: true, borrowed: null, borrowFailed: true, web: after, loginView: signInView(after), rows: await liveConnections() });
         }
       }
       // Cửa sổ đăng nhập đang mở ⇒ daemon canh tiếp; UI không phải giữ vòng hỏi nào.
       if (web[0]?.status === "need-login") startLoginWatch(platform, account);
       invalidateDashboard();
-      return json(res, { ok: true, borrowed: src ? { ...src } : null, web, rows: await liveConnections() });
+      return json(res, { ok: true, borrowed: src ? { ...src } : null, web, loginView: signInView(web), rows: await liveConnections() });
     }
     if (req.method === "POST" && p === "/memory-digest") {
       // Build the extractive digest for every session that lacks one (or whose
@@ -3743,6 +3750,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     // (và tắt xong hook vẫn còn) — đúng kiểu "sổ nói khác code" mà repo này ghét nhất.
     if (p === "/set-realtime") {
       const on = u.searchParams.get("on") === "1";
+      // Docker: the hooks are the host's (its settings.json is mounted read-only here, and its commands post to this
+      // container), so the host client writes them, not the daemon
+      if (RUNTIME === "docker") {
+        return json(res, { ok: false, realtime: getRealtime(), error: `the hooks live on the host: run \`node backend/scripts/host-hook.mjs ${on ? "install" : "uninstall"}\` in the zemory folder` });
+      }
       setRealtimeSetting(on);
       let hook: { path: string; changed: string[] };
       try {
