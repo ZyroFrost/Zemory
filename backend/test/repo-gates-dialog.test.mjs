@@ -65,9 +65,9 @@ test("⑦ after applying, the box REDRAWS from fresh numbers, and the measure as
   // and /harness-updates called an overlapping `local` file "appliable", so the box invited a click that wrote nothing.
   const at = SYS.indexOf("if(i>=picks.length)");
   assert.match(SYS.slice(at, at + 500), /updDialogStd\(note\)/, "the open box must be redrawn after the apply loop");
-  const UI = readFileSync(new URL("../../backend/src/ui.ts", import.meta.url), "utf8");
-  const h = UI.slice(UI.indexOf('p === "/harness-updates"'), UI.indexOf('p === "/automation"'));
-  assert.match(h, /applyStandard\(proj\.root, \{ apply: false \}\)/, "the measure must dry-run the real merge");
+  // the measure runs in a worker since 2026-10-23 (docs/harness-updates.ts), on the path where the repo is opened
+  const h = readFileSync(new URL("../../backend/src/docs/harness-updates.ts", import.meta.url), "utf8");
+  assert.match(h, /applyStandard\(proj\.local, \{ apply: false \}\)/, "the measure must dry-run the real merge");
   assert.match(h, /f\.action === "skipped"/, "refused files count as manual, not as appliable drift");
 });
 
