@@ -15,7 +15,7 @@
 import tls, { type TLSSocket } from "node:tls";
 import { appendReceivedBlock, inventoryIds, missingOnPeer, readBlockBytes } from "./blocks.js";
 import { peerDeviceId, sameDeviceId, type ChannelIdentity } from "./identity.js";
-import { isContentAddressed, MIRROR_AREAS, type MirrorArea, type MirrorEntry } from "./mirror.js";
+import { MIRROR_AREAS, type MirrorArea, type MirrorEntry } from "./mirror.js";
 import {
   FRAME_BLOCK,
   FRAME_FILE,
@@ -892,8 +892,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         for (const e of o.mirror.inventory()) {
           const k = fileKey(e.area, e.rel);
           const has = theirs.has(k);
-          if (has && (isContentAddressed(e.area) || theirs.get(k) === (e.hash ?? ""))) {
-            if (!isContentAddressed(e.area) && e.hash) o.mirror.converged?.(peerId ?? "", e.area, e.rel, e.hash);
+          if (has && theirs.get(k) === (e.hash ?? "")) {
+            if (e.hash) o.mirror.converged?.(peerId ?? "", e.area, e.rel, e.hash);
             continue;
           }
           // Bản NÀY đã nằm trong hàng đợi duyệt của họ ⇒ chở lại là chở đúng thứ họ đang cầm.

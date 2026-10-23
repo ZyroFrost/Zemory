@@ -38,8 +38,8 @@ import { writeFileAtomic } from "../../util/fs-atomic.js";
 import { merge3 } from "../../docs/standard.js";
 import {
   hashBytes,
-  isContentAddressed,
   MAX_TEXT_MERGE_BYTES,
+  MIRROR_AREAS,
   mirrorRootFor,
   resolveMirrorPath,
   scanMirror,
@@ -222,7 +222,7 @@ export function listQueue(
  * và mọi cửa GHI (`applyQueued`) đều đi qua đây trước — hai cửa, một luật.
  */
 export function freshenRow(db: MemoryDB, row: QueueRow, opts: { repoRoot?: string; storeRoot?: string } = {}): QueueRow | null {
-  if (isContentAddressed(row.area) || !row.theirHash) return row;
+  if (!row.theirHash) return row;
   const root = mirrorRootFor(row.area, opts);
   if (!root) return row;
   const abs = resolveMirrorPath(root, row.rel);
@@ -434,18 +434,6 @@ export function receiveFile(
   const mine = safeRead(abs);
   const mineHash = mine ? hashBytes(mine) : null;
 
-  // Mục địa chỉ theo NỘI DUNG: trùng tên = trùng nội dung ⇒ có rồi thì thôi, chưa có thì ghi.
-  // Không mốc, không hàng đợi, không phân loại — `§9.1` mục 4.
-  if (isContentAddressed(area)) {
-    if (mineHash) return { verdict: "same", applied: false, queued: false };
-    try {
-      writeFileAtomic(abs, body);
-    } catch (e) {
-      return { verdict: "take", applied: false, queued: false, error: e instanceof Error ? e.message : "ghi thất bại" };
-    }
-    return { verdict: "take", applied: true, queued: false };
-  }
-
   const base = readBase(db, peerId, area, rel);
   const verdict = classify(base?.hash ?? null, mineHash, theirHash);
   if (verdict === "same") {
@@ -642,7 +630,7 @@ export function mirrorHooks(opts: {
         // Bản quay về đúng là thứ máy này đã chở đi ⇒ hai bên từng khớp ở đó: dời mốc TRƯỚC khi phân
         // loại, để nó ra "push" (bản mình mới hơn) thay vì "hai bên cùng sửa" — không hỏi lại.
         const incoming = hashBytes(body);
-        if (!isContentAddressed(area) && (sentHashes.get(memKey(peerId, area, rel)) ?? []).includes(incoming)) {
+        if ((sentHashes.get(memKey(peerId, area, rel)) ?? []).includes(incoming)) {
           writeBase(opts.db ?? mirrorDb(), peerId, area, rel, incoming, isMergeableText(body) ? body : null);
           knownBase.set(memKey(peerId, area, rel), incoming);
         }
@@ -780,8 +768,10 @@ export function forgetPeerMirror(db: MemoryDB, peerId: string): { queue: number;
  */
 export function divergentCount(mine: MirrorEntry[], theirs: MirrorEntry[]): number {
   const key = (e: MirrorEntry): string => `${e.area}/${e.rel}`;
-  const t = new Map(theirs.filter((e) => !isContentAddressed(e.area)).map((e) => [key(e), e.hash ?? ""]));
-  const m = new Map(mine.filter((e) => !isContentAddressed(e.area)).map((e) => [key(e), e.hash ?? ""]));
+  // only the areas this version mirrors: an older peer's inventory may still list `files/` (HP 18 took it out)
+  const areas = new Set<string>(MIRROR_AREAS);
+  const t = new Map(theirs.filter((e) => areas.has(e.area)).map((e) => [key(e), e.hash ?? ""]));
+  const m = new Map(mine.filter((e) => areas.has(e.area)).map((e) => [key(e), e.hash ?? ""]));
   let n = 0;
   for (const [k, h] of m) if (t.get(k) !== h) n++;
   for (const k of t.keys()) if (!m.has(k)) n++;
@@ -823,7 +813,7 @@ export function rememberPeerInventory(peerId: string, entries: MirrorEntry[], fi
     const all = readInventories(file);
     all[normPeer(peerId)] = {
       at: now.toISOString(),
-      entries: entries.filter((e) => !isContentAddressed(e.area)).map((e) => ({ area: e.area, rel: e.rel, hash: e.hash, mtimeMs: e.mtimeMs })),
+      entries: entries.map((e) => ({ area: e.area, rel: e.rel, hash: e.hash, mtimeMs: e.mtimeMs })),
     };
     writeFileAtomic(file, JSON.stringify(all));
   } catch {

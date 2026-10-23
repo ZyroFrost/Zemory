@@ -38,6 +38,22 @@ export const Q = {
   knownStores: "SELECT store_root AS root, source FROM known_stores",
   attachmentIdBySha: "SELECT id FROM attachment WHERE sha256 = ?",
   deletePeerFileQueued: "DELETE FROM peer_file_queue WHERE id=?",
+  // HP 18: an attachment's bytes live in the db (`blob`). A row whose bytes still sit in the legacy files/ folder has
+  // `blob` NULL and `src_path` = its path there; `ref` rows keep the source URL in `src_path` and no bytes.
+  attachmentsOnLegacyDisk:
+    "SELECT id, sha256, src_path FROM attachment WHERE kind = 'blob' AND blob IS NULL AND src_path IS NOT NULL ORDER BY id",
+  attachmentSetBlob: "UPDATE attachment SET blob = ?, src_path = NULL WHERE id = ?",
+  insertAttachmentForMessage: `INSERT INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, blob, created_at)
+     VALUES (?, (SELECT session_id FROM messages WHERE id = ?), ?, ?, ?, ?, 'blob', ?, ?)`,
+  insertPickedAttachment: `INSERT INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, blob, created_at)
+     VALUES (0, ?, ?, ?, ?, ?, 'blob', ?, ?)`,
+  insertAttachmentLink: "INSERT OR IGNORE INTO attachment_link (message_id, attachment_id) VALUES (?, ?)",
+  attachmentBlobBySha: "SELECT blob FROM attachment WHERE sha256 = ? AND blob IS NOT NULL",
+  // a `ref` whose bytes were just downloaded becomes a `blob` row holding them (the real size, name and mime with it)
+  attachmentRefFetched: `UPDATE attachment
+        SET kind = 'blob', blob = ?, src_path = NULL, sha256 = ?, bytes = ?,
+            mime = COALESCE(?, mime), name = COALESCE(?, name)
+      WHERE id = ?`,
 
   // ── vectors ───────────────────────────────────────────────────────────────
   vecConfig: "SELECT * FROM vec_config LIMIT 1",
