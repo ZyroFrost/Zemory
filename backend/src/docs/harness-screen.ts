@@ -8,7 +8,7 @@ import { harnessPathsAt } from "../core/config.js";
 import { HOST_KIND, parseSetName, SHELF, TIER } from "./harness-names.js";
 import { assembleSet } from "./kit-apply.js";
 import { partLinks } from "./law-links.js";
-import { frontMatter, hostSkillOf, type Kit, leafOf, listParts, listStructures, mainOf, readKits, setDir, STORE_DIR, type Part } from "./store.js";
+import { frontMatter, hostSkillOf, type Kit, kitCluster, kitParts, leafOf, listParts, listStructures, mainOf, readKits, setDir, STORE_DIR, type Part } from "./store.js";
 
 export type ShelfKey = "rules" | "constitution" | "structure" | "skills";
 
@@ -18,6 +18,8 @@ export interface CatalogPart {
   name: string;
   version: number;
   kind?: string;
+  /** the clusters the part is for (empty = every cluster): a set whose frame is of another cluster drops it */
+  applies?: string[];
 }
 
 export interface SetView {
@@ -44,7 +46,9 @@ export interface Draft {
   skills: string[];
 }
 
-const view = (p: Part): CatalogPart => ({ id: p.id, folder: p.folder, name: p.name, version: p.version, ...(p.kind ? { kind: p.kind } : {}) });
+const view = (p: Part): CatalogPart => ({
+  id: p.id, folder: p.folder, name: p.name, version: p.version, ...(p.kind ? { kind: p.kind } : {}), ...(p.applies.length ? { applies: p.applies } : {}),
+});
 
 /** Every set beside HS, in number order. */
 export function listSets(storeDir = STORE_DIR): SetView[] {
@@ -108,7 +112,7 @@ export function draftName(d: Draft, storeDir = STORE_DIR, sets = setNames(storeD
 
 /** One thing wrong with a draft: a code the cockpit words in its own language, and the parts it names. */
 export interface Problem {
-  code: "host" | "tier" | "name" | "noSet" | "taken" | "structure" | "unknown" | "twice" | "link";
+  code: "host" | "tier" | "name" | "noSet" | "taken" | "structure" | "unknown" | "twice" | "link" | "applies";
   a?: string;
   b?: string;
 }
@@ -123,6 +127,7 @@ const PROBLEM_TEXT: Record<Problem["code"], (p: Problem) => string> = {
   unknown: (p) => `${p.a} is not a part of HS`,
   twice: (p) => `a ${p.a} part is listed twice`,
   link: (p) => `${p.a} implements ${p.b}, which this set does not carry`,
+  applies: (p) => `${p.a} applies to other clusters, not to ${p.b}: assembly would leave it out`,
 };
 
 /** A draft as it came over the wire, with every field the type it must be. */
@@ -157,6 +162,18 @@ export function draftProblems(d: Draft, storeDir = STORE_DIR): Problem[] {
     for (const x of list) if (!ok.has(x)) out.push({ code: "unknown", a: x });
     if (new Set(list).size !== list.length) out.push({ code: "twice", a: shelf });
   }
+  // a part whose `applies` leaves out the cluster of the chosen frame is dropped by assembly (kitParts) without a word:
+  // say it here, before the user saves a set that silently lacks it
+  if (cat.structure.some((s) => s.folder === d.structure)) {
+    const cluster = kitCluster({ structure: d.structure });
+    for (const [shelf, list, key] of [["rules", d.rules, "id"], ["constitution", d.constitution, "id"], ["skills", d.skills, "folder"]] as const) {
+      const byKey = new Map(cat[shelf].map((p) => [p[key], p] as const));
+      for (const x of list) {
+        const applies = byKey.get(x)?.applies;
+        if (applies?.length && !applies.includes(cluster)) out.push({ code: "applies", a: x, b: cluster });
+      }
+    }
+  }
   // a skill that implements a law the set does not carry: the law layers would not agree (Rule_Gate_86)
   const ruleLeaves = new Set(cat.rules.filter((r) => d.rules.includes(r.id)).map((r) => leafOf(r.folder)));
   const lawLeaves = new Set([...cat.rules.map((r) => leafOf(r.folder))]);
@@ -185,18 +202,43 @@ export function saveDraft(input: Draft, storeDir = STORE_DIR): { ok: true; name:
   const errors = checkDraft(d, storeDir);
   if (errors.length) return { ok: false, errors };
   const name = draftName(d, storeDir);
-  const n = parseSetName(name);
-  if (!n) return { ok: false, errors: [`bad set name ${name}`] };
-  const kit: Kit = {
-    no: n.nn, name, legacy: [], status: "built", host: n.host, structure: d.structure, tier: n.tier as Kit["tier"],
-    requires: [], constitution: d.constitution, rules: d.rules, skills: d.skills, tools: [],
-  };
+  const kit = kitOf(d, name);
+  if (!kit) return { ok: false, errors: [`bad set name ${name}`] };
   // A repo keeps a part its set no longer lists (assembly never takes away what a repo carries); a set IS its folder, so a
   // part taken out of the draft leaves it - the HS copy only (from: line), with its host build
   const removed = d.editing === name ? dropLeftParts(name, kit, storeDir) : 0;
   const r = assembleSet(kit, storeDir);
   if ("error" in r) return { ok: false, errors: [r.error] };
   return { ok: true, name, written: r.written.length + removed };
+}
+
+/** The kit a draft saves as, under the folder name `name`; null when the name is no set name. */
+function kitOf(d: Draft, name: string): Kit | null {
+  const n = parseSetName(name);
+  if (!n) return null;
+  return {
+    no: n.nn, name, legacy: [], status: "built", host: n.host, structure: d.structure, tier: n.tier as Kit["tier"],
+    requires: [], constitution: d.constitution, rules: d.rules, skills: d.skills, tools: [],
+  };
+}
+
+function filesUnder(dir: string): number {
+  let n = 0;
+  for (const e of existsSync(dir) ? readdirSync(dir, { withFileTypes: true }) : []) n += e.isDirectory() ? filesUnder(join(dir, e.name)) : 1;
+  return n;
+}
+
+/**
+ * What saving a draft writes, before it is saved: each part folder assembly copies into the set (the same list
+ * `assembleSet` works from - `kitParts`), with its number of files. The Save confirmation shows this.
+ */
+export function draftPreview(input: unknown, storeDir = STORE_DIR): { name: string; writes: Array<{ path: string; files: number }> } {
+  const d = normalDraft(input);
+  const name = draftName(d, storeDir);
+  const kit = kitOf(d, name);
+  if (!kit) return { name, writes: [] };
+  const writes = kitParts(kit, storeDir).map((p) => ({ path: `${name}/docs/agent/${p.shelf}/${p.folder}`, files: filesUnder(p.dir) }));
+  return { name, writes };
 }
 
 function dropLeftParts(name: string, kit: Kit, storeDir: string): number {

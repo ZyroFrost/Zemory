@@ -133,8 +133,18 @@
   }
   function hsSave(){
     var d=hs.draft,r=hs.report;if(!d||!r||(r.problems||[]).length)return;
-    var lines=HS_SHELVES.map(function(sh){var l=hsList(d,sh[0]);return l.length?t(sh[1])+': '+l.map(function(k){return hsLabel(sh[0],k);}).join(', '):'';}).filter(Boolean);
-    zConfirm({title:t('hs.saveTitle'),body:t('hs.saveBody').replace('{name}',r.name)+'\n• '+lines.join('\n• '),okLabel:t('hs.save'),onOk:function(){
+    var btn=zid('hsSave');if(btn)btn.disabled=true;
+    // what Save writes, read from the same list assembly works from: each part folder and its number of files
+    hsPost('/harness-preview',d).then(function(pv){
+      if(btn)btn.disabled=false;
+      var w=(pv&&pv.ok&&pv.value&&pv.value.writes)||[];
+      var total=w.reduce(function(n,x){return n+x.files;},0);
+      var lines=w.map(function(x){return x.path+'  ('+t('hs.files').replace('{n}',x.files)+')';});
+      hsConfirmSave(d,r,t('hs.saveBody').replace('{name}',r.name).replace('{n}',w.length).replace('{f}',total)+'\n• '+lines.join('\n• '));
+    }).catch(function(){if(btn)btn.disabled=false;});
+  }
+  function hsConfirmSave(d,r,body){
+    zConfirm({title:t('hs.saveTitle'),body:body,okLabel:t('hs.save'),onOk:function(){
       hsPost('/harness-save',d).then(function(res){
         var v=res&&res.ok?res.value:null;
         if(!v||!v.ok){hs.report={name:r.name,problems:((v&&v.errors)||[(res&&res.error)||'?']).map(function(e){return {code:'save',a:e};})};hsChecksRender();return;}
