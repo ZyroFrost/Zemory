@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 2
+version: 3
 scope: disk
 ---
 # Struc_Disk_Data
@@ -36,7 +36,7 @@ Ví dụ thật một phần mềm đúng chuẩn trên ổ này:
 
 ```
 D:\Software\System\Microsoft\WSL\
-├── Setup\    wsl.2.4.13.0.x64.msi
+├── Setup\    wsl_x64.msi
 ├── App\      (đường cài đã chọn)
 └── Data\     ext4.vhdx  (ổ ảo của Ubuntu, có trần dung lượng)
 ```
