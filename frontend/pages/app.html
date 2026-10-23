@@ -501,31 +501,42 @@
       </section>
 
       <section class="screen" data-s="harness">
-        <!-- Chip VẼ TỪ `/standard-bundles`, không gõ tay. Bản cũ cứng đúng hai chip (App · Non-app)
-             cho 5 bộ trên đĩa, nên 3 bộ vô hình với người dùng (user 2026-09-17: "UI vẫn chưa hiện
-             tab của các bộ template"). `.filters` đã `flex-wrap:wrap`; cha cũng phải wrap, nếu
-             không 5 chip + dòng mô tả đẩy ngang (§F12 — cấm cuộn ngang). -->
-        <div style="display:flex;align-items:center;gap:12px;flex:0 0 auto;flex-wrap:wrap">
-          <div class="filters" id="stdBundles"></div>
-          <div class="muted" style="font-size:12px;min-width:0" id="stdBundleNote"></div>
-        </div>
-        <div class="tabs"><button class="on" data-ht="docs">📄 <span data-i18n="harness.docsTab">Docs harness</span></button><button data-ht="struct">🗂 <span data-i18n="harness.structTab">Cấu trúc folder</span></button></div>
-        <div class="sub on" data-ht="docs">
-          <div class="grid grow rzgrid" style="grid-template-columns:var(--hdocs,250px) 8px 1fr">
-            <!-- Cây cũng ĐỌC TỪ ĐĨA. Bản cũ cứng 8 hàng trong khi `05_app` có 19 file đọc được,
-                 nên 10 skill của bản chuẩn chưa bao giờ mở được trong app. -->
-            <div class="card"><div class="card-h"><div class="t"><span class="ci">📘</span> <span id="stdSetLabel" data-i18n="harness.stdSet">Bộ chuẩn</span></div></div><div class="card-b tree" id="stdTree"></div></div>
-            <div class="seam" data-seam="hdocs"></div>
-            <div class="card"><div class="card-h"><div class="t" id="stdTitle">AGENTS.md</div></div>
-              <div class="card-b"><div class="mdview" id="stdBody"></div></div>
-            </div>
+        <!-- plan/31: the sets on disk (each set is its folder beside HS) and building one from the parts of HS -->
+        <div class="tabs"><button class="on" data-ht="sets">📘 <span data-i18n="hs.setsTab">Bộ mẫu</span></button><button data-ht="build">🧩 <span data-i18n="hs.buildTab">Dựng bộ</span></button></div>
+        <div class="sub on" data-ht="sets">
+          <div style="display:flex;align-items:center;gap:12px;flex:0 0 auto;flex-wrap:wrap">
+            <div class="filters" id="hsSets"></div>
+            <div class="muted" style="font-size:12px;min-width:0;flex:1" id="hsSetNote"></div>
+            <button class="btn sm" data-act="hs-edit" id="hsEdit" data-i18n="hs.edit">Sửa</button>
+          </div>
+          <div class="grid grow rzgrid" style="grid-template-columns:var(--hsets,280px) 8px 1fr">
+            <div class="card"><div class="card-h"><div class="t" data-i18n="hs.setParts">Các phần của bộ</div></div><div class="card-b tree" id="hsSetParts"></div></div>
+            <div class="seam" data-seam="hsets"></div>
+            <div class="card"><div class="card-h"><div class="t" id="hsPartTitle"></div></div><div class="card-b"><div class="mdview" id="hsPartBody"></div></div></div>
           </div>
         </div>
-        <div class="sub" data-ht="struct">
-          <div class="grid grow rzgrid" style="grid-template-columns:var(--hstruct,1.15fr) 8px 1fr">
-            <div class="card"><div class="card-h"><div class="t"><span class="ci">🗂</span> <span data-i18n="harness.tree">Cây thư mục chuẩn</span></div><span class="muted" id="structProf"></span></div><div class="card-b" id="structTree"></div></div>
-            <div class="seam" data-seam="hstruct"></div>
-            <div class="card"><div class="card-h"><div class="t"><span class="ci">🧭</span> <span data-i18n="harness.routing">Routing — sửa gì → vào đâu</span></div></div><div class="card-b" id="routeTable"></div></div>
+        <div class="sub" data-ht="build">
+          <div class="grid grow rzgrid" style="grid-template-columns:var(--hbcat,300px) 8px var(--hbdraft,420px) 8px 1fr">
+            <div class="card">
+              <div class="card-h"><div class="t" data-i18n="hs.catalog">Các phần của HS</div></div>
+              <div class="card-b">
+                <div class="recall-in fsm"><span>🔍</span><input id="hsCatQ" data-i18n-ph="hs.catPh" placeholder="Tìm phần…" value=""></div>
+                <div class="tree" id="hsCatalog"></div>
+              </div>
+            </div>
+            <div class="seam" data-seam="hbcat"></div>
+            <div class="card">
+              <div class="card-h"><div class="t" id="hsDraftTitle" data-i18n="hs.draft">Bộ đang dựng</div></div>
+              <div class="card-b tree" id="hsDraft"></div>
+              <div class="card-b hs-foot">
+                <select id="hsHost" class="rsel" data-i18n-aria="hs.host" aria-label="Host"></select>
+                <input id="hsTitle" class="tin" data-i18n-ph="hs.titlePh" placeholder="Tên bộ" data-i18n-aria="hs.titlePh" aria-label="Tên bộ" value="">
+                <select id="hsTier" class="rsel" data-i18n-aria="hs.tier" aria-label="Tier"></select>
+                <button class="btn primary sm" data-act="hs-save" id="hsSave" data-i18n="hs.save">Lưu bộ</button>
+              </div>
+            </div>
+            <div class="seam" data-seam="hbdraft"></div>
+            <div class="card"><div class="card-h"><div class="t" data-i18n="hs.check">Kiểm</div></div><div class="card-b" id="hsChecks"></div></div>
           </div>
         </div>
       </section>

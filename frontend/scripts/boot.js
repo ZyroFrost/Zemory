@@ -1,7 +1,6 @@
 // TÁCH TỪ app.js 2026-08-06 — global scope (không IIFE), thứ tự nạp khai ở app.html.
 // Cắt CƠ HỌC giữ hành vi; dời hàm giữa file là việc của đợt sau. Xem 06_CHANGES.
-// Chạy CUỐI: mọi định nghĩa đã nạp. renderHarness() dời từ shell xuống đây —
-// nó gọi stdRenderReal (harness.js) mà hồi còn một IIFE thì hoisting che hộ.
+// Runs LAST: every definition is loaded. renderHarness() lives in harness.js (the Harness screen, plan/31).
   renderHarness();
   zboot();
   // ── restore: theme → sub-tab của từng màn → màn đang mở (go() nạp đúng sub đó)

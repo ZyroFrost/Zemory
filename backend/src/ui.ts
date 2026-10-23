@@ -12,8 +12,6 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 const execFileP = promisify(execFile);
 import {
-  templateDir,
-  templateBundleDir,
   listTemplateBundles,
   listBundleDocs,
   appUpdateStatus,
@@ -28,7 +26,6 @@ import { generateGuards } from "./docs/guard-gen.js";
 import { repoKit } from "./docs/kit-apply.js";
 import type { HarnessStaleRow } from "./docs/harness-updates.js";
 import { kitSync } from "./docs/kit-sync.js";
-import type { StructureProfile } from "./core/types.js";
 import { memoryInfo, memorySummary, refreshSessionTitles, scan } from "./memory/ingest.js";
 import { WEB_PLATFORMS, accountsOf, scanWeb, scanWebPlatforms, showLinkedPage } from "./memory/scanweb.js";
 import { borrowCookies, dropBackup, findBorrowSource, restoreProfile } from "./memory/borrowcookies.js";
@@ -50,7 +47,6 @@ import { deadProjectEntries, forgetProject, listKnownProjects, pinProject, proje
 import { applyFix, deadPathsByFile, deadPathsSummary, loadPathsState, monitorPaths, pathsFixProposals, pathsStateFile, unprovenPathsSummary } from "./docs/paths.js";
 import { gatherStatus } from "./status.js";
 import type { FolderTree } from "./docs/structure-tree.js";
-import { readStandardSpec } from "./docs/standard-spec.js";
 import { applySkills, applyStandard } from "./docs/standard.js";
 import type { RepoGateRow } from "./docs/repo-sweep.js";
 import { localChangePlan, restoreKept, setAsideClashes } from "./update/local-changes.js";
@@ -1026,39 +1022,6 @@ function listHarnessFiles(projectRoot: string): { hasAgents: boolean; agent: str
     plan: md(hp.plan),
   };
 }
-
-/**
- * Giải tham số của `/standard-doc` và `/standard-spec` thành MỘT thư mục bộ mẫu.
- *
- * Hai cửa vào, một chỗ giải (F6 — cùng một thứ không được có hai nơi quyết):
- * · `?bundle=<tên thư mục>` — đường mới, mở được MỌI bộ trên đĩa;
- * · `?profile=app|non-app` — đường CŨ, giữ nguyên hành vi cho người gọi đời trước.
- *
- * Tên bộ lạ ⇒ `null` (người gọi trả câu "không biết bộ này"), KHÔNG âm thầm rơi về `05_app`:
- * trả nhầm bản chuẩn của bộ khác là nói dối về thứ người đọc đang xem.
- */
-function standardBase(params: URLSearchParams): string | null {
-  const bundle = params.get("bundle");
-  if (bundle) return templateBundleDir(bundle);
-  const profile: StructureProfile = params.get("profile") === "non-app" ? "non-app" : "app";
-  return templateDir(profile);
-}
-
-/** Read a file from the SHARED STANDARD (docs_template/<bundle>/) — path-guarded.
- *  This is the canonical harness, not any project's docs; the UI loads it
- *  read-only. `base` is an absolute bundle dir already resolved by the caller
- *  (`templateBundleDir` for a named bundle, `templateDir` for a profile). */
-function readStandardDoc(rel: string, base: string): { ok: boolean; file: string; content: string } {
-  const target = resolve(base, rel);
-  const rl = relative(base, target);
-  if (rl.startsWith("..") || isAbsolute(rl)) return { ok: false, file: rel, content: "invalid path" };
-  try {
-    return { ok: true, file: rel, content: readFileSync(target, "utf8") };
-  } catch {
-    return { ok: false, file: rel, content: "(standard template file not found)" };
-  }
-}
-
 
 // Same folder captured with a different drive-letter case (d:\ vs D:\) is ONE
 // project — Windows paths are case-insensitive. recall already matches
@@ -2758,25 +2721,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         }),
       });
     }
-    if (p === "/standard-spec") {
-      // Bản chuẩn ĐỌC TỪ NGUỒN `03_STRUCTURE.md` (§3 cây + §4 routing) — thay cho hai
-      // bảng hardcode tay trong app.js. Xem `standard-spec.ts` để biết vì sao: bản tay
-      // đang thiếu 55/90 hàng cây và 40/66 dòng routing.
-      // Nguồn = docs của CHÍNH repo template tương ứng (bản mẫu trắng), không phải repo
-      // đang mở — màn Harness hiển thị CHUẨN DÙNG CHUNG, không phải docs của project.
-      const dir = standardBase(u.searchParams);
-      if (!dir) return json(res, { tree: [], routing: [] });
-      return json(res, readStandardSpec(dir, join("agent", "03_STRUCTURE.md")));
-    }
-    if (p === "/standard-doc") {
-      const dir = standardBase(u.searchParams);
-      if (!dir) return json(res, { ok: false, file: "", content: "(unknown template bundle)" });
-      return json(res, readStandardDoc(u.searchParams.get("file") ?? "", dir));
-    }
     if (p === "/harness-sets" || p === "/harness-catalog" || p === "/harness-part") {
       // The Harness screen (docs/plan/31): HS and the sets beside it, read in a worker (HS sits on a mount under Docker)
       const call: [string, unknown[]] =
-        p === "/harness-sets" ? ["listSets", []] : p === "/harness-catalog" ? ["storeCatalog", []] : ["partText", [u.searchParams.get("shelf") ?? "", u.searchParams.get("folder") ?? ""]];
+        p === "/harness-sets" ? ["listSets", []] : p === "/harness-catalog" ? ["catalogView", []] : ["partText", [u.searchParams.get("shelf") ?? "", u.searchParams.get("folder") ?? ""]];
       const w = await runInWorker<unknown>("docs/harness-screen.js", call[0], call[1], 120_000);
       return json(res, w.ok ? { ok: true, value: w.value } : { ok: false, error: w.error });
     }
@@ -2795,7 +2743,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       } catch {
         return json(res, { ok: false, error: "the draft is not JSON" });
       }
-      const fn = p === "/harness-check" ? "checkDraft" : "saveDraft";
+      // the check answers with codes the cockpit words in its own language; save answers with its result
+      const fn = p === "/harness-check" ? "draftReport" : "saveDraft";
       const w = await runInWorker<unknown>("docs/harness-screen.js", fn, [draft], 300_000);
       return json(res, w.ok ? { ok: true, value: w.value } : { ok: false, error: w.error });
     }

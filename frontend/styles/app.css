@@ -849,3 +849,13 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .lgd-row:last-of-type{border-bottom:0}
 .lgd-row .ptype{margin-left:0;justify-self:start;margin-top:2px}
 .lgd-t{font-size:13.5px;font-weight:600;margin-bottom:3px}
+/* Harness screen (plan/31): a part row carries its name and one action; a drop zone shows where a dragged part lands */
+.hs-item .hs-nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hs-item[draggable="true"]{cursor:grab}
+.hs-drop{min-height:var(--ctl-h);border-radius:7px;margin-bottom:6px}
+.hs-drop.hs-over,#hsCatalog.hs-over{outline:1px dashed var(--border);background:var(--surface-2)}
+.hs-empty{font-size:12px;padding:6px 8px}
+.hs-foot{display:flex;gap:6px;align-items:center;flex:0 0 auto;border-top:1px solid var(--border)}
+.hs-foot .tin{flex:1}
+.hs-prob,.hs-ok{font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--border)}
+.hs-prob:last-child,.hs-ok:last-child{border-bottom:0}
