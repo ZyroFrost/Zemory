@@ -17,7 +17,7 @@
     "build": "npm run clean && tsc && node backend/scripts/make-exe.mjs",
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint backend/src backend/test backend/scripts eslint.config.js",
+    "lint": "eslint --no-error-on-unmatched-pattern backend/src backend/test backend/scripts eslint.config.js",
     "test": "npm run build && node backend/scripts/gate.mjs",
     "check": "npm run preflight && npm run typecheck && npm run lint && npm test && npm run conform && npm run todo && npm run validate",
     "conform": "node dist/cli.js conform --gate",

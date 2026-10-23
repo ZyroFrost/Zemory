@@ -9,7 +9,7 @@
 // chạy 1 worker ⇒ đỉnh nhóm nặng ≤ một model. Danh sách là TƯỜNG MINH và có cổng canh
 // (`test-partition.test.mjs`): file nào import lớp embed/rerank mà không nằm trong HEAVY ⇒ đỏ,
 // để phân nhóm không âm thầm lệch khi ai thêm test mới.
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import os from "node:os";
@@ -119,6 +119,12 @@ async function runHeavyIsolated(files, extraEnv) {
   return bad ? 1 : 0;
 }
 
+// The gate's tests live on the development machine only (kept out of the public repo, user 2026-10-23): a clone without
+// them builds, type-checks, lints and validates, and says plainly that the tests did not run here.
+if (!existsSync(DIR)) {
+  console.log(`[test] ${DIR} is not in this clone - the gate's tests live on the development machine; nothing to run here.`);
+  process.exit(0);
+}
 const all = readdirSync(DIR).filter((f) => f.endsWith(".test.mjs")).sort();
 const heavySet = new Set(HEAVY);
 const missing = HEAVY.filter((f) => !all.includes(f));
