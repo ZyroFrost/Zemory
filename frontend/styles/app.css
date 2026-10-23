@@ -71,12 +71,15 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .status-chip.upd .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
 .brand b{font-size:16px;letter-spacing:.02em}
 .brand small{display:block;color:var(--text-faint);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;margin-top:1px}
-.nav{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+/* the menu gives way when the window is short (it scrolls); the status chips never do: they stay anchored at the bottom.
+   Before, the rail clipped the chips that did not fit (overflow:hidden) - four chips showed as two, then one. */
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:6px;flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
 .nav a{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:9px;color:var(--text-dim);cursor:pointer;font-size:14px;user-select:none;transition:background .12s,color .12s}
 .nav a .ic{width:18px;text-align:center;opacity:.9}
 .nav a:hover{background:var(--surface-2);color:var(--text)}
 .nav a.on{background:var(--wash);color:var(--primary)}
-.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:10px}
+.rail>.brand{flex:0 0 auto}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding-top:10px;flex:0 0 auto}
 .status-chip{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid var(--border);border-radius:10px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 8px var(--success);flex:0 0 auto}
 .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
