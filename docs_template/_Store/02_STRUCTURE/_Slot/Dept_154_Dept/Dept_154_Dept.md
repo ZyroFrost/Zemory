@@ -1,7 +1,7 @@
 ---
 id: Slot_154
 name: dept
-version: 1
+version: 2
 path: Dept_<Mã>/
 match: ^Dept_[A-Z]{2,4}$
 scope: layout

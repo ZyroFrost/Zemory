@@ -1,10 +1,10 @@
 ---
 id: Rule_82
 name: mail-gate
-version: 5
+version: 6
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_82_MailGate @v5 #d897f4b066ea
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_82_MailGate @v6 #8c243d5d0180
 ---
 # Rule_Gate_82_MailGate — The agent never sends mail on its own
 

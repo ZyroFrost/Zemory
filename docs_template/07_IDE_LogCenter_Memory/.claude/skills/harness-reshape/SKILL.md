@@ -1,10 +1,10 @@
 ---
 id: Skill_Harness_Reshape
 name: harness-reshape
-version: 3
+version: 4
 type: process
 description: Move a repo onto a standard set from the store - measure what the repo has of its own, bring it up to the store first, assemble in two phases, remove the copies that hold nothing of their own, and accept with measurements and a real run. Use whenever a repo moves to the folder harness, changes set, or takes a large store update. Vietnamese triggers - "nắn repo", "áp chuẩn", "áp bộ", "chuyển sang bộ", "reshape", "đưa repo về chuẩn".
-from: _Store/03_SKILLS/Skill_Harness_Reshape @v3 #ef9628370313
+from: _Store/03_SKILLS/Skill_Harness_Reshape @v4 #240504ecfb52
 ---
 
 # harness-reshape — nắn một repo lên bộ chuẩn

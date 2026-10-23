@@ -182,7 +182,8 @@ export function slotArea(path: string): string {
   const first = path.replace(/\\/g, "/").replace(/^\.?\//, "").split("/")[0] ?? "";
   const isRootFile = !path.includes("/") || path.replace(/\/+$/, "") === first && !path.endsWith("/");
   if (!first || isRootFile) return "Root";
-  return camelName(first.replace(/^\./, "")) || "Root";
+  // a pattern segment names its area by its literal part: `Dept_<Mã>/` is Dept, `_<Tool>_Template/` is Template
+  return camelName(first.replace(/^\./, "").replace(/<[^>]*>/g, "")) || "Root";
 }
 
 /** Host skill name (Agent Skills: lower-case letters, digits, `-`, equal to its folder): `Skill_Doc_WriteDocx` → `doc-write-docx`. */

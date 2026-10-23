@@ -520,7 +520,7 @@ function isAbsTok(t, strict) {
 
 // One spelling per place: Git Bash \`/d/x\` -> \`D:/x\`, \`~\` -> home, then the deepest EXISTING ancestor goes
 // through realpathSync.native - that turns a Windows 8.3 short name (\`C:/Users/HUY~1.NGU/...\`) into the long
-// one (\`C:/Users/jane.doe/...\`). Without it the same temp folder has two spellings and one of them is "outside".
+// one (\`C:/Users/user/...\`). Without it the same temp folder has two spellings and one of them is "outside".
 // A UNC path skips realpath: an unreachable share can stall for seconds, and it is outside either way.
 function canonPath(p) {
   let s = String(p);

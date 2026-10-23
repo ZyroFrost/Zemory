@@ -12,7 +12,7 @@ trúc đó từ HS, không cần xem máy khác, không học từ dữ liệu m
 
 | Tầng | Khung HS | Gốc áp | Kiểm |
 |---|---|---|---|
-| Ổ dữ liệu | `Struc_Drive_Data` | gốc ổ (`D:\`) hoặc thư mục dữ liệu (`~/data`) | `zemory conform --layout D:\` |
+| Ổ dữ liệu | `Struc_Disk_Data` | gốc ổ (`D:\`) hoặc thư mục dữ liệu (`~/data`) | `zemory conform --layout D:\` |
 | Workspace | `Struc_Region_Workspace` | `Workspace/` | `zemory conform --layout D:\Workspace` |
 | Tổ chức | `Struc_Region_Company` | `Workspace/Company/<Tổ chức>/` | `zemory conform --layout D:\Workspace\Company\<Tổ chức>` |
 | Repo | `Struc_Repo_<Vai>` | một repo | `zemory conform` (trong repo) |
@@ -45,7 +45,7 @@ trúc đó từ HS, không cần xem máy khác, không học từ dữ liệu m
 |---|---|---|---|
 | `01_LAW/_Rule/` | Luật chung: cách agent làm việc, lời y hệt mọi repo | `docs/agent/01_LAW/_Rule/` | Ghi đè theo HS |
 | `01_LAW/_Cons/` | Luật khung hiến pháp: bắt repo khai một loại bất biến của sản phẩm, kèm mẫu `Cons.md` | `docs/agent/01_LAW/_Cons/` = hiến pháp của repo | Thêm khung mới; không đụng `Cons.md` đã viết và điều riêng |
-| `02_STRUCTURE/` | Khung thư mục: `Struc_Drive_*` · `Struc_Region_*` · `Struc_Repo_*` · `_Slot/` · `_Host/<GUI\|IDE\|CLI>` | `docs/agent/02_STRUCTURE/` (khung của repo) | Ghi đè theo HS |
+| `02_STRUCTURE/` | Khung thư mục: `Struc_Disk_*` · `Struc_Region_*` · `Struc_Repo_*` · `_Slot/` · `_Host/<GUI\|IDE\|CLI>` | `docs/agent/02_STRUCTURE/` (khung của repo) | Ghi đè theo HS |
 | `03_SKILLS/` | Cách làm một loại việc | `docs/agent/03_SKILLS/` + bản host dựng (`.claude/skills/`) | Ghi đè theo HS |
 | `04_TODO.md` | Khung sổ việc chưa làm, kèm hướng dẫn cửa vào / cửa ra | `docs/agent/04_TODO.md` | Ghi một lần khi repo chưa có; từ đó là của repo |
 | `05_CHANGES.md` | Khung sổ việc đã làm, kèm khuôn mục và cách dời sang archive | `docs/agent/05_CHANGES.md` | Ghi một lần khi repo chưa có; từ đó là của repo |
@@ -62,7 +62,7 @@ Lịch sử của repo (mục sổ đã đóng, bản chép đã nghỉ hưu) n�
 | Mã | `Rule` | Luật chung, kệ `01_LAW/_Rule` |
 | | `Cons` | Luật khung hiến pháp, kệ `01_LAW/_Cons`; cũng là mã của điều riêng repo tự viết |
 | | `Skill` | Skill, kệ `03_SKILLS`; `<Loại>` là nhóm skill: `Dev` · `Doc` · `Harness` · `Task` |
-| | `Struc` | Khung, kệ `02_STRUCTURE`, không số: `Struc_<Tầng>_<Vai>` với tầng `Drive` · `Region` · `Repo` |
+| | `Struc` | Khung, kệ `02_STRUCTURE`, không số: `Struc_<Tầng>_<Vai>` với tầng `Disk` · `Region` · `Repo` |
 | Loại (luật) | `Gate` | Có chốt máy chặn được lúc vi phạm (hook · pre-commit · cổng kiểm) |
 | | `Keys` | Có máy nhắc theo từ khoá nhưng không chặn |
 | | `Core` | Chỉ phán đoán; thuộc phần bắt đọc đầu phiên |
@@ -88,8 +88,8 @@ Cons_Gate_10_ReadOnlySources/
 ├── Cons.md                          mẫu: repo viết lại cho sản phẩm của mình
 └── gate.json                        cổng conform: Cons.md đã viết, hoặc đã ghi status: n/a kèm lý do
 
-Struc_Drive_Data/
-├── Struc_Drive_Data.md              frontmatter (id · name · version · scope) + cây + luật + phép kiểm
+Struc_Disk_Data/
+├── Struc_Disk_Data.md              frontmatter (id · name · version · scope) + cây + luật + phép kiểm
 └── structure.json                   { scope, slots: [tên slot …] } — khung repo thêm extends · role
 
 _Slot/Software_149_Program/

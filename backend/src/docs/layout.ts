@@ -1,5 +1,5 @@
 // The layout levels of HS (docs/plan/32): a data drive, its Workspace/, and each organisation's folder are structures
-// like a repo's (Struc_Drive_Data · Struc_Region_Workspace · Struc_Region_Company), made of slots whose `path` is a
+// like a repo's (Struc_Disk_Data · Struc_Region_Workspace · Struc_Region_Company), made of slots whose `path` is a
 // pattern. This module reads those structures from HS and checks a real tree against them. A layout is a dictionary plus
 // checks: it never creates folders, and it writes nothing into the roots it checks (a drive root holds no loose file).
 
@@ -11,7 +11,7 @@ import { listParts, listStructures, STORE_DIR, structureSlotNames, type Part } f
 export type LayoutKind = "drive" | "workspace" | "company";
 
 export const LAYOUT_STRUCTURE: Record<LayoutKind, string> = {
-  drive: "Struc_Drive_Data",
+  drive: "Struc_Disk_Data",
   workspace: "Struc_Region_Workspace",
   company: "Struc_Region_Company",
 };

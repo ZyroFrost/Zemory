@@ -4,7 +4,7 @@
 //   ⇒ message the session whose TITLE follows `<Repo>_<Model>_<d-m-yyyy>` with the NEWEST date for that repo.
 //
 // 🔴 TWO NAMES PER SESSION (measured 2026-10-07, reported by the data-warehouse session):
-//   · the MESSAGING name — what `SendMessage` addresses and `ListAgents` prints (`dept-sal-b2`). Auto-derived from the
+//   · the MESSAGING name — what `SendMessage` addresses and `ListAgents` prints (`dept-gro-b2`). Auto-derived from the
 //     folder unless the user runs `/rename` (then `nameSource: "user"`).
 //   · the TITLE the user gives a session in the session list — a `{"type":"custom-title"}` line in that session's jsonl.
 //     Setting it does NOT change the messaging name. 9 of 10 live sessions had a derived messaging name.
@@ -54,7 +54,7 @@ const claudeHome = (): string => process.env.ZEMORY_CLAUDE_HOME || join(homedir(
 // wrote `~/.zemory/cache/` and the rule audit's doctor check caught it the same day.
 const cacheFile = (): string => process.env.ZEMORY_PEER_TITLE_CACHE || join(currentMemoryDir(), "cache", "peer-titles.json");
 
-/** `Dept_SAL_Claude_6-10-2026` · `Dept_FIN-6-10-2026` · `SasinFlow_Claude_FixApp_10-5-2026` → the LAST d-m-yyyy date. */
+/** `Dept_GRO_Claude_6-10-2026` · `Dept_FIN-6-10-2026` · `AcmeFlow_Claude_FixApp_10-5-2026` → the LAST d-m-yyyy date. */
 export function titleDate(title: string | null): number | null {
   if (!title) return null;
   const all = [...title.matchAll(/(\d{1,2})-(\d{1,2})-(\d{4})/g)];
@@ -88,7 +88,7 @@ export const MAX_TITLE_DRIFT_MS = 2 * 86_400_000;
 /**
  * Why a title breaks the rule, or null. The title date may sit up to TWO days off the start day (`MAX_TITLE_DRIFT_MS`
  * — measured: `_DB_Warehouse_Claude_5-10-2026` whose first line is 6/10); further off is a wrong date — measured:
- * `SasinFlow_Claude_FixApp_10-5-2026` started 5/10 (day and month swapped), `Dept_FIN_Claude_2-9-2026` started 7/9.
+ * `AcmeFlow_Claude_FixApp_10-5-2026` started 5/10 (day and month swapped), `Dept_FIN_Claude_2-9-2026` started 7/9.
  */
 export function titleProblem(title: string | null, repo: string, startDay: number | null): string | null {
   if (!title) return null; // untitled = unused — a different case, reported as such
@@ -196,7 +196,7 @@ export const projectDirName = (p: string): string => p.replace(/[\\/]+$/, "").re
  *
  * The repo is the folder the session list groups it under — its PROJECT FOLDER, which Claude Code moves along when a
  * repo is renamed — NOT the `cwd` written in the old jsonl. Measured 2026-10-07: 38 sessions of `_DB_Warehouse`
- * still carry `cwd` `_Warehouse_Central` (the old name); judged by `cwd`, every correct `_DB_Warehouse_…`
+ * still carry `cwd` `_Warehouse_Old` (the old name); judged by `cwd`, every correct `_DB_Warehouse_…`
  * title read as wrong. `roots` = the known repo folders; a project folder no root matches falls back to `cwd`.
  */
 export function listStoredSessions(roots: string[] = []): StoredSession[] {

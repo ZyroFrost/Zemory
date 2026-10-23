@@ -132,12 +132,12 @@ export function gateCaseOnly(text: string): ((cand: string) => boolean) | null {
     return cases.some((s) => s.includes(c)) && !own.some((s) => s.includes(c));
   };
 }
-/** `s/^x=0$/x=1/` · `s|a|b|g` — a sed/perl substitution, not a path (2026-10-07: SasinFlow `setup_linux.sh`). */
+/** `s/^x=0$/x=1/` · `s|a|b|g` — a sed/perl substitution, not a path (2026-10-07: AcmeFlow `setup_linux.sh`). */
 export const isSubstitution = (s: string): boolean => /^[sy]([/|#,])[^\s]*\1[^\s]*\1[gimsxe]*$/.test(s);
 /**
- * The candidate is the STRING ARGUMENT of a join onto a runtime variable — `Join-Path $Root "SasinTask\…"`,
+ * The candidate is the STRING ARGUMENT of a join onto a runtime variable — `Join-Path $Root "AcmeTask\…"`,
  * `Join-Path $env:SystemRoot 'System32\…'`, `[IO.Path]::Combine($base, '…')`, `os.path.join(base, '…')`. Its base is
- * whatever the variable holds when the script runs, not this repo (2026-10-07: SasinTask `update_vm.ps1`, SasinFlow
+ * whatever the variable holds when the script runs, not this repo (2026-10-07: AcmeTask `update_vm.ps1`, AcmeFlow
  * installer). Judging it against the repo root calls a correct line dead.
  */
 /**
@@ -170,7 +170,7 @@ export function isDictionaryFile(relPath: string): boolean {
   const p = posix(relPath);
   return (
     // AGENTS.md is the template's router text: it names slots that exist LATER (`docs/archive/`,
-    // `attic/dead-plans/`). Measured 2026-09-09 on Dept_AUD — hand-count 0, machine said 2, both from here.
+    // `attic/dead-plans/`). Measured 2026-09-09 on Dept_CTL — hand-count 0, machine said 2, both from here.
     /^AGENTS\.md$/.test(p) ||
     // the four standard files of the file harness by NAME — in the folder harness `04_TODO.md` is the ledger, and it points
     /(^|\/)docs\/agent\/0[1-4]_(CONSTITUTION|RULES|STRUCTURE|SKILLS)\.md$/.test(p) ||
@@ -279,7 +279,7 @@ type Verdict = { kind: "ok" } | { kind: "dead"; rels?: string[] } | { kind: "unr
 /**
  * Thư mục NHÁP theo chính luật của repo (`02_RULES §FILE TẠM`): `scratchpad/` của phiên, `_scratch_*`,
  * `.tmp_*`. Một đường đi qua đó mà chết là ĐÚNG THIẾT KẾ — thứ đó phải chết. Báo nó là "mục ruỗng" thì
- * mỗi phiên làm việc lại đẻ vài dòng đỏ (đo 2026-09-17: 4/24 ở `_Warehouse_Central`, 1/11 ở SasinFlow).
+ * mỗi phiên làm việc lại đẻ vài dòng đỏ (đo 2026-09-17: 4/24 ở `_Warehouse_Old`, 1/11 ở AcmeFlow).
  */
 export function isScratchPath(s: string): boolean {
   return s.split(/[\\/]/).some((g) => /^scratchpad$/i.test(g) || /^_scratch_/i.test(g) || /^\.tmp_/i.test(g));
@@ -353,9 +353,9 @@ export function classify(
     const fromRoot = resolve(judge.root, s);
     if (existsSync(fromFile) || existsSync(fromRoot)) return { kind: "ok" };
     // Extra bases the FILE declares for its own commands — `cwd:` of the job a `jobs.yaml` line sits in (2026-10-07:
-    // SasinTask `run_dw_load.py` · `load_ipos.py` · `giftitem.cmd` resolve under their job's cwd, not the repo).
+    // AcmeTask `run_dw_load.py` · `load_ipos.py` · `giftitem.cmd` resolve under their job's cwd, not the repo).
     if ((opts.bases ?? []).some((b) => existsSync(resolve(b, s)))) return { kind: "ok" };
-    // A SIBLING repo named by its folder (`SasinFlow/backend/scripts/x.ps1` written in SasinTask): repos that live side
+    // A SIBLING repo named by its folder (`AcmeFlow/backend/scripts/x.ps1` written in AcmeTask): repos that live side
     // by side refer to each other this way. Only when it really exists there — never a guess (2026-10-07: watchdog.ps1).
     if (!explicit && segs.length >= 2 && existsSync(resolve(judge.root, "..", s))) return { kind: "ok" };
     // The repo's docs abbreviate paths by dropping the top (`memory/x.ts` for `backend/src/memory/x.ts`).
@@ -445,7 +445,7 @@ function gitIgnored(root: string, rels: string[]): Set<string> {
 /**
  * Mọi đường từng bị XOÁ hay ĐỔI TÊN trong lịch sử git (`--no-renames` để tên cũ hiện là D). Đây là bằng
  * chứng "từng sống" thứ hai, bù cho lượt quét đầu của một repo mới liên kết — lúc chưa có lượt nào ghi
- * nhận nó sống. Đo 2026-09-17 trên `_Warehouse_Central`: 264 đường, 1,3 s. Không phải git ⇒ rỗng.
+ * nhận nó sống. Đo 2026-09-17 trên `_Warehouse_Old`: 264 đường, 1,3 s. Không phải git ⇒ rỗng.
  */
 function gitDeletedEver(root: string): Set<string> {
   try {
@@ -499,8 +499,8 @@ function walk(root: string, exclude: string[], out: string[], depth = 12): void 
 }
 
 /**
- * For each line of a Markdown file, the SIBLING repo the enclosing heading names — `### Dept_SAL — 74 file` makes the
- * paths listed under it relative to `../Dept_SAL`, not to this repo. Measured 2026-10-07: `_DB_Warehouse`
+ * For each line of a Markdown file, the SIBLING repo the enclosing heading names — `### Dept_GRO — 74 file` makes the
+ * paths listed under it relative to `../Dept_GRO`, not to this repo. Measured 2026-10-07: `_DB_Warehouse`
  * `docs/plan/24_dw_key_migration_changes.md` held 269 "dead" paths, 268 of them real files in the repo its section
  * heading named. Positive only: the first word of the heading must be a folder next to this repo that is a repo
  * (`.git` or `docs/`), and not this repo itself. A section ends at the next heading of the same or a higher level.
@@ -661,7 +661,7 @@ export function pathsCheck(ctx: Context): PathsReport {
   }
   // HẬU KIỂM bằng git: đích CHẾT mà khớp `.gitignore` là file cố ý không nằm trong git — `.env`, output —
   // đường viết đúng, chỗ đứng đúng, chỉ là máy này không có bản đó. Đo 2026-09-17: 6/24 "mới chết" ở
-  // `_Warehouse_Central` là đúng lớp này (`config/dw_load.env` · `pos_sky.env` · `ipos_loader.env`…).
+  // `_Warehouse_Old` là đúng lớp này (`config/dw_load.env` · `pos_sky.env` · `ipos_loader.env`…).
   // Một lượt `check-ignore` cho cả rổ, không hỏi từng chuỗi.
   if (fromGit && report.dead.length) {
     const ignored = gitIgnored(root, report.dead.flatMap((h) => h.rels ?? []));
@@ -793,7 +793,7 @@ export interface PathsProjectState {
    * đọc state, graph đọc lượt quét riêng, và hai bên lệch nhau đúng lúc người dùng đối chiếu.
    *
    * CHỈ ghi cho MỚI CHẾT: di sản không đổi màu ở đâu (§2.3) nên lưu vị trí của nó là phình state
-   * mà không ai đọc (đo 2026-09-16: 105 dead / 24 mới chết ở `_Warehouse_Central`).
+   * mà không ai đọc (đo 2026-09-16: 105 dead / 24 mới chết ở `_Warehouse_Old`).
    * Một khoá gặp ở nhiều file ⇒ giữ lần gặp ĐẦU trong lượt quét (tất định theo thứ tự duyệt).
    * Tuỳ chọn: state đời cũ không có trường này ⇒ mọi thứ chạy y như trước (điều 9).
    */

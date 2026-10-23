@@ -342,7 +342,7 @@ export function ledgerTitleFindings(root: string): string[] {
     if (text === null) continue;
     const h1 = /^#\s+(.+)$/m.exec(text)?.[1] ?? "";
     // only a heading that opens with a repo-shaped identifier and a dash names a repo: one with "_" or a camel hump
-    // (PBI_FIN · SasinFlow). "INDEX các case HR — …" and "00 — Tổng quan" name none.
+    // (PBI_FIN · AcmeFlow). "INDEX các case HR — …" and "00 — Tổng quan" name none.
     const m = /^`?([A-Za-z][\w.-]*)`?\s+[—–-]\s/.exec(h1);
     if (m && /_|[a-z][A-Z]/.test(m[1]) && m[1].toLowerCase() !== repo) out.push(`${rel(root, f)}: heading names "${m[1]}", the repo is ${basename(root)}`);
   }

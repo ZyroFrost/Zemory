@@ -1,6 +1,6 @@
 // `zemory peers [--repo <name>] [--json] [--check] [--all] [--fix [--apply]]` — which local session to message for each
 // repo, and the session-title gate (user rulings 2026-10-07).
-// ListAgents prints only MESSAGING names (`dept-sal-b2`); the user's session TITLE (`Dept_SAL_Claude_6-10-2026`) lives
+// ListAgents prints only MESSAGING names (`dept-gro-b2`); the user's session TITLE (`Dept_GRO_Claude_6-10-2026`) lives
 // in the session jsonl. This prints both side by side, ★ = the session the send guard lets a message through to.
 //
 // `--all` = EVERY session on disk, closed ones too. The first `--check` looked only at LIVE sessions and reported

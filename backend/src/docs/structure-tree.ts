@@ -240,7 +240,7 @@ export function extraDirOk(relDir: string, root: string, declared: Set<string>):
   const first = segs[0];
   if (declared.has(first) && !SLOT_ROLES[first] && !ROOT_ROLES[first]) return true; // ① declared freeform parent
   // ② python pkg root: a package right under a `backend` folder, at any depth - a monorepo app (`apps/<app>/backend/<pkg>`)
-  // keeps the same convention as `backend/<pkg>` (20/10, SasinHub `apps/hub/backend/hub`)
+  // keeps the same convention as `backend/<pkg>` (20/10, AcmeHub `apps/hub/backend/hub`)
   if (segs.length >= 2 && segs[segs.length - 2] === "backend" && existsSync(join(root, ...segs, "__init__.py"))) return true;
   // ④ a domain unit: a child of the slot `modules` (Backend_044_Modules: "packages by domain/feature, the same slot
   // dictionary nested inside") - its files are the domain's own; its subfolders still take dictionary names

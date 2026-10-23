@@ -442,7 +442,7 @@ export interface OwnConstitutionMove {
  * The file-to-folder move already gives them the current shape; sync does the same here, so every repo ends on ONE template:
  * the purpose becomes the written `Cons.md` of the purpose frame (the old file goes to the archive), and each article becomes the
  * repo's own `Cons_<Core|Gate>_<100+N>_<Name>` (aka `01-N`), every file of its folder kept. Links into the old folders follow.
- * Real-repo trial 2026-10-17: SasinFlow · SasinInfra carried both, and conform called their purpose unwritten.
+ * Real-repo trial 2026-10-17: AcmeFlow · AcmeInfra carried both, and conform called their purpose unwritten.
  */
 export function normalizeOwnConstitution(root: string, apply: boolean): OwnConstitutionMove {
   const hp = harnessPathsAt(root);

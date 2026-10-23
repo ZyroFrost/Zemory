@@ -621,7 +621,7 @@ export function applyStandard(root: string, opts: { apply: boolean; only?: strin
  * lấy ngày của template hôm nay.
  *
  * 🔄 Bản đầu (2026-09-18) lấy ngày template HIỆN TẠI. Đóng dấu xong 51 file, cả 51 tự khai "đang ở
- * bản mới nhất" — trong khi đo lại thì phần lớn đứng ở bản tháng 7–8, SasinHub/02_RULES thiếu 168 dòng.
+ * bản mới nhất" — trong khi đo lại thì phần lớn đứng ở bản tháng 7–8, AcmeHub/02_RULES thiếu 168 dòng.
  * Dấu sai làm phần lệch cũ VÔ HÌNH: `sync --check` báo xanh, `--standard` báo "không có gì để áp". Dấu
  * đo được thì hợp nhất ba chiều chở được đúng phần chuẩn repo còn thiếu, và giữ phần repo tự viết.
  *
