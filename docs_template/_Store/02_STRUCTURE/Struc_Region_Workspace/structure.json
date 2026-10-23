@@ -1,7 +1,12 @@
 {
-  "slots": [],
+  "slots": [
+    "Company_144_Company",
+    "Personal_145_Personal",
+    "External_146_External"
+  ],
   "relations": [
     "owner",
     "uses"
-  ]
+  ],
+  "scope": "region"
 }

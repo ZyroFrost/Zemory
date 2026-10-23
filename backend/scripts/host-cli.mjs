@@ -46,7 +46,9 @@ export function containerDir(cwd, workspace) {
  *  through wsl.exe; DOCKER_BIN names another client; elsewhere it is the docker on PATH. */
 export function dockerCall(env, args, platform = process.platform) {
   if (env.DOCKER_BIN) return [env.DOCKER_BIN, args];
-  if (platform === "win32" && env.ZEMORY_WSL_DISTRO) return ["wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, "--", "docker", ...args]];
+  // `--exec`, not `--`: `--` hands the line to the distro's shell, which eats every backslash (`D:\Workspace` arrived as
+  // `D:Workspace`); `--exec` runs docker with the arguments as given
+  if (platform === "win32" && env.ZEMORY_WSL_DISTRO) return ["wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, "--exec", "docker", ...args]];
   return ["docker", args];
 }
 

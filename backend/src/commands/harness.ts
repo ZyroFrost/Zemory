@@ -5,6 +5,8 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readSync, readdirSync } from "node:fs";
 import { basename, dirname, relative, resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
+import { checkLayout, LAYOUT_STRUCTURE, layoutKindOf, type LayoutKind } from "../docs/layout.js";
+import { toHostPath, toLocalPath } from "../util/hostpath.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
 import { currentProjectRoot, findProjectRoot, harnessPathsAt, ledgerFile, loadContext, readMarker } from "../core/config.js";
 import { LEDGER_NAMES } from "../docs/harness-names.js";
@@ -909,6 +911,7 @@ function cmdPathsSweep(args: string[]): void {
 }
 
 export function cmdConform(args: string[]): void {
+  if (args.includes("--layout")) return conformLayout(args);
   const root = findProjectRoot();
   if (!root) {
     console.log("zemory conform: not connected — run `zemory init` first.");
@@ -937,6 +940,52 @@ export function cmdConform(args: string[]): void {
     console.log(`      → ${it.fix}`);
   }
   if (args.includes("--gate") && !rep.ok) process.exitCode = 1;
+}
+
+/**
+ * `zemory conform --layout <root> [--as drive|workspace|company] [--json]` - a data drive, its Workspace/ or one
+ * organisation's folder against the HS layout structures (plan/32). The root is named the way the host names it; in the
+ * Docker install it is read through the read-only data-root mount.
+ */
+function conformLayout(args: string[]): void {
+  const i = args.indexOf("--layout");
+  const given = args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : "";
+  const asIdx = args.indexOf("--as");
+  const as = asIdx >= 0 ? args[asIdx + 1] : "";
+  if (!given) {
+    console.log("usage: zemory conform --layout <root> [--as drive|workspace|company] [--json]");
+    process.exitCode = 1;
+    return;
+  }
+  // map first: in the container `D:\` is a host path, and resolving it as a Linux path would make it relative
+  const mapped = toLocalPath(given);
+  const root = mapped !== given ? mapped : resolve(given);
+  if (as && !(as in LAYOUT_STRUCTURE)) {
+    console.log(`zemory conform --layout: --as must be one of ${Object.keys(LAYOUT_STRUCTURE).join(" · ")}`);
+    process.exitCode = 1;
+    return;
+  }
+  const kind = (as as LayoutKind) || layoutKindOf(given) || layoutKindOf(root);
+  if (!kind) {
+    console.log(`zemory conform --layout: cannot tell what ${given} is - add --as drive|workspace|company`);
+    process.exitCode = 1;
+    return;
+  }
+  if (!existsSync(root)) {
+    console.log(`zemory conform --layout: ${given} is not reachable here${root !== given ? ` (${root})` : ""}`);
+    process.exitCode = 1;
+    return;
+  }
+  const rep = checkLayout(root, kind);
+  const shown = rep.findings.map((f) => ({ ...f, path: toHostPath(f.path) }));
+  if (args.includes("--json")) {
+    console.log(JSON.stringify({ ...rep, root: given, findings: shown }, null, 2));
+  } else {
+    console.log(`zemory conform --layout — ${given} against ${rep.structure} (${rep.checked} folder(s) checked)`);
+    if (!shown.length) console.log("  ✓ every folder sits in its slot.");
+    for (const f of shown) console.log(`  ${f.level === "blocking" ? "✗" : "·"} [${f.check}] ${f.path}\n      → ${f.fix}`);
+  }
+  if (shown.some((f) => f.level === "blocking")) process.exitCode = 1;
 }
 
 export function cmdValidate(): void {

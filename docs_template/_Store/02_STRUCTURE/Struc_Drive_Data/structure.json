@@ -1,0 +1,13 @@
+{
+  "scope": "drive",
+  "slots": [
+    "Workspace_143_Workspace",
+    "Software_147_Software",
+    "Software_148_Group",
+    "Software_149_Program",
+    "Software_150_Drivers",
+    "AppConfig_151_AppConfig",
+    "Documents_152_Documents",
+    "Recovery_153_Recovery"
+  ]
+}
