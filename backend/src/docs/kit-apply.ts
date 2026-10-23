@@ -81,6 +81,12 @@ export function repoKit(root: string, storeDir = STORE_DIR): Kit | null {
   return typeof kit === "string" && kit ? findKit(kit, storeDir) : null;
 }
 
+/** The custom slots a repo's marker adds to its set (`"slots": ["Docs_200_Notes"]`), by bare slot name. */
+export function repoSlots(root: string): string[] {
+  const s = (readMarker(root)?.data as { slots?: unknown } | undefined)?.slots;
+  return Array.isArray(s) ? s.filter((x): x is string => typeof x === "string" && x.length > 0) : [];
+}
+
 /** Assemble (or report what assembling would do). `kitRef` names a kit for a repo that has none yet (init). */
 export function applyKit(
   root: string,
@@ -90,8 +96,11 @@ export function applyKit(
 ): KitApplyResult | { error: string } {
   const storeDir = opts.storeDir ?? STORE_DIR;
   const marked = opts.kit ? null : repoKit(root, storeDir);
-  const kit = opts.kit ?? (opts.kitRef ? findKit(opts.kitRef, storeDir) : marked);
-  if (!kit) return { error: opts.kitRef ? `no set "${opts.kitRef}" beside ${storeDir}` : "the marker names no set" };
+  const found = opts.kit ?? (opts.kitRef ? findKit(opts.kitRef, storeDir) : marked);
+  if (!found) return { error: opts.kitRef ? `no set "${opts.kitRef}" beside ${storeDir}` : "the marker names no set" };
+  // a repo's own custom slots (plan/31 §1b): `slots` in its marker, added on top of its set's - a set folder has none
+  const own = opts.kit ? [] : repoSlots(root);
+  const kit: Kit = own.length ? { ...found, slots: [...new Set([...(found.slots ?? []), ...own])] } : found;
   if (kit.status !== "built") return { error: `kit ${kit.name} is ${kit.status} — only a built kit can be assembled` };
   if (marked && opts.kitRef && marked.name !== kit.name) {
     return { error: `this repo is assembled from ${marked.name}; switching kits is not supported by init` };
