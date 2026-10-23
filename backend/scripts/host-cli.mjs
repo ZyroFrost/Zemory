@@ -42,6 +42,14 @@ export function containerDir(cwd, workspace) {
   return null;
 }
 
+/** How this host reaches docker. On Windows the engine runs inside the WSL distro (plan/30 §3k), so the call goes
+ *  through wsl.exe; DOCKER_BIN names another client; elsewhere it is the docker on PATH. */
+export function dockerCall(env, args, platform = process.platform) {
+  if (env.DOCKER_BIN) return [env.DOCKER_BIN, args];
+  if (platform === "win32" && env.ZEMORY_WSL_DISTRO) return ["wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, "--", "docker", ...args]];
+  return ["docker", args];
+}
+
 function main() {
   const env = { ...readEnv(join(COMPOSE_DIR, ".env")), ...process.env };
   const workspace = env.HOST_WORKSPACE_NATIVE || env.HOST_WORKSPACE || "";
@@ -53,7 +61,8 @@ function main() {
   }
   const tty = Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const args = ["exec", "-i", ...(tty ? ["-t"] : []), ...(dir ? ["-w", dir] : []), container, "zemory", ...process.argv.slice(2)];
-  const r = spawnSync(env.DOCKER_BIN || "docker", args, { stdio: "inherit", windowsHide: true });
+  const [bin, argv] = dockerCall(env, args);
+  const r = spawnSync(bin, argv, { stdio: "inherit", windowsHide: true });
   if (r.error) {
     process.stderr.write(`zemory (docker): could not run docker (${r.error.message}). Is Docker running and the zemory container up?\n`);
     process.exit(127);

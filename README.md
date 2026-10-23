@@ -162,13 +162,16 @@ place. The cockpit's *Update now* button runs the whole pull, rebuild and restar
 **Docker (Windows and Linux).** A second way to install, beside the native one above. A machine runs
 one of them, never both: they serve the same port 4444, a native `zemory ui` refuses to start while the
 Docker one holds it, and each installer turns the other one off (its autostart, its global command, its
-hooks). The image carries Node, the native modules, the models and a browser for web-chat capture; the
-memory store lives on the Linux file system (`/home/<user>/zemory`; on Windows inside Ubuntu on WSL,
-never on an NTFS folder, where SQLite's WAL breaks).
+hooks). The image carries Node, the native modules and a browser for web-chat capture.
 
-Windows needs WSL 2 with an Ubuntu distro and Docker Desktop with WSL integration turned on for it; the
-installer checks both and does not install them (each needs an administrator, a restart, or a licence
-decision). Then, in PowerShell:
+Everything lives in one place, laid out the same on every machine: on Linux, on the machine itself; on
+Windows, inside an Ubuntu distro on WSL, which plays the Linux machine. The Docker engine, the clone, the
+memory store (`/home/<user>/zemory`, on the Linux file system where SQLite's WAL is safe) and the model
+weights all sit there; nothing is kept twice.
+
+Windows needs WSL 2 with an Ubuntu distro (`wsl --install Ubuntu-24.04`, which needs an administrator and a
+restart). The installer puts Docker Engine, compose and buildx inside the distro (Docker Desktop is not
+used, and must not integrate into the same distro). Then, in PowerShell:
 
 ```powershell
 $env:ZEMORY_WORKSPACE = "D:\Workspace"   # the folder holding your repos
@@ -183,16 +186,18 @@ curl -fsSL https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scrip
 
 What the installer sets up:
 
-- **The container** (`docker compose up -d --build` from the clone), restarted by Docker. It mounts the
+- **The container** (`docker compose up -d --build` from the clone), restarted by Docker. On Windows one
+  hidden process started at sign-in keeps the distro up, since WSL stops an idle distro. It mounts the
   repos folder (writable: `sync`, `init`, `archive` write into repos as natively), `~/.claude` read-only,
   the clone itself (HS is read there, so a change made to HS on the host is what a sync in the container
-  sees), and the Drive sync folder when the native config names one. Docker Desktop cannot see a Google
-  Drive letter (it silently mounts an empty folder), so the installer mounts it in Ubuntu first.
+  sees), and the Drive sync folder when the native config names one (a Google Drive letter is mounted in
+  Ubuntu first).
 - **The host side**, small Node scripts with no native module: the `zemory` command forwards into the
   container in the container's view of the current folder (so `zemory sync`, `zemory conform` and the
   `zemory mcp` server entries keep working), and the Claude Code hooks post to the container.
-- **The memory store**: the native one is copied in once when the Docker one is still empty (browser
-  profiles are not: each web-chat source signs in again once). The share key is set with
+- **The memory store**: the native one moves in once when the Docker one is still empty, so the machine
+  never holds two. Model weights, backups and browser profiles do not come along: the model the store is
+  embedded with is fetched on first use, and each web-chat source signs in again once. The share key is set with
   `zemory memory key set --from <file>`, which prints only the fingerprint.
 - **Web-chat capture**: the chat sites refuse a headless browser, so Chromium draws on a virtual display
   in the container; the sign-in window is shown as a web page at `http://127.0.0.1:6080` (this machine

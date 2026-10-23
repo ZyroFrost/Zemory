@@ -1,7 +1,7 @@
 // Store verification: in a CHILD, on a cadence — not `PRAGMA quick_check` inline in the daemon
 // every 30 minutes. Measured 2026-09-07: that walked the 2.86 GB file ~48×/day (~137 GB) and froze
 // the daemon 59–301 s after every start. Mutations guarded: (1) putting verifyMemory back in
-// scheduler.ts; (2) verifying every chain again; (3) backing up without a fresh verify.
+// scheduler.ts; (2) verifying every chain again.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
@@ -28,29 +28,10 @@ test("scheduler never runs quick_check in-process: no verifyMemory import, verif
   assert.match(SCHED, /runStep\("verify",\s*\["memory",\s*"verify",\s*"--json"\]\)/, "the check is a child process, machine-readable");
 });
 
-test("maintain chain verifies only when due; backup verifies before rotateBackup unless a check is fresh", () => {
-  const chain = SCHED.slice(SCHED.indexOf("async function maintainTick"), SCHED.indexOf("async function backupTick"));
+test("maintain chain verifies only when due", () => {
+  const from = SCHED.indexOf("async function maintainTick");
+  const chain = SCHED.slice(from, from + 10 + SCHED.slice(from + 10).search(/^(?:async )?function \w+\(/m));
   assert.match(chain, /if \(verifyDue\(lastVerifyAt, Date\.now\(\)\)\)\s*\{\s*const v = await verifyStore\(\)/s);
-  const backup = SCHED.slice(SCHED.indexOf("async function backupTick"), SCHED.indexOf("function scratchTick"));
-  const iVerify = backup.indexOf("await verifyStore()");
-  const iRotate = backup.indexOf("await rotateBackup()");
-  assert.ok(iVerify >= 0 && iRotate >= 0 && iVerify < iRotate, "backup must check the store BEFORE copying it over the last good one");
-  assert.match(backup, /VERIFY_FRESH_MS/, "a check seconds old (chain end → backup) is reused, not repeated");
-  assert.match(backup, /v === "corrupt"[\s\S]{0,200}return;/, "corrupt ⇒ skip the backup, keep the good copies");
-  // Verify only when a backup will actually be WRITTEN: the tick is every 30 min, the write is daily.
-  assert.match(backup, /backupDue\s*&&\s*Date\.now\(\) - lastVerifyAt > VERIFY_FRESH_MS/, "gated on backupDue, or it is the 137 GB/day cadence again");
-  assert.match(backup, /DEFAULT_BACKUP_POLICY\.everyMs/, "due-ness must come from the same policy rotateBackup uses");
-});
-
-test("a timer backup tick during a running chain YIELDS — it does not infer 'I hold the token' from chainRunning", () => {
-  const backup = SCHED.slice(SCHED.indexOf("async function backupTick"), SCHED.indexOf("function scratchTick"));
-  // Measured 2026-09-07: the +60 s primer saw chainRunning=true, skipped the blocker check and
-  // spawned a second `memory verify` next to the chain's own — two 3 GB quick_checks at once.
-  assert.match(backup, /async function backupTick\(why: string, fromChain = false\)/, "chain-end passes the fact explicitly");
-  assert.match(backup, /const holdsToken = fromChain;/, "not `= chainRunning` — a timer tick mid-chain is not the chain");
-  assert.match(backup, /chainRunning \? "maintain chain"/, "a running chain is a blocker for a timer tick");
-  const chain = SCHED.slice(SCHED.indexOf("async function maintainTick"), SCHED.indexOf("async function backupTick"));
-  assert.match(chain, /backupTick\("sau chuỗi bảo trì", true\)/, "the one legitimate in-chain call says so");
 });
 
 test("`memory verify` CLI: healthy store ⇒ exit 0 + ok:true; not-a-database ⇒ exit 2 + ok:false", () => {

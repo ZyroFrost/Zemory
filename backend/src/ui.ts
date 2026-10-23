@@ -130,10 +130,9 @@ let repoGatesRun: Promise<RepoGateRow[]> | null = null;
  * đi qua chính vòng lặp này. Nên: đọc cache (rẻ), hết hạn thì PHÓNG `selfupdate --check` rồi trả
  * lời ngay bằng số cũ; số mới hiện ở nhịp hỏi sau.
  *
- * Vì sao móc vào ĐÂY chứ không vào chuỗi bảo trì của scheduler: chuỗi đó nằm sau công tắc
- * `scheduler`, mà tắt scheduler KHÔNG có nghĩa là "thôi báo bản mới" — đúng cái bẫy "một công
- * tắc gánh ba việc" đã làm backup chết câm 4 ngày (`jobs/scheduler.ts §backupTick`). Bề mặt này
- * thì cửa sổ nào mở cũng hỏi, không phụ thuộc công tắc nào.
+ * Why it hooks in HERE and not in the scheduler's maintenance chain: that chain sits behind the `scheduler` switch,
+ * and turning the scheduler off does not mean "stop telling me about new versions" - one switch must not carry
+ * unrelated features. Every open window asks here, whatever the switches say.
  */
 let remoteCheckRunning = false;
 function kickRemoteVersionCheck(): void {
@@ -2655,10 +2654,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // collide on SQLite (plan 14 §C write gate). Auto-expires; see writegate.ts.
       // `busy` tells the CLI a daemon child (embed/sync) is ALREADY writing, so
       // it can wait instead of colliding (the gate was one-directional before).
-      // `db` = kho CLI sắp ghi. Thiếu nó thì daemon chỉ biết "có ai đang ghi" mà không biết
-      // GHI KHO NÀO, và mọi việc chỉ-đọc trên kho KHÁC (vd backup) phải nhường oan — đo
-      // 2026-08-21: 24 lượt backup nhường liên tiếp cho job ghi kho song song.
-      acquireCliWrite(u.searchParams.get("db") ?? undefined);
+      acquireCliWrite();
       return json(res, { ok: true, held: true, busy: daemonJobBusy() !== null });
     }
     if (req.method === "POST" && p === "/gate-release") {
@@ -2804,6 +2800,32 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const dir = standardBase(u.searchParams);
       if (!dir) return json(res, { ok: false, file: "", content: "(unknown template bundle)" });
       return json(res, readStandardDoc(u.searchParams.get("file") ?? "", dir));
+    }
+    if (p === "/harness-sets" || p === "/harness-catalog" || p === "/harness-part") {
+      // The Harness screen (docs/plan/31): HS and the sets beside it, read in a worker (HS sits on a mount under Docker)
+      const call: [string, unknown[]] =
+        p === "/harness-sets" ? ["listSets", []] : p === "/harness-catalog" ? ["storeCatalog", []] : ["partText", [u.searchParams.get("shelf") ?? "", u.searchParams.get("folder") ?? ""]];
+      const w = await runInWorker<unknown>("docs/harness-screen.js", call[0], call[1], 120_000);
+      return json(res, w.ok ? { ok: true, value: w.value } : { ok: false, error: w.error });
+    }
+    if (req.method === "POST" && (p === "/harness-check" || p === "/harness-save")) {
+      // a draft set: checked as the user builds it, saved (assembled into its folder beside HS) on confirm
+      const chunks: Buffer[] = [];
+      let total = 0;
+      for await (const c of req) {
+        total += (c as Buffer).length;
+        if (total > 1024 * 1024) return json(res, { ok: false, error: "draft too large" });
+        chunks.push(c as Buffer);
+      }
+      let draft: unknown;
+      try {
+        draft = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+      } catch {
+        return json(res, { ok: false, error: "the draft is not JSON" });
+      }
+      const fn = p === "/harness-check" ? "checkDraft" : "saveDraft";
+      const w = await runInWorker<unknown>("docs/harness-screen.js", fn, [draft], 300_000);
+      return json(res, w.ok ? { ok: true, value: w.value } : { ok: false, error: w.error });
     }
     if (p === "/folder-tree") {
       // Annotated folder tree for the project's Graph sub-tab (structure view).

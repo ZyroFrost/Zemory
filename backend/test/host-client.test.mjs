@@ -2,7 +2,7 @@
 // hooks that post to it. A machine runs ONE install, so writing the host hooks takes the native ones out.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import { join } from "node:path";
 import test from "node:test";
@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { tempDir } from "./helpers.mjs";
 
 const { HOOKS, hookCommand, withHostHooks } = await import("../scripts/host-hook.mjs");
-const { containerDir, readEnv } = await import("../scripts/host-cli.mjs");
+const { containerDir, dockerCall, readEnv } = await import("../scripts/host-cli.mjs");
 const HOST_HOOK = fileURLToPath(new URL("../scripts/host-hook.mjs", import.meta.url));
 
 const cmd = (arg) => `"node" "/z/backend/scripts/host-hook.mjs" ${arg}`;
@@ -56,6 +56,25 @@ test("the current folder maps into the workspace mount; outside it there is no c
   assert.equal(containerDir("/home/u/WORK/repo", "/home/u/work"), null, "Linux paths are case-sensitive");
   assert.equal(containerDir("D:\\WorkspaceOld\\x", "D:\\Workspace"), null, "NEGATIVE: a prefix that is not a whole segment");
   assert.equal(containerDir("D:\\x", ""), null);
+});
+
+test("on Windows docker is reached through the WSL distro; DOCKER_BIN wins; elsewhere the docker on PATH", () => {
+  const args = ["exec", "-i", "zemory", "zemory", "--version"];
+  assert.deepEqual(dockerCall({ ZEMORY_WSL_DISTRO: "Ubuntu-24.04" }, args, "win32"), ["wsl.exe", ["-d", "Ubuntu-24.04", "--", "docker", ...args]]);
+  assert.deepEqual(dockerCall({ ZEMORY_WSL_DISTRO: "Ubuntu-24.04", DOCKER_BIN: "x" }, args, "win32"), ["x", args]);
+  assert.deepEqual(dockerCall({ ZEMORY_WSL_DISTRO: "Ubuntu-24.04" }, args, "linux"), ["docker", args], "a Linux host runs its own docker");
+  assert.deepEqual(dockerCall({}, args, "win32"), ["docker", args], "no distro named: the docker on PATH");
+});
+
+test("the Windows installer: the engine lives in the distro, the native store MOVES in, the distro is kept up", () => {
+  const ps = readFileSync(fileURLToPath(new URL("../scripts/install-docker.ps1", import.meta.url)), "utf8");
+  assert.match(ps, /apt-get install -y -qq docker\.io docker-compose-v2 docker-buildx/);
+  assert.match(ps, /"ZEMORY_WSL_DISTRO=\$distro"/);
+  assert.match(ps, /mv '\$\(WslPath \$nativeMem\)\/'\*/, "the native GM moves, it is not copied");
+  assert.match(ps, /--exclude=models[^"]*--remove-files/, "the model weights stay behind; what moves leaves the native folder");
+  assert.match(ps, /--headless wsl\.exe -d \$distro --exec sleep infinity/);
+  assert.doesNotMatch(ps, /cp -a '\$\(WslPath \$nativeMem\)/, "NEGATIVE: a copy leaves two GMs on one machine");
+  assert.doesNotMatch(ps, /Settings > Resources > WSL integration/, "NEGATIVE: Docker Desktop is no longer needed");
 });
 
 test("readEnv reads the installer's .env: KEY=value, quotes stripped, no expansion", (t) => {

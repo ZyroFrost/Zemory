@@ -1,7 +1,7 @@
 // Cờ lạ trên lệnh HEAVY-WRITE phải bị TỪ CHỐI, không "bỏ qua âm thầm rồi chạy thật".
 //
 // Sự cố thật (2026-08-22, dính hai lần trong một phiên): `zemory memory embed --help` KHÔNG in
-// trợ giúp mà khởi động job nhúng thật — job hàng giờ, giữ `cli-write.lock`, bỏ đói `backupTick`;
+// trợ giúp mà khởi động job nhúng thật — job hàng giờ, giữ `cli-write.lock`;
 // `zemory memory scan --help` thì quét + nạp tin thật vào kho. Cùng bề mặt còn có `--rebuild`
 // (XOÁ nguyên chỉ mục véc-tơ), nên "cờ lạ được cho qua" nghĩa là không còn đường xem-thử an toàn.
 //

@@ -106,11 +106,10 @@ test("the chain runs SEQUENTIALLY and holds EXACTLY ONE job token for the whole 
   const awaited = (s.match(/await runStep\(/gu) ?? []).length;
   assert.ok(calls > 0, `${SCHED}: không thấy lần gọi runStep nào`);
   assert.equal(awaited, calls, `${SCHED}: ${calls - awaited}/${calls} lần gọi runStep KHÔNG await — chuỗi hoá song song, embed đọc trước khi scan ghi xong`);
-  // CHUỖI maintain phải claim ĐÚNG MỘT lần. Neo cũ đếm cả file = 1; nắn theo thiết kế
-  // 2026-08-13 (backup tách ra nhịp riêng nên có lần claim THỨ HAI, của `backupTick`) —
-  // nắn PHẠM VI đo, KHÔNG nới bất biến: vẫn là "một token cho cả chuỗi", chỉ đo trong
-  // đúng thân `maintainTick` thay vì cả file.
-  const chain = s.slice(s.indexOf("async function maintainTick("), s.indexOf("async function backupTick("));
+  // CHUỖI maintain phải claim ĐÚNG MỘT lần — đo trong đúng thân `maintainTick` (tới hàm kế tiếp).
+  const from = s.indexOf("async function maintainTick(");
+  const next = s.slice(from + 10).search(/^(?:async )?function \w+\(/mu);
+  const chain = s.slice(from, from + 10 + next);
   assert.ok(chain.length > 0, `${SCHED}: không tìm thấy thân maintainTick`);
   assert.equal(
     (chain.match(/claimDaemonJob\(/gu) ?? []).length,
@@ -120,14 +119,6 @@ test("the chain runs SEQUENTIALLY and holds EXACTLY ONE job token for the whole 
   const claimAt = s.indexOf("claimDaemonJob(");
   const releaseInFinally = /finally\s*\{[^}]*releaseDaemonJob\(\)/su.test(s.slice(claimAt));
   assert.ok(releaseInFinally, `${SCHED}: releaseDaemonJob phải nằm trong finally — một bước lỗi là token kẹt vĩnh viễn`);
-  // Backup gọi từ TRONG chuỗi thì KHÔNG được claim lồng (token đã ở trong tay) — claim lồng
-  // là tự khoá chính mình, đúng kiểu bế tắc mà write-gate sinh ra để tránh.
-  // Neo cũ ghim `const holdsToken = chainRunning` — SUY RA từ cờ toàn cục. Đo 2026-09-07: một
-  // tick TIMER nổ giữa lúc chuỗi đang chạy cũng thấy chainRunning=true ⇒ tự cho là "đang trong
-  // chuỗi", bỏ kiểm kẻ chặn, spawn thêm một `memory verify` cạnh con của chuỗi. Nay chuỗi NÓI RÕ
-  // (`backupTick(…, true)`); bất biến giữ nguyên — vẫn không claim lồng — chỉ đổi cách biết.
-  assert.match(s, /const holdsToken = fromChain;/u, `${SCHED}: backupTick nhận 'đang trong chuỗi' TƯỜNG MINH, không suy từ chainRunning`);
-  assert.match(chain, /backupTick\("sau chuỗi bảo trì", true\)/u, `${SCHED}: lần gọi trong chuỗi phải nói rõ để không claim lồng`);
 });
 
 test("background work must YIELD CPU to the user (below-normal priority)", () => {
@@ -187,32 +178,13 @@ test("priority is lowered ONLY for MACHINE-initiated work - never for work the u
   }
 });
 
-test("BACKUP must not hang off another feature's switch", () => {
-  // Lỗi thật 2026-08-08 → 12/08: `rotateBackup()` là bước 4 của `maintainTick`, mà hàm đó
-  // return ngay khi `getScheduler()` tắt ⇒ tắt scheduler là TẮT LUÔN BACKUP, im lặng. Bốn
-  // ngày không có bản sao lưu, và không ai biết vì job có hỏng đâu — nó không được gọi.
-  // Backup là lưới đỡ cuối cùng của kho (đã cứu kho thật 04/08), nên nó phải có đồng hồ
-  // riêng và KHÔNG được hỏi bất kỳ công tắc tính năng nào.
+test("NEGATIVE: the daemon takes no scheduled copy of the GM (the Drive channel and the second machine are the backup)", () => {
+  // Removed 2026-10-23 (user): a daily copy of the store beside it on the same disk is a second GM (HP 18), and it filled
+  // the drive. Nothing in the scheduler may copy the store on a clock again.
   const s = read(SCHED);
-  assert.match(s, /backupTimer = setInterval\(/u, `${SCHED}: backup phải có đồng hồ RIÊNG`);
-  // Cắt ĐÚNG thân `backupTick`, không cắt "từ đây tới hàm X". Bản cũ cắt tới `syncTick` và
-  // báo oan ngay khi có hàm mới chen vào giữa (2026-08-28: `webTick` — nó hỏi `getScheduler()`
-  // hợp lệ, còn `backupTick` thì không hề đổi). Neo theo VỊ TRÍ TƯƠNG ĐỐI giữa hai hàm là giả
-  // định "sẽ không ai chèn gì vào đây" — một giả định không có gì bảo vệ.
-  const from = s.indexOf("async function backupTick(");
-  assert.ok(from >= 0, `${SCHED}: không tìm thấy backupTick`);
-  const after = s.slice(from + 10);
-  const nextFn = after.search(/^(?:async )?function \w+\(/mu);
-  const tick = nextFn < 0 ? s.slice(from) : s.slice(from, from + 10 + nextFn);
-  assert.ok(tick.length > 0, `${SCHED}: không tìm thấy thân backupTick`);
-  assert.ok(
-    !/getScheduler\(\)/u.test(tick),
-    `${SCHED}: backupTick hỏi getScheduler() — backup lại chết theo công tắc scheduler, đúng lỗi 4 ngày mất backup`,
-  );
-  assert.ok(
-    !/getAutosync\(\)/u.test(tick),
-    `${SCHED}: backupTick hỏi getAutosync() — cùng một kiểu treo vào công tắc của tính năng khác`,
-  );
+  for (const gone of [/rotateBackup\(/u, /backupTimer/u, /backupTick/u, /backup-rotate/u]) {
+    assert.doesNotMatch(s, gone, `${SCHED}: ${gone} — the scheduled backup is gone for good`);
+  }
 });
 
 test("scan is NOT blocked by the vector backlog backoff", () => {

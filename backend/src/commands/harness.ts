@@ -3,7 +3,7 @@
 import { homedir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readSync, readdirSync } from "node:fs";
-import { basename, relative, resolve, join } from "node:path";
+import { basename, dirname, relative, resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
 import { currentProjectRoot, findProjectRoot, harnessPathsAt, ledgerFile, loadContext, readMarker } from "../core/config.js";
@@ -24,8 +24,6 @@ import { importChangelog } from "../docs/changelog.js";
 import { GUARD_MATCHER, generateGuards, guardDrift, guardMatcherGaps, hooksDirOf } from "../docs/guard-gen.js";
 import { desktopShortcutStatus, judgeLaunch, launchFacts, setDesktopShortcut } from "../platform/autostart.js";
 import { getShortcutPrompted, setShortcutPrompted } from "../config/settings.js";
-import { backupStale } from "../memory/backup-rotate.js";
-import { uiPort } from "../ui.js";
 import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
 import { uplinkReport, uplinkStaleMs } from "../memory/uplinkguard.js";
 import { getDriveDir } from "../config/settings.js";
@@ -467,37 +465,6 @@ function warnStrayConfig(): void {
   console.log(`      orphan copy (NOT read): ${home} — delete it by hand if not needed`);
 }
 
-/**
- * Daemon 4444 đang ở trạng thái nào — hỏi bằng chính bề mặt của nó, không suy từ file/lockfile.
- *
- * 🔴 BA trạng thái, KHÔNG phải hai (vá 2026-09-02). Bản cũ trả `boolean` với timeout **600 ms** và
- * gộp mọi lỗi thành "không sống" ⇒ doctor in *"daemon KHÔNG chạy … Bật `zemory ui`"* **trong khi
- * daemon đang chạy thật** (quan sát 2026-09-02: `/ping` trả `pid 9144` ngay trước và ngay sau lượt
- * doctor đó). Lời khuyên sai còn tệ hơn im lặng.
- * Vì sao 600 ms chắc chắn trượt: `plan/14 §8` đã ĐO `/ping` lượt lạnh **12.347 ms** → 1.496 → 131.
- * Chính repo này đã viết đúng luật ở `ui.ts probeZemoryUi` (*"Timeout ≠ absent"*, trần 2.500 ms, ba
- * trạng thái) — vì ở ĐÓ đoán sai nghĩa là dựng daemon thứ hai và hỏng kho. Cùng một sự thật thì
- * phải cùng một câu, nên đường doctor nay theo cùng luật.
- * `absent` chỉ khi CHỐI KẾT NỐI (không ai lắng nghe — sự thật chắc chắn); hết giờ/lỗi khác ⇒
- * `unknown` (không biết), và bề mặt phải nói "không biết" chứ không được phán "đã chết".
- */
-type DaemonLiveness = "alive" | "absent" | "unknown";
-
-const PING_TIMEOUT_MS = 3_000;
-
-async function daemonLiveness(): Promise<DaemonLiveness> {
-  try {
-    const r = await fetch(`http://127.0.0.1:${uiPort()}/ping`, { signal: AbortSignal.timeout(PING_TIMEOUT_MS) });
-    const b = (await r.json()) as { app?: string };
-    return b?.app === "zemory" ? "alive" : "unknown";
-  } catch (error) {
-    // CHỐI KẾT NỐI = không ai lắng nghe cổng đó ⇒ vắng mặt THẬT. Hết giờ / lỗi khác ⇒ có thể có
-    // ai đó ở đó nhưng đang bận; gọi nó là "đã chết" chính là bề mặt nói dối.
-    const code = (error as { cause?: { code?: string } })?.cause?.code;
-    return code === "ECONNREFUSED" ? "absent" : "unknown";
-  }
-}
-
 /** `_scratch_*` / `.tmp_*` files left in the repo — untracked or git-ignored — as repo-relative paths. Fail-open. */
 export function scratchLeftovers(root: string | null | undefined): string[] {
   if (!root) return [];
@@ -682,46 +649,20 @@ export async function cmdDoctor(): Promise<void> {
     /* fail-open — báo cáo phụ, không được làm doctor chết */
   }
 
-  // Tuổi bản sao lưu — mặt CUỐI CÙNG chưa có ai canh (audit 2026-08-21). Đo được ngày đó:
-  // **27,0 giờ** không có bản mới vì job re-embed kho SONG SONG giữ khoá ghi của cả thư mục
-  // `data/`, và `backupTick` nhường im lặng. Không bề mặt nào báo — `doctor` vẫn in toàn ✓.
-  //
-  // BA MỨC, không phải hai (audit 2026-08-23 — cùng mặt, lỗ khác): bản chỉ-có-✓-hoặc-✗ ở trần
-  // 2 chu kỳ nghĩa là **trọn một ngày không backup vẫn hiện ✓**, tức chính `doctor` nói dối.
-  //   ✓ trong chu kỳ · ○ quá 1 chu kỳ (chậm nhịp, THẤY ĐƯỢC nhưng không đỏ) · ✗ quá 2 (hỏng).
-  // Và ca DAEMON TẮT phải nói riêng: lúc đó backup không "chậm", nó KHÔNG TỒN TẠI — đồng hồ
-  // `backupTick` nằm trong daemon, daemon chết là không còn ai chép, bất kể tuổi bản hiện tại.
+  // HP 18: the GM folder holds global_memory.db alone (+ SQLite's -wal/-shm). Until plan/24 §13 has moved the channel
+  // blocks and the attachments out, those two are reported, not failed; anything else beside the db fails.
   try {
-    const st = backupStale(currentMemoryDb());
-    const hours = st.ageMs === null ? null : (st.ageMs / 3_600_000).toFixed(1);
-    const age = hours === null ? "NO backup yet" : `newest backup is ${hours} h old`;
-    const live = await daemonLiveness();
-    if (st.stale) {
+    const dir = dirname(currentMemoryDb());
+    const extra = readdirSync(dir).filter((n) => !/^global_memory.db(-wal|-shm)?$/.test(n));
+    const pending = new Set(["channel", "files"]);
+    const bad = extra.filter((n) => !pending.has(n));
+    if (bad.length) {
       failed = true;
-      console.log(
-        `  backup: ✗ ${age} — overdue (cap ${(st.limitMs / 3_600_000).toFixed(0)} h).` +
-          ` Is another store writer holding the lock? Look for \`[scheduler] backup nhường …\` in logs/daemon.log`,
-      );
-    } else if (st.late) {
-      console.log(
-        `  backup: ○ ${age} — missed a tick (cycle ${(st.everyMs / 3_600_000).toFixed(0)} h).` +
-          ` Not broken yet, but someone held the lock or the daemon was just down.`,
-      );
-    } else if (hours !== null) {
-      console.log(`  backup: ✓ ${age}`);
-    }
-    // BA CÂU cho BA trạng thái. "Không trả lời" KHÔNG được nói thành "không chạy": lời khuyên
-    // *Bật `zemory ui`* cho một daemon đang chạy là sai việc, và nó dạy người đọc nghi ngờ doctor.
-    if (live === "absent") {
-      console.log(
-        "  backup: ○ daemon is NOT running (port refused the connection) ⇒ no clock is taking new backups." +
-          " The age above is a snapshot of the past, not proof you are still protected. Start `zemory ui`.",
-      );
-    } else if (live === "unknown") {
-      console.log(
-        `  backup: ○ daemon did NOT ANSWER within ${(PING_TIMEOUT_MS / 1000).toFixed(0)}s — it may be BUSY, this is not proof it is dead` +
-          " (measured in `plan/14 §8`: cold /ping 12.3s). Cannot tell yet whether anything is still taking new backups.",
-      );
+      console.log(`  gm-folder: ✗ ${bad.join(", ")} beside global_memory.db — the GM folder holds the db alone (HP 18)`);
+    } else if (extra.length) {
+      console.log(`  gm-folder: ○ ${extra.join(", ")} still beside global_memory.db — leaves with plan/24 §13 (HP 18)`);
+    } else {
+      console.log("  gm-folder: ✓ global_memory.db alone");
     }
   } catch {
     /* fail-open — báo cáo phụ, không được làm doctor chết */
