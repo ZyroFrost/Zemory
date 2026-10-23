@@ -230,6 +230,7 @@
     "discard": ".allow-discard",
     "overwrite": ".allow-overwrite",
     "outside": ".allow-outside",
+    "translation": ".allow-translation",
     "todo": ".allow-todo",
     "mail": ".allow-mail"
   },

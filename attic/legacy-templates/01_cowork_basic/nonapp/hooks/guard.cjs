@@ -165,9 +165,19 @@ function checkWrite(rel) {
   }
 }
 
+// plan/33: a harness part is its English header; `<header>.<ISO 639-1 code>.md` beside it is a translation for people. An
+// agent reads the header only - a translation costs the same tokens again and says nothing the header does not. Harness
+// folders: HS (`docs_template/_Store`), every set's and every repo's `docs/agent`.
+const TRANSLATION_READ = /(^|\/)(docs_template\/_Store|docs\/agent)\/.*\/([^/]+)\.([a-z]{2})\.md$/;
 function checkRead(rel) {
   if (nameMatches(rel, POLICY.key_read_block || [])) {
     deny("BLOCKED (guard layer 1): reading the key file `" + rel + "` - " + POLICY.key_read_reason);
+  }
+  const tr = TRANSLATION_READ.exec(rel);
+  if (tr && POLICY.flags.translation && !consumeFlag("translation", rel)) {
+    deny("BLOCKED (guard layer 1): `" + rel + "` is a translation (plan/33) - agents read the English header only: `" +
+      rel.replace(/\.[a-z]{2}\.md$/, ".md") + "`." +
+      "\nEditing this translation (the user asked for it)? -> create the flag `" + POLICY.flags_dir + "/" + POLICY.flags.translation + "` and read it again (one use).");
   }
 }
 

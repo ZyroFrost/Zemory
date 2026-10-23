@@ -2724,7 +2724,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     if (p === "/harness-sets" || p === "/harness-catalog" || p === "/harness-part") {
       // The Harness screen (docs/plan/31): HS and the sets beside it, read in a worker (HS sits on a mount under Docker)
       const call: [string, unknown[]] =
-        p === "/harness-sets" ? ["listSets", []] : p === "/harness-catalog" ? ["catalogView", []] : ["partText", [u.searchParams.get("shelf") ?? "", u.searchParams.get("folder") ?? ""]];
+        p === "/harness-sets" ? ["listSets", []] : p === "/harness-catalog" ? ["catalogView", []] : ["partText", [u.searchParams.get("shelf") ?? "", u.searchParams.get("folder") ?? "", (u.searchParams.get("lang") ?? "").replace(/[^a-z]/g, "").slice(0, 2)]];
       const w = await runInWorker<unknown>("docs/harness-screen.js", call[0], call[1], 120_000);
       return json(res, w.ok ? { ok: true, value: w.value } : { ok: false, error: w.error });
     }

@@ -8,7 +8,7 @@ import { harnessPathsAt } from "../core/config.js";
 import { HOST_KIND, parseSetName, SHELF, TIER } from "./harness-names.js";
 import { assembleSet } from "./kit-apply.js";
 import { partLinks } from "./law-links.js";
-import { frontMatter, hostSkillOf, type Kit, kitCluster, kitParts, leafOf, listParts, listStructures, mainOf, readKits, setDir, SLOT_LAYER, STORE_DIR, structureSlotNames, type Part } from "./store.js";
+import { frontMatter, hostSkillOf, type Kit, kitCluster, kitParts, leafOf, listParts, listStructures, mainOf, readKits, setDir, SLOT_LAYER, STORE_DIR, structureSlotNames, translationsOf, type Part } from "./store.js";
 
 export type ShelfKey = "rules" | "constitution" | "structure" | "slots" | "skills";
 
@@ -90,10 +90,13 @@ const SHELF_OF: Record<ShelfKey, (typeof SHELF)[keyof typeof SHELF]> = {
 };
 
 /** The header file of one part of HS, by shelf and folder; null when there is no such part. */
-export function partText(shelf: ShelfKey, folder: string, storeDir = STORE_DIR): { folder: string; text: string } | null {
+export function partText(shelf: ShelfKey, folder: string, lang = "", storeDir = STORE_DIR): { folder: string; text: string; lang?: string } | null {
   const parts = shelf === "structure" ? listStructures(storeDir) : listParts(storeDir, SHELF_OF[shelf]);
   const p = parts.find((x) => x.folder === folder || x.id === folder || (shelf === "slots" && leafOf(x.folder) === folder));
   if (!p) return null;
+  // people read the translation in the cockpit's language when the part has one (plan/33); otherwise the English header
+  const tr = lang ? translationsOf(p.dir).get(lang) : undefined;
+  if (tr) return { folder: p.folder, text: readFileSync(join(p.dir, tr), "utf8"), lang };
   for (const f of [join(p.dir, `${leafOf(p.folder)}.md`), join(p.dir, mainOf(p))]) {
     if (existsSync(f)) return { folder: p.folder, text: readFileSync(f, "utf8") };
   }

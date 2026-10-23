@@ -2,31 +2,35 @@
 id: Rule_27
 aka: 02-27
 name: harness-language
-version: 19
+version: 21
 kind: judgment
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage @v19 #33083dae1d6d
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage @v21 #536bb9f72887
 ---
 # Rule_Gate_27_HarnessLanguage — How harness docs are written, and the words they use
 
 ## What
-Harness docs (laws, constitution frames, slots, skills, `docs/plan/`) are written in English first with a Vietnamese version
-right below, in a plain specification voice, with one fixed word for each thing. They never quote a person or date a decision.
+Every harness part (law, constitution frame, slot, structure, skill) has ONE header file `<part>.md` written in English: the
+only file an agent reads, and the source of truth. A translation for each language people read sits beside it as its own file
+`<part>.<ISO 639-1 code>.md` (`Rule_Gate_27_HarnessLanguage.vi.md`). Harness docs use a plain specification voice and one
+fixed word for each thing, and never quote a person or date a decision.
 
 ## When
 - Writing or editing any harness doc.
 - Naming a harness thing in any text an agent reads.
 
 ## Do
-1. Write each law in two languages in the same file: English first (agents read it), Vietnamese below (people read it). Both
-   carry the same sections and the same number of steps.
-2. Write a law in five parts: What · When · Do · Example (✗ wrong / ✓ right, with real names and numbers) · Check (what the
+1. Write the header in English only. People's languages go in translation files beside it, one file per language; a language
+   is added by copying the header to `<part>.<code>.md` and translating it. A part with no translation is whole.
+2. A translation carries the same sections and the same number of steps as its header, and `version:` equal to the header
+   version it was translated from. Change the header first, then bring each translation to that version.
+3. Write a law in five parts: What · When · Do · Example (✗ wrong / ✓ right, with real names and numbers) · Check (what the
    machine blocks, or "no machine check, the agent keeps it"). Short sentences; explain an internal term the first time.
-3. Before finishing a law, read it again as a newcomer and solve its example; misread ⇒ rewrite.
-4. No quotes of what someone said, no decision dates, no personal names or e-mails, no paths carrying a person's name. Words,
+4. Before finishing a law, read it again as a newcomer and solve its example; misread ⇒ rewrite.
+5. No quotes of what someone said, no decision dates, no personal names or e-mails, no paths carrying a person's name. Words,
    dates and incidents go to `05_CHANGES` and Global Memory.
-5. Use the words of the table below; never "kho" alone — write DW or HS.
-6. Call a thing that has a name in the system (a role, a command, a part, a key) by its English identifier, in every language:
+6. Use the words of the table below; never "kho" alone — write DW or HS.
+7. Call a thing that has a name in the system (a role, a command, a part, a key) by its English identifier, in every language:
    `workspace-manager`, `dept`, `zemory sync`. A name is written whole in one language: never a label half English, half
    Vietnamese for a named thing ("repo con"). The prose around it is plain and professional.
 
@@ -49,10 +53,18 @@ right below, in a plain specification voice, with one fixed word for each thing.
 - Situation: a new law is added after a data-loss incident.
 - ✗ Wrong: the law retells the incident, quotes what the person said with the date, and names the warehouse with a word that
   could also mean HS.
-- ✓ Right: the law states When · Do · Check in both languages and says "fix the table in DW"; the story, the words and the date go
-  to the changelog.
+- ✓ Right: the law's English header states When · Do · Check and says "fix the table in DW", and its `.vi.md` says the same in
+  Vietnamese at the same version; the story, the words and the date go to the changelog.
+- Situation: the harness is needed in Japanese.
+- ✗ Wrong: Japanese text is added under the English inside the header, so every agent read pays for both.
+- ✓ Right: `Rule_Gate_27_HarnessLanguage.ja.md` is written beside the header with the same five sections and seven `Do` steps,
+  `version:` equal to the header's.
 
 ## Check
+- The guard blocks an agent's Read of a translation (`<part>.<code>.md` in HS or in any `docs/agent`) and points at the English
+  header; opening one to edit it takes the one-use flag `.allow-translation`.
+- The HS check reds a header that carries another language's sections, and a translation that lacks a section or has a
+  different number of `Do` steps than its header. A translation whose `version:` is behind its header is named (advisory).
 - A hook blocks, in new lines of a harness doc: a quote of a person, a decision date, an e-mail, a path with a person's name.
 - The same hook blocks the word "kho" alone in new lines of EVERY prose file the repo writes — harness docs, plans, the two
   ledgers, case specs, READMEs (archive and attic excepted): write DW or HS. It passes "kho dữ liệu" and the stockroom
@@ -60,61 +72,7 @@ right below, in a plain specification voice, with one fixed word for each thing.
 - The same hook blocks the hybrid labels "repo con" · "repo cha" in new lines of the same files: name the role (`dept`), or say
   what the repo is in one language. The HS gate counts the same words: an HS file may not get worse than HEAD.
 - Broken Vietnamese (no diacritics) is blocked by `Rule_Gate_31_NoBrokenVietnamese`.
-- A store check reds a law that lacks a language, a section, or has a different number of steps between the two versions.
 - The voice itself is judgment.
-
-## Luật là gì
-Docs harness (luật, khung hiến pháp, slot, skill, `docs/plan/`) viết tiếng Anh trước, bản tiếng Việt ngay dưới, giọng đặc tả rõ
-ràng, mỗi thứ một chữ cố định. Không trích lời ai, không ghi ngày chốt.
-
-## Khi nào áp
-- Viết hoặc sửa bất kỳ docs harness nào.
-- Gọi tên một thứ của harness trong bất kỳ văn bản nào agent đọc.
-
-## Phải làm gì
-1. Viết mỗi luật bằng hai ngôn ngữ trong cùng một file: tiếng Anh trước (agent đọc), tiếng Việt bên dưới (người dùng đọc). Hai
-   bản có cùng các mục và cùng số bước.
-2. Viết luật theo năm phần: Luật là gì · Khi nào áp · Phải làm gì · Ví dụ (✗ sai / ✓ đúng, dùng tên thật, số thật) · Máy kiểm
-   (máy chặn gì, hoặc "không có máy, agent tự giữ"). Câu ngắn; thuật ngữ nội bộ giải thích ở lần đầu.
-3. Trước khi chốt một luật, đọc lại như người mới và tự giải ví dụ; hiểu sai ⇒ viết lại.
-4. Không trích lời ai, không ghi ngày chốt, không tên người hay email, không đường dẫn mang tên người. Lời gốc, ngày và sự cố ghi
-   ở `05_CHANGES` và Global Memory.
-5. Dùng đúng chữ trong bảng dưới; không bao giờ viết "kho" trơn — viết DW hoặc HS.
-6. Thứ đã có tên trong hệ thống (vai, lệnh, phần, khoá) gọi bằng định danh tiếng Anh của nó, ở mọi ngôn ngữ: `workspace-manager`,
-   `dept`, `zemory sync`. Một tên viết trọn một ngôn ngữ: không đặt nhãn nửa Anh nửa Việt cho thứ đã có tên ("repo con"). Văn
-   quanh nó viết rõ ràng, chuyên nghiệp.
-
-| Chữ | Nghĩa |
-|---|---|
-| HS (harness store) | `docs_template/_Store` trong zemory — nơi duy nhất làm luật, khung, slot, structure, skill |
-| DW | kho dữ liệu của vùng |
-| bộ mẫu | thư mục `docs_template/0N_*` ráp từ HS |
-| phần | một thư mục trên HS: luật, khung, slot, structure hoặc skill |
-| luật | phần trong `01_LAW/_Rule`, dùng chung cho mọi repo của bộ mẫu |
-| khung | phần trong `01_LAW/_Cons`, bắt repo khai một loại bất biến trong `Cons.md` |
-| bộ luật · chương | thư mục chia luật (`01_Harness` …) · chia khung (`01_Scope` …) theo chủ đề |
-| sổ | `04_TODO.md` · `05_CHANGES.md` — trí nhớ của repo, không phải harness |
-| tổng quản | repo quyết khung và chuẩn của repo khác (`Struc_Region_Workspace`) |
-| `workspace-manager` · `dept` | vai của repo tổng quản một cụm và của các repo phòng ban nó quản (`role.name` trong structure của chúng) |
-| bộ câu truy vấn · thư viện icon · bảng thuật ngữ | các câu truy vấn có tên · icon của vùng · bảng thuật ngữ nghiệp vụ của vùng |
-| tồn kho · nhập kho · kho hàng | hàng hoá trong kho hàng thật — từ nghiệp vụ, không phải DW |
-
-## Ví dụ
-- Tình huống: thêm một luật mới sau một sự cố mất dữ liệu.
-- ✗ Sai: luật kể lại sự cố, trích lời người nói kèm ngày, và gọi DW bằng một chữ cũng có thể hiểu là HS.
-- ✓ Đúng: luật ghi Khi nào áp · Phải làm gì · Máy kiểm bằng hai ngôn ngữ và ghi "sửa bảng trên DW"; câu chuyện, lời gốc và ngày để
-  ở changelog.
-
-## Máy kiểm
-- Hook chặn, trong các dòng mới của docs harness: lời trích của một người, ngày chốt, email, đường dẫn mang tên người.
-- Cùng hook đó chặn chữ "kho" đứng trơn trong dòng mới của MỌI file văn xuôi repo viết — docs harness, plan, hai sổ, spec của
-  case, README (trừ archive và attic): viết DW hoặc HS. Cho qua "kho dữ liệu" và các từ kho hàng "tồn kho" · "nhập kho" ·
-  "xuất kho" · "kiểm kho" · "kho hàng".
-- Cùng hook đó chặn nhãn ghép "repo con" · "repo cha" trong dòng mới của cùng các file: gọi bằng vai (`dept`), hoặc nói repo đó
-  là gì bằng một ngôn ngữ. Cổng HS đếm cùng các chữ đó: một file HS không được tệ hơn HEAD.
-- Tiếng Việt mất dấu do `Rule_Gate_31_NoBrokenVietnamese` chặn.
-- Kiểm tra của HS báo đỏ luật thiếu một ngôn ngữ, thiếu một mục, hoặc số bước lệch giữa hai bản.
-- Giọng văn là phán đoán.
 
 ## Links · Liên kết
 - Related · Liên quan: `Rule_Gate_31_NoBrokenVietnamese` — Vietnamese with diacritics · tiếng Việt có dấu

@@ -76,6 +76,25 @@ export function ownMainName(dir: string): string {
   return `${basename(dir)}.md`;
 }
 
+/**
+ * A translation of a part's header (plan/33): `<header stem>.<ISO 639-1 code>.md` beside it (`Rule_Gate_27_X.vi.md`). The
+ * English header IS the part - agents read it alone; a translation is for people. Top level of the part folder only.
+ */
+export const TRANSLATION_RE = /^([^/]+)\.([a-z]{2})\.md$/;
+export function isTranslation(rel: string): boolean {
+  return TRANSLATION_RE.test(rel);
+}
+/** The translations a part folder carries: language code → file name. */
+export function translationsOf(dir: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const stem = basename(dir);
+  for (const f of existsSync(dir) ? readdirSync(dir) : []) {
+    const m = TRANSLATION_RE.exec(f);
+    if (m && m[1] === stem) out.set(m[2], f);
+  }
+  return out;
+}
+
 /** The header file of a part folder on disk: its own name, else the key name an older copy has. */
 export function mainPath(dir: string, key: string): string {
   const own = join(dir, ownMainName(dir));
@@ -1355,7 +1374,9 @@ export function unbumpedParts(storeDir = STORE_DIR): string[] {
       }
       if (!head.has(main)) continue; // the part is new since HEAD
       const headVersion = Number((frontMatter(head.get(main) ?? "")?.meta.version as string) || 1);
-      if (hashFiles(head, main) !== hashFiles(readPartFiles(p.dir, main), main) && headVersion >= p.version) {
+      // a translation carries its own `version:` (the header version it follows): editing it alone is no new version of the part
+      const own = (m: Map<string, string>): Map<string, string> => new Map([...m].filter(([k]) => !isTranslation(k)));
+      if (hashFiles(own(head), main) !== hashFiles(own(readPartFiles(p.dir, main)), main) && headVersion >= p.version) {
         out.push(`${shelf}/${p.folder}: content changed since HEAD but version is still v${p.version}`);
       }
     }
