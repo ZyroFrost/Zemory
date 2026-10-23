@@ -43,13 +43,13 @@
     var p=hs.part;
     if(!p){tt.textContent='';body.innerHTML='<div class="muted">'+t('hs.pickPart')+'</div>';return;}
     tt.textContent=hsLabel(p.shelf,p.key);
-    var ck=p.shelf+'|'+p.key;
+    var ck=p.shelf+'|'+p.key+'|'+LANG;
     if(hsPartCache[ck]!=null){body.innerHTML=stdMd(hsPartCache[ck]);return;}
     body.innerHTML='<div class="muted">'+t('hs.loading')+'</div>';
-    zGet('/harness-part?shelf='+encodeURIComponent(p.shelf)+'&folder='+encodeURIComponent(p.key)).then(function(r){
+    zGet('/harness-part?shelf='+encodeURIComponent(p.shelf)+'&folder='+encodeURIComponent(p.key)+'&lang='+encodeURIComponent(LANG)).then(function(r){
       var txt=r&&r.ok&&r.value?r.value.text:null;
       if(txt==null){body.innerHTML='<div class="muted">'+t('hs.partErr')+'</div>';return;}
-      hsPartCache[ck]=txt;if(hs.part&&hs.part.shelf+'|'+hs.part.key===ck)body.innerHTML=stdMd(txt);
+      hsPartCache[ck]=txt;if(hs.part&&hs.part.shelf+'|'+hs.part.key+'|'+LANG===ck)body.innerHTML=stdMd(txt);
     }).catch(function(){body.innerHTML='<div class="muted">'+t('hs.partErr')+'</div>';});
   }
 

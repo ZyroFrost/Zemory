@@ -1,11 +1,11 @@
 ---
 id: Rule_86
 name: law-layers-agree
-version: 1
+version: 2
 kind: action
 code: 01_Harness
 checked: [Rule_Gate_35_OneHome, Rule_Gate_83_HarnessFromStore, Rule_Core_80_SharedChangeImpact]
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree @v1 #1b11568e0084
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree @v2 #74b60a06e05d
 ---
 # Rule_Gate_86_LawLayersAgree — The layers of law never contradict each other, and stay linked
 
@@ -37,33 +37,6 @@ others it is tied to.
 - `conform` and the HS test: every name in `## Links` and `## Implements` is a living part, and both directions match.
 - `conform`: a section of the frame that the repo's `Cons.md` dropped or left with a template mark `<…>` is red.
 - The app shows the same findings (it uses the conform engine).
-
-## Luật là gì
-Một quy định sống ở ba tầng: luật hay khung hiến pháp (HS) nêu nghĩa vụ · `Cons.md` của repo nêu quyết định riêng của repo · skill
-dạy cách thi hành. Tầng dưới không bao giờ nói ngược tầng trên, và mỗi tầng nêu tên các tầng nó gắn với.
-
-## Khi nào áp
-- Viết hay sửa một luật, một khung, một `Cons.md` hay một skill.
-- Thấy hai tầng nói khác nhau.
-
-## Phải làm gì
-1. Thứ bậc: khung hiến pháp và luật > `Cons.md` của repo > skill. `Cons.md` không nới nghĩa vụ của khung; skill không dạy trái luật
-   nó thi hành.
-2. Thấy mâu thuẫn ⇒ sửa tầng dưới theo tầng trên, hoặc đề xuất sửa tầng trên qua HS (`Rule_Gate_83_HarnessFromStore`).
-3. Liên kết viết trong thân: luật hay khung kết thúc bằng `## Links · Liên kết` (`Implements` · `Repo declares` · `Related`); skill
-   nêu các luật nó thi hành ở `## Implements`. Hai chiều khớp nhau.
-4. Sửa một tầng ⇒ soát mọi tầng nối với nó (`zemory impact <phần>` liệt kê).
-
-## Ví dụ
-- Tình huống: luật về bí mật nói giá trị không bao giờ vào git; skill của một phòng ghi "để mật khẩu trong `config.json` cho job
-  định kỳ".
-- ✗ Sai: làm theo skill vì nó cụ thể hơn; mật khẩu lọt vào git.
-- ✓ Đúng: luật thắng; skill được sửa để đọc giá trị từ `data/secrets/`, và việc sửa đi qua HS.
-
-## Máy kiểm
-- `conform` và test của HS: mọi tên trong `## Links` và `## Implements` là phần còn sống, và hai chiều khớp nhau.
-- `conform`: mục của khung mà `Cons.md` của repo bỏ đi hoặc còn dấu mẫu `<…>` thì đỏ.
-- App hiện cùng các phát hiện đó (dùng chung engine conform).
 
 ## Links · Liên kết
 - Implements · Thi hành: `Skill_Harness_Conform` — the check that finds broken links and contradictions · phép kiểm tìm liên kết gãy và mâu thuẫn
