@@ -66,7 +66,6 @@ import { PLATFORMS, platformsInUse, pullableAccountsOf, scanWeb } from "../memor
 import { isExcluded } from "../memory/scope.js";
 import { webProfileDir } from "../memory/connections.js";
 import { jarHasSession } from "../memory/borrowcookies.js";
-import { DEFAULT_BACKUP_POLICY, backupAgeMs, backupStale, rotateBackup } from "../memory/backup-rotate.js";
 import { currentMemoryDb, currentMemoryDir } from "../memory/db.js";
 import type { BrowserSweepResult as OrphanSweepResult } from "../platform/browsersweep.js";
 import { runInWorker } from "./fnworker.js";
@@ -75,7 +74,7 @@ import type { SweepResult as ScratchSweepResult } from "./scratchpad.js";
 import { backgroundChildEnv } from "./childenv.js";
 import type { BrowserSweepResult as ProfileSweepResult } from "../memory/browser-rotate.js";
 import { vectorRemainingInWorker } from "./vecworker.js";
-import { claimDaemonJob, cliHoldsWrite, cliHoldsWriteOn, cliWriteHolder, daemonJobBusy, registerJobYielder, releaseDaemonJob } from "./writegate.js";
+import { claimDaemonJob, cliHoldsWrite, cliWriteHolder, daemonJobBusy, registerJobYielder, releaseDaemonJob } from "./writegate.js";
 import { startSyncJob, type SyncJobStatus, syncJobRunning, watchdogSyncJob } from "./syncjob.js";
 
 // 2026-08-02 — VAI ĐỔI: nạp GM giờ là việc của Stop hook (per-message, <1s, đúng lúc có tin
@@ -92,8 +91,6 @@ const SYNC_EVERY_MS = 30 * 60_000; // check Drive drift every 30 min
 // backlog was last seen EMPTY, back off to the sync cadence instead of paying
 // that scan every 5 minutes (audit 2026-07-21).
 const IDLE_BACKOFF_MS = 30 * 60_000;
-/** Backup tự kiểm hạn (1 bản/ngày) nên nhịp này chỉ là "có cơ hội để hỏi", rẻ như một readdir. */
-const BACKUP_EVERY_MS = 30 * 60_000;
 // Rác nháp lớn dần theo GIỜ chứ không theo phút — 6 tiếng một lượt là đủ dày mà gần như
 // không tốn gì (một lượt `readdir` + `stat`).
 const SCRATCH_EVERY_MS = 6 * 60 * 60_000;
@@ -102,7 +99,6 @@ const REPO_SWEEP_EVERY_MS = 6 * 60 * 60_000;
 
 let maintainTimer: ReturnType<typeof setInterval> | null = null;
 let syncTimer: ReturnType<typeof setInterval> | null = null;
-let backupTimer: ReturnType<typeof setInterval> | null = null;
 let scratchTimer: ReturnType<typeof setInterval> | null = null;
 let repoSweepTimer: ReturnType<typeof setInterval> | null = null;
 let webTimer: ReturnType<typeof setInterval> | null = null;
@@ -120,14 +116,10 @@ let lastVerifyAt = 0;
  * reads a day and the daemon's event loop frozen 59–301 s after every start (12 starts in the log),
  * with /ping, /sync-status and the window all unanswered meanwhile — the "vỏ rỗng" family
  * 02_RULES forbids, and the un-sourced "/ping 12 s cold" number in plan/14 §8. The check now runs
- * in a CHILD (`memory verify`) at start-up, right before each backup (the moment a corrupt store
- * could overwrite a good copy — previously unguarded), and otherwise once a day. Trade-off the user
- * accepted: corruption is noticed within 24 h instead of 30 min, but no good backup is ever
- * overwritten by a bad store. User chốt 2026-09-07.
+ * in a CHILD (`memory verify`) at start-up and otherwise once a day: corruption is noticed within 24 h
+ * instead of 30 min. User chốt 2026-09-07.
  */
 const VERIFY_EVERY_MS = 24 * 60 * 60_000;
-/** A verify this recent is reused instead of re-running (chain end → backup, seconds apart). */
-const VERIFY_FRESH_MS = 5 * 60_000;
 
 /** Pure for the gate: is a verify due? Never verified ⇒ yes (start-up); else once per `everyMs`. */
 export function verifyDue(lastAt: number, now: number, everyMs: number = VERIFY_EVERY_MS): boolean {
@@ -151,7 +143,7 @@ async function verifyStore(): Promise<"ok" | "corrupt" | "unknown"> {
  * Cờ NHƯỜNG: một việc do NGƯỜI bấm cần kho, chuỗi bảo trì phải rút lui.
  *
  * Vì sao cần cờ chứ không chỉ `child.kill()`: token job được giữ cho CẢ chuỗi
- * (scan→embed→digest→backup), nên giết mỗi con đang chạy chỉ làm chuỗi bước sang bước KẾ —
+ * (scan→embed→digest), nên giết mỗi con đang chạy chỉ làm chuỗi bước sang bước KẾ —
  * token vẫn bị giữ, và kẻ bấm nút vẫn bị từ chối. Phải có chỗ cho chuỗi biết đường dừng hẳn.
  */
 let chainAbort = false;
@@ -363,11 +355,6 @@ async function maintainTick(): Promise<void> {
       if (chainAbort) return;
     }
 
-    // 4. backup — đã DỜI sang `backupTick()` (nhịp riêng). Xem chú thích ở đó: gọi từ trong
-    //    chuỗi này làm backup chết theo công tắc `scheduler`.
-    await backupTick("sau chuỗi bảo trì", true);
-    if (chainAbort) return;
-
     // 5. ĐỐI CHIẾU KÊNH — thưa (7 ngày). Xem `reconcileTick`.
     await reconcileTick();
   } finally {
@@ -382,28 +369,6 @@ async function maintainTick(): Promise<void> {
   }
 }
 
-/**
- * 🔴 BACKUP KHÔNG ĐƯỢC TREO VÀO CÔNG TẮC CỦA MỘT TÍNH NĂNG KHÁC.
- *
- * Bản cũ đặt `rotateBackup()` làm bước 4 của `maintainTick`, và `maintainTick` return ngay ở
- * dòng đầu khi `getScheduler()` tắt ⇒ **tắt scheduler là tắt luôn backup**, không một dòng log,
- * không cổng nào thấy. Đó là lý do THẬT của "4 ngày không có bản sao lưu" (08/08 → 12/08) —
- * job không hỏng, nó chỉ không bao giờ được gọi. Cùng họ với lỗi bỏ đói autosync: **một công
- * tắc gánh ba việc**, người bật tưởng mình chỉ đang đổi một thứ.
- *
- * Backup là LƯỚI ĐỠ CUỐI CÙNG của kho (nó đã cứu kho thật ngày 04/08), nên nó phải sống độc
- * lập với mọi tính năng khác. Nhưng vẫn giữ hai ràng buộc cũ, vì cả hai đều có lý do:
- *  · nằm TRONG token job — chép 1,1 GB trong lúc scan/embed đang ghi đúng là kiểu tranh chấp
- *    mà sự cố 2026-08-03 nghi là nguyên nhân;
- *  · fail-open — backup hỏng không được giết thứ đang gọi nó (HP điều 9).
- * `rotateBackup` tự kiểm hạn (một bản/ngày, giữ 5) nên gọi mỗi 30 phút vẫn rẻ: một `readdir`.
- */
-/**
- * Đếm số nhịp backup bị nhường LIÊN TIẾP. Tồn tại vì audit 2026-08-21 đo được: nhánh nhường
- * nằm TRƯỚC `try` nên nó **không nói gì** — 54 nhịp im lặng trong 27 giờ nhìn y như "mọi thứ ổn".
- * Một lần nhường là bình thường; nhường mãi là một kiểu HỎNG, và kiểu hỏng đó phải thấy được.
- */
-let backupYields = 0;
 /**
  * ĐỐI CHIẾU KÊNH — nhịp 7 NGÀY. Vì sao cần bước này, và vì sao đúng con số đó:
  *
@@ -457,64 +422,6 @@ async function reconcileTick(): Promise<void> {
   else log("🔴 đối chiếu kênh: exit " + code + " — HOẶC lệnh trượt, HOẶC phát hiện kênh HỤT TIN. Đọc dòng `reconcile: stderr ·` ngay dưới. Chạy tay: zemory memory vectors-catchup --dry-run");
 }
 
-const BACKUP_YIELD_LOG_EVERY = 8; // ~4 giờ ở nhịp 30 phút — thấy được mà không thành nhiễu
-
-async function backupTick(why: string, fromChain = false): Promise<void> {
-  // `fromChain` is passed EXPLICITLY by the chain-end call. It used to be inferred from
-  // `chainRunning`, which is also true when a TIMER fires while a chain is mid-flight — measured
-  // 2026-09-07: the start-up primer at +60 s "held the token", skipped the blocker check and spawned
-  // a second `memory verify` beside the chain's own (two 3 GB quick_checks at once, `child`
-  // clobbered). A timer tick during a chain must yield like it does for any other writer.
-  const holdsToken = fromChain;
-  if (!holdsToken) {
-    // Nhường theo ĐÚNG KHO mình sắp chép, không phải "có ai đang ghi trong thư mục này".
-    // Trước 2026-08-21 chỗ này gọi `cliHoldsWrite()` — mà khoá là MỘT file cho cả `data/` nên
-    // job re-embed kho SONG SONG (plan 19) giữ khoá 44 giờ đã bỏ đói backup của kho THẬT: hai
-    // file khác nhau, không hề tranh nhau. Xem `writegate.cliHoldsWriteOn`.
-    const target = currentMemoryDb();
-    const blocker = chainRunning ? "maintain chain" : child ? "daemon child" : syncJobRunning() ? "sync job" : cliHoldsWriteOn(target) ? (cliWriteHolder()?.label ?? "CLI") : null;
-    if (blocker) {
-      backupYields++;
-      // Nói ở lượt ĐẦU (để biết vì sao im) rồi định kỳ (để biết nó vẫn đang im).
-      if (backupYields === 1 || backupYields % BACKUP_YIELD_LOG_EVERY === 0) {
-        const age = backupAgeMs(target);
-        log(
-          `backup nhường ${blocker} — lượt thứ ${backupYields} liên tiếp` +
-            (age === null ? " · CHƯA có bản nào" : ` · bản mới nhất ${(age / 3_600_000).toFixed(1)} giờ tuổi`) +
-            (backupStale(target).stale ? " · ⚠ QUÁ HẠN (doctor sẽ báo đỏ)" : ""),
-        );
-      }
-      return;
-    }
-    if (!claimDaemonJob("backup")) return;
-  }
-  try {
-    // Never copy a store that has not been checked recently: a backup of a corrupt file rotates
-    // the last good copy out (keep=3). This is the ONE moment the verify actually protects, and
-    // before 2026-09-07 it was unguarded — the chain's check could be up to 30 minutes stale.
-    // Only when a backup is actually DUE: this tick fires every 30 min but `rotateBackup` writes
-    // once per `everyMs` (a day) — verifying on every tick would be the 137 GB/day back again.
-    const age = backupAgeMs(currentMemoryDb());
-    const backupDue = age === null || age >= DEFAULT_BACKUP_POLICY.everyMs;
-    if (backupDue && Date.now() - lastVerifyAt > VERIFY_FRESH_MS) {
-      const v = await verifyStore();
-      if (v === "corrupt") {
-        log(`⛔ KHO HỎNG — KHÔNG backup (${why}): chép kho hỏng là đè mất bản lùi còn tốt. Chạy \`zemory memory salvage\`.`);
-        return;
-      }
-    }
-    const b = await rotateBackup();
-    if (b.wrote) {
-      log(`backup (${why}) → ${b.outPath} (${b.bytes} byte)${b.pruned.length ? ` · dọn ${b.pruned.length} bản cũ` : ""}`);
-      backupYields = 0;
-    }
-  } catch (e) {
-    log(`backup bỏ qua: ${(e as Error).message}`); // điều 9: hỏng backup KHÔNG được giết ai
-  } finally {
-    if (!holdsToken) releaseDaemonJob();
-  }
-}
-
 /**
  * Dọn thư mục nháp của host (`<temp>/claude/<project>/<session>/scratchpad`).
  *
@@ -524,8 +431,7 @@ async function backupTick(why: string, fromChain = false): Promise<void> {
  * thì t ko nhớ và cũng lâu mới làm"*.
  *
  * KHÔNG nằm trong token job và KHÔNG hỏi công tắc nào: nó không đụng kho, không tranh ghi với ai
- * (chỉ đọc/xoá trong thư mục tạm của host), nên treo nó vào công tắc tính năng khác là tái diễn
- * đúng lỗi đã làm backup chết lặng 4 ngày. Fail-open như mọi lớp phụ (HP điều 9).
+ * (chỉ đọc/xoá trong thư mục tạm của host), nên không treo nó vào công tắc của tính năng khác. Fail-open như mọi lớp phụ (HP điều 9).
  */
 /** Periodic repo sweep: conform · validate · todo verify over every registered repo, in a worker; report only. */
 async function repoSweepTick(): Promise<void> {
@@ -585,7 +491,7 @@ async function scratchTick(): Promise<void> {
   try {
     // Chặn đúng thứ có thể ĐANG SỞ HỮU một trình duyệt: lượt kéo web của chính daemon
     // (`webRunning`), hoặc một job web/scan đang giữ token (kể cả do CLI ngoài chạy). Nhúng vector
-    // hay backup KHÔNG liên quan — chặn theo chúng là biến vòng dọn thành không bao giờ tới lượt.
+    // KHÔNG liên quan — chặn theo chúng là biến vòng dọn thành không bao giờ tới lượt.
     const job = daemonJobBusy();
     const busy = webRunning || job === "web-pull" || job === "scan" || cliHoldsWrite();
     const orphans = await runInWorker<OrphanSweepResult>("platform/browsersweep.js", "sweepOrphanBrowsers", [{ profileRoot: join(currentMemoryDir(), "browser"), busy }]);
@@ -1043,7 +949,7 @@ function onSyncOutcome(s: SyncJobStatus): void {
 
 /** Start the background loops. Idempotent — a second call is a no-op. */
 export function startScheduler(): void {
-  if (maintainTimer || syncTimer || backupTimer) return;
+  if (maintainTimer || syncTimer) return;
   // Khai với write-gate rằng chuỗi bảo trì NHƯỜNG được, để nút "Đồng bộ ngay" cắt vào giữa
   // một lượt embed dài thay vì bị từ chối. Đăng ký qua write-gate (không gọi thẳng) vì
   // `scheduler → syncjob` đã có sẵn, chiều ngược lại là import vòng tròn.
@@ -1054,9 +960,6 @@ export function startScheduler(): void {
   // không phải chờ hết chu kỳ đầu.
   webTimer = setInterval(() => void webTick(), WEB_TICK_EVERY_MS);
   setTimeout(() => void webTick(), 3 * 60_000).unref?.();
-  // Backup có ĐỒNG HỒ RIÊNG, KHÔNG hỏi `getScheduler()` — xem chú thích ở `backupTick()`.
-  // Lệch pha 1/4 chu kỳ để không tới hạn cùng lúc với hai đồng hồ kia (cùng bài học bỏ đói).
-  backupTimer = setInterval(() => void backupTick("nhịp riêng"), BACKUP_EVERY_MS);
   scratchTimer = setInterval(() => void scratchTick(), SCRATCH_EVERY_MS);
   setTimeout(() => void scratchTick(), 90_000).unref?.(); // mồi một lượt sau khi daemon ổn định
   // Repo sweep (plan/28 §0q): its own clock like the scratch sweep — it reads, never writes a store, so it hangs on no
@@ -1071,19 +974,13 @@ export function startScheduler(): void {
   // trong config — restart không làm đồng hồ về 0. Tới hạn mà máy đang bận (scan/embed) thì `syncTick` tự hẹn lại 3′.
   syncTimer = setInterval(syncGate, 60_000);
   void SYNC_EVERY_MS;
-  const backupStagger = setTimeout(() => void backupTick("nhịp riêng"), BACKUP_EVERY_MS / 4);
-  backupStagger.unref?.();
   // The HTTP server keeps the process alive; don't let these timers do it.
   maintainTimer.unref?.();
   syncTimer.unref?.();
-  backupTimer.unref?.();
   scratchTimer?.unref?.();
   // Kick the chain shortly after boot, then on the interval.
   setTimeout(() => void maintainTick(), 15_000).unref?.();
-  // Backup được mồi RIÊNG — chuỗi trên có thể không bao giờ chạy (scheduler tắt), mà một máy
-  // vừa khởi động lại sau nhiều ngày thì đó đúng là lúc cần hỏi "bản gần nhất cũ chưa?".
-  setTimeout(() => void backupTick("mồi sau khởi động"), 60_000).unref?.();
-  log(`started (maintain ${getScheduler() ? "on" : "off"}, auto-sync ${getAutosync() ? "on" : "off"}, backup luôn bật)`);
+  log(`started (maintain ${getScheduler() ? "on" : "off"}, auto-sync ${getAutosync() ? "on" : "off"})`);
   // 🔴 Lượt trước chết mà không kịp báo thì PHẢI nói ra ở đây — đây là chỗ DUY NHẤT còn nói được.
   const note = interruptedRunNote(getAutosyncRunAt(), Date.now());
   if (note) {
@@ -1113,11 +1010,10 @@ export function interruptedRunNote(runAt: number | null, now: number): string | 
 export function stopScheduler(): void {
   if (maintainTimer) clearInterval(maintainTimer);
   if (syncTimer) clearInterval(syncTimer);
-  if (backupTimer) clearInterval(backupTimer);
   if (scratchTimer) clearInterval(scratchTimer);
   if (webTimer) clearInterval(webTimer);
   if (repoSweepTimer) clearInterval(repoSweepTimer);
-  maintainTimer = syncTimer = backupTimer = scratchTimer = webTimer = repoSweepTimer = null;
+  maintainTimer = syncTimer = scratchTimer = webTimer = repoSweepTimer = null;
   chainRunning = false;
   if (child) {
     try {

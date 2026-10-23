@@ -41,14 +41,8 @@ services:
       ZEMORY_SELF: /host/zemory
       ZEMORY_PATH_MAP: "${ZEMORY_SELF_NATIVE:-}=>/host/zemory;${HOST_HOME_NATIVE:-${HOST_HOME}}/.claude=>/home/node/.claude;${HOST_WORKSPACE_NATIVE:-${HOST_WORKSPACE}}=>/host/workspace;${HOST_DRIVE_NATIVE:-}=>/host/drive"
     volumes:
+      # everything zemory keeps lives here, in one place on the Linux disk (plan/30 §3k): the GM, the model, the machine's data
       - ${ZEMORY_STORE:?set ZEMORY_STORE to /home/<user>/zemory}:/home/node/zemory
-      # machine data that need not sit on the store's disk (HP 18: the GM folder holds the db alone). Unset = inside the
-      # store, as before; a machine whose Linux disk is capped names host folders here. The models folder can be a native
-      # install's own data/models, so the machine keeps ONE copy of the model weights.
-      - ${ZEMORY_MODELS_DIR:-${ZEMORY_STORE}/data/models}:/home/node/zemory/data/models
-      - ${ZEMORY_BACKUPS_DIR:-${ZEMORY_STORE}/data/backups}:/home/node/zemory/data/backups
-      # the channel's local blocks: leaves the GM folder for good with plan/24 §13; until then a capped disk mounts it from the host
-      - ${ZEMORY_CHANNEL_DIR:-${ZEMORY_STORE}/global-memory/channel}:/home/node/zemory/global-memory/channel
       - ${HOST_HOME:?set HOST_HOME to your home folder}/.claude:/home/node/.claude:ro
       # the repos: project roots are stored as host paths and looked up here (util/hostpath.ts). Writable: `zemory sync`,
       # `init`, `archive`, `paths fix` write into a repo here as the native CLI does; the agent's own edits are guarded

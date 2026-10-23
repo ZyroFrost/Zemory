@@ -106,10 +106,8 @@ test("compose publishes the sign-in view on the host's loopback only and gives C
     const prunes = [...s.matchAll(/docker builder prune -af/g)].map((m) => m.index);
     assert.ok(prunes.some((i) => i < build) && prunes.some((i) => i > build), `${inst}: prune before and after the build`);
   }
-  // HP 18: a capped machine mounts its models, backups and channel blocks from host folders; unset = inside the store
-  for (const v of ["ZEMORY_MODELS_DIR", "ZEMORY_BACKUPS_DIR", "ZEMORY_CHANNEL_DIR"]) {
-    assert.match(c, new RegExp(`\\$\\{${v}:-\\$\\{ZEMORY_STORE\\}/`), v);
-  }
+  // NEGATIVE (plan/30 §3k): one place - nothing of the store is mounted from a second folder beside it
+  assert.doesNotMatch(c, /:\/home\/node\/zemory\//, "a part of the store mounted from elsewhere splits it across two places");
   assert.match(read("../../Dockerfile"), /git config --system --add safe\.directory '\*'/);
   // the p2p channel listens where the native daemon does (getP2pPort's default)
   assert.match(c, /"\$\{ZEMORY_P2P_PORT:-21038\}:21038"/);

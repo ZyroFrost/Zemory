@@ -14,25 +14,15 @@ import { currentMemoryDb, currentMemoryDir } from "../memory/db.js";
 const HOLD_MS = 5 * 60_000; // a CLI hold self-expires after 5 min
 
 let holdUntil = 0;
-/**
- * KHO mà CLI vừa báo là nó sắp ghi (nếu CLI có nói). Thêm 2026-08-21 sau khi đo được bản vá
- * "khoá mang danh tính kho" chỉ ăn MỘT NỬA: khoá FILE đã khai kho, nhưng cờ này thì không, nên
- * `backupTick` vẫn nhường **24 lượt liên tiếp** cho một job đang ghi kho KHÁC (log đã phơi ra —
- * và đó đúng là công dụng của việc thôi im lặng). `undefined` = CLI đời cũ không nói ⇒ coi như
- * xung đột với mọi kho (an toàn).
- */
-let holdDb: string | undefined;
 
-/** Called by the daemon when a CLI announces a write. `db` = kho nó sắp ghi, nếu biết. */
-export function acquireCliWrite(db?: string): void {
+/** Called by the daemon when a CLI announces a write. */
+export function acquireCliWrite(): void {
   holdUntil = Date.now() + HOLD_MS;
-  holdDb = db;
 }
 
 /** Called by the daemon when the CLI finishes (or gives up). */
 export function releaseCliWrite(): void {
   holdUntil = 0;
-  holdDb = undefined;
 }
 
 /**
@@ -61,27 +51,12 @@ interface CliLock {
   pid: number;
   label: string;
   at: number;
-  /**
-   * KHO mà tiến trình này đang ghi (đường tuyệt đối). Thêm 2026-08-21 sau khi audit đo được:
-   * khoá là MỘT file cho cả thư mục `data/`, nên một job ghi kho SONG SONG
-   * (`global_memory.bgem3.db`, plan 19) làm mọi việc ghi của kho THẬT phải nhường — kể cả
-   * `backupTick`, thứ chỉ ĐỌC kho thật. Hậu quả đo được: 27,0 giờ không có bản sao lưu,
-   * 1.946 tin nằm đúng một bản, và không một dòng log nào.
-   * Khoá đời cũ KHÔNG có trường này ⇒ đọc là "không biết kho nào" và bị coi là XUNG ĐỘT
-   * (thà chờ hơn là chép trong lúc ai đó ghi) — tự lành ngay khi tiến trình ghi kế tiếp
-   * chạy mã mới.
-   */
+  /** The db file this process writes (absolute path) — shown by the status tool; an older lock has none. */
   db?: string;
 }
 
 function cliLockPath(): string {
   return join(currentMemoryDir(), "cli-write.lock");
-}
-
-/** So hai đường kho — Windows không phân biệt hoa/thường, và `/` lẫn `\` cùng chỉ một chỗ. */
-function sameStore(a: string, b: string): boolean {
-  const norm = (p: string): string => p.replace(/\\/g, "/").toLowerCase();
-  return norm(a) === norm(b);
 }
 
 /** Tiến trình còn sống không. Không có quyền hỏi ⇒ coi là CÒN (thà chờ hơn là ghi đè). */
@@ -106,31 +81,6 @@ export function cliWriteHolder(): CliLock | null {
   } catch {
     return null; // không có file = rảnh
   }
-}
-
-/**
- * Có kẻ nào đang ghi ĐÚNG kho này không (thay cho `cliHoldsWrite()` khi người gọi chỉ quan tâm
- * MỘT kho — vd `backupTick` chép `global_memory.db`).
- *
- * Ba nhánh, và nhánh giữa mới là lý do hàm này tồn tại:
- *  · chủ khoá ghi **cùng** kho ⇒ XUNG ĐỘT (nhường, như cũ);
- *  · chủ khoá ghi kho **KHÁC** ⇒ **KHÔNG xung đột** — trước đây vẫn bị coi là xung đột và đó
- *    chính là đường bỏ đói backup 44 giờ của đợt plan 19;
- *  · khoá đời cũ không khai kho ⇒ coi là xung đột (an toàn, tự lành khi mã mới chạy).
- *
- * THỨ TỰ XÉT có chủ đích: khoá FILE trước, cờ trong bộ nhớ (`holdUntil`) sau. Lý do đo được
- * 2026-08-22: bản vá đầu chỉ dạy khoá FILE khai kho, còn cờ bộ nhớ thì không — mà `holdUntil`
- * lại được xét TRƯỚC, nên nó phủ quyết ngược và backup vẫn nhường **24 lượt liên tiếp** cho job
- * ghi kho KHÁC. Nay cờ cũng mang `holdDb` (CLI khai qua `/gate-acquire?db=`), và khoá file —
- * nguồn có danh tính chắc nhất — được quyền quyết trước.
- */
-export function cliHoldsWriteOn(dbPath: string): boolean {
-  // Khoá FILE xét TRƯỚC vì nó là nguồn có danh tính chắc chắn nhất (chủ khoá tự ghi đường kho
-  // của chính nó). Có khoá thì nó QUYẾT — không để cờ trong bộ nhớ (thô hơn) phủ quyết ngược.
-  const held = cliWriteHolder();
-  if (held) return held.db ? sameStore(held.db, dbPath) : true;
-  if (Date.now() < holdUntil) return holdDb ? sameStore(holdDb, dbPath) : true;
-  return false;
 }
 
 export interface CliLockResult {
