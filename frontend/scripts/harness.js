@@ -1,6 +1,6 @@
 // The Harness screen (docs/plan/31): the sets as they are on disk, and building a set from the parts of HS.
 // A set is its folder beside HS (no register); saving a draft assembles that folder. Global scope, load order in app.html.
-  var HS_SHELVES=[['rules','hs.shRules'],['constitution','hs.shCons'],['structure','hs.shStruc'],['skills','hs.shSkills']];
+  var HS_SHELVES=[['rules','hs.shRules'],['constitution','hs.shCons'],['structure','hs.shStruc'],['slots','hs.shSlots'],['skills','hs.shSkills']];
   var hs={sets:null,cat:null,set:null,part:null,draft:null,report:null,q:'',timer:null};
   // the key a set lists a part by: laws by id, skills and structures by folder
   function hsKey(shelf,p){return shelf==='rules'||shelf==='constitution'?p.id:p.folder;}
@@ -56,11 +56,11 @@
   // ── Build tab ─────────────────────────────────────────────────────────────
   function hsNewDraft(from){
     var hosts=(hs.cat&&hs.cat.hosts)||[],tiers=(hs.cat&&hs.cat.tiers)||[];
-    if(!from)return {host:hosts[0]||'',tier:tiers[0]||'',title:'',structure:'',rules:[],constitution:[],skills:[]};
+    if(!from)return {host:hosts[0]||'',tier:tiers[0]||'',title:'',structure:'',rules:[],constitution:[],skills:[],slots:[]};
     // NN_<host>_<title>_<tier>: the title is what sits between host and tier
     var bits=from.name.split('_');
     return {editing:from.name,host:from.host,tier:from.tier,title:bits.slice(2,-1).join('_'),structure:from.structure,
-      rules:(from.rules||[]).slice(),constitution:(from.constitution||[]).slice(),skills:(from.skills||[]).slice()};
+      rules:(from.rules||[]).slice(),constitution:(from.constitution||[]).slice(),skills:(from.skills||[]).slice(),slots:(from.slots||[]).slice()};
   }
   function hsHas(shelf,key){var d=hs.draft;return !!d&&(shelf==='structure'?d.structure===key:(d[shelf]||[]).indexOf(key)>=0);}
   function hsAdd(shelf,key){
@@ -77,14 +77,16 @@
     var box=zid('hsCatalog');if(!box)return;
     if(!hs.cat){box.innerHTML='<div class="muted">'+t('hs.noCatalog')+'</div>';return;}
     var q=hs.q.toLowerCase();
+    // a slot the chosen frame already lists is there anyway: marked, and nothing to add
+    var frame=hs.draft&&hsFind('structure',hs.draft.structure),framed=(frame&&frame.slots)||[];
     box.innerHTML=HS_SHELVES.map(function(sh){
       var rows=(hs.cat[sh[0]]||[]).filter(function(p){return !q||((p.id||'')+' '+(p.name||'')+' '+(p.folder||'')).toLowerCase().indexOf(q)>=0;});
       if(!rows.length)return '';
       return '<div class="section-t">'+stdEsc(t(sh[1]))+'</div>'+rows.map(function(p){
-        var k=hsKey(sh[0],p),inDraft=hsHas(sh[0],k);
-        return '<div class="ti ind hs-item'+(inDraft?' on':'')+'" draggable="true" data-hs-shelf="'+sh[0]+'" data-hs-key="'+stdEsc(k)+'" title="'+stdEsc(p.folder)+'">'
+        var k=hsKey(sh[0],p),inFrame=sh[0]==='slots'&&framed.indexOf(k)>=0,taken=inFrame||hsHas(sh[0],k);
+        return '<div class="ti ind hs-item'+(taken?' on':'')+'" draggable="'+(inFrame?'false':'true')+'" data-hs-shelf="'+sh[0]+'" data-hs-key="'+stdEsc(k)+'" title="'+stdEsc(inFrame?t('hs.inFrame'):p.folder)+'">'
           +'<span class="hs-nm">'+stdEsc(p.name||p.folder)+'</span>'
-          +(inDraft?'':'<button class="btn xs" data-act="hs-add" data-hs-shelf="'+sh[0]+'" data-hs-key="'+stdEsc(k)+'" title="'+stdEsc(t('hs.add'))+'" aria-label="'+stdEsc(t('hs.add'))+'">+</button>')+'</div>';
+          +(taken?'':'<button class="btn xs" data-act="hs-add" data-hs-shelf="'+sh[0]+'" data-hs-key="'+stdEsc(k)+'" title="'+stdEsc(t('hs.add'))+'" aria-label="'+stdEsc(t('hs.add'))+'">+</button>')+'</div>';
       }).join('');
     }).join('')||'<div class="muted">'+t('hs.noMatch')+'</div>';
   }

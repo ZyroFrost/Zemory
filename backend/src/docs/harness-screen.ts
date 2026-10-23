@@ -8,9 +8,9 @@ import { harnessPathsAt } from "../core/config.js";
 import { HOST_KIND, parseSetName, SHELF, TIER } from "./harness-names.js";
 import { assembleSet } from "./kit-apply.js";
 import { partLinks } from "./law-links.js";
-import { frontMatter, hostSkillOf, type Kit, kitCluster, kitParts, leafOf, listParts, listStructures, mainOf, readKits, setDir, STORE_DIR, type Part } from "./store.js";
+import { frontMatter, hostSkillOf, type Kit, kitCluster, kitParts, leafOf, listParts, listStructures, mainOf, readKits, setDir, SLOT_LAYER, STORE_DIR, structureSlotNames, type Part } from "./store.js";
 
-export type ShelfKey = "rules" | "constitution" | "structure" | "skills";
+export type ShelfKey = "rules" | "constitution" | "structure" | "slots" | "skills";
 
 export interface CatalogPart {
   id: string;
@@ -20,6 +20,8 @@ export interface CatalogPart {
   kind?: string;
   /** the clusters the part is for (empty = every cluster): a set whose frame is of another cluster drops it */
   applies?: string[];
+  /** a frame only: the slots it lists, so the builder marks them as already there */
+  slots?: string[];
 }
 
 export interface SetView {
@@ -31,6 +33,8 @@ export interface SetView {
   rules: string[];
   constitution: string[];
   skills: string[];
+  /** custom slots on top of the frame's (plan/31 §1b) */
+  slots: string[];
 }
 
 export interface Draft {
@@ -44,6 +48,8 @@ export interface Draft {
   rules: string[];
   constitution: string[];
   skills: string[];
+  /** custom slots added on top of the frame's slots, by bare name (plan/31 §1b) */
+  slots: string[];
 }
 
 const view = (p: Part): CatalogPart => ({
@@ -52,7 +58,7 @@ const view = (p: Part): CatalogPart => ({
 
 /** Every set beside HS, in number order. */
 export function listSets(storeDir = STORE_DIR): SetView[] {
-  return readKits(storeDir).map((k) => ({ name: k.name, no: k.no, host: k.host, tier: k.tier, structure: k.structure, rules: k.rules, constitution: k.constitution, skills: k.skills }));
+  return readKits(storeDir).map((k) => ({ name: k.name, no: k.no, host: k.host, tier: k.tier, structure: k.structure, rules: k.rules, constitution: k.constitution, skills: k.skills, slots: k.slots ?? [] }));
 }
 
 /** The parts of HS a set can be built from, by shelf. */
@@ -61,7 +67,11 @@ export function storeCatalog(storeDir = STORE_DIR): Record<ShelfKey, CatalogPart
     rules: listParts(storeDir, SHELF.rules).map(view),
     constitution: listParts(storeDir, SHELF.constitution).map(view),
     // a set is built on a REPO frame; a drive or region frame (`scope: disk|region`) lays out folders above repos
-    structure: listStructures(storeDir).filter((s) => !s.meta.scope).map(view),
+    structure: listStructures(storeDir).filter((s) => !s.meta.scope).map((s) => ({ ...view(s), slots: structureSlotNames(s) })),
+    // slots a set may add on top of its frame: repo-level slots only (a `scope: layout` slot lays out a drive), by bare name
+    slots: listParts(storeDir, SHELF.structure)
+      .filter((p) => p.folder.startsWith(`${SLOT_LAYER}/`) && !p.meta.scope)
+      .map((p) => ({ ...view(p), folder: leafOf(p.folder) })),
     skills: listParts(storeDir, SHELF.skills).map(view),
   };
 }
@@ -75,13 +85,14 @@ const SHELF_OF: Record<ShelfKey, (typeof SHELF)[keyof typeof SHELF]> = {
   rules: SHELF.rules,
   constitution: SHELF.constitution,
   structure: SHELF.structure,
+  slots: SHELF.structure,
   skills: SHELF.skills,
 };
 
 /** The header file of one part of HS, by shelf and folder; null when there is no such part. */
 export function partText(shelf: ShelfKey, folder: string, storeDir = STORE_DIR): { folder: string; text: string } | null {
   const parts = shelf === "structure" ? listStructures(storeDir) : listParts(storeDir, SHELF_OF[shelf]);
-  const p = parts.find((x) => x.folder === folder || x.id === folder);
+  const p = parts.find((x) => x.folder === folder || x.id === folder || (shelf === "slots" && leafOf(x.folder) === folder));
   if (!p) return null;
   for (const f of [join(p.dir, `${leafOf(p.folder)}.md`), join(p.dir, mainOf(p))]) {
     if (existsSync(f)) return { folder: p.folder, text: readFileSync(f, "utf8") };
@@ -112,7 +123,7 @@ export function draftName(d: Draft, storeDir = STORE_DIR, sets = setNames(storeD
 
 /** One thing wrong with a draft: a code the cockpit words in its own language, and the parts it names. */
 export interface Problem {
-  code: "host" | "tier" | "name" | "noSet" | "taken" | "structure" | "unknown" | "twice" | "link" | "applies";
+  code: "host" | "tier" | "name" | "noSet" | "taken" | "structure" | "unknown" | "twice" | "link" | "applies" | "inFrame";
   a?: string;
   b?: string;
 }
@@ -128,6 +139,7 @@ const PROBLEM_TEXT: Record<Problem["code"], (p: Problem) => string> = {
   twice: (p) => `a ${p.a} part is listed twice`,
   link: (p) => `${p.a} implements ${p.b}, which this set does not carry`,
   applies: (p) => `${p.a} applies to other clusters, not to ${p.b}: assembly would leave it out`,
+  inFrame: (p) => `${p.a} is already a slot of ${p.b}: a custom slot only adds what the frame does not have`,
 };
 
 /** A draft as it came over the wire, with every field the type it must be. */
@@ -138,7 +150,7 @@ export function normalDraft(d: unknown): Draft {
   return {
     ...(str(o.editing) ? { editing: str(o.editing) } : {}),
     host: str(o.host), tier: str(o.tier), title: str(o.title), structure: str(o.structure),
-    rules: arr(o.rules), constitution: arr(o.constitution), skills: arr(o.skills),
+    rules: arr(o.rules), constitution: arr(o.constitution), skills: arr(o.skills), slots: arr(o.slots),
   };
 }
 
@@ -157,10 +169,16 @@ export function draftProblems(d: Draft, storeDir = STORE_DIR): Problem[] {
   const cat = storeCatalog(storeDir);
   if (!cat.structure.some((s) => s.folder === d.structure)) out.push({ code: "structure" });
   const known = (shelf: ShelfKey, key: "id" | "folder") => new Set(cat[shelf].map((p) => p[key]));
-  for (const [shelf, list, key] of [["rules", d.rules, "id"], ["constitution", d.constitution, "id"], ["skills", d.skills, "folder"]] as const) {
+  for (const [shelf, list, key] of [["rules", d.rules, "id"], ["constitution", d.constitution, "id"], ["slots", d.slots, "folder"], ["skills", d.skills, "folder"]] as const) {
     const ok = known(shelf, key);
     for (const x of list) if (!ok.has(x)) out.push({ code: "unknown", a: x });
     if (new Set(list).size !== list.length) out.push({ code: "twice", a: shelf });
+  }
+  // a custom slot only ADDS: one the frame already lists is no custom slot (it would change nothing, and reads as if it did)
+  const frame = listStructures(storeDir).find((s) => s.folder === d.structure);
+  if (frame) {
+    const framed = new Set(structureSlotNames(frame));
+    for (const sl of d.slots) if (framed.has(sl)) out.push({ code: "inFrame", a: sl, b: d.structure });
   }
   // a part whose `applies` leaves out the cluster of the chosen frame is dropped by assembly (kitParts) without a word:
   // say it here, before the user saves a set that silently lacks it
@@ -187,7 +205,7 @@ export function draftProblems(d: Draft, storeDir = STORE_DIR): Problem[] {
 
 /** What is wrong with a draft, one line each; empty = it can be saved. */
 export function checkDraft(d: Draft, storeDir = STORE_DIR): string[] {
-  return draftProblems(d, storeDir).map((p) => PROBLEM_TEXT[p.code](p));
+  return draftProblems(normalDraft(d), storeDir).map((p) => PROBLEM_TEXT[p.code](p));
 }
 
 /** The builder's live check: the folder name the draft saves to and what stops it. */
@@ -218,7 +236,7 @@ function kitOf(d: Draft, name: string): Kit | null {
   if (!n) return null;
   return {
     no: n.nn, name, legacy: [], status: "built", host: n.host, structure: d.structure, tier: n.tier as Kit["tier"],
-    requires: [], constitution: d.constitution, rules: d.rules, skills: d.skills, tools: [],
+    requires: [], constitution: d.constitution, rules: d.rules, skills: d.skills, tools: [], ...(d.slots.length ? { slots: d.slots } : {}),
   };
 }
 
@@ -249,6 +267,14 @@ function dropLeftParts(name: string, kit: Kit, storeDir: string): number {
     [SHELF.skills]: new Set(kit.skills),
   };
   let n = 0;
+  // a custom slot taken out of the draft leaves the set folder; the frame's own slots are never touched here
+  const frame = listStructures(hp.agent)[0];
+  const keepSlots = new Set([...(frame ? structureSlotNames(frame) : []), ...(kit.slots ?? [])]);
+  for (const p of listParts(hp.agent, SHELF.structure)) {
+    if (!p.from || !p.folder.startsWith(`${SLOT_LAYER}/`) || keepSlots.has(leafOf(p.folder))) continue;
+    rmSync(p.dir, { recursive: true, force: true });
+    n++;
+  }
   for (const shelf of [SHELF.rules, SHELF.constitution, SHELF.skills] as const) {
     for (const p of listParts(hp.agent, shelf)) {
       if (!p.from || keep[shelf].has(shelf === SHELF.skills ? p.folder : p.id)) continue;

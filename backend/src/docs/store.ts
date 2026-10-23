@@ -629,6 +629,11 @@ export interface Kit {
   rules: string[];
   skills: string[];
   tools: string[];
+  /**
+   * Custom slots (plan/31 §1b): slots of HS added on top of the ones the structure lists, by bare name
+   * (`Docs_200_Notes`). Only ever ADDED - a frame slot is never removed or replaced through this.
+   */
+  slots?: string[];
 }
 
 /** The cluster of a kit's structure (`Struc_Repo_App` → `App`): what a rule's `applies` is matched against. */
@@ -650,6 +655,12 @@ export function readKits(storeDir = STORE_DIR): Kit[] {
     const n = parseSetName(e.name);
     if (!n) continue;
     const agent = join(base, e.name, "docs", "agent");
+    // a set's custom slots are the slot copies it carries that its own structure does not list (no register: the folder says)
+    const struc = listStructures(agent)[0];
+    const listed = new Set(struc ? structureSlotNames(struc).map((n) => partKey("", n)) : []);
+    const custom = listParts(agent, SHELF.structure)
+      .filter((p) => p.folder.startsWith(`${SLOT_LAYER}/`) && !listed.has(p.key))
+      .map((p) => leafOf(p.folder));
     out.push({
       no: n.nn,
       name: e.name,
@@ -663,6 +674,7 @@ export function readKits(storeDir = STORE_DIR): Kit[] {
       rules: listParts(agent, SHELF.rules).map((p) => p.id),
       skills: listParts(agent, SHELF.skills).map((p) => p.folder),
       tools: [],
+      ...(custom.length ? { slots: custom } : {}),
     });
   }
   return out.sort((a, b) => a.no.localeCompare(b.no));
@@ -829,7 +841,18 @@ export function kitParts(kit: Kit, storeDir = STORE_DIR): Part[] {
   const cluster = kitCluster(kit);
   const fits = (p: Part): boolean => p.applies.length === 0 || p.applies.includes(cluster);
   const struc = kitStructure(kit, storeDir);
-  const slots = struc ? structureSlots(struc, listParts(storeDir, SHELF.structure)).slots : [];
+  const allSlots = listParts(storeDir, SHELF.structure);
+  const frameSlots = struc ? structureSlots(struc, allSlots).slots : [];
+  // custom slots come after the frame's, each once; a name that is no slot of HS is left out (the draft check names it)
+  const have = new Set(frameSlots.map((s) => s.key));
+  const slots = [...frameSlots];
+  for (const n of kit.slots ?? []) {
+    const s = allSlots.find((x) => x.key === partKey("", n));
+    if (s && !have.has(s.key)) {
+      have.add(s.key);
+      slots.push(s);
+    }
+  }
   return [
     ...pick(listParts(storeDir, SHELF.constitution), kit.constitution, (p) => p.id).filter(fits),
     ...pick(listParts(storeDir, SHELF.rules), kit.rules, (p) => p.id).filter(fits),
