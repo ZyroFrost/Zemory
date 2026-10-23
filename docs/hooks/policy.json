@@ -6,6 +6,7 @@
     "share",
     "attic",
     "external",
+    "global-memory",
     "docs/agent/01_CONSTITUTION.md",
     "docs/agent",
     "docs/plan",

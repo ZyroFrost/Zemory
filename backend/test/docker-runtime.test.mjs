@@ -99,8 +99,16 @@ test("compose publishes the sign-in view on the host's loopback only and gives C
   assert.match(read("../src/docs/store.ts"), /process\.env\.ZEMORY_SELF\?\.trim\(\)/);
   for (const inst of ["../scripts/install-docker.ps1", "../scripts/install-docker.sh"]) {
     assert.match(read(inst), /ZEMORY_SELF_NATIVE=/, inst);
-    // a rebuild leaves build cache + an untagged image: 24.6 GB in a day (2026-10-22) - the installers prune after building
-    assert.match(read(inst), /docker builder prune -f --filter until=24h/, inst);
+    // a rebuild leaves build cache + an untagged image: 24.6 GB in a day (2026-10-22), and a rebuild on a nearly full
+    // drive filled it (2026-10-23) - the installers drop the old cache BEFORE the build and again after it
+    const s = read(inst);
+    const build = s.indexOf("docker compose up -d --build");
+    const prunes = [...s.matchAll(/docker builder prune -af/g)].map((m) => m.index);
+    assert.ok(prunes.some((i) => i < build) && prunes.some((i) => i > build), `${inst}: prune before and after the build`);
+  }
+  // HP 18: a capped machine mounts its models, backups and channel blocks from host folders; unset = inside the store
+  for (const v of ["ZEMORY_MODELS_DIR", "ZEMORY_BACKUPS_DIR", "ZEMORY_CHANNEL_DIR"]) {
+    assert.match(c, new RegExp(`\\$\\{${v}:-\\$\\{ZEMORY_STORE\\}/`), v);
   }
   assert.match(read("../../Dockerfile"), /git config --system --add safe\.directory '\*'/);
   // the p2p channel listens where the native daemon does (getP2pPort's default)

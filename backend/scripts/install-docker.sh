@@ -49,10 +49,13 @@ if curl -fsS -m 3 http://127.0.0.1:4444/ping 2>/dev/null | grep -q '"runtime":"n
 fi
 
 say "building and starting the container (the first build takes a while)"
-(cd "$DIR" && docker compose up -d --build)
 # every rebuild leaves build cache and an untagged old image behind (24.6 GB after a day of rebuilds, measured
-# 2026-10-22): keep a day of cache, drop the rest
-docker builder prune -f --filter until=24h >/dev/null || true
+# 2026-10-22; a rebuild on a nearly full drive filled it on 2026-10-23, and the prune after it could no longer run):
+# the old cache goes BEFORE the build, so the peak is one build, and again after it
+docker builder prune -af >/dev/null || true
+docker image prune -f >/dev/null || true
+(cd "$DIR" && docker compose up -d --build)
+docker builder prune -af >/dev/null || true
 docker image prune -f >/dev/null || true
 i=0
 until curl -fsS -m 3 http://127.0.0.1:4444/ping 2>/dev/null | grep -q '"runtime":"docker"'; do
