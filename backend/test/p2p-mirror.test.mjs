@@ -40,7 +40,6 @@ function makeMachine(t, name, shareSecret) {
   const repoRoot = join(base, "repo");
   const storeRoot = join(base, "store");
   for (const d of ["docs", "docs_visual", "attic"]) mkdirSync(join(repoRoot, d), { recursive: true });
-  mkdirSync(join(storeRoot, "files", "images", "2026-09"), { recursive: true });
   const channelDir = join(base, "channel");
   mkdirSync(channelDir, { recursive: true });
   const keyPath = join(base, "share.key");
@@ -71,14 +70,14 @@ function makeMachine(t, name, shareSecret) {
 }
 
 const write = (m, area, rel, body) => {
-  const root = area === "files" ? join(m.storeRoot, "files") : join(m.repoRoot, area);
+  const root = join(m.repoRoot, area);
   const abs = join(root, rel);
   mkdirSync(join(abs, "..").replace(/[\\/]\.\.$/, ""), { recursive: true });
   writeFileSync(abs, body);
   return abs;
 };
 const readAt = (m, area, rel) => {
-  const root = area === "files" ? join(m.storeRoot, "files") : join(m.repoRoot, area);
+  const root = join(m.repoRoot, area);
   try {
     return readFileSync(join(root, rel), "utf8");
   } catch {
@@ -183,9 +182,6 @@ test("mirror-scan: kho quét ra KHÔNG chứa file database, và có báo đã l
   // Mục CHỮ phải có băm; mục địa chỉ-theo-nội-dung thì KHÔNG (tên đã là chữ ký).
   const doc = r.entries.find((e) => e.area === "docs");
   assert.ok(doc?.hash, "file docs phải có băm");
-  write(m, "files", "images/2026-09/aa_x.png", "PNG");
-  const r2 = scanMirror({ repoRoot: m.repoRoot, storeRoot: m.storeRoot });
-  assert.equal(r2.entries.find((e) => e.area === "files")?.hash, undefined, "files/ không băm lại — tên LÀ chữ ký");
 });
 
 // ── ② Đường dẫn từ máy kia là dữ liệu KHÔNG TIN ĐƯỢC ─────────────────────────────────
@@ -517,17 +513,6 @@ test("mirror-e2e: file MỚI của máy kia vào HÀNG ĐỢI, không tự ghi r
   assert.equal(listQueue(b.db).length, 0, "duyệt xong phải rời hàng đợi");
 });
 
-test("mirror-e2e: mục files/ chở THẲNG — không hàng đợi, vì không thể xung đột", async (t) => {
-  const a = makeMachine(t, "fa", "chia-chung-files");
-  const b = makeMachine(t, "fb", "chia-chung-files");
-  write(a, "files", "images/2026-09/ab12_anh.png", "BYTE-ANH");
-  const r = await syncPair(a, b);
-  assert.equal(r.client.error, undefined);
-  assert.equal(readAt(b, "files", "images/2026-09/ab12_anh.png"), "BYTE-ANH", "§9.1 mục 4: tên LÀ sha256 ⇒ chở thẳng");
-  assert.equal(listQueue(b.db).length, 0, "files/ không bao giờ vào hàng đợi");
-  assert.equal(r.client.appliedFiles + (r.server?.appliedFiles ?? 0) >= 1, true);
-});
-
 test("mirror-e2e: MÁY MỚI chưa có thư mục nào vẫn phải NHẬN được — thư mục tự sinh", async (t) => {
   // 🔴 Ca THẬT, đo trên hai máy 2026-09-24: đầu này log `đã gửi "xong" (5560 file)` **lặp lại
   // nguyên con số đó** ở tám lượt liên tiếp. Giữ được dù một file thì lượt sau phải tụt; nó không
@@ -540,25 +525,21 @@ test("mirror-e2e: MÁY MỚI chưa có thư mục nào vẫn phải NHẬN đư�
   const b = makeMachine(t, "nb", "chia-chung-newbox");
   // B là máy TRẮNG: xoá sạch ba thư mục mirror, giữ đúng gốc repo/kho như một bản clone mới.
   for (const d of ["docs", "docs_visual", "attic"]) rmSync(join(b.repoRoot, d), { recursive: true, force: true });
-  rmSync(join(b.storeRoot, "files"), { recursive: true, force: true });
 
   write(a, "docs", "agent/02_RULES.md", "luat\n");
   write(a, "docs_visual", "design/so-do.txt", "so do\n");
   write(a, "attic", "cu/ghi-chu.md", "ghi chu\n");
-  write(a, "files", "images/2026-09/ab12_anh.png", "BYTE-ANH");
 
   const r = await syncPair(a, b);
   assert.equal(r.client.error, undefined, `phiên phải sạch: ${r.client.error ?? ""}`);
-  assert.equal(r.client.sentFiles, 4, "A phải chở đủ bốn mục");
+  assert.equal(r.client.sentFiles, 3, "A carries all three areas");
 
-  // `files/` địa chỉ theo nội dung ⇒ ghi THẲNG, kể cả khi thư mục chưa từng tồn tại.
-  assert.equal(readAt(b, "files", "images/2026-09/ab12_anh.png"), "BYTE-ANH", "máy trắng vẫn phải nhận được files/");
-  // Ba mục chữ vào hàng đợi (chưa duyệt thì chưa ghi) — nhưng phải VÀO ĐƯỢC, không bị từ chối.
+  // the three text areas go into the queue (not written until reviewed) - but they must GET IN, not be refused
   const q = listQueue(b.db);
   assert.equal(q.length, 3, `ba mục chữ phải vào hàng đợi, đang có ${q.length}`);
   assert.equal(r.client.receivedFiles, 0, "A không nhận gì (B trắng)");
-  assert.equal(r.server?.receivedFiles ?? 0, 4, "B phải ĐẾM đủ 4 file nhận về");
-  assert.equal((r.server?.appliedFiles ?? 0) + (r.server?.queuedFiles ?? 0), 4, "không file nào được phép rơi im lặng");
+  assert.equal(r.server?.receivedFiles ?? 0, 3, "B counts all 3 files received");
+  assert.equal((r.server?.appliedFiles ?? 0) + (r.server?.queuedFiles ?? 0), 3, "no file may drop silently");
 
   // Duyệt cả nhóm ⇒ thư mục tự sinh ra trên đĩa.
   for (const row of q) {
@@ -573,7 +554,7 @@ test("mirror-e2e: MÁY MỚI chưa có thư mục nào vẫn phải NHẬN đư�
 test("mirror-e2e: hội tụ rồi thì lượt sau KHÔNG chở lại gì", async (t) => {
   const a = makeMachine(t, "ia", "chia-chung-idem");
   const b = makeMachine(t, "ib", "chia-chung-idem");
-  write(a, "files", "documents/2026-09/cd34_bao-cao.txt", "noi dung");
+  write(a, "docs_visual", "notes/cd34_bao-cao.txt", "noi dung");
   await syncPair(a, b);
   const second = await syncPair(a, b);
   assert.equal(second.client.sentFiles, 0, "lượt hai không được chở lại thứ bên kia đã có");
@@ -951,27 +932,23 @@ test("🔴 echo (tranh nhau): A sửa tiếp TRƯỚC lượt khớp — bản A
   assert.equal(listQueue(a.db).length, 0, "bản A1 là của A — quay về không được hỏi lại");
 });
 
-test("scan-cache: đệm quét KHÔNG được trả số cũ — thêm tệp files/, sửa docs, xoá tệp đều thấy ngay", async (t) => {
-  // Đệm vào 3.5.31: quét là ĐỒNG BỘ trên event loop (đo 0,6–0,9 s × 2 mỗi lượt) ⇒ nay ~7 ms khi ấm.
+test("scan-cache: the hash cache never returns a stale answer - an edited doc, a new doc, a deleted doc show at once", async (t) => {
   const m = makeMachine(t, "scc", "chia-chung-scan");
   const opts = { repoRoot: m.repoRoot, storeRoot: m.storeRoot };
   write(m, "docs", "agent/a.md", "mot\n");
-  write(m, "files", "images/2026-09/aaa.png", "x");
+  write(m, "docs", "agent/old.md", "x\n");
   const s1 = scanMirror(opts).entries;
-  assert.ok(s1.some((e) => e.rel === "images/2026-09/aaa.png"));
-  // Thêm tệp vào thư mục files/ ĐÃ quét (đệm theo mtime thư mục phải vỡ).
   await new Promise((r) => setTimeout(r, 20));
-  write(m, "files", "images/2026-09/bbb.png", "y");
-  // Sửa nội dung docs (băm phải tính lại theo size/mtime).
+  write(m, "docs", "agent/new.md", "y\n");
   write(m, "docs", "agent/a.md", "hai dong\nkhac\n");
   const s2 = scanMirror(opts).entries;
-  assert.ok(s2.some((e) => e.rel === "images/2026-09/bbb.png"), "tệp files/ mới phải hiện");
+  assert.ok(s2.some((e) => e.rel === "agent/new.md"), "a new file shows");
   const a1 = s1.find((e) => e.rel === "agent/a.md"), a2 = s2.find((e) => e.rel === "agent/a.md");
-  assert.notEqual(a2.hash, a1.hash, "docs sửa rồi thì băm phải đổi");
-  // Xoá một tệp files/.
+  assert.notEqual(a2.hash, a1.hash, "an edited doc gets a new hash");
   const { rmSync: rm } = await import("node:fs");
-  await new Promise((r) => setTimeout(r, 20));
-  rm(join(m.storeRoot, "files", "images", "2026-09", "aaa.png"));
-  const s3 = scanMirror(opts).entries;
-  assert.ok(!s3.some((e) => e.rel === "images/2026-09/aaa.png"), "tệp đã xoá không được còn trong kiểm kê");
+  rm(join(m.repoRoot, "docs", "agent", "old.md"));
+  assert.ok(!scanMirror(opts).entries.some((e) => e.rel === "agent/old.md"), "a deleted file leaves the inventory");
+  // HP 18: attachments are not a mirror area - a files/ folder left beside the store is not scanned
+  write(m, "docs", "agent/z.md", "z\n");
+  assert.ok(!scanMirror(opts).entries.some((e) => e.area === "files"), "NEGATIVE: no files/ area");
 });

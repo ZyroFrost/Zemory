@@ -18,15 +18,12 @@
  *  ④ `bytes` đang lưu **không đáng tin**: hàng lớn nhất khai 7.900.654 B, nền trả 4.758.216 B.
  *     Nên mọi con số kích thước ở đây lấy từ BYTE THẬT, và hàng DB được sửa lại theo.
  *
- * THỨ TỰ GHI giống `extractBlobs` và vì cùng một lý do: ghi tệp → đọc lại kiểm `sha256` → mới
- * sửa hàng DB. Hỏng giữa chừng thì rơi về phía VÔ HẠI (một tệp thừa, `files gc` dọn) thay vì
- * phía tệ (hàng khai có byte mà tệp không có ⇒ bề mặt render 404).
+ * The bytes go into the row itself (HP 18: the GM is one db file): the `ref` row becomes a `blob` row holding them, in one
+ * statement, after the bytes' `sha256` is checked - no half state where a row claims bytes it does not have.
  */
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { currentMemoryDb, openMemory, type MemoryDB } from "./db.js";
-import { filesRoot, relPathFor } from "./filestore.js";
+import { Q } from "./store/queries.js";
 
 /** Con trỏ của ChatGPT. Hai lược đồ đo được: `sediment://` 3.208 · `file-service://` 15. */
 const POINTER_RE = /^(?:sediment|file-service):\/\/(.+)$/;
@@ -85,12 +82,10 @@ export interface RefRow {
 }
 
 export interface FetchRefsResult {
-  /** Hàng nay đã có byte trên đĩa. */
+  /** Rows that now hold their bytes. */
   fetched: number;
   /** Byte THẬT đã ghi (không phải số `bytes` khai trong kho — xem dữ kiện ④). */
   bytes: number;
-  /** Hàng bỏ qua vì tệp đúng nội dung đã nằm sẵn trong kho tệp (chạy lại không tải lại). */
-  skipped: number;
   /** Hàng không lấy được, kèm lý do — nói ra chứ không nuốt. */
   failed: Array<{ id: number; reason: string }>;
   /** Còn bao nhiêu hàng `ref` sau lượt này (0 = hết nợ). */
@@ -103,7 +98,6 @@ export interface FetchRefsResult {
 export interface FetchRefsOptions {
   db?: MemoryDB;
   dbPath?: string;
-  root?: string;
   /** Lấy byte về. Thiếu ⇒ hàm chỉ ĐẾM (dry-run ép buộc), không bịa đường tải. */
   fetcher?: RefFetcher;
   limit?: number;
@@ -133,14 +127,6 @@ export function fileIdOf(srcPath: string | null): string | null {
   return m ? m[1] : null;
 }
 
-function sha256Of(abs: string): string | null {
-  try {
-    return createHash("sha256").update(readFileSync(abs)).digest("hex");
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Kéo byte về cho các hàng `ref`.
  *
@@ -150,12 +136,11 @@ function sha256Of(abs: string): string | null {
  */
 export async function fetchRefs(opts: FetchRefsOptions = {}): Promise<FetchRefsResult> {
   const db = opts.db ?? openMemory(opts.dbPath ?? currentMemoryDb());
-  const root = opts.root ?? filesRoot();
   const log = opts.log ?? (() => {});
   const sleep = opts.sleep ?? wait;
   const delayMs = opts.delayMs ?? 1500;
   const dryRun = Boolean(opts.dryRun) || !opts.fetcher;
-  const out: FetchRefsResult = { fetched: 0, bytes: 0, skipped: 0, failed: [], remaining: 0, dryRun };
+  const out: FetchRefsResult = { fetched: 0, bytes: 0, failed: [], remaining: 0, dryRun };
 
   const countRefs = (): number =>
     (db.prepare("SELECT COUNT(*) n FROM attachment WHERE kind = 'ref'").get() as { n: number }).n;
@@ -179,12 +164,7 @@ export async function fetchRefs(opts: FetchRefsOptions = {}): Promise<FetchRefsR
   // Một hàng blob khác đã giữ CÙNG nội dung ⇒ `sha256` là UNIQUE nên không sửa hàng này được.
   // Kiểm TRƯỚC khi ghi tệp: ghi rồi mới phát hiện là để lại một tệp mồ côi cho `files gc`.
   const dupe = db.prepare("SELECT id FROM attachment WHERE sha256 = ? AND id <> ?");
-  const upd = db.prepare(
-    `UPDATE attachment
-        SET kind = 'blob', blob = NULL, src_path = ?, sha256 = ?, bytes = ?,
-            mime = COALESCE(?, mime), name = COALESCE(?, name)
-      WHERE id = ?`,
-  );
+  const upd = db.prepare(Q.attachmentRefFetched);
 
   if (dryRun) {
     out.remaining = countRefs();
@@ -223,27 +203,9 @@ export async function fetchRefs(opts: FetchRefsOptions = {}): Promise<FetchRefsR
       }
       const mime = got.mime ?? r.mime;
       const name = got.name ?? r.name;
-      const rel = relPathFor({ sha256: sha, mime, name, createdAt: r.created_at });
-      const abs = join(root, ...rel.split("/"));
-      if (existsSync(abs) && sha256Of(abs) === sha) {
-        upd.run(rel, sha, got.bytes.length, mime, name, r.id);
-        out.skipped++;
-      } else {
-        mkdirSync(dirname(abs), { recursive: true });
-        // Tên tạm rồi đổi tên: một lượt bị cắt không được để lại tệp CỤT mang đúng tên thật,
-        // vì lượt sau sẽ tưởng nó lành rồi bỏ qua (cùng bài học `extractBlobs`).
-        const tmp = `${abs}.part-${process.pid}`;
-        writeFileSync(tmp, got.bytes);
-        renameSync(tmp, abs);
-        if (sha256Of(abs) !== sha) {
-          rmSync(abs, { force: true });
-          out.failed.push({ id: r.id, reason: "đọc lại từ đĩa không khớp sha" });
-          continue;
-        }
-        upd.run(rel, sha, got.bytes.length, mime, name, r.id);
-        out.fetched++;
-        out.bytes += got.bytes.length;
-      }
+      upd.run(got.bytes, sha, got.bytes.length, mime, name, r.id);
+      out.fetched++;
+      out.bytes += got.bytes.length;
     } catch (error) {
       out.failed.push({ id: r.id, reason: error instanceof Error ? error.message.slice(0, 160) : "lỗi không rõ" });
     }
@@ -259,7 +221,7 @@ export async function fetchRefs(opts: FetchRefsOptions = {}): Promise<FetchRefsR
       log(`  ⛔ ${out.stoppedEarly}`);
       break;
     }
-    if (i % 50 === 49) log(`  … ${i + 1}/${rows.length} · tải ${out.fetched} · bỏ qua ${out.skipped} · lỗi ${out.failed.length}`);
+    if (i % 50 === 49) log(`  … ${i + 1}/${rows.length} · tải ${out.fetched} · lỗi ${out.failed.length}`);
     if (delayMs > 0 && i < rows.length - 1) await sleep(delayMs);
   }
 

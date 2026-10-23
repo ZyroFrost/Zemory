@@ -11,7 +11,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { openMemory } from "../../dist/memory/db.js";
 import { fetchRefs, fileIdOf, chatgptRefFetcher } from "../../dist/memory/fetchrefs.js";
@@ -90,8 +90,9 @@ test("tải về: byte ra đĩa đúng sha, hàng thành blob và NHẬN tên g�
   assert.equal(row.bytes, body.length, "kho khai 7,9 MB nhưng nền trả ít hơn — hàng phải theo số thật");
   assert.equal(row.mime, "image/png", "mime thật thay cho nhãn hạng image/*");
   assert.equal(row.name, "anh-goc.png", "tên gốc của nền phải được ghi lại (kho đang giữ null)");
-  assert.ok(!/^[a-z][a-z0-9+.-]*:\/\//i.test(row.src_path), "src_path nay là ĐƯỜNG TỆP, không còn là URL");
-  assert.equal(readFileSync(join(root, ...row.src_path.split("/"))).toString(), body.toString());
+  assert.equal(row.src_path, null, "the source URL goes once the bytes are here - and no file path replaces it (HP 18)");
+  assert.equal(db.prepare("SELECT blob FROM attachment WHERE id = ?").get(made[0].aid).blob.toString(), body.toString(), "the bytes are in the db");
+  assert.equal(readdirSync(root).length, 0, "NEGATIVE: nothing is written beside the db");
   db.close();
 });
 
@@ -109,15 +110,8 @@ test("chạy lại lượt bị ngắt: tệp đã có thì KHÔNG tải lại (
   const second = await fetchRefs({ db, root, delayMs: 0, fetcher: fakeFetcher(map, calls) });
   assert.equal(second.fetched, 0, "không tải lại");
   assert.equal(calls.length, 1, "KHÔNG gọi nền thêm lần nào");
-
-  // Và ca thật hay gặp hơn: hàng vẫn là `ref` (lượt trước chết SAU khi ghi tệp, TRƯỚC khi sửa DB).
-  db.prepare("UPDATE attachment SET kind='ref', sha256=?, src_path=? WHERE id=?")
-    .run(ptrSha("sediment://file_a"), "sediment://file_a", made[0].aid);
-  const third = await fetchRefs({ db, root, delayMs: 0, fetcher: fakeFetcher(map, calls) });
-  assert.equal(third.skipped, 1, "tệp đúng nội dung đã nằm sẵn ⇒ bỏ qua, chỉ sửa lại hàng");
-  assert.equal(third.fetched, 0);
-  const row = db.prepare("SELECT kind FROM attachment WHERE id = ?").get(made[0].aid);
-  assert.equal(row.kind, "blob", "hàng được chữa lại cho khớp đĩa");
+  // the bytes and the row change in ONE statement, so there is no half state left by a run cut in the middle
+  assert.equal(db.prepare("SELECT kind FROM attachment WHERE id = ?").get(made[0].aid).kind, "blob");
   db.close();
 });
 

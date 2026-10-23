@@ -1658,20 +1658,26 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   }
   if (sub === "files") {
     const verb = positionalArgs(args.slice(1))[0] ?? "status";
-    const { extractBlobs, verifyFiles, gcFiles, filesRoot } = await import("../memory/filestore.js");
     const apply = args.includes("--apply");
-    if (verb === "extract") {
-      // Mặc định DRY-RUN: rút byte ra đĩa rồi xoá khỏi DB là thao tác một chiều, người
-      // phải thấy con số trước khi bấm (điều 12 · `02_RULES §Hành xử`).
-      const r = extractBlobs({ dryRun: !apply, limit: Number(flagValue(args, "--limit")) || undefined });
-      console.log(`zemory memory files extract${apply ? "" : " — DRY RUN (add --apply to really write)"}`);
-      console.log(`  file store: ${filesRoot()}`);
-      console.log(`  extracted: ${r.moved} file(s) · ${(r.bytes / 1048576).toFixed(1)} MB · skipped (already there): ${r.skipped}`);
+    if (verb === "inline") {
+      // HP 18: the bytes still in the legacy files/ folder come back into the db; the folder goes once it is empty of
+      // anything a row needs. Dry-run by default - the numbers first.
+      const { inlineFiles, legacyFilesDir } = await import("../memory/filestore.js");
+      const root = legacyFilesDir();
+      const r = inlineFiles({ dryRun: !apply });
+      console.log(`zemory memory files inline${apply ? "" : " — DRY RUN (add --apply to really write)"}`);
+      console.log(`  legacy folder: ${root}`);
+      console.log(`  into the db: ${r.moved} file(s) · ${(r.bytes / 1048576).toFixed(1)} MB`);
       if (r.failed.length) {
-        console.log(`  ⚠ could not extract: ${r.failed.length}`);
-        for (const f of r.failed.slice(0, 5)) console.log(`     #${f.id}: ${f.reason}`);
+        console.log(`  ⚠ could not take in: ${r.failed.length}`);
+        for (const x of r.failed.slice(0, 5)) console.log(`     #${x.id}: ${x.reason}`);
       }
-      if (apply) console.log("  ⓘ the bytes have left the DB but the file has not shrunk yet — run `zemory memory vacuum` to reclaim the disk.");
+      if (apply && !r.failed.length) {
+        const { rmSync } = await import("node:fs");
+        rmSync(root, { recursive: true, force: true });
+        console.log("  ✓ legacy folder removed - the GM folder holds the db alone (HP 18). Run `zemory memory vacuum` only if asked.");
+      }
+      process.exitCode = r.failed.length ? 1 : 0;
       return;
     }
     if (verb === "collect") {
@@ -1737,7 +1743,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           fetcher: chatgptRefFetcher(cdp),
           log: (m) => console.log("  " + m),
         });
-        console.log(`  downloaded: ${r.fetched} file(s) · ${(r.bytes / 1048576).toFixed(1)} MB · already present: ${r.skipped}`);
+        console.log(`  downloaded: ${r.fetched} file(s) · ${(r.bytes / 1048576).toFixed(1)} MB`);
         if (r.failed.length) {
           // GOM NHÓM thay vì in 5 dòng đầu: hàng lỗi TÍCH TỤ ở đầu danh sách (tải được thì rời
           // danh sách, hỏng thì ở lại), nên "5 dòng đầu" luôn là cùng 5 hàng cũ và giấu mất
@@ -1772,7 +1778,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       }
       const r = addPickedFiles(paths.map((p) => ({ path: p })));
       console.log(`zemory memory files add — took in ${r.added} file(s) · ${(r.bytes / 1048576).toFixed(1)} MB · already present: ${r.already}`);
-      for (const rel of r.rels) console.log(`     ${rel}`);
+      for (const sha of r.shas) console.log(`     ${sha.slice(0, 12)}`);
       if (r.failed.length) {
         console.log(`  ⚠ could not take in: ${r.failed.length}`);
         for (const f of r.failed) console.log(`     ${f.path}: ${f.reason}`);
@@ -1780,30 +1786,11 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       process.exitCode = r.failed.length && !r.added ? 1 : 0;
       return;
     }
-    if (verb === "verify") {
-      const r = verifyFiles();
-      console.log(`zemory memory files verify — ${r.checked} file(s) · matching ${r.ok}`);
-      if (r.missing.length) console.log(`  🔴 MISSING FILES: ${r.missing.length} (images will break) — ${r.missing.slice(0, 3).map((m) => m.rel).join(" · ")}`);
-      if (r.corrupt.length) console.log(`  🔴 CONTENT MISMATCH: ${r.corrupt.length} — ${r.corrupt.slice(0, 3).map((m) => m.rel).join(" · ")}`);
-      if (!r.missing.length && !r.corrupt.length) console.log("  ✓ nothing missing, nothing mismatched.");
-      process.exitCode = r.missing.length || r.corrupt.length ? 1 : 0;
-      return;
-    }
-    if (verb === "gc") {
-      const r = gcFiles({ remove: apply });
-      console.log(`zemory memory files gc${apply ? "" : " — DRY RUN (add --apply to delete)"}`);
-      console.log(`  files no row points to: ${r.orphans.length} · ${(r.bytes / 1048576).toFixed(1)} MB`);
-      for (const o of r.orphans.slice(0, 5)) console.log(`     ${o}`);
-      if (apply) console.log(`  deleted: ${r.removed.length}`);
-      return;
-    }
-    console.log("usage: zemory memory files <extract|collect|fetch|add|verify|gc> [--apply] [--limit N]");
+    console.log("usage: zemory memory files <inline|collect|fetch|add> [--apply] [--limit N]");
     console.log("  collect: take files CREATED BY AGENTS into the store (filters out scratch/deleted files)");
     console.log("  add    : put YOUR files into the store — `files add <path>…` (writes at once, no dry-run)");
     console.log("  fetch  : download bytes for `ref` rows through the signed-in platform window [--account <slot>] [--delay <seconds>]");
-    console.log("  extract: move attachment bytes out of the DB into the on-disk file store (dry-run by default)");
-    console.log("  verify : check every file's sha256 — catches missing files / content mismatch");
-    console.log("  gc     : list files no DB row points to any more (measure-only by default)");
+    console.log("  inline : move the bytes still in the legacy files/ folder into the db, then remove the folder (dry-run by default)");
     return;
   }
 

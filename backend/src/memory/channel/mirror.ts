@@ -51,19 +51,12 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, join, relative, sep } from "node:path";
-import { currentStoreRoot } from "../db.js";
-import { filesRoot } from "../filestore.js";
 import { selfRepoRoot } from "../../projects.js";
 
-/** Bốn mục của `§9.1`. `files` tách hạng riêng vì nó địa chỉ theo NỘI DUNG. */
-export type MirrorArea = "docs" | "docs_visual" | "attic" | "files";
+/** The areas of `§9.1`. Attachments are no longer one (HP 18): their bytes are in the db and travel in bundles. */
+export type MirrorArea = "docs" | "docs_visual" | "attic";
 
-export const MIRROR_AREAS: readonly MirrorArea[] = ["docs", "docs_visual", "attic", "files"] as const;
-
-/** Mục địa chỉ-theo-nội-dung: trùng tên là trùng nội dung ⇒ không xung đột, không hàng đợi. */
-export function isContentAddressed(area: MirrorArea): boolean {
-  return area === "files";
-}
+export const MIRROR_AREAS: readonly MirrorArea[] = ["docs", "docs_visual", "attic"] as const;
 
 /** Trần một file. Xem khối chú thích đầu file: đây là trần RAM, không phải trần giao thức. */
 export const MAX_MIRROR_FILE_BYTES = 64 * 1024 * 1024;
@@ -181,49 +174,23 @@ export function mirrorRoots(opts: { repoRoot?: string; storeRoot?: string } = {}
  * đầu tiên là chỗ thư mục ra đời.
  */
 export function mirrorRootFor(area: MirrorArea, opts: { repoRoot?: string; storeRoot?: string } = {}): MirrorRoot | null {
-  if (area === "files") return { area, path: filesRoot(opts.storeRoot ?? currentStoreRoot()) };
   const repo = opts.repoRoot ?? selfRepoRoot();
   // Không biết repo nằm đâu thì TỪ CHỐI — đoán một chỗ để ghi vào là tệ hơn không ghi.
   return repo ? { area, path: join(repo, area) } : null;
 }
 
-/** Quét một gốc. Mục địa chỉ-theo-nội-dung KHÔNG băm (xem khối chú thích đầu file). */
 /**
- * ĐỆM của lượt quét — quét chạy ĐỒNG BỘ trên event loop, mỗi lượt kênh gọi hai lần.
- *
- * 🔴 Đo 2026-09-25: 5.559 tệp ⇒ 0,6–0,9 s mỗi lần, gần hết là `statSync` trên 5.446 tệp của `files/`.
- * · Mục ĐỊA CHỈ THEO NỘI DUNG (`files/`): tệp một khi ghi thì không đổi (tên = băm). Thư mục mà
- *   `mtime` không đổi thì danh sách tệp TRỰC TIẾP của nó không đổi ⇒ dùng lại, khỏi stat từng tệp.
- *   Thư mục con vẫn được soi riêng (mtime của nó độc lập).
- * · Mục CÓ BĂM (`docs`…): nội dung đổi được mà mtime thư mục không đổi ⇒ vẫn stat từng tệp, nhưng
- *   băm chỉ tính lại khi (kích thước, mtime) đổi.
+ * Scan one root. A file's hash is computed again only when its (size, mtime) changed - the scan runs on the event loop,
+ * twice per channel round.
  */
-const dirCache = new Map<string, { mtimeMs: number; entries: MirrorEntry[]; skipped: ScanResult["skipped"]; subdirs: string[] }>();
 const hashCache = new Map<string, { size: number; mtimeMs: number; hash: string }>();
 
 export function scanArea(root: MirrorRoot): ScanResult {
   const entries: MirrorEntry[] = [];
   const skipped: ScanResult["skipped"] = [];
-  const wantHash = !isContentAddressed(root.area);
 
   const walk = (dir: string): void => {
-    // Thư mục bất biến-theo-mtime (chỉ mục địa chỉ theo nội dung): dùng lại khi mtime không đổi.
-    let dirMtime = -1;
-    if (!wantHash) {
-      try {
-        dirMtime = statSync(dir).mtimeMs;
-      } catch {
-        return;
-      }
-      const c = dirCache.get(dir);
-      if (c && c.mtimeMs === dirMtime) {
-        entries.push(...c.entries);
-        skipped.push(...c.skipped);
-        for (const s of c.subdirs) walk(s);
-        return;
-      }
-    }
-    const here = { entries: [] as MirrorEntry[], skipped: [] as ScanResult["skipped"], subdirs: [] as string[] };
+    const here = { entries: [] as MirrorEntry[], skipped: [] as ScanResult["skipped"] };
     let names: string[];
     try {
       names = readdirSync(dir);
@@ -241,7 +208,6 @@ export function scanArea(root: MirrorRoot): ScanResult {
       const rel = relative(root.path, abs).split(sep).join("/");
       if (st.isDirectory()) {
         if (SKIP_DIRS.has(name)) continue;
-        here.subdirs.push(abs);
         walk(abs);
         continue;
       }
@@ -252,21 +218,18 @@ export function scanArea(root: MirrorRoot): ScanResult {
         continue;
       }
       const e: MirrorEntry = { area: root.area, rel, size: st.size, mtimeMs: Math.round(st.mtimeMs) };
-      if (wantHash) {
-        const hc = hashCache.get(abs);
-        const h = hc && hc.size === st.size && hc.mtimeMs === st.mtimeMs ? hc.hash : hashFile(abs);
-        if (!h) {
-          here.skipped.push({ rel, reason: "đọc không được", size: st.size });
-          continue;
-        }
-        hashCache.set(abs, { size: st.size, mtimeMs: st.mtimeMs, hash: h });
-        e.hash = h;
+      const hc = hashCache.get(abs);
+      const h = hc && hc.size === st.size && hc.mtimeMs === st.mtimeMs ? hc.hash : hashFile(abs);
+      if (!h) {
+        here.skipped.push({ rel, reason: "unreadable", size: st.size });
+        continue;
       }
+      hashCache.set(abs, { size: st.size, mtimeMs: st.mtimeMs, hash: h });
+      e.hash = h;
       here.entries.push(e);
     }
     entries.push(...here.entries);
     skipped.push(...here.skipped);
-    if (!wantHash) dirCache.set(dir, { mtimeMs: dirMtime, ...here });
   };
   walk(root.path);
   entries.sort((a, b) => (a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0));

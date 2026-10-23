@@ -10,37 +10,31 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { readFileSync } from "node:fs";
 import { openMemory } from "../../dist/memory/db.js";
 import { attachmentsForMessages } from "../../dist/memory/filestore.js";
 import { tempDir } from "./helpers.mjs";
 
 const sha = (b) => createHash("sha256").update(b).digest("hex");
 
-/** Kho giả: một tin mang nhiều đính kèm ở các hạng khác nhau. */
+/** A fake store: one message carrying attachments of several kinds. `inDb` rows hold their bytes (HP 18). */
 function seed(t, rows) {
   const dir = tempDir(t, "zra-db-");
-  const root = tempDir(t, "zra-files-");
+  const root = tempDir(t, "zra-open-");
   const db = openMemory(join(dir, "global_memory.db"));
   db.prepare("INSERT INTO sessions (id, source, origin) VALUES ('s1','test','local')").run();
   const insMsg = db.prepare("INSERT INTO messages (session_id, uuid, role, content) VALUES ('s1',?,?,?)");
   const insAtt = db.prepare(
-    `INSERT INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, src_path, created_at)
-     VALUES (?,?,?,?,?,?,?,?,'2026-09-17T00:00:00Z')`,
+    `INSERT INTO attachment (message_id, session_id, name, mime, bytes, sha256, kind, src_path, blob, created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,'2026-09-17T00:00:00Z')`,
   );
   const insLink = db.prepare("INSERT INTO attachment_link (message_id, attachment_id) VALUES (?,?)");
   const mid = Number(insMsg.run("u1", "user", "tin có ảnh").lastInsertRowid);
   rows.forEach((r, i) => {
-    const digest = sha(Buffer.from("x" + i));
-    const aid = Number(insAtt.run(mid, "s1", r.name, r.mime, 10, digest, r.kind, r.rel ?? null).lastInsertRowid);
+    const body = Buffer.from("x" + i);
+    const aid = Number(insAtt.run(mid, "s1", r.name, r.mime, 10, sha(body), r.kind, r.rel ?? null, r.inDb ? body : null).lastInsertRowid);
     insLink.run(mid, aid);
-    if (r.onDisk) {
-      const abs = join(root, ...r.rel.split("/"));
-      mkdirSync(join(abs, ".."), { recursive: true });
-      writeFileSync(abs, "x" + i);
-    }
   });
   const bare = Number(insMsg.run("u2", "user", "tin KHÔNG có ảnh").lastInsertRowid);
   // KHÔNG dùng `t.after` để đóng kho: hook chạy theo thứ tự ĐĂNG KÝ, mà `tempDir` đã đăng ký
@@ -49,43 +43,38 @@ function seed(t, rows) {
   return { db, root, mid, bare };
 }
 
-test("tin có ảnh ⇒ trả ĐƯỜNG TUYỆT ĐỐI mở được", (t) => {
-  const { db, root, mid } = seed(t, [
-    { kind: "blob", mime: "image/png", name: "a.png", rel: "images/2026-09/aa_a.png", onDisk: true },
-  ]);
-  const got = attachmentsForMessages([mid], { db, root }).get(mid);
+test("a message with a picture ⇒ an ABSOLUTE path that opens (the bytes written out of the db)", (t) => {
+  const { db, root, mid } = seed(t, [{ kind: "blob", mime: "image/png", name: "a.png", inDb: true }]);
+  const got = attachmentsForMessages([mid], { db, openDir: root }).get(mid);
   assert.equal(got.length, 1);
-  assert.equal(got[0].state, "on-disk");
-  assert.equal(got[0].path, join(root, "images", "2026-09", "aa_a.png"));
-  // Đường phải MỞ ĐƯỢC THẬT — một đường đúng cú pháp mà không có file là vô dụng với agent.
-  assert.ok(existsSync(got[0].path), "đường dẫn trả về phải trỏ tới file có thật");
+  assert.equal(got[0].state, "in-db");
+  assert.ok(got[0].path.startsWith(root), "the open copy sits in the machine's folder, not beside the db");
+  // the path must OPEN - a well-formed path with no file is useless to the agent
+  assert.ok(existsSync(got[0].path));
   assert.equal(readFileSync(got[0].path, "utf8"), "x0");
   db.close();
 });
 
 test("CA ÂM — tin KHÔNG có đính kèm thì không trả gì (payload recall không phình)", (t) => {
-  const { db, root, bare } = seed(t, [
-    { kind: "blob", mime: "image/png", name: "a.png", rel: "images/2026-09/aa_a.png", onDisk: true },
-  ]);
-  assert.equal(attachmentsForMessages([bare], { db, root }).get(bare), undefined);
-  assert.equal(attachmentsForMessages([], { db, root }).size, 0, "danh sách rỗng ⇒ không truy vấn, không ném");
+  const { db, root, bare } = seed(t, [{ kind: "blob", mime: "image/png", name: "a.png", inDb: true }]);
+  assert.equal(attachmentsForMessages([bare], { db, openDir: root }).get(bare), undefined);
+  assert.equal(attachmentsForMessages([], { db, openDir: root }).size, 0, "an empty list ⇒ no query, no throw");
   db.close();
 });
 
-test("CA ÂM — chưa tải byte thì NÓI RA, tuyệt đối không bịa đường dẫn", (t) => {
+test("NEGATIVE: no bytes ⇒ SAY so, never invent a path", (t) => {
   const { db, root, mid } = seed(t, [
-    // `ref` = con trỏ của nền, chưa bao giờ tải byte (165 hàng như vậy trên kho thật).
+    // `ref` = the site's pointer, bytes never downloaded
     { kind: "ref", mime: "image/*", name: null, rel: "sediment://file_abc" },
-    // `blob` nhưng `src_path` là URL ⇒ VẪN không phải đường trên đĩa. Cột này từng mang HAI
-    // nghĩa và đã làm một bề mặt render 404 (`plan/25` bước ⑤) — đây là ca canh đúng chỗ đó.
+    // a `blob` row whose `src_path` is a URL and that holds no bytes - still nothing to open
     { kind: "blob", mime: "image/png", name: "b.png", rel: "https://example/x.png" },
-    // `blob` còn nằm trong kho, chưa rút ra đĩa.
+    // a `blob` row with no bytes at all
     { kind: "blob", mime: "image/png", name: "c.png", rel: null },
   ]);
-  const got = attachmentsForMessages([mid], { db, root }).get(mid);
+  const got = attachmentsForMessages([mid], { db, openDir: root }).get(mid);
   assert.equal(got.length, 3);
-  for (const a of got) assert.equal(a.path, null, `hạng ${a.state} không được có đường dẫn`);
-  assert.deepEqual(got.map((a) => a.state).sort(), ["in-db", "in-db", "not-fetched"]);
+  for (const a of got) assert.equal(a.path, null, `${a.state} must not carry a path`);
+  assert.deepEqual(got.map((a) => a.state), ["not-fetched", "not-fetched", "not-fetched"]);
   db.close();
 });
 

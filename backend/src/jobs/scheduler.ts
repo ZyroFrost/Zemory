@@ -22,6 +22,7 @@
 // scheduler, the UI sync button and a CLI writer never overlap.
 
 import { spawn, type ChildProcess } from "node:child_process";
+import { existsSync } from "node:fs";
 
 /** Đuôi stdout/stderr giữ lại của mỗi con maintain — cùng cỡ với `syncjob.ts`. */
 const CHILD_TAIL = 8192;
@@ -67,6 +68,7 @@ import { isExcluded } from "../memory/scope.js";
 import { webProfileDir } from "../memory/connections.js";
 import { jarHasSession } from "../memory/borrowcookies.js";
 import { currentMemoryDb, currentMemoryDir } from "../memory/db.js";
+import { legacyFilesDir } from "../memory/filestore.js";
 import type { BrowserSweepResult as OrphanSweepResult } from "../platform/browsersweep.js";
 import { runInWorker } from "./fnworker.js";
 import { daemonLog } from "../logging/daemon-log.js";
@@ -308,6 +310,12 @@ async function maintainTick(): Promise<void> {
         log("⛔ KHO HỎNG — dừng chuỗi bảo trì. Chạy `zemory memory salvage` rồi `memory reopen` + `memory scan`.");
         return;
       }
+      if (chainAbort) return;
+    }
+    // 0b. HP 18: attachment bytes still in the legacy files/ folder move into the db, then the folder goes. Runs only
+    //     while that folder exists - once per machine, the first chain after the upgrade.
+    if (existsSync(legacyFilesDir())) {
+      await runStep("files-inline", ["memory", "files", "inline", "--apply"]);
       if (chainAbort) return;
     }
     // 1. scan — ingest new/changed transcripts. Incremental (dedup by uuid), and
