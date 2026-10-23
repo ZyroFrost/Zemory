@@ -744,7 +744,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   // việc chạy mỗi 30 phút.
   if (sub === "channel") {
     // Đường dùng được KHI DAEMON ĐÃ CHẾT — tức đúng lúc cần nhất (plan/24 §5).
-    const { channelStatus, channelIdentity, channelDir, connectToPeer, inventoryIds, guessGateways, mapPort, measureNat, holePunchViable, punchToPeer, mirrorHooks } =
+    const { channelStatus, channelIdentity, blockIO, connectToPeer, guessGateways, mapPort, measureNat, holePunchViable, punchToPeer, mirrorHooks } =
       await import("../memory/channel/index.js");
     const { getP2pPeers, setP2pPeers, setP2pEnabled, getP2pEnabled } = await import("../config/settings.js");
     const rest = positionalArgs(args.slice(1));
@@ -760,7 +760,6 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log(`zemory memory channel — ${st.enabled ? "ON" : "OFF"} · writes to: ${st.transport}`);
       console.log(`  Fingerprint : ${st.deviceId}`);
       console.log(`  listen port : ${st.port}`);
-      console.log(`  folder      : ${st.dir}  (${inventoryIds(st.dir).length} block(s))`);
       console.log(`  connected   : ${st.peers.length > 0 ? st.peers.join(", ") : "(no machine yet)"}`);
       console.log("  The fingerprint is NOT a secret — share it over chat freely. The share key, NEVER.");
       return;
@@ -973,7 +972,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         return;
       }
       const session = {
-        channelDir: channelDir(),
+        blocks: blockIO(),
         identity: channelIdentity(),
         shareKey: readFileSync(keyFile, "utf8").trim(),
         appVersion: appVersion(),

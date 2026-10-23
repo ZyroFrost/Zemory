@@ -91,6 +91,10 @@ export interface ExportMemoryBundleOptions extends MemoryShareKeyOptions {
    * made every block 17–75 s). Every other export keeps the frontier rule.
    */
   vectorsLater?: boolean;
+  /** Carry messages up to this local `messages.id` only - the p2p sender cuts a large delta into blocks that fit a frame. */
+  untilMessageId?: number;
+  /** Carry the attachments' bytes whatever the machine's attachments switch says (the p2p channel: HP 16, 18). */
+  attachments?: boolean;
 }
 
 export interface ExportMemoryBundleResult {
@@ -369,7 +373,8 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
   // máy nào merge trúng cửa sổ đó thì nhận thiếu. Giữa "kênh thiếu VECTOR" và "kênh thiếu TIN",
   // thiếu tin nặng hơn — vector còn bù được bằng `vectors-catchup`, tin thì không.
   const frontier = payload === "rows" && opts.sinceMessageId && !opts.vectorsLater ? embedFrontierId(sourcePath) : null;
-  const until = frontier && frontier > 0 ? frontier - 1 : undefined;
+  const cuts = [frontier && frontier > 0 ? frontier - 1 : undefined, opts.untilMessageId].filter((x): x is number => typeof x === "number");
+  const until = cuts.length ? Math.min(...cuts) : undefined;
   const snapshot =
     payload === "rows"
       ? buildRowsSnapshot(sourcePath, {
@@ -377,7 +382,7 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
           since: opts.sinceMessageId,
           until,
           ownHost: opts.ownHost,
-          attachments: getSyncAttachments(),
+          attachments: opts.attachments ?? getSyncAttachments(),
         })
       : await snapshotSqlite(sourcePath);
   const rows = "stats" in snapshot ? (snapshot.stats as RowsStats) : undefined;
@@ -985,31 +990,11 @@ function listSegments(dir: string, strict = false): { path: string; n: number }[
   return out.sort((a, b) => a.n - b.n);
 }
 /**
- * Is the channel EMPTY, for the one decision "export a BASELINE (since = 0) instead of a delta"?
- *
- * The p2p channel is ONE segment sequence at the channel root (`channel/global_memory*.enc`) that every
- * writer appends to through `acquireChannelWriteLock` (plan/24 §4, user 2026-10-07). From 2026-09-21 to
- * 2026-10-07 each machine wrote into its own PEN (`channel/<device-id>/`) instead — the deviation being
- * retired. Measured 2026-10-05: an empty pen read as "empty channel" exported the WHOLE store (2.6 GB)
- * a second time. So a legacy pen that still holds segments means "not empty": it is the same store,
- * and a baseline on top of it is that same 2.6 GB again.
- *
- * Drive keeps the old meaning: no segment in THIS dir ⇒ empty. Listing is STRICT everywhere
- * (unreadable ≠ empty — `segmentsReadVerdict`, incident 2026-09-17).
+ * Is the channel EMPTY, for the one decision "export a BASELINE (since = 0) instead of a delta": no segment in this dir.
+ * The caller lists STRICTLY (unreadable ≠ empty — `segmentsReadVerdict`, incident 2026-09-17).
  */
-export function channelEmptyForBaseline(dir: string, segments: number, channel?: SyncChannel): boolean {
-  if (segments > 0) return false;
-  if (channel !== "p2p") return true;
-  let pens: string[];
-  try {
-    pens = readdirSync(dir, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
-  } catch (e) {
-    if (segmentsReadVerdict((e as NodeJS.ErrnoException).code) === "unreadable") throw e;
-    return true;
-  }
-  return pens.every((p) => listSegments(join(dir, p), true).length === 0);
+export function channelEmptyForBaseline(segments: number): boolean {
+  return segments === 0;
 }
 
 /** Khúc sẽ NHẬN lượt ghi kế: khúc cuối nếu còn chỗ, không thì khúc kế (chưa tồn tại). */
@@ -1292,45 +1277,9 @@ function ledgerKey(containerPath: string, chunk: { offset: number; len: number; 
   return id ? `blk:${id}` : (label ?? `${basename(containerPath)}#${chunk.index}`);
 }
 
-/** Khối trong một container — công bố cho lớp kênh (plan/24 §2). */
-export type ContainerChunk = ChunkRef;
-/** Liệt kê khối của một container. Công bố để lớp kênh KHÔNG phải viết lại bộ đọc. */
-export function listContainerChunks(path: string): ContainerChunk[] {
+/** The blocks of one container, read-only (where each sits and its size) - the ledger checks read it. */
+export function listContainerChunks(path: string): ChunkRef[] {
   return listChunks(path);
-}
-/** Trích một khối ra file rời. Công bố cho lớp kênh; giữ nguyên lớp chịu-chập. */
-export async function extractContainerChunk(containerPath: string, chunk: ContainerChunk, outPath: string): Promise<void> {
-  await extractChunk(containerPath, chunk, outPath);
-}
-/** Container hay bundle đơn? Lớp kênh cần biết để đọc đúng đường. */
-export function isContainer(path: string): boolean {
-  return isChunkContainer(path);
-}
-/**
- * Every segment of a channel dir — published so the channel layer can list the blocks it holds.
- *
- * Writes go to the ROOT only (one container + write queue — plan/24 §4). Legacy pens
- * (`channel/<device-id>/`, written 2026-09-21 → 2026-10-07) are still READ until they are removed (step ⑤,
- * on both machines, user confirms): a block only a pen holds must stay declared and servable, or the
- * other machine stops asking for it. `absorbLegacyPens` copies them into the root; after that the pen
- * copies are duplicates by block id and `inventory` dedups them.
- */
-export function listChannelSegments(dir: string): { path: string; n: number }[] {
-  const out = listSegments(dir);
-  let pens: string[];
-  try {
-    pens = readdirSync(dir, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
-  } catch {
-    return out; // chưa có thư mục / không đọc được ⇒ giữ nguyên hành vi cũ (điều 9)
-  }
-  for (const pen of pens) out.push(...listSegments(join(dir, pen)));
-  return out;
-}
-/** Khúc ĐANG MỞ — nơi khối nhận từ máy khác được nối vào (HP điều 16: chỉ nối thêm). */
-export function activeChannelSegment(dir: string): { path: string; name: string; fresh: boolean } {
-  return activeSegment(dir);
 }
 
 function chunkSignature(containerPath: string, chunk: ChunkRef): string {
@@ -1914,65 +1863,27 @@ export async function syncDrive(opts: {
 }
 
 /**
- * FAST LANE, sending side (plan/24 §12.2 ①): seal THIS machine's new messages into the p2p channel right away.
- *
- * `syncDrive` is a whole round (scan · merge every channel · embed a 500-message batch · export to every target); run on
- * every new chat message it would be minutes of work for a few lines. This does only the part that makes a block, as TWO
- * separate jobs of the fast lane (user 2026-10-12: *"Tin trước, vector sau"*):
- *   ① `pushChannelFast` — MESSAGES NOW: `pushAppend` on the p2p watermark with `vectorsLater` (no wait at the embed
- *      frontier). Measured 12/10 with embed-first: 17–75 s per block, nearly all of it the embedder (~2 s per text window).
- *   ② `pushChannelVectors` — VECTORS NEXT, queued by the lane AFTER any merge and any new push, so a block from the other
- *      machine is never held behind our embedder.
- * No scan (the hook has already written the messages), no Drive, no merge (the delta carries only this machine's own rows),
- * and `compact` is never set (auto-compaction is abolished; a compaction without a merge first would lose blocks).
- * Nothing new ⇒ `kind: "none"`, no block.
+ * FAST LANE embed step (plan/24 §12.7): embed from the frontier, in id order - the messages just written, not the shortest
+ * pending ones anywhere in the store. No block is sealed (HP 18): the p2p channel ships a vector to each machine from the
+ * db through `peer_vec_sent` the next time a link offers what it owes (user 2026-10-12: *"Tin trước, vector sau"*).
  */
-export async function pushChannelFast(o: {
-  dir: string;
-  keyFile?: string;
+export async function embedFastLane(o: {
   dbPath?: string;
-  /** This machine's identity for the delta series (a seam for tests). Omitted → os.hostname(). */
-  host?: string;
-  onProgress?: (phase: string) => void;
-  /** The store's write queue (plan/24 §12.7) — the embed lane may be writing vectors at the same time. */
-  writeTurn?: () => Promise<() => void>;
-}): Promise<{ push: DriveSyncResult["push"]; pushMs: number }> {
-  const t0 = Date.now();
-  const push = await pushChannelLocked(o, { vectorsLater: true });
-  return { push, pushMs: Date.now() - t0 };
-}
-
-/**
- * FAST LANE ② (see `pushChannelFast`): embed from the frontier, then one `pushAppend` WITH the frontier rule. The messages
- * are already below the p2p watermark, so the block carries their vectors through the `vec_shipped` ledger
- * (`unshippedVectorIds`). Not reached (crash, daemon stop) ⇒ the 30′ round ships them; the receiver can also embed the
- * message itself — a vector arrives late, never lost (HP art. 16).
- */
-export async function pushChannelVectors(o: {
-  dir: string;
-  keyFile?: string;
-  dbPath?: string;
-  host?: string;
   /** Cap on one embed batch (default 256). */
   embedLimit?: number;
   /** Time budget for the embed step (ms). Past it the round seals what it has and reports `more` (plan/24 §12.7). */
   embedBudgetMs?: number;
   /** Messages per model batch — the budget is checked between batches, so a slow machine needs small ones. */
   embedBatch?: number;
-  /** Tests that exercise the channel, not the embedder. */
-  embed?: boolean;
-  onProgress?: (phase: string) => void;
   /**
    * The store's write queue (plan/24 §12.7). Given ⇒ this round runs as the EMBED LANE, in parallel with the fast lane's
-   * other jobs: the model runs outside any turn, each batch write and the closing block take one.
+   * other jobs: the model runs outside any turn, each batch write takes one.
    */
   writeTurn?: () => Promise<() => void>;
-}): Promise<{ push: DriveSyncResult["push"]; embedded: number; embedMs: number; pushMs: number; more: boolean; stuckAt: number | null }> {
-  (o.onProgress ?? (() => {}))("embed");
-  // Embed FROM THE FRONTIER in id order — the messages just shipped, not the shortest pending ones anywhere in the store
-  // (see `embedPending.fromId`). No frontier ⇒ every recent message already has its vector.
+}): Promise<{ embedded: number; embedMs: number; more: boolean; stuckAt: number | null }> {
+  // No frontier ⇒ every recent message already has its vector.
   const t0 = Date.now();
-  const frontier = o.embed === false ? null : embedFrontierId(o.dbPath ?? currentMemoryDb());
+  const frontier = embedFrontierId(o.dbPath ?? currentMemoryDb());
   const r = frontier
     ? await embedPending({
         dbPath: o.dbPath,
@@ -1984,84 +1895,9 @@ export async function pushChannelVectors(o: {
         ...(o.writeTurn ? { writeTurn: o.writeTurn } : {}),
       })
     : null;
-  const embedMs = Date.now() - t0;
-  const push = await pushChannelLocked(o, {});
   // A frontier the pass could not move (0 embedded: the message cannot be embedded here) — the lane must not respawn on it.
   const stuckAt = frontier !== null && (r?.embedded ?? 0) === 0 ? frontier : null;
-  return { push, embedded: r?.embedded ?? 0, embedMs, pushMs: Date.now() - t0 - embedMs, more: r?.stoppedEarly === true, stuckAt };
-}
-
-/** One p2p `pushAppend` under the channel write queue — the shared tail of both fast-lane jobs. */
-async function pushChannelLocked(
-  o: { dir: string; keyFile?: string; dbPath?: string; host?: string; onProgress?: (phase: string) => void; writeTurn?: () => Promise<() => void> },
-  extra: { vectorsLater?: boolean },
-): Promise<DriveSyncResult["push"]> {
-  const dir = o.dir.trim();
-  if (!dir) throw new Error("No channel folder.");
-  mkdirSync(dir, { recursive: true });
-  const host = o.host ? o.host.replace(/[^A-Za-z0-9._-]/g, "_") : sanitizeHost();
-  // Order is fixed — store turn OUTSIDE, channel lock INSIDE — so two holders can never wait on each other crosswise.
-  const releaseTurn = o.writeTurn ? await o.writeTurn() : null;
-  try {
-    const release = await acquireChannelWriteLock(dir, { host });
-    try {
-      return await pushAppend({ dir, host, excludeLanes: getScopeExclude(), keyFile: o.keyFile, dbPath: o.dbPath, onProgress: o.onProgress, channel: "p2p", ...extra });
-    } finally {
-      release();
-    }
-  } finally {
-    releaseTurn?.();
-  }
-}
-
-/**
- * MERGE-ONLY một thư mục khúc vào kho local — không `scan`, không xuất, không ghi ra kênh.
- *
- * Sinh ra cho kênh máy-tới-máy (`plan/24`): lớp kênh **nhận khối rồi nối vào khúc đang mở của
- * MÌNH**, nên sau một phiên thì thư mục kênh có khối mới mà kho chưa biết. `syncDrive` không
- * dùng được ở đây vì nó là cả một lượt đồng bộ (quét nguồn · xuất · lấy khoá · ghi) — chạy nó
- * sau mỗi phiên nhận là biến một việc rẻ thành một lượt nặng, và tệ hơn: nó sẽ GHI, trong khi
- * ở đây ta chỉ muốn ĐỌC vào.
- *
- * Định dạng khúc · dedup theo khối · sổ `merged_bundles` đều **giữ nguyên** — đúng bất biến
- * `plan/24 §2`: đổi ĐƯỜNG TRUYỀN, giữ GIAO THỨC.
- */
-export async function mergeChannelDir(
-  dir: string,
-  o: { dbPath?: string; keyFile?: string } = {},
-): Promise<DriveSyncResult["merged"]> {
-  if (!dir || !existsSync(dir) || !statSync(dir).isDirectory()) return [];
-  const excludeLanes = getScopeExclude(); // cùng bộ lọc với mọi cửa nạp khác
-  const out: DriveSyncResult["merged"] = [];
-  // Segments at the ROOT (the one container every writer appends to) and, until step ⑤ removes them,
-  // in each LEGACY pen. The label carries the pen name so `merged_bundles` never confuses two
-  // same-named segments of two pens — the key is `<pen>/<file>#<block>`.
-  for (const f of readdirSync(dir).filter((x) => x.endsWith(".enc"))) {
-    out.push(...(await mergeContainer(join(dir, f), f, { ...o, excludeLanes })));
-    await new Promise<void>((resolve) => setImmediate(resolve)); // nhường loop giữa các gói — xem `mergeContainer`
-  }
-  let pens: string[] = [];
-  try {
-    pens = readdirSync(dir, { withFileTypes: true })
-      .filter((d) => d.isDirectory())
-      .map((d) => d.name);
-  } catch {
-    /* không đọc được ngăn con ⇒ phần gốc vẫn merge (điều 9) */
-  }
-  for (const pen of pens) {
-    const penDir = join(dir, pen);
-    let names: string[];
-    try {
-      names = readdirSync(penDir).filter((x) => x.endsWith(".enc"));
-    } catch {
-      continue;
-    }
-    for (const f of names) {
-      out.push(...(await mergeContainer(join(penDir, f), `${pen}/${f}`, { ...o, excludeLanes })));
-      await new Promise<void>((resolve) => setImmediate(resolve)); // nhường loop giữa các gói — xem `mergeContainer`
-    }
-  }
-  return out;
+  return { embedded: r?.embedded ?? 0, embedMs: Date.now() - t0, more: r?.stoppedEarly === true, stuckAt };
 }
 
 /**
@@ -2243,7 +2079,7 @@ async function pushAppend(o: {
   // `segs.length === 0` chỉ được đọc là "kênh trống" khi phép liệt kê THÀNH CÔNG — xem
   // `segmentsReadVerdict`. `segs` ở đây lấy bằng thước NGHIÊM nên rỗng là rỗng thật.
   // "Empty" for a p2p pen means the WHOLE channel (root + every pen) — `channelEmptyForBaseline`.
-  const since = compacting || channelEmptyForBaseline(dir, segs.length, o.channel) ? 0 : readExportWatermark(wmKey, dbPath);
+  const since = compacting || channelEmptyForBaseline(segs.length) ? 0 : readExportWatermark(wmKey, dbPath);
 
   const tmp = mkdtempSync(join(tmpdir(), "zemory-push-"));
   const part = join(tmp, "part.enc");

@@ -1,18 +1,19 @@
-// Child entry of the p2p FAST LANE (plan/24 §12): `node dist/jobs/fastrun.js ingest|push|vectors|merge`. The daemon spawns it so
-// the work — embed (ONNX), encrypt, SQLite writes — never runs on the daemon's event loop (measured 24/09: a merge on the
+// Child entry of the p2p FAST LANE (plan/24 §12, §13): `node dist/jobs/fastrun.js ingest|vectors|merge`. The daemon spawns it
+// so the work — embed (ONNX), decrypt, SQLite writes — never runs on the daemon's event loop (measured 24/09: a merge on the
 // event loop froze TLS handshakes and heartbeats for tens of minutes). One JSON line on stdout is the result.
-//   push    — seal THIS machine's new messages into the channel now, vectors not awaited (`pushChannelFast`).
-//   vectors — embed what was just shipped, then seal a block carrying those vectors (`pushChannelVectors`).
-//   merge   — merge the channel folder into the store (`mergeChannelDir`): blocks just received from another machine.
+//   vectors — embed from the frontier (`embedFastLane`); the links then offer the new vectors from the db.
+//   merge   — merge the blocks a peer session put in the inbox (`mergeInbox`), each thrown away after; the daemon answers
+//             each sender's block with `ack` from the ids in the result line.
 //   ingest  — ingest the transcripts the Stop hook deferred while the slot was busy (`drainIngestQueue`, plan/24 §12.6).
-import { channelDir } from "../memory/channel/index.js";
-import { mergeChannelDir, pushChannelFast, pushChannelVectors, resolveShareKey } from "../memory/share.js";
+// Nothing here seals a block: the channel makes blocks from the db per receiving machine (HP 18).
+import { mergeInbox } from "../memory/channel/p2pdb.js";
+import { embedFastLane, resolveShareKey } from "../memory/share.js";
 import { drainIngestQueue } from "./ingestqueue.js";
 import { FAST_VECTOR_BATCH, FAST_VECTOR_BUDGET_MS } from "./fastlane.js";
 import { acquireWriteTurn, turnWaitTotalMs, withWriteTurn } from "./writeturn.js";
 
 // Every job here writes the store while the EMBED LANE (`vectors`) may be running in parallel (plan/24 §12.7): each takes
-// the store's write turn — ingest / push / merge for the whole job (seconds), vectors per batch write (ms).
+// the store's write turn — ingest / merge for the whole job (seconds), vectors per batch write (ms).
 (async () => {
   const mode = process.argv[2];
   try {
@@ -22,22 +23,19 @@ import { acquireWriteTurn, turnWaitTotalMs, withWriteTurn } from "./writeturn.js
       console.log(JSON.stringify({ ok: true, mode, files: r.files, newMessages: r.newMessages, missing: r.missing, turnWaitMs: turnWaitTotalMs() }));
       return;
     }
-    const keyFile = resolveShareKey(process.cwd()) ?? undefined;
-    const onProgress = (p: string): void => console.error(`[phase] ${p}`);
-    const writeTurn = (): Promise<() => void> => acquireWriteTurn();
-    if (mode === "push") {
-      const r = await pushChannelFast({ dir: channelDir(undefined, true), keyFile, onProgress, writeTurn });
-      console.log(JSON.stringify({ ok: true, mode, kind: r.push.kind, messages: r.push.messages, bytes: r.push.bytes, pushMs: r.pushMs, turnWaitMs: turnWaitTotalMs() }));
-    } else if (mode === "vectors") {
-      const r = await pushChannelVectors({ dir: channelDir(undefined, true), keyFile, onProgress, embedBudgetMs: FAST_VECTOR_BUDGET_MS, embedBatch: FAST_VECTOR_BATCH, writeTurn });
-      console.log(JSON.stringify({ ok: true, mode, kind: r.push.kind, messages: r.push.messages, bytes: r.push.bytes, embedded: r.embedded, embedMs: r.embedMs, pushMs: r.pushMs, more: r.more, stuckAt: r.stuckAt, turnWaitMs: turnWaitTotalMs() }));
+    if (mode === "vectors") {
+      const writeTurn = (): Promise<() => void> => acquireWriteTurn();
+      const r = await embedFastLane({ embedBudgetMs: FAST_VECTOR_BUDGET_MS, embedBatch: FAST_VECTOR_BATCH, writeTurn });
+      console.log(JSON.stringify({ ok: true, mode, embedded: r.embedded, embedMs: r.embedMs, more: r.more, stuckAt: r.stuckAt, turnWaitMs: turnWaitTotalMs() }));
     } else if (mode === "merge") {
-      const r = await withWriteTurn(() => mergeChannelDir(channelDir(), { keyFile }));
-      const added = r.reduce((n, e) => n + (e.messagesAdded ?? 0), 0);
-      const errors = r.filter((e) => e.error).map((e) => `${e.file}: ${e.error}`);
-      console.log(JSON.stringify({ ok: errors.length === 0, mode, blocks: r.filter((e) => !e.skipped).length, messagesAdded: added, turnWaitMs: turnWaitTotalMs(), ...(errors.length ? { error: errors.slice(0, 3).join(" · ") } : {}) }));
+      const keyFile = resolveShareKey(process.cwd()) ?? undefined;
+      const r = await withWriteTurn(() => mergeInbox({ keyFile }));
+      const added = r.reduce((n, e) => n + e.messagesAdded, 0);
+      const errors = r.filter((e) => e.error).map((e) => `${e.id.slice(0, 8)}: ${e.error}`);
+      // a block that failed is answered `nack` from its id, so the job itself still succeeded
+      console.log(JSON.stringify({ ok: true, mode, blocks: r.length, messagesAdded: added, merged: r, turnWaitMs: turnWaitTotalMs(), ...(errors.length ? { warning: errors.slice(0, 3).join(" · ") } : {}) }));
     } else {
-      console.log(JSON.stringify({ ok: false, error: `unknown mode "${mode ?? ""}" (ingest | push | vectors | merge)` }));
+      console.log(JSON.stringify({ ok: false, error: `unknown mode "${mode ?? ""}" (ingest | vectors | merge)` }));
       process.exitCode = 1;
     }
   } catch (e) {

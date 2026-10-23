@@ -1,19 +1,19 @@
 /**
- * PHIÊN NGANG HÀNG — một lượt đồng bộ máy-tới-máy (plan/24 §7c ②).
+ * PEER SESSION - one machine-to-machine sync link (plan/24 §7c ②, §13).
  *
- * Đối xứng: hai đầu chạy CÙNG một máy trạng thái, chỉ khác ai gọi trước. Trình tự:
- *   ① TLS + so vân tay chứng chỉ hai chiều   (danh tính — identity.ts)
- *   ② hello {nonce} ↔ proof {hmac}           (cùng chìa share, hỏi–đáp có nonce)
- *   ③ have {tập danh tính khối}              (mỗi bên khai mình có gì)
- *   ④ khối còn thiếu, byte thô               (mỗi bên tự lọc theo `have` bên kia)
- *   ⑤ done                                   (xong phần của mình)
+ * Symmetric: both ends run the SAME state machine, only who called first differs. Order:
+ *   ① TLS + certificate fingerprints checked both ways  (identity - identity.ts)
+ *   ② hello {nonce, proto} ↔ proof {hmac}               (same share key, nonce challenge)
+ *   ③ have                                              (opens a round: "send me what you owe me")
+ *   ④ blk {id} + block bytes, per block                 (made from the sender's db for THIS peer - `BlockIO.outgoing`)
+ *   ⑤ ack {id} | nack {id}                              (the receiver merged it into its db, or could not)
+ *   ⑥ done                                              (my part of the round is sent)
  *
- * Khối nhận được nối vào khúc ĐANG MỞ của máy này — không bao giờ đụng khúc đã
- * niêm phong (HP điều 16). Khung chưa trọn thì chưa chạm đĩa, nên đứt dây giữa
- * chừng không làm rách khúc (đo: plan/24 §6b phép ④).
+ * Protocol 2 (HP 18): no block is stored on either side. The sender raises its mark for this peer only on `ack`, so a
+ * link that drops mid-round loses nothing - the next round sends again from the same mark, and merge dedups. A round
+ * closes only when every block sent was answered. A frame not yet whole never reaches the disk (plan/24 §6b test ④).
  */
 import tls, { type TLSSocket } from "node:tls";
-import { appendReceivedBlock, inventoryIds, missingOnPeer, readBlockBytes } from "./blocks.js";
 import { peerDeviceId, sameDeviceId, type ChannelIdentity } from "./identity.js";
 import { MIRROR_AREAS, type MirrorArea, type MirrorEntry } from "./mirror.js";
 import {
@@ -26,6 +26,7 @@ import {
   encodeFile,
   encodeJson,
   MAX_FRAME_BYTES,
+  P2P_PROTO,
   newNonce,
   parseControl,
   proofMatches,
@@ -120,8 +121,23 @@ export interface MirrorHooks {
   sent?: (peerId: string, area: MirrorArea, rel: string, hash: string) => void;
 }
 
+/**
+ * The data side of a session, injected: the session is the WIRE layer and never opens the db itself (the daemon runs the
+ * db work off its event loop - `p2pio.ts`; the gate drives a fake).
+ */
+export interface BlockIO {
+  /** The blocks this machine owes `peerId` now - made fresh from the db, never stored. */
+  outgoing: (peerId: string) => Promise<Array<{ id: string; bytes: number; read: () => Promise<Buffer> }>>;
+  /** `peerId` merged block `id` - move its mark past it. */
+  acked: (peerId: string, id: string) => Promise<void>;
+  /** `peerId` could not merge block `id` (or the round died before its answer) - forget it; the mark stays. */
+  dropped: (peerId: string, id: string) => void;
+  /** A block from `peerId`: resolves once it is merged into this machine's db, rejects when it cannot be. */
+  incoming: (peerId: string, id: string, bytes: Buffer) => Promise<void>;
+}
+
 export interface SessionOptions {
-  channelDir: string;
+  blocks: BlockIO;
   identity: ChannelIdentity;
   shareKey: string;
   appVersion: string;
@@ -352,7 +368,14 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     let pairAsked = false;
     let sentDone = false;
     let gotDone = false;
-    const pending: Buffer[] = [];
+    /** Blocks received and not yet handed to the merge (in order). */
+    const pending: Array<{ id: string; bytes: Buffer }> = [];
+    /** Id announced by the last `blk`: the next `FRAME_BLOCK` is that block. */
+    let pendingBlockId: string | null = null;
+    /** Blocks I sent that the peer has not answered (`ack` / `nack`) - the round stays open while any is out. */
+    const awaiting = new Set<string>();
+    /** Blocks I received that are still merging into my db - their `ack` goes when the merge ends. */
+    let merging = 0;
 
     // ── Lớp MIRROR (plan/24 §9) — sổ riêng, kết thúc riêng ──────────────────────────
     /** Máy kia có khai biết mirror không. Chưa nhận `hello` ⇒ chưa biết ⇒ chưa gửi gì. */
@@ -415,6 +438,9 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       if (settled) return;
       settled = true;
       if (error) out.error = error;
+      // unanswered blocks are forgotten: the mark did not move, the next session sends them again
+      for (const id of awaiting) o.blocks.dropped(peerId ?? "", id);
+      awaiting.clear();
       clearInterval(timer);
       if (roundTimer) clearTimeout(roundTimer);
       try {
@@ -465,7 +491,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       if (linkDead(now, lastHeard, deadMs)) return finish(persistent ? "máy kia mất tín hiệu" : "máy kia im quá lâu");
       // Nhịp tim chỉ có nghĩa ở liên kết thường trực. Lượt một-phát vốn đã có việc để làm; bắn
       // thêm nhịp vào đó là thêm khung mà không mua gì.
-      if (!persistent || !proofOk) return;
+      // A one-shot round pings too while it waits on answers: the peer may merge a large block for minutes, silently.
+      if (!proofOk || (!persistent && awaiting.size === 0 && merging === 0)) return;
       if (keepaliveDue(now, Math.max(lastHeard, lastPingAt), pingMs)) {
         lastPingAt = now;
         try {
@@ -523,7 +550,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
      * nối tiếp chúng là để một lớp chậm giữ lớp kia lại mà không được gì.
      */
     const sendHave = (): void => {
-      send(encodeJson({ t: "have", ids: inventoryIds(o.channelDir) }));
+      send(encodeJson({ t: "have" }));
       sendMirrorInventory();
     };
 
@@ -561,6 +588,10 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         peerNonce = m.nonce;
         peerVersion = typeof m.appVersion === "string" && m.appVersion ? m.appVersion.slice(0, 20) : "?";
         if (typeof m.name === "string" && m.name && peerId) o.onPeerName?.(peerId, m.name);
+        // Before any proof or block: a peer on the old stored-block channel would wait for block ids that never come.
+        if ((m.proto ?? 1) !== P2P_PROTO) {
+          return finish(`the other machine runs sync protocol ${m.proto ?? 1} (app ${peerVersion}), this one ${P2P_PROTO} - update both machines to the same version`);
+        }
         // Khai năng lực tới TRƯỚC mọi thứ khác, nên tới lúc khai kho ta đã biết có chạy pha
         // mirror hay không. Bản cũ không có trường này ⇒ `undefined` ⇒ tắt, đúng như phải vậy.
         peerMirror = m.mirror === true;
@@ -661,7 +692,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         return;
       }
       if (m.t === "have") {
-        if (persistent && roundNo === 0) o.log?.(`[channel] #${sid} nhận kiểm kê khối (${Array.isArray(m.ids) ? m.ids.length : "?"})`);
+        if (persistent && roundNo === 0) o.log?.(`[channel] #${sid} round opened by the other machine`);
         // 🔴 Máy kia MỞ LƯỢT trong lúc ta đang chờ lượt kế ⇒ NHẬP lượt đó ngay. Một lượt chỉ đóng sổ
         // khi CẢ HAI bên đã khai `have` (mỗi bên chở phần bên kia thiếu dựa trên `have` nhận được);
         // tay đá (`onKick`) chỉ làm MỘT bên khai, bên kia vẫn ngủ tới `roundGapMs` — cổng bắt đúng
@@ -699,7 +730,26 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         }
         if (!paired) return finish("khai kho trước khi ghép đôi");
         if (!proofOk) return finish("khai kho trước khi chứng minh cùng chìa");
-        void shipMissing(m.ids);
+        void shipOwed();
+        return;
+      }
+      if (m.t === "blk") {
+        if (!proofOk || !paired) return finish("block announced before the peer proved the same key");
+        pendingBlockId = typeof m.id === "string" && m.id ? m.id.slice(0, 64) : null;
+        return;
+      }
+      if (m.t === "ack" || m.t === "nack") {
+        if (!awaiting.delete(m.id)) return; // not ours, or answered twice
+        if (m.t === "nack") {
+          o.log?.(`[channel] #${sid} the other machine could not take block ${m.id.slice(0, 8)} (${m.why ?? "?"}) - sent again next round`);
+          o.blocks.dropped(peerId ?? "", m.id);
+          tryFinish();
+          return;
+        }
+        o.blocks
+          .acked(peerId ?? "", m.id)
+          .catch((e) => o.log?.(`[channel] #${sid} could not record the ack of ${m.id.slice(0, 8)}: ${e instanceof Error ? e.message : String(e)} - sent again next round`))
+          .finally(() => tryFinish());
         return;
       }
       // Nhịp tim: trả lời NGAY, không kiểm gì thêm. Nó không chạm dữ liệu nên không có gì để gác,
@@ -769,7 +819,13 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       // lượt KẸT — dữ liệu ngừng chảy mà ống vẫn sống. Nói ra đúng cờ nào còn thiếu, một lần mỗi lượt
       // (đo 2026-09-25: nhận `done` + `mdone` rồi im, không biết vì sao).
       if (persistent && gotDone && (mGotDone || !mirrorOn()) && !stuckSaid) {
-        const miss = [!sentDone && "done của ta", mirrorOn() && !mSentDone && "mdone của ta", pending.length > 0 && `${pending.length} khối chờ nối`, draining && "đang nối khối"].filter(Boolean);
+        const miss = [
+          !sentDone && "my done",
+          mirrorOn() && !mSentDone && "my mdone",
+          pending.length > 0 && `${pending.length} block(s) queued`,
+          merging > 0 && `${merging} block(s) merging`,
+          awaiting.size > 0 && `${awaiting.size} ack(s) from the other machine`,
+        ].filter(Boolean);
         if (miss.length) {
           stuckSaid = true;
           o.log?.(`[channel] phiên #${sid}: lượt chưa đóng sổ — còn chờ: ${miss.join(" · ")}`);
@@ -779,7 +835,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       // Lớp mirror chỉ được tính vào điều kiện đóng khi nó THẬT SỰ chạy. Đòi `mdone` của một
       // máy không biết mirror là treo tới hết giờ — xem `HelloMessage.mirror`.
       if (mirrorOn() && (!mSentDone || !mGotDone)) return;
-      if (pending.length > 0 || draining) return;
+      if (pending.length > 0 || draining || merging > 0 || awaiting.size > 0) return;
       if (!persistent) return finish();
 
       // ── LIÊN KẾT THƯỜNG TRỰC: đóng sổ LƯỢT, không đóng LIÊN KẾT ────────────────────────
@@ -822,39 +878,33 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       roundTimer.unref?.();
     };
 
-    const shipMissing = async (peerIds: string[]): Promise<void> => {
+    /** Send what this machine owes the peer: blocks made from the db above its mark, each announced by `blk {id}`. */
+    const shipOwed = async (): Promise<void> => {
       try {
-        const missing = missingOnPeer(o.channelDir, peerIds);
+        const owed = await o.blocks.outgoing(peerId ?? "");
         let shipped = 0;
-        for (const block of missing) {
-          // 🔴 MỘT khối quá cỡ KHÔNG được phép kéo sập cả phiên.
-          //
-          // Đo 23/09 trên hai máy thật: ngăn kênh còn một `global_memory.enc` **nguyên khối 2,6 GB**
-          // — baseline đời cũ, sót lại từ trước khi kho chuyển sang cắt khúc. `readBlockBytes` bóc
-          // nó ra rồi `readFileSync` chạm trần cứng ~2 GiB của Node (`ERR_FS_FILE_TOO_LARGE`), lỗi
-          // ném lên `catch` và **giết trọn lượt chở** — nên bắt tay xong, phiên chạy, rồi 0 khối đi
-          // và không ai hiểu vì sao. Cả một kho delta vài trăm KB bị chặn bởi một tệp không liên quan.
-          //
-          // Khối lớn hơn một khung thì **không có cách nào** gửi (lớp dây chốt `MAX_FRAME_BYTES`),
-          // nên bỏ qua là câu trả lời ĐÚNG chứ không phải nhân nhượng — và phải NÓI RA, vì im lặng
-          // ở đây là để hai máy vĩnh viễn lệch nhau một khối mà không bên nào biết.
-          if (block.chunk.len > MAX_FRAME_BYTES) {
-            o.log?.(
-              `[channel] bỏ qua một khối ${Math.round(block.chunk.len / 1024 / 1024)} MB — vượt trần khung ${Math.round(MAX_FRAME_BYTES / 1024 / 1024)} MB; đây là baseline nguyên khối đời cũ, khối delta vẫn đi bình thường`,
-            );
+        for (const block of owed) {
+          if (settled) return;
+          // the sender cuts blocks to fit a frame; one that still does not fit cannot travel - say so, never kill the round
+          if (block.bytes > MAX_FRAME_BYTES) {
+            o.log?.(`[channel] skipped a ${Math.round(block.bytes / 1024 / 1024)} MB block - over the ${Math.round(MAX_FRAME_BYTES / 1024 / 1024)} MB frame cap`);
+            o.blocks.dropped(peerId ?? "", block.id);
             continue;
           }
-          const bytes = await readBlockBytes(block);
-          send(encodeBlock(bytes));
+          const bytes = await block.read();
+          awaiting.add(block.id);
+          await sendFlow(encodeJson({ t: "blk", id: block.id }));
+          await sendFlow(encodeBlock(bytes));
           out.sentBlocks++;
           shipped++;
         }
+        if (settled) return;
         send(encodeJson({ t: "done", sent: shipped }));
-        o.log?.(`[channel] #${sid} đã gửi "xong" (${shipped} khối) — chờ máy kia đóng sổ`);
+        o.log?.(`[channel] #${sid} sent "done" (${shipped} block(s)) - waiting for the other machine`);
         sentDone = true;
         tryFinish();
       } catch (e) {
-        finish(e instanceof Error ? e.message : "lỗi khi chở khối");
+        finish(e instanceof Error ? e.message : "could not send the blocks");
       }
     };
 
@@ -945,19 +995,37 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       }
     };
 
-    /** Nối tuần tự — hai lượt `appendChunkVerified` chồng nhau là hỏng đuôi khúc. */
+    /**
+     * Hand received blocks to the merge in arrival order. The hand-off is quick (the block goes to the merge lane's inbox);
+     * the merge itself runs in the fast lane, and each block's `ack` goes when its own merge ends - so a slow merge never
+     * holds the next block on the wire.
+     */
     let draining = false;
     const drain = async (): Promise<void> => {
       if (draining) return;
       draining = true;
       try {
         while (pending.length > 0) {
-          const bytes = pending.shift() as Buffer;
-          await appendReceivedBlock(o.channelDir, bytes);
+          const b = pending.shift() as { id: string; bytes: Buffer };
+          merging++;
           out.receivedBlocks++;
+          o.blocks
+            .incoming(peerId ?? "", b.id, b.bytes)
+            .then(
+              () => {
+                if (!settled) send(encodeJson({ t: "ack", id: b.id }));
+              },
+              (e) => {
+                const why = e instanceof Error ? e.message : String(e);
+                o.log?.(`[channel] #${sid} could not take block ${b.id.slice(0, 8)}: ${why}`);
+                if (!settled) send(encodeJson({ t: "nack", id: b.id, why: why.slice(0, 200) }));
+              },
+            )
+            .finally(() => {
+              merging--;
+              tryFinish();
+            });
         }
-      } catch (e) {
-        finish(e instanceof Error ? e.message : "lỗi khi nối khối");
       } finally {
         draining = false;
       }
@@ -980,8 +1048,15 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           if (!m) return finish("tin điều khiển không đọc được");
           onControl(m);
         } else if (f.kind === FRAME_BLOCK) {
-          if (!proofOk) return finish("gửi khối trước khi chứng minh cùng chìa");
-          pending.push(Buffer.from(f.body));
+          if (!proofOk) return finish("block sent before the peer proved the same key");
+          const id = pendingBlockId;
+          pendingBlockId = null;
+          // bytes without a `blk` header have no id to answer with - nothing could ever confirm them
+          if (!id) {
+            o.log?.("[channel] block bytes without a header - dropped");
+            continue;
+          }
+          pending.push({ id, bytes: Buffer.from(f.body) });
           void drain();
         } else if (f.kind === FRAME_FILE) {
           if (!proofOk) return finish("gửi file trước khi chứng minh cùng chìa");
@@ -1024,6 +1099,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         nonce: myNonce,
         initiator,
         mirror: Boolean(o.mirror),
+        proto: P2P_PROTO,
         ...(o.hostName ? { name: o.hostName } : {}),
       }),
     );

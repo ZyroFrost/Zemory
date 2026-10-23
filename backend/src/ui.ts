@@ -239,6 +239,7 @@ import { deepSearchChild } from "./jobs/searchjob.js";
 import { heavyStatsChild, type HeavyStats } from "./jobs/statsjob.js";
 import { driveCountsInWorker } from "./jobs/driveprogress.js";
 import { runInWorker } from "./jobs/fnworker.js";
+import { useFastLaneMerge } from "./memory/channel/p2pio.js";
 // The cockpit UI lives in frontend/ (03_STRUCTURE §5 "UI no-build static"): the
 // daemon serves those files as-is — no bundler, no TS template. Read per request
 // so editing a .css/.js + reloading shows it with no rebuild.
@@ -1752,15 +1753,13 @@ export { DEFAULT_UI_PORT } from "./core/config.js";
 export { uiPort };
 
 /**
- * Bật/tắt bên NGHE của kênh máy-tới-máy cho khớp cấu hình hiện tại.
+ * Turn the LISTENING side of the peer channel on or off to match the settings.
  *
- * Gọi ở HAI chỗ và phải là cùng một hàm: lúc daemon khởi động, và ngay sau khi người dùng gạt
- * công tắc. Hai đường riêng là cách hai bề mặt của một chức năng lệch nhau — bật trong ⚙ mà
- * phải khởi động lại app mới nghe thì người dùng đọc thành hỏng.
+ * Called from TWO places and it must be one function: at daemon start, and right after the user flips the switch. Two
+ * paths are how two surfaces of one feature drift apart - switched on in ⚙ yet listening only after a restart reads as
+ * broken.
  *
- * Khối NHẬN được merge vào kho ngay sau phiên: thư mục kênh là dãy khúc cùng định dạng, nên
- * đây chỉ là `mergeChannelDir` — KHÔNG phải một lượt đồng bộ (không quét nguồn, không ghi ra
- * kênh). Fail-open (điều 9): merge hỏng thì ghi log, khối vẫn nằm trên đĩa cho lượt sau.
+ * A received block is merged into the db by the fast lane before it is acked (plan/24 §13): nothing waits in a folder.
  */
 // ── VÒNG TỰ NỐI ────────────────────────────────────────────────────────────────────────────────
 /**
@@ -1862,18 +1861,13 @@ interface LinkEntry {
 /** Liên kết đang giữ, theo vân tay máy. Một máy MỘT liên kết — hai là hai bên cùng chở một thứ. */
 const links = new Map<string, LinkEntry>();
 
-/** p2p fast lane (plan/24 §12): seal new messages and land received blocks in seconds. Created when the daemon starts. */
+/** p2p fast lane (plan/24 §12): offer new messages and land received blocks in seconds. Created when the daemon starts. */
 let fastLane: FastLane | null = null;
 
-/** A block arrived from another machine (any link, any direction) ⇒ land it in the store as soon as the job slot is free. */
+/** A round with another machine closed after receiving blocks - each one is already merged into the db (it was acked). */
 function onBlocksReceived(blocks: number, via: string): void {
-  if (fastLane) {
-    daemonLog(`[channel] ${via}: received ${blocks} block(s) — merging now`);
-    fastLane.requestMerge();
-    return;
-  }
-  const st = startSyncJob(() => invalidateDashboard(), { lowPriority: true });
-  if (!st.running) daemonLog(`[channel] ${via}: received ${blocks} block(s), not merged yet: ${st.error ?? "store busy"}`);
+  daemonLog(`[channel] ${via}: ${blocks} block(s) from the other machine are in the store`);
+  invalidateDashboard();
 }
 
 /**
@@ -2315,7 +2309,7 @@ async function channelSyncOnce(
     const r = await ch.connectToPeer(
       { host: a.host, port: a.port },
       {
-        channelDir: st.dir,
+        blocks: ch.blockIO(),
         identity: ch.channelIdentity(),
         shareKey: readFileSync(keyFile, "utf8").trim(),
         appVersion: appVersion(),
@@ -2428,8 +2422,7 @@ async function channelSyncOnce(
         setP2pPeers([...getP2pPeers(), peerId]);
         setP2pPeerAddrs({ ...getP2pPeerAddrs(), [peerId]: [`${target.host}:${target.port}`] });
       },
-      // Was an in-process `mergeChannelDir` on the daemon's event loop — the very thing the listening side stopped doing
-      // 24/09 (TLS + heartbeats frozen for minutes). Same child path as every other received block now.
+      // never a merge on the daemon's event loop (24/09: TLS + heartbeats frozen for minutes) - the fast lane merged it
       onReceived: (blocks: number): void => onBlocksReceived(blocks, "waiting session"),
       log: (m: string) => daemonLog(m),
     });
@@ -2440,19 +2433,11 @@ async function channelSyncOnce(
   return ({ ok: false, ...last });
 }
 
-let channelInventoryWarm = false;
 async function refreshChannelServer(): Promise<void> {
   try {
     const ch = await import("./memory/channel/index.js");
     const { resolveShareKey } = await import("./memory/share.js");
     const keyFile = resolveShareKey(currentProjectRoot());
-    // Warm the block inventory in a worker BEFORE the first session asks for it: built on the event loop it read 64 KB of
-    // every block (11 s for 4,243) and the cockpit went silent at start. The worker writes the disk cache the loop reads.
-    if (!channelInventoryWarm) {
-      channelInventoryWarm = true;
-      const w = await runInWorker<string[]>("memory/channel/blocks.js", "inventoryIds", [ch.channelDir()], 600_000);
-      if (!w.ok) daemonLog(`[channel] block inventory warm-up in a worker failed - the first session builds it: ${w.error}`);
-    }
     const r = await ch.startChannelServer({
       shareKey: keyFile && existsSync(keyFile) ? readFileSync(keyFile, "utf8").trim() : null,
       appVersion: appVersion(),
@@ -2471,22 +2456,9 @@ async function refreshChannelServer(): Promise<void> {
       // vì đường ĐI của nó lên ngay lúc bắt tay, còn bên này chỉ có đường ĐẾN và đợi trọn lượt).
       onLinkOpen: (peerId: string, via: LinkVia) => noteInboundOpen(peerId, via),
       onLinkClose: (peerId: string) => noteInboundClose(peerId),
-      onReceived: (blocks: number) => {
-        // 🔴 KHÔNG hợp nhất trên event loop của daemon. Bản trước gọi `mergeChannelDir` tại đây:
-        // giải mã + ghi SQLite đồng bộ cả kho là NHIỀU PHÚT không một khung mạng nào được xử lý
-        // — nhịp tim không trả lời, bắt tay TLS không xong, thẻ máy đóng băng. Đo 2026-09-24 trên
-        // máy kia ngay sau khi nó nhận trọn kho: cả hai cổng nhận TCP mà không nói TLS, hai lần
-        // trong một buổi (16:59 và 18:04), mỗi lần hàng chục phút.
-        //
-        // Tiến trình con của lượt sync (`jobs/syncrun.ts`) vốn ĐÃ hợp nhất thư mục kênh trước khi
-        // đẩy — nên việc đúng là GIAO cho nó, qua `startSyncJob` để đi qua cổng ghi (một kẻ ghi,
-        // HP điều 11). Không có `preempt`: người dùng không ngồi chờ lượt này; nếu một job khác
-        // đang giữ kho thì lượt sync theo nhịp sẽ tự hợp nhất sau — khối đã nằm an toàn trong
-        // thư mục kênh, không mất đi đâu.
-        // plan/24 §12: a merge-only child through the job slot, queued when busy — no longer a whole sync round that gives
-        // up on a busy store and leaves the blocks for the 30′ round.
-        onBlocksReceived(blocks, "inbound link");
-      },
+      // never merged on the daemon's event loop (measured 24/09: TLS + heartbeats frozen for minutes): every received block
+      // is merged by the fast lane's child before it is acked (`useFastLaneMerge`), so this only reports the round
+      onReceived: (blocks: number) => onBlocksReceived(blocks, "inbound link"),
     });
     if (!r.listening && r.reason) daemonLog(`[channel] không lắng nghe được: ${r.reason}`);
   } catch (e) {
@@ -3873,7 +3845,6 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
           const k = (await import("./memory/share.js")).shareKeyStatus(currentProjectRoot());
           return { found: k.found, source: k.source, ...(k.fingerprint ? { fingerprint: k.fingerprint } : {}) };
         })(),
-        blocks: ch.inventoryIds(st.dir).length,
         // TRẠNG THÁI THẬT, không phải ý định: cổng đang nghe (`null` = không nghe) và máy nào
         // tầng 1 đã thấy trên cùng mạng. Thiếu hai thứ này thì bề mặt chỉ nói "đã bật" trong khi
         // người dùng không có cách nào biết nó có tìm được ai không.
@@ -4443,6 +4414,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // `unref` để nó không giữ tiến trình sống thêm một nhịp nào.
   daemonHeartbeat();
   setInterval(daemonHeartbeat, 30_000).unref();
+  // Before the first link opens: a block a session receives is merged by the fast lane's child, never on this event loop.
+  const blockSink = useFastLaneMerge(() => fastLane?.requestMerge());
   // GIỮ LIÊN KẾT — nhịp này chỉ canh SỔ (mọi máy đã ghép phải có một liên kết đang giữ, và không
   // máy nào ngoài sổ được giữ). Việc nối và nối lại nằm trong chính vòng của từng liên kết, nên
   // nhịp ở đây rẻ và không cần dày. Chạy ngay một lượt: chờ 30 giây đầu là 30 giây người dùng mở
@@ -4453,8 +4426,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // a shortcut still pointing at a moved install's icon/launcher is rewritten; one PowerShell call, kept off the start path
   setTimeout(() => void reconcileShortcuts(), 5_000).unref();
   startScheduler();
-  // GỬI LIỀN (plan/24 §12): a cheap poll every 2 s — seal this machine's new messages into the p2p channel and land
-  // received blocks, each in a child process through the job slot. Off unless p2p is on and a machine is paired.
+  // FAST LANE (plan/24 §12, §13): a cheap poll every 2 s — offer this machine's new messages on the links and land received
+  // blocks in a child process through the job slot. Off unless p2p is on and a machine is paired.
   const laneOn = (): boolean => getP2pEnabledSync() && getP2pPeers().length > 0;
   // While the lane is on, ITS embed lane does the embedding — the 30′ round skips its embed step (plan/24 §12.7).
   setEmbedLaneProbe(laneOn);
@@ -4470,11 +4443,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       for (const l of links.values()) if (l.kick?.()) n++;
       void import("./memory/channel/index.js").then((ch) => {
         n += ch.kickInboundLinks();
-        if (n === 0) daemonLog("[fastlane] no live link right now — the block waits in the channel and goes on the next connect");
+        if (n === 0) daemonLog("[fastlane] no live link right now — the messages go on the next connect");
       });
     },
+    peers: () => getP2pPeers(),
     log: (m: string) => daemonLog(m),
     onMerged: () => invalidateDashboard(),
+    onBlocksMerged: (r) => blockSink.merged(r),
   });
   setInterval(() => fastLane?.tick(), 2_000).unref();
   // KÊNH MÁY-TỚI-MÁY: bắt đầu NGHE nếu người dùng đã bật (plan/24 §7 bước ④).

@@ -23,6 +23,9 @@ export const Q = {
   // Whole-replace re-ingest of ONE session from its source transcript (HP điều 3: the transcript is the source).
   deleteSessionMessages: "DELETE FROM messages WHERE session_id = ?",
 
+  // a delta mark (`sync_state`): the highest message id a channel / a receiving machine already has
+  syncStateMark: "SELECT last_message_id AS v FROM sync_state WHERE bundle = ?",
+
   // ── sessions ──────────────────────────────────────────────────────────────
   countSessions: "SELECT COUNT(*) c FROM sessions",
   sessionsBySource: "SELECT id, ended_at FROM sessions WHERE source = ?",
@@ -56,6 +59,18 @@ export const Q = {
       WHERE id = ?`,
 
   // ── vectors ───────────────────────────────────────────────────────────────
+  // the p2p channel (HP 18): which of THIS machine's vectors each receiving machine has confirmed
+  peerVecSentDdl: "CREATE TABLE IF NOT EXISTS peer_vec_sent (peer TEXT NOT NULL, message_id INTEGER NOT NULL, PRIMARY KEY (peer, message_id)) WITHOUT ROWID",
+  peerVecSentSeed: "INSERT OR IGNORE INTO peer_vec_sent (peer, message_id) SELECT ?, message_id FROM vec_shipped",
+  peerVecSentAdd: "INSERT OR IGNORE INTO peer_vec_sent (peer, message_id) VALUES (?, ?)",
+  peerVecSentAny: "SELECT 1 AS x FROM peer_vec_sent WHERE peer = ? LIMIT 1",
+  vecShippedExists: "SELECT name FROM sqlite_master WHERE type='table' AND name='vec_shipped'",
+  // own vectors (host = ?, or a pre-v4 row) of messages up to ? that peer ? has not confirmed - main rows only
+  peerVecUnsent: `SELECT v.rowid AS id FROM vec_chunks_rowids v
+       JOIN messages m ON m.id = v.rowid JOIN sessions s ON s.id = m.session_id
+      WHERE v.rowid < 1099511627776 AND v.rowid <= ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown')
+        AND NOT EXISTS (SELECT 1 FROM peer_vec_sent p WHERE p.peer = ? AND p.message_id = v.rowid)
+      ORDER BY v.rowid LIMIT ?`,
   vecConfig: "SELECT * FROM vec_config LIMIT 1",
   vecDims: "SELECT dims FROM vec_config LIMIT 1",
   vecEmbedding: "SELECT embedding FROM vec_chunks WHERE rowid = ?",

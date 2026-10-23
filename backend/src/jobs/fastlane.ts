@@ -4,19 +4,21 @@
 // sync round that gave up when the store was busy — so a message took up to ~60′ to show on the other machine.
 //
 // Here, on the daemon's timer (every few seconds, cheap):
-//   ① SEND — is there a message of THIS machine above the p2p delta watermark? Wait for a short quiet spell (several
-//      messages → one block, not one block each), then run `fastrun.js push` and, when a block was made, kick every live
-//      link so the other machine is offered it in the same second.
-//   ② RECEIVE — a block came in ⇒ `requestMerge()`; the next tick runs `fastrun.js merge` (merge only — no scan, embed or
-//      export). Store busy ⇒ the request stays queued and runs as soon as the slot frees, never "the 30′ round will do it".
-//   ③ VECTORS — the push in ① does not wait for the embedder (user 2026-10-12: "Tin trước, vector sau"; embedding first
-//      made every block 17–75 s). `fastrun.js vectors` is the EMBED LANE (§12.7, user: "1 hàng đưa vào và 1 hàng nhúng"):
-//      it runs IN PARALLEL with ⓪①②, outside the job slot — the model computes freely, every write takes the store's
-//      write turn (`writeturn.ts`). Started after a push that moved messages, and whenever the embed frontier is behind.
+//   ① SEND — is there a message of THIS machine above the mark of some paired machine? Wait for a short quiet spell
+//      (several messages → one round, not one each), then kick every live link: each link makes that machine's blocks
+//      from the db and offers them in the same second (plan/24 §13 - nothing is sealed or stored, HP 18).
+//   ② RECEIVE — a link put a block in the inbox ⇒ `requestMerge()`; the next tick runs `fastrun.js merge` (merge only — no
+//      scan, embed or export) and reports the merged block ids, which the links answer with `ack`. Store busy ⇒ the request
+//      stays queued and runs as soon as the slot frees.
+//   ③ VECTORS — ① does not wait for the embedder (user 2026-10-12: "Tin trước, vector sau"; embedding first made every
+//      block 17–75 s). `fastrun.js vectors` is the EMBED LANE (§12.7, user: "1 hàng đưa vào và 1 hàng nhúng"): it runs IN
+//      PARALLEL with ⓪②, outside the job slot — the model computes freely, every write takes the store's write turn
+//      (`writeturn.ts`). Started after a send that moved messages, and whenever the embed frontier is behind; when it
+//      embedded something it kicks the links, which ship the new vectors from the db.
 //   ⓪ INGEST — the Stop hook found the slot busy and left a note (`ingestqueue.ts`, §12.6) ⇒ `fastrun.js ingest` lands
 //      that chat FIRST: nothing else here has anything to send until it is in the store. Runs with p2p off too — capture
 //      is this machine's own business, not the channel's.
-// ⓪①② go through the daemon's ONE job slot AND take the write turn (the embed lane may be writing beside them). A sync
+// ⓪② go through the daemon's ONE job slot AND take the write turn (the embed lane may be writing beside them). A sync
 // round already running is never pre-empted (it exports this delta itself); the maintenance chain is asked to yield, as
 // the "Sync now" button does — its work is restartable, a person is waiting on this.
 
@@ -29,6 +31,7 @@ import { claimDaemonJob, daemonJobBusy, endEmbedLane, releaseDaemonJob, startEmb
 import { backgroundChildEnv } from "./childenv.js";
 import { hasQueuedIngest } from "./ingestqueue.js";
 import { Q } from "../memory/store/queries.js";
+import { legacyMarkKey, peerMarkKey, type MergedBlock } from "../memory/channel/p2pdb.js";
 
 /** Quiet spell after the last new message before a block is sealed. */
 export const FAST_QUIET_MS = 3_000;
@@ -77,21 +80,22 @@ export function fastSendDecide(prev: FastSendState, pendingMax: number, now: num
 }
 
 /**
- * Highest id of a message THIS machine originated above the p2p watermark (`sync_state` `p2p:<host>`), or 0. "Mine" uses
- * the same rule as the delta export (`buildRowsSnapshot`): `host` = this machine, or NULL / 'unknown' (pre-v4 rows) — a
- * message merged from the other machine is never a reason to seal a block. Read-only, one indexed range query.
+ * Highest id of a message THIS machine originated above the LOWEST mark of the paired machines (`sync_state`
+ * `p2p-to:<peer>`, or the legacy `p2p:<host>` for a peer not yet served by protocol 2), or 0. "Mine" uses the same rule
+ * as the delta export (`buildRowsSnapshot`): `host` = this machine, or NULL / 'unknown' (pre-v4 rows) — a message merged
+ * from the other machine is never a reason to send. Read-only, one indexed range query.
  */
 /** Per store + host: the watermark the scan started from, the highest id already looked at, the newest own id found. */
 const pendingScan = new Map<string, { wm: number; scannedTo: number; best: number }>();
 
-export function ownPendingMax(dbPath: string, host: string): number {
+export function ownPendingMax(dbPath: string, host: string, peers: readonly string[] = []): number {
   let db: Database.Database | null = null;
   try {
     db = new Database(dbPath, { readonly: true, fileMustExist: true });
     db.pragma("busy_timeout = 2000");
-    // The watermark key uses the SANITISED name (`wmKeyFor` via `sanitizeHost`), `sessions.host` the raw one — as the export.
-    const wmHost = (host || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
-    const wm = (db.prepare("SELECT last_message_id AS v FROM sync_state WHERE bundle = ?").get(`p2p:${wmHost}`) as { v: number } | undefined)?.v ?? 0;
+    const mark = (key: string): number => (db!.prepare(Q.syncStateMark).get(key) as { v: number } | undefined)?.v ?? 0;
+    const legacy = mark(legacyMarkKey(host));
+    const wm = peers.length ? Math.min(...peers.map((p) => mark(peerMarkKey(p)) || legacy)) : legacy;
     // Each tick looks only at the ids that arrived since the last one. A walk of everything above the watermark took
     // 4-8 s on the event loop whenever many messages merged from the other machine sat above it (profiled 2026-10-23,
     // natively and in Docker). Ids only grow, so the newest own id seen so far stays the answer until the watermark moves.
@@ -125,28 +129,33 @@ export interface FastLaneDeps {
   enabled: () => boolean;
   /** the 30′ sync round is running (never pre-empted) */
   syncRunning: () => boolean;
-  /** a block was sealed: offer it now on every live link */
+  /** this machine has something new for another machine: open a round now on every live link */
   kickLinks: () => void;
+  /** the paired machines - the send check reads each one's mark */
+  peers?: () => string[];
   log: (m: string) => void;
   /** the store changed (merge added rows) */
   onMerged?: () => void;
+  /** the merge lane ended: these inbox blocks are merged (or failed) - the links answer their senders */
+  onBlocksMerged?: (r: MergedBlock[]) => void;
   /** The embed frontier (`embedFrontierId`): a recent message still without its vector, or null. Omitted ⇒ never probed. */
   frontier?: () => number | null;
 }
 
-type FastMode = "ingest" | "push" | "vectors" | "merge";
-type WriteMode = Exclude<FastMode, "vectors">;
+type FastMode = "ingest" | "send" | "vectors" | "merge";
+type WriteMode = "ingest" | "merge";
 
 export interface FastLaneStatus {
-  /** the WRITE lane (job slot): ingest · push · merge */
+  /** the WRITE lane (job slot): ingest · merge */
   running: WriteMode | null;
   /** the EMBED lane runs beside it */
   embedding: boolean;
   mergeQueued: boolean;
   vectorsQueued: boolean;
   lastIngest?: { at: number; ms: number; ok: boolean; files?: number; newMessages?: number; error?: string };
-  lastPush?: { at: number; ms: number; ok: boolean; kind?: string; messages?: number; error?: string };
-  lastVectors?: { at: number; ms: number; ok: boolean; kind?: string; embedded?: number; error?: string };
+  /** the last time new own messages opened a round on the links */
+  lastSend?: { at: number; upTo: number };
+  lastVectors?: { at: number; ms: number; ok: boolean; embedded?: number; error?: string };
   lastMerge?: { at: number; ms: number; ok: boolean; messagesAdded?: number; error?: string };
 }
 
@@ -165,9 +174,10 @@ export class FastLane {
   private stuckAt: number | null = null;
   private st: FastLaneStatus = { running: null, embedding: false, mergeQueued: false, vectorsQueued: false };
   private yieldAsked = 0;
-  /** A push that carried NO message while some wait (the frontier still blocks them) ⇒ rest instead of firing every few
-   *  seconds (measured 12/10: 19.8 s rounds sealing 0 messages back to back). */
-  private restUntil = 0;
+  /** The newest own message the links were last kicked for, and when: the same messages are not kicked for every tick
+   *  while the round that carries them runs - only again after `FAST_REST_MS` (no live link, or the round failed). */
+  private kickedUpTo = 0;
+  private kickedAt = 0;
   /** A failed ingest leaves its notes queued ⇒ rest, or the lane would spawn a failing child every tick. */
   private ingestRestUntil = 0;
   constructor(private d: FastLaneDeps) {}
@@ -188,19 +198,26 @@ export class FastLane {
     return w ?? e;
   }
 
-  /** The WRITE lane: ⓪ ingest → ② merge → ① push, one at a time, in the job slot. */
-  private tickWrite(now: number): WriteMode | null {
+  /** The WRITE lane: ⓪ ingest → ② merge, one at a time, in the job slot; then ① send, which only kicks the links. */
+  private tickWrite(now: number): FastMode | null {
     if (this.child) return null;
     // ⓪ before the p2p switch on purpose: deferred chat must reach the store whether or not a machine is paired.
     if (now >= this.ingestRestUntil && hasQueuedIngest()) return this.startWrite("ingest", now) ? "ingest" : null;
     if (!this.d.enabled()) return null;
-    // Receiving first: a block already here is cheaper to land than a new one to seal, and it is what the user is waiting on.
+    // Receiving first: a block already here is what the user on the other machine is waiting on.
     if (this.mergeQueued) return this.startWrite("merge", now) ? "merge" : null;
-    if (now < this.restUntil) return null;
-    const r = fastSendDecide(this.send, ownPendingMax(this.d.dbPath(), this.d.host()), now);
+    const pending = ownPendingMax(this.d.dbPath(), this.d.host(), this.d.peers?.() ?? []);
+    const fresh = pending > this.kickedUpTo || (pending > 0 && now - this.kickedAt >= FAST_REST_MS) ? pending : 0;
+    const r = fastSendDecide(this.send, fresh, now);
     this.send = r.state;
-    if (r.fire) return this.startWrite("push", now) ? "push" : null;
-    return null;
+    if (!r.fire) return null;
+    this.send = freshSendState();
+    this.kickedUpTo = pending;
+    this.kickedAt = now;
+    this.st.lastSend = { at: now, upTo: pending };
+    this.vectorsQueued = true; // the messages go without their vectors — ③ embeds them, the next round ships them
+    this.d.kickLinks();
+    return "send";
   }
 
   /** The EMBED lane (§12.7): beside the write lane, never in the job slot. */
@@ -220,15 +237,15 @@ export class FastLane {
       this.embedChild = null;
       endEmbedLane();
       const ok = code === 0 && res.ok !== false;
-      this.st.lastVectors = { at: Date.now(), ms, ok, kind: res.kind, embedded: res.embedded, ...(error ? { error } : {}) };
+      this.st.lastVectors = { at: Date.now(), ms, ok, embedded: res.embedded, ...(error ? { error } : {}) };
       // Budget spent with vectors still owed ⇒ another round. A FAILED round is not retried: the 30′ round / the next
       // probe pick the vectors up (`vec_shipped`), and a retry loop on a broken embedder would spawn a child every tick.
       if (ok && res.more) this.vectorsQueued = true;
       this.stuckAt = ok && typeof res.stuckAt === "number" ? res.stuckAt : null;
-      if (ok && res.kind && res.kind !== "none") {
-        this.d.log(`[fastlane] vectors followed: ${res.embedded ?? "?"} embedded in ${((res.embedMs ?? 0) / 1000).toFixed(1)}s, block in ${(ms / 1000).toFixed(1)}s${this.waited(res)} — offering it now${res.more ? " (budget spent, more next round)" : ""}`);
+      if (ok && (res.embedded ?? 0) > 0) {
+        this.d.log(`[fastlane] vectors followed: ${res.embedded} embedded in ${((res.embedMs ?? 0) / 1000).toFixed(1)}s${this.waited(res)} — offering them now${res.more ? " (budget spent, more next round)" : ""}`);
         this.d.kickLinks();
-      } else if (!ok) this.d.log(`[fastlane] vectors failed after ${(ms / 1000).toFixed(1)}s: ${error} — the 30′ round ships them`);
+      } else if (!ok) this.d.log(`[fastlane] vectors failed after ${(ms / 1000).toFixed(1)}s: ${error} — the next probe retries`);
     });
     if (!c) {
       endEmbedLane();
@@ -331,23 +348,15 @@ export class FastLane {
           this.d.log(`[fastlane] ingested ${res.newMessages} message(s) the capture hook deferred (store was busy) in ${(ms / 1000).toFixed(1)}s${this.waited(res)}`);
           this.d.onMerged?.();
         }
-      } else if (mode === "push") {
-        this.st.lastPush = { at: Date.now(), ms, ok, kind: res.kind, messages: res.messages, ...(error ? { error } : {}) };
-        this.send = freshSendState();
-        // Nothing of ours travelled (or it failed) ⇒ rest before the next attempt; a block with messages ⇒ ready at once.
-        if (!ok || !(res.messages && res.messages > 0)) this.restUntil = Date.now() + FAST_REST_MS;
-        else this.vectorsQueued = true; // the messages went without their vectors — ③ owes the next block
-        if (ok && res.kind && res.kind !== "none") {
-          this.d.log(`[fastlane] sealed ${res.messages ?? "?"} message(s) into one block in ${(ms / 1000).toFixed(1)}s${this.waited(res)} — offering it now`);
-          this.d.kickLinks();
-        } else if (!ok) this.d.log(`[fastlane] push failed after ${(ms / 1000).toFixed(1)}s: ${error}`);
       } else {
         this.st.lastMerge = { at: Date.now(), ms, ok, messagesAdded: res.messagesAdded, ...(error ? { error } : {}) };
         if (ok) {
           if ((res.messagesAdded ?? 0) > 0) this.d.log(`[fastlane] merged ${res.messagesAdded} message(s) from the other machine in ${(ms / 1000).toFixed(1)}s${this.waited(res)}`);
+          if (res.warning) this.d.log(`[fastlane] some blocks could not be merged (${res.warning}) — their senders make them again`);
+          this.d.onBlocksMerged?.(res.merged ?? []);
           this.d.onMerged?.();
         } else {
-          this.mergeQueued = true; // try again next tick — the block is safe in the channel folder
+          this.mergeQueued = true; // try again next tick — the blocks wait in the inbox
           this.d.log(`[fastlane] merge failed after ${(ms / 1000).toFixed(1)}s: ${error} — retrying`);
         }
       }
@@ -369,9 +378,9 @@ interface JobResult {
   ok?: boolean;
   /** Time the child spent queued for the store's write turn (`turnWaitTotalMs`). */
   turnWaitMs?: number;
-  kind?: string;
-  messages?: number;
   messagesAdded?: number;
+  merged?: MergedBlock[];
+  warning?: string;
   error?: string;
   embedded?: number;
   embedMs?: number;

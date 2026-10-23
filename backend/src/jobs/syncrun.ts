@@ -4,9 +4,9 @@
 // loop (the same isolation the scheduler uses for embed passes). The result is
 // printed as one JSON line on stdout; the daemon parses it for /sync-status.
 
-import { mergeChannelDir, resolveShareKey, syncDrive } from "../memory/share.js";
+import { resolveShareKey, syncDrive } from "../memory/share.js";
 
-import { absorbLegacyPens, channelDir, syncTargets } from "../memory/channel/index.js";
+import { syncTargets } from "../memory/channel/index.js";
 
 (async () => {
   try {
@@ -19,24 +19,7 @@ import { absorbLegacyPens, channelDir, syncTargets } from "../memory/channel/ind
       process.exitCode = 1;
       return;
     }
-    // MERGE thư mục kênh TRƯỚC mọi lượt đẩy (`plan/08 §8c` ⑤): khối máy kia vừa gửi phải vào kho
-    // trước khi ta xuất delta, nếu không lượt đẩy này mang một bản THIẾU phần của họ.
-    // Fail-open: merge hỏng thì lượt chính vẫn chạy.
-    // Legacy pens first (plan/24 §4 step ④): what only a pen holds moves into the ONE root container,
-    // under the same write queue. Additive and idempotent — a round with nothing to move copies 0.
-    if (targets.some((t) => t.channel === "p2p")) {
-      try {
-        const a = await absorbLegacyPens(channelDir());
-        if (a.copied) console.error(`[sync] legacy pens: moved ${a.copied} block(s) (${Math.round(a.bytes / 1e6)} MB) into the channel root`);
-      } catch (e) {
-        console.error(`[sync] legacy pens: move failed — ${String(e).slice(0, 160)}`);
-      }
-    }
-    try {
-      await mergeChannelDir(channelDir(), { keyFile: resolveShareKey(process.cwd()) ?? undefined });
-    } catch (e) {
-      console.error(`[phase] channel-merge lỗi: ${String(e).slice(0, 120)}`);
-    }
+    // p2p blocks are merged into the db by the fast lane as they arrive (plan/24 §13): nothing waits in a folder here.
     const phaseMs: Record<string, number> = {};
     let curPhase = "start";
     let curSince = Date.now();

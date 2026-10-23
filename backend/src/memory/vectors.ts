@@ -985,7 +985,7 @@ export function unshippedVectorIds(dbPath: string = currentMemoryDb(), upTo?: nu
   const db = vecConnect(dbPath);
   try {
     if (!tableExists(db)) return [];
-    const hasLog = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='vec_shipped'").get();
+    const hasLog = db.prepare(Q.vecShippedExists).get();
     if (!hasLog) return [];
     const rows = db
       .prepare(
@@ -1018,6 +1018,41 @@ export function markVectorsShipped(dbPath: string = currentMemoryDb(), ids: numb
     return tx(ids);
   } catch {
     return 0; // sổ là lớp tối ưu: mất một lần ghi thì lượt sau chở lại, không sai kết quả
+  } finally {
+    db.close();
+  }
+}
+
+// ── the p2p channel's ledger, per receiving machine (plan/24 §13, HP 18) ──────────────────────────────────────────────
+// Each machine keeps, in its own db, which of ITS vectors every peer has confirmed. A peer seen for the first time starts
+// from the shared `vec_shipped` ledger: the channel before HP 18 converged on the whole block set, so what was shipped
+// there reached the peer.
+
+/** Own vectors (`host` = this machine) of messages up to `upTo` the peer has not confirmed, oldest first. */
+export function unsentVectorIdsFor(peer: string, host: string, upTo: number, dbPath: string = currentMemoryDb(), cap = 20000): number[] {
+  const db = vecConnect(dbPath);
+  try {
+    if (!tableExists(db)) return [];
+    db.exec(Q.peerVecSentDdl);
+    if (!db.prepare(Q.peerVecSentAny).get(peer) && db.prepare(Q.vecShippedExists).get()) db.prepare(Q.peerVecSentSeed).run(peer);
+    return (db.prepare(Q.peerVecUnsent).all(upTo, host, peer, Math.max(1, cap)) as { id: number | bigint }[]).map((r) => Number(r.id));
+  } catch {
+    return [];
+  } finally {
+    db.close();
+  }
+}
+
+/** The peer confirmed these vectors (called on its `ack`, never before). */
+export function markVectorsSentTo(peer: string, ids: number[], dbPath: string = currentMemoryDb()): number {
+  if (!ids.length) return 0;
+  const db = vecConnect(dbPath);
+  try {
+    db.exec(Q.peerVecSentDdl);
+    const ins = db.prepare(Q.peerVecSentAdd);
+    return db.transaction((xs: number[]) => xs.reduce((n, x) => n + ins.run(peer, x).changes, 0))(ids);
+  } catch {
+    return 0; // the ledger only saves work: a lost write ships the vectors again, merge dedups them
   } finally {
     db.close();
   }
