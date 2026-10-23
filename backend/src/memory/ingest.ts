@@ -7,7 +7,7 @@ import { closeSync, fstatSync, openSync, readFileSync, readSync, statSync } from
 import { dirname, join } from "node:path";
 import { canonProjectRoot } from "../core/config.js";
 import { homedir, hostname } from "node:os";
-import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
+import { type MemoryDB, currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { type Adapter, allAdapters } from "./adapters/index.js";
 import type { ParsedAttachment, TranscriptFile } from "./adapters/types.js";
 import { type StoreRef, type UnknownStore, discover } from "./discovery.js";
@@ -129,9 +129,10 @@ export function scan(opts: ScanOptions = {}): ScanReport {
       .prepare(Q.knownStores)
       .all() as { root: string; source: string }[];
 
-    // Kho import suy TỪ CHÍNH dbPath đang quét (không phải biến toàn cục) — nếu không,
-    // một lần scan trên DB tạm sẽ hút dữ liệu từ kho thật vào.
-    const importsRoot = join(dirname(dbPath), "imports");
+    // The imports folder is MACHINE data (`scanweb` writes it under the machine folder), never the GM folder (HP 18). A scan
+    // of another db (a temporary one) reads the folder beside THAT db, so it never pulls the real imports in. Measured
+    // 2026-10-23 in Docker: the two folders are apart there, and six web platforms sat in data/imports, never ingested.
+    const importsRoot = dbPath === currentMemoryDb() ? join(currentMemoryDir(), "imports") : join(dirname(dbPath), "imports");
     const found = discover(adapters, { home, deep: opts.deep, roots: opts.roots, knownStores, importsRoot });
 
     // Remember every store root seen this run (deep scan discovers new ones).
