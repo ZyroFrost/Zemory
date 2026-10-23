@@ -22,7 +22,7 @@ const [cmd, ...args] = process.argv.slice(2);
 // đang làm, và không lệnh nào khác chạy mỗi tin).
 try {
   // `<command> --help` is REFUSED here, once, for every command: usage + exit 1, nothing runs. Commands have no `--help` of
-  // their own and most ignore unknown flags, so `zemory init --help` ran a real init (reported from Dept_IC 2026-10-09).
+  // their own and most ignore unknown flags, so `zemory init --help` ran a real init (reported from Dept_CTL 2026-10-09).
   // Same contract the heavy-write commands already had (2026-08-22: `memory embed --help` started an hours-long job):
   // unknown flag ⇒ fail with usage, write nothing. One way for all commands.
   if (cmd && cmd !== "help" && (args.includes("--help") || args.includes("-h"))) {

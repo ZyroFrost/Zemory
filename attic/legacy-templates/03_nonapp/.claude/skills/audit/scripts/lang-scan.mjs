@@ -189,7 +189,7 @@ for (const f of files) {
     //   · bracketed SQL identifiers  ([ngay_ct])
     const prose = text
       // Backticks mark code, paths and file names by convention - that is data, not prose.
-      // `20260819_SASIN_ECOM_HOAN-HUY_T07-2026.xlsx` is the delivered workbook's real name.
+      // `20260819_ACME_ECOM_REFUND_T07-2026.xlsx` is the delivered workbook's real name.
       .replace(/`[^`]*`/g, ' ')
       .replace(/[\w.+-]+@[\w.-]+/g, ' ')
       .replace(/\b\w+:\/\/\S+/g, ' ')

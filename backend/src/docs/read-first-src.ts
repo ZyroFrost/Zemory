@@ -1,5 +1,5 @@
-// READ BEFORE WRITE — layer-1 latch (user 2026-10-08, from Dept_FA: "nếu agent ko đọc các full docs phải nhảy cảnh báo, ép
-// đọc hết, ko dc sót nữa"). Measured at Dept_FA 2026-10-07: one agent failed three times although the rule and a reminder
+// READ BEFORE WRITE — layer-1 latch (user 2026-10-08, from Dept_FIN: "nếu agent ko đọc các full docs phải nhảy cảnh báo, ép
+// đọc hết, ko dc sót nữa"). Measured at Dept_FIN 2026-10-07: one agent failed three times although the rule and a reminder
 // hook existed — it skimmed (offset/limit · grep · sed -n) and acted. A reminder is not enough; this BLOCKS.
 //
 // The SOURCE of "what was read" is the session TRANSCRIPT the hook already receives (`transcript_path`): every Read result is
@@ -73,7 +73,7 @@ function shellActs(cmd) {
     const name = w[0].replace(/\\/g, "/").split("/").pop().toLowerCase().replace(/\.(exe|cmd|ps1)$/, "");
     if (LOOK.has(name)) continue;
     if (name === "git") {
-      // Skip git's GLOBAL options before the subcommand: "git -C <dir> status" is a look (Dept_FA 2026-10-08).
+      // Skip git's GLOBAL options before the subcommand: "git -C <dir> status" is a look (Dept_FIN 2026-10-08).
       let i = 1;
       while (i < w.length && w[i].startsWith("-")) {
         if (/^(-C|-c|--git-dir|--work-tree|--namespace|--exec-path)$/.test(w[i])) i += 2;
@@ -134,7 +134,7 @@ function triggerHit(tr, root, targets, cmd) {
     try { const re = new RegExp(tr.re, "i"); return scriptsRun(cmd).some((s) => re.test(s)); } catch { return false; }
   }
   if (tr.when === "script_re" && cmd) {
-    // By CONTENT, not by name (Dept_FA 2026-10-08: "03_send.py" sends real mail): every script the command names is read,
+    // By CONTENT, not by name (Dept_FIN 2026-10-08: "03_send.py" sends real mail): every script the command names is read,
     // plus ONE hop into the scripts it names in turn (a launcher "run_weekly.py" / "bin\x.cmd" calling the sender).
     try { return scriptsOf(root, scriptsRun(cmd).join(" "), 1).some((txt) => new RegExp(tr.re, "i").test(txt)); } catch { return false; }
   }
@@ -154,7 +154,7 @@ function skillsLoaded(transcript) {
 
 // The scripts a command RUNS — the first script after an interpreter, or a script standing as the command itself. A file the
 // command merely names (a test fed to "node --test", a path handed to grep) is not run: reading its text made a test that
-// names a mail library in a fixture demand write-style (caught in the zemory session that fixed Dept_FA's report, 2026-10-08).
+// names a mail library in a fixture demand write-style (caught in the zemory session that fixed Dept_FIN's report, 2026-10-08).
 const INTERP = /^(python|python3|py|node|deno|bun|pwsh|powershell|bash|sh|cmd|uv|poetry)$/;
 const TESTISH = /(^|[\\\/])(tests?|__tests__)[\\\/]|\.test\.|_test\.|(^|[\\\/])test_[^\\\/]*$/i;
 function scriptsRun(cmd) {
@@ -379,7 +379,7 @@ function readFirst(payload, root, policy) {
     const verdict = readFirstVerdict(root, rf, transcript, targets, "");
     if (verdict === null) {
       // the lines the file will hold after this write: an Edit that changes part of a line yields a whole line that is not
-      // its new_string (Dept_IT 2026-10-19), so the edit is applied to the file as it is now and the result is remembered
+      // its new_string (Dept_TEC 2026-10-19), so the edit is applied to the file as it is now and the result is remembered
       const abs = path.resolve(root, p);
       const texts = [ti.content, ti.new_source].filter((t) => typeof t === "string");
       const edits = (Array.isArray(ti.edits) ? ti.edits : [ti]).filter((e) => e && typeof e.old_string === "string" && typeof e.new_string === "string");

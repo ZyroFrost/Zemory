@@ -2930,7 +2930,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
           // Tra theo CẢ HAI khoá. Node lớp chuẩn mang id riêng (`doc:agent/05_TODO.md`,
           // `plan:12_x.md`) chứ không phải đường dẫn, nên tra mỗi `id` là bỏ sót chúng và đẻ
           // một `doc_file` thứ hai cho CÙNG một file — đúng thứ `plan/13 §4c` cấm. Đo trước khi
-          // vá, trên `_DataWarehouse_Central`: `docs/agent/05_TODO.md` và `docs/plan/01_*.md`
+          // vá, trên `_Warehouse_Old`: `docs/agent/05_TODO.md` và `docs/plan/01_*.md`
           // hiện ra hai lần. `src` là chỗ node chuẩn khai nó được sinh từ file nào.
           const nodeById = new Map<string, Record<string, unknown>>();
           for (const n of nodes) {
@@ -2948,7 +2948,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
               existing.deadAt = hits.slice(0, 8);
               continue;
             }
-            // Chưa là node: dựng CÓ ĐIỀU KIỆN. Đo 2026-09-16 trên `_DataWarehouse_Central`:
+            // Chưa là node: dựng CÓ ĐIỀU KIỆN. Đo 2026-09-16 trên `_Warehouse_Old`:
             // 24/24 đường mới chết nằm trong `.md`, mà lớp code chỉ có node cho mã nguồn và lớp
             // chuẩn chỉ phủ `docs/agent/*` + `docs/plan/*` ⇒ 15/24 không có gì để tô. Node mọc
             // VÌ nó hỏng và biến mất khi hết hỏng; dựng node cho MỌI `.md` là nhấn chìm graph.

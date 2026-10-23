@@ -865,17 +865,17 @@ const HARNESS = /(^|[\\\/])(docs[\\\/]agent|\.claude|docs[\\\/]hooks)[\\\/]/i;
 // a pipeline stage that sends through the repo's mail helper names it rather than the mail API
 const SENDS_VIA = /smtplib|\bsend_message\s*\(|\bsendmail\s*\(|\/sendMail\b|Send-MailMessage|Send-MgUserMail|\bimport\s+\w*mail\w*|\bfrom\s+\w*mail\w*\s+import|\bsend_mail\s*\(/i;
 // What runs, not what is written about it: a heredoc body (a commit message, a file being written) and a git command (a
-// commit message saying "mail") are text, not a send (Dept_IT 2026-10-19: git commit blocked on its message). git send-email stays.
+// commit message saying "mail") are text, not a send (Dept_TEC 2026-10-19: git commit blocked on its message). git send-email stays.
 function runnable(cmd) {
   const noHeredoc = cmd.replace(/<<-?\s*['"]?(\w+)['"]?[^\n]*\n[\s\S]*?\n\s*\1\b/g, "");
   // a git command goes whole, its quoted arguments included, BEFORE the split: a commit message holding ";" or a new line
-  // left "... smtp_mail.py" as a segment of its own (Dept_FA 2026-10-19: git commit -m blocked on the file name)
+  // left "... smtp_mail.py" as a segment of its own (Dept_FIN 2026-10-19: git commit -m blocked on the file name)
   const noGit = noHeredoc.replace(/(^|[\n;&|]\s*)git\b(?:[^"'\n;&|]|"(?:\\.|[^"\\])*"|'[^']*')*/g,
     (m, pre) => (/\bsend-email\b/.test(m) ? m : pre + "git"));
   return noGit.split(/\n|&&|\|\||;/).filter((s) => !/^\s*git\s/.test(s) || /\bsend-email\b/.test(s)).join(" ; ");
 }
 // A launcher named in the command (bin\<Task>.cmd, also behind scripts\task_run.py ... --): it runs a pipeline, and a stage
-// of that pipeline may send — a test run mails the operator too (Dept_IT 2026-10-19: two real mails went out through
+// of that pipeline may send — a test run mails the operator too (Dept_TEC 2026-10-19: two real mails went out through
 // task_run with no "live" argument). The scripts the launcher names, and every script beside them, are read.
 function launcherSends(cmd, root) {
   const launchers = cmd.match(/[^\s"'|;&<>]*bin[\\\/][\w.-]+\.(cmd|bat)/gi) || [];

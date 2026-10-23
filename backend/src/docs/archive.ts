@@ -40,7 +40,7 @@ export interface ArchiveResult {
    *  `archive` must never answer "nothing to do" in silence while the ledger still holds them. */
   flagged?: TodoFlag[];
   /** 05_TODO only — hand-off headings ("BÀN GIAO" / "PHIÊN SAU ĐỌC TRƯỚC" / "hand-off") still in the
-   *  ledger. More than one means older sessions' hand-offs were never closed (_DB_DataWarehouse
+   *  ledger. More than one means older sessions' hand-offs were never closed (_DB_Warehouse
    *  2026-10-04: 10+ of them since 09-11). */
   handoffs?: number;
 }
@@ -122,7 +122,7 @@ const ITEM = /^(\s*)(?:([-*])|\d+[.)])\s*(?:\[([x ~])\]|(✅))/;
 const CLOSED_HEAD = /^(#{2,6})\s+\[x\]/;
 const CHECK_HEAD = /^(#{2,6})\s+✅/;
 const ANY_HEAD = /^(#{1,6})\s/;
-// Hand-off headings as repos really write them (_DB_DataWarehouse 2026-10-04: "▶ PHIÊN SAU ĐỌC KHỐI NÀY TRƯỚC",
+// Hand-off headings as repos really write them (_DB_Warehouse 2026-10-04: "▶ PHIÊN SAU ĐỌC KHỐI NÀY TRƯỚC",
 // "🔴 PHIÊN SAU BẮT ĐẦU TỪ ĐÂY", "BÀN GIAO …" — the first pattern only knew "PHIÊN SAU ĐỌC TRƯỚC" and counted 2 of 10+).
 // Levels 1–3 only: a "#### BÀN GIAO" nested inside another hand-off is part of it, not a second one.
 const HANDOFF_HEAD = /^#{1,3}\s.*(BÀN GIAO|PHIÊN SAU|hand-?off)/i;

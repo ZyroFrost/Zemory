@@ -1,10 +1,10 @@
 ---
-id: Struc_Drive_Data
-name: drive-data
+id: Struc_Disk_Data
+name: disk-data
 version: 1
-scope: drive
+scope: disk
 ---
-# Struc_Drive_Data
+# Struc_Disk_Data
 
 Khung của một ổ dữ liệu: gốc ổ (`D:\`) trên Windows, hoặc một thư mục dữ liệu (`~/data`) trên Linux. Mỗi thư mục cấp 1 một
 vai; máy mới ráp khung này trước, rồi tới `Struc_Region_Workspace` trong `Workspace/`, rồi `Struc_Region_Company` cho từng tổ

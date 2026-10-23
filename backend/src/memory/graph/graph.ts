@@ -19,7 +19,7 @@ import { listDir } from "../../util/list-dir.js";
  * `03_STRUCTURE §3` (`declaredSlots`). Đây đúng nguồn mà CÂY THƯ MỤC đang dùng — điều 13 đòi ba
  * lăng kính (03 · index · graph) nói cùng một chuyện, mà tới 2026-09-16 graph vẫn chỉ đọc bảng
  * cứng: repo NON-APP khai `tasks/` · `sources/` · `measures/` ở §3 thì cây nhận ra còn graph dán
- * `(ngoài chuẩn)` (đo trên `Dept_IT`: legend `(ngoài chuẩn) 8`). Repo APP hai tập trùng nhau nên
+ * `(ngoài chuẩn)` (đo trên `Dept_TEC`: legend `(ngoài chuẩn) 8`). Repo APP hai tập trùng nhau nên
  * lệch này vô hình từ đầu. Fail-open: đọc §3 hỏng ⇒ `declaredSlots` trả tập rỗng ⇒ về hành vi cũ.
  */
 export function slotDictFor(root: string): Set<string> {
@@ -35,7 +35,7 @@ export function slotDictFor(root: string): Set<string> {
  * "1 case = 1 folder", bên trong muốn chia sao cũng được). Vì vậy `tasks/IT_Daily_ProductCheck/
  * pipeline/01_check.py` có thư mục cha là `pipeline` — KHÔNG phải slot — nhưng nó vẫn thuộc slot
  * `tasks`. Cây thư mục đã xử ca này từ lâu (`extraDirOk` ① "declared freeform parent"); graph thì
- * chưa, nên 8/10 file của `Dept_IT` bị gọi là "(ngoài chuẩn)" (đo 2026-09-16) dù chúng nằm đúng chỗ.
+ * chưa, nên 8/10 file của `Dept_TEC` bị gọi là "(ngoài chuẩn)" (đo 2026-09-16) dù chúng nằm đúng chỗ.
  *
  * Chỉ leo khi đoạn ĐẦU là một cha tự do và repo có khai nó — KHÔNG leo bừa, vì chuẩn APP nói ngược
  * lại ("trong một domain chỉ dùng slot của từ điển") và leo tự do ở đó sẽ mở một lỗ thật.

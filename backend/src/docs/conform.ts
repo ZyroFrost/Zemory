@@ -420,7 +420,7 @@ function conformRun(root: string): ConformReport {
       "rename the name component of the folder in English, keep the code and the number; set name: to the kebab of that component (keep id/aka)");
   }
 
-  // ②nonies — A repo of cases and tasks (2026-10-19, Dept_FA · Dept_HR): after a reshape every gate was green and a hand
+  // ②nonies — A repo of cases and tasks (2026-10-19, Dept_FIN · Dept_PPL): after a reshape every gate was green and a hand
   // check still found these. Each reads files only; a repo without the folder in question gets nothing.
   push("case-index", "blocking", "content/README.md does not match tasks/ (a case missing, a row with no case, a status the spec contradicts)",
     caseIndexFindings(root), "one row per tasks/<case>/, linked to its spec.md; the status cell says closed exactly when the spec's status: is done/closed");

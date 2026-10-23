@@ -36,6 +36,9 @@ function storeIndex(storeDir: string): {
   const slots: RegExp[] = [];
   const slotPaths: string[] = [];
   for (const p of listParts(storeDir, SHELF.structure)) {
+    // a layout slot (a drive · Workspace · organisation level) is not a place inside a repo: it does not make `Company/` or
+    // `AppConfig/` a repo root (its paths are checked by `zemory conform --layout`)
+    if (String(p.meta.scope ?? "") === "layout") continue;
     for (const one of String(p.meta.path ?? "").split(/\s*[·|]\s*/)) {
       if (!one || one === ".") continue;
       slots.push(slotMatcher(one));

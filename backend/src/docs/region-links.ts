@@ -76,7 +76,7 @@ export function findRegionRepo(name: string, from: string): string | null {
 
 /**
  * The folder a workspace is read from: the nearest folder above `root` (up to four levels) that directly holds a repo of
- * the role workspace-manager, else the folder above `root`. 20/10: SasinHub (system-manager, `_Project/ERP/`) could not see
+ * the role workspace-manager, else the folder above `root`. 20/10: AcmeHub (system-manager, `_Project/ERP/`) could not see
  * the app-data repo it manages (`_DB_AppCore`, beside the DW) because the workspace was read from its own parent only.
  */
 export function regionBase(root: string, storeDir = STORE_DIR): string {

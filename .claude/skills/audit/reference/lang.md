@@ -116,9 +116,9 @@ dưới nói "0" ở mọi ô — nó sai, và sai theo hướng dễ chịu.
 | Ⓒ không dấu | 0 | **197 dòng** | **22 dòng** |
 
 13/17 repo sạch tuyệt đối cả ba mặt. Phần còn lại là miễn trừ có lý do, ghi ở §Miễn trừ:
-`bang` tiếng Anh của DuAnA (3) · tên sheet Excel `QUYEN` và một chuỗi thử của Dept_IT (4) ·
+`bang` tiếng Anh của DuAnA (3) · tên sheet Excel `QUYEN` và một chuỗi thử của Dept_TEC (4) ·
 từ điển thuật ngữ đang gạch bỏ cách viết sai + log watchdog trích nguyên văn (6) · hai chỗ đang
-có phiên agent khác giữ file, cố ý không đụng (`KhoDuLieuTrungTam` 9 · `Dept_HR` 3).
+có phiên agent khác giữ file, cố ý không đụng (`KhoDuLieuTrungTam` 9 · `Dept_PPL` 3).
 
 **Bài học lớn nhất của đợt này:** `guard.cjs` sinh máy từng chiếm 72% số dòng mất dấu, sửa một
 chỗ là sạch 9 repo — nhưng thứ tốn công nhất lại là **~350 định danh mà máy dò không thấy**. Khi

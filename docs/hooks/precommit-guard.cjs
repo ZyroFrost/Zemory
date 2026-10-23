@@ -12,7 +12,7 @@ const POLICY = JSON.parse(fs.readFileSync(path.join(__dirname, "policy.json"), "
 function globToRe(pat) {
   return new RegExp("^" + pat.replace(/[.+^$(){}|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".") + "$", "i");
 }
-// maxBuffer: the 1 MB default died with ENOBUFS once ~7,000 paths were staged (Dept_OPS 2026-10-19, a 9,323-file rename)
+// maxBuffer: the 1 MB default died with ENOBUFS once ~7,000 paths were staged (Dept_LOG 2026-10-19, a 9,323-file rename)
 const staged = cp.execSync("git diff --cached --name-only", { encoding: "utf8", windowsHide: true, maxBuffer: 256 * 1024 * 1024 }).split(/\r?\n/).filter(Boolean);
 const bad = [];
 for (const f of staged) {

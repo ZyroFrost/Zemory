@@ -1,5 +1,5 @@
 // Move a project folder WITH everything that remembers it by path (user 2026-10-09: eight repos into
-// D:\huy.nguyen\Project\Company\Sasin\ — "phải dời toàn bộ và có đầy đủ có luôn session chat cũ, ko được thiếu sót gì").
+// D:\user\Project\Company\Acme\ — "phải dời toàn bộ và có đầy đủ có luôn session chat cũ, ko được thiếu sót gì").
 //
 // What remembers a project by its PATH, measured on the live store that day:
 //   · sessions.project_root (168 rows for the eight) — repointed AND pinned, so the next scan's COALESCE on cwd cannot

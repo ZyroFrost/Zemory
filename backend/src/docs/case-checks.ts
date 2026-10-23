@@ -1,8 +1,8 @@
 // Checks of a repo built from cases and tasks (non-app sets: tasks/<case>/ · data/<case>/ · content/README.md · reports/ ·
 // bin/ · shared slots sources/ config/ queries/) and of the words the harness left behind after a reshape.
 //
-// Why they exist (2026-10-19): Dept_FA after its reshape passed conform · validate · paths · doctor, and a hand check still
-// found six faults; Dept_HR found four more. Every one was a fact a machine can read: a case on disk the index does not
+// Why they exist (2026-10-19): Dept_FIN after its reshape passed conform · validate · paths · doctor, and a hand check still
+// found six faults; Dept_PPL found four more. Every one was a fact a machine can read: a case on disk the index does not
 // list, a status the index and the spec disagree on, a file a VM task keeps on the PC, a launcher no task owns, a ledger
 // headed with the repo's old name, ~120 mentions of harness files that no longer exist. Each function returns the samples
 // for one conform item; an empty list means clean. Pure reads.
@@ -262,7 +262,7 @@ export function binLauncherFindings(root: string): string[] {
         // a task folder must exist; a path with an extension must exist as a file; a bare folder must exist
         const target = parts[0].toLowerCase() === "tasks" ? parts.slice(0, 2).join("/") : p;
         // Windows runs `bin\turnover` as bin\turnover.cmd (PATHEXT): a launcher named without its extension is present
-        // (Dept_OPS 2026-10-19: the usage lines of bin/turnover.cmd and bin/vault.cmd were reported as missing calls)
+        // (Dept_LOG 2026-10-19: the usage lines of bin/turnover.cmd and bin/vault.cmd were reported as missing calls)
         const viaExt = !extname(target) && [".cmd", ".bat", ".ps1", ".sh", ".py"].some((e) => existsSync(join(root, target + e)));
         if (!existsSync(join(root, target)) && !viaExt) missing.add(target);
       }
@@ -342,7 +342,7 @@ export function ledgerTitleFindings(root: string): string[] {
     if (text === null) continue;
     const h1 = /^#\s+(.+)$/m.exec(text)?.[1] ?? "";
     // only a heading that opens with a repo-shaped identifier and a dash names a repo: one with "_" or a camel hump
-    // (PBI_FIN · SasinFlow). "INDEX các case HR — …" and "00 — Tổng quan" name none.
+    // (PBI_FIN · AcmeFlow). "INDEX các case HR — …" and "00 — Tổng quan" name none.
     const m = /^`?([A-Za-z][\w.-]*)`?\s+[—–-]\s/.exec(h1);
     if (m && /_|[a-z][A-Z]/.test(m[1]) && m[1].toLowerCase() !== repo) out.push(`${rel(root, f)}: heading names "${m[1]}", the repo is ${basename(root)}`);
   }
@@ -474,7 +474,7 @@ export function regionValues(root: string): Record<string, unknown> {
 }
 
 /** `files: "prose"` — the entry is about what an agent is told (an instruction in a .md), not about a task's own code: the
- *  desktop app's /api/vault in a pipeline is not fixed by the agent's probing tool (Dept_IT 2026-10-19). */
+ *  desktop app's /api/vault in a pipeline is not fixed by the agent's probing tool (Dept_TEC 2026-10-19). */
 interface SupersededFact { old: string; now: string; roles?: string[]; level?: "advisory"; files?: "prose" }
 
 /**

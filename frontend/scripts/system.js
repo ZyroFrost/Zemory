@@ -363,7 +363,7 @@
       Z.updStale=stale;
       // Đường dẫn MỚI CHẾT theo repo (plan/21 §2.3) — cùng nguồn /harness-updates, cùng chip này (user chốt 2026-09-10:
       // "có badge check repo theo chuẩn rồi, xài cái đó luôn"). Sweep canh 17 repo nhưng hàng Tính năng chỉ nói về
-      // project của daemon — Dept_OPS mới chết mà UI im (đo 2026-09-10). Lưu để hộp thoại + thẻ Dự án dùng chung.
+      // project của daemon — Dept_LOG mới chết mà UI im (đo 2026-09-10). Lưu để hộp thoại + thẻ Dự án dùng chung.
       var dead=(r&&r.deadPaths)||[];Z.updDead=dead;
       // "Không kết luận được" đi kèm, KHÔNG đổi màu — nhưng phải hiện (user 2026-09-17: "không dò được thì báo không dò được").
       Z.updUnproven=(r&&r.unprovenPaths)||[];

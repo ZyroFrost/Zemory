@@ -60,7 +60,7 @@ function viName(name) {
 
 /**
  * A looser judge for the name of a harness part only (a law, an article, a slot folder): such a name mixes Vietnamese with a
- * brand or English word (`PhamViGhiChiSasin`, `CaseItPhanLonKhong`), which the strict judge lets through because NOT every
+ * brand or English word (`PhamViGhiChiAcme`, `CaseItPhanLonKhong`), which the strict judge lets through because NOT every
  * part is a Vietnamese syllable (2026-10-19: 80 article folders in six departments). Vietnamese when at least three parts
  * are Vietnamese syllables that are no English word, they make at least 60% of the parts, and one carries a Vietnamese
  * mark. Measured on the 2,528 part names of HS and 19 repos: no English name caught. Not used on code identifiers.

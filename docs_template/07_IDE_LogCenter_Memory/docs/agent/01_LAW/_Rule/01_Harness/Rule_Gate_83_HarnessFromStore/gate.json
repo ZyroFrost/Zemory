@@ -191,7 +191,7 @@
       "tool_input": {
         "file_path": "docs/agent/01_LAW/_Cons/02_Data/Cons_Gate_12_SourceOfTruth/Cons.md",
         "old_string": "<dữ liệu>",
-        "new_string": "DW SASIN_DATA_WAREHOUSE"
+        "new_string": "DW ACME_DATA_WAREHOUSE"
       },
       "policy": {
         "rules_file": "docs/agent/01_LAW/_Rule",

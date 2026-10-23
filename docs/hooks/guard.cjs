@@ -19,7 +19,7 @@ const ROOT = path.resolve(HERE, ...(POLICY.hooks_dir || POLICY.flags_dir).split(
 // Block on BOTH channels. Measured 2026-10-14 (plan/28 §0m): on a machine without Git the host drops the exit
 // code, so exit 2 alone lets the call through; the JSON decision on stdout blocks with or without Git.
 // Why a flag that was on disk opened nothing (set by consumeFlag when it revokes one): said in the block, so nobody has to guess
-// why a flag created a moment ago did not work (Dept_PUR 2026-10-19: "the flag works one time and not the next").
+// why a flag created a moment ago did not work (Dept_BUY 2026-10-19: "the flag works one time and not the next").
 let FLAG_NOTE = "";
 function deny(msg) {
   const why = String(msg).trim() + (FLAG_NOTE ? "\n(" + FLAG_NOTE + ")" : "");
@@ -173,7 +173,7 @@ function checkRead(rel) {
 
 // ── WORKING OUTSIDE THE PROJECT (added 2026-10-06) ─────────────────────────────────────
 //
-// Incident (session db-datawarehouse-15): an agent in a data-warehouse repo created a database and a
+// Incident (session db-warehouse-15): an agent in a data-warehouse repo created a database and a
 // linked server, changed `max server memory` on the local SQL Server, and wrote files to a drive outside
 // the repo. 02_RULES "Pham vi project" forbade all of it in WORDS; there was no latch. Three branches, ONE flag (`outside`):
 //   1 writing to an ABSOLUTE path outside the repo (Write/Edit tools, redirection, move/copy, writer
@@ -203,7 +203,7 @@ function isAbsTok(t, strict) {
 
 // One spelling per place: Git Bash `/d/x` -> `D:/x`, `~` -> home, then the deepest EXISTING ancestor goes
 // through realpathSync.native - that turns a Windows 8.3 short name (`C:/Users/HUY~1.NGU/...`) into the long
-// one (`C:/Users/huy.nguyen/...`). Without it the same temp folder has two spellings and one of them is "outside".
+// one (`C:/Users/user/...`). Without it the same temp folder has two spellings and one of them is "outside".
 // A UNC path skips realpath: an unreachable share can stall for seconds, and it is outside either way.
 function canonPath(p) {
   let s = String(p);
@@ -336,7 +336,7 @@ function isOutside(tok, strict) {
 }
 
 // String literals that are only ARGUMENTS of a text operation are data, not a place being written. False block
-// reported 2026-10-07 (session db-datawarehouse-fa): `python -c "...s.replace('E:\\_retired','E:\\Legacy')..."` edited
+// reported 2026-10-07 (session db-warehouse-fa): `python -c "...s.replace('E:\\_retired','E:\\Legacy')..."` edited
 // two .md files INSIDE the repo and was blocked as "writing into E:\_retired". `os.path.join` is NOT dropped - it
 // builds write paths. The write call's own argument (`open('C:/x','w')`) is untouched, so a real outside write still blocks.
 // An argument list may hold string literals WITH parentheses in them (`.split("assert.match(r.say, /x/,")`) — measured
@@ -795,7 +795,7 @@ function checkBash(cmd) {
   // write_bytes were missed by `\bwrite\b` (the next character is a word character)
   const WRITE_VERB = /\bopen\s*\((?:[^()\n]|\([^()\n]*\))*,\s*(?:mode\s*=\s*)?[rbuU]?["'][rbt]*[wax+][rbt+]*["']|\b(write|write_text|write_bytes|writeFile|appendFile|writeFileSync|appendFileSync|Set-Content|Add-Content|Out-File|dump|save)\b/i;
 
-  // 🔴 FINGERPRINT PER COMMAND, NOT PER PATH (fixed 2026-09-04, reported from the Dept_OPS repo).
+  // 🔴 FINGERPRINT PER COMMAND, NOT PER PATH (fixed 2026-09-04, reported from the Dept_LOG repo).
   // This spot used to call `consumeFlag("docs_write", rel)` — the fingerprint was computed over ONE path.
   // But `mv A B` touches TWO paths, and if both sit inside protected then every run:
   //   1 examines the SOURCE A -> the flag is unstamped -> stamp sha1(A) -> LET THROUGH
@@ -989,7 +989,7 @@ function checkBash(cmd) {
 
   // ── OUTSIDE THE PROJECT 4: work on ANOTHER MACHINE (added 2026-10-07) ─────────────────
   //
-  // Incident (session db-datawarehouse-fa, 2026-10-07): `ssh <vm> "New-Item -ItemType Directory E:\_retired\...;
+  // Incident (session db-warehouse-fa, 2026-10-07): `ssh <vm> "New-Item -ItemType Directory E:\_retired\...;
   // Export-ScheduledTask ... | Out-File ...; Unregister-ScheduledTask ..."`, and before that two `Register-ScheduledTask`
   // - a new folder and Scheduler tasks created/deleted on a VM, unblocked: `ssh` was an ordinary command
   // whose quoted payload nobody judged. Now a remote runner works like an interpreter: once one is in command

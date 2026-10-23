@@ -339,7 +339,7 @@ export async function embedPending(
     /**
      * Epoch ms. Checked before every model batch except the first (each pass still makes progress): past it ⇒ stop and
      * report `stoppedEarly`. The p2p fast lane holds the daemon's one job slot while it embeds, and on a slow machine
-     * (measured 12/10 on DESKTOP-PFB157K: 50 vectors in 411 s, ~8 s each) a whole pass kept received messages, deferred
+     * (measured 12/10 on HOST-B: 50 vectors in 411 s, ~8 s each) a whole pass kept received messages, deferred
      * capture and new blocks waiting for minutes. Stopping between batches is safe: chunk 0 is written last, so a
      * message cut mid-way stays pending and is redone whole next pass.
      */

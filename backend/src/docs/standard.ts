@@ -355,7 +355,7 @@ export function standardDiff(root: string): { profile: "app" | "non-app"; files:
     const moved = changedLines(baseL, theirsL);
     // Nothing to bring: the standard moved no line, or every line it moved is already in this repo
     // (merging yields the file as it stands). Such a file is current. Without this it reported
-    // "merge +0 −0" forever (_DB_DataWarehouse 03_STRUCTURE, 2026-10-04): the apply rewrote the stamp,
+    // "merge +0 −0" forever (_DB_Warehouse 03_STRUCTURE, 2026-10-04): the apply rewrote the stamp,
     // the next run picked the earlier same-day revision as base again, and the empty merge came back.
     const noop = moved === 0 || (local > 0 && (() => {
       const r = merge3(baseL, mineL, theirsL, knownLines(root, file));
@@ -621,7 +621,7 @@ export function applyStandard(root: string, opts: { apply: boolean; only?: strin
  * lấy ngày của template hôm nay.
  *
  * 🔄 Bản đầu (2026-09-18) lấy ngày template HIỆN TẠI. Đóng dấu xong 51 file, cả 51 tự khai "đang ở
- * bản mới nhất" — trong khi đo lại thì phần lớn đứng ở bản tháng 7–8, SasinHub/02_RULES thiếu 168 dòng.
+ * bản mới nhất" — trong khi đo lại thì phần lớn đứng ở bản tháng 7–8, AcmeHub/02_RULES thiếu 168 dòng.
  * Dấu sai làm phần lệch cũ VÔ HÌNH: `sync --check` báo xanh, `--standard` báo "không có gì để áp". Dấu
  * đo được thì hợp nhất ba chiều chở được đúng phần chuẩn repo còn thiếu, và giữ phần repo tự viết.
  *

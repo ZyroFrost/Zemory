@@ -274,7 +274,7 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
   if (struct) {
     // Bám TÊN, không bám SỐ: Routing là §4 ở chuẩn APP nhưng §3 ở chuẩn NON-APP. Ghim số làm cả
     // lớp concern/routing biến mất với mọi repo non-app mà không một lỗi nào — đo 2026-09-16 trên
-    // `Dept_IT`: concerns = 0 (Zemory: 67). Cùng lớp lỗi với `declaredSlots` (structure-tree.ts).
+    // `Dept_TEC`: concerns = 0 (Zemory: 67). Cùng lớp lỗi với `declaredSlots` (structure-tree.ts).
     const body = sectionBody(struct, /^##\s*\d+\.\s*Routing/mu);
     if (body) {
       let i = 0;

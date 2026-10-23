@@ -311,7 +311,7 @@ function isDeadEntry(root: string): boolean {
  *
  * 🔴 Bản nháp của nút "Dọn dự án đã mất" từng đếm trên `listKnownProjects()`, mà hàm đó ĐÃ lọc bỏ
  * mục có folder mất ⇒ luôn ra 0, trong khi lượt chạy thật đọc sổ thô và có xoá. Bản nháp nói
- * "không có gì", nút bấm thì làm việc. Bắt được 2026-09-19 với `SasinAuto`: repo đổi tên, folder
+ * "không có gì", nút bấm thì làm việc. Bắt được 2026-09-19 với `AcmeAuto`: repo đổi tên, folder
  * cũ mất, mục sổ nằm lại — và vô hình với cả màn Dự án lẫn hộp xác nhận.
  */
 export function deadProjectEntries(): string[] {

@@ -204,7 +204,7 @@ export function declaredSlots(root: string): Set<string> {
       // BÁM TÊN SECTION, KHÔNG BÁM SỐ. Hai chuẩn đánh số khác nhau cho cùng một mục: cây thư mục
       // là §3 ở chuẩn APP nhưng §2 ở chuẩn NON-APP (nó không có mục "hai cách sắp xếp code").
       // Ghim `^## 3.` nghĩa là với mọi repo non-app ta đọc nhầm sang mục ROUTING ⇒ không thấy dòng
-      // cây nào ⇒ trả về TẬP RỖNG, âm thầm. Đo 2026-09-16 trên `Dept_IT`: `declaredSlots` = 0, nên
+      // cây nào ⇒ trả về TẬP RỖNG, âm thầm. Đo 2026-09-16 trên `Dept_TEC`: `declaredSlots` = 0, nên
       // `tasks/` — slot mà chính §2 của nó khai — bị cả cây lẫn graph gọi là "ngoài chuẩn".
       if (/^##\s*\d+\.\s*Cây thư mục/u.test(line)) { inSec = true; continue; }
       if (inSec && /^##\s/.test(line)) break; // hết section cây
@@ -240,7 +240,7 @@ export function extraDirOk(relDir: string, root: string, declared: Set<string>):
   const first = segs[0];
   if (declared.has(first) && !SLOT_ROLES[first] && !ROOT_ROLES[first]) return true; // ① declared freeform parent
   // ② python pkg root: a package right under a `backend` folder, at any depth - a monorepo app (`apps/<app>/backend/<pkg>`)
-  // keeps the same convention as `backend/<pkg>` (20/10, SasinHub `apps/hub/backend/hub`)
+  // keeps the same convention as `backend/<pkg>` (20/10, AcmeHub `apps/hub/backend/hub`)
   if (segs.length >= 2 && segs[segs.length - 2] === "backend" && existsSync(join(root, ...segs, "__init__.py"))) return true;
   // ④ a domain unit: a child of the slot `modules` (Backend_044_Modules: "packages by domain/feature, the same slot
   // dictionary nested inside") - its files are the domain's own; its subfolders still take dictionary names

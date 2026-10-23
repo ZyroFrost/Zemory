@@ -14,7 +14,7 @@ description: Close out a work session correctly - route everything that happened
 3. **`docs/agent/*`** — để biết chỗ nào phải cập nhật và không ghi trùng.
 
 > 🖥️ **Chỉ khi có `zemory` CLI:** đoạn đã trôi khỏi ngữ cảnh vẫn còn trong Global Memory —
-> **`zemory memory scan` TRƯỚC `digest`** — phiên ĐANG CHẠY chưa nằm trong GM tới khi được scan; bỏ bước này thì `digest` trả thiếu/rỗng và phần đầu phiên đã bị nén khỏi context mất luôn. Scan xong GM vẫn thiếu ⇒ đọc thẳng transcript gốc của phiên (Claude Code: `~/.claude/projects/<repo>/<session>.jsonl`). *Đo 2026-10-02 (`Dept_IC`): một quyết định user chốt giữa phiên rơi mất, sổ chỉ còn câu nói 3 phút trước đó — câu đã bị chính quyết định kia thay.*
+> **`zemory memory scan` TRƯỚC `digest`** — phiên ĐANG CHẠY chưa nằm trong GM tới khi được scan; bỏ bước này thì `digest` trả thiếu/rỗng và phần đầu phiên đã bị nén khỏi context mất luôn. Scan xong GM vẫn thiếu ⇒ đọc thẳng transcript gốc của phiên (Claude Code: `~/.claude/projects/<repo>/<session>.jsonl`). *Đo 2026-10-02 (`Dept_CTL`): một quyết định user chốt giữa phiên rơi mất, sổ chỉ còn câu nói 3 phút trước đó — câu đã bị chính quyết định kia thay.*
 >
 > `zemory memory digest <session>` + `zemory memory search "<chủ đề>" [--all]` để dựng lại đầy đủ,
 > rồi **verify từng mục với nguồn thật** trước khi ghi. Không có CLI thì đọc lại phiên hiện tại là nguồn duy nhất — càng phải ghi sớm, đừng để trôi.

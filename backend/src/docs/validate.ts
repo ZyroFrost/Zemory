@@ -67,7 +67,7 @@ export function validate(ctx: Context, opts: { paths?: boolean } = {}): Validate
     });
   }
 
-  // 1b'. Plans must stay SMALL (user 2026-10-08, from _DB_DataWarehouse: 12.800 plan lines — an agent read them all, the
+  // 1b'. Plans must stay SMALL (user 2026-10-08, from _DB_Warehouse: 12.800 plan lines — an agent read them all, the
   // context compacted, re-reading did not fit). The read-everything rule stays; the plans shrink. WARN, not error, while repos
   // trim (user chose "áp từng bước"): a spec over the cap, or the whole plan folder over the total.
   const autogen = planAutogenHits(join(agentDir, "..", "plan"));
@@ -106,7 +106,7 @@ export function validate(ctx: Context, opts: { paths?: boolean } = {}): Validate
 
     // Entry keys must be unique across BOTH tiers: a supersede clause names a key, and with two
     // entries under one key it links to whichever the parser meets first. Nothing checked this —
-    // _DB_DataWarehouse (2026-10-04) carried two `## [2026-10-01a]` and validate reported clean.
+    // _DB_Warehouse (2026-10-04) carried two `## [2026-10-01a]` and validate reported clean.
     const archFile = ledgerFile(archiveDirOf(agentDir), "changes");
     // Bare-date keys repeated (`[2026-07-16]`×12) are how entries were written before suffixes, not
     // an error: only a suffixed key (meant to be unique) or a key a supersede clause names is a warn.
@@ -490,7 +490,7 @@ export function planOpenItems(planDir: string): string[] {
 }
 
 /**
- * Machine-generated blocks inside docs/plan (user 2026-10-08, from _DB_DataWarehouse: "plan đúng là phải full text… plan là bàn
+ * Machine-generated blocks inside docs/plan (user 2026-10-08, from _DB_Warehouse: "plan đúng là phải full text… plan là bàn
  * và chốt thiết kế mà"). A plan is text a PERSON writes; a generator writes next to its own source and the plan links to it.
  * Matches the MARKERS of a generated block only — plain prose ("hai máy sinh khối") never matches; fenced code is skipped.
  */
@@ -515,7 +515,7 @@ export function planAutogenHits(planDir: string): string[] {
 export function danglingSupersedes(texts: string[], keyTexts: string[] = texts): string[] {
   const keys = new Set<string>();
   // `## [2026-09-18c]` and `## [2026-09-18 (c)]` are the SAME key — Dept repos write the suffix in brackets, and their
-  // clauses (correctly, per 02_RULES) name `2026-09-18c`; reading only the first shape flagged them (Dept_FA 07/10).
+  // clauses (correctly, per 02_RULES) name `2026-09-18c`; reading only the first shape flagged them (Dept_FIN 07/10).
   for (const t of keyTexts)
     for (const m of t.matchAll(/^##\s*\[(\d{4}-\d{2}-\d{2})\s*(?:\(([a-z]+)\)|([a-z]*))\]/gim)) keys.add((m[1] + (m[2] ?? m[3] ?? "")).toLowerCase());
   const out: string[] = [];
@@ -526,7 +526,7 @@ export function danglingSupersedes(texts: string[], keyTexts: string[] = texts):
       if (/^\s*```/.test(l)) fence = !fence;
       if (!fence && /^##\s*\[\d{4}-\d{2}-\d{2}/.test(l)) entries = true;
       // The file's own intro (before the first entry) and an inline-code mention (`> 🔄 **Supersede:** …` as the
-      // template's how-to line) describe the clause — they are not one (Dept_FA 07/10: the template line read as "no key").
+      // template's how-to line) describe the clause — they are not one (Dept_FIN 07/10: the template line read as "no key").
       if (fence || !entries || !/🔄\s*\*\*Supersede/u.test(l.replace(/`[^`]*`/g, ""))) continue;
       const named = [...l.matchAll(/\d{4}-\d{2}-\d{2}[a-z]*/gi)].map((m) => m[0].toLowerCase());
       if (!named.length) out.push("no key");

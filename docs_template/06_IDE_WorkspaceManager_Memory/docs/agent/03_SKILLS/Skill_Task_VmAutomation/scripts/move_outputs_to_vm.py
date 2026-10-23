@@ -44,7 +44,7 @@ from region_values import manager_root, value as region_value  # noqa: E402
 HOST = region_value(str(Path.cwd()), "vm_ssh_alias", "")
 ROOT = Path.cwd()
 APPLY = "--apply" in sys.argv
-REF_ONLY = "--reference" in sys.argv     # Dept_HR 19/10: report reference/ the VM lacks
+REF_ONLY = "--reference" in sys.argv     # Dept_PPL 19/10: report reference/ the VM lacks
 REF = {"missing": 0, "differ": 0}
 if not (ROOT / "tasks").is_dir():
     sys.exit("run from the repo root (no tasks/ here: %s)" % ROOT)

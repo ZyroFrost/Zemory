@@ -1,10 +1,10 @@
 ---
 id: Rule_83
 name: harness-from-store
-version: 7
+version: 8
 kind: action
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore @v7 #67ecfd51bb64
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore @v8 #c5e92387e271
 ---
 # Rule_Gate_83_HarnessFromStore — A repo uses the harness, it does not own it
 

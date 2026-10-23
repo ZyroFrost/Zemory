@@ -569,7 +569,7 @@ export interface LnkFacts {
 
 /**
  * A shortcut on disk no longer matches what we would write today: its icon file is not this install's zemory.ico (or is
- * gone), or it does not run this install's launcher. Measured 2026-10-21: the repo moved D:\huy.nguyen\Project\… →
+ * gone), or it does not run this install's launcher. Measured 2026-10-21: the repo moved D:\user\Project\… →
  * D:\Workspace\…, launch.vbs was rewritten by the launcher check but the .lnk kept the old icon path, so the Start Menu
  * showed a blank white icon. Pure: facts in, verdict out.
  */

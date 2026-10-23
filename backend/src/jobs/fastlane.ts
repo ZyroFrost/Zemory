@@ -37,7 +37,7 @@ export const FAST_MAX_WAIT_MS = 12_000;
 /** Rest after a push that moved no message of ours (frontier blocked / failure) — no back-to-back empty rounds. */
 export const FAST_REST_MS = 30_000;
 /**
- * Embed budget of one vector round (§12.7). The round holds the ONE job slot; measured 12/10 on DESKTOP-PFB157K (~8 s per
+ * Embed budget of one vector round (§12.7). The round holds the ONE job slot; measured 12/10 on HOST-B (~8 s per
  * vector) a full round took 299–411 s and a block received from the laptop waited ~5.5 min behind it. Past the budget the
  * round seals what it has and the lane queues another — ingest, merge and push are always picked before vectors, so they
  * get the slot between rounds.

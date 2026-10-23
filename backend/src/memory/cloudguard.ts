@@ -2,7 +2,7 @@
 //
 // Vì sao cần một module riêng thay vì giữ mỗi `looksLikeCloudSync` (regex trên tên đường
 // dẫn): kho THẬT đã hỏng HAI LẦN (2026-08-03 và 04-08) và cả hai lần regex đó đều IM,
-// vì đường dẫn là `D:\huy.nguyen\...` — không chứa chữ "Drive"/"OneDrive" nào. Thứ cuốn
+// vì đường dẫn là `D:\user\...` — không chứa chữ "Drive"/"OneDrive" nào. Thứ cuốn
 // nó đi là kênh **backup máy** của Google Drive (Computers), khai ở một chỗ hoàn toàn
 // khác: `%LOCALAPPDATA%\Google\DriveFS\root_preference_sqlite.db`. Tên thư mục KHÔNG
 // phải bằng chứng; thứ quyết định là phạm vi đồng bộ đã khai ở đâu đó (HP điều 14).
@@ -35,7 +35,7 @@ export interface CloudReport {
   evidence: CloudEvidence[];
   /**
    * DẤU VẾT — rác client để lại. Sống DAI HƠN việc gỡ đồng bộ, nên KHÔNG tự nó kết tội.
-   * Đo 2026-08-06: sau khi user gỡ `D:\huy.nguyen` khỏi backup máy, một thư mục rỗng
+   * Đo 2026-08-06: sau khi user gỡ `D:\user` khỏi backup máy, một thư mục rỗng
    * `.tmp.driveupload` vẫn nằm đó — bản đầu của phép kiểm này kêu ĐỎ vì nó, tức báo oan
    * ngay ca đầu tiên. Cảnh báo kêu nhầm thì lần sau không ai đọc, mà "không ai đọc" chính
    * là cách hai vụ hỏng kho lọt lưới. Dấu vết chỉ NÂNG thành bằng chứng khi nguồn thẩm

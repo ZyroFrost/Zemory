@@ -1453,6 +1453,12 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     // bench mặc định bên dưới — bench đó chạy corpus 8 tài liệu rời chủ đề, đủ để gác hybrid
     // nhưng KHÔNG đủ để phán về rerank (pool rerank 40 > cả corpus). Xem evals/recallbench.ts.
     if (args.includes("--recall")) {
+      const { corpusAvailable } = await import("../evals/recall-corpus.js");
+      if (!corpusAvailable()) {
+        console.log("zemory memory bench --recall: no labeled corpus on this machine (backend/test/recall-corpus.json lives on the development machine only).");
+        process.exitCode = 1;
+        return;
+      }
       const limRaw = flagValue(args, "--limit");
       const opts = {
         limit: limRaw ? Number(limRaw) : undefined,

@@ -1,13 +1,13 @@
 ---
 id: Struc_Region_Workspace
 name: region-workspace
-version: 4
+version: 5
 scope: region
 checked: [Struc_Repo_Dept]
 ---
 # Struc_Region_Workspace
 
-`Workspace/` của ổ dữ liệu (`Struc_Drive_Data`) chứa mọi repo của người dùng, chia ba vùng. Chuẩn này không ráp vào repo nào: nó
+`Workspace/` của ổ dữ liệu (`Struc_Disk_Data`) chứa mọi repo của người dùng, chia ba vùng. Chuẩn này không ráp vào repo nào: nó
 khai ba vùng và hai loại quan hệ giữa các repo. Bên trong một tổ chức theo `Struc_Region_Company`. Vai của một repo nằm trong
 template repo đó ráp theo, không nằm ở đây.
 
