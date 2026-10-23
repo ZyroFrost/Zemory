@@ -2,10 +2,10 @@
 id: Rule_67
 aka: 02-67
 name: interrupt-queue
-version: 6
+version: 7
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Core_67_InterruptQueue @v6 #2b3d6112aa90
+from: _Store/01_LAW/_Rule/02_Work/Rule_Core_67_InterruptQueue @v7 #4971dff2561f
 ---
 # Rule_Core_67_InterruptQueue — A request that cuts in waits its turn
 
@@ -30,27 +30,6 @@ current task (or reaches a safe point), then turns to the new one.
 
 ## Check
 - Judgment; no machine check.
-
-## Luật là gì
-Yêu cầu mới đến giữa chừng không huỷ việc đang làm. Agent ghi nhận một dòng, làm xong việc hiện tại (hoặc tới mốc an toàn) rồi
-mới sang việc mới.
-
-## Khi nào áp
-- Người dùng gửi yêu cầu mới trong lúc một việc còn đang chạy.
-
-## Phải làm gì
-1. Ghi nhận yêu cầu mới bằng một dòng.
-2. Làm xong việc hiện tại, hoặc đưa nó tới mốc an toàn (không để file ghi dở, không bỏ gate chạy dở), rồi mới bắt đầu việc mới.
-3. Ngoại lệ: người dùng bảo dừng, bỏ, hoặc làm việc mới trước ⇒ làm theo lệnh đó.
-4. Không gộp hai việc vào một lượt sửa. Không cắt bớt việc đang làm để kịp sang việc mới.
-
-## Ví dụ
-- Tình huống: agent đang đối soát dở số liệu tháng thì người dùng nhắn "nhớ đổi tên cột ở báo cáo tuần".
-- ✗ Sai: bỏ ngang đối soát để đổi tên cột, hoặc làm cả hai cùng lúc và làm qua loa phần đối soát.
-- ✓ Đúng: báo đã ghi nhận, làm xong đối soát rồi mới đổi tên cột; trừ khi người dùng bảo dừng hoặc làm việc mới trước.
-
-## Máy kiểm
-- Phán đoán; không có máy kiểm.
 
 ## Links · Liên kết
 - Related · Liên quan: `Rule_Keys_07_ScopeOnly` — one task, its own scope · mỗi việc đúng phạm vi của nó

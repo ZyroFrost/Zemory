@@ -107,6 +107,32 @@ _Slot/Software_149_Program/
 - Mỗi luật có một ví dụ: Tình huống · ✗ Sai · ✓ Đúng, viết bằng nghiệp vụ dễ hiểu, không tên công ty hay sản phẩm.
 - Đổi nội dung một linh kiện ⇒ tăng `version`.
 
+## 4b. Ngôn ngữ — một bản gốc tiếng Anh, bản dịch nằm cạnh
+
+- Mỗi linh kiện có MỘT file gốc `<linh kiện>.md` viết **tiếng Anh**: file duy nhất agent đọc, và là nguồn sự thật.
+- Bản dịch cho người đọc nằm cạnh file gốc, mỗi ngôn ngữ một file `<linh kiện>.<mã ISO 639-1>.md`:
+
+```
+Rule_Gate_27_HarnessLanguage/
+├── Rule_Gate_27_HarnessLanguage.md      bản gốc tiếng Anh — agent đọc file này
+└── Rule_Gate_27_HarnessLanguage.vi.md   bản dịch tiếng Việt — người đọc file này
+```
+
+- Vì sao tách file: để hai ngôn ngữ chung một file thì mỗi lần agent đọc phải trả token cho cả hai, mà tiếng có dấu tốn token
+  hơn tiếng Anh cho cùng nội dung. Tách ra thì agent chỉ trả cho tiếng Anh, và thêm bao nhiêu ngôn ngữ cũng không đụng file gốc.
+- **Thêm một ngôn ngữ:** chép file gốc thành `<linh kiện>.<mã>.md` (`.ja.md`, `.fr.md` …) rồi dịch; giữ đúng các mục và số
+  bước của file gốc; ghi `version:` trong frontmatter bằng version của file gốc. Có thể nhờ agent dịch cả HS (người dùng tự
+  trả token).
+- **Sửa một linh kiện:** sửa file gốc tiếng Anh trước, tăng `version`, rồi đưa từng bản dịch lên đúng version đó. Bản dịch
+  còn ở version cũ được nêu tên (chỉ nhắc, vẫn đọc được).
+- **Chỉ dùng tiếng Anh:** xoá các file `.<mã>.md`; không gì phụ thuộc vào chúng.
+- **Máy giữ:**
+  - Guard chặn agent Read một bản dịch trong HS hoặc trong bất kỳ `docs/agent` nào, chỉ sang file gốc. Mở bản dịch để sửa thì
+    cần cờ dùng một lần `.allow-translation`.
+  - Kiểm tra HS báo đỏ file gốc còn mang mục của ngôn ngữ khác, và bản dịch thiếu mục hoặc lệch số bước.
+  - Màn Harness của cockpit hiện bản dịch theo ngôn ngữ giao diện; không có thì hiện file gốc.
+- Luật: `Rule_Gate_27_HarnessLanguage`.
+
 ## 5. Bộ ráp
 
 `docs_template/<NN>_<Hệ>_<Tên>_<Tầng>/` — hệ `GUI` · `IDE` · `CLI`; tầng `Basic` (không cần zemory) · `Memory` (dùng GM).
@@ -114,8 +140,16 @@ _Slot/Software_149_Program/
 - Một bộ ráp là thư mục của nó: khung `Struc_Repo_*` + các luật · hiến pháp · skill đã chọn, chép từ HS. Không có sổ kê nào khác.
 - Dựng / sửa bộ: màn Harness của cockpit (tab Dựng bộ: kéo phần của HS vào bộ, lưu) hoặc `zemory store assemble` (ráp lại mọi
   bộ từ HS sau khi HS đổi).
-- Chọn bộ theo vai của repo trong tầng tổ chức: phòng ban → `Dept` · DW / hệ nguồn → `AppData` · log → `LogCenter` · quản cụm
-  → `WorkspaceManager` · ứng dụng → `App` · không có mã chạy → `NonApp`.
+- Chọn bộ theo vai của repo trong tầng tổ chức (bảng vai đầy đủ: `Struc_Region_Workspace`):
+  - phòng ban → `Dept`;
+  - DW (kho dữ liệu, quản các phòng ban và cấp `data`) → `WorkspaceManager`;
+  - hệ dữ liệu của một ứng dụng (nghiệp vụ nguồn) → `AppData`;
+  - repo quản các ứng dụng → `SystemManager`;
+  - ứng dụng → `App`;
+  - trung tâm log → `LogCenter`;
+  - thuật ngữ · khuôn báo cáo · lưu trữ cũ → khung `Struc_Repo_Reference` (chưa có bộ dựng sẵn: dựng ở màn Harness);
+  - không có mã chạy → `NonApp`.
+- Slot riêng: bộ hoặc một repo được THÊM slot của HS ngoài slot của khung (§7.3); không bao giờ bớt hay đổi slot của khung.
 
 ## 6. Cách dùng
 
@@ -162,6 +196,20 @@ _Slot/Software_149_Program/
 - Thêm một tầng hay một vai mới trên ổ: một slot mới ở khung của tầng đó; thư mục thật có trước mà chưa có slot thì
   `conform --layout` báo "thư mục lạ" tới khi HS có slot cho nó.
 - Bãi bỏ: giữ số, dời vào `Archive/` kèm nơi nhận nội dung.
+
+### 7.3 Slot riêng — HS là khung mặc định, không ép buộc
+- HS là bộ khung mặc định. Bất kỳ người dùng zemory nào cũng thêm được slot của riêng mình, viết linh kiện của riêng mình, hoặc
+  dựng lại HS theo ý mình (người đó tự trả token cho agent làm việc ấy). Zemory đo mỗi repo theo HS mà chính repo đó dùng.
+- Đăng ký một slot riêng: viết nó như mọi slot (`_Slot/<Vùng>_<NNN>_<Tên>/`, §4), đi qua đúng các chốt của slot mới
+  (`Rule_Gate_85` · `slot-overlap`: khai `checked:` và nói nó khác slot có sẵn ở đâu). KHÔNG thêm tên nó vào `structure.json`
+  của khung — slot riêng không đổi khung.
+- Dùng ở hai mức:
+  1. **Một bộ:** màn Harness › Dựng bộ › kệ "Slot riêng": thả slot vào bộ. Slot khung đã có thì không thả được. Mọi repo dùng bộ
+     đó nhận slot.
+  2. **Một repo:** khai trong `docs/.harness.json` của repo: `"slots": ["<tên slot>"]`, rồi `zemory sync --standard`. Chỉ repo
+     đó nhận slot; bộ không đổi.
+- Không chạm logic gốc: slot riêng chỉ THÊM. Không sửa, không bỏ, không đổi tên slot của khung; trùng đường dẫn với slot có sẵn
+  thì `slot-overlap` chặn; slot bố cục ổ đĩa (`scope: layout`) không dùng làm slot riêng của repo.
 
 ## 8. Repo viết hiến pháp
 

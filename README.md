@@ -17,7 +17,7 @@ offline.
 > the apps you build with the harness: scaffolding LLM/AI apps is a first-class use. Use the harness
 > alone, the memory alone, or both.
 
-![Version](https://img.shields.io/badge/version-5.2.0-informational)
+![Version](https://img.shields.io/badge/version-5.3.0-informational)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520.11%20%3C25-3c873a)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
@@ -352,9 +352,12 @@ remove the only way to answer *why won't it connect*.
 
 ![Harness, docs](docs_public/ui/05-harness-docs.png)
 
-Renders the shared standard so a person can read it without opening the files. The shipped standard
-documents are written in Vietnamese; folder names, slot names and routing targets are ASCII English, so
-the structure is usable before the prose is translated.
+Two tabs over the harness store (HS). **Sets** shows every set on disk as a chip, the parts of the chosen
+set by shelf, and the text of a part — in the cockpit's language when the part has a translation for it,
+in English otherwise. **Build a set** lists the parts of HS by shelf with a search box; drag parts (or
+press `+`) into the draft — rules, constitution frames, one repo structure, custom slots, skills — name
+it, and the live check says what would stop it saving. Save shows every folder it will write before it
+writes, then assembles the set folder; Edit opens an existing set in the builder.
 
 ### 7 · Features
 
@@ -437,6 +440,37 @@ repo on its next sync, and a repo always knows which version of each part it car
 Retired parts move to the store's `Archive/` with their history. A part carries its own gate where it
 has one (`gate.json`, a `hook.cjs`, block/pass examples a test replays), so a rule and the machine that
 holds it travel together.
+
+### Languages: one English header, translations beside it
+
+Every part has one header file, `<part>.md`, written in **English**. It is the only file an agent reads
+and the source of truth. People who read another language get a translation file beside it, one per
+language, named `<part>.<ISO 639-1 code>.md`:
+
+```
+docs_template/_Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage/
+├── Rule_Gate_27_HarnessLanguage.md      English header (agents read this)
+└── Rule_Gate_27_HarnessLanguage.vi.md   Vietnamese translation (people read this)
+```
+
+Why separate files: putting two languages in one file makes every agent read pay for both, and a
+language with diacritics costs more tokens than English for the same content. With separate files an
+agent pays for English only, and any number of languages can be added without touching it.
+
+- **Add a language.** Copy a header to `<part>.<code>.md` (`.ja.md`, `.fr.md`, …) and translate it.
+  Keep the same sections and the same number of steps, and set `version:` in its front matter to the
+  header's version. You can ask an agent to translate the whole store; the tokens are yours.
+- **Change a part.** Change the English header first, bump its `version:`, then bring each translation
+  to that version. A translation left behind is named by the check (advisory: it still reads).
+- **Use English only.** Delete the `.<code>.md` files; nothing depends on them.
+- **What the machine holds.** The guard blocks an agent's Read of a translation inside HS or any
+  `docs/agent` and points at the header (editing one takes the one-use flag `.allow-translation`). The
+  HS check reds a header that carries another language's sections, and a translation that lost a
+  section or a step. The cockpit's Harness screen shows the translation matching its language.
+
+HS is a default, not a mandate: any user can add slots of their own (custom slots, used by a set or by a
+single repo through `"slots"` in its `docs/.harness.json`), write their own parts, or rebuild the store
+their way. Zemory measures each repo against the store it has.
 
 **Sets.** A set is a folder beside the store, `NN_<Host>_<Structure>_<Tier>`, holding the parts one kind
 of repo needs. Nine are built:

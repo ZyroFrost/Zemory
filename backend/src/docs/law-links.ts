@@ -4,7 +4,7 @@
 // The one home of a link is that section in the body; no header field repeats it (Rule_Gate_35_OneHome).
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { leafOf, listParts, listStructures, mainOf, mainPath, SHELVES, STORE_DIR, type Shelf } from "./store.js";
+import { frontMatter, leafOf, listParts, listStructures, mainOf, mainPath, SHELVES, STORE_DIR, translationsOf, type Shelf } from "./store.js";
 import { CONS_REPO_FILE, SHELF } from "./harness-names.js";
 
 export type LinkKind = "implements" | "declares" | "related";
@@ -125,28 +125,62 @@ function steps(body: string | null): number {
   return body === null ? 0 : body.split("\n").filter((l) => /^(?:\d+\.|-)\s/.test(l)).length;
 }
 
+const headsOf = (text: string): string[] => [...text.matchAll(/^##\s+(.+?)\s*$/gm)].map((m) => m[1]);
+const readText = (f: string): string => (existsSync(f) ? readFileSync(f, "utf8").replace(/\r\n/g, "\n") : "");
+const LINKS_HEADS = ["Links", "Links · Liên kết"];
+
 /**
- * A store law or frame that is not written in the bilingual shape: a missing section in either language, the sections out of
- * order (English before Vietnamese, Links last), or a `Do` list whose number of steps differs between the two languages —
- * the one count that shows a step lost in translation. Retired parts keep their old text. Returns "<part>: <finding>".
+ * A store law or frame not in the shape of plan/33: the English header carries the five English sections in order and then
+ * Links, and nothing in another language; each translation beside it (`<header>.<code>.md`) carries the same sections - the
+ * Vietnamese names for `vi`, the same number of sections for any other language - and the same number of `Do` steps, the one
+ * count that shows a step lost in translation. Retired parts keep their old text. Returns "<part>: <finding>".
  */
 export function lawFormatFindings(storeDir = STORE_DIR): string[] {
   const out: string[] = [];
   for (const shelf of [SHELF.rules, SHELF.constitution] as const) {
     for (const p of listParts(storeDir, shelf)) {
       if (String(p.meta.retired ?? "") === "true") continue;
-      const f = mainPath(p.dir, mainOf(p));
-      const text = existsSync(f) ? readFileSync(f, "utf8").replace(/\r\n/g, "\n") : "";
+      const text = readText(mainPath(p.dir, mainOf(p)));
       const leaf = leafOf(p.folder);
-      const heads = [...text.matchAll(/^##\s+(.+?)\s*$/gm)].map((m) => m[1]);
-      const want = [...LAW_SECTIONS.en, ...LAW_SECTIONS.vi, "Links · Liên kết"];
-      const missing = want.filter((h) => !heads.includes(h));
+      const heads = headsOf(text);
+      const missing = LAW_SECTIONS.en.filter((h) => !heads.includes(h));
       if (missing.length) { out.push(`${leaf}: missing section(s) ${missing.map((h) => `"## ${h}"`).join(", ")}`); continue; }
-      const order = want.map((h) => heads.indexOf(h));
-      if (order.some((v, i) => i > 0 && v < order[i - 1])) out.push(`${leaf}: sections out of order (English, then Vietnamese, then Links)`);
+      const order = LAW_SECTIONS.en.map((h) => heads.indexOf(h));
+      if (order.some((v, i) => i > 0 && v < order[i - 1])) out.push(`${leaf}: sections out of order (${LAW_SECTIONS.en.join(", ")}, then Links)`);
+      const stray = LAW_SECTIONS.vi.filter((h) => heads.includes(h));
+      if (stray.length) out.push(`${leaf}: the English header carries Vietnamese sections (${stray.join(", ")}) - they belong in ${leaf}.vi.md`);
       const en = steps(section(text, /^Do$/));
-      const vi = steps(section(text, /^Phải làm gì$/));
-      if (en !== vi) out.push(`${leaf}: "Do" has ${en} step(s) but "Phải làm gì" has ${vi}`);
+      for (const [lang, file] of translationsOf(p.dir)) {
+        const tr = readText(join(p.dir, file));
+        const th = headsOf(tr).filter((h) => !LINKS_HEADS.includes(h));
+        if (lang === "vi") {
+          const lost = LAW_SECTIONS.vi.filter((h) => !th.includes(h));
+          if (lost.length) { out.push(`${leaf}.vi.md: missing section(s) ${lost.map((h) => `"## ${h}"`).join(", ")}`); continue; }
+          const vi = steps(section(tr, /^Phải làm gì$/));
+          if (vi !== en) out.push(`${leaf}: "Do" has ${en} step(s) but "Phải làm gì" in ${file} has ${vi}`);
+        } else {
+          if (th.length < LAW_SECTIONS.en.length) out.push(`${file}: ${th.length} section(s), the English header has ${LAW_SECTIONS.en.length}`);
+          const third = th[2] ? steps(section(tr, new RegExp(`^${th[2].replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`))) : 0;
+          if (third !== en) out.push(`${leaf}: "Do" has ${en} step(s) but the third section of ${file} has ${third}`);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Translations behind their header (plan/33): a translation's `version:` names the header version it was translated from;
+ * a lower one means the English changed since. Advisory - the translation still reads, it may lag. "<file>: v<n> of v<m>".
+ */
+export function staleTranslations(storeDir = STORE_DIR): string[] {
+  const out: string[] = [];
+  for (const shelf of SHELVES) {
+    for (const p of listParts(storeDir, shelf)) {
+      for (const [, file] of translationsOf(p.dir)) {
+        const v = Number(frontMatter(readText(join(p.dir, file)))?.meta.version ?? 0);
+        if (v < p.version) out.push(`${p.folder}/${file}: translated from v${v}, the header is v${p.version}`);
+      }
     }
   }
   return out;
