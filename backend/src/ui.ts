@@ -2728,7 +2728,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const w = await runInWorker<unknown>("docs/harness-screen.js", call[0], call[1], 120_000);
       return json(res, w.ok ? { ok: true, value: w.value } : { ok: false, error: w.error });
     }
-    if (req.method === "POST" && (p === "/harness-check" || p === "/harness-save")) {
+    if (req.method === "POST" && (p === "/harness-check" || p === "/harness-preview" || p === "/harness-save")) {
       // a draft set: checked as the user builds it, saved (assembled into its folder beside HS) on confirm
       const chunks: Buffer[] = [];
       let total = 0;
@@ -2743,8 +2743,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       } catch {
         return json(res, { ok: false, error: "the draft is not JSON" });
       }
-      // the check answers with codes the cockpit words in its own language; save answers with its result
-      const fn = p === "/harness-check" ? "draftReport" : "saveDraft";
+      // check: problem codes the cockpit words in its own language · preview: what Save would write · save: its result
+      const fn = p === "/harness-check" ? "draftReport" : p === "/harness-preview" ? "draftPreview" : "saveDraft";
       const w = await runInWorker<unknown>("docs/harness-screen.js", fn, [draft], 300_000);
       return json(res, w.ok ? { ok: true, value: w.value } : { ok: false, error: w.error });
     }
