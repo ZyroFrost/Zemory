@@ -97,3 +97,7 @@ __pycache__/
 
 # the Docker install's machine settings (install-docker writes them beside docker-compose.yml): this machine's paths and name
 /.env
+
+# the gate's tests stay on the development machine (user 2026-10-23): a clone learns the layout from HS, not from test
+# fixtures; `npm test` in a clone says the tests are not here and passes
+/backend/test/
