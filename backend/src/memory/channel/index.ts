@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { hostname } from "node:os";
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import Database from "better-sqlite3";
-import { currentMemoryDb, currentMemoryDir, currentStoreRoot } from "../db.js";
+import { currentMemoryDb, currentMemoryDir } from "../db.js";
 import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, sameDeviceId, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SessionOptions, type SyncOutcome } from "./peer.js";
@@ -30,6 +30,7 @@ import {
 import { secureSocket } from "./punch.js";
 import { runSessionOn } from "./peer.js";
 import { mirrorHooks } from "./mirrorstate.js";
+import { blockIO } from "./p2pio.js";
 import { getPeerLastSync, getPeerNames, getPeerSync, setPeerLastSync, setPeerName } from "../../config/settings.js";
 
 /**
@@ -75,7 +76,7 @@ export function notePeerSync(peerDeviceId: string | null | undefined, via: strin
 
 export * from "./identity.js";
 export * from "./wire.js";
-export * from "./blocks.js";
+export * from "./p2pio.js";
 export * from "./peer.js";
 export * from "./discovery.js";
 export * from "./portmap.js";
@@ -86,31 +87,6 @@ export * from "./globaldisco.js";
 export * from "./mirror.js";
 export * from "./mirrorstate.js";
 export * from "./relaypool.js";
-
-/**
- * Segment folder of the p2p channel — inside the STORE ROOT, because segments are memory content
- * and travel to the other machine with the store (plan/25 §1).
- *
- * 🔴 ONE container, ONE write queue (user 2026-10-07: *"2 máy đều chỉ dc ghi vào 1 file 1 db thôi, và
- * phải có hàng đợi, máy nào gửi trước thì vào trước, xong tới máy kia, cái này là logic từ đầu"*). Every
- * writer — our own export, blocks received from another machine, the legacy-pen move — appends to the
- * segment sequence right here, through `acquireChannelWriteLock`.
- *
- * Retired 2026-10-07: the per-machine PEN `channel/<device-id>/` (2026-09-21). It assumed file-level
- * Syncthing carried this folder, so two machines appending to one path would fork it. Measured 2026-10-07: neither
- * the user's Syncthing (a share needs the folder on both ends; this machine declares none under the
- * store) nor the zemory mirror (`MIRROR_AREAS`) carries `channel/` — blocks travel only
- * through the block protocol, and the real second writer is on the SAME machine. The pen dodged the
- * queue instead of providing it, and it put one store into the channel twice (6.7 GB, HP điều 16).
- */
-export function channelDir(storeRoot = currentStoreRoot(), ensure = false): string {
-  const dir = join(storeRoot, "channel");
-  // CHỈ tạo khi sắp GHI. Bản trước `mkdirSync` ngay trong hàm đọc, nên mỗi lượt hỏi trạng
-  // thái lại đẻ một thư mục RỖNG và `conform` kêu "folder rỗng" — một cổng kêu suốt là cổng
-  // sắp bị bỏ qua (`02_RULES §Guardrail`). Đường đọc không được để lại dấu chân.
-  if (ensure) mkdirSync(dir, { recursive: true });
-  return dir;
-}
 
 /**
  * Nhà của chứng chỉ + KHOÁ RIÊNG của máy — ở lại THƯ MỤC MÁY NÀY, KHÔNG nằm trong
@@ -168,14 +144,12 @@ export interface ChannelStatus {
    * so the user sees whether the other side's chat has arrived without asking over Zalo. Absent = nothing of it here yet.
    */
   peerLatest: Record<string, string>;
-  dir: string;
   /** Tên máy NÀY — nhãn cho thẻ trong cụm máy; không phải danh tính (danh tính là `deviceId`). */
   hostName: string;
 }
 
-/** Hai gốc đi vào hai chỗ khác nhau — danh tính ở MÁY NÀY, khúc ở GỐC KHO. Nhận
- *  riêng từng đường để không ai truyền một đường rồi tưởng phủ cả hai. */
-export function channelStatus(machineDir = currentMemoryDir(), storeRoot = currentStoreRoot()): ChannelStatus {
+/** The channel's state on THIS machine (its identity lives in the machine folder). */
+export function channelStatus(machineDir = currentMemoryDir()): ChannelStatus {
   return {
     enabled: getP2pEnabled(),
     transport: getSyncTransport(),
@@ -192,7 +166,6 @@ export function channelStatus(machineDir = currentMemoryDir(), storeRoot = curre
       getP2pPeers().map((id) => [id, peerCardState(seenPeers().some((s) => sameDeviceId(s.deviceId, id)), getPeerLastSync()[id])]),
     ),
     peerLatest: peerLatestAt(getPeerNames()),
-    dir: channelDir(storeRoot),
     hostName: hostname(),
   };
 }
@@ -222,18 +195,6 @@ export function peerLatestAt(names: Record<string, string>, dbPath = currentMemo
   return out;
 }
 
-/**
- * ĐÍCH GHI của một lượt đồng bộ — đúng MỘT, theo `syncTransport` (HP điều 11).
- *
- * Trả `null` khi đích là Drive: người gọi giữ nguyên đường Drive sẵn có, KHÔNG có nhánh nào
- * đổi hành vi. Chỉ khi người dùng cố ý chuyển đích sang `p2p` thì hàm này mới trả một thư mục,
- * và nó **tạo thư mục** vì lúc đó ta sắp ghi thật (`channelDir(ensure)` — hàm ĐỌC không được
- * để lại dấu chân, bài học 15/09).
- */
-export function syncWriteDir(storeRoot = currentStoreRoot()): string | null {
-  return getSyncTransport() === "p2p" ? channelDir(storeRoot, true) : null;
-}
-
 /** Một đích ghi: kênh nào, và thư mục của nó. */
 export interface SyncTarget {
   channel: "drive" | "p2p";
@@ -251,15 +212,12 @@ export interface SyncTarget {
  * đẩy sang Drive xong là mốc nhảy lên, kênh kia không bao giờ còn thấy đám tin đó. Đã tách bằng
  * `wmKeyFor` (`share.ts`) — mỗi kênh một mốc — nên đây mới an toàn.
  *
- * 🔄 `syncWriteDir` GIỮ LẠI cho nơi gọi cũ và cho cổng đang neo vào nó, nhưng đường chạy thật của
- * lượt sync nay đi qua hàm này.
+ * The p2p channel is NOT a target any more (plan/24 §13, HP 18): its links make blocks from the db per receiving machine,
+ * so a sync round has nothing to write for it.
  */
-export function syncTargets(storeRoot = currentStoreRoot()): SyncTarget[] {
-  const out: SyncTarget[] = [];
+export function syncTargets(): SyncTarget[] {
   const drive = getDriveDir();
-  if (drive) out.push({ channel: "drive", dir: drive });
-  if (getP2pEnabled()) out.push({ channel: "p2p", dir: channelDir(storeRoot, true) });
-  return out;
+  return drive ? [{ channel: "drive", dir: drive }] : [];
 }
 
 /** Kicks of the live INBOUND persistent links (direct `serveChannel` and relay `acceptRelayInvite` sessions). A kick that
@@ -631,7 +589,7 @@ export function armPunchWait(o: {
   };
 
   void punchToPeer(o.target ?? hold, {
-    channelDir: channelDir(currentStoreRoot()),
+    blocks: blockIO(),
     identity: channelIdentity(),
     shareKey: o.shareKey,
     appVersion: o.appVersion,
@@ -849,7 +807,7 @@ export async function startChannelServer(o: {
         // KHÔNG `ensure`: bật kênh chưa phải là ghi. Lớp nhận khối (`blocks.ts`) tự tạo thư mục
         // đúng lúc có khối thật. Tạo sẵn ở đây đẻ một folder RỖNG mà `conform` kêu mỗi lượt —
         // đúng dấu chân đã phải vá hôm 15/09, và một cổng kêu suốt là cổng sắp bị bỏ qua.
-        channelDir: channelDir(currentStoreRoot()),
+        blocks: blockIO(),
         identity: channelIdentity(),
         shareKey: key,
         appVersion: o.appVersion,
@@ -1153,7 +1111,7 @@ async function acceptRelayInvite(
   let openedId: string | null = null;
   try {
     const opts = {
-      channelDir: channelDir(currentStoreRoot(), true),
+      blocks: blockIO(),
       identity: channelIdentity(),
       shareKey,
       appVersion: o.appVersion,
@@ -1233,7 +1191,6 @@ export async function syncViaRelay(o: {
   wantPair?: boolean;
   acceptPeer?: (id: string) => boolean;
   onPaired?: (id: string) => void;
-  storeRoot?: string;
   /**
    * Trần cho CẢ pha relay. Đo 23/09: một lượt ăn **2 phút 20 giây** — mỗi địa chỉ relay cộng dồn
    * xin-lời-mời + mở-phiên + bắt-tay, và bắt tay thì chờ tới hết giờ khi đầu kia không mở phiên.
@@ -1277,7 +1234,7 @@ export async function syncViaRelay(o: {
     }
     try {
       const opts = {
-        channelDir: channelDir(o.storeRoot ?? currentStoreRoot(), true),
+        blocks: blockIO(),
         identity: channelIdentity(),
         shareKey: o.shareKey,
         appVersion: o.appVersion,

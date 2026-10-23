@@ -23,6 +23,8 @@ export const FRAME_BLOCK = 1;
 export const FRAME_FILE = 2;
 /** Trần một khung — chặn bên kia khai độ dài điên rồ làm ta cấp phát vô hạn. */
 export const MAX_FRAME_BYTES = 512 * 1024 * 1024;
+/** The block protocol of this build (`HelloMessage.proto`). A peer that says another number cannot sync with this one. */
+export const P2P_PROTO = 2;
 
 export interface HelloMessage {
   t: "hello";
@@ -42,16 +44,35 @@ export interface HelloMessage {
   mirror?: boolean;
   /** Tên máy (hostname) — để máy kia in TÊN thay cho vân tay khi không thấy nhau trên LAN. Bản cũ không gửi. */
   name?: string;
+  /**
+   * The block protocol (`P2P_PROTO`). 2 = blocks are made from the db per receiving machine and merged straight into the
+   * receiver's db (plan/24 §13, HP 18). Absent = 1, the old stored-block channel: the two cannot sync, the session says so.
+   */
+  proto?: number;
 }
 export interface ProofMessage {
   t: "proof";
   hmac: string;
 }
+/** Opens a round: "send me what you owe me". Each side works out what it owes from its own db (plan/24 §13). */
 export interface HaveMessage {
   t: "have";
-  ids: string[];
-  /** Còn trang nữa — dành cho kho rất nhiều khối. */
-  more?: boolean;
+}
+/** Header sent right before one `FRAME_BLOCK`: the id the receiver answers with `ack` or `nack`. */
+export interface BlockMessage {
+  t: "blk";
+  id: string;
+}
+/** The block is merged into the receiver's db - the sender may move its mark past it. */
+export interface AckMessage {
+  t: "ack";
+  id: string;
+}
+/** The block could not be merged - the sender drops it and makes it again from its mark next round. */
+export interface NackMessage {
+  t: "nack";
+  id: string;
+  why?: string;
 }
 export interface DoneMessage {
   t: "done";
@@ -140,6 +161,9 @@ export type ControlMessage =
   | HelloMessage
   | ProofMessage
   | HaveMessage
+  | BlockMessage
+  | AckMessage
+  | NackMessage
   | DoneMessage
   | PairMessage
   | PairedMessage
