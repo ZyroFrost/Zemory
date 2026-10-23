@@ -124,7 +124,8 @@ test("the CLI does not accept the key as an ARGUMENT (arguments land in history 
   const i = cli.indexOf('if (action === "set")');
   assert.ok(i > 0, "phải có nhánh `key set`");
   const block = cli.slice(i, i + 700);
-  assert.match(block, /readFileSync\(0/u, "phải đọc STDIN (fd 0)");
+  // STDIN (fd 0), or `--from <file>`: the key file of another install, which zemory reads itself - a path, never the key
+  assert.match(block, /readFileSync\(from \? from : 0/u, "phải đọc STDIN (fd 0) khi không có --from");
   assert.ok(
     !/positionalArgs\(args\.slice\(1\)\)\[1\]/.test(block),
     "KHÔNG được lấy chìa từ đối số dòng lệnh",
