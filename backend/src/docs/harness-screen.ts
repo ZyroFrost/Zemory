@@ -2,8 +2,8 @@
 // them. No register: a set is its folder (store.ts readKits), and saving one is assembling it (kit-apply.ts assembleSet).
 // Pure data in and out - the daemon runs these in a worker thread (HS is read through a mount in the Docker install).
 
-import { existsSync, readFileSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { harnessPathsAt } from "../core/config.js";
 import { HOST_KIND, parseSetName, SHELF, TIER } from "./harness-names.js";
 import { assembleSet } from "./kit-apply.js";
@@ -56,9 +56,15 @@ export function storeCatalog(storeDir = STORE_DIR): Record<ShelfKey, CatalogPart
   return {
     rules: listParts(storeDir, SHELF.rules).map(view),
     constitution: listParts(storeDir, SHELF.constitution).map(view),
-    structure: listStructures(storeDir).map(view),
+    // a set is built on a REPO frame; a drive or region frame (`scope: disk|region`) lays out folders above repos
+    structure: listStructures(storeDir).filter((s) => !s.meta.scope).map(view),
     skills: listParts(storeDir, SHELF.skills).map(view),
   };
+}
+
+/** What the builder offers: the parts of HS, and the host and tier a set name may carry (one list, in harness-names). */
+export function catalogView(storeDir = STORE_DIR): Record<ShelfKey, CatalogPart[]> & { hosts: string[]; tiers: string[] } {
+  return { ...storeCatalog(storeDir), hosts: [...HOST_KIND], tiers: [...TIER] };
 }
 
 const SHELF_OF: Record<ShelfKey, (typeof SHELF)[keyof typeof SHELF]> = {
@@ -79,9 +85,23 @@ export function partText(shelf: ShelfKey, folder: string, storeDir = STORE_DIR):
   return null;
 }
 
+/**
+ * The set folders beside HS, by name and number only - one directory listing. The draft check needs no more than this; a
+ * full `readKits` reads every part of every set (measured in Docker, HS on a mount: 10 s per call, twice per check).
+ */
+function setNames(storeDir = STORE_DIR): Array<{ name: string; no: string }> {
+  const base = dirname(storeDir);
+  if (!existsSync(base)) return [];
+  const out: Array<{ name: string; no: string }> = [];
+  for (const e of readdirSync(base, { withFileTypes: true })) {
+    const n = e.isDirectory() ? parseSetName(e.name) : null;
+    if (n) out.push({ name: e.name, no: n.nn });
+  }
+  return out;
+}
+
 /** The folder name a draft saves to: the edited set's number, or the next free one. */
-export function draftName(d: Draft, storeDir = STORE_DIR): string {
-  const sets = readKits(storeDir);
+export function draftName(d: Draft, storeDir = STORE_DIR, sets = setNames(storeDir)): string {
   const nn = d.editing ? (parseSetName(d.editing)?.nn ?? "") : String(Math.max(0, ...sets.map((s) => Number(s.no))) + 1).padStart(2, "0");
   return `${nn}_${d.host}_${d.title}_${d.tier}`;
 }
@@ -120,8 +140,8 @@ export function normalDraft(d: unknown): Draft {
 /** What is wrong with a draft; empty = it can be saved. */
 export function draftProblems(d: Draft, storeDir = STORE_DIR): Problem[] {
   const out: Problem[] = [];
-  const name = draftName(d, storeDir);
-  const kits = readKits(storeDir);
+  const kits = setNames(storeDir);
+  const name = draftName(d, storeDir, kits);
   if (!(HOST_KIND as readonly string[]).includes(d.host)) out.push({ code: "host" });
   if (!(TIER as readonly string[]).includes(d.tier)) out.push({ code: "tier" });
   if (!parseSetName(name)) out.push({ code: "name", a: d.title });

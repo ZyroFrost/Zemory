@@ -30,7 +30,7 @@ export interface LayoutSlot {
 
 export interface LayoutFinding {
   level: "blocking" | "advice";
-  check: "loose-file" | "unknown-folder" | "repo-outside-workspace" | "unknown-value" | "repo-under-company" | "assembled-external";
+  check: "loose-file" | "unknown-folder" | "repo-outside-workspace" | "unknown-value" | "program-incomplete" | "repo-under-company" | "assembled-external";
   path: string;
   fix: string;
 }
@@ -55,7 +55,7 @@ function segOf(raw: string, optional: boolean, match?: string): Seg {
 /**
  * `Software/<Nhóm>/[<Hãng>/]<Ứng dụng>/` → segments; a `[...]` part is an optional level. A slot's `values` name the only
  * names its last placeholder takes - and that placeholder takes them in EVERY slot of the structure (`known`): `<Nhóm>` is
- * the seven groups in `Software/<Nhóm>/` and in `Software/<Nhóm>/<Ứng dụng>/` alike.
+ * the groups of Software_148 in `Software/<Nhóm>/` and in `Software/<Nhóm>/<Ứng dụng>/` alike.
  */
 export function slotSegments(path: string, meta: Record<string, string | string[]> = {}, known: Map<string, string[]> = new Map()): Seg[] {
   const tokens = path.replace(/\/+$/, "").split("/").filter(Boolean);
@@ -107,6 +107,27 @@ function reposUnder(dir: string, depth: number): string[] {
     const p = join(dir, e.name);
     if (isRepo(p)) out.push(p);
     else if (depth > 1) out.push(...reposUnder(p, depth - 1));
+  }
+  return out;
+}
+
+/** The three parts every program folder holds (Software_149): its installer, its installed copy, its own data. */
+const PROGRAM_PARTS = ["Setup", "App", "Data"] as const;
+/** Groups whose children are packs, not programs: a driver or a font has no installed copy. */
+const PACK_GROUPS = /^(Drivers|Fonts)$/;
+
+/**
+ * The program folders of one `Software/<group>/`: a child that already has a program part, or no sub-folder at all, is a
+ * program; any other child is a vendor level (`[<vendor>/]`) and its children are the programs.
+ */
+function programsIn(groupDir: string): string[] {
+  const out: string[] = [];
+  for (const c of entries(groupDir).filter((x) => x.dir)) {
+    const p = join(groupDir, c.name);
+    const subs = entries(p).filter((x) => x.dir);
+    const isProgram = subs.length === 0 || subs.some((s) => (PROGRAM_PARTS as readonly string[]).includes(s.name));
+    if (isProgram) out.push(p);
+    else out.push(...subs.map((s) => join(p, s.name)));
   }
   return out;
 }
@@ -171,7 +192,15 @@ export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) 
         if (e.name === "Software") {
           for (const a of entries(abs).filter((x) => x.dir)) {
             if (!onSomeSlot(slots, [e.name, a.name])) {
-              add({ level: "blocking", check: "unknown-value", path: join(abs, a.name), fix: "Software/ holds the seven groups of Software_148 only" });
+              add({ level: "blocking", check: "unknown-value", path: join(abs, a.name), fix: "Software/ holds the groups of Software_148 only" });
+              continue;
+            }
+            if (PACK_GROUPS.test(a.name)) continue;
+            for (const prog of programsIn(join(abs, a.name))) {
+              const missing = PROGRAM_PARTS.filter((part) => !existsSync(join(prog, part)));
+              if (missing.length) {
+                add({ level: "blocking", check: "program-incomplete", path: prog, fix: `every program holds Setup/ (installer) · App/ (installed copy) · Data/ (its own data) - missing ${missing.join(", ")}` });
+              }
             }
           }
         }

@@ -15,12 +15,12 @@
     {k:'autostart',grp:'f.grpSync',n:'f.autostart',kind:'auto',auto:'autostart',doc:'f.doc.autostart'},
     {k:'autosync',grp:'f.grpSync',n:'f.autosync',kind:'auto',auto:'autosync',to:'sync:drive',doc:'f.doc.autosync'},
     {k:'storage',grp:'f.grpSync',n:'f.dbloc',kind:'stat',to:'sync:drive',doc:'f.doc.storage'},
-    {k:'validate',grp:'f.grpHarness',n:'Docs harness (validate)',kind:'check',feat:'validate',to:'harness:docs',doc:'f.doc.validate'},
-    {k:'grill',grp:'f.grpHarness',n:'Grill',kind:'check',feat:'grill',to:'harness:docs',doc:'f.doc.grill'},
-    {k:'harness',grp:'f.grpHarness',n:'Harness files',kind:'stat',to:'harness:docs',doc:'f.doc.harness'},
+    {k:'validate',grp:'f.grpHarness',n:'Docs harness (validate)',kind:'check',feat:'validate',to:'harness:sets',doc:'f.doc.validate'},
+    {k:'grill',grp:'f.grpHarness',n:'Grill',kind:'check',feat:'grill',to:'harness:sets',doc:'f.doc.grill'},
+    {k:'harness',grp:'f.grpHarness',n:'Harness files',kind:'stat',to:'harness:sets',doc:'f.doc.harness'},
     // Bộ mẫu trong `docs_template/` — hàng này NHẮC khi có bộ trên đĩa mà app không với tới
     // được (user 2026-09-17). Phép kiểm ĐỌC thư mục lúc chạy, nên bộ mới vừa thêm là hiện ra ngay.
-    {k:'templates',grp:'f.grpHarness',n:'f.templates',kind:'check',feat:'templates',to:'harness:docs',doc:'f.doc.templates'},
+    {k:'templates',grp:'f.grpHarness',n:'f.templates',kind:'check',feat:'templates',to:'harness:sets',doc:'f.doc.templates'},
     // plan/21 — hàng CHÍNH THỨC từ 2026-09-09. Màu theo "MỚI chết kể từ baseline", không theo tổng
     // số chết: prose kể về thiết kế đã bác chết từ lúc sinh, không phải mục ruỗng. Warning = có đường
     // vừa chết sau baseline = có folder vừa bị dời/đổi tên mà docs còn trỏ tên cũ.
