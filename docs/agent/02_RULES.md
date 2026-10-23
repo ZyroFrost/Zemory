@@ -297,3 +297,4 @@
 | 15 | Chất lượng bộ nhớ là tối cao | NHẮC | đo recall trước khi cắt/nâng một lớp — CHƯA có hook nhắc — việc mở |
 | 16 | Đồng bộ chở trọn RAG · MỘT kho, mọi máy nối vào | CHẶN | `vector-ship`/`vecship-chunks` · `delta-own-host` · `rule-gates ⑫` (ratchet `channelPen(` → 0 sau khi gộp kênh) |
 | 17 | Một chức năng = một lệnh | NHẮC | CHƯA có cổng (manifest verb CLI ↔ endpoint ↔ MCP) — việc mở |
+| 18 | GM = đúng một file `global_memory.db` | CHẶN | guard: `global-memory` trong `protected` (agent không ghi/chép gì vào thư mục GM) · `rule-gates ⑬` (ratchet chỗ code đặt đường vào thư mục GM ngoài db: `channel/` · `files/` → 0 theo `plan/24 §13`) |

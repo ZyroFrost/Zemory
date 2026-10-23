@@ -94,3 +94,6 @@ attic/index-rescue-*/
 
 # Python bytecode (a tool run inside a store part writes it next to the script; never part of a part)
 __pycache__/
+
+# the Docker install's machine settings (install-docker writes them beside docker-compose.yml): this machine's paths and name
+/.env

@@ -300,6 +300,27 @@ test("⑬ every constitution article has a row in 02_RULES `## Cổng cho hiến
   assert.equal(hpGateGaps(d), null);
 });
 
+// HP 18: the GM folder holds ONE file, global_memory.db (plus SQLite's own -wal/-shm). Every place the code puts another
+// name under the store root is a second thing beside the db; the baseline is what is left to move out (plan/24 §13).
+const STORE_ENTRIES = {
+  "memory/channel/blocks.ts": 1, // channel/ (the inventory cache checks it is the store's channel folder)
+  "memory/channel/index.ts": 1, // channel/
+  "memory/filestore.ts": 1, // files/
+};
+test("⑭ HP 18: nothing but global_memory.db under the GM folder", () => {
+  const found = {};
+  const re = /join\(\s*\w*[sS]toreRoot\w*(?:\(\))?\s*,\s*["'`]([^"'`]+)["'`]/g;
+  // an adapter's storeRoot is the host's transcript folder, not the GM folder
+  for (const f of tsFiles(SRC).filter((p) => !/[\\/]memory[\\/]adapters[\\/]/.test(p))) {
+    const n = [...readFileSync(f, "utf8").matchAll(re)].filter((m) => !/^global_memory\.db/.test(m[1])).length;
+    if (n) found[rel(f)] = n;
+  }
+  ratchet(found, STORE_ENTRIES, "entries beside global_memory.db in the GM folder");
+  // the guard keeps the agent out of the GM folder: the marker declares it protected
+  const marker = JSON.parse(readFileSync(join(ROOT, "docs", ".harness.json"), "utf8"));
+  assert.ok((marker.protected ?? []).includes("global-memory"), "global-memory must be protected in docs/.harness.json");
+});
+
 test("⑥ `npm run check` runs validate", () => {
   const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
   assert.match(pkg.scripts.check, /npm run validate\b/);
