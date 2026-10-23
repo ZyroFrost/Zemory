@@ -81,6 +81,9 @@ function Install-ZemoryDocker {
     # the `zemory` command on Windows reaches the engine through this distro (host-cli.mjs)
     "ZEMORY_WSL_DISTRO=$distro"
   )
+  # the data drive the workspace sits on, read-only in the container: `zemory conform --layout` checks the whole drive
+  $dataRoot = [IO.Path]::GetPathRoot($ws)
+  $envLines += "HOST_DATA_ROOT=$(WslPath $dataRoot)", "HOST_DATA_ROOT_NATIVE=$($dataRoot.TrimEnd('\'))"
   # the Drive sync folder of the native config, if any: a Google Drive letter is mounted in Ubuntu (drvfs, /etc/fstab)
   # and compose binds the Ubuntu path
   $nativeLoc = Join-Path $env:USERPROFILE ".zemory\location.json"

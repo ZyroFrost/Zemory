@@ -1,0 +1,15 @@
+{
+  "scope": "region",
+  "slots": [
+    "Dept_154_Dept",
+    "Db_155_Db",
+    "Glossary_156_Glossary",
+    "Template_157_Template",
+    "Legacy_158_Legacy",
+    "Project_159_Project"
+  ],
+  "relations": [
+    "owner",
+    "uses"
+  ]
+}

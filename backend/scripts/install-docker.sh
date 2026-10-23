@@ -40,6 +40,9 @@ mkdir -p "$STORE/global-memory" "$STORE/data" "$STORE/no-drive"
   echo "ZEMORY_HOSTNAME=$(hostname)"
   echo "ZEMORY_STORE=$STORE"
   echo "ZEMORY_SELF_NATIVE=$DIR"
+  # the data folder the layout check reads (read-only): ZEMORY_DATA_ROOT, or the workspace itself
+  echo "HOST_DATA_ROOT=${ZEMORY_DATA_ROOT:-$WS}"
+  echo "HOST_DATA_ROOT_NATIVE=${ZEMORY_DATA_ROOT:-$WS}"
   if [ -n "${ZEMORY_DRIVE:-}" ]; then echo "HOST_DRIVE=$ZEMORY_DRIVE"; echo "HOST_DRIVE_NATIVE=$ZEMORY_DRIVE"; fi
 } > "$ENVF"
 say "wrote $ENVF"

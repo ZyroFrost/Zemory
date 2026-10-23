@@ -1,14 +1,27 @@
 ---
 id: Struc_Region_Workspace
 name: region-workspace
-version: 3
+version: 4
 scope: region
 checked: [Struc_Repo_Dept]
 ---
 # Struc_Region_Workspace
 
-Workspace là tên chung của cả cụm: một thư mục chứa nhiều repo của cùng một tổ chức. Chuẩn này không ráp vào repo nào. Nó khai cụm
-là gì và hai loại quan hệ giữa các repo. Vai của một repo nằm trong template repo đó ráp theo, không nằm ở đây.
+`Workspace/` của ổ dữ liệu (`Struc_Drive_Data`) chứa mọi repo của người dùng, chia ba vùng. Chuẩn này không ráp vào repo nào: nó
+khai ba vùng và hai loại quan hệ giữa các repo. Bên trong một tổ chức theo `Struc_Region_Company`. Vai của một repo nằm trong
+template repo đó ráp theo, không nằm ở đây.
+
+## Cây
+
+```
+Workspace/
+├── Company/<Tổ chức>/            repo của một tổ chức (Company_144) → Struc_Region_Company
+├── Personal/[<Nhóm>/]<repo>/     repo cá nhân (Personal_145)
+└── External/<repo>/              clone của bên ngoài, chỉ đọc, không ráp HS (External_146)
+```
+
+- Phép kiểm: `zemory conform --layout <Workspace>` — thư mục lạ ở cấp 1 · repo đặt thẳng dưới `Company/` · repo đã ráp HS
+  nằm trong `External/`.
 
 ## Vai nằm trong template
 

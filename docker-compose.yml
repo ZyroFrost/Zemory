@@ -39,7 +39,7 @@ services:
       # the Drive sync folder (config keeps the host's path) is the third pair; unset on a machine with no Drive channel
       # the clone's pair comes first: when the clone sits inside the workspace, the longer prefix must win
       ZEMORY_SELF: /host/zemory
-      ZEMORY_PATH_MAP: "${ZEMORY_SELF_NATIVE:-}=>/host/zemory;${HOST_HOME_NATIVE:-${HOST_HOME}}/.claude=>/home/node/.claude;${HOST_WORKSPACE_NATIVE:-${HOST_WORKSPACE}}=>/host/workspace;${HOST_DRIVE_NATIVE:-}=>/host/drive"
+      ZEMORY_PATH_MAP: "${ZEMORY_SELF_NATIVE:-}=>/host/zemory;${HOST_HOME_NATIVE:-${HOST_HOME}}/.claude=>/home/node/.claude;${HOST_WORKSPACE_NATIVE:-${HOST_WORKSPACE}}=>/host/workspace;${HOST_DRIVE_NATIVE:-}=>/host/drive;${HOST_DATA_ROOT_NATIVE:-}=>/host/data"
     volumes:
       # everything zemory keeps lives here, in one place on the Linux disk (plan/30 §3k): the GM, the model, the machine's data
       - ${ZEMORY_STORE:?set ZEMORY_STORE to /home/<user>/zemory}:/home/node/zemory
@@ -52,6 +52,9 @@ services:
       # letter (G:) and silently mounts an empty folder instead (measured 2026-10-22): mount it in Ubuntu first
       # (/etc/fstab: `G: /mnt/g drvfs metadata,noatime 0 0`) and name the Ubuntu path here
       - ${HOST_DRIVE:-${ZEMORY_STORE}/no-drive}:/host/drive
+      # the data drive's root, read-only: `zemory conform --layout` checks the whole drive (plan/32: Software/ · AppConfig/ ·
+      # Workspace/ …). Its pair comes LAST in ZEMORY_PATH_MAP - the shortest prefix, so every longer one wins first
+      - ${HOST_DATA_ROOT:-${HOST_WORKSPACE}}:/host/data:ro
       # zemory's own repo: the clone this image is built from. HS (docs_template) is read and the sets are rebuilt here,
       # so a change made to HS on the host is what the container sees (not the copy frozen into the image), and its .git
       # holds the history a three-way sync reads (docs/store.ts baseFiles)
