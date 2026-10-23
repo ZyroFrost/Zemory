@@ -1,8 +1,9 @@
 ---
 id: Skill_Harness_RuleGate
 name: harness-rule-gate
-version: 5
+version: 6
 type: process
+checked: [Skill_Frame_Own, Skill_Harness_Conform, Rule_Gate_01_DoneMeansRun, Rule_Gate_86_LawLayersAgree]
 description: Write a new rule, constitution frame or skill for a harness, place it in the right home, and build its machine gate with positive and negative cases. Use once adding or changing a rule, a constitution frame or a gate has been approved. Vietnamese triggers - "thêm luật", "viết luật", "dựng cổng", "chốt máy cho luật", "xếp nhà luật".
 ---
 
@@ -46,6 +47,19 @@ description: Write a new rule, constitution frame or skill for a harness, place 
 - Một khung = một loại bất biến nhiều sản phẩm cùng có. Folder `Cons_Gate_<NN>_<Tên>/`: file luật (`frame: true`, "repo
   phải khai …", ví dụ đã viết) · `Cons.md` mẫu (`status: template`, chỗ trống `<…>`, lối `n/a`) · `gate.json` `{"gate": "conform"}`.
 - Bất biến chỉ một sản phẩm có ⇒ không làm khung; để repo viết điều riêng.
+
+## 5. Điều phủ cả một tập ⇒ sổ đăng ký + cổng
+
+- Điều hiến pháp đòi MỌI phần tử của một tập cùng có một thứ ("mọi loại bất thường phải giữ được bằng chứng", "mọi endpoint
+  phải qua guard") ⇒ chữ một mình không giữ được: phần tử mới sinh ra mà không ai nhớ điều đó.
+- Dựng một sổ máy đọc được (`register.json`) đặt trong skill riêng của repo (`Skill_Own_<Tên>`, `Skill_Frame_Own`): mỗi phần
+  tử một mục, khai nghĩa vụ được giữ ở đâu, kèm `why` một câu.
+- Cổng của repo so hai chiều: tập trong code (đọc từ nơi khai duy nhất, ví dụ một registry) == tập trong sổ; rồi soát từng mục
+  — tên câu truy vấn có thật, hàm ghi được gọi ở đủ mọi đường sổ khai, hàm đọc có ở mọi lớp lưu.
+- Tự kiểm bằng đột biến trên bản sao trong bộ nhớ (bỏ một mục · thêm một phần tử · gỡ một chỗ gọi · đổi một tên): mỗi đột
+  biến phải làm cổng đỏ (`Rule_Gate_01_DoneMeansRun`). Build gọi cổng; điều hiến pháp nêu tên skill và cổng.
+- Ví dụ: một app đối soát có điều "không để mất bất thường đã phát hiện" ⇒ sổ khai mỗi loại bất thường (11 loại) tính lại từ
+  nguồn hay giữ trong nhật ký của app; cổng soát 11 = 11 và đỏ với 6 đột biến.
 
 ## Implements · Thi hành luật
 - `Rule_Gate_79_HarnessEdit` — giving a law whose breach cannot be undone its machine check · gắn chốt máy cho luật mà vi phạm không đảo được
