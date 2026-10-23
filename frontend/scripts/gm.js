@@ -342,15 +342,9 @@
   }
   function renderChannel(c){
     if(!c)return;
-    zset('p2pBlocks',zN(c.blocks||0));
     // Nói cổng ĐANG NGHE, không nói cổng đã khai: bật mà không nghe được (cổng bận, chưa ghép
     // đôi ai) là ca có thật, và bề mặt phải phân biệt được hai thứ đó.
     zset('p2pPort', c.listening ? String(c.listening) : (c.enabled ? t('p2p.notListening') : String(c.port||'—')));
-    // Ô này có sẵn trong markup từ đầu mà KHÔNG nơi nào điền ⇒ mục "Chỗ lưu của kênh này" hiện
-    // ra như một tiêu đề rỗng. Đường thật nằm sẵn trong payload.
-    var de=zid('p2pDir'),dc=zid('p2pDirCopy');
-    if(de){de.textContent=c.dir||'—';de.setAttribute('title',c.dir||'');}
-    if(dc){dc.style.display=c.dir?'':'none';dc.setAttribute('data-copy',c.dir||'');dc.setAttribute('title',t('p2p.copyHint'));}
     // ĐỊA CHỈ là thuộc tính của MÁY, không phải sản phẩm của một cú bấm ⇒ nó ở đây, cạnh cổng nghe,
     // hiện thường trực. Kèm nhãn "cố định" cho địa chỉ khai tĩnh: đo 2026-09-20 thì địa chỉ Wi-Fi
     // đổi .90 → .81 trong một buổi, nên người đưa địa chỉ cần biết cái nào dùng lại được.
