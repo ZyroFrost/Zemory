@@ -27,17 +27,19 @@ trúc đó từ HS, không cần xem máy khác, không học từ dữ liệu m
 │   │   ├── _<Công cụ>_Template/      khuôn báo cáo chung (đồng bộ)
 │   │   ├── _Legacy/<Nguồn>/          việc cũ, chỉ đọc
 │   │   └── _Project/<Nhóm>/<repo>/   ứng dụng nội bộ · của bên cung cấp → bộ App
-│   ├── Personal/[<Nhóm>/]<repo>/     repo cá nhân
+│   ├── Personal/<Loại>/…             việc của chủ máy: Apps · StudyProjects · Games · Freelance · Social
 │   └── External/<repo>/              clone của bên ngoài, chỉ đọc, không ráp HS
 ├── Software/<Nhóm>/[<Hãng>/]<Ứng dụng>/{App,Data,Setup}
 │                                     nhóm: AI · Dev · Drivers · Network · Office · System · Utility
-├── AppConfig/<công cụ>/              cấu hình + khoá: configs/ · credentials/ · cache/
-├── Documents/<mảng>/                 tài liệu cá nhân
-└── Recovery/                         bản khôi phục máy
+├── Study/ · Memories/ · Documents/  thứ đang học · ảnh tự chụp · giấy tờ cá nhân
+├── Media/ · Library/ · Game/        sưu tầm: media · sách và tài liệu tra · game
+├── Backup/ · Archive/ · Recovery/   bản sao · thứ đã nghỉ · bản khôi phục máy
+├── _ConfigVault/<công cụ>/          dùng chung cả máy: thiết lập + khoá của mọi công cụ
+└── _Models/<engine>/                dùng chung cả máy: model của mọi app AI
 ```
 
 - Áp một tầng = từ điển tên + phép kiểm. Không tạo thư mục rỗng; không ghi file vào gốc ổ hay gốc tổ chức.
-- Mỗi slot của một tầng mô tả: vai trò · được chứa / không chứa · khuôn tên · đồng bộ (`02_STRUCTURE/_Slot/`, số 143–159).
+- Mỗi slot của một tầng mô tả: vai trò · được chứa / không chứa · khuôn tên · đồng bộ (`02_STRUCTURE/_Slot/`, số 143–167).
 
 ## 2. Các kệ
 
@@ -159,7 +161,7 @@ Rule_Gate_27_HarnessLanguage/
 3. Đưa repo về đúng chỗ: clone từng repo vào `Workspace/Company/<Tổ chức>/…`, `Personal/…`; thư mục đồng bộ (`_Glossary` ·
    `_<Công cụ>_Template`) nhận qua Syncthing. Kiểm từng tổ chức: `zemory conform --layout <thư mục tổ chức>`.
 4. Mỗi repo chưa ráp: `zemory init` trong repo, chọn bộ theo vai (§5). Repo đã ráp: `zemory sync --standard` để lên bản HS mới.
-5. Phần mềm: chạy bộ cài trong `Software/<Nhóm>/<Ứng dụng>/Setup/`; cấu hình và khoá trong `AppConfig/` mang sang bằng tay.
+5. Phần mềm: chạy bộ cài trong `Software/<Nhóm>/<Ứng dụng>/Setup/`; cấu hình và khoá trong `_ConfigVault/` mang sang bằng tay.
 
 ### 6.2 Nhận một repo có sẵn
 - `zemory adapt` / skill `reconcile`: bảng đề xuất dời file về đúng slot; không tự dời.
@@ -247,9 +249,9 @@ D:\
 ├── Workspace\Company\Acme\_DB_Warehouse\     zemory init → bộ AppData   (provides: data)
 ├── Workspace\Company\Acme\_DB_Log\           zemory init → bộ LogCenter (provides: log)
 ├── Workspace\Company\Acme\_Glossary\         Syncthing (provides: glossary)
-├── Workspace\Personal\MyTool\                zemory init → bộ App
+├── Workspace\Personal\Apps\MyTool\           zemory init → bộ App
 ├── Software\Dev\VSCode\{App,Setup}\
-└── AppConfig\git\ · AppConfig\ssh\
+└── _ConfigVault\git\ · _ConfigVault\ssh\
 ```
 
 1. `zemory conform --layout D:\` ⇒ sạch.

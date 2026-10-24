@@ -115,6 +115,8 @@ function reposUnder(dir: string, depth: number): string[] {
 const PROGRAM_PARTS = ["Setup", "App", "Data"] as const;
 /** Groups whose children are packs, not programs: a driver or a font has no installed copy. */
 const PACK_GROUPS = /^(Drivers|Fonts)$/;
+/** A folder split over storage places carries this file on each (Struc_Disk_Data, law 3); its other parts live elsewhere. */
+const SPLIT_MARK = "_README.md";
 
 /**
  * The program folders of one `Software/<group>/`: a child that already has a program part, or no sub-folder at all, is a
@@ -197,6 +199,7 @@ export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) 
             }
             if (PACK_GROUPS.test(a.name)) continue;
             for (const prog of programsIn(join(abs, a.name))) {
+              if (existsSync(join(prog, SPLIT_MARK))) continue;
               const missing = PROGRAM_PARTS.filter((part) => !existsSync(join(prog, part)));
               if (missing.length) {
                 add({ level: "blocking", check: "program-incomplete", path: prog, fix: `every program holds Setup/ (installer) · App/ (installed copy) · Data/ (its own data) - missing ${missing.join(", ")}` });
@@ -212,6 +215,14 @@ export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) 
           const p = join(abs, org.name);
           if (isRepo(p)) add({ level: "blocking", check: "repo-under-company", path: p, fix: "a repo goes inside its organisation's folder, Company/<org>/<repo>" });
           else sub(p, "company");
+        }
+      }
+      if (e.name === "Personal") {
+        // every item of Personal/ sits under one of its fixed kinds (Personal_145); a repo straight under it is caught too
+        for (const k of entries(abs).filter((x) => x.dir)) {
+          if (!onSomeSlot(slots, [e.name, k.name])) {
+            add({ level: "blocking", check: "unknown-value", path: join(abs, k.name), fix: "Personal/ holds the kinds of Personal_145 only - move it under its kind" });
+          }
         }
       }
       if (e.name === "External") {

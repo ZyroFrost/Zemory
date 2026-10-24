@@ -1,13 +1,21 @@
 {
   "scope": "disk",
   "slots": [
+    "ConfigVault_151_ConfigVault",
+    "Models_167_Models",
     "Workspace_143_Workspace",
+    "Study_160_Study",
+    "Memories_161_Memories",
+    "Documents_152_Documents",
+    "Media_162_Media",
+    "Library_163_Library",
+    "Game_164_Game",
     "Software_147_Software",
     "Software_148_Group",
     "Software_149_Program",
     "Software_150_Drivers",
-    "AppConfig_151_AppConfig",
-    "Documents_152_Documents",
+    "Backup_165_Backup",
+    "Archive_166_Archive",
     "Recovery_153_Recovery"
   ]
 }
