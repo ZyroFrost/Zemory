@@ -121,6 +121,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Exports_135_Exports`](_Slot/Exports_135_Exports/Exports_135_Exports.md) | `exports/` | bản render / publish sinh ra |
 | [`Root_136_Principles`](_Slot/Root_136_Principles/Root_136_Principles.md) | `.` | nguyên tắc chung của chuẩn cấu trúc |
 | [`Frontend_137_UiDictionary`](_Slot/Frontend_137_UiDictionary/Frontend_137_UiDictionary.md) | `frontend/` | từ điển slot thiết kế UI/UX |
+| [`Workspaces_169_Workspaces`](_Slot/Workspaces_169_Workspaces/Workspaces_169_Workspaces.md) | `workspaces/` | the output an app produces |
 
 | Host note · Ghi chú host | About · Về |
 |---|---|

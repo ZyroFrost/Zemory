@@ -1,14 +1,15 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
-# Media_162_Media media — phim, clip, nhạc, ảnh và truyện tranh do người khác làm
+# Media_162_Media media — giải trí sưu tầm
 
 ## Vai trò
 
-`<gốc dữ liệu>\Media\` chứa media người dùng sưu tầm: người khác làm, giữ để xem, nghe hoặc đọc. Nhánh ② của `Struc_Disk_Data`:
-tải lại được, nhưng tốn công. Ảnh và video người dùng tự chụp không phải media: chúng vào `Memories\` (Memories_161). Media của
-một game (ảnh chụp, clip lúc chơi) vào `Game\Media\` (Game_164).
+`<gốc dữ liệu>\Media\` là bước CUỐI (14) của chuỗi câu hỏi cấp ổ (`Struc_Disk_Data`): đồ giải trí người khác làm, giữ để xem, nghe
+hoặc đọc. Nó chỉ nhận món khi không bước nào trước đó đúng. Theo thứ tự của chuỗi: ảnh/clip quay màn hình game hay clip game sưu tầm
+⇒ `Game\` (bước 8) · ảnh gom để dùng cho hồ sơ của chủ máy ⇒ `Documents\Profile\Personal\Avatar\` (bước 11) · ảnh và video quay người
+bằng máy ảnh của chủ máy hay gia đình ⇒ `Memories\` (bước 12).
 
 ## Bên trong — bốn loại, danh sách cố định
 
@@ -22,13 +23,13 @@ một game (ảnh chụp, clip lúc chơi) vào `Game\Media\` (Game_164).
 
 ## Luật
 
-- Cấp đầu chỉ có bốn loại `Video` · `Music` · `Image` · `Comic`; trong `Video\` chỉ có `Movie\` và `Clip\`.
-- Không có file lẻ ở cấp `Media\` hay ở cấp loại; trong một loại, mỗi tựa, mỗi bộ hoặc mỗi nghệ sĩ một thư mục.
+- Cấp đầu chỉ có `Video` · `Music` · `Image` · `Comic`; trong `Video\` chỉ có `Movie\` và `Clip\`.
+- Không có file lẻ ở cấp `Media\` hay ở cấp loại; mỗi tựa, mỗi bộ hoặc mỗi nghệ sĩ một thư mục.
 - Media nặng: là khối đầu tiên nên dời sang ổ dữ liệu thứ hai, rồi nối về theo năm luật của `Struc_Disk_Data`.
 
 ## Khuôn tên
 
-Tên tựa đúng như khi phát hành, phim kèm năm trong ngoặc: `Interstellar (2014)`. Thư mục loại viết đúng như bảng.
+Tên tựa đúng như khi phát hành, phim kèm năm trong ngoặc: `Interstellar (2014)`.
 
 ## Đồng bộ
 
@@ -36,4 +37,4 @@ Không vào git, không đồng bộ: tải lại được.
 
 ## Phép kiểm
 
-`zemory conform --layout <gốc dữ liệu>` nhận `Media\` là thư mục cấp 1 hợp lệ. Bốn loại chưa có phép kiểm máy; người dùng tự giữ.
+`zemory conform --layout <gốc dữ liệu>` nhận `Media\` là thư mục cấp 1 hợp lệ. Bốn loại chưa có phép kiểm máy.

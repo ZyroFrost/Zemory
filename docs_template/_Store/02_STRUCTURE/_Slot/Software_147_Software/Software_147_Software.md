@@ -1,44 +1,39 @@
 ---
 id: Slot_147
 name: software
-version: 2
+version: 3
 path: Software/
 scope: layout
 ---
-# Software_147_Software software — nơi đặt mọi phần mềm của máy
+# Software_147_Software software — every program of the machine
 
-## Vai trò
+## Role
 
-`<ổ dữ liệu>\Software\` là chỗ DUY NHẤT đặt phần mềm của máy: bộ cài, bản đã cài và dữ liệu riêng của từng phần mềm. Máy mới
-dựng lại toàn bộ phần mềm bằng cách đi qua cây này, chạy bộ cài trong `Setup\` của từng phần mềm và chọn đường cài `App\`.
-
-## Cây
+`<data root>\Software\` is step 6 of the drive's question chain (`Struc_Disk_Data`): a program — its installer, its installed copy,
+its own data — games, launchers and game tools included, and a program's output buffer. It is the ONLY place for programs: a new
+machine rebuilds every program by walking this tree.
 
 ```
 Software\
-└── <Nhóm>\                       một trong mười bốn nhóm của Software_148_Group (AI · Dev · Office …)
-    └── [<Hãng>\]<Ứng dụng>\      một phần mềm — LUÔN đủ ba thư mục con (Software_149_Program)
-        ├── Setup\                bộ cài gốc, giữ nguyên tên tệp
-        ├── App\                  bản đã cài / portable
-        └── Data\                 dữ liệu riêng của phần mềm (trống nếu không có)
+└── <Group>\                       one of the fifteen groups of Software_148 (AI · Dev · Game · Office …)
+    └── [<Vendor>\]<App>\          one program, ALWAYS with Setup\ · App\ · Data\ (Software_149)
 ```
 
-Ví dụ thật: `D:\Software\Dev\Microsoft\VSCode\{Setup, App, Data}` · `D:\Software\System\Microsoft\WSL\{Setup, App, Data}`.
+Real examples: `D:\Software\Dev\Microsoft\VSCode\{Setup, App, Data}` · `D:\Software\Game\Steam\{Setup, App, Data}` (the game library
+is the launcher's `Data\`).
 
-## Luật
+## Rules
 
-- Mọi phần mềm có bộ cài cho chọn chỗ ĐỀU cài vào `Software\<Nhóm>\[<Hãng>\]<Ứng dụng>\App\`, không cài vào ổ hệ thống.
-- Phần mềm mà bộ cài ép cài vào ổ hệ thống: vẫn tạo thư mục phần mềm đủ ba thư mục con trong `Software\`; `Setup\` giữ bộ cài,
-  `App\` để trống (xem ngoại lệ ở `Software_149_Program`).
-- Cấp `Software\` chỉ chứa các thư mục nhóm của `Software_148_Group`. Không có phần mềm nằm thẳng ở `Software\`, không có file
-  lẻ, không có repo, không có tài liệu làm việc.
-- Tên `Software` cố định, viết đúng như vậy.
+- Every program whose installer lets the owner choose a place installs into `Software\<Group>\[<Vendor>\]<App>\App\`.
+- A program forced onto the system drive still has its folder here with all three parts (`Software_149_Program`, exception 1).
+- The `Software\` level holds only the groups of `Software_148_Group`: no program straight here, no loose file, no repo, no papers.
+- A program found anywhere else (inside `Documents\`, `Study\`, `Game\`) moves here (Law 2 of `Struc_Disk_Data`).
 
-## Đồng bộ
+## Sync
 
-Không vào git, không đồng bộ giữa máy: bản cài là của từng máy, bộ cài tải lại được.
+Not in git, not synced: an installed copy belongs to one machine, an installer can be downloaded again.
 
-## Phép kiểm
+## Check
 
-`zemory conform --layout <gốc ổ>`: nhóm lạ trong `Software\` (`unknown-value`) · phần mềm thiếu một trong ba thư mục con
-(`program-incomplete`) · repo nằm trong `Software\` (`repo-outside-workspace`).
+`zemory conform --layout <data root>`: a group outside Software_148 (`unknown-value`) · a program without one of its three parts
+(`program-incomplete`) · a repo inside `Software\` (`repo-outside-workspace`).

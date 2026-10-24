@@ -5,6 +5,7 @@
 //              promise settles when the lane reports that block - only then does the session send `ack`.
 // One instance per process: every session with every peer shares the waiters, so the lane's report reaches the right one.
 
+import { existsSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import { hostname } from "node:os";
 import { runInWorker } from "../../jobs/fnworker.js";
@@ -61,8 +62,10 @@ export function createBlockIO(d: { host: () => string; requestMerge?: () => void
     outgoing: async (peer) => {
       const running = building.get(peer);
       if (running) {
-        await running.catch(() => []);
-        return []; // the other link with this machine is sending this range
+        // The link that started this build may be gone (a relay drops while a large first round builds): this link sends
+        // the same blocks. Both links alive ⇒ the receiver merges them twice, and merge dedups.
+        const blocks = await running.catch(() => [] as OutBlock[]);
+        return blocks.filter((b) => existsSync(b.file)).map((b) => ({ id: b.id, bytes: b.bytes, read: () => readFile(b.file) }));
       }
       const p = build(peer);
       building.set(peer, p);

@@ -30,7 +30,7 @@ export interface LayoutSlot {
 
 export interface LayoutFinding {
   level: "blocking" | "advice";
-  check: "loose-file" | "unknown-folder" | "repo-outside-workspace" | "unknown-value" | "program-incomplete" | "repo-under-company" | "assembled-external";
+  check: "loose-file" | "unknown-folder" | "repo-outside-workspace" | "unknown-value" | "program-incomplete" | "repo-under-company" | "assembled-external" | "study-unmatched";
   path: string;
   fix: string;
 }
@@ -117,6 +117,28 @@ const PROGRAM_PARTS = ["Setup", "App", "Data"] as const;
 const PACK_GROUPS = /^(Drivers|Fonts)$/;
 /** A folder split over storage places carries this file on each (Struc_Disk_Data, law 3); its other parts live elsewhere. */
 const SPLIT_MARK = "_README.md";
+/** Top-level folders whose children are a fixed list (Game_164 · Documents_152): a child outside it is `unknown-value`. */
+const FIXED_CHILDREN = /^(Game|Documents)$/;
+/** At an organisation level a non-repo folder with neither prefix is a work folder (Struc_Region_Company) and passes. */
+const ROLE_PREFIX = /^(_|Dept_)/;
+
+/**
+ * Struc_Disk_Data step 1 of Personal_145: a study project mirrors a folder of `Study\`. Every
+ * `Workspace\Personal\StudyProjects\School\<School>\<Subject>\` and `…\Self\<Field>\` needs the same path under `Study\`.
+ */
+function unmatchedStudy(root: string): string[] {
+  const sp = join(root, "Workspace", "Personal", "StudyProjects");
+  if (!existsSync(sp)) return [];
+  const out: string[] = [];
+  const dirs = (p: string): string[] => entries(p).filter((x) => x.dir).map((x) => x.name);
+  for (const school of dirs(join(sp, "School"))) {
+    for (const subject of dirs(join(sp, "School", school))) {
+      if (!existsSync(join(root, "Study", "School", school, subject))) out.push(join(sp, "School", school, subject));
+    }
+  }
+  for (const field of dirs(join(sp, "Self"))) if (!existsSync(join(root, "Study", "Self", field))) out.push(join(sp, "Self", field));
+  return out;
+}
 
 /**
  * The program folders of one `Software/<group>/`: a child that already has a program part, or no sub-folder at all, is a
@@ -185,12 +207,23 @@ export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) 
       continue;
     }
     if (!onSomeSlot(slots, [e.name])) {
+      // an organisation's non-repo work folder (no `_`, no `Dept_`) has its place there (Struc_Region_Company)
+      if (kind === "company" && !ROLE_PREFIX.test(e.name) && !isRepo(abs)) continue;
       add({ level: "blocking", check: "unknown-folder", path: abs, fix: `no slot of ${out.structure} takes "${e.name}" - move it, or add a slot to HS (approval)` });
       continue;
     }
     if (kind === "drive") {
-      if (e.name === "Workspace") sub(abs, "workspace");
-      else {
+      if (e.name === "Workspace") {
+        sub(abs, "workspace");
+        for (const p of unmatchedStudy(root)) {
+          add({ level: "blocking", check: "study-unmatched", path: p, fix: "a study project mirrors a folder of Study/ (Personal_145) - no such Study folder: it is not a study project, move it to Games/ or Apps/" });
+        }
+      } else {
+        if (FIXED_CHILDREN.test(e.name)) {
+          for (const c of entries(abs).filter((x) => x.dir)) {
+            if (!onSomeSlot(slots, [e.name, c.name])) add({ level: "blocking", check: "unknown-value", path: join(abs, c.name), fix: `${e.name}/ holds a fixed list of folders (${e.name === "Game" ? "Game_164" : "Documents_152"})` });
+          }
+        }
         if (e.name === "Software") {
           for (const a of entries(abs).filter((x) => x.dir)) {
             if (!onSomeSlot(slots, [e.name, a.name])) {

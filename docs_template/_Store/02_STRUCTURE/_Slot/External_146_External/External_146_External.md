@@ -1,30 +1,30 @@
 ---
 id: Slot_146
 name: external
-version: 2
+version: 3
 path: External/<repo>/
 scope: layout
 ---
-# External_146_External external — clone của bên ngoài
+# External_146_External external — code of others
 
-## Vai trò
+## Role
 
-`Workspace\External\` chứa mã do NGƯỜI KHÁC viết, clone về để đọc, tham khảo cách làm, hoặc chạy thử. Ví dụ:
-`D:\Workspace\External\some-library\` (một thư viện mã nguồn mở), `D:\Workspace\External\vendor-sdk\` (bộ SDK của một hãng).
+`Workspace\External\` holds code written by SOMEONE ELSE, whatever it was cloned for: to read, to learn from, to try (step 2 of
+`Workspace_143`). Learning material that needs it links here instead of holding a copy. Examples:
+`D:\Workspace\External\some-library\` · `D:\Workspace\External\vendor-sdk\`.
 
-## Luật — chỉ đọc, không có ngoại lệ
+## Rules — read only, no exceptions
 
-- KHÔNG ráp HS vào clone (không chạy `zemory init` trong đó, không tạo `docs\.harness.json`).
-- KHÔNG sửa mã của clone, KHÔNG chạy lệnh ghi của zemory với thư mục làm việc ở trong clone.
-- Muốn dùng một phần: chép phần cần sang repo của mình (`Personal\` hoặc `Company\<Tổ chức>\`) rồi làm ở đó.
-- Muốn sửa và đóng góp ngược lại: fork thành repo của mình, đặt ở `Personal\`, không sửa trong `External\`.
-- Không chứa repo của chính người dùng hay của tổ chức.
+- Do NOT assemble HS into a clone (no `zemory init`, no `docs\.harness.json`).
+- Do NOT edit the clone, do NOT run a writing zemory command with the working folder inside it.
+- To use a part: copy it into a repo of the owner (`Personal\` or `Company\<Org>\`) and work there.
+- To change it and contribute back: fork it; a fork with commits of the owner is the owner's code ⇒ `Personal\`.
 
-## Khuôn tên
+## Naming
 
-Giữ nguyên tên repo gốc như trên trang của nó (kể cả chữ thường, dấu gạch): `some-library`, không đổi thành `SomeLibrary`.
+The repo's own name as on its page, case and dashes kept: `some-library`.
 
-## Phép kiểm
+## Check
 
-`zemory conform --layout <ổ>\Workspace` báo (`assembled-external`, mức khuyên) mọi clone trong `External\` có
-`docs\.harness.json` — tức đã bị ráp HS.
+`zemory conform --layout <drive>\Workspace` names (`assembled-external`, advice) every clone in `External\` holding
+`docs\.harness.json`.

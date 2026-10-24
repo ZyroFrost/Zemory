@@ -27,19 +27,20 @@ trúc đó từ HS, không cần xem máy khác, không học từ dữ liệu m
 │   │   ├── _<Công cụ>_Template/      khuôn báo cáo chung (đồng bộ)
 │   │   ├── _Legacy/<Nguồn>/          việc cũ, chỉ đọc
 │   │   └── _Project/<Nhóm>/<repo>/   ứng dụng nội bộ · của bên cung cấp → bộ App
-│   ├── Personal/<Loại>/…             việc của chủ máy: Apps · StudyProjects · Games · Freelance · Social
+│   ├── Personal/<Loại>/…             code của chủ máy: StudyProjects · Games · Apps
 │   └── External/<repo>/              clone của bên ngoài, chỉ đọc, không ráp HS
 ├── Software/<Nhóm>/[<Hãng>/]<Ứng dụng>/{App,Data,Setup}
-│                                     nhóm: AI · Dev · Drivers · Network · Office · System · Utility
-├── Study/ · Memories/ · Documents/  thứ đang học · ảnh tự chụp · giấy tờ cá nhân
-├── Media/ · Library/ · Game/        sưu tầm: media · sách và tài liệu tra · game
+│                                     15 nhóm: AI · Dev · Game · Office · System · Utility · Drivers · Fonts …
+├── Study/ · Memories/ · Documents/  đang học · ảnh/video quay người · giấy tờ người đọc (Profile · Family)
+├── Game/ · Library/ · Media/        save/clip/hướng dẫn game · kiến thức để tra · giải trí sưu tầm
 ├── Backup/ · Archive/ · Recovery/   bản sao · thứ đã nghỉ · bản khôi phục máy
 ├── _ConfigVault/<công cụ>/          dùng chung cả máy: thiết lập + khoá của mọi công cụ
-└── _Models/<engine>/                dùng chung cả máy: model của mọi app AI
+├── _Models/<engine>/                dùng chung cả máy: model của mọi app AI
+└── Downloads/                       chưa xếp — tầng thô; xếp theo chuỗi câu hỏi của Struc_Disk_Data
 ```
 
 - Áp một tầng = từ điển tên + phép kiểm. Không tạo thư mục rỗng; không ghi file vào gốc ổ hay gốc tổ chức.
-- Mỗi slot của một tầng mô tả: vai trò · được chứa / không chứa · khuôn tên · đồng bộ (`02_STRUCTURE/_Slot/`, số 143–167).
+- Mỗi slot của một tầng mô tả: vai trò · được chứa / không chứa · khuôn tên · đồng bộ (`02_STRUCTURE/_Slot/`, số 143–169).
 
 ## 2. Các kệ
 

@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 # Software_149_Program program — một phần mềm
@@ -71,6 +71,9 @@ Software\Utility\7-Zip\
 - Thư mục cài toàn cục của trình quản lý gói là `Data\` của runtime đó: `npm config set prefix
   D:\Software\Dev\NodeJS\Data\npm-global`, để mọi CLI cài bằng `npm -g` nằm ở đó và chỉ thư mục đó nằm trên `PATH`. CLI cài
   bằng bộ cài riêng thì có thư mục phần mềm riêng (`Software\AI\Anthropic\ClaudeCode\`).
+- THƯ MỤC ĐỆM ĐẦU RA của một chương trình — chỗ nó ghi ra trước khi chủ máy xếp kết quả (thư mục ghi clip của phần mềm quay màn hình
+  trên ổ nhanh) — là `Data\` của chính chương trình đó, nối sang ổ nhanh theo năm luật của `Struc_Disk_Data`; món đã xếp thì dời
+  về chỗ của nó (clip game ⇒ `Game\Media\`).
 
 ## Khuôn tên
 

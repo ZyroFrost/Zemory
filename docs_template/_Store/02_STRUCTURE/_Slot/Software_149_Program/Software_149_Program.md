@@ -1,7 +1,7 @@
 ---
 id: Slot_149
 name: program
-version: 3
+version: 4
 path: Software/<Nhóm>/[<Hãng>/]<Ứng dụng>/
 scope: layout
 ---
@@ -74,6 +74,9 @@ Software\Utility\7-Zip\
 - A package manager's global install folder is the `Data\` of its runtime: `npm config set prefix
   D:\Software\Dev\NodeJS\Data\npm-global`, so every CLI installed with `npm -g` lives there and that one folder is on `PATH`.
   A CLI installed by its own installer gets its own program folder (`Software\AI\Anthropic\ClaudeCode\`).
+- A program's OUTPUT BUFFER — the folder it writes into before the owner sorts the result (a screen recorder's capture folder on a
+  fast drive) — is that program's `Data\`, linked to the fast drive per the five laws of `Struc_Disk_Data`; a sorted item moves
+  to its own place (a game clip ⇒ `Game\Media\`).
 
 ## Naming
 

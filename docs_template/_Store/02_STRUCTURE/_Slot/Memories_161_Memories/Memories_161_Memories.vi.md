@@ -1,14 +1,16 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
-# Memories_161_Memories memories — ảnh và video người dùng tự chụp
+# Memories_161_Memories memories — ảnh và video quay người
 
 ## Vai trò
 
-`<gốc dữ liệu>\Memories\` chứa ảnh và video người dùng (hoặc gia đình người dùng) tự chụp: chuyến đi, sự kiện gia đình, đời sống
-hằng ngày. Nhánh ① của `Struc_Disk_Data`: đây là bản gốc, mất là không lấy lại được. Ảnh người khác làm (hình nền, ảnh tải về)
-không phải kỷ niệm: chúng vào `Media\Image\` (Media_162).
+`<gốc dữ liệu>\Memories\` là bước 12 của chuỗi câu hỏi cấp ổ (`Struc_Disk_Data`): ảnh và video quay NGƯỜI bằng máy ảnh của chủ máy
+hay của gia đình (điện thoại cũng tính) — chuyến đi, sự kiện gia đình, đời sống hằng ngày. Đây là bản gốc, mất là không lấy lại
+được. Theo thứ tự của chuỗi, bước trước thắng: ảnh quay màn hình game không phải kỷ niệm ⇒ `Game\` (bước 8); ảnh gom để dùng cho hồ
+sơ của chủ máy ⇒ `Documents\Profile\Personal\Avatar\` (bước 11). Sự thật phân biệt kỷ niệm với ảnh sưu tầm nằm ngay trong file: EXIF
+của máy chụp (hãng, đời máy, giờ chụp).
 
 ## Bên trong
 
@@ -19,33 +21,20 @@ Memories\
     └── <YYYY-MM>\               những thứ của tháng đó không thuộc sự kiện nào
 ```
 
-Ví dụ thật:
-
-```
-Memories\2025\
-├── 2025-04-30 Beach Trip\      IMG_0012.jpg · IMG_0013.heic · VID_0014.mp4
-├── 2025-09-02 Family Dinner\   …
-└── 2025-07\                    ảnh lẻ của tháng 7
-```
+Ví dụ thật: `Memories\2025\2025-04-30 Beach Trip\` chứa `IMG_0012.jpg` · `VID_0014.mp4`.
 
 ## Luật
 
-- Gom theo thời gian và sự kiện, KHÔNG chia theo loại file: ảnh và video của một sự kiện nằm chung một thư mục. Không tách
-  `Photos\` và `Videos\`.
-- Thư mục sự kiện bắt đầu bằng ngày đầu tiên dạng `YYYY-MM-DD`, rồi một tên ngắn; sự kiện kéo dài nhiều ngày giữ ngày đầu.
-- Giữ nguyên tên file của máy chụp; không đổi tên file.
-- Không có thư mục chờ xếp: thứ mới từ điện thoại vào thẳng năm và tháng của nó, hoặc vào thư mục sự kiện.
+- Gom theo thời gian và sự kiện, KHÔNG chia theo loại file: không tách `Photos\` và `Videos\`.
+- Thư mục sự kiện bắt đầu bằng ngày đầu tiên dạng `YYYY-MM-DD`, rồi một tên ngắn.
+- Giữ nguyên tên file của máy chụp.
+- Không có hộp chờ: đồ chưa xếp nằm ở `Downloads\`.
 - Không có file lẻ ở cấp `Memories\` hay ở cấp năm.
-
-## Khuôn tên
-
-Năm `2025`; tháng `2025-07`; sự kiện `2025-04-30 Beach Trip` (ở đây được có dấu cách giữa ngày và tên, để tên đọc như tiêu đề).
 
 ## Đồng bộ
 
-Không vào git. Bản gốc: giữ ít nhất một bản sao lưu ở một nơi lưu khác (ổ thứ hai, hoặc sao lưu đám mây).
+Không vào git. Bản gốc: giữ ít nhất một bản sao lưu ở nơi lưu khác.
 
 ## Phép kiểm
 
-`zemory conform --layout <gốc dữ liệu>` nhận `Memories\` là thư mục cấp 1 hợp lệ. Khuôn tên năm và sự kiện chưa có phép kiểm
-máy; người dùng tự giữ.
+`zemory conform --layout <gốc dữ liệu>` nhận `Memories\` là thư mục cấp 1 hợp lệ. Khuôn tên năm và sự kiện chưa có phép kiểm máy.

@@ -1,42 +1,36 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Archive_166_Archive archive — thứ đã nghỉ, giữ làm bản duy nhất
 
 ## Vai trò
 
-`<gốc dữ liệu>\Archive\` chứa thứ người dùng không còn dùng nhưng vẫn giữ: dự án đã đóng, bộ cài cũ của một phần mềm, môn học đã
-xong mà ghi chép còn đáng giữ. Nhánh ④ của `Struc_Disk_Data`. Thứ trong archive là bản DUY NHẤT còn lại (bản gốc đã dời vào đây);
-đó là chỗ khác với `Backup\` (Backup_165), nơi chứa bản sao.
+`<gốc dữ liệu>\Archive\` là bước 3 của chuỗi câu hỏi cấp ổ (`Struc_Disk_Data`): dự án hoặc phiên bản cũ ngừng dùng, giữ làm bản DUY
+NHẤT còn lại (bản gốc đã dời vào đây). Khác với `Backup\` (bước 2) ở một sự thật: bản sao lưu thì bản gốc còn ở nơi khác. Kiến thức
+học xong không vào archive: nó vào `Library\` (bước 10).
 
 ## Bên trong
 
-Mỗi thứ giữ đúng đường dẫn nó từng có trong cây, đặt dưới tên thư mục cấp 1 nó đến từ đó, để tìm lại theo chỗ nó từng nằm.
+Mỗi thứ giữ đúng đường dẫn nó từng có trong cây, dưới tên thư mục cấp 1 nó đến từ đó:
 
 | từng nằm ở | archive ở |
 |---|---|
-| `Workspace\Personal\OldTool\` | `Archive\Workspace\Personal\OldTool.zip` |
-| `Study\School\OpenUniversity\Statistics\` | `Archive\Study\School\OpenUniversity\Statistics\` |
+| `Workspace\Personal\Apps\OldTool\` | `Archive\Workspace\Personal\Apps\OldTool.zip` |
 | `Software\Office\FoxitReader\Setup\` (một bộ cài cũ) | `Archive\Software\Office\FoxitReader\Setup\` |
+| `Backup\Phone\OldPhone\` mà điện thoại không còn | `Archive\Backup\Phone\OldPhone\` |
 
 ## Các bước — đưa một thứ vào archive
 
-1. Tìm đường dẫn của thứ đó trong cây; tạo đúng đường đó dưới `Archive\<thư mục cấp 1>\`.
-2. Repo: nén cả thư mục, gồm `.git\`, thành một file `<repo>.zip` rồi đặt file vào đó. Repo không nén nằm ngoài `Workspace\` bị
-   phép kiểm cây báo.
+1. Tạo đường dẫn cũ của nó dưới `Archive\<thư mục cấp 1>\`.
+2. Repo: nén cả thư mục, gồm `.git\`, thành `<repo>.zip` (repo không nén nằm ngoài `Workspace\` bị báo).
 3. Thứ khác: dời thư mục vào đó.
-4. Xoá thứ đó ở chỗ cũ: đưa vào archive là dời, không phải chép.
+4. Xoá ở chỗ cũ: đưa vào archive là dời.
 
 ## Luật
 
-- Cấp đầu chỉ chứa tên các thư mục cấp 1 của cây (`Workspace` · `Study` · `Software` …).
-- Không có file lẻ ở cấp `Archive\`.
-- Archive nặng và ít khi mở: là khối tốt để dời sang ổ dữ liệu thứ hai, rồi nối về.
-
-## Khuôn tên
-
-Giữ nguyên tên thứ đó từng có; không đổi tên gì.
+- Cấp đầu chỉ chứa tên các thư mục cấp 1 của cây. Không có file lẻ ở cấp `Archive\`.
+- Archive nặng và ít khi mở: khối tốt để dời sang ổ dữ liệu thứ hai, rồi nối về.
 
 ## Đồng bộ
 
@@ -44,5 +38,4 @@ Không vào git. Bản duy nhất: giữ một bản sao lưu ở nơi lưu khá
 
 ## Phép kiểm
 
-`zemory conform --layout <gốc dữ liệu>` nhận `Archive\` là thư mục cấp 1 hợp lệ và báo đỏ repo không nén nằm trong nó
-(`repo-outside-workspace`).
+`zemory conform --layout <gốc dữ liệu>` nhận `Archive\` và báo đỏ repo không nén nằm trong nó (`repo-outside-workspace`).

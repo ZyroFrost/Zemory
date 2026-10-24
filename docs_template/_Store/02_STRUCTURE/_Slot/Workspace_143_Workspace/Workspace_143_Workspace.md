@@ -1,48 +1,47 @@
 ---
 id: Slot_143
 name: workspace
-version: 3
+version: 4
 path: Workspace/
 scope: layout
 ---
-# Workspace_143_Workspace workspace — mọi repo của người dùng
+# Workspace_143_Workspace workspace — code, repos and work for organisations
 
-## Vai trò
+## Role
 
-`<ổ dữ liệu>\Workspace\` là thư mục DUY NHẤT trên ổ được chứa repo. "Repo" ở đây là thư mục có `.git\`, hoặc thư mục đã
-ráp HS (có `docs\.harness.json`). Một repo nằm ở bất kỳ chỗ nào khác trên ổ (trong `Software\`, `Documents\`, ở gốc ổ…) là
-lệch chuẩn và phải dời vào đây.
+`<data root>\Workspace\` is step 7 of the drive's question chain (`Struc_Disk_Data`): code or a repo, or work done for an
+organisation. A repo is a folder with `.git\`, or a folder HS was assembled into (`docs\.harness.json`). A repo anywhere else on
+the drive is off-standard and moves here.
 
-## Cây — đúng ba vùng, không gì khác
+## The question of this level — the first true answer wins
+
+| step | the fact | goes to |
+|---|---|---|
+| 1 | work done for an organisation (an employer past or present, a client of freelance work) — repos and non-repo work folders | `Company\<Org>\` (Company_144) |
+| 2 | code written by someone else — always, even when it was cloned to learn from (a fork with commits of the owner is the owner's code: step 3) | `External\<repo>\` (External_146) |
+| 3 | everything else: the owner's own code | `Personal\<Kind>\…` (Personal_145) |
 
 ```
 Workspace\
-├── Company\<Tổ chức>\…     repo của một tổ chức (Company_144) — bên trong theo khung Struc_Region_Company
-├── Personal\[<Nhóm>\]<repo>\   repo của chính người dùng (Personal_145)
-└── External\<repo>\        clone của bên ngoài, chỉ đọc (External_146)
+├── Company\<Org>\…       work for an organisation (Company_144) — inside, the frame Struc_Region_Company
+├── External\<repo>\      code of others, read only (External_146)
+└── Personal\<Kind>\…     the owner's own code: StudyProjects · Games · Apps (Personal_145)
 ```
 
-Ví dụ thật:
-- `D:\Workspace\Company\Acme\Dept_FIN\` — repo của phòng tài chính tổ chức Acme.
-- `D:\Workspace\Personal\MyTool\` — một công cụ của chính người dùng.
-- `D:\Workspace\External\some-library\` — thư viện của người khác clone về để đọc.
+## Rules
 
-## Luật
+- The `Workspace\` level holds only `Company\` · `External\` · `Personal\`: no repo straight here, no loose file, no fourth folder.
+- Not here: program installs (`Software\`) · tool settings and keys (`_ConfigVault\`) · papers about the owner or an organisation
+  (`Documents\Profile\`).
+- `Workspace` is written exactly so on every machine, Linux included.
 
-- Cấp `Workspace\` chỉ có ba thư mục `Company\` · `Personal\` · `External\`. Không có repo đặt thẳng ở đây, không có file lẻ,
-  không có thư mục thứ tư.
-- Không chứa: bản cài phần mềm (để ở `Software\`) · cấu hình và khoá công cụ (`_ConfigVault\`) · tài liệu cá nhân (`Documents\`).
-- Phân biệt ba vùng theo CHỦ của repo: tổ chức ⇒ `Company\`; chính người dùng (kể cả dự án làm chung với nhóm ngoài tổ chức)
-  ⇒ `Personal\`; người khác viết, mình chỉ đọc ⇒ `External\`.
-- Tên `Workspace` viết đúng như vậy (W hoa, phần còn lại thường) trên mọi máy, kể cả máy Linux.
+## Sync
 
-## Đồng bộ
+`Workspace\` is not synced as a block. Each repo goes its own way: git for code · Syncthing for shared data folders (`_Glossary\`)
+· the zemory channel for harness docs.
 
-Thư mục `Workspace\` KHÔNG đồng bộ nguyên khối. Mỗi repo tự đi đường của nó: git cho mã · Syncthing cho thư mục dữ liệu chung
-(ví dụ `_Glossary\`) · kênh zemory cho tài liệu harness.
+## Check
 
-## Phép kiểm
-
-`zemory conform --layout <gốc ổ>` (hoặc `zemory conform --layout <ổ>\Workspace`): thư mục lạ ở cấp `Workspace\`
-(`unknown-folder`) · repo đặt thẳng dưới `Company\` (`repo-under-company`) · HS ráp vào một clone trong `External\`
-(`assembled-external`) · repo nằm ngoài `Workspace\` (`repo-outside-workspace`, khi kiểm từ gốc ổ).
+`zemory conform --layout <data root>` (or `<drive>\Workspace`): a folder of no region (`unknown-folder`) · a repo straight under
+`Company\` (`repo-under-company`) · HS assembled into a clone in `External\` (`assembled-external`) · a folder under `Personal\`
+outside its kinds (`unknown-value`) · a repo outside `Workspace\` (`repo-outside-workspace`, from the drive root).

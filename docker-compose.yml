@@ -52,7 +52,7 @@ services:
       # letter (G:) and silently mounts an empty folder instead (measured 2026-10-22): mount it in Ubuntu first
       # (/etc/fstab: `G: /mnt/g drvfs metadata,noatime 0 0`) and name the Ubuntu path here
       - ${HOST_DRIVE:-${ZEMORY_STORE}/no-drive}:/host/drive
-      # the data drive's root, read-only: `zemory conform --layout` checks the whole drive (plan/32: Software/ · AppConfig/ ·
+      # the data drive's root, read-only: `zemory conform --layout` checks the whole drive (Struc_Disk_Data: Software/ · _ConfigVault/ ·
       # Workspace/ …). Its pair comes LAST in ZEMORY_PATH_MAP - the shortest prefix, so every longer one wins first
       - ${HOST_DATA_ROOT:-${HOST_WORKSPACE}}:/host/data:ro
       # zemory's own repo: the clone this image is built from. HS (docs_template) is read and the sets are rebuilt here,

@@ -1,18 +1,19 @@
 ---
 id: Slot_162
 name: media
-version: 1
+version: 2
 path: Media/<MediaKind>/
 values: [Video, Music, Image, Comic]
 scope: layout
 ---
-# Media_162_Media media — films, clips, music, images and comics made by others
+# Media_162_Media media — entertainment collected
 
 ## Role
 
-`<data root>\Media\` holds media the owner collected: made by others, kept to watch, listen to or read. Branch ② of
-`Struc_Disk_Data`: it can be fetched again, at a cost. The owner's own photos and videos are not media: they go to `Memories\`
-(Memories_161). Media of a game (screenshots, clips of play) goes to `Game\Media\` (Game_164).
+`<data root>\Media\` is the LAST step (14) of the drive's question chain (`Struc_Disk_Data`): entertainment made by others and kept
+to watch, listen to or read. It gets an item only when no earlier step is true. In the order of the chain: a game capture or a
+collected game clip ⇒ `Game\` (step 8) · pictures gathered for the owner's profiles ⇒ `Documents\Profile\Personal\Avatar\` (step 11)
+· photos and videos of people taken with the owner's or the family's camera ⇒ `Memories\` (step 12).
 
 ## Inside — four kinds, a fixed list
 
@@ -26,13 +27,13 @@ scope: layout
 
 ## Rules
 
-- Only the four kinds `Video` · `Music` · `Image` · `Comic` at the first level; inside `Video\`, only `Movie\` and `Clip\`.
-- No loose file at the `Media\` level or at a kind level; inside a kind, one folder per title, series or artist.
-- Media is large: it is the first block to move to a second data drive, linked back per the five laws of `Struc_Disk_Data`.
+- Only `Video` · `Music` · `Image` · `Comic` at the first level; inside `Video\`, only `Movie\` and `Clip\`.
+- No loose file at the `Media\` level or at a kind level; one folder per title, series or artist.
+- Media is large: the first block to move to a second data drive, linked back per the five laws of `Struc_Disk_Data`.
 
 ## Naming
 
-A title as it is published, with the year in brackets for films: `Interstellar (2014)`. Kind folders exactly as in the table.
+A title as it is published, the year in brackets for films: `Interstellar (2014)`.
 
 ## Sync
 
@@ -40,5 +41,4 @@ Not in git, not synced: it can be fetched again.
 
 ## Check
 
-`zemory conform --layout <data root>` accepts `Media\` as a top-level folder. The four kinds have no machine check yet; the owner
-keeps them.
+`zemory conform --layout <data root>` accepts `Media\` as a top-level folder. The four kinds have no machine check yet.

@@ -1,40 +1,51 @@
 ---
 id: Slot_152
 name: documents
-version: 3
-path: Documents/<mảng>/
+version: 4
+path: Documents/<DocKind>/
+values: [Profile, Family]
 scope: layout
 ---
-# Documents_152_Documents documents — tài liệu cá nhân
+# Documents_152_Documents documents — papers a person reads
 
-## Vai trò
+## Role
 
-`<ổ dữ liệu>\Documents\` giữ tài liệu của CHÍNH người dùng mà không thuộc repo nào: hồ sơ cá nhân, giấy tờ, bản scan, hợp
-đồng lao động, chứng chỉ.
+`<data root>\Documents\` is step 13 of the drive's question chain (`Struc_Disk_Data`): papers and records a PERSON opens and reads.
+Settings or keys a program or an agent reads by itself are not papers ⇒ `_ConfigVault\` (step 5). The avatar collection is step 11
+and lives here too, in `Profile\Personal\Avatar\`.
 
-## Cách chia
+## The question of this level
 
-Chia theo MẢNG của đời sống, mỗi mảng một thư mục; trong mảng chia tiếp theo việc khi cần. Ví dụ:
+| the fact | goes to |
+|---|---|
+| about the owner, tied to one organisation (contract, review, handover, logo, company profile — papers about or from it) | `Profile\Company\<Org>\` |
+| about the owner otherwise | `Profile\Personal\` — `Identity\` (identity papers, ID photos) · `Avatar\` · `CV\` · `Secret\` |
+| about the owner's family (family tree, family records) | `Family\` |
 
 ```
 Documents\
-└── Profile\              hồ sơ cá nhân
-    ├── HR\               hồ sơ xin việc, CV, giấy tờ lao động
-    └── Certificates\     bằng cấp, chứng chỉ (bản scan)
+├── Profile\
+│   ├── Personal\   Identity\ · Avatar\ · CV\ · Secret\
+│   └── Company\<Org>\
+└── Family\
 ```
 
-## Luật
+There is ONE `Company` folder in the whole tree for papers (`Documents\Profile\Company\<Org>\`) and ONE for work
+(`Workspace\Company\<Org>\`); the fact that splits them: a person reads it ⇒ here; it is work done for the organisation ⇒ Workspace.
 
-- Không chứa tài liệu CÔNG VIỆC của một tổ chức: tài liệu đó thuộc repo của tổ chức trong `Workspace\Company\<Tổ chức>\`.
-- Không chứa bản cài (`Software\`), cấu hình hay khoá công cụ (`_ConfigVault\`), repo (`Workspace\`).
-- Máy là tài sản của tổ chức (laptop công ty) thì không đặt tài liệu cá nhân ở đây; bản chính để ở máy riêng của người dùng.
-- Không vào git công khai. Có đồng bộ hay không là lựa chọn của người dùng.
+## Rules
 
-## Khuôn tên
+- `Profile\Personal\Secret\` holds secrets a PERSON reads (web passwords, wallet phrases). It follows the sync ban of
+  `_ConfigVault`: NEVER in git, NEVER in a synced folder (Syncthing), NEVER in a cloud backup folder (Drive).
+- A program found here (a family-tree program, an `.exe`) ⇒ `Software\`; a downloaded font ⇒ `Software\Fonts\`.
+- Work for an organisation (designs, code, project files) ⇒ `Workspace\Company\<Org>\`.
+- Inside each folder, sub-folders as the owner needs; no loose file at the `Documents\` or `Profile\` level.
 
-Tiếng Anh, PascalCase, không dấu, không dấu cách: `Profile` · `HR` · `Certificates`.
+## Naming
 
-## Phép kiểm
+English, PascalCase, no spaces. The organisation's name as in `Workspace\Company\`.
 
-`zemory conform --layout <gốc ổ>` kiểm `Documents` là thư mục hợp lệ ở gốc ổ và báo repo nằm trong nó
-(`repo-outside-workspace`). Bên trong các mảng không bị kiểm khuôn.
+## Check
+
+`zemory conform --layout <data root>` reds (`unknown-value`) a folder in `Documents\` other than `Profile` and `Family`, and a repo
+inside (`repo-outside-workspace`). No machine check yet for a secret leaking into a synced folder.

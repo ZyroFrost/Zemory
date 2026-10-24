@@ -1,44 +1,40 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
-# Study_160_Study study — thứ người dùng đang học
+# Study_160_Study study — tài liệu đang học
 
 ## Vai trò
 
-`<gốc dữ liệu>\Study\` chứa tài liệu của thứ người dùng ĐANG học: bài giảng, slide, bài tập, ghi chép, bản ghi của một khoá
-học. Nhánh ① của `Struc_Disk_Data`: ghi chép và bài làm của chính người dùng nằm ở đây, là bản gốc. Học xong một môn mà chỉ còn
-giữ để tra, môn đó dời sang `Library\` (Library_163).
+`<gốc dữ liệu>\Study\` là bước 9 của chuỗi câu hỏi cấp ổ (`Struc_Disk_Data`): tài liệu chủ máy ĐANG học — bài giảng, slide, bài
+tập, ghi chú, bản ghi, và khoá học tải về để nghiên cứu (khoá học tải về là để học, không phải đồ sưu tầm). Học xong mà chỉ còn
+giữ để tra thì dời sang `Library\` (bước 10, Library_163).
 
-## Bên trong
-
-Hai loại, mỗi loại một thư mục:
+## Bên trong — hai loại
 
 | thư mục | chứa | ví dụ thật |
 |---|---|---|
-| `School\<Trường>\<Môn>\` | một môn học ở trường phổ thông hoặc đại học, mỗi môn một thư mục | `Study\School\OpenUniversity\Statistics\` |
-| `Self\<Mảng>\` | tự học: khoá học online, một cuốn sách đang làm theo, lộ trình chứng chỉ | `Study\Self\DataEngineering\` · `Study\Self\Japanese\` |
-
-Thư mục một môn chia theo nhu cầu, ví dụ `Lectures\` · `Exercises\` · `Notes\` · `Exams\`.
+| `School\<Trường>\<Môn>\` | một môn học ở trường phổ thông hoặc đại học | `Study\School\OpenUniversity\Statistics\` |
+| `Self\<Mảng>\` | tự học: khoá học, một cuốn sách đang làm theo, lộ trình chứng chỉ | `Study\Self\DataEngineering\` |
 
 ## Luật
 
-- Mã chạy được đặt ở `Workspace\`, không đặt ở đây: repo bài tập, đồ án môn học, notebook có chạy thì nằm ở
-  `Workspace\Personal\StudyProjects\<Môn>\` (Personal_145), đặt cùng tên với thư mục môn ở đây để tìm thấy cùng nhau. Tài liệu
-  chỉ đọc hoặc xem thì ở lại `Study\`.
-- Môn đã học xong, giữ để tra ⇒ dời cả thư mục sang `Library\<Mảng>\`. Môn đã học xong, không còn gì đáng giữ ⇒ xoá, hoặc dời
-  vào `Archive\Study\...` nếu vẫn phải giữ.
+- Code chạy được không nằm ở đây (luật 2, đặt theo bản chất): code của chủ máy cho một môn ⇒
+  `Workspace\Personal\StudyProjects\School\<Trường>\<Môn>\<repo>\` hoặc `…\StudyProjects\Self\<Mảng>\<repo>\` — đúng đường dẫn như ở
+  đây (Personal_145). Code của người khác cho một môn ⇒ `Workspace\External\<repo>\`; thư mục này trỏ qua.
+- Chương trình dùng để học nằm ở `Software\`; hồ sơ đồ án (đề, báo cáo, điểm) ở lại đây.
+- Học xong, giữ để tra ⇒ dời cả thư mục sang `Library\<Mảng>\`. Học xong, không còn gì đáng giữ ⇒ xoá.
 - Không có file lẻ ở cấp `Study\`, `School\` hay `Self\`.
 
 ## Khuôn tên
 
-PascalCase, không dấu cách: `OpenUniversity` · `Statistics` · `DataEngineering`. Tên trường và tên môn theo cách người dùng gọi.
+PascalCase, không dấu cách: `OpenUniversity` · `Statistics` · `DataEngineering`.
 
 ## Đồng bộ
 
-Không vào git. Ghi chép của người dùng là bản gốc: sao lưu như phần còn lại của nhánh ①.
+Không vào git. Ghi chép của chủ máy là bản gốc: sao lưu.
 
 ## Phép kiểm
 
-`zemory conform --layout <gốc dữ liệu>` nhận `Study\` là thư mục cấp 1 hợp lệ. Bên trong `Study\` chưa có phép kiểm máy; người
-dùng tự giữ hai loại ở trên.
+`zemory conform --layout <gốc dữ liệu>` nhận `Study\`, và báo đỏ (`study-unmatched`) dự án học dưới
+`Workspace\Personal\StudyProjects\` không có thư mục tương ứng ở đây.

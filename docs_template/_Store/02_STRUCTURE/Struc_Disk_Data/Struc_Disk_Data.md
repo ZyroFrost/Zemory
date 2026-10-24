@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 4
+version: 5
 scope: disk
 ---
 # Struc_Disk_Data
@@ -10,76 +10,108 @@ scope: disk
 
 The frame of the owner's data: ONE folder tree that holds everything a person makes, collects, installs and keeps. On Windows
 the tree starts at the root of the data drive (`D:\`); on Linux at one data folder (`~/data`). The system drive (`C:\`) does not
-use this frame and holds nothing of the owner's except what the operating system forces there (see "The system drive" below).
+use this frame and holds nothing of the owner's except what the operating system forces there (see "The system drive").
 
-This frame is the default HS offers to every set, not a mandate. An owner may rename, drop or add top-level folders, split the
-tree over any number of drives, or replace the frame outright; the check then reports against the owner's own HS.
+This frame is the default HS offers to every set, not a mandate. An owner may rename, drop or add folders, split the tree over
+any number of drives, or replace the frame outright; the check then reports against the owner's own HS. Whatever the owner
+changes, the two laws below still hold — they are what makes a structure a structure.
 
-A new machine is laid out in this order: lay out this frame ⇒ inside `Workspace\` lay out `Struc_Region_Workspace` ⇒ inside
-each `Workspace\Company\<Org>\` lay out `Struc_Region_Company` ⇒ last, each repo gets the set of its role.
+## Law 1 — one thing, one place
 
-## The tree — four branches and two shared stores
+Every item has exactly ONE place in the tree. A structure where an item fits two places, or none, is wrong, and the fix is to
+change the QUESTIONS of the structure, never to force the item.
 
-Every top-level folder without `_` belongs to exactly one of four branches. The branch says where a new thing goes: ask first
-"did I make it, did I collect it, did I install it, or is it a copy kept for safety?"
+- Each level of the tree asks exactly one sorting question; its sub-folders are the answers.
+- The answers exclude each other and cover everything: every item gets exactly one answer.
+- A question is answered by a FACT that can be checked, never by an intention. Facts: "has a commit of mine" · "has a camera's
+  EXIF" · "a folder `Study\X` exists" · "a client ordered it" · "the original still exists elsewhere". Not facts: "made to learn
+  or to use", "kept for fun".
+- When several facts are true, they are taken IN ORDER and the first true one wins. The order is written once and every slot it
+  touches repeats the same order — no slot keeps an exception the other side does not know.
+- An item that changes state has a written move with its tool: still learning → finished ⇒ `Library\`; a study project becomes a
+  product ⇒ `zemory project move` to `Apps\`; an original retired ⇒ `Archive\`.
 
-A top-level folder WITH `_` is a shared store of the whole machine: many programs and repos point into it, the owner never puts
-work of their own there, and each has its own rule on sync. It is the same meaning `_` has at the organisation level
-(`_Hub`, `_DB_Warehouse`: one place that many members use). There are two: `_ConfigVault\` and `_Models\`.
+## Law 2 — place by nature, point by purpose
+
+An item is placed by WHAT IT IS, whatever it is used for: code ⇒ `Workspace\`, a program ⇒ `Software\`, learning material ⇒
+`Study\`. A place that needs it for its purpose holds a shortcut or a link, not the item. Code of others is always in
+`Workspace\External\` even when it was cloned to learn from; a program that serves learning is still in `Software\`; a game tool
+is a program, in `Software\Game\`.
+
+A purpose decides the place ONLY where the order below says so explicitly: game items (step 8) and the owner's avatar collection
+(step 11).
+
+## The drive level — one question chain, the first true answer wins
+
+Ask the questions in this order; the item goes to the first one that is true.
+
+| step | the fact | goes to |
+|---|---|---|
+| 0 | not sorted yet: gathered from anywhere, waiting to be sorted | `Downloads\` (Downloads_168) |
+| 1 | made by a recovery tool | `Recovery\` (Recovery_153) |
+| 2 | a copy whose original still exists elsewhere | `Backup\` (Backup_165) |
+| 3 | a project or an old version no longer used, kept as the only copy (finished learning goes to step 10, not here) | `Archive\` (Archive_166) |
+| 4 | an AI model file | `_Models\` (Models_167) |
+| 5 | settings or keys a PROGRAM or an AGENT reads by itself | `_ConfigVault\<tool>\` (ConfigVault_151) |
+| 6 | a program — installer, installed copy, its own data — games, launchers and game tools included, and a program's output buffer | `Software\` (Software_147) |
+| 7 | code or a repo, or work done for an organisation | `Workspace\` (Workspace_143) |
+| 8 | a game save, a screen capture or clip of a game, a collected game clip, a game guide | `Game\` (Game_164) |
+| 9 | material being learned now: lectures, a course downloaded to study, notes | `Study\` (Study_160) |
+| 10 | knowledge kept to look up after learning it | `Library\` (Library_163) |
+| 11 | pictures gathered to use on the owner's own profiles (avatars) | `Documents\Profile\Personal\Avatar\` (Documents_152) |
+| 12 | photos or videos of people taken with the owner's or the family's camera | `Memories\` (Memories_161) |
+| 13 | papers and records a PERSON reads | `Documents\` (Documents_152) |
+| 14 | everything else: entertainment collected | `Media\` (Media_162) |
+
+Worked examples:
+
+| item | first true step | place |
+|---|---|---|
+| a course video downloaded to study | 9 | `Study\Self\<Field>\` |
+| the same course after finishing, kept to look up | 10 | `Library\<Field>\` |
+| a game's save folder | 8 | `Game\Saves\<Game>\` |
+| a mod manager | 6 | `Software\Game\<Tool>\` |
+| a screen recorder's capture folder on a fast SSD | 6 (its output buffer) | `Software\Screen_Record\<App>\Data\` — moved home once sorted |
+| a clip of a game session, sorted | 8 | `Game\Media\<Game>\` |
+| a library cloned from the web to learn from | 7 | `Workspace\External\<repo>\` (Study links to it) |
+| the password list of the owner's web accounts | 13 | `Documents\Profile\Personal\Secret\` |
+| an SSH key | 5 | `_ConfigVault\ssh\` |
+| a contract with the owner's employer | 13 | `Documents\Profile\Company\<Org>\` |
+| design files made for a past employer | 7 | `Workspace\Company\<Org>\<work folder>\` |
+
+## The tree
+
+The four branches below are a way to LOOK at the tree, not questions to sort by: "made · collected · installed · kept" cannot
+place a game save or a downloaded course. Sorting always uses the chain above.
 
 ```
 <data root>\
-│  SHARED STORES OF THE MACHINE — many programs and repos point into them
-├── _ConfigVault\<tool>\  every tool's settings and keys: configs\ · credentials\ · cache\ (ConfigVault_151)
-├── _Models\<engine>\     the one model store every AI app points to (Models_167)
-│
-│  ① MADE BY THE OWNER — the originals; losing them cannot be undone
-├── Workspace\        every repo, no repo anywhere else (Workspace_143) → Struc_Region_Workspace
-├── Study\            what the owner is learning: school subjects, self-study fields (Study_160)
-├── Memories\         the owner's own photos and videos, by year and event (Memories_161)
-├── Documents\        personal papers: identity, contracts, CV, records (Documents_152)
-│
-│  ② COLLECTED — made by others, kept by the owner; can be fetched again, at a cost
-├── Media\            films, clips, music, images, comics (Media_162)
-├── Library\          knowledge kept for reference: books, papers, finished courses (Library_163)
-├── Game\             installed games, their saves, their media, their tools (Game_164)
-│
-│  ③ INSTALLED AND RUN — the machine's programs
-├── Software\         every program of the machine (Software_147)
-│   ├── <Group>\      one of the fourteen groups of Software_148
-│   │   └── [<Vendor>\]<App>\   one program, ALWAYS with Setup\ · App\ · Data\ (Software_149)
-│   └── Drivers\<Device>\       driver packs, not programs (Software_150)
-│
-│  ④ KEPT FOR SAFETY OR RETIRED
-├── Backup\           copies of data whose original lives elsewhere: phone, chat apps (Backup_165)
-├── Archive\          retired items kept as the only copy: closed projects, old versions (Archive_166)
-└── Recovery\         the machine's own recovery images (Recovery_153)
+├── Downloads\        not sorted yet — the raw layer everything passes through (Downloads_168)
+├── _ConfigVault\     shared store of the machine: settings and keys programs read (ConfigVault_151)
+├── _Models\          shared store of the machine: AI model files (Models_167)
+│  ① made by the owner
+├── Workspace\        code, repos, work for organisations (Workspace_143) → Struc_Region_Workspace
+├── Study\            material being learned (Study_160)
+├── Memories\         photos and videos of people (Memories_161)
+├── Documents\        papers a person reads: Profile\Personal · Profile\Company\<Org> · Family (Documents_152)
+│  ② collected
+├── Game\             saves, captures and clips, guides — never programs (Game_164)
+├── Library\          knowledge kept to look up (Library_163)
+├── Media\            entertainment collected (Media_162)
+│  ③ installed
+├── Software\<Group>\[<Vendor>\]<App>\{Setup,App,Data}   every program, games included (Software_147–150)
+│  ④ kept
+├── Backup\  Archive\  Recovery\                         (Backup_165 · Archive_166 · Recovery_153)
 ```
 
-Which place, in doubt:
-
-| the thing | goes to | why |
-|---|---|---|
-| a course the owner is taking now | `Study\Self\<Field>\` | still learning |
-| the same course, finished and kept to look things up | `Library\<Field>\` | reference only |
-| code written while learning, that runs | `Workspace\Personal\StudyProjects\...\<repo>\` | runs ⇒ Workspace |
-| photos from a trip | `Memories\<year>\<YYYY-MM-DD Trip>\` | made by the owner |
-| wallpapers downloaded from the web | `Media\Image\` | collected |
-| a phone's contacts and app data, copied off the phone | `Backup\Phone\<device>\` | a copy; the phone holds the original |
-| a repo closed for good | `Archive\Workspace\...\<repo>.zip` | retired, only copy |
-| WSL's virtual disk | `Software\System\Microsoft\WSL\Data\<Distro>\` | data of a program |
-| a language model file | `_Models\<engine>\` | shared by AI apps |
-| an SSH key, a tool's token | `_ConfigVault\<tool>\credentials\` | shared, secret |
-
-There is no `Runtime\` and no `Image\` at the top level: runtimes (WSL, Docker) are programs in `Software\`; images are
-`Media\Image\` (collected) or `Memories\` (made by the owner).
+A top-level folder starting with `_` is a shared store of the whole machine (many programs and repos point into it, the owner
+never works inside it); there are two, `_ConfigVault\` and `_Models\`.
 
 ## One logical tree, many storage places — suggested, not required
 
-The tree above is ONE logical tree, whatever number of drives a machine has. Each block of data lives for real in exactly one
-storage place (main data drive, a second data drive, a fast SSD, an external drive, a NAS); every other place that needs it holds
-only a link point to it. Opened from any drive, the owner sees the same tree. This is the layout HS suggests; an owner with one
-drive needs none of it, and an owner may link any folder to any drive.
+The tree is ONE logical tree, whatever number of drives a machine has. Each block of data lives for real in exactly one storage
+place; every other place that needs it holds only a link point. An owner with one drive needs none of this, and may link any
+folder to any drive.
 
 Five laws, when the tree is split over several places:
 1. Each folder is exactly one of three kinds: real on this place · real on another place (a link point here) · split (its
@@ -89,8 +121,6 @@ Five laws, when the tree is split over several places:
 4. A tool that scans the tree walks every storage place but skips every link point, so each file is seen once.
 5. Global Memory resolves a path to its real place before it writes.
 
-The link for each kind of storage place:
-
 | storage place | link |
 |---|---|
 | internal drive | a junction on Windows (`mklink /J`), a symlink on Linux; no bind mount |
@@ -98,15 +128,12 @@ The link for each kind of storage place:
 | NAS | a symlink to the network path (`mklink /D`); a junction cannot point at a network share |
 | cloud drive | mounted at one fixed point; a live database is NEVER on the cloud side |
 
-Known snags: a link point dies when its storage place is unplugged; some tools delete through a link point; a deep tree can hit
-the Windows path-length limit.
-
-Example — a main data drive `D:` and a fast SSD `H:` that holds the games, the models and WSL's virtual disk:
+Example — a main data drive `D:` and a fast SSD `H:` holding the models, the game saves and WSL's virtual disk:
 
 ```
 D:\                                        H:\
 ├── _Models\  ──────── junction ─────────► ├── _Models\         (real here)
-├── Game\  ─────────── junction ─────────► ├── Game\            (real here: Installed\ · Saves\ · Media\ · Tools\)
+├── Game\  ─────────── junction ─────────► ├── Game\            (real here)
 ├── Software\  (split)                     └── Software\  (split)
 │   ├── _README.md                             ├── _README.md
 │   ├── Dev\ …          (real on D:)           └── System\Microsoft\WSL\  (split)
@@ -117,62 +144,43 @@ D:\                                        H:\
 └── Workspace\ …        (real on D:)
 ```
 
-`_Models\` and `Game\` are whole blocks, so each is one junction. `Software\` is split (law 1): some of its children are real on
-`D:`, one is real on `H:`. `WSL\` is split too, so only `Data\` is linked (law 2). Each split folder carries a `_README.md` on
-both drives saying which child lives where (law 3); the check reads that file as the sign of a split program and does not ask
-`H:\…\WSL\` for its `Setup\` and `App\`.
-
-The roles a machine's drives usually take:
-- main data drive — holds the whole tree; every block is real here unless it is moved out.
-- second data drive — the same tree, holding the blocks moved off the main drive (large media, archive).
-- fast SSD — blocks that need speed: games, models, virtual disks, training data. Treated as replaceable: what lives only there
-  is backed up elsewhere.
-- system drive `C:` — not part of the tree.
-- cloud drive (Google Drive, OneDrive) — not part of the tree; a mount point for a backup copy at most.
+Each split folder carries a `_README.md` on both drives (law 3); the check reads it as the sign of a split program and does not
+ask `H:\…\WSL\` for its `Setup\` and `App\`. Usual drive roles: the main data drive holds the whole tree · a second data drive
+holds blocks moved off it (large media, archive) · a fast SSD holds what needs speed (games, models, virtual disks) and is backed
+up elsewhere · the system drive and cloud drives are not part of the tree.
 
 ## The system drive
 
-`C:\` holds the operating system and only what a program forces there. Do not create the owner's folders on it. The usual
-forced items:
+`C:\` holds the operating system and only what a program forces there: `C:\Program Files\WSL` · `C:\Program Files\Docker` (the
+program folder in `Software\` still keeps `Setup\` and `Data\`) · `%USERPROFILE%\.wslconfig` · tool homes (`.claude` · `.codex` ·
+`.docker` · `.ssh` · `.cache` · `.lmstudio` · `%APPDATA%\Code`) · `%USERPROFILE%\.zemory\location.json`. `HOME` stays the
+operating system's default; it is never pointed at a folder of the data drive. A tool home that grows large is moved by the tool's
+own setting or by a junction; keys and settings go to `_ConfigVault\<tool>\` (ConfigVault_151, which also has the steps for undoing
+a `HOME` set to the data drive).
 
-| item | why it stays on C: |
-|---|---|
-| `C:\Program Files\WSL` · `C:\Program Files\Docker` | the installer gives no choice of place (Software_149 exception); the program folder in `Software\` still keeps `Setup\` and `Data\` |
-| `%USERPROFILE%\.wslconfig` | WSL reads it from there only |
-| tool homes: `%USERPROFILE%\.claude` · `.codex` · `.docker` · `.ssh` · `.cache` · `.lmstudio` · `%APPDATA%\Code` | the tool reads its home from there |
-| `%USERPROFILE%\.zemory\location.json` | the one file zemory reads before it knows where anything else is; it points at the Global Memory folder |
+## Building or changing a structure — the procedure
 
-`HOME` stays the operating system's default (`%USERPROFILE%`); it is never pointed at a folder of the data drive. A tool home
-that grows large (a model cache, a package cache) may be moved: set the tool's own setting to a place in the tree
-(`_Models\lmstudio\`), or replace the folder on `C:` with a junction to that place. Keys and settings the owner carries to a new
-machine go to `_ConfigVault\<tool>\` (ConfigVault_151, which also has the steps for undoing a `HOME` set to the data drive).
+Whoever adds a slot, changes a slot or builds a new tree does these steps, in order:
+1. Write the ONE sorting question of the level, and its answers (the sub-folders).
+2. Check the answers exclude each other and cover everything.
+3. Make each answer a checkable fact; rewrite any answer that is an intention.
+4. Where several facts can be true at once, write their order; copy the same order into every slot it touches.
+5. Write the move for each item that changes state, naming the tool that does it.
+6. Try the structure on the REAL items of every drive before writing it down: list each item and the place it gets. An item with
+   0 or 2+ places ⇒ change the questions, not the item.
+7. Write into each slot its question and a "not here ⇒ goes to" list; whatever a machine can check goes into `zemory conform`.
 
 ## Rules
 
-- The data root holds no loose file. Everything sits in one of the folders of the tree (Windows system folders such as
-  `System Volume Information` and `$RECYCLE.BIN` are left alone).
-- `_` at the root marks only the two shared stores; no other top-level folder starts with `_`.
-- Repos live only in `Workspace\`. Programs live only in `Software\`. Tool settings and keys live only in `_ConfigVault\`. Model
-  files live only in `_Models\`.
-- EVERY program folder in `Software\<Group>\` (except `Drivers\` and `Fonts\`) holds `Setup\` · `App\` · `Data\` — the full rule,
-  steps and exceptions are in `Software_149_Program`.
-- A program's virtual disks and large data sit in that program's `Data\`, with a size cap. Measure the free space of the drive
-  before every large write (installing a program, building an image, copying data) and after it.
-
-## Steps — laying out a machine
-
-1. Pick the main data drive; create the top-level folders that the owner has data for (no empty folders for branches with nothing
-   in them).
-2. Move each existing folder to its place using the table "Which place, in doubt"; reinstall programs into `Software\` per
-   `Software_149_Program`.
-3. Move tool settings and keys into `_ConfigVault\` and `HOME` back to its default in ONE pass (ConfigVault_151): changing
-   `HOME` changes where many tools read at once.
-4. If a block must live on another drive (speed, size), make it real there and link it back, following the five laws.
-5. Run `zemory conform --layout <data root>` on each drive that holds a part of the tree, until it reports nothing.
+- The data root holds no loose file. Windows system folders (`System Volume Information`, `$RECYCLE.BIN`) are left alone.
+- `_` at the root marks only the two shared stores.
+- `Downloads\` is the only place for unsorted items; no other folder keeps an inbox.
+- Measure the drive's free space before every large write (installing, building an image, copying data) and after it.
 
 ## Check
 
 `zemory conform --layout <data root>` reds: a loose file at the root (`loose-file`) · a top-level folder with no slot
-(`unknown-folder`) · a repo outside `Workspace\` (`repo-outside-workspace`) · a group in `Software\` outside Software_148
-(`unknown-value`) · a program without `Setup\`, `App\` or `Data\` (`program-incomplete`). It goes on into `Workspace\` and each
-organisation. The five laws of a split tree have no machine check yet; the owner keeps them.
+(`unknown-folder`) · a repo outside `Workspace\` (`repo-outside-workspace`) · a group in `Software\` outside Software_148 or a part
+in `Game\` outside Game_164 (`unknown-value`) · a program without `Setup\`, `App\` or `Data\` (`program-incomplete`) · a study
+project with no matching `Study\` folder (`study-unmatched`). It goes on into `Workspace\` and each organisation. Law 1's question
+chain and the five laws of a split tree are judged by the owner where no check exists.
