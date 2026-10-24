@@ -1,51 +1,52 @@
 ---
 id: Struc_Region_Company
 name: region-company
-version: 2
+version: 3
 scope: region
 ---
 # Struc_Region_Company
 
-## Vai trò
+## Role
 
-Khung của MỘT tổ chức, áp cho thư mục `Workspace\Company\<Tổ chức>\`. Mọi repo của tổ chức nằm ở cấp này, xếp theo vai.
-Quan hệ giữa các repo (tổng quản `owner` · dịch vụ `uses`) và bảng vai của từng template theo `Struc_Region_Workspace`.
+The frame of ONE organisation, laid on `Workspace\Company\<Org>\`. Everything the owner does for that organisation sits here: its
+repos, each by role, and its non-repo work folders. Relations between the repos (`owner` · `uses`) and the role table of each set
+follow `Struc_Region_Workspace`.
 
-## Cây
+## The question of this level
 
-```
-<Tổ chức>\
-├── Dept_<Mã>\                 repo của một phòng ban (Dept_154) — ráp Struc_Repo_Dept
-├── _DB_<Hệ>\                  repo của một hệ dữ liệu (Db_155):
-│                                kho dữ liệu → Struc_Repo_WorkspaceManager · hệ dữ liệu của ứng dụng → Struc_Repo_AppData
-│                                · trung tâm log → Struc_Repo_LogCenter
-├── _Glossary\                 thuật ngữ chung, thư mục đồng bộ (Glossary_156) — ráp Struc_Repo_Reference
-├── _<Công cụ>_Template\       khuôn báo cáo chung, thư mục đồng bộ (Template_157) — ráp Struc_Repo_Reference
-├── _Legacy\<Nguồn>\           lưu trữ việc cũ, chỉ đọc (Legacy_158) — ráp Struc_Repo_Reference
-└── _Project\<Nhóm>\<repo>\    ứng dụng nội bộ (ERP\) · ứng dụng của bên cung cấp (Vendor\) (Project_159)
-```
-
-Ví dụ một tổ chức đầy đủ:
+| the fact | goes to |
+|---|---|
+| a repo of one department | `Dept_<CODE>\` (Dept_154) — set by Struc_Repo_Dept |
+| a repo of a data system: warehouse · an app's data · log centre | `_DB_<System>\` (Db_155) — Struc_Repo_WorkspaceManager · AppData · LogCenter |
+| the shared business glossary (a synced folder) | `_Glossary\` (Glossary_156) |
+| a shared report template of one tool (a synced folder) | `_<Tool>_Template\` (Template_157) |
+| old work kept read only | `_Legacy\<Source>\` (Legacy_158) |
+| an internal app or a vendor's app | `_Project\<Group>\<repo>\` (Project_159) |
+| any other WORK folder that is not a repo: designs, drawings, an old project's files | `<Work>\`, named after the work (no `_`, no `Dept_`) |
 
 ```
 Workspace\Company\Acme\
-├── Dept_FIN\  Dept_LOG\  Dept_SAL\
-├── _DB_Warehouse\  _DB_Erp\  _DB_Log\
+├── Dept_FIN\  Dept_LOG\
+├── _DB_Warehouse\  _DB_Log\
 ├── _Glossary\  _PBI_Template\  _Legacy\OldServer\
-└── _Project\ERP\_Hub\  _Project\ERP\AcmeFlow\  _Project\Vendor\CameraAI\
+├── _Project\ERP\_Hub\  _Project\ERP\AcmeFlow\
+└── Designs\  Drawings\                 work folders, not repos
 ```
 
-## Luật
+## Rules
 
-- Tên bắt đầu bằng `_` là thứ DÙNG CHUNG của cả tổ chức; tên bắt đầu bằng `Dept_` là của MỘT phòng ban.
-- Mỗi vai dịch vụ (`data` · `log` · `glossary` · `template`) có ĐÚNG MỘT nơi cung cấp trong tổ chức: một kho dữ liệu, một
-  trung tâm log, một `_Glossary\`, một thư mục khuôn cho mỗi công cụ báo cáo.
-- Không có thư mục nào khác ở cấp tổ chức ngoài các vai trên, không có file lẻ, không có repo đặt lệch vai (repo của một phòng
-  nằm trong `_Project\`, ứng dụng nằm thẳng ở cấp tổ chức…).
+- A name starting with `_` is SHARED by the whole organisation; `Dept_` is ONE department's. A work folder takes neither prefix.
+- A repo always takes a role above; a repo named like a work folder is reported. A folder named with `Dept_` or `_` must match its
+  role (`Dept_` + an UPPER-CASE code).
+- Each service role (`data` · `log` · `glossary` · `template`) has exactly one provider in the organisation.
+- Papers about or from the organisation (contract, review, handover, logo, company profile) are NOT here ⇒
+  `Documents\Profile\Company\<Org>\`.
+- No loose file at the organisation level.
 
-## Phép kiểm
+## Check
 
-- `zemory conform --layout <ổ>\Workspace\Company\<Tổ chức>` báo đỏ thư mục không khớp vai nào (`unknown-folder`), gồm cả
-  thư mục phòng ban sai khuôn tên (`Dept_finance`).
-- `zemory conform` chạy TRONG từng repo kiểm quan hệ của repo đó (`owner` · `uses`, xem `Struc_Region_Workspace`).
-- Luật "mỗi vai dịch vụ đúng một nơi cung cấp" CHƯA có phép kiểm máy: người dựng tổ chức tự soát.
+- `zemory conform --layout <drive>\Workspace\Company\<Org>` reds a repo that matches no role and a `Dept_`/`_` folder outside its
+  role (`unknown-folder`), a department code that is not UPPER-CASE included. A non-repo folder without a prefix is a work folder
+  and passes.
+- `zemory conform` run INSIDE each repo checks its relations (`owner` · `uses`, see `Struc_Region_Workspace`).
+- "One provider per service role" has no machine check yet.

@@ -29,6 +29,14 @@ export function p2pDir(machineDir = currentMemoryDir()): string {
 /** The mark's key: one spelling of the device id whatever form it came in (certificate, pairing list, typed). */
 export const peerMarkKey = (peer: string): string => `p2p-to:${normalizeDeviceId(peer)}`;
 const peerKey = peerMarkKey;
+/**
+ * A block aims at this size, far under the frame cap. Measured 2026-10-25: one 20,000-id block was 114 MB and took 72 s to
+ * build, so a round of four outlived the relay link and nothing was ever acked. Small blocks are acked one by one: each ack
+ * moves the mark, and a link that drops keeps what already went.
+ */
+const BLOCK_TARGET_BYTES = 32 * 1024 * 1024;
+/** Vectors one block may catch up (256 dims ⇒ about 5 MB). */
+const VECTOR_CATCHUP_PER_BLOCK = 5_000;
 const fileSafe = (s: string): string => s.replace(/[^A-Za-z0-9-]/g, "_");
 
 export interface OutBlock {
@@ -135,11 +143,11 @@ export async function buildOutgoing(
   sweepStale(dir);
   const mark = peerMark(peer, host, dbPath);
   const top = newestOwnAbove(dbPath, host, mark);
-  let catchUp = unsentVectorIdsFor(normalizeDeviceId(peer), host, mark, dbPath);
+  let catchUp = unsentVectorIdsFor(normalizeDeviceId(peer), host, mark, dbPath, VECTOR_CATCHUP_PER_BLOCK);
   const out: OutBlock[] = [];
-  const cap = Math.floor(MAX_FRAME_BYTES * 0.9);
+  const cap = Math.min(Math.floor(MAX_FRAME_BYTES * 0.9), BLOCK_TARGET_BYTES);
   let since = mark;
-  let step = o.startStep ?? 20_000;
+  let step = o.startStep ?? 4_000;
   while (out.length < (o.maxBlocks ?? 4) && (since < top || catchUp.length)) {
     // jump over id ranges holding no own message (a first round from 0 would otherwise export dozens of empty ranges)
     if (since < top && !catchUp.length) {
@@ -173,6 +181,8 @@ export async function buildOutgoing(
     const vecIds = r.vectorShippedIds ?? [];
     if (!messages && !vecIds.length) rmSync(file, { force: true });
     else out.push({ id, file, upto: Math.max(since, r.rows?.maxMessageId ?? since), vecIds, messages, bytes: r.bundleBytes });
+    // a block well under the target: the next range may be wider (an id range of other machines' messages carries little)
+    if (o.startStep === undefined && r.bundleBytes < cap / 3) step = Math.min(step * 2, 200_000);
     catchUp = [];
     if (top <= since) break;
     since = until;

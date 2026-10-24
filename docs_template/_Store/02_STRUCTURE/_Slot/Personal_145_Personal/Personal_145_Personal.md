@@ -1,52 +1,49 @@
 ---
 id: Slot_145
 name: personal
-version: 4
+version: 5
 path: Personal/<PersonalKind>/
-values: [Apps, StudyProjects, Games, Freelance, Social]
+values: [StudyProjects, Games, Apps]
 scope: layout
 ---
-# Personal_145_Personal personal — the owner's own work, by kind
+# Personal_145_Personal personal — the owner's own code, by kind
 
 ## Role
 
-`Workspace\Personal\` holds the work the owner OWNS: self-written tools and products, code written while learning, games the
-owner develops, work done for outside clients, and the owner's own channels. Every item sits under ONE kind folder, so that
-looking at `Personal\` shows what each thing is — a product, an exercise, a client job — instead of thirty folders side by side.
+`Workspace\Personal\` holds the code the owner OWNS (step 3 of `Workspace_143`). Every repo sits under ONE kind folder, so a look
+at `Personal\` tells an exercise from a product.
 
-## Five kinds — a fixed list, the level is required
+## The question of this level — the first true answer wins
 
-| kind | holds | inside | real example |
+| step | the fact | goes to | inside |
 |---|---|---|---|
-| `Apps\` | the owner's own tools and products | `[<Project>\]<repo>\` — a project level when one project has two repos or more | `Workspace\Personal\Apps\BudgetTracker\` · `Workspace\Personal\Apps\HomeLab\{homelab-api, homelab-ui}\` |
-| `StudyProjects\` | code written to learn, that runs | mirrors `Study\` (Study_160): `School\<School>\<Subject>\<repo>\` · `Self\<Field>\<repo>\` | `Workspace\Personal\StudyProjects\School\OpenUniversity\Databases\finance-tracker\` |
-| `Games\` | games the owner develops (games the owner plays are in `Game\`) | `<repo>\` | `Workspace\Personal\Games\PixelRunner\` |
-| `Freelance\` | work done for outside clients, outside any organisation | `<Client>\` — repos AND non-repo work files (designs, drawings, deliveries) | `Workspace\Personal\Freelance\ClientA\ShopSite\` · `Workspace\Personal\Freelance\ClientB\house-design.skp` |
-| `Social\` | the owner's own channels (video, music, posts): the tools AND the output they produce | `<Platform>\<Channel>\` — repos AND non-repo output (tracks, renders, prompts, images) | `Workspace\Personal\Social\Youtube\<Channel>\_tracks\` · `Workspace\Personal\Social\Facebook\Avatar\` |
+| 1 | there is real learning material for it: a folder `Study\X` exists | `StudyProjects\` | mirrors `Study\`: `School\<School>\<Subject>\<repo>\` · `Self\<Field>\<repo>\` |
+| 2 | a game the owner develops | `Games\` | `<repo>\` |
+| 3 | everything else | `Apps\` | `[<Project>\]<repo>\` — a project level when one project has two repos or more |
+
+Real examples: `Workspace\Personal\StudyProjects\School\OpenUniversity\Databases\finance-tracker\` (and
+`Study\School\OpenUniversity\Databases\` exists) · `Workspace\Personal\Games\PixelRunner\` · `Workspace\Personal\Apps\BudgetTracker\`.
 
 ## Rules
 
-- Every item of `Personal\` sits in one of the five kinds; there is no repo or folder straight under `Personal\`, and no sixth
-  kind.
-- `Apps\`, `StudyProjects\` and `Games\` hold repos only. `Freelance\` and `Social\` may also hold work that is not a repo, because
-  a client job or a channel is made of files a repo does not hold (a drawing, 40 GB of rendered video).
-- Learning: code that runs ⇒ `StudyProjects\`; material that is only read or watched (lectures, books, exams, notes) ⇒ `Study\`;
-  knowledge kept to look things up ⇒ `Library\`. `StudyProjects\X` and `Study\X` use the same `X`. A school project: its code ⇒
-  `StudyProjects\School\<School>\<Subject>\<repo>\`; its papers (brief, report, grades) ⇒ `Study\School\<School>\<Subject>\`.
-- Someone else's code cloned to learn from ⇒ `StudyProjects\Self\<Field>\`; cloned to use ⇒ `Workspace\External\`.
-- A study project that grows into a product ⇒ move it to `Apps\` with `zemory project move` (keeps its Global Memory history).
-- Only the owner's own work. A repo of an organisation ⇒ `Company\<Org>\`.
+- Exactly three kinds, the level is required: no repo or folder straight under `Personal\`, no fourth kind.
+- `StudyProjects\X` needs `Study\X`; without it the repo is not a study project ⇒ step 2 or 3.
+- A folder shared by several repos of one kind sits beside them with a `_` name: `Apps\_Prompt\` holds the prompts two apps of
+  one field use. It is not a repo.
+- An app keeps the output it produces inside its own repo, in `workspaces/<name>/` (one folder per unit of output, shared items
+  with a `_` name, gitignored) — never in a store outside the repo.
+- A study project that grows into a product ⇒ `zemory project move` to `Apps\` (keeps its Global Memory history).
+- A repo folder is named as on its remote; a folder whose name differs is renamed with `zemory project move <old> <new>` when the
+  owner decides; until then the difference is allowed.
 - No loose file at the `Personal\` level or at a kind level.
 
-## Naming
+## Not here ⇒ goes to
 
-- Kind folders exactly as in the table.
-- A repo folder is named as the repo is on its remote (`github.com/<account>/ZFlow` ⇒ `ZFlow\`). A folder whose name differs from
-  its remote is renamed with `zemory project move <old> <new>`, one repo at a time, when the owner decides to; until then the
-  difference is allowed.
-- Project, client, platform and channel names in PascalCase, no spaces.
+Work for an organisation, freelance included ⇒ `Company\<Org>\` · code of others ⇒ `External\` · learning material that is read or
+watched ⇒ `Study\`.
 
 ## Check
 
-`zemory conform --layout <drive>\Workspace` reds (`unknown-value`) any folder straight under `Personal\` that is not one of the
-five kinds — a repo placed straight under `Personal\` included. The levels inside a kind have no machine check yet.
+`zemory conform --layout <drive>\Workspace` reds (`unknown-value`) any folder straight under `Personal\` that is not one of the three
+kinds. From the drive root it also reds (`study-unmatched`) a `StudyProjects\School\<School>\<Subject>\` or `Self\<Field>\` with no
+matching folder under `Study\`.

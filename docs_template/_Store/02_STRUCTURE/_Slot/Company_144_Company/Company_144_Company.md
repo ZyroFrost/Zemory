@@ -1,42 +1,46 @@
 ---
 id: Slot_144
 name: company
-version: 2
-path: Company/<Tổ chức>/
+version: 3
+path: Company/<Org>/
 scope: layout
 ---
-# Company_144_Company company — repo của một tổ chức
+# Company_144_Company company — the work of one organisation
 
-## Vai trò
+## Role
 
-`Workspace\Company\` chứa repo của các tổ chức mà người dùng làm việc cho (công ty, khách hàng). MỖI tổ chức có ĐÚNG MỘT
-thư mục riêng `Workspace\Company\<Tổ chức>\`, và mọi repo của tổ chức đó nằm bên trong thư mục này, xếp theo khung
-`Struc_Region_Company` (phòng ban `Dept_<Mã>\` · hệ dữ liệu `_DB_<Hệ>\` · dự án `_Project\` · thuật ngữ `_Glossary\` · khuôn
-báo cáo `_<Công cụ>_Template\` · lưu trữ `_Legacy\`).
+`Workspace\Company\` is the shared workspace of EVERY organisation the owner works or worked for, past to future: employers and
+the clients of freelance work. Each organisation has EXACTLY ONE folder `Workspace\Company\<Org>\`; all its work sits inside, in
+the frame `Struc_Region_Company` — its repos by role, and its non-repo work folders (designs, drawings, old projects).
 
-## Ví dụ
+Freelance work has its own organisation folder, `Workspace\Company\Freelance\`, split inside by client (the layout inside it is
+left to the owner for now).
+
+## Example
 
 ```
 Workspace\Company\
-├── Acme\                  tổ chức thứ nhất
-│   ├── Dept_FIN\          repo phòng tài chính
-│   ├── _DB_Warehouse\     repo kho dữ liệu
-│   └── _Project\ERP\AcmeFlow\
-└── Globex\                tổ chức thứ hai — cây riêng, không trộn với Acme
+├── Acme\                  an employer
+│   ├── Dept_FIN\          a department repo
+│   ├── _DB_Warehouse\     the data warehouse repo
+│   └── Designs\           a non-repo work folder
+├── Globex\                a past employer — its own tree, never mixed with Acme
+└── Freelance\             work for clients outside any employer
 ```
 
-## Luật
+## Rules
 
-- Cấp `Company\` chỉ có thư mục tổ chức. Một repo đặt thẳng dưới `Company\` (`Workspace\Company\AcmeFlow\`) là sai: nó phải
-  nằm trong thư mục của tổ chức sở hữu nó (`Workspace\Company\Acme\_Project\ERP\AcmeFlow\`).
-- Một repo thuộc đúng một tổ chức. Làm cho hai tổ chức thì là hai repo, mỗi repo ở thư mục tổ chức của nó.
-- Không chứa repo cá nhân (`Personal\`) hay clone của bên ngoài (`External\`).
+- The `Company\` level holds organisation folders only. A repo straight under `Company\` is wrong: it moves into the folder of the
+  organisation that owns it.
+- One item belongs to one organisation. Work for two organisations is two items, each in its organisation's folder.
+- Not here: the owner's own code (`Personal\`) · code of others (`External\`) · PAPERS about or from the organisation (contract,
+  review, handover, logo, company profile) — those are papers a person reads ⇒ `Documents\Profile\Company\<Org>\`.
 
-## Khuôn tên
+## Naming
 
-Tên ngắn của tổ chức, PascalCase, không dấu, không dấu cách: `Acme` · `Globex`. Cùng một tổ chức thì cùng một tên trên mọi máy.
+The organisation's short name, PascalCase, no spaces: `Acme` · `Globex`. The same organisation has the same name on every machine.
 
-## Phép kiểm
+## Check
 
-`zemory conform --layout <ổ>\Workspace`: repo đặt thẳng dưới `Company\` (`repo-under-company`); bên trong mỗi tổ chức, thư mục
-không thuộc vai nào của `Struc_Region_Company` (`unknown-folder`).
+`zemory conform --layout <drive>\Workspace`: a repo straight under `Company\` (`repo-under-company`); inside each organisation, the
+checks of `Struc_Region_Company`.

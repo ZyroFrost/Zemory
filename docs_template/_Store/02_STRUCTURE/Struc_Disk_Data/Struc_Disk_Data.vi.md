@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Struc_Disk_Data
@@ -8,85 +8,113 @@ lang: vi
 
 Khung dữ liệu của chủ máy: MỘT cây thư mục chứa mọi thứ một người tự làm, sưu tầm, cài đặt và cất giữ. Trên Windows cây bắt đầu
 ở gốc ổ dữ liệu (`D:\`); trên Linux ở một thư mục dữ liệu (`~/data`). Ổ hệ thống (`C:\`) không dùng khung này và không chứa gì
-của chủ máy ngoài những gì hệ điều hành ép (xem "Ổ hệ thống" bên dưới).
+của chủ máy ngoài những gì hệ điều hành ép (xem "Ổ hệ thống").
 
-Khung này là mặc định HS đưa cho mọi bộ mẫu, không phải bắt buộc. Chủ máy được đổi tên, bỏ hay thêm thư mục cấp 1, chia cây ra
-bao nhiêu ổ cũng được, hoặc thay hẳn khung khác; phép kiểm khi đó chấm theo HS của chính chủ máy.
+Khung này là mặc định HS đưa cho mọi bộ mẫu, không phải bắt buộc. Chủ máy được đổi tên, bỏ hay thêm thư mục, chia cây ra bao nhiêu
+ổ cũng được, hoặc thay hẳn khung khác; phép kiểm khi đó chấm theo HS của chính chủ máy. Đổi gì thì hai luật dưới đây vẫn giữ —
+chúng là thứ làm một cấu trúc thành cấu trúc.
 
-Máy mới dựng theo thứ tự: ráp khung này ⇒ trong `Workspace\` ráp `Struc_Region_Workspace` ⇒ trong mỗi
-`Workspace\Company\<Tổ chức>\` ráp `Struc_Region_Company` ⇒ cuối cùng mỗi repo nhận bộ mẫu theo vai của nó.
+## Luật 1 — một thứ một chỗ
 
-## Cây — bốn nhánh và hai nơi chứa dùng chung
+Mỗi món có đúng MỘT chỗ trong cây. Cấu trúc mà một món đặt được ở hai nơi, hoặc không nơi nào, là cấu trúc sai, và cách sửa là
+sửa CÂU HỎI của cấu trúc, không bao giờ nắn món cho vừa.
 
-Mỗi thư mục cấp 1 KHÔNG có `_` thuộc đúng một trong bốn nhánh. Nhánh cho biết một thứ mới đặt ở đâu: hỏi trước "thứ này tôi tự
-làm, tôi sưu tầm, tôi cài để chạy, hay là bản sao cất cho an toàn?"
+- Mỗi cấp của cây hỏi đúng một câu hỏi xếp; các thư mục con là các đáp án.
+- Các đáp án loại trừ nhau và phủ hết: món nào cũng ra đúng một đáp án.
+- Câu hỏi được trả lời bằng SỰ THẬT kiểm được, không bao giờ bằng ý định. Sự thật: "có commit của mình" · "có EXIF máy chụp" ·
+  "có thư mục `Study\X`" · "có khách đặt" · "bản gốc còn ở nơi khác". Không phải sự thật: "làm để học hay để dùng", "giữ cho vui".
+- Nhiều sự thật cùng đúng thì xét THEO THỨ TỰ, sự thật đúng đầu tiên thắng. Thứ tự ghi một lần và mọi slot liên quan ghi lại đúng
+  thứ tự đó — không slot nào giữ một ngoại lệ mà phía bên kia không biết.
+- Món đổi trạng thái có luật dời ghi kèm công cụ: đang học → học xong ⇒ `Library\`; dự án học thành sản phẩm ⇒ `zemory project move`
+  sang `Apps\`; bản gốc nghỉ hưu ⇒ `Archive\`.
 
-Thư mục cấp 1 CÓ `_` là nơi chứa dùng chung của cả máy: nhiều phần mềm và repo trỏ vào, chủ máy không đặt việc của mình ở đó, và
-mỗi nơi có luật đồng bộ riêng. Đây đúng là nghĩa của `_` ở cấp tổ chức (`_Hub`, `_DB_Warehouse`: một chỗ nhiều thành viên cùng
-dùng). Có hai nơi: `_ConfigVault\` và `_Models\`.
+## Luật 2 — đặt theo bản chất, trỏ qua theo mục đích
+
+Món được đặt theo NÓ LÀ GÌ, bất kể dùng để làm gì: code ⇒ `Workspace\`, chương trình ⇒ `Software\`, tài liệu học ⇒ `Study\`. Nơi
+cần nó cho mục đích của mình thì giữ một shortcut hoặc một điểm nối, không giữ món. Code của người khác luôn ở
+`Workspace\External\` kể cả khi clone về để học; chương trình phục vụ việc học vẫn ở `Software\`; công cụ game là chương trình,
+ở `Software\Game\`.
+
+Mục đích chỉ quyết định chỗ đặt ở nơi thứ tự dưới đây ghi rõ: đồ game (bước 8) và bộ sưu tập avatar của chủ máy (bước 11).
+
+## Cấp ổ — một chuỗi câu hỏi, đáp án đúng đầu tiên thắng
+
+Hỏi theo đúng thứ tự này; món vào bước đầu tiên đúng.
+
+| bước | sự thật | đặt ở |
+|---|---|---|
+| 0 | chưa xếp: gom từ bất kỳ đâu về, đang chờ xếp | `Downloads\` (Downloads_168) |
+| 1 | do công cụ khôi phục tạo ra | `Recovery\` (Recovery_153) |
+| 2 | bản sao, bản gốc còn ở nơi khác | `Backup\` (Backup_165) |
+| 3 | dự án hoặc phiên bản cũ ngừng dùng, giữ làm bản duy nhất (kiến thức học xong đi bước 10, không vào đây) | `Archive\` (Archive_166) |
+| 4 | file model AI | `_Models\` (Models_167) |
+| 5 | cấu hình hoặc khoá mà CHƯƠNG TRÌNH hay AGENT tự đọc | `_ConfigVault\<công cụ>\` (ConfigVault_151) |
+| 6 | chương trình — bộ cài, bản cài, dữ liệu riêng — kể cả game, launcher, công cụ game, và thư mục đệm đầu ra của chương trình | `Software\` (Software_147) |
+| 7 | code hoặc repo, hoặc việc làm cho một tổ chức | `Workspace\` (Workspace_143) |
+| 8 | file lưu game, ảnh/clip quay màn hình game, clip game sưu tầm, hướng dẫn chơi | `Game\` (Game_164) |
+| 9 | tài liệu ĐANG học: bài giảng, khoá học tải về để nghiên cứu, ghi chú | `Study\` (Study_160) |
+| 10 | kiến thức học xong giữ để tra | `Library\` (Library_163) |
+| 11 | ảnh gom để dùng cho hồ sơ của chính chủ máy (avatar) | `Documents\Profile\Personal\Avatar\` (Documents_152) |
+| 12 | ảnh hoặc video quay NGƯỜI bằng máy ảnh của chủ máy hay của gia đình | `Memories\` (Memories_161) |
+| 13 | giấy tờ, hồ sơ mà NGƯỜI đọc bằng mắt | `Documents\` (Documents_152) |
+| 14 | còn lại: giải trí sưu tầm | `Media\` (Media_162) |
+
+Ví dụ giải:
+
+| món | bước đúng đầu tiên | chỗ |
+|---|---|---|
+| video khoá học tải về để học | 9 | `Study\Self\<Mảng>\` |
+| khoá đó sau khi học xong, giữ để tra | 10 | `Library\<Mảng>\` |
+| thư mục save của một game | 8 | `Game\Saves\<Game>\` |
+| trình quản lý mod | 6 | `Software\Game\<Công cụ>\` |
+| thư mục ghi clip của phần mềm quay màn hình, đặt trên SSD nhanh | 6 (đệm đầu ra) | `Software\Screen_Record\<Ứng dụng>\Data\` — xếp xong mới về nhà |
+| clip một lượt chơi game, đã xếp | 8 | `Game\Media\<Game>\` |
+| thư viện clone từ mạng về để học | 7 | `Workspace\External\<repo>\` (Study trỏ qua) |
+| danh sách mật khẩu tài khoản web của chủ máy | 13 | `Documents\Profile\Personal\Secret\` |
+| khoá SSH | 5 | `_ConfigVault\ssh\` |
+| hợp đồng với công ty chủ máy làm việc | 13 | `Documents\Profile\Company\<Tổ chức>\` |
+| file thiết kế làm cho một công ty cũ | 7 | `Workspace\Company\<Tổ chức>\<thư mục công việc>\` |
+
+## Cây
+
+Bốn nhánh dưới đây là cách NHÌN cây, không phải câu hỏi để xếp: "tự làm · sưu tầm · cài đặt · cất giữ" không xếp được file save
+game hay khoá học tải về. Xếp luôn dùng chuỗi câu hỏi ở trên.
 
 ```
 <gốc dữ liệu>\
-│  NƠI CHỨA DÙNG CHUNG CỦA MÁY — nhiều phần mềm và repo trỏ vào
-├── _ConfigVault\<công cụ>\  thiết lập và khoá của mọi công cụ: configs\ · credentials\ · cache\ (ConfigVault_151)
-├── _Models\<engine>\        nơi chứa model duy nhất, mọi app AI trỏ vào (Models_167)
-│
-│  ① CHỦ MÁY TỰ LÀM — bản gốc; mất là không lấy lại được
-├── Workspace\        mọi repo, không repo nào nằm chỗ khác (Workspace_143) → Struc_Region_Workspace
-├── Study\            thứ đang học: môn ở trường, mảng tự học (Study_160)
-├── Memories\         ảnh và video tự chụp, theo năm và sự kiện (Memories_161)
-├── Documents\        giấy tờ cá nhân: định danh, hợp đồng, CV, hồ sơ (Documents_152)
-│
-│  ② SƯU TẦM — người khác làm, chủ máy giữ; tải lại được nhưng tốn công
-├── Media\            phim, clip, nhạc, ảnh, truyện tranh (Media_162)
-├── Library\          kiến thức giữ để tra: sách, bài báo, khoá học đã học xong (Library_163)
-├── Game\             game đã cài, file lưu, ảnh/clip, công cụ của game (Game_164)
-│
-│  ③ CÀI ĐẶT VÀ VẬN HÀNH — phần mềm của máy
-├── Software\         mọi phần mềm của máy (Software_147)
-│   ├── <Nhóm>\       một trong mười bốn nhóm của Software_148
-│   │   └── [<Hãng>\]<Ứng dụng>\   một phần mềm, LUÔN đủ Setup\ · App\ · Data\ (Software_149)
-│   └── Drivers\<Thiết bị>\        gói driver, không phải phần mềm (Software_150)
-│
-│  ④ CẤT CHO AN TOÀN HOẶC ĐÃ NGHỈ
-├── Backup\           bản sao của dữ liệu mà bản gốc nằm chỗ khác: điện thoại, app chat (Backup_165)
-├── Archive\          thứ đã nghỉ, giữ làm bản duy nhất: dự án đã đóng, phiên bản cũ (Archive_166)
-└── Recovery\         ảnh khôi phục của chính máy (Recovery_153)
+├── Downloads\        chưa xếp — tầng thô mọi thứ đi qua (Downloads_168)
+├── _ConfigVault\     nơi chứa dùng chung của máy: cấu hình và khoá chương trình đọc (ConfigVault_151)
+├── _Models\          nơi chứa dùng chung của máy: file model AI (Models_167)
+│  ① chủ máy tự làm
+├── Workspace\        code, repo, việc cho tổ chức (Workspace_143) → Struc_Region_Workspace
+├── Study\            tài liệu đang học (Study_160)
+├── Memories\         ảnh và video quay người (Memories_161)
+├── Documents\        giấy tờ người đọc: Profile\Personal · Profile\Company\<Tổ chức> · Family (Documents_152)
+│  ② sưu tầm
+├── Game\             save, ảnh/clip, hướng dẫn — không bao giờ là chương trình (Game_164)
+├── Library\          kiến thức giữ để tra (Library_163)
+├── Media\            giải trí sưu tầm (Media_162)
+│  ③ cài đặt
+├── Software\<Nhóm>\[<Hãng>\]<Ứng dụng>\{Setup,App,Data}   mọi chương trình, kể cả game (Software_147–150)
+│  ④ cất giữ
+├── Backup\  Archive\  Recovery\                          (Backup_165 · Archive_166 · Recovery_153)
 ```
 
-Phân vân đặt đâu:
-
-| thứ cần đặt | đặt ở | vì sao |
-|---|---|---|
-| khoá học đang theo | `Study\Self\<Mảng>\` | còn đang học |
-| cũng khoá đó, học xong, giữ để tra lại | `Library\<Mảng>\` | chỉ để tra |
-| mã viết trong lúc học, chạy được | `Workspace\Personal\StudyProjects\...\<repo>\` | chạy được ⇒ Workspace |
-| ảnh một chuyến đi | `Memories\<năm>\<YYYY-MM-DD Chuyến đi>\` | chủ máy tự chụp |
-| hình nền tải trên mạng | `Media\Image\` | sưu tầm |
-| danh bạ và dữ liệu app chép ra từ điện thoại | `Backup\Phone\<thiết bị>\` | bản sao; điện thoại giữ bản gốc |
-| một repo đã đóng hẳn | `Archive\Workspace\...\<repo>.zip` | đã nghỉ, bản duy nhất |
-| ổ ảo của WSL | `Software\System\Microsoft\WSL\Data\<Distro>\` | dữ liệu của một phần mềm |
-| một file model ngôn ngữ | `_Models\<engine>\` | các app AI dùng chung |
-| khoá SSH, token của một công cụ | `_ConfigVault\<công cụ>\credentials\` | dùng chung, bí mật |
-
-Không có `Runtime\` và `Image\` ở cấp 1: runtime (WSL, Docker) là phần mềm trong `Software\`; ảnh là `Media\Image\` (sưu tầm)
-hoặc `Memories\` (tự chụp).
+Thư mục cấp 1 bắt đầu bằng `_` là nơi chứa dùng chung của cả máy (nhiều chương trình và repo trỏ vào, chủ máy không làm việc
+trong đó); có hai nơi, `_ConfigVault\` và `_Models\`.
 
 ## Một cây logic, nhiều nơi lưu — gợi ý, không bắt buộc
 
-Cây trên là MỘT cây logic, máy có bao nhiêu ổ cũng vậy. Mỗi khối dữ liệu nằm thật ở đúng một nơi lưu (ổ dữ liệu chính, ổ dữ liệu
-thứ hai, SSD nhanh, ổ ngoài, NAS); mọi nơi khác cần nó chỉ có một điểm nối trỏ tới. Mở từ ổ nào, chủ máy cũng thấy cùng một cây.
-Đây là cách HS gợi ý; chủ máy có một ổ thì không cần phần này, và được nối bất kỳ thư mục nào sang bất kỳ ổ nào.
+Cây là MỘT cây logic, máy có bao nhiêu ổ cũng vậy. Mỗi khối dữ liệu nằm thật ở đúng một nơi lưu; mọi nơi khác cần nó chỉ có một
+điểm nối. Chủ máy có một ổ thì không cần phần này, và được nối bất kỳ thư mục nào sang bất kỳ ổ nào.
 
 Năm luật, khi cây chia ra nhiều nơi lưu:
 1. Mỗi thư mục thuộc đúng một trong ba loại: thật ở nơi này · thật ở nơi khác (ở đây chỉ là điểm nối) · tách nhỏ (các thư mục con
-   của nó nằm thật ở những nơi khác nhau).
+   nằm thật ở những nơi khác nhau).
 2. Không nối một khối khi có thư mục con của nó nằm nơi khác; tách nhỏ khối đó rồi nối từng con.
 3. Thư mục tách nhỏ không chứa file lẻ; chỉ có một `_README.md` ở gốc của nó, mỗi nơi lưu một bản, ghi phần nào nằm ở đâu.
 4. Công cụ quét cây đi qua mọi nơi lưu nhưng bỏ qua mọi điểm nối, để mỗi file chỉ được thấy một lần.
 5. Global Memory giải đường dẫn về vị trí thật trước khi ghi.
-
-Dây nối theo từng loại nơi lưu:
 
 | nơi lưu | cách nối |
 |---|---|
@@ -95,15 +123,12 @@ Dây nối theo từng loại nơi lưu:
 | NAS | symlink tới đường mạng (`mklink /D`); junction không trỏ được tới thư mục chia sẻ trên mạng |
 | ổ đám mây | mount vào một điểm cố định; database đang chạy KHÔNG BAO GIỜ nằm ở phía đám mây |
 
-Vướng đã biết: rút nơi lưu ra thì điểm nối chết; vài công cụ xoá xuyên qua điểm nối; cây lồng sâu dễ chạm giới hạn độ dài đường
-dẫn của Windows.
-
-Ví dụ — ổ dữ liệu chính `D:` và một SSD nhanh `H:` giữ game, model và ổ ảo của WSL:
+Ví dụ — ổ dữ liệu chính `D:` và một SSD nhanh `H:` giữ model, save game và ổ ảo của WSL:
 
 ```
 D:\                                        H:\
 ├── _Models\  ──────── junction ─────────► ├── _Models\         (thật ở đây)
-├── Game\  ─────────── junction ─────────► ├── Game\            (thật ở đây: Installed\ · Saves\ · Media\ · Tools\)
+├── Game\  ─────────── junction ─────────► ├── Game\            (thật ở đây)
 ├── Software\  (tách nhỏ)                  └── Software\  (tách nhỏ)
 │   ├── _README.md                             ├── _README.md
 │   ├── Dev\ …          (thật ở D:)            └── System\Microsoft\WSL\  (tách nhỏ)
@@ -114,60 +139,43 @@ D:\                                        H:\
 └── Workspace\ …        (thật ở D:)
 ```
 
-`_Models\` và `Game\` là khối nguyên, mỗi khối một junction. `Software\` là thư mục tách nhỏ (luật 1): vài thư mục con nằm thật ở
-`D:`, một con nằm thật ở `H:`. `WSL\` cũng tách nhỏ, nên chỉ `Data\` được nối (luật 2). Mỗi thư mục tách nhỏ có một `_README.md`
-ở cả hai ổ ghi phần nào nằm ở đâu (luật 3); phép kiểm đọc file đó là dấu hiệu của một phần mềm tách nhỏ và không đòi
-`H:\…\WSL\` phải có `Setup\` và `App\`.
-
-Vai thường gặp của các ổ trong một máy:
-- ổ dữ liệu chính — giữ toàn bộ cây; khối nào chưa dời đi thì nằm thật ở đây.
-- ổ dữ liệu thứ hai — cùng cây đó, giữ các khối dời khỏi ổ chính (media lớn, archive).
-- SSD nhanh — khối cần tốc độ: game, model, ổ ảo, dữ liệu huấn luyện. Coi là thay được: thứ chỉ nằm ở đó phải có bản sao lưu ở
-  nơi khác.
-- ổ hệ thống `C:` — không thuộc cây.
-- ổ đám mây (Google Drive, OneDrive) — không thuộc cây; nhiều nhất là điểm mount cho một bản sao lưu.
+Mỗi thư mục tách nhỏ có một `_README.md` ở cả hai ổ (luật 3); phép kiểm đọc file đó là dấu hiệu của phần mềm tách nhỏ và không đòi
+`H:\…\WSL\` phải có `Setup\` và `App\`. Vai thường gặp của các ổ: ổ dữ liệu chính giữ cả cây · ổ dữ liệu thứ hai giữ các khối dời
+khỏi ổ chính (media lớn, archive) · SSD nhanh giữ thứ cần tốc độ (game, model, ổ ảo) và có bản sao lưu ở nơi khác · ổ hệ thống và
+ổ đám mây không thuộc cây.
 
 ## Ổ hệ thống
 
-`C:\` chứa hệ điều hành và chỉ những gì phần mềm ép đặt ở đó. Không tạo thư mục của chủ máy trên ổ này. Những thứ thường bị ép:
+`C:\` chứa hệ điều hành và chỉ những gì phần mềm ép đặt ở đó: `C:\Program Files\WSL` · `C:\Program Files\Docker` (thư mục phần mềm
+trong `Software\` vẫn giữ `Setup\` và `Data\`) · `%USERPROFILE%\.wslconfig` · thư mục nhà của công cụ (`.claude` · `.codex` ·
+`.docker` · `.ssh` · `.cache` · `.lmstudio` · `%APPDATA%\Code`) · `%USERPROFILE%\.zemory\location.json`. `HOME` giữ mặc định của hệ
+điều hành; không bao giờ trỏ vào một thư mục của ổ dữ liệu. Thư mục nhà của công cụ phình to thì dời bằng thiết lập của chính công
+cụ hoặc bằng junction; khoá và thiết lập vào `_ConfigVault\<công cụ>\` (ConfigVault_151, có cả các bước gỡ một `HOME` đang trỏ vào
+ổ dữ liệu).
 
-| thứ | vì sao nằm ở C: |
-|---|---|
-| `C:\Program Files\WSL` · `C:\Program Files\Docker` | bộ cài không cho chọn chỗ (ngoại lệ của Software_149); thư mục phần mềm trong `Software\` vẫn giữ `Setup\` và `Data\` |
-| `%USERPROFILE%\.wslconfig` | WSL chỉ đọc nó ở đó |
-| thư mục nhà của công cụ: `%USERPROFILE%\.claude` · `.codex` · `.docker` · `.ssh` · `.cache` · `.lmstudio` · `%APPDATA%\Code` | công cụ đọc thư mục nhà của nó ở đó |
-| `%USERPROFILE%\.zemory\location.json` | file duy nhất zemory đọc trước khi biết mọi thứ khác nằm đâu; nó trỏ tới thư mục Global Memory |
+## Dựng hoặc sửa một cấu trúc — quy trình
 
-`HOME` giữ mặc định của hệ điều hành (`%USERPROFILE%`); không bao giờ trỏ nó vào một thư mục của ổ dữ liệu. Thư mục nhà của công
-cụ phình to (cache model, cache gói) được phép dời: đặt thiết lập của chính công cụ trỏ vào một chỗ trong cây (`_Models\lmstudio\`),
-hoặc thay thư mục trên `C:` bằng một junction trỏ tới chỗ đó. Khoá và thiết lập chủ máy mang sang máy mới thì để ở
-`_ConfigVault\<công cụ>\` (ConfigVault_151, có cả các bước gỡ một `HOME` đang trỏ vào ổ dữ liệu).
+Ai thêm một slot, sửa một slot hay dựng một cây mới thì làm đủ các bước, theo thứ tự:
+1. Viết MỘT câu hỏi xếp của cấp đó, và các đáp án (các thư mục con).
+2. Kiểm các đáp án loại trừ nhau và phủ hết.
+3. Biến mỗi đáp án thành một sự thật kiểm được; đáp án nào là ý định thì viết lại.
+4. Chỗ nào nhiều sự thật có thể cùng đúng thì ghi thứ tự của chúng; chép đúng thứ tự đó vào mọi slot liên quan.
+5. Ghi luật dời cho mỗi món đổi trạng thái, kèm tên công cụ làm việc đó.
+6. Thử cấu trúc trên đồ THẬT của mọi ổ trước khi ghi: liệt kê từng món và chỗ nó ra. Món ra 0 hoặc từ 2 chỗ trở lên ⇒ sửa câu hỏi,
+   không nắn món.
+7. Ghi vào mỗi slot câu hỏi của nó và danh sách "không thuộc đây ⇒ đi đâu"; phần nào máy kiểm được thì đưa vào `zemory conform`.
 
 ## Luật
 
-- Gốc dữ liệu không có file lẻ. Mọi thứ nằm trong một thư mục của cây (thư mục hệ thống của Windows như
-  `System Volume Information`, `$RECYCLE.BIN` để yên).
-- `_` ở gốc chỉ đánh dấu hai nơi chứa dùng chung; không thư mục cấp 1 nào khác bắt đầu bằng `_`.
-- Repo chỉ nằm trong `Workspace\`. Phần mềm chỉ nằm trong `Software\`. Thiết lập và khoá của công cụ chỉ nằm trong
-  `_ConfigVault\`. File model chỉ nằm trong `_Models\`.
-- MỌI thư mục phần mềm trong `Software\<Nhóm>\` (trừ `Drivers\` và `Fonts\`) có đủ `Setup\` · `App\` · `Data\` — luật đầy đủ, các
-  bước và ngoại lệ ở `Software_149_Program`.
-- Ổ ảo và dữ liệu lớn của phần mềm nằm ở `Data\` của chính phần mềm đó, có trần dung lượng. Đo chỗ trống của ổ trước mỗi việc ghi
-  lớn (cài phần mềm, dựng image, chép dữ liệu) và sau khi làm xong.
-
-## Các bước — dựng cây cho một máy
-
-1. Chọn ổ dữ liệu chính; tạo các thư mục cấp 1 mà chủ máy có dữ liệu (nhánh chưa có gì thì không tạo thư mục rỗng).
-2. Dời từng thư mục đang có về chỗ của nó theo bảng "Phân vân đặt đâu"; cài lại phần mềm vào `Software\` theo
-   `Software_149_Program`.
-3. Dời thiết lập và khoá của công cụ vào `_ConfigVault\` và trả `HOME` về mặc định trong CÙNG MỘT đợt (ConfigVault_151): đổi
-   `HOME` là đổi chỗ đọc của nhiều công cụ cùng lúc.
-4. Khối nào phải nằm ở ổ khác (vì tốc độ, vì dung lượng) thì đặt thật ở đó rồi nối về, theo năm luật.
-5. Chạy `zemory conform --layout <gốc dữ liệu>` trên mỗi ổ giữ một phần của cây, tới khi không còn báo gì.
+- Gốc dữ liệu không có file lẻ. Thư mục hệ thống của Windows (`System Volume Information`, `$RECYCLE.BIN`) để yên.
+- `_` ở gốc chỉ đánh dấu hai nơi chứa dùng chung.
+- `Downloads\` là chỗ duy nhất cho đồ chưa xếp; không thư mục nào khác giữ hộp chờ.
+- Đo chỗ trống của ổ trước mỗi việc ghi lớn (cài đặt, dựng image, chép dữ liệu) và sau khi làm xong.
 
 ## Phép kiểm
 
 `zemory conform --layout <gốc dữ liệu>` báo đỏ: file lẻ ở gốc (`loose-file`) · thư mục cấp 1 không có slot (`unknown-folder`) ·
-repo ngoài `Workspace\` (`repo-outside-workspace`) · nhóm trong `Software\` ngoài Software_148 (`unknown-value`) · phần mềm thiếu
-`Setup\`, `App\` hoặc `Data\` (`program-incomplete`). Lệnh đi tiếp vào `Workspace\` và từng tổ chức. Năm luật của cây chia nhiều
-nơi lưu chưa có phép kiểm máy; chủ máy tự giữ.
+repo ngoài `Workspace\` (`repo-outside-workspace`) · nhóm trong `Software\` ngoài Software_148 hoặc phần trong `Game\` ngoài
+Game_164 (`unknown-value`) · phần mềm thiếu `Setup\`, `App\` hoặc `Data\` (`program-incomplete`) · dự án học không có thư mục
+`Study\` tương ứng (`study-unmatched`). Lệnh đi tiếp vào `Workspace\` và từng tổ chức. Chuỗi câu hỏi của luật 1 và năm luật của cây
+chia nhiều nơi lưu do chủ máy tự soát ở chỗ chưa có phép kiểm.

@@ -1,6 +1,7 @@
 {
   "scope": "disk",
   "slots": [
+    "Downloads_168_Downloads",
     "ConfigVault_151_ConfigVault",
     "Models_167_Models",
     "Workspace_143_Workspace",

@@ -1,47 +1,48 @@
 ---
 id: Slot_148
 name: group
-version: 2
+version: 3
 path: Software/<Nhóm>/
-values: [AI, 3D, CAD, Image_2D, Video, Screen_Record, Audio, Office, Dev, Network, System, Utility, Drivers, Fonts]
+values: [AI, 3D, CAD, Image_2D, Video, Screen_Record, Audio, Office, Dev, Network, System, Utility, Game, Drivers, Fonts]
 scope: layout
 ---
-# Software_148_Group group — nhóm phần mềm
+# Software_148_Group group — the group of a program
 
-## Vai trò
+## Role
 
-Cấp thứ hai của `Software\`: chia phần mềm theo VIỆC NÓ LÀM. Mục đích là nhìn vào là tìm ra phần mềm, và dựng lại một máy mới
-theo từng nhóm. Mọi phần mềm nằm trong đúng một nhóm; mỗi phần mềm là một thư mục theo khuôn `Software_149_Program`
-(`<Ứng dụng>\` với đủ `Setup\` · `App\` · `Data\`).
+The second level of `Software\`: programs grouped by WHAT THEY DO, so a program is found at a glance and a machine is rebuilt group
+by group. Every program is in exactly one group; each program is a folder shaped by `Software_149_Program`.
 
-## Mười bốn nhóm — danh sách cố định
+## The question of this level — fifteen groups, a fixed list
 
-| nhóm | chứa phần mềm làm việc gì | ví dụ |
+| group | programs that | examples |
 |---|---|---|
-| `AI` | trợ lý AI, ứng dụng chat với mô hình, chạy mô hình tại máy, agent và CLI của mô hình | `Claude` · `ChatGPT` · `LMStudio` · `Ollama` · `ComfyUI` |
-| `3D` | dựng hình, diễn hoạ, điêu khắc 3D | `Blender` · `Maya` · `ZBrush` |
-| `CAD` | bản vẽ kỹ thuật, thiết kế cơ khí và kiến trúc | `AutoCAD` · `SolidWorks` · `SketchUp` |
-| `Image_2D` | chỉnh ảnh, vẽ, thiết kế đồ hoạ 2D | `Photoshop` · `Illustrator` · `Krita` · `Figma` |
-| `Video` | dựng và chỉnh video, hiệu ứng, chuyển định dạng video | `Premiere` · `DaVinciResolve` · `CapCut` · `HandBrake` |
-| `Screen_Record` | quay màn hình, phát trực tiếp, chụp màn hình | `OBS` · `ShareX` · `Bandicam` |
-| `Audio` | thu âm, chỉnh âm thanh, phát nhạc | `Audacity` · `FLStudio` · `Spotify` |
-| `Office` | văn phòng, bảng tính, trình chiếu, BI, đọc PDF | `MicrosoftOffice` · `PowerBI` · `Tableau` · `FoxitReader` |
-| `Dev` | lập trình: trình soạn mã, IDE, CSDL và công cụ CSDL, runtime, container, git | `Microsoft\VSCode` · `JetBrains\DataGrip` · `Database\MongoDB` · `Python\Conda` · `Git` |
-| `Network` | trình duyệt, VPN, điều khiển từ xa, đồng bộ tệp, nhắn tin, tải tệp | `Chrome` · `UltraViewer` · `Syncthing` · `Zalo` · `IDM` |
-| `System` | công cụ của hệ điều hành và của hãng máy: ảo hoá, cập nhật, màn hình phụ, ổ mạng, phân vùng ổ | `Microsoft\WSL` · `Lenovo\Vantage` · `RaiDrive` |
-| `Utility` | tiện ích nhỏ: nén/giải nén, gõ tiếng Việt, dọn máy, game launcher | `7-Zip` · `UniKey` · `Steam` |
-| `Drivers` | gói driver thiết bị — theo khuôn riêng `Software_150_Drivers`, không theo khuôn ba thư mục | `Drivers\Printer_Canon\` |
-| `Fonts` | gói phông chữ tải về để cài | `Fonts\GoogleSans\` |
+| `AI` | assist with AI, chat with models, run models locally, agents and model CLIs | `Claude` · `LMStudio` · `Ollama` · `ComfyUI` |
+| `3D` | model, render, sculpt in 3D | `Blender` · `Maya` · `ZBrush` |
+| `CAD` | technical drawing, mechanical and architectural design | `AutoCAD` · `SolidWorks` · `SketchUp` |
+| `Image_2D` | edit photos, draw, 2D graphic design | `Photoshop` · `Krita` · `Figma` |
+| `Video` | edit and convert video, effects | `Premiere` · `DaVinciResolve` · `HandBrake` |
+| `Screen_Record` | record or capture the screen, stream | `OBS` · `ShareX` · `Bandicam` |
+| `Audio` | record, edit, play sound | `Audacity` · `FLStudio` · `Spotify` |
+| `Office` | office documents, spreadsheets, slides, BI, PDF readers | `MicrosoftOffice` · `PowerBI` · `FoxitReader` |
+| `Dev` | programming: editors, IDEs, databases and their tools, runtimes, containers, git | `Microsoft\VSCode` · `JetBrains\DataGrip` · `Git` |
+| `Network` | browsers, VPN, remote control, file sync, messaging, downloaders | `Chrome` · `Syncthing` · `UltraViewer` |
+| `System` | tools of the operating system and the machine maker: virtualisation, updates, disks | `Microsoft\WSL` · `RaiDrive` |
+| `Utility` | small tools: archives, keyboard input, cleaners | `7-Zip` · `UniKey` |
+| `Game` | games, game launchers and game tools (mod managers, emulators, trainers, game support apps) | `Steam` · `EpicGames` · `ModOrganizer` |
+| `Drivers` | device driver packs — shaped by `Software_150_Drivers`, not by the three parts | `Drivers\Printer_<Model>\` |
+| `Fonts` | font packs downloaded to install | `Fonts\GoogleSans\` |
 
-## Luật
+## Rules
 
-- Chỉ đúng mười bốn nhóm trên, viết đúng tên như bảng (hoa thường và dấu gạch dưới giữ nguyên). Không tạo nhóm thứ mười lăm.
-- Một phần mềm làm được nhiều việc thì xếp theo việc CHÍNH người dùng cài nó để làm: `PowerBI` vào `Office` (báo cáo), không
-  vào `Dev`.
-- Phần mềm không vừa nhóm nào ⇒ `Utility`.
-- Không có file lẻ ở cấp nhóm: trong `Software\Dev\` chỉ có thư mục phần mềm (hoặc thư mục hãng chứa thư mục phần mềm).
+- Exactly the fifteen groups above, spelled as in the table. No sixteenth group.
+- A program doing several things goes by the MAIN job the owner installed it for: `PowerBI` ⇒ `Office`, not `Dev`.
+- A launcher's game library is the launcher's `Data\` (`Software\Game\Steam\Data\`); a game installed without a launcher is a
+  program of its own in `Software\Game\<Game>\`.
+- A program that fits no group ⇒ `Utility`.
+- No loose file at a group level.
 
-## Phép kiểm
+## Check
 
-`zemory conform --layout <gốc ổ>` báo đỏ (`unknown-value`) mọi thư mục trong `Software\` không thuộc mười bốn nhóm, và báo đỏ
-(`program-incomplete`) mọi thư mục phần mềm trong nhóm (trừ `Drivers` · `Fonts`) thiếu `Setup\`, `App\` hoặc `Data\`.
+`zemory conform --layout <data root>` reds (`unknown-value`) any folder in `Software\` outside the fifteen groups, and
+(`program-incomplete`) any program folder in a group (except `Drivers` · `Fonts`) without `Setup\`, `App\` or `Data\`.
