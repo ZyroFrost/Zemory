@@ -1,82 +1,92 @@
 ---
 id: Slot_149
 name: program
-version: 2
+version: 3
 path: Software/<Nhóm>/[<Hãng>/]<Ứng dụng>/
 scope: layout
 ---
-# Software_149_Program program — một phần mềm
+# Software_149_Program program — one program
 
-## Vai trò
+## Role
 
-Mỗi phần mềm có ĐÚNG MỘT thư mục riêng. Mọi thứ thuộc về phần mềm đó nằm trong thư mục này: bộ cài, bản đã cài, và dữ liệu
-riêng của nó. Nhìn vào một thư mục là biết đủ ba thứ của phần mềm, và máy mới dựng lại được phần mềm đó chỉ từ thư mục này.
+Each program has EXACTLY ONE folder of its own. Everything that belongs to that program sits in it: its installer, its installed
+copy, and its own data. One look at the folder shows all three, and a new machine can rebuild the program from this folder alone.
 
-## Luật bắt buộc — không có ngoại lệ
+## Required rule — no exceptions beyond the three listed below
 
-Thư mục của MỌI phần mềm LUÔN có đủ ba thư mục con `Setup/` · `App/` · `Data/`. Thiếu một trong ba là sai chuẩn, kể cả khi
-phần đó chưa có gì để bỏ vào: khi ấy vẫn tạo thư mục, để trống.
+The folder of EVERY program ALWAYS holds the three sub-folders `Setup/` · `App/` · `Data/`. Missing one of them is off-standard,
+even when that part has nothing to hold yet: then the folder is still created, empty.
 
-| thư mục con | chứa gì | ví dụ thật |
+| sub-folder | holds | real example |
 |---|---|---|
-| `Setup/` | bộ cài gốc đúng như đã tải về, giữ nguyên tên tệp; kèm crack, key, tệp kích hoạt nếu có | `Software\Dev\Microsoft\VSCode\Setup\VSCodeUserSetup-x64-1.106.0.exe` |
-| `App/` | bản đã cài (đường cài khi chạy bộ cài) hoặc bản portable | `Software\Dev\Microsoft\VSCode\App\` (chứa `Code.exe`) |
-| `Data/` | dữ liệu riêng mà phần mềm cho chọn chỗ: ổ ảo, cache, workspace, database, log | `Software\System\Microsoft\WSL\Data\ext4.vhdx` · `Software\Dev\Database\MongoDB\Data\db\` |
+| `Setup/` | the original installer exactly as downloaded, file name unchanged; with crack, key or activation file if any | `Software\Dev\Microsoft\VSCode\Setup\VSCodeUserSetup-x64-1.106.0.exe` |
+| `App/` | the installed copy (the install path chosen when running the installer) or the portable copy | `Software\Dev\Microsoft\VSCode\App\` (holds `Code.exe`) |
+| `Data/` | the program's own data, where the program lets the owner choose: virtual disks, cache, workspace, database, logs | `Software\System\Microsoft\WSL\Data\Ubuntu\ext4.vhdx` · `Software\Dev\Database\MongoDB\Data\db\` |
 
-Ví dụ một thư mục phần mềm đúng chuẩn:
+A program folder on standard:
 
 ```
 Software\Dev\Database\MongoDB\
 ├── Setup\    mongodb-windows-x86_64-8.0.4-signed.msi
-├── App\      (đường cài đã chọn khi chạy bộ cài: bin\mongod.exe …)
+├── App\      (the install path chosen in the installer: bin\mongod.exe …)
 └── Data\     db\  ·  log\
 ```
 
-Ví dụ phần mềm KHÔNG có dữ liệu riêng — `Data/` vẫn có, để trống:
+A program with NO data of its own — `Data/` is still there, empty:
 
 ```
 Software\Utility\7-Zip\
 ├── Setup\    7z2409-x64.exe
 ├── App\      7z.exe · 7zFM.exe …
-└── Data\     (trống)
+└── Data\     (empty)
 ```
 
-## Cách làm từng bước
+## Steps
 
-**Cài một phần mềm mới:**
-1. Tạo `Software\<Nhóm>\[<Hãng>\]<Ứng dụng>\` cùng đủ ba thư mục con `Setup\` · `App\` · `Data\`.
-2. Tải bộ cài vào `Setup\`, giữ nguyên tên tệp.
-3. Chạy bộ cài; ở bước chọn thư mục cài, chọn đúng `…\<Ứng dụng>\App\`.
-4. Phần mềm có tuỳ chọn đặt dữ liệu (ổ ảo, workspace, database) ⇒ chọn `…\<Ứng dụng>\Data\`.
+**Installing a new program:**
+1. Create `Software\<Group>\[<Vendor>\]<App>\` with all three sub-folders `Setup\` · `App\` · `Data\`.
+2. Download the installer into `Setup\`, file name unchanged.
+3. Run the installer; at the install-folder step, choose exactly `…\<App>\App\`.
+4. If the program offers a place for its data (virtual disk, workspace, database) ⇒ choose `…\<App>\Data\`.
 
-**Phần mềm đã cài sẵn ở chỗ khác:**
-- Bản portable (chép đi là chạy): dời thẳng cả thư mục vào `App\`.
-- Bản cài qua bộ cài (registry và shortcut đã ghi đường cũ): KHÔNG dời tay — gỡ ra rồi cài lại theo các bước trên. Làm dần,
-  phần mềm nào dùng tới thì làm phần mềm đó; bộ cài của nó thì dời vào `Setup\` ngay.
+**A program already installed somewhere else:**
+- A portable copy (copy it and it runs): move the whole folder into `App\`.
+- A copy installed by an installer (the registry and shortcuts hold the old path): do NOT move it by hand — uninstall it and
+  install again by the steps above. Do it one program at a time, as each one is needed; move its installer into `Setup\` now.
 
-**Ngoại lệ — bộ cài không cho chọn chỗ** (ép cài vào ổ hệ thống, ví dụ một số bản của Docker Desktop, driver của hãng máy):
-cài vào chỗ bộ cài chọn; thư mục phần mềm vẫn có đủ ba thư mục con — `Setup\` giữ bộ cài, `App\` để trống, `Data\` chứa dữ
-liệu nếu phần mềm cho dời dữ liệu ra.
+## Exceptions
 
-## Được chứa / không chứa
+1. **An installer that gives no choice of place** (forces the system drive, for example some versions of Docker Desktop or a
+   machine maker's drivers): install where the installer chooses; the program folder still holds all three sub-folders —
+   `Setup\` keeps the installer, `App\` stays empty, `Data\` holds the data if the program lets the data move out.
+2. **A program split over two drives** (the five laws of `Struc_Disk_Data`): its folder exists on each drive, each holding the
+   parts real there plus a `_README.md` saying which part lives where. A folder with that `_README.md` is not asked for the
+   parts that live on the other drive. Example: `H:\Software\System\Microsoft\WSL\` holds `_README.md` and `Data\` only.
+3. **Folders that are not programs:** the groups `Drivers\` and `Fonts\` hold driver and font packs (Software_150); they have
+   no installed copy.
 
-- Có cấp `<Hãng>\` chen giữa khi một hãng có nhiều phần mềm trong cùng nhóm: `Software\Dev\Microsoft\VSCode\` ·
-  `Software\Dev\Microsoft\SQLServer\`. Hãng chỉ có một phần mềm trong nhóm thì bỏ cấp hãng: `Software\Utility\7-Zip\`.
-- Không chứa: cấu hình và khoá của người dùng (để ở `AppConfig\<công cụ>\`) · tài liệu làm việc (`Documents\`) · repo
-  (`Workspace\`).
-- Nhóm `Drivers\` và `Fonts\` không theo khuôn ba thư mục này: chúng chứa gói driver và gói phông, không có bản cài.
+## May hold / may not hold
 
-## Khuôn tên
+- A `<Vendor>\` level sits in between when one vendor has several programs in the same group: `Software\Dev\Microsoft\VSCode\` ·
+  `Software\Dev\Microsoft\SQLServer\`. A vendor with one program in the group drops the vendor level: `Software\Utility\7-Zip\`.
+- May not hold: the owner's settings and keys (in `_ConfigVault\<tool>\`) · working documents (`Documents\`) · repos
+  (`Workspace\`) · model files (`_Models\`).
+- A package manager's global install folder is the `Data\` of its runtime: `npm config set prefix
+  D:\Software\Dev\NodeJS\Data\npm-global`, so every CLI installed with `npm -g` lives there and that one folder is on `PATH`.
+  A CLI installed by its own installer gets its own program folder (`Software\AI\Anthropic\ClaudeCode\`).
 
-Tên phần mềm viết như hãng viết, bỏ dấu cách: `PowerBI` · `VSCode` · `7-Zip` · `LMStudio`. Tên hãng PascalCase: `Microsoft` ·
-`JetBrains`. Ba thư mục con viết đúng hoa thường: `Setup` · `App` · `Data`.
+## Naming
 
-## Đồng bộ
+A program's name as its vendor writes it, without spaces: `PowerBI` · `VSCode` · `7-Zip` · `LMStudio`. A vendor name in
+PascalCase: `Microsoft` · `JetBrains`. The three sub-folders exactly `Setup` · `App` · `Data`.
 
-Không vào git, không đồng bộ: bản cài là của từng máy, bộ cài tải lại được. `Data\` có thể rất lớn (ổ ảo hàng chục GB) — ổ
-ảo phải đặt trần dung lượng, và đo chỗ trống của ổ trước mỗi việc ghi lớn.
+## Sync
 
-## Phép kiểm
+Not in git, not synced: an installed copy belongs to one machine and an installer can be downloaded again. `Data\` can be very
+large (virtual disks of tens of GB) — a virtual disk gets a size cap, and the drive's free space is measured before every large
+write.
 
-`zemory conform --layout <gốc ổ>` báo đỏ (`program-incomplete`) mọi thư mục phần mềm thiếu `Setup\`, `App\` hoặc `Data\`, kèm
-tên thư mục còn thiếu.
+## Check
+
+`zemory conform --layout <data root>` reds (`program-incomplete`) every program folder without `Setup\`, `App\` or `Data\`,
+naming the missing ones. It does not ask a folder holding `_README.md` (split), `Drivers\` or `Fonts\`.

@@ -116,12 +116,12 @@ function relay() {
   process.stdin.on("data", (c) => (raw += c));
   process.stdin.on("end", () => {
     let text = raw.replace(BOM, "") || "{}";
-    if (event === "send-guard") {
-      try {
-        text = JSON.stringify({ ...JSON.parse(text), live_pids: livePids() });
-      } catch {
-        // unreadable payload: forward it as it came, the daemon lets it through
-      }
+    try {
+      // the host names the session's project in CLAUDE_PROJECT_DIR; the daemon in the container cannot read the host's env
+      const extra = { ...(process.env.CLAUDE_PROJECT_DIR ? { project_dir: process.env.CLAUDE_PROJECT_DIR } : {}), ...(event === "send-guard" ? { live_pids: livePids() } : {}) };
+      if (Object.keys(extra).length) text = JSON.stringify({ ...JSON.parse(text), ...extra });
+    } catch {
+      // unreadable payload: forward it as it came, the daemon lets it through
     }
     const body = Buffer.from(text, "utf8");
     const req = http.request(

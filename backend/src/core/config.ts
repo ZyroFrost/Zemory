@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripBom } from "../util/read-text.js";
@@ -123,8 +123,30 @@ function assertConfig(value: unknown, markerRel: string): HarnessConfig {
  *  (Windows drive letters are case-insensitive); the rest of the path is left alone,
  *  since folder names are meaningful and other platforms are case-sensitive. */
 export function normalizeRoot(path: string): string {
-  const abs = resolve(path);
+  const abs = realOf(resolve(path));
   return process.platform === "win32" ? abs.replace(/^([a-z]):/, (_m, drive: string) => `${drive.toUpperCase()}:`) : abs;
+}
+
+const realCache = new Map<string, string>();
+/**
+ * The real place of a path that exists: junctions and symlinks resolved (Struc_Disk_Data law 5 — one repo reached through a
+ * link point and through its real place is ONE project, not two). A path that does not exist here (a host path read in the
+ * container, a folder since moved) is kept as given; a result on a network share (`\\server\…`, a mapped drive) is not
+ * taken, so a project opened from a mapped drive keeps the key it always had.
+ */
+function realOf(abs: string): string {
+  const hit = realCache.get(abs);
+  if (hit !== undefined) return hit;
+  let out = abs;
+  try {
+    const r = realpathSync.native(abs);
+    if (!/^\\\\/.test(r)) out = r;
+  } catch {
+    // not here: keep the path as given
+  }
+  if (realCache.size > 2000) realCache.clear();
+  realCache.set(abs, out);
+  return out;
 }
 
 /**
@@ -157,7 +179,7 @@ export function canonProjectRoot<T extends string | null | undefined>(v: T): T {
  * của recall — cùng một thư mục, hai câu trả lời. Một sự thật thì phải có một hàm.
  */
 export function projectKey(path: string): string {
-  const abs = resolve(path).replace(/\//g, "\\").replace(/[\\/]+$/, "");
+  const abs = realOf(resolve(path)).replace(/\//g, "\\").replace(/[\\/]+$/, "");
   return process.platform === "win32" ? abs.toLowerCase() : abs;
 }
 

@@ -1,7 +1,7 @@
 ---
 id: Slot_143
 name: workspace
-version: 2
+version: 3
 path: Workspace/
 scope: layout
 ---
@@ -31,7 +31,7 @@ Ví dụ thật:
 
 - Cấp `Workspace\` chỉ có ba thư mục `Company\` · `Personal\` · `External\`. Không có repo đặt thẳng ở đây, không có file lẻ,
   không có thư mục thứ tư.
-- Không chứa: bản cài phần mềm (để ở `Software\`) · cấu hình và khoá công cụ (`AppConfig\`) · tài liệu cá nhân (`Documents\`).
+- Không chứa: bản cài phần mềm (để ở `Software\`) · cấu hình và khoá công cụ (`_ConfigVault\`) · tài liệu cá nhân (`Documents\`).
 - Phân biệt ba vùng theo CHỦ của repo: tổ chức ⇒ `Company\`; chính người dùng (kể cả dự án làm chung với nhóm ngoài tổ chức)
   ⇒ `Personal\`; người khác viết, mình chỉ đọc ⇒ `External\`.
 - Tên `Workspace` viết đúng như vậy (W hoa, phần còn lại thường) trên mọi máy, kể cả máy Linux.

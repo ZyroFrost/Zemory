@@ -2,15 +2,38 @@
 id: Slot_128
 aka: 03-128
 name: scripts
-version: 6
+version: 7
 path: scripts/
+checked: [Models_112_Models, Models_142_Database, Tasks_118_Pipeline]
 ---
-# Scripts_128_Scripts scripts — tự động hoá kéo / điền / upload
+# Scripts_128_Scripts scripts — automation: pull / fill / upload, and setting up the repo's own machine
 
-- Vai trò:
-  - TỰ ĐỘNG HOÁ: kéo (pull) · điền (fill) · publish/upload — script THIN, agent gọi. Dùng chung nhiều case. Publish/refresh tự động hoá ở đây, bản render ra `exports/`.
-  - AGENT là thứ làm ba động tác; zemory chỉ nhớ + kỷ luật (index việc/task đã làm vào Global Memory), không tự gọi LLM, không tự đi kéo file. Mỗi động tác = script thin ở đây + playbook ở `.claude/skills/task-pull/` · `fill/` · `upload/` (đăng ký `03_SKILLS`) — playbook giữ recipe cụ thể: kéo nguồn nào, điền template nào, đẩy đi đâu.
-  - KÉO: đọc `sources/` → raw về `data/extract/`; credential lấy từ `.env`/`config/`, không bao giờ nhập password vào zemory (nguồn web: mượn phiên login trên trang thật). ĐIỀN: `templates/` + số từ `data/`/`measures/` → `reports/` hoặc `exports/`. UP: đẩy deliverable/exports lên đích (workspace BI · Drive · SharePoint) qua `scripts/` hoặc stage upload của pipeline.
-  - Mọi động tác tự động phải ghi lại được (task / lần chạy → `05_CHANGES`/`04_TODO`).
-  - Gốc repo sạch: script → `scripts/`.
-- Được chứa / không chứa: Không chứa: code ngoài clone về (→ `external/`) · script của riêng một case (→ `tasks/<case>/pipeline/`).
+## Role
+
+- **Automation of the three moves**: pull · fill · publish/upload — THIN scripts the agent calls, shared by many cases.
+  Publish / refresh automation lives here; the rendered output goes to `exports/`.
+  - The AGENT does the three moves; zemory only remembers and keeps discipline (it indexes the work done into Global Memory),
+    never calls an LLM by itself, never fetches a file by itself. Each move = a thin script here + a playbook in
+    `.claude/skills/task-pull/` · `fill/` · `upload/` (registered in `03_SKILLS`); the playbook holds the recipe: which source to
+    pull, which template to fill, where to push.
+  - PULL: read `sources/` → raw into `data/extract/`; credentials come from `.env` / `config/`, a password is never typed into
+    zemory (web source: borrow the logged-in session of the real page). FILL: `templates/` + numbers from `data/` / `measures/` →
+    `reports/` or `exports/`. UPLOAD: push the deliverable / exports to the destination (BI workspace · Drive · SharePoint) through
+    `scripts/` or the upload stage of a pipeline.
+- **Setting up and running the repo's own machine or service**: one-time or rare scripts that install or configure what the
+  repo runs on (a database server, a data disk, a service), or that run the `models/` chain. Rules:
+  - check before changing: every step looks at the current state first, so a second run skips what is done;
+  - fail loud: the first failing step stops the run with a non-zero exit;
+  - no secret and no internal address inside the file: passed at run time, or read from `.env` / `data/secrets/`;
+  - the file says how to run it (where, as whom) in its header.
+- Every automatic move can be traced (task / run → `05_CHANGES` / `04_TODO`).
+- Clean repo root: scripts go to `scripts/`.
+
+## May not hold
+
+Code cloned from outside (→ `external/`) · a script of a single case (→ `tasks/<case>/pipeline/`) · the database chain itself
+(→ `models/`; the script here only RUNS it).
+
+## Check
+
+No machine check yet.

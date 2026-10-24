@@ -37,6 +37,7 @@ import { AUTO_COMMIT_LINES, autoCommit } from "../docs/auto-commit.js";
 import { promptMatches, SHELF } from "../docs/harness-names.js";
 import { findProjectRoot, harnessPathsAt, readMarker } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
+import { toLocalPath } from "../util/hostpath.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
 
@@ -124,13 +125,15 @@ export function ruleReminders(payload: any): string {
     const title = titleOfTranscript(transcript);
     // The session's project, not the folder it happens to stand in: a session that cd'd into its scratch folder was
     // told its title broke the rule because the "repo" was `scratchpad` (2026-10-17). The host names the project in
-    // CLAUDE_PROJECT_DIR; without it, the project root above cwd.
-    const projectDir = process.env.CLAUDE_PROJECT_DIR || findProjectRoot(cwd) || cwd;
+    // CLAUDE_PROJECT_DIR; without it, the project root above cwd. In the container the daemon has no CLAUDE_PROJECT_DIR of
+    // its own: the host relay sends it as `project_dir` (a session in a case folder was told to retitle after the case,
+    // 2026-10-25). The host path keeps the repo's name; the harness is read through its container path.
+    const projectDir = String(payload?.project_dir || "") || process.env.CLAUDE_PROJECT_DIR || findProjectRoot(cwd) || cwd;
     const repo = projectDir.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
     const problem = title ? titleProblem(title, repo, null) : null;
     if (problem && once("title")) {
       let where = "02_RULES §Phạm vi project";
-      try { if (isFolderHarness(harnessPathsAt(projectDir).agent)) where = `${SHELF.structure}/_Host/IDE`; } catch { /* keep the file-harness pointer */ }
+      try { if (isFolderHarness(harnessPathsAt(toLocalPath(projectDir)).agent)) where = `${SHELF.structure}/_Host/IDE`; } catch { /* keep the file-harness pointer */ }
       out.push(`[zemory] ⚠ This session's title "${title}" breaks the session-title rule (${problem}) — ask the user ONCE to retitle it ${repo}_<Model>_<d-m-yyyy> (${where}).`);
     }
   }

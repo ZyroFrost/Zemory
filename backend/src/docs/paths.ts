@@ -321,7 +321,8 @@ export function classify(
   if (/[^.\\/]\.\.[^.\\/]/.test(s)) return { kind: "unresolved", reason: "not-a-path" };
   // A regex, not a path: escaped dot before an extension, or an escaped alternation (DW 2026-10-07: `webhook_fabi\.py` in
   // deploy scripts, `docs/archive/\|attic/` in a grep pattern).
-  if (/\\\|/.test(s) || /^[\w-]+\\{1,2}\.[A-Za-z0-9]{1,8}$/.test(s)) return { kind: "unresolved", reason: "regex" };
+  // A bare `|` too: no Windows name may hold one, so `\b(dashboard|measure)\b` (a keyword pattern in a gate.json) is a regex.
+  if (/\|/.test(s) || /^[\w-]+\\{1,2}\.[A-Za-z0-9]{1,8}$/.test(s)) return { kind: "unresolved", reason: "regex" };
   // `%~dp0` = the folder of the .cmd file itself — resolve it and judge for REAL (DW `bin/*.cmd`, 2026-10-07).
   if (/^%~dp0/i.test(s)) s = join(dirname(file), s.slice(5));
   // `%APPDATA%`, `$HOME`, `${var}` are environment placeholders, not folders (plan/20 names the MSIX path that way).

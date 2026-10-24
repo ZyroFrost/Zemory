@@ -110,6 +110,6 @@ export function cmdPeers(args: string[]): void {
   }
   console.log("  Replying to a message? Use its `from` address (uds:…), not this table.");
   if (peers.some((p) => p.problem)) {
-    console.log("  ⚠ = the title breaks the session-title rule (02_RULES §Phạm vi project); retitle it in the session list (rename).");
+    console.log("  ⚠ = the title breaks the session-title rule (02_STRUCTURE/_Host/IDE); retitle it in the session list (rename).");
   }
 }

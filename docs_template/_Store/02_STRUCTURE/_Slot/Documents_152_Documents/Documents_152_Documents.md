@@ -1,7 +1,7 @@
 ---
 id: Slot_152
 name: documents
-version: 2
+version: 3
 path: Documents/<mảng>/
 scope: layout
 ---
@@ -26,7 +26,7 @@ Documents\
 ## Luật
 
 - Không chứa tài liệu CÔNG VIỆC của một tổ chức: tài liệu đó thuộc repo của tổ chức trong `Workspace\Company\<Tổ chức>\`.
-- Không chứa bản cài (`Software\`), cấu hình hay khoá công cụ (`AppConfig\`), repo (`Workspace\`).
+- Không chứa bản cài (`Software\`), cấu hình hay khoá công cụ (`_ConfigVault\`), repo (`Workspace\`).
 - Máy là tài sản của tổ chức (laptop công ty) thì không đặt tài liệu cá nhân ở đây; bản chính để ở máy riêng của người dùng.
 - Không vào git công khai. Có đồng bộ hay không là lựa chọn của người dùng.
 

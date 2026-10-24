@@ -35,7 +35,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Data_094_Data`](_Slot/Data_094_Data/Data_094_Data.md) | `data/` | runtime / file thật theo máy |
 | [`Data_102_Secrets`](_Slot/Data_102_Secrets/Data_102_Secrets.md) | `data/secrets/` | mọi bí mật của repo: khoá · token · két mã hoá |
 | [`Reports_111_Reports`](_Slot/Reports_111_Reports/Reports_111_Reports.md) | `reports/` | deliverable BI |
-| [`Models_112_Models`](_Slot/Models_112_Models/Models_112_Models.md) | `models/` | deliverable data: semantic/transform layer |
+| [`Models_112_Models`](_Slot/Models_112_Models/Models_112_Models.md) | `models/` | deliverable data: the model layer, or the build chain of one database |
 | [`Content_113_Content`](_Slot/Content_113_Content/Content_113_Content.md) | `content/` | deliverable docs-only |
 | [`Design_114_Design`](_Slot/Design_114_Design/Design_114_Design.md) | `design/` | deliverable design |
 | [`Tasks_115_Tasks`](_Slot/Tasks_115_Tasks/Tasks_115_Tasks.md) | `tasks/` | đơn vị công việc: 1 case = 1 folder |
@@ -51,7 +51,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Notebooks_125_Notebooks`](_Slot/Notebooks_125_Notebooks/Notebooks_125_Notebooks.md) | `notebooks/` | phân tích thăm dò |
 | [`Fixtures_126_Fixtures`](_Slot/Fixtures_126_Fixtures/Fixtures_126_Fixtures.md) | `fixtures/` | data mẫu nhỏ |
 | [`Assets_127_Assets`](_Slot/Assets_127_Assets/Assets_127_Assets.md) | `assets/` | theme / logo / bảng màu report |
-| [`Scripts_128_Scripts`](_Slot/Scripts_128_Scripts/Scripts_128_Scripts.md) | `scripts/` | tự động hoá kéo / điền / upload |
+| [`Scripts_128_Scripts`](_Slot/Scripts_128_Scripts/Scripts_128_Scripts.md) | `scripts/` | automation: pull / fill / upload, and setting up the repo's own machine |
 | [`Data_129_Extract`](_Slot/Data_129_Extract/Data_129_Extract.md) | `data/extract/` | raw pull dùng chung |
 | [`Data_130_Adhoc`](_Slot/Data_130_Adhoc/Data_130_Adhoc.md) | `data/adhoc/` | file lẻ check nhanh |
 | [`Data_131_Case`](_Slot/Data_131_Case/Data_131_Case.md) | `data/<case>/` | data làm việc của một case |
