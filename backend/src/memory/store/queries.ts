@@ -16,6 +16,9 @@ export const Q = {
   // the primary key and stopped at the first hit; the fast lane asks only for the ids that arrived since its last tick
   ownMaxMessageBetween:
     "SELECT m.id AS m FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id > ? AND m.id <= ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown') ORDER BY m.id DESC LIMIT 1",
+  // the lowest id above ? that THIS machine originated (same rule as above), walked up the primary key
+  ownMinMessageAbove:
+    "SELECT m.id AS m FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id > ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown') ORDER BY m.id ASC LIMIT 1",
   countSessionMessages: "SELECT COUNT(*) c FROM messages WHERE session_id = ?",
   messageIdByUuid: "SELECT id FROM messages WHERE session_id = ? AND uuid = ?",
   insertMessage: `INSERT OR IGNORE INTO messages (session_id, uuid, role, content, tool_name, timestamp)
@@ -61,9 +64,8 @@ export const Q = {
   // ── vectors ───────────────────────────────────────────────────────────────
   // the p2p channel (HP 18): which of THIS machine's vectors each receiving machine has confirmed
   peerVecSentDdl: "CREATE TABLE IF NOT EXISTS peer_vec_sent (peer TEXT NOT NULL, message_id INTEGER NOT NULL, PRIMARY KEY (peer, message_id)) WITHOUT ROWID",
-  peerVecSentSeed: "INSERT OR IGNORE INTO peer_vec_sent (peer, message_id) SELECT ?, message_id FROM vec_shipped",
+  peerVecSentClear: "DELETE FROM peer_vec_sent WHERE peer = ?",
   peerVecSentAdd: "INSERT OR IGNORE INTO peer_vec_sent (peer, message_id) VALUES (?, ?)",
-  peerVecSentAny: "SELECT 1 AS x FROM peer_vec_sent WHERE peer = ? LIMIT 1",
   vecShippedExists: "SELECT name FROM sqlite_master WHERE type='table' AND name='vec_shipped'",
   // own vectors (host = ?, or a pre-v4 row) of messages up to ? that peer ? has not confirmed - main rows only
   peerVecUnsent: `SELECT v.rowid AS id FROM vec_chunks_rowids v

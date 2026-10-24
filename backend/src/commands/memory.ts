@@ -886,6 +886,20 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       }
       return;
     }
+    if (action === "resync") {
+      // The other machine measured messages of this one missing (its store was replaced, or an older channel lost blocks):
+      // forget what it confirmed, so the next rounds send it every own message and vector again. Merge dedups.
+      const id = rest[1];
+      if (!id) {
+        console.log("usage: zemory memory channel resync <device-id>");
+        process.exitCode = 1;
+        return;
+      }
+      const { resetPeer } = await import("../memory/channel/p2pdb.js");
+      const r = await resetPeer(id);
+      console.log(`zemory memory channel resync — mark for that machine ${r.mark} → 0 · ${r.vectors} confirmed vector(s) forgotten; the next rounds send everything again`);
+      return;
+    }
     if (action === "on" || action === "off") {
       setP2pEnabled(action === "on");
       console.log(`zemory memory channel — machine-to-machine channel ${getP2pEnabled() ? "ON" : "OFF"} (Drive unchanged)`);
@@ -1023,7 +1037,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       return;
     }
     console.log(
-      "usage: zemory memory channel [status|id|pair <id>|unpair <id>|on|off|probe|" +
+      "usage: zemory memory channel [status|id|pair <id>|unpair <id>|resync <id>|on|off|probe|" +
         "mirror [list|approve <id>|dismiss <id>]|" +
         "sync --host <ip> --port <n> [--punch] [--local-port <n>] [--peer <id>]]",
     );
@@ -1885,7 +1899,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "                    TWO-WAY SYNC through a shared folder (Drive): merges every other machine's bundle",
       "                    into this store, then APPENDS this machine's new data to the shared store — never",
       "                    overwrites old bytes. --compact: REWRITE the shared store from this machine's store.",
-      "  channel [status|id|pair <id>|unpair <id>|on|off|probe|sync --host <ip> --port <n>]",
+      "  channel [status|id|pair <id>|unpair <id>|resync <id>|on|off|probe|sync --host <ip> --port <n>]",
       "                    MACHINE-TO-MACHINE CHANNEL (plan/24): id = this machine's ID (NOT a secret, share it",
       "                    freely) · pair = connect using the other machine's ID · on/off = whether to RECEIVE over",
       "                    this channel (Drive unchanged) · probe = can this machine be called into, and",
