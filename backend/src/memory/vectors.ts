@@ -1024,9 +1024,9 @@ export function markVectorsShipped(dbPath: string = currentMemoryDb(), ids: numb
 }
 
 // ── the p2p channel's ledger, per receiving machine (plan/24 §13, HP 18) ──────────────────────────────────────────────
-// Each machine keeps, in its own db, which of ITS vectors every peer has confirmed. A peer seen for the first time starts
-// from the shared `vec_shipped` ledger: the channel before HP 18 converged on the whole block set, so what was shipped
-// there reached the peer.
+// Each machine keeps, in its own db, which of ITS vectors every peer has confirmed. Only a peer's `ack` writes it: a peer
+// seen for the first time starts empty (the shared `vec_shipped` ledger of the older channels was once taken as proof, and
+// the two machines measured vectors missing behind it, 2026-10-25).
 
 /** Own vectors (`host` = this machine) of messages up to `upTo` the peer has not confirmed, oldest first. */
 export function unsentVectorIdsFor(peer: string, host: string, upTo: number, dbPath: string = currentMemoryDb(), cap = 20000): number[] {
@@ -1034,10 +1034,22 @@ export function unsentVectorIdsFor(peer: string, host: string, upTo: number, dbP
   try {
     if (!tableExists(db)) return [];
     db.exec(Q.peerVecSentDdl);
-    if (!db.prepare(Q.peerVecSentAny).get(peer) && db.prepare(Q.vecShippedExists).get()) db.prepare(Q.peerVecSentSeed).run(peer);
     return (db.prepare(Q.peerVecUnsent).all(upTo, host, peer, Math.max(1, cap)) as { id: number | bigint }[]).map((r) => Number(r.id));
   } catch {
     return [];
+  } finally {
+    db.close();
+  }
+}
+
+/** Forget every vector `peer` confirmed (`channel resync`): the next rounds ship them again. */
+export function forgetVectorsSentTo(peer: string, dbPath: string = currentMemoryDb()): number {
+  const db = vecConnect(dbPath);
+  try {
+    db.exec(Q.peerVecSentDdl);
+    return db.prepare(Q.peerVecSentClear).run(peer).changes;
+  } catch {
+    return 0;
   } finally {
     db.close();
   }

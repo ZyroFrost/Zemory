@@ -14,9 +14,9 @@ import { join } from "node:path";
 import { getScopeExclude } from "../../config/settings.js";
 import { acquireWriteTurn } from "../../jobs/writeturn.js";
 import { currentMemoryDb, currentMemoryDir } from "../db.js";
-import { exportMemoryBundle, mergeMemoryBundle, readExportWatermark, wmKeyFor, writeExportWatermark } from "../share.js";
+import { exportMemoryBundle, mergeMemoryBundle, readExportWatermark, writeExportWatermark } from "../share.js";
 import { Q } from "../store/queries.js";
-import { markVectorsSentTo, unsentVectorIdsFor } from "../vectors.js";
+import { forgetVectorsSentTo, markVectorsSentTo, unsentVectorIdsFor } from "../vectors.js";
 import Database from "better-sqlite3";
 import { normalizeDeviceId } from "./identity.js";
 import { MAX_FRAME_BYTES } from "./wire.js";
@@ -29,11 +29,7 @@ export function p2pDir(machineDir = currentMemoryDir()): string {
 /** The mark's key: one spelling of the device id whatever form it came in (certificate, pairing list, typed). */
 export const peerMarkKey = (peer: string): string => `p2p-to:${normalizeDeviceId(peer)}`;
 const peerKey = peerMarkKey;
-/** The legacy mark of the stored-block channel - where a peer's first protocol-2 round starts. */
-export const legacyMarkKey = (host: string): string => wmKeyFor("p2p", wmHost(host));
 const fileSafe = (s: string): string => s.replace(/[^A-Za-z0-9-]/g, "_");
-/** The watermark key's host is sanitised (`wmKeyFor`), `sessions.host` holds the raw name - as the export does. */
-const wmHost = (host: string): string => (host || "unknown").replace(/[^A-Za-z0-9._-]/g, "_");
 
 export interface OutBlock {
   id: string;
@@ -46,12 +42,59 @@ export interface OutBlock {
 }
 
 /**
- * The highest own message id `peer` has confirmed. First contact with a peer the channel before HP 18 already served: the
- * mark of that channel (`p2p:<host>`) - both machines converged on its whole block set, so nothing below it is owed.
+ * The highest own message id `peer` has confirmed with an `ack`, or 0. Only an ack counts: the mark of the stored-block
+ * channel (`p2p:<host>`) was taken as a start once, and the two machines measured thousands of messages missing below it
+ * (2026-10-25 - that channel lost blocks silently, and a store replaced since an ack keeps a mark it no longer earns). A
+ * mark above this store's own newest id belongs to a store that was rebuilt or replaced, so it counts as 0 too. Merge
+ * dedups, so sending again from 0 costs time, never data. `host` is kept for the callers' signature.
  */
-export function peerMark(peer: string, host: string, dbPath: string = currentMemoryDb()): number {
+export function peerMark(peer: string, _host: string, dbPath: string = currentMemoryDb()): number {
   const own = readExportWatermark(peerKey(peer), dbPath);
-  return own > 0 ? own : readExportWatermark(legacyMarkKey(host), dbPath);
+  if (own <= 0) return 0;
+  return own > topMessageId(dbPath) ? 0 : own;
+}
+
+function topMessageId(dbPath: string): number {
+  let db: Database.Database | null = null;
+  try {
+    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    db.pragma("busy_timeout = 2000");
+    return (db.prepare(Q.maxMessageId).get() as { m: number }).m;
+  } catch {
+    return Number.MAX_SAFE_INTEGER; // unreadable: keep the mark as it is
+  } finally {
+    db?.close();
+  }
+}
+
+/** The lowest own message id above `from`, or 0 - the next block starts there instead of walking empty id ranges. */
+function nextOwnAbove(dbPath: string, host: string, from: number): number {
+  let db: Database.Database | null = null;
+  try {
+    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    db.pragma("busy_timeout = 2000");
+    return (db.prepare(Q.ownMinMessageAbove).get(from, host) as { m: number } | undefined)?.m ?? 0;
+  } catch {
+    return 0;
+  } finally {
+    db?.close();
+  }
+}
+
+/**
+ * Forget what `peer` confirmed: its mark goes to 0 and its vector ledger is emptied, so the next rounds send it every own
+ * message and vector again (merge dedups). For a peer whose store was replaced or that measures messages missing.
+ */
+export async function resetPeer(peer: string, o: { dbPath?: string } = {}): Promise<{ mark: number; vectors: number }> {
+  const dbPath = o.dbPath ?? currentMemoryDb();
+  const release = await acquireWriteTurn();
+  try {
+    const before = readExportWatermark(peerKey(peer), dbPath);
+    writeExportWatermark(peerKey(peer), 0, dbPath);
+    return { mark: before, vectors: forgetVectorsSentTo(normalizeDeviceId(peer), dbPath) };
+  } finally {
+    release();
+  }
 }
 
 function newestOwnAbove(dbPath: string, host: string, from: number): number {
@@ -98,6 +141,12 @@ export async function buildOutgoing(
   let since = mark;
   let step = o.startStep ?? 20_000;
   while (out.length < (o.maxBlocks ?? 4) && (since < top || catchUp.length)) {
+    // jump over id ranges holding no own message (a first round from 0 would otherwise export dozens of empty ranges)
+    if (since < top && !catchUp.length) {
+      const next = nextOwnAbove(dbPath, host, since);
+      if (!next || next > top) break;
+      since = Math.max(since, next - 1);
+    }
     const id = randomBytes(12).toString("hex");
     const file = join(dir, `${id}.zmb`);
     const until = top > since ? Math.min(top, since + step) : since;

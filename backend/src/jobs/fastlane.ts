@@ -31,7 +31,7 @@ import { claimDaemonJob, daemonJobBusy, endEmbedLane, releaseDaemonJob, startEmb
 import { backgroundChildEnv } from "./childenv.js";
 import { hasQueuedIngest } from "./ingestqueue.js";
 import { Q } from "../memory/store/queries.js";
-import { legacyMarkKey, peerMarkKey, type MergedBlock } from "../memory/channel/p2pdb.js";
+import { peerMarkKey, type MergedBlock } from "../memory/channel/p2pdb.js";
 
 /** Quiet spell after the last new message before a block is sealed. */
 export const FAST_QUIET_MS = 3_000;
@@ -81,7 +81,7 @@ export function fastSendDecide(prev: FastSendState, pendingMax: number, now: num
 
 /**
  * Highest id of a message THIS machine originated above the LOWEST mark of the paired machines (`sync_state`
- * `p2p-to:<peer>`, or the legacy `p2p:<host>` for a peer not yet served by protocol 2), or 0. "Mine" uses the same rule
+ * `p2p-to:<peer>`; 0 for a peer that has acked nothing yet), or 0. "Mine" uses the same rule
  * as the delta export (`buildRowsSnapshot`): `host` = this machine, or NULL / 'unknown' (pre-v4 rows) — a message merged
  * from the other machine is never a reason to send. Read-only, one indexed range query.
  */
@@ -93,13 +93,16 @@ export function ownPendingMax(dbPath: string, host: string, peers: readonly stri
   try {
     db = new Database(dbPath, { readonly: true, fileMustExist: true });
     db.pragma("busy_timeout = 2000");
-    const mark = (key: string): number => (db!.prepare(Q.syncStateMark).get(key) as { v: number } | undefined)?.v ?? 0;
-    const legacy = mark(legacyMarkKey(host));
-    const wm = peers.length ? Math.min(...peers.map((p) => mark(peerMarkKey(p)) || legacy)) : legacy;
+    const top = (db.prepare(Q.maxMessageId).get() as { m: number }).m;
+    // the same mark the sender builds from (`peerMark`): only what the peer acked, and never above this store's own ids
+    const mark = (key: string): number => {
+      const v = (db!.prepare(Q.syncStateMark).get(key) as { v: number } | undefined)?.v ?? 0;
+      return v > top ? 0 : v;
+    };
+    const wm = peers.length ? Math.min(...peers.map((p) => mark(peerMarkKey(p)))) : 0;
     // Each tick looks only at the ids that arrived since the last one. A walk of everything above the watermark took
     // 4-8 s on the event loop whenever many messages merged from the other machine sat above it (profiled 2026-10-23,
     // natively and in Docker). Ids only grow, so the newest own id seen so far stays the answer until the watermark moves.
-    const top = (db.prepare(Q.maxMessageId).get() as { m: number }).m;
     const key = `${dbPath}\u0000${host}`;
     let c = pendingScan.get(key);
     if (!c || c.wm !== wm || top < c.scannedTo) c = { wm, scannedTo: wm, best: 0 };

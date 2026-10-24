@@ -771,12 +771,15 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
             `INSERT OR IGNORE INTO known_stores (store_root, source, found_at)
              SELECT store_root, source, found_at FROM src.known_stores`,
           );
-          // Re-derive per-session counts/spans now that messages may have grown.
+          // Re-derive per-session counts/spans now that messages may have grown - for the sessions this bundle carries only.
+          // Over every session it re-read the whole messages table per block: 72 s on an SSD, past the channel's 30-minute
+          // merge wait on a 5.5 GB store on a spinning disk (2026-10-25: every block the second machine received expired).
           db.exec(
             `UPDATE sessions SET
                message_count = (SELECT COUNT(*) FROM messages WHERE session_id = sessions.id),
                started_at    = (SELECT MIN(timestamp) FROM messages WHERE session_id = sessions.id),
-               ended_at      = (SELECT MAX(timestamp) FROM messages WHERE session_id = sessions.id)`,
+               ended_at      = (SELECT MAX(timestamp) FROM messages WHERE session_id = sessions.id)
+             WHERE id IN (SELECT id FROM src.sessions UNION SELECT session_id FROM src.messages)`,
           );
           // L3: nhận đính kèm nếu bundle có chở. Bảng `attachment_ship` chỉ xuất hiện khi
           // máy GỬI bật công tắc ⇒ bundle cũ / máy gửi tắt thì nhánh này im lặng bỏ qua.
@@ -803,7 +806,7 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
                  JOIN attachment a ON a.sha256 = sp.sha256`,
             );
           }
-          db.exec("DELETE FROM sessions WHERE message_count = 0");
+          db.exec("DELETE FROM sessions WHERE message_count = 0 AND id IN (SELECT id FROM src.sessions)");
         })();
       } finally {
         db.prepare(Q.detachSrc).run();
