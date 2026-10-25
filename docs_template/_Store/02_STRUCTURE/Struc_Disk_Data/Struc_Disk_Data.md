@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 5
+version: 6
 scope: disk
 ---
 # Struc_Disk_Data
@@ -41,6 +41,26 @@ is a program, in `Software\Game\`.
 A purpose decides the place ONLY where the order below says so explicitly: game items (step 8) and the owner's avatar collection
 (step 11).
 
+## Law 3 — the block law
+
+A thing goes in the SMALLEST block that holds everything using it. Used by one block ⇒ inside that block. Used by several
+blocks ⇒ up to their nearest common level, under a `_` name. A thing carried away from its block gets lost: an organisation's
+passwords moved to a personal folder are found by nobody working for that organisation.
+
+| the thing | used by | goes to |
+|---|---|---|
+| prompts two apps of one field share | two repos of `Apps\` | `Workspace\Personal\Apps\_Prompt\` |
+| model files every AI app reads | the whole machine | `_Models\` at the data root |
+| the output a channel app produces | that app | `workspaces/` inside the app's repo (Workspaces_169) |
+| a contract, a review, a password of one company's systems | that company | `Workspace\Company\<Org>\_Profile\` (Profile_170) |
+| a script several cases of one repo run | that repo | `scripts/` at the repo root (Scripts_128) |
+| the same script several repos run | several repos | a script of an HS skill, installed into each repo by `zemory sync` |
+
+Order of the laws: the block law picks the BLOCK, the nature law (law 2) picks the place INSIDE the block. Inside a repo the repo
+root is the common level and its fixed folders (`scripts/` · `queries/` · `config/` · `data/`) are the shared places: no `_` is
+added inside a repo. One exception, because a tool forces it: ssh reads every key from one folder, so ssh keys stay in
+`_ConfigVault\ssh\` whichever organisation's servers they open (its README names the owner of each key).
+
 ## The drive level — one question chain, the first true answer wins
 
 Ask the questions in this order; the item goes to the first one that is true.
@@ -54,13 +74,13 @@ Ask the questions in this order; the item goes to the first one that is true.
 | 4 | an AI model file | `_Models\` (Models_167) |
 | 5 | settings or keys a PROGRAM or an AGENT reads by itself | `_ConfigVault\<tool>\` (ConfigVault_151) |
 | 6 | a program — installer, installed copy, its own data — games, launchers and game tools included, and a program's output buffer | `Software\` (Software_147) |
-| 7 | code or a repo, or work done for an organisation | `Workspace\` (Workspace_143) |
+| 7 | code or a repo, or anything that belongs to ONE organisation — its work and its papers | `Workspace\` (Workspace_143) |
 | 8 | a game save, a screen capture or clip of a game, a collected game clip, a game guide | `Game\` (Game_164) |
 | 9 | material being learned now: lectures, a course downloaded to study, notes | `Study\` (Study_160) |
 | 10 | knowledge kept to look up after learning it | `Library\` (Library_163) |
 | 11 | pictures gathered to use on the owner's own profiles (avatars) | `Documents\Profile\Personal\Avatar\` (Documents_152) |
 | 12 | photos or videos of people taken with the owner's or the family's camera | `Memories\` (Memories_161) |
-| 13 | papers and records a PERSON reads | `Documents\` (Documents_152) |
+| 13 | papers and records a PERSON reads that belong to no single organisation | `Documents\` (Documents_152) |
 | 14 | everything else: entertainment collected | `Media\` (Media_162) |
 
 Worked examples:
@@ -76,7 +96,7 @@ Worked examples:
 | a library cloned from the web to learn from | 7 | `Workspace\External\<repo>\` (Study links to it) |
 | the password list of the owner's web accounts | 13 | `Documents\Profile\Personal\Secret\` |
 | an SSH key | 5 | `_ConfigVault\ssh\` |
-| a contract with the owner's employer | 13 | `Documents\Profile\Company\<Org>\` |
+| a contract with the owner's employer | 7 | `Workspace\Company\<Org>\_Profile\` |
 | design files made for a past employer | 7 | `Workspace\Company\<Org>\<work folder>\` |
 
 ## The tree
@@ -93,7 +113,7 @@ place a game save or a downloaded course. Sorting always uses the chain above.
 ├── Workspace\        code, repos, work for organisations (Workspace_143) → Struc_Region_Workspace
 ├── Study\            material being learned (Study_160)
 ├── Memories\         photos and videos of people (Memories_161)
-├── Documents\        papers a person reads: Profile\Personal · Profile\Company\<Org> · Family (Documents_152)
+├── Documents\        the owner's papers used for any organisation: Profile · Family (Documents_152)
 │  ② collected
 ├── Game\             saves, captures and clips, guides — never programs (Game_164)
 ├── Library\          knowledge kept to look up (Library_163)
@@ -172,7 +192,8 @@ Whoever adds a slot, changes a slot or builds a new tree does these steps, in or
 
 ## Rules
 
-- The data root holds no loose file. Windows system folders (`System Volume Information`, `$RECYCLE.BIN`) are left alone.
+- The data root holds no loose file. What Windows puts there by itself is left alone: `System Volume Information`,
+  `$RECYCLE.BIN`, `pagefile.sys`, `swapfile.sys`, `hiberfil.sys`, `DumpStack.log`, `DumpStack.log.tmp`.
 - `_` at the root marks only the two shared stores.
 - `Downloads\` is the only place for unsorted items; no other folder keeps an inbox.
 - Measure the drive's free space before every large write (installing, building an image, copying data) and after it.

@@ -1,7 +1,7 @@
 ---
 id: Slot_144
 name: company
-version: 3
+version: 4
 path: Company/<Org>/
 scope: layout
 ---
@@ -33,8 +33,10 @@ Workspace\Company\
 - The `Company\` level holds organisation folders only. A repo straight under `Company\` is wrong: it moves into the folder of the
   organisation that owns it.
 - One item belongs to one organisation. Work for two organisations is two items, each in its organisation's folder.
-- Not here: the owner's own code (`Personal\`) · code of others (`External\`) · PAPERS about or from the organisation (contract,
-  review, handover, logo, company profile) — those are papers a person reads ⇒ `Documents\Profile\Company\<Org>\`.
+- The owner's PAPERS with the organisation (contract, review, handover, logo, company profile, passwords of its systems) are
+  here too, by the block law: `Workspace\Company\<Org>\_Profile\` (Profile_170).
+- Not here: the owner's own code (`Personal\`) · code of others (`External\`) · papers used for any organisation (CV, identity)
+  ⇒ `Documents\Profile\`.
 
 ## Naming
 

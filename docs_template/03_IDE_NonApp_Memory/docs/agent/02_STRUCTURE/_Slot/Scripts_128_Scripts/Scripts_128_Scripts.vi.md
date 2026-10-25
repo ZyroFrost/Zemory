@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Scripts_128_Scripts scripts — tự động hoá: kéo / điền / upload, và dựng máy riêng của repo
@@ -22,6 +22,9 @@ lang: vi
   - không bí mật, không địa chỉ nội bộ trong file: truyền vào lúc chạy, hoặc đọc từ `.env` / `data/secrets/`;
   - đầu file ghi cách chạy (chạy ở đâu, bằng tài khoản nào).
 - Mọi động tác tự động phải lần lại được (task / lượt chạy → `05_CHANGES` / `04_TODO`).
+- **Mã dùng chung của các case trong repo**: module mà pipeline của nhiều case cùng import (gửi mail, đọc két) cũng nằm ở đây, một
+  bản; `common.py` của case import nó qua gốc repo, không chép một bản vào case.
+- Script mà nhiều REPO cùng chạy là script của một skill trên HS (`installs:`), `zemory sync` đặt vào đây: sửa trên HS, không sửa bản chép.
 - Gốc repo sạch: script để ở `scripts/`.
 
 ## Không chứa

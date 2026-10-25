@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 # Struc_Disk_Data
@@ -37,6 +37,26 @@ cần nó cho mục đích của mình thì giữ một shortcut hoặc một đ
 
 Mục đích chỉ quyết định chỗ đặt ở nơi thứ tự dưới đây ghi rõ: đồ game (bước 8) và bộ sưu tập avatar của chủ máy (bước 11).
 
+## Luật 3 — luật khối
+
+Một thứ nằm ở khối NHỎ NHẤT chứa mọi thứ dùng nó. Chỉ một khối dùng ⇒ nằm trong khối đó. Nhiều khối cùng dùng ⇒ lên cấp chung gần
+nhất, tên mang `_`. Thứ bị đem ra khỏi khối của nó thì lạc: mật khẩu của một tổ chức dời sang thư mục cá nhân thì không ai làm cho
+tổ chức đó tìm thấy.
+
+| thứ cần đặt | ai dùng | đặt ở |
+|---|---|---|
+| prompt hai app cùng mảng dùng chung | hai repo của `Apps\` | `Workspace\Personal\Apps\_Prompt\` |
+| file model mọi app AI đọc | cả máy | `_Models\` ở gốc dữ liệu |
+| đầu ra của một app làm kênh | app đó | `workspaces/` trong repo của app (Workspaces_169) |
+| hợp đồng, đánh giá, mật khẩu hệ thống của một công ty | công ty đó | `Workspace\Company\<Tổ chức>\_Profile\` (Profile_170) |
+| script nhiều case của một repo cùng chạy | repo đó | `scripts/` ở gốc repo (Scripts_128) |
+| cùng một script nhiều repo chạy | nhiều repo | script của một skill trên HS, `zemory sync` cài vào từng repo |
+
+Thứ tự áp: luật khối chọn KHỐI, luật bản chất (luật 2) chọn chỗ TRONG khối. Trong một repo, gốc repo là cấp chung và các thư mục cố
+định của nó (`scripts/` · `queries/` · `config/` · `data/`) là chỗ dùng chung: không thêm `_` bên trong repo. Một ngoại lệ, vì công cụ
+ép: ssh đọc mọi khoá từ một thư mục, nên khoá ssh ở lại `_ConfigVault\ssh\` dù mở máy chủ của tổ chức nào (README của két ghi khoá
+nào thuộc tổ chức nào).
+
 ## Cấp ổ — một chuỗi câu hỏi, đáp án đúng đầu tiên thắng
 
 Hỏi theo đúng thứ tự này; món vào bước đầu tiên đúng.
@@ -50,13 +70,13 @@ Hỏi theo đúng thứ tự này; món vào bước đầu tiên đúng.
 | 4 | file model AI | `_Models\` (Models_167) |
 | 5 | cấu hình hoặc khoá mà CHƯƠNG TRÌNH hay AGENT tự đọc | `_ConfigVault\<công cụ>\` (ConfigVault_151) |
 | 6 | chương trình — bộ cài, bản cài, dữ liệu riêng — kể cả game, launcher, công cụ game, và thư mục đệm đầu ra của chương trình | `Software\` (Software_147) |
-| 7 | code hoặc repo, hoặc việc làm cho một tổ chức | `Workspace\` (Workspace_143) |
+| 7 | code hoặc repo, hoặc bất cứ thứ gì thuộc về MỘT tổ chức — việc và giấy tờ của nó | `Workspace\` (Workspace_143) |
 | 8 | file lưu game, ảnh/clip quay màn hình game, clip game sưu tầm, hướng dẫn chơi | `Game\` (Game_164) |
 | 9 | tài liệu ĐANG học: bài giảng, khoá học tải về để nghiên cứu, ghi chú | `Study\` (Study_160) |
 | 10 | kiến thức học xong giữ để tra | `Library\` (Library_163) |
 | 11 | ảnh gom để dùng cho hồ sơ của chính chủ máy (avatar) | `Documents\Profile\Personal\Avatar\` (Documents_152) |
 | 12 | ảnh hoặc video quay NGƯỜI bằng máy ảnh của chủ máy hay của gia đình | `Memories\` (Memories_161) |
-| 13 | giấy tờ, hồ sơ mà NGƯỜI đọc bằng mắt | `Documents\` (Documents_152) |
+| 13 | giấy tờ, hồ sơ mà NGƯỜI đọc, không thuộc riêng tổ chức nào | `Documents\` (Documents_152) |
 | 14 | còn lại: giải trí sưu tầm | `Media\` (Media_162) |
 
 Ví dụ giải:
@@ -72,7 +92,7 @@ Ví dụ giải:
 | thư viện clone từ mạng về để học | 7 | `Workspace\External\<repo>\` (Study trỏ qua) |
 | danh sách mật khẩu tài khoản web của chủ máy | 13 | `Documents\Profile\Personal\Secret\` |
 | khoá SSH | 5 | `_ConfigVault\ssh\` |
-| hợp đồng với công ty chủ máy làm việc | 13 | `Documents\Profile\Company\<Tổ chức>\` |
+| hợp đồng với công ty chủ máy làm việc | 7 | `Workspace\Company\<Tổ chức>\_Profile\` |
 | file thiết kế làm cho một công ty cũ | 7 | `Workspace\Company\<Tổ chức>\<thư mục công việc>\` |
 
 ## Cây
@@ -89,7 +109,7 @@ game hay khoá học tải về. Xếp luôn dùng chuỗi câu hỏi ở trên.
 ├── Workspace\        code, repo, việc cho tổ chức (Workspace_143) → Struc_Region_Workspace
 ├── Study\            tài liệu đang học (Study_160)
 ├── Memories\         ảnh và video quay người (Memories_161)
-├── Documents\        giấy tờ người đọc: Profile\Personal · Profile\Company\<Tổ chức> · Family (Documents_152)
+├── Documents\        giấy tờ của chủ máy dùng cho mọi tổ chức: Profile · Family (Documents_152)
 │  ② sưu tầm
 ├── Game\             save, ảnh/clip, hướng dẫn — không bao giờ là chương trình (Game_164)
 ├── Library\          kiến thức giữ để tra (Library_163)
@@ -167,7 +187,8 @@ Ai thêm một slot, sửa một slot hay dựng một cây mới thì làm đ�
 
 ## Luật
 
-- Gốc dữ liệu không có file lẻ. Thư mục hệ thống của Windows (`System Volume Information`, `$RECYCLE.BIN`) để yên.
+- Gốc dữ liệu không có file lẻ. Thứ Windows tự đặt ở đó thì để yên: `System Volume Information`, `$RECYCLE.BIN`, `pagefile.sys`,
+  `swapfile.sys`, `hiberfil.sys`, `DumpStack.log`, `DumpStack.log.tmp`.
 - `_` ở gốc chỉ đánh dấu hai nơi chứa dùng chung.
 - `Downloads\` là chỗ duy nhất cho đồ chưa xếp; không thư mục nào khác giữ hộp chờ.
 - Đo chỗ trống của ổ trước mỗi việc ghi lớn (cài đặt, dựng image, chép dữ liệu) và sau khi làm xong.

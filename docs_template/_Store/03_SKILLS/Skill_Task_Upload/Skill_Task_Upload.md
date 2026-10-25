@@ -2,8 +2,9 @@
 id: Skill_Task_Upload
 aka: upload
 name: task-upload
-version: 9
+version: 10
 type: process
+installs: [scripts/smtp_mail.py, scripts/graph_mail.py]
 description: Publish a finished deliverable to its destination (BI workspace, Drive, SharePoint, shared folder). Use when the deliverable is complete and needs to go out, or when asked to publish, push, send, or upload the report. Vietnamese triggers - "đẩy lên", "publish", "up báo cáo", "đưa lên workspace", "gửi bản cuối", "đăng lên".
 ---
 

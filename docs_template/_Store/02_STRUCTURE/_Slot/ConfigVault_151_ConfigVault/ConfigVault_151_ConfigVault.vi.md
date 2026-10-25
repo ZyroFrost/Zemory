@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 # ConfigVault_151_ConfigVault configvault — két chứa thiết lập và khoá công cụ của cả máy
@@ -26,7 +26,8 @@ _ConfigVault\
 
 - `configs\` — thiết lập (đọc được, không bí mật) · `credentials\` — khoá, token, mật khẩu · `cache\` — thứ công cụ tự dựng lại, kể cả
   log của nó; xoá đi không mất gì.
-- `ssh\` để phẳng: ssh đọc `config`, các khoá và `known_hosts` từ một thư mục.
+- `ssh\` để phẳng: ssh đọc `config`, các khoá và `known_hosts` từ một thư mục. Vì vậy khoá ssh ở lại đây kể cả khi nó mở máy chủ
+  của MỘT tổ chức — ngoại lệ duy nhất của luật khối trong `Struc_Disk_Data`; README ghi khoá nào thuộc tổ chức nào.
 - `location.json` của zemory được đọc ở `%USERPROFILE%\.zemory\location.json`; thư mục đó được là junction trỏ vào
   `_ConfigVault\zemory\`. File chỉ trỏ tới thư mục Global Memory và không chứa bí mật.
 

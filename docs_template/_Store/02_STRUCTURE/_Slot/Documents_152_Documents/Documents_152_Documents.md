@@ -1,49 +1,44 @@
 ---
 id: Slot_152
 name: documents
-version: 4
+version: 5
 path: Documents/<DocKind>/
 values: [Profile, Family]
 scope: layout
 ---
-# Documents_152_Documents documents — papers a person reads
+# Documents_152_Documents documents — the owner's own papers, used across organisations
 
 ## Role
 
-`<data root>\Documents\` is step 13 of the drive's question chain (`Struc_Disk_Data`): papers and records a PERSON opens and reads.
-Settings or keys a program or an agent reads by itself are not papers ⇒ `_ConfigVault\` (step 5). The avatar collection is step 11
-and lives here too, in `Profile\Personal\Avatar\`.
+`<data root>\Documents\` is step 13 of the drive's question chain (`Struc_Disk_Data`): papers and records a PERSON reads that belong
+to no single organisation. By the block law, anything that belongs to ONE organisation — a contract, a review, a handover, a logo,
+a company profile, a password of the company's systems — lives in that organisation's block, `Workspace\Company\<Org>\_Profile\`
+(Profile_170). Settings or keys a program or an agent reads by itself are not papers ⇒ `_ConfigVault\` (step 5).
 
 ## The question of this level
 
 | the fact | goes to |
 |---|---|
-| about the owner, tied to one organisation (contract, review, handover, logo, company profile — papers about or from it) | `Profile\Company\<Org>\` |
-| about the owner otherwise | `Profile\Personal\` — `Identity\` (identity papers, ID photos) · `Avatar\` · `CV\` · `Secret\` |
+| about the owner, used for any organisation | `Profile\` — `Identity\` (identity papers, ID photos) · `Avatar\` · `CV\` · `Secret\` (personal secrets) |
 | about the owner's family (family tree, family records) | `Family\` |
 
 ```
 Documents\
-├── Profile\
-│   ├── Personal\   Identity\ · Avatar\ · CV\ · Secret\
-│   └── Company\<Org>\
+├── Profile\   Identity\ · Avatar\ · CV\ · Secret\
 └── Family\
 ```
 
-There is ONE `Company` folder in the whole tree for papers (`Documents\Profile\Company\<Org>\`) and ONE for work
-(`Workspace\Company\<Org>\`); the fact that splits them: a person reads it ⇒ here; it is work done for the organisation ⇒ Workspace.
-
 ## Rules
 
-- `Profile\Personal\Secret\` holds secrets a PERSON reads (web passwords, wallet phrases). It follows the sync ban of
-  `_ConfigVault`: NEVER in git, NEVER in a synced folder (Syncthing), NEVER in a cloud backup folder (Drive).
+- No `Company` folder here: papers of one organisation ⇒ `Workspace\Company\<Org>\_Profile\`.
+- `Profile\Secret\` holds personal secrets a PERSON reads (web passwords, wallet phrases). It follows the sync ban of `_ConfigVault`:
+  NEVER in git, NEVER in a synced folder (Syncthing), NEVER in a cloud backup folder (Drive).
 - A program found here (a family-tree program, an `.exe`) ⇒ `Software\`; a downloaded font ⇒ `Software\Fonts\`.
-- Work for an organisation (designs, code, project files) ⇒ `Workspace\Company\<Org>\`.
 - Inside each folder, sub-folders as the owner needs; no loose file at the `Documents\` or `Profile\` level.
 
 ## Naming
 
-English, PascalCase, no spaces. The organisation's name as in `Workspace\Company\`.
+English, PascalCase, no spaces: `Identity` · `Avatar` · `CV` · `Secret` · `Family`.
 
 ## Check
 

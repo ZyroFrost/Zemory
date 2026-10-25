@@ -2,10 +2,10 @@
 id: Slot_128
 aka: 03-128
 name: scripts
-version: 7
+version: 8
 path: scripts/
 checked: [Models_112_Models, Models_142_Database, Tasks_118_Pipeline]
-from: _Store/02_STRUCTURE/_Slot/Scripts_128_Scripts @v7 #12acd9c0e6d1
+from: _Store/02_STRUCTURE/_Slot/Scripts_128_Scripts @v8 #e528eb64d15a
 ---
 # Scripts_128_Scripts scripts — automation: pull / fill / upload, and setting up the repo's own machine
 
@@ -28,6 +28,9 @@ from: _Store/02_STRUCTURE/_Slot/Scripts_128_Scripts @v7 #12acd9c0e6d1
   - no secret and no internal address inside the file: passed at run time, or read from `.env` / `data/secrets/`;
   - the file says how to run it (where, as whom) in its header.
 - Every automatic move can be traced (task / run → `05_CHANGES` / `04_TODO`).
+- **Shared code of the repo's cases**: a module the pipelines of several cases import (a mail transport, a vault reader) lives
+  here too, once; a case's `common.py` imports it through the repo root, never a copy inside the case.
+- A script several REPOS run is a script of an HS skill (`installs:`), put here by `zemory sync`: edit it on HS, not in the copy.
 - Clean repo root: scripts go to `scripts/`.
 
 ## May not hold
