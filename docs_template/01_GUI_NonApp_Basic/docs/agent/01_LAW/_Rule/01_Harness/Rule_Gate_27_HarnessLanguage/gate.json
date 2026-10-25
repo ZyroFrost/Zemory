@@ -96,11 +96,11 @@
     {
       "note": "a law file three levels deep says \"kho\" alone (DW or HS?)",
       "files": {
-        "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
+        "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md",
+        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md",
         "old_string": "- text",
         "new_string": "- text\n- Sửa bảng trên kho rồi chạy lại."
       },
@@ -117,11 +117,11 @@
     {
       "note": "a law file three levels deep quotes a person (the path depth must not hide it)",
       "files": {
-        "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
+        "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md",
+        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md",
         "old_string": "- text",
         "new_string": "- text\n- (user chốt 2026-10-18: \"làm vậy\")"
       },
@@ -138,11 +138,11 @@
     {
       "note": "a quoted mention does not cover a bare use outside the quote on the same line",
       "files": {
-        "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
+        "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md",
+        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md",
         "old_string": "- text",
         "new_string": "- text\n- Never write \"kho\" alone; sửa bảng trên kho."
       },
@@ -222,11 +222,11 @@
     {
       "note": "the data warehouse written in full passes",
       "files": {
-        "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
+        "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md",
+        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md",
         "old_string": "- text",
         "new_string": "- text\n- Báo cáo đọc DW (kho dữ liệu), không đọc thẳng nguồn."
       },
@@ -243,11 +243,11 @@
     {
       "note": "the banned word quoted or in code is mentioned, not used (the vocabulary table names it so)",
       "files": {
-        "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
+        "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md",
+        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md",
         "old_string": "- text",
         "new_string": "- text\n- Never write \"kho\" alone; never `kho` either."
       },
@@ -264,11 +264,11 @@
     {
       "note": "stockroom words are business words, not the DW",
       "files": {
-        "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
+        "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md": "---\nid: Rule_80\n---\n# x\n\n- text\n"
       },
       "tool_name": "Edit",
       "tool_input": {
-        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Core_80_SharedChangeImpact/Rule_Core_80_SharedChangeImpact.md",
+        "file_path": "docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md",
         "old_string": "- text",
         "new_string": "- text\n- Mail tồn kho nhà hàng; nhập kho, kiểm kho và kho hàng do OPS lo."
       },

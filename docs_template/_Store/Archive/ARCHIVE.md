@@ -55,7 +55,6 @@ Luật chung (`01_LAW/_Rule`):
 | Rule_Core_69_LedgerCheckAnytime | `Rule_Keys_11_VerifyClaims` |
 | Rule_Gate_70_VersionPerPush | `Skill_Dev_Release` |
 | Rule_Gate_72_ProtectedGlob | `02_STRUCTURE/_Host/IDE` (khoá `protected`) |
-| Rule_Gate_73_GateEveryRule | `Skill_Harness_RuleGate` |
 | Rule_Keys_74_CleanRoot | slot gốc (`Root_*`) · cổng `conform` |
 
 Kệ hiến pháp cũ (`02_CONSTITUTION`) bãi bỏ cả kệ: kho không chở điều hiến pháp viết sẵn; hiến pháp là `Cons.md` mỗi

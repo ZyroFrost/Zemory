@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 8
+version: 9
 scope: disk
 ---
 # Struc_Disk_Data
@@ -24,8 +24,10 @@ change the QUESTIONS of the structure, never to force the item.
 - Each level of the tree asks exactly one sorting question; its sub-folders are the answers.
 - The answers exclude each other and cover everything: every item gets exactly one answer.
 - A question is answered by a FACT that can be checked, never by an intention. Facts: "has a commit of mine" · "has a camera's
-  EXIF" · "a folder `Study\X` exists" · "a client ordered it" · "the original still exists elsewhere". Not facts: "made to learn
+  EXIF" · "the item carries a `_README.md` naming its course" · "a client ordered it" · "the original still exists elsewhere". Not facts: "made to learn
   or to use", "kept for fun".
+- A fact is read from the ITEM ITSELF — its content, its metadata, a `_README.md` it carries — never only from whether another
+  folder exists: a fact about another folder pushes the owner to create an empty folder just to satisfy it.
 - When several facts are true, they are taken IN ORDER and the first true one wins. The order is written once and every slot it
   touches repeats the same order — no slot keeps an exception the other side does not know.
 - An item that changes state has a written move with its tool: still learning → finished ⇒ `Library\`; a study project becomes a
@@ -199,6 +201,10 @@ Whoever adds a slot, changes a slot or builds a new tree does these steps, in or
 6. Try the structure on the REAL items of every drive before writing it down: list each item and the place it gets. An item with
    0 or 2+ places ⇒ change the questions, not the item.
 7. Write into each slot its question and a "not here ⇒ goes to" list; whatever a machine can check goes into `zemory conform`.
+8. Measure before committing: run `zemory conform --layout` on EVERY machine that holds the tree, on each of its drives, and write
+   the counts into that machine's plan. A change that turns a real item red on any machine is reworked before it is committed.
+9. Change the frame in ONE batch: gather the changes of the drive layer, measure them once on every machine, commit them together —
+   never several small edits of the frame in one day.
 
 ## Rules
 

@@ -1,11 +1,11 @@
 ---
 id: Rule_90
 name: app-family-contract
-version: 2
+version: 3
 kind: judgment
 code: 05_Domain
-checked: [Rule_Gate_35_OneHome, Rule_Core_80_SharedChangeImpact, Skill_Dev_AppDesign, Skill_Dev_DbDesign, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData]
-from: _Store/01_LAW/_Rule/05_Domain/Rule_Keys_90_AppFamilyContract @v2 #02d37182f671
+checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_Dev_AppDesign, Skill_Dev_DbDesign, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData]
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Keys_90_AppFamilyContract @v3 #0359229d6bf8
 ---
 # Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one admin screen and its log codes
 

@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 # Rule_Gate_86_LawLayersAgree — The layers of law never contradict each other, and stay linked

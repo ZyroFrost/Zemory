@@ -2,10 +2,10 @@
 id: Rule_7
 aka: 02-7
 name: scope-only
-version: 8
+version: 9
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_07_ScopeOnly @v8 #eb5ec6121e74
+from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_07_ScopeOnly @v9 #f5682f197cf0
 ---
 # Rule_Keys_07_ScopeOnly — Do exactly the work given
 
@@ -37,4 +37,4 @@ for needs a proposal that answers three questions.
 
 ## Links · Liên kết
 - Related · Liên quan: `Rule_Keys_08_ClarifyFirst` — ask when the scope is unclear · hỏi khi phạm vi chưa rõ
-- Related · Liên quan: `Rule_Core_81_FollowExistingPattern` — raise a problem in an old pattern, do not change it · nêu vấn đề của khuôn cũ, không tự đổi
+- Related · Liên quan: `Rule_Keys_81_FollowExistingPattern` — raise a problem in an old pattern, do not change it · nêu vấn đề của khuôn cũ, không tự đổi

@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # Rule_Keys_07_ScopeOnly — Do exactly the work given

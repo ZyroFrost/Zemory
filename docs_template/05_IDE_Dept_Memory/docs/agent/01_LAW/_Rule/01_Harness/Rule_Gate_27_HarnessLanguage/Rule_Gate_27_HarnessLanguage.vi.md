@@ -1,5 +1,5 @@
 ---
-version: 21
+version: 22
 lang: vi
 ---
 # Rule_Gate_27_HarnessLanguage — Cách viết docs harness, và chữ dùng trong đó

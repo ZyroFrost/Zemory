@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 
@@ -13,7 +13,7 @@ lang: vi
 - Rà toàn hệ: thông tin đó đã có ở bảng nào chưa (tra danh mục bảng · `INFORMATION_SCHEMA` · từ điển dữ liệu của repo).
   Có rồi ⇒ dùng lại, không tạo bản thứ hai (`Rule_Gate_35_OneHome`).
 - Dò luật và hiến pháp của repo: quy cách tên, ranh giới ghi, đường đổi cấu trúc.
-- Đề xuất kèm lý do và nơi dùng; được duyệt mới tạo. Đổi bảng đang có nơi dùng ⇒ liệt kê nơi dùng trước (`Rule_Core_80_SharedChangeImpact`).
+- Đề xuất kèm lý do và nơi dùng; được duyệt mới tạo. Đổi bảng đang có nơi dùng ⇒ liệt kê nơi dùng trước (`Rule_Keys_80_SharedChangeImpact`).
 
 ## 2. Nguyên tắc mô hình chiều
 

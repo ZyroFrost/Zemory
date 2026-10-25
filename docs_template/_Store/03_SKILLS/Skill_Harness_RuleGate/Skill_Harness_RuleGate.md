@@ -1,7 +1,7 @@
 ---
 id: Skill_Harness_RuleGate
 name: harness-rule-gate
-version: 6
+version: 7
 type: process
 checked: [Skill_Frame_Own, Skill_Harness_Conform, Rule_Gate_01_DoneMeansRun, Rule_Gate_86_LawLayersAgree]
 description: Write a new rule, constitution frame or skill for a harness, place it in the right home, and build its machine gate with positive and negative cases. Use once adding or changing a rule, a constitution frame or a gate has been approved. Vietnamese triggers - "thêm luật", "viết luật", "dựng cổng", "chốt máy cho luật", "xếp nhà luật".
@@ -62,5 +62,6 @@ description: Write a new rule, constitution frame or skill for a harness, place 
   nguồn hay giữ trong nhật ký của app; cổng soát 11 = 11 và đỏ với 6 đột biến.
 
 ## Implements · Thi hành luật
+- `Rule_Gate_73_GateEveryRule` — classifying a law and building its machine check · phân loại luật và dựng chốt máy
 - `Rule_Gate_79_HarnessEdit` — giving a law whose breach cannot be undone its machine check · gắn chốt máy cho luật mà vi phạm không đảo được
 - `Rule_Gate_85_ProposeChecked` — proposing a new part after the store was searched · đề xuất phần mới sau khi đã dò HS
