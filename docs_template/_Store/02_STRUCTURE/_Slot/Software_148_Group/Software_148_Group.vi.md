@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 # Software_148_Group group — nhóm của một chương trình
@@ -41,4 +41,5 @@ Mọi chương trình nằm trong đúng một nhóm; mỗi chương trình là 
 ## Phép kiểm
 
 `zemory conform --layout <gốc dữ liệu>` báo đỏ (`unknown-value`) mọi thư mục trong `Software\` ngoài mười lăm nhóm, và
-(`program-incomplete`) mọi thư mục chương trình trong một nhóm (trừ `Drivers` · `Fonts`) thiếu `Setup\`, `App\` hoặc `Data\`.
+(`program-stray`) mọi thư mục chương trình trong một nhóm (trừ `Drivers` · `Fonts`) chứa thứ gì ngoài `Setup\`, `App\`, `Data\` và
+`_README.md`.

@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 7
+version: 8
 scope: disk
 ---
 # Struc_Disk_Data
@@ -80,7 +80,7 @@ Ask the questions in this order; the item goes to the first one that is true.
 | 0 | not sorted yet: gathered from anywhere, waiting to be sorted | `Downloads\` (Downloads_168) |
 | 1 | made by a recovery tool | `Recovery\` (Recovery_153) |
 | 2 | a copy whose original still exists elsewhere | `Backup\` (Backup_165) |
-| 3 | a project or an old version no longer used, kept as the only copy (finished learning goes to step 10, not here) | `Archive\` (Archive_166) |
+| 3 | the owner has confirmed the item is almost never used any more, and this is the only copy (packed to save space is not this step; finished learning goes to step 10) | `Archive\` (Archive_166) |
 | 4 | an AI model file | `_Models\` (Models_167) |
 | 5 | settings or keys a PROGRAM or an AGENT reads by itself | `_ConfigVault\<tool>\` (ConfigVault_151) |
 | 6 | a program — installer, installed copy, its own data — games, launchers and game tools included, and a program's output buffer | `Software\` (Software_147) |
@@ -174,8 +174,8 @@ D:\                                        H:\
 └── Workspace\ …        (real on D:)
 ```
 
-Each split folder carries a `_README.md` on both drives (law 3); the check reads it as the sign of a split program and does not
-ask `H:\…\WSL\` for its `Setup\` and `App\`. Usual drive roles: the main data drive holds the whole tree · a second data drive
+Each split folder carries a `_README.md` on both drives (law 3); the check takes it as the one file a split folder may hold.
+Usual drive roles: the main data drive holds the whole tree · a second data drive
 holds blocks moved off it (large media, archive) · a fast SSD holds what needs speed (games, models, virtual disks) and is backed
 up elsewhere · the system drive and cloud drives are not part of the tree.
 
@@ -202,6 +202,11 @@ Whoever adds a slot, changes a slot or builds a new tree does these steps, in or
 
 ## Rules
 
+- A folder of this frame exists only when it holds something. The tree is a dictionary of names to look up, not a list of
+  folders to create: a folder is made at the moment the first item that belongs there arrives, and a folder left empty is
+  removed. This holds at every level — the drive, `Workspace\`, each organisation, each program folder — and inside a repo
+  (`Root_136_Principles`). An empty folder makes the owner open it to find nothing; a missing folder says plainly that the
+  frame has no such item. The check never asks for a missing folder; it reports only items in the wrong place.
 - The data root holds no loose file. What Windows puts there by itself is left alone: `System Volume Information`,
   `$RECYCLE.BIN`, `pagefile.sys`, `swapfile.sys`, `hiberfil.sys`, `DumpStack.log`, `DumpStack.log.tmp`.
 - `_` at the root marks only the two shared stores.
@@ -212,6 +217,6 @@ Whoever adds a slot, changes a slot or builds a new tree does these steps, in or
 
 `zemory conform --layout <data root>` reds: a loose file at the root (`loose-file`) · a top-level folder with no slot
 (`unknown-folder`) · a repo outside `Workspace\` (`repo-outside-workspace`) · a group in `Software\` outside Software_148 or a part
-in `Game\` outside Game_164 (`unknown-value`) · a program without `Setup\`, `App\` or `Data\` (`program-incomplete`) · a study
+in `Game\` outside Game_164 (`unknown-value`) · an item in a program folder outside `Setup\`, `App\`, `Data\` (`program-stray`) · a study
 project with no matching `Study\` folder (`study-unmatched`). It goes on into `Workspace\` and each organisation. Law 1's question
 chain and the five laws of a split tree are judged by the owner where no check exists.

@@ -1,7 +1,7 @@
 ---
 id: Slot_144
 name: company
-version: 4
+version: 5
 path: Company/<Org>/
 scope: layout
 ---
@@ -13,8 +13,10 @@ scope: layout
 the clients of freelance work. Each organisation has EXACTLY ONE folder `Workspace\Company\<Org>\`; all its work sits inside, in
 the frame `Struc_Region_Company` — its repos by role, and its non-repo work folders (designs, drawings, old projects).
 
-Freelance work has its own organisation folder, `Workspace\Company\Freelance\`, split inside by client (the layout inside it is
-left to the owner for now).
+Freelance work has its own organisation folder, `Workspace\Company\Freelance\`. Freelance is work made FOR a person or a client
+outside any employer, paid or not: a report made for a friend is freelance. One folder per recipient, `Freelance\<Recipient>\`,
+holding the work as it is — a repo, or plain files (the brief, sample images, the request, the final report). The layout inside a
+recipient's folder is left to the owner.
 
 ## Example
 
@@ -25,7 +27,8 @@ Workspace\Company\
 │   ├── _DB_Warehouse\     the data warehouse repo
 │   └── Designs\           a non-repo work folder
 ├── Globex\                a past employer — its own tree, never mixed with Acme
-└── Freelance\             work for clients outside any employer
+└── Freelance\             work for people outside any employer, paid or not
+    └── <Recipient>\       one folder per person or client: a repo, or plain files
 ```
 
 ## Rules

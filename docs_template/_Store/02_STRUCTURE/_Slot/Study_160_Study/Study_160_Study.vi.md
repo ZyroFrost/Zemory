@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 # Study_160_Study study — tài liệu đang học
@@ -22,6 +22,8 @@ giữ để tra thì dời sang `Library\` (bước 10, Library_163).
 - Code chạy được không nằm ở đây (luật 2, đặt theo bản chất): code của chủ máy cho một môn ⇒
   `Workspace\Personal\StudyProjects\School\<Trường>\<Môn>\<repo>\` hoặc `…\StudyProjects\Self\<Mảng>\<repo>\` — đúng đường dẫn như ở
   đây (Personal_145). Code của người khác cho một môn ⇒ `Workspace\External\<repo>\`; thư mục này trỏ qua.
+- Môn không giữ học liệu nào thì KHÔNG có thư mục ở đây; dự án học của nó ghi tên khoá học trong một `_README.md` thay vào đó
+  (Personal_145). Không bao giờ tạo thư mục rỗng ở đây để khớp một dự án học.
 - Chương trình dùng để học nằm ở `Software\`; hồ sơ đồ án (đề, báo cáo, điểm) ở lại đây.
 - Học xong, giữ để tra ⇒ dời cả thư mục sang `Library\<Mảng>\`. Học xong, không còn gì đáng giữ ⇒ xoá.
 - Không có file lẻ ở cấp `Study\`, `School\` hay `Self\`.
@@ -37,4 +39,4 @@ Không vào git. Ghi chép của chủ máy là bản gốc: sao lưu.
 ## Phép kiểm
 
 `zemory conform --layout <gốc dữ liệu>` nhận `Study\`, và báo đỏ (`study-unmatched`) dự án học dưới
-`Workspace\Personal\StudyProjects\` không có thư mục tương ứng ở đây.
+`Workspace\Personal\StudyProjects\` không có thư mục tương ứng ở đây mà cũng không có `_README.md` của riêng nó.

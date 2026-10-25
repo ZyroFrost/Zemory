@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 # Software_147_Software software — mọi chương trình của máy
@@ -13,7 +13,7 @@ mọi chương trình bằng cách đi qua cây này.
 ```
 Software\
 └── <Nhóm>\                        một trong mười lăm nhóm của Software_148 (AI · Dev · Game · Office …)
-    └── [<Hãng>\]<Ứng dụng>\       một chương trình, LUÔN đủ Setup\ · App\ · Data\ (Software_149)
+    └── [<Hãng>\]<Ứng dụng>\       một chương trình: chỉ Setup\ · App\ · Data\, mỗi cái khi có thứ để chứa (Software_149)
 ```
 
 Ví dụ thật: `D:\Software\Dev\Microsoft\VSCode\{Setup, App, Data}` · `D:\Software\Game\Steam\{Setup, App, Data}` (thư viện game là
@@ -22,7 +22,7 @@ Ví dụ thật: `D:\Software\Dev\Microsoft\VSCode\{Setup, App, Data}` · `D:\So
 ## Luật
 
 - Mọi chương trình có bộ cài cho chọn chỗ đều cài vào `Software\<Nhóm>\[<Hãng>\]<Ứng dụng>\App\`.
-- Chương trình bị ép cài vào ổ hệ thống vẫn có thư mục ở đây, đủ ba phần (`Software_149_Program`, ngoại lệ 1).
+- Chương trình bị ép cài vào ổ hệ thống vẫn có thư mục ở đây, bộ cài nằm trong `Setup\` (`Software_149_Program`, ngoại lệ 1).
 - Cấp `Software\` chỉ có các nhóm của `Software_148_Group`: không chương trình nằm thẳng ở đây, không file lẻ, không repo, không giấy
   tờ.
 - Chương trình tìm thấy ở chỗ khác (trong `Documents\`, `Study\`, `Game\`) dời về đây (luật 2 của `Struc_Disk_Data`).
@@ -33,5 +33,5 @@ Không vào git, không đồng bộ: bản cài là của từng máy, bộ cà
 
 ## Phép kiểm
 
-`zemory conform --layout <gốc dữ liệu>`: nhóm ngoài Software_148 (`unknown-value`) · chương trình thiếu một trong ba phần
-(`program-incomplete`) · repo nằm trong `Software\` (`repo-outside-workspace`).
+`zemory conform --layout <gốc dữ liệu>`: nhóm ngoài Software_148 (`unknown-value`) · thứ nằm trong thư mục chương trình mà ngoài
+ba phần (`program-stray`) · repo nằm trong `Software\` (`repo-outside-workspace`).

@@ -1,7 +1,7 @@
 ---
 id: Slot_148
 name: group
-version: 3
+version: 4
 path: Software/<Nhóm>/
 values: [AI, 3D, CAD, Image_2D, Video, Screen_Record, Audio, Office, Dev, Network, System, Utility, Game, Drivers, Fonts]
 scope: layout
@@ -45,4 +45,5 @@ by group. Every program is in exactly one group; each program is a folder shaped
 ## Check
 
 `zemory conform --layout <data root>` reds (`unknown-value`) any folder in `Software\` outside the fifteen groups, and
-(`program-incomplete`) any program folder in a group (except `Drivers` · `Fonts`) without `Setup\`, `App\` or `Data\`.
+(`program-stray`) any program folder in a group (except `Drivers` · `Fonts`) holding anything besides `Setup\`, `App\`,
+`Data\` and `_README.md`.

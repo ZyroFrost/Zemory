@@ -150,7 +150,7 @@
 - `02-28` **Chuỗi UI · CLI: tiếng Anh hoặc i18n đủ hai bộ từ điển (song ngữ, đổi qua nút setting), 0 chuỗi
   hardcode** — mọi chuỗi người dùng thấy đi qua i18n. Thuật ngữ kỹ thuật, chuyên ngành giữ nguyên, không dịch
   (Recall · Hybrid · FTS5 · vector · embed · token). Cổng chất lượng i18n: `03_STRUCTURE §9.D`. <!-- gate: test:i18n-ratchet -->
-- `02-30` **Định danh và tên file: ASCII tiếng Anh; trong mã chỉ chú thích được viết tiếng Việt.** Phủ: biến ·
+- `02-30` **Định danh và tên file: ASCII tiếng Anh** (comment cũng tiếng Anh: `02-29`). Phủ: biến ·
   hằng · hàm · lớp · kiểu · tham số · khoá config/JSON · tên test · tên file · tên thư mục · tên nhánh git. Cấm cả
   dạng có dấu lẫn Việt mất dấu ghép lại. Miễn trừ: ba thứ ở `02-29` (dữ liệu, không phải định danh). Máy soi:
   `node .claude/skills/audit/scripts/lang-scan.mjs .` <!-- gate: guard -->

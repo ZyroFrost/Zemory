@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Company_144_Company company — công việc của một tổ chức
@@ -10,8 +10,10 @@ lang: vi
 của việc freelance. Mỗi tổ chức có ĐÚNG MỘT thư mục `Workspace\Company\<Tổ chức>\`; mọi việc của nó nằm bên trong, theo khung
 `Struc_Region_Company` — repo theo vai, và thư mục công việc không phải repo (thiết kế, bản vẽ, dự án cũ).
 
-Việc freelance có thư mục tổ chức riêng, `Workspace\Company\Freelance\`, bên trong chia theo khách (cách chia bên trong để chủ máy
-tự quyết trong lúc này).
+Việc freelance có thư mục tổ chức riêng, `Workspace\Company\Freelance\`. Freelance là việc làm CHO một người hay một khách ngoài
+mọi công ty, có lấy tiền hay không: báo cáo làm hộ một người bạn là freelance. Mỗi người nhận một thư mục, `Freelance\<Người nhận>\`,
+chứa việc đúng như nó là — một repo, hoặc file rời (đề bài, ảnh mẫu, file yêu cầu, báo cáo cuối). Cách chia bên trong thư mục của
+một người nhận để chủ máy tự quyết.
 
 ## Ví dụ
 
@@ -22,7 +24,8 @@ Workspace\Company\
 │   ├── _DB_Warehouse\     repo DW
 │   └── Designs\           thư mục công việc không phải repo
 ├── Globex\                một công ty cũ — cây riêng, không trộn với Acme
-└── Freelance\             việc cho khách ngoài mọi công ty
+└── Freelance\             việc cho người ngoài mọi công ty, có lấy tiền hay không
+    └── <Người nhận>\       mỗi người hay mỗi khách một thư mục: một repo, hoặc file rời
 ```
 
 ## Luật

@@ -30,7 +30,7 @@ export interface LayoutSlot {
 
 export interface LayoutFinding {
   level: "blocking" | "advice";
-  check: "loose-file" | "unknown-folder" | "repo-outside-workspace" | "unknown-value" | "program-incomplete" | "repo-under-company" | "assembled-external" | "study-unmatched";
+  check: "loose-file" | "unknown-folder" | "repo-outside-workspace" | "unknown-value" | "program-stray" | "repo-under-company" | "assembled-external" | "study-unmatched";
   path: string;
   fix: string;
 }
@@ -112,11 +112,18 @@ function reposUnder(dir: string, depth: number): string[] {
   return out;
 }
 
-/** The three parts every program folder holds (Software_149): its installer, its installed copy, its own data. */
+/**
+ * The only parts a program folder may hold (Software_149): its installer, its installed copy, its own data. A part exists
+ * only when it has something to hold, so a missing part is never a finding - only an item outside these parts is.
+ */
 const PROGRAM_PARTS = ["Setup", "App", "Data"] as const;
+const isProgramPart = (name: string): boolean => (PROGRAM_PARTS as readonly string[]).includes(name);
 /** Groups whose children are packs, not programs: a driver or a font has no installed copy. */
 const PACK_GROUPS = /^(Drivers|Fonts)$/;
-/** A folder split over storage places carries this file on each (Struc_Disk_Data, law 3); its other parts live elsewhere. */
+/**
+ * The one file a folder of the frame may hold to explain itself: a split folder names what lives where (Struc_Disk_Data,
+ * law 3); a study subject with no learning material kept names its course (Personal_145).
+ */
 const SPLIT_MARK = "_README.md";
 /** Top-level folders whose children are a fixed list (Game_164 · Documents_152): a child outside it is `unknown-value`. */
 const FIXED_CHILDREN = /^(Game|Documents)$/;
@@ -124,33 +131,36 @@ const FIXED_CHILDREN = /^(Game|Documents)$/;
 const ROLE_PREFIX = /^(_|Dept_)/;
 
 /**
- * Struc_Disk_Data step 1 of Personal_145: a study project mirrors a folder of `Study\`. Every
- * `Workspace\Personal\StudyProjects\School\<School>\<Subject>\` and `…\Self\<Field>\` needs the same path under `Study\`.
+ * Step 1 of Personal_145: a study project belongs to a subject the owner studies or studied. Every
+ * `Workspace\Personal\StudyProjects\School\<School>\<Subject>\` and `…\Self\<Field>\` either mirrors a folder of `Study\`,
+ * or - when no learning material is kept, so no `Study\` folder exists - carries `_README.md` naming the course.
  */
 function unmatchedStudy(root: string): string[] {
   const sp = join(root, "Workspace", "Personal", "StudyProjects");
   if (!existsSync(sp)) return [];
   const out: string[] = [];
   const dirs = (p: string): string[] => entries(p).filter((x) => x.dir).map((x) => x.name);
+  const matched = (rel: string[]): boolean => existsSync(join(root, "Study", ...rel)) || existsSync(join(sp, ...rel, SPLIT_MARK));
   for (const school of dirs(join(sp, "School"))) {
     for (const subject of dirs(join(sp, "School", school))) {
-      if (!existsSync(join(root, "Study", "School", school, subject))) out.push(join(sp, "School", school, subject));
+      if (!matched(["School", school, subject])) out.push(join(sp, "School", school, subject));
     }
   }
-  for (const field of dirs(join(sp, "Self"))) if (!existsSync(join(root, "Study", "Self", field))) out.push(join(sp, "Self", field));
+  for (const field of dirs(join(sp, "Self"))) if (!matched(["Self", field])) out.push(join(sp, "Self", field));
   return out;
 }
 
 /**
- * The program folders of one `Software/<group>/`: a child that already has a program part, or no sub-folder at all, is a
- * program; any other child is a vendor level (`[<vendor>/]`) and its children are the programs.
+ * The program folders of one `Software/<group>/`: a child that already has a program part, holds a file, or has no
+ * sub-folder at all, is a program; any other child is a vendor level (`[<vendor>/]`) and its children are the programs.
  */
 function programsIn(groupDir: string): string[] {
   const out: string[] = [];
   for (const c of entries(groupDir).filter((x) => x.dir)) {
     const p = join(groupDir, c.name);
-    const subs = entries(p).filter((x) => x.dir);
-    const isProgram = subs.length === 0 || subs.some((s) => (PROGRAM_PARTS as readonly string[]).includes(s.name));
+    const own = entries(p);
+    const subs = own.filter((x) => x.dir);
+    const isProgram = subs.length === 0 || own.some((x) => !x.dir) || subs.some((s) => isProgramPart(s.name));
     if (isProgram) out.push(p);
     else out.push(...subs.map((s) => join(p, s.name)));
   }
@@ -217,7 +227,7 @@ export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) 
       if (e.name === "Workspace") {
         sub(abs, "workspace");
         for (const p of unmatchedStudy(root)) {
-          add({ level: "blocking", check: "study-unmatched", path: p, fix: "a study project mirrors a folder of Study/ (Personal_145) - no such Study folder: it is not a study project, move it to Games/ or Apps/" });
+          add({ level: "blocking", check: "study-unmatched", path: p, fix: "a study project mirrors a folder of Study/, or carries _README.md naming its course when no material is kept (Personal_145) - neither here: it is not a study project, move it to Games/ or Apps/" });
         }
       } else {
         if (FIXED_CHILDREN.test(e.name)) {
@@ -233,10 +243,9 @@ export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) 
             }
             if (PACK_GROUPS.test(a.name)) continue;
             for (const prog of programsIn(join(abs, a.name))) {
-              if (existsSync(join(prog, SPLIT_MARK))) continue;
-              const missing = PROGRAM_PARTS.filter((part) => !existsSync(join(prog, part)));
-              if (missing.length) {
-                add({ level: "blocking", check: "program-incomplete", path: prog, fix: `every program holds Setup/ (installer) · App/ (installed copy) · Data/ (its own data) - missing ${missing.join(", ")}` });
+              const stray = entries(prog).filter((x) => (x.dir ? !isProgramPart(x.name) : x.name !== SPLIT_MARK)).map((x) => x.name);
+              if (stray.length) {
+                add({ level: "blocking", check: "program-stray", path: prog, fix: `a program folder holds only Setup/ (installer) · App/ (installed copy) · Data/ (its own data), each only when it has something to hold - move ${stray.join(", ")} into its part` });
               }
             }
           }

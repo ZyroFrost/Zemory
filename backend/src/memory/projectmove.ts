@@ -16,12 +16,13 @@
 //
 // Every step looks at the current state first, so a run stopped half way can simply be run again.
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { homedir, hostname } from "node:os";
-import { dirname, join, parse, resolve } from "node:path";
+import { dirname, join, posix, resolve, win32 } from "node:path";
 import { encodeProjectDir } from "./adapters/claudemem.js";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { renameProject } from "../projects.js";
+import { toHostPath, toLocalPath } from "../util/hostpath.js";
 
 export interface MoveStep {
   what: string;
@@ -62,9 +63,56 @@ const low = (p: string): string => p.replace(/\//g, "\\").replace(/\\+$/, "").to
 const under = (p: string | null, root: string): boolean => !!p && (low(p) === low(root) || low(p).startsWith(low(root) + "\\"));
 const swapPrefix = (p: string, from: string, to: string): string => to + p.replace(/\//g, "\\").slice(from.replace(/\\+$/, "").length);
 
+const WIN_ABS = /^([A-Za-z]:[\\/]|\\\\|\/\/)/;
+/**
+ * A path the way the HOST writes it - the form the store keys rows by. A Windows path (drive or UNC) is normalised as a
+ * Windows path wherever zemory runs (in the Docker container node parses POSIX, and `resolve("D:\\x")` there glued the
+ * cwd in front); a POSIX absolute path stays POSIX (a session recorded inside WSL); a relative path is taken from here.
+ */
+export function hostForm(p: string): string {
+  if (WIN_ABS.test(p)) return win32.normalize(p.replace(/\//g, "\\")).replace(/(?<!^\\)\\+$/, "").replace(/^([A-Za-z]:)$/, "$1\\");
+  if (p.startsWith("/")) return posix.normalize(p).replace(/(.)\/+$/, "$1");
+  return toHostPath(resolve(p)).replace(/[\\/]+$/, "");
+}
+/** `\\wsl.localhost\<distro>\home\u\repo` (or `\\wsl$\…`) ⇒ `/home/u/repo`: the cwd a session run INSIDE the distro recorded. */
+export function wslLinuxPath(p: string): string | null {
+  const m = /^\\\\wsl(?:\.localhost|\$)\\[^\\]+(\\.*)?$/i.exec(p);
+  return m ? (m[1] ?? "\\").replace(/\\/g, "/") : null;
+}
+/** The root a host path sits on: a drive, a UNC share (`\\server\share`), or `/`. */
+const hostRoot = (p: string): string => (WIN_ABS.test(p) ? win32.parse(p).root : "/").replace(/\\+$/, "").toLowerCase();
+/** Files and bytes under a folder: the measure a copy is verified by. */
+function tally(dir: string): { files: number; bytes: number } {
+  const out = { files: 0, bytes: 0 };
+  const walk = (d: string): void => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.isFile()) {
+        out.files++;
+        out.bytes += statSync(p).size;
+      }
+    }
+  };
+  walk(dir);
+  return out;
+}
+
+/** Copy a folder to a place that does not exist yet, then measure both: same files and same bytes, or not ok. */
+export function copyFolderVerified(src: string, dst: string): { ok: boolean; source: { files: number; bytes: number }; copy: { files: number; bytes: number } } {
+  cpSync(src, dst, { recursive: true, errorOnExist: true, force: false, preserveTimestamps: true });
+  const source = tally(src);
+  const copy = tally(dst);
+  return { ok: source.files === copy.files && source.bytes === copy.bytes, source, copy };
+}
+
 export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}): MoveReport {
-  const from = resolve(fromIn).replace(/\\+$/, "");
-  const to = resolve(toIn).replace(/\\+$/, "");
+  const from = hostForm(fromIn);
+  const to = hostForm(toIn);
+  // a repo inside a WSL distro was recorded by its Linux path; the store rows under it move too
+  const fromAlias = wslLinuxPath(from);
+  const fromLocal = toLocalPath(from);
+  const toLocal = toLocalPath(to);
   const apply = !!opts.apply;
   const host = opts.host ?? hostname();
   const claudeHome = opts.claudeHome ?? join(homedir(), ".claude");
@@ -73,13 +121,15 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
   const report: MoveReport = { from, to, applied: false, blockers: [], steps: [] };
 
   // ── preconditions ────────────────────────────────────────────────────────────────────────────────────────────────
-  const fromThere = existsSync(from);
-  const toThere = existsSync(to);
+  const fromThere = existsSync(fromLocal);
+  const toThere = existsSync(toLocal);
   if (low(from) === low(to)) report.blockers.push("source and target are the same folder");
   if (under(to, from)) report.blockers.push("target is inside the source");
   if (!fromThere && !toThere) report.blockers.push(`neither ${from} nor ${to} exists`);
   if (fromThere && toThere) report.blockers.push(`target already exists: ${to}`);
-  if (parse(from).root.toLowerCase() !== parse(to).root.toLowerCase()) report.blockers.push("source and target are on different drives — a move would copy, not rename");
+  // Another drive (or a WSL distro): a rename cannot cross it, so the folder is copied and the copy verified; the source
+  // stays where it is for the owner to delete once checked (nothing is deleted here, constitution art. 3).
+  const copy = hostRoot(from) !== hostRoot(to);
   // The REAL folder name, as Claude Code spelled it (the cwd it saw: "d--…" from a lower-case drive). Note ids are built
   // from that name, so the new folder keeps the same spelling style.
   const projectsDir = join(claudeHome, "projects");
@@ -93,10 +143,18 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
   if (report.blockers.length) return report;
 
   // ── 1. the folder itself (first: a locked folder fails here, before anything else changes) ─────────────────────────
-  report.steps.push({ what: "folder", n: fromThere ? 1 : 0, note: fromThere ? `${from} → ${to}` : "already moved" });
+  const folderNote = !fromThere ? "already moved" : copy ? `${from} → ${to} (another drive: copied and verified, the source is kept)` : `${from} → ${to}`;
+  report.steps.push({ what: "folder", n: fromThere ? 1 : 0, note: folderNote });
   if (apply && fromThere) {
-    mkdirSync(dirname(to), { recursive: true });
-    renameSync(from, to);
+    mkdirSync(dirname(toLocal), { recursive: true });
+    if (copy) {
+      const c = copyFolderVerified(fromLocal, toLocal);
+      if (!c.ok) {
+        report.blockers.push(`the copy does not match its source (${c.source.files} files / ${c.source.bytes} B vs ${c.copy.files} / ${c.copy.bytes}) — nothing else was changed; check ${to} and run again`);
+        return report;
+      }
+      report.steps[report.steps.length - 1].note += ` · ${c.source.files} files, ${c.source.bytes} B · delete ${from} by hand once checked`;
+    } else renameSync(fromLocal, toLocal);
   }
 
   // ── 2. Claude Code's session folder ──────────────────────────────────────────────────────────────────────────────
@@ -107,19 +165,25 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
   const db = openMemory(opts.dbPath ?? currentMemoryDb());
   try {
     const eq = "lower(replace(%c, '/', '\\'))";
-    const isRoot = (c: string): string => `${eq.replace("%c", c)} = ?`;
+    // every key the folder is stored under: its host path, and for a WSL repo the Linux path its sessions recorded
+    const roots = [from, ...(fromAlias ? [fromAlias] : [])];
+    const keys = roots.map(low);
+    const isRoot = (c: string): string => `${eq.replace("%c", c)} IN (${keys.map(() => "?").join(", ")})`;
     const isUnder = (c: string): string => `(${eq.replace("%c", c)} = ? OR substr(${eq.replace("%c", c)}, 1, ?) = ?)`;
     const L = low(from);
     const underArgs = [L, L.length + 1, L + "\\"];
     const count = (sql: string, ...a: unknown[]): number => (db.prepare(sql).get(...a) as { n: number }).n;
 
-    const sessions = count(`SELECT COUNT(*) AS n FROM sessions WHERE ${isRoot("project_root")} AND host = ?`, L, host);
-    const docs = count(`SELECT COUNT(*) AS n FROM doc WHERE ${isRoot("project_root")}`, L);
-    const changes = count(`SELECT COUNT(*) AS n FROM changelog WHERE ${isRoot("project_root")}`, L);
-    const artifacts = count(`SELECT COUNT(*) AS n FROM artifact WHERE ${isRoot("project_root")}`, L);
-    const fitness = count(`SELECT COUNT(*) AS n FROM graph_fitness WHERE ${isRoot("project")}`, L);
+    const sessions = count(`SELECT COUNT(*) AS n FROM sessions WHERE ${isRoot("project_root")} AND host = ?`, ...keys, host);
+    const docs = count(`SELECT COUNT(*) AS n FROM doc WHERE ${isRoot("project_root")}`, ...keys);
+    const changes = count(`SELECT COUNT(*) AS n FROM changelog WHERE ${isRoot("project_root")}`, ...keys);
+    const artifacts = count(`SELECT COUNT(*) AS n FROM artifact WHERE ${isRoot("project_root")}`, ...keys);
+    const fitness = count(`SELECT COUNT(*) AS n FROM graph_fitness WHERE ${isRoot("project")}`, ...keys);
     const attach = count(`SELECT COUNT(*) AS n FROM attachment WHERE ${isUnder("src_path")}`, ...underArgs);
-    const S = low(oldSlug);
+    // ingest keys are written the way the host names the file (util/hostpath), not as the container opens it
+    const oldSlugKey = toHostPath(oldSlug);
+    const newSlugKey = toHostPath(newSlug);
+    const S = low(oldSlugKey);
     const states = count(`SELECT COUNT(*) AS n FROM ingest_state WHERE ${isUnder("file_path")}`, S, S.length + 1, S + "\\");
     const notePrefix = `claude-memory-${host}-${oldEnc}-`;
     const notes = db
@@ -139,17 +203,17 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
 
     if (apply) {
       db.transaction(() => {
-        db.prepare(`UPDATE sessions SET project_root = ?, project_pinned = 1 WHERE ${isRoot("project_root")} AND host = ?`).run(to, L, host);
+        db.prepare(`UPDATE sessions SET project_root = ?, project_pinned = 1 WHERE ${isRoot("project_root")} AND host = ?`).run(to, ...keys, host);
         // Derived indexes: a row already present under the target wins (it is the fresher index of the same doc).
-        db.prepare(`UPDATE OR IGNORE doc SET project_root = ? WHERE ${isRoot("project_root")}`).run(to, L);
-        db.prepare(`UPDATE changelog SET project_root = ? WHERE ${isRoot("project_root")}`).run(to, L);
-        db.prepare(`UPDATE artifact SET project_root = ? WHERE ${isRoot("project_root")}`).run(to, L);
-        db.prepare(`UPDATE graph_fitness SET project = ? WHERE ${isRoot("project")}`).run(to, L);
+        db.prepare(`UPDATE OR IGNORE doc SET project_root = ? WHERE ${isRoot("project_root")}`).run(to, ...keys);
+        db.prepare(`UPDATE changelog SET project_root = ? WHERE ${isRoot("project_root")}`).run(to, ...keys);
+        db.prepare(`UPDATE artifact SET project_root = ? WHERE ${isRoot("project_root")}`).run(to, ...keys);
+        db.prepare(`UPDATE graph_fitness SET project = ? WHERE ${isRoot("project")}`).run(to, ...keys);
         for (const r of db.prepare(`SELECT id, src_path FROM attachment WHERE ${isUnder("src_path")}`).all(...underArgs) as { id: number; src_path: string }[]) {
           db.prepare("UPDATE attachment SET src_path = ? WHERE id = ?").run(swapPrefix(r.src_path, from, to), r.id);
         }
         const st = db.prepare(`SELECT file_path FROM ingest_state WHERE ${isUnder("file_path")}`).all(S, S.length + 1, S + "\\") as { file_path: string }[];
-        for (const r of st) db.prepare("UPDATE OR IGNORE ingest_state SET file_path = ? WHERE file_path = ?").run(swapPrefix(r.file_path, oldSlug, newSlug), r.file_path);
+        for (const r of st) db.prepare("UPDATE OR IGNORE ingest_state SET file_path = ? WHERE file_path = ?").run(swapPrefix(r.file_path, oldSlugKey, newSlugKey), r.file_path);
         for (const { id } of notes) {
           const next = `claude-memory-${host}-${newEnc}-` + id.slice(notePrefix.length);
           if (count("SELECT COUNT(*) AS n FROM sessions WHERE id = ?", next)) continue; // already ingested under the new id
@@ -157,9 +221,11 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
           for (const t of ["messages", "session_digest", "attachment", "artifact"]) db.prepare(`UPDATE ${t} SET session_id = ? WHERE session_id = ?`).run(next, id);
         }
         // A digest's meta names the project it was built for.
-        const jFrom = JSON.stringify(from).slice(1, -1);
         const jTo = JSON.stringify(to).slice(1, -1);
-        db.prepare("UPDATE session_digest SET meta = replace(meta, ?, ?) WHERE instr(meta, ?) > 0").run(`"project_root":"${jFrom}"`, `"project_root":"${jTo}"`, `"project_root":"${jFrom}"`);
+        for (const r of roots) {
+          const jFrom = JSON.stringify(r).slice(1, -1);
+          db.prepare("UPDATE session_digest SET meta = replace(meta, ?, ?) WHERE instr(meta, ?) > 0").run(`"project_root":"${jFrom}"`, `"project_root":"${jTo}"`, `"project_root":"${jFrom}"`);
+        }
       })();
     }
   } finally {
@@ -173,11 +239,11 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
   try {
     const raw = readFileSync(statePath, "utf8");
     const j = JSON.parse(raw) as { projects?: Record<string, unknown> };
-    const k = resolve(from).toLowerCase();
+    const k = from.toLowerCase();
     if (j.projects && j.projects[k] !== undefined) {
       stateN = 1;
       if (apply) {
-        j.projects[resolve(to).toLowerCase()] = j.projects[k];
+        j.projects[to.toLowerCase()] = j.projects[k];
         delete j.projects[k];
         writeFileSync(statePath, JSON.stringify(j, null, 2) + "\n");
       }
