@@ -1,71 +1,71 @@
 ---
 id: Skill_Harness_Reshape
 name: harness-reshape
-version: 4
+version: 5
 type: process
 description: Move a repo onto a standard set from the store - measure what the repo has of its own, bring it up to the store first, assemble in two phases, remove the copies that hold nothing of their own, and accept with measurements and a real run. Use whenever a repo moves to the folder harness, changes set, or takes a large store update. Vietnamese triggers - "nắn repo", "áp chuẩn", "áp bộ", "chuyển sang bộ", "reshape", "đưa repo về chuẩn".
 ---
 
-# harness-reshape — nắn một repo lên bộ chuẩn
+# harness-reshape — bringing a repo onto a standard set
 
-> Khác `Skill_Harness_Reconcile` (file lạc chỗ trong một thư mục) và `Skill_Harness_Adopt` (nhận repo của bên khác, không
-> nắn). Skill này đưa một repo đang dùng harness lên đúng một bộ của kho, không mất gì, không để lại bản thứ hai.
+> Not `Skill_Harness_Reconcile` (files in the wrong place inside a folder) nor `Skill_Harness_Adopt` (taking in someone else's repo, without
+> reshaping). This skill brings a repo that uses the harness onto exactly one set of HS, losing nothing, leaving no second copy.
 
-## 0. Trước khi chạm repo
+## 0. Before touching the repo
 
-- Repo đang có phiên agent mở ⇒ người dùng tắt phiên đó trước. Ghi vào repo đang có phiên khác làm việc là xung đột thật.
-- Xác định bộ đích (`<NN>_<host>_<cấu trúc>_<tầng>`): cấu trúc theo loại repo (App · NonApp · Dept…), không theo thói quen.
-- Repo có thay đổi chưa commit ⇒ ghi lại danh sách; đợt nắn không đụng các file đó.
+- The repo has an agent session open ⇒ the owner closes that session first. Writing into a repo another session is working in is a real conflict.
+- Settle the target set (`<NN>_<host>_<structure>_<tier>`): the structure by the kind of repo (App · NonApp · Dept…), not by habit.
+- The repo has uncommitted changes ⇒ write the list down; the reshape does not touch those files.
 
-## 1. Đo phần riêng của repo — theo DÒNG, so với mọi phiên bản nguồn
+## 1. Measure the repo's own part — by LINE, against every version of the source
 
-- Với mỗi skill, tool, luật repo đang giữ mà kho cũng có: liệt kê dòng chỉ có ở repo. So với **mọi phiên bản trong lịch sử**
-  của nguồn đã chép xuống repo (bản chép cũ thường ghép từ nhiều trạng thái, không trùng phiên bản commit nào).
-- Bỏ qua khác biệt kiểu xuống dòng (CRLF) trước khi đếm.
-- Kết quả là một bảng: `phần · số dòng riêng · số dòng chỉ nguồn có`. Dòng riêng > 0 ⇒ bước 2; bằng 0 ⇒ bản đó là bản thừa.
+- For each skill, tool, law the repo keeps that HS also has: list the lines only the repo has. Compare against **every version in the history**
+  of the source that was copied into the repo (an old copy is often stitched from several states, matching no committed version).
+- Ignore line-ending differences (CRLF) before counting.
+- The result is a table: `part · own lines · lines only the source has`. Own lines > 0 ⇒ step 2; 0 ⇒ that copy is surplus.
 
-## 2. Trộn phần riêng lên kho — TRƯỚC khi áp
+## 2. Merge the own part into HS — BEFORE applying
 
-- Dòng riêng là nâng cấp ⇒ đưa vào đúng phần của kho (một bản), tăng version. Kho đã có bản tốt hơn ⇒ kho thắng.
-- Tool bị sửa ⇒ đối chiếu bản kho với bản của repo trên **chính dữ liệu thật của repo** (báo cáo, file mẫu): kết quả phải
-  giống hệt, chỉ khác ở chỗ đã chủ ý đổi. Lệch ⇒ không áp.
-- Giá trị riêng của công ty / vùng ⇒ khoá vùng (`values.json`), không vào phần kho.
+- An own line that is an upgrade ⇒ put it into the right part of HS (one copy), bump the version. HS already has a better copy ⇒ HS wins.
+- A tool that was edited ⇒ compare the HS copy with the repo's copy on **the repo's own real data** (reports, sample files): the results must
+  be identical, differing only where a change was meant. Different ⇒ do not apply.
+- A value of the company / region ⇒ a region key (`values.json`), never in an HS part.
 
-## 3. Pha 1 — ráp
+## 3. Phase 1 — assemble
 
-- Sao lưu bề mặt harness (`docs/`, `.claude/`, `AGENTS.md`, `CLAUDE.md`) và `git status` ra ngoài repo.
-- Chụp trạng thái trước: kho tính năng (luật, skill, trigger, guard), băm mọi file ngoài harness, lỗi `validate` đang có.
+- Back up the harness surface (`docs/`, `.claude/`, `AGENTS.md`, `CLAUDE.md`) and the `git status` outside the repo.
+- Record the state before: the feature table (laws, skills, triggers, guard), a hash of every file outside the harness, the `validate` errors present.
 - `zemory sync --standard [--kit <NN>] --apply`.
-- Bản chép không có dòng riêng (bước 1) ⇒ **xoá**. Có dòng riêng mà chưa trộn ⇒ dừng, quay lại bước 2.
-- Tool đã cài bởi phần kho (`installs:`) mà repo đang giữ bản chép cũ không dòng riêng ⇒ thay bằng bản kho.
+- A copy with no own lines (step 1) ⇒ **delete** it. Own lines not merged yet ⇒ stop, go back to step 2.
+- A tool installed by an HS part (`installs:`) while the repo keeps an old copy with no own lines ⇒ replace it with the HS copy.
 
-## 4. Pha 2 — nghiệm thu (đủ cả bảng, thiếu một dòng là chưa xong)
+## 4. Phase 2 — acceptance (the whole table; one row missing means not done)
 
-| Phép đo | Đạt khi |
+| Measurement | Passes when |
 |---|---|
-| Lượt `sync` thứ hai | `0 to add · 0 to update · 0 conflict` |
-| Tính năng | không mất luật, skill, trigger, cổng nào so với lúc trước |
-| File ngoài harness | chỉ đổi đúng những file đợt nắn chủ ý đổi (tool thay, link đổi đích); không file nào biến mất |
-| Guard | bộ thử chặn/cho qua chạy đủ, đúng hết |
-| `doctor` | docs · guard · nối guard đều xanh |
-| `conform` | `harness-layout` sạch (`docs/agent` chỉ có kệ và hai sổ; archive ở `docs/archive/`; thư mục hook cũ cạnh `docs/agent/` đã gỡ) |
-| `validate` | không có lỗi mới |
-| Chạy thật | tool của repo chạy trong repo và đọc đúng giá trị (vùng, cấu hình) |
+| A second `sync` run | `0 to add · 0 to update · 0 conflict` |
+| Features | no law, skill, trigger or gate lost compared with before |
+| Files outside the harness | only the files the reshape meant to change changed (a tool replaced, a link retargeted); no file disappeared |
+| Guard | the block/pass suite runs whole, all right |
+| `doctor` | docs · guard · guard wiring all green |
+| `conform` | `harness-layout` clean (`docs/agent` holds only the shelves and the two ledgers; archive in `docs/archive/`; the old hooks folder beside `docs/agent/` removed) |
+| `validate` | no new error |
+| A real run | the repo's tools run inside the repo and read the right values (region, config) |
 
-- Mục `conform` thuộc phần việc của repo (khung hiến pháp chưa viết, tên điều riêng) ⇒ báo, không tự viết thay.
-- Không commit trong repo được nắn; người dùng hoặc phiên của repo đó commit.
+- A `conform` item that is the repo's own work (a constitution frame not written yet, the name of an own article) ⇒ report it, never write it for them.
+- No commit in the reshaped repo; the owner or that repo's session commits.
 
-## 5. Báo
+## 5. Report
 
-- Cập nhật bảng tiến độ của đợt: repo · bộ · kết quả từng phép đo · việc còn lại của repo.
-- Lỗ của harness bắt được trong lúc nắn (luật có chữ không có chốt máy, cổng báo oan, bước tool bỏ sót) ⇒ vá trong đợt, có
-  test và đột biến, rồi áp lại cho các repo đã nắn trước đó.
+- Update the round's progress table: repo · set · the result of each measurement · the work left to the repo.
+- A hole in the harness caught while reshaping (a law with text but no machine check, a gate that cries wolf, a tool step skipped) ⇒ fix it in the round, with
+  a test and a mutation, then apply it again to the repos reshaped before.
 
-## Cấm
+## Forbidden
 
-- Chạy script chép đè cũ (mirror) sau khi repo đã nắn.
-- Xoá một bản chép còn dòng riêng.
-- Áp khi phép đối chiếu tool còn lệch.
+- Running an old overwrite-copy script (mirror) after the repo was reshaped.
+- Deleting a copy that still has own lines.
+- Applying while the tool comparison still differs.
 
 ## Implements · Thi hành luật
 - `Rule_Gate_83_HarnessFromStore` — bringing a repo onto the store's harness and syncing it down · đưa repo về harness của HS và đồng bộ xuống

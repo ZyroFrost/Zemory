@@ -2,268 +2,268 @@
 id: Skill_Harness_Audit
 aka: audit
 name: harness-audit
-version: 18
+version: 19
 type: process
 description: Run a full review of the project across every dimension, verifying each finding against real files before reporting it. Use only when explicitly asked for a thorough audit, or before a major milestone such as a release or a large batch of changes. This is not a quick check. Vietnamese triggers - "audit toàn diện", "soi hết", "kiểm tra toàn bộ", "rà lại hết", "review tổng thể".
-from: _Store/03_SKILLS/Skill_Harness_Audit @v18 #ff2c5b22d375
+from: _Store/03_SKILLS/Skill_Harness_Audit @v19 #1374494f06f5
 ---
 
-# audit — soi toàn diện
+# audit — a full review
 
-> Kích hoạt: được yêu cầu **"audit toàn diện" / "soi hết"** · trước mốc lớn (release · commit gộp) ·
-> sau một đợt đổi nhiều file. Đây KHÔNG phải kiểm vặt: cụm từ đó có nghĩa là chạy **đủ mọi mặt** của
-> profile — **12 mặt** ở APP, **11 mặt** ở NON-APP — **không cắt bớt cho nhanh**.
+> Trigger: asked for **"a full audit" / "look at everything"** · before a big milestone (release · a merge commit) ·
+> after a round changing many files. This is NOT a small check: the phrase means running **every aspect** of the
+> profile — **12 aspects** for APP, **11 aspects** for NON-APP — **never cut short for speed**.
 >
-> **Vì sao bản NON-APP khác bản APP:** dự án non-app không phát triển app — không endpoint, không
-> FE↔BE, không bộ test code. Bê nguyên bản app sang là bắt một dự án BI chạy `npm run check` và soi
-> `FE ↔ BE`, tức **cổng không bao giờ nổ được** (luật 4: còn tệ hơn không có). Nhưng **bốn mặt SỐNG
-> SÓT giữ trọn** — non-app vẫn có connection string, vẫn có pipeline theo lịch, vẫn giao văn bản cho
-> người đọc.
+> **Why the NON-APP version differs from the APP one:** a non-app project develops no app — no endpoints, no
+> FE↔BE, no code test suite. Carrying the app version over makes a BI project run `npm run check` and inspect
+> `FE ↔ BE`, i.e. **gates that can never fire** (rule 4: worse than none). But **the four SURVIVAL
+> aspects are kept whole** — a non-app still has connection strings, still has scheduled pipelines, still hands text to
+> readers.
 
-**Luật 1 — gate xanh KHÔNG phải bằng chứng.** Nó chỉ chứng minh *những gì phép kiểm soi thì đúng*,
-không chứng minh nó đang soi thứ đang chạy. Ca APP: cả bộ test UI neo vào bản đã bị thay, gate 100%
-xanh trong khi bề mặt đang chạy có **0 test**. Ca kinh điển ở non-app: script chạy **exit 0** mà file
-ra **rỗng** — cổng xanh, sản phẩm hỏng. Nên luôn hỏi (ở APP là mặt ④): *phép kiểm / test này đang đọc
-FILE NÀO?*
+**Rule 1 — a green gate is NOT evidence.** It proves only *that what the check looks at is right*,
+not that it looks at what is running. The APP case: a whole UI test suite anchored to a replaced copy, the gate 100%
+green while the running surface had **0 tests**. The classic non-app case: a script runs with **exit 0** while the file
+comes out **empty** — the gate green, the product broken. So always ask (for APP it is aspect ④): *which FILE is this
+check / test reading?*
 
-**Luật 2 — VERIFY từng finding rồi mới ghi.** Đối chiếu file THẬT trước khi gọi là "lỗi". Đã có đợt
-loại 5 nghi vấn vì đo lại thì sai, và 2 đợt checker báo oan (48 rồi 13 mục). Một finding sai làm hỏng
-lòng tin vào cả bảng.
+**Rule 2 — VERIFY each finding before writing it.** Compare with the REAL file before calling it "a bug". One round
+dropped 5 suspicions because measuring again proved them wrong, and 2 rounds had the checker raise false alarms (48 then 13 items). One wrong finding ruins
+trust in the whole table.
 
-**Luật 3 — mọi con số phải ĐO.** Không suy luận, không nhớ lại. Không đo được thì ghi thẳng
-**"chưa đo"**.
+**Rule 3 — every figure must be MEASURED.** No inference, no recollection. Not measurable ⇒ write plainly
+**"not measured"**.
 
-**Luật 4 — hỏi ngược mỗi check: *"cái gì làm nó ĐỎ?"*** Trả lời không được ⇒ check đó không thể nổ,
-và một check không nổ được còn tệ hơn không có (nó phát ra lời bảo đảm trong khi chưa hề nhìn).
+**Rule 4 — ask of each check in reverse: *"what makes it go RED?"*** No answer ⇒ that check cannot fire,
+and a check that cannot fire is worse than none (it issues a guarantee without ever having looked).
 
-**Luật 5 — ĐO HAI ĐƯỜNG, khác cơ chế.** Một phép đo chưa kiểm chéo thì chưa phải sự thật
-(`Rule_Keys_11_VerifyClaims`). Bốn dạng đã trả giá: công cụ **hỏng lặng** trả rỗng (cờ sai ⇒ âm tính giả ⇒
-tưởng "sạch") · **báo oan** do so lỏng (không phân biệt hoa/thường) · **tiêu chí nghe hợp lý mà sai
-bản chất** (khoá phụ trỏ hụt ⇒ tưởng mồ côi, suýt xoá dữ liệu đang sống) · **sổ nói khác code**.
-Kiểm chéo = đổi công cụ · đổi hướng đếm · hoặc gọi bề mặt thật (kho/DB ↔ API).
+**Rule 5 — MEASURE TWO WAYS, by different mechanisms.** A measurement not cross-checked is not yet a fact
+(`Rule_Keys_11_VerifyClaims`). Four forms already paid for: a tool **broken silently** returning empty (a wrong flag ⇒ a false negative ⇒
+believed "clean") · **false alarms** from loose comparison (not telling upper/lower case apart) · **a criterion that sounds reasonable but is wrong
+in essence** (a foreign key pointing short ⇒ believed orphaned, nearly deleting live data) · **the ledger saying something other than the code**.
+Cross-checking = changing the tool · changing the counting direction · or calling the real surface (DB ↔ API).
 
-**Luật 6 — ĐỘT BIẾN HOÁ (PHÁ THỬ) trước khi tin một phép kiểm.** Đừng dừng ở câu trả lời trên giấy
-của luật 4: **phá đúng thứ nó canh** (sửa code mà test canh · đổi một số trong nguồn · xoá một dòng
-bắt buộc · đổi tên một cột) rồi chạy lại — nó phải ĐỎ. Sống sót ⇒ phép kiểm đó đang canh chỗ khác,
-hoặc một bản sao logic ở nơi khác đang gánh thay. Nhớ hoàn nguyên thứ vừa phá. Đo được: **2/4
-đột biến SỐNG SÓT** — một test chưa bao giờ chạy tới nhánh nguy hiểm, một test bị **bản sao logic ở
-nơi khác gánh thay**. Cả hai đều xanh suốt và không soi gì cả.
+**Rule 6 — MUTATE (BREAK ON PURPOSE) before trusting a check.** Do not stop at rule 4's answer on paper:
+**break exactly what it guards** (edit the code the test guards · change a figure in the source · delete a required
+line · rename a column) and run again — it must go RED. It survives ⇒ that check guards somewhere else,
+or a copy of the logic elsewhere carries the load. Remember to restore what you broke. Measured: **2/4
+mutations SURVIVED** — one test never reached the dangerous branch, one test was **carried by a copy of the logic
+elsewhere**. Both stayed green throughout and inspected nothing.
 
-**Luật 7 — MỌI CỔNG PHẢI ĐO BẰNG CẢ CA ÂM.** Chỉ chạy ca *phải chặn* thì không biết cổng có **chặn
-NHẦM** không, mà chặn nhầm là đường ngắn nhất tới *"gate nhiễu ⇒ gate bị bỏ qua"* — tự tay phá thứ
-mình đang xây. Đo được trên guardrail: bảng 28 ca có giá trị **chính nhờ 6 ca *phải cho qua***;
-thiếu chúng thì siết tay đã hỏng cổng mà vẫn tưởng đang làm tốt.
+**Rule 7 — EVERY GATE MUST BE MEASURED WITH NEGATIVE CASES TOO.** Running only the *must block* cases does not tell whether the gate **blocks
+WRONGLY**, and blocking wrongly is the shortest road to *"a noisy gate ⇒ an ignored gate"* — breaking with your own hands
+what you are building. Measured on the guardrails: a table of 28 cases is worth something **only thanks to its 6 *must let through* cases**;
+without them a hand-tightening had broken the gate while still believing it was doing well.
 
-## APP — 12 mặt, chạy đủ
-*(6 mặt đầu là bản gốc, soi *"phần mềm có ĐÚNG không"*. **Mặt 7–10** thêm sau khi soi ngược **mọi sự
-cố THẬT** của một repo rồi hỏi *"mặt nào lẽ ra bắt được"* — phát hiện: **mọi sự cố nặng nhất đều rơi
-vào vùng 6 mặt cũ không nhìn tới**, vì chúng thuộc *"phần mềm có SỐNG SÓT không"*: mất mát · lộ lọt ·
-chết lặng · không mang đi được. **Mặt 11** thêm vì chín mặt trước đều soi MÁY, không mặt nào soi thứ
-**NGƯỜI ĐỌC** nhận. **Mặt 12** thêm vì mặt 11 soi chữ người dùng đọc, không mặt nào soi ngôn ngữ của
-chính MÃ — tên file · định danh · chú thích.)*
-1. **Gate & lint** — `npm run check` (hoặc lệnh gate của repo, khai ở khoá `repoGates` của `docs/.harness.json`). **TẮT daemon/tiến trình nền trước**,
-   nếu không test nặng tranh RAM rồi đỏ lung tung ở chỗ không liên quan.
-2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
-   nếu quá) · TODO còn mục nào đã xong mà chưa đóng không.
-3. **Kiến trúc** — export không ai gọi · **NGUỒN TRÙNG** (cùng một sự thật nằm ở ≥2 nơi ⇒ chắc chắn
-   sẽ lệch) · file/thư mục ngoài chuẩn · thao tác ghi vào file nguồn có nguyên tử không.
-4. **FE ↔ BE** — mọi endpoint có người gọi & ngược lại · i18n đủ cả hai chiều · CSS/id chết ·
-   **neo test có trỏ vào file đang chạy không**.
-5. **Dữ liệu thật** — `integrity_check` · độ phủ (index/vector/digest) · hàng mồ côi · kích thước.
-6. **Bề mặt sống** — gọi endpoint THẬT (mã trả về + thời gian) · mở app **nhìn tận mắt**. Suy luận
-   từ code không thay được việc nhìn: đã có lần endpoint xanh, gate xanh, mà UI vẫn sai. **Mã trả về
-   không phải là đã nhìn**: mở màn hình và hộp thoại chính, ĐỌC nội dung (số cột · nhãn · băng cảnh
-   báo) — nhiều lượt audit báo sạch trong khi hộp thoại chính hiện cột sai và một cảnh báo oan.
-7. **Bí mật & phát tán** — secret trong cây **VÀ trong LỊCH SỬ git** (không chỉ HEAD: khoá lộ rồi thì
-   lộ **vĩnh viễn**, xoá ở HEAD không gỡ được thứ đã đẩy đi) · file lớn/binary lọt git · **đường ra
-   ngoài** rộng hơn `git push`: thư mục đồng bộ đám mây · kênh *backup máy* của trình đồng bộ (thứ
-   người dùng KHÔNG chủ động bật) · máy đích lúc deploy · quyền file khoá. Không mặt nào cũ nhìn tới
-   đây, trong khi đây là chỗ mất mát **KHÔNG đảo được** — sai một lần là xong.
-8. **Phụ thuộc & license** — dependency/model mới có license tương thích không (bất biến kiến trúc
-   bắt rà, mà chưa cổng nào kiểm) · lockfile khớp · dependency chết · **dựng lại từ CLONE SẠCH có
-   chạy không** (thứ chỉ chạy được trên máy đang có sẵn đồ thì chưa gọi là dựng được). Quét **CẢ
-   CÂY**, không chỉ dependency trực tiếp — license xấu ở tầng sâu vẫn đi kèm sản phẩm. Bẫy đo: `OR`
-   và `AND` trong biểu thức license **không cùng nghĩa** (`OR` = một vế hợp lệ là đủ · `AND` = phải
-   hợp lệ MỌI vế), tách bằng cùng một mẫu là bỏ sót.
-9. **Toàn vẹn & đồng thời** — write-gate / khoá ghi còn **TỪ CHỐI THẬT** không (khoá đúng mà người gọi
-   bỏ qua lời từ chối thì vẫn thủng) · có kẻ ghi thứ hai nào đang mở kho không · giao dịch có nguyên
-   tử · **THỬ PHỤC HỒI THẬT** một bản sao lưu ra chỗ tạm rồi ĐẾM — *"dữ liệu lành"* KHÁC *"dựng lại
-   được"*, và kênh mang đi có thể lặng lẽ vứt mất lớp đắt nhất mà không cổng nào đỏ.
-   **Trạng thái dùng chung NGOÀI repo** (thư mục trao đổi giữa các máy) thì mọi phép kiểm mã đều mù: liệt
-   kê nó kèm TUỔI từng tệp — bản khai cũ nằm lại đủ để đẻ cột sai và cảnh báo oan qua nhiều lượt audit;
-   bản quá cũ dời sang chỗ cất (`retired/`).
-   Kèm: chạy skill `sync-path/`.
-10. **Vận hành nền & guardrail** — tiến trình nền còn sống không · có nhịp tim/log đủ để truy khi nó
-   chết cứng không · bề mặt có **CHẾT THEO nền** không (vỏ rỗng là kiểu hỏng tệ nhất: nó không báo
-   lỗi, nó **NÓI DỐI**, và người dùng không có cách phân biệt với đang-chạy-thật) · **chạy ma trận
-   guardrail** — cổng chặn có thật sự chặn không, thứ chỉ đo được bằng cách CHẠY, không đọc code ra
-   (ca phải chặn **+ ca phải cho qua**, luật 7).
-11. **CHỮ & BỀ MẶT NGƯỜI ĐỌC** — **NORM ở `Rule_Gate_02_ReaderText` · `Rule_Gate_31_NoBrokenVietnamese`** (*chữ người dùng đọc phải đầy đủ và
-   đúng*, 4 ràng buộc, ship cho MỌI bộ harness). Ở đây chỉ có **cách ĐO**. Năm phép, mỗi phép phải in
-   *đã quét bao nhiêu* để không xanh giả:
-   · **thiếu dấu tiếng Việt** trong docs · **chính tả** (từ lặp liền · mojibake);
-   · **caption/nhãn** — phần tử tương tác có nhãn lập trình đọc được, ảnh có `alt`;
-   · **song ngữ hai đầu** — chuỗi trong code (`.js`) *và* chữ nằm thẳng trong HTML/markup (text node +
-     `title`/`placeholder`/hint); khoá đủ hai dict; khoá chết thì gỡ;
-   · **UI ↔ code** — cạnh seam `api` của graph đối chiếu route FE gọi với route BE thật (dùng graph,
-     không dùng mắt); `zemory graph path <FE> <BE>` để lần đường khi nghi.
+## APP — 12 aspects, run all
+*(The first 6 aspects are the original ones, inspecting *"is the software RIGHT"*. **Aspects 7–10** were added after looking back at **every REAL
+incident** of one repo and asking *"which aspect should have caught it"* — the finding: **every heaviest incident fell
+into the area the 6 old aspects never looked at**, because they belong to *"does the software SURVIVE"*: loss · leaks ·
+silent death · not portable. **Aspect 11** was added because the nine before it all inspect the MACHINE, none inspects what
+**THE READER** receives. **Aspect 12** was added because aspect 11 inspects the words people read, none inspects the language of
+the CODE itself — file names · identifiers · comments.)*
+1. **Gate & lint** — `npm run check` (or the repo's gate command, declared in the `repoGates` key of `docs/.harness.json`). **STOP the daemon/background processes first**,
+   or heavy tests fight over RAM and go red at random in unrelated places.
+2. **Standard & docs** — `zemory conform` · `zemory validate` · doc length vs the thresholds (`zemory archive`
+   when over) · whether the TODO still holds items already done but not closed.
+3. **Architecture** — exports nobody calls · **DUPLICATE SOURCES** (the same truth in ≥2 places ⇒ it will certainly
+   drift) · files/folders outside the standard · whether writes to source files are atomic.
+4. **FE ↔ BE** — every endpoint has a caller & the reverse · i18n complete both ways · dead CSS/ids ·
+   **whether test anchors point at the running file**.
+5. **Real data** — `integrity_check` · coverage (index/vector/digest) · orphan rows · size.
+6. **The live surface** — call the REAL endpoints (return code + time) · open the app and **look with your own eyes**. Inference
+   from code cannot replace looking: once the endpoint was green, the gate green, and the UI still wrong. **A return code
+   is not looking**: open the main screens and dialogs, READ the content (column counts · labels · warning
+   bands) — many audit rounds reported clean while the main dialog showed the wrong columns and a false warning.
+7. **Secrets & spread** — secrets in the tree **AND in the git HISTORY** (not only HEAD: a key once leaked is
+   leaked **forever**, deleting it at HEAD cannot take back what was already pushed) · large files/binaries slipped into git · **ways
+   out** wider than `git push`: cloud sync folders · the *machine backup* channel of the sync tool (one the
+   owner did NOT turn on deliberately) · the target machine at deploy · key file permissions. No old aspect looked
+   here, while this is where loss **CANNOT be undone** — wrong once and it is over.
+8. **Dependencies & licences** — whether new dependencies/models have compatible licences (an architectural invariant
+   requires the review, and no gate checks it yet) · the lockfile matches · dead dependencies · **does a rebuild from a CLEAN CLONE
+   run** (something that runs only on a machine already holding the stuff cannot be called buildable). Scan **THE WHOLE
+   TREE**, not only direct dependencies — a bad licence deep down still ships with the product. A measuring trap: `OR`
+   and `AND` in a licence expression **do not mean the same** (`OR` = one valid branch is enough · `AND` = EVERY branch must be
+   valid), splitting them with one pattern misses things.
+9. **Integrity & concurrency** — whether the write gate / write lock still **REALLY REFUSES** (a correct lock whose caller
+   ignores the refusal still leaks) · whether a second writer has the data store open · whether transactions are
+   atomic · **A REAL RESTORE TEST** of a backup into a temp place, then COUNT — *"the data is healthy"* DIFFERS from *"it can
+   be rebuilt"*, and the carrying channel can silently drop the most expensive layer with no gate going red.
+   **Shared state OUTSIDE the repo** (an exchange folder between machines) leaves every code check blind: list
+   it with the AGE of each file — an old declaration left behind is enough to produce wrong columns and false warnings across many audit rounds;
+   files too old move to a storage place (`retired/`).
+   With it: run the `sync-path/` skill.
+10. **Background operation & guardrails** — are the background processes still alive · is there a heartbeat/log enough to trace when one
+   freezes · does the surface **DIE WITH the background** (an empty shell is the worst failure: it does not report
+   an error, it **LIES**, and the owner has no way to tell it from really running) · **run the guardrail
+   matrix** — does a blocking gate really block, something measurable only by RUNNING, not by reading code
+   (must-block cases **+ must-let-through cases**, rule 7).
+11. **WORDS & THE READER'S SURFACE** — **the NORM is in `Rule_Gate_02_ReaderText` · `Rule_Gate_31_NoBrokenVietnamese`** (*the words people read must be complete and
+   correct*, 4 constraints, shipped in EVERY harness set). Here is only **how to MEASURE**. Five checks, each must print
+   *how much was scanned* so it is not falsely green:
+   · **missing Vietnamese diacritics** in docs · **spelling** (repeated adjacent words · mojibake);
+   · **captions/labels** — interactive elements have a programmatically readable label, pictures have `alt`;
+   · **both language ends** — strings in code (`.js`) *and* text directly in HTML/markup (text nodes +
+     `title`/`placeholder`/hint); keys complete in both dicts; dead keys removed;
+   · **UI ↔ code** — the edges of the graph's `api` seam compare the routes the FE calls with the real BE routes (use the graph,
+     not the eye); `zemory graph path <FE> <BE>` to trace the path when in doubt.
 
-   ⚠ **BỐN TRONG NĂM PHÉP NÀY BÁO OAN NẾU LÀM NGÂY THƠ — lượt đo đầu sai gần hết:**
-   · *thiếu dấu*: danh sách phải CHỈ gồm từ mà bản không dấu **không phải từ hợp lệ** (`khong`
-     `duoc` `cua`…). Nhét `minh` · `nhanh` · `song` vào là báo oan — chúng vốn không có dấu
-     («chứng minh»). Bản đầu: **63 hit, 0 thật**.
-     Miễn luôn `skills/write-docx/references/*` — cố ý viết ASCII không dấu (code Python trong khối
-     lệnh; 18 hit đo được ở đó KHÔNG phải lỗi).
-   · *từ lặp*: `\b` của JS là **ASCII**, chữ Việt bị coi là ký tự không-phải-từ ⇒ «chứng ngại» cắt
-     thành `ng`+`ng` và báo trùng (128 hit oan). Phải dùng lớp `\p{L}` + **trừ láy đôi** («song
-     song» · «luôn luôn» · «bắt đầu đầu trang») và nhớ rằng bỏ code/đường dẫn có thể **dán hai
-     chữ giống nhau vào cạnh nhau** («scan known/deep scan»). Sau khi vá: 15 hit, kiểm tay
-     **vẫn 0 thật** ⇒ phép này CHƯA đủ chính xác để làm cổng, chỉ dùng để soi tay.
-   · *mojibake* (UTF-8 bị đọc thành Latin-1): `Â.`/`Ã.` trúng cả chữ Việt hợp lệ (ĐÂY · NGÃ) — 192
-     hit oan. Mẫu đúng: `[ÃÂ][-¿]` · `â€` · `ï»¿` · `U+FFFD`. Và phải **miễn chuỗi nằm trong
-     backtick**: file DẠY về mojibake (chính `Rule_Gate_31_NoBrokenVietnamese`) nêu ví dụ mẫu ⇒ bộ dò ngây thơ báo
-     oan trên đúng tài liệu định nghĩa ra nó (đo được: 6/245 hit, 0 thật).
-   · *caption*: nhãn thường nằm ở **thẻ CON** (`<a><span>…</span></a>`) hoặc ở `<label>` bọc ngoài
-     ⇒ chỉ đọc text ngay sau thẻ mở là báo oan 20 ca.
-   · *song ngữ*: chữ Việt trong HTML là **ĐÚNG** nếu phần tử có móc i18n (`data-i18n`,
-     `-title`, `-ph`, `-hint`) — bản dịch sẽ đè lúc chạy. Chỉ chỗ **thiếu móc** mới là lỗi.
-     Và khoá i18n truyền qua BIẾN (`doc:'f.doc.x'` rồi `t(item.doc)`) KHÔNG phải khoá chết:
-     phải quét mọi literal, không chỉ `t('…')` — bản đầu báo oan **46 khoá chết**, thật là **0**.
-   · *endpoint chết*: route ghép ĐỘNG (`post('/set-'+name)`) làm mọi `/set-*` trông như chết;
-     và endpoint do **CLI gọi qua HTTP** không có người gọi trong FE. Kể cả ba nguồn (FE tĩnh ·
-     tiền tố động · test/CLI) rồi mới kết luận.
+   ⚠ **FOUR OF THESE FIVE CHECKS RAISE FALSE ALARMS WHEN DONE NAIVELY — the first measuring round was almost all wrong:**
+   · *missing diacritics*: the list must hold ONLY words whose undiacritised form **is not a valid word** (`khong`
+     `duoc` `cua`…). Putting in `minh` · `nhanh` · `song` gives false alarms — they are written without diacritics anyway
+     («chứng minh»). The first version: **63 hits, 0 real**.
+     Always exempt `skills/write-docx/references/*` — deliberately written as ASCII without diacritics (Python code in command
+     blocks; the 18 hits measured there are NOT errors).
+   · *repeated words*: JS's `\b` is **ASCII**, Vietnamese letters count as non-word characters ⇒ «chứng ngại» gets cut
+     into `ng`+`ng` and reported as a repeat (128 false hits). Use the `\p{L}` class + **exclude reduplication** («song
+     song» · «luôn luôn» · «bắt đầu đầu trang») and remember that stripping code/paths can **glue two
+     identical words side by side** («scan known/deep scan»). After the fix: 15 hits, checked by hand
+     **still 0 real** ⇒ this check is NOT yet precise enough to be a gate, only for inspecting by hand.
+   · *mojibake* (UTF-8 read as Latin-1): `Â.`/`Ã.` also hits valid Vietnamese letters (ĐÂY · NGÃ) — 192
+     false hits. The right pattern: `[ÃÂ][-¿]` · `â€` · `ï»¿` · `U+FFFD`. And **strings inside
+     backticks must be exempted**: a file TEACHING about mojibake (`Rule_Gate_31_NoBrokenVietnamese` itself) gives sample examples ⇒ a naive detector raises
+     false alarms on exactly the document that defines it (measured: 6/245 hits, 0 real).
+   · *captions*: the label often sits in a **CHILD tag** (`<a><span>…</span></a>`) or in a wrapping `<label>`
+     ⇒ reading only the text right after the opening tag gives 20 false cases.
+   · *both languages*: Vietnamese text in HTML is **RIGHT** when the element has an i18n hook (`data-i18n`,
+     `-title`, `-ph`, `-hint`) — the translation overwrites it at run time. Only places **missing the hook** are errors.
+     And an i18n key passed through a VARIABLE (`doc:'f.doc.x'` then `t(item.doc)`) is NOT a dead key:
+     scan every literal, not only `t('…')` — the first version raised **46 dead keys** falsely, the real count was **0**.
+   · *dead endpoints*: DYNAMICALLY assembled routes (`post('/set-'+name)`) make every `/set-*` look dead;
+     and endpoints **the CLI calls over HTTP** have no caller in the FE. Count all three sources (static FE ·
+     dynamic prefixes · tests/CLI) before concluding.
 
-12. **NGÔN NGỮ CỦA MÃ** — **NORM ở `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`** (luật chung mọi app). Bốn phép,
-   **cách đo + bẫy báo oan + số nền ở [`references/lang.md`](references/lang.md)**; máy chạy:
-   `node .claude/skills/harness-audit/scripts/lang-scan.mjs . [--all]` — nó in *đã quét bao nhiêu* để một lượt
-   sạch không bị đọc thành "chưa soi gì".
-   · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh** (biến · hằng · hàm · lớp · kiểu ·
-     khoá config) chỉ ASCII tiếng Anh — **chú thích cũng tiếng Anh** (`Rule_Gate_29_CodeLanguage`);
-   · **Ⓒ tuyệt đối KHÔNG có tiếng Việt mất dấu ở BẤT CỨ ĐÂU** — plan · docs · chú thích · tên test ·
-     chuỗi sinh máy: hoặc tiếng Anh, hoặc tiếng Việt CÓ DẤU, không có lựa chọn thứ ba;
-   · **Ⓓ song ngữ UI** — cân dict vi↔en (thiếu một bên thì hàm dịch lặng lẽ rơi về ngôn ngữ gốc,
-     KHÔNG lỗi nào nổ) · khoá dùng mà chưa khai · khoá chết · chữ Việt trong markup thiếu móc i18n.
-     (Vế *người đọc* của song ngữ vẫn ở mặt ⑪; ở đây là vế **đếm khoá**.)
-   ⚠ **Ba bẫy, đều đã đo:** ① không bóc chú thích/chuỗi trước khi quét ⇒ vừa báo oan vừa
-   **bỏ sót** (lượt đầu: 4 hit oan, sót 9 định danh thật) · ② đồng âm Anh–Việt (`do · so · can ·
-   ten · van`) bắt oan cả câu tiếng Anh thuần · ③ nhãn nằm ở thẻ CON của phần tử ĐÃ có móc i18n
-   (2/2 hit oan).
+12. **THE LANGUAGE OF THE CODE** — **the NORM is in `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`** (a shared law of every app). Four checks,
+   **how to measure + false-alarm traps + baseline figures in [`references/lang.md`](references/lang.md)**; the machine runs:
+   `node .claude/skills/harness-audit/scripts/lang-scan.mjs . [--all]` — it prints *how much was scanned* so a clean round
+   is not read as "nothing inspected".
+   · **Ⓐ file · folder names** ASCII English only · **Ⓑ identifiers** (variables · constants · functions · classes · types ·
+     config keys) ASCII English only — **comments in English too** (`Rule_Gate_29_CodeLanguage`);
+   · **Ⓒ absolutely NO undiacritised Vietnamese ANYWHERE** — plans · docs · comments · test names ·
+     machine-generated strings: either English or Vietnamese WITH diacritics, there is no third choice;
+   · **Ⓓ UI in both languages** — balance the vi↔en dicts (one side missing makes the translate function silently fall back to the source language,
+     NO error fires) · keys used but not declared · dead keys · Vietnamese text in markup missing an i18n hook.
+     (The *reader* side of both languages stays in aspect ⑪; here is the **key counting** side.)
+   ⚠ **Three traps, all measured:** ① not stripping comments/strings before scanning ⇒ both false alarms and
+   **misses** (the first round: 4 false hits, 9 real identifiers missed) · ② English–Vietnamese homographs (`do · so · can ·
+   ten · van`) falsely catch whole plain English sentences · ③ a label in a CHILD tag of an element that ALREADY has an i18n hook
+   (2/2 false hits).
 
-## NON-APP — 11 mặt, chạy đủ
-*(5 mặt đầu soi *"việc có ĐÚNG không"*. **Mặt 6–9** thêm sau khi soi ngược **mọi sự cố THẬT** của một
-repo rồi hỏi *"mặt nào lẽ ra bắt được"* — phát hiện: **mọi sự cố nặng nhất đều rơi vào vùng các mặt
-cũ không nhìn tới**, vì chúng thuộc loại khác hẳn: *"việc có SỐNG SÓT không"* — mất mát · lộ lọt ·
-chết lặng · không mang đi được. **Mặt 10** thêm vì chín mặt trước đều soi MÁY, không mặt nào soi thứ
-**NGƯỜI ĐỌC** nhận — mà ở dự án non-app thì *sản phẩm giao đi CHÍNH LÀ chữ người đọc*, nên nó là mặt
-nặng nhất, không phải mặt phụ.)*
+## NON-APP — 11 aspects, run all
+*(The first 5 aspects inspect *"is the work RIGHT"*. **Aspects 6–9** were added after looking back at **every REAL incident** of one
+repo and asking *"which aspect should have caught it"* — the finding: **every heaviest incident fell into the area the old
+aspects never looked at**, because they are of a completely different kind: *"does the work SURVIVE"* — loss · leaks ·
+silent death · not portable. **Aspect 10** was added because the nine before it all inspect the MACHINE, none inspects what
+**THE READER** receives — and in a non-app project *the product handed out IS the reader's words*, so it is the
+heaviest aspect, not a side one.)*
 
-> Bộ nào không có CLI `zemory`: lệnh `zemory conform` / `zemory validate` ở mặt 1–2 thay bằng script kiểm
-> chuẩn của bộ (`python .claude/skills/harness-structure/scripts/check_structure.py .`, skill `conform`), kèm
-> đo tay độ dài `04_TODO`/`05_CHANGES` so ngưỡng 300 dòng và entry changelog nào vượt trần 30 dòng.
+> A set without the `zemory` CLI: the commands `zemory conform` / `zemory validate` in aspects 1–2 are replaced by the set's standard
+> check script (`python .claude/skills/harness-structure/scripts/check_structure.py .`, the `conform` skill), plus
+> measuring by hand the length of `04_TODO`/`05_CHANGES` against the 300-line threshold and which changelog entry exceeds the 30-line cap.
 
-1. **Cổng của dự án** — chạy đủ cổng repo có: `zemory conform` · `zemory validate` · script kiểm cấu
-   trúc · **cổng readiness của launcher** (`<tên> auto` phải trả mã thoát ≠ 0 khi thiếu điều kiện).
-   Repo **không có cổng nào chạy được** thì đó CHÍNH LÀ finding đầu tiên, không phải lý do bỏ mặt này.
-2. **Chuẩn & docs** — `zemory conform` · `zemory validate` · độ dài docs vs ngưỡng (`zemory archive`
-   nếu quá) · TODO còn mục nào đã xong mà chưa đóng không · docs lặp nội dung của nhau.
-3. **Cấu trúc & NGUỒN TRÙNG** — cùng một sự thật nằm ở **≥2 nơi** ⇒ chắc chắn sẽ lệch. Soi:
-   file/thư mục ngoài chuẩn · script/query không ai gọi · cùng một truy vấn chép ở hai chỗ · **định
-   nghĩa metric nằm ở ≥2 nơi** (từ điển dữ liệu trong `02_STRUCTURE` là nhà DUY NHẤT — có
-   `docs/dictionary.md` lạc, metric định nghĩa ở từ điển nhưng tính khác trong `measures/`, hay công
-   thức chép vào nhiều measure không) · số pipeline có **mirror đúng 3 nơi** (`tasks/NN_` ↔
-   `pipelines/NN_` ↔ `data/NN_`) · ghi vào file nguồn có nguyên tử không.
-4. **Dữ liệu & 3 chặng** — có ai GHI vào `01_raw/` không (nó **CHỈ ĐỌC**) · file trung gian có mang
-   tiền tố số stage không · deliverable cuối có nằm `03_output/` với tên nghiệp vụ không · `data/adhoc/`
-   có bị dùng cho việc **định kỳ** không (nó chỉ dành cho file lẻ throwaway) · kích thước · bản rác.
-5. **Sản phẩm giao đi — MỞ RA NHÌN** — mở đúng file deliverable (`.xlsx`/`.pbix`/`.docx`) **bằng
-   mắt**: số có đổ vào đúng ô, sheet/trang không rỗng, kỳ báo cáo đúng, công thức không `#REF!`, vài
-   số mốc khớp nguồn, ngày tháng đúng, bản đang ở đích có đúng bản mới nhất không. Suy luận từ script
-   KHÔNG thay được việc mở file: script exit 0 mà file ra rỗng là ca thật; đã có lần mọi phép kiểm
-   xanh mà báo cáo vẫn hiển thị sai.
-6. **Bí mật & phát tán** — secret trong cây **VÀ trong LỊCH SỬ git** (không chỉ HEAD: khoá lộ rồi thì
-   lộ **vĩnh viễn**, xoá ở HEAD không gỡ được thứ đã đẩy đi) · file lớn/binary lọt git · **đường ra
-   ngoài** rộng hơn `git push`: thư mục đồng bộ đám mây · kênh *backup máy* của trình đồng bộ (thứ
-   người dùng KHÔNG chủ động bật) · máy đích lúc deploy · quyền file khoá. Đây là chỗ mất mát
-   **KHÔNG đảo được** — sai một lần là xong.
-7. **Phụ thuộc & dựng lại** — gói/thư viện mà script dùng có license tương thích không · file khai
-   phụ thuộc (`requirements`/lock) có khớp thứ đang cài không · gói khai mà không ai import ·
-   **dựng lại từ CLONE SẠCH có chạy không** (thứ chỉ chạy được trên máy đang có sẵn đồ thì chưa gọi
-   là dựng được — và ở non-app còn phải hỏi: máy trắng có driver/ODBC/font để mở nguồn không).
-   Quét **CẢ CÂY**, không chỉ phụ thuộc trực tiếp. Bẫy đo: `OR` và `AND` trong biểu thức license
-   **không cùng nghĩa** (`OR` = một vế hợp lệ là đủ · `AND` = phải hợp lệ MỌI vế).
-8. **Toàn vẹn & phục hồi** — hai lượt pipeline chạy cùng lúc có tranh cùng file không (không có khoá
-   thì lượt sau ghi đè lượt trước, im lặng) · ghi deliverable có **nguyên tử** không (ghi file tạm
-   rồi đổi tên — TUYỆT ĐỐI không để lại bản ghi dở trông như đã xong) · **THỬ PHỤC HỒI THẬT**: dựng
-   lại một deliverable từ `01_raw` (hoặc từ bản sao lưu) ra **chỗ tạm** rồi **ĐẾM** — *"dữ liệu còn
-   đó"* KHÁC *"dựng lại được"*, và kênh mang đi có thể lặng lẽ vứt mất lớp đắt nhất mà không cổng nào
-   đỏ. Kèm: chạy skill `sync-path/`.
-9. **Vận hành nền & guardrail** — tiến trình nền còn sống không · có nhịp tim/log đủ để truy khi nó
-   chết cứng không · bề mặt có **CHẾT THEO nền** không (vỏ rỗng là kiểu hỏng tệ nhất: nó không báo
-   lỗi, nó **NÓI DỐI**, và người dùng không có cách phân biệt với đang-chạy-thật) · **chạy ma trận
-   guardrail** — cổng chặn có thật sự chặn không, thứ chỉ đo được bằng cách CHẠY, không đọc code ra
-   (ca phải chặn **+ ca phải cho qua**, luật 7).
+1. **The project's gates** — run every gate the repo has: `zemory conform` · `zemory validate` · the structure check
+   script · **the launcher's readiness gate** (`<name> auto` must return an exit code ≠ 0 when a condition is missing).
+   A repo with **no runnable gate at all** — that IS the first finding, not a reason to skip this aspect.
+2. **Standard & docs** — `zemory conform` · `zemory validate` · doc length vs the thresholds (`zemory archive`
+   when over) · whether the TODO still holds items done but not closed · docs repeating each other's content.
+3. **Structure & DUPLICATE SOURCES** — the same truth in **≥2 places** ⇒ it will certainly drift. Inspect:
+   files/folders outside the standard · scripts/queries nobody calls · the same query copied in two places · **a metric
+   definition in ≥2 places** (the data dictionary in `02_STRUCTURE` is the ONLY home — is there a stray
+   `docs/dictionary.md`, a metric defined in the dictionary but computed differently in `measures/`, or a formula
+   copied into several measures) · does each case have **a mirror with the same name** (`tasks/<case>/` ↔
+   `data/<case>/`) · whether writes to source files are atomic.
+4. **Data & the 3 stages** — does anyone WRITE into `01_raw/` (it is **READ ONLY**) · do intermediate files carry
+   the stage number prefix · does the final deliverable sit in `03_output/` with a business name · is `data/adhoc/`
+   used for **recurring** work (it is only for throwaway loose files) · size · litter copies.
+5. **The product handed out — OPEN IT AND LOOK** — open exactly the deliverable file (`.xlsx`/`.pbix`/`.docx`) **with your own
+   eyes**: figures poured into the right cells, sheets/pages not empty, the right reporting period, formulas without `#REF!`, a few
+   reference figures matching the source, the right dates, the copy at the target being the newest. Inference from the script
+   CANNOT replace opening the file: a script exiting 0 while the file comes out empty is a real case; once every check
+   was green and the report still displayed wrongly.
+6. **Secrets & spread** — secrets in the tree **AND in the git HISTORY** (not only HEAD: a key once leaked is
+   leaked **forever**, deleting it at HEAD cannot take back what was already pushed) · large files/binaries slipped into git · **ways
+   out** wider than `git push`: cloud sync folders · the *machine backup* channel of the sync tool (one the
+   owner did NOT turn on deliberately) · the target machine at deploy · key file permissions. This is where loss
+   **CANNOT be undone** — wrong once and it is over.
+7. **Dependencies & rebuilding** — do the packages/libraries the scripts use have compatible licences · does the dependency
+   declaration file (`requirements`/lock) match what is installed · packages declared that nobody imports ·
+   **does a rebuild from a CLEAN CLONE run** (something that runs only on a machine already holding the stuff cannot be called
+   buildable — and for a non-app ask too: does a blank machine have the driver/ODBC/fonts to open the source).
+   Scan **THE WHOLE TREE**, not only direct dependencies. A measuring trap: `OR` and `AND` in a licence expression
+   **do not mean the same** (`OR` = one valid branch is enough · `AND` = EVERY branch must be valid).
+8. **Integrity & recovery** — do two pipeline runs at the same time fight over the same file (without a lock
+   the later run overwrites the earlier one, silently) · are deliverables written **atomically** (write a temp file
+   then rename — NEVER leave a half-written copy that looks finished) · **A REAL RESTORE TEST**: rebuild
+   a deliverable from `01_raw` (or from a backup) into **a temp place** then **COUNT** — *"the data is still
+   there"* DIFFERS from *"it can be rebuilt"*, and the carrying channel can silently drop the most expensive layer with no gate
+   going red. With it: run the `sync-path/` skill.
+9. **Background operation & guardrails** — are the background processes still alive · is there a heartbeat/log enough to trace when one
+   freezes · does the surface **DIE WITH the background** (an empty shell is the worst failure: it does not report
+   an error, it **LIES**, and the owner has no way to tell it from really running) · **run the guardrail
+   matrix** — does a blocking gate really block, something measurable only by RUNNING, not by reading code
+   (must-block cases **+ must-let-through cases**, rule 7).
 
-10. **CHỮ & BỀ MẶT NGƯỜI ĐỌC — mặt NẶNG NHẤT ở dự án non-app** (sản phẩm giao đi chính là chữ người
-   đọc, không phải phụ kiện của một app). NORM ở `Rule_Gate_02_ReaderText` · `Rule_Gate_31_NoBrokenVietnamese`. Đo: **thiếu dấu** · **chính
-   tả** (từ lặp liền · mojibake do UTF-8 bị đọc thành Latin-1) · **nhãn trong sản phẩm** (tiêu đề
-   cột · chú thích hình · biểu đồ · ảnh có tiêu đề và **ĐƠN VỊ** rõ; số có đơn vị + kỳ/mốc thời gian
-   kèm) · **thuật ngữ NHẤT QUÁN** — một thuật ngữ một tên xuyên suốt (cùng một metric không mang hai
-   tên khác nhau giữa các report — đối chiếu từ điển dữ liệu trong `02_STRUCTURE`, đó là nhà duy nhất
-   của định nghĩa) · **chữ trong file giao đi** (tên sheet · tiêu đề trang · chú thích) — chỗ này
-   người ngoài đọc, nên một lỗi chữ ở đây đắt hơn mọi lỗi trong repo.
-   ⚠ **Các phép này BÁO OAN nếu làm ngây thơ:** danh sách từ-không-dấu chỉ được gồm từ mà bản không
-   dấu KHÔNG hợp lệ (`khong` `duoc` `cua`…; `minh`/`nhanh`/`song` vốn không dấu) · dò từ lặp phải dùng
-   `\p{L}` (`\b` của JS là ASCII) và **trừ láy đôi** ("song song" · "luôn luôn") · mẫu mojibake
-   `Â.`/`Ã.` trúng cả chữ Việt hợp lệ (ĐÂY · NGÃ) — mẫu đúng là `[ÃÂ][-¿]` · `â€` · `ï»¿` · `U+FFFD`,
-   **và phải miễn chuỗi nằm trong backtick**, vì chính tài liệu nêu mẫu mojibake sẽ tự trúng (đo
-   được: 6/245 file trúng, kiểm tay **0 thật**) · và **tên do người ta đặt thì KHÔNG phải lỗi**: tên
-   cột/sheet của nguồn, tên file vendor, thuật ngữ nghiệp vụ viết hoa lạ — soi chữ trong phần MÌNH
-   viết, đừng soi chữ mình chỉ đi ngang qua.
+10. **WORDS & THE READER'S SURFACE — the HEAVIEST aspect in a non-app project** (the product handed out is the reader's
+   words, not an accessory of an app). The NORM is in `Rule_Gate_02_ReaderText` · `Rule_Gate_31_NoBrokenVietnamese`. Measure: **missing diacritics** · **spelling**
+   (repeated adjacent words · mojibake from UTF-8 read as Latin-1) · **labels in the product** (column
+   headers · figure captions · charts · pictures with a clear title and **UNIT**; figures with a unit + the period/time point
+   alongside) · **CONSISTENT terminology** — one term, one name throughout (the same metric never carries two
+   different names across reports — compare with the data dictionary in `02_STRUCTURE`, the only home
+   of definitions) · **the words in handed-out files** (sheet names · page titles · captions) — outsiders
+   read these, so a word error here costs more than any error in the repo.
+   ⚠ **These checks RAISE FALSE ALARMS when done naively:** the undiacritised-word list may only hold words whose undiacritised
+   form is NOT valid (`khong` `duoc` `cua`…; `minh`/`nhanh`/`song` have no diacritics anyway) · searching for repeated words must use
+   `\p{L}` (JS's `\b` is ASCII) and **exclude reduplication** ("song song" · "luôn luôn") · the mojibake pattern
+   `Â.`/`Ã.` also hits valid Vietnamese letters (ĐÂY · NGÃ) — the right pattern is `[ÃÂ][-¿]` · `â€` · `ï»¿` · `U+FFFD`,
+   **and strings inside backticks must be exempted**, because the very document naming the mojibake patterns hits itself (measured:
+   6/245 files hit, checked by hand **0 real**) · and **names other people gave are NOT errors**: source
+   column/sheet names, vendor file names, oddly capitalised business terms — inspect the words in the parts YOU
+   wrote, not words you only pass by.
 
-11. **NGÔN NGỮ CỦA MÃ** — NORM ở `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`. Máy chạy `node
-   .claude/skills/harness-audit/scripts/lang-scan.mjs .`; nó in *đã quét bao nhiêu* để lượt sạch không bị đọc
-   thành "chưa soi gì". Cách đo + bẫy chi tiết: [`references/lang.md`](references/lang.md).
-   · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh trong script/pipeline** (biến · hàm ·
-     cột trung gian mình tự đặt · khoá config) chỉ ASCII tiếng Anh — **chú thích cũng tiếng Anh**
-     (`Rule_Gate_29_CodeLanguage`). *Tên do NGUỒN đặt (cột Excel · trường API) giữ nguyên từng ký tự: đó
-     là DỮ LIỆU, đổi là loader không tìm thấy.*
-   · **Ⓒ tuyệt đối KHÔNG có tiếng Việt mất dấu ở BẤT CỨ ĐÂU** — plan · docs · chú thích · tên test ·
-     chuỗi sinh máy: hoặc tiếng Anh, hoặc tiếng Việt CÓ DẤU, không có lựa chọn thứ ba.
-   ⚠ **Hai bẫy đã trả giá:** ① không bóc chú thích/chuỗi trước khi quét ⇒ vừa báo oan vừa **bỏ sót**
-   (một lượt đo: 4 hit oan mà vẫn sót 9 định danh thật) · ② đồng âm Anh–Việt (`do · so · can · ten ·
-   van`) bắt oan cả câu tiếng Anh thuần.
+11. **THE LANGUAGE OF THE CODE** — the NORM is in `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`. The machine runs `node
+   .claude/skills/harness-audit/scripts/lang-scan.mjs .`; it prints *how much was scanned* so a clean round is not read
+   as "nothing inspected". How to measure + detailed traps: [`references/lang.md`](references/lang.md).
+   · **Ⓐ file · folder names** ASCII English only · **Ⓑ identifiers in scripts/pipelines** (variables · functions ·
+     intermediate columns you name yourself · config keys) ASCII English only — **comments in English too**
+     (`Rule_Gate_29_CodeLanguage`). *Names the SOURCE gave (Excel columns · API fields) stay character for character: they
+     are DATA, renaming them makes the loader not find them.*
+   · **Ⓒ absolutely NO undiacritised Vietnamese ANYWHERE** — plans · docs · comments · test names ·
+     machine-generated strings: either English or Vietnamese WITH diacritics, there is no third choice.
+   ⚠ **Two traps already paid for:** ① not stripping comments/strings before scanning ⇒ both false alarms and **misses**
+   (one round: 4 false hits while still missing 9 real identifiers) · ② English–Vietnamese homographs (`do · so · can · ten ·
+   van`) falsely catch whole plain English sentences.
 
-## Đầu ra
+## Output
 
-Bảng finding, mỗi mục ghi *đo được gì · ảnh hưởng · sửa ở đâu*, phân `blocking` (phải sửa) /
-`advisory` (xem xét). Việc đã sửa → `05_CHANGES`. **Phát hiện MỚI và nghi vấn đã loại (kèm lý do loại
-— để lần sau khỏi đào lại): BÁO trong phiên, KHÔNG tự ghi thành mục `04_TODO`** — chỉ mục nào được
-duyệt mới ghi (`Rule_Gate_38_TodoDoor`, cửa vào). Một lượt đủ mặt đẻ ra hàng chục advisory; ghi
-hết là nhồi sổ, mà sổ thì nạp MỌI phiên.
+A findings table, each item recording *what was measured · the impact · where to fix it*, split into `blocking` (must fix) /
+`advisory` (to consider). Work fixed → `05_CHANGES`. **NEW findings and suspicions dropped (with the reason for dropping
+them — so the next time nobody digs again): REPORT them in the session, do NOT write them as `04_TODO` items yourself** — only
+approved items get written (`Rule_Gate_38_TodoDoor`, the door). A full round produces dozens of advisories; writing
+them all stuffs the ledger, and the ledger is loaded in EVERY session.
 
-## Cấm
+## Forbidden
 
-- Cắt bớt mặt nào cho nhanh.
-- Ghi finding chưa verify.
-- Báo "sạch" khi mới chạy mỗi gate / mỗi script kiểm chuẩn.
+- Cutting any aspect for speed.
+- Writing unverified findings.
+- Reporting "clean" after running only the gate / only the standard check script.
 
-## Cách đo — dùng cho `Rule_Keys_11_VerifyClaims` và `Rule_Gate_01_DoneMeansRun`
+## How to measure — used for `Rule_Keys_11_VerifyClaims` and `Rule_Gate_01_DoneMeansRun`
 
-- **Phép kiểm phải đỏ được.** Viết xong một test hoặc phép kiểm (script · công thức đối chiếu · bảng so số) ⇒ phá đúng đoạn
-  mã hoặc thứ nó canh rồi chạy lại; không đỏ ⇒ sửa phép kiểm. Hai lỗ hay gặp: phép kiểm không chạy tới nhánh nguy hiểm;
-  bản sao logic ở chỗ khác gánh thay.
-- **Ba luật đo.** Phép đo tự dựng chép đủ tham số của thước chính thức. Nhiều phép thử cùng hỏng một hướng ⇒ nghi thước
-  trước, không nghi từng thiết kế. Số đo phải khớp chi phí vật lý của việc đó: nhanh bất thường là xanh giả cho tới khi
-  chứng minh được điều ngược lại.
-- **Soát sổ bằng ba nguồn**, áp mọi lúc, không chờ chốt phiên:
-  1. nguồn / mã: mở đúng file · grep · đếm đúng dòng/cột · chạy lại truy vấn; không suy từ mô tả;
-  2. lịch sử quyết định: có CLI ⇒ `zemory memory search --all`, lọc các lượt giao việc và phê duyệt; không có ⇒ đọc
+- **A check must be able to go red.** After writing a test or check (a script · a comparison formula · a figure-comparison table) ⇒ break exactly the
+  code or the thing it guards and run again; it does not go red ⇒ fix the check. Two common holes: the check never reaches the dangerous branch;
+  a copy of the logic elsewhere carries the load.
+- **Three measuring rules.** A self-built measurement copies every parameter of the official gauge. Several trials failing in one direction ⇒ suspect the gauge
+  first, not each design. The measured figure must match the physical cost of the work: unusually fast is falsely green until
+  proven otherwise.
+- **Checking the ledger with three sources**, applied at all times, not waiting for a session close:
+  1. source / code: open exactly the file · grep · count exactly the lines/columns · rerun the query; never infer from a description;
+  2. decision history: with the CLI ⇒ `zemory memory search --all`, filtering the turns that assign work and approve; without ⇒ read
      `docs/archive/`;
-  3. chạy thật: gọi endpoint · lệnh · giao diện thật · đọc log tiến trình đang chạy · mở chính bản giao · làm mới dữ liệu
-     rồi đối chiếu số.
-  Ba nguồn khớp mới kết luận; không chạm được một nguồn ⇒ ghi "chưa xác minh được" kèm nguồn đã thử. Máy đo:
-  `zemory todo verify` (ký hiệu mục nêu có thật không · phép đo mục tự nêu còn đúng không · nguồn có đổi sau khi dòng sổ
-  được viết không; exit ≠ 0 khi lệch).
+  3. a real run: call the endpoint · the command · the real interface · read the log of the running process · open the handed-out copy itself · refresh the data
+     and compare figures.
+  Conclude only when all three agree; one source unreachable ⇒ write "not verifiable" with the sources tried. The measuring machine:
+  `zemory todo verify` (do the symbols an item names exist · does the item's own measurement still hold · did the source change after the ledger line
+  was written; exit ≠ 0 when off).
 
 ## Implements · Thi hành luật
 - `Rule_Gate_01_DoneMeansRun` — breaking code to see a check go red · phá mã để thấy phép kiểm báo đỏ

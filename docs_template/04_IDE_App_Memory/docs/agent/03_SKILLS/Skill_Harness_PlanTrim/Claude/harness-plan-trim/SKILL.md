@@ -2,70 +2,70 @@
 id: Skill_Harness_PlanTrim
 aka: plan-trim
 name: harness-plan-trim
-version: 10
+version: 11
 type: process
 description: Trim the specs in docs/plan when they grow past the cap, WITHOUT losing ideas — back up, draft outside the repo, have an independent reviewer restore every lost idea against the original and the code, then apply. Use when `zemory validate` warns that a spec or docs/plan is over the line cap, or when asked to shorten, trim or tidy the plans. Vietnamese triggers - "gọt plan", "dọn plan", "plan dài quá", "rút gọn plan", "plan vượt trần", "plan quá trần".
-from: _Store/03_SKILLS/Skill_Harness_PlanTrim @v10 #2a39f4384a0c
+from: _Store/03_SKILLS/Skill_Harness_PlanTrim @v11 #d04854073693
 ---
 
-# plan-trim — gọt plan vượt trần mà không mất ý
+# plan-trim — trimming a plan over its cap without losing ideas
 
-> Luật nằm ở `Docs_006_Plan` (gạch **PLAN PHẢI GỌN**): plan giữ hướng đã chốt + điểm còn mở, lịch sử
-> sang `05_CHANGES`, trần một spec do `zemory validate` canh (cả `docs/plan` không có trần). Skill này chỉ là **cách làm**.
-> Đo được trên hai đợt gọt thật: một lượt soát bắt ~120 ý bị mất; một lượt khác (bốn spec) soát lại ~140 ý
-> và bắt 5 chỗ spec nói sai so với code.
+> The law is in `Docs_006_Plan` (the bullet **A PLAN STAYS TIGHT**): a plan keeps the settled direction + the open points, history
+> goes to `05_CHANGES`, one spec's cap is watched by `zemory validate` (`docs/plan` as a whole has no cap). This skill is only **how to do it**.
+> Measured on two real trims: one review pass caught ~120 lost ideas; another pass (four specs) restored ~140 ideas
+> and caught 5 places where a spec said the opposite of the code.
 
-## Khi nào dùng
-- `zemory validate` báo `plan: N spec(s) over … lines`.
-- Được yêu cầu gọt / dọn / rút gọn plan.
-- **Chỉ gọt spec ĐANG VƯỢT trần.** Spec dưới trần thì để yên — gọt cho đẹp là đổi rủi ro mất ý lấy không gì cả.
+## When to use
+- `zemory validate` reports `plan: N spec(s) over … lines`.
+- Asked to trim / tidy / shorten the plans.
+- **Trim only specs OVER the cap.** A spec under the cap stays as it is — trimming for looks trades the risk of losing ideas for nothing.
 
-## Một "ý" là gì — thứ KHÔNG được mất
-Quyết định + lý do một câu · luật đã chốt và câu gốc đã chốt nó · con số biện minh cho một quyết định
-hay một lần bác · bẫy (`⚠` · `🔴` · "bẫy") · phương án đã bỏ (`Đã bỏ` · `BÁC` · "đừng đề xuất lại" — nén còn MỘT
-dòng: bỏ gì + vì sao, chúng chặn agent sau đề xuất lại) · dữ kiện giao thức/định dạng mà code dựa vào · cổng
-nghiệm thu và ca ÂM · điểm còn mở / chưa đo · số mục (`§N`) mà file khác đang dẫn chiếu.
-**Không phải ý** (cắt được): tường thuật một phiên đã đi tới đó thế nào · cùng một sự thật kể ở chỗ thứ hai (giữ
-một nhà, chỗ kia trỏ về) · số trung gian mà chính file đã ghi là bị thay.
-**Sơ đồ vẽ tay** (cây thư mục · bảng · `mermaid`) là phần chính của plan — giữ, nén chữ quanh nó chứ đừng xoá nó.
+## What an "idea" is — the thing that must NOT be lost
+A decision + its reason in one sentence · a settled rule and the original sentence that settled it · a number that justifies a decision
+or a rejection · a trap (`⚠` · `🔴` · "trap") · a dropped option (`Dropped` · `REJECTED` · "do not propose again" — compressed to ONE
+line: what was dropped + why; they stop a later agent proposing it again) · protocol/format facts the code relies on · acceptance
+gates and NEGATIVE cases · open / unmeasured points · section numbers (`§N`) other files refer to.
+**Not an idea** (may be cut): the story of how a session got there · the same fact told in a second place (keep
+one home, the other points to it) · an intermediate number the file itself marks as replaced.
+**Hand-drawn diagrams** (folder trees · tables · `mermaid`) are the core of a plan — keep them; compress the words around them, never delete them.
 
-## Quy trình
+## Procedure
 
-**1. Lùi bản gốc TRƯỚC khi đụng gì.** Chép nguyên `docs/plan/*.md` vào `docs/archive/plan-<YYYY-MM-DD>/`,
-kiểm từng file khớp byte. Không có bản gốc thì không soát được mất ý.
+**1. Back the original up BEFORE touching anything.** Copy `docs/plan/*.md` as they are into `docs/archive/plan-<YYYY-MM-DD>/`,
+check each file matches byte for byte. Without the original, lost ideas cannot be checked.
 
-**2. Tìm số mục đang bị dẫn chiếu.** `grep -rn "plan/NN §" docs backend` (và thư mục mã của repo). Mọi tiêu đề
-được dẫn chiếu phải giữ nguyên số và tên.
+**2. Find the section numbers others refer to.** `grep -rn "plan/NN §" docs backend` (and the repo's code folders). Every heading
+referred to keeps its number and name.
 
-**3. Viết bản nháp NGOÀI repo.** Một spec một bản nháp, ghi vào thư mục nháp của phiên. Giao cho subagent thì
-dặn rõ: **chỉ ghi bản nháp, không sửa file trong repo** — sửa thẳng từng đoạn thì chốt đọc-trước-khi-ghi coi
-mỗi lượt sửa là "người khác sửa" và mọi agent trong phiên bị chặn liên tục.
+**3. Write the draft OUTSIDE the repo.** One draft per spec, in the session's scratch folder. Handing it to a subagent:
+say clearly **write only the draft, never edit a file in the repo** — editing paragraph by paragraph makes the read-before-write gate treat
+each edit as "someone else's edit", and every agent in the session gets blocked again and again.
 
-**4. Lượt soát ĐỘC LẬP — bắt buộc, không bỏ.** Một agent khác (không phải người viết nháp) đọc TRỌN bản gốc và
-bản nháp, đi từng mục:
-- liệt kê từng ý bản nháp làm rơi, đưa lại vào ở dạng nén;
-- **đối chiếu với code** mọi khẳng định trạng thái (đã bật / đã dựng / chưa làm) — bản gốc có thể đã cũ hơn
-  code, bản nháp có thể tự suy thêm; ghi đúng sự thật của code;
-- kiểm mọi chỗ người viết nháp tự thêm hoặc tự suy, giữ cái đúng, bỏ cái sai.
+**4. An INDEPENDENT review pass — required, never skipped.** Another agent (not the draft's writer) reads the original and the draft
+WHOLE, section by section:
+- list each idea the draft dropped and put it back, compressed;
+- **check against the code** every claim of state (on / built / not done) — the original may be older than
+  the code, the draft may have inferred things; write what the code really says;
+- check every place the draft's writer added or inferred something, keep what is right, drop what is wrong.
 
-**5. Không lách thước.** Trần đo bằng số dòng ở khổ chữ thường của repo (~130 ký tự). Gói dòng dài cho đủ số
-dòng là không gọn thật — nội dung không đổi, chỉ khó đọc hơn. Đo kèm số ký tự để biết bản nháp thật sự nhỏ đi.
+**5. Do not cheat the measure.** The cap is measured in lines at the repo's normal width (~130 characters). Wrapping long lines to hit the line
+count is not really tighter — the content is the same, only harder to read. Measure the characters too, to know the draft really shrank.
 
-**6. Không xuống được trần mà không mất ý ⇒ DỪNG ở mức trung thực và đề xuất.** Báo số dòng thật + ý nào sẽ phải
-bỏ nếu ép tiếp; đề xuất nâng trần (khoá `thresholds.plan_spec_lines`) hoặc tách spec nếu
-nó gánh hai bài toán khác nhau. **Người duyệt quyết** — không tự bỏ ý để đạt số, không tự đổi trần.
+**6. Cannot reach the cap without losing ideas ⇒ STOP at the honest level and propose.** Report the real line count + which ideas would have to
+go to press further; propose raising the cap (key `thresholds.plan_spec_lines`) or splitting the spec if
+it carries two different problems. **The approver decides** — never drop ideas to reach a number, never change the cap on your own.
 
-**7. Áp.** Thay file trong repo bằng bản đã soát. Ghi đè cả file cần có phê duyệt (cờ guard
-`.allow-overwrite`) — xin trước, gỡ cờ ngay sau. Giữ kiểu xuống dòng của file gốc.
+**7. Apply.** Replace the file in the repo with the reviewed copy. Overwriting a whole file needs approval (the guard flag
+`.allow-overwrite`) — ask first, remove the flag right after. Keep the original file's line endings.
 
-**8. Đọc lại TRỌN bản cuối** (soát lần cuối, và chốt đọc-trước-khi-ghi đòi đọc lại file vừa thay), rồi chạy
-`zemory paths check` (0 đường mới chết) và `zemory validate`.
+**8. Read the final copy WHOLE again** (the last review, and the read-before-write gate asks for the replaced file again), then run
+`zemory paths check` (0 newly dead paths) and `zemory validate`.
 
-**9. Ghi `05_CHANGES`:** spec nào, trước/sau bao nhiêu dòng, lượt soát đưa lại bao nhiêu ý, chỗ nào sửa cho khớp
-code, đường dẫn bản gốc.
+**9. Write `05_CHANGES`:** which spec, lines before/after, how many ideas the review restored, where it was corrected to match the
+code, the path of the original copy.
 
-## Bẫy đã gặp
-- Bản nháp tự thêm "trạng thái ✅" hoặc một mục tổng hợp mới — lượt soát phải kiểm, đừng nhận nguyên.
-- Spec ghi một thiết kế (bảng mới, mức đã chạy một nửa) mà code đã làm khác — gọt là lúc sửa cho khớp code.
-- Spec nhiều bảng đo (mỗi quyết định là một phép đo) không xuống thấp được — bảng số chính là bằng chứng chống đề
-  xuất lại; đó là lý do đề xuất nâng trần, không phải lý do xoá bảng.
+## Traps met
+- The draft adds a "✅ state" or a new summary section on its own — the review must check it, never take it as is.
+- A spec describes a design (a new table, a half-run stage) the code built differently — the trim is the moment to make it match the code.
+- A spec full of measurement tables (each decision is a measurement) cannot go low — the tables are the evidence against
+  proposing it again; that is a reason to propose raising the cap, never a reason to delete the tables.

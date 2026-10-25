@@ -2,198 +2,198 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 18
+version: 19
 type: process
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
 ---
 
-# session-close — chốt phiên / ghi sổ
+# session-close — closing a session / writing the ledgers
 
-> Kích hoạt (luật cứng, `Rule_Keys_11_VerifyClaims`): có yêu cầu "note lại" · "docs lại" · "ghi sổ" ·
-> "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang
-> nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
+> Trigger (a hard rule, `Rule_Keys_11_VerifyClaims`): a request to "note it down" · "write the docs" · "write the ledger" ·
+> "close the session" · "context running out / switching session / opening a new session" — or any wording that means
+> **closing this session's books so the next session can read on**.
 
-**TUYỆT ĐỐI không ghi docs theo trí nhớ tóm tắt.** Ghi theo tóm tắt = mất chi tiết, và cái mất luôn
-là cái phiên sau cần nhất.
+**NEVER write docs from a summarised memory.** Writing from a summary = losing detail, and what is lost is always
+what the next session needs most.
 
-**Global Memory là NGUỒN THẬT của phiên — trí nhớ trong context thì KHÔNG.** Khi context bị tóm
-tắt/trim, chi tiết phiên vẫn còn NGUYÊN trong episodic memory (DB); cái bạn "nhớ" trong context đã
-bị lược. Đây là GỐC của "đổi session là sót/lệch". Nên **mọi lần ghi docs / audit / báo cáo — nhất
-là khi ĐỔI SESSION — BẮT BUỘC dò Global Memory + đối chiếu code / deliverable / pipeline / file THẬT
-để verify TRƯỚC khi khẳng định bất cứ điều gì.**
+**Global Memory is the session's REAL SOURCE — the memory in context is NOT.** When the context is summarised/
+trimmed, the session's details are still WHOLE in episodic memory (the DB); what you "remember" in context has been
+cut. This is the ROOT of "switching sessions loses/skews things". So **every time you write docs / audit / report — above
+all when SWITCHING SESSION — you MUST search Global Memory + compare with the REAL code / deliverable / pipeline / files
+to verify BEFORE asserting anything.**
 
-> **Không có `zemory` CLI** (không có Global Memory): đọc lại phiên hiện tại là nguồn duy nhất — càng
-> phải ghi sớm, đừng để trôi. Các bước `zemory …` dưới đây thì làm tay đúng luật đi kèm.
+> **No `zemory` CLI** (no Global Memory): re-reading the current session is the only source — all the more reason to
+> write early, do not let it drift. The `zemory …` steps below are done by hand following the rule that comes with them.
 
-## Bước 0 — DÒ GLOBAL MEMORY + VERIFY (bắt buộc, KHÔNG skip, làm TRƯỚC Bước 1)
+## Step 0 — SEARCH GLOBAL MEMORY + VERIFY (required, NOT skipped, done BEFORE Step 1)
 
-0. **`zemory memory scan` TRƯỚC `digest`** — phiên ĐANG CHẠY chưa nằm trong GM tới khi được scan;
-   bỏ bước này thì `digest` trả thiếu/rỗng và phần đầu phiên đã bị nén khỏi context mất luôn. Scan
-   xong GM vẫn thiếu ⇒ đọc thẳng transcript gốc của phiên (Claude Code:
-   `~/.claude/projects/<repo>/<session>.jsonl`). *Đo được: bỏ bước này, một quyết định chốt giữa
-   phiên rơi mất, sổ chỉ còn câu nói vài phút trước đó — câu đã bị chính quyết định kia thay.*
-1. `zemory memory digest <session>` + `zemory memory search "<chủ đề phiên>" [--all]` → dựng lại ĐẦY
-   ĐỦ việc/đổi/quyết định/lỗi của phiên, kể cả đoạn đã trôi khỏi context.
-2. **Verify từng mục sắp ghi vào docs với NGUỒN THẬT** = GM (điều đã thực sự làm/nói/quyết) +
-   code / deliverable / measure / pipeline / file THẬT (đọc lại dòng/chỗ liên quan). Chỉ mục SỐNG
-   SÓT verify mới được ghi; claim chưa verify = KHÔNG ghi.
-3. **SOÁT `04_TODO` = ĐO LẠI, KHÔNG đọc rồi chép** (`Rule_Keys_11_VerifyClaims`, luật áp **MỌI LÚC** — chốt
-   phiên chỉ là một trường hợp; kích hoạt cả khi giữa chừng có câu *"check todo"* · *"còn gì chưa
-   làm"*): mỗi mục là một **KHẲNG ĐỊNH VỀ TRẠNG THÁI**, mà khẳng định phải truy được về nguồn kiểm
-   được — file `.md` là nguồn của NỘI DUNG, **không phải nguồn của sự thật**. **BA NGUỒN, chạy ĐỦ
-   CẢ BA cho MỌI mục — không chọn nguồn theo loại mục**:
-   ① **mã / nguồn** (grep/đếm · mở file/số liệu ra đếm) ·
-   ② **Global Memory / lịch sử quyết định** (`memory search --all`, lọc tin vai `user` — quyết định
-   hay nằm ở phiên khác, thậm chí **repo khác**; không có CLI thì đọc `archive/`) ·
-   ③ **chạy thật** (gọi endpoint · truy nguồn sống · mở app nhìn · đọc log tiến trình đang chạy ·
-   mở chính bản giao nhìn tận mắt · làm mới dữ liệu rồi đối chiếu số).
-   Chỉ khi **cả ba khớp** mới kết luận; lệch ⇒ **cái mới hơn thắng** (lời chốt CÓ HẠN DÙNG, có thể bị
-   chính việc làm sau đó supersede). Nguồn nào không chạm được ⇒ ghi "chưa xác minh được" kèm nguồn
-   đã thử, KHÔNG mặc định "chưa làm", KHÔNG lấy 2 nguồn còn lại làm đủ. **Mục quá 7 ngày không ai đụng
-   = NGHI NGỜ.** **Hỏi lại một việc đã chốt là LỖI**, không phải cẩn thận. *Đo được: soát 58 mục ra
-   11 sai (~19%)* — mục đã build vẫn mang `[ ]`, mục agent tự bịa vì thấy triệu chứng rồi phán nguyên nhân.
-3b. **SOÁT HẾT SỔ, KHÔNG CHỈ KHỐI MỚI NHẤT.** Mọi khối — kể cả khối bàn giao của các phiên trước
-   ("▶ PHIÊN SAU ĐỌC TRƯỚC…") và khối cũ nhiều tuần — từng mục đối chiếu `05_CHANGES` +
-   `archive/05_CHANGES` (`zemory changelog search`) và GM (`zemory memory search --all`, lọc tin vai
-   `user`). Xong ⇒ **đánh dấu ĐÚNG DẠNG máy nhặt** (Bước 3); cả khối xong ⇒ sửa tiêu đề thành
-   `## [x] …`. Khối bàn giao của phiên trước: phiên NHẬN nó soát xong thì ĐÓNG — mục còn mở nhấc sang
-   khối bàn giao MỚI, khối cũ thành `## [x]` (làm tay: dời vào archive) — không để khối bàn giao chồng
-   lên nhau. *Đo được: một sổ 1.328 dòng mang hơn 10 khối bàn giao chưa ai đóng.*
-4. **Áp CẢ cho audit / báo cáo lỗi:** mỗi finding phải đối chiếu code/file THẬT + GM trước khi gọi là
-   "lỗi thật" — phần lớn false-positive đến từ đọc code thiếu ngữ cảnh hoặc không biết quyết định
-   lịch sử. Bẫy điển hình: tên file cũ trong entry changelog CŨ là **BẢN GHI LỊCH SỬ**, KHÔNG phải
-   link gãy cần sửa (sửa = vi phạm luật supersede); chuỗi tiếng Anh (ngôn ngữ gốc) có thể là **thuật
-   ngữ kỹ thuật GIỮ NGUYÊN**, KHÔNG phải leak i18n; số liệu trong report cũ có thể là snapshot
-   đúng-tại-thời-điểm. KHÔNG tin kết quả subagent chưa tự kiểm lại.
+0. **`zemory memory scan` BEFORE `digest`** — the RUNNING session is not in GM until it is scanned;
+   skipping this makes `digest` return partial/empty and the start of the session already compressed out of context is lost for good.
+   Scanned and GM still lacks it ⇒ read the session's original transcript directly (Claude Code:
+   `~/.claude/projects/<repo>/<session>.jsonl`). *Measured: skipping this step, a decision settled mid-session
+   fell out, the ledger kept only words from a few minutes earlier — words that very decision had replaced.*
+1. `zemory memory digest <session>` + `zemory memory search "<session topic>" [--all]` → rebuild the FULL
+   work/changes/decisions/errors of the session, including the parts that drifted out of context.
+2. **Verify each item about to go into docs against the REAL SOURCE** = GM (what was really done/said/decided) +
+   the REAL code / deliverable / measure / pipeline / files (re-read the relevant lines/places). Only items that SURVIVE
+   verification get written; an unverified claim = NOT written.
+3. **CHECKING `04_TODO` = MEASURING AGAIN, NOT reading and copying** (`Rule_Keys_11_VerifyClaims`, a rule applying **AT ALL TIMES** —
+   closing a session is only one case; it fires too when mid-session someone says *"check the todo"* · *"what is still not
+   done"*): each item is **A CLAIM ABOUT STATE**, and a claim must trace back to a checkable source
+   — the `.md` file is the source of the CONTENT, **not the source of the truth**. **THREE SOURCES, run ALL
+   THREE for EVERY item — never pick the source by the kind of item**:
+   ① **code / source** (grep/count · open the file/figures and count) ·
+   ② **Global Memory / decision history** (`memory search --all`, filter messages in the `user` role — decisions
+   often sit in another session, even **another repo**; with no CLI read `archive/`) ·
+   ③ **a real run** (call the endpoint · query the live source · open the app and look · read the log of the running process ·
+   open the handed-out copy itself and look with your own eyes · refresh the data and compare figures).
+   Conclude only when **all three agree**; they differ ⇒ **the newer one wins** (a decision HAS AN EXPIRY, it can be
+   superseded by the work done after it). A source that cannot be reached ⇒ write "not verifiable" with the sources
+   tried, do NOT default to "not done", do NOT take the other 2 sources as enough. **An item untouched for more than 7 days
+   = SUSPECT.** **Asking again about something settled is an ERROR**, not caution. *Measured: checking 58 items found
+   11 wrong (~19%)* — items already built still carrying `[ ]`, items the agent made up after seeing a symptom and declaring a cause.
+3b. **CHECK THE WHOLE LEDGER, NOT ONLY THE NEWEST BLOCK.** Every block — including the handover blocks of earlier sessions
+   ("▶ NEXT SESSION READ FIRST…") and blocks weeks old — each item compared with `05_CHANGES` +
+   `archive/05_CHANGES` (`zemory changelog search`) and GM (`zemory memory search --all`, filter messages in the `user`
+   role). Done ⇒ **mark it in EXACTLY the form the machine picks up** (Step 3); the whole block done ⇒ change its title to
+   `## [x] …`. A handover block of an earlier session: the session RECEIVING it closes it once checked — still-open items move to
+   the NEW handover block, the old block becomes `## [x]` (by hand: move it into the archive) — handover blocks never pile
+   on each other. *Measured: one ledger of 1,328 lines carried more than 10 handover blocks nobody had closed.*
+4. **Apply it ALSO to audits / bug reports:** every finding must be compared with the REAL code/files + GM before being called
+   "a real bug" — most false positives come from reading code without context or not knowing a historical
+   decision. A typical trap: an old file name in an OLD changelog entry is **A HISTORICAL RECORD**, NOT a
+   broken link to fix (fixing it = breaking the supersede rule); an English string (the original language) can be **a technical
+   term KEPT AS IS**, NOT an i18n leak; figures in an old report can be a snapshot
+   right at that moment. Do NOT trust a subagent's result you have not checked again yourself.
 
-## Bước 1 — ĐỌC LẠI ĐỦ các nguồn TRƯỚC khi ghi
+## Step 1 — RE-READ ALL the sources BEFORE writing
 
-1. **FULL phiên hiện tại** — đọc lại từ ĐẦU hội thoại, kể cả đoạn đã bị tóm tắt/trôi khỏi context
-   (dùng `zemory memory digest <session>` / `memory search` để moi lại). Rút ra: đã LÀM gì · đã ĐỔI gì
-   · QUYẾT ĐỊNH gì · còn DỞ gì · phát hiện LỖI gì chưa sửa.
-2. **FULL `docs/plan/*`** — mọi file, để biết việc vừa làm có đụng/lệch spec nào không (định nghĩa
-   metric thì soi khung HP `Cons_Gate_12_SourceOfTruth`, mục Định nghĩa).
-3. **FULL `docs/agent/*`** — `01_LAW/_Cons` · `01_LAW/_Rule` · `02_STRUCTURE` · `03_SKILLS` ·
-   `04_TODO` · `05_CHANGES`, để biết chỗ nào phải cập nhật và không ghi trùng cái đã có.
-4. **FULL spec của MỌI case/task đã đụng trong phiên** (vd `tasks/<case>/spec.md`) — cả thân lẫn khối
-   khai báo đầu file (`status` · `updated` · `evidence` · `run_at`…). Quyết định riêng của một case
-   sống ở đó, KHÔNG ở `docs/plan`. *Đo được: bỏ qua file này ⇒ spec còn ghi "chưa dựng pipeline" sau
-   khi pipeline đã chạy, giữ bảng lịch đã huỷ, ghi sai máy chạy.*
+1. **The FULL current session** — re-read from the START of the conversation, including the parts summarised/drifted out of context
+   (use `zemory memory digest <session>` / `memory search` to dig them back). Extract: what was DONE · what was CHANGED
+   · what was DECIDED · what is still UNFINISHED · which BUGS were found and not fixed.
+2. **The FULL `docs/plan/*`** — every file, to know whether the work just done touched/drifted from any spec (metric
+   definitions: look at the HP frame `Cons_Gate_12_SourceOfTruth`, section Definitions).
+3. **The FULL `docs/agent/*`** — `01_LAW/_Cons` · `01_LAW/_Rule` · `02_STRUCTURE` · `03_SKILLS` ·
+   `04_TODO` · `05_CHANGES`, to know which places must be updated and not write what already exists twice.
+4. **The FULL spec of EVERY case/task touched in the session** (e.g. `tasks/<case>/spec.md`) — both the body and the declaration
+   block at the top of the file (`status` · `updated` · `evidence` · `run_at`…). A case's own decisions
+   live there, NOT in `docs/plan`. *Measured: skipping this file ⇒ the spec still said "pipeline not built" after
+   the pipeline had run, kept a cancelled schedule table, named the wrong machine.*
 
-## Bước 2 — định tuyến từng thứ về đúng file, KHÔNG BỎ SÓT
+## Step 2 — route each thing to the right file, MISSING NOTHING
 
-| Thứ phát sinh trong phiên | Ghi vào |
+| Arising in the session | Written to |
 |---|---|
-| Việc đã xong / đã sửa code / sản phẩm (deliverable · measure · pipeline) đã sửa | `05_CHANGES.md` (sau khi được duyệt) **và xoá khỏi** `04_TODO.md` |
-| Việc còn dở (ĐANG làm, đã báo) | `04_TODO.md` — nêu rõ `[~]`, **đã tới đâu, bước kế tiếp là gì** |
-| Việc PHÁT SINH / ý cho phiên sau | **BÁO trong phiên, hỏi trước khi ghi** — cửa vào ở `Rule_Gate_38_TodoDoor`. Không gật ⇒ không có dòng nào |
-| Thiết kế / quyết định thay đổi (gồm định nghĩa metric) | `docs/plan/NN_*.md` · định nghĩa metric → khung HP `Cons_Gate_12_SourceOfTruth` mục Định nghĩa, cách tính → skill riêng `Skill_Own_<Tên>` (+ supersede ở changelog nếu đảo quyết định cũ) |
-| Quyết định / trạng thái của MỘT case | spec của case đó (vd `tasks/<case>/spec.md`) — thân + khối khai báo (`updated` đổi cùng lượt); câu cũ bị thay thì sửa/gạch, KHÔNG để hai câu ngược nhau cùng sống |
-| Luật / bất biến riêng phát sinh | **HỎI ngay trong phiên**, gật thì ghi thẳng vào đúng nhà (`01`/`02`) — KHÔNG tự sửa `01_LAW/_Cons/`, và KHÔNG đậu vào `04_TODO` chờ duyệt |
+| Work done / code changed / product (deliverable · measure · pipeline) changed | `05_CHANGES.md` (after approval) **and removed from** `04_TODO.md` |
+| Unfinished work (IN PROGRESS, already reported) | `04_TODO.md` — marked `[~]`, **how far it got, what the next step is** |
+| Work ARISING / ideas for the next session | **REPORT it in the session, ask before writing** — the door is `Rule_Gate_38_TodoDoor`. No nod ⇒ no line |
+| Design / decision changed (including metric definitions) | `docs/plan/NN_*.md` · metric definitions → HP frame `Cons_Gate_12_SourceOfTruth` section Definitions, how to compute → a skill of its own `Skill_Own_<Name>` (+ supersede in the changelog when reversing an old decision) |
+| A decision / state of ONE case | that case's spec (e.g. `tasks/<case>/spec.md`) — body + declaration block (`updated` changes in the same turn); an old sentence replaced gets edited/struck, NEVER two contradicting sentences alive together |
+| A law / own invariant arising | **ASK at once in the session**, a nod ⇒ write it straight into the right home (`01`/`02`) — do NOT edit `01_LAW/_Cons/` yourself, and do NOT park it in `04_TODO` awaiting approval |
 
-**Chuẩn "không bỏ sót":** mọi việc ĐÃ LÀM trong phiên phải tìm được ở `05_CHANGES` **hoặc**
-`04_TODO` — không việc nào chỉ nằm trong đầu rồi mất theo phiên. Chẩn đoán sai · đường cụt · thứ đã
-thử mà không xong **cũng phải ghi** (để phiên sau khỏi đâm lại chỗ đó): gộp vào **entry CHANGES của
-chính việc đó** (một hai dòng "đã loại X vì Y"), KHÔNG đẻ mục `04_TODO` riêng. *"Không bỏ sót" nói về
-việc ĐÃ LÀM — nó KHÔNG phải giấy phép ghi mọi thứ nghĩ ra vào sổ; cửa vào của sổ ở
+**The "miss nothing" standard:** every piece of work DONE in the session must be findable in `05_CHANGES` **or**
+`04_TODO` — no work lives only in a head and dies with the session. Wrong diagnoses · dead ends · things
+tried and not finished **must be written too** (so the next session does not crash into the same place): merged into **the CHANGES entry of
+that very work** (a line or two "ruled out X because Y"), NOT a separate `04_TODO` item. *"Miss nothing" is about
+work DONE — it is NOT a licence to write everything thought of into the ledger; the ledger's door is
 `Rule_Gate_38_TodoDoor`.*
 
-## Bước 2b — format changelog
+## Step 2b — changelog format
 
-- Mới nhất ở **trên cùng**, ngay sau header. Format: `## [YYYY-MM-DD] — tiêu đề`.
-- **Đảo một quyết định cũ?** Entry mở đầu bằng
-  `> 🔄 **Supersede:** thay [YYYY-MM-DDx] — "[đề mục]" — [lý do].`
-  Mệnh đề đó phải nêu **ĐÚNG khoá ngày của entry bị thay** (ngày + chữ cái hậu tố, y như trong heading
-  của nó) — máy chỉ nối được khi có khoá đó, và nối rồi thì ai tra trúng entry CŨ mới thấy nhãn
-  “⚠ ĐÃ BỊ THAY”. Viết trống ngày ⇒ quyết định chết vẫn hiện như đang sống (`Docs_005_Agent`).
-  Ngày trần khi hôm đó có nhiều entry ⇒ **bị bỏ qua**, không đoán. **Không sửa/xoá entry cũ.**
-- **Entry NGẮN — trần ~30 dòng (luật, không phải gợi ý).** Một entry chỉ cần ba thứ: **đổi gì · vì
-  sao · số đo**. Chi tiết thiết kế → `docs/plan/`; tường thuật quá trình → bỏ. *Lý do là số học: vùng
-  active chỉ ~180 dòng, bốn entry 50 dòng là chiếm trọn, tức viết dài làm chính cơ chế archive thành
-  vô nghĩa.*
+- Newest at **the top**, right after the header. Format: `## [YYYY-MM-DD] — title`.
+- **Reversing an old decision?** The entry opens with
+  `> 🔄 **Supersede:** thay [YYYY-MM-DDx] — "[heading]" — [reason].`
+  That clause must name **EXACTLY the date key of the entry replaced** (date + suffix letter, just as in its
+  heading) — the machine links only with that key, and once linked whoever lands on the OLD entry sees the label
+  “⚠ ĐÃ BỊ THAY”. Written without a date ⇒ a dead decision still shows as alive (`Docs_005_Agent`).
+  A bare date when that day has several entries ⇒ **ignored**, not guessed. **Never edit/delete an old entry.**
+- **A SHORT entry — a cap of ~30 lines (a rule, not a suggestion).** An entry needs only three things: **what changed · why ·
+  the measurement**. Design details → `docs/plan/`; a narrative of the process → drop it. *The reason is arithmetic: the
+  active area is only ~180 lines, four 50-line entries take it all, so long writing makes the archive mechanism itself
+  meaningless.*
 
-## Bước 3 — TỰ DỌN hai file sổ (bắt buộc, đừng chờ ai nhớ gõ lệnh)
+## Step 3 — TIDY the two ledger files YOURSELF (required, do not wait for someone to remember the command)
 
-Hai file sổ **lớn dần mãi**, mà chuẩn bắt đọc `04_TODO` ở đầu mỗi phiên. Không dọn thì mỗi phiên phải
-nạp lại toàn bộ lịch sử — càng dùng lâu càng tốn, tới lúc không còn chỗ cho việc thật.
+The two ledger files **grow forever**, and the standard requires reading `04_TODO` at the start of every session. Untidied, every
+session must load the whole history again — the longer in use, the more it costs, until there is no room left for real work.
 
-Chạy `zemory archive` ngay sau khi ghi. Nó làm hai việc KHÁC NHAU, đúng bản chất từng file — đừng
-áp chung một ngưỡng:
+Run `zemory archive` right after writing. It does two DIFFERENT things, matching each file's nature — do not
+apply one threshold to both:
 
-- **`04_TODO.md` — KHÔNG có ngưỡng.** Mọi mục đã xong — dấu `[x]` **hoặc** `✅`, `archive` nhận cả
-  hai (bản chỉ-biết-`[x]` từng làm lệnh **chưa bao giờ nhặt được mục nào** ở repo viết `✅`, trong
-  khi sổ phình tới 2.327 dòng và lệnh báo *"nothing to do"* mỗi lần) — chuyển sang
-  `docs/archive/04_TODO.md` ngay, vì một mục đã xong là **đặt sai chỗ kể từ giây nó xong** —
-  không liên quan file dài hay ngắn. (Đo được: gác bằng ngưỡng kích thước là lý do 107 mục đã xong nằm
-  lại chiếm **46%** một file vốn được nạp MỌI phiên.) Mục còn mở `[ ]`/`[~]` giữ nguyên toàn bộ.
-  **Dạng dấu máy dời (zemory ≥ 3.6.0):** dòng `- [x]` · `- ✅` · `N. [x]`, và khối có tiêu đề `## [x]`
-  (dời NGUYÊN khối tới tiêu đề cùng cấp kế tiếp). `✅` trên mục đánh số / tiêu đề, và khối đóng mà bên
-  trong còn `[ ]`/`[~]`, thì máy CHỈ BÁO (danh sách *"NOT moved"*), không dời — `✅` hay được dùng để
-  trang trí khối còn nợ. Đọc từng dòng báo: xong thật thì đổi sang `[x]` rồi chạy lại. Viết "xong"
-  kiểu khác (gạch `~~…~~`, chữ XONG trong đoạn văn) thì máy KHÔNG thấy. **Đối số:** số mục vừa đóng ở
-  Bước 0.3b phải bằng số `archive` báo dời; danh sách báo phải về 0 và số khối bàn giao `archive` đếm
-  phải về 1 (chỉ khối của phiên này) — lệch ⇒ sửa dấu/đóng khối rồi chạy lại; KHÔNG coi "nothing to
-  do" là sạch.
-- **`05_CHANGES.md` — có trần.** Entry **cũ nhất** chuyển sang `archive/05_CHANGES.md`, giữ bản mới
-  nhất tại chỗ. Ngưỡng khai trong `docs/.harness.json` (`thresholds.changes_lines`/`changes_keep`).
+- **`04_TODO.md` — NO threshold.** Every finished item — mark `[x]` **or** `✅`, `archive` accepts both
+  (a version knowing only `[x]` once made the command **never pick up a single item** in a repo writing `✅`, while
+  the ledger swelled to 2,327 lines and the command reported *"nothing to do"* every time) — moves to
+  `docs/archive/04_TODO.md` at once, because a finished item is **misplaced from the second it is finished** —
+  nothing to do with the file being long or short. (Measured: guarding by a size threshold is why 107 finished items stayed
+  behind taking **46%** of a file loaded in EVERY session.) Open items `[ ]`/`[~]` stay in full.
+  **The mark forms the machine moves (zemory ≥ 3.6.0):** lines `- [x]` · `- ✅` · `N. [x]`, and blocks titled `## [x]`
+  (moving the WHOLE block up to the next title of the same level). `✅` on a numbered item / title, and a closed block still
+  holding `[ ]`/`[~]` inside, the machine ONLY REPORTS (the *"NOT moved"* list), never moves — `✅` is often used to
+  decorate a block still owing work. Read each reported line: really done ⇒ change it to `[x]` and run again. "Done" written
+  another way (struck `~~…~~`, the word DONE in a paragraph) the machine does NOT see. **Reconciliation:** the number of items
+  just closed in Step 0.3b must equal the number `archive` reports moved; the report list must come to 0 and the number of
+  handover blocks `archive` counts must come to 1 (only this session's block) — off ⇒ fix the marks/close the blocks and run
+  again; NEVER treat "nothing to do" as clean.
+- **`05_CHANGES.md` — capped.** The **oldest** entries move to `archive/05_CHANGES.md`, keeping the newest
+  in place. The threshold is declared in `docs/.harness.json` (`thresholds.changes_lines`/`changes_keep`).
 
-**Chép NGUYÊN VĂN, KHÔNG tóm tắt** — tầng archive là để TRA LẠI, không phải để nén; cả hai tầng được
-reindex nên mục vừa chuyển tra được ngay (`zemory changelog search` · `zemory memory search`).
+**Copy WORD FOR WORD, NEVER summarise** — the archive layer is for LOOKING UP AGAIN, not for compressing; both layers are
+reindexed so an item just moved can be found at once (`zemory changelog search` · `zemory memory search`).
 
-**Không chạy được `zemory`?** Làm tay đúng hai luật trên, đích `docs/archive/<tên file>.md`
-(tạo nếu chưa có), rồi báo đã chuyển bao nhiêu mục:
+**Cannot run `zemory`?** Do it by hand following the two rules above, target `docs/archive/<file name>.md`
+(created when missing), then report how many items were moved:
 
-- `04_TODO.md` — KHÔNG chờ ngưỡng nào. Mục xong dời NGUYÊN VĂN sang archive ngay; dọn cả mục **đã
-  huỷ / hoãn vô hạn** + ghi chú cũ; mục còn mở giữ **toàn bộ**. File vẫn to vì quá nhiều việc đang mở
-  ⇒ **BÁO để cắt phạm vi**, KHÔNG tự xoá việc.
-- `05_CHANGES.md` — trần theo **KÍCH THƯỚC, không phải số dòng.** Đếm bằng `wc -c`; vượt **40.000 ký
-  tự** (~10k token) thì chuyển các entry **cũ nhất** đi, giữ lại ~**25.000 ký tự** mới nhất. *Vì sao
-  không đếm dòng: dòng ở sổ dày mỏng rất khác nhau (đo được 20–34 token/dòng) nên "300 dòng" có thể là
-  6k hay 10k token — đếm dòng là đo sai thứ.*
+- `04_TODO.md` — NO threshold to wait for. Finished items move WORD FOR WORD to the archive at once; tidy also items **cancelled
+  / postponed indefinitely** + old notes; open items stay **in full**. The file still big because too much work is open
+  ⇒ **REPORT it to cut scope**, do NOT delete work yourself.
+- `05_CHANGES.md` — capped by **SIZE, not line count.** Count with `wc -c`; past **40,000
+  characters** (~10k tokens) move the **oldest** entries out, keeping about **25,000 characters** of the newest. *Why
+  not count lines: ledger lines vary a lot in density (measured 20–34 tokens/line) so "300 lines" can be
+  6k or 10k tokens — counting lines measures the wrong thing.*
 
-## Bước 3b — QUÉT RÁC (bắt buộc; luật `01_LAW/_Rule` *".gitignore là GIẤU, không phải DỌN"*)
+## Step 3b — SWEEP THE LITTER (required; the `01_LAW/_Rule` rule *".gitignore HIDES, it does not TIDY"*)
 
-Chốt phiên là chỗ DUY NHẤT chắc chắn chạy cuối phiên, nên phép quét đặt ở đây. Ba phép, in số ra rồi
-mới kết luận — im lặng không tính là sạch:
+Closing a session is the ONLY place sure to run at the end of a session, so the sweep sits here. Three checks, print the numbers
+before concluding — silence does not count as clean:
 
-- **① file lạ ở gốc + file nháp còn sót:** liệt kê untracked NGOÀI các đường gitignore hợp lệ
-  (`data/` · `exports/` · két bí mật), và MỌI file khớp `_scratch_*` · `.tmp*` bất kể ở đâu. Có ⇒ xoá
-  (hỏi trước nếu file có vẻ là sản phẩm), KHÔNG để lại "dọn sau".
-- **② thư mục gitignore có phình không:** đo dung lượng từng thư mục dữ liệu; vượt ngưỡng repo tự đặt
-  (mặc định gợi ý **2 GB**) ⇒ BÁO kèm 3 thư mục con to nhất. Đây đúng chỗ đã nuốt **3 GB** (một venv
-  13.830 file + một `.rar` 1,34 GB trùng với folder đã giải nén cạnh nó) mà không cổng nào thấy, vì nó
-  nằm dưới đường đã gitignore.
-- **③ gốc repo có file thực thi không:** `.cmd`/`.sh`/`.bat` ở gốc ⇒ sai chuẩn, phải nằm `bin/`
-  (`02_STRUCTURE` mục *Gốc repo sạch*). Đo thật: cơ chế launcher-ở-gốc đã đẻ 5 file rỗng 0 byte, 2 file
-  lọt vào git.
+- **① stray files at the root + leftover scratch files:** list untracked files OUTSIDE the valid gitignored paths
+  (`data/` · `exports/` · the secret safe), and EVERY file matching `_scratch_*` · `.tmp*` wherever it is. Any ⇒ delete
+  (ask first when a file looks like a product), NEVER leave "tidy later".
+- **② are gitignored folders swelling:** measure the size of each data folder; past the threshold the repo set itself
+  (suggested default **2 GB**) ⇒ REPORT with the 3 biggest subfolders. This is exactly the place that swallowed **3 GB** (a venv of
+  13,830 files + a 1.34 GB `.rar` duplicating the extracted folder beside it) without any gate seeing it, because it
+  sat under a gitignored path.
+- **③ executable files at the repo root:** `.cmd`/`.sh`/`.bat` at the root ⇒ off-standard, they belong in `bin/`
+  (`02_STRUCTURE` section *Clean repo root*). Measured for real: the launcher-at-the-root mechanism produced 5 empty 0-byte files,
+  2 of them slipped into git.
 
-Gợi ý lệnh (Windows PowerShell — đổi theo repo):
+Suggested commands (Windows PowerShell — adapt to the repo):
 ```
-git status --porcelain | Select-String '^\?\?'          # ① file lạ
-Get-ChildItem -Recurse -File -Filter '_scratch_*'        # ① nháp còn sót
+git status --porcelain | Select-String '^\?\?'          # ① stray files
+Get-ChildItem -Recurse -File -Filter '_scratch_*'        # ① leftover scratch
 Get-ChildItem data -Directory | ForEach-Object { '{0,8:N0} MB  {1}' -f ((Get-ChildItem $_ -Recurse -File | Measure-Object Length -Sum).Sum/1MB), $_.Name }
-Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'   # ③ gốc
+Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'   # ③ root
 ```
 
-## Bước cuối
+## Last step
 
-`zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO. **Không tự `git push`**
+`zemory validate` (reads the files directly — only green counts as closed) → REPORT. **Never `git push` on your own**
 (`Rule_Gate_50_Git`).
 
-## Bảng soát tài liệu đi cùng thay đổi (`Rule_Gate_34_DocsFollowChange`)
+## The documents that go with a change (`Rule_Gate_34_DocsFollowChange`)
 
-| Đã đổi | Phải sửa trong cùng thay đổi |
+| Changed | Must be edited in the same change |
 |---|---|
-| việc trong sổ | `04_TODO`: đóng hoặc thêm mục theo `Rule_Gate_38_TodoDoor` |
-| bất kỳ thứ gì đã được xác nhận | `05_CHANGES`: một entry, khuôn ở slot `Docs_005_Agent` |
-| cấu trúc (slot) | đề xuất lên HS (`Rule_Gate_83_HarnessFromStore` · `Rule_Gate_85_ProposeChecked`); `02_STRUCTURE/INDEX.md` máy sinh lại khi sync |
-| định nghĩa nghiệp vụ | khung HP `Cons_Gate_12_SourceOfTruth` (mục Định nghĩa) · cách tính: skill riêng `Skill_Own_<Tên>` |
-| skill (thêm · bớt) | skill chung: đề xuất lên HS · skill riêng: thư mục `03_SKILLS/Skill_Own_<Tên>/`; `03_SKILLS/INDEX.md` máy sinh lại khi sync |
-| thiết kế | spec trong `docs/plan` (sửa tại chỗ thành hướng mới) |
-| chức năng có hướng dẫn trong sản phẩm | trang hướng dẫn của sản phẩm |
+| work in the ledger | `04_TODO`: close or add items by `Rule_Gate_38_TodoDoor` |
+| anything confirmed | `05_CHANGES`: one entry, the mould in slot `Docs_005_Agent` |
+| structure (slots) | proposed to HS (`Rule_Gate_83_HarnessFromStore` · `Rule_Gate_85_ProposeChecked`); `02_STRUCTURE/INDEX.md` is regenerated by the machine on sync |
+| business definitions | HP frame `Cons_Gate_12_SourceOfTruth` (section Definitions) · how to compute: a skill of its own `Skill_Own_<Name>` |
+| skills (added · removed) | shared skill: proposed to HS · own skill: folder `03_SKILLS/Skill_Own_<Name>/`; `03_SKILLS/INDEX.md` is regenerated by the machine on sync |
+| design | the spec in `docs/plan` (edited in place to the new direction) |
+| a feature with a guide inside the product | the product's guide page |
 
-Sửa `.md` xong, muốn `plan search` · `changelog search` thấy ngay ⇒ `zemory reindex` (dựng lại chỉ mục từ file, không
-ghi ngược file).
+After editing an `.md`, for `plan search` · `changelog search` to see it at once ⇒ `zemory reindex` (rebuilds the index from the
+files, never writes back to the files).
 
 ## Implements · Thi hành luật
 - `Rule_Gate_34_DocsFollowChange` — the documents brought up to date before the session ends · tài liệu được cập nhật trước khi hết phiên

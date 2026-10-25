@@ -2,63 +2,63 @@
 id: Skill_Doc_ReadOffice
 aka: read-office
 name: doc-read-office
-version: 5
+version: 6
 type: process
 description: Read the contents of Office and PDF files (.xlsx .xls .docx .pptx .pdf) efficiently, choosing the cheapest conversion for the job instead of dumping raw XML into context. Use when you need to open, inspect, extract, or summarise a spreadsheet, document, slide deck or PDF. Do not use for files that are already text (.csv .md .json .txt) - read those directly. Vietnamese triggers - "đọc file excel", "xem bảng tính", "mở file word", "đọc pdf", "trong file này có gì", "lấy số từ file".
 ---
 
-# read-office — đọc file Office / PDF
+# read-office — reading Office / PDF files
 
-> Kích hoạt: cần ĐỌC nội dung một file Office/PDF (bảng số, báo cáo, tài liệu) trong khi agent chỉ
-> có công cụ đọc text. KHÔNG áp cho file vốn đã là text (`.csv` · `.md` · `.json` · `.txt`) — đọc
-> thẳng, rẻ hơn mọi cách dưới.
+> Trigger: the CONTENT of an Office/PDF file (a spreadsheet, a report, a document) must be READ while the agent only has text
+> tools. Not for files that are already text (`.csv` · `.md` · `.json` · `.txt`) — read those directly, cheaper than any way
+> below.
 
-## Vấn đề
+## The problem
 
-`.xlsx`/`.docx`/`.pptx` là **ZIP nhị phân** — đọc trực tiếp không ra nội dung. Hai đường sai thường gặp:
+`.xlsx`/`.docx`/`.pptx` are **binary ZIPs** — read directly, they show no content. Two common wrong ways:
 
-1. Coi file như text rồi nạp **XML thô** vào ngữ cảnh — đắt gấp nhiều lần.
-2. Mỗi lần gặp file lại viết một script `openpyxl`/`python-docx` riêng — tốn công, mỗi lần một kiểu.
+1. Treating the file as text and loading the **raw XML** into context — many times more expensive.
+2. Writing a fresh `openpyxl`/`python-docx` script each time a file shows up — effort spent, a different shape every time.
 
-## Công cụ
+## The tool
 
-`markitdown` (Microsoft · MIT · Python) — convert Office/PDF/HTML/ảnh → Markdown. Là **dependency
-ngoài gọi qua CLI**, KHÔNG dán source vào dự án.
+`markitdown` (Microsoft · MIT · Python) — converts Office/PDF/HTML/images → Markdown. It is an **outside dependency called
+through its CLI**, never source pasted into the project.
 
 ```
-pip install "markitdown[xlsx,xls,docx,pptx,pdf]"     # bản đã đo: 0.1.6
+pip install "markitdown[xlsx,xls,docx,pptx,pdf]"     # the version measured: 0.1.6
 
-python -m markitdown <file>              # ra stdout
-python -m markitdown <file> -o out.md    # ghi ra file (dùng cho file lớn)
+python -m markitdown <file>              # to stdout
+python -m markitdown <file> -o out.md    # to a file (for large files)
 ```
 
-Sheet Excel ra dạng `## <tên sheet>` + bảng Markdown ⇒ giữ được ranh giới nhiều sheet.
+An Excel sheet comes out as `## <sheet name>` + a Markdown table ⇒ the boundaries between sheets are kept.
 
-> Môi trường chạy đã có sẵn khả năng đọc `.xlsx`/`.docx`/`.pptx`/`.pdf` (vd Cowork): dùng khả năng
-> có sẵn trước; chỉ cần `markitdown` khi muốn kiểm soát chính xác lượng token nạp vào.
+> An environment that can already read `.xlsx`/`.docx`/`.pptx`/`.pdf` (e.g. Cowork): use that ability first; `markitdown` is
+> needed only to control exactly how many tokens are loaded.
 
-## Số đo tham chiếu
+## Reference measurements
 
-File `.xlsx` thật: 18 KB · 3 sheet · 308 dòng (~token = ký tự ÷ 4):
+A real `.xlsx`: 18 KB · 3 sheets · 308 rows (~tokens = characters ÷ 4):
 
-| Cách đọc | ~token | Ghi chú |
+| Way of reading | ~tokens | Note |
 |---|--:|---|
-| unzip → XML thô | 30.119 | đường duy nhất nếu coi file là text |
-| **MarkItDown → Markdown** | **5.395** | **rẻ hơn XML 5,6×**; giữ tên sheet + cấu trúc bảng |
-| CSV từng sheet (tự script) | 4.193 | rẻ hơn Markdown ~22% nhưng **MẤT ranh giới nhiều sheet** |
+| unzip → raw XML | 30,119 | the only way if the file is treated as text |
+| **MarkItDown → Markdown** | **5,395** | **5.6× cheaper than XML**; keeps the sheet names + the table structure |
+| CSV per sheet (own script) | 4,193 | ~22% cheaper than Markdown but **LOSES the boundaries between sheets** |
 
-## Chọn theo việc — KHÔNG mặc định "Markdown luôn rẻ nhất"
+## Choose by the job — NOT "Markdown is always cheapest"
 
-Số đo trên bác bỏ điều đó.
+The measurements above refute that.
 
-- Cần **HIỂU tài liệu** (nhiều sheet · chữ lẫn số · `.docx`/`.pptx`/`.pdf`) → **MarkItDown**.
-- Chỉ cần **MỘT bảng số thuần** để tính toán → CSV / `openpyxl` rẻ hơn.
-- **File lớn** → convert ra FILE rồi đọc **đúng phần cần** (`grep` / N dòng đầu) — progressive
-  disclosure. **Đừng nạp cả bản convert vào ngữ cảnh.**
-- **Bảng ngàn dòng** → token tăng theo **số DÒNG**, không theo dung lượng file. Ước lượng trước khi nạp.
+- Need to **UNDERSTAND the document** (several sheets · text mixed with numbers · `.docx`/`.pptx`/`.pdf`) → **MarkItDown**.
+- Need only **ONE plain table of numbers** to compute → CSV / `openpyxl` is cheaper.
+- **A large file** → convert to a FILE, then read **only the part needed** (`grep` / the first N lines) — progressive
+  disclosure. **Never load the whole conversion into context.**
+- **A table of thousands of rows** → tokens grow with the **number of ROWS**, not the file size. Estimate before loading.
 
-## Cấm
+## Forbidden
 
-- Nạp XML thô vào ngữ cảnh.
-- Nạp cả bản convert của file lớn rồi mới lọc.
-- Sửa file gốc khi chỉ được yêu cầu ĐỌC.
+- Loading raw XML into context.
+- Loading the whole conversion of a large file and filtering afterwards.
+- Editing the original file when only asked to READ it.
