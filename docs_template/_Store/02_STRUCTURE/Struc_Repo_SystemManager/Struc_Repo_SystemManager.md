@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_SystemManager
 name: repo-system-manager
-version: 1
+version: 2
 profile: app
 label: SYSTEM-MANAGER
 intro: : repo quản một hệ nhiều app — quyết khung và chuẩn của các app và repo dữ liệu app nó quản
@@ -12,10 +12,10 @@ checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_App]
 ---
 # Struc_Repo_SystemManager
 
-Chuẩn cấu trúc của repo quản một hệ app: mọi slot của `Struc_Repo_App` (khai `extends`). Slot riêng của vai đo khi ráp repo
-đầu tiên theo template này.
+The structure standard of a repo that manages an app system: every slot of `Struc_Repo_App` (declares `extends`). The role's own slots are measured when
+the first repo is assembled from this template.
 
-## Vai
+## Role
 
-- Quản: repo theo `Struc_Repo_App` và `Struc_Repo_AppData`.
-- Không thuộc quyền repo nào.
+- Manages: repos following `Struc_Repo_App` and `Struc_Repo_AppData`.
+- Belongs to no repo.

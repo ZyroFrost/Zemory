@@ -2,10 +2,10 @@
 id: Slot_39
 aka: 03-39
 name: migrations
-version: 4
+version: 5
 path: backend/src/migrations/
 ---
-# Backend_039_Migrations migrations — DB migration
+# Backend_039_Migrations migrations — DB migrations
 
-- Vai trò: DB migration / đổi schema. Cross-cutting: luôn ở cấp `src/` gốc.
-- Khuôn tên: Mỗi file = một bước version schema. Framework ép tên (Django `migrations/`) thì theo framework.
+- Role: DB migrations / schema changes. Cross-cutting: always at the root level of `src/`.
+- Naming: One file = one schema version step. Where a framework forces the name (Django `migrations/`), follow the framework.

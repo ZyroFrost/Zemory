@@ -2,13 +2,13 @@
 id: Slot_32
 aka: 03-32
 name: vault
-version: 4
+version: 5
 path: backend/src/vault/
 ---
-# Backend_032_Vault vault — mã hoá + key
+# Backend_032_Vault vault — encryption + keys
 
-- Vai trò:
-  - MÃ HOÁ + KEY: derive / encrypt / decrypt, credential vault — CODE ở đây.
-  - Mã hoá là concern riêng: key + encrypt/decrypt → `vault/` · at-rest DB (SQLCipher) → `store/` · key/salt/bundle → `data/secrets/` · bundle in-transit → `vault/`.
-  - Credential/secret dạng code ở đây; secret runtime thật ở `.env`.
-- Được chứa / không chứa: Không chứa: FILE key/bundle (→ `data/secrets/`).
+- Role:
+  - ENCRYPTION + KEYS: derive / encrypt / decrypt, the credential vault — the CODE lives here.
+  - Encryption is a concern of its own: keys + encrypt/decrypt → `vault/` · DB at rest (SQLCipher) → `store/` · key/salt/bundle files → `data/secrets/` · bundles in transit → `vault/`.
+  - Credentials/secrets as code live here; the real runtime secrets are in `.env`.
+- May hold / may not hold: Not here: key/bundle FILES (→ `data/secrets/`).

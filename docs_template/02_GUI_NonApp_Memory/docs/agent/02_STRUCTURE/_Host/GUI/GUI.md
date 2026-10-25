@@ -1,19 +1,19 @@
 ---
 id: Host_GUI
 name: host-gui
-version: 2
+version: 3
 kind: host
-from: _Store/02_STRUCTURE/_Host/GUI @v2 #68aa9cb39e13
+from: _Store/02_STRUCTURE/_Host/GUI @v3 #e42e8032e0dc
 ---
-# GUI Hệ GUI — agent chạy trong một app đứng riêng
+# GUI The GUI host — the agent runs in a stand-alone app
 
-- Phạm vi: agent chạy trong một app desktop riêng, mở dự án bằng cách chọn folder trong app. Đặt theo loại môi trường; app
-  mới cùng loại vào hệ này, không thêm hệ.
-- Mở dự án: tạo project → thêm folder dự án → cho phép lệnh trong folder đó → chọn model → dán câu bootstrap của bộ.
-- Chat chạy trong máy ảo của app không gọi được lệnh trên máy thật: không ráp bộ Memory từ đó; chỉ đọc Global Memory qua
+- Scope: the agent runs in a separate desktop app, and a project is opened by picking a folder in the app. Named by the kind of
+  environment; a new app of the same kind joins this host, no new host is added.
+- Opening a project: create a project → add the project folder → allow commands in that folder → pick a model → paste the set's bootstrap line.
+- A chat that runs in the app's virtual machine cannot call commands on the real machine: no Memory set is assembled from there; it only reads Global Memory through
   MCP (`zemory setup mcp`).
-- Bộ ráp được: bộ Basic (không cần cài zemory); bộ Memory khi máy đã cài zemory.
-- Kiểm môi trường (doctor):
-  - quyền gốc `permissions.deny` / `ask` trong `.claude/settings.json` chặn được trên máy trống, không cần runtime;
-  - hook Node chỉ chạy khi máy có Node — thiếu Node thì host cho qua mà không báo ⇒ bộ Basic không chở hook Node;
-  - hook chặn bằng JSON `permissionDecision: "deny"`; mã thoát 2 chỉ là đường phụ (máy không có Git thì mã thoát 2 không chặn).
+- Sets that can be assembled: a Basic set (needs no zemory install); a Memory set once the machine has zemory installed.
+- Environment check (doctor):
+  - the base permissions `permissions.deny` / `ask` in `.claude/settings.json` block on a bare machine, without any runtime;
+  - a Node hook runs only where the machine has Node — without Node the host lets it through without a word ⇒ a Basic set carries no Node hook;
+  - a hook blocks with the JSON `permissionDecision: "deny"`; exit code 2 is only a fallback (on a machine without Git, exit code 2 does not block).

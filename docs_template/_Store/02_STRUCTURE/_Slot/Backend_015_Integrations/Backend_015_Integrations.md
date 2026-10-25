@@ -2,13 +2,13 @@
 id: Slot_15
 aka: 03-15
 name: integrations
-version: 4
+version: 5
 path: backend/src/integrations/
 ---
-# Backend_015_Integrations integrations — client gọi service ngoài (biên ra)
+# Backend_015_Integrations integrations — clients calling outside services (outbound edge)
 
-- Vai trò:
-  - Client gọi SERVICE NGOÀI (SaaS: Stripe/Slack/SendGrid/FCM/S3-client…). BIÊN RA — chiều gọi đi ra ngoài.
-  - Nhận phần client của các concern khác: kênh gửi notifications (SendGrid/Twilio/FCM) · client S3 của storage · APM/Sentry/Datadog của logging · một nơi THỰC THI cho tool LLM gọi.
-  - Ba loại kết nối: `api/` = mình mở · `integrations/` = service ngoài · `store/` = database. Khác `external/` (code họ clone về).
-- Được chứa / không chứa: Không chứa: client gọi về backend của mình (→ `frontend/client/`) · code ngoài clone về (→ `external/`).
+- Role:
+  - Clients that call OUTSIDE SERVICES (SaaS: Stripe/Slack/SendGrid/FCM/S3 client…). OUTBOUND EDGE — the direction of calls going out.
+  - Takes the client part of other concerns: the sending channels of notifications (SendGrid/Twilio/FCM) · the S3 client of storage · APM/Sentry/Datadog of logging · one place that EXECUTES what an LLM tool calls.
+  - Three kinds of connection: `api/` = what we open · `integrations/` = outside services · `store/` = the database. Not `external/` (their code cloned in).
+- May hold / may not hold: Not here: the client calling back to our own backend (→ `frontend/client/`) · outside code cloned in (→ `external/`).

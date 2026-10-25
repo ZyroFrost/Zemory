@@ -2,11 +2,11 @@
 id: Slot_70
 aka: 03-70
 name: util
-version: 4
+version: 5
 path: frontend/util/
-from: _Store/02_STRUCTURE/_Slot/Frontend_070_Util @v4 #71317bfd8761
+from: _Store/02_STRUCTURE/_Slot/Frontend_070_Util @v5 #e64795fcc7aa
 ---
-# Frontend_070_Util util — helper thuần (client)
+# Frontend_070_Util util — pure helpers (client)
 
-- Vai trò: Helper thuần client (kèm `lib/`) — đối xứng `backend/src/util`.
-- Được chứa / không chứa: Không chứa: business logic · repository · framework-adapter.
+- Role: Pure client helpers (with `lib/`) — mirrors `backend/src/util`.
+- May hold / may not hold: Not here: business logic · repositories · framework adapters.

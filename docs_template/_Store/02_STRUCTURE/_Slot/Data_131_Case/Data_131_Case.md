@@ -2,18 +2,19 @@
 id: Slot_131
 aka: 03-131
 name: case
-version: 5
+version: 6
 path: data/<case>/
 ---
-# Data_131_Case case — data làm việc của một case
+# Data_131_Case case — the working data of one case
 
-- Vai trò:
-  - Data làm việc của từng case, gitignore.
-  - Xếp file theo thứ tự, câu đầu trúng là dừng: ① chính repo này đã gửi hay đẩy nó lên đích? ⇒ `03_output` · ② nhận từ
-    ngoài và repo này chưa gửi lại (kể cả file người tiền nhiệm đã gửi) ⇒ `01_raw` · ③ pipeline sinh, không ai ngoài thấy ⇒
-    `02_processing`. "Xoá đi có dựng lại được không" không phải tiêu chí: bản đã gửi dựng lại được vẫn là `03_output`.
-  - Mở case là dựng đủ cả 3 chặng ngay, kể cả đang rỗng: `data/` không vào git nên khung rỗng không làm bẩn repo, còn thiếu khung
-    thì file đầu tiên bị quăng bừa. Luật "không folder rỗng" áp cho slot git theo dõi, không áp ở đây.
-  - Nằm riêng khỏi `tasks/<case>/` là ngoại lệ có chủ đích (file nặng).
-- Được chứa / không chứa: CHIA ĐÚNG 3 CHẶNG: `01_raw/` · `02_processing/` · `03_output/`.
-- Khuôn tên: Mirror ĐÚNG TÊN `tasks/<case>/`.
+- Role:
+  - The working data of each case, gitignored.
+  - Sort a file in this order, the first true answer wins: ① has this repo itself sent it or pushed it to its target? ⇒ `03_output` · ② received from
+    outside and not sent back by this repo (files a predecessor sent included) ⇒ `01_raw` · ③ produced by a pipeline, seen by nobody outside ⇒
+    `02_processing`. "Can it be rebuilt if deleted" is not the test: a sent copy that can be rebuilt is still `03_output`.
+  - A stage folder is created when its first file arrives, never before (`Struc_Disk_Data` §Rules: a folder exists only when it holds something —
+    `data/` being outside git does not change it). A file with nowhere to go yet is sorted by the order above at the moment it lands, so nothing
+    is dropped at random.
+  - Kept apart from `tasks/<case>/` on purpose (heavy files).
+- May hold / may not hold: ONLY THE 3 STAGES, each when it has a file: `01_raw/` · `02_processing/` · `03_output/`.
+- Naming: Mirrors the EXACT NAME of `tasks/<case>/`.

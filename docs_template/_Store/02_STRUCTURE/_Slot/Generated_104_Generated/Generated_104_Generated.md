@@ -2,11 +2,11 @@
 id: Slot_104
 aka: 03-104
 name: generated
-version: 4
+version: 5
 path: generated/
 ---
-# Generated_104_Generated generated — code sinh tự động
+# Generated_104_Generated generated — generated code
 
-- Vai trò:
-  - CODE SINH tự động từ `contracts/` / proto / graphql — build lại được.
-  - Mặc định GITIGNORE. Commit CHỈ khi cần reproducibility / offline-build → ghi rõ lý do.
+- Role:
+  - CODE GENERATED from `contracts/` / proto / graphql — rebuildable.
+  - GITIGNORED by default. Committed ONLY when reproducibility / an offline build needs it → write down why.

@@ -2,20 +2,20 @@
 id: Slot_2
 aka: 03-2
 name: backend
-version: 4
+version: 5
 path: backend/
-from: _Store/02_STRUCTURE/_Slot/Backend_002_Backend @v4 #ab05af2beaa2
+from: _Store/02_STRUCTURE/_Slot/Backend_002_Backend @v5 #ab05f3d03975
 ---
-# Backend_002_Backend backend — phía server: code của mình + entry
+# Backend_002_Backend backend — the server side: our own code + entry
 
-- Vai trò:
-  - ★ Phía server: code của mình + entry — 100% của mình, một giọng. Phần code là vai trò bắt buộc `backend/(code)`.
-  - Code nằm dưới `backend/`: Node → `backend/src/` · Python → `backend/<pkg>/`. Tên co theo stack: chỉ TẦNG co theo ngôn ngữ, không tự đổi tên concern.
-  - Cây tối thiểu chạy được: (1) code của mình dưới `backend/`; (2) MỘT entry — `run.*` HOẶC manifest khai `bin`/`main`; (3) MỘT manifest — ở gốc HOẶC `backend/`, không cần cả hai. Mọi slot con khác `[opt]`.
-  - Daemon nền / server tiến trình dài phục vụ UI cục bộ (single-instance, cổng cố định): surface mỏng ở `backend/src/` mở endpoint `api/` + serve `frontend/` tĩnh; nghiệp vụ vẫn ở domain.
-  - UI embed (single-bin): app CLI/1-binary được EMBED trang UI như resource (vd HTML/CSS/JS trong một file TS) để ship gọn — GIỮ ở backend nhưng GHI RÕ; server phục vụ nó vẫn là backend, nội dung UI vẫn thuộc frontend về vai trò. Không ép tách nếu tách làm vỡ build một file.
-  - UI một ngôn ngữ: app render UI server-side bằng chính ngôn ngữ backend (Streamlit/Gradio/Dash/Django+template) → không có `frontend/` tách; vai trò frontend = pages/views nằm TRONG backend (Python: `backend/<pkg>/pages`, hoặc `views/` nếu framework ép tên). Khi đó bắt buộc còn 3: backend(code) + docs + AGENTS.
-  - Hệ NON-APP không có `backend/` (không có code-app).
-- Được chứa / không chứa:
-  - Chứa: `src/` (hoặc `<pkg>/`) · `test/` · `scripts/` · `infra/` · `resources/` · `run.*` · manifest.
-  - Không chứa: code ngoài clone về (→ `external/`).
+- Role:
+  - ★ The server side: our own code + entry — 100% ours, one voice. The code part is the required role `backend/(code)`.
+  - The code sits under `backend/`: Node → `backend/src/` · Python → `backend/<pkg>/`. Names follow the stack: only the LAYER changes with the language, never the name of a concern.
+  - The smallest tree that runs: (1) our own code under `backend/`; (2) ONE entry — `run.*` OR a manifest declaring `bin`/`main`; (3) ONE manifest — at the root OR in `backend/`, not both. Every other child slot is `[opt]`.
+  - A background daemon / long-running server serving a local UI (single instance, fixed port): a thin surface in `backend/src/` opens `api/` endpoints + serves the static `frontend/`; the business logic stays in the domain.
+  - Embedded UI (single binary): a CLI/one-binary app may EMBED its UI page as a resource (e.g. HTML/CSS/JS inside one TS file) to ship compact — KEPT in the backend but WRITTEN DOWN; the server serving it is still the backend, the UI content still belongs to the frontend by role. Not forced apart when splitting breaks the one-file build.
+  - Single-language UI: an app rendering its UI server-side in the backend's own language (Streamlit/Gradio/Dash/Django+templates) → no separate `frontend/`; the frontend role = pages/views INSIDE the backend (Python: `backend/<pkg>/pages`, or `views/` where the framework forces the name). Then 3 required roles remain: backend(code) + docs + AGENTS.
+  - A NON-APP repo has no `backend/` (no app code).
+- May hold / may not hold:
+  - Holds: `src/` (or `<pkg>/`) · `test/` · `scripts/` · `infra/` · `resources/` · `run.*` · the manifest.
+  - Not here: outside code cloned in (→ `external/`).

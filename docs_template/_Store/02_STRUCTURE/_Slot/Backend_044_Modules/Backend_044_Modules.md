@@ -2,12 +2,12 @@
 id: Slot_44
 aka: 03-44
 name: modules
-version: 4
+version: 5
 path: backend/src/modules/
 ---
-# Backend_044_Modules modules — gói theo domain/feature
+# Backend_044_Modules modules — packages by domain/feature
 
-- Vai trò:
-  - Gói theo DOMAIN/feature CỦA MÌNH — đơn vị của kiểu domain-first; bên trong lồng lại slot cùng từ điển. Cũng dùng làm provider theo capability.
-  - Khác `plugins/` (điểm mở rộng cho bên thứ 3).
-- Được chứa / không chứa: Không chứa: slot cross-cutting (luôn ở `src/` gốc).
+- Role:
+  - Packages by OUR OWN DOMAIN/feature — the unit of domain-first; inside, the same slot dictionary nests again. Also used as a provider per capability.
+  - Not `plugins/` (extension points for third parties).
+- May hold / may not hold: Not here: cross-cutting slots (always at the root of `src/`).

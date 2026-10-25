@@ -1,41 +1,41 @@
 ---
 id: Slot_155
 name: db
-version: 2
+version: 3
 path: _DB_<Hệ>/
 scope: layout
 ---
-# Db_155_Db db — repo dữ liệu của một hệ
+# Db_155_Db db — the data repo of one system
 
-## Vai trò
+## Role
 
-`Workspace\Company\<Tổ chức>\_DB_<Hệ>\` là repo của MỘT hệ dữ liệu dùng chung trong tổ chức: lược đồ, truy vấn có tên, tác vụ
-nạp dữ liệu, tài liệu về nguồn. Dấu `_` đầu tên nói đây là thứ dùng chung của cả tổ chức, không của riêng phòng nào.
+`Workspace\Company\<Org>\_DB_<System>\` is the repo of ONE data system shared in the organisation: schemas, named queries, data loading
+tasks, documents about the sources. The leading `_` says it is shared by the whole organisation, not owned by one department.
 
-## Ba loại — mỗi loại ráp một khung khác nhau
+## Three kinds — each assembles a different frame
 
-| loại | ví dụ | khung ráp | vai trong tổ chức |
+| kind | example | frame assembled | role in the organisation |
 |---|---|---|---|
-| kho dữ liệu (DW) | `_DB_Warehouse` | `Struc_Repo_WorkspaceManager` | quản các repo phòng ban (là `owner` của `Dept_<Mã>`), cung cấp `data` cho các phòng |
-| hệ dữ liệu của một ứng dụng (nghiệp vụ nguồn: ERP, POS…) | `_DB_Erp` | `Struc_Repo_AppData` | cung cấp `app-data` cho ứng dụng; `owner` bắt buộc là repo quản ứng dụng (`Struc_Repo_SystemManager`) |
-| trung tâm log | `_DB_Log` | `Struc_Repo_LogCenter` | cung cấp `log`; không có `owner` |
+| data warehouse (DW) | `_DB_Warehouse` | `Struc_Repo_WorkspaceManager` | manages the department repos (is the `owner` of `Dept_<Code>`), provides `data` to the departments |
+| the data system of an application (business source: ERP, POS…) | `_DB_Erp` | `Struc_Repo_AppData` | provides `app-data` to the application; its `owner` must be the repo that manages the application (`Struc_Repo_SystemManager`) |
+| log centre | `_DB_Log` | `Struc_Repo_LogCenter` | provides `log`; has no `owner` |
 
-Một tổ chức có đúng MỘT kho dữ liệu (nơi cung cấp `data`) và đúng MỘT trung tâm log (nơi cung cấp `log`) — luật "mỗi vai dịch vụ
-một nơi cung cấp" của `Struc_Region_Company`. Hệ dữ liệu của ứng dụng thì mỗi ứng dụng một repo.
+An organisation has exactly ONE data warehouse (the provider of `data`) and exactly ONE log centre (the provider of `log`) — the law "each service role
+has one provider" of `Struc_Region_Company`. The data system of an application: one repo per application.
 
-## Được chứa / không chứa
+## May hold / may not hold
 
-- Chứa: lược đồ (schema) · truy vấn có tên · tác vụ nạp và làm sạch dữ liệu · tài liệu mô tả nguồn.
-- Không chứa: báo cáo của một phòng ban (để ở `Dept_<Mã>\` của phòng đó) · mã ứng dụng (để ở `_Project\<Nhóm>\<repo>\`) ·
-  dữ liệu thô dung lượng lớn kéo về (để trong cơ sở dữ liệu, không để trong repo).
+- Holds: schemas · named queries · data loading and cleaning tasks · documents describing the sources.
+- Not here: a department's reports (in that department's `Dept_<Code>\`) · application code (in `_Project\<Group>\<repo>\`) ·
+  large raw data pulled in (it lives in the database, not in the repo).
 
-## Khuôn tên
+## Naming
 
-`_DB_<Hệ>`: tiền tố `_DB_` cố định, tên hệ PascalCase, không dấu, không dấu cách: `_DB_Warehouse` · `_DB_Erp` · `_DB_Log`.
+`_DB_<System>`: the fixed prefix `_DB_`, the system name in PascalCase, no diacritics, no spaces: `_DB_Warehouse` · `_DB_Erp` · `_DB_Log`.
 
-## Phép kiểm
+## Check
 
-- `zemory conform --layout <ổ>\Workspace\Company\<Tổ chức>`: thư mục không khớp khuôn `_DB_<Hệ>` hay slot nào khác bị coi là
-  thư mục lạ (`unknown-folder`).
-- `zemory conform` chạy TRONG repo: hệ dữ liệu của ứng dụng thiếu `owner` (khi tổ chức đã có repo quản ứng dụng), `owner`
-  không quản `app-data` — báo đỏ.
+- `zemory conform --layout <drive>\Workspace\Company\<Org>`: a folder matching neither `_DB_<System>` nor any other slot is treated as an
+  unknown folder (`unknown-folder`).
+- `zemory conform` run INSIDE the repo: an application's data system missing `owner` (when the organisation already has a repo managing the application), an `owner`
+  that does not manage `app-data` — red.

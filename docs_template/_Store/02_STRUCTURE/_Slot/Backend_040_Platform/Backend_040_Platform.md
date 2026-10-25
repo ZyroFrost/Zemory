@@ -2,12 +2,12 @@
 id: Slot_40
 aka: 03-40
 name: platform
-version: 4
+version: 5
 path: backend/src/platform/
 ---
-# Backend_040_Platform platform — tích hợp OS
+# Backend_040_Platform platform — OS integration
 
-- Vai trò:
-  - TÍCH HỢP OS cho app chạy nền/desktop: system-tray · start-with-OS (autostart) · native shell/window. Đây là CODE tray/autostart.
-  - Icon có 3 vai trò; FILE icon tray/exe → `backend/resources/packaging/`.
-- Được chứa / không chứa: Không chứa: file icon (→ `backend/resources/packaging/`).
+- Role:
+  - OS INTEGRATION for a background/desktop app: system tray · start with the OS (autostart) · native shell/window. This is the tray/autostart CODE.
+  - Icons have 3 roles; the tray/exe icon FILES → `backend/resources/packaging/`.
+- May hold / may not hold: Not here: icon files (→ `backend/resources/packaging/`).

@@ -2,13 +2,13 @@
 id: Slot_35
 aka: 03-35
 name: audit
-version: 4
+version: 5
 path: backend/src/audit/
 ---
-# Backend_035_Audit audit — audit trail bảo mật
+# Backend_035_Audit audit — the security audit trail
 
-- Vai trò:
-  - AUDIT TRAIL bảo mật: ai làm gì, lúc nào (đổi quyền, xoá, đăng nhập); bảng audit ở `store/`.
-  - Khác log debug (`data/logs/`).
-  - App đa người dùng / có hành động nhạy cảm → NÊN có; không có thì ghi rõ.
-- Được chứa / không chứa: Không chứa: log debug.
+- Role:
+  - The security AUDIT TRAIL: who did what, and when (permission changes, deletes, sign-ins); the audit table is in `store/`.
+  - Not the debug log (`data/logs/`).
+  - An app with several accounts / sensitive actions → SHOULD have it; without it, write down why.
+- May hold / may not hold: Not here: the debug log.

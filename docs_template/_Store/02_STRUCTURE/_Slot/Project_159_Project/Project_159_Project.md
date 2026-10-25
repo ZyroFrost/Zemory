@@ -1,42 +1,42 @@
 ---
 id: Slot_159
 name: project
-version: 2
+version: 3
 path: _Project/<Nhóm>/<repo>/
 scope: layout
 ---
-# Project_159_Project project — dự án và ứng dụng của tổ chức
+# Project_159_Project project — the organisation's projects and applications
 
-## Vai trò
+## Role
 
-`Workspace\Company\<Tổ chức>\_Project\` chứa repo KHÔNG thuộc riêng một phòng ban: ứng dụng nội bộ của tổ chức, ứng dụng do bên
-cung cấp làm, dự án nhiều phòng cùng làm. Mỗi repo nằm trong một nhóm: `_Project\<Nhóm>\<repo>\`.
+`Workspace\Company\<Org>\_Project\` holds the repos that do NOT belong to one department: the organisation's internal applications, applications built by a
+vendor, projects several departments work on. Each repo sits in a group: `_Project\<Group>\<repo>\`.
 
-## Các nhóm
+## The groups
 
-| nhóm | chứa gì | ví dụ |
+| group | holds | examples |
 |---|---|---|
-| `ERP\` | ứng dụng nội bộ dựng trên hệ nghiệp vụ của tổ chức, và repo quản các ứng dụng đó | `_Project\ERP\AcmeFlow\` · `_Project\ERP\_Hub\` |
-| `Vendor\` | ứng dụng do bên cung cấp làm cho tổ chức; có thể không ráp HS nếu mã do bên kia giữ | `_Project\Vendor\CameraAI\` |
+| `ERP\` | internal applications built on the organisation's business system, and the repo that manages them | `_Project\ERP\AcmeFlow\` · `_Project\ERP\_Hub\` |
+| `Vendor\` | applications a vendor builds for the organisation; may have no HS assembled when the vendor keeps the code | `_Project\Vendor\CameraAI\` |
 
-## Khung ráp và quan hệ
+## Frames and relations
 
-- Repo ứng dụng ráp `Struc_Repo_App` (vai `app`). `owner` là tuỳ chọn; nếu khai thì phải là repo quản ứng dụng.
-- Repo quản ứng dụng ráp `Struc_Repo_SystemManager` (vai `system-manager`), thường tên `_Hub`. Nó quản các repo `app` và các
-  hệ dữ liệu của ứng dụng (`_DB_<Hệ>` ráp `Struc_Repo_AppData`). Nó KHÔNG quản phòng ban — phòng ban thuộc kho dữ liệu
+- An application repo assembles `Struc_Repo_App` (role `app`). `owner` is optional; when declared, it must be the repo that manages applications.
+- The repo that manages applications assembles `Struc_Repo_SystemManager` (role `system-manager`), usually named `_Hub`. It manages the `app` repos and the
+  applications' data systems (`_DB_<System>` assembling `Struc_Repo_AppData`). It does NOT manage departments — departments belong to the data warehouse
   (`Struc_Repo_WorkspaceManager`).
-- Quan hệ khai trong `docs\.harness.json` của chính repo ứng dụng, ví dụ `"owner": "_Hub"`.
+- The relation is declared in the application repo's own `docs\.harness.json`, e.g. `"owner": "_Hub"`.
 
-## Luật
+## Rules
 
-- Repo của MỘT phòng ban thì đặt ở `Dept_<Mã>\`, không đặt vào `_Project\`.
-- Không đặt repo thẳng dưới `_Project\`: luôn có cấp nhóm.
+- The repo of ONE department goes in `Dept_<Code>\`, not in `_Project\`.
+- No repo straight under `_Project\`: there is always a group level.
 
-## Khuôn tên
+## Naming
 
-Nhóm PascalCase (`ERP` · `Vendor`). Repo giữ đúng tên như trên git.
+Groups in PascalCase (`ERP` · `Vendor`). A repo keeps exactly its name on git.
 
-## Phép kiểm
+## Check
 
-- `zemory conform --layout <ổ>\Workspace\Company\<Tổ chức>` kiểm `_Project` là thư mục hợp lệ của tổ chức.
-- `zemory conform` chạy TRONG repo ứng dụng: `owner` khai mà không phải repo quản ứng dụng — báo đỏ.
+- `zemory conform --layout <drive>\Workspace\Company\<Org>` checks `_Project` is a valid folder of the organisation.
+- `zemory conform` run INSIDE an application repo: an `owner` declared that is not the repo managing applications — red.

@@ -2,13 +2,13 @@
 id: Slot_18
 aka: 03-18
 name: cache
-version: 4
+version: 5
 path: backend/src/cache/
-from: _Store/02_STRUCTURE/_Slot/Backend_018_Cache @v4 #8ad999553f6a
+from: _Store/02_STRUCTURE/_Slot/Backend_018_Cache @v5 #f82703d1ff83
 ---
-# Backend_018_Cache cache — lớp cache ứng dụng
+# Backend_018_Cache cache — the application cache layer
 
-- Vai trò:
-  - Lớp CACHE ứng dụng: Redis/memcached client + TTL/invalidate.
-  - Cache có 3 chỗ rõ: lớp cache app (client + policy) → `cache/` · file cache runtime → `data/cache/` · không lẫn vào `store/` (primary DB).
-- Được chứa / không chứa: Không chứa: file cache runtime (→ `data/cache/`) · primary DB (→ `store/`).
+- Role:
+  - The application CACHE layer: Redis/memcached client + TTL/invalidation.
+  - Cache has 3 clear places: the app cache layer (client + policy) → `cache/` · runtime cache files → `data/cache/` · never mixed into `store/` (the primary DB).
+- May hold / may not hold: Not here: runtime cache files (→ `data/cache/`) · the primary DB (→ `store/`).

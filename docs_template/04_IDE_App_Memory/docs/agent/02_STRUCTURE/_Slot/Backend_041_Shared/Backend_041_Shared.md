@@ -2,14 +2,14 @@
 id: Slot_41
 aka: 03-41
 name: shared
-version: 4
+version: 5
 path: backend/src/shared/
-from: _Store/02_STRUCTURE/_Slot/Backend_041_Shared @v4 #946dcebc163f
+from: _Store/02_STRUCTURE/_Slot/Backend_041_Shared @v5 #48e9664a36cf
 ---
-# Backend_041_Shared shared — code + type dùng chung BE↔FE
+# Backend_041_Shared shared — code + types shared BE↔FE
 
-- Vai trò:
-  - DÙNG CHUNG BE↔FE: type + RUNTIME (zod schema, hằng số, pure logic). FE import từ đây.
-  - Type thuần → `shared/types`.
-  - Escape-hatch: FE publish độc lập / đa client / SDK → nâng lên `contracts/` ở gốc + `packages/contracts` (cắt coupling).
-- Được chứa / không chứa: Không chứa: file spec hợp đồng (→ `contracts/`).
+- Role:
+  - SHARED BE↔FE: types + RUNTIME (zod schemas, constants, pure logic). The FE imports from here.
+  - Plain types → `shared/types`.
+  - Escape hatch: an FE published on its own / several clients / an SDK → lift it to `contracts/` at the root + `packages/contracts` (cuts the coupling).
+- May hold / may not hold: Not here: contract spec files (→ `contracts/`).

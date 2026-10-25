@@ -2,9 +2,9 @@
 id: Slot_88
 aka: 03-88
 name: .claude
-version: 3
+version: 4
 path: .claude/
 ---
-# Claude_088_Claude .claude — config agent
+# Claude_088_Claude .claude — agent config
 
-- Vai trò: Config editor/agent — để yên ở gốc; `*.local.json` → gitignore. Chứa `skills/`.
+- Role: Editor/agent config — left at the root; `*.local.json` → gitignore. Holds `skills/`.

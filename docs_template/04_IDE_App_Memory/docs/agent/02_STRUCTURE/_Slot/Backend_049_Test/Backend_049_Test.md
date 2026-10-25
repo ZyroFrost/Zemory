@@ -2,12 +2,12 @@
 id: Slot_49
 aka: 03-49
 name: test
-version: 4
+version: 5
 path: backend/test/
-from: _Store/02_STRUCTURE/_Slot/Backend_049_Test @v4 #8649ac9ce7ea
+from: _Store/02_STRUCTURE/_Slot/Backend_049_Test @v5 #2db009ef706d
 ---
-# Backend_049_Test test — test tự động
+# Backend_049_Test test — automated tests
 
-- Vai trò:
-  - Test tự động — CHỈ khi có lõi logic dễ sai ngầm. Test thường = CHẠY app.
-  - Pass/fail tất định — khác `evals/` (đo chất lượng xác suất).
+- Role:
+  - Automated tests — ONLY where there is core logic that can silently go wrong. Ordinary testing = RUNNING the app.
+  - Deterministic pass/fail — not `evals/` (measuring probabilistic quality).

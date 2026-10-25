@@ -2,27 +2,27 @@
 id: Slot_142
 aka: 03-142
 name: database
-version: 2
+version: 3
 path: models/<database>/
 checked: [Models_112_Models, Data_101_Models, Tasks_117_Case, Scripts_128_Scripts]
 ---
-# Models_142_Database database — chuỗi đổi cấu trúc của MỘT cơ sở dữ liệu
+# Models_142_Database database — the structure-change series of ONE database
 
-- Slot TUỲ CHỌN, không template nào bật sẵn. Mặc định repo APP-DATA giữ MỘT cơ sở dữ liệu chung cho cả hệ app ⇒ `models/`
-  phẳng (`Models_112_Models`). Chỉ dùng slot này khi repo quản từ hai cơ sở dữ liệu trở lên; lúc đó mọi cơ sở dữ liệu, kể cả cái
-  đầu, mỗi cái một folder.
-- Vai trò: mỗi cơ sở dữ liệu repo quản có MỘT folder dưới `models/`, giữ chuỗi script dựng và đổi cấu trúc của riêng cơ sở dữ
-  liệu đó — mỗi cái một chuỗi đánh số riêng, không trộn.
-- Được chứa / không chứa:
-  - `NN_<slug>.sql` — số = thứ tự chạy, liền nhau, đếm riêng trong từng folder; mỗi file chạy lại vô hại · `README.md` — thứ tự
-    chạy, phép đo, bẫy đã gặp của cơ sở dữ liệu này.
-  - Không chứa: script chạy chuỗi (→ `scripts/`, một script nhận tên folder) · log chạy (→ `data/`) · bí mật (→ `.env`,
-    `data/secrets/`) · dữ liệu.
-- Khuôn tên: cơ sở dữ liệu chung của cả hệ app ⇒ `_` + tên, đứng đầu danh sách; cơ sở dữ liệu riêng của một app ⇒ đúng tên
-  app. Tiếng Anh ASCII.
-- Khác `Models_112_Models`: slot đó là cả tầng model của một dự án (dbt · tabular · DAX), nằm phẳng; slot này chia `models/`
-  theo cơ sở dữ liệu đích — mỗi folder một chuỗi đánh số riêng và một đích chạy riêng.
-- Khác `Data_101_Models`: trọng số model AI trong `data/`, không vào git; ở đây là script cấu trúc, có vào git.
-- Khác `Tasks_117_Case`: case là một mạch việc; folder này là một cơ sở dữ liệu, sống suốt đời cơ sở dữ liệu đó.
-- Khác `Scripts_128_Scripts`: script ở đó CHẠY chuỗi; folder này chỉ GIỮ chuỗi.
-- Máy kiểm: chưa có.
+- An OPTIONAL slot, no template turns it on. By default an APP-DATA repo keeps ONE database shared by the whole app system ⇒ a flat `models/`
+  (`Models_112_Models`). Use this slot only when the repo manages two databases or more; then every database, the first one included,
+  gets a folder of its own.
+- Role: each database the repo manages has ONE folder under `models/`, holding the series of scripts that build and change the structure of that
+  database alone — each its own numbered series, never mixed.
+- May hold / may not hold:
+  - `NN_<slug>.sql` — the number = the run order, consecutive, counted per folder; each file is harmless to run again · `README.md` — the run
+    order, the measurements, the traps met with this database.
+  - Not here: the script that runs the series (→ `scripts/`, one script taking the folder name) · run logs (→ `data/`) · secrets (→ `.env`,
+    `data/secrets/`) · data.
+- Naming: the database shared by the whole app system ⇒ `_` + name, first in the list; a database of one app ⇒ exactly the app's
+  name. ASCII English.
+- Not `Models_112_Models`: that slot is a project's whole model layer (dbt · tabular · DAX), flat; this slot splits `models/`
+  by target database — each folder its own numbered series and its own run target.
+- Not `Data_101_Models`: AI model weights in `data/`, outside git; here are structure scripts, in git.
+- Not `Tasks_117_Case`: a case is a line of work; this folder is a database, living as long as that database.
+- Not `Scripts_128_Scripts`: a script there RUNS the series; this folder only KEEPS it.
+- Machine check: none yet.

@@ -2,14 +2,14 @@
 id: Slot_113
 aka: 03-113
 name: content
-version: 4
+version: 5
 path: content/
-from: _Store/02_STRUCTURE/_Slot/Content_113_Content @v4 #8711ef919e70
+from: _Store/02_STRUCTURE/_Slot/Content_113_Content @v5 #a35438419831
 ---
-# Content_113_Content content — deliverable docs-only
+# Content_113_Content content — docs-only deliverable
 
-- Vai trò:
-  - ◆ Docs-only: nội dung `.md`/`.mdx` là sản phẩm chính.
-  - Deliverable ◆ — hệ NON-APP bắt buộc ≥1 folder deliverable trong `reports/` | `models/` | `content/` | `design/`, chọn theo loại dự án.
-  - Repo nặng ĐIỀU TRA (deliverable là hồ sơ case): findings nằm trong `tasks/<case>/`; `content/` giữ đúng `README.md` = INDEX case (bảng tra: case · trạng thái · chủ đề) — đây là chỗ tra nhanh có case nào.
-- Được chứa / không chứa: Không chứa: findings của case (→ `tasks/<case>/`).
+- Role:
+  - ◆ Docs-only: `.md`/`.mdx` content is the main product.
+  - Deliverable ◆ — a NON-APP repo needs at least one deliverable folder among `reports/` | `models/` | `content/` | `design/`, chosen by the kind of project.
+  - An INVESTIGATION-heavy repo (the deliverable is the case files): the findings live in `tasks/<case>/`; `content/` keeps exactly `README.md` = the case INDEX (a lookup table: case · state · topic) — the quick place to see which cases exist.
+- May hold / may not hold: Not here: the findings of a case (→ `tasks/<case>/`).

@@ -2,9 +2,9 @@
 id: Slot_55
 aka: 03-55
 name: seed
-version: 4
+version: 5
 path: backend/resources/seed/
 ---
-# Backend_055_Seed seed — dữ liệu seed đóng gói
+# Backend_055_Seed seed — packaged seed data
 
-- Vai trò: Dữ liệu seed đóng gói như resource tracked.
+- Role: Seed data packaged as a tracked resource.

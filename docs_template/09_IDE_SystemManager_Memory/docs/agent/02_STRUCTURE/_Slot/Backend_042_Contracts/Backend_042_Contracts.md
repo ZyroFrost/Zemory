@@ -2,14 +2,14 @@
 id: Slot_42
 aka: 03-42
 name: contracts
-version: 4
+version: 5
 path: backend/src/contracts/
-from: _Store/02_STRUCTURE/_Slot/Backend_042_Contracts @v4 #764b23c4f26b
+from: _Store/02_STRUCTURE/_Slot/Backend_042_Contracts @v5 #161efe168199
 ---
-# Backend_042_Contracts contracts — file spec hợp đồng API
+# Backend_042_Contracts contracts — API contract spec files
 
-- Vai trò:
-  - FILE spec hợp đồng API: OpenAPI / proto / GraphQL-SDL / AsyncAPI (contract-first).
-  - Sinh code → `generated/` (gitignore).
-  - Khác `shared/` (code TS chạy được). Đa client/SDK → dùng `contracts/` ở gốc thay chỗ này.
-- Được chứa / không chứa: Không chứa: code sinh ra (→ `generated/`).
+- Role:
+  - API contract SPEC FILES: OpenAPI / proto / GraphQL-SDL / AsyncAPI (contract-first).
+  - Generated code → `generated/` (gitignored).
+  - Not `shared/` (TS code that runs). Several clients/SDKs → use `contracts/` at the root instead of this place.
+- May hold / may not hold: Not here: generated code (→ `generated/`).

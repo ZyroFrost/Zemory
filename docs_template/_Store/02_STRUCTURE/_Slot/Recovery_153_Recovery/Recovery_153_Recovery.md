@@ -1,27 +1,27 @@
 ---
 id: Slot_153
 name: recovery
-version: 2
+version: 3
 path: Recovery/
 scope: layout
 ---
-# Recovery_153_Recovery recovery — bản khôi phục máy
+# Recovery_153_Recovery recovery — machine recovery images
 
-## Vai trò
+## Role
 
-`<ổ dữ liệu>\Recovery\` là chỗ của ảnh khôi phục hệ điều hành và bản sao lưu cả máy do CÔNG CỤ HỆ THỐNG tạo ra (công cụ khôi
-phục của Windows, của hãng máy). Trên nhiều máy, thư mục này do chính hệ thống tạo sẵn.
+`<data drive>\Recovery\` is the place of operating-system recovery images and whole-machine backups made by a SYSTEM TOOL (the recovery tool
+of Windows, of the machine maker). On many machines the system itself creates this folder.
 
-## Luật
+## Rules
 
-- Chỉ chứa thứ do công cụ khôi phục ghi. Người dùng và agent KHÔNG đặt tài liệu, repo, bản cài hay bất cứ thứ gì khác vào đây.
-- Không đổi tên, không dời, không xoá nội dung bên trong bằng tay — mất nó là mất đường khôi phục máy.
-- Không đồng bộ, không vào git.
+- Holds only what a recovery tool writes. Neither the owner nor an agent puts documents, repos, installed copies or anything else here.
+- Never renamed, moved, or its content deleted by hand — losing it loses the way to recover the machine.
+- Not synced, not in git.
 
-## Khuôn tên
+## Naming
 
-`Recovery`, cố định, viết đúng như vậy.
+`Recovery`, fixed, spelled exactly so.
 
-## Phép kiểm
+## Check
 
-`zemory conform --layout <gốc ổ>` kiểm `Recovery` là thư mục hợp lệ ở gốc ổ và báo repo nằm trong nó (`repo-outside-workspace`).
+`zemory conform --layout <drive root>` checks `Recovery` is a valid folder at the drive root and reports a repo inside it (`repo-outside-workspace`).

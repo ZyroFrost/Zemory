@@ -2,10 +2,10 @@
 id: Slot_99
 aka: 03-99
 name: tmp
-version: 4
+version: 5
 path: data/tmp/
-from: _Store/02_STRUCTURE/_Slot/Data_099_Tmp @v4 #16579c593003
+from: _Store/02_STRUCTURE/_Slot/Data_099_Tmp @v5 #c9be8c7fb482
 ---
-# Data_099_Tmp tmp — file tạm
+# Data_099_Tmp tmp — temporary files
 
-- Vai trò: File tạm runtime.
+- Role: Runtime temporary files.

@@ -2,13 +2,13 @@
 id: Slot_52
 aka: 03-52
 name: resources
-version: 4
+version: 5
 path: backend/resources/
-from: _Store/02_STRUCTURE/_Slot/Backend_052_Resources @v4 #eee62eb87dda
+from: _Store/02_STRUCTURE/_Slot/Backend_052_Resources @v5 #a3934f80503b
 ---
-# Backend_052_Resources resources — resource đóng gói tracked
+# Backend_052_Resources resources — tracked packaged resources
 
-- Vai trò: RESOURCE ĐÓNG GÓI, tracked. Là một trong 6 loại non-code: assets = media · resources = đóng gói tracked · config = file operator · data = runtime gitignore · external = code ngoài · attic = backup.
-- Được chứa / không chứa:
-  - Chứa: `prompts/` · `sql/` · `seed/` · `packaging/` · `locales/`.
-  - Không chứa: code · media UI · runtime.
+- Role: PACKAGED RESOURCES, tracked. One of the 6 kinds of non-code: assets = media · resources = packaged, tracked · config = operator files · data = runtime, gitignored · external = outside code · attic = backup.
+- May hold / may not hold:
+  - Holds: `prompts/` · `sql/` · `seed/` · `packaging/` · `locales/`.
+  - Not here: code · UI media · runtime.

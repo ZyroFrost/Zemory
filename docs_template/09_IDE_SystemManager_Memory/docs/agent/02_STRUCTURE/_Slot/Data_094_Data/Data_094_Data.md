@@ -2,18 +2,18 @@
 id: Slot_94
 aka: 03-94
 name: data
-version: 3
+version: 4
 path: data/
-from: _Store/02_STRUCTURE/_Slot/Data_094_Data @v3 #cd5026332f13
+from: _Store/02_STRUCTURE/_Slot/Data_094_Data @v4 #4595e4943a50
 ---
-# Data_094_Data data — runtime / file thật theo máy
+# Data_094_Data data — runtime / real files per machine
 
-- Vai trò:
-  - Hệ APP: RUNTIME sống theo máy / người dùng. Hệ NON-APP: FILE THẬT theo máy (nặng / PII). GITIGNORE. Một trong 6 loại non-code (data = runtime gitignore).
-  - Chia con khi phình — tránh trăm file JSON một chỗ.
-  - Nơi lưu DB local: `data/*.db` hoặc thư mục app-data `~/.<tool>/`. Vị trí do con trỏ CỐ ĐỊNH `~/.<tool>/location.json` quyết định (env override > pointer > mặc định `~/.<tool>`); mọi phụ trợ (config / browser / imports / backups) bám theo. DB lớn dần → cho dời khỏi ổ hệ thống bằng lệnh relocate của tool / UI Nơi lưu.
-  - Dời an toàn: checkpoint WAL → copy → verify (integrity + đếm) → đổi pointer → GIỮ bản cũ `.bak`. Con trỏ PHẢI ở chỗ cố định, không cạnh DB (phụ thuộc vòng). Không để DB sống trong folder Drive-sync (WAL corrupt).
-  - Hệ NON-APP: con của `data/` là tự do theo chuẩn (`data/<case>/`) — không bị coi là lệch chuẩn.
-- Được chứa / không chứa:
-  - Hệ APP: `state/` · `cache/` · `settings/` · `logs/` · `tmp/` · `snapshots/` · `models/` · `secrets/` · `uploads/`.
-  - Hệ NON-APP: `extract/` · `adhoc/` · `<case>/`.
+- Role:
+  - APP repo: RUNTIME living per machine / per account. NON-APP repo: REAL FILES per machine (heavy / PII). GITIGNORED. One of the 6 kinds of non-code (data = runtime, gitignored).
+  - Split into children as it grows — never a hundred JSON files in one place.
+  - Where a local DB lives: `data/*.db` or the app-data folder `~/.<tool>/`. The place is decided by the FIXED pointer `~/.<tool>/location.json` (env override > pointer > default `~/.<tool>`); every helper (config / browser / imports / backups) follows it. A DB that grows → let it move off the system drive with the tool's relocate command / the Storage screen.
+  - Moving safely: checkpoint the WAL → copy → verify (integrity + counts) → switch the pointer → KEEP the old copy as `.bak`. The pointer MUST be in a fixed place, never beside the DB (a circular dependency). A live DB never sits in a Drive-synced folder (WAL corruption).
+  - NON-APP repo: the children of `data/` are free under the standard (`data/<case>/`) — never treated as off-standard.
+- May hold / may not hold:
+  - APP repo: `state/` · `cache/` · `settings/` · `logs/` · `tmp/` · `snapshots/` · `models/` · `secrets/` · `uploads/`.
+  - NON-APP repo: `extract/` · `adhoc/` · `<case>/`.

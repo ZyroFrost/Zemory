@@ -2,19 +2,19 @@
 id: Slot_115
 aka: 03-115
 name: tasks
-version: 5
+version: 6
 path: tasks/
-from: _Store/02_STRUCTURE/_Slot/Tasks_115_Tasks @v5 #2ef68c4f44f5
+from: _Store/02_STRUCTURE/_Slot/Tasks_115_Tasks @v6 #0de516199e42
 ---
-# Tasks_115_Tasks tasks — đơn vị công việc: 1 case = 1 folder
+# Tasks_115_Tasks tasks — the unit of work: 1 case = 1 folder
 
-- Vai trò:
-  - 1 CASE = 1 FOLDER — đơn vị công việc, CẢ định kỳ LẪN theo yêu cầu. Mọi file của MỘT case nằm cùng chỗ.
-  - Vì sao: để phẳng thì findings + query + fix của một vấn đề rải 3 slot → tra phải mò 3 nơi và luôn sót.
-  - Thứ này để đâu — hỏi đúng MỘT câu: nó thuộc MỘT case, hay dùng chung? Thuộc một case ⇒ `tasks/<case>/` (spec · findings · SQL · `pipeline/`) + `data/<case>/` (file nặng). Dùng chung nhiều case ⇒ `scripts/` · `sources/` · `queries/` · `measures/` theo vai trò. Code của người khác clone về ⇒ `external/`, kể cả khi trông giống pipeline.
-  - 3 ngoại lệ được nằm ngoài case: query dùng chung nhiều case → `queries/` · định nghĩa metric → khung HP `Cons_Gate_12_SourceOfTruth` (mục Định nghĩa) · defect/spec dài → `docs/plan`.
-  - Không gom các slot dùng chung vào một thư mục cha: ranh giới phòng ban đã là ranh giới repo (tên repo là tên phòng ban), một tầng nữa chỉ vẽ lại thứ đã có.
-  - Con của `tasks/` là tự do theo chuẩn — không bị coi là lệch chuẩn. Repo tổ chức theo nguồn có thể không có `tasks/`.
-- Khuôn tên:
-  - Mọi case đặt tên THƯỜNG, mô tả việc, KHÔNG đánh số thứ tự — số `NN_` chỉ dành cho STAGE trong pipeline. Lý do: case không chạy theo thứ tự, thêm/bỏ case thì phải đánh số lại cả dãy, và số trên tên case lẫn với số STAGE vốn có nghĩa thật.
-  - Tên case bằng tiếng Anh ASCII.
+- Role:
+  - 1 CASE = 1 FOLDER — the unit of work, RECURRING AND ON REQUEST alike. Every file of ONE case sits in the same place.
+  - Why: kept flat, the findings + query + fix of one problem spread over 3 slots → looking something up means searching 3 places, and something is always missed.
+  - Where does this go — ask exactly ONE question: does it belong to ONE case, or is it shared? One case ⇒ `tasks/<case>/` (spec · findings · SQL · `pipeline/`) + `data/<case>/` (heavy files). Shared by several cases ⇒ `scripts/` · `sources/` · `queries/` · `measures/` by role. Someone else's code cloned in ⇒ `external/`, even when it looks like a pipeline.
+  - 3 exceptions allowed outside a case: a query several cases share → `queries/` · a metric definition → the constitution frame `Cons_Gate_12_SourceOfTruth` (section Definitions) · a long defect/spec → `docs/plan`.
+  - The shared slots are not gathered under a parent folder: the department boundary already is the repo boundary (the repo name is the department name), one more level only redraws what exists.
+  - The children of `tasks/` are free under the standard — never treated as off-standard. A repo organised by source may have no `tasks/`.
+- Naming:
+  - Every case has a PLAIN name describing the work, NO sequence number — `NN_` numbers are only for STAGES in a pipeline. Why: cases do not run in order, adding or dropping a case would renumber the whole series, and a number on a case name mixes with the STAGE numbers that do carry a meaning.
+  - Case names in ASCII English.

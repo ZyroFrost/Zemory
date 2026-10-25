@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_LogCenter
 name: repo-log-center
-version: 1
+version: 2
 profile: non-app
 label: LOG-CENTER
 intro: : repo giữ nhật ký chạy dùng chung của cả cụm — khuôn log, nơi ghi, cách tra
@@ -9,13 +9,13 @@ ask: ; repo mà mọi task và app của cụm ghi nhật ký vào là LOG-CENTE
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_NonApp]
-from: _Store/02_STRUCTURE/Struc_Repo_LogCenter @v1 #16e9b64fb78b
+from: _Store/02_STRUCTURE/Struc_Repo_LogCenter @v2 #d008efc3eb76
 ---
 # Struc_Repo_LogCenter
 
-Chuẩn cấu trúc của repo nhật ký chung: mọi slot của `Struc_Repo_NonApp` (khai `extends`). Slot riêng đo khi ráp repo đầu tiên.
+The structure standard of the shared log repo: every slot of `Struc_Repo_NonApp` (declares `extends`). Its own slots are measured when the first repo is assembled.
 
-## Vai
+## Role
 
-- Cung cấp: `log` cho mọi repo của cụm; trong mảng log (khuôn, nơi ghi) repo này quyết.
-- Không quản và không thuộc quyền repo nào.
+- Provides: `log` for every repo of the group; within logging (format, where to write) this repo decides.
+- Manages no repo and belongs to none.

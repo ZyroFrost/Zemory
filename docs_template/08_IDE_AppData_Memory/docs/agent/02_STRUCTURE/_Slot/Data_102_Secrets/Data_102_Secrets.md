@@ -2,17 +2,17 @@
 id: Slot_102
 aka: 03-102
 name: secrets
-version: 5
+version: 6
 path: data/secrets/
-from: _Store/02_STRUCTURE/_Slot/Data_102_Secrets @v5 #5a4bb56e0232
+from: _Store/02_STRUCTURE/_Slot/Data_102_Secrets @v6 #2a6db3b027ce
 ---
-# Data_102_Secrets secrets — mọi bí mật của repo: khoá · token · két mã hoá
+# Data_102_Secrets secrets — every secret of the repo: keys · tokens · the encrypted vault
 
-- Vai trò: chỗ DUY NHẤT cho bí mật của repo (`Rule_Gate_21_WhatEntersGit`):
-  - `data/secrets/<khoá · token · salt · bundle>`;
-  - `data/secrets/vault/` — két mã hoá (`*.sec` · `*.dpapi`), công cụ két đọc và ghi ở đây;
-  - ngoại lệ duy nhất: `.env` ở gốc repo, vì công cụ chỉ đọc ở đó.
-- Mỗi tên file bí mật khai ở cột `File` của bảng bí mật trong khung HP `Cons_Gate_14_Access`; guard chặn file đó vào commit.
-- Được chứa / không chứa: không chứa mã (mã mã hoá của app ở `backend/src/vault/`) · không tạo thư mục bí mật thứ hai, kể cả
-  ngoài cây repo (`.vault/` ở gốc là dạng cũ, dời vào `data/secrets/vault/`).
-- `.gitignore` chặn `/data/`; sang máy khác bí mật đi qua kênh đồng bộ, không qua git.
+- Role: the ONE place for the repo's secrets (`Rule_Gate_21_WhatEntersGit`):
+  - `data/secrets/<key · token · salt · bundle>`;
+  - `data/secrets/vault/` — the encrypted vault (`*.sec` · `*.dpapi`), the vault tool reads and writes here;
+  - the one exception: `.env` at the repo root, because the tools read it only there.
+- Each secret file name is declared in the `File` column of the secrets table in the constitution frame `Cons_Gate_14_Access`; the guard blocks that file from a commit.
+- May hold / may not hold: no code (the app's encryption code is in `backend/src/vault/`) · no second secrets folder, not even
+  outside the repo tree (`.vault/` at the root is the old form, moved into `data/secrets/vault/`).
+- `.gitignore` blocks `/data/`; secrets reach another machine through the sync channel, never through git.

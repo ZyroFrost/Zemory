@@ -2,10 +2,10 @@
 id: Slot_84
 aka: 03-84
 name: LICENSE
-version: 3
+version: 4
 path: LICENSE
-from: _Store/02_STRUCTURE/_Slot/Root_084_License @v3 #6386041aeb2b
+from: _Store/02_STRUCTURE/_Slot/Root_084_License @v4 #6a037e3b17dc
 ---
-# Root_084_License LICENSE — giấy phép
+# Root_084_License LICENSE — licence
 
-- Vai trò: Giấy phép (manifest do tool ép ở gốc).
+- Role: The licence (a manifest the tool forces at the root).

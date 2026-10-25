@@ -2,12 +2,12 @@
 id: Slot_114
 aka: 03-114
 name: design
-version: 4
+version: 5
 path: design/
-from: _Store/02_STRUCTURE/_Slot/Design_114_Design @v4 #f80e6ed02463
+from: _Store/02_STRUCTURE/_Slot/Design_114_Design @v5 #57ff9d5f910b
 ---
-# Design_114_Design design — deliverable design
+# Design_114_Design design — design deliverable
 
-- Vai trò:
-  - ◆ Design: nguồn thiết kế `.fig` / `.sketch` / `.psd`. LFS.
-  - Deliverable ◆ — hệ NON-APP bắt buộc ≥1 folder deliverable trong `reports/` | `models/` | `content/` | `design/`, chọn theo loại dự án.
+- Role:
+  - ◆ Design: design sources `.fig` / `.sketch` / `.psd`. LFS.
+  - Deliverable ◆ — a NON-APP repo needs at least one deliverable folder among `reports/` | `models/` | `content/` | `design/`, chosen by the kind of project.

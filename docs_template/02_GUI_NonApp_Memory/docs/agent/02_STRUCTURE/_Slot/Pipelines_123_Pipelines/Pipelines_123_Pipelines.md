@@ -2,14 +2,14 @@
 id: Slot_123
 aka: 03-123
 name: pipelines
-version: 4
+version: 5
 path: pipelines/
-from: _Store/02_STRUCTURE/_Slot/Pipelines_123_Pipelines @v4 #65c7f6542f14
+from: _Store/02_STRUCTURE/_Slot/Pipelines_123_Pipelines @v5 #62516cdeffce
 ---
-# Pipelines_123_Pipelines pipelines — pipeline gom theo nguồn
+# Pipelines_123_Pipelines pipelines — pipelines grouped by source
 
-- Vai trò:
-  - Pipeline gom theo NGUỒN, ETL / transform nhiều bước (dbt / python) — CHỈ cho repo KHÔNG tổ chức theo case. Đây là hình dạng thứ hai hợp lệ; repo loại này có thể không có `tasks/`, đừng ép nó thành case.
-  - Repo theo case: pipeline nằm trong case (`tasks/<tên>/pipeline/`), không ở đây.
-  - Con của `pipelines/` là tự do theo chuẩn — không bị coi là lệch chuẩn.
-- Được chứa / không chứa: Không chứa: code ngoài clone về (→ `external/`).
+- Role:
+  - Pipelines grouped by SOURCE, multi-step ETL / transforms (dbt / python) — ONLY for a repo NOT organised by case. This is the second valid shape; such a repo may have no `tasks/`, do not force it into cases.
+  - A case-based repo: the pipeline sits inside the case (`tasks/<name>/pipeline/`), not here.
+  - The children of `pipelines/` are free under the standard — never treated as off-standard.
+- May hold / may not hold: Not here: outside code cloned in (→ `external/`).

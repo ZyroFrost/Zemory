@@ -1,37 +1,37 @@
 ---
 id: Slot_150
 name: drivers
-version: 2
+version: 3
 path: Software/Drivers/<Thiết bị>/
 scope: layout
 ---
-# Software_150_Drivers drivers — gói driver của một thiết bị
+# Software_150_Drivers drivers — the driver pack of one device
 
-## Vai trò
+## Role
 
-`Software\Drivers\` giữ gói driver đã tải về của các thiết bị gắn vào máy (máy in, card mạng, màn hình phụ, thiết bị đọc
-thẻ…), để cài lại được ngay trên máy mới mà không phải đi tìm lại trên trang của hãng.
+`Software\Drivers\` keeps the downloaded driver packs of the devices attached to the machine (printers, network cards, extra monitors, card
+readers…), so they can be installed again on a new machine at once, without hunting for them on the maker's site.
 
-## Hai cách đặt
+## Two ways to place them
 
-- Gói nhiều tệp (thư mục `disk1\`, các tệp `.inf`, bộ cài kèm) ⇒ một thư mục cho mỗi thiết bị:
-  `Software\Drivers\<Hãng>_<Mẫu>\`, bên trong GIỮ NGUYÊN cây gói như hãng phát hành, không xếp lại.
-  Ví dụ: `D:\Software\Drivers\Ricoh_2852\disk1\…`.
-- Bộ cài driver một tệp ⇒ được để thẳng ngay dưới `Software\Drivers\`, giữ nguyên tên tệp.
-  Ví dụ: `D:\Software\Drivers\PrinterDriver_x64_v5.exe`.
+- A pack of many files (a `disk1\` folder, `.inf` files, an installer with it) ⇒ one folder per device:
+  `Software\Drivers\<Maker>_<Model>\`, keeping the pack's tree EXACTLY as the maker released it, never rearranged.
+  Example: `D:\Software\Drivers\Ricoh_2852\disk1\…`.
+- A one-file driver installer ⇒ may sit straight under `Software\Drivers\`, file name unchanged.
+  Example: `D:\Software\Drivers\PrinterDriver_x64_v5.exe`.
 
-## Luật
+## Rules
 
-- Driver KHÔNG theo khuôn `Setup\` · `App\` · `Data\` của `Software_149_Program`: driver được cài vào hệ thống, không có bản
-  chạy tại chỗ. Vì vậy `conform` không đòi ba thư mục con ở đây.
-- Chỉ chứa gói driver. Phần mềm đi kèm thiết bị có giao diện riêng (ví dụ công cụ quản lý máy in của hãng) là một phần mềm ⇒
-  xếp vào nhóm của nó (thường `System\<Hãng>\<Ứng dụng>\`) với đủ ba thư mục con.
+- Drivers do NOT follow the `Setup\` · `App\` · `Data\` shape of `Software_149_Program`: a driver is installed into the system and has no copy
+  that runs in place. So `conform` does not check that shape here.
+- Holds only driver packs. Software that comes with a device and has an interface of its own (e.g. the maker's printer manager) is a program ⇒
+  placed in its group (usually `System\<Maker>\<App>\`) by `Software_149_Program`: `Setup\` · `App\` · `Data\`, each when it has something to hold.
 
-## Khuôn tên
+## Naming
 
-`<Hãng>_<Mẫu>`: tên hãng và mã mẫu thiết bị nối bằng dấu gạch dưới, không dấu cách: `Ricoh_2852` · `Canon_LBP2900`.
+`<Maker>_<Model>`: the maker's name and the device model code joined by an underscore, no spaces: `Ricoh_2852` · `Canon_LBP2900`.
 
-## Phép kiểm
+## Check
 
-`zemory conform --layout <gốc ổ>` chỉ kiểm rằng `Drivers` là một nhóm hợp lệ của `Software\`; bên trong `Drivers\` không bị
-kiểm khuôn ba thư mục.
+`zemory conform --layout <drive root>` only checks that `Drivers` is a valid group of `Software\`; inside `Drivers\` the program shape is not
+checked.

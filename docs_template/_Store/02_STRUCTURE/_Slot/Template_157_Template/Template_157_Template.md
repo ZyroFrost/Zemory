@@ -1,32 +1,32 @@
 ---
 id: Slot_157
 name: template
-version: 2
+version: 3
 path: _<Công cụ>_Template/
 scope: layout
 ---
-# Template_157_Template template — khuôn báo cáo chung
+# Template_157_Template template — the shared report template
 
-## Vai trò
+## Role
 
-`Workspace\Company\<Tổ chức>\_<Công cụ>_Template\` giữ KHUÔN báo cáo gốc dùng chung của một công cụ báo cáo (BI) trong tổ
-chức: bố cục, màu, logo, trang mẫu, bảng đo chuẩn. Mọi phòng ban dựng báo cáo mới thì lấy khuôn từ đây. Đây là nơi cung cấp
-vai `template`, ráp khung `Struc_Repo_Reference`.
+`Workspace\Company\<Org>\_<Tool>_Template\` keeps the original shared report TEMPLATE of one reporting (BI) tool in the
+organisation: layout, colours, logo, sample pages, standard measure tables. Every department building a new report takes the template from here. This is the
+provider of the `template` role, assembled from the frame `Struc_Repo_Reference`.
 
-Ví dụ: `D:\Workspace\Company\Acme\_PBI_Template\` chứa tệp khuôn Power BI (`.pbit`) và tệp chủ đề (`.json`) của Acme.
+Example: `D:\Workspace\Company\Acme\_PBI_Template\` holds Acme's Power BI template file (`.pbit`) and theme file (`.json`).
 
-## Luật
+## Rules
 
-- Mỗi công cụ báo cáo một thư mục khuôn; phòng ban KHÔNG giữ bản khuôn riêng trong repo của mình. Sửa khuôn thì sửa ở đây,
-  mọi phòng dùng chung bản mới.
-- Là thư mục ĐỒNG BỘ bằng Syncthing, KHÔNG phải repo git: không `git init`, không push.
-- Chỉ chứa tệp khuôn của công cụ. Không chứa báo cáo đã điền số liệu (báo cáo thuộc repo phòng ban).
+- One template folder per reporting tool; a department keeps NO template copy of its own in its repo. Changing the template means changing it here;
+  every department uses the new copy.
+- A folder SYNCED by Syncthing, NOT a git repo: no `git init`, no push.
+- Holds only the tool's template files. Not reports filled with figures (a report belongs to the department repo).
 
-## Khuôn tên
+## Naming
 
-`_<Công cụ>_Template`: tên công cụ viết tắt HOA giữa `_` và `_Template`: `_PBI_Template` (Power BI) · `_TBL_Template` (Tableau).
+`_<Tool>_Template`: the tool's short name in CAPITALS between `_` and `_Template`: `_PBI_Template` (Power BI) · `_TBL_Template` (Tableau).
 
-## Phép kiểm
+## Check
 
-`zemory conform --layout <ổ>\Workspace\Company\<Tổ chức>` kiểm tên thư mục khớp khuôn `_<Công cụ>_Template`. Chưa có phép kiểm
-máy cho nội dung bên trong.
+`zemory conform --layout <drive>\Workspace\Company\<Org>` checks the folder name matches `_<Tool>_Template`. No machine check yet
+for what is inside.

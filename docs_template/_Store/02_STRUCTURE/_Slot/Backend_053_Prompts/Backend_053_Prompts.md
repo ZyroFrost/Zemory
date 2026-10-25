@@ -2,9 +2,9 @@
 id: Slot_53
 aka: 03-53
 name: prompts
-version: 4
+version: 5
 path: backend/resources/prompts/
 ---
-# Backend_053_Prompts prompts — prompt LLM tracked
+# Backend_053_Prompts prompts — tracked LLM prompts
 
-- Vai trò: Template prompt cho LLM — resource tracked. Prompt của model AI và của vòng lặp agent đều ở đây.
+- Role: LLM prompt templates — a tracked resource. The prompts of an AI model and of an agent loop both live here.

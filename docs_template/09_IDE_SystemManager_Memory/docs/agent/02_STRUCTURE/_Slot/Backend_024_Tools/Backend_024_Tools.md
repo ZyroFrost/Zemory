@@ -2,14 +2,14 @@
 id: Slot_24
 aka: 03-24
 name: tools
-version: 4
+version: 5
 path: backend/src/tools/
-from: _Store/02_STRUCTURE/_Slot/Backend_024_Tools @v4 #669905fb27c0
+from: _Store/02_STRUCTURE/_Slot/Backend_024_Tools @v5 #3547cc7825ea
 ---
-# Backend_024_Tools tools — định nghĩa tool cho LLM gọi
+# Backend_024_Tools tools — tool definitions for an LLM to call
 
-- Vai trò:
-  - ĐỊNH NGHĨA tool cho LLM/agent GỌI (tool-calling / MCP): schema + binding + shape kết quả. CHỈ khai báo + nối.
-  - THỰC THI delegate cho slot sẵn có: `search/` · `integrations/` · `store/`.
-  - `tools/` ≠ `scripts/` (dev/build/ops) ≠ `util/` (helper thuần) ≠ `plugins/` (bên thứ 3).
-- Được chứa / không chứa: Không chứa: logic thực thi.
+- Role:
+  - DEFINES the tools an LLM/agent CALLS (tool calling / MCP): schema + binding + result shape. ONLY declaring + wiring.
+  - EXECUTION is delegated to existing slots: `search/` · `integrations/` · `store/`.
+  - `tools/` ≠ `scripts/` (dev/build/ops) ≠ `util/` (pure helpers) ≠ `plugins/` (third parties).
+- May hold / may not hold: Not here: the execution logic.

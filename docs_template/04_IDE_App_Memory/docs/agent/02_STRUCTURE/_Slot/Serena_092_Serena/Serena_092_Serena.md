@@ -2,10 +2,10 @@
 id: Slot_92
 aka: 03-92
 name: .serena
-version: 4
+version: 5
 path: .serena/
-from: _Store/02_STRUCTURE/_Slot/Serena_092_Serena @v4 #e172908ac5d4
+from: _Store/02_STRUCTURE/_Slot/Serena_092_Serena @v5 #031dece9479f
 ---
-# Serena_092_Serena .serena — config agent
+# Serena_092_Serena .serena — agent config
 
-- Vai trò: Config agent — để yên ở gốc; `*.local.json` → gitignore.
+- Role: Agent config — left at the root; `*.local.json` → gitignore.

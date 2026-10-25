@@ -2,9 +2,9 @@
 id: Slot_54
 aka: 03-54
 name: sql
-version: 4
+version: 5
 path: backend/resources/sql/
 ---
-# Backend_054_Sql sql — SQL đóng gói
+# Backend_054_Sql sql — packaged SQL
 
-- Vai trò: SQL đóng gói như resource tracked.
+- Role: SQL packaged as a tracked resource.

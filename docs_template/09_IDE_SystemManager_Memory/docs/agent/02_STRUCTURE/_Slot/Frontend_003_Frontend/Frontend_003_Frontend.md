@@ -2,17 +2,17 @@
 id: Slot_3
 aka: 03-3
 name: frontend
-version: 4
+version: 5
 path: frontend/
-from: _Store/02_STRUCTURE/_Slot/Frontend_003_Frontend @v4 #21a6dc528287
+from: _Store/02_STRUCTURE/_Slot/Frontend_003_Frontend @v5 #5dedb1e8b065
 ---
-# Frontend_003_Frontend frontend — giao diện người dùng
+# Frontend_003_Frontend frontend — the interface people use
 
-- Vai trò:
-  - ★ UI — mọi app đều có UI, kể cả tool ít UI; bắt buộc khi app có UI. Mọi slot con `[opt]`.
-  - Test/e2e/story: co-locate hoặc `frontend/test` — không ép; chạy app là phép kiểm thử.
-  - Đặc tả thiết kế bề mặt: skill `app-design`. Từ điển slot thiết kế UI (token · gu · component · cổng chất lượng) hiện ra ở các slot con: giá trị thật token/palette sống ở `frontend/styles`.
-  - UI no-build (static): app phục vụ UI bằng static files (FastAPI StaticFiles · express.static · nginx), không bundler (webpack/vite): một file HTML lớn PHẢI tách được thành nhiều file theo concern (`styles/*.css` · logic thành nhiều `<script src>` · state · api-client) — modular hoá không cần build. Thứ tự an toàn: `<script src>` giữ global scope trước → gỡ inline `onclick=` → nâng ES module sau (module scope mất global function ⇒ handler vỡ). Khác UI embed (single-bin): ở đó cấm tách; ở đây tách là đúng.
-  - Ngoại lệ UI một ngôn ngữ (render server-side): không có `frontend/`, vai trò này nằm trong backend — xem `backend/`.
-  - Hệ NON-APP không có `frontend/`; 0 luật UI.
-- Được chứa / không chứa: Chứa: `assets/` · `components/` · `styles/` · `pages/` · `layouts/` · `state/` · `hooks/` · `client/` · `locales/` · `config/` · `util/` · `types/` · `public/`.
+- Role:
+  - ★ UI — every app has a UI, even a tool with little UI; required when the app has a UI. Every child slot is `[opt]`.
+  - Tests/e2e/stories: co-located or `frontend/test` — not forced; running the app is the test.
+  - The design specification of a surface: skill `app-design`. The UI design slot dictionary (tokens · taste · components · quality gates) shows in the child slots: the real token/palette values live in `frontend/styles`.
+  - No-build UI (static): the app serves its UI as static files (FastAPI StaticFiles · express.static · nginx), no bundler (webpack/vite): one big HTML file MUST be splittable into files by concern (`styles/*.css` · logic as several `<script src>` · state · api client) — modular without a build. The safe order: `<script src>` keeping the global scope first → remove inline `onclick=` → move to ES modules last (module scope loses global functions ⇒ handlers break). Not an embedded UI (single binary): there splitting is forbidden; here splitting is right.
+  - The single-language UI exception (server-side rendering): no `frontend/`, this role lives in the backend — see `backend/`.
+  - A NON-APP repo has no `frontend/`; 0 UI rules.
+- May hold / may not hold: Holds: `assets/` · `components/` · `styles/` · `pages/` · `layouts/` · `state/` · `hooks/` · `client/` · `locales/` · `config/` · `util/` · `types/` · `public/`.

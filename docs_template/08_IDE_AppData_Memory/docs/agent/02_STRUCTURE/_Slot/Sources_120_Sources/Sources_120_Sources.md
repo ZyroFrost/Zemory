@@ -2,14 +2,14 @@
 id: Slot_120
 aka: 03-120
 name: sources
-version: 4
+version: 5
 path: sources/
-from: _Store/02_STRUCTURE/_Slot/Sources_120_Sources @v4 #d37b28930ce5
+from: _Store/02_STRUCTURE/_Slot/Sources_120_Sources @v5 #91620dcaa086
 ---
-# Sources_120_Sources sources — định nghĩa nguồn
+# Sources_120_Sources sources — source definitions
 
-- Vai trò:
-  - ĐỊNH NGHĨA nguồn: Power Query (M) · connection spec · SQL kéo nguồn — chỗ automation KÉO đọc. Dùng chung nhiều case.
-  - KÉO (pull): đọc `sources/` → kéo raw về `data/extract/`.
-- Được chứa / không chứa: Trỏ secret bằng TÊN env, không chứa secret thật. Không chứa config của một case (→ gốc `tasks/<case>/`).
-- Khuôn tên: Tên `sources/` — không dùng `src` hay `raw`.
+- Role:
+  - SOURCE DEFINITIONS: Power Query (M) · connection specs · SQL that pulls a source — what the PULL automation reads. Shared by several cases.
+  - PULL: reads `sources/` → pulls the raw data into `data/extract/`.
+- May hold / may not hold: Points at secrets by env NAME, never holds a real secret. Not here: the config of one case (→ the root of `tasks/<case>/`).
+- Naming: The name is `sources/` — not `src` or `raw`.

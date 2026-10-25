@@ -2,40 +2,40 @@
 id: Slot_137
 aka: 03-137
 name: ui-dictionary
-version: 7
+version: 8
 kind: guide
 path: frontend/
 ---
-# Frontend_137_UiDictionary ui-dictionary — từ điển slot thiết kế UI/UX
+# Frontend_137_UiDictionary ui-dictionary — the UI/UX design slot dictionary
 
-- Vai trò:
-  - Nơi skill thiết kế ADAPT hiện ra thật. Skill gốc đầy đủ nằm ở `external/skills/`; agent đọc thẳng bản gốc để lấy ý tưởng thẩm mỹ rồi khớp về các slot dưới đây để ra đúng cấu trúc/ràng buộc của project. Index skill: `03_SKILLS`.
-  - Tra như từ điển folder: slot để TRA — chỉ dùng slot có concern thật, không ép đủ bộ. `★` = nên có ở mọi UI · `[opt]` = khi có concern.
-  - Ranh giới: STACK (Tailwind / no-build CSS-var / framework) là CẤU TRÚC — cố định theo project, không bàn lại mỗi lần. LAYOUT & GU là thứ agent bàn rồi chốt (`Rule_Keys_62_DesignChangeApproval` — thiết kế UI phải trình duyệt trước).
-  - Giá trị THẬT (token/palette của repo) sống ở `frontend/styles`, không ở đây.
-- A. Nền token:
-  - `tokens` ★ — mọi màu/size = CSS-var một chỗ, 0 literal.
-  - `theme` ★ — mỗi theme một bộ token đầy đủ; toggle lưu config.
+- Role:
+  - Where an ADAPTED design skill really shows. The full original skills are in `external/skills/`; the agent reads the original directly for aesthetic ideas, then maps them onto the slots below to fit the project's structure/constraints. The skill index: `03_SKILLS`.
+  - Looked up like the folder dictionary: a slot is there to LOOK UP — use only slots with a real concern, never force the whole set. `★` = should exist in every UI · `[opt]` = when there is a concern.
+  - Boundary: the STACK (Tailwind / no-build CSS vars / framework) is STRUCTURE — fixed per project, not debated each time. LAYOUT & TASTE are what the agent proposes and settles (`Rule_Keys_62_DesignChangeApproval` — UI design is approved before it is built).
+  - The REAL values (the repo's tokens/palette) live in `frontend/styles`, not here.
+- A. Token base:
+  - `tokens` ★ — every colour/size = a CSS var in one place, 0 literals.
+  - `theme` ★ — each theme a complete token set; the toggle is saved in config.
   - `color` [opt] — palette primary / secondary / CTA / bg / text + mood.
-  - `typography` [opt] — cặp font heading/body + thang cỡ.
-  - `spacing` [opt] — thang spacing + radius + mật độ.
-- B. Gu / aesthetic:
-  - `ui-style` [opt] — chốt MỘT hướng TRƯỚC khi code (Minimal / Glass / Brutal / Bento / Dark-native / AI-native…) — chống rơi về generic default.
-  - `motion` [opt] — transition · micro-interaction · hover; tôn trọng `prefers-reduced-motion`.
-  - `depth` [opt] — elevation / shadow / glow, token hoá, tắt được ở light.
-  - `iconography` [opt] — phong cách icon nhất quán; icon có 3 vai trò (media UI → `frontend/assets/` · icon exe và icon tray/cửa sổ → `backend/resources/packaging/`).
-- C. Component / pattern:
-  - `dialog` ★ — 3-size 16:9: S 40% · M 60% · L 90% khung app, `min(Pvw, Pvh*16/9)`; ESC + backdrop đóng, trừ tác vụ bất khả huỷ; khung không nhảy theo nội dung.
-  - `layout` [opt] — grid/responsive, lấp đủ khung app, không vh-cap để lại gap.
-  - `resizable` ★ — ≥2 panel kề nhau ⇒ BẮT BUỘC seam kéo được: tự do thật · 2D kéo cả hai chiều · MỘT engine data-driven dùng chung (`frontend/components/`, biến layout ở `frontend/styles/`) · lưu + khôi phục · double-click reset.
-  - `navigation` [opt] — tab / menu / breadcrumb; nhớ tab qua phiên.
-  - `forms` [opt] — input · validate · lỗi hiện inline.
-  - `feedback` [opt] — toast · loading · skeleton thay vì nhảy layout.
-  - `states` [opt] — empty · loading · error · zero-data: mọi list/panel đủ 4 trạng thái.
-  - `data-viz` [opt] — chart/dashboard → dùng skill `dataviz`, chỉ TRỎ, không lặp.
-- D. Cổng chất lượng (luôn áp, như pre-delivery check):
-  - `accessibility` ★ — WCAG AA: contrast · focus visible · keyboard · ARIA/label · target size.
-  - `i18n` ★ — UI = English hoặc i18n đủ 2 dict, 0 chuỗi hardcode.
-  - `no-build` ★ — app embed/tĩnh: tách file theo concern, 0 bundler; framework có build chỉ dùng khi STACK của project vốn có bundler.
-  - `anti-patterns` ★ — checklist cấm: literal màu · dialog nhảy · layout dịch khi load · low-contrast · icon-only không label · generic default.
-- Được chứa / không chứa: chỉ tên slot thiết kế + ràng buộc; không chứa giá trị token thật (→ `frontend/styles`) và không chép đặc tả component của skill `app-design`.
+  - `typography` [opt] — the heading/body font pair + the size scale.
+  - `spacing` [opt] — the spacing scale + radius + density.
+- B. Taste / aesthetic:
+  - `ui-style` [opt] — settle ONE direction BEFORE coding (Minimal / Glass / Brutal / Bento / Dark-native / AI-native…) — against falling back to a generic default.
+  - `motion` [opt] — transitions · micro-interactions · hover; respect `prefers-reduced-motion`.
+  - `depth` [opt] — elevation / shadow / glow, tokenised, can be turned off in light mode.
+  - `iconography` [opt] — one consistent icon style; icons have 3 roles (UI media → `frontend/assets/` · the exe icon and the tray/window icon → `backend/resources/packaging/`).
+- C. Components / patterns:
+  - `dialog` ★ — 3 sizes 16:9: S 40% · M 60% · L 90% of the app frame, `min(Pvw, Pvh*16/9)`; ESC + backdrop close it, except for an action that cannot be cancelled; the frame does not jump with its content.
+  - `layout` [opt] — grid/responsive, fills the app frame, no vh cap leaving a gap.
+  - `resizable` ★ — ≥2 adjacent panels ⇒ a draggable seam is REQUIRED: really free · 2D dragging both ways · ONE shared data-driven engine (`frontend/components/`, layout variables in `frontend/styles/`) · saved + restored · double-click resets.
+  - `navigation` [opt] — tabs / menus / breadcrumbs; the tab is remembered across sessions.
+  - `forms` [opt] — inputs · validation · errors shown inline.
+  - `feedback` [opt] — toast · loading · skeletons instead of a jumping layout.
+  - `states` [opt] — empty · loading · error · zero data: every list/panel has all 4 states.
+  - `data-viz` [opt] — charts/dashboards → use the `dataviz` skill, only POINT at it, never repeat it.
+- D. Quality gates (always applied, like a pre-delivery check):
+  - `accessibility` ★ — WCAG AA: contrast · visible focus · keyboard · ARIA/labels · target size.
+  - `i18n` ★ — UI = English or i18n with both dictionaries complete, 0 hardcoded strings.
+  - `no-build` ★ — an embedded/static app: split files by concern, 0 bundlers; a framework with a build only when the project's STACK already has a bundler.
+  - `anti-patterns` ★ — the banned checklist: colour literals · jumping dialogs · layout shift on load · low contrast · icon-only without a label · generic defaults.
+- May hold / may not hold: only the design slot names + constraints; no real token values (→ `frontend/styles`) and no copy of the component specification of the `app-design` skill.

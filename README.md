@@ -17,7 +17,7 @@ offline.
 > the apps you build with the harness: scaffolding LLM/AI apps is a first-class use. Use the harness
 > alone, the memory alone, or both.
 
-![Version](https://img.shields.io/badge/version-4.7.2-informational)
+![Version](https://img.shields.io/badge/version-4.7.3-informational)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520.11%20%3C25-3c873a)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)

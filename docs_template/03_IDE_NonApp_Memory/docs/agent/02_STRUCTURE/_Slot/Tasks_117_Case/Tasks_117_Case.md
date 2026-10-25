@@ -2,19 +2,19 @@
 id: Slot_117
 aka: 03-117
 name: case
-version: 4
+version: 5
 path: tasks/<case>/
-from: _Store/02_STRUCTURE/_Slot/Tasks_117_Case @v4 #5bc3c8ea7668
+from: _Store/02_STRUCTURE/_Slot/Tasks_117_Case @v5 #d12af37b3a54
 ---
-# Tasks_117_Case case — hồ sơ một case
+# Tasks_117_Case case — the file of one case
 
-- Vai trò:
-  - Mỗi vấn đề là một mạch việc quay lại nhiều lần — case theo YÊU CẦU (điều tra · sự cố · dim phải chăm đi chăm lại), ngang hàng case định kỳ.
-  - `spec.md` = SỔ SỐNG: trạng thái · cách gọi case · mục lục · việc mở · mở lại khi nào.
-  - Case ĐÓNG mở lại được — folder là hồ sơ sống, không xoá.
-  - Data thật → `data/<case>/` (gitignore, mirror ĐÚNG TÊN). Khác `data/adhoc/`: adhoc là file một lần, throwaway, không có spec.
-- Được chứa / không chứa:
-  - `spec.md` · findings / bằng chứng / số đo `<ngày>_<slug>.md` · fix script ĐỀ XUẤT `<ngày>_<slug>.sql` (người vận hành tự chạy) · query check CHỈ case này dùng `check_*.sql` · `pipeline/`.
-  - Config của MỘT case (mẫu `*.example.*` tracked + bản thật `*.local.*` gitignore) nằm ở GỐC `tasks/<case>/` — không vào `pipeline/` (chỗ đó chỉ chứa script có số chặng; `NN_` chỉ giữ được nghĩa khi không có gì khác nằm cùng) và không vào `config/` cấp repo (slot đó dành cho config dùng chung); để ở slot dùng chung thì không ai biết nó thuộc việc nào.
-  - Không chứa: data thật (→ `data/<case>/`).
-- Khuôn tên: Tên thường, không số, tiếng Anh ASCII. Findings: `<ngày>_<slug>.md`; query riêng: `check_*.sql`.
+- Role:
+  - Each problem is a line of work you come back to many times — a case ON REQUEST (investigation · incident · a dim that needs care again and again), on a par with recurring cases.
+  - `spec.md` = the LIVING LEDGER: state · how the case is called · contents · open work · when it reopens.
+  - A CLOSED case can reopen — the folder is a living file, never deleted.
+  - Real data → `data/<case>/` (gitignored, mirrors the SAME NAME). Not `data/adhoc/`: adhoc is a one-off, throwaway file with no spec.
+- May hold / may not hold:
+  - `spec.md` · findings / evidence / measurements `<date>_<slug>.md` · PROPOSED fix scripts `<date>_<slug>.sql` (the operator runs them) · check queries ONLY this case uses `check_*.sql` · `pipeline/`.
+  - The config of ONE case (a tracked `*.example.*` template + the real `*.local.*`, gitignored) sits at the ROOT of `tasks/<case>/` — not in `pipeline/` (that place holds only stage-numbered scripts; `NN_` keeps its meaning only when nothing else sits beside it) and not in the repo-level `config/` (that slot is for shared config); kept in a shared slot, nobody knows which work it belongs to.
+  - Not here: real data (→ `data/<case>/`).
+- Naming: Plain names, no numbers, ASCII English. Findings: `<date>_<slug>.md`; own queries: `check_*.sql`.

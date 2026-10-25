@@ -2,17 +2,17 @@
 id: Slot_1
 aka: 03-1
 name: entry
-version: 5
+version: 6
 path: AGENTS.md · CLAUDE.md
 ---
-# Root_001_Entry entry — cửa vào harness
+# Root_001_Entry entry — the harness entry
 
-- Vai trò:
-  - `AGENTS.md` (★) là cửa vào harness: mô tả app hoặc sản phẩm rồi trỏ vào `docs/`; ở hệ NON-APP nó ghi profile non-app. Theo chuẩn liên-công-cụ agents.md.
-  - `CLAUDE.md` (★) là cửa vào thứ hai: CHỈ chứa `@AGENTS.md`. Claude Code đọc `CLAUDE.md`, không đọc `AGENTS.md` ⇒ thiếu file này thì cửa vào không tự nạp.
-  - `AGENTS.md` là một trong 4 vai trò bắt buộc của hệ APP (`backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`) và một trong 3 vai trò bắt buộc của hệ NON-APP (`docs/` · `AGENTS.md` · ≥1 deliverable).
-  - Cửa vào giống hệt nhau ở hai hệ: cùng engine, agent điều hướng như nhau.
-  - Hai file nằm ở gốc repo vì công cụ ép vị trí; không dời.
-- Được chứa / không chứa:
-  - `AGENTS.md`: mô tả app/sản phẩm + đường dẫn vào `docs/`.
-  - `CLAUDE.md`: một dòng `@AGENTS.md`, không thêm nội dung khác.
+- Role:
+  - `AGENTS.md` (★) is the harness entry: describes the app or product, then points into `docs/`; in a NON-APP repo it states the non-app profile. Follows the cross-tool agents.md convention.
+  - `CLAUDE.md` (★) is the second entry: it holds ONLY `@AGENTS.md`. Claude Code reads `CLAUDE.md`, not `AGENTS.md` ⇒ without this file the entry does not load by itself.
+  - `AGENTS.md` is one of the 4 required roles of an APP repo (`backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`) and one of the 3 required roles of a NON-APP repo (`docs/` · `AGENTS.md` · ≥1 deliverable).
+  - The entry is identical in both kinds: the same engine, the agent navigates the same way.
+  - Both files sit at the repo root because the tools force the place; never moved.
+- May hold / may not hold:
+  - `AGENTS.md`: a description of the app/product + the path into `docs/`.
+  - `CLAUDE.md`: one line `@AGENTS.md`, nothing else.

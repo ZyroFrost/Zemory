@@ -2,12 +2,12 @@
 id: Slot_132
 aka: 03-132
 name: 01_raw
-version: 5
+version: 6
 path: data/<case>/01_raw/
 ---
-# Data_132_01Raw 01_raw — đầu vào từ ngoài, chỉ đọc
+# Data_132_01Raw 01_raw — input from outside, read only
 
-- Vai trò: ĐẦU VÀO từ ngoài (người gửi · kéo từ nguồn) cho một case — không dựng lại được nếu xoá.
-- Được chứa / không chứa: CHỈ ĐỌC, không ghi đè (`Rule_Gate_10_DestructiveOps`); làm sạch trên bản chép ở `02_processing/`.
-- Ba chặng của một case có ba vòng đời: `01_raw` bất khả đảo · `02_processing` xoá thoải mái, dựng lại được · `03_output` giữ để đối chiếu.
-- Khoá máy: khai glob `data/*/01_raw` vào khoá `protected` của marker (một glob phủ mọi case, kể cả case mới).
+- Role: INPUT from outside (a sender · pulled from a source) for one case — cannot be rebuilt if deleted.
+- May hold / may not hold: READ ONLY, never overwritten (`Rule_Gate_10_DestructiveOps`); cleaning happens on a copy in `02_processing/`.
+- The three stages of a case have three lifecycles: `01_raw` cannot be undone · `02_processing` is deleted freely and rebuilt · `03_output` is kept for checking.
+- Machine lock: declare the glob `data/*/01_raw` in the marker's `protected` key (one glob covers every case, new ones included).
