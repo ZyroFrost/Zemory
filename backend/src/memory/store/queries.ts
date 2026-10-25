@@ -16,6 +16,9 @@ export const Q = {
   // the primary key and stopped at the first hit; the fast lane asks only for the ids that arrived since its last tick
   ownMaxMessageBetween:
     "SELECT m.id AS m FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id > ? AND m.id <= ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown') ORDER BY m.id DESC LIMIT 1",
+  // the id of the (N+1)-th message above ? that THIS machine originated: where a block of N+1 own messages ends
+  ownNthMessageAbove:
+    "SELECT m.id AS m FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id > ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown') ORDER BY m.id ASC LIMIT 1 OFFSET ?",
   // the lowest id above ? that THIS machine originated (same rule as above), walked up the primary key
   ownMinMessageAbove:
     "SELECT m.id AS m FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id > ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown') ORDER BY m.id ASC LIMIT 1",

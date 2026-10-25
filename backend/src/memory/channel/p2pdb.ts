@@ -35,6 +35,9 @@ const peerKey = peerMarkKey;
  * moves the mark, and a link that drops keeps what already went.
  */
 const BLOCK_TARGET_BYTES = 32 * 1024 * 1024;
+/** Writing an ack meets a busy store: try this many times, this far apart (`ackOutgoing`). */
+const ACK_ATTEMPTS = 6;
+const ACK_RETRY_MS = 5_000;
 /** Vectors one block may catch up (256 dims ⇒ about 5 MB). */
 const VECTOR_CATCHUP_PER_BLOCK = 5_000;
 const fileSafe = (s: string): string => s.replace(/[^A-Za-z0-9-]/g, "_");
@@ -82,6 +85,20 @@ function nextOwnAbove(dbPath: string, host: string, from: number): number {
     db = new Database(dbPath, { readonly: true, fileMustExist: true });
     db.pragma("busy_timeout = 2000");
     return (db.prepare(Q.ownMinMessageAbove).get(from, host) as { m: number } | undefined)?.m ?? 0;
+  } catch {
+    return 0;
+  } finally {
+    db?.close();
+  }
+}
+
+/** The id where `count` own messages above `from` end, or 0 when fewer than `count` are left. */
+function ownCountEnd(dbPath: string, host: string, from: number, count: number): number {
+  let db: Database.Database | null = null;
+  try {
+    db = new Database(dbPath, { readonly: true, fileMustExist: true });
+    db.pragma("busy_timeout = 2000");
+    return (db.prepare(Q.ownNthMessageAbove).get(from, host, Math.max(0, count - 1)) as { m: number } | undefined)?.m ?? 0;
   } catch {
     return 0;
   } finally {
@@ -147,7 +164,7 @@ export async function buildOutgoing(
   const out: OutBlock[] = [];
   const cap = Math.min(Math.floor(MAX_FRAME_BYTES * 0.9), BLOCK_TARGET_BYTES);
   let since = mark;
-  let step = o.startStep ?? 4_000;
+  let step = o.startStep ?? 3_000;
   while (out.length < (o.maxBlocks ?? 4) && (since < top || catchUp.length)) {
     // jump over id ranges holding no own message (a first round from 0 would otherwise export dozens of empty ranges)
     if (since < top && !catchUp.length) {
@@ -157,7 +174,10 @@ export async function buildOutgoing(
     }
     const id = randomBytes(12).toString("hex");
     const file = join(dir, `${id}.zmb`);
-    const until = top > since ? Math.min(top, since + step) : since;
+    // a block holds `step` OWN messages, not `step` ids: a machine whose own ids are sparse (its store also holds the other
+    // machines' messages) carried a handful per block, and a first round crawled (2026-10-25: mark 6.5 M of 790 M after an hour)
+    const end = top > since ? ownCountEnd(dbPath, host, since, step) : 0;
+    const until = top > since ? (end && end < top ? end : top) : since;
     const r = await exportMemoryBundle({
       outPath: file,
       dbPath,
@@ -181,8 +201,8 @@ export async function buildOutgoing(
     const vecIds = r.vectorShippedIds ?? [];
     if (!messages && !vecIds.length) rmSync(file, { force: true });
     else out.push({ id, file, upto: Math.max(since, r.rows?.maxMessageId ?? since), vecIds, messages, bytes: r.bundleBytes });
-    // a block well under the target: the next range may be wider (an id range of other machines' messages carries little)
-    if (o.startStep === undefined && r.bundleBytes < cap / 3) step = Math.min(step * 2, 200_000);
+    // a block well under the target: the next one may carry more messages
+    if (o.startStep === undefined && r.bundleBytes < cap / 3) step = Math.min(step * 2, 20_000);
     catchUp = [];
     if (top <= since) break;
     since = until;
@@ -193,12 +213,20 @@ export async function buildOutgoing(
 /** `peer` merged a block: its mark rises to the block's `upto`, its vectors are confirmed. Under the store's write turn. */
 export async function ackOutgoing(peer: string, block: Pick<OutBlock, "upto" | "vecIds" | "file">, o: { dbPath?: string } = {}): Promise<void> {
   const dbPath = o.dbPath ?? currentMemoryDb();
-  const release = await acquireWriteTurn();
-  try {
-    if (block.upto > readExportWatermark(peerKey(peer), dbPath)) writeExportWatermark(peerKey(peer), block.upto, dbPath);
-    markVectorsSentTo(normalizeDeviceId(peer), block.vecIds, dbPath);
-  } finally {
-    release();
+  // A busy store retries, it does not drop the ack: on a spinning disk a merge or an embed batch holds the store for seconds,
+  // and a lost ack sends the block again (2026-10-25: six "database is locked" acks in an hour on the second machine).
+  for (let attempt = 1; ; attempt++) {
+    const release = await acquireWriteTurn();
+    try {
+      if (block.upto > readExportWatermark(peerKey(peer), dbPath)) writeExportWatermark(peerKey(peer), block.upto, dbPath);
+      markVectorsSentTo(normalizeDeviceId(peer), block.vecIds, dbPath);
+      break;
+    } catch (e) {
+      if (attempt >= ACK_ATTEMPTS || !/locked|busy/i.test(e instanceof Error ? e.message : String(e))) throw e;
+    } finally {
+      release();
+    }
+    await new Promise((r) => setTimeout(r, ACK_RETRY_MS));
   }
   rmSync(block.file, { force: true });
 }
