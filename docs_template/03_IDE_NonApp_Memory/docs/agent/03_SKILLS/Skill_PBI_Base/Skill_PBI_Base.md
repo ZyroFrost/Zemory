@@ -1,12 +1,13 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 8
+version: 9
 type: process
+installs: [scripts/pbi_engine_query.ps1]
 aka: dev-pbi
 replaces: [Skill_Dev_Pbi]
 description: Build or change a BI report - layout and chart choice, measures and queries kept in one named store, and the report file handled as a heavy binary. Use whenever a report, dashboard, measure or visual is created or changed. Vietnamese triggers - "báo cáo", "dashboard", "biểu đồ", "measure", "DAX", "Power Query", "pbix".
-from: _Store/03_SKILLS/Skill_PBI_Base @v8 #f3fc92c18759
+from: _Store/03_SKILLS/Skill_PBI_Base @v9 #3cf44da5ba4b
 ---
 
 # pbi-base — dựng và sửa báo cáo BI

@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 # Struc_Region_Company
@@ -20,6 +20,7 @@ theo vai, và các thư mục công việc không phải repo. Quan hệ giữa 
 | khuôn báo cáo dùng chung của một công cụ (thư mục đồng bộ) | `_<Công cụ>_Template\` (Template_157) |
 | việc cũ giữ chỉ đọc | `_Legacy\<Nguồn>\` (Legacy_158) |
 | app nội bộ hoặc app của bên cung cấp | `_Project\<Nhóm>\<repo>\` (Project_159) |
+| giấy tờ của chủ máy với tổ chức này: hợp đồng, đánh giá, bàn giao, logo, hồ sơ công ty, mật khẩu hệ thống của nó | `_Profile\` (Profile_170) |
 | mọi thư mục CÔNG VIỆC khác không phải repo: thiết kế, bản vẽ, file của một dự án cũ | `<Việc>\`, đặt theo tên việc (không `_`, không `Dept_`) |
 
 ```
@@ -37,8 +38,8 @@ Workspace\Company\Acme\
 - Repo luôn mang một vai ở trên; repo đặt tên như thư mục công việc bị báo. Thư mục tên `Dept_` hay `_` phải khớp vai của nó
   (`Dept_` + mã VIẾT HOA).
 - Mỗi vai dịch vụ (`data` · `log` · `glossary` · `template`) có đúng một nơi cung cấp trong tổ chức.
-- Giấy tờ về hoặc của tổ chức (hợp đồng, đánh giá, bàn giao, logo, hồ sơ công ty) KHÔNG nằm ở đây ⇒
-  `Documents\Profile\Company\<Tổ chức>\`.
+- Giấy tờ của chủ máy với tổ chức nằm Ở ĐÂY, trong `_Profile\` (luật khối của `Struc_Disk_Data`); giấy tờ dùng cho mọi tổ chức (CV,
+  định danh) ⇒ `Documents\Profile\`.
 - Không có file lẻ ở cấp tổ chức.
 
 ## Phép kiểm

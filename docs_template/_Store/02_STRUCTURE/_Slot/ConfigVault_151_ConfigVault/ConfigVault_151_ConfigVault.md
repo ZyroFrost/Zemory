@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 5
+version: 6
 path: _ConfigVault/<tool>/
 scope: layout
 ---
@@ -29,7 +29,9 @@ _ConfigVault\
 
 - `configs\` — settings (readable, not secret) · `credentials\` — keys, tokens, passwords · `cache\` — what the tool rebuilds by
   itself, its logs included; deleting it loses nothing.
-- `ssh\` stays flat: ssh reads `config`, the keys and `known_hosts` from one folder.
+- `ssh\` stays flat: ssh reads `config`, the keys and `known_hosts` from one folder. That is why ssh keys stay here even when
+  they open the servers of ONE organisation — the one exception to the block law of `Struc_Disk_Data`; the README names the
+  organisation of each key.
 - zemory's `location.json` is read at `%USERPROFILE%\.zemory\location.json`; that folder may be a junction into
   `_ConfigVault\zemory\`. The file only points at the Global Memory folder and holds no secret.
 

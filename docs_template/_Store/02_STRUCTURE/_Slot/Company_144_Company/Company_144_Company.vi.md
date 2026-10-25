@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 # Company_144_Company company — công việc của một tổ chức
@@ -29,8 +29,10 @@ Workspace\Company\
 
 - Cấp `Company\` chỉ có thư mục tổ chức. Repo đặt thẳng dưới `Company\` là sai: dời nó vào thư mục của tổ chức sở hữu nó.
 - Một món thuộc một tổ chức. Làm cho hai tổ chức là hai món, mỗi món ở thư mục tổ chức của nó.
-- Không chứa: code của chính chủ máy (`Personal\`) · code của người khác (`External\`) · GIẤY TỜ về hoặc của tổ chức (hợp đồng, đánh
-  giá, bàn giao, logo, hồ sơ công ty) — đó là giấy tờ người đọc ⇒ `Documents\Profile\Company\<Tổ chức>\`.
+- GIẤY TỜ của chủ máy với tổ chức (hợp đồng, đánh giá, bàn giao, logo, hồ sơ công ty, mật khẩu hệ thống của nó) cũng nằm ở đây, theo
+  luật khối: `Workspace\Company\<Tổ chức>\_Profile\` (Profile_170).
+- Không chứa: code của chính chủ máy (`Personal\`) · code của người khác (`External\`) · giấy tờ dùng cho mọi tổ chức (CV, định danh)
+  ⇒ `Documents\Profile\`.
 
 ## Khuôn tên
 

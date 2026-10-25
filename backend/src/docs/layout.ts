@@ -93,7 +93,8 @@ const isAssembled = (dir: string): boolean => existsSync(join(dir, "docs", ".har
 function entries(dir: string): Array<{ name: string; dir: boolean }> {
   try {
     return readdirSync(dir, { withFileTypes: true })
-      .filter((e) => !/^\$|^System Volume Information$|^\.st(folder|versions)$|^desktop\.ini$/i.test(e.name))
+      // what Windows puts at a drive root by itself, and the sync tool's own folders, are left alone (Struc_Disk_Data)
+      .filter((e) => !/^\$|^System Volume Information$|^\.st(folder|versions)$|^desktop\.ini$|^(pagefile|swapfile|hiberfil)\.sys$|^DumpStack\.log(\.tmp)?$/i.test(e.name))
       .map((e) => ({ name: e.name, dir: e.isDirectory() }));
   } catch {
     return [];
