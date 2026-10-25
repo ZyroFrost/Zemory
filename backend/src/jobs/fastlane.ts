@@ -354,7 +354,9 @@ export class FastLane {
       } else {
         this.st.lastMerge = { at: Date.now(), ms, ok, messagesAdded: res.messagesAdded, ...(error ? { error } : {}) };
         if (ok) {
-          if ((res.messagesAdded ?? 0) > 0) this.d.log(`[fastlane] merged ${res.messagesAdded} message(s) from the other machine in ${(ms / 1000).toFixed(1)}s${this.waited(res)}`);
+          // one line per merge job, also when it added nothing: a block of messages this machine already had merges silently
+          // otherwise, and "no merge line" read as "the lane never ran" (2026-10-25)
+          this.d.log(`[fastlane] merged ${res.blocks ?? 0} block(s) · ${res.messagesAdded ?? 0} new message(s) from the other machine in ${(ms / 1000).toFixed(1)}s${this.waited(res)}`);
           if (res.warning) this.d.log(`[fastlane] some blocks could not be merged (${res.warning}) — their senders make them again`);
           this.d.onBlocksMerged?.(res.merged ?? []);
           this.d.onMerged?.();
@@ -382,6 +384,8 @@ interface JobResult {
   /** Time the child spent queued for the store's write turn (`turnWaitTotalMs`). */
   turnWaitMs?: number;
   messagesAdded?: number;
+  /** merge: how many inbox blocks the job took */
+  blocks?: number;
   merged?: MergedBlock[];
   warning?: string;
   error?: string;
