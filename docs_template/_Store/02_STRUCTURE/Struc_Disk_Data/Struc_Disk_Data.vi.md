@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # Struc_Disk_Data
@@ -57,6 +57,15 @@ Thứ tự áp: luật khối chọn KHỐI, luật bản chất (luật 2) ch�
 ép: ssh đọc mọi khoá từ một thư mục, nên khoá ssh ở lại `_ConfigVault\ssh\` dù mở máy chủ của tổ chức nào (README của két ghi khoá
 nào thuộc tổ chức nào).
 
+### Do AI sinh — tính chất, không phải nơi chốn
+
+"Do AI sinh" mô tả một món; nó không bao giờ là một nhà. Không có thư mục `AI\` ở cấp ổ hay trong `Media\` để gom ảnh AI. Món do
+AI sinh đi theo mục đích và khối dùng nó, theo đúng chuỗi câu hỏi như mọi món khác: ảnh làm avatar ⇒ `Documents\Profile\Avatar\` ·
+ảnh mẫu cho một thiết kế ⇒ trong dự án thiết kế đó · ảnh hài, ảnh giải trí sưu tầm ⇒ `Media\Image\<chủ đề>\` · ảnh app render ⇒
+`workspaces/` của app đó. Chỗ nào cần tách bản AI khỏi bản thường thì thêm MỘT cấp con tuỳ chọn `AI\` ngay tại chỗ đó
+(`Media\Image\Funny\AI\` · `Documents\Profile\Avatar\AI\`), viết cùng một tên ở mọi nơi. Phép thử: món do AI sinh có đúng một
+chỗ, theo khối dùng nó; `AI\` chỉ xuất hiện như cấp con.
+
 ## Cấp ổ — một chuỗi câu hỏi, đáp án đúng đầu tiên thắng
 
 Hỏi theo đúng thứ tự này; món vào bước đầu tiên đúng.
@@ -74,7 +83,7 @@ Hỏi theo đúng thứ tự này; món vào bước đầu tiên đúng.
 | 8 | file lưu game, ảnh/clip quay màn hình game, clip game sưu tầm, hướng dẫn chơi | `Game\` (Game_164) |
 | 9 | tài liệu ĐANG học: bài giảng, khoá học tải về để nghiên cứu, ghi chú | `Study\` (Study_160) |
 | 10 | kiến thức học xong giữ để tra | `Library\` (Library_163) |
-| 11 | ảnh gom để dùng cho hồ sơ của chính chủ máy (avatar) | `Documents\Profile\Personal\Avatar\` (Documents_152) |
+| 11 | ảnh gom để dùng cho hồ sơ của chính chủ máy (avatar) | `Documents\Profile\Avatar\` (Documents_152) |
 | 12 | ảnh hoặc video quay NGƯỜI bằng máy ảnh của chủ máy hay của gia đình | `Memories\` (Memories_161) |
 | 13 | giấy tờ, hồ sơ mà NGƯỜI đọc, không thuộc riêng tổ chức nào | `Documents\` (Documents_152) |
 | 14 | còn lại: giải trí sưu tầm | `Media\` (Media_162) |
@@ -90,7 +99,7 @@ Ví dụ giải:
 | thư mục ghi clip của phần mềm quay màn hình, đặt trên SSD nhanh | 6 (đệm đầu ra) | `Software\Screen_Record\<Ứng dụng>\Data\` — xếp xong mới về nhà |
 | clip một lượt chơi game, đã xếp | 8 | `Game\Media\<Game>\` |
 | thư viện clone từ mạng về để học | 7 | `Workspace\External\<repo>\` (Study trỏ qua) |
-| danh sách mật khẩu tài khoản web của chủ máy | 13 | `Documents\Profile\Personal\Secret\` |
+| danh sách mật khẩu tài khoản web của chủ máy | 13 | `Documents\Profile\Secret\` |
 | khoá SSH | 5 | `_ConfigVault\ssh\` |
 | hợp đồng với công ty chủ máy làm việc | 7 | `Workspace\Company\<Tổ chức>\_Profile\` |
 | file thiết kế làm cho một công ty cũ | 7 | `Workspace\Company\<Tổ chức>\<thư mục công việc>\` |

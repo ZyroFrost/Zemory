@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 # Documents_152_Documents documents — giấy tờ của chính chủ máy, dùng cho mọi tổ chức
@@ -26,6 +26,8 @@ Documents\
 
 ## Luật
 
+- Món do AI sinh theo cùng thứ tự như mọi món (`Struc_Disk_Data`, "Do AI sinh"); muốn tách riêng ở đây thì thêm cấp con tuỳ chọn
+  `AI\` bên trong `Profile\Avatar\` (`Profile\Avatar\AI\`).
 - Không có thư mục `Company` ở đây: giấy tờ của một tổ chức ⇒ `Workspace\Company\<Tổ chức>\_Profile\`.
 - `Profile\Secret\` chứa bí mật cá nhân mà NGƯỜI đọc (mật khẩu web, cụm từ ví). Theo luật cấm đồng bộ của `_ConfigVault`: KHÔNG BAO GIỜ
   vào git, KHÔNG nằm trong thư mục đồng bộ (Syncthing), KHÔNG nằm trong thư mục sao lưu đám mây (Drive).
