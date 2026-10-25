@@ -2,58 +2,58 @@
 id: Skill_Harness_Conform
 aka: conform
 name: harness-conform
-version: 11
+version: 12
 type: process
 description: Measure how closely the project folder follows the declared standard - machine scores, agent judges. Run before closing a session, after restructuring, when taking over an unfamiliar folder, or periodically. Not needed after every small edit. Vietnamese triggers - "soi chuẩn", "kiểm chuẩn", "có đúng chuẩn không", "check cấu trúc", "dự án này có bám chuẩn không".
 ---
 
-# conform — soi độ bám chuẩn
+# conform — measuring how closely the repo follows the standard
 
-> Kích hoạt: trước khi **chốt phiên** · sau khi **nắn cấu trúc / thêm slot** · khi nhận **repo lạ**
-> · định kỳ. Không cần chạy sau mỗi lần sửa code vặt.
+> Trigger: before **closing a session** · after **reshaping structure / adding a slot** · on taking over an **unfamiliar repo**
+> · periodically. Not needed after every small code edit.
 >
-> **Máy chấm trước, agent phán sau.** Máy chỉ biết "thư mục này không khớp slot nào"; **chỉ agent mới
-> biết nó *nên* về slot nào, hay đây là concern thật cần thêm vào chuẩn**.
+> **The machine scores first, the agent judges after.** The machine only knows "this folder matches no slot"; **only the agent
+> knows which slot it *should* go to, or whether it is a real concern the standard needs to add**.
 
-**Nguyên tắc:** lớp
-dẫn xuất (graph · index · taxonomy) do MÁY dựng tất định. **Agent KHÔNG ghi vào lớp dẫn xuất** — muốn
-nó có gì thì KHAI vào chuẩn hoặc sửa NGUỒN (docs · code) rồi để máy dựng lại. Agent là người **KIỂM**,
-không phải người sinh.
+**Principle:** the derived
+layer (graph · index · taxonomy) is built by the MACHINE, deterministically. **The agent NEVER writes into the derived layer** — to have
+something in it, DECLARE it in the standard or change the SOURCE (docs · code) and let the machine rebuild. The agent is the one who **CHECKS**,
+not the one who generates.
 
-**Vì sao đừng tự đi soi bằng mắt, và đừng nạp cả graph vào ngữ cảnh:** đọc cả cây thư mục rồi tự đối
-chiếu là **đốt ngữ cảnh** — tốn gấp hàng chục lần bảng lệch và vẫn sót. Đo được: payload graph của một
-repo cỡ vừa ≈ **56.000 token**, chỉ rẻ hơn đọc cả repo ~4,8×. Nạp định kỳ là đốt quota. Máy chấm
-trước, agent chỉ đọc **bảng lệch** (~vài trăm token).
+**Why not inspect by eye, and why not load the whole graph into context:** reading the whole folder tree and comparing by hand
+**burns context** — dozens of times the cost of the drift table, and still misses things. Measured: the graph payload of a
+medium repo ≈ **56,000 tokens**, only ~4.8× cheaper than reading the whole repo. Loading it periodically burns quota. The machine scores
+first, the agent reads only the **drift table** (~a few hundred tokens).
 
-**Quy trình:**
-1. **Chạy máy chấm** → bảng lệch.
-   - Có CLI `zemory`: `zemory conform`. `--json` cho máy đọc, `--gate` cho CI (exit 1 khi có mục
-     `blocking`).
-   - Bộ không có CLI: `python .claude/skills/harness-structure/scripts/check_structure.py .` — exit `0` =
-     không có mục phải sửa · exit `1` = có ít nhất một mục.
-2. **Đọc từng mục theo mức:** `blocking` / `PHẢI SỬA` = lệch chuẩn thật, phải xử · `advisory` /
-   `xem xét` = đáng xem, máy không phán được, **agent tự quyết**.
-3. **Phán phần NGỮ NGHĨA máy không hiểu được** — một thư mục "không khớp slot nào" có ba khả năng:
-   đặt sai chỗ · là concern THẬT mà chuẩn chưa khai · là rác cần xoá.
-4. **Sửa NGUỒN**, không sửa lớp dẫn xuất / báo cáo:
-   - đặt sai chỗ → `git mv` về đúng slot (giữ history) + sửa import; cần dời nhiều thì đề xuất qua
-     skill `reconcile`
-   - là concern THẬT mà chuẩn chưa khai → **đề xuất thêm slot lên HS** (`<Area>_<NNN>_<Name>` trong `02_STRUCTURE/_Slot/`, số nối cuối) — đây là **đổi chuẩn**:
-     dò slot có sẵn trước (`Rule_Gate_85_ProposeChecked`), gửi đề xuất cho phiên zemory (`Rule_Gate_83_HarnessFromStore`)
-   - folder rỗng / rác → **đề xuất xoá, chờ xác nhận** trước khi xoá, không tự xoá
-   - đừng chỉnh script chấm cho hết kêu
-5. **Chạy lại** máy chấm → xác nhận hết lệch. Đã sửa → `05_CHANGES`; phần còn lệch → **báo, hỏi trước
-   khi ghi vào `04_TODO`** (`Rule_Gate_38_TodoDoor`).
+**Procedure:**
+1. **Run the scorer** → the drift table.
+   - With the `zemory` CLI: `zemory conform`. `--json` for machines, `--gate` for CI (exit 1 when there is a
+     `blocking` item).
+   - A set without the CLI: `python .claude/skills/harness-structure/scripts/check_structure.py .` — exit `0` =
+     nothing to fix · exit `1` = at least one item.
+2. **Read each item by level:** `blocking` / `MUST FIX` = really off-standard, must be dealt with · `advisory` /
+   `review` = worth a look, the machine cannot judge, **the agent decides**.
+3. **Judge the MEANING the machine cannot understand** — a folder that "matches no slot" has three possibilities:
+   in the wrong place · a REAL concern the standard has not declared · junk to delete.
+4. **Fix the SOURCE**, never the derived layer / the report:
+   - wrong place → `git mv` to the right slot (keeping history) + fix imports; many to move → propose it through
+     the `reconcile` skill
+   - a REAL concern not declared → **propose a new slot to HS** (`<Area>_<NNN>_<Name>` in `02_STRUCTURE/_Slot/`, the next number) — this is **changing the standard**:
+     search the existing slots first (`Rule_Gate_85_ProposeChecked`), send the proposal to the zemory session (`Rule_Gate_83_HarnessFromStore`)
+   - an empty folder / junk → **propose deleting it, wait for confirmation** before deleting, never on your own
+   - never edit the scoring script to make it stop crying
+5. **Run** the scorer **again** → confirm the drift is gone. Fixed → `05_CHANGES`; what is still off → **report it, ask before
+   writing it into `04_TODO`** (`Rule_Gate_38_TodoDoor`).
 
-**Ranh giới với `zemory validate`:** `validate` hỏi *"bộ docs harness có đúng khuôn không"* (link,
-độ dài changelog, tầng folder). `soi chuẩn`/`conform` hỏi *"code + docs + thư mục có bám chuẩn đã KHAI
-không"*. Hai việc khác nhau — đừng gộp, đừng thay thế nhau.
+**The boundary with `zemory validate`:** `validate` asks *"is the harness doc set in the right shape"* (links,
+changelog length, folder layers). `conform` asks *"do code + docs + folders follow the DECLARED standard"*. Two different
+jobs — never merged, never a substitute for each other.
 
-**Cấm:**
-- Tự thêm node/cạnh "cho đầy đủ"; thêm slot vào chuẩn "cho đầy đủ" khi chưa có file thật nào thuộc
-  về nó.
-- Coi báo cáo là chân lý mà không mở file / code thật ra đối chiếu.
-- Xoá folder/file chỉ vì báo cáo nói vậy mà chưa hỏi.
+**Forbidden:**
+- Adding nodes/edges "to be complete"; adding a slot to the standard "to be complete" while no real file belongs
+  to it.
+- Taking the report as truth without opening the real file / code to compare.
+- Deleting a folder/file just because the report says so, without asking.
 
 ## Implements · Thi hành luật
 - `Rule_Gate_86_LawLayersAgree` — the check that finds broken links and contradictions between layers · phép kiểm tìm liên kết gãy và mâu thuẫn giữa các tầng

@@ -2,52 +2,52 @@
 id: Skill_Task_Pull
 aka: pull
 name: task-pull
-version: 10
+version: 11
 type: process
 installs: [scripts/query.py, scripts/vault.ps1]
 description: Fetch fresh data from a source (SQL, VM, web, API) into the project so a deliverable can be built. Use when the deliverable needs newer numbers, when a scheduled task starts, or when asked to refresh, download, or retrieve source data. Vietnamese triggers - "kéo dữ liệu", "lấy số mới", "tải data về", "cập nhật nguồn", "pull dữ liệu", "làm mới số liệu".
 ---
 
-# pull — kéo dữ liệu từ nguồn
+# pull — pulling data from a source
 
-> Kích hoạt: cần đưa data mới từ nguồn (SQL/VM/web/API) về để làm deliverable. Slot: `02_STRUCTURE`.
-> Trong **pipeline đánh số**: cổng **`00_ready.py`** kiểm nguồn sẵn sàng (exit 0/1) TRƯỚC, rồi
-> **`01_pull.py`** mới kéo. Launcher `<tên> auto` tự chạy gate → pull nếu đủ điều kiện; hoặc
-> `<tên> pull` chạy thẳng stage 01.
+> Trigger: new data from a source (SQL/VM/web/API) is needed to make a deliverable. Slots: `02_STRUCTURE`.
+> In a **numbered pipeline**: the gate **`00_ready.py`** checks the source is ready (exit 0/1) FIRST, then
+> **`01_pull.py`** pulls. The launcher `<name> auto` runs the gate → pull when ready; or
+> `<name> pull` runs stage 01 directly.
 
-## Quy trình
+## Procedure
 
-1. **Đọc định nghĩa nguồn** (M · connection spec · SQL kéo): của MỘT case ⇒ ở `tasks/<case>/`; dùng chung từ hai case trở lên ⇒
-   `sources/` (slot `Tasks_115_Tasks`: hỏi "thuộc một case hay dùng chung?" trước khi đặt file). Credential lấy từ `.env`
-   hoặc `config/`. **KHÔNG BAO GIỜ nhập mật khẩu vào công cụ** (kể cả `zemory`). Nguồn là web → mượn
-   phiên đã đăng nhập trên trang thật.
-2. **Kéo raw về `data/extract/`** (gitignore). Đặt tên theo **nguồn + ngày**.
-   Có rate-limit → pace/backoff. Phải **resume-safe**: đứt giữa chừng thì kéo tiếp được, không phải
-   làm lại từ đầu.
-3. **KHÔNG commit file kéo về** — nặng và có thể chứa dữ liệu cá nhân (PII).
-4. **Ghi lại lần kéo** (nguồn · phạm vi · số dòng) vào spec của task hoặc `04_TODO.md`, để truy được
-   sau.
+1. **Read the source definition** (M · connection spec · pulling SQL): for ONE case ⇒ in `tasks/<case>/`; shared by two cases or more ⇒
+   `sources/` (slot `Tasks_115_Tasks`: ask "one case or shared?" before placing the file). Credentials come from `.env`
+   or `config/`. **NEVER type a password into a tool** (`zemory` included). A web source → borrow the
+   session already signed in on the real site.
+2. **Pull the raw data into `data/extract/`** (gitignored). Name it by **source + date**.
+   Rate-limited → pace/back off. It must be **resume-safe**: broken half way, it continues, never
+   starting over.
+3. **NEVER commit pulled files** — heavy, and they may hold personal data (PII).
+4. **Record the pull** (source · scope · row count) in the task's spec or `04_TODO.md`, so it can be traced
+   later.
 
-## Dò dữ liệu — agent tự chạy, chỉ đọc
+## Exploring data — the agent runs it itself, read only
 
-- Dò cấu trúc, tra cứu, đối chiếu: agent tự chạy câu chỉ-đọc qua công cụ truy vấn của vùng (`values.json` › `query_app`), không
-  đưa SQL cho người dùng chạy tay, không xin mật khẩu (mật khẩu nằm ở két). Mã chạy của task trên máy chủ đọc kho bằng biến
-  kết nối (`WAREHOUSE_CONN`), không qua công cụ dò.
-- Cách gọi — một công cụ, không tự viết client khác: `python scripts\query.py <db_id> "<SELECT …>"` (mỗi dòng kết quả một
-  JSON) · `--map` (danh sách `db_id` = `<máy chủ>.<CSDL>`) · `--check` (đăng nhập + `SELECT 1`). Công cụ đọc client, python
-  và tên file két từ giá trị vùng (`query_client_dir` · `query_python` · `query_vault_file`); tài khoản là của CHÍNH repo, ở
-  `data/secrets/vault/<query_vault_file>` (một phòng một tài khoản: nhật ký của app ghi đúng phòng dò). Không dùng két của repo
-  khác, không chép mật khẩu ra chữ. Két chưa có hoặc không giải được ⇒ báo người dùng cấp mật khẩu tạm.
-- Truyền câu SQL qua công cụ hoặc script Python, không ghép chuỗi qua shell (dấu `'` bị nuốt). Lỗi mạng (bắt tay quá hạn) là
-  đường mạng tới máy chủ của app (LAN văn phòng hoặc VPN), không phải lỗi app.
-- Một câu `SELECT` / `WITH`, không `;`, không từ khoá ghi. Nguồn ngoài kho đọc kèm `WITH (NOLOCK)`.
-- Công cụ trả tối đa `query_row_cap` dòng một lượt ⇒ chia lô (`OFFSET … FETCH NEXT`) rồi gộp; trang cuối vẫn đầy ⇒ dữ liệu chưa đủ,
-  không kết luận. Không chia lô thì số ra thiếu mà không ai thấy.
-- Không đoán tên máy chủ, cơ sở dữ liệu, bảng: dò, hoặc hỏi.
+- Exploring structure, looking things up, reconciling: the agent runs read-only statements itself through the region's query tool (`values.json` › `query_app`),
+  never hands SQL to a person to run by hand, never asks for a password (the password is in the vault). A task's run code on the server reads the warehouse through a
+  connection variable (`WAREHOUSE_CONN`), not through the exploring tool.
+- How to call it — one tool, never another client written on your own: `python scripts\query.py <db_id> "<SELECT …>"` (each result row one
+  JSON) · `--map` (the list of `db_id` = `<server>.<DB>`) · `--check` (sign in + `SELECT 1`). The tool reads the client, the python
+  and the vault file name from the region's values (`query_client_dir` · `query_python` · `query_vault_file`); the account belongs to THIS repo, in
+  `data/secrets/vault/<query_vault_file>` (one department, one account: the app's log records the right department exploring). Never use another repo's
+  vault, never copy a password out as text. No vault yet, or it cannot be decrypted ⇒ ask the requester for a temporary password.
+- Pass the SQL statement through the tool or a Python script, never join strings through the shell (the `'` is swallowed). A network error (handshake timed out) is
+  the network path to the app's server (office LAN or VPN), not an app error.
+- One `SELECT` / `WITH` statement, no `;`, no writing keywords. Sources outside the warehouse are read with `WITH (NOLOCK)`.
+- The tool returns at most `query_row_cap` rows per call ⇒ split into batches (`OFFSET … FETCH NEXT`), then merge; the last page still full ⇒ the data is not complete,
+  no conclusion yet. Without batches, the numbers come out short and nobody notices.
+- Never guess server, database or table names: explore, or ask.
 
-## Cấm
+## Forbidden
 
-- **Lỗi nguồn → BÁO, tuyệt đối đừng bịa số.** Thiếu quyền → HỎI, không tự xoay.
-- Kéo về rồi commit thẳng lên git.
-- Hardcode connection string trong script — luôn trỏ tên biến môi trường.
-- Tự ý mở rộng phạm vi kéo ("tiện tay lấy luôn cả năm") khi chỉ được yêu cầu một kỳ.
+- **A source error → REPORT it, never make numbers up.** Missing permission → ASK, never work around it.
+- Pulling, then committing it straight to git.
+- Hardcoding a connection string in a script — always point at an environment variable's name.
+- Widening the pull on your own ("might as well take the whole year") when only one period was asked for.

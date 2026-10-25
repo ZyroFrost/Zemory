@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 9
+version: 10
 type: process
 installs: [scripts/pbi_engine_query.ps1]
 aka: dev-pbi
@@ -9,45 +9,45 @@ replaces: [Skill_Dev_Pbi]
 description: Build or change a BI report - layout and chart choice, measures and queries kept in one named store, and the report file handled as a heavy binary. Use whenever a report, dashboard, measure or visual is created or changed. Vietnamese triggers - "báo cáo", "dashboard", "biểu đồ", "measure", "DAX", "Power Query", "pbix".
 ---
 
-# pbi-base — dựng và sửa báo cáo BI
+# pbi-base — building and editing BI reports
 
-> Đổi bố cục, biểu đồ, theme của báo cáo đang dùng ⇒ trình trước (`Rule_Keys_62_DesignChangeApproval`). Điền số theo
-> mẫu có sẵn thì cứ làm. Repo có skill báo cáo riêng chi tiết hơn ⇒ theo skill đó, skill này là sàn.
+> Changing the layout, charts or theme of a report in use ⇒ propose first (`Rule_Keys_62_DesignChangeApproval`). Filling figures into an
+> existing template: go ahead. A repo with its own, more detailed report skill ⇒ follow that skill; this skill is the floor.
 
-## 1. Bố cục và biểu đồ
+## 1. Layout and charts
 
-- Giữ bố cục đã chốt; thêm trang hay ô mới theo khuôn các trang có sẵn (`Rule_Core_81_FollowExistingPattern`).
-- Chọn biểu đồ theo câu hỏi: so sánh giữa nhóm ⇒ cột/thanh · xu hướng theo thời gian ⇒ đường · cơ cấu ít phần ⇒ cột chồng
-  hoặc tròn (tối đa vài phần) · chi tiết tra cứu ⇒ bảng.
-- Mỗi hình có tiêu đề nói điều nó trả lời; mỗi số có đơn vị và kỳ; nhãn bằng từ nghiệp vụ (`Rule_Gate_02_ReaderText`).
-- Ý tưởng biểu đồ mới ⇒ rút khuyến nghị, trình phương án; không tự áp.
+- Keep the settled layout; a new page or tile follows the pattern of the existing pages (`Rule_Core_81_FollowExistingPattern`).
+- Choose a chart by its question: comparing groups ⇒ column/bar · a trend over time ⇒ line · a composition of few parts ⇒ stacked column
+  or pie (a few parts at most) · detail to look up ⇒ table.
+- Each visual has a title saying what it answers; each number has a unit and a period; labels in business words (`Rule_Gate_02_ReaderText`).
+- A new chart idea ⇒ draw recommendations, propose the options; never apply on your own.
 
-## 2. Measure và truy vấn
+## 2. Measures and queries
 
-- DAX · M · SQL của báo cáo gom ở kho câu của repo (`queries/` · `measures/`), mỗi câu có tên, gọi theo tên; không viết rải
-  trong từng visual (`Rule_Gate_35_OneHome`). Câu chỉ MỘT case dùng ⇒ `tasks/<case>/check_*.sql`; `queries/` chỉ giữ câu từ hai
-  case trở lên dùng (slot `Queries_122_Queries`).
-- Đổi một measure dùng chung ⇒ liệt kê mọi visual và báo cáo dùng nó trước khi đổi (`Rule_Core_80_SharedChangeImpact`).
-- Sau khi đổi: làm mới dữ liệu và đối chiếu tổng với nguồn bằng số (`Rule_Gate_01_DoneMeansRun`).
+- A report's DAX · M · SQL are gathered in the repo's store of statements (`queries/` · `measures/`), each named, called by name; never scattered
+  inside each visual (`Rule_Gate_35_OneHome`). A statement only ONE case uses ⇒ `tasks/<case>/check_*.sql`; `queries/` keeps only statements two
+  cases or more use (slot `Queries_122_Queries`).
+- Changing a shared measure ⇒ list every visual and report using it before the change (`Rule_Core_80_SharedChangeImpact`).
+- After the change: refresh the data and reconcile the totals with the source, in numbers (`Rule_Gate_01_DoneMeansRun`).
 
-## 3. File báo cáo
+## 3. Report files
 
-- `.pbix` là nhị phân nặng: đi qua LFS theo `.gitattributes`, không commit thẳng (`Rule_Gate_21_WhatEntersGit`).
-- Dữ liệu thật nằm ngoài git; repo chỉ giữ mẫu nhỏ đủ mở báo cáo.
+- `.pbix` is a heavy binary: it goes through LFS by `.gitattributes`, never committed straight (`Rule_Gate_21_WhatEntersGit`).
+- Real data stays outside git; the repo keeps only a sample small enough to open the report.
 
-## 4. Chuẩn report Power BI của repo phòng ban
+## 4. The Power BI report standard of a department repo
 
-Repo phòng ban dựng report Power BI trên DW theo bốn loại (`Legacy` · `Classic` · `White` · `Red`, skill `pbi-pbip` §0). Chuẩn
-chung của bốn loại nằm ở ba file dưới; skill của từng loại chỉ nói phần riêng và trỏ về đây.
+A department repo builds Power BI reports on the DW in four kinds (`Legacy` · `Classic` · `White` · `Red`, skill `pbi-pbip` §0). The
+shared standard of the four kinds is in the three files below; each kind's skill states only its own part and points back here.
 
-| Cần gì | Mở |
+| Need | Open |
 |---|---|
-| tên thư mục và file · số report · đổi tên · một report một thư mục · `.pbip` · bỏ hệ cũ | `reference/naming.md` |
-| `#Measure` · thư mục measure theo trang · tên measure · `Parameter_*` · Kimball của DW · hai tầng tên của `Classic` | `reference/model.md` |
-| màu · tương tác · icon · slicer · lưới 5 · khung · dải title · dựng trên khung có sẵn | `reference/design.md` |
+| folder and file names · report numbers · renaming · one report per folder · `.pbip` · dropping the old system | `reference/naming.md` |
+| `#Measure` · measure folders by page · measure names · `Parameter_*` · the DW's Kimball · the two name layers of `Classic` | `reference/model.md` |
+| colours · interactions · icons · slicers · the 5 grid · frames · the title band · building on an existing frame | `reference/design.md` |
 
-Giá trị thật của cụm (mã màu, theme, icon, khuôn gốc, máy chủ DW, nguồn hệ cũ) nằm ở tổng quản; file chuẩn chỉ nêu tên khoá
-trong giá trị cụm.
+The group's real values (colour codes, theme, icons, original template, DW server, old-system sources) live in the manager; the standard files only name the key
+in the group's values.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the report design standard whose suggestions are shown first · chuẩn thiết kế báo cáo mà gợi ý phải trình trước

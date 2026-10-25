@@ -1,0 +1,48 @@
+---
+version: 11
+lang: vi
+---
+
+# pull — kéo dữ liệu từ nguồn
+
+> Kích hoạt: cần đưa data mới từ nguồn (SQL/VM/web/API) về để làm deliverable. Slot: `02_STRUCTURE`.
+> Trong **pipeline đánh số**: cổng **`00_ready.py`** kiểm nguồn sẵn sàng (exit 0/1) TRƯỚC, rồi
+> **`01_pull.py`** mới kéo. Launcher `<tên> auto` tự chạy gate → pull nếu đủ điều kiện; hoặc
+> `<tên> pull` chạy thẳng stage 01.
+
+## Quy trình
+
+1. **Đọc định nghĩa nguồn** (M · connection spec · SQL kéo): của MỘT case ⇒ ở `tasks/<case>/`; dùng chung từ hai case trở lên ⇒
+   `sources/` (slot `Tasks_115_Tasks`: hỏi "thuộc một case hay dùng chung?" trước khi đặt file). Credential lấy từ `.env`
+   hoặc `config/`. **KHÔNG BAO GIỜ nhập mật khẩu vào công cụ** (kể cả `zemory`). Nguồn là web → mượn
+   phiên đã đăng nhập trên trang thật.
+2. **Kéo raw về `data/extract/`** (gitignore). Đặt tên theo **nguồn + ngày**.
+   Có rate-limit → pace/backoff. Phải **resume-safe**: đứt giữa chừng thì kéo tiếp được, không phải
+   làm lại từ đầu.
+3. **KHÔNG commit file kéo về** — nặng và có thể chứa dữ liệu cá nhân (PII).
+4. **Ghi lại lần kéo** (nguồn · phạm vi · số dòng) vào spec của task hoặc `04_TODO.md`, để truy được
+   sau.
+
+## Dò dữ liệu — agent tự chạy, chỉ đọc
+
+- Dò cấu trúc, tra cứu, đối chiếu: agent tự chạy câu chỉ-đọc qua công cụ truy vấn của vùng (`values.json` › `query_app`), không
+  đưa SQL cho người dùng chạy tay, không xin mật khẩu (mật khẩu nằm ở két). Mã chạy của task trên máy chủ đọc DW bằng biến
+  kết nối (`WAREHOUSE_CONN`), không qua công cụ dò.
+- Cách gọi — một công cụ, không tự viết client khác: `python scripts\query.py <db_id> "<SELECT …>"` (mỗi dòng kết quả một
+  JSON) · `--map` (danh sách `db_id` = `<máy chủ>.<CSDL>`) · `--check` (đăng nhập + `SELECT 1`). Công cụ đọc client, python
+  và tên file két từ giá trị vùng (`query_client_dir` · `query_python` · `query_vault_file`); tài khoản là của CHÍNH repo, ở
+  `data/secrets/vault/<query_vault_file>` (một phòng một tài khoản: nhật ký của app ghi đúng phòng dò). Không dùng két của repo
+  khác, không chép mật khẩu ra chữ. Két chưa có hoặc không giải được ⇒ báo người dùng cấp mật khẩu tạm.
+- Truyền câu SQL qua công cụ hoặc script Python, không ghép chuỗi qua shell (dấu `'` bị nuốt). Lỗi mạng (bắt tay quá hạn) là
+  đường mạng tới máy chủ của app (LAN văn phòng hoặc VPN), không phải lỗi app.
+- Một câu `SELECT` / `WITH`, không `;`, không từ khoá ghi. Nguồn ngoài DW đọc kèm `WITH (NOLOCK)`.
+- Công cụ trả tối đa `query_row_cap` dòng một lượt ⇒ chia lô (`OFFSET … FETCH NEXT`) rồi gộp; trang cuối vẫn đầy ⇒ dữ liệu chưa đủ,
+  không kết luận. Không chia lô thì số ra thiếu mà không ai thấy.
+- Không đoán tên máy chủ, cơ sở dữ liệu, bảng: dò, hoặc hỏi.
+
+## Cấm
+
+- **Lỗi nguồn → BÁO, tuyệt đối đừng bịa số.** Thiếu quyền → HỎI, không tự xoay.
+- Kéo về rồi commit thẳng lên git.
+- Hardcode connection string trong script — luôn trỏ tên biến môi trường.
+- Tự ý mở rộng phạm vi kéo ("tiện tay lấy luôn cả năm") khi chỉ được yêu cầu một kỳ.
