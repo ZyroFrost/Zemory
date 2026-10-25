@@ -1,41 +1,41 @@
 ---
 id: Slot_158
 name: legacy
-version: 2
+version: 3
 path: _Legacy/<Nguồn>/
 scope: layout
 ---
-# Legacy_158_Legacy legacy — lưu trữ việc cũ
+# Legacy_158_Legacy legacy — the archive of old work
 
-## Vai trò
+## Role
 
-`Workspace\Company\<Tổ chức>\_Legacy\` lưu nguyên trạng những việc đã làm TRƯỚC khi có cấu trúc hiện tại: bàn giao của người
-làm trước, nội dung chép từ máy chủ cũ, mã và báo cáo của hệ cũ. Mục đích là tra lại được, không phải làm việc tiếp trên đó.
-Đây là nơi cung cấp vai `legacy`, ráp khung `Struc_Repo_Reference`.
+`Workspace\Company\<Org>\_Legacy\` keeps as they are the pieces of work done BEFORE the current structure existed: the handover of the person
+before, content copied from an old server, code and reports of the old system. The purpose is to look things up again, not to keep working on them.
+This is the provider of the `legacy` role, assembled from the frame `Struc_Repo_Reference`.
 
-## Cách đặt
+## How to place it
 
-Mỗi NGUỒN một thư mục, đặt tên theo nguồn đó; bên trong giữ NGUYÊN cây như lúc nhận, kể cả tên có dấu và có dấu cách. Ví dụ:
+One folder per SOURCE, named after that source; inside, the tree is kept EXACTLY as received, names with diacritics and spaces included. Example:
 
 ```
 _Legacy\
-├── OldServer\          chép nguyên từ máy chủ cũ: Reports\ · Queries\ · …
-└── PreviousAnalyst\    bàn giao của người làm trước, giữ nguyên tên thư mục gốc
+├── OldServer\          copied as is from the old server: Reports\ · Queries\ · …
+└── PreviousAnalyst\    the handover of the person before, original folder names kept
 ```
 
-## Luật — chỉ đọc
+## Rules — read only
 
-- KHÔNG sửa, KHÔNG xếp lại, KHÔNG đổi tên gì bên trong một nguồn.
-- KHÔNG ráp HS vào các nguồn bên trong.
-- Muốn dùng lại một phần: CHÉP phần cần sang repo đúng vai (ví dụ một truy vấn cũ ⇒ `_DB_<Hệ>\`, một báo cáo cũ ⇒
-  `Dept_<Mã>\`) rồi làm ở đó. Bản trong `_Legacy\` giữ nguyên làm hồ sơ.
+- NOTHING inside a source is edited, rearranged or renamed.
+- HS is NOT assembled into the sources inside.
+- To reuse a part: COPY the part needed into the repo of the right role (e.g. an old query ⇒ `_DB_<System>\`, an old report ⇒
+  `Dept_<Code>\`) and work there. The copy in `_Legacy\` stays as it is, as the record.
 
-## Khuôn tên
+## Naming
 
-`<Nguồn>` là tên người, máy hoặc hệ mà nội dung đến từ đó: tên máy chủ (`OldServer`, `SRV-BI`), tên đơn vị cũ. Viết sao cho
-nhìn vào biết ngay nguồn gốc.
+`<Source>` is the name of the person, machine or system the content came from: a server name (`OldServer`, `SRV-BI`), the name of an old unit. Written so
+that one look tells where it came from.
 
-## Phép kiểm
+## Check
 
-`zemory conform --layout <ổ>\Workspace\Company\<Tổ chức>` kiểm `_Legacy` là thư mục hợp lệ của tổ chức. Bên trong không bị
-kiểm khuôn (giữ nguyên trạng là chủ ý).
+`zemory conform --layout <drive>\Workspace\Company\<Org>` checks `_Legacy` is a valid folder of the organisation. The inside is not
+checked for shape (keeping it as it was is the point).

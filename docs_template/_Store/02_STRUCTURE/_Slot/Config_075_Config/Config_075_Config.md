@@ -2,17 +2,17 @@
 id: Slot_75
 aka: 03-75
 name: config
-version: 3
+version: 4
 path: config/
 ---
-# Config_075_Config config — file config operator tự sửa
+# Config_075_Config config — config files the operator edits
 
-- Vai trò:
-  - File config OPERATOR tự sửa (YAML/TOML): profile kết nối, server list; hệ NON-APP: profile workspace/connection. Là config DÙNG CHUNG cấp repo.
-  - Profile kết nối remote server: `config/servers.yaml` + `.env` (`password_env`). Nối DB: profile ở đây. Policy file phân quyền do operator sửa ở đây.
-  - Một trong 6 loại non-code (config = file operator). Gốc repo sạch: config → `config/`.
-- Được chứa / không chứa:
-  - `*.example.*` — template TRACKED, trỏ secret bằng TÊN env.
-  - `*.yaml` bản THẬT → gitignore (`password_env` → `.env`).
-  - `*.local.*` — override theo máy → gitignore.
-  - Không chứa: config của MỘT case (→ gốc `tasks/<case>/`) · config code (→ `backend/src/config/`).
+- Role:
+  - Config files the OPERATOR edits (YAML/TOML): connection profiles, server lists; NON-APP repo: workspace/connection profiles. This is the repo-wide SHARED config.
+  - Remote server connection profiles: `config/servers.yaml` + `.env` (`password_env`). Connecting a DB: the profile is here. Permission policy files the operator edits are here.
+  - One of the 6 kinds of non-code (config = operator files). A clean repo root: config → `config/`.
+- May hold / may not hold:
+  - `*.example.*` — TRACKED templates, pointing at secrets by env NAME.
+  - The REAL `*.yaml` → gitignored (`password_env` → `.env`).
+  - `*.local.*` — per-machine overrides → gitignored.
+  - Not here: the config of ONE case (→ the root of `tasks/<case>/`) · config code (→ `backend/src/config/`).

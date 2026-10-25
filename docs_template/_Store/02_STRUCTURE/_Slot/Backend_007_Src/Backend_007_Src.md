@@ -2,18 +2,18 @@
 id: Slot_7
 aka: 03-7
 name: src
-version: 4
+version: 5
 path: backend/src/
 ---
-# Backend_007_Src src — nơi chứa code
+# Backend_007_Src src — where the code lives
 
-- Vai trò:
-  - ★ Nơi CHỨA code (Node: `src/` · Python: `backend/<pkg>/`).
-  - Sắp theo MỘT trong hai kiểu, không trộn tuỳ tiện: LAYER-FIRST (mặc định — app nhỏ / CRUD / ít domain: slot nằm phẳng ngay dưới `src/`) HOẶC DOMAIN-FIRST (app nhiều domain rạch ròi: mỗi domain là `src/<domain>/`, bên trong lồng lại đúng slot nó cần, cùng từ điển).
-  - Cross-cutting (`core` · `auth` · `vault` · `config` · `logging` · `audit` · `errors` · `i18n` · `update` · `migrations` · `shared` · `util`) LUÔN ở cấp `src/` gốc, không lồng/nhân bản trong từng domain.
-  - Bên trong một domain chỉ dùng slot từ CÙNG từ điển (store/services/ai/io/validators…), không tạo tên mới.
-  - Surface/entry MỎNG: CLI → `commands/`, HTTP → `api/`, WS → `realtime/`, UI → `frontend/`; entry chỉ wire vào domain, không chứa nghiệp vụ.
-  - Mọi slot con `[opt]` — tạo KHI CÓ concern, không tạo folder rỗng; app điển hình chỉ hiện diện 4–10 slot.
-- Được chứa / không chứa:
-  - Chứa: các slot từ điển (biên vào · biên ra · xử lý · nền tảng · chia sẻ) hoặc các `src/<domain>/`.
-  - Không chứa: folder rỗng cho đủ bộ · tên slot ngoài từ điển.
+- Role:
+  - ★ Where the code LIVES (Node: `src/` · Python: `backend/<pkg>/`).
+  - Arranged in ONE of two shapes, never mixed at will: LAYER-FIRST (the default — a small app / CRUD / few domains: slots sit flat right under `src/`) OR DOMAIN-FIRST (an app with clearly separate domains: each domain is `src/<domain>/`, nesting inside exactly the slots it needs, from the same dictionary).
+  - Cross-cutting slots (`core` · `auth` · `vault` · `config` · `logging` · `audit` · `errors` · `i18n` · `update` · `migrations` · `shared` · `util`) are ALWAYS at the root level of `src/`, never nested or copied inside each domain.
+  - Inside a domain, use only slots from the SAME dictionary (store/services/ai/io/validators…), never new names.
+  - THIN surfaces/entries: CLI → `commands/`, HTTP → `api/`, WS → `realtime/`, UI → `frontend/`; an entry only wires into the domain, never holds business logic.
+  - Every child slot is `[opt]` — created WHEN there is a concern, never as an empty folder; a typical app shows only 4–10 slots.
+- May hold / may not hold:
+  - Holds: the dictionary slots (inbound edge · outbound edge · processing · platform · shared) or the `src/<domain>/` folders.
+  - Not here: empty folders to complete a set · slot names outside the dictionary.

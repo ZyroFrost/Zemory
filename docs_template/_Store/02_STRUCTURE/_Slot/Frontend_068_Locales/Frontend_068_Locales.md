@@ -2,9 +2,9 @@
 id: Slot_68
 aka: 03-68
 name: locales
-version: 4
+version: 5
 path: frontend/locales/
 ---
-# Frontend_068_Locales locales — bản dịch UI
+# Frontend_068_Locales locales — UI translations
 
-- Vai trò: Ngôn ngữ / bản dịch UI (i18n); chức năng dịch ở `backend/src/i18n/`.
+- Role: UI languages / translations (i18n); the translating code is in `backend/src/i18n/`.

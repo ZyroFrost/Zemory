@@ -2,18 +2,18 @@
 id: Slot_4
 aka: 03-4
 name: docs
-version: 7
+version: 8
 path: docs/
 ---
-# Docs_004_Docs docs — harness tài liệu
+# Docs_004_Docs docs — the documentation harness
 
-- Vai trò:
-  - ★ Harness: FILE `.md` là NGUỒN; DB chỉ là INDEX dẫn xuất — file wins.
-  - Tài liệu / rule / plan → `docs/`, sửa FILE `.md` trực tiếp.
-  - Giống hệt ở hệ APP và NON-APP: cùng lệnh zemory, agent điều hướng non-app đúng như app.
-  - Hệ NON-APP: định nghĩa nghiệp vụ ở khung HP `Cons_Gate_12_SourceOfTruth` (mục Định nghĩa), cách tính ở skill riêng `Skill_Own_<Tên>` — không tạo `docs/dictionary.md`.
-    Thuật ngữ do repo khác làm chủ (chỉ số của phòng nhìn từ DW) chỉ trỏ tới repo đó; repo chỉ giữ cấu trúc DB giữ từ điển cấu trúc
-    trong skill riêng, trỏ tới catalog máy dựng, không chép định nghĩa nghiệp vụ.
-- Được chứa / không chứa:
-  - Chứa: `agent/` (★) · `plan/` (★) · `archive/` (lịch sử harness: sổ cũ, bản chép đã nghỉ hưu, harness dạng file cũ — tra bằng `zemory changelog search` / `plan search`, không đọc mỗi phiên) · `.harness.json` (★, marker: project đã wire harness).
-  - Không chứa: bản xem trực quan cho người (→ `docs_visual/`) · ảnh/media công khai (→ `docs_public/`) · `docs/dictionary.md` (hệ NON-APP).
+- Role:
+  - ★ The harness: the `.md` FILE is the SOURCE; the DB is only a derived INDEX — the file wins.
+  - Documents / rules / plans → `docs/`, editing the `.md` FILE directly.
+  - Identical in APP and NON-APP repos: the same zemory commands, the agent navigates a non-app repo exactly like an app.
+  - NON-APP repo: business definitions are in the constitution frame `Cons_Gate_12_SourceOfTruth` (section Definitions), how they are computed in the repo's own skill `Skill_Own_<Name>` — no `docs/dictionary.md`.
+    Terms another repo owns (a department's measures seen from the DW) only point at that repo; a repo that only keeps a DB structure keeps the structure dictionary
+    in its own skill, pointing at the machine-built catalogue, never copying business definitions.
+- May hold / may not hold:
+  - Holds: `agent/` (★) · `plan/` (★) · `archive/` (harness history: old ledgers, retired copies, the old file-based harness — looked up with `zemory changelog search` / `plan search`, not read every session) · `.harness.json` (★, the marker: the project has the harness wired).
+  - Not here: visual views for people (→ `docs_visual/`) · public pictures/media (→ `docs_public/`) · `docs/dictionary.md` (NON-APP repo).

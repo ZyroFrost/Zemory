@@ -1,15 +1,15 @@
 ---
 id: Struc_Repo_App
 name: repo-app
-version: 6
+version: 7
 profile: app
 label: APP
 intro: (có code chạy: UI · server · CLI)
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · thêm slot · `conform` báo lệch
-from: _Store/02_STRUCTURE/Struc_Repo_App @v6 #6441bc9b9d32
+from: _Store/02_STRUCTURE/Struc_Repo_App @v7 #3b5904814172
 ---
 # Struc_Repo_App
 
-Chuẩn cấu trúc của một repo hệ APP: repo làm và bảo trì một app có code chạy (UI · server · CLI). Cấu trúc này là cách
-ghép các slot trong `structure.json`; slot nằm ở `_Slot/` và không mang hệ nào.
+The structure standard of an APP repo: a repo that builds and maintains an app with running code (UI · server · CLI). This
+structure is how the slots are put together in `structure.json`; the slots live in `_Slot/` and belong to no kind.

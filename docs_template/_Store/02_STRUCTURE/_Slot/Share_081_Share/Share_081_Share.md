@@ -2,12 +2,12 @@
 id: Slot_81
 aka: 03-81
 name: share
-version: 3
+version: 4
 path: share/
 ---
-# Share_081_Share share — bundle sync mã hoá xuyên máy
+# Share_081_Share share — encrypted cross-machine sync bundles
 
-- Vai trò:
-  - Bundle SYNC MÃ HOÁ xuyên máy: git-lfs `*.enc` + key + README. TRACKED (đã mã hoá).
-  - Hệ APP: chỉ app CÓ sync qua git. Hệ NON-APP: chỉ khi cần chia sẻ file nặng xuyên máy — qua bundle mã hoá, không đưa plaintext lên git.
-  - Folder Drive-sync chỉ nhận bundle `.enc`, không nhận DB sống.
+- Role:
+  - ENCRYPTED SYNC bundles across machines: git-lfs `*.enc` + key + README. TRACKED (already encrypted).
+  - APP repo: only an app that DOES sync through git. NON-APP repo: only when heavy files must be shared across machines — through an encrypted bundle, never plaintext in git.
+  - A Drive-synced folder takes `.enc` bundles only, never a live DB.

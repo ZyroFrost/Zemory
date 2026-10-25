@@ -2,14 +2,14 @@
 id: Slot_78
 aka: 03-78
 name: skills
-version: 5
+version: 6
 path: external/skills/
 ---
-# External_078_Skills skills — kho skill vendored
+# External_078_Skills skills — the vendored skill store
 
-- Vai trò:
-  - KHO SKILL vendored của người khác, giữ nguyên gốc.
-  - Index ở `03_SKILLS`; nơi adapt hiện ra thật là từ điển slot thiết kế UI của `02_STRUCTURE`: agent đọc thẳng bản gốc để lấy ý tưởng thẩm mỹ rồi khớp về các slot thiết kế.
-  - Đọc on-demand; không copy sang từng project.
-- Được chứa / không chứa: Clone nguyên bản: bỏ `.git`, GIỮ `LICENSE`, không sửa nội dung.
-- Khuôn tên: Mỗi skill = một folder ĐÚNG TÊN REPO GỐC: `external/skills/<tên-repo>/`.
+- Role:
+  - The STORE of other people's vendored SKILLS, kept as the originals.
+  - Indexed in `03_SKILLS`; where adapting really shows is the UI design slot dictionary of `02_STRUCTURE`: the agent reads the original directly for aesthetic ideas, then maps them onto the design slots.
+  - Read on demand; never copied into each project.
+- May hold / may not hold: Cloned as is: drop `.git`, KEEP `LICENSE`, never edit the content.
+- Naming: One skill = one folder with EXACTLY THE ORIGINAL REPO'S NAME: `external/skills/<repo-name>/`.

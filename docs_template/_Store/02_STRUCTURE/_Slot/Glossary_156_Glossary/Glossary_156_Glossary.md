@@ -1,37 +1,37 @@
 ---
 id: Slot_156
 name: glossary
-version: 2
+version: 3
 path: _Glossary/
 scope: layout
 ---
-# Glossary_156_Glossary glossary — bảng thuật ngữ chung
+# Glossary_156_Glossary glossary — the shared terms table
 
-## Vai trò
+## Role
 
-`Workspace\Company\<Tổ chức>\_Glossary\` là nơi DUY NHẤT trong tổ chức định nghĩa thuật ngữ dùng chung: từ ngữ nghiệp vụ và
-định nghĩa dữ liệu (tên trường, cách tính chỉ số). Mọi phòng ban tra ở đây; không phòng nào giữ bảng thuật ngữ riêng. Đây là
-nơi cung cấp vai `glossary` của tổ chức, ráp khung `Struc_Repo_Reference`.
+`Workspace\Company\<Org>\_Glossary\` is the ONE place in the organisation that defines shared terms: business words and
+data definitions (field names, how a measure is computed). Every department looks them up here; no department keeps a terms table of its own. This is the
+provider of the organisation's `glossary` role, assembled from the frame `Struc_Repo_Reference`.
 
-## Cây
+## The tree
 
 ```
 _Glossary\
-├── Business\     thuật ngữ nghiệp vụ — ví dụ "doanh thu thuần" nghĩa là gì, "khách hàng mới" tính từ ngày nào
-└── Data\         định nghĩa dữ liệu — ví dụ trường `net_revenue` lấy từ bảng nào, chỉ số "tỉ lệ giữ chân" tính ra sao
+├── Business\     business terms — e.g. what "net revenue" means, from which day a "new customer" counts
+└── Data\         data definitions — e.g. which table the field `net_revenue` comes from, how the "retention rate" measure is computed
 ```
 
-## Luật
+## Rules
 
-- Một tổ chức có đúng MỘT `_Glossary\`. Thuật ngữ mới thêm vào đây, không viết lại định nghĩa trong repo phòng ban.
-- `_Glossary\` là thư mục ĐỒNG BỘ bằng Syncthing (có dấu `.stfolder`), KHÔNG phải repo git: không `git init`, không push.
-- Chỉ chứa định nghĩa. Không chứa báo cáo, dữ liệu, mã.
+- An organisation has exactly ONE `_Glossary\`. A new term is added here, never redefined in a department repo.
+- `_Glossary\` is a folder SYNCED by Syncthing (it carries `.stfolder`), NOT a git repo: no `git init`, no push.
+- Holds only definitions. No reports, data, code.
 
-## Khuôn tên
+## Naming
 
-`_Glossary`, cố định, viết đúng như vậy. Hai thư mục con `Business` · `Data` viết đúng như vậy.
+`_Glossary`, fixed, spelled exactly so. The two sub-folders `Business` · `Data` spelled exactly so.
 
-## Phép kiểm
+## Check
 
-`zemory conform --layout <ổ>\Workspace\Company\<Tổ chức>` kiểm `_Glossary` là thư mục hợp lệ của tổ chức. Chưa có phép kiểm
-máy cho nội dung bên trong.
+`zemory conform --layout <drive>\Workspace\Company\<Org>` checks `_Glossary` is a valid folder of the organisation. No machine check yet
+for what is inside.

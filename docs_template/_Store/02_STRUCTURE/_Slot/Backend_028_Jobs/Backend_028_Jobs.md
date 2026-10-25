@@ -2,11 +2,11 @@
 id: Slot_28
 aka: 03-28
 name: jobs
-version: 4
+version: 5
 path: backend/src/jobs/
 ---
-# Backend_028_Jobs jobs — job nền / cron / queue
+# Backend_028_Jobs jobs — background jobs / cron / queue
 
-- Vai trò:
-  - Job nền / cron / queue / scheduled task.
-  - Write-gate / advisory lock chống ghi DB đồng thời giữa daemon và CLI nằm ở đây — cơ chế điều phối ghi đi cùng scheduler.
+- Role:
+  - Background jobs / cron / queue / scheduled tasks.
+  - The write-gate / advisory lock that stops the daemon and the CLI writing the DB at once lives here — the write coordination goes with the scheduler.

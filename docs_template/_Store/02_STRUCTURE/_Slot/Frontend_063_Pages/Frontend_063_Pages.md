@@ -2,12 +2,12 @@
 id: Slot_63
 aka: 03-63
 name: pages
-version: 4
+version: 5
 path: frontend/pages/
 ---
-# Frontend_063_Pages pages — trang / màn hình / route
+# Frontend_063_Pages pages — pages / screens / routes
 
-- Vai trò:
-  - Trang / màn hình / route UI.
-  - UI một ngôn ngữ: pages/views nằm trong backend (`backend/<pkg>/pages`).
-- Khuôn tên: Tên `pages/` — không dùng `views` hay `screens`, trừ khi framework ép (Next `pages/`, hoặc `views/` của framework server-side).
+- Role:
+  - UI pages / screens / routes.
+  - Single-language UI: pages/views sit in the backend (`backend/<pkg>/pages`).
+- Naming: The name is `pages/` — not `views` or `screens`, unless the framework forces it (Next `pages/`, or the `views/` of a server-side framework).

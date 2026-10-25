@@ -2,11 +2,11 @@
 id: Slot_43
 aka: 03-43
 name: plugins
-version: 4
+version: 5
 path: backend/src/plugins/
-from: _Store/02_STRUCTURE/_Slot/Backend_043_Plugins @v4 #b731fff9f5ea
+from: _Store/02_STRUCTURE/_Slot/Backend_043_Plugins @v5 #9e969a72906c
 ---
-# Backend_043_Plugins plugins — điểm mở rộng cho bên thứ 3
+# Backend_043_Plugins plugins — extension points for third parties
 
-- Vai trò: Điểm mở rộng cho BÊN THỨ 3 (host nạp thêm). Khác `modules/` (feature của mình).
-- Được chứa / không chứa: Không chứa: feature của mình (→ `modules/`).
+- Role: Extension points for THIRD PARTIES (the host loads them in). Not `modules/` (our own features).
+- May hold / may not hold: Not here: our own features (→ `modules/`).

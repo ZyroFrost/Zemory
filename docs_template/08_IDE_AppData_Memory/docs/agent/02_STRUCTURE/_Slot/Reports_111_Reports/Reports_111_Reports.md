@@ -2,14 +2,14 @@
 id: Slot_111
 aka: 03-111
 name: reports
-version: 4
+version: 5
 path: reports/
-from: _Store/02_STRUCTURE/_Slot/Reports_111_Reports @v4 #7b8ed7c2c19c
+from: _Store/02_STRUCTURE/_Slot/Reports_111_Reports @v5 #7e0c5799849a
 ---
-# Reports_111_Reports reports — deliverable BI
+# Reports_111_Reports reports — BI deliverable
 
-- Vai trò:
-  - ◆ BI: file báo cáo `.pbix` / `.pbip` / `.twb` — bản chính giao đi. LFS nếu nhị phân nặng.
-  - Deliverable ◆ — hệ NON-APP bắt buộc ≥1 folder deliverable trong `reports/` | `models/` | `content/` | `design/`, chọn theo loại dự án.
-  - ĐIỀN (fill) xuất deliverable vào đây.
-- Khuôn tên: Tên do vendor/tool ép (`.pbix` · `.Report/` · `.SemanticModel/`) giữ nguyên.
+- Role:
+  - ◆ BI: report files `.pbix` / `.pbip` / `.twb` — the main copy that is handed over. LFS for heavy binaries.
+  - Deliverable ◆ — a NON-APP repo needs at least one deliverable folder among `reports/` | `models/` | `content/` | `design/`, chosen by the kind of project.
+  - FILL exports the deliverable here.
+- Naming: Names a vendor/tool forces (`.pbix` · `.Report/` · `.SemanticModel/`) are kept as they are.

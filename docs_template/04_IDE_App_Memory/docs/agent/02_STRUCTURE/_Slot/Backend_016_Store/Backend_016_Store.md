@@ -2,18 +2,18 @@
 id: Slot_16
 aka: 03-16
 name: store
-version: 4
+version: 5
 path: backend/src/store/
-from: _Store/02_STRUCTURE/_Slot/Backend_016_Store @v4 #ea6e68044b61
+from: _Store/02_STRUCTURE/_Slot/Backend_016_Store @v5 #643a5e68fc79
 ---
-# Backend_016_Store store — data-access: driver + schema DB
+# Backend_016_Store store — data access: DB driver + schema
 
-- Vai trò:
-  - DATA-ACCESS: driver + schema cho DATABASE (remote / nội bộ / cloud).
-  - Nối DB = `store/` + profile ở `config/` + secret ở `.env`/`vault/`.
-  - Mã hoá at-rest DB (SQLCipher) apply ở đây; key + encrypt/decrypt ở `vault/`, key/salt/bundle ở `data/secrets/`. App có data nhạy cảm (chat/PII/log) NÊN mã hoá at-rest; không làm thì ghi rõ là chấp nhận plaintext để audit thấy.
-  - Lưu bền cho các concern khác: metadata của upload · role-data (người dùng→role) · bảng audit · bộ nhớ agent · một nơi THỰC THI cho tool LLM gọi.
-- Được chứa / không chứa:
-  - Chứa: driver, schema, `queries.*`.
-  - Không chứa: lớp cache (→ `cache/`) · file cache runtime (→ `data/cache/`) · bytes upload (→ `data/uploads/`).
-- Khuôn tên: Tên `store/` — không dùng `db` hay `models`, trừ khi framework ép (Django `models/`, Rails `app/models`).
+- Role:
+  - DATA ACCESS: the driver + schema for the DATABASE (remote / local / cloud).
+  - Connecting a DB = `store/` + a profile in `config/` + the secret in `.env`/`vault/`.
+  - DB encryption at rest (SQLCipher) is applied here; keys + encrypt/decrypt in `vault/`, key/salt/bundle files in `data/secrets/`. An app with sensitive data (chat/PII/logs) SHOULD encrypt at rest; one that does not writes down that it accepts plaintext, so an audit sees it.
+  - Durable storage for other concerns: upload metadata · role data (account→role) · the audit table · agent memory · one place that EXECUTES what an LLM tool calls.
+- May hold / may not hold:
+  - Holds: drivers, schema, `queries.*`.
+  - Not here: the cache layer (→ `cache/`) · runtime cache files (→ `data/cache/`) · upload bytes (→ `data/uploads/`).
+- Naming: The name is `store/` — not `db` or `models`, unless the framework forces it (Django `models/`, Rails `app/models`).

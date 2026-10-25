@@ -2,14 +2,14 @@
 id: Slot_130
 aka: 03-130
 name: adhoc
-version: 4
+version: 5
 path: data/adhoc/
-from: _Store/02_STRUCTURE/_Slot/Data_130_Adhoc @v4 #e111a244c7ca
+from: _Store/02_STRUCTURE/_Slot/Data_130_Adhoc @v5 #08acf0e28638
 ---
-# Data_130_Adhoc adhoc — file lẻ check nhanh
+# Data_130_Adhoc adhoc — loose files for a quick check
 
-- Vai trò: File LẺ check nhanh một lần, throwaway, không thuộc task nào.
-- Được chứa / không chứa:
-  - `README.md` tracked = marker giữ folder.
-  - Không chia 3 chặng.
-  - Không quăng file của deliverable định kỳ vào đây (→ `tasks/<task>/` + `data/<task>/`).
+- Role: LOOSE files for a one-off quick check, throwaway, belonging to no task.
+- May hold / may not hold:
+  - A tracked `README.md` = the marker that keeps the folder.
+  - Not split into the three stages.
+  - Files of a recurring deliverable never go here (→ `tasks/<task>/` + `data/<task>/`).

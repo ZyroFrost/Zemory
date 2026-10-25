@@ -2,13 +2,13 @@
 id: Slot_116
 aka: 03-116
 name: cadence
-version: 4
+version: 5
 path: tasks/<cadence>/
 ---
-# Tasks_116_Cadence cadence — case định kỳ
+# Tasks_116_Cadence cadence — recurring cases
 
-- Vai trò:
-  - Case ĐỊNH KỲ / tự động (report tuần, target quý). Data thật → `data/<case>/` (mirror ĐÚNG TÊN).
-  - Pipeline ở `tasks/<tên>/pipeline/`, launcher ở `bin/<tên>.cmd`.
-- Được chứa / không chứa: Không chứa: file định kỳ quăng vào `data/adhoc/` — cái gì thuộc deliverable định kỳ phải ở `tasks/<task>/` + `data/<task>/`.
-- Khuôn tên: Tên thường, không số. Khuôn `<MÃ_PHÒNG>_<NHỊP>_<TênViệc>` là quy ước của từng repo, chuẩn không ép.
+- Role:
+  - A RECURRING / automated case (weekly report, quarterly target). Real data → `data/<case>/` (mirrors the SAME NAME).
+  - The pipeline is in `tasks/<name>/pipeline/`, the launcher in `bin/<name>.cmd`.
+- May hold / may not hold: Not here: recurring files dropped into `data/adhoc/` — whatever belongs to a recurring deliverable lives in `tasks/<task>/` + `data/<task>/`.
+- Naming: Plain names, no numbers. The pattern `<DEPT_CODE>_<CADENCE>_<TaskName>` is each repo's own convention; the standard does not force it.

@@ -2,15 +2,15 @@
 id: Slot_82
 aka: 03-82
 name: bin
-version: 3
+version: 4
 path: bin/
 ---
-# Bin_082_Bin bin — entry CLI / launcher
+# Bin_082_Bin bin — CLI entry / launchers
 
-- Vai trò:
-  - Hệ APP: entry CLI theo npm convention: `bin/<name>` → `dist/cli.js`.
-  - Hệ NON-APP: LAUNCHER gõ tay (`.cmd`/`.sh`) — `bin/<tên>.cmd`: `<tên> <stage>` dispatch · `<tên> auto` = cổng 00 (exit-code gate) → chạy chuỗi stage nếu đủ. Case định kỳ dùng launcher ở đây.
-  - Gốc repo sạch: launcher đặt ở `bin/`, không ở gốc. Đánh đổi có ý thức: gõ `bin\<tên> pull` thay vì `<tên> pull`.
-- Được chứa / không chứa:
-  - Launcher THUẦN ASCII — dấu tiếng Việt làm cmd.exe vỡ parse.
-  - Không đặt dấu `>` trong dòng `rem` — cmd vẫn redirect ⇒ sinh file rỗng.
+- Role:
+  - APP repo: the CLI entry by npm convention: `bin/<name>` → `dist/cli.js`.
+  - NON-APP repo: LAUNCHERS typed by hand (`.cmd`/`.sh`) — `bin/<name>.cmd`: `<name> <stage>` dispatches · `<name> auto` = gate 00 (exit-code gate) → runs the chain of stages when ready. Recurring cases use their launcher here.
+  - A clean repo root: launchers go in `bin/`, not at the root. A deliberate trade-off: type `bin\<name> pull` instead of `<name> pull`.
+- May hold / may not hold:
+  - Launchers are PURE ASCII — Vietnamese diacritics break cmd.exe's parsing.
+  - Never put `>` in a `rem` line — cmd still redirects ⇒ an empty file appears.

@@ -2,13 +2,13 @@
 id: Slot_27
 aka: 03-27
 name: pipelines
-version: 4
+version: 5
 path: backend/src/pipelines/
-from: _Store/02_STRUCTURE/_Slot/Backend_027_Pipelines @v4 #9b851b33ba7e
+from: _Store/02_STRUCTURE/_Slot/Backend_027_Pipelines @v5 #898e98eabe24
 ---
-# Backend_027_Pipelines pipelines — ETL / ingest / batch nhiều bước
+# Backend_027_Pipelines pipelines — multi-step ETL / ingest / batch
 
-- Vai trò:
-  - ETL / ingest / batch NHIỀU BƯỚC — đường ống dữ liệu.
-  - Khác `jobs/` (theo lịch) và `events/` (phản ứng sự kiện); khác `agents/` (model-driven): pipelines là tất định.
-- Được chứa / không chứa: Không chứa: lịch chạy (→ `jobs/`) · consumer sự kiện (→ `events/`).
+- Role:
+  - MULTI-STEP ETL / ingest / batch — the data pipeline.
+  - Not `jobs/` (on a schedule) nor `events/` (reacting to an event); not `agents/` (model-driven): pipelines are deterministic.
+- May hold / may not hold: Not here: the schedule (→ `jobs/`) · event consumers (→ `events/`).

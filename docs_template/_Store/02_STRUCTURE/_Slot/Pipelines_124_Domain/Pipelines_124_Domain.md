@@ -2,10 +2,10 @@
 id: Slot_124
 aka: 03-124
 name: domain
-version: 4
+version: 5
 path: pipelines/<domain>/
 ---
-# Pipelines_124_Domain domain — script gom theo nguồn/domain
+# Pipelines_124_Domain domain — scripts grouped by source/domain
 
-- Vai trò: Script gom theo nguồn/domain (vd `<nguồn>_loader`). Legacy không đánh số, cùng tồn tại.
-- Khuôn tên: Script domain cũ không bắt đánh số.
+- Role: Scripts grouped by source/domain (e.g. `<source>_loader`). Legacy, not numbered, living side by side.
+- Naming: Old domain scripts are not required to be numbered.

@@ -2,10 +2,10 @@
 id: Slot_45
 aka: 03-45
 name: util
-version: 4
+version: 5
 path: backend/src/util/
 ---
-# Backend_045_Util util — helper thuần (backend)
+# Backend_045_Util util — pure helpers (backend)
 
-- Vai trò: CHỈ helper thuần (format / date / string). Đối xứng `frontend/util`.
-- Được chứa / không chứa: Không chứa: business logic · repository · framework-adapter — chống nơi dồn tạp nham.
+- Role: ONLY pure helpers (format / date / string). Mirrors `frontend/util`.
+- May hold / may not hold: Not here: business logic · repositories · framework adapters — it must not become a dumping ground.

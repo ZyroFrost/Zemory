@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_Dept
 name: repo-dept
-version: 10
+version: 11
 profile: non-app
 label: DEPT
 intro: : repo của một phòng ban trong một vùng có tổng quản — việc theo case (kéo · xử lý · giao báo cáo), báo cáo BI, tác vụ chạy định kỳ trên máy chủ; không phát triển app
@@ -12,31 +12,31 @@ installs: [scripts/region_values.py]
 ---
 # Struc_Repo_Dept
 
-Chuẩn cấu trúc của một repo phòng ban: mọi slot của `Struc_Repo_NonApp` (khai `extends`, không chép lại) cộng các slot
-riêng của phòng ban. Phòng ban khác NON-APP chung ở khuôn tên và ở việc thuộc về một vùng: tên case và tên file theo khuôn
-của vùng, giá trị thật (máy chủ · thư viện chia sẻ · hộp thư · bộ mã phòng) nằm ở repo tổng quản của vùng, không nằm trong
-repo phòng ban. Slot nằm ở `_Slot/` và không mang hệ nào.
+The structure standard of a department repo: every slot of `Struc_Repo_NonApp` (declares `extends`, never copied) plus the department's own
+slots. A department differs from a plain NON-APP repo in its naming and in belonging to a region: case names and file names follow the region's
+pattern, and the real values (servers · shared libraries · mailboxes · department codes) live in the region's manager repo, not in the
+department repo. The slots live in `_Slot/` and belong to no kind.
 
-## Thuộc một cụm
+## Belongs to a group
 
-- Vai `dept` (khối `role` trong `structure.json`): thuộc quyền repo theo `Struc_Repo_WorkspaceManager`; khai `owner` là bắt
-  buộc. Quan hệ và ranh giới giữa các repo của cụm: `Struc_Region_Workspace`.
-- Giá trị thật của cụm (máy chủ · thư viện chia sẻ · hộp thư · bộ mã phòng) nằm ở tổng quản (slot `Data_140_WorkspaceValues`).
-  `scripts/region_values.py` (template này cài vào repo) tìm tổng quản theo `owner` trong marker; tool và skill chỉ nêu TÊN KHOÁ.
-- Mail: người nhận, người gửi và khoá gửi nằm ở bộ mail chung của tổng quản (slot `Config_139_Mail`); repo phòng không giữ danh bạ.
-- Git là BẢN SAO LƯU TẠI MÁY (`role.git: local`): commit thường xuyên, không có remote, không push. Máy khác nhận repo qua sao lưu
-  của zemory và Syncthing, không qua git. Không bao giờ báo "chưa có remote / chưa push". Máy kiểm: guard chặn `git push` ·
-  `git remote add` · `git remote set-url` (không cờ); `conform` › `git-remote-on-backup-repo` đỏ khi repo có remote.
+- Role `dept` (the `role` block in `structure.json`): belongs to a repo following `Struc_Repo_WorkspaceManager`; declaring `owner` is
+  required. The relations and boundaries between the repos of a group: `Struc_Region_Workspace`.
+- The group's real values (servers · shared libraries · mailboxes · department codes) live in the manager (slot `Data_140_WorkspaceValues`).
+  `scripts/region_values.py` (installed into the repo by this template) finds the manager through `owner` in the marker; tools and skills name only the KEY.
+- Mail: recipients, senders and sending keys live in the manager's shared mail set (slot `Config_139_Mail`); a department repo keeps no contact list.
+- Git is a BACKUP ON THE MACHINE (`role.git: local`): commit often, no remote, no push. Other machines get the repo through
+  zemory's backup and Syncthing, never through git. Never report "no remote yet / not pushed". Machine check: the guard blocks `git push` ·
+  `git remote add` · `git remote set-url` (no flag); `conform` › `git-remote-on-backup-repo` reds when the repo has a remote.
 
-## Mở một repo phòng ban mới
+## Opening a new department repo
 
-1. Tên `Dept_<MÃ>`: mã thuộc bộ đóng của cụm (khoá `dept_codes`); thêm mã mới do người dùng chốt ở phiên tổng quản. Tên thư mục
-   là định danh của repo trong bộ nhớ chung ⇒ chốt một lần; đổi sau là dời `project_root`, làm ở phiên tổng quản.
-2. Ráp harness từ bộ phòng ban: `zemory init --kit <số bộ>`; khai marker `owner` = repo tổng quản và `uses` theo mảng cần dùng
-   (`data` · `workspace-values` · `mail`); `zemory conform` xanh.
-3. Điền các khung hiến pháp (`Cons.md`) theo sản phẩm của chính phòng — không chép điều của phòng khác; bất biến chung của cụm nằm ở
-   hiến pháp của tổng quản.
-4. Git bắt buộc, chỉ cục bộ: `.gitignore` chặn đủ `data/` · `exports/` · bí mật TRƯỚC → `git init -b main` · `core.autocrlf false`
-   · LFS cho nhị phân nặng (`*.pbix` · `*.xlsx`) · hook pre-commit của harness → đọc danh sách staging, 0 bí mật → commit gốc. Không
-   remote, không push tới khi người dùng chốt đích (`Rule_Gate_50_Git`).
-5. Không tạo slot rỗng: thư mục chỉ có khi có file thật (ngoại lệ: ba chặng của `data/<case>/`, slot `Data_131_Case`).
+1. The name `Dept_<CODE>`: the code belongs to the group's closed set (key `dept_codes`); a new code is decided by the owner in the manager's session. The folder name
+   is the repo's identity in the shared memory ⇒ settled once; changing it later means moving `project_root`, done in the manager's session.
+2. Assemble the harness from the department set: `zemory init --kit <set no>`; declare the marker's `owner` = the manager repo and `uses` by the areas needed
+   (`data` · `workspace-values` · `mail`); `zemory conform` green.
+3. Fill in the constitution frames (`Cons.md`) for the department's own product — never copy another department's articles; the group's shared invariants live in
+   the manager's constitution.
+4. Git is required, local only: `.gitignore` blocks `data/` · `exports/` · secrets FIRST → `git init -b main` · `core.autocrlf false`
+   · LFS for heavy binaries (`*.pbix` · `*.xlsx`) · the harness pre-commit hook → read the staging list, 0 secrets → the first commit. No
+   remote, no push until the owner decides the target (`Rule_Gate_50_Git`).
+5. No empty slots: a folder exists only when it holds a real file — at every level, `data/<case>/` stages included (`Struc_Disk_Data` §Rules).

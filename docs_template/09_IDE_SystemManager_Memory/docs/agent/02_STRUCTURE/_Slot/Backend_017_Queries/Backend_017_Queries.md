@@ -2,13 +2,13 @@
 id: Slot_17
 aka: 03-17
 name: queries
-version: 4
+version: 5
 path: backend/src/store/queries.*
-from: _Store/02_STRUCTURE/_Slot/Backend_017_Queries @v4 #9927576c8ca9
+from: _Store/02_STRUCTURE/_Slot/Backend_017_Queries @v5 #d7e2a8bc0b24
 ---
-# Backend_017_Queries queries — kho SQL đặt tên
+# Backend_017_Queries queries — the store of named SQL
 
-- Vai trò:
-  - GOM mọi câu SQL đặt TÊN, gọi theo tên — không rải f-string/inline.
-  - Đối xứng với `queries/` của hệ NON-APP.
-- Được chứa / không chứa: Không chứa: SQL one-off của dev/ops (→ `backend/scripts/sql/`).
+- Role:
+  - GATHERS every SQL statement under a NAME, called by name — no f-strings/inline SQL scattered around.
+  - Mirrors `queries/` of a NON-APP repo.
+- May hold / may not hold: Not here: one-off dev/ops SQL (→ `backend/scripts/sql/`).

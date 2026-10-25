@@ -2,12 +2,12 @@
 id: Slot_62
 aka: 03-62
 name: styles
-version: 4
+version: 5
 path: frontend/styles/
 ---
-# Frontend_062_Styles styles — token + CSS/theme
+# Frontend_062_Styles styles — tokens + CSS/theme
 
-- Vai trò:
-  - TOKENS: size dialog, màu, spacing + CSS/theme chung + biến layout resize (`--rail-w`…). Định nghĩa 3-size ở đây.
-  - Giá trị THẬT token/palette của repo sống ở đây (từ điển slot thiết kế chỉ nêu slot).
-  - UI no-build: CSS tách theo concern thành `styles/*.css`.
+- Role:
+  - TOKENS: dialog sizes, colours, spacing + shared CSS/theme + resize layout variables (`--rail-w`…). The 3 sizes are defined here.
+  - The repo's REAL token/palette values live here (the design slot dictionary only names the slot).
+  - No-build UI: CSS split by concern into `styles/*.css`.

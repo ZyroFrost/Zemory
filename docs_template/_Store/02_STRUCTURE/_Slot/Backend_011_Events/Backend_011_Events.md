@@ -2,12 +2,12 @@
 id: Slot_11
 aka: 03-11
 name: events
-version: 4
+version: 5
 path: backend/src/events/
 ---
-# Backend_011_Events events — nhận event / webhook inbound
+# Backend_011_Events events — inbound events / webhooks
 
-- Vai trò:
-  - NHẬN & xử lý event/webhook INBOUND · event bus · consumer · listener. Webhook chỉ là một loại nguồn event.
-  - Khác `jobs/` (theo lịch) và `pipelines/` (đường ống nhiều bước): `events/` = phản ứng sự kiện.
-- Được chứa / không chứa: Không chứa: job theo lịch (→ `jobs/`) · ETL nhiều bước (→ `pipelines/`).
+- Role:
+  - RECEIVES and handles INBOUND events/webhooks · event bus · consumers · listeners. A webhook is just one kind of event source.
+  - Not `jobs/` (on a schedule) nor `pipelines/` (multi-step): `events/` = reacting to an event.
+- May hold / may not hold: Not here: scheduled jobs (→ `jobs/`) · multi-step ETL (→ `pipelines/`).

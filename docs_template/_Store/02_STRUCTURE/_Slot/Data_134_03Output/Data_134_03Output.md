@@ -2,14 +2,14 @@
 id: Slot_134
 aka: 03-134
 name: 03_output
-version: 6
+version: 7
 path: data/<case>/03_output/
 ---
-# Data_134_03Output 03_output — bản giao đi
+# Data_134_03Output 03_output — what is handed over
 
-- Vai trò: BẢN GIAO ĐI (mail · đẩy SharePoint / BI).
-- Đã gửi đi (mail · đẩy lên đích) = `03_output`, không ngoại lệ, bất kể ai dựng và dựng lại được hay không; `01_raw` chỉ giữ
-  file NHẬN từ ngoài mà repo chưa gửi lại.
-- Khuôn tên: Tên NGHIỆP VỤ (vd `YYYYMMDD_..._REPORT.xlsx`), KHÔNG prefix số — vì đó là file giao/nộp. Theo chuẩn tên của bên đã
-  gửi bản gốc; bản trọn kỳ tên trơn, bản một phần kỳ kèm khoảng ngày — hai bản giao khác nhau không bao giờ trùng tên
-  (`Skill_Task_Case` `reference/naming.md` §5). Bản giao mọi kỳ nằm cùng nhau ở đây.
+- Role: WHAT IS HANDED OVER (mail · pushed to SharePoint / BI).
+- Sent out (mailed · pushed to its target) = `03_output`, no exception, whoever built it and whether it can be rebuilt or not; `01_raw` only keeps
+  files RECEIVED from outside that the repo has not sent back.
+- Naming: BUSINESS names (e.g. `YYYYMMDD_..._REPORT.xlsx`), NO number prefix — they are files that are handed in. Follow the naming of the party that
+  sent the original; a full-period copy has a plain name, a part-period copy carries its date range — two different deliverables never share a name
+  (`Skill_Task_Case` `reference/naming.md` §5). The deliverables of every period sit together here.

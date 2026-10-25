@@ -2,10 +2,10 @@
 id: Slot_125
 aka: 03-125
 name: notebooks
-version: 4
+version: 5
 path: notebooks/
-from: _Store/02_STRUCTURE/_Slot/Notebooks_125_Notebooks @v4 #74c2d75c6d5b
+from: _Store/02_STRUCTURE/_Slot/Notebooks_125_Notebooks @v5 #3992aed86e77
 ---
-# Notebooks_125_Notebooks notebooks — phân tích thăm dò
+# Notebooks_125_Notebooks notebooks — exploratory analysis
 
-- Vai trò: Phân tích thăm dò `.ipynb` (research / analytics).
+- Role: Exploratory analysis `.ipynb` (research / analytics).

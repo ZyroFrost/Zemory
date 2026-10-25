@@ -1,15 +1,15 @@
 ---
 id: Host_CLI
 name: host-cli
-version: 2
+version: 3
 kind: host
 ---
-# CLI Hệ CLI — agent chạy trong terminal
+# CLI The CLI host — the agent runs in a terminal
 
-- Phạm vi: agent chạy trong terminal, mở tại folder dự án.
-- Mở dự án: mở terminal tại gốc dự án → chạy agent → dán câu bootstrap của bộ (bộ Memory: `zemory init --kit <số>`).
-- Bộ ráp được: bộ Basic và bộ Memory.
-- Kiểm môi trường (doctor):
-  - Node ≥ 20 và Git có trên PATH;
-  - bộ Memory: lệnh `zemory` có trên PATH, `zemory doctor` xanh trong folder dự án;
-  - phiên có thể đổi folder làm việc xuống folder con: lệnh hook neo theo `CLAUDE_PROJECT_DIR` nên guard vẫn chạy.
+- Scope: the agent runs in a terminal, opened at the project folder.
+- Opening a project: open a terminal at the project root → run the agent → paste the set's bootstrap line (a Memory set: `zemory init --kit <no>`).
+- Sets that can be assembled: Basic and Memory sets.
+- Environment check (doctor):
+  - Node ≥ 20 and Git on PATH;
+  - Memory set: the `zemory` command on PATH, `zemory doctor` green in the project folder;
+  - a session may move its working folder down to a sub-folder: the hook command is anchored on `CLAUDE_PROJECT_DIR`, so the guard still runs.

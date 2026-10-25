@@ -2,13 +2,13 @@
 id: Slot_8
 aka: 03-8
 name: api
-version: 4
+version: 5
 path: backend/src/api/
 ---
-# Backend_008_Api api — endpoint app mở ra (biên vào)
+# Backend_008_Api api — the endpoints the app opens (inbound edge)
 
-- Vai trò:
-  - Endpoint app MÌNH mở — REST/route phục vụ FE/client, kể cả health-check endpoint.
-  - BIÊN VÀO. Ba loại kết nối: `api/` = mình MỞ · `integrations/` = SERVICE ngoài · `store/` = DATABASE.
-  - Surface mỏng cho HTTP: chỉ wire vào domain, không chứa nghiệp vụ. Daemon nền phục vụ UI cục bộ mở endpoint ở đây.
-- Được chứa / không chứa: Không chứa: client gọi về backend từ FE (→ `frontend/client/`) — một tên không gánh hai chiều.
+- Role:
+  - The endpoints OUR app opens — REST/routes serving the FE/clients, health-check endpoints included.
+  - INBOUND EDGE. Three kinds of connection: `api/` = what we OPEN · `integrations/` = OUTSIDE SERVICES · `store/` = the DATABASE.
+  - A thin surface for HTTP: only wires into the domain, holds no business logic. A background daemon serving a local UI opens its endpoints here.
+- May hold / may not hold: Not here: the FE client calling back to the backend (→ `frontend/client/`) — one name never carries both directions.

@@ -2,12 +2,12 @@
 id: Slot_86
 aka: 03-86
 name: .gitattributes
-version: 5
+version: 6
 path: .gitattributes
 ---
 # Root_086_Gitattributes .gitattributes — eol + LFS
 
-- Vai trò: eol + LFS (manifest do tool ép ở gốc). Nhị phân nặng (deliverable `.pbix`/`.fig`…, bundle `*.enc`) đi qua LFS.
-- Khoá kiểu xuống dòng: `* text=auto eol=lf`, đặt TRƯỚC các dòng LFS (dòng sau đè dòng trước). Repo chưa khoá thì sửa file theo `Rule_Gate_24_EolKeep`.
-- Launcher giữ CRLF: `*.cmd text eol=crlf` · `*.bat text eol=crlf` ngay sau dòng `text=auto` — cmd.exe đọc launcher LF sai (dòng `rem`
-  bị cắt, dòng sau chạy thành lệnh). Thiếu hai dòng này ⇒ `conform` › `slot-gate` báo, `zemory sync` đưa vào sổ việc của repo.
+- Role: eol + LFS (a manifest the tool forces at the root). Heavy binaries (deliverables `.pbix`/`.fig`…, bundles `*.enc`) go through LFS.
+- Line-ending lock: `* text=auto eol=lf`, written BEFORE the LFS lines (a later line overrides an earlier one). A repo not locked yet is fixed by `Rule_Gate_24_EolKeep`.
+- Launchers keep CRLF: `*.cmd text eol=crlf` · `*.bat text eol=crlf` right after the `text=auto` line — cmd.exe misreads an LF launcher (a `rem`
+  line is cut, the next line runs as a command). Missing these two lines ⇒ `conform` › `slot-gate` reports it, `zemory sync` puts it in the repo's ledger.

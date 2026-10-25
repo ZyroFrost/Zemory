@@ -2,15 +2,15 @@
 id: Slot_23
 aka: 03-23
 name: agents
-version: 4
+version: 5
 path: backend/src/agents/
-from: _Store/02_STRUCTURE/_Slot/Backend_023_Agents @v4 #2bfb1e5ec34e
+from: _Store/02_STRUCTURE/_Slot/Backend_023_Agents @v5 #7debccd06cf2
 ---
-# Backend_023_Agents agents — vòng lặp agent của app
+# Backend_023_Agents agents — the app's agent loop
 
-- Vai trò:
-  - VÒNG LẶP AGENT: planning / reasoning / state-machine điều phối LLM (guardrail · grade→rewrite · cap vòng). Model-driven — khác `pipelines/` (tất định).
-  - Agent (LLM) dùng 4 chỗ: loop/planning → `agents/` · provider LLM → `ai/` · tool cho LLM gọi → `tools/` · prompt → `resources/prompts/`. Không gộp một folder agent lộn xộn (reasoning + state + memory + tool + LLM-client nhét chung là lỗi phổ biến).
-  - Bộ nhớ agent (hội thoại / scratchpad / checkpoint) không có slot riêng: chính sách nhớ-quên-tóm tắt-trim → `agents/` · lưu bền → `store/` · blob runtime → `data/state/` — cùng pattern với notifications/storage/authz.
-  - `agents/` ≠ `docs/agent/`: đây là code agent CỦA APP.
-- Được chứa / không chứa: Không chứa: LLM client (→ `ai/`) · prompt (→ `resources/prompts/`) · định nghĩa tool (→ `tools/`).
+- Role:
+  - The AGENT LOOP: planning / reasoning / a state machine orchestrating the LLM (guardrails · grade→rewrite · loop caps). Model-driven — not `pipelines/` (deterministic).
+  - An agent (LLM) uses 4 places: loop/planning → `agents/` · LLM provider → `ai/` · tools the LLM calls → `tools/` · prompts → `resources/prompts/`. Never one messy agent folder (reasoning + state + memory + tools + LLM client crammed together is a common mistake).
+  - Agent memory (conversation / scratchpad / checkpoint) has no slot of its own: the remember-forget-summarise-trim policy → `agents/` · durable storage → `store/` · runtime blobs → `data/state/` — the same pattern as notifications/storage/authz.
+  - `agents/` ≠ `docs/agent/`: this is the APP's agent code.
+- May hold / may not hold: Not here: the LLM client (→ `ai/`) · prompts (→ `resources/prompts/`) · tool definitions (→ `tools/`).

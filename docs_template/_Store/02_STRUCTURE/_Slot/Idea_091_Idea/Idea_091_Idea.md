@@ -2,9 +2,9 @@
 id: Slot_91
 aka: 03-91
 name: .idea
-version: 3
+version: 4
 path: .idea/
 ---
-# Idea_091_Idea .idea — config editor
+# Idea_091_Idea .idea — editor config
 
-- Vai trò: Config editor — để yên ở gốc; `*.local.json` → gitignore.
+- Role: Editor config — left at the root; `*.local.json` → gitignore.

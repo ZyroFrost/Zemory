@@ -2,13 +2,13 @@
 id: Slot_38
 aka: 03-38
 name: update
-version: 4
+version: 5
 path: backend/src/update/
-from: _Store/02_STRUCTURE/_Slot/Backend_038_Update @v4 #c8eeeb82bea4
+from: _Store/02_STRUCTURE/_Slot/Backend_038_Update @v5 #94766be83d89
 ---
-# Backend_038_Update update — tự cập nhật phiên bản
+# Backend_038_Update update — self-update
 
-- Vai trò:
-  - VERSION-UP tự động: check Releases/registry + tải + apply.
-  - Phối `attic/` (backup) + `dist/` (bản mới) + `migrations/`.
-  - App phát hành qua package manager (npm/pip) có thể không cần slot này — ghi rõ lý do.
+- Role:
+  - Automatic VERSION-UP: check Releases/registry + download + apply.
+  - Works with `attic/` (backup) + `dist/` (the new copy) + `migrations/`.
+  - An app released through a package manager (npm/pip) may not need this slot — write down why.

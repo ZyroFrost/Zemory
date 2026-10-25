@@ -2,10 +2,10 @@
 id: Slot_129
 aka: 03-129
 name: extract
-version: 4
+version: 5
 path: data/extract/
 ---
-# Data_129_Extract extract — raw pull dùng chung
+# Data_129_Extract extract — raw pulls shared by cases
 
-- Vai trò: Raw PULL dùng CHUNG nhiều case (SQL dump / rar / kéo từ VM) — nặng, PII, gitignore. Đích của động tác KÉO.
-- Được chứa / không chứa: Không chia 3 chặng.
+- Role: A raw PULL SHARED by several cases (SQL dump / rar / pulled from a VM) — heavy, PII, gitignored. The target of the PULL step.
+- May hold / may not hold: Not split into the three stages.

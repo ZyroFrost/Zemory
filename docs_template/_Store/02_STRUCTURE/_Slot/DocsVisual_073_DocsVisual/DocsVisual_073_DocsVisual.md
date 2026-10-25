@@ -2,15 +2,15 @@
 id: Slot_73
 aka: 03-73
 name: docs_visual
-version: 3
+version: 4
 path: docs_visual/
 ---
-# DocsVisual_073_DocsVisual docs_visual — bản xem trực quan cho người
+# DocsVisual_073_DocsVisual docs_visual — visual views for people
 
-- Vai trò:
-  - Bản XEM TRỰC QUAN cho NGƯỜI mở nhìn (agent không đọc): `.html` tự chứa có tương tác · `.drawio`/`.svg` vẽ tay — sơ đồ flow / kiến trúc / lineage / lưới trạng thái / timeline của hệ hoặc plan (non-app: vd luồng nạp DW, lưới bảng).
-  - Nằm NGOÀI cây `docs/` → luật đọc mọi file `docs/` không chạm (0 token).
-  - File `.md` THẮNG về sự kiện: visual chỉ trình bày; fact chỉ nằm trong visual thì vô hình với `plan search`.
-  - Mặc định vẽ `mermaid` TRONG `.md`; `docs_visual/` CHỈ khi không mô tả bằng chữ được.
-  - Sinh từ data → script ở `scripts/` + render ra `exports/`; không commit bản render.
-- Được chứa / không chứa: Mỗi file PHẢI self-contained (CSS/JS/SVG inline · không CDN/build) và có một `.md` chủ trỏ tới bằng link markdown + tóm tắt 1–3 dòng.
+- Role:
+  - VISUAL VIEWS for PEOPLE to open and look at (the agent does not read them): self-contained interactive `.html` · hand-drawn `.drawio`/`.svg` — flow / architecture / lineage diagrams / state grids / timelines of the system or a plan (non-app: e.g. the DW load flow, a grid of tables).
+  - Sits OUTSIDE the `docs/` tree → the rule of reading every `docs/` file does not touch it (0 tokens).
+  - The `.md` file WINS on facts: a visual only presents; a fact that lives only in a visual is invisible to `plan search`.
+  - The default is `mermaid` INSIDE the `.md`; `docs_visual/` ONLY when words cannot describe it.
+  - Generated from data → the script in `scripts/` + the render in `exports/`; renders are never committed.
+- May hold / may not hold: Each file MUST be self-contained (inline CSS/JS/SVG · no CDN/build) and have one owning `.md` that links to it with a markdown link + a 1–3 line summary.

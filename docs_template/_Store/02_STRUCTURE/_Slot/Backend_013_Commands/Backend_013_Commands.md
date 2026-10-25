@@ -2,13 +2,13 @@
 id: Slot_13
 aka: 03-13
 name: commands
-version: 4
+version: 5
 path: backend/src/commands/
 ---
-# Backend_013_Commands commands — lệnh CLI
+# Backend_013_Commands commands — CLI commands
 
-- Vai trò:
-  - Lệnh CLI khi app là CLI.
-  - Surface mỏng cho CLI: chỉ wire vào domain, không chứa nghiệp vụ.
-- Được chứa / không chứa: Không chứa: nghiệp vụ.
-- Khuôn tên: Mỗi verb một file.
+- Role:
+  - CLI commands, when the app is a CLI.
+  - A thin surface for the CLI: only wires into the domain, holds no business logic.
+- May hold / may not hold: Not here: business logic.
+- Naming: One file per verb.

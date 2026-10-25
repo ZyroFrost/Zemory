@@ -5,52 +5,52 @@
 
 ## 1. Mở dự án — hệ IDE
 
-- Phạm vi: agent chạy trong panel của trình soạn code (extension), mở theo folder đang mở trong trình soạn.
-- Mở dự án: mở folder dự án trong trình soạn → mở panel agent → dán câu bootstrap của bộ (bộ Memory: `zemory init --kit <số>`).
-- Bộ ráp được: bộ Basic và bộ Memory.
-- Kiểm môi trường (doctor):
-  - Node ≥ 20 và Git có trên PATH (hook guard là hook Node; Git cho mã thoát 2 và chốt commit);
-  - bộ Memory: lệnh `zemory` có trên PATH, `zemory doctor` xanh trong folder dự án;
-  - lệnh hook neo theo `CLAUDE_PROJECT_DIR`, không theo folder làm việc của phiên.
+- Scope: the agent runs in a panel of a code editor (an extension), opened on the folder open in the editor.
+- Opening a project: open the project folder in the editor → open the agent panel → paste the set's bootstrap line (a Memory set: `zemory init --kit <no>`).
+- Sets that can be assembled: Basic and Memory sets.
+- Environment check (doctor):
+  - Node ≥ 20 and Git on PATH (the guard hook is a Node hook; Git for exit code 2 and the commit gate);
+  - Memory set: the `zemory` command on PATH, `zemory doctor` green in the project folder;
+  - the hook command is anchored on `CLAUDE_PROJECT_DIR`, not on the session's working folder.
 
-## Bộ chốt máy (guard)
+## The machine gates (guard)
 
-- `zemory hook guard` sinh bộ chốt từ marker `.harness.json` (khoá `protected` · `secretNames` · `allowedRoots` · `allowedSqlServers` · `repoGates` · `readFirst`): `policy.json` (luật đã dịch) · `guard.cjs` (hook `PreToolUse`, chặn trước khi hành động chạm đĩa hoặc mạng) · `precommit-guard.cjs` (chặn bí mật lọt vào staging, kể cả commit do người làm).
-- Guard là chuẩn, không phải tuỳ chọn: lệnh tự cắm guard vào `.claude/settings.json` › `PreToolUse` với matcher đủ `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell`, giữ nguyên mọi hook khác của repo. Pre-commit tự cắm khi repo chưa có; repo đã có pre-commit riêng ⇒ báo ra, thêm dòng gọi guard bằng tay.
-- Mỗi luật có hook mang `hook*.cjs` trong folder luật; guard gọi lần lượt từng file.
-- Phép kiểm: `zemory doctor` đỏ khi guard chưa cắm hoặc matcher thiếu công cụ; `zemory gates --all` đo mọi repo có thật sự chạy guard · pre-commit.
+- `zemory hook guard` generates the gates from the marker `.harness.json` (keys `protected` · `secretNames` · `allowedRoots` · `allowedSqlServers` · `repoGates` · `readFirst`): `policy.json` (the compiled laws) · `guard.cjs` (the `PreToolUse` hook, blocking before an action touches the disk or the network) · `precommit-guard.cjs` (blocks secrets from entering staging, commits made by a person included).
+- The guard is the standard, not an option: the command plugs the guard into `.claude/settings.json` › `PreToolUse` with a matcher covering `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell`, keeping every other hook of the repo. Pre-commit is plugged in when the repo has none; a repo with its own pre-commit ⇒ reported, the line calling the guard is added by hand.
+- Each law with a hook carries `hook*.cjs` in its folder; the guard calls each file in turn.
+- Check: `zemory doctor` reds when the guard is not plugged in or the matcher misses a tool; `zemory gates --all` measures whether every repo really runs the guard · pre-commit.
 
-## Cờ dùng một lần
+## One-use flags
 
-- Cờ `.allow-*` (trong `docs/.harness-state/`) cho qua đúng một việc đã được duyệt; agent chỉ tạo cờ sau khi được cho phép rõ trong phiên (`Rule_Keys_61_HookSafetyNet`).
-- Guard cho qua rồi đóng dấu `ZEMORY-USED <vân tay lệnh> <thời điểm>` vào chính file cờ, không xoá ngay: trong 90 giây đúng lệnh đó được thử lại; xin việc khác hoặc quá hạn ⇒ cờ bị thu hồi. Nhóm bí mật không có cờ.
+- A `.allow-*` flag (in `docs/.harness-state/`) lets exactly one approved action through; the agent creates a flag only after clear approval in the session (`Rule_Keys_61_HookSafetyNet`).
+- The guard lets it through, then stamps `ZEMORY-USED <command fingerprint> <time>` into the flag file itself, without deleting it at once: for 90 seconds exactly that command may be tried again; asking for another action or running out of time ⇒ the flag is revoked. The secrets group has no flag.
 
-## Đường cấm ghi (`protected`)
+## Write-protected paths (`protected`)
 
-- Đường cấm ghi của repo khai ở khoá `protected` của marker; harness được bảo vệ ở mọi repo dù có khai hay không (`Rule_Gate_79_HarnessEdit`).
-- `protected` nhận glob, không chỉ tiền tố: `data/*/01_raw` phủ đầu vào gốc của mọi case, kể cả case chưa có.
-- Chỉ khai thứ chỉ đọc (đầu vào gốc · két bí mật). Không khai sản phẩm repo đang xây: cổng kêu ở mọi lượt sửa thường ngày sẽ bị bỏ qua; chống sửa nhầm sản phẩm bằng git.
+- A repo's write-protected paths are declared in the marker's `protected` key; the harness is protected in every repo whether declared or not (`Rule_Gate_79_HarnessEdit`).
+- `protected` takes globs, not only prefixes: `data/*/01_raw` covers the original input of every case, cases not yet made included.
+- Declare only read-only things (original inputs · the secrets vault). Never the product the repo is building: a gate that cries on every everyday edit gets ignored; mistaken edits to the product are guarded by git.
 
-## Việc ra ngoài dự án (`Rule_Gate_44_RepoScope`)
+## Work outside the project (`Rule_Gate_44_RepoScope`)
 
-- Guard chặn bốn nhóm, một cờ chung `.allow-outside`:
-  1. ghi ra đường tuyệt đối ngoài repo (Write/Edit · `>`/`>>` · `cp`/`mv`/`robocopy` · `mkdir`/`New-Item`/`Set-Content`/`Out-File`/`tee`/`touch` · trình thông dịch chạy lệnh ghi); miễn thư mục tạm của hệ thống · `~/.claude` · `/dev/null` · `NUL` · đường khai ở `allowedRoots`;
-  2. SQL bắt máy chủ ghi file (`BACKUP … TO DISK` · `RESTORE … FROM DISK` · `CREATE DATABASE … FILENAME`);
-  3. SQL đổi cấu hình máy chủ (`sp_configure` · linked server · `CREATE/DROP/ALTER DATABASE`); marker khai `allowedSqlServers` ⇒ chặn thêm máy chủ ngoài danh sách;
-  4. lệnh chạy trên máy khác (`ssh` · `Invoke-Command` · `Enter-PSSession` · `psexec` · `winrs`) mà payload tạo · xoá · đổi; chép lên máy khác bằng `scp`/`rsync`. Lệnh chỉ đọc cho qua.
-- Giới hạn: guard không thấy đường hay SQL dựng lúc chạy, nằm trong biến hay trong file script, và đường tương đối sau khi `cd` ra ngoài; luật chữ là tầng quyết định.
+- The guard blocks four groups, with one shared flag `.allow-outside`:
+  1. writing to an absolute path outside the repo (Write/Edit · `>`/`>>` · `cp`/`mv`/`robocopy` · `mkdir`/`New-Item`/`Set-Content`/`Out-File`/`tee`/`touch` · an interpreter running a writing command); exempt: the system temp folder · `~/.claude` · `/dev/null` · `NUL` · paths declared in `allowedRoots`;
+  2. SQL making the server write a file (`BACKUP … TO DISK` · `RESTORE … FROM DISK` · `CREATE DATABASE … FILENAME`);
+  3. SQL changing the server configuration (`sp_configure` · linked servers · `CREATE/DROP/ALTER DATABASE`); a marker declaring `allowedSqlServers` ⇒ servers outside the list are blocked too;
+  4. commands run on another machine (`ssh` · `Invoke-Command` · `Enter-PSSession` · `psexec` · `winrs`) whose payload creates · deletes · changes something; copying up to another machine with `scp`/`rsync`. Read-only commands pass.
+- Limits: the guard does not see paths or SQL built at run time, held in a variable or inside a script file, nor relative paths after a `cd` outside; the text of the law is the deciding layer.
 
-## Đọc trước khi ghi (`Rule_Gate_59_ReadFirst`)
+## Read before writing (`Rule_Gate_59_ReadFirst`)
 
-- Chốt read-first so theo nội dung từng dòng: dòng đã thấy (qua Read, hoặc tự ghi bằng Edit/Write) không phải đọc lại; file đổi ngoài Edit/Write ⇒ chỉ đòi đúng các dòng đã đổi.
-- Nén context không bắt đọc lại: hook `SessionStart` chèn lại nguyên văn lõi và hiến pháp. Lệnh đọc Global Memory và dò phiên (`zemory memory …` · `peers` · `graph`) không bị chặn.
-- Khai thêm file bắt đọc: khoá marker `readFirst`. Host không ghi transcript ⇒ cho qua (fail-open).
+- The read-first gate compares line by line: a line already seen (through Read, or written by the agent with Edit/Write) need not be read again; a file changed outside Edit/Write ⇒ only the changed lines are asked for.
+- A context compaction does not force reading again: the `SessionStart` hook puts back the core and the constitution verbatim. Commands reading Global Memory and looking up sessions (`zemory memory …` · `peers` · `graph`) are not blocked.
+- More files to read first: the marker key `readFirst`. A host that writes no transcript ⇒ let through (fail-open).
 
-## Phiên và nhắn liên phiên
+## Sessions and messages between sessions
 
-- Tiêu đề phiên theo khuôn `<Repo>_<Model>_<d-m-yyyy>` (`<Repo>` = tên folder repo, đúng hoa thường; ngày không đệm số 0); có chủ đề ⇒ chèn trước ngày; phiên thứ hai trong ngày ⇒ thêm `_<số>` sau ngày. Người dùng đặt tiêu đề; agent thấy tiêu đề phiên của chính mình lệch khuôn thì nhắc một lần, không tự đổi. `zemory peers --all --check` chấm mọi phiên; `--fix` in kế hoạch, `--apply` chỉ chạy khi được yêu cầu.
-- Nhắn agent ở phiên hoặc repo khác: chỉ nhắn phiên đang chạy có tiêu đề chuẩn; repo nhiều phiên ⇒ phiên có ngày mới nhất. Tiêu đề không phải địa chỉ gửi: trước mỗi lần gửi chạy `zemory peers` rồi gửi tới địa chỉ có ★; không có ★ ⇒ không gửi, báo phiên đích cần đặt tiêu đề. Trả lời tin đến ⇒ dùng đúng địa chỉ `from` của tin.
-- Phép kiểm: hook toàn máy `zemory hook send-guard` chặn gửi tới phiên không có ★.
+- Session titles follow `<Repo>_<Model>_<d-m-yyyy>` (`<Repo>` = the repo folder name, exact case; the date without leading zeros); a topic ⇒ inserted before the date; a second session the same day ⇒ `_<n>` after the date. The owner sets the title; an agent that sees its own session title off the pattern reminds once, never renames it itself. `zemory peers --all --check` scores every session; `--fix` prints a plan, `--apply` runs only when asked.
+- Messaging an agent in another session or repo: only a running session with a standard title; a repo with several sessions ⇒ the one with the newest date. A title is not an address: before every send run `zemory peers`, then send to the address marked ★; no ★ ⇒ do not send, report that the target session needs a title. Replying to a message ⇒ use exactly the message's `from` address.
+- Check: the machine-wide hook `zemory hook send-guard` blocks sending to a session without ★.
 
 ## 2. Cài bộ
 

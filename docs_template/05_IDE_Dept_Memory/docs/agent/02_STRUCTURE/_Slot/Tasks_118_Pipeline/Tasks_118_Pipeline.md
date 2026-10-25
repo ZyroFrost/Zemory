@@ -2,19 +2,19 @@
 id: Slot_118
 aka: 03-118
 name: pipeline
-version: 6
+version: 7
 path: tasks/<case>/pipeline/
-from: _Store/02_STRUCTURE/_Slot/Tasks_118_Pipeline @v6 #b177557dd6e3
+from: _Store/02_STRUCTURE/_Slot/Tasks_118_Pipeline @v7 #970ce3f5e070
 ---
-# Tasks_118_Pipeline pipeline — script chạy của chính case
+# Tasks_118_Pipeline pipeline — the case's own run scripts
 
-- Vai trò:
-  - Repo theo case ⇒ pipeline nằm TRONG chính case: spec · findings · script cùng một chỗ, mở một folder là thấy. `data/<tên>/` vẫn nằm riêng (file nặng, gitignore) — ngoại lệ có chủ đích.
-  - `common.py` = logic dùng chung (tên không số mới import được) + khai đường bằng HẰNG (RAW / PROC / OUT); không nối chuỗi đường dẫn trong từng stage.
-  - Mã mà pipeline của NHIỀU case cùng dùng nằm ở `scripts/` gốc repo (Scripts_128); `common.py` import nó qua gốc repo, không chép vào case (luật khối của `Struc_Disk_Data`).
-  - Ánh xạ stage ↔ playbook (`03_SKILLS`): `00` = gate/pull-precheck · `01` = pull · `fill` = fill · `upload` = upload. Task mới bám khuôn số này.
-  - File trung gian mang tiền tố số stage (`01_pull.py` → `data/<case>/02_processing/01_pull_*.csv`); NGOẠI LỆ file deliverable cuối ở `03_output/` giữ tên nghiệp vụ.
-  - Right-size: chỉ tạo stage task THẬT cần (2–4 là thường), không chẻ vụn cho đủ bộ.
-  - Case đang có ở `pipelines/<tên>/` dời vào đây KHI NÀO CHẠM tới case đó (chạy test của chính nó làm lưới đỡ), không dời hàng loạt.
-- Được chứa / không chứa: Chỉ chứa script có số chặng + `common.py`. Không chứa config của case (→ gốc `tasks/<case>/`).
-- Khuôn tên: Stage đánh số phẳng `NN_mô-tả.py` theo thứ tự chạy, mỗi STAGE một file (vd `common.py` + `00_ready.py` · `01_pull.py` …): `00` = cổng/readiness, thường không xuất data · `01`, `02`… = bước. `NN_` chỉ có ĐÚNG MỘT nghĩa: thứ tự STAGE. Tên stage bằng tiếng Anh ASCII.
+- Role:
+  - A case-based repo ⇒ the pipeline sits INSIDE its case: spec · findings · scripts in one place, one folder opened shows it all. `data/<name>/` still sits apart (heavy files, gitignored) — an exception on purpose.
+  - `common.py` = the shared logic (a name without a number can be imported) + the paths declared as CONSTANTS (RAW / PROC / OUT); paths are never built by string joins in each stage.
+  - Code the pipelines of SEVERAL cases share sits in `scripts/` at the repo root (Scripts_128); `common.py` imports it through the repo root, never copies it into the case (the block law of `Struc_Disk_Data`).
+  - Stage ↔ playbook mapping (`03_SKILLS`): `00` = gate/pull pre-check · `01` = pull · `fill` = fill · `upload` = upload. A new task follows this numbering.
+  - Intermediate files carry the stage number prefix (`01_pull.py` → `data/<case>/02_processing/01_pull_*.csv`); the EXCEPTION is the final deliverable in `03_output/`, which keeps its business name.
+  - Right-size: create only the stages the task REALLY needs (2–4 is usual), never chopped up to complete a set.
+  - A case still in `pipelines/<name>/` moves here WHEN it is touched (running its own tests as the safety net), never in bulk.
+- May hold / may not hold: Only stage-numbered scripts + `common.py`. Not here: the case's config (→ the root of `tasks/<case>/`).
+- Naming: Stages numbered flat `NN_description.py` in run order, one file per STAGE (e.g. `common.py` + `00_ready.py` · `01_pull.py` …): `00` = the gate/readiness, usually exports no data · `01`, `02`… = the steps. `NN_` has EXACTLY ONE meaning: the STAGE order. Stage names in ASCII English.

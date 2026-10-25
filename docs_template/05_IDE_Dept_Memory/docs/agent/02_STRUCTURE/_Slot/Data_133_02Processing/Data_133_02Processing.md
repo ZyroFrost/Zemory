@@ -2,11 +2,11 @@
 id: Slot_133
 aka: 03-133
 name: 02_processing
-version: 4
+version: 5
 path: data/<case>/02_processing/
-from: _Store/02_STRUCTURE/_Slot/Data_133_02Processing @v4 #89953023f2ee
+from: _Store/02_STRUCTURE/_Slot/Data_133_02Processing @v5 #2780c58d2f27
 ---
-# Data_133_02Processing 02_processing — trung gian pipeline sinh
+# Data_133_02Processing 02_processing — pipeline intermediates
 
-- Vai trò: TRUNG GIAN pipeline sinh (`.csv` extract · nháp · `_state.json`) — xoá đi chạy lại phải dựng lại được; không ai ngoài thấy.
-- Khuôn tên: File trung gian giữ tiền tố số stage (`01_pull_*.csv`).
+- Role: Intermediates a pipeline produces (`.csv` extract · drafts · `_state.json`) — deleted and run again, they must be rebuilt; nobody outside sees them.
+- Naming: Intermediate files keep the stage number prefix (`01_pull_*.csv`).

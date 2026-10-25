@@ -2,14 +2,14 @@
 id: Slot_122
 aka: 03-122
 name: queries
-version: 4
+version: 5
 path: queries/
-from: _Store/02_STRUCTURE/_Slot/Queries_122_Queries @v4 #57ea5f5d689d
+from: _Store/02_STRUCTURE/_Slot/Queries_122_Queries @v5 #7972cda1a552
 ---
-# Queries_122_Queries queries — SQL/DAX/M đặt tên dùng chung
+# Queries_122_Queries queries — shared named SQL/DAX/M
 
-- Vai trò:
-  - SQL / DAX / M đặt tên, gọi theo tên — không rải inline (đối xứng `store/queries.*` của hệ APP).
-  - Query check NHIỀU case dùng chung → `queries/check_*.sql` (ngoại lệ của luật 1 case 1 folder).
-  - Phải tính đúng như từ điển dữ liệu; thấy lệch ⇒ BÁO, không tự sửa.
-- Được chứa / không chứa: Không chứa: query chỉ một case dùng (→ `tasks/<case>/check_*.sql`).
+- Role:
+  - Named SQL / DAX / M, called by name — never scattered inline (mirrors `store/queries.*` of an APP repo).
+  - A check query SEVERAL cases share → `queries/check_*.sql` (the exception to one case, one folder).
+  - Must compute exactly as the data dictionary says; a difference found ⇒ REPORT it, never fix it on your own.
+- May hold / may not hold: Not here: a query only one case uses (→ `tasks/<case>/check_*.sql`).

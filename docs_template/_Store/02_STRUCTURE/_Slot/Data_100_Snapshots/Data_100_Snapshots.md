@@ -2,9 +2,9 @@
 id: Slot_100
 aka: 03-100
 name: snapshots
-version: 4
+version: 5
 path: data/snapshots/
 ---
-# Data_100_Snapshots snapshots — snapshot dữ liệu
+# Data_100_Snapshots snapshots — data snapshots
 
-- Vai trò: Snapshot dữ liệu runtime.
+- Role: Runtime data snapshots.

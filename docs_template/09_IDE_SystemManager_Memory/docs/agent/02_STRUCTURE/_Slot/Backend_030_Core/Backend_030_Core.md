@@ -2,13 +2,13 @@
 id: Slot_30
 aka: 03-30
 name: core
-version: 4
+version: 5
 path: backend/src/core/
-from: _Store/02_STRUCTURE/_Slot/Backend_030_Core @v4 #3c939bc25311
+from: _Store/02_STRUCTURE/_Slot/Backend_030_Core @v5 #4c446955b6ee
 ---
-# Backend_030_Core core — composition root
+# Backend_030_Core core — the composition root
 
-- Vai trò:
-  - COMPOSITION ROOT: DI / registry / router / runtime / lifecycle nối các module (wiring).
-  - Cross-cutting: luôn ở cấp `src/` gốc.
-- Được chứa / không chứa: Không chứa: business logic — chống core thành nơi dồn tạp nham.
+- Role:
+  - The COMPOSITION ROOT: DI / registry / router / runtime / lifecycle wiring the modules together.
+  - Cross-cutting: always at the root level of `src/`.
+- May hold / may not hold: Not here: business logic — core must not become a dumping ground.

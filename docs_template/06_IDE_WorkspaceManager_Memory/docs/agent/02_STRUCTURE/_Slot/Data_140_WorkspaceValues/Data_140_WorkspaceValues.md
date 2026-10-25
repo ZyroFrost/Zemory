@@ -1,33 +1,33 @@
 ---
 id: Slot_140
 name: workspace-values
-version: 6
+version: 7
 path: data/region/
 checked: [Data_094_Data, Config_075_Config]
-from: _Store/02_STRUCTURE/_Slot/Data_140_WorkspaceValues @v6 #8fdcd746f2a1
+from: _Store/02_STRUCTURE/_Slot/Data_140_WorkspaceValues @v7 #b618f5a57d80
 ---
-# Data_140_WorkspaceValues workspace-values — giá trị thật của cụm
+# Data_140_WorkspaceValues workspace-values — the group's real values
 
-- Vai trò: `data/region/values.json` — giá trị thật dùng chung của cả cụm, chỉ có trong template tổng quản
-  (`Struc_Repo_WorkspaceManager`). Git không theo dõi `data/`. Tool và skill chỉ nêu TÊN KHOÁ, không bao giờ chép giá trị;
-  repo phòng ban đọc qua `scripts/region_values.py` (tìm tổng quản theo `owner` trong marker).
-- Khác `Data_094_Data` (dữ liệu thật của chính repo): giá trị cụm có luật riêng — chỉ template tổng quản có nó, mọi repo
-  của cụm đọc nó qua `owner` (không chép), và tool chỉ được nêu TÊN khoá.
-- Thiếu một khoá ⇒ tool rơi về mặc định trung tính (danh sách rỗng, đường dẫn không tồn tại) và cổng liên quan báo thiếu; không tool
-  nào tự điền giá trị công ty.
-- Khoá chung:
+- Role: `data/region/values.json` — the real values the whole group shares, only in the workspace manager template
+  (`Struc_Repo_WorkspaceManager`). Git does not track `data/`. Tools and skills name only the KEY, never copy a value;
+  a department repo reads it through `scripts/region_values.py` (finding the manager through `owner` in the marker).
+- Not `Data_094_Data` (the repo's own real data): the group's values have rules of their own — only the manager template has them, every repo
+  of the group reads them through `owner` (never copies), and a tool may only name the KEY.
+- A key missing ⇒ the tool falls back to a neutral default (an empty list, a path that does not exist) and the related gate reports it missing; no tool
+  fills in a company value on its own.
+- Shared keys:
 
-| khoá | là gì |
+| key | what it is |
 |---|---|
-| `warehouse_server` · `warehouse_db` | chuỗi máy chủ của kho dữ liệu (gateway so khớp từng chữ) và tên cơ sở dữ liệu |
-| `theme_file` · `icons_dir` · `template_report` · `glossary_dir` | theme báo cáo · thư viện icon · khuôn gốc · bảng thuật ngữ — đường dẫn trong tổng quản |
-| `design_values` | bảng giá trị thiết kế của cụm: mã màu theo vai, thông số khung, số đo trên trang gốc, logo — đường dẫn trong tổng quản (luật thiết kế: `Skill_PBI_Base`) |
-| `dept_codes` · `acronyms` | bộ mã phòng ban · từ viết tắt nghiệp vụ được giữ in hoa trong tiêu đề |
-| `legacy_sources` | nguồn, site, thư mục, khoá của hệ cũ mà model và task không được đọc |
-| `card_icons` | khoá thẻ KPI → tên icon, gộp lên bộ mặc định của `card_icons.py` |
-| `vm_ssh_alias` · `vm_run_dir` · `vm_work_dir` · `sharepoint_site` | máy chủ chạy task và chỗ giao kết quả |
-| `acronym_origin` · `not_acronyms` | nguyên gốc của từng từ viết tắt (kèm nguồn) · chữ in hoa không phải viết tắt |
-| `query_app` · `query_row_cap` | công cụ truy vấn chỉ đọc agent dùng để dò (tên, cách gọi) · trần dòng một lượt |
-| `query_client_dir` · `query_python` · `query_vault_file` · `query_warehouse_id` | thư mục client của công cụ truy vấn · python import được client đó · tên file tài khoản trong két mỗi repo (`data/secrets/vault/`) · `db_id` của DW trong công cụ — `scripts/query.py` của `Skill_Task_Pull` đọc các khoá này |
-| `superseded_facts` | dữ kiện của cụm đã đổi: `[{ old, now, roles?, level?, files? }]` — máy chủ đổi tên, app thay, thư mục gốc dời. `level: "advisory"` = tên còn sống trong lịch sử, chỉ nhắc · `files: "prose"` = chỉ soát chữ hướng dẫn (`.md`), không soát code của task. `zemory conform` › `superseded-fact` báo mọi chỗ chữ của repo còn ghi `old`; `zemory sync` đưa vào sổ việc của repo. Đổi một dữ kiện của cụm ⇒ thêm một dòng ở đây, không sửa tay từng repo |
-| `mail_signature` · `mail_cc` · `shared_mailbox` · `shared_mailbox_signature` | chữ ký và Cc mặc định của mail báo cáo; hộp thư chung và chữ ký của nó |
+| `warehouse_server` · `warehouse_db` | the data warehouse's server string (the gateway matches it letter for letter) and the database name |
+| `theme_file` · `icons_dir` · `template_report` · `glossary_dir` | report theme · icon library · original template · terms table — paths in the manager |
+| `design_values` | the group's table of design values: colour codes by role, frame measures, measurements on the original page, logo — a path in the manager (design law: `Skill_PBI_Base`) |
+| `dept_codes` · `acronyms` | the department codes · business acronyms kept upper-case in titles |
+| `legacy_sources` | sources, sites, folders, keys of the old system that models and tasks must not read |
+| `card_icons` | KPI card key → icon name, merged onto the default set of `card_icons.py` |
+| `vm_ssh_alias` · `vm_run_dir` · `vm_work_dir` · `sharepoint_site` | the server that runs tasks and where results are delivered |
+| `acronym_origin` · `not_acronyms` | the origin of each acronym (with its source) · upper-case words that are not acronyms |
+| `query_app` · `query_row_cap` | the read-only query tool the agent uses to explore (name, how to call it) · the row cap per call |
+| `query_client_dir` · `query_python` · `query_vault_file` · `query_warehouse_id` | the query tool's client folder · a python that can import that client · the account file name in each repo's vault (`data/secrets/vault/`) · the DW's `db_id` in the tool — `scripts/query.py` of `Skill_Task_Pull` reads these keys |
+| `superseded_facts` | facts of the group that changed: `[{ old, now, roles?, level?, files? }]` — a server renamed, an app replaced, a root folder moved. `level: "advisory"` = the name lives on in history, only a reminder · `files: "prose"` = only instructional text (`.md`) is checked, not task code. `zemory conform` › `superseded-fact` reports every place the repo's text still says `old`; `zemory sync` puts it in the repo's ledger. A fact of the group changes ⇒ add one row here, never edit each repo by hand |
+| `mail_signature` · `mail_cc` · `shared_mailbox` · `shared_mailbox_signature` | the default signature and Cc of report mail; the shared mailbox and its signature |
