@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Software_147_Software software — mọi chương trình của máy
@@ -25,6 +25,10 @@ Ví dụ thật: `D:\Software\Dev\Microsoft\VSCode\{Setup, App, Data}` · `D:\So
 - Chương trình bị ép cài vào ổ hệ thống vẫn có thư mục ở đây, bộ cài nằm trong `Setup\` (`Software_149_Program`, ngoại lệ 1).
 - Cấp `Software\` chỉ có các nhóm của `Software_148_Group`: không chương trình nằm thẳng ở đây, không file lẻ, không repo, không giấy
   tờ.
+- Một ngoại lệ, theo luật khối của `Struc_Disk_Data`: bộ đồ của một hãng mà các chương trình của hãng ở NHIỀU nhóm dùng chung (dịch
+  vụ license, keygen, bản vá cho mọi chương trình của hãng) nằm cạnh các nhóm, ở `Software\_<Hãng>\`, ví dụ `Software\_Autodesk\`
+  cho thứ AutoCAD (`CAD\`) và Maya (`3D\`) cùng dùng. Nó chỉ chứa bộ đồ dùng chung đó, không bao giờ chứa chương trình. Bộ đồ
+  dùng chung trong MỘT nhóm thì ở lại nhóm đó: `<Nhóm>\<Hãng>\_Setup\` (Software_148).
 - Chương trình tìm thấy ở chỗ khác (trong `Documents\`, `Study\`, `Game\`) dời về đây (luật 2 của `Struc_Disk_Data`).
 
 ## Đồng bộ

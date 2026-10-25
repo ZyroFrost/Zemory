@@ -173,7 +173,8 @@ function programsIn(groupDir: string): string[] {
     const subs = own.filter((x) => x.dir);
     const isProgram = subs.length === 0 || own.some((x) => !x.dir) || subs.some((s) => isProgramPart(s.name));
     if (isProgram) out.push(p);
-    else out.push(...subs.map((s) => join(p, s.name)));
+    // a vendor level's `_` folder (`_Setup\`) holds what the vendor's programs share (the block law): not a program
+    else out.push(...subs.filter((s) => !s.name.startsWith("_")).map((s) => join(p, s.name)));
   }
   return out;
 }
@@ -248,6 +249,8 @@ export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) 
         }
         if (e.name === "Software") {
           for (const a of entries(abs).filter((x) => x.dir)) {
+            // `_<Vendor>\` beside the groups: a vendor's kit shared by its programs in several groups (Software_147, the block law)
+            if (a.name.startsWith("_")) continue;
             if (!onSomeSlot(slots, [e.name, a.name])) {
               add({ level: "blocking", check: "unknown-value", path: join(abs, a.name), fix: "Software/ holds the groups of Software_148 only" });
               continue;

@@ -1,7 +1,7 @@
 ---
 id: Slot_147
 name: software
-version: 4
+version: 5
 path: Software/
 scope: layout
 ---
@@ -28,6 +28,10 @@ is the launcher's `Data\`).
 - A program forced onto the system drive still has its folder here, its installer in `Setup\` (`Software_149_Program`,
   exception 1).
 - The `Software\` level holds only the groups of `Software_148_Group`: no program straight here, no loose file, no repo, no papers.
+- One exception, by the block law of `Struc_Disk_Data`: a vendor's kit that its programs in SEVERAL groups share (a licence
+  service, a keygen, a patch for every program of the vendor) sits beside the groups in `Software\_<Vendor>\`, e.g.
+  `Software\_Autodesk\` for what AutoCAD (`CAD\`) and Maya (`3D\`) both use. It holds only that shared kit, never a program.
+  A kit shared inside ONE group stays in that group: `<Group>\<Vendor>\_Setup\` (Software_148).
 - A program found anywhere else (inside `Documents\`, `Study\`, `Game\`) moves here (Law 2 of `Struc_Disk_Data`).
 
 ## Sync
