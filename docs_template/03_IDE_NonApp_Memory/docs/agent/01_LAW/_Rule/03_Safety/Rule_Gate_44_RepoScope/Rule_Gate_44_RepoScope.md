@@ -2,10 +2,10 @@
 id: Rule_44
 aka: 02-44
 name: repo-scope
-version: 8
+version: 9
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope @v8 #778a65484f66
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope @v9 #0dd78725baff
 ---
 # Rule_Gate_44_RepoScope — Write only inside the open project
 
@@ -41,5 +41,6 @@ to them is forbidden unless the requester approved it in this session.
   the guard notes in `02_STRUCTURE/_Host/IDE`.
 
 ## Links · Liên kết
+- Implements · Thi hành: `Skill_Harness_RepoMove` — moving a repo writes outside the working repo · dời repo là ghi ngoài repo đang làm
 - Related · Liên quan: `Rule_Gate_83_HarnessFromStore` — a repo's harness changes only through HS · harness của repo chỉ đổi qua HS
 - Related · Liên quan: `Rule_Keys_61_HookSafetyNet` — what the guard cannot see · thứ guard không thấy

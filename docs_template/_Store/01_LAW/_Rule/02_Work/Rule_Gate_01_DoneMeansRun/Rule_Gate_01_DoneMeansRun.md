@@ -2,7 +2,7 @@
 id: Rule_1
 aka: 02-1
 name: done-means-run
-version: 11
+version: 12
 kind: action
 code: 02_Work
 ---
@@ -41,4 +41,5 @@ path to a second machine: `.claude/skills/harness-sync-path/SKILL.md`.
 ## Links · Liên kết
 - Implements · Thi hành: `Skill_Harness_Audit` — how to break code to test a check · cách phá mã để thử phép kiểm
 - Implements · Thi hành: `Skill_Harness_SyncPath` — the path to a second machine · đường sang máy thứ hai
+- Implements · Thi hành: `Skill_Harness_RepoMove` — a moved repo is done only with its acceptance table measured · repo đã dời chỉ xong khi đo đủ bảng nghiệm thu
 - Related · Liên quan: `Rule_Keys_11_VerifyClaims` — every claim is measured · mọi khẳng định phải đo
