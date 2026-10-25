@@ -7,8 +7,8 @@
 //   node host-cli.mjs <zemory args...>
 //   .env beside docker-compose.yml (written by the installer) names the workspace: HOST_WORKSPACE_NATIVE (Windows,
 //   D:\Workspace) or HOST_WORKSPACE (Linux); ZEMORY_CONTAINER overrides the container name (default zemory).
-import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -52,8 +52,53 @@ export function dockerCall(env, args, platform = process.platform) {
   return ["docker", args];
 }
 
+/**
+ * WSL stops an idle distro - and the engine and the container with it - unless a process holds it. The installer starts one
+ * hidden `wsl.exe … sleep infinity` from every sign-in; a `wsl --shutdown` kills it until the next sign-in, and the container
+ * then stops every time the last call ends (measured 25/10: SIGTERM every 20-60 s). Each CLI call puts the holder back when
+ * it is gone, looking at most every 10 minutes. `probe` counts holders; `start` launches one.
+ */
+export function ensureKeepAlive(env, o = {}) {
+  const platform = o.platform ?? process.platform;
+  if (platform !== "win32" || !env.ZEMORY_WSL_DISTRO) return "skipped";
+  const stamp = o.stamp ?? join(COMPOSE_DIR, "data", ".wsl-keepalive");
+  const now = o.now ?? Date.now();
+  try {
+    if (now - statSync(stamp).mtimeMs < 600_000) return "fresh";
+  } catch {
+    /* never looked yet */
+  }
+  const probe = o.probe ?? (() => {
+    const q = "@(Get-CimInstance Win32_Process -Filter \"Name='wsl.exe'\" | Where-Object { $_.CommandLine -match 'sleep infinity' }).Count";
+    const r = spawnSync("powershell.exe", ["-NoProfile", "-Command", q], { encoding: "utf8", windowsHide: true, timeout: 15_000 });
+    return Number.parseInt(String(r.stdout ?? "").trim(), 10);
+  });
+  const start = o.start ?? ((distro) => {
+    const conhost = join(env.SystemRoot || "C:\\Windows", "system32", "conhost.exe");
+    spawn(conhost, ["--headless", "wsl.exe", "-d", distro, "--exec", "sleep", "infinity"], { detached: true, stdio: "ignore", windowsHide: true }).unref();
+  });
+  const n = probe();
+  let out = "held";
+  if (n === 0) {
+    start(env.ZEMORY_WSL_DISTRO);
+    out = "started";
+  }
+  try {
+    mkdirSync(dirname(stamp), { recursive: true });
+    writeFileSync(stamp, "");
+  } catch {
+    /* the next call looks again */
+  }
+  return out;
+}
+
 function main() {
   const env = { ...readEnv(join(COMPOSE_DIR, ".env")), ...process.env };
+  try {
+    ensureKeepAlive(env);
+  } catch {
+    /* fail-open: the command itself still runs */
+  }
   const workspace = env.HOST_WORKSPACE_NATIVE || env.HOST_WORKSPACE || "";
   const container = env.ZEMORY_CONTAINER || "zemory";
   const dir = containerDir(process.cwd(), workspace);

@@ -116,6 +116,8 @@ function lanAddresses(): Array<{ addr: string; iface: string; fixed: boolean }> 
 }
 
 let harnessUpdCache: { at: number; stale: Array<{ root: string; name: string; missing: number; guardStale: number }> } | null = null;
+/** The repo walk behind /harness-updates while it runs: one at a time, never awaited by a request. */
+let harnessUpdInflight: Promise<void> | null = null;
 let repoGatesCache: { at: number; rows: RepoGateRow[] } | null = null;
 let repoGatesRun: Promise<RepoGateRow[]> | null = null;
 /**
@@ -4168,7 +4170,21 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // Fourth rail chip (user 2026-10-07): does every registered repo RUN its gates — guard wired, pre-commit wired,
       // a row per constitution article. Same function as `zemory gates --all`. Cached 5′ like /harness-updates.
       const now = Date.now();
-      if (!repoGatesCache || now - repoGatesCache.at > 300_000 || u.searchParams.get("fresh") === "1") {
+      const fresh = u.searchParams.get("fresh") === "1";
+      // the chip never waits for the walk (minutes through a Docker mount, 25/10): the last rows at once, the new ones next call;
+      // only the dialog's explicit re-check waits for the pass it asked for
+      if (!fresh && (!repoGatesCache || now - repoGatesCache.at > 300_000)) {
+        repoGatesRun ??= runInWorker<RepoGateRow[]>("docs/repo-sweep.js", "repoGateRows", [], 900_000)
+          .then((w) => {
+            const rows = w.ok ? w.value : (repoGatesCache?.rows ?? []); // fail-open — a reminder surface must not die
+            repoGatesCache = { at: Date.now(), rows };
+            return rows;
+          })
+          .finally(() => (repoGatesRun = null));
+        if (!repoGatesCache) return json(res, { checkedAt: null, measuring: true, repos: [] });
+        return json(res, { checkedAt: new Date(repoGatesCache.at).toISOString(), repos: repoGatesCache.rows });
+      }
+      if (!repoGatesCache || fresh) {
         // The daemon's 6-hour sweep (conform · validate · todo verify) joins each repo's gaps: one chip, one list. ~5 s of
         // synchronous reads over 20 repos froze every other request (the chip's dialog opened after 7.9 s, 2026-10-20) ⇒ a
         // worker; requests that arrive while it runs share the one pass.
@@ -4188,12 +4204,20 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // và độ tươi từng phút không có giá trị với thứ đổi vài lần một tuần.
       const now = Date.now();
       // `fresh=1` sau khi vừa áp chuẩn cho một repo: đo lại ngay, không đợi hết 5′ cache.
-      if (!harnessUpdCache || now - harnessUpdCache.at > 300_000 || u.searchParams.get("fresh") === "1") {
+      if ((!harnessUpdCache || now - harnessUpdCache.at > 300_000 || u.searchParams.get("fresh") === "1") && !harnessUpdInflight) {
         // in a worker (docs/harness-updates.ts): it reads every linked repo's harness, minutes through a Docker mount
-        const w = await runInWorker<HarnessStaleRow[]>("docs/harness-updates.js", "harnessStaleRows", [], 600_000);
-        const stale = w.ok ? w.value : (harnessUpdCache?.stale ?? []); // fail-open: a reminder surface must not die
-        harnessUpdCache = { at: now, stale };
+        // (measured 25/10: > 600 s for 20 repos). The answer never waits for it: the last result is served at once and the
+        // new one lands for the next call - waiting left both rail chips undrawn for as long as the walk took.
+        harnessUpdInflight = runInWorker<HarnessStaleRow[]>("docs/harness-updates.js", "harnessStaleRows", [], 900_000)
+          .then((w) => {
+            const stale = w.ok ? w.value : (harnessUpdCache?.stale ?? []); // fail-open: a reminder surface must not die
+            harnessUpdCache = { at: Date.now(), stale };
+          })
+          .finally(() => {
+            harnessUpdInflight = null;
+          });
       }
+      const measuring = !harnessUpdCache; // no repo measurement yet: the chip says so instead of claiming all is current
       // `appUpdate` là sự thật cấp MÁY (bản zemory này cũ hơn bản đã phát hành), KHÔNG cache theo
       // 5' của vòng repo: nó rẻ (đọc một file JSON nhỏ) và là thứ user cần thấy sớm nhất.
       kickRemoteVersionCheck();
@@ -4214,7 +4238,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       } catch {
         /* fail-open — a reminder surface must not die */
       }
-      return json(res, { checkedAt: new Date(harnessUpdCache.at).toISOString(), stale: harnessUpdCache.stale, appUpdate: appUpdateStatus(), repoStdCheck: getRepoStdCheck(), deadPaths, unprovenPaths, pathsWatch: getPathsWatch() });
+      return json(res, { checkedAt: harnessUpdCache ? new Date(harnessUpdCache.at).toISOString() : null, measuring, stale: harnessUpdCache?.stale ?? [], appUpdate: appUpdateStatus(), repoStdCheck: getRepoStdCheck(), deadPaths, unprovenPaths, pathsWatch: getPathsWatch() });
     }
     if (p === "/automation") {
       // State for the ⚙ automation panel: config flags + real autostart status.
