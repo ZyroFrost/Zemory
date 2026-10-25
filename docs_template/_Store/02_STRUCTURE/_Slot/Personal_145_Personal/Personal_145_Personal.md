@@ -1,7 +1,7 @@
 ---
 id: Slot_145
 name: personal
-version: 5
+version: 6
 path: Personal/<PersonalKind>/
 values: [StudyProjects, Games, Apps]
 scope: layout
@@ -17,7 +17,7 @@ at `Personal\` tells an exercise from a product.
 
 | step | the fact | goes to | inside |
 |---|---|---|---|
-| 1 | there is real learning material for it: a folder `Study\X` exists | `StudyProjects\` | mirrors `Study\`: `School\<School>\<Subject>\<repo>\` · `Self\<Field>\<repo>\` |
+| 1 | it was made for a subject the owner studies or studied: a folder `Study\X` exists, or — no learning material kept — the subject folder holds `_README.md` naming the course | `StudyProjects\` | mirrors `Study\`: `School\<School>\<Subject>\<repo>\` · `Self\<Field>\<repo>\`; a project kept packed is `<name>.tar.gz` · `.zip` · `.7z` in the same place |
 | 2 | a game the owner develops | `Games\` | `<repo>\` |
 | 3 | everything else | `Apps\` | `[<Project>\]<repo>\` — a project level when one project has two repos or more |
 
@@ -27,7 +27,11 @@ Real examples: `Workspace\Personal\StudyProjects\School\OpenUniversity\Databases
 ## Rules
 
 - Exactly three kinds, the level is required: no repo or folder straight under `Personal\`, no fourth kind.
-- `StudyProjects\X` needs `Study\X`; without it the repo is not a study project ⇒ step 2 or 3.
+- `StudyProjects\X` needs `Study\X`, or — when no learning material is kept — a `_README.md` in `StudyProjects\X` naming the
+  school and the course. Neither ⇒ the repo is not a study project ⇒ step 2 or 3. An empty `Study\X` is never created to pass
+  the check (`Struc_Disk_Data` §Rules: a folder exists only when it holds something).
+- A study project may be kept PACKED to save space (`<name>.tar.gz` · `.zip` · `.7z`, `.git\` included): it is still the same
+  project and stays in its own place, beside the repos of the same subject. Packing is not archiving (Archive_166).
 - A folder shared by several repos of one kind sits beside them with a `_` name: `Apps\_Prompt\` holds the prompts two apps of
   one field use. It is not a repo.
 - An app keeps the output it produces inside its own repo, in `workspaces/<name>/` (one folder per unit of output, shared items
@@ -45,5 +49,5 @@ watched ⇒ `Study\`.
 ## Check
 
 `zemory conform --layout <drive>\Workspace` reds (`unknown-value`) any folder straight under `Personal\` that is not one of the three
-kinds. From the drive root it also reds (`study-unmatched`) a `StudyProjects\School\<School>\<Subject>\` or `Self\<Field>\` with no
-matching folder under `Study\`.
+kinds. From the drive root it also reds (`study-unmatched`) a `StudyProjects\School\<School>\<Subject>\` or `Self\<Field>\` with
+neither a matching folder under `Study\` nor a `_README.md` of its own.

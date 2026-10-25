@@ -1,7 +1,7 @@
 ---
 id: Slot_160
 name: study
-version: 2
+version: 3
 path: Study/[<Kind>/]<Subject>/
 scope: layout
 ---
@@ -25,6 +25,8 @@ finished and only kept to look things up, it moves to `Library\` (step 10, Libra
 - Code that runs is not here (Law 2, place by nature): the owner's code for a subject ⇒
   `Workspace\Personal\StudyProjects\School\<School>\<Subject>\<repo>\` or `…\StudyProjects\Self\<Field>\<repo>\` — the same path
   as here (Personal_145). Code of others for a subject ⇒ `Workspace\External\<repo>\`; this folder links to it.
+- A subject with no learning material kept has NO folder here; its study project names the course in a `_README.md` instead
+  (Personal_145). An empty folder is never made here to match a study project.
 - A program used for studying is in `Software\`; a school project's papers (brief, report, grades) stay here.
 - Finished and kept to look up ⇒ move the whole folder to `Library\<Field>\`. Finished, nothing worth keeping ⇒ delete it.
 - No loose file at the `Study\`, `School\` or `Self\` level.
@@ -40,4 +42,4 @@ Not in git. The owner's notes are originals: back them up.
 ## Check
 
 `zemory conform --layout <data root>` accepts `Study\`, and reds (`study-unmatched`) a study project under
-`Workspace\Personal\StudyProjects\` that has no matching folder here.
+`Workspace\Personal\StudyProjects\` that has neither a matching folder here nor a `_README.md` of its own.

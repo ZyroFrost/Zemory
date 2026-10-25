@@ -1,7 +1,7 @@
 ---
 id: Slot_149
 name: program
-version: 4
+version: 5
 path: Software/<Nhóm>/[<Hãng>/]<Ứng dụng>/
 scope: layout
 ---
@@ -14,8 +14,10 @@ copy, and its own data. One look at the folder shows all three, and a new machin
 
 ## Required rule — no exceptions beyond the three listed below
 
-The folder of EVERY program ALWAYS holds the three sub-folders `Setup/` · `App/` · `Data/`. Missing one of them is off-standard,
-even when that part has nothing to hold yet: then the folder is still created, empty.
+A program folder holds ONLY the sub-folders `Setup/` · `App/` · `Data/` (plus the `_README.md` of a split program). Each
+sub-folder exists only when it has something to hold: a program with no data of its own has no `Data/`, a program whose
+installer is not kept has no `Setup/`. A missing sub-folder is on standard; an empty one is not — it makes the owner open a
+folder to find nothing. Off-standard is an item outside the three: a file or a folder lying straight in the program folder.
 
 | sub-folder | holds | real example |
 |---|---|---|
@@ -32,22 +34,21 @@ Software\Dev\Database\MongoDB\
 └── Data\     db\  ·  log\
 ```
 
-A program with NO data of its own — `Data/` is still there, empty:
+A program with NO data of its own — no `Data/`:
 
 ```
 Software\Utility\7-Zip\
 ├── Setup\    7z2409-x64.exe
-├── App\      7z.exe · 7zFM.exe …
-└── Data\     (empty)
+└── App\      7z.exe · 7zFM.exe …
 ```
 
 ## Steps
 
 **Installing a new program:**
-1. Create `Software\<Group>\[<Vendor>\]<App>\` with all three sub-folders `Setup\` · `App\` · `Data\`.
-2. Download the installer into `Setup\`, file name unchanged.
-3. Run the installer; at the install-folder step, choose exactly `…\<App>\App\`.
-4. If the program offers a place for its data (virtual disk, workspace, database) ⇒ choose `…\<App>\Data\`.
+1. Create `Software\<Group>\[<Vendor>\]<App>\Setup\` and download the installer into it, file name unchanged.
+2. Run the installer; at the install-folder step, choose exactly `…\<App>\App\`.
+3. If the program offers a place for its data (virtual disk, workspace, database) ⇒ choose `…\<App>\Data\`. No such place ⇒
+   no `Data\`.
 
 **A program already installed somewhere else:**
 - A portable copy (copy it and it runs): move the whole folder into `App\`.
@@ -57,11 +58,11 @@ Software\Utility\7-Zip\
 ## Exceptions
 
 1. **An installer that gives no choice of place** (forces the system drive, for example some versions of Docker Desktop or a
-   machine maker's drivers): install where the installer chooses; the program folder still holds all three sub-folders —
-   `Setup\` keeps the installer, `App\` stays empty, `Data\` holds the data if the program lets the data move out.
+   machine maker's drivers): install where the installer chooses; the program folder holds `Setup\` with the installer, no
+   `App\`, and `Data\` only if the program lets its data move out.
 2. **A program split over two drives** (the five laws of `Struc_Disk_Data`): its folder exists on each drive, each holding the
-   parts real there plus a `_README.md` saying which part lives where. A folder with that `_README.md` is not asked for the
-   parts that live on the other drive. Example: `H:\Software\System\Microsoft\WSL\` holds `_README.md` and `Data\` only.
+   parts real there plus a `_README.md` saying which part lives where. Example: `H:\Software\System\Microsoft\WSL\` holds
+   `_README.md` and `Data\` only.
 3. **Folders that are not programs:** the groups `Drivers\` and `Fonts\` hold driver and font packs (Software_150); they have
    no installed copy.
 
@@ -91,5 +92,6 @@ write.
 
 ## Check
 
-`zemory conform --layout <data root>` reds (`program-incomplete`) every program folder without `Setup\`, `App\` or `Data\`,
-naming the missing ones. It does not ask a folder holding `_README.md` (split), `Drivers\` or `Fonts\`.
+`zemory conform --layout <data root>` reds (`program-stray`) every program folder holding anything besides `Setup\`, `App\`,
+`Data\` and `_README.md`, naming the stray items. A missing sub-folder is never a finding. `Drivers\` and `Fonts\` are not
+checked.

@@ -1,7 +1,7 @@
 ---
 id: Slot_147
 name: software
-version: 3
+version: 4
 path: Software/
 scope: layout
 ---
@@ -16,7 +16,7 @@ machine rebuilds every program by walking this tree.
 ```
 Software\
 └── <Group>\                       one of the fifteen groups of Software_148 (AI · Dev · Game · Office …)
-    └── [<Vendor>\]<App>\          one program, ALWAYS with Setup\ · App\ · Data\ (Software_149)
+    └── [<Vendor>\]<App>\          one program: only Setup\ · App\ · Data\, each when it holds something (Software_149)
 ```
 
 Real examples: `D:\Software\Dev\Microsoft\VSCode\{Setup, App, Data}` · `D:\Software\Game\Steam\{Setup, App, Data}` (the game library
@@ -25,7 +25,8 @@ is the launcher's `Data\`).
 ## Rules
 
 - Every program whose installer lets the owner choose a place installs into `Software\<Group>\[<Vendor>\]<App>\App\`.
-- A program forced onto the system drive still has its folder here with all three parts (`Software_149_Program`, exception 1).
+- A program forced onto the system drive still has its folder here, its installer in `Setup\` (`Software_149_Program`,
+  exception 1).
 - The `Software\` level holds only the groups of `Software_148_Group`: no program straight here, no loose file, no repo, no papers.
 - A program found anywhere else (inside `Documents\`, `Study\`, `Game\`) moves here (Law 2 of `Struc_Disk_Data`).
 
@@ -35,5 +36,5 @@ Not in git, not synced: an installed copy belongs to one machine, an installer c
 
 ## Check
 
-`zemory conform --layout <data root>`: a group outside Software_148 (`unknown-value`) · a program without one of its three parts
-(`program-incomplete`) · a repo inside `Software\` (`repo-outside-workspace`).
+`zemory conform --layout <data root>`: a group outside Software_148 (`unknown-value`) · an item in a program folder outside
+its three parts (`program-stray`) · a repo inside `Software\` (`repo-outside-workspace`).

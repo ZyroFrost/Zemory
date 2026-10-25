@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Struc_Disk_Data
@@ -75,7 +75,7 @@ Hỏi theo đúng thứ tự này; món vào bước đầu tiên đúng.
 | 0 | chưa xếp: gom từ bất kỳ đâu về, đang chờ xếp | `Downloads\` (Downloads_168) |
 | 1 | do công cụ khôi phục tạo ra | `Recovery\` (Recovery_153) |
 | 2 | bản sao, bản gốc còn ở nơi khác | `Backup\` (Backup_165) |
-| 3 | dự án hoặc phiên bản cũ ngừng dùng, giữ làm bản duy nhất (kiến thức học xong đi bước 10, không vào đây) | `Archive\` (Archive_166) |
+| 3 | chủ máy đã xác nhận món này gần như không dùng nữa, và đây là bản duy nhất (nén cho đỡ tốn chỗ không phải bước này; kiến thức học xong đi bước 10) | `Archive\` (Archive_166) |
 | 4 | file model AI | `_Models\` (Models_167) |
 | 5 | cấu hình hoặc khoá mà CHƯƠNG TRÌNH hay AGENT tự đọc | `_ConfigVault\<công cụ>\` (ConfigVault_151) |
 | 6 | chương trình — bộ cài, bản cài, dữ liệu riêng — kể cả game, launcher, công cụ game, và thư mục đệm đầu ra của chương trình | `Software\` (Software_147) |
@@ -168,8 +168,7 @@ D:\                                        H:\
 └── Workspace\ …        (thật ở D:)
 ```
 
-Mỗi thư mục tách nhỏ có một `_README.md` ở cả hai ổ (luật 3); phép kiểm đọc file đó là dấu hiệu của phần mềm tách nhỏ và không đòi
-`H:\…\WSL\` phải có `Setup\` và `App\`. Vai thường gặp của các ổ: ổ dữ liệu chính giữ cả cây · ổ dữ liệu thứ hai giữ các khối dời
+Mỗi thư mục tách nhỏ có một `_README.md` ở cả hai ổ (luật 3); phép kiểm coi đó là file duy nhất một thư mục tách nhỏ được chứa. Vai thường gặp của các ổ: ổ dữ liệu chính giữ cả cây · ổ dữ liệu thứ hai giữ các khối dời
 khỏi ổ chính (media lớn, archive) · SSD nhanh giữ thứ cần tốc độ (game, model, ổ ảo) và có bản sao lưu ở nơi khác · ổ hệ thống và
 ổ đám mây không thuộc cây.
 
@@ -196,6 +195,10 @@ Ai thêm một slot, sửa một slot hay dựng một cây mới thì làm đ�
 
 ## Luật
 
+- Thư mục của khung này chỉ có khi có thứ để chứa. Cây là từ điển tên để tra, không phải danh sách thư mục phải tạo: một thư mục
+  được tạo đúng lúc món đầu tiên thuộc về nó tới, và thư mục bỏ trống thì gỡ đi. Luật này áp ở mọi cấp — ổ, `Workspace\`, từng tổ
+  chức, từng thư mục phần mềm — và bên trong repo (`Root_136_Principles`). Thư mục rỗng bắt chủ máy mở vào chỉ thấy trống; thư mục
+  không có thì nói thẳng là khung không có món đó. Phép kiểm không bao giờ đòi thư mục còn thiếu; nó chỉ báo thứ nằm sai chỗ.
 - Gốc dữ liệu không có file lẻ. Thứ Windows tự đặt ở đó thì để yên: `System Volume Information`, `$RECYCLE.BIN`, `pagefile.sys`,
   `swapfile.sys`, `hiberfil.sys`, `DumpStack.log`, `DumpStack.log.tmp`.
 - `_` ở gốc chỉ đánh dấu hai nơi chứa dùng chung.
@@ -206,6 +209,6 @@ Ai thêm một slot, sửa một slot hay dựng một cây mới thì làm đ�
 
 `zemory conform --layout <gốc dữ liệu>` báo đỏ: file lẻ ở gốc (`loose-file`) · thư mục cấp 1 không có slot (`unknown-folder`) ·
 repo ngoài `Workspace\` (`repo-outside-workspace`) · nhóm trong `Software\` ngoài Software_148 hoặc phần trong `Game\` ngoài
-Game_164 (`unknown-value`) · phần mềm thiếu `Setup\`, `App\` hoặc `Data\` (`program-incomplete`) · dự án học không có thư mục
-`Study\` tương ứng (`study-unmatched`). Lệnh đi tiếp vào `Workspace\` và từng tổ chức. Chuỗi câu hỏi của luật 1 và năm luật của cây
+Game_164 (`unknown-value`) · thứ nằm trong thư mục phần mềm mà ngoài `Setup\`, `App\`, `Data\` (`program-stray`) · dự án học không
+có thư mục `Study\` tương ứng mà cũng không có `_README.md` (`study-unmatched`). Lệnh đi tiếp vào `Workspace\` và từng tổ chức. Chuỗi câu hỏi của luật 1 và năm luật của cây
 chia nhiều nơi lưu do chủ máy tự soát ở chỗ chưa có phép kiểm.
