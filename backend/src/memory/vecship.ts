@@ -102,6 +102,8 @@ export function shipVectorsInto(
    * một khối ~66 MB, không phải ghi đè cả kho chung 1,6 GB (HP điều 16: *ghi là nối thêm*).
    */
   catchUpIds?: number[],
+  /** The block's upper id (the p2p channel cuts a delta into blocks): only messages up to it are looked up. */
+  untilMessageId?: number,
 ): ShipResult {
   let src: Database.Database | null = null;
   let snap: Database.Database | null = null;
@@ -137,15 +139,18 @@ export function shipVectorsInto(
     const catchUp = new Set<number>(catchUpIds ?? []);
     if (!inSnapshot.size && !catchUp.size) return { shipped: 0, rejected: 0, shippedIds: [] };
 
-    const targets = (
-      src
-        .prepare(
-          `SELECT id, session_id, uuid, timestamp, content FROM messages
-            WHERE 1=1${sinceMessageId && !catchUp.size ? " AND id > " + Number(sinceMessageId) : ""}
-            ORDER BY id`,
-        )
-        .all() as { id: number; session_id: string; uuid: string | null; timestamp: string | null; content: string | null }[]
-    )
+    // Only the rows that can be shipped are read: the block's id range, plus each catch-up id. Reading every message above
+    // `since` with its content, per block, took 72 s on an SSD and never finished on a spinning disk (2026-10-25).
+    type Row = { id: number; session_id: string; uuid: string | null; timestamp: string | null; content: string | null };
+    const rowsRead = src.prepare(Q.shipMessagesBetween).all(Number(sinceMessageId ?? 0), Number(untilMessageId ?? Number.MAX_SAFE_INTEGER)) as Row[];
+    const inRange = new Set(rowsRead.map((r) => Number(r.id)));
+    const byId = src.prepare(Q.shipMessageById);
+    for (const id of catchUp) {
+      if (inRange.has(id)) continue;
+      const r = byId.get(id) as Row | undefined;
+      if (r) rowsRead.push(r);
+    }
+    const targets = rowsRead
       .map((t) => ({ id: t.id, session_id: t.session_id, mkey: messageKey(t.uuid, t.timestamp, t.content) }))
       // Tin CÓ trong gói ⇒ chở như thường. Tin trong danh sách BÙ ⇒ chở dù KHÔNG có trong gói
       // (máy nhận đã có tin đó từ khối trước, chỉ thiếu vector).
@@ -290,12 +295,24 @@ export function receiveVectorsFrom(
     const find = dst.prepare(Q.messageIdByUuid);
     // Tra theo KHOÁ BỀN: uuid nếu có, còn tin uuid=NULL thì băm (mốc thời gian + nội dung).
     // Bảng tra chỉ dựng cho nhóm NULL (đo: 11.233/239.423 = 4,7%) nên rẻ — không băm cả kho.
+    // Built only for the sessions this bundle names, through the (session_id, uuid) index. Over the whole store it read every
+    // uuid-less message's content - a full scan of the messages table per block: about an hour on a 5.5 GB store on a
+    // spinning disk (2026-10-25: the second machine never finished merging one channel block).
     const byHash = new Map<string, bigint>();
-    for (const m of dst
-      .prepare("SELECT id, session_id, timestamp, content FROM messages WHERE uuid IS NULL")
-      .iterate() as Iterable<{ id: bigint; session_id: string; timestamp: string | null; content: string | null }>) {
-      byHash.set(`${m.session_id}\u0000${messageKey(null, m.timestamp, m.content)}`, m.id);
-    }
+    const nullRows = dst.prepare(Q.nullUuidMessagesOfSession);
+    const hashedSessions = new Set<string>();
+    const hashKey = (session: string, mkey: string): string => `${session}\u0000${mkey}`;
+    const hashSession = (session: string): void => {
+      if (hashedSessions.has(session)) return;
+      hashedSessions.add(session);
+      for (const m of nullRows.iterate(session) as Iterable<{ id: bigint; timestamp: string | null; content: string | null }>) {
+        byHash.set(hashKey(session, messageKey(null, m.timestamp, m.content)), m.id);
+      }
+    };
+    const byHashGet = (session: string, mkey: string): bigint | undefined => {
+      hashSession(session);
+      return byHash.get(hashKey(session, mkey));
+    };
     const ins = dst.prepare(Q.putVecChunk);
     const rows = inc.prepare("SELECT session_id, mkey, embedding FROM vector_ship").all() as {
       session_id: string;
@@ -308,7 +325,7 @@ export function receiveVectorsFrom(
     const apply = dst.transaction(() => {
       for (const r of rows) {
         const hit = (r.mkey.startsWith("h:")
-          ? ((id) => (id === undefined ? undefined : { id }))(byHash.get(`${r.session_id}\u0000${r.mkey}`))
+          ? ((id) => (id === undefined ? undefined : { id }))(byHashGet(r.session_id, r.mkey))
           : (find.get(r.session_id, r.mkey) as { id: bigint } | undefined));
         if (!hit) {
           skipped++; // tin bị lọc theo scope, hoặc chưa merge — không phải lỗi
@@ -343,7 +360,7 @@ export function receiveVectorsFrom(
         const applyChunks = dst.transaction(() => {
           for (const r of chunkRows) {
             const hit = r.mkey.startsWith("h:")
-              ? ((id) => (id === undefined ? undefined : { id }))(byHash.get(`${r.session_id} ${r.mkey}`))
+              ? ((id) => (id === undefined ? undefined : { id }))(byHashGet(r.session_id, r.mkey))
               : (find.get(r.session_id, r.mkey) as { id: bigint } | undefined);
             if (!hit) {
               skipped++;
