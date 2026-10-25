@@ -392,7 +392,7 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
     // 50% tương đương, so với hybrid 38% / 71% — mất hơn một nửa, đúng phần "hiểu ý câu hỏi").
     // Chỉ áp cho payload "rows": bản "full" vốn đã là ảnh chụp nguyên kho, có sẵn vector.
     const shipped =
-      payload === "rows" ? shipVectorsInto(snapshot.path, sourcePath, opts.sinceMessageId, opts.vectorCatchUpIds) : null;
+      payload === "rows" ? shipVectorsInto(snapshot.path, sourcePath, opts.sinceMessageId, opts.vectorCatchUpIds, opts.untilMessageId) : null;
     if (payload === "full" && opts.excludeLanes?.length) filterSnapshot(snapshot.path, opts.excludeLanes);
     const sourceBytes = statSync(snapshot.path).size;
     const salt = randomBytes(16);

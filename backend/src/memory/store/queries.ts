@@ -21,6 +21,11 @@ export const Q = {
     "SELECT m.id AS m FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id > ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown') ORDER BY m.id ASC LIMIT 1",
   countSessionMessages: "SELECT COUNT(*) c FROM messages WHERE session_id = ?",
   messageIdByUuid: "SELECT id FROM messages WHERE session_id = ? AND uuid = ?",
+  // the uuid-less messages of ONE session (the (session_id, uuid) index): the receiving side keys their vectors by a hash
+  nullUuidMessagesOfSession: "SELECT id, timestamp, content FROM messages WHERE session_id = ? AND uuid IS NULL",
+  // the vectors a block ships: its messages in (from, to], and one message by id (a catch-up id)
+  shipMessagesBetween: "SELECT id, session_id, uuid, timestamp, content FROM messages WHERE id > ? AND id <= ? ORDER BY id",
+  shipMessageById: "SELECT id, session_id, uuid, timestamp, content FROM messages WHERE id = ?",
   insertMessage: `INSERT OR IGNORE INTO messages (session_id, uuid, role, content, tool_name, timestamp)
      VALUES (?, ?, ?, ?, ?, ?)`,
   // Whole-replace re-ingest of ONE session from its source transcript (HP điều 3: the transcript is the source).
