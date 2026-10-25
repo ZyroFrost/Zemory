@@ -2,105 +2,105 @@
 id: Skill_Harness_SyncPath
 aka: sync-path
 name: harness-sync-path
-version: 13
+version: 14
 type: process
 description: Declare and PROVE how every new artifact reaches a second machine - code, data layer, derived index, secret, model, config. Run before calling any build "done", when adding a new storage or index layer, when handing a repo to another PC, or when something works on one machine but not the other. Vietnamese triggers - "đồng bộ 2 máy", "máy thứ hai", "bàn giao máy mới", "pull về máy kia", "kẹt giữa 2 máy", "sync đa máy", "máy kia chạy được chưa".
 ---
 
-# sync-path — mỗi thứ sinh ra phải có ĐƯỜNG sang máy khác, và phải ĐO được
+# sync-path — everything produced must have a PATH to another machine, and it must be MEASURED
 
-> Kích hoạt: **trước khi gọi một việc là XONG** · khi thêm **lớp lưu / chỉ mục / bí mật / model
-> mới** · khi **bàn giao repo sang máy khác** · khi "máy này chạy, máy kia không".
+> Trigger: **before calling a piece of work DONE** · when adding **a new storage / index / secret / model
+> layer** · when **handing a repo to another machine** · when "it runs on this machine, not on the other".
 
-**Vấn đề skill này sinh ra để chặn:** thứ mới được xây xong trên MỘT máy rồi mới phát hiện nó
-không có đường sang máy thứ hai — và mỗi lần lại đi dò, mỗi lần vòng một kiểu. Đó là *lùng rồi
-fix*, không phải một đường cố định. Đã trả giá thật: bỏ **43 giờ + 12–16 giờ** máy dựng một lớp chỉ
-mục (vector), rồi mới lộ ra gói đồng bộ mặc định **không chở lớp đó**; và lệnh xuất gói bàn giao
-**không tự tìm chìa** trong khi chìa nằm ngay cạnh kho.
+**The problem this skill exists to block:** something new gets built on ONE machine and only then turns out
+to have no path to the second — and each time it is searched for again, each time a different detour. That is *hunt then
+fix*, not a fixed path. The price was paid for real: **43 hours + 12–16 hours** of machine time building an index layer
+(vectors), and only then it showed the default sync package **does not carry that layer**; and the handover package export
+**does not find the key by itself** while the key sits right beside the data store.
 
-## 1. Luật: KHÔNG có kênh = CHƯA XONG
+## 1. The rule: NO channel = NOT DONE
 
-Mọi thứ tồn tại sau khi build phải thuộc **đúng một** kênh dưới đây. Không xếp được vào ô nào ⇒
-việc chưa xong, dù code chạy.
+Everything that exists after a build must belong to **exactly one** channel below. Fits no cell ⇒
+the work is not done, even if the code runs.
 
-| kênh | dùng cho | ràng buộc |
+| channel | used for | constraint |
 |---|---|---|
-| **git** | mã nguồn · docs · template · hook · cấu hình mặc định | **cấm mọi data/bí mật** (`Rule_Gate_21_WhatEntersGit`) |
-| **gói mã hoá** (vd `.enc`) | kho dữ liệu thật | không bao giờ qua git; không để kho SỐNG trong thư mục đồng bộ đám mây |
-| **người mang tay** | chìa · mật khẩu | không git, không đám mây, không in ra màn hình |
-| **dựng lại tại máy đích** | lớp dẫn xuất rẻ · output build (`dist/`) · cache | phải ghi rõ **lệnh dựng** và **giá** (bao lâu) |
-| **tải lúc chạy** | model weight · asset nặng | không commit — nhớ nó có thể cần cả lúc DÙNG/TRUY VẤN, không chỉ lúc dựng |
+| **git** | source code · docs · templates · hooks · default config | **no data/secret of any kind** (`Rule_Gate_21_WhatEntersGit`) |
+| **encrypted package** (e.g. `.enc`) | the real data store | never through git; never keep the LIVE data store inside a cloud-synced folder |
+| **carried by hand** | keys · passwords | not git, not the cloud, never printed on screen |
+| **rebuilt on the target machine** | cheap derived layers · build output (`dist/`) · cache | must state the **build command** and the **cost** (how long) |
+| **downloaded at run time** | model weights · heavy assets | not committed — remember it may be needed at USE/QUERY time too, not only at build time |
 
-## 2. Ba câu hỏi bắt buộc — trả lời bằng ĐO, không bằng trí nhớ
+## 2. Three required questions — answered by MEASURING, not from memory
 
-Trước khi coi một thứ là xong:
+Before treating something as done:
 
-1. **Nó đi kênh nào?** Xếp vào bảng §1. Nếu là "dựng lại tại máy đích" thì **giá bao nhiêu giờ**?
-   Giá cao (nhiều giờ máy) ⇒ nó KHÔNG phải thứ dựng lại, nó là thứ phải CHỞ.
-2. **Kênh đó có chở nó thật không?** *Đọc code của đường chở*, đừng suy từ tên cờ. Câu hỏi đúng
-   là **bên NHẬN đọc những bảng/tệp nào** — bên gửi gói đủ mà bên nhận chỉ đọc một phần thì phần
-   còn lại **bị vứt trong im lặng**.
-3. **Máy đích chạy được ngay chưa?** Liệt kê đủ thứ nó cần; thiếu MỘT là hụt. Với repo có kho dữ
-   liệu, tối thiểu: **mã · dữ liệu+chỉ mục · chìa · model**.
+1. **Which channel does it travel?** Place it in the §1 table. If it is "rebuilt on the target machine", **how many hours does it cost**?
+   A high cost (many machine hours) ⇒ it is NOT something rebuilt, it is something that must be CARRIED.
+2. **Does that channel really carry it?** *Read the code of the carrying path*, do not infer from a flag name. The right question
+   is **which tables/files the RECEIVER reads** — the sender packing everything while the receiver reads only part means the rest
+   **is thrown away silently**.
+3. **Does the target machine run at once?** List everything it needs; ONE missing is a shortfall. For a repo with a data
+   store, at least: **code · data+index · key · model**.
 
-## 3. ĐO — vòng khép kín, không tin "file có nghĩa là dùng được"
+## 3. MEASURE — a closed loop, never trust "a file means usable"
 
-"Đã ghi ra file" **không phải** bằng chứng. Bằng chứng là **giải mã/khôi phục ra CHỖ TẠM rồi đếm
-lại** — đúng thứ máy kia sẽ nhận:
+"Written to a file" is **not** evidence. The evidence is **decrypting/restoring into a TEMP PLACE and counting
+again** — exactly what the other machine will receive:
 
 ```
-# 1. xuất theo đúng lệnh ghi trong tài liệu (KHÔNG thêm cờ tay)
-# 2. nhập bản vừa xuất vào một đường TẠM (tuyệt đối không trỏ vào kho thật)
-# 3. mở bản tạm ra và ĐẾM: phép kiểm toàn vẹn (vd quick_check) · số bản ghi (vd số tin · số phiên)
-#    · từng lớp chỉ mục (vd số vector · FTS) · cấu hình chỉ mục
+# 1. export by exactly the command written in the documentation (NO hand-added flags)
+# 2. import the fresh export into a TEMP path (never pointing at the real data store)
+# 3. open the temp copy and COUNT: the integrity check (e.g. quick_check) · record counts (e.g. messages · sessions)
+#    · each index layer (e.g. vector count · FTS) · the index configuration
 ```
 
-Đếm phải phủ **cả lớp dẫn xuất**, vì đó chính là lớp hay bị rơi. Một con số tổng ("2 GB") không
-nói được gì — nó vẫn đúng khi phần lớn dung lượng (đo được: 87%) là thứ bên nhận sẽ vứt.
+The count must cover **the derived layers too**, because they are exactly the layers that get dropped. One total figure ("2 GB") says
+nothing — it stays true when most of the size (measured: 87%) is what the receiver will throw away.
 
-**Và một bước nữa, dễ quên nhất: NÓ ĐÃ RỜI KHỎI MÁY CHƯA?** "Ghi được vào thư mục đồng bộ" **không
-phải** "đã lên mây". Thư mục đám mây là một **bề mặt lười**: ghi vào là thấy file ngay, còn việc đẩy
-đi nằm ở hàng đợi của client — hàng đợi đó kẹt thì mọi thứ **trông y như đã xong**. Phải hỏi chính
-client (sổ/hàng đợi/nhật ký của nó) xem mục đã được cấp **định danh phía máy chủ** chưa, và kích
-thước phía máy chủ có **khớp bản cục bộ** không.
+**And one more step, the easiest to forget: HAS IT LEFT THE MACHINE?** "Written into the sync folder" is **not**
+"in the cloud". A cloud folder is a **lazy surface**: write into it and the file shows at once, while pushing it out
+sits in the client's queue — when that queue sticks everything **looks exactly done**. Ask the client itself
+(its ledger/queue/log) whether the item has been given a **server-side id**, and whether the server-side size
+**matches the local copy**.
 
-*Đã trả giá thật:* gói bàn giao nằm im trong thư mục đồng bộ, **hai gói 317 MB kẹt suốt 3 ngày** mà
-không ai biết — trong khi lệnh đồng bộ vẫn báo "đã xuất" thành công mỗi lần. Đúng kiểu hỏng mà
-`Rule_Keys_22_FailLoud` gọi là **vỏ rỗng: không báo lỗi, nó nói dối**.
+*The price was paid for real:* a handover package sat still in the sync folder, **two 317 MB packages stuck for 3 days** with
+nobody knowing — while the sync command reported "exported" successfully every time. Exactly the failure that
+`Rule_Keys_22_FailLoud` calls **an empty shell: it does not report an error, it lies**.
 
-## 4. Bẫy đã trả giá — đọc trước khi tự tin
+## 4. Traps already paid for — read before feeling confident
 
-- **Hai đường tên gần giống nhau, hành vi khác hẳn.** *Gộp thêm* (merge) có thể chỉ lấy bảng NGUỒN;
-  *thay nguyên* (import/restore) mới chở được lớp dẫn xuất. Gửi đúng gói mà bảo bên kia chạy sai
-  lệnh thì vẫn mất.
-- **Mỗi cửa vào một kiểu dò chìa.** Một lệnh tự dò, lệnh kia bắt truyền tay ⇒ người làm theo tài
-  liệu vẫn thất bại. **Mọi cửa của cùng một đường phải dò giống nhau.**
-- **Đặt tên theo hậu tố đời cũ.** Bộ đọc đổi sang định dạng mới mà chỗ đếm vẫn khớp hậu tố cũ ⇒
-  báo "0 gói" vĩnh viễn dù gói có thật.
-- **Mẫu gitignore không neo.** Mẫu trần khớp MỌI độ sâu, từng nuốt luôn thư mục dữ liệu của thư
-  viện vendored ⇒ ai clone về cũng nhận bản cụt ruột. Neo ở gốc (`/data/`, không phải `data/`).
-- **Model weight / binary nặng**: cấm commit (từng làm nghẽn push vì vượt giới hạn 100 MB của
-  GitHub), nhưng phải NÓI RÕ máy đích tự tải — và rằng thiếu nó thì lớp phụ thuộc nó **im lặng**
-  rơi về mức thấp hơn (vd lớp ngữ nghĩa rơi về tìm-theo-từ).
+- **Two paths with nearly the same name, completely different behaviour.** *Merging in* (merge) may take only the SOURCE tables;
+  only *replacing whole* (import/restore) carries the derived layers. Sending the right package while telling the other side to run the wrong
+  command still loses it.
+- **Each entry point finds the key its own way.** One command finds it by itself, the other needs it passed by hand ⇒ a person following
+  the documentation still fails. **Every entry point of the same path must find it the same way.**
+- **Naming by an old-generation suffix.** The reader switches to a new format while the counting spot still matches the old suffix ⇒
+  it reports "0 packages" forever though the packages are real.
+- **Unanchored gitignore patterns.** A bare pattern matches EVERY depth, and once swallowed the data folder of a vendored
+  library ⇒ everyone cloning got a gutted copy. Anchor at the root (`/data/`, not `data/`).
+- **Model weights / heavy binaries**: never committed (they once choked a push by exceeding GitHub's 100 MB limit),
+  but STATE CLEARLY that the target machine downloads them itself — and that without them the layer depending on them **silently**
+  falls back to a lower level (e.g. the semantic layer falls back to word search).
 
-## 5. Máy canh, đừng dựa trí nhớ
+## 5. Let the machine watch, do not lean on memory
 
-Skill là chữ, mà chữ thì quên được — thứ CHẶN drift là **code** (`Rule_Gate_79_HarnessEdit`: luật không đảo được phải có chốt máy). Repo phải có
-cổng cho ít nhất hai việc, và **chạy chúng thay vì tự nhớ**:
+A skill is words, and words get forgotten — what BLOCKS drift is **code** (`Rule_Gate_79_HarnessEdit`: a law that cannot be undone must have a machine check). A repo must have
+gates for at least two things, and **run them instead of remembering**:
 
-- cổng chặn **data/bí mật lọt git** — kèm ca ÂM: một ngoại lệ mở đường cho gói dữ liệu là đủ hỏng;
-- cổng canh **mọi cửa của đường đồng bộ dò chìa giống nhau**.
+- a gate blocking **data/secrets leaking into git** — with a NEGATIVE case: one exception opening a way for a data package is enough to break it;
+- a gate watching that **every entry point of the sync path finds the key the same way**.
 
-Thêm một lớp lưu/chỉ mục mới mà **không** thêm được cổng canh kênh của nó ⇒ ghi thẳng vào
-`04_TODO` là **nợ**, đừng để nó thành thứ phiên sau phải đi dò lại.
+Adding a new storage/index layer **without** being able to add a gate watching its channel ⇒ write it straight into
+`04_TODO` as **a debt**, do not let it become something the next session has to hunt for again.
 
-## 6. Bí mật và cấu hình sang máy khác (`Rule_Gate_21_WhatEntersGit`)
+## 6. Secrets and config to another machine (`Rule_Gate_21_WhatEntersGit`)
 
-- File tracked chỉ trỏ TÊN biến môi trường (`password_env: DB_SOURCE_PASSWORD`); kèm `.env.example` liệt kê đủ tên, không
-  giá trị.
-- Giá trị thật ở `.env` / `*.local.*` hoặc slot bí mật, có `.gitignore` chặn; sang máy khác đi qua kênh đồng bộ, không qua
-  git, kể cả khi đã mã hoá.
-- Đo ở máy nhận: đủ tên biến, đọc được giá trị, chạy được việc cần bí mật đó.
+- A tracked file only points to the NAME of an environment variable (`password_env: DB_SOURCE_PASSWORD`); with a `.env.example` listing every name, no
+  values.
+- The real values sit in `.env` / `*.local.*` or the secret slot, blocked by `.gitignore`; they reach another machine through the sync channel, not through
+  git, even when encrypted.
+- Measured on the receiving machine: every variable name present, the values readable, the work needing that secret runs.
 
 ## Implements · Thi hành luật
 - `Rule_Gate_01_DoneMeansRun` — the path to a second machine, measured at the receiving end · đường sang máy thứ hai, đo ở đầu nhận

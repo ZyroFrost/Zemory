@@ -1,83 +1,83 @@
 ---
 id: Skill_PBI_Red
 name: pbi-red
-version: 5
+version: 6
 aka: pbi-main
 replaces: [Skill_PBI_Main]
 type: process
 description: Build the RED copy (named Main before 2026-10-19) of a Power BI report - the warehouse model and the NEW design to the region's standard, with no old copy to cite. Use whenever a report is designed from scratch, the official copy replaces the old system, or the full design standard is applied to a file. Not when the old design is kept (pbi-classic or pbi-white). Vietnamese triggers - "bản red", "bản main", "dựng report mới", "thiết kế mới theo chuẩn", "bản chính thức".
 ---
 
-# Bản `Red` — thiết kế MỚI trên DW, áp đủ chuẩn
+# The `Red` kind — a NEW design on the DW, the full standard applied
 
-> 🔴 **`Red` = DW + thiết kế mới, bản chính thức** (`Skill_PBI_Base` `reference/naming.md`).
-> Khác ba loại kia ở đúng một điểm: **không có "bản cũ" nào để viện dẫn.** `Classic` và `White` đều
-> được phép giữ thứ trông không chuẩn vì bản cũ làm vậy; ở đây **không có ngoại lệ đó**.
+> 🔴 **`Red` = DW + a new design, the official copy** (`Skill_PBI_Base` `reference/naming.md`).
+> It differs from the other three in exactly one point: **there is no "old copy" to point to.** `Classic` and `White` are both
+> allowed to keep things that look off-standard because the old copy did it; here **there is no such exception**.
 
-## 1. File này KHÔNG chép lại chuẩn — nó chỉ nói chuẩn nằm đâu
+## 1. This file does NOT copy the standard — it only says where the standard lives
 
-Luật thiết kế là tài sản **dùng chung**, nhà của nó ở `repo quản lý vùng`. Chép sang đây là đẻ
-bản sao thứ hai, và bản sao thì trôi lệch — đã trả giá: một bản chép của bảng màu mang hai mã đã
-chết đi lang thang **suốt một tháng** sau khi chúng bị thay.
+The design rules are a **shared** asset; their home is in the `region manager repo`. Copying them here makes a
+second copy, and copies drift — the price was paid: a copy of the colour table carried two codes that were
+dead and wandered around **for a whole month** after they were replaced.
 
-| Cần gì | Mở |
+| Need | Open |
 |---|---|
-| Bảng màu · theme · icon · nút bấm được · slicer | `Skill_PBI_Base` `reference/design.md` §1–§2 |
-| Cấu trúc measure, thư mục theo trang, tiền tố `#/%/~`, bảng `Parameter_*` | `Skill_PBI_Base` `reference/model.md` |
-| Bộ số khoảng cách, lưới 5, khung trắng | `Skill_PBI_Base` `reference/design.md` §3 |
-| Khung UI có sẵn — chỉ thay dữ liệu | `Skill_PBI_Base` `reference/design.md` §3.5 |
-| Thao tác sửa `.pbip` mà không vỡ file | `.claude/skills/pbi-pbip/SKILL.md` |
-| Tài sản ảnh, theme | thư mục `assets/` của repo tổng quản vùng (`theme_file` · `icons_dir` trong giá trị vùng) |
+| Colour table · theme · icons · clickable buttons · slicers | `Skill_PBI_Base` `reference/design.md` §1–§2 |
+| Measure structure, folders by page, the `#/%/~` prefixes, `Parameter_*` tables | `Skill_PBI_Base` `reference/model.md` |
+| The spacing numbers, the 5 grid, the white frame | `Skill_PBI_Base` `reference/design.md` §3 |
+| An existing UI frame — swap only the data | `Skill_PBI_Base` `reference/design.md` §3.5 |
+| Editing a `.pbip` without breaking the file | `.claude/skills/pbi-pbip/SKILL.md` |
+| Image and theme assets | the `assets/` folder of the region's manager repo (`theme_file` · `icons_dir` in the region values) |
 
-## 2. Bốn thứ hay bị bỏ sót nhất — nhắc ở đây vì chúng hỏng LẶNG
+## 2. Four things missed most often — listed here because they break SILENTLY
 
-- 🔴 **`header.show` của slicer không khai thì mặc định BẬT.** Quét `"show": true` ra 0 kết quả và
-  tưởng đã tắt là sai — phải khai **tường minh** `false`. Ca thật: **22/22 slicer** dính, trong khi
-  `title.show` đã `false` sẵn nên nhìn lướt tưởng xong.
-- 🔴 **`visualLink` đặt sai tầng thì nút im lặng** — khoá phải nằm ở `visual.visualContainerObjects.visualLink`, không ở
-  `visual.visualLink`. Đặt sai tầng: Power BI vẫn mở file, không báo gì, bấm không chạy. `shape` mang `visualLink` đúng tầng
-  bấm được (đo trên chính một report Red: `BG_UserGuide`).
-- 🔴 **Bê visual từ khuôn mẫu là thừa hưởng mọi mặc định của khuôn**, kể cả thứ không có dòng nào
-  trong JSON. Hay dính nhất: `ThemeDataColor` `ColorId: 7, Percent: 0.2` ⇒ **chữ xám lợt mà JSON vẫn
-  hợp lệ**. Chữ thì ghi thẳng mã màu.
-- 🔴 **Kéo tay trong Desktop sinh số thập phân** (`50.23255813953489`). Kéo xong phải nắn về bội số
-  của 5, mọi `x·y·width·height` của **mọi** object.
+- 🔴 **A slicer's `header.show` not declared is ON by default.** Searching for `"show": true`, finding 0 results and
+  thinking it is off is wrong — it must be declared **explicitly** `false`. A real case: **22/22 slicers** caught, while
+  `title.show` was already `false`, so a quick look made it seem done.
+- 🔴 **A `visualLink` at the wrong level makes the button silent** — the key must sit in `visual.visualContainerObjects.visualLink`, not in
+  `visual.visualLink`. At the wrong level Power BI still opens the file, says nothing, and the click does nothing. A `shape` carrying `visualLink` at the right level
+  is clickable (measured on a real Red report: `BG_UserGuide`).
+- 🔴 **A visual brought over from a template inherits every default of the template**, even those with no line
+  in the JSON. Most often: `ThemeDataColor` `ColorId: 7, Percent: 0.2` ⇒ **pale grey text while the JSON is still
+  valid**. Write text colours as plain codes.
+- 🔴 **Dragging by hand in Desktop produces decimals** (`50.23255813953489`). After dragging, snap to multiples
+  of 5 every `x·y·width·height` of **every** object.
 
-## 3. Trang thật, không trang mẫu
+## 3. Real pages, not sample pages
 
-🔴 **File thật chỉ chứa trang THẬT** (design.md §3.4). Khuôn mẫu ship sẵn 5 trang demo
+🔴 **The real file holds only REAL pages** (design.md §3.4). The template ships 5 demo pages
 (`Sales Overview` · `Payment & Channel` · `Customer Analysis` · `Product Performance` ·
-`Regional Insights`) — **không trang nào có thật**. Xem thì xem từ khuôn gốc, đừng để lại trong file.
+`Regional Insights`) — **none of them is real**. Look at them in the original template, never leave them in the file.
 
-Kéo theo: **cột nút điều hướng có đúng bấy nhiêu nút như số trang thật**, xếp từ ô đầu, thứ tự theo
-`pageOrder`, ô thứ `i` ở `y = (i−1) × 60`. Bỏ một trang thì **dồn các cặp còn lại lên**, đừng để ô
-trống phía trên — toạ độ nút là **địa chỉ theo thứ tự trang**, không phải vị trí cố định.
+It follows: **the navigation column has exactly as many buttons as there are real pages**, laid out from the first slot, in
+`pageOrder` order, slot `i` at `y = (i−1) × 60`. Dropping a page ⇒ **move the remaining pairs up**, never leave an empty slot
+above — a button's coordinates are an **address by page order**, not a fixed position.
 
-## 4. Đổi tên trong model — cổng nghiệm thu là DAX chạy thật
+## 4. Renaming in the model — the acceptance gate is DAX that really runs
 
-🔴 **Đọc file KHÔNG chứng minh được gì** (model.md §7). Sau mọi lượt đổi tên bảng/cột/measure:
+🔴 **Reading the file proves nothing** (model.md §7). After every rename of a table/column/measure:
 
 ```
 TMSCHEMA_MEASURES   State = 1 toan bo
 EVALUATE ROW("v",[<tung measure>])   chay TUNG cai, 0 loi
 ```
 
-*Ca thật: một lượt báo "0 tham chiếu hụt · Desktop mở sạch" trong khi **23 measure đang lỗi** — cổng
-tĩnh chỉ đọc dòng `column`, còn lượt mở Desktop chỉ chạy thử 3 measure.*
+*A real case: one pass reported "0 missing references · Desktop opens clean" while **23 measures were broken** — the static gate
+only reads `column` lines, and the Desktop opening only ran 3 measures.*
 
-⚠ Bảng `DATATABLE` lấy tên cột từ **chuỗi trong `DATATABLE`**, không từ dòng khai `column` — phép
-thay tên mù sẽ ăn vào chuỗi và đẻ ra cột tên lạ mà cổng tĩnh không thấy.
+⚠ A `DATATABLE` table takes its column names from **the strings in `DATATABLE`**, not from the `column` lines — a
+blind rename eats into the strings and produces oddly named columns the static gate does not see.
 
-## 5. Nghiệm thu
+## 5. Acceptance
 
 ```
-model   1 bảng #Measure · thư mục chữ cái theo trang · tiền tố #/%/~ · bảng Parameter_* rời
-design  mọi mã màu thuộc bảng màu của cụm · lưới 5 · khe 5 · nút cách 60
-     grep -rhoP '#[0-9A-Fa-f]{6}' <Tên>.Report/definition | sort -u
-     -> tập con của bảng màu (trừ file theme, đó là nơi khai màu)
-     0 slicer còn header bật · 0 visualLink nằm trên shape
-DAX  mọi measure State = 1 VÀ chạy ra kết quả
-THẬT mở Desktop, KHÔNG có hộp thoại "report has issues", rồi NHÌN tận mắt
+model   1 #Measure table · letter folders by page · #/%/~ prefixes · separate Parameter_* tables
+design  every colour code in the group's colour table · 5 grid · 5 gap · buttons 60 apart
+     grep -rhoP '#[0-9A-Fa-f]{6}' <Name>.Report/definition | sort -u
+     -> a subset of the colour table (except the theme file, where colours are declared)
+     0 slicers with the header on · 0 visualLink sitting on a shape
+DAX  every measure State = 1 AND runs to a result
+REAL open Desktop, NO "report has issues" dialog, then LOOK with your own eyes
 ```
 
-🔴 Mục cuối **không tự động hoá được**, và nó là mục duy nhất chứng minh được cái gì.
+🔴 The last item **cannot be automated**, and it is the only item that proves anything.

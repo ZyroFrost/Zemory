@@ -1,211 +1,222 @@
 ---
 id: Skill_Task_VmAutomation
 name: task-vm-automation
-version: 9
+version: 10
 type: process
 aka: vm-automation
 description: Put a periodic task (Daily / Weekly / Monthly) on the VM to RUN BY ITSELF - the vm_deploy.json manifest, the schedule, the Log_JobRun run log, results to the region's SharePoint, the _SharePoint.url shortcut. Use whenever a task goes onto the VM, is automated or scheduled, or its VM run is checked. Vietnamese triggers - "đưa task lên VM", "tự động hoá task", "đặt lịch trên VM", "task chạy trên VM chưa".
 installs: [scripts/task_run.py, scripts/make_output_links.py, scripts/move_outputs_to_vm.py]
-from: _Store/03_SKILLS/Skill_Task_VmAutomation @v9 #216f664fcdee
+from: _Store/03_SKILLS/Skill_Task_VmAutomation @v10 #d2f6dbf50f80
 ---
 
-# task-vm-automation — đưa task lên chạy tự động trên VM
+# task-vm-automation — putting a task on automatic runs on the VM
 
-> Skill này là NHÀ của luật task chạy tự động: đầu vào và đầu ra thật, chỉ hệ mới, hai chiều, cổng đầu vào/đầu ra, lưới slot.
-> Thiết kế bản chạy trên VM: plan của tổng quản (`docs/plan/22_vm_pipeline_standard.md`). Đồng bộ repo lên VM: skill riêng của
-> tổng quản. Chia vai đầu vào giữa phòng và DW (ai chuẩn hoá, ai nạp, ai giữ luật nghiệp vụ): hiến pháp của tổng quản.
+> This skill is the HOME of the laws for tasks run automatically: real inputs and outputs, the new system only, two directions, input/output gates, the slot grid.
+> The design of the VM run: the region manager's plan (`docs/plan/22_vm_pipeline_standard.md`). Syncing repos to the VM: the region manager's own
+> skill. The split of input roles between departments and the DW (who normalises, who loads, who keeps the business rules): the region manager's constitution.
 
-## Phạm vi — CHỈ task chạy trên VM ("cái này là chuẩn mới")
+## Scope — ONLY tasks running on the VM (this is the new standard)
 
-| Loại việc | Đầu vào | Kết quả | `data\<task>\` trên máy làm việc |
+| Kind of work | Input | Result | `data\<task>\` on the working machine |
 |---|---|---|---|
-| **Task định kỳ chạy trên VM** (có `tasks/<task>/vm_deploy.json`) | SharePoint `DataInput` hoặc DW | SharePoint `DataReport` | `01_raw` + `03_output` = **chỉ `_SharePoint.url`** + `reference/` (máy và VM cùng giữ) · `02_processing` trống (nháp lúc chạy thử) |
-| **Case / việc lẻ chạy trên máy** | lấy từ đâu cũng được, như cũ | trên máy, như cũ | đủ 3 chặng `01_raw → 02_processing → 03_output` như trước |
+| **A recurring task running on the VM** (has `tasks/<task>/vm_deploy.json`) | SharePoint `DataInput` or the DW | SharePoint `DataReport` | `01_raw` + `03_output` = **only `_SharePoint.url`** + `reference/` (the machine and the VM both keep it) · `02_processing` empty (drafts while trying) |
+| **A case / one-off work run on the machine** | taken from anywhere, as before | on the machine, as before | all 3 stages `01_raw → 02_processing → 03_output` as before |
 
-## 🔴 Không luồng giả · không Excel giả
+## 🔴 No fake flows · no fake Excel
 
-File (Excel hay bất kỳ, trên `DataInput`/`DataReport`) chỉ được có khi là **đầu vào THẬT** — nhận từ ngoài task (hệ nguồn · người/phòng
-khác gửi · form kho dựng cho người khác nhập) — hoặc **đầu ra THẬT** — người/phòng khác YÊU CẦU và mở nó. Task **không tự tạo đầu vào
-hay đầu ra giả**: không Excel chứa luật không ai gửi (⇒ dữ liệu trong DW, §Hai chiều) · không xuất file chỉ để task khác/chính nó đọc lại · không đẩy
-SharePoint "cho có" · không chép số kho ra file rồi nạp ngược. **Trước khi đề xuất/tạo file nào, hỏi:** *"Ai GỬI?"* (vào) · *"Ai YÊU
-CẦU và MỞ?"* (ra) — không chỉ ra được một người/phòng cụ thể ngoài task ⇒ không tạo. (Nháp `02_processing` và `reference/` không tính.)
+A file (Excel or any other, on `DataInput`/`DataReport`) may exist only when it is **a REAL input** — received from outside the task (a source
+system · another person/department sends it · a form the DW built for others to fill in) — or **a REAL output** — another person/department ASKS for it and opens it.
+A task **creates no fake input or output**: no Excel holding a rule nobody sends (⇒ data in the DW, §Two directions) · no file exported only for
+another task/itself to read back · no push to SharePoint "for show" · no copying DW figures out to a file and loading them back. **Before proposing/creating any file, ask:**
+*"Who SENDS it?"* (in) · *"Who ASKS for it and OPENS it?"* (out) — unable to point to a specific person/department outside the task ⇒ do not create it.
+(Drafts in `02_processing` and `reference/` do not count.)
 
-## 🔴 Chỉ dùng hệ mới · không đụng hệ cũ
+## 🔴 Only the new system · never touch the old system
 
-Mã chạy của task chỉ đọc/ghi: bảng kho · site SharePoint của vùng (`sharepoint_site`) · `<vm_run_dir>\<Repo>\` · khoá `.env` của kho. **Cấm**: mọi mục ở
-`legacy_sources` (nguồn, site, thư mục, khoá của hệ cũ) · server nguồn đọc thẳng (việc của kho) · app chạy trên máy làm việc. **Không đụng hệ cũ** (không đọc/ghi/xoá gì ở đó). Thôi dùng thì gỡ —
-chỉ gỡ ở hệ mới (repo phòng + lịch VM), thứ ở hệ cũ để nguyên. Thiếu bảng ⇒ nhắn kho dựng, không lách về hệ cũ.
+A task's running code reads/writes only: DW tables · the region's SharePoint site (`sharepoint_site`) · `<vm_run_dir>\<Repo>\` · the DW's `.env` keys.
+**Forbidden**: every item in `legacy_sources` (the old system's sources, sites, folders, keys) · source servers read directly (the DW's job) · apps running
+on the working machine. **Never touch the old system** (read/write/delete nothing there). Retiring something ⇒ remove it — only on the new system (the
+department repo + the VM schedule), what is on the old system stays as it is. A table missing ⇒ ask the DW to build it, never route around through the old system.
 
-## Hai chiều — mỗi task định kỳ là IN hoặc OUT
+## Two directions — every recurring task is IN or OUT
 
-**Phép thử:** *"Task này đưa số VÀO kho hay lấy số RA khỏi kho?"* Khai ở khối đầu `spec.md`: `direction: in` hoặc `direction: out`.
-**Một task một chiều** — việc có cả hai thì tách hai task.
+**The test:** *"Does this task bring figures INTO the DW or take figures OUT of the DW?"* Declared in the top block of `spec.md`: `direction: in` or `direction: out`.
+**One task, one direction** — work doing both is split into two tasks.
 
 | | `direction: in` | `direction: out` |
 |---|---|---|
-| Làm gì | văn bản phòng soạn → chuẩn hoá → `DataInput` → kho nạp | đọc kho → giao file/mail |
-| Đọc từ | file người nộp (SharePoint `DataInput/<PHÒNG>/<Việc>/`) | **bảng kho** (ưu tiên bảng gom/view dựng sẵn, vd `Agg_SaleDaily`) — không nguồn hệ cũ (`IPOS_Stage`, Fast…), không app nội bộ, không tự cộng lại số kho đã gom; thiếu bảng/cột ⇒ đặt kho dựng |
-| Khai | `input_url` | `output_url` (`DataReport/<PHÒNG>/<Việc>/`) · không `input_url` nếu số gốc toàn từ hệ thống |
-| Cổng | **`INPUT_CHECK`** trước mọi chặng ghi (§1 mục 6) | **`OUTPUT_CHECK`** trước khi giao (§1 mục 7) |
-| File tham chiếu | `data/<Task>/01_raw/reference/` | `data/<Task>/03_output/reference/` |
+| What it does | a document the department writes → normalised → `DataInput` → the DW loads it | reads the DW → hands out a file/mail |
+| Reads from | the submitter's file (SharePoint `DataInput/<DEPT>/<Work>/`) | **DW tables** (prefer prebuilt aggregate tables/views, e.g. `Agg_SaleDaily`) — no old-system source (`IPOS_Stage`, Fast…), no internal app, never re-adding figures the DW already aggregated; a table/column missing ⇒ order it from the DW |
+| Declares | `input_url` | `output_url` (`DataReport/<DEPT>/<Work>/`) · no `input_url` when the original figures all come from systems |
+| Gate | **`INPUT_CHECK`** before every writing stage (§1 item 6) | **`OUTPUT_CHECK`** before handing out (§1 item 7) |
+| Reference files | `data/<Task>/01_raw/reference/` | `data/<Task>/03_output/reference/` |
 
-- **MỘT BÁO CÁO MỘT NƠI LÀM**: phòng sở hữu nghiệp vụ của con số làm bản giao; phòng khác cần thì **dùng lại đúng file/link đó**, không dựng lại.
-  Vd GC (doanh thu · lượt khách theo ngày × nhà): ABC làm, XYZ gửi file ABC làm ra.
-- **Luật nghiệp vụ trong bản giao** (bậc VAT của doanh thu, cách đếm GC…): phòng quyết, kho áp trong bảng/view — không viết cứng trong SQL của task. **Excel chỉ có khi có người gửi**: luật không ai gửi ⇒ DỮ LIỆU trong kho đúng 5 loại bảng của hiến pháp kho (cột trên dim chủ · `Bridge_*` có hiệu lực theo ngày · `_Config`), không tiền tố tự chế, phòng nhắn kho đổi — KHÔNG tạo file mới để chứa luật; code phòng đọc luật từ kho, không chép số lại.
+- **ONE REPORT, ONE MAKER**: the department owning the business meaning of the figure makes the handed-out copy; another department needing it **reuses exactly that file/link**,
+  never rebuilds it. E.g. GC (revenue · guest counts by day × restaurant): ABC makes it, XYZ sends the file ABC made.
+- **Business rules in the handed-out copy** (the VAT tier of revenue, how GC is counted…): the department decides, the DW applies it in a table/view — never hard-coded in the task's SQL.
+  **Excel only when somebody sends it**: a rule nobody sends ⇒ DATA in the DW in exactly the 5 table kinds of the DW constitution (a column on the owning dim ·
+  `Bridge_*` effective by date · `_Config`), no invented prefix, the department asks the DW to change it — NEVER a new file to hold the rule; department code reads the rule
+  from the DW, never copies the figures.
 
-## Case vs task VM
+## Case vs VM task
 
-- Case giao kết quả cho NGƯỜI KHÁC xem ⇒ nên đẩy bản cuối lên `DataReport/<PHÒNG>/…` của phòng (người nhận mở một chỗ); bản làm việc vẫn ở máy.
-- Case **chuyển thành định kỳ** và lên VM ⇒ lúc đó mới áp chuẩn này: đầu vào nộp lên `DataInput`, khai `input_url` / `output_url`,
-  chạy `move_outputs_to_vm.py`, trên máy chỉ còn shortcut.
-- **`input_url` = số gốc nằm ở đâu, ai nộp — KHÔNG phải task đọc từ đâu**.
-  Số gốc là file người nộp ⇒ khai `input_url` trỏ thư mục gốc trên SharePoint, **kể cả khi task đọc bảng DW** nạp từ file đó
-  (vd XYZ `ABC_Daily_StoreInventoryReport` đọc `Fact_InventoryDaily`, số gốc = form kiểm kê nhà hàng). Số từ hệ thống (POS · Fast · CRM)
-  ⇒ không `input_url`, `01_raw` TRỐNG. Cả hai ⇒ liệt kê đủ thư mục file gốc (` | `). `make_output_links.py` chỉ bắt buộc `output_url`.
-- **Nhật ký chạy (`task_run.py`) vào DB của repo giữ dữ liệu mà repo đang chạy dùng:** repo `dept` → DW (`WAREHOUSE_CONN`), repo
-  `app` → repo `app-data` (`APPDATA_CONN`, khai ở `uses.app-data` của marker), repo dữ liệu → DB của chính nó; một bản `task_run.py`
-  cho mọi repo, không chép tay biến thể. Repo dữ liệu đặt khoá tên khác ⇒ khai trong `.env` của nó `RUNLOG_CONN_KEY=<TÊN KHOÁ>`
-  (`task_run` đọc khoá đó trước khoá mặc định; trên VM chỉ `.env` đi theo nên khai ở đây, không ở marker) — và đưa cả hai khoá vào
-  `.env` của `vm_deploy.json`.
-- **Kiểm `reference/` trên VM:** `python scripts\move_outputs_to_vm.py --reference` liệt kê file `reference/` máy có mà VM thiếu hoặc
-  khác nội dung, mã thoát 1 khi có (không đăng nhập SharePoint); kèm `--apply` thì chép bù file thiếu, file khác nội dung không ghi đè.
-- **File tham chiếu** code/test cần để dựng lại đúng bản giao (mẫu người khác gửi · bản mốc nghiệm thu) — không phải đầu vào của lượt chạy ⇒ xếp theo CHIỀU (05/10): mẫu/mốc của **ĐẦU RA** (khuôn người nhận gửi · bản kế toán để so số bản giao) ⇒ `data/<Task>/03_output/reference/`; mẫu/mốc của **ĐẦU VÀO** ⇒ `data/<Task>/01_raw/reference/`. Cả hai: **máy và VM cùng giữ** — VM là bản sao lưu của máy; `reference/` chỉ chứa file lần đầu để dựng lại, không phình theo kỳ như `03_output`/`02_processing`. `move_outputs_to_vm.py` CHÉP `reference/` lên đúng đường đó trên VM (so SHA-256), KHÔNG gỡ bản máy; `make_output_links.py` không tính `reference/` là `EXTRA`. KHÔNG lên SharePoint, không `input_url`. Lỡ đẩy lên `DataInput` ⇒ kéo về `reference/` rồi gỡ bản ở `DataInput`.
-- **Task chỉ GỬI LẠI file phòng khác làm** (MỘT BÁO CÁO MỘT NƠI LÀM — vd XYZ gửi mail đúng file GC do ABC làm): `output_url` = thư mục `DataReport/<PHÒNG LÀM FILE>/…` (nơi file thật nằm, không phải thư mục của mình) · `delivers_to: mail` · task KHÔNG tạo bản thứ hai, KHÔNG đẩy gì vào thư mục phòng khác. `move_outputs_to_vm.py` tự nhận ca này (`delivers_to: mail` hoặc `output_url` ngoài thư mục phòng mình) ⇒ `03_output` sót chỉ lên VM, không SharePoint.
-- 🔴 **Đầu vào chỉ nộp ở SharePoint `DataInput`** — KHÔNG thả file vào `01_raw` (máy hay VM) rồi mong task đọc. `01_raw` không phải
-  nguồn: lịch sử "lượt nào đọc số nào" = lịch sử phiên bản của file trên SharePoint.
+- A case handing results to OTHER PEOPLE to view ⇒ preferably push the final copy to the department's `DataReport/<DEPT>/…` (the recipient opens one place); the working copy stays on the machine.
+- A case **turning recurring** and going onto the VM ⇒ only then does this standard apply: inputs submitted to `DataInput`, declare `input_url` / `output_url`,
+  run `move_outputs_to_vm.py`, the machine keeps only shortcuts.
+- **`input_url` = where the original figures sit and who submits them — NOT where the task reads from**.
+  The original figures are a submitter's file ⇒ declare `input_url` pointing at the source folder on SharePoint, **even when the task reads a DW table** loaded from that file
+  (e.g. XYZ `ABC_Daily_StoreInventoryReport` reads `Fact_InventoryDaily`, the original figures = the restaurants' stock-count form). Figures from systems (POS · Fast · CRM)
+  ⇒ no `input_url`, `01_raw` EMPTY. Both ⇒ list every source-file folder (` | `). `make_output_links.py` requires only `output_url`.
+- **The run log (`task_run.py`) goes into the DB of the repo holding the data the running repo uses:** a `dept` repo → the DW (`WAREHOUSE_CONN`), an
+  `app` repo → the `app-data` repo (`APPDATA_CONN`, declared in `uses.app-data` of the marker), a data repo → its own DB; one `task_run.py`
+  for every repo, no hand-copied variants. A data repo naming its key differently ⇒ declares in its `.env` `RUNLOG_CONN_KEY=<KEY NAME>`
+  (`task_run` reads that key before the default key; on the VM only `.env` travels, so it is declared here, not in the marker) — and both keys go into
+  the `.env` of `vm_deploy.json`.
+- **Checking `reference/` on the VM:** `python scripts\move_outputs_to_vm.py --reference` lists the `reference/` files the machine has and the VM lacks or
+  holds with different content, exit code 1 when any (no SharePoint login); with `--apply` it copies the missing files, files with different content are not overwritten.
+- **Reference files** code/tests need to rebuild the handed-out copy correctly (samples others sent · acceptance baselines) — not inputs of a run ⇒ placed by DIRECTION (05/10):
+  samples/baselines of the **OUTPUT** (the mould the recipient sent · the accounting copy to compare the handed-out figures with) ⇒ `data/<Task>/03_output/reference/`; samples/baselines of the
+  **INPUT** ⇒ `data/<Task>/01_raw/reference/`. Both: **the machine and the VM both keep them** — the VM is the machine's backup; `reference/` holds only first-time files for
+  rebuilding, it does not grow per period like `03_output`/`02_processing`. `move_outputs_to_vm.py` COPIES `reference/` to that exact path on the VM (compared by SHA-256),
+  does NOT remove the machine's copy; `make_output_links.py` does not count `reference/` as `EXTRA`. NOT onto SharePoint, no `input_url`. Pushed to `DataInput` by mistake ⇒
+  pull it back into `reference/` then remove the copy in `DataInput`.
+- **A task only RE-SENDING a file another department makes** (ONE REPORT, ONE MAKER — e.g. XYZ mails exactly the GC file ABC makes): `output_url` = the folder
+  `DataReport/<DEPT MAKING THE FILE>/…` (where the real file sits, not your own folder) · `delivers_to: mail` · the task creates NO second copy, pushes NOTHING into another
+  department's folder. `move_outputs_to_vm.py` recognises this case itself (`delivers_to: mail` or an `output_url` outside your department's folder) ⇒ leftover `03_output`
+  only goes to the VM, not SharePoint.
+- 🔴 **Inputs are submitted only at SharePoint `DataInput`** — NEVER drop a file into `01_raw` (machine or VM) and hope the task reads it. `01_raw` is not a
+  source: the history of "which run read which figures" = the version history of the file on SharePoint.
 
-## 0. Hình dung trước khi làm
+## 0. Picture it before doing it
 
 ```
-máy làm việc  ──Syncthing──▶  VM  <vm_work_dir>\<Repo>\      CHỞ — không task nào chạy ở đây
-                                   <vm_run_dir>\<Repo>\     CHẠY — cùng tên, cùng đường tương đối, CHỈ file task khai
-  vm_deploy.ps1 (task \DW_Automation_Deploy, 5 phút): đọc tasks/<Task>/vm_deploy.json → chép · kiểm · thay bản chạy
-                                                      → ĐĂNG KÝ lịch Task Scheduler theo khoá "schedule"
-  mỗi lượt chạy: scripts\task_run.py bọc launcher → log data\logs\<task>.log + MỘT dòng vào kho dbo.Log_JobRun
+working machine  ──Syncthing──▶  VM  <vm_work_dir>\<Repo>\      CARRIES — no task runs here
+                                     <vm_run_dir>\<Repo>\     RUNS — same name, same relative path, ONLY the files the task declares
+  vm_deploy.ps1 (task \DW_Automation_Deploy, 5 minutes): reads tasks/<Task>/vm_deploy.json → copy · check · replace the running copy
+                                                      → REGISTERS the Task Scheduler schedule by the "schedule" key
+  each run: scripts\task_run.py wraps the launcher → log data\logs\<task>.log + ONE line into the DW's dbo.Log_JobRun
 ```
 
-| Thứ | Nằm ở | Ai xem |
+| Thing | Sits in | Who looks |
 |---|---|---|
-| File người dùng nộp vào (đầu vào) | SharePoint `DataLake/DataInput/<PHÒNG>/…` | task đọc thẳng |
-| Kết quả cuối (deliverable) | SharePoint (`sharepoint_site` trong giá trị vùng)`/<PHÒNG>/…` — task tự đẩy (PUT ghi đè, giữ phiên bản) | người nhận mở ở đó |
-| Dữ liệu làm việc của task (log · trạng thái · bản chép kết quả) | VM `<vm_run_dir>\<Repo>\data\<Task>\…` | sao lưu VM; tra khi cần |
-| `data\<Task>\01_raw` · `03_output` trên máy làm việc | **ĐÚNG 1 file mỗi thư mục: `_SharePoint.url`** (cộng `reference/` nếu có — VM giữ bản sao) — `01_raw` trỏ `DataInput`, `03_output` trỏ `DataReport`; `02_processing` trống. Cổng: `zemory conform` › `vm-task-local-data` | bấm shortcut ra nguồn / kết quả thật |
+| Files submitted (input) | SharePoint `DataLake/DataInput/<DEPT>/…` | the task reads them directly |
+| The final result (deliverable) | SharePoint (`sharepoint_site` in the region values)`/<DEPT>/…` — the task pushes it itself (PUT overwrite, versions kept) | the recipient opens it there |
+| The task's working data (logs · state · copies of results) | VM `<vm_run_dir>\<Repo>\data\<Task>\…` | VM backup; looked up when needed |
+| `data\<Task>\01_raw` · `03_output` on the working machine | **EXACTLY 1 file per folder: `_SharePoint.url`** (plus `reference/` when any — the VM keeps a copy) — `01_raw` points to `DataInput`, `03_output` to `DataReport`; `02_processing` empty. Gate: `zemory conform` › `vm-task-local-data` | click the shortcut to reach the real source / result |
 
-🔴 **"Mỗi kỳ 1 file" là chuyện của SHAREPOINT, không phải của máy.** Task đẩy mỗi lượt 1 file lên `DataReport` (vd XYZ NQ: `NQ T9-2026.xlsx`,
-`NQ T10-2026.xlsx` … nằm cạnh nhau) hoặc ghi đè 1 file (vd XYZ `ABC_SummaryInventoryResult.xlsx`, lịch sử ở phiên bản SharePoint). Còn
-`03_output` trên máy chỉ là CỬA SỔ nhìn sang đó: một shortcut, hết. File chạy THỬ tại máy ghi vào `02_processing\` (hoặc xoá ngay sau khi
-xem) — không để lại trong `03_output`.
+🔴 **"One file per period" is about SHAREPOINT, not the machine.** The task pushes 1 file per run to `DataReport` (e.g. XYZ NQ: `NQ T9-2026.xlsx`,
+`NQ T10-2026.xlsx` … side by side) or overwrites 1 file (e.g. XYZ `ABC_SummaryInventoryResult.xlsx`, the history in SharePoint versions). The
+`03_output` on the machine is only a WINDOW onto it: one shortcut, nothing more. A TRIAL run on the machine writes into `02_processing\` (or deletes right after
+looking) — never left in `03_output`.
 
-**KHÔNG đồng bộ `data\` theo chiều nào**. Task cần số kỳ trước ⇒ đọc lại từ SharePoint `DataReport` (chính nó đã đẩy lên), không trông vào ổ đĩa.
+**Do NOT sync `data\` in any direction**. A task needing the previous period's figures ⇒ reads them back from SharePoint `DataReport` (it pushed them there itself), never relies on the disk.
 
-## 1. Điều kiện của code (sửa trước khi lên VM)
+## 1. Conditions on the code (fixed before going onto the VM)
 
-1. **Đường dẫn tương đối** từ vị trí file (`Path(__file__).resolve().parents[…]`) — không viết cứng `D:\<user>\…`. Repo kho = thư mục anh em repo quản lý vùng (bản chạy kho trên VM có `.env` · `config\mail\` · `form_lib`…).
-2. **Đầu vào** đọc từ SharePoint `DataInput` hoặc kho DW — không đọc file trên máy làm việc, không app chạy trên máy làm việc (VM không có), không bản chép máy local.
-3. **Đầu ra**: ghi `data\<Task>\03_output\` rồi đẩy lên `DataReport/<PHÒNG>/<Việc>/…`. Ngay sau mỗi lần đẩy, **in một dòng `OUTPUT_URL: <webUrl>`** — `task_run.py` gom dòng đó vào sổ chạy.
-4. **Mail**: người gửi + người nhận lấy từ kho mail của repo kho (`config/mail/mail_vault.json` — `senders[]` · `groups[]`), không viết địa chỉ vào code. Chưa có nhóm ⇒ nhắn phiên kho thêm, code DỪNG với lỗi rõ, không đoán địa chỉ.
-   🔴 **Mail gửi NHÀ HÀNG chỉ tới hộp thư nhà hàng, KHÔNG CC ai** (vụ 45 mail CC nhầm phải thu hồi bằng Purview). Mặc định của mọi lệnh gửi: CHỈ gửi người chạy thử; gửi thật cần cờ riêng (`--send-real` / `live` / `--send`).
-5. **Mã thoát**: 0 = xanh, khác 0 = đỏ. Lỗi giữa chừng không được nuốt im.
-6. **Cổng đầu vào** (task có `input_url`): chặng kiểm đầu vào chạy TRƯỚC mọi chặng ghi, in
-   `INPUT_CHECK: OK|NONE|INVALID · <file> · <chi tiết>` cho mỗi đầu vào (`task_run.py` gom vào `Log_JobRun`); `INVALID` ⇒ thoát ≠ 0,
-   không ghi gì. Dùng lại hàm đọc của chặng xử lý; chạy được với `--doc <file>` để agent kiểm file TRƯỚC khi nộp lên `DataInput`.
-   Thử đỏ đủ 4 tầng (thiếu file · file hỏng · sai khuôn/tên · số không khớp) trước khi gọi là xong. Mẫu: `repo phòng ban` `00_check_input.py`.
-7. **Cổng đầu ra** (task `direction: out`): kiểm TRƯỚC khi giao (đẩy `DataReport` / gửi mail) — kỳ đã đủ
-   (đủ ngày · đủ nhà) và **tổng file = tổng bảng kho cùng kỳ**. In MỘT dòng `OUTPUT_CHECK: OK|INVALID · <file> · <chi tiết>`
-   (`task_run.py` gom vào `Log_JobRun` như `INPUT_CHECK`; tra `Message LIKE N'%OUTPUT_CHECK: INVALID%'`); `INVALID` ⇒ không giao, thoát ≠ 0.
-   Thử đỏ ít nhất 2 ca (kỳ thiếu ngày/nhà · tổng lệch kho) trước khi gọi là xong.
-8. **Kỳ đích = kỳ LIỀN SAU kỳ đã giao trên `DataReport`**, KHÔNG theo "kỳ trước hôm nay" (XYZ đo 07/10). Kỳ đó chưa đóng ⇒ thoát 0,
-   không làm gì. Tính theo hôm nay thì kỳ trễ data bị nhảy cóc (weekly còn đánh số tuần sau cho dữ liệu tuần trễ).
-   Mẫu: `repo phòng ban` `run_weekly.next_week_after` · `run_nq.next_month_after_delivered`.
-9. **Tới hạn mà chưa đủ data ⇒ tự dò lại mỗi 3 giờ, qua nhiều ngày tới khi đủ** (*"tới ngày, nếu chưa có data, thì cứ
-   check lại tự động sau mỗi 3 tiếng cho tới khi nào đủ data"*). Khớp `vm_deploy` (một giờ mỗi lịch): MỘT lịch `daily`, launcher thật
-   truyền `--retry-hours 3`; trong lượt chạy, cổng đầu vào/sẵn sàng đỏ ⇒ ngủ 3 giờ rồi dò lại, tới ~23,5 giờ (trước lượt bắn hôm sau).
-   **Chỉ lặp ở CỔNG** — stage sau cổng lỗi thì dừng ngay (lặp ở đó là gửi đôi / che lỗi). Không đẻ task `_Retry` theo giờ.
-   `ExecutionTimeLimit` ≥ 24 giờ (mặc định `schtasks` 72 giờ là đủ). Lượt chưa đủ data thoát ≠ 0 ⇒ `Log_JobRun` đỏ 0–3 lần mỗi kỳ là
-   CỔNG CHẶN ĐÚNG, không phải task hỏng.
-10. **Dấu "đã gửi" TRƯỚC khi upload**: gửi mail thật xong ghi `data/<Task>/02_processing/_sent_<kỳ>.txt`, rồi mới đẩy `DataReport`;
-    lượt sau thấy dấu ⇒ dừng (upload lỗi thì báo đẩy tay, KHÔNG gửi lại). Không có dấu thì upload lỗi = lượt 3 giờ sau gửi mail LẦN HAI.
-11. **Mail báo lỗi cho người vận hành** (*"gửi mail cho t nếu task fail và thiếu dữ liệu"*): chỉ ở lượt THẬT đọc kho — lượt chạy bằng dữ liệu mẫu/test **KHÔNG gửi** (07/10 một lượt thử của XYZ gửi
-    mail y như thật, người dùng tưởng task tự chạy sai ngày); chỉ tới người vận hành của task (người gửi của phòng trong `mail_vault.json`),
-    KHÔNG Cc — đây là báo cho người chạy, không phải mail báo cáo. Gửi khi: (a) stage nào thoát ≠ 0 · `OUTPUT_CHECK` đỏ · upload lỗi
-    sau khi đã gửi · crash; (b) thiếu data — MỘT mail mỗi lượt bắn trong ngày (sau khi đã dò hết các lượt 3 giờ), KHÔNG mail mỗi 3 giờ.
-    Hàm gửi **không bao giờ được raise** (mail lỗi không được che mã thoát của task).
-    **Bố cục mail** (*"cái này dc hơn"*; bản đổ log thô bị bác: *"báo cáo đơn giản ngắn gọn thôi, làm dạng
-    bảng dễ nhìn"*): tiêu đề `[<PHÒNG> task] <task>: <kết quả>`; thân là MỘT bảng hai cột, mỗi dòng một thông tin — **Task** · **Lúc**
-    (giờ dd/mm/yyyy · tên máy) · **Kết quả** · **Chưa đạt** (mỗi mục kiểm đỏ một dòng, bỏ ký hiệu console `❌`/`→`) · **Log cuối** (CHỈ
-    khi lỗi không phải ở cổng, ≤ 12 dòng, khung tự xuống dòng) · **Bước kế** · **Log** (đường log trên máy chạy). Không đổ log thô.
-    Mẫu: `repo phòng ban` `scripts/dw_access.alert` (commit `dd07cc7`; thử đỏ 07/10: cổng thiếu 1 ngày ⇒ 1 mail tới người vận hành, 0 file dựng, thoát 1).
+1. **Relative paths** from the file's position (`Path(__file__).resolve().parents[…]`) — never hard-coded `D:\<user>\…`. The DW repo = the sibling folder of the region manager repo (the DW's running copy on the VM has `.env` · `config\mail\` · `form_lib`…).
+2. **Inputs** are read from SharePoint `DataInput` or the DW — never files on the working machine, never an app running on the working machine (the VM has none), never a local copy.
+3. **Outputs**: written to `data\<Task>\03_output\` then pushed to `DataReport/<DEPT>/<Work>/…`. Right after each push, **print one line `OUTPUT_URL: <webUrl>`** — `task_run.py` collects that line into the run ledger.
+4. **Mail**: sender + recipients come from the mail vault of the DW repo (`config/mail/mail_vault.json` — `senders[]` · `groups[]`), no address written in code. No group yet ⇒ ask the DW session to add it, the code STOPS with a clear error, never guesses an address.
+   🔴 **Mail to a RESTAURANT goes only to the restaurant's mailbox, NO CC to anyone** (the case of 45 mails wrongly CC'd, recalled with Purview). The default of every send command: send ONLY to the person running the trial; a real send needs its own flag (`--send-real` / `live` / `--send`).
+5. **Exit code**: 0 = green, non-zero = red. An error midway is never swallowed silently.
+6. **The input gate** (a task with `input_url`): the input-check stage runs BEFORE every writing stage, printing
+   `INPUT_CHECK: OK|NONE|INVALID · <file> · <detail>` for each input (`task_run.py` collects them into `Log_JobRun`); `INVALID` ⇒ exit ≠ 0,
+   nothing written. Reuse the processing stage's reading function; runnable with `--doc <file>` so the agent checks a file BEFORE submitting it to `DataInput`.
+   Test red on all 4 layers (missing file · broken file · wrong mould/name · figures not matching) before calling it done. Sample: the department repo's `00_check_input.py`.
+7. **The output gate** (a task with `direction: out`): checks BEFORE handing out (push to `DataReport` / send mail) — the period is complete
+   (every day · every restaurant) and **the file total = the DW table total for the same period**. Print ONE line `OUTPUT_CHECK: OK|INVALID · <file> · <detail>`
+   (`task_run.py` collects it into `Log_JobRun` like `INPUT_CHECK`; look up with `Message LIKE N'%OUTPUT_CHECK: INVALID%'`); `INVALID` ⇒ nothing handed out, exit ≠ 0.
+   Test red on at least 2 cases (a period missing a day/restaurant · a total off from the DW) before calling it done.
+8. **The target period = the period RIGHT AFTER the one already handed out on `DataReport`**, NOT "the period before today" (measured by XYZ 07/10). That period not closed yet ⇒ exit 0,
+   do nothing. Counting from today makes a period with late data get skipped (a weekly report even numbered the next week for late week data).
+   Sample: the department repo's `run_weekly.next_week_after` · `run_nq.next_month_after_delivered`.
+9. **Due but the data not complete ⇒ search again every 3 hours, over several days, until complete.** Matching `vm_deploy` (one hour per schedule): ONE `daily` schedule, the real launcher
+   passes `--retry-hours 3`; within the run, the input/readiness gate red ⇒ sleep 3 hours and search again, up to ~23.5 hours (before the next day's run fires).
+   **Repeat only at the GATE** — a stage after the gate failing stops at once (repeating there sends twice / hides the error). Never create hourly `_Retry` tasks.
+   `ExecutionTimeLimit` ≥ 24 hours (the `schtasks` default of 72 hours is enough). A run without complete data exits ≠ 0 ⇒ `Log_JobRun` red 0–3 times per period is
+   THE GATE BLOCKING CORRECTLY, not a broken task.
+10. **The "sent" mark BEFORE uploading**: after the real mail is sent write `data/<Task>/02_processing/_sent_<period>.txt`, only then push to `DataReport`;
+    the next run sees the mark ⇒ stops (an upload error is reported for a manual push, NEVER sent again). Without the mark an upload error = the run 3 hours later sends the mail A SECOND TIME.
+11. **Failure mail to the operator** (mail the operator when the task fails or lacks data): only on a REAL run reading the DW — a run on sample/test data **does NOT send** (07/10 a trial run of XYZ sent
+    mail exactly like the real thing, and the requester thought the task had run itself on the wrong day); only to the task's operator (the department's sender in `mail_vault.json`),
+    NO Cc — this is a notice to the person running it, not a report mail. Sent when: (a) a stage exits ≠ 0 · `OUTPUT_CHECK` red · an upload error
+    after sending · a crash; (b) data missing — ONE mail per day's firing run (after every 3-hour search is used up), NEVER a mail every 3 hours.
+    The sending function **must never raise** (a mail error must not hide the task's exit code).
+    **Mail layout** (a short, simple report in an easy-to-read table; a raw log dump was rejected): subject `[<DEPT> task] <task>: <result>`; the body is ONE two-column table, one fact per row — **Task** · **When**
+    (time dd/mm/yyyy · machine name) · **Result** · **Not met** (each red check one row, console symbols `❌`/`→` dropped) · **Last log lines** (ONLY
+    when the error is not at the gate, ≤ 12 lines, a frame that wraps) · **Next step** · **Log** (the log path on the running machine). No raw log dump.
+    Sample: the department repo's `scripts/dw_access.alert` (commit `dd07cc7`; tested red 07/10: the gate missing 1 day ⇒ 1 mail to the operator, 0 files built, exit 1).
 
-## 2. Khai ở repo phòng (3 chỗ)
+## 2. Declared in the department repo (3 places)
 
-**a) `tasks/<Task>/spec.md` — khối đầu:** **`direction: in|out`** (§Hai chiều) · `cadence` (Daily/Weekly/Monthly) · `run_at` · **`input_url:`** = link THƯ MỤC chứa file GỐC người nộp trên SharePoint, kể cả khi task đọc bảng DW nạp từ file đó (bỏ trống chỉ khi số gốc toàn từ hệ thống) · **`output_url:`** = link THƯ MỤC kết quả trên SharePoint (nhiều đích: ngăn bằng ` | `). Vd
+**a) `tasks/<Task>/spec.md` — the top block:** **`direction: in|out`** (§Two directions) · `cadence` (Daily/Weekly/Monthly) · `run_at` · **`input_url:`** = the link to the FOLDER holding the submitter's ORIGINAL files on SharePoint, even when the task reads a DW table loaded from that file (left empty only when the original figures all come from systems) · **`output_url:`** = the link to the result FOLDER on SharePoint (several targets: separated by ` | `). E.g.
 `output_url: <sharepoint_site>/DataReport/ABC/InventoryResult`
 
-**b) `bin/<Task>.cmd`** — launcher: đường tương đối `%~dp0..\tasks\<Task>\pipeline`, `set PYTHONUTF8=1`, trả `exit /b %errorlevel%`.
+**b) `bin/<Task>.cmd`** — the launcher: relative path `%~dp0..\tasks\<Task>\pipeline`, `set PYTHONUTF8=1`, returns `exit /b %errorlevel%`.
 
-**c) `tasks/<Task>/vm_deploy.json`** — manifest:
+**c) `tasks/<Task>/vm_deploy.json`** — the manifest:
 ```json
 {
   "files": ["bin/<Task>.cmd", "scripts/task_run.py", "tasks/<Task>/pipeline/common.py", "tasks/<Task>/pipeline/run.py"],
-  "needs": ["../repo quản lý vùng/.env", "../repo quản lý vùng/config/mail/mail_vault.json", "../repo quản lý vùng/config/mail/mail.env"],
+  "needs": ["../<region manager repo>/.env", "../<region manager repo>/config/mail/mail_vault.json", "../<region manager repo>/config/mail/mail.env"],
   "schedule": [
     {"task": "<Task>", "launcher": "bin/<Task>.cmd", "args": "live", "daily": "13:00"}
   ]
 }
 ```
-- `files`: ĐỦ mọi file task cần lúc chạy (code · launcher · `scripts/task_run.py` · cấu hình) — thiếu một file là VM chạy hỏng. Không khai `data\`, `docs\`, bí mật của repo khác. File đuôi `*.local.*` KHÔNG bao giờ lên VM (`.stignore`) — đừng khai.
-- `needs`: file của repo KHÁC phải có sẵn ở bản chạy (thường là của kho).
-- `schedule`: tên task = tên thư mục task (lượt phụ thêm hậu tố `_Night` / `_Close`…). Một trong `"daily": "HH:MM"` · `"weekly": {"day": "MON", "at": "HH:MM"}` · `"monthly": {"day": 1, "at": "HH:MM"}` · `"ondemand": true` (07/10: không trigger, chạy khi bấm — mẫu `repo quản lý vùng/tasks/DW_OnDemand_RunModels`).
-- `files` nhận mẫu `*` / `?` (07/10, vd `"models/*.sql"`) — giải trong repo nguồn mỗi vòng. Gỡ một mục `schedule` ⇒ `vm_deploy` ghi `ORPHAN` + TẮT task đó (không xoá; xoá do người dùng).
-- 🔴 **LƯỚI SLOT 30 PHÚT** (*"mọi task từ mọi phòng ban sẽ trải dài từ 12h đêm tới hết ngày, cứ cách nhau 30p … bỏ task vào theo slot"*): giờ chạy chỉ được `HH:00` hoặc `HH:30`, mỗi task MỘT slot, không chồng task của phòng khác. Trùng = cùng giờ, trừ hai lịch tuần khác thứ hoặc hai lịch tháng khác ngày (lịch ngày giữ slot mọi ngày). **Ngoại lệ cùng chuỗi việc** (*"lịch ko nhất thiết cấm trùng lịch, XYZ với ABC 2 mail nhưng chung loại job vẫn gửi chung dc"*): các lịch khai CÙNG `"slot_group": "<tên chuỗi>"` được chung slot (vd `store_inventory` = đợt cứu kho + mail ABC + XYZ lúc 01:00/13:00); khác nhóm hoặc không khai nhóm thì vẫn tính trùng. Máy canh: `vm_deploy` không đăng ký lịch mới/vừa đổi lệch lưới hoặc trùng slot, ghi `!! SLOT … not registered` vào `vm_deploy.log` ⇒ chọn slot khác. **THỨ TỰ ƯU TIÊN SLOT** (*"ưu tiên lịch ABC XYZ inventory trước, rồi mới tới XYZ và mấy lịch sau"*): ① task gắn GIỜ CHỐT nghiệp vụ trong ngày — chuỗi tồn kho (ABC night 01:00 · ABC close 13:00 · XYZ 13:30, ngay sau lượt cứu 01:00/13:00 của kho) · ② task hằng ngày khác · ③ báo cáo tuần · ④ tháng / quý. Mỗi phòng TỰ ĐỌC bảng slot và TỰ ĐIỀN vào slot trống (*"kể cả việc schedule, mỗi phòng ban tự đọc tự điền vào slot trống"*) — không xin kho. Muốn slot của task ưu tiên THẤP hơn ⇒ nhắn thẳng phiên của repo đó, repo ưu tiên thấp tự dời (vd XYZ Weekly thứ Sáu 01:00 → 02:30 để nhường ABC night). KHÔNG bao giờ đẩy task ưu tiên cao hơn. Task đọc số tồn kho của lượt cứu ⇒ đặt CÙNG slot cứu hoặc sau, và chờ `_Config.INVENTORY_RescueDoneAt` mới hơn giờ slot rồi mới đọc (cổng đầu vào §1 mục 6).
-**Chọn slot TRƯỚC khi khai:** `python <repo tổng quản vùng>\scripts\vm_schedule.py` (bảng slot đang dùng của mọi repo · trùng · lệch lưới · giờ trống, đọc thẳng mọi `vm_deploy.json` — không cần SSH) rồi `… --check daily 13:30` (hoặc `weekly FRI 02:30` · `monthly 1 02:00`) phải ra `TRỐNG`. Bản in sẵn do script sinh nằm ở tổng quản. Task hệ cũ không tính (không đụng, sẽ cắt). Luật cũ "né phút :01/:31" BỎ — task hệ cũ `\Inventory day` đã xoá 07/10.
-- Lệnh thật được dựng sẵn: `python scripts\task_run.py --task <Task> -- bin\<Task>.cmd <args> >> data\logs\<Task>.log`.
-  Log trên VM luôn tên `data\logs\<tên task>.log` (task đăng ký tay trước chuẩn có thể còn file log tên khác, vd `…_close.log` —
-  từ lượt bọc `task_run` trở đi log nằm ở tên mới).
-- Task đã đăng ký TAY trước chuẩn (cùng tên): khai `schedule` cùng tên là `vm_deploy` dựng lại theo manifest — một nguồn, không giữ
-  hai bản. Task tay đang BẬT thì giữ bật; muốn tắt ⇒ phòng tự tắt (`Disable-ScheduledTask` qua ssh) sau lời người dùng trong phiên phòng.
+- `files`: EVERY file the task needs at run time (code · launcher · `scripts/task_run.py` · config) — one missing and the VM run breaks. Do not declare `data\`, `docs\`, secrets of another repo. Files ending `*.local.*` NEVER go onto the VM (`.stignore`) — do not declare them.
+- `needs`: files of ANOTHER repo that must be present in the running copy (usually the DW's).
+- `schedule`: the task name = the task folder name (extra runs take a suffix `_Night` / `_Close`…). One of `"daily": "HH:MM"` · `"weekly": {"day": "MON", "at": "HH:MM"}` · `"monthly": {"day": 1, "at": "HH:MM"}` · `"ondemand": true` (07/10: no trigger, runs when clicked — sample `<region manager repo>/tasks/DW_OnDemand_RunModels`).
+- `files` accepts the patterns `*` / `?` (07/10, e.g. `"models/*.sql"`) — resolved in the source repo each round. Removing a `schedule` item ⇒ `vm_deploy` writes `ORPHAN` + DISABLES that task (not deleted; deleting is the requester's call).
+- 🔴 **THE 30-MINUTE SLOT GRID** (every task of every department spreads from midnight to the end of the day, 30 minutes apart, each task dropped into a slot): run times may only be `HH:00` or `HH:30`, each task ONE slot, never overlapping another department's task. Overlap = the same time, except two weekly schedules on different weekdays or two monthly schedules on different days (a daily schedule holds its slot every day). **The same-chain exception** (overlap is not forbidden for jobs of one chain, e.g. two mails of XYZ and ABC of the same kind may go together): schedules declaring THE SAME `"slot_group": "<chain name>"` may share a slot (e.g. `store_inventory` = the DW's rescue run + the ABC + XYZ mails at 01:00/13:00); different groups or no group still count as overlapping. Machine watch: `vm_deploy` does not register a new/just-changed schedule off the grid or overlapping a slot, writing `!! SLOT … not registered` into `vm_deploy.log` ⇒ choose another slot. **SLOT PRIORITY ORDER** (the ABC/XYZ inventory schedules first, then XYZ and the later schedules): ① tasks tied to a business CUT-OFF TIME in the day — the inventory chain (ABC night 01:00 · ABC close 13:00 · XYZ 13:30, right after the DW's 01:00/13:00 rescue run) · ② other daily tasks · ③ weekly reports · ④ monthly / quarterly. Each department READS the slot table ITSELF and FILLS a free slot ITSELF (scheduling included) — never asks the DW. Wanting the slot of a LOWER-priority task ⇒ message that repo's session directly, the lower-priority repo moves itself (e.g. XYZ Weekly Friday 01:00 → 02:30 to make way for ABC night). NEVER push a higher-priority task. A task reading the stock figures of the rescue run ⇒ placed IN the rescue slot or after, and waits for `_Config.INVENTORY_RescueDoneAt` newer than the slot time before reading (input gate §1 item 6).
+**Choose the slot BEFORE declaring:** `python <region manager repo>\scripts\vm_schedule.py` (the table of slots in use by every repo · overlaps · off-grid · free times, read straight from every `vm_deploy.json` — no SSH needed) then `… --check daily 13:30` (or `weekly FRI 02:30` · `monthly 1 02:00`) must give `TRỐNG`. The printed copy the script generates sits in the region manager. Old-system tasks do not count (not touched, to be cut). The old rule "avoid minutes :01/:31" is DROPPED — the old-system task `\Inventory day` was deleted 07/10.
+- The real command is prebuilt: `python scripts\task_run.py --task <Task> -- bin\<Task>.cmd <args> >> data\logs\<Task>.log`.
+  The log on the VM is always named `data\logs\<task name>.log` (a task registered by hand before the standard may still have a log with another name, e.g. `…_close.log` —
+  from the run wrapped by `task_run` on, the log sits under the new name).
+- A task registered BY HAND before the standard (same name): declaring `schedule` with the same name makes `vm_deploy` rebuild it from the manifest — one source, never two
+  copies. A hand task currently ENABLED stays enabled; to disable it ⇒ the department disables it itself (`Disable-ScheduledTask` over ssh) after the requester's word in the department session.
 
-## 3. Chạy thử TRƯỚC khi lên
+## 3. A trial run BEFORE going up
 
-1. Chạy launcher tại máy ở chế độ thử (mail chỉ tới chính người dùng). Đọc log: không Traceback, mã thoát 0. Muốn thử cả lớp bọc thì
-   `python scripts\task_run.py --task <Task> --no-log -- bin\<Task>.cmd <args thử>` — **`--no-log` bắt buộc khi thử**: không có nó,
-   lượt thử ghi một dòng vào `Log_JobRun` THẬT dưới đúng tên task thật (sổ chặn xoá — dòng thử nằm đó mãi).
-   Thử với output đổ RA FILE (`… > thu.log`), không chỉ ra màn hình: task in tiếng Việt mà stdout là file là ca hay vỡ bảng mã
-   (lượt thử XYZ 04/10 bắt được — `task_run` nay ép UTF-8; file log đọc bằng UTF-8).
-2. **In danh sách To/CC của TỪNG mail** và đối chiếu với điều người dùng đã chốt. Không khớp ⇒ dừng.
-3. `python scripts\make_output_links.py` (từ gốc repo) ⇒ `data\<Task>\03_output\_SharePoint.url` mở đúng thư mục. Script báo `EXTRA`
-   nếu `03_output` còn file khác ngoài shortcut — **dọn khi chuyển task lên VM = CHUYỂN, không xoá** (*"dọn là đẩy lên VM nha,
-   ko xóa"* · *"đẩy VM lẫn đẩy lên SP"*): `python scripts\move_outputs_to_vm.py` (chạy khô) → `--apply`. Mỗi file: SharePoint (ĐÚNG thư mục
-   `output_url` — file sót là bản giao chính thức nằm nhầm chỗ, không phải lưu trữ; KHÔNG có `_Archive/` — ; trùng tên khác
-   nội dung ⇒ KHÔNG ghi đè, báo `CONFLICT`, giữ bản máy chờ người dùng) + VM (`<vm_run_dir>\<Repo>\data\<Task>\03_output\`; trùng tên khác nội dung ⇒ `__local`),
-   cả hai kiểm khớp mới gỡ bản ở máy. Excel so theo giá trị ô (SharePoint tự sửa file Office khi nhận). Task `delivers_to: mail` hoặc
-   `output_url` ở thư mục phòng khác ⇒ bỏ bước SharePoint, chỉ VM. `reference/` ⇒ chép lên VM, giữ bản máy (mục File tham chiếu).
-4. Commit repo phòng (pathspec, chỉ file của task).
+1. Run the launcher on the machine in trial mode (mail only to the requester). Read the log: no Traceback, exit code 0. To test the wrapper too,
+   `python scripts\task_run.py --task <Task> --no-log -- bin\<Task>.cmd <trial args>` — **`--no-log` is required when trying**: without it,
+   the trial writes a line into the REAL `Log_JobRun` under the real task name (the ledger blocks deletion — the trial line stays forever).
+   Test with the output going TO A FILE (`… > trial.log`), not only to the screen: a task printing Vietnamese while stdout is a file is a case that often breaks the code page
+   (the XYZ trial 04/10 caught it — `task_run` now forces UTF-8; the log file is read as UTF-8).
+2. **Print the To/CC list of EACH mail** and compare it with what the requester settled. Not matching ⇒ stop.
+3. `python scripts\make_output_links.py` (from the repo root) ⇒ `data\<Task>\03_output\_SharePoint.url` opens the right folder. The script reports `EXTRA`
+   when `03_output` still holds files other than the shortcut — **tidying when moving a task onto the VM = MOVING, not deleting** (push to the VM and to SharePoint):
+   `python scripts\move_outputs_to_vm.py` (dry run) → `--apply`. Each file: SharePoint (EXACTLY the `output_url` folder — a leftover file is an official handed-out copy in the wrong
+   place, not an archive; there is NO `_Archive/`; same name, different content ⇒ NOT overwritten, reports `CONFLICT`, keeps the machine's copy for the requester)
+   + the VM (`<vm_run_dir>\<Repo>\data\<Task>\03_output\`; same name, different content ⇒ `__local`), the machine's copy is removed only when both check out.
+   Excel is compared by cell values (SharePoint edits Office files on receipt). A task with `delivers_to: mail` or an `output_url` in another department's folder ⇒
+   skip the SharePoint step, VM only. `reference/` ⇒ copied to the VM, the machine's copy kept (item Reference files).
+4. Commit the department repo (pathspec, only the task's files).
 
-## 4. Lên VM — tự động
+## 4. Going onto the VM — automatic
 
-1. Syncthing chở sang `<vm_work_dir>\<Repo>` (vài chục giây). Repo chưa có folder Syncthing ⇒ báo người dùng (người quản trị máy chủ tự thêm folder).
-2. Trong ≤ 5 phút `vm_deploy` chép sang `<vm_run_dir>\<Repo>` và đăng ký lịch. Task MỚI được tạo ở trạng thái **TẮT**.
-3. 🔴 **PHÒNG TỰ LÀM, KHÔNG NHẮN KHO** (*"luật là task phòng nào phòng đó quản"* — bản cũ bắt "nhắn phiên kho … kho bật task" là chỗ lủng): phiên của CHÍNH phòng (a) đọc `<vm_run_dir>\repo quản lý vùng\data\logs\vm_deploy.log` (dòng `REGISTERED` / `!! SLOT` / `VALIDATION FAILED` của task mình) · (b) chạy thử MỘT lượt trên VM ở chế độ thử (mail chỉ tới người vận hành) · (c) đưa người dùng xem kết quả / mail thử ngay trong phiên phòng · (d) người dùng gật ⇒ phòng tự `Enable-ScheduledTask -TaskName <Task>` qua `ssh <vm_ssh_alias>` (cờ `.allow-outside` một lần của repo phòng, tạo sau lời người dùng) rồi đo `State = Ready` + `NextRunTime`. Tắt / gỡ lịch tay cũ trên máy làm việc cũng do phòng. Task đã bật thì sửa lịch/lệnh sau đó vẫn giữ trạng thái bật. **Ranh giới (*"kho chỉ quản việc bổ sung bảng cột mới theo yêu cầu nghiệp vụ, chứ gì cũng nhắn kho rồi sao làm hết"*): nhắn kho CHỈ khi task cần BẢNG / CỘT kho chưa có.** Chạy thử · bật/tắt · chọn slot (`vm_schedule.py --check`) · dời lịch · nhường slot (nhắn thẳng phiên phòng giữ slot) · đọc `vm_deploy.log` · lỗi của task mình ⇒ phòng tự làm, không qua kho.
-4. Lượt thật đầu tiên: đọc `dbo.Log_JobRun` (JobName = tên task, StepName `(Task Scheduler outcome)`) — `StatusText` OK, `Message` có `OUTPUT_URL:` + `INPUT_CHECK: OK` (task in) hoặc `OUTPUT_CHECK: OK` (task out).
+1. Syncthing carries it to `<vm_work_dir>\<Repo>` (a few tens of seconds). A repo without a Syncthing folder yet ⇒ tell the requester (the server administrator adds the folder).
+2. Within ≤ 5 minutes `vm_deploy` copies it to `<vm_run_dir>\<Repo>` and registers the schedule. A NEW task is created **DISABLED**.
+3. 🔴 **THE DEPARTMENT DOES IT ITSELF, NEVER ASKS THE DW** (each department manages its own tasks — the old version requiring "ask the DW session … the DW enables the task" was the hole): the department's OWN session (a) reads `<vm_run_dir>\<region manager repo>\data\logs\vm_deploy.log` (the `REGISTERED` / `!! SLOT` / `VALIDATION FAILED` lines of its task) · (b) runs ONE trial on the VM in trial mode (mail only to the operator) · (c) shows the requester the result / trial mail in the department session itself · (d) the requester nods ⇒ the department itself runs `Enable-ScheduledTask -TaskName <Task>` over `ssh <vm_ssh_alias>` (the department repo's one-use `.allow-outside` flag, created after the requester's word) then measures `State = Ready` + `NextRunTime`. Disabling / removing the old hand schedule on the working machine is the department's too. An enabled task stays enabled when its schedule/command is edited later. **The boundary (the DW only handles adding new tables/columns on business request): ask the DW ONLY when the task needs a DW TABLE / COLUMN that does not exist yet.** Trial runs · enabling/disabling · choosing a slot (`vm_schedule.py --check`) · moving a schedule · yielding a slot (message the session of the department holding it directly) · reading `vm_deploy.log` · errors of your own task ⇒ the department does it itself, not through the DW.
+4. The first real run: read `dbo.Log_JobRun` (JobName = the task name, StepName `(Task Scheduler outcome)`) — `StatusText` OK, `Message` has `OUTPUT_URL:` + `INPUT_CHECK: OK` (an in task) or `OUTPUT_CHECK: OK` (an out task).
 
-## 5. Kiểm & tra cứu
+## 5. Checking & looking up
 
 ```sql
 SELECT TOP 20 JobName, RunAt, DurationSeconds, StatusText, Message
 FROM <warehouse_db>.dbo.Log_JobRun WHERE StepName = N'(Task Scheduler outcome)' ORDER BY RunAt DESC;
 ```
-Log đầy đủ một lượt: VM `<vm_run_dir>\<Repo>\data\logs\<Task>.log` · log deploy: `<vm_run_dir>\repo quản lý vùng\data\logs\vm_deploy.log`.
+The full log of a run: VM `<vm_run_dir>\<Repo>\data\logs\<Task>.log` · the deploy log: `<vm_run_dir>\<region manager repo>\data\logs\vm_deploy.log`.
 
-## Đừng làm
-- Đừng đăng ký task tay bằng `schtasks` — khai `schedule` trong manifest (một nguồn, deploy tự dựng lại khi đổi).
-- Đừng cho task đọc/ghi `<vm_work_dir>\…` — chỉ `<vm_run_dir>\…`.
-- Đừng đồng bộ `data\`, đừng trỏ `03_output` vào thư mục OneDrive của SharePoint (chạy thử tại máy sẽ thành bản phát hành).
-- Đừng gửi thật lần đầu khi chưa in To/CC và chưa có lời người dùng.
-- 🔴 Đừng đề xuất TẠO Excel/sheet mới (`<PHÒNG>_<Luật>.xlsx` trên `DataInput`) để chứa một luật/ngưỡng/bảng mã mà không ai gửi
-  (*"excel người ta gửi mới có, còn ko gửi thì nó đã nạp từ DW, tạo excel để làm gì??"*). Phép thử: *"Luật này có file
-  người ta gửi không?"* — có ⇒ sheet trên `DataInput` (§Hai chiều) · không ⇒ nhắn phiên kho giữ luật thành dữ liệu kho — cột dim chủ · `Bridge_*` · `_Config` (5b; KHÔNG tự đặt tiền tố mới kiểu `Rule_`).
-  Rộng hơn: không đầu vào/đầu ra giả nào (§1a, mục đầu skill).
-- Đừng chép một ngưỡng/luật kho đang giữ vào code phòng (vd `LOOKBACK_DAYS = 184`) — đọc từ DW (§Hai chiều).
-- Đừng tính kỳ đích theo ngày hôm nay (§1 mục 8) · đừng lặp lại stage SAU cổng khi dò lại (§1 mục 9) · đừng mail cảnh báo mỗi lượt dò
-  3 giờ (§1 mục 11) · đừng đẩy `DataReport` trước khi ghi dấu "đã gửi" (§1 mục 10).
+## Do not
+- Do not register a task by hand with `schtasks` — declare `schedule` in the manifest (one source, the deploy rebuilds it on change).
+- Do not let a task read/write `<vm_work_dir>\…` — only `<vm_run_dir>\…`.
+- Do not sync `data\`, do not point `03_output` at the OneDrive folder of SharePoint (a trial run on the machine would become a release).
+- Do not send for real the first time before printing To/CC and having the requester's word.
+- 🔴 Do not propose CREATING a new Excel/sheet (`<DEPT>_<Rule>.xlsx` on `DataInput`) to hold a rule/threshold/code table nobody sends
+  (Excel exists only when people send it; what nobody sends is already loaded from the DW). The test: *"Does anybody send a file
+  for this rule?"* — yes ⇒ a sheet on `DataInput` (§Two directions) · no ⇒ ask the DW session to keep the rule as DW data — a column on the owning dim · `Bridge_*` · `_Config` (5b; NEVER invent a new prefix like `Rule_`).
+  More broadly: no fake input/output at all (§1a, the first item of the skill).
+- Do not copy a threshold/rule the DW holds into department code (e.g. `LOOKBACK_DAYS = 184`) — read it from the DW (§Two directions).
+- Do not compute the target period from today (§1 item 8) · do not repeat the stages AFTER the gate when searching again (§1 item 9) · do not send a warning mail every 3-hour
+  search (§1 item 11) · do not push `DataReport` before writing the "sent" mark (§1 item 10).

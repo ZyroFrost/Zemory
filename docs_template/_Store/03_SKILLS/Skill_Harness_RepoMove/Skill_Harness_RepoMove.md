@@ -1,81 +1,83 @@
 ---
 id: Skill_Harness_RepoMove
 name: harness-repo-move
-version: 1
+version: 2
 type: process
 checked: [Skill_Harness_Reshape, Skill_Harness_Reconcile, Skill_Harness_Adopt, Skill_Harness_SessionClose, Rule_Gate_44_RepoScope]
 description: Rename or move a whole repo folder together with everything bound to its path - Claude Code sessions, memory entries, session titles and the places that point at it - then prove nothing still points at the old path. Use whenever a repo folder is renamed, or moved to another drive or parent folder. Restructuring the inside of a repo is Skill_Harness_Reshape or Skill_Harness_Reconcile, not this. Vietnamese triggers - "đổi tên repo", "dời repo", "chuyển thư mục repo", "move repo", "rename repo".
 ---
 
-# harness-repo-move — đổi tên hay dời một repo
+# harness-repo-move — renaming or moving a repo
 
-> Skill này chỉ đổi CHỖ và TÊN của cả repo, giữ nguyên ruột. Rút từ đợt đổi `_DB_AppCore` → `_DB_ERP` (22/10).
+> This skill changes only the PLACE and NAME of a whole repo, keeping its inside as it is. Drawn from the `_DB_AppCore` → `_DB_ERP` rename (22/10).
 
-**Vì sao không gộp vào phần có sẵn:**
-- `Skill_Harness_Reshape` nắn NỘI DUNG repo lên một bộ của HS (luật · skill · slot); đường của repo không đổi.
-- `Skill_Harness_Reconcile` dời FILE lạc chỗ bên trong repo; không đụng thư mục gốc, phiên hay bộ nhớ.
-- `Skill_Harness_Adopt` nhận repo có cấu trúc riêng vào harness; không dời gì.
-- `Skill_Harness_SessionClose` ghi sổ cuối phiên; không sửa tệp phiên.
-- `Rule_Gate_44_RepoScope` chỉ chặn việc ghi ngoài repo và đòi lời người dùng; không nói cách dời, cách trỏ lại phiên cũ,
-  cách nghiệm thu. Skill này thi hành luật đó cho một loại việc cụ thể.
+**Why it is not merged into an existing part:**
+- `Skill_Harness_Reshape` brings a repo's CONTENT onto a set of HS (laws · skills · slots); the repo's path does not change.
+- `Skill_Harness_Reconcile` moves FILES in the wrong place inside a repo; it does not touch the root folder, sessions or memory.
+- `Skill_Harness_Adopt` takes a repo with its own structure into the harness; it moves nothing.
+- `Skill_Harness_SessionClose` writes the ledgers at the end of a session; it does not edit session files.
+- `Rule_Gate_44_RepoScope` only blocks writes outside the repo and asks for the requester's word; it does not say how to move, how to point old sessions back,
+  how to accept the result. This skill carries out that law for one kind of work.
 
-## 0. Trước khi chạm repo
+## 0. Before touching the repo
 
-- Tên mới do người dùng quyết, nói trong chính phiên làm việc. Lời nói ở phiên khác không thay được: dời repo là ghi ngoài
-  repo của phiên đang làm (`Rule_Gate_44_RepoScope`).
-- Không phiên agent hay editor nào còn mở repo đó — Windows khoá thư mục đang mở. Phiên đứng TRONG repo không dời được chính
-  nó ⇒ một phiên ở repo KHÁC làm.
-- `git status` của repo sạch; ghi lại commit cuối để đối chiếu sau khi dời.
-- Liệt kê nơi trỏ vào đường cũ: `docs/.harness.json` của các repo khác · cấu hình ngoài repo (SSH · tác vụ hẹn giờ · deploy ·
-  bản trên máy ảo) · tài liệu của repo khác. Chỉ liệt kê và báo; tài liệu BÊN TRONG repo bị dời là việc của phiên sau của chính nó.
+- The new name is decided by the requester, said in the working session itself. Words in another session do not count: moving a repo writes outside
+  the repo of the working session (`Rule_Gate_44_RepoScope`).
+- No agent session or editor still has the repo open — Windows locks a folder in use. A session standing INSIDE the repo cannot move
+  itself ⇒ a session in ANOTHER repo does it.
+- The repo's `git status` is clean; write down the last commit to compare after the move.
+- List the places pointing at the old path: other repos' `docs/.harness.json` · config outside the repo (SSH · scheduled tasks · deploy ·
+  copies on a VM) · documents of other repos. Only list and report; documents INSIDE the moved repo are the work of its own next session.
 
-## 1. Dời
+## 1. Move
 
-1. Chạy thử, không ghi gì: `zemory project move "<đường cũ>" "<đường mới>"`. Đọc bảng xem trước: thư mục · thư mục phiên
-   Claude · bộ nhớ (phiên · tài liệu · sổ thay đổi) · registry.
-2. Bảng đúng ⇒ cùng lệnh thêm `--apply`.
+1. A dry run, writing nothing: `zemory project move "<old path>" "<new path>"`. Read the preview table: folder · Claude session
+   folder · memory (sessions · documents · changelog) · registry.
+2. The table is right ⇒ the same command with `--apply`.
+- A WSL path (`\\wsl.localhost\<distro>\…`) is typed in PowerShell, not in Git Bash: Git Bash rewrites the backslashes before the
+  command sees them (measured on the second machine 25/10). Another drive or a WSL distro: the move copies, checks files and bytes, keeps the source.
 
-## 2. Trỏ lại các phiên cũ
+## 2. Point the old sessions back
 
-Lệnh dời chỉ đổi tên thư mục phiên; các dòng bên trong tệp phiên vẫn mang đường và tên cũ.
+The move only renames the session folder; the lines inside the session files still carry the old path and name.
 
-- Sao lưu các tệp `~/.claude/projects/<thư mục phiên mới>/*.jsonl` trước khi sửa (gộp thành một tệp nén — giới hạn tệp tạm,
+- Back up the `~/.claude/projects/<new session folder>/*.jsonl` files before editing (packed into one archive — the scratch file cap,
   `Rule_Gate_04_ScratchFiles`).
-- Đếm trước: mỗi trường cấu trúc có bao nhiêu giá trị chứa tên cũ.
-- Chỉ sửa trường CẤU TRÚC, theo từng giá trị JSON, không thay chuỗi mù trên cả dòng:
-  - `cwd` · `trackingPath`: mọi đời đường cũ của repo (kể cả đường trước các lần dời trước, khác hoa thường ổ đĩa) → đường mới,
-    giữ phần đuôi sau tên repo.
-  - `customTitle` · `agentName`: tên phiên theo khuôn `<repo>_<Model>_<d-m-yyyy>`, giữ đúng ngày cũ.
-- Giữ nguyên: nội dung hội thoại (lịch sử thật) · dòng `cwd` trỏ repo KHÁC (lúc phiên đứng ở repo khác) · phiên chưa có tên.
-- Không dùng đề xuất của `zemory peers --fix` khi nó ghép tên repo mới đè lên tên phiên cũ (đã gặp 22/10:
-  `_DB_ERP_Claude_DB_AppCore_Claude_21-10-2026`). Dòng không đổi thì ghi lại nguyên từng byte.
+- Count first: how many values of each structural field carry the old name.
+- Edit only STRUCTURAL fields, value by JSON value, never a blind string replace over a whole line:
+  - `cwd` · `trackingPath`: every earlier path of the repo (including paths before earlier moves, a different drive-letter case) → the new path,
+    keeping the tail after the repo name.
+  - `customTitle` · `agentName`: the session name by the pattern `<repo>_<Model>_<d-m-yyyy>`, keeping the old date.
+- Leave alone: the conversation content (real history) · `cwd` lines pointing at ANOTHER repo (when the session stood in another repo) · sessions with no name.
+- Do not use the proposal of `zemory peers --fix` when it glues the new repo name onto an old session name (met 22/10:
+  `_DB_ERP_Claude_DB_AppCore_Claude_21-10-2026`). An unchanged line is written back byte for byte.
 
-## 3. Nghiệm thu — đủ cả bảng, thiếu một dòng là chưa xong
+## 3. Acceptance — the whole table; one row missing means not done
 
-| Phép đo | Đạt khi |
+| Measurement | Passes when |
 |---|---|
-| Thư mục | mới có, cũ không còn |
-| Git | `git log -1` đúng commit đã ghi ở bước 0 · `git status` sạch |
-| Chuẩn | `zemory conform --gate` chạy TỪ thư mục mới ⇒ mã 0 |
-| Tệp phiên | số trường đã sửa = số đếm trước · 0 trường cấu trúc còn tên cũ · 0 dòng hỏng JSON |
-| Tên phiên | `zemory peers --all --check` không còn báo lệch khuôn cho repo mới |
-| Chạy thật | người dùng mở lại một phiên cũ thấy chạy bình thường ⇒ xoá bản sao lưu |
+| Folder | the new one exists, the old one is gone |
+| Git | `git log -1` is the commit written down in step 0 · `git status` clean |
+| Standard | `zemory conform --gate` run FROM the new folder ⇒ exit 0 |
+| Session files | the number of fields edited = the count made first · 0 structural fields still carry the old name · 0 broken JSON lines |
+| Session titles | `zemory peers --all --check` no longer reports a pattern mismatch for the new repo |
+| A real run | the requester reopens an old session and it works ⇒ delete the backup |
 
-## 4. Báo
+## 4. Report
 
-- Bảng nghiệm thu bằng số · danh sách nơi còn trỏ đường cũ (bước 0) và ai sửa.
-- Lỗ của công cụ bắt được trong lúc dời ⇒ ghi vào sổ việc của Zemory.
+- The acceptance table in numbers · the list of places still pointing at the old path (step 0) and who fixes them.
+- A tool hole caught during the move ⇒ written into Zemory's ledger.
 
-## Ngoài phạm vi
+## Out of scope
 
-- Đổi tên DB hay dịch vụ đi kèm repo — việc riêng, theo giờ chuyển người dùng chốt.
-- Sửa tài liệu bên trong repo bị dời · nắn cấu trúc bên trong repo (`Skill_Harness_Reshape` · `Skill_Harness_Reconcile`).
+- Renaming a DB or a service that goes with the repo — its own work, at the switch-over time the requester decides.
+- Editing documents inside the moved repo · reshaping the structure inside the repo (`Skill_Harness_Reshape` · `Skill_Harness_Reconcile`).
 
-## Cấm
+## Forbidden
 
-- Dời khi repo còn phiên hoặc editor mở.
-- Thay chuỗi tên cũ trên toàn dòng tệp phiên (đụng cả lịch sử hội thoại).
-- Xoá bản sao lưu tệp phiên trước khi người dùng mở lại được phiên cũ.
+- Moving while the repo still has a session or editor open.
+- Replacing the old name across whole lines of session files (it touches the conversation history).
+- Deleting the session-file backup before the requester can reopen an old session.
 
 ## Implements · Thi hành luật
 - `Rule_Gate_44_RepoScope` — moving a repo writes outside the working repo · dời repo là ghi ngoài repo đang làm

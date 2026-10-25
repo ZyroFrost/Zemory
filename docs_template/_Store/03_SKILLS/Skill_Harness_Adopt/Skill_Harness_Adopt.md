@@ -2,100 +2,100 @@
 id: Skill_Harness_Adopt
 aka: adopt
 name: harness-adopt
-version: 6
+version: 7
 type: process
 description: Nhận một repo CÓ SẴN cấu trúc riêng vào harness mà KHÔNG nắn repo — đọc cây thật, đề xuất bảng ánh xạ slot, chờ người duyệt, rồi khoá vào .harness.json. Dùng khi repo là của bên thứ ba / làm nhóm / có CI-import khoá cứng theo tên folder, hoặc khi `conform` báo cấu trúc gốc đã đổi.
 ---
 
-# Nhận repo có sẵn (hệ ADAPT)
+# Taking in an existing repo (the ADAPT system)
 
-Ta nắn **harness theo repo**, KHÔNG nắn repo. Kết quả của quy trình này là một **bảng ánh xạ đã
-được người duyệt và khoá lại** — từ đó `conform` mới có cái để gác.
+We bend **the harness to the repo**, we do NOT bend the repo. The result of this procedure is **a mapping table
+approved by a person and locked** — only from then does `conform` have something to guard.
 
-## ⛔ Ba điều làm hỏng cả hệ — đọc trước
+## ⛔ Three things that break the whole system — read first
 
-1. **KHÔNG đổi tên / dời / xoá bất kỳ folder nào của repo.** Thấy cấu trúc "xấu" → ghi vào
-   `04_TODO`, không tự sửa. Đổi tên một folder là phá import, CI, pre-commit, và tài liệu của
-   người khác.
-2. **KHÔNG khoá bảng khi chưa có người duyệt.** Nếu chuẩn tự uốn theo bất cứ thứ gì nó nhìn thấy
-   thì `conform` thành lời nói vòng — luôn xanh, không gác gì. Bước duyệt CHÍNH LÀ thứ biến bản
-   mô tả thành một cái cổng.
-3. **KHÔNG ép một folder vào slot "gần đúng".** Không khớp thì cho vào `extra`. Ánh xạ sai còn
-   tệ hơn không ánh xạ: nó khiến agent sau này sửa nhầm chỗ và tin là mình làm đúng chuẩn.
+1. **Do NOT rename / move / delete any folder of the repo.** Seeing an "ugly" structure → write it into
+   `04_TODO`, do not fix it yourself. Renaming a folder breaks imports, CI, pre-commit, and other people's
+   documents.
+2. **Do NOT lock the table without an approver.** If the standard bends itself to whatever it sees,
+   `conform` becomes circular talk — always green, guarding nothing. The approval step IS what turns a
+   description into a gate.
+3. **Do NOT force a folder into a "nearly right" slot.** No match → put it in `extra`. A wrong mapping is
+   worse than no mapping: it makes later agents fix the wrong place and believe they followed the standard.
 
-## Bước 1 — HỎI: APP hay NON-APP?
+## Step 1 — ASK: APP or NON-APP?
 
-**ĐỪNG tự đoán.** Hệ ADAPT chỉ bỏ phần *ép tên folder*; nó KHÔNG bỏ câu hỏi profile.
+**DO NOT guess.** The ADAPT system drops only the *forcing of folder names*; it does NOT drop the profile question.
 
-- **APP** — có code CHẠY do mình phát triển (UI / server / CLI). Áp luật của hệ APP (có luật UI).
-- **NON-APP** — sản phẩm / tài sản; agent chỉ đọc · dò · kéo · điền · xuất FILE. **0 luật UI**,
-  thay bằng luật deliverable / tasks / data.
+- **APP** — has RUNNING code you develop (UI / server / CLI). Apply the APP system's rules (with UI rules).
+- **NON-APP** — a product / asset; the agent only reads · searches · pulls · fills · exports FILES. **0 UI rules**,
+  replaced by deliverable / tasks / data rules.
 
-Repo lai (có cả pipeline nghiên cứu lẫn ý định dựng app) là **chỗ dễ đoán sai nhất** — càng phải
-hỏi. Hỏi một câu, đợi trả lời, rồi mới đi tiếp.
+A hybrid repo (with both a research pipeline and an intent to build an app) is **the easiest place to guess wrong** — all the more reason to
+ask. Ask one question, wait for the answer, then go on.
 
-## Bước 2 — ĐỌC cây thư mục THẬT
+## Step 2 — READ the REAL folder tree
 
-Chỉ **cấp 1 và cấp 2**. Không đọc nội dung file — nhận vai trò bằng tên + vài dấu hiệu rẻ:
+Only **level 1 and level 2**. Do not read file contents — recognise roles by name + a few cheap signs:
 
-- file khai báo gói ở gốc (`package.json` · `pyproject.toml` · `go.mod` · `pom.xml`…) → biết ngôn ngữ
-- `.github/` · CI config · pre-commit → **đường khoá cứng, tuyệt đối không đụng**
-- file `.md` ở gốc → tài liệu sẵn có của repo, **không được đè**
+- a package declaration file at the root (`package.json` · `pyproject.toml` · `go.mod` · `pom.xml`…) → tells the language
+- `.github/` · CI config · pre-commit → **hard-locked paths, never touch**
+- `.md` files at the root → the repo's own documents, **must not be overwritten**
 
-Ghi lại cây đó nguyên trạng trước khi diễn giải. Diễn giải sai thì còn quay lại được.
+Write that tree down as it is before interpreting it. A wrong interpretation can still be walked back.
 
-## Bước 3 — ĐỀ XUẤT bảng ánh xạ, in ra để duyệt
+## Step 3 — PROPOSE the mapping table, print it for approval
 
-In đủ ba phần, không rút gọn:
+Print all three parts, unshortened:
 
 ```
-BẢNG ÁNH XẠ ĐỀ XUẤT — chưa khoá, chờ duyệt
+PROPOSED MAPPING TABLE — not locked, awaiting approval
 
-slot            →  đường thật        vì sao
-<slot>          →  <đường/>          <một câu>
+slot            →  real path        why
+<slot>          →  <path/>          <one sentence>
 …
 
-extra (repo có, từ điển không có — giữ nguyên):
-<đường/>        <nó là gì>          <vì sao không vào slot nào>
+extra (the repo has it, the dictionary does not — kept as is):
+<path/>        <what it is>          <why it fits no slot>
 
-harness sẽ THÊM (chỉ những đường này, không đụng gì khác):
+the harness will ADD (only these paths, nothing else touched):
 AGENTS.md · CLAUDE.md · <docs-dir>/agent/ · <docs-dir>/plan/ · .claude/skills/
 ```
 
-**Xử lý trùng tên** — trước khi in, kiểm từng đường harness:
+**Handling name clashes** — before printing, check each harness path:
 
-| tình huống | xử lý |
+| situation | handling |
 |---|---|
-| repo đã có `docs/` với nội dung riêng | vẫn dùng `docs/agent/` + `docs/plan/` (thư mục con, không đụng file sẵn có) — nhưng **phải nói rõ trong bản đề xuất** |
-| repo đã có `docs/agent/` hoặc `docs/plan/` | **đổi đường harness** qua `.harness.json` → `"docs": "docs/<tên-khác>"`. KHÔNG đè |
-| repo đã có `AGENTS.md` / `CLAUDE.md` | **DỪNG, hỏi trước khi làm tiếp.** Đây là file chỉ đường của agent khác — đè là cướp quyền điều hướng |
-| repo đã có `.claude/skills/<trùng tên>` | giữ của repo, báo lại, **không đè** |
+| the repo already has `docs/` with its own content | still use `docs/agent/` + `docs/plan/` (subfolders, existing files untouched) — but **say so clearly in the proposal** |
+| the repo already has `docs/agent/` or `docs/plan/` | **change the harness path** through `.harness.json` → `"docs": "docs/<other-name>"`. Do NOT overwrite |
+| the repo already has `AGENTS.md` / `CLAUDE.md` | **STOP, ask before going on.** This is another agent's signpost file — overwriting it is seizing the navigation |
+| the repo already has `.claude/skills/<same name>` | keep the repo's, report it, **do not overwrite** |
 
-**Nêu cả thứ mình KHÔNG chắc.** Folder tên mơ hồ (`common/` `misc/` `tmp/` `old/`) → đưa vào
-`extra` kèm dấu hỏi, để người duyệt quyết. Đoán bừa rồi khoá lại là cách chắc nhất để sai lâu dài.
+**State what you are NOT sure of too.** Folders with vague names (`common/` `misc/` `tmp/` `old/`) → put them in
+`extra` with a question mark, for the approver to decide. Guessing and then locking is the surest way to be wrong for a long time.
 
-## Bước 4 — Chờ DUYỆT, rồi mới KHOÁ
+## Step 4 — Wait for APPROVAL, only then LOCK
 
-Chỉ khi có phê duyệt:
+Only with approval:
 
-1. Ghi `docs/.harness.json`:
+1. Write `docs/.harness.json`:
 ```jsonc
 {
-  "profile": "app",            // hoặc "nonapp" — theo bước 1
-  "layout": "foreign",         // BẮT BUỘC: nói cho conform biết đây là repo cấu trúc riêng
-  "docs": "docs/agent",        // đổi nếu trùng
-  "slots": { "<slot>": "<đường/thật>" },
-  "extra": ["<đường/>"]
+  "profile": "app",            // or "nonapp" — by step 1
+  "layout": "foreign",         // REQUIRED: tells conform this is a repo with its own structure
+  "docs": "docs/agent",        // change on a clash
+  "slots": { "<slot>": "<real/path>" },
+  "extra": ["<path/>"]
 }
 ```
-2. Điền `02_STRUCTURE/INDEX.md`: bảng thật + **ngày khoá** + **tên người duyệt**. Xoá hết khung mẫu.
-3. Ghi một mục vào `05_CHANGES`: nhận repo ngày nào, profile gì, ánh xạ ra sao, **và những chỗ
-   còn chưa chắc**.
-4. Chạy `zemory conform` — phải xanh. Đỏ ngay lúc này nghĩa là bảng sai, sửa bảng chứ đừng nới cổng.
+2. Fill `02_STRUCTURE/INDEX.md`: the real table + **lock date** + **approver's name**. Remove every template frame.
+3. Write one entry in `05_CHANGES`: when the repo was taken in, which profile, how it was mapped, **and the places
+   still uncertain**.
+4. Run `zemory conform` — it must be green. Red at this moment means the table is wrong; fix the table, do not loosen the gate.
 
-## Về sau — cấu trúc gốc đổi thì `conform` đỏ
+## Later — the original structure changes, `conform` goes red
 
-Đó là **tin tốt**: repo của người khác thì nó sẽ đổi, và cổng báo đúng lúc. Xử lý: đọc lại cây →
-cập nhật `02_STRUCTURE/INDEX.md` + `.harness.json` → ghi một dòng `05_CHANGES` nói cấu trúc gốc đổi ra sao.
+That is **good news**: someone else's repo will change, and the gate reports it at the right moment. Handling: read the tree again →
+update `02_STRUCTURE/INDEX.md` + `.harness.json` → write one `05_CHANGES` line saying how the original structure changed.
 
-**Đừng tắt cổng. Đừng nới bảng cho khỏi đỏ.** Nới một lần là từ đó cổng không còn nghĩa gì.
+**Do not switch the gate off. Do not loosen the table to stop the red.** Loosen it once and from then on the gate means nothing.
