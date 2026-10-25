@@ -3,7 +3,7 @@
 // pattern. This module reads those structures from HS and checks a real tree against them. A layout is a dictionary plus
 // checks: it never creates folders, and it writes nothing into the roots it checks (a drive root holds no loose file).
 
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join, parse } from "node:path";
 import { SHELF } from "./harness-names.js";
 import { listParts, listStructures, STORE_DIR, structureSlotNames, type Part } from "./store.js";
@@ -90,12 +90,23 @@ export function layoutSlots(kind: LayoutKind, storeDir = STORE_DIR): LayoutSlot[
 const isRepo = (dir: string): boolean => existsSync(join(dir, ".git")) || existsSync(join(dir, "docs", ".harness.json"));
 const isAssembled = (dir: string): boolean => existsSync(join(dir, "docs", ".harness.json"));
 
+/** A link that points at a folder - or at nothing reachable now (a detached drive): a link point is never a loose file. */
+function linkIsFolder(p: string): boolean {
+  try {
+    return statSync(p).isDirectory();
+  } catch {
+    return true;
+  }
+}
+
 function entries(dir: string): Array<{ name: string; dir: boolean }> {
   try {
     return readdirSync(dir, { withFileTypes: true })
       // what Windows puts at a drive root by itself, and the sync tool's own folders, are left alone (Struc_Disk_Data)
       .filter((e) => !/^\$|^System Volume Information$|^\.st(folder|versions)$|^desktop\.ini$|^(pagefile|swapfile|hiberfil)\.sys$|^DumpStack\.log(\.tmp)?$/i.test(e.name))
-      .map((e) => ({ name: e.name, dir: e.isDirectory() }));
+      // a junction or a symlink is a link point of a split tree (Struc_Disk_Data, five laws): it stands for a folder, even
+      // when its target is on a drive that is not attached right now
+      .map((e) => ({ name: e.name, dir: e.isDirectory() || (e.isSymbolicLink() && linkIsFolder(join(dir, e.name))) }));
   } catch {
     return [];
   }
