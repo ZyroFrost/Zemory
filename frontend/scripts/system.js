@@ -282,6 +282,8 @@
       var rows=(r&&r.repos)||[];GATES=rows;
       var bad=rows.filter(function(g){return g.gaps>0;});
       chip.style.display='';
+      // the walk has not finished yet: say so, and ask again shortly (never "all gates run" before it was measured)
+      if(r&&r.measuring){chip.classList.remove('warn');zset('railGatesN',t('rail.gatesMeasuring'));zset('railGatesSub','');setTimeout(refreshRepoGates,60000);return r;}
       chip.classList.toggle('warn',!!bad.length);
       var d=chip.querySelector('.dot');if(d)d.className=bad.length?'dot warn':'dot';
       zset('railGatesN',bad.length?t('rail.gatesBad').replace('{n}',bad.length)+' ⚠':t('rail.gatesOk'));
@@ -388,6 +390,8 @@
       // Tắt công tắc kiểm repo ⇒ nói thẳng "không kiểm", không giả vờ xanh vì không đo (điều 12).
       // Chip cam khi có repo CŨ CHUẨN hoặc có repo MỚI CHẾT đường dẫn; tiêu đề ưu tiên vế chuẩn, dòng phụ nói cả hai.
       var deadSub=dead.length?t('rail.deadSub').replace('{name}',dead[0].name).replace('{n}',dead[0].newlyDead)+(dead.length>1?' +'+(dead.length-1):''):'';
+      // the repo walk has not finished yet (minutes through a Docker mount): say so, and ask again shortly
+      if(r&&r.measuring&&UPD_CHECK&&!dead.length){paint(stdChip,stdN,stdSub,false,t('rail.stdMeasuring'),'');setTimeout(refreshHarnessUpdates,60000);return;}
       paint(stdChip,stdN,stdSub,!!(stale.length||dead.length),
         stale.length?t('rail.updOld').replace('{n}',stale.length)
           :dead.length?t('rail.deadOld').replace('{n}',dead.length)
