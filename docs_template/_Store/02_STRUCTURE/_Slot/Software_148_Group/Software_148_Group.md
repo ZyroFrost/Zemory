@@ -1,7 +1,7 @@
 ---
 id: Slot_148
 name: group
-version: 4
+version: 5
 path: Software/<Nhóm>/
 values: [AI, 3D, CAD, Image_2D, Video, Screen_Record, Audio, Office, Dev, Network, System, Utility, Game, Drivers, Fonts]
 scope: layout
@@ -41,6 +41,8 @@ by group. Every program is in exactly one group; each program is a folder shaped
   program of its own in `Software\Game\<Game>\`.
 - A program that fits no group ⇒ `Utility`.
 - No loose file at a group level.
+- A vendor level may hold `_Setup\` beside its programs: what several programs of that vendor in this group share (a licence,
+  a keygen, a common installer), by the block law. A kit shared across groups goes to `Software\_<Vendor>\` (Software_147).
 
 ## Check
 

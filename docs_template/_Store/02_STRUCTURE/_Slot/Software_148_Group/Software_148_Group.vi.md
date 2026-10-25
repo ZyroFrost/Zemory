@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Software_148_Group group — nhóm của một chương trình
@@ -37,6 +37,8 @@ Mọi chương trình nằm trong đúng một nhóm; mỗi chương trình là 
   riêng ở `Software\Game\<Game>\`.
 - Chương trình không vừa nhóm nào ⇒ `Utility`.
 - Không có file lẻ ở cấp nhóm.
+- Cấp hãng được có `_Setup\` cạnh các chương trình của hãng: thứ nhiều chương trình của hãng đó trong nhóm này dùng chung (license,
+  keygen, bộ cài chung), theo luật khối. Bộ đồ dùng chung vắt qua nhiều nhóm thì vào `Software\_<Hãng>\` (Software_147).
 
 ## Phép kiểm
 
