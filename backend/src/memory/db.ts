@@ -296,6 +296,15 @@ CREATE TABLE IF NOT EXISTS ingest_state (
   parser_version INTEGER NOT NULL DEFAULT 2
 );
 
+-- A session id this machine computes now (a moved folder re-encodes a curated-memory note's id) → the id the store already
+-- keeps for it. \`project move\` writes a row instead of renaming the session: a renamed id reached the other machine as a NEW
+-- session while it kept the old one (25/10: 825 notes there for 568 here). Local only — never shipped: the other machine
+-- never sees the new id, so it needs no alias.
+CREATE TABLE IF NOT EXISTS session_alias (
+  alias_id   TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL
+);
+
 -- ARTIFACT STORE (phase B). Raw tool output is kept as a content-addressed file
 -- on disk (named by sha256, restricted perms); THIS table is metadata only — no
 -- raw bytes in SQLite. artifact_index is a REDACTED per-line index for search so

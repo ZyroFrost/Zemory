@@ -629,7 +629,13 @@ interface WriteSessionArgs {
  * Returns net new messages. Shared by the single- and multi-session ingest
  * paths. Content is redacted here so both paths are covered identically.
  */
-function writeSession(db: MemoryDB, a: WriteSessionArgs): number {
+/** The id the store keeps for `id`: a moved folder's note is written under the id it already has (`session_alias`). */
+function keptSessionId(db: MemoryDB, id: string): string {
+  return (db.prepare(Q.sessionAliasOf).get(id) as { id: string } | undefined)?.id ?? id;
+}
+
+function writeSession(db: MemoryDB, args: WriteSessionArgs): number {
+  const a = { ...args, sessionId: keptSessionId(db, args.sessionId) };
   db.prepare(
     `INSERT INTO sessions (id, source, origin, project_root, cwd, title, host, account)
      VALUES (@id, @source, @origin, @project, @cwd, @title, @host, @account)
@@ -701,7 +707,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
           cwd: conv.cwd, project: conv.project, title: conv.title, msgs: pending, wholeReplace: true,
         });
         total += added;
-        const snap = sessionSnapshot(db, conv.sessionId);
+        const snap = sessionSnapshot(db, keptSessionId(db, conv.sessionId));
         if (snap) {
           snap.newMessages = added;
           reports.push(snap);

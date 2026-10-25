@@ -23,6 +23,7 @@ import { encodeProjectDir } from "./adapters/claudemem.js";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./db.js";
 import { renameProject } from "../projects.js";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
+import { Q } from "./store/queries.js";
 
 export interface MoveStep {
   what: string;
@@ -186,9 +187,13 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
     const S = low(oldSlugKey);
     const states = count(`SELECT COUNT(*) AS n FROM ingest_state WHERE ${isUnder("file_path")}`, S, S.length + 1, S + "\\");
     const notePrefix = `claude-memory-${host}-${oldEnc}-`;
-    const notes = db
+    // notes of the old folder that have no alias for the new one yet (a second run finds none)
+    const newPrefix = `claude-memory-${host}-${newEnc}-`;
+    const notes = (db
       .prepare("SELECT id FROM sessions WHERE source = 'claude-code-memory' AND substr(lower(id), 1, ?) = lower(?)")
-      .all(notePrefix.length, notePrefix) as { id: string }[];
+      .all(notePrefix.length, notePrefix) as { id: string }[]).filter(
+      ({ id }) => newPrefix === notePrefix || !db.prepare(Q.sessionAliasOfAnyCase).get(newPrefix + id.slice(notePrefix.length)),
+    );
 
     report.steps.push(
       { what: "sessions.project_root (this host, pinned)", n: sessions },
@@ -198,7 +203,7 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
       { what: "graph_fitness.project", n: fitness },
       { what: "attachment.src_path", n: attach },
       { what: "ingest_state.file_path (claude session folder)", n: states },
-      { what: "curated-memory note ids", n: notes.length },
+      { what: "curated-memory note aliases (ids kept)", n: notes.length },
     );
 
     if (apply) {
@@ -214,11 +219,12 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
         }
         const st = db.prepare(`SELECT file_path FROM ingest_state WHERE ${isUnder("file_path")}`).all(S, S.length + 1, S + "\\") as { file_path: string }[];
         for (const r of st) db.prepare("UPDATE OR IGNORE ingest_state SET file_path = ? WHERE file_path = ?").run(swapPrefix(r.file_path, oldSlugKey, newSlugKey), r.file_path);
+        // A note KEEPS its id: the id the scan computes from the new folder is recorded as an alias of it. Renaming the session
+        // instead sent the new id to the other machine as a new session while it kept the old one (25/10: 825 vs 568 notes).
         for (const { id } of notes) {
           const next = `claude-memory-${host}-${newEnc}-` + id.slice(notePrefix.length);
-          if (count("SELECT COUNT(*) AS n FROM sessions WHERE id = ?", next)) continue; // already ingested under the new id
-          db.prepare("UPDATE sessions SET id = ? WHERE id = ?").run(next, id);
-          for (const t of ["messages", "session_digest", "attachment", "artifact"]) db.prepare(`UPDATE ${t} SET session_id = ? WHERE session_id = ?`).run(next, id);
+          if (next === id || count("SELECT COUNT(*) AS n FROM sessions WHERE id = ?", next)) continue; // already ingested under the new id
+          db.prepare(Q.upsertSessionAlias).run(next, id);
         }
         // A digest's meta names the project it was built for.
         const jTo = JSON.stringify(to).slice(1, -1);

@@ -23,6 +23,10 @@ export const Q = {
   ownMinMessageAbove:
     "SELECT m.id AS m FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id > ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown') ORDER BY m.id ASC LIMIT 1",
   countSessionMessages: "SELECT COUNT(*) c FROM messages WHERE session_id = ?",
+  sessionAliasOf: "SELECT session_id AS id FROM session_alias WHERE alias_id = ?",
+  // the encoded folder name is spelt with the drive letter's case of the cwd Claude Code saw: compare without case
+  sessionAliasOfAnyCase: "SELECT session_id AS id FROM session_alias WHERE lower(alias_id) = lower(?)",
+  upsertSessionAlias: "INSERT INTO session_alias (alias_id, session_id) VALUES (?, ?) ON CONFLICT(alias_id) DO UPDATE SET session_id = excluded.session_id",
   messageIdByUuid: "SELECT id FROM messages WHERE session_id = ? AND uuid = ?",
   // the uuid-less messages of ONE session (the (session_id, uuid) index): the receiving side keys their vectors by a hash
   nullUuidMessagesOfSession: "SELECT id, timestamp, content FROM messages WHERE session_id = ? AND uuid IS NULL",
