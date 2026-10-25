@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 
@@ -10,7 +10,7 @@ lang: vi
 
 ## 1. Bố cục và biểu đồ
 
-- Giữ bố cục đã chốt; thêm trang hay ô mới theo khuôn các trang có sẵn (`Rule_Core_81_FollowExistingPattern`).
+- Giữ bố cục đã chốt; thêm trang hay ô mới theo khuôn các trang có sẵn (`Rule_Keys_81_FollowExistingPattern`).
 - Chọn biểu đồ theo câu hỏi: so sánh giữa nhóm ⇒ cột/thanh · xu hướng theo thời gian ⇒ đường · cơ cấu ít phần ⇒ cột chồng
   hoặc tròn (tối đa vài phần) · chi tiết tra cứu ⇒ bảng.
 - Mỗi hình có tiêu đề nói điều nó trả lời; mỗi số có đơn vị và kỳ; nhãn bằng từ nghiệp vụ (`Rule_Gate_02_ReaderText`).
@@ -21,7 +21,7 @@ lang: vi
 - DAX · M · SQL của báo cáo gom ở nơi chứa câu của repo (`queries/` · `measures/`), mỗi câu có tên, gọi theo tên; không viết rải
   trong từng visual (`Rule_Gate_35_OneHome`). Câu chỉ MỘT case dùng ⇒ `tasks/<case>/check_*.sql`; `queries/` chỉ giữ câu từ hai
   case trở lên dùng (slot `Queries_122_Queries`).
-- Đổi một measure dùng chung ⇒ liệt kê mọi visual và báo cáo dùng nó trước khi đổi (`Rule_Core_80_SharedChangeImpact`).
+- Đổi một measure dùng chung ⇒ liệt kê mọi visual và báo cáo dùng nó trước khi đổi (`Rule_Keys_80_SharedChangeImpact`).
 - Sau khi đổi: làm mới dữ liệu và đối chiếu tổng với nguồn bằng số (`Rule_Gate_01_DoneMeansRun`).
 
 ## 3. File báo cáo

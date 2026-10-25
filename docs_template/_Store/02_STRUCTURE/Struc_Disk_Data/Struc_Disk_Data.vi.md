@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # Struc_Disk_Data
@@ -22,7 +22,9 @@ sửa CÂU HỎI của cấu trúc, không bao giờ nắn món cho vừa.
 - Mỗi cấp của cây hỏi đúng một câu hỏi xếp; các thư mục con là các đáp án.
 - Các đáp án loại trừ nhau và phủ hết: món nào cũng ra đúng một đáp án.
 - Câu hỏi được trả lời bằng SỰ THẬT kiểm được, không bao giờ bằng ý định. Sự thật: "có commit của mình" · "có EXIF máy chụp" ·
-  "có thư mục `Study\X`" · "có khách đặt" · "bản gốc còn ở nơi khác". Không phải sự thật: "làm để học hay để dùng", "giữ cho vui".
+  "món đó mang `_README.md` ghi tên khoá học" · "có khách đặt" · "bản gốc còn ở nơi khác". Không phải sự thật: "làm để học hay để dùng", "giữ cho vui".
+- Sự thật đọc từ CHÍNH MÓN ĐỒ — nội dung, metadata, `_README.md` nó mang — không bao giờ chỉ dựa vào chuyện một thư mục khác có
+  tồn tại hay không: sự thật về thư mục khác đẩy chủ máy tạo thư mục rỗng chỉ để thoả nó.
 - Nhiều sự thật cùng đúng thì xét THEO THỨ TỰ, sự thật đúng đầu tiên thắng. Thứ tự ghi một lần và mọi slot liên quan ghi lại đúng
   thứ tự đó — không slot nào giữ một ngoại lệ mà phía bên kia không biết.
 - Món đổi trạng thái có luật dời ghi kèm công cụ: đang học → học xong ⇒ `Library\`; dự án học thành sản phẩm ⇒ `zemory project move`
@@ -192,6 +194,10 @@ Ai thêm một slot, sửa một slot hay dựng một cây mới thì làm đ�
 6. Thử cấu trúc trên đồ THẬT của mọi ổ trước khi ghi: liệt kê từng món và chỗ nó ra. Món ra 0 hoặc từ 2 chỗ trở lên ⇒ sửa câu hỏi,
    không nắn món.
 7. Ghi vào mỗi slot câu hỏi của nó và danh sách "không thuộc đây ⇒ đi đâu"; phần nào máy kiểm được thì đưa vào `zemory conform`.
+8. Đo trước khi commit: chạy `zemory conform --layout` trên MỌI máy giữ cây này, trên từng ổ của máy đó, rồi ghi số vào plan của
+   máy đó. Thay đổi nào làm một món thật đỏ trên bất kỳ máy nào thì làm lại trước khi commit.
+9. Đổi khung theo MỘT đợt: gom các thay đổi của tầng ổ, đo một lần trên mọi máy, commit chung — không bao giờ sửa lẻ khung nhiều lần
+   trong một ngày.
 
 ## Luật
 

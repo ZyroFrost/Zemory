@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # Rule_Gate_85_ProposeChecked — Search HS before proposing a new part; amend an existing part when it fits

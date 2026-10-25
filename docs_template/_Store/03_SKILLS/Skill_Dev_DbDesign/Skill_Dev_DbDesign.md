@@ -1,7 +1,7 @@
 ---
 id: Skill_Dev_DbDesign
 name: dev-db-design
-version: 6
+version: 7
 type: process
 description: Design or change tables in a database or data warehouse - one fact in one table, dimensional modelling, and a review of the whole schema before any new table or column. Use whenever a table, column, view or key is about to be created or changed. Vietnamese triggers - "tạo bảng", "thêm cột", "thiết kế bảng", "sửa schema", "mô hình dữ liệu", "dim", "fact".
 ---
@@ -16,7 +16,7 @@ description: Design or change tables in a database or data warehouse - one fact 
 - Survey the whole system: is that information already in some table (look up the table catalogue · `INFORMATION_SCHEMA` · the repo's data dictionary).
   Already there ⇒ reuse it, never make a second copy (`Rule_Gate_35_OneHome`).
 - Look up the repo's laws and constitution: naming, the write boundary, the path for structure changes.
-- Propose it with the reason and where it is used; create it only once approved. Changing a table that is in use ⇒ list where it is used first (`Rule_Core_80_SharedChangeImpact`).
+- Propose it with the reason and where it is used; create it only once approved. Changing a table that is in use ⇒ list where it is used first (`Rule_Keys_80_SharedChangeImpact`).
 
 ## 2. Principles of dimensional modelling
 

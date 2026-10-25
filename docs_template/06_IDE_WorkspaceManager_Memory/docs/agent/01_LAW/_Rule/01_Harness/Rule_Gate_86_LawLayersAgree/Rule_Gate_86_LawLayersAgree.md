@@ -1,11 +1,11 @@
 ---
 id: Rule_86
 name: law-layers-agree
-version: 2
+version: 3
 kind: action
 code: 01_Harness
-checked: [Rule_Gate_35_OneHome, Rule_Gate_83_HarnessFromStore, Rule_Core_80_SharedChangeImpact]
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree @v2 #74b60a06e05d
+checked: [Rule_Gate_35_OneHome, Rule_Gate_83_HarnessFromStore, Rule_Keys_80_SharedChangeImpact]
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree @v3 #c0ffe5b49c02
 ---
 # Rule_Gate_86_LawLayersAgree — The layers of law never contradict each other, and stay linked
 
@@ -42,4 +42,4 @@ others it is tied to.
 - Implements · Thi hành: `Skill_Harness_Conform` — the check that finds broken links and contradictions · phép kiểm tìm liên kết gãy và mâu thuẫn
 - Related · Liên quan: `Rule_Gate_83_HarnessFromStore` — fixing a higher layer goes through HS · sửa tầng trên đi qua HS
 - Related · Liên quan: `Rule_Gate_35_OneHome` — one home for each piece · mỗi nội dung một nhà
-- Related · Liên quan: `Rule_Core_80_SharedChangeImpact` — changing a shared part · sửa phần dùng chung
+- Related · Liên quan: `Rule_Keys_80_SharedChangeImpact` — changing a shared part · sửa phần dùng chung

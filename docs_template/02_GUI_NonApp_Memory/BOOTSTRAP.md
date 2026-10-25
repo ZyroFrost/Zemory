@@ -29,7 +29,7 @@ zemory doctor
 
 ## 3. Module trong bộ
 
-- Luật chung: 32 (Gate 0 · Keys 0 · Core 0).
+- Luật chung: 33 (Gate 0 · Keys 0 · Core 0).
 - Khung hiến pháp (8): `01_Scope/Cons_Gate_09_Purpose` · `02_Data/Cons_Gate_10_ReadOnlySources` · `02_Data/Cons_Gate_11_WriteBoundary` · `02_Data/Cons_Gate_12_SourceOfTruth` · `03_System/Cons_Gate_13_Architecture` · `04_Security/Cons_Gate_14_Access` · `02_Data/Cons_Gate_15_DataLifecycle` · `03_System/Cons_Gate_16_Dependencies`. Mỗi khung có `Cons.md` mẫu: viết lại cho sản phẩm của dự án, hoặc ghi `status: n/a` kèm lý do.
 - Structure: `Struc_Repo_NonApp` · hệ: `_Host/GUI`.
 - Skill (18): `doc-read-office` · `doc-write-docx` · `doc-write-style` · `frame-own` · `harness-audit` · `harness-conform` · `harness-grill` · `harness-plan-trim` · `harness-reconcile` · `harness-reshape` · `harness-rule-gate` · `harness-session-close` · `harness-sync-path` · `pbi-base` · `task-case` · `task-fill` · `task-pull` · `task-upload`.

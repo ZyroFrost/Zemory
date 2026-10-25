@@ -2,7 +2,7 @@
 id: Rule_7
 aka: 02-7
 name: scope-only
-version: 8
+version: 9
 kind: judgment
 code: 02_Work
 ---
@@ -36,4 +36,4 @@ for needs a proposal that answers three questions.
 
 ## Links · Liên kết
 - Related · Liên quan: `Rule_Keys_08_ClarifyFirst` — ask when the scope is unclear · hỏi khi phạm vi chưa rõ
-- Related · Liên quan: `Rule_Core_81_FollowExistingPattern` — raise a problem in an old pattern, do not change it · nêu vấn đề của khuôn cũ, không tự đổi
+- Related · Liên quan: `Rule_Keys_81_FollowExistingPattern` — raise a problem in an old pattern, do not change it · nêu vấn đề của khuôn cũ, không tự đổi

@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 10
+version: 11
 type: process
 installs: [scripts/pbi_engine_query.ps1]
 aka: dev-pbi
@@ -16,7 +16,7 @@ description: Build or change a BI report - layout and chart choice, measures and
 
 ## 1. Layout and charts
 
-- Keep the settled layout; a new page or tile follows the pattern of the existing pages (`Rule_Core_81_FollowExistingPattern`).
+- Keep the settled layout; a new page or tile follows the pattern of the existing pages (`Rule_Keys_81_FollowExistingPattern`).
 - Choose a chart by its question: comparing groups ⇒ column/bar · a trend over time ⇒ line · a composition of few parts ⇒ stacked column
   or pie (a few parts at most) · detail to look up ⇒ table.
 - Each visual has a title saying what it answers; each number has a unit and a period; labels in business words (`Rule_Gate_02_ReaderText`).
@@ -27,7 +27,7 @@ description: Build or change a BI report - layout and chart choice, measures and
 - A report's DAX · M · SQL are gathered in the repo's store of statements (`queries/` · `measures/`), each named, called by name; never scattered
   inside each visual (`Rule_Gate_35_OneHome`). A statement only ONE case uses ⇒ `tasks/<case>/check_*.sql`; `queries/` keeps only statements two
   cases or more use (slot `Queries_122_Queries`).
-- Changing a shared measure ⇒ list every visual and report using it before the change (`Rule_Core_80_SharedChangeImpact`).
+- Changing a shared measure ⇒ list every visual and report using it before the change (`Rule_Keys_80_SharedChangeImpact`).
 - After the change: refresh the data and reconcile the totals with the source, in numbers (`Rule_Gate_01_DoneMeansRun`).
 
 ## 3. Report files

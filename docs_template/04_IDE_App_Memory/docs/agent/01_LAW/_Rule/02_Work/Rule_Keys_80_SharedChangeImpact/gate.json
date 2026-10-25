@@ -1,0 +1,19 @@
+{
+  "prompt": {
+    "kind": "Rule_80",
+    "re": "\\b(dung chung|nhieu (bao cao|report|repo|noi|trang)|(doi|sua) (cot|bang|ham|query|measure|nguon|template|component|cong thuc))\\b",
+    "text": "[zemory] Rule_Keys_80_SharedChangeImpact: Changing something shared: list every place that uses it and the effect on each before the change, and handle all of them."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "sửa cột doanh thu trong bảng nguồn"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đọc giúp file này"
+    }
+  ]
+}

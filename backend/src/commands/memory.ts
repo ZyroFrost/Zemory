@@ -22,6 +22,7 @@ import { borrowCookies, cookieSources, listSourceProfiles } from "../memory/borr
 import { relocateMemory, relocateStore, storageInfo } from "../memory/relocate.js";
 import { type SearchHit, getMessage, hybridEnabled, rerankEnabled, search, searchHybridChecked, searchMulti } from "../memory/search.js";
 import { attachmentsForMessages } from "../memory/filestore.js";
+import { sessionSets } from "../memory/sessionsets.js";
 import {
   exportMemoryBundle,
   importMemoryBundle,
@@ -1511,6 +1512,14 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     const verdict = r.hybridRecall > r.ftsRecall ? "HYBRID WINS" : r.hybridRecall === r.ftsRecall ? "TIE" : "FTS WINS";
     console.log(`  → ${verdict}. Gate: hybrid becomes the default only on a net win (still opt-in via --hybrid for now).`);
     if (!withRerank) console.log("  tip: add --rerank to measure the cross-encoder lane (downloads the reranker once).");
+    return;
+  }
+  if (sub === "hosts" && args.includes("--sets")) {
+    // the sync acceptance: run on both machines, compare line by line (see memory/sessionsets.ts)
+    const n = (v: number) => v.toLocaleString("en-US");
+    console.log("zemory memory hosts --sets — session sets by source; equal lines on two machines = the same sessions");
+    console.log(`  ${"source".padEnd(20)} ${"sessions".padStart(9)} ${"messages".padStart(11)}  ids          contents`);
+    for (const s of sessionSets()) console.log(`  ${s.source.padEnd(20)} ${n(s.sessions).padStart(9)} ${n(s.messages).padStart(11)}  ${s.ids} ${s.contents}`);
     return;
   }
   if (sub === "hosts") {
