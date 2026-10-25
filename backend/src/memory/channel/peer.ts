@@ -235,6 +235,8 @@ export interface SessionOptions {
   linkDeadMs?: number;
   /** Cách nhau bao lâu thì mở lượt đồng bộ kế (chỉ ở chế độ thường trực). */
   roundGapMs?: number;
+  /** A stuck round ends the session after this long. Default `STUCK_ROUND_MS`; tests shorten it. */
+  stuckRoundMs?: number;
   /**
    * TAY NGẮT của liên kết thường trực — và là đường DUY NHẤT để người dùng cắt nó.
    *
@@ -266,6 +268,8 @@ export const LINK_DEAD_MS = PING_IDLE_MS * 3;
  * kiểm kê (5.559 file, ~1,6 giây đọc đĩa) liên tục mà hầu hết lượt không mua gì.
  */
 export const ROUND_GAP_MS = 30_000;
+/** A round stuck this long after saying so ends the session (see `stuckTimer`). */
+export const STUCK_ROUND_MS = 10 * 60_000;
 
 /**
  * Đã tới lúc gửi nhịp tim chưa — im quá `PING_IDLE_MS` kể từ lần CUỐI có byte đi qua.
@@ -391,6 +395,12 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     let kickPending = false;
     /** Đã nói "lượt chưa đóng sổ" cho lượt này chưa — một dòng mỗi lượt, không kêu mỗi khung. */
     let stuckSaid = false;
+    /**
+     * A round that said it is stuck and still has not closed after this long ends the session: the link reconnects and opens a
+     * fresh round, and unanswered blocks stay in flight. Without it a round waiting on one flag (a mirror file stuck on a slow
+     * relay, a merge report lost) held the live link idle for good (2026-10-25: 25 minutes with no round on either machine).
+     */
+    let stuckTimer: ReturnType<typeof setTimeout> | null = null;
     /** Số phiên trong tiến trình — hai phiên song song với CÙNG một máy chỉ phân biệt được bằng số này. */
     const sid = ++sessionSeq;
     let peerVersion = "?";
@@ -446,6 +456,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       awaiting.clear();
       clearInterval(timer);
       if (roundTimer) clearTimeout(roundTimer);
+      if (stuckTimer) clearTimeout(stuckTimer);
       try {
         if (error) sock.destroy();
         else sock.end();
@@ -832,6 +843,14 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         if (miss.length) {
           stuckSaid = true;
           o.log?.(`[channel] phiên #${sid}: lượt chưa đóng sổ — còn chờ: ${miss.join(" · ")}`);
+          const round = roundNo;
+          stuckTimer = setTimeout(() => {
+            stuckTimer = null;
+            if (settled || roundNo !== round) return;
+            o.log?.(`[channel] phiên #${sid}: lượt kẹt quá ${STUCK_ROUND_MS / 60_000}′ — đóng phiên để nối lại và mở lượt mới`);
+            finish(`round stuck: ${miss.join(" · ")}`);
+          }, o.stuckRoundMs ?? STUCK_ROUND_MS);
+          stuckTimer.unref?.();
         }
       }
       if (!sentDone || !gotDone) return;
@@ -863,6 +882,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       mSentDone = false;
       mGotDone = false;
       stuckSaid = false;
+      if (stuckTimer) clearTimeout(stuckTimer);
+      stuckTimer = null;
       roundNo++;
       if (roundTimer) clearTimeout(roundTimer);
       const gap = kickPending ? 0 : (o.roundGapMs ?? ROUND_GAP_MS);
