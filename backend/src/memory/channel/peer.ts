@@ -130,8 +130,11 @@ export interface BlockIO {
   outgoing: (peerId: string) => Promise<Array<{ id: string; bytes: number; read: () => Promise<Buffer> }>>;
   /** `peerId` merged block `id` - move its mark past it. */
   acked: (peerId: string, id: string) => Promise<void>;
-  /** `peerId` could not merge block `id` (or the round died before its answer) - forget it; the mark stays. */
-  dropped: (peerId: string, id: string) => void;
+  /**
+   * Block `id` got no ack. `refused`: `peerId` could not merge it (nack, or too big to travel) - forget it, the mark stays.
+   * `link`: the round ended before its answer - the peer may still be merging it, so the next round offers the SAME block.
+   */
+  dropped: (peerId: string, id: string, why?: "refused" | "link") => void;
   /** A block from `peerId`: resolves once it is merged into this machine's db, rejects when it cannot be. */
   incoming: (peerId: string, id: string, bytes: Buffer) => Promise<void>;
 }
@@ -438,8 +441,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       if (settled) return;
       settled = true;
       if (error) out.error = error;
-      // unanswered blocks are forgotten: the mark did not move, the next session sends them again
-      for (const id of awaiting) o.blocks.dropped(peerId ?? "", id);
+      // unanswered blocks stay in flight: the mark did not move, and the next session offers the same blocks again
+      for (const id of awaiting) o.blocks.dropped(peerId ?? "", id, "link");
       awaiting.clear();
       clearInterval(timer);
       if (roundTimer) clearTimeout(roundTimer);
@@ -742,7 +745,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         if (!awaiting.delete(m.id)) return; // not ours, or answered twice
         if (m.t === "nack") {
           o.log?.(`[channel] #${sid} the other machine could not take block ${m.id.slice(0, 8)} (${m.why ?? "?"}) - sent again next round`);
-          o.blocks.dropped(peerId ?? "", m.id);
+          o.blocks.dropped(peerId ?? "", m.id, "refused");
           tryFinish();
           return;
         }
@@ -888,7 +891,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           // the sender cuts blocks to fit a frame; one that still does not fit cannot travel - say so, never kill the round
           if (block.bytes > MAX_FRAME_BYTES) {
             o.log?.(`[channel] skipped a ${Math.round(block.bytes / 1024 / 1024)} MB block - over the ${Math.round(MAX_FRAME_BYTES / 1024 / 1024)} MB frame cap`);
-            o.blocks.dropped(peerId ?? "", block.id);
+            o.blocks.dropped(peerId ?? "", block.id, "refused");
             continue;
           }
           const bytes = await block.read();

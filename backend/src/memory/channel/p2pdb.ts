@@ -213,9 +213,16 @@ export async function inboxPut(peer: string, id: string, bytes: Buffer, machineD
   const dir = inboxDir(machineDir);
   mkdirSync(dir, { recursive: true });
   const file = join(dir, `${fileSafe(peer)}--${fileSafe(id)}.zmb`);
-  const tmp = `${file}.part-${process.pid}`;
+  // Two links can carry the same block at once: each writes its own temporary file, and the second one finds the block in
+  // place already (2026-10-25: a shared temporary name made the second rename fail with ENOENT and the block was refused).
+  const tmp = `${file}.part-${process.pid}-${randomBytes(4).toString("hex")}`;
   await writeFile(tmp, bytes);
-  renameSync(tmp, file);
+  try {
+    renameSync(tmp, file);
+  } catch (e) {
+    rmSync(tmp, { force: true });
+    if (!existsSync(file)) throw e;
+  }
   return file;
 }
 
