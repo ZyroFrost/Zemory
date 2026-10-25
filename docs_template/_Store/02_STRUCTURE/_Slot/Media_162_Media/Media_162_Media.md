@@ -1,7 +1,7 @@
 ---
 id: Slot_162
 name: media
-version: 2
+version: 3
 path: Media/<MediaKind>/
 values: [Video, Music, Image, Comic]
 scope: layout
@@ -12,7 +12,7 @@ scope: layout
 
 `<data root>\Media\` is the LAST step (14) of the drive's question chain (`Struc_Disk_Data`): entertainment made by others and kept
 to watch, listen to or read. It gets an item only when no earlier step is true. In the order of the chain: a game capture or a
-collected game clip ⇒ `Game\` (step 8) · pictures gathered for the owner's profiles ⇒ `Documents\Profile\Personal\Avatar\` (step 11)
+collected game clip ⇒ `Game\` (step 8) · pictures gathered for the owner's profiles ⇒ `Documents\Profile\Avatar\` (step 11)
 · photos and videos of people taken with the owner's or the family's camera ⇒ `Memories\` (step 12).
 
 ## Inside — four kinds, a fixed list
@@ -27,6 +27,8 @@ collected game clip ⇒ `Game\` (step 8) · pictures gathered for the owner's pr
 
 ## Rules
 
+- AI-made items follow the same order as any item (`Struc_Disk_Data`, "Made by AI"); to keep them apart here, add the optional
+  sub-folder `AI\` inside a topic folder (`Media\Image\Funny\AI\`).
 - Only `Video` · `Music` · `Image` · `Comic` at the first level; inside `Video\`, only `Movie\` and `Clip\`.
 - No loose file at the `Media\` level or at a kind level; one folder per title, series or artist.
 - Media is large: the first block to move to a second data drive, linked back per the five laws of `Struc_Disk_Data`.

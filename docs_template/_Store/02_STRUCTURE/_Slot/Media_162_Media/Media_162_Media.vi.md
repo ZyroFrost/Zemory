@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 # Media_162_Media media — giải trí sưu tầm
@@ -8,7 +8,7 @@ lang: vi
 
 `<gốc dữ liệu>\Media\` là bước CUỐI (14) của chuỗi câu hỏi cấp ổ (`Struc_Disk_Data`): đồ giải trí người khác làm, giữ để xem, nghe
 hoặc đọc. Nó chỉ nhận món khi không bước nào trước đó đúng. Theo thứ tự của chuỗi: ảnh/clip quay màn hình game hay clip game sưu tầm
-⇒ `Game\` (bước 8) · ảnh gom để dùng cho hồ sơ của chủ máy ⇒ `Documents\Profile\Personal\Avatar\` (bước 11) · ảnh và video quay người
+⇒ `Game\` (bước 8) · ảnh gom để dùng cho hồ sơ của chủ máy ⇒ `Documents\Profile\Avatar\` (bước 11) · ảnh và video quay người
 bằng máy ảnh của chủ máy hay gia đình ⇒ `Memories\` (bước 12).
 
 ## Bên trong — bốn loại, danh sách cố định
@@ -23,6 +23,8 @@ bằng máy ảnh của chủ máy hay gia đình ⇒ `Memories\` (bước 12).
 
 ## Luật
 
+- Món do AI sinh theo cùng thứ tự như mọi món (`Struc_Disk_Data`, "Do AI sinh"); muốn tách riêng ở đây thì thêm cấp con tuỳ chọn
+  `AI\` bên trong một thư mục chủ đề (`Media\Image\Funny\AI\`).
 - Cấp đầu chỉ có `Video` · `Music` · `Image` · `Comic`; trong `Video\` chỉ có `Movie\` và `Clip\`.
 - Không có file lẻ ở cấp `Media\` hay ở cấp loại; mỗi tựa, mỗi bộ hoặc mỗi nghệ sĩ một thư mục.
 - Media nặng: là khối đầu tiên nên dời sang ổ dữ liệu thứ hai, rồi nối về theo năm luật của `Struc_Disk_Data`.

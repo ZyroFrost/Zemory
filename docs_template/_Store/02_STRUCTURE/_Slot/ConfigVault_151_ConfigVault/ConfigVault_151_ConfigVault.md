@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 6
+version: 7
 path: _ConfigVault/<tool>/
 scope: layout
 ---
@@ -15,7 +15,7 @@ folder per tool, `_ConfigVault\<tool>\`, so a new machine needs this one folder 
 secret out of git, sync and cloud backup.
 
 The fact that splits it from `Documents\`: WHO READS IT. A program or an agent reads it by itself ⇒ here. A person opens and reads it
-(a list of web passwords, a wallet phrase) ⇒ `Documents\Profile\Personal\Secret\`.
+(a list of web passwords, a wallet phrase) ⇒ `Documents\Profile\Secret\`.
 
 ## Inside
 
@@ -75,7 +75,7 @@ Done in ONE pass, because changing `HOME` changes where every tool reads at once
 ## Not here ⇒ goes to
 
 Program installs ⇒ `Software\` · model files ⇒ `_Models\` · a program's own data (a database, a workspace) ⇒ that program's `Data\` ·
-secrets a person reads ⇒ `Documents\Profile\Personal\Secret\` · repos ⇒ `Workspace\`.
+secrets a person reads ⇒ `Documents\Profile\Secret\` · repos ⇒ `Workspace\`.
 
 ## Check
 

@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 # Memories_161_Memories memories — ảnh và video quay người
@@ -9,7 +9,7 @@ lang: vi
 `<gốc dữ liệu>\Memories\` là bước 12 của chuỗi câu hỏi cấp ổ (`Struc_Disk_Data`): ảnh và video quay NGƯỜI bằng máy ảnh của chủ máy
 hay của gia đình (điện thoại cũng tính) — chuyến đi, sự kiện gia đình, đời sống hằng ngày. Đây là bản gốc, mất là không lấy lại
 được. Theo thứ tự của chuỗi, bước trước thắng: ảnh quay màn hình game không phải kỷ niệm ⇒ `Game\` (bước 8); ảnh gom để dùng cho hồ
-sơ của chủ máy ⇒ `Documents\Profile\Personal\Avatar\` (bước 11). Sự thật phân biệt kỷ niệm với ảnh sưu tầm nằm ngay trong file: EXIF
+sơ của chủ máy ⇒ `Documents\Profile\Avatar\` (bước 11). Sự thật phân biệt kỷ niệm với ảnh sưu tầm nằm ngay trong file: EXIF
 của máy chụp (hãng, đời máy, giờ chụp).
 
 ## Bên trong
@@ -25,6 +25,8 @@ Ví dụ thật: `Memories\2025\2025-04-30 Beach Trip\` chứa `IMG_0012.jpg` ·
 
 ## Luật
 
+- Món do AI sinh theo cùng thứ tự như mọi món (`Struc_Disk_Data`, "Do AI sinh"); muốn tách riêng ở đây thì thêm cấp con tuỳ chọn
+  `AI\` bên trong một thư mục sự kiện — ảnh AI chỉ là kỷ niệm khi nó là người của chủ máy và được giữ làm kỷ niệm.
 - Gom theo thời gian và sự kiện, KHÔNG chia theo loại file: không tách `Photos\` và `Videos\`.
 - Thư mục sự kiện bắt đầu bằng ngày đầu tiên dạng `YYYY-MM-DD`, rồi một tên ngắn.
 - Giữ nguyên tên file của máy chụp.

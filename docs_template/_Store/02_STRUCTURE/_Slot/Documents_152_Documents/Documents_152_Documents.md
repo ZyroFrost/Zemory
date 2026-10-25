@@ -1,7 +1,7 @@
 ---
 id: Slot_152
 name: documents
-version: 5
+version: 6
 path: Documents/<DocKind>/
 values: [Profile, Family]
 scope: layout
@@ -30,6 +30,8 @@ Documents\
 
 ## Rules
 
+- AI-made items follow the same order as any item (`Struc_Disk_Data`, "Made by AI"); to keep them apart here, add the optional
+  sub-folder `AI\` inside `Profile\Avatar\` (`Profile\Avatar\AI\`).
 - No `Company` folder here: papers of one organisation ⇒ `Workspace\Company\<Org>\_Profile\`.
 - `Profile\Secret\` holds personal secrets a PERSON reads (web passwords, wallet phrases). It follows the sync ban of `_ConfigVault`:
   NEVER in git, NEVER in a synced folder (Syncthing), NEVER in a cloud backup folder (Drive).

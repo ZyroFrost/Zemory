@@ -1,7 +1,7 @@
 ---
 id: Slot_161
 name: memories
-version: 2
+version: 3
 path: Memories/<Year>/<Event>/
 scope: layout
 ---
@@ -12,7 +12,7 @@ scope: layout
 `<data root>\Memories\` is step 12 of the drive's question chain (`Struc_Disk_Data`): photos and videos of PEOPLE taken with the
 owner's or the family's camera (a phone counts) — trips, family events, everyday life. These are originals and cannot be fetched
 again. In the order of the chain, earlier steps win: a screen capture of a game is not a memory ⇒ `Game\` (step 8); pictures
-gathered for the owner's profiles ⇒ `Documents\Profile\Personal\Avatar\` (step 11). The fact that tells a memory from a collected
+gathered for the owner's profiles ⇒ `Documents\Profile\Avatar\` (step 11). The fact that tells a memory from a collected
 picture is the file itself: a camera's EXIF (maker, model, time taken).
 
 ## Inside
@@ -28,6 +28,8 @@ Real example: `Memories\2025\2025-04-30 Beach Trip\` holding `IMG_0012.jpg` · `
 
 ## Rules
 
+- AI-made items follow the same order as any item (`Struc_Disk_Data`, "Made by AI"); to keep them apart here, add the optional
+  sub-folder `AI\` inside an event folder — an AI image is a memory only if it is of the owner's people and kept as one.
 - Group by time and event, NOT by file type: no `Photos\` and `Videos\` split.
 - An event folder starts with its first day as `YYYY-MM-DD`, then a short name.
 - Keep the camera's file names.

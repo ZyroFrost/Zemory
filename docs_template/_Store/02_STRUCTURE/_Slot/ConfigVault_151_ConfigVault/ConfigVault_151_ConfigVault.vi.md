@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # ConfigVault_151_ConfigVault configvault — két chứa thiết lập và khoá công cụ của cả máy
@@ -12,7 +12,7 @@ khoá mà CHƯƠNG TRÌNH hoặc AGENT tự đọc. Mọi chương trình và re
 ngoài sao lưu đám mây.
 
 Sự thật tách nó với `Documents\`: AI ĐỌC. Chương trình hoặc agent tự đọc ⇒ ở đây. Người mở ra đọc (danh sách mật khẩu web, cụm từ ví)
-⇒ `Documents\Profile\Personal\Secret\`.
+⇒ `Documents\Profile\Secret\`.
 
 ## Bên trong
 
@@ -71,7 +71,7 @@ Làm trong MỘT đợt, vì đổi `HOME` là đổi chỗ đọc của mọi c
 ## Không thuộc đây ⇒ đi đâu
 
 Bản cài chương trình ⇒ `Software\` · file model ⇒ `_Models\` · dữ liệu riêng của chương trình (database, workspace) ⇒ `Data\` của chương
-trình đó · bí mật người đọc ⇒ `Documents\Profile\Personal\Secret\` · repo ⇒ `Workspace\`.
+trình đó · bí mật người đọc ⇒ `Documents\Profile\Secret\` · repo ⇒ `Workspace\`.
 
 ## Phép kiểm
 
