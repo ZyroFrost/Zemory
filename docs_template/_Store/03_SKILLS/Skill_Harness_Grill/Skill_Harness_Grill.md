@@ -2,44 +2,44 @@
 id: Skill_Harness_Grill
 aka: grill
 name: harness-grill
-version: 10
+version: 11
 type: process
 description: Clarify an ambiguous request before doing any work - stop, read what can be read, then ask one question at a time with your own proposal attached. Use whenever a request is ambiguous, uses terms with several meanings, lacks facts, has undefined scope, carries an unstated assumption, contains contradictory demands, or precedes a hard-to-undo action. Vietnamese triggers - "grill", "chưa rõ", "làm sao", "ý là gì", or any request you cannot execute correctly without guessing.
 ---
 
-# grill — làm rõ yêu cầu trước khi làm
+# grill — clarify the request before doing the work
 
-> **Kích hoạt TỰ ĐỘNG**, không chờ được gọi: `Rule_Keys_08_ClarifyFirst` bắn khi yêu cầu chưa đủ để thực thi
-> đúng. Lệnh "grill" = ép chạy thủ công cùng cơ chế.
+> **Triggers ON ITS OWN**, without waiting to be called: `Rule_Keys_08_ClarifyFirst` fires when a request is not enough to carry out
+> correctly. The word "grill" = forces a manual run of the same mechanism.
 
-**Mục tiêu:** làm rõ yêu cầu TRƯỚC khi thực thi — KHÔNG tự chọn cách hiểu rộng nhất, KHÔNG tự suy diễn.
+**Goal:** clarify the request BEFORE carrying it out — NEVER pick the broadest reading on your own, NEVER fill gaps by inference.
 
-## Điều kiện kích hoạt (bất kỳ điều nào)
+## Triggers (any one)
 
-- yêu cầu đa nghĩa
-- thuật ngữ có nhiều cách hiểu
-- thiếu dữ kiện để làm đúng
-- phạm vi không xác định
-- tồn tại giả định ngầm chưa nêu
-- hai yêu cầu mâu thuẫn nhau
-- đứng trước thao tác khó đảo ngược (xoá · dời hàng loạt · đẩy lên đích thật)
+- the request has several meanings
+- a term can be read in several ways
+- facts needed to do it right are missing
+- the scope is not defined
+- an unstated assumption is present
+- two requests contradict each other
+- an action that is hard to undo is next (delete · move in bulk · push to a real destination)
 
-## Quy trình
+## Procedure
 
-1. **DỪNG** — chưa build, chưa làm gì cả.
-2. **Đọc trước, hỏi sau.** Cái nào tự đọc ra được từ code/docs/deliverable/data thì **ĐỌC, đừng hỏi**.
-   Chỉ hỏi phần input còn thiếu để thực thi đúng — phần mà **không đọc ở đâu ra được, chỉ hỏi mới
-   biết** (KHÔNG áp cho kiến thức chung).
-3. **Hỏi mỗi lần MỘT câu** — kèm **đề xuất của mình**, và diễn giải lại yêu cầu để xác nhận đúng ý.
-4. **Đi hết mọi nhánh còn mơ hồ** cho tới khi đủ dữ kiện.
-5. **Chốt đủ rõ MỚI build / MỚI làm.**
+1. **STOP** — build nothing, do nothing yet.
+2. **Read first, ask after.** Whatever can be read from the code/docs/deliverable/data, **READ it, do not ask**.
+   Ask only for the input still missing to do it right — the part that **cannot be read anywhere and is known only by
+   asking** (NOT for general knowledge).
+3. **Ask ONE question at a time** — with **your own proposal**, restating the request to confirm the intent.
+4. **Walk every branch that is still unclear** until the facts are enough.
+5. **Only once it is clear enough, build / do the work.**
 
-## Cấm
+## Forbidden
 
-- Hỏi một lúc nhiều câu rồi bắt trả lời cả cụm.
-- Hỏi thứ mà đọc file là biết.
-- Hỏi trống không, không kèm đề xuất — đẩy toàn bộ gánh nặng quyết định sang người được hỏi.
-- Chọn cách hiểu rộng nhất rồi chạy, tính sau.
+- Asking many questions at once and demanding answers to the whole batch.
+- Asking what reading a file would tell.
+- Asking a bare question without a proposal — pushing the whole weight of the decision onto the person asked.
+- Picking the broadest reading, running with it, sorting it out later.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_08_ClarifyFirst` — the question-by-question process · quy trình hỏi từng câu
