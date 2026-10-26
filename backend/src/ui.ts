@@ -3132,6 +3132,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const plan = localChangePlan(root);
       if (!plan.ok) return json(res, { ok: false, error: `git: ${plan.error}` });
       let keepDir = "";
+      if (!plan.clash.length && plan.same.length) keepDir = setAsideClashes(root, plan.same, []); // identical: taken, no question
       if (plan.clash.length) {
         const ans = u.searchParams.get("keep");
         if (ans === null) return json(res, { ok: false, clash: plan.clash.map((c) => c.path), dirty: plan.dirty.length });
@@ -3141,7 +3142,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         } catch {
           return json(res, { ok: false, error: "keep: not a JSON list" });
         }
-        keepDir = setAsideClashes(root, plan.clash, keep);
+        keepDir = setAsideClashes(root, [...plan.clash, ...plan.same], keep);
       }
       // the updater never started ⇒ every clash goes back as it was
       const putBack = (): void => {

@@ -152,7 +152,7 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
   }
   let keep: string[] = [];
   if (plan.dirty.length) {
-    console.log(`  · ${plan.dirty.length} uncommitted change(s); ${plan.clash.length} of them also changed by the update.`);
+    console.log(`  · ${plan.dirty.length} uncommitted change(s); ${plan.clash.length} of them also changed by the update${plan.same.length ? ` (${plan.same.length} more already equal to the update: taken as they are)` : ""}.`);
     if (plan.clash.length) {
       const all = plan.clash.map((c) => c.path);
       if (args.includes("--keep-local")) keep = all;
@@ -191,8 +191,9 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
     ["npm run build", npmInv.cmd, [...npmInv.args, "run", "build"], npmInv.shell],
     ["npm link", npmInv.cmd, [...npmInv.args, "link"], npmInv.shell],
   ];
-  const aside = plan.clash.length ? setAsideClashes(root, plan.clash, keep) : null;
-  if (aside) console.log(`  · local versions of ${plan.clash.length} clashing file(s) copied to ${aside}`);
+  const sideline = [...plan.clash, ...plan.same]; // an identical file is taken, never kept: no question, still restorable
+  const aside = sideline.length ? setAsideClashes(root, sideline, keep) : null;
+  if (aside) console.log(`  · local versions of ${sideline.length} file(s) copied to ${aside}`);
   for (const [label, cmd, a, sh] of steps) {
     process.stdout.write(`  · ${label} … `);
     const r = run(cmd, a, root, sh);

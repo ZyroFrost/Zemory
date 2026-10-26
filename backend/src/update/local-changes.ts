@@ -26,6 +26,12 @@ export interface LocalChangePlan {
   dirty: LocalChange[];
   /** the ones an incoming commit also changes: they need an answer */
   clash: LocalChange[];
+  /**
+   * Changed here AND by the update, but already identical to the incoming version (a synced copy of the repo folder brought
+   * the file before git did - measured 2026-10-26 on the second machine: 7 "clashes", every one equal to origin). Nothing
+   * to ask: they are set aside as "take" like any clash, so a failed pull still puts them back.
+   */
+  same: LocalChange[];
 }
 
 // trimEnd, never trim: porcelain lines start with a status column that may be a space (` M a.txt`) — trimming the whole
@@ -50,13 +56,25 @@ export function parsePorcelain(out: string): LocalChange[] {
 export function localChangePlan(root: string): LocalChangePlan {
   try {
     const dirty = parsePorcelain(git(root, ["status", "--porcelain", "--untracked-files=all"]));
-    if (!dirty.length) return { ok: true, dirty, clash: [] };
+    if (!dirty.length) return { ok: true, dirty, clash: [], same: [] };
     git(root, ["fetch", "--quiet"]);
     const incoming = new Set(git(root, ["diff", "--name-only", "HEAD", "@{u}"]).split(/\r?\n/).filter(Boolean));
-    return { ok: true, dirty, clash: dirty.filter((d) => incoming.has(d.path)) };
+    const touched = dirty.filter((d) => incoming.has(d.path));
+    const same = touched.filter((d) => equalsIncoming(root, d.path));
+    return { ok: true, dirty, clash: touched.filter((d) => !same.includes(d)), same };
   } catch (e) {
     const err = e as { stderr?: unknown; message?: string };
-    return { ok: false, error: (String(err.stderr ?? "").trim() || err.message || "git failed").slice(0, 300), dirty: [], clash: [] };
+    return { ok: false, error: (String(err.stderr ?? "").trim() || err.message || "git failed").slice(0, 300), dirty: [], clash: [], same: [] };
+  }
+}
+
+/** The file on disk hashes to the blob the update brings (git's own filters apply, so a CRLF/LF-only difference is equal). */
+function equalsIncoming(root: string, path: string): boolean {
+  if (!existsSync(join(root, path))) return false;
+  try {
+    return git(root, ["hash-object", "--", path]) === git(root, ["rev-parse", `@{u}:${path}`]);
+  } catch {
+    return false; // gone upstream, or unreadable: a real clash, ask
   }
 }
 
