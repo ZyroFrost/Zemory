@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { currentMemoryDb, currentMemoryDir, openMemory, type MemoryDB } from "./db.js";
 import { redact } from "./redact.js";
-import { forgetVectors, vecConnect } from "./vectors.js";
+import { countForgetVectors, forgetVectors, vecConnect } from "./vectors.js";
 import { Q } from "./store/queries.js";
 
 function timestamp(): string {
@@ -237,7 +237,8 @@ export async function forgetMemory(opts: ForgetMemoryOptions = {}): Promise<Forg
         backupPath: null,
         sessions: sessionIds.length,
         messages: messageIds.length,
-        vectors: 0,
+        // the same rows the real run deletes, counted on a vector-loaded connection (a plain one cannot read vec0)
+        vectors: dryRun ? countForgetVectors(dbPath, messageIds) : 0,
         digests: countDigests(),
         selectors,
         sampleSessions: sessionIds.slice(0, 8),
