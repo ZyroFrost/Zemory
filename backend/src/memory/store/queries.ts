@@ -83,6 +83,12 @@ export const Q = {
 
   // ── vectors ───────────────────────────────────────────────────────────────
   // the p2p channel (HP 18): which of THIS machine's vectors each receiving machine has confirmed
+  // the dry run of `memory forget`: the vector rows `forgetVectors` would delete (direct rowid + long-message chunks)
+  vecCountTemp: "CREATE TEMP TABLE IF NOT EXISTS zemory_vec_count(id INTEGER PRIMARY KEY)",
+  vecCountPut: "INSERT OR IGNORE INTO zemory_vec_count(id) VALUES (?)",
+  vecCountForget:
+    "SELECT (SELECT COUNT(*) FROM vec_chunks WHERE rowid IN (SELECT rowid FROM vec_map WHERE message_id IN (SELECT id FROM zemory_vec_count)))" +
+    " + (SELECT COUNT(*) FROM vec_chunks WHERE rowid IN (SELECT id FROM zemory_vec_count)) AS c",
   peerVecSentDdl: "CREATE TABLE IF NOT EXISTS peer_vec_sent (peer TEXT NOT NULL, message_id INTEGER NOT NULL, PRIMARY KEY (peer, message_id)) WITHOUT ROWID",
   peerVecSentClear: "DELETE FROM peer_vec_sent WHERE peer = ?",
   peerVecSentAdd: "INSERT OR IGNORE INTO peer_vec_sent (peer, message_id) VALUES (?, ?)",

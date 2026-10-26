@@ -955,6 +955,27 @@ export function forgetVectors(dbPath: string, messageIds: number[]): number {
   }
 }
 
+/** How many vector rows `forgetVectors` would delete for these messages: the dry run of `memory forget` reports the same
+ *  number the real run deletes (2026-10-26: the dry run said 0, the real run removed 6,351). */
+export function countForgetVectors(dbPath: string, messageIds: number[]): number {
+  if (!messageIds.length) return 0;
+  const db = vecConnect(dbPath);
+  try {
+    if (!tableExists(db)) return 0;
+    ensureMapTable(db);
+    db.exec(Q.vecCountTemp);
+    const put = db.prepare(Q.vecCountPut);
+    db.transaction(() => {
+      for (const id of messageIds) put.run(id);
+    })();
+    return (db.prepare(Q.vecCountForget).get() as { c: number }).c;
+  } catch {
+    return 0;
+  } finally {
+    db.close();
+  }
+}
+
 /**
  * Drop vector rows whose message no longer exists (snapshot filtering before an
  * encrypted export). Fail-open — orphans are harmless (importer re-embeds).
