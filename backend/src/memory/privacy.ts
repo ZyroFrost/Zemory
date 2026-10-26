@@ -6,7 +6,7 @@ import Database from "better-sqlite3";
 import { existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { currentMemoryDb, currentMemoryDir, openMemory, type MemoryDB } from "./db.js";
-import { redact } from "./redact.js";
+import { redact, redactHits } from "./redact.js";
 import { countForgetVectors, forgetVectors, vecConnect } from "./vectors.js";
 import { Q } from "./store/queries.js";
 
@@ -257,7 +257,7 @@ export async function forgetMemory(opts: ForgetMemoryOptions = {}): Promise<Forg
       if (hasTable(db, "session_digest")) {
         // AFTER DELETE trigger clears both digest FTS tables; the digest builder
         // regenerates from the surviving messages on its next run.
-        const delDigest = db.prepare("DELETE FROM session_digest WHERE session_id = ?");
+        const delDigest = db.prepare(Q.deleteSessionDigest);
         for (const id of sessionIds) digests += delDigest.run(id).changes;
       }
       const updateSession = db.prepare(
@@ -305,6 +305,10 @@ export interface ReRedactMemoryResult {
   backupPath: string | null;
   scanned: { messages: number; artifactCommands: number; artifactIndex: number; sessionDigests: number };
   changed: { messages: number; artifactCommands: number; artifactIndex: number; sessionDigests: number };
+  /** Changed messages per pattern that fired (one message can count under several). */
+  byPattern: Record<string, number>;
+  /** Changed messages per session source (claude-code, codex, chatgpt-web, ...). */
+  bySource: Record<string, number>;
 }
 
 function diffRedactions<T extends { id: string | number; value: string | null }>(rows: T[]): (T & { redacted: string })[] {
@@ -317,10 +321,7 @@ export async function reRedactMemory(opts: ReRedactMemoryOptions = {}): Promise<
   const dbPath = opts.dbPath ?? currentMemoryDb();
   const db = openMemory(dbPath);
   try {
-    const messages = db.prepare("SELECT id, content AS value FROM messages WHERE content IS NOT NULL AND content != ''").all() as {
-      id: number;
-      value: string;
-    }[];
+    const messages = db.prepare(Q.redactScanMessages).all() as { id: number; value: string; source: string | null }[];
     const commands = db.prepare("SELECT id, command_redacted AS value FROM artifact WHERE command_redacted IS NOT NULL AND command_redacted != ''").all() as {
       id: string;
       value: string;
@@ -356,6 +357,14 @@ export async function reRedactMemory(opts: ReRedactMemoryOptions = {}): Promise<
           r.digest_text !== (r.orig.digest_text ?? ""),
       );
     const changedMessages = diffRedactions(messages);
+    // per pattern and per source, so two machines can compare their dry runs number for number
+    const byPattern: Record<string, number> = {};
+    const bySource: Record<string, number> = {};
+    for (const row of changedMessages) {
+      for (const name of redactHits(row.value)) byPattern[name] = (byPattern[name] ?? 0) + 1;
+      const src = row.source ?? "unknown";
+      bySource[src] = (bySource[src] ?? 0) + 1;
+    }
     const changedCommands = diffRedactions(commands);
     const changedIndex = diffRedactions(indexRows);
     const dryRun = !opts.force;
@@ -366,6 +375,8 @@ export async function reRedactMemory(opts: ReRedactMemoryOptions = {}): Promise<
         backupPath: null,
         scanned: { messages: messages.length, artifactCommands: commands.length, artifactIndex: indexRows.length, sessionDigests: digestRows.length },
         changed: { messages: changedMessages.length, artifactCommands: changedCommands.length, artifactIndex: changedIndex.length, sessionDigests: changedDigests.length },
+        byPattern,
+        bySource,
       };
     }
     const backup = opts.skipBackup ? null : await backupMemory({ dbPath, outPath: opts.backupPath, force: opts.backupPath ? false : true });
@@ -389,6 +400,8 @@ export async function reRedactMemory(opts: ReRedactMemoryOptions = {}): Promise<
       backupPath: backup?.outPath ?? null,
       scanned: { messages: messages.length, artifactCommands: commands.length, artifactIndex: indexRows.length, sessionDigests: digestRows.length },
       changed: { messages: changedMessages.length, artifactCommands: changedCommands.length, artifactIndex: changedIndex.length, sessionDigests: changedDigests.length },
+      byPattern,
+      bySource,
     };
   } finally {
     db.close();

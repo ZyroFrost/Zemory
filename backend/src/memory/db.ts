@@ -305,6 +305,23 @@ CREATE TABLE IF NOT EXISTS session_alias (
   session_id TEXT NOT NULL
 );
 
+-- A session this machine replaced WHOLE at ingest (a new parser re-read its transcript): the content keys of every message it
+-- now holds. Shipped with the delta so a machine that is not the origin drops the older copies it keeps (2026-10-26: 272
+-- stale codex lines on the second machine). \`max_ts\` bounds what may be dropped: a line appended after the replace stays.
+CREATE TABLE IF NOT EXISTS session_replaced (
+  session_id TEXT PRIMARY KEY,
+  keys       TEXT NOT NULL,
+  max_ts     TEXT,
+  at         TEXT NOT NULL
+);
+-- A replace received from the origin, applied once every listed message has arrived (a large delta comes in blocks).
+CREATE TABLE IF NOT EXISTS session_replace_pending (
+  session_id TEXT PRIMARY KEY,
+  keys       TEXT NOT NULL,
+  max_ts     TEXT,
+  at         TEXT NOT NULL
+);
+
 -- ARTIFACT STORE (phase B). Raw tool output is kept as a content-addressed file
 -- on disk (named by sha256, restricted perms); THIS table is metadata only — no
 -- raw bytes in SQLite. artifact_index is a REDACTED per-line index for search so

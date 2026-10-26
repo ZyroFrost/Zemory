@@ -38,6 +38,8 @@ import { markVectorsShipped, unshippedVectorIds } from "./vectors.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
 import { type SyncLevel, getScopeExclude, getSyncAttachments, getSyncLevel } from "../config/settings.js";
 import { Q } from "./store/queries.js";
+import { applyReplaces, receiveReplaces, shipReplaces } from "./replace.js";
+import { forgetVectors } from "./vectors.js";
 
 const MAGIC = "ZEMORY-MEMORY-ENC v1\n";
 const TAG_BYTES = 16;
@@ -314,6 +316,8 @@ function buildRowsSnapshot(
              WHERE id > ?${untilSql}${ownMessages}${notExcluded("session_id")}`,
         ).run(since, ...ownParams, ...excl.params);
         db.exec("INSERT INTO main.known_stores SELECT * FROM src.known_stores");
+        // the origin's whole replaces of the sessions carried here, so the receiver follows them (memory/replace.ts)
+        shipReplaces(db);
         // L3: chỉ chở khi máy này BẬT công tắc. Bám đúng tập message vừa chở (delta +
         // scope exclude) — chở đính kèm của tin không có trong bundle là chở rác.
         if (opts.attachments) {
@@ -721,6 +725,7 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
       const count = (sql: string): number => (db.prepare(sql).get() as { c: number }).c;
       const sessionsBefore = count("SELECT COUNT(*) c FROM sessions");
       const messagesBefore = count("SELECT COUNT(*) c FROM messages");
+      let replacedIds: number[] = [];
       db.prepare(Q.attachSrc).run(srcPath);
       try {
         // Scoped sync: don't pull "shared" lanes the user excluded. Skip the
@@ -806,6 +811,9 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
                  JOIN attachment a ON a.sha256 = sp.sha256`,
             );
           }
+          // a session replaced whole at its origin: drop the older copies here once every listed line has arrived
+          receiveReplaces(db, hostname() || "unknown");
+          replacedIds = applyReplaces(db);
           db.exec("DELETE FROM sessions WHERE message_count = 0 AND id IN (SELECT id FROM src.sessions)");
         })();
       } finally {
@@ -818,6 +826,7 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
       // (session_id, uuid) — chạy trước thì không có gì để tra. Fail-open: lệch cấu hình
       // nhúng hay thiếu extension chỉ làm mất phần vector, tin vẫn vào đủ.
       const vec = receiveVectorsFrom(srcPath, targetPath);
+      if (replacedIds.length) forgetVectors(targetPath, replacedIds);
       return {
         dbPath: targetPath,
         bundlePath: opts.bundlePath,

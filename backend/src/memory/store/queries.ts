@@ -83,6 +83,22 @@ export const Q = {
 
   // ── vectors ───────────────────────────────────────────────────────────────
   // the p2p channel (HP 18): which of THIS machine's vectors each receiving machine has confirmed
+  // the origin's whole replace of a session, shipped so the other machine follows it (memory/replace.ts)
+  sessionContentRows: "SELECT id, role, timestamp, content FROM messages WHERE session_id = ?",
+  sessionReplacedUpsert:
+    "INSERT INTO session_replaced (session_id, keys, max_ts, at) VALUES (?, ?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET keys = excluded.keys, max_ts = excluded.max_ts, at = excluded.at",
+  replacePendingUpsert:
+    "INSERT INTO session_replace_pending (session_id, keys, max_ts, at) VALUES (?, ?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET keys = excluded.keys, max_ts = excluded.max_ts, at = excluded.at WHERE excluded.at >= session_replace_pending.at",
+  replacePendingAll: "SELECT session_id, keys, max_ts FROM session_replace_pending",
+  replacePendingDelete: "DELETE FROM session_replace_pending WHERE session_id = ?",
+  replaceIncoming: "SELECT r.session_id, r.keys, r.max_ts, r.at, s.host FROM src.session_replaced r JOIN sessions s ON s.id = r.session_id",
+  replaceShipDdl: "CREATE TABLE IF NOT EXISTS main.session_replaced (session_id TEXT PRIMARY KEY, keys TEXT NOT NULL, max_ts TEXT, at TEXT NOT NULL)",
+  replaceShip: "INSERT OR REPLACE INTO main.session_replaced SELECT session_id, keys, max_ts, at FROM src.session_replaced WHERE session_id IN (SELECT id FROM main.sessions)",
+  deleteMessageById: "DELETE FROM messages WHERE id = ?",
+  deleteSessionDigest: "DELETE FROM session_digest WHERE session_id = ?",
+  // `memory redact`: every message with its session's source, so the dry run counts per source
+  redactScanMessages:
+    "SELECT m.id, m.content AS value, s.source FROM messages m LEFT JOIN sessions s ON s.id = m.session_id WHERE m.content IS NOT NULL AND m.content != ''",
   // the dry run of `memory forget`: the vector rows `forgetVectors` would delete (direct rowid + long-message chunks)
   vecCountTemp: "CREATE TEMP TABLE IF NOT EXISTS zemory_vec_count(id INTEGER PRIMARY KEY)",
   vecCountPut: "INSERT OR IGNORE INTO zemory_vec_count(id) VALUES (?)",
@@ -107,6 +123,7 @@ export const Q = {
 
   // ── schema probes · attach ────────────────────────────────────────────────
   tableExists: "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+  srcTableExists: "SELECT name FROM src.sqlite_master WHERE type='table' AND name=?",
   hasVecRowidsTable: "SELECT name FROM sqlite_master WHERE type='table' AND name='vec_chunks_rowids'",
   attachSrc: "ATTACH DATABASE ? AS src",
   detachSrc: "DETACH DATABASE src",
