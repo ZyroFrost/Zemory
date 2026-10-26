@@ -91,6 +91,14 @@ Trí tuệ là **agent đang lái terminal**, không phải zemory (điều 6). 
     - **Phép kiểm:** liệt kê thư mục GM ⇒ chỉ có `global_memory.db` (+ `-wal`/`-shm`). Có thêm bất cứ mục nào ⇒ vi phạm.
     - Thay vế "`global_memory.db` + `channel/` + `files/`" ở điều 14 và vế "dãy khúc" của điều 16 khi chúng nói về nội dung thư mục GM; ý gốc của điều 16 (một GM logic · chở trọn RAG · ghi là nối thêm · có hàng đợi) giữ nguyên.
 
+19. **KHÔNG PHÌNH — thứ tạm, đệm, sao lưu TỰ DỌN; TRẦN dung lượng có chốt máy và KHÔNG VƯỢT được.** Trần giữ bằng máy; trần tự vượt được là luật vô dụng.
+    - **Phạm vi:** mọi thứ zemory sinh ra mà không phải dữ liệu gốc — đệm build của Docker · image thừa · bản sao lưu GM tự chụp · thư mục nháp của phiên · khối kênh/tệp tạm. GM (`global_memory.db`) là dữ liệu gốc, không thuộc diện tự xoá (điều 3).
+    - **Sao lưu tự chụp** (`forget` · `redact` · mọi lệnh tự chụp trước khi ghi): chỉ giữ **2 bản mới nhất** của mỗi GM; chính lệnh chụp xoá bản cũ hơn ngay sau khi chụp. Bản người dùng tự chỉ đường lưu thì không bị xoá.
+    - **Dựng lại bản Docker: chỉ một đường,** `backend/scripts/docker-rebuild.sh` (lần cài đầu: bộ cài `install-docker.*`) — xoá đệm build và image thừa TRƯỚC và SAU khi build, rồi đo trần. Lệnh build trần (`docker compose up --build` · `docker build`) bị guard chặn.
+    - **Trần của bản Docker: 10 GB cho mọi thứ nằm cạnh GM** (image + store trừ thư mục GM); đệm build sau khi dựng bằng 0. Vượt ⇒ `docker-rebuild.sh` thoát đỏ và nêu thứ phình; việc đầu tiên là dọn, không phải nâng trần.
+    - **Ổ ảo WSL không tự co lại** khi xoá file bên trong: ổ chạy ở chế độ sparse (`wsl --manage <distro> --set-sparse true`); ổ đã phình ⇒ nén một lần (xuất/nhập lại distro).
+    - **Phép kiểm:** guard nhánh `docker_prune` (marker `dockerPrune: true`) chặn build trần · `no-bloat.test` (build trần bị chặn, kể cả sau `wsl … bash -lc`; sao lưu tự chụp giữ 2 bản; bản đặt tên không bị xoá) · `docker-rebuild.sh` đỏ khi đệm build khác 0 hoặc phần cạnh GM vượt trần · `02-4_scratch-cap` (thư mục nháp tối đa 5 file).
+
 ## Sửa đổi hiến pháp
 - **Chỉ user quyết** — cả §Mục đích lẫn §Điều khoản. Agent thấy cần sửa/thêm → **HỎI user ngay trong phiên**, user gật mới ghi; KHÔNG tự sửa file này. *(Luật đầy đủ về cửa vào — kể cả vế BÃI BỎ "đậu đề xuất vào `05_TODO` chờ duyệt" — nằm ở `02_RULES` §Sổ việc `05_TODO`. Không lặp ở đây.)*
 - Khi user chốt đổi: cập nhật tại đây + ghi `06_CHANGES.md` (supersede — nêu điều cũ, lý do đổi).

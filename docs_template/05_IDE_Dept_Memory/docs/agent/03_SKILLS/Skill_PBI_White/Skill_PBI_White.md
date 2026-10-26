@@ -1,14 +1,14 @@
 ---
 id: Skill_PBI_White
 name: pbi-white
-version: 16
+version: 17
 aka: pbi-mix
 replaces: [Skill_PBI_Mix]
 type: process
 checked: [Rule_Keys_62_DesignChangeApproval, Skill_PBI_Base, Skill_PBI_Pbip]
 description: Build the WHITE copy (named Mix before 2026-10-19) of a Power BI report - warehouse model, the Red header and colours, the Legacy layout and navigation, the 5 px grid over the whole file. Use whenever an old dashboard keeps the reading habits of its users but gets the new identity frame. Not for a number-matching copy (pbi-classic) nor a new design (pbi-red). Vietnamese triggers - "bản white", "bản mix", "giữ bố cục cũ nhưng header mới", "trộn hai bản", "header neo khi cuộn".
 installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
-from: _Store/03_SKILLS/Skill_PBI_White @v16 #d9cc0e1df9a3
+from: _Store/03_SKILLS/Skill_PBI_White @v17 #0bf4dcaceb95
 ---
 
 # The `White` kind — the OLD layout, the NEW identity frame, running on the DW
@@ -923,8 +923,8 @@ Gates: `pct-period` (a `Pct_` line without a label must have the period word in 
 | ADS | `calendar-dollar` | | Stores | `building-store` |
 
 - **The machine does it:** `python scripts/card_icons.py render` (downloads Tabler 3.19 SVGs, headless Chrome at 512 px, **searches `stroke-width` until it MEASURES
-  17.5 ± 0.5** — Tabler's default 2 ⇒ 42.7 px; the 11 icons came out 0.706–0.787), writes the ⬛/🟥/⬜ versions into the icon library `<region manager repo>/assets/icons/` + a line
-  in `README.md`; `MIX_ROOT=<report> python scripts/card_icons.py place` (an image visual `Image_<Key>` in the card group, its id fixed by
+  17.5 ± 0.5** — Tabler's default 2 ⇒ 42.7 px; the 11 icons came out 0.706–0.787), writes the ⬛/🟥/⬜ versions into the icon library (the region value `icons_dir` = the organisation's `_Design\Assets\Icon\`, Design_172) + a
+  line in its `README.md`; `MIX_ROOT=<report> python scripts/card_icons.py place` (an image visual `Image_<Key>` in the card group, its id fixed by
   page + key ⇒ a rerun creates nothing extra; every bookmark capturing the card also captures the icon in the same state). A new card ⇒ added to `ICONS`.
 - **The machine watches:** gate `card-icon` (missing icon · wrong frame/position · image not registered · a colour other than the figure's · a stroke outside 17–18 px · the % line
   touching the icon · the figure box running under the icon). Negative test: an unplaced White OM ⇒ 26 errors; the old square-frame version ⇒ 32 text boxes running under icons.

@@ -1,6 +1,6 @@
 {
   "generator": "zemory",
-  "comment": "ONE source for the layer-1 rules (irreversible actions the machine can check). guard.cjs (PreToolUse) and precommit-guard.cjs both read this file. Generated from the marker (.harness.json keys `protected`/`secretNames`/`secretAllow`/`allowedRoots`/`allowedSqlServers`/`repoGates`) — edit the marker, then run `zemory hook guard` to regenerate.",
+  "comment": "ONE source for the layer-1 rules (irreversible actions the machine can check). guard.cjs (PreToolUse) and precommit-guard.cjs both read this file. Generated from the marker (.harness.json keys `protected`/`secretNames`/`secretAllow`/`allowedRoots`/`allowedSqlServers`/`repoGates`/`dockerPrune`) — edit the marker, then run `zemory hook guard` to regenerate.",
   "protected_write": [
     "data",
     "share",
@@ -86,6 +86,7 @@
   "allowed_roots": [],
   "allowed_sql_servers": [],
   "repo_gates": [],
+  "docker_prune": true,
   "read_first": {
     "required": [
       "docs/agent/05_TODO.md"

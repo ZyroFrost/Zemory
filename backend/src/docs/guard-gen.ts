@@ -123,6 +123,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
   let allowedRoots: string[] = [];
   let allowedSqlServers: string[] = [];
   let repoGates: string[] = [];
+  let dockerPrune = false;
   // readMarker: MỘT người đọc marker (đã lột BOM). Bản đầu tự parse ở đây và nuốt lỗi
   // im lặng — fixture Windows (Set-Content ghi BOM) đã chứng minh policy sinh ra MẤT
   // `protected` mà không ai hay. Marker hỏng ⇒ policy chỉ còn bộ mặc định (secret vẫn gác).
@@ -135,6 +136,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
       allowedRoots?: unknown;
       allowedSqlServers?: unknown;
       repoGates?: unknown;
+      dockerPrune?: unknown;
     };
     const strs = (v: unknown): string[] =>
       Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && Boolean(x.trim())).map((x) => x.trim()) : [];
@@ -157,6 +159,8 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     allowedSqlServers = strs(j.allowedSqlServers);
     // The repo's own gates for its constitution (Dept_FIN 2026-10-07: they hand-edited .git/hooks/pre-commit to add one).
     repoGates = strs(j.repoGates);
+    // A repo that ships a Docker install: a bare build is refused, the rebuild script prunes (zemory constitution article 19).
+    dockerPrune = j.dockerPrune === true;
   }
   // plan/29 §15: the constitution the repo wrote is the source — frame 10's `Server` column (servers SQL may reach) and
   // frame 14's `File` column (secret file names). The marker keys still count while repos move their values over.
@@ -228,7 +232,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     generator: "zemory",
     comment:
       "ONE source for the layer-1 rules (irreversible actions the machine can check). guard.cjs (PreToolUse) and precommit-guard.cjs both read this file. " +
-      "Generated from the marker (.harness.json keys `protected`/`secretNames`/`secretAllow`/`allowedRoots`/`allowedSqlServers`/`repoGates`) — edit the marker, then run `zemory hook guard` to regenerate.",
+      "Generated from the marker (.harness.json keys `protected`/`secretNames`/`secretAllow`/`allowedRoots`/`allowedSqlServers`/`repoGates`/`dockerPrune`) — edit the marker, then run `zemory hook guard` to regenerate.",
     // Rule_Gate_79: the harness docs themselves are protected in every repo, declared or not — rules, constitution,
     // structure, skills, the rest of the harness folder, plan, hooks, the entry files, and the parts store of the repo that
     // carries it. The one-use flags in flags_dir are exempt (writing a flag is how the user's approval is recorded).
@@ -260,6 +264,7 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
     allowed_sql_servers: allowedSqlServers,
     // Commands precommit-guard.cjs runs after the secret check; non-zero exit blocks the commit.
     repo_gates: repoGates,
+    docker_prune: dockerPrune,
     // 02-59_read-first.cjs: what must be read IN FULL (per the session transcript) before writing / running in the repo. No flag.
     read_first: readFirst,
     // plan/27 §3: hooks for common rules a machine can see at the tool call (rule-hooks-src.ts) — each file named after its
@@ -867,6 +872,16 @@ function checkBash(cmd) {
   if (POLICY.git_local && hitsIn(bare, /^git$/, /\\bgit\\s+(?:-[A-Za-z]\\s+\\S+\\s+)*(push\\b|remote\\s+(add|set-url)\\b)/)) {
     deny("BLOCKED (guard layer 1): this repo's git is its LOCAL BACKUP - no remote, never pushed (its template's role: git local). " +
       "Commit as often as you like; another machine gets the repo through zemory's backup and Syncthing, not git. There is no flag for this.");
+  }
+
+  // A repo that ships a Docker install (marker key dockerPrune; zemory constitution article 19): a build leaves its cache
+  // inside a disk that never shrinks, so a bare build is refused; backend/scripts/docker-rebuild.sh prunes before and after
+  // and reds over the ceiling. Measured 2026-10-26: five bare rebuilds in one day left 27.7 GB of build cache.
+  if (POLICY.docker_prune && /\\bdocker(?:\\s+compose)?\\b[^\\n;&|]*\\b(?:up\\b[^\\n;&|]*--build|build)\\b/i.test(bare) &&
+    !/docker-rebuild\\.sh|install-docker\\.(?:ps1|sh)/i.test(bare)) {
+    deny("BLOCKED (guard layer 1): a Docker build outside backend/scripts/docker-rebuild.sh - its cache stays inside the WSL disk, " +
+      "and that disk never shrinks (constitution article 19). Rebuild with: wsl -d <distro> -- sh backend/scripts/docker-rebuild.sh - " +
+      "it prunes before and after the build and reds over the ceiling. There is no flag for this.");
   }
 
   if (hitsIn(bare, /^git$/, new RegExp(GIT_CMD + PUSH_ARG))) {

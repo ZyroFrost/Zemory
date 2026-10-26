@@ -20,5 +20,6 @@
     "share.key",
     "*.enc",
     "global_memory*.db"
-  ]
+  ],
+  "dockerPrune": true
 }

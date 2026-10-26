@@ -3,7 +3,7 @@
 // unless explicitly skipped by internal/test callers.
 
 import Database from "better-sqlite3";
-import { existsSync, mkdirSync, renameSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { currentMemoryDb, currentMemoryDir, openMemory, type MemoryDB } from "./db.js";
 import { redact, redactHits } from "./redact.js";
@@ -55,10 +55,73 @@ export interface BackupMemoryResult {
   bytes: number;
 }
 
+/** Automatic backups kept per store (HP 19: nothing temporary grows without bound). Measured 2026-10-26: forget + redact
+ *  left three 7 GB copies in one day inside the Docker disk, which never shrinks on its own. ZEMORY_BACKUP_KEEP overrides. */
+export const BACKUP_KEEP = 2;
+
+/** Delete the oldest automatic backups of `base` in `dir` beyond `keep`; returns the paths removed. */
+export function pruneBackups(dir: string, base: string, keep = Number(process.env.ZEMORY_BACKUP_KEEP) || BACKUP_KEEP): string[] {
+  if (!existsSync(dir)) return [];
+  const mine = readdirSync(dir)
+    .filter((n) => n.startsWith(`${base}-`) && n.endsWith(".db"))
+    .sort(); // the name carries an ISO timestamp, so name order is age order
+  const drop = mine.slice(0, Math.max(0, mine.length - keep)).map((n) => join(dir, n));
+  for (const p of drop) rmSync(p, { force: true });
+  return drop;
+}
+
+export interface BackupFile {
+  path: string;
+  bytes: number;
+  /** The capture time read from the name (ISO), or the file time when the name carries none. */
+  at: string;
+}
+
+/** Every backup of a GM: the automatic copies in `backups/` and the `.relocated-*.bak` a relocation leaves beside the store. */
+export function listBackups(dbPath: string = currentMemoryDb()): BackupFile[] {
+  const base = basename(dbPath).replace(/\.db$/i, "");
+  const dirs = new Set([dirname(defaultBackupPath(dbPath)), currentMemoryDir(), dirname(resolve(dbPath))]);
+  const out: BackupFile[] = [];
+  for (const dir of dirs) {
+    if (!existsSync(dir)) continue;
+    for (const n of readdirSync(dir)) {
+      const auto = n.startsWith(`${base}-`) && n.endsWith(".db");
+      const moved = n.startsWith(`${base}.db.relocated-`) && n.endsWith(".bak");
+      if (!auto && !moved) continue;
+      const p = join(dir, n);
+      const m = n.match(/(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z/);
+      const at = m ? `${m[1]}T${m[2]}:${m[3]}:${m[4]}.${m[5]}Z` : statSync(p).mtime.toISOString();
+      out.push({ path: p, bytes: statSync(p).size, at });
+    }
+  }
+  return out.sort((a, b) => a.at.localeCompare(b.at));
+}
+
+export interface PruneBackupsOptions {
+  dbPath?: string;
+  /** keep the newest N (default BACKUP_KEEP) */
+  keep?: number;
+  /** drop every backup captured before this ISO time (the newest N are still kept) */
+  before?: string;
+  force?: boolean;
+}
+
+/** `memory backups --prune`: the dry run lists what would go; --force deletes it (with its -wal / -shm). */
+export function pruneBackupFiles(opts: PruneBackupsOptions = {}): { dryRun: boolean; drop: BackupFile[]; keep: BackupFile[] } {
+  const all = listBackups(opts.dbPath ?? currentMemoryDb());
+  const keepN = opts.keep ?? BACKUP_KEEP;
+  const newest = new Set(all.slice(Math.max(0, all.length - keepN)).map((b) => b.path));
+  const drop = all.filter((b) => !newest.has(b.path) && (!opts.before || b.at < opts.before));
+  if (opts.force) for (const b of drop) for (const suffix of ["", "-wal", "-shm"]) rmSync(b.path + suffix, { force: true });
+  return { dryRun: !opts.force, drop, keep: all.filter((b) => !drop.includes(b)) };
+}
+
 export async function backupMemory(opts: BackupMemoryOptions = {}): Promise<BackupMemoryResult> {
   const dbPath = opts.dbPath ?? currentMemoryDb();
   const outPath = opts.outPath ?? defaultBackupPath(dbPath);
   const bytes = await sqliteBackup(dbPath, outPath, opts.force);
+  // only the automatic ones: a backup the person named a path for is theirs to keep
+  if (!opts.outPath) pruneBackups(dirname(outPath), basename(dbPath).replace(/\.db$/i, ""));
   return { dbPath, outPath, bytes };
 }
 

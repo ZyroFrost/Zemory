@@ -1,5 +1,5 @@
 ---
-version: 16
+version: 17
 lang: vi
 ---
 
@@ -915,7 +915,7 @@ Cổng: `pct-period` (dòng `Pct_` không nhãn thì format phải có chữ k�
 | ADS | `calendar-dollar` | | Stores | `building-store` |
 
 - **Máy làm:** `python scripts/card_icons.py render` (tải SVG Tabler 3.19, Chrome headless 512 px, **dò `stroke-width` tới khi ĐO ra
-  17,5 ± 0,5** — Tabler mặc định 2 ⇒ 42,7 px; 11 icon ra 0,706–0,787), ghi bản ⬛/🟥/⬜ vào thư viện icon `repo quản lý vùng/assets/icons/` + dòng
+  17,5 ± 0,5** — Tabler mặc định 2 ⇒ 42,7 px; 11 icon ra 0,706–0,787), ghi bản ⬛/🟥/⬜ vào thư viện icon (giá trị vùng `icons_dir` = `_Design\Assets\Icon\` của tổ chức, Design_172) + dòng
   trong `README.md`; `MIX_ROOT=<report> python scripts/card_icons.py place` (visual ảnh `Image_<Key>` trong nhóm thẻ, id cố định theo
   trang + key ⇒ chạy lại không đẻ thêm; mọi bookmark chụp thẻ thì chụp luôn icon cùng trạng thái). Thẻ mới ⇒ thêm vào `ICONS`.
 - **Máy canh:** cổng `card-icon` (thiếu icon · sai khung/vị trí · ảnh chưa đăng ký · màu khác màu số · nét ngoài 17–18 px · dòng %

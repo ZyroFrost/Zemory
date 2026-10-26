@@ -550,6 +550,16 @@ function checkBash(cmd) {
       "Commit as often as you like; another machine gets the repo through zemory's backup and Syncthing, not git. There is no flag for this.");
   }
 
+  // A repo that ships a Docker install (marker key dockerPrune; zemory constitution article 19): a build leaves its cache
+  // inside a disk that never shrinks, so a bare build is refused; backend/scripts/docker-rebuild.sh prunes before and after
+  // and reds over the ceiling. Measured 2026-10-26: five bare rebuilds in one day left 27.7 GB of build cache.
+  if (POLICY.docker_prune && /\bdocker(?:\s+compose)?\b[^\n;&|]*\b(?:up\b[^\n;&|]*--build|build)\b/i.test(bare) &&
+    !/docker-rebuild\.sh|install-docker\.(?:ps1|sh)/i.test(bare)) {
+    deny("BLOCKED (guard layer 1): a Docker build outside backend/scripts/docker-rebuild.sh - its cache stays inside the WSL disk, " +
+      "and that disk never shrinks (constitution article 19). Rebuild with: wsl -d <distro> -- sh backend/scripts/docker-rebuild.sh - " +
+      "it prunes before and after the build and reds over the ceiling. There is no flag for this.");
+  }
+
   if (hitsIn(bare, /^git$/, new RegExp(GIT_CMD + PUSH_ARG))) {
     const clash = versionClash();
     if (clash) {
