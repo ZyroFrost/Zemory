@@ -184,7 +184,10 @@ function printHits(query: string, scopeLabel: string, hits: SearchHit[], abstain
 // run directly (fallback). Auto-expiring hold + the engine's own retry are the
 // safety nets. Kept advisory (no delegation) so a multi-hour `embed --all` never
 // hits an HTTP timeout.
-const HEAVY_WRITES = new Set(["scan", "scan-web", "embed", "digest", "sync"]);
+const HEAVY_WRITES = new Set(["scan", "scan-web", "embed", "digest", "sync", "forget", "redact"]);
+/** Commands whose `--force` means "apply" (delete / rewrite for real), never "run over another writer's lock". 2026-10-26:
+ *  `forget --force` ran beside the channel and the fast lane, took no write lock and died on "database is locked". */
+const FORCE_MEANS_APPLY = new Set(["forget", "redact"]);
 
 /**
  * CỜ LẠ BỊ TỪ CHỐI — không "bỏ qua âm thầm rồi chạy thật".
@@ -314,7 +317,7 @@ export async function cmdMemory(args: string[]): Promise<void> {
     // Chờ NGẮN (30 s), không phải 2 phút: đủ cho một job ngắn (digest/scan nhỏ) chạy xong và
     // nhường, nhưng không bắt người gõ lệnh ngồi đợi 2 phút chỉ để nhận lời từ chối. Job dài
     // hàng giờ thì chờ bao lâu cũng vô ích — trả lời sớm mới đúng.
-    const forced = args.includes("--force");
+    const forced = args.includes("--force") && !FORCE_MEANS_APPLY.has(sub);
     for (let i = 0; i < (forced ? 1 : 6); i++) {
       const g = acquireCliWriteLock(sub);
       if (g.ok) {
@@ -332,7 +335,9 @@ export async function cmdMemory(args: string[]): Promise<void> {
         console.error(
           `zemory memory ${sub}: STOPPED — another process is writing the store (pid ${held.pid}, ${held.label}, for ${mins} min).\n` +
             "  Two processes writing vectors at once is exactly the combination that corrupted the store on 2026-08-03, so this command does NOT run over it.\n" +
-            "  → wait for it to finish and run again; or `--force` if you are sure the other process is no longer writing.",
+            (FORCE_MEANS_APPLY.has(sub)
+              ? "  → wait for it to finish and run again (here `--force` means apply, it never runs over another writer)."
+              : "  → wait for it to finish and run again; or `--force` if you are sure the other process is no longer writing."),
         );
         process.exitCode = 1;
         return;
