@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 9
+version: 10
 scope: disk
 ---
 # Struc_Disk_Data
@@ -139,6 +139,24 @@ place a game save or a downloaded course. Sorting always uses the chain above.
 A top-level folder starting with `_` is a shared store of the whole machine (many programs and repos point into it, the owner
 never works inside it); there are two, `_ConfigVault\` and `_Models\`.
 
+## The tree root — per machine
+
+The slots above are the same on every machine; only the root changes. The root is one of three: a drive root (`D:\`) · a folder
+on a drive (`E:\Data\`) · a OneDrive folder (`%OneDrive%\`), when the owner keeps everything in OneDrive so every file is synced.
+
+1. Declare the root once on each machine: `zemory conform --layout --set-root <root>` (the key `treeRoot` in the `config.json` beside that
+   machine's Global Memory). `zemory conform --layout` with no root then checks it; a machine that declares nothing keeps giving the
+   root on the command line.
+2. A root inside OneDrive holds the real files; it uses no link. OneDrive does not sync through a junction or symlink placed inside
+   it, so a block made elsewhere and linked in never reaches the cloud.
+3. What must not live in a synced folder stays on a local drive, outside the tree, and the root's `_README.md` says where:
+   a live database (Global Memory, an app's SQLite) · a virtual disk (`.vhdx` of WSL, Docker) · folders rebuilt by a tool
+   (`node_modules\`, `.venv\`, caches, model files).
+4. The folders the OneDrive client puts at that root itself — the known folders it moves there (`Desktop\` · `Pictures\` · `Music\` ·
+   `Videos\`), its app and attachment folders, `Personal Vault.lnk` — are left alone by the check. `Documents\` is a slot of the tree and
+   follows Documents_152, also when OneDrive moved it there.
+5. In the Docker install the root is read through the data-root mount: `HOST_DATA_ROOT` names the same folder as `treeRoot`.
+
 ## One logical tree, many storage places — suggested, not required
 
 The tree is ONE logical tree, whatever number of drives a machine has. Each block of data lives for real in exactly one storage
@@ -158,7 +176,7 @@ Five laws, when the tree is split over several places:
 | internal drive | a junction on Windows (`mklink /J`), a symlink on Linux; no bind mount |
 | external drive | a fixed drive letter, or the drive mounted on a folder |
 | NAS | a symlink to the network path (`mklink /D`); a junction cannot point at a network share |
-| cloud drive | mounted at one fixed point; a live database is NEVER on the cloud side |
+| cloud drive | mounted at one fixed point; a live database is NEVER on the cloud side; as the tree root itself, see §The tree root |
 
 Example — a main data drive `D:` and a fast SSD `H:` holding the models, the game saves and WSL's virtual disk:
 
@@ -179,7 +197,7 @@ D:\                                        H:\
 Each split folder carries a `_README.md` on both drives (law 3); the check takes it as the one file a split folder may hold.
 Usual drive roles: the main data drive holds the whole tree · a second data drive
 holds blocks moved off it (large media, archive) · a fast SSD holds what needs speed (games, models, virtual disks) and is backed
-up elsewhere · the system drive and cloud drives are not part of the tree.
+up elsewhere · the system drive is not part of the tree; a cloud folder is either the tree root (§The tree root) or not part of it.
 
 ## The system drive
 
@@ -221,7 +239,7 @@ Whoever adds a slot, changes a slot or builds a new tree does these steps, in or
 
 ## Check
 
-`zemory conform --layout <data root>` reds: a loose file at the root (`loose-file`) · a top-level folder with no slot
+`zemory conform --layout [<data root>]` (no root: the declared `treeRoot`) reds: a loose file at the root (`loose-file`) · a top-level folder with no slot
 (`unknown-folder`) · a repo outside `Workspace\` (`repo-outside-workspace`) · a group in `Software\` outside Software_148 or a part
 in `Game\` outside Game_164 (`unknown-value`) · an item in a program folder outside `Setup\`, `App\`, `Data\` (`program-stray`) · a study
 project with no matching `Study\` folder (`study-unmatched`). It goes on into `Workspace\` and each organisation. Law 1's question

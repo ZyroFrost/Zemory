@@ -23,17 +23,17 @@ KNOWN_SLOTS = {
     "docs", "docs_visual", "reports", "models", "content", "design",
     "tasks", "templates", "sources", "measures", "queries", "pipelines",
     "notebooks", "fixtures", "assets", "scripts", "config", "attic",
-    "data", "exports", "share",
+    "data", "exports", "share", "bin",
 }
 DELIVERABLES = ["reports", "models", "content", "design"]
-# The four MANDATORY sections of tasks/NN_*/spec.md (the shape lives in references/conventions.md).
+# The four MANDATORY sections of a recurring case's tasks/<case>/spec.md (the shape lives in references/conventions.md).
 # LOOSE matching: fold the diacritics away, then look for keywords in the heading lines. It does not demand exact
 # wording, and it does not demand diacritics - everyone writes headings differently, and a strict key raises false alarms.
 SPEC_SECTIONS = [
-    ("Nhip", r"nhip|cadence|tan suat"),
-    ("Cau dat lich", r"dat lich|cau lenh lich|schedule prompt"),
-    ("Cac buoc", r"cac buoc|buoc lam|quy trinh lam|steps"),
-    ("San pham giao di", r"san pham|deliverable|dau ra|output"),
+    ("Cadence", r"nhip|cadence|tan suat"),
+    ("Schedule prompt", r"dat lich|cau lenh lich|schedule prompt"),
+    ("Steps", r"cac buoc|buoc lam|quy trinh lam|steps"),
+    ("Deliverable", r"san pham|deliverable|dau ra|output"),
 ]
 
 
@@ -53,6 +53,9 @@ MUST_IGNORE = ["data/", "exports/", ".env"]
 ROOT_EXEMPT = {".git", ".github", ".vscode", ".idea", ".claude", "node_modules", "__pycache__"}
 
 NUMBERED = re.compile(r"^(\d{2})_")
+# the cadence token of a recurring case name (<DEPT>_<CADENCE>_<TaskName>)
+RECURRING = re.compile(r"_(Daily|Weekly|Monthly|Quarterly|Yearly)_", re.I)
+DATA_SHARED = {"extract", "adhoc", "logs"}
 
 findings = []  # (severity, area, message)
 
@@ -118,22 +121,15 @@ def check_empty_and_unknown(root):
 
 
 def check_task_mirror(root):
-    """A numbered task must carry the same NN across tasks/, pipelines/ and data/."""
-    def numbered(folder):
-        out = {}
-        for d in subdirs(os.path.join(root, folder)):
-            m = NUMBERED.match(d)
-            if m:
-                out[m.group(1)] = d
-        return out
-
-    tasks, pipes, datas = numbered("tasks"), numbered("pipelines"), numbered("data")
-    # The REAL schedule lives in Cowork's recurring tasks, not in the repo. If the repo does not
-    # record it, nobody can tell which schedules the project is running, and whoever comes next will not know
-    # which prompt was used. Symmetric with a workflow: a workflow is a file AND a row in the
-    # index. So tasks/SCHEDULE.md is MANDATORY once recurring work exists, and every task
-    # must have a row in it.
-    if tasks:
+    """A case is tasks/<DEPT>_<CADENCE>_<TaskName>/, unnumbered (Skill_Task_Case); its data is data/<same name>/."""
+    cases = [d for d in subdirs(os.path.join(root, "tasks")) if not d.startswith(".")]
+    for name in cases:
+        if NUMBERED.match(name):
+            add("BLOCK", "task", "tasks/%s/ carries a sequence number - case names are unnumbered (<DEPT>_<CADENCE>_<TaskName>)" % name)
+    recurring = [n for n in cases if RECURRING.search(n)]
+    # The REAL schedule lives in the scheduler, not in the repo. If the repo does not record it, nobody can tell which
+    # schedules the project is running. So tasks/SCHEDULE.md is MANDATORY once recurring work exists, one row per case.
+    if recurring:
         sched = os.path.join(root, "tasks", "SCHEDULE.md")
         if not os.path.isfile(sched):
             add("BLOCK", "task", "tasks/ holds recurring work but tasks/SCHEDULE.md (the schedule index) is missing")
@@ -143,20 +139,16 @@ def check_task_mirror(root):
                     roster = fh.read()
             except OSError:
                 roster = ""
-            for nn, name in sorted(tasks.items()):
+            for name in sorted(recurring):
                 if name not in roster:
                     add("BLOCK", "task", "tasks/SCHEDULE.md has no row for tasks/%s" % name)
-            for m in re.finditer(r"^\s*\|\s*([0-9]{2}_[A-Za-z0-9_\-]+)\s*\|", roster, re.M):
-                if m.group(1) not in tasks.values():
-                    add("INFO", "task", "tasks/SCHEDULE.md has a row '%s' with no matching folder" % m.group(1))
-    for nn, name in sorted(tasks.items()):
+    for name in sorted(cases):
         spec = os.path.join(root, "tasks", name, "spec.md")
         if not os.path.isfile(spec):
             add("BLOCK", "task", "tasks/%s/ is missing spec.md" % name)
-        else:
-            # A recurring schedule runs in a BLANK session: spec.md must hold enough to finish the
-            # job on its own, and the scheduling prompt is only a line pointing at it. Missing any of
-            # the four sections below means the recurring session has to GUESS -> block it.
+        elif name in recurring:
+            # A recurring schedule runs in a BLANK session: spec.md must hold enough to finish the job on its own, and the
+            # scheduling prompt is only a line pointing at it. Missing any of the four sections means the session GUESSES.
             try:
                 with open(spec, encoding="utf-8") as fh:
                     heads = [ln for ln in fh.read().splitlines() if ln.lstrip().startswith("#")]
@@ -166,13 +158,10 @@ def check_task_mirror(root):
             for label, pat in SPEC_SECTIONS:
                 if not re.search(pat, blob):
                     add("BLOCK", "task", "tasks/%s/spec.md is missing the section '%s'" % (name, label))
-        if pipes and nn not in pipes:
-            add("INFO", "mirror", "tasks/%s has no matching pipelines/%s_*" % (name, nn))
-        if datas and nn in datas and datas[nn] != name:
-            add("INFO", "mirror", "so %s lech ten: tasks/%s vs data/%s" % (nn, name, datas[nn]))
-    for nn, name in sorted(pipes.items()):
-        if nn not in tasks:
-            add("INFO", "mirror", "pipelines/%s has no matching tasks/%s_*" % (name, nn))
+    # data/<case>/ mirrors tasks/<case>/ by name; extract/ adhoc/ logs/ are the shared data places
+    for d in subdirs(os.path.join(root, "data")):
+        if d not in cases and d not in DATA_SHARED and not d.startswith("."):
+            add("INFO", "mirror", "data/%s/ has no matching tasks/%s/ - a case renamed or moved?" % (d, d))
 
 
 def check_gitignore(root):
@@ -244,7 +233,7 @@ def main():
 
     blocking = [f for f in findings if f[0] == "BLOCK"]
     for sev, area, msg in sorted(findings, key=lambda f: (f[0] != "BLOCK", f[1])):
-        mark = "PHAI SUA" if sev == "BLOCK" else "xem xet "
+        mark = "MUST FIX" if sev == "BLOCK" else "REVIEW  "
         print("  [%s] %-10s %s" % (mark, area, msg))
     print("-" * 72)
     print("  %d to fix · %d to consider" % (len(blocking), len(findings) - len(blocking)))

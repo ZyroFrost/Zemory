@@ -2,10 +2,10 @@
 id: Skill_Harness_Structure
 aka: structure
 name: harness-structure
-version: 18
+version: 19
 type: process
 description: Folder standard and routing table for a non-app project (BI, report, data, docs-only, design) — decides where every file belongs. Use before creating, naming, moving, or tidying any file or folder, or when asked where something should go. Vietnamese triggers - "để ở đâu", "đặt file này vào đâu", "sắp xếp lại thư mục", "tạo thư mục", "dọn cho gọn", "file này thuộc chỗ nào".
-from: _Store/03_SKILLS/Skill_Harness_Structure @v18 #e185ccfc6b18
+from: _Store/03_SKILLS/Skill_Harness_Structure @v19 #f897e7f074a6
 ---
 
 # Folder standard — the NON-APP system

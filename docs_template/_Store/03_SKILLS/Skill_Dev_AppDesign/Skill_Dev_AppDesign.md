@@ -2,313 +2,313 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 17
+version: 18
 type: process
 checked: [Rule_Gate_35_OneHome, Skill_Dev_DbDesign, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
 ---
 
-# app-design — chuẩn thiết kế APP (FE + BE)
+# app-design — the APP design standard (FE + BE)
 
-> **CHUẨN THIẾT KẾ, không phải điều khoản luật.** Nó mô tả app **nên được dựng thế nào**; trái chuẩn
-> thì sửa cho đúng chuẩn, không phải "cân nhắc". Phần này không nằm trong `01_LAW/_Rule`; `01_LAW/_Rule` chỉ
-> giữ một dòng trỏ sang skill này.
+> **A DESIGN STANDARD, not a clause of law.** It describes how an app **should be built**; off-standard
+> ⇒ fix it to the standard, not "weigh it up". This part is not in `01_LAW/_Rule`; `01_LAW/_Rule` only
+> keeps one line pointing to this skill.
 
-Áp cho profile **APP**. Profile NON-APP không có bề mặt UI ⇒ chỉ đọc §BE.
+Applies to the **APP** profile. The NON-APP profile has no UI surface ⇒ read only §BE.
 
 ---
 
-## FE — bề mặt người dùng
+## FE — the surface people use
 
-### F0. TỐI GIẢN LÀ LUẬT ƯU TIÊN — đọc TRƯỚC mọi luật FE khác
+### F0. MINIMALISM IS THE PRIORITY RULE — read BEFORE every other FE rule
 
-**Mặc định của mọi phần tử trên bề mặt là KHÔNG CÓ NÓ.** Thứ gì muốn có mặt phải trả lời được:
-*người dùng làm gì với nó?* Không trả lời được ⇒ **bỏ**, không "để đó cho đủ".
+**The default of every element on a surface is NOT HAVING IT.** Anything wanting to be there must answer:
+*what does the person using the app do with it?* No answer ⇒ **drop it**, never "keep it there to be complete".
 
-**Luật này đứng TRÊN các luật F khác.** Khi một luật F bảo *"phải có X"* mà X không ai dùng, F0
-thắng: đừng thêm X rồi viện dẫn luật. Các luật F còn lại nói *"nếu có thì phải đúng thế nào"* —
-chúng không phải một danh sách thứ phải dựng.
+**This rule stands ABOVE the other F rules.** When an F rule says *"must have X"* and nobody uses X, F0
+wins: do not add X and then cite the rule. The other F rules say *"if it exists, how it must be"* —
+they are not a list of things to build.
 
-**Năm thứ hay bị thêm thừa nhất:**
+**The five things most often added in excess:**
 
-| thứ thừa | vì sao nó thừa | ví dụ |
+| excess | why it is excess | example |
 |---|---|---|
-| **nhãn hạng dán lên TỪNG mục** của một danh sách | lặp cùng một thông tin N lần, làm rối đúng hàng người ta đang phải chọn | mỗi chip trong một hàng chip đeo thêm nhãn hạng của nó |
-| **chú giải (legend)** cho ký hiệu | chiếm một hàng tiêu đề vĩnh viễn để giải thích một thứ nhìn vài giây là quen | `★ = bắt buộc · opt = tạo khi có concern` trên tiêu đề một card |
-| **con số đếm** cạnh tiêu đề card | bản thân danh sách đã nói số lượng | `19 file` cạnh tên một danh sách |
-| **nhãn lặp lại thứ đang chọn** | chip/tab đang sáng đã nói rồi | lặp lại tên mục đang chọn cạnh tên file |
-| **badge "bắt buộc"/"mặc định"** không ai bấm được | nó là chữ trang trí, không phải điều khiển | cùng ví dụ legend ở trên |
+| **a rank label stuck on EACH item** of a list | repeats the same information N times, cluttering exactly the row people must choose from | each chip in a chip row wearing its rank label |
+| **a legend** for symbols | takes a title row forever to explain something learnt at a glance | `★ = required · opt = created when there is a concern` on a card title |
+| **a count** beside a card title | the list itself already says how many | `19 files` beside a list name |
+| **a label repeating the current choice** | the lit chip/tab already says it | the selected item's name repeated beside the file name |
+| **a "required"/"default" badge** nobody can click | it is decorative text, not a control | the same legend example above |
 
-**Phép thử trước khi thêm bất cứ gì:** ① **gỡ** cái đang có được không · ② **gộp** vào chỗ đã có
-được không · ③ **không có nó thì người dùng làm hỏng việc gì**. Không trả lời được ③ ⇒ **KHÔNG THÊM**.
-*(Cùng khuôn ba câu hỏi của `Rule_Gate_38_TodoDoor` cửa vào — ở đó là chống phình SỔ, ở đây chống phình
-BỀ MẶT. Cùng một bệnh: bồi đắp cho chắc, rồi mọi người phải đọc mãi mãi.)*
+**The test before adding anything:** ① can the existing thing be **removed** · ② can it be **merged** into a place that already
+exists · ③ **without it, which task does the person using the app get wrong**. No answer to ③ ⇒ **DO NOT ADD**.
+*(The same three-question mould as the door of `Rule_Gate_38_TodoDoor` — there against a swelling LEDGER, here against a swelling
+SURFACE. The same illness: piling on for safety, then everyone has to read it forever.)*
 
-**Một thông tin xuất hiện ĐÚNG MỘT LẦN trên màn** (mở rộng của §F6, siết hơn): F6 cấm cùng một số
-sống ở hai MÀN; F0 cấm nó sống hai chỗ trong CÙNG một màn. Hạng của một mục nói ở dòng mô tả của mục
-đang chọn — không dán lên chip, không lặp cạnh tiêu đề.
+**A piece of information appears EXACTLY ONCE on a screen** (an extension of §F6, stricter): F6 forbids the same figure
+living on two SCREENS; F0 forbids it living in two places on the SAME screen. An item's rank is said in the description line of the
+selected item — not stuck on the chip, not repeated beside the title.
 
-⚠ **Đây là chỗ agent sai đi sai lại**, nên nói thẳng: xu hướng tự nhiên khi dựng bề mặt là *thêm cho
-rõ*. Nó không làm rõ hơn — nó làm người dùng phải đọc nhiều hơn để tìm đúng thứ họ cần. **Thêm một
-phần tử là thêm một thứ mọi người phải bỏ qua, mãi mãi.**
+⚠ **This is where agents go wrong again and again**, so said plainly: the natural tendency when building a surface is *adding to
+make it clear*. It does not make it clearer — it makes the person using the app read more to find what they need. **Adding an
+element adds something everyone has to skip, forever.**
 
-### F0b. MỘT CHỨC NĂNG — MỘT KHUNG, MỘT BỘ CSS
+### F0b. ONE FUNCTION — ONE FRAME, ONE CSS SET
 
-**Cùng một chức năng thì mọi nơi phải cùng một hình hài: cùng khung, cùng bộ CSS, cùng vị trí nút,
-cùng nhãn.** Không có chuyện mỗi màn một kiểu.
+**The same function must have the same shape everywhere: the same frame, the same CSS set, the same button position,
+the same label.** Never a different style per screen.
 
-**Ví dụ lệch:** hai ô tìm kiếm cùng nằm trên một màn — tab này có nút chữ `Tìm ✦` (màu nhấn), tab kia
-có nút icon `↻` (viền). Người dùng đọc ra hai thứ khác nhau trong khi cả hai đều là *"gõ để tìm"*.
+**An example of drift:** two search boxes on one screen — one tab has a text button `Tìm ✦` (accent colour), the other
+has an icon button `↻` (outlined). The person using the app reads them as two different things while both are *"type to search"*.
 
-- **Khác HÀNH VI không phải lý do để khác HÌNH HÀI.** Một ô chạy khi bấm, một ô chạy khi gõ —
-  đó là chi tiết bên dưới; bề mặt vẫn phải là cùng một khung. Muốn khác thì phải khác vì **người
-  dùng cần phân biệt**, không phải vì code tiện.
-- **Thứ KHÔNG cùng chức năng thì ĐỪNG nhét chung khung.** Một nút `↻` (quét lại dữ liệu từ đĩa) là
-  một hành động KHÁC hẳn tìm kiếm — nằm trong ô tìm chỉ vì chỗ đó trống. Tách ra.
-- **Cách làm: một lớp CSS dùng chung + một khuôn markup**, khai một lần. Thêm ô tìm thứ ba là dùng
-  lại khuôn đó, KHÔNG chép rồi sửa — chép là cách hai bản bắt đầu trôi lệch.
-- **Phép kiểm:** đếm số biến thể markup/CSS của cùng một chức năng. `> 1` là lệch, trừ khi nêu
-  được lý do người dùng cần phân biệt.
+- **Different BEHAVIOUR is no reason for a different SHAPE.** One box runs on click, one runs on typing —
+  that is a detail underneath; the surface must still be the same frame. A difference must come from **the person using the app
+  needing to tell them apart**, not from code convenience.
+- **Things that are NOT the same function must NOT share a frame.** A `↻` button (rescan data from disk) is
+  a COMPLETELY different action from searching — sitting in the search box only because the space was free. Separate it.
+- **How: one shared CSS class + one markup mould**, declared once. A third search box reuses
+  that mould, NOT copy-then-edit — copying is how two copies start drifting.
+- **The check:** count the markup/CSS variants of the same function. `> 1` is drift, unless a reason the
+  person using it needs to tell them apart can be named.
 
-### F0c. MỌI CONTROL TRÊN CÙNG MỘT HÀNG PHẢI BẰNG CHIỀU CAO
+### F0c. EVERY CONTROL ON ONE ROW HAS THE SAME HEIGHT
 
-**Nút · chip · select · ô tìm đứng chung một hàng thì cao bằng nhau — không có ngoại lệ.** Cái nào
-không nhỏ hơn được một mức nào đó thì **mọi cái còn lại lấy mức đó làm chuẩn**, không phải để nó
-thò ra.
+**Buttons · chips · selects · search boxes standing on one row are the same height — no exception.** Whichever one
+cannot go below a certain size, **every other one takes that size as the standard**, rather than letting it
+stick out.
 
-🔴 **Chốt bằng CHIỀU CAO, đừng chốt bằng padding + font.** Đây là chỗ ai cũng làm sai lần đầu:
-`<select>` là control của **hệ điều hành**, cùng `padding` và cùng `font-size` vẫn ra chiều cao khác
-`<div>`. Đo được khi đã cho cả ba dùng chung padding/font: chip **28,7px** · select **26,0px** — vẫn
-lệch. Cách duy nhất chắc chắn là khai thẳng `height` + `box-sizing:border-box` từ **một biến dùng
-chung**.
+🔴 **Fix it by HEIGHT, not by padding + font.** This is where everyone goes wrong the first time:
+`<select>` is an **operating-system** control, with the same `padding` and the same `font-size` it still comes out a different height from a
+`<div>`. Measured with all three sharing padding/font: chip **28.7px** · select **26.0px** — still
+off. The only sure way is declaring `height` + `box-sizing:border-box` directly from **one shared
+variable**.
 
-- **Một biến, mọi control.** `--ctl-h` (và `--ctl-fs` · `--ctl-px` · `--ctl-r`) khai một chỗ; nút,
-  chip, select, ô tìm đều lấy từ đó. Sửa một chỗ là cả hàng theo — không có đường nào để chúng
-  trôi lệch lần nữa.
-- **Thêm một loại control mới thì nối nó vào danh sách đó**, đừng khai padding riêng.
-- **Đo bằng MÁY, và đo ĐÚNG VẬT.** `getBoundingClientRect().height` trên **chính phần tử khung**,
-  không phải `<input>` nằm trong nó — đo nhầm vật cho ra 18,7px và dẫn tới kết luận sai.
-  Phép kiểm: max − min trên mỗi hàng ≤ 0,6px.
+- **One variable, every control.** `--ctl-h` (and `--ctl-fs` · `--ctl-px` · `--ctl-r`) declared in one place; buttons,
+  chips, selects, search boxes all take from it. Edit one place and the whole row follows — no way left for them
+  to drift again.
+- **A new kind of control is added to that list**, never with its own padding.
+- **Measure by MACHINE, and measure THE RIGHT THING.** `getBoundingClientRect().height` on **the frame element itself**,
+  not the `<input>` inside it — measuring the wrong thing gave 18.7px and led to a wrong conclusion.
+  The check: max − min on each row ≤ 0.6px.
 
-### F1. Panel kề nhau PHẢI kéo được
-**MỌI vùng có ≥2 panel kề nhau PHẢI có thanh kéo (resize handle) chỉnh được kích thước — KHÔNG có ngoại lệ.** Ràng buộc: **① Tự do THẬT** — seam phải điều khiển một biến layout THẬT (kéo là đổi), CẤM seam "trang trí" (cột `2fr`/`1fr` cứng = kéo không đổi gì = SAI). **② Bố cục 2D → kéo cả 2 chiều** (2 panel cạnh nhau = seam DỌC chỉnh bề ngang; 2 panel trên-dưới = seam NGANG chỉnh chiều cao; lưới 2×2 = có cả hai). Không được chỉ cho co 1 chiều. **③ MỘT engine dùng chung** — mọi seam đi qua CÙNG một cơ chế (1 hàm init + 1 kiểu handle + biến/clamp data-driven), KHÔNG mỗi chỗ một nhánh `if(type===…)` hardcode (đó là nguồn "vá chỗ này lủng chỗ kia"). Thêm seam mới = khai báo dữ liệu, KHÔNG chép logic. **④ Lưu + khôi phục** y nguyên qua phiên (server config, như dialog). **⑤ Dựng lại (double-click) về mặc định.** Ngưỡng min/max theo nội dung tối thiểu mỗi panel, KHÔNG số ma rải rác.
+### F1. Adjacent panels MUST be resizable
+**EVERY area with ≥2 adjacent panels MUST have resize handles adjusting their size — NO exception.** Constraints: **① REALLY free** — a seam must control a REAL layout variable (dragging changes it), "decorative" seams are FORBIDDEN (a hard `2fr`/`1fr` column = dragging changes nothing = WRONG). **② A 2D layout → drag in both directions** (2 panels side by side = a VERTICAL seam adjusting the width; 2 panels top-bottom = a HORIZONTAL seam adjusting the height; a 2×2 grid = both). Never only one direction. **③ ONE shared engine** — every seam goes through THE SAME mechanism (1 init function + 1 handle kind + data-driven variables/clamps), NOT a hard-coded `if(type===…)` branch per place (that is the source of "patch here, leak there"). A new seam = declaring data, NOT copying logic. **④ Saved + restored** exactly across sessions (server config, like dialogs). **⑤ Reset (double-click) to the default.** Min/max thresholds follow each panel's minimum content, NO magic numbers scattered around.
 
-**⑥ VẠCH NGĂN CHẠY HẾT CHIỀU CAO VÙNG — mặc định, không phải tuỳ chọn.** Hai panel gần như không bao giờ cao bằng nhau, nên vạch chỉ `align-self:stretch` sẽ dừng ở đáy panel NGẮN hơn và trông như kẻ hụt giữa trang. Vạch là **ranh giới của VÙNG**, không phải đường viền của panel — nó phải chạy trọn vùng bất kể hai bên dài ngắn ra sao.
-· Cách làm: ép hàng lưới bằng chiều cao lưới (`grid-template-rows:minmax(0,1fr)` trên lớp lưới kéo được), **giữ** `align-items:start` để panel vẫn cao theo nội dung — kéo dài vạch, không kéo dài panel.
-· **Đặt ở lớp DÙNG CHUNG, đừng vá từng màn**: cùng bài học với "phân mục phải có vạch ngăn" — vá riêng khung vừa bị chê thì lỗi quay lại ở khung kế tiếp.
-· Nghiệm thu bằng MẮT, không bằng cổng: cổng đọc được class nhưng không thấy vạch dài bao nhiêu.
+**⑥ THE DIVIDER RUNS THE FULL HEIGHT OF THE AREA — the default, not an option.** Two panels are almost never the same height, so a divider with only `align-self:stretch` stops at the bottom of the SHORTER panel and looks like a line falling short mid-page. The divider is **the boundary of the AREA**, not a panel's border — it must run the whole area however long either side is.
+· How: force the grid row to the grid's height (`grid-template-rows:minmax(0,1fr)` on the resizable grid class), **keep** `align-items:start` so panels still take their content height — stretch the divider, not the panels.
+· **Put it in the SHARED layer, do not patch each screen**: the same lesson as "sections must have dividers" — patching only the frame just criticised brings the bug back in the next frame.
+· Accepted by EYE, not by a gate: a gate reads the class but does not see how long the divider is.
 
-### F2. Dialog / modal
-CHỈ 3 size S/M/L, cả 3 CÙNG MỘT TỈ LỆ CHUẨN MÀN HÌNH **16:9** (khung landscape cân đối như màn, KHÔNG phải hộp dài-thòng đứng). **Mỗi size = một % của KHUNG APP theo CẢ HAI CHIỀU** (16:9), công thức `width: min(Pvw, calc(Pvh*16/9))` + `aspect-ratio:16/9` ⇒ đúng P% trên màn 16:9, nhỏ hơn (không tràn) trên màn lệch tỉ lệ: **S 40% · M 60% · L 90%** (Settings = L). 3 size = 3 SCALE cùng tỉ lệ; S không đủ → chọn M/L, **vẫn đúng 16:9, KHÔNG bóp méo**. **KHUNG KHÔNG BAO GIỜ NHẢY theo nội dung** (đổi tab Settings mà khung phình/co = SAI); tràn → cuộn TRONG dialog (`overflow:auto` ở thân, thân là grid/flex child phải `min-height:0` mới cuộn). KHÔNG cố-định-Nvh (đẻ hộp cao méo), KHÔNG random/đổi-động/reflow loạn. Trạng thái layout người dùng chỉnh (resize/vị-trí/size) phải LƯU + khôi phục y nguyên. Token/size ở `frontend/styles/`. **ESC LUÔN đóng dialog trên cùng** (mọi overlay/popup phải đăng ký 1 global keydown; ESC đóng MỘT lớp/lần theo thứ tự visually-topmost) + bấm nền (backdrop) cũng đóng — TRỪ dialog đang chạy tác vụ bất-khả-huỷ (vd sync đang chạy) thì chặn cả ESC lẫn backdrop cho tới khi xong.
+### F2. Dialogs / modals
+ONLY 3 sizes S/M/L, all 3 the SAME STANDARD SCREEN RATIO **16:9** (a balanced landscape frame like the screen, NOT a tall dangling box). **Each size = a % of the APP FRAME in BOTH directions** (16:9), the formula `width: min(Pvw, calc(Pvh*16/9))` + `aspect-ratio:16/9` ⇒ exactly P% on a 16:9 screen, smaller (never overflowing) on screens of other ratios: **S 40% · M 60% · L 90%** (Settings = L). 3 sizes = 3 SCALES of the same ratio; S not enough → choose M/L, **still exactly 16:9, NEVER distorted**. **THE FRAME NEVER JUMPS with the content** (switching a Settings tab and the frame swells/shrinks = WRONG); overflow → scroll INSIDE the dialog (`overflow:auto` on the body, the body being a grid/flex child needs `min-height:0` to scroll). NO fixed-Nvh (produces distorted tall boxes), NO random/dynamic resizing/chaotic reflow. Layout state the person using the app adjusts (resize/position/size) must be SAVED + restored exactly. Tokens/sizes in `frontend/styles/`. **ESC ALWAYS closes the top dialog** (every overlay/popup registers 1 global keydown; ESC closes ONE layer per press in visually-topmost order) + clicking the backdrop also closes — EXCEPT a dialog running an uncancellable task (e.g. a sync in progress), which blocks both ESC and the backdrop until done.
 
-### F3. Bề mặt chết theo nền
-**Mọi bề mặt phụ thuộc một tiến trình nền (cửa sổ app · tab · panel · CLI chờ) PHẢI phát hiện nền chết và CHẾT THEO — hoặc báo lỗi THẤY ĐƯỢC. TUYỆT ĐỐI không để lại vỏ rỗng trông như đang sống.** Ca điển hình: tiến trình nền chết mà cửa sổ vẫn mở — mọi nút bấm gửi request vào chỗ trống, vòng xoay "đang sync…" quay MÃI, người dùng đọc thành "kẹt" và chờ hàng giờ trong khi KHÔNG có gì đang chạy. Vỏ rỗng là kiểu hỏng TỆ NHẤT — nó không báo lỗi, nó NÓI DỐI, và người dùng không có cách nào phân biệt với đang-chạy-thật. Cách làm: nhịp tim định kỳ tới nền; chịu lỗi có chủ đích (chỉ đếm SAU khi đã thấy nền sống ít nhất một lần, và phải trượt LIÊN TIẾP N nhịp mới kết luận — nền bận một nhịp ≠ nền chết); hết N nhịp thì đóng/ báo. Đối xứng với luật fail-open: lớp phụ hỏng thì rơi về lớp dưới **và nói ra**, không giả vờ vẫn chạy.
+### F3. A surface dies with its background
+**Every surface depending on a background process (app window · tab · panel · waiting CLI) MUST detect the background dying and DIE WITH IT — or report a VISIBLE error. NEVER leave an empty shell looking alive.** The typical case: the background process dies while the window stays open — every button sends requests into nothing, the "syncing…" spinner turns FOREVER, the person using the app reads it as "stuck" and waits for hours while NOTHING is running. An empty shell is the WORST failure — it does not report an error, it LIES, and the person using the app has no way to tell it from really running. How: a periodic heartbeat to the background; deliberate tolerance (count only AFTER the background has been seen alive at least once, and only N CONSECUTIVE missed beats conclude — a background busy for one beat ≠ a dead background); after N beats close/report. Symmetric with the fail-open rule: a broken secondary layer falls back to the layer below **and says so**, never pretends to still run.
 
-### F4. Chữ người dùng đọc
-- **Văn KỸ THUẬT, không văn nói.** Nhãn là một câu ngắn nêu hành vi. Không kể lể, không nhấn giọng
-  bằng VIẾT HOA, không cảm thán.
-- **KHÔNG ghi chú nội bộ ra giao diện**: ngày đo, số hiệu phiên bản của một lần sửa, tên biến, lý do
-  kỹ thuật. *(Ví dụ lỗi: một nhãn ghi ngày đo và nơi đo của một phép thử.)*
-- **KHÔNG thuật ngữ nội bộ** ở chỗ người dùng phải quyết định (`WAL`, `.bak`, `watermark`) — trừ khi
-  chính người dùng cần nó để chọn.
-- **Trần ~120 ký tự** mỗi nhãn mô tả. Dài hơn nghĩa là đang giải thích, không phải đang gán nhãn.
-- **Song ngữ ĐỦ HAI ĐẦU**, kể cả chữ nằm thẳng trong markup (`title`/`placeholder`/text node).
-- **② Nhãn ĐỦ, máy đọc được.** Mọi phần tử tương tác (nút · ô nhập · select · link) phải có nhãn mà **công cụ đọc được**: nội dung chữ, hoặc `aria-label`/`title`/`placeholder`; ảnh có `alt`. Nút icon trơn không nhãn là **thiếu**, không phải "gọn".
-- **③ Song ngữ ĐỦ HAI ĐẦU.** Vế "0 chuỗi hardcode" áp cho **cả chữ nằm thẳng trong HTML/markup**, không riêng chuỗi trong code: text node và cả `title`/`placeholder`/hint phải có móc i18n tương ứng, mọi khoá phải tồn tại ở **cả hai** dict. Chữ một ngôn ngữ nằm trong markup mà thiếu móc = người dùng đổi ngôn ngữ xong **vẫn thấy tiếng cũ**, và không lỗi nào nổ.
+### F4. Words the person using the app reads
+- **TECHNICAL prose, not spoken prose.** A label is a short sentence stating a behaviour. No storytelling, no emphasis
+  with CAPITALS, no exclamations.
+- **NO internal notes on the interface**: measurement dates, the version number of a fix, variable names, technical
+  reasons. *(An example error: a label giving the date and place of a test measurement.)*
+- **NO internal terms** where the person using the app has to decide (`WAL`, `.bak`, `watermark`) — unless
+  the person using the app needs it to choose.
+- **A cap of ~120 characters** per description label. Longer means explaining, not labelling.
+- **Both languages COMPLETE AT BOTH ENDS**, including text sitting directly in markup (`title`/`placeholder`/text nodes).
+- **② COMPLETE labels, machine-readable.** Every interactive element (button · input · select · link) has a label **tools can read**: text content, or `aria-label`/`title`/`placeholder`; pictures have `alt`. A bare icon button without a label is **missing something**, not "clean".
+- **③ Both languages COMPLETE AT BOTH ENDS.** The "0 hard-coded strings" clause applies to **text sitting directly in HTML/markup too**, not only strings in code: text nodes and also `title`/`placeholder`/hints need a matching i18n hook, every key must exist in **both** dicts. Text of one language in markup without a hook = the person using the app switches language and **still sees the old one**, with no error firing.
 
-### F5. Dời một bề mặt là soát lại CẢ HAI ĐẦU
-Bề mặt luôn mang giả định về khung chứa nó. Dời sang khung khác mà không soát lại là lỗi lặp
-(đo được **bốn lần trong một phiên**):
+### F5. Moving a surface means checking BOTH ENDS again
+A surface always carries assumptions about its container. Moving it to another container without checking again is a recurring bug
+(measured **four times in one session**):
 
-| giả định cũ | hỏng ra sao khi dời |
+| old assumption | how it breaks after the move |
 |---|---|
-| `min-width:auto` của flex/grid | chuỗi dài đẩy panel **tràn ngang** |
-| con của flex co được | nội dung dài bị **bóp, chữ chồng nhau** |
-| `gap` do lưới cha lo | vào tab thì **dính liền một khối** |
-| `flex:1` trên nút (cột hẹp) | màn rộng thì nút **dài hết trang** |
+| `min-width:auto` of flex/grid | long strings push the panel to **overflow sideways** |
+| flex children can shrink | long content gets **squeezed, text overlapping** |
+| `gap` handled by the parent grid | inside a tab it **sticks together as one block** |
+| `flex:1` on a button (narrow column) | on a wide screen the button **runs the whole page** |
 
-Và **bên CHO cũng phải dọn**: rút một cột khỏi lưới mà không sửa `grid-template-columns` thì còn
-một cột rỗng + một thanh kéo mồ côi. Phép kiểm: **số rãnh = 2 × (số thanh kéo) + 1**.
+And **the GIVING side must tidy too**: pulling a column out of a grid without editing `grid-template-columns` leaves
+an empty column + an orphan resize handle. The check: **number of tracks = 2 × (number of handles) + 1**.
 
-### F6. Một nội dung MỘT NHÀ trên bề mặt
-Cùng một thiết lập không được có hai chỗ chỉnh; cùng một con số không được hiện ở hai màn. Hai bản
-sao luôn lệch nhau, và người dùng không biết bản nào đúng.
+### F6. One content, ONE HOME on the surface
+The same setting must not have two places to adjust it; the same figure must not show on two screens. Two
+copies always drift apart, and the person using the app does not know which one is right.
 
-### F7. UI phải KHỚP CODE — kiểm bằng graph, không bằng mắt
-Bề mặt gọi tới đâu thì chỗ đó phải có thật, và ngược lại: cạnh seam `api` của graph đối chiếu route FE gọi với route BE thật ⇒ ① FE gọi route không tồn tại = UI gãy · ② endpoint không ai gọi = bề mặt chết. Đây là phép KIỂM ĐƯỢC BẰNG MÁY, nên không có lý do để nó chỉ nằm trong đầu ai đó.
+### F7. The UI must MATCH THE CODE — checked with the graph, not the eye
+Whatever the surface calls must really exist, and the reverse: the edges of the graph's `api` seam compare the routes the FE calls with the real BE routes ⇒ ① the FE calling a route that does not exist = a broken UI · ② an endpoint nobody calls = a dead surface. This is a MACHINE-CHECKABLE test, so there is no reason for it to live only in someone's head.
 
-### F8. Nơi ở của thiết lập UI
-default ship → `frontend/config/` (tracked); bản người dùng chỉnh lúc chạy → `data/settings/` (gitignore).
+### F8. Where UI settings live
+shipped defaults → `frontend/config/` (tracked); the copy the person using the app adjusts at run time → `data/settings/` (gitignore).
 
-### F9. Phân mục phải NHÌN RA — vạch ngăn + khoảng cách
-Nhiều mục xếp liền nhau chỉ bằng một dòng tiêu đề nhỏ thì đọc thành **một khối chữ**; người dùng
-không thấy được đây là mấy nhóm khác nhau. Mỗi mục phải có **vạch ngăn** và **khoảng thở**, cùng
-khuôn với hàng thiết lập sẵn có (mỗi hàng một vạch đáy).
+### F9. Sections must BE VISIBLE — dividers + spacing
+Several sections stacked with only a small title line read as **one block of text**; the person using the app
+cannot see these are different groups. Each section needs **a divider** and **breathing space**, in the same
+mould as the existing settings rows (one bottom line per row).
 
-- Mục ĐẦU không kẻ vạch trên — nó sát tiêu đề panel, kẻ thêm là hai vạch dính nhau.
-- Đây là lỗi **lặp lại**: mỗi lần dựng một panel mới lại quên, trong khi panel cũ đã làm đúng.
-  Dựng panel mới thì COPY khuôn của panel đang chạy, đừng gõ lại từ đầu.
-- **Viết luật cho MỌI khung chứa mục, đừng bó vào một panel.** Vá riêng chỗ vừa bị chê thì lỗi
-  quay lại ở panel kế tiếp. Đo được: sau khi vá một panel, quét lại còn **4 khung khác** cũng có
-  ≥2 mục mà không vạch nào.
+- The FIRST section has no top divider — it sits right under the panel title, an extra line makes two lines stuck together.
+- This bug **recurs**: every new panel forgets it, while the old panels did it right.
+  Building a new panel ⇒ COPY the mould of a running panel, never retype from scratch.
+- **Write the rule for EVERY frame holding sections, never tied to one panel.** Patching only the place just criticised brings the bug
+  back in the next panel. Measured: after patching one panel, a rescan still found **4 other frames** with
+  ≥2 sections and no divider.
 
-### F10. Bấm một THẺ là CHỌN, không phải MỞ
-Mở ngay khi bấm thẻ làm người dùng đọc thành *"bị nhảy sang màn khác"* — họ chỉ định chọn, không
-định rời danh sách. Thẻ trong danh sách: bấm = đánh dấu đang chọn (phải NHÌN RA được); mở chi tiết
-đi qua **nút riêng** trên thẻ.
+### F10. Clicking a CARD SELECTS it, it does not OPEN it
+Opening at once on a card click makes the person using the app read it as *"jumped to another screen"* — they only meant to select, not
+to leave the list. A card in a list: click = mark as selected (it must BE VISIBLE); opening the details goes through
+**a separate button** on the card.
 
-⚠ Và khi có báo lỗi dạng *"bấm X bị nhảy sang Y"*, đo TRƯỚC xem có thật sự đổi màn không: có thể
-không hề có lệnh đổi màn nào, mà chỉ là khung chi tiết trông giống màn Y. Sửa cái TÊN khi gốc là
-HÀNH VI thì báo bao nhiêu lần cũng không hết.
+⚠ And with a bug report like *"clicking X jumps to Y"*, measure FIRST whether the screen really changes: there may
+be no screen-switching command at all, only a detail frame that looks like screen Y. Fixing the NAME when the root is
+the BEHAVIOUR never ends however many times it is reported.
 
 ---
 
-### F11. Một kênh thị giác = MỘT hạng thông tin
-**Viền · nền · đậm nhạt là các KÊNH riêng; mỗi kênh chỉ một hạng làm chủ.** Hai trạng thái khác hạng cùng đòi một kênh thì **kẻ khai báo sau thắng, kẻ kia biến mất mà không cổng nào báo** — và nếu hai màu còn gần nhau (đo được: `--primary` #FFD166 vs `--warn` #FBBF24 cùng làm viền thẻ) thì ngay cả khi không đè nhau, mắt vẫn đọc ra CÙNG một nghĩa ⇒ người dùng đếm 6 thẻ "đã ghim" trong khi hệ chỉ ghim 2. Cách làm: **đếm xem có bao nhiêu trạng thái đang đòi cùng một kênh, rồi chia lại** — mỗi kênh đúng một chủ, cái thứ ba phải nói bằng badge chữ. Ví dụ chia kênh trên một thẻ: **ghim = VIỀN** (giữ nguyên kênh nó vốn có — đừng đổi thói quen đọc của người dùng), **đang chọn = NỀN**, **lệch chuẩn = badge chữ** (thôi đòi viền). ⚠ Khi sửa loại lỗi này, **đừng đẩy nạn nhân sang kênh khác rồi coi là xong**: dọn đúng trạng thái đang chen vào, giữ kênh cũ cho chủ cũ. Nghiệm thu bằng SỐ trên DOM thật (`getComputedStyle`), đừng tin ảnh chụp.
-· Cùng họ: **công tắc trạng thái phải LUÔN thấy được, hành động mới được ẩn theo hover**. Ẩn cả cụm nút bằng `opacity:0` ở container là bẫy — cha trong suốt thì con cũng vô hình, `opacity:1` trên con KHÔNG cứu được; phải ẩn theo từng nút.
+### F11. One visual channel = ONE rank of information
+**Border · background · weight are separate CHANNELS; each channel has only one owning rank.** Two states of different ranks claiming one channel ⇒ **the one declared later wins, the other disappears without any gate reporting it** — and if the two colours are also close (measured: `--primary` #FFD166 vs `--warn` #FBBF24 both as card borders) then even without overwriting, the eye still reads THE SAME meaning ⇒ the person using the app counts 6 "pinned" cards while the system pinned only 2. How: **count how many states claim the same channel, then split them again** — each channel exactly one owner, the third must speak with a text badge. An example split on a card: **pinned = BORDER** (keeping the channel it always had — do not change the reading habit of the people using it), **selected = BACKGROUND**, **off-standard = text badge** (no longer claiming the border). ⚠ Fixing this kind of bug, **do not push the victim to another channel and call it done**: remove exactly the state that intruded, keep the old channel for its old owner. Accept it with FIGURES on the real DOM (`getComputedStyle`), not a screenshot.
+· The same family: **state switches must ALWAYS be visible, only actions may hide on hover**. Hiding a whole button cluster with `opacity:0` on the container is a trap — a transparent parent makes its children invisible too, `opacity:1` on a child does NOT save it; hide per button.
 
-### F12. TUYỆT ĐỐI không có thanh cuộn NGANG
-**Hẹp lại thì nội dung XUỐNG DÒNG, không đẩy ngang.** Ba cái bẫy đo được, cả ba đều là "khai một nửa rồi trình duyệt tự điền nửa còn lại":
-· **`overflow-y:auto` một mình BẬT luôn cuộn ngang** — CSS ép chiều còn lại từ `visible` thành `auto`. Hễ có một khối con rộng quá là mọc thanh ngang mà không ai khai nó. Vùng cuộn phải viết **đủ hai chiều**: `overflow-y:auto;overflow-x:hidden`.
-· **`repeat(N,1fr)` là số cột CỨNG** — ô không co dưới nội dung tối thiểu ⇒ lưới rộng hơn khung. Dùng `repeat(auto-fit,minmax(<sàn>,1fr))`: đủ rộng thì vẫn N cột, hẹp thì tự bớt cột.
-· **Track `1fr` vẫn bị nội dung đẩy rộng** — `1fr` thực chất là `minmax(auto,1fr)` và `auto` đo theo min-content của ô. Ô lưới phải có `min-width:0` mới co được.
-· Ngoại lệ: khối **mã nguồn** (`pre.code`, `.fpre`) — bẻ dòng mã làm sai nghĩa, nên nó được giữ cuộn ngang · **lưới dữ liệu
-  trên điện thoại** (§M5) — cuộn ngang TRONG khung của lưới, cột định danh ghim trái; trang vẫn không bao giờ cuộn ngang.
-· Đo bằng máy, đừng nhìn ảnh: quét `scrollWidth - clientWidth > 0` trên MỌI màn × MỌI tab con ở vài khổ khung (1100 · 900). Phân biệt **`overflow:hidden` + ellipsis** (cắt chữ, KHÔNG sinh thanh cuộn — hợp lệ) với vùng thật sự cuộn được.
+### F12. ABSOLUTELY no HORIZONTAL scrollbar
+**Narrower ⇒ the content WRAPS, it is not pushed sideways.** Three traps measured, all three of the kind "declare half and the browser fills in the other half":
+· **`overflow-y:auto` alone TURNS ON horizontal scrolling too** — CSS forces the other direction from `visible` to `auto`. As soon as one child block is too wide a horizontal bar appears without anyone declaring it. A scroll area must declare **both directions**: `overflow-y:auto;overflow-x:hidden`.
+· **`repeat(N,1fr)` is a FIXED number of columns** — cells do not shrink below their minimum content ⇒ the grid is wider than the frame. Use `repeat(auto-fit,minmax(<floor>,1fr))`: wide enough and it is still N columns, narrow and it drops columns itself.
+· **A `1fr` track still gets pushed wider by content** — `1fr` is really `minmax(auto,1fr)` and `auto` measures the cell's min-content. A grid cell needs `min-width:0` to shrink.
+· Exceptions: **source code** blocks (`pre.code`, `.fpre`) — wrapping code lines changes their meaning, so they keep horizontal scrolling · **data grids
+  on phones** (§M5) — scrolling sideways INSIDE the grid's frame, the identity column pinned left; the page still never scrolls sideways.
+· Measure by machine, not by looking at screenshots: scan `scrollWidth - clientWidth > 0` on EVERY screen × EVERY sub-tab at a few frame widths (1100 · 900). Tell **`overflow:hidden` + ellipsis** (cuts text, produces NO scrollbar — valid) apart from areas that really scroll.
 
-### F13. Thẻ (card): NEO cố định, thứ liên quan ĐỨNG SÁT NHAU
-**Cụm nút neo góc phải trên — giữ nguyên vị trí dù khung co giãn; badge gom thành một cụm; thứ liên quan nhau đứng sát nhau.** Một thẻ có ba hạng nội dung, và mỗi hạng là MỘT HÀNG riêng, không trộn:
-| hàng | chứa gì | luật |
+### F13. Cards: a FIXED ANCHOR, related things STAND TOGETHER
+**The button cluster is anchored at the top right — keeping its position however the frame stretches; badges gather into one cluster; related things stand together.** A card has three ranks of content, and each rank is ONE separate ROW, never mixed:
+| row | holds | rule |
 |---|---|---|
-| 1 | danh tính (icon · tên) + **cụm nút hành động** | `flex-wrap:nowrap` — hàng này KHÔNG BAO GIỜ xuống dòng. Nút neo phải (`margin-left:auto`, `flex:0 0 auto`); thứ co lại là **tên** (`min-width:0` + ellipsis) |
-| 2 | **badge trạng thái** — gom hết vào một cụm, `gap` đều, `:empty{display:none}` | được phép wrap; rỗng thì biến mất, không để khoảng trắng ma |
-| 3 | số liệu phụ | — |
-· **Vì sao neo:** cho cả badge lẫn nút chung một hàng wrap thì khi thẻ co, nút bị badge đẩy xuống và rơi ra **giữa thẻ** — người dùng đọc là "hỏng", và đúng là hỏng: một nút điều khiển không có chỗ đứng cố định thì mỗi khổ màn hình lại nằm một nơi. Neo trước, co sau.
-· **Khoảng cách chỉ một nguồn:** cụm đã có `gap` thì đừng gắn thêm `margin-right` lên từng badge — hai nguồn cùng chỉnh một khoảng, cụm thôi đều nhau.
-· **Nút KHOÁ vĩnh viễn** (vd repo gốc của chính app) thì `disabled` + đổi `title` nói lý do, và **chặn ở BACKEND** nữa — nút disabled chỉ là lời nhắc, endpoint thì bề mặt nào cũng gọi được. Đừng làm mờ nút: mờ nghĩa là "tạm thời không dùng được", còn đây là vĩnh viễn theo thiết kế.
+| 1 | identity (icon · name) + **the action button cluster** | `flex-wrap:nowrap` — this row NEVER wraps. Buttons anchored right (`margin-left:auto`, `flex:0 0 auto`); what shrinks is **the name** (`min-width:0` + ellipsis) |
+| 2 | **state badges** — all gathered into one cluster, even `gap`, `:empty{display:none}` | may wrap; empty ⇒ disappears, no ghost blank space |
+| 3 | secondary figures | — |
+· **Why anchor:** letting badges and buttons share one wrapping row makes the buttons get pushed down when the card shrinks and land **in the middle of the card** — the person using the app reads it as "broken", and it really is: a control without a fixed place sits somewhere different at each screen size. Anchor first, shrink after.
+· **Spacing from one source only:** a cluster with `gap` does not also get `margin-right` on each badge — two sources adjusting one spacing, and the cluster is no longer even.
+· **A PERMANENTLY locked button** (e.g. the app's own root repo) is `disabled` + a `title` saying why, and **blocked in the BACKEND** too — a disabled button is only a reminder, the endpoint can be called from any surface. Do not dim the button: dim means "temporarily unavailable", while this is permanent by design.
 
-### F14. Vùng cuộn phải TỰ CHỪA CHỖ cho thanh cuộn
-**Mọi vùng cuộn khai `scrollbar-gutter:stable`; mọi panel tự chừa một khoảng padding vừa đủ để thanh
-cuộn không đè lên chữ.** Thanh cuộn mọc ra ở mép phải và **ăn vào chữ** — con số cuối hàng bị cắt, và
-người đọc không biết là bị cắt.
-· **Vì sao `scrollbar-gutter` chứ không chỉ `padding`:** chừa chỗ bằng padding thì lúc CHƯA tràn dư
-  một khoảng trống, lúc tràn lại vẫn đúng — hai trạng thái hai kiểu. `stable` giữ chỗ SẴN, nên nội
-  dung **không nhảy ngang** đúng lúc nó dài thêm một dòng.
-· **Kèm một khoảng thở** (`padding-right`): chữ dừng sát mép thanh cuộn vẫn đọc ra là bị cắt.
-· **Đặt ở LỚP CHUNG**, liệt kê mọi vùng cuộn một lần. Vá riêng panel vừa bị chê thì panel kế tiếp
-  lại dính — cùng bài học với §F9 và §F1⑥.
-· Đo bằng máy: với mỗi vùng có `overflow-y:auto|scroll`, `getComputedStyle` phải trả
-  `scrollbar-gutter: stable`. Ảnh chụp headless **không đo được** việc này (`--hide-scrollbars`),
-  nên phải soi CSS đã tính, đừng tin mắt nhìn ảnh.
+### F14. Scroll areas must RESERVE ROOM for the scrollbar
+**Every scroll area declares `scrollbar-gutter:stable`; every panel reserves just enough padding so the scrollbar
+does not cover the text.** A scrollbar appears at the right edge and **eats into the text** — the last figure of a row gets cut, and
+the reader does not know it was cut.
+· **Why `scrollbar-gutter` and not only `padding`:** reserving room with padding leaves an extra blank when NOT yet overflowing, and is right
+  again when overflowing — two states, two looks. `stable` reserves the room IN ADVANCE, so the content
+  **does not jump sideways** exactly when it grows by one line.
+· **With breathing space** (`padding-right`): text stopping right at the scrollbar edge still reads as cut.
+· **Put it in the SHARED LAYER**, listing every scroll area once. Patching only the panel just criticised makes the next panel
+  catch it — the same lesson as §F9 and §F1⑥.
+· Measure by machine: for every area with `overflow-y:auto|scroll`, `getComputedStyle` must return
+  `scrollbar-gutter: stable`. Headless screenshots **cannot measure** this (`--hide-scrollbars`),
+  so inspect the computed CSS, do not trust your eyes on a screenshot.
 
-### F15. ĐÓNG BĂNG khi tắt, đừng ẩn — và chừa đường bật lại
-**Một tính năng/kênh đang TẮT thì xám hẳn mọi panel của nó và không bấm được, KHÔNG phải biến mất.**
-Ẩn đi để lại một khoảng trống không giải thích: người dùng không biết ở đó vốn có gì, cũng không biết
-vì sao mất.
-· Công thức: `opacity` giảm **+ `filter:grayscale(1)` + `pointer-events:none`**. Phải xám HẲN —
-  chỉ giảm opacity thì biểu đồ màu vẫn đọc ra như đang sống.
-· ⚠ **Luôn chừa đường bật lại.** Xám cả ô cấu hình cần để bật là **tự khoá mình ngoài cửa** (ví dụ:
-  xám luôn ô nhập đường dẫn của một kênh thì tắt kênh xong không còn chỗ nào gõ đường dẫn).
-  Liệt kê rõ thứ được miễn, và có cổng canh đúng điểm đó.
-· ⚠ **Công tắc không được dùng chính CẤU HÌNH làm trạng thái.** Ví dụ lỗi: gạt tắt một kênh gọi
-  `/set-<kênh>?path=` — tức XOÁ đường dẫn khỏi config. Tắt một tính năng không bao giờ được làm mất
-  cấu hình của nó; tách một cờ `<feature>On` riêng.
-· Bề mặt vẽ từ **nhiều đường** (lúc nạp · lúc làm tươi) thì cờ bật/tắt phải có mặt ở **mọi** đường,
-  nếu không nó lúc ẩn lúc hiện tuỳ đường nào về sau. Và setter phải xoá cache của bảng điều khiển,
-  nếu không công tắc "gạt mà không đổi".
+### F15. FREEZE when off, do not hide — and leave a way to turn it back on
+**A feature/channel that is OFF greys out all its panels completely and is not clickable, it does NOT disappear.**
+Hiding leaves an unexplained gap: the person using the app does not know what was there, nor
+why it went.
+· The formula: lower `opacity` **+ `filter:grayscale(1)` + `pointer-events:none`**. It must be FULLY grey —
+  lowering opacity alone keeps colour charts reading as alive.
+· ⚠ **Always leave a way to turn it back on.** Greying out the configuration box needed to turn it on is **locking yourself out** (example:
+  greying out a channel's path box too means after turning the channel off there is nowhere left to type the path).
+  List clearly what is exempted, with a gate watching exactly that point.
+· ⚠ **A switch must not use the CONFIGURATION itself as its state.** An example error: switching a channel off called
+  `/set-<channel>?path=` — i.e. DELETING the path from the config. Turning a feature off must never lose its
+  configuration; keep a separate `<feature>On` flag.
+· A surface drawn by **several paths** (on load · on refresh) needs the on/off flag present in **every** path,
+  or it shows and hides depending on which path comes last. And the setter must clear the dashboard's cache,
+  or the switch "toggles without changing".
 
-### F16. Dòng / panel TỔNG nằm DƯỚI nội dung
-Theo chuẩn bảng tính: dòng tổng của bảng, panel tổng của một nhóm luôn đứng sau phần được cộng. Bố cục đã chốt thì không tự
-dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_DesignChangeApproval`).
+### F16. TOTAL rows / panels sit BELOW the content
+By the spreadsheet standard: a table's total row, a group's total panel always stand after what they add up. A settled layout is not
+moved on your own; wanting to change it ⇒ present it for approval first (`Rule_Keys_62_DesignChangeApproval`).
 
-## BỘ KIỂM — luật đo được thì máy kiểm
+## THE CHECKER — rules that can be measured are checked by the machine
 
-Luật viết trong skill không tự thi hành: một luật đã chốt vẫn bị phạm lại khi không có máy canh.
-- Mỗi luật đo được của skill này (F0c chiều cao control · F2 cỡ hộp thoại · F4 nhãn và độ dài nhãn · F7 route · M1–M6) ⇒
-  một mã trong script kiểm của repo; build hoặc gate gọi script đó. Lệnh chạy script là của repo, khai ở khoá `repoGates` của
-  `docs/.harness.json` (pre-commit chạy nó) — không ghi vào bản chép skill này (bản chép giữ y hệt kho, `Rule_Gate_83_HarnessFromStore`).
-- Mã thoát: 0 xanh · 1 lỗi (in từng chỗ) · **3 chưa kiểm đủ** (lớp cần trình duyệt không chạy được) — không bao giờ tính là xanh.
-- Tệp hệ cũ đóng băng ⇒ cảnh báo kèm danh sách nợ, không im. Miễn trừ khai kèm lý do; miễn trừ không còn khớp gì ⇒ lỗi.
-- Thêm một luật đo được vào skill ⇒ thêm mã vào bộ kiểm cùng lượt. Luật chưa đo được bằng máy (F0 · F0b) là việc của người duyệt.
+Rules written in a skill do not enforce themselves: a settled rule still gets broken again when no machine watches it.
+- Each measurable rule of this skill (F0c control height · F2 dialog sizes · F4 labels and label length · F7 routes · M1–M6) ⇒
+  one code in the repo's check script; the build or gate calls that script. The command running the script belongs to the repo, declared in the `repoGates` key of
+  `docs/.harness.json` (pre-commit runs it) — not written into this skill's copy (the copy stays identical to HS, `Rule_Gate_83_HarnessFromStore`).
+- Exit codes: 0 green · 1 errors (each place printed) · **3 not fully checked** (a layer needing a browser could not run) — never counted as green.
+- Frozen old-system files ⇒ a warning with the list of debts, never silent. Exemptions are declared with a reason; an exemption no longer matching anything ⇒ an error.
+- Adding a measurable rule to the skill ⇒ adding a code to the checker in the same round. Rules not yet machine-measurable (F0 · F0b) are the approver's work.
 
-## M — ĐIỆN THOẠI (app có bố cục điện thoại)
+## M — PHONE (apps with a phone layout)
 
-Thêm một luật điện thoại theo thứ tự: ① người dùng duyệt một điểm thiết kế · ② viết thành một mã trong bộ kiểm · ③ chạy trên
-bản chưa sửa — phải đỏ (bản đã đạt thì phá mã cho đỏ) · ④ sửa giao diện tới khi xanh. Chỉ trang đã duyệt bố cục điện thoại
-mới vào danh sách kiểm điện thoại; đưa vào sớm là cổng đỏ trước khi có thiết kế.
-- **Bản máy tính không đổi.** Lớp điện thoại chỉ THÊM, áp dưới mốc chuyển.
-- **Mốc chuyển ≤ 768 px** (`@media (max-width:768px)`); hệ số co toàn trang không áp dưới mốc.
-- **M1 — vừa màn.** Ở 390 px trang không rộng hơn màn hình, không phần tử nào thò qua mép phải; bảng rộng cuộn TRONG khung
-  của nó. Bẫy: con flex mang `min-width:auto` = bề rộng hàng dài nhất ⇒ đẩy tràn dù hàng tự cuộn — khung chứa hàng cuộn phải
-  `min-width:0`. Điện thoại NỚI khung bố cục theo phần tràn ⇒ bề ngang báo về lớn hơn 390 chính là lỗi M1.
-- **M2 — không co.** Hệ số co toàn trang tắt dưới mốc.
-- **M3 — thanh tab ở ĐÁY**, mỗi tab một phần bằng nhau; máy tính giữ chỗ cũ.
-- **M4 — vùng chạm ≥ 44 px**: `--ctl-h:44px` dưới mốc (một biến, cùng §F0c).
-- **M5 — lưới dữ liệu** giữ dạng bảng, cuộn ngang trong khung, cột định danh (mã · tên) ghim trái, nền đục; rail phụ bên cạnh
-  không còn chỗ ⇒ ẩn trên điện thoại.
-- **M6 — hộp thoại** toàn màn hình dưới mốc (khung 16:9 của §F2 không vừa màn dọc).
-- **Đo đúng cỡ:** trình duyệt headless có bề rộng cửa sổ tối thiểu (Edge khoảng 500 px) ⇒ chụp hoặc đo "cửa sổ 390" là đo bố
-  cục rộng hơn rồi cắt. Bộ kiểm đặt trang trong `<iframe>` đúng 390 px và từ chối phán (mã 3) khi bề ngang nhận được khác 390.
-- Skill ngoài về UI/UX cho khuyến nghị khi thiết kế; thứ có hiệu lực là mục này.
+Adding a phone rule goes in this order: ① the owner approves one design point · ② it is written as a code in the checker · ③ run on
+the unfixed build — it must be red (on a build already passing, break the code to make it red) · ④ fix the interface until green. Only pages with an approved phone layout
+enter the phone check list; entering early makes the gate red before there is a design.
+- **The desktop build does not change.** The phone layer only ADDS, applied below the breakpoint.
+- **The breakpoint ≤ 768 px** (`@media (max-width:768px)`); the whole-page zoom factor does not apply below the breakpoint.
+- **M1 — fits the screen.** At 390 px the page is no wider than the screen, no element sticks past the right edge; wide tables scroll INSIDE their
+  frame. The trap: a flex child carrying `min-width:auto` = the width of its longest row ⇒ pushes the overflow even when the row scrolls itself — the frame holding a scrolling row needs
+  `min-width:0`. Phones WIDEN the layout frame by the overflow ⇒ a reported width larger than 390 is exactly the M1 bug.
+- **M2 — no zoom.** The whole-page zoom factor is off below the breakpoint.
+- **M3 — the tab bar at the BOTTOM**, each tab an equal share; the desktop keeps the old place.
+- **M4 — touch targets ≥ 44 px**: `--ctl-h:44px` below the breakpoint (one variable, as in §F0c).
+- **M5 — data grids** keep the table form, scrolling sideways inside their frame, identity columns (code · name) pinned left, an opaque background; a secondary rail beside them
+  with no room left ⇒ hidden on phones.
+- **M6 — dialogs** are full screen below the breakpoint (the 16:9 frame of §F2 does not fit a portrait screen).
+- **Measure at the right size:** headless browsers have a minimum window width (Edge about 500 px) ⇒ capturing or measuring "a 390 window" measures a wider
+  layout and then crops it. The checker puts the page in an `<iframe>` of exactly 390 px and refuses to judge (code 3) when the width received differs from 390.
+- Outside UI/UX skills give recommendations while designing; what is in force is this section.
 
-## BE — tiến trình & tài nguyên
+## BE — processes & resources
 
-### B1. MỌI tiến trình của app gom về MỘT nhóm — không sót cái nào
+### B1. EVERY process of the app gathers into ONE group — none left out
 
-- App có thể sinh nhiều tiến trình (daemon, cửa sổ, job nền, helper của thư viện). Trên bảng tiến
-  trình của HĐH, **tất cả phải quy về một nhóm mang tên app** — không có tiến trình nào đứng lẻ với
-  tên của thư viện sinh ra nó.
-- **Phải có sổ liệt kê**: mỗi tiến trình app sinh ra được khai một dòng (tên hiện ra · ai phóng ·
-  sống bao lâu). Sinh thêm tiến trình mới mà không khai vào sổ = **thiếu sót**, kể cả khi nó chạy đúng.
-- Áp cho **cả tiến trình cũ lẫn mới** — helper dựng sẵn của dependency cũng phải đổi tên/gói lại.
-- *Ca điển hình: `tray_windows_release.exe` (helper Go của `systray2`) đứng lẻ suốt gần hai tháng,
-  trong khi tiến trình chính đã mang tên app ngay từ đầu. Đổi tên một nửa còn tệ hơn không đổi: người
-  đọc tưởng đã gom đủ.*
+- An app may spawn many processes (daemon, windows, background jobs, library helpers). In the OS process
+  table, **all of them must come under one group bearing the app's name** — no process standing alone with
+  the name of the library that spawned it.
+- **There must be a register**: each process the app spawns is declared on one line (the name shown · who launches it ·
+  how long it lives). Spawning a new process without declaring it in the register = **a shortcoming**, even when it runs right.
+- Applies to **old and new processes alike** — a dependency's prebuilt helper must also be renamed/repackaged.
+- *The typical case: `tray_windows_release.exe` (the Go helper of `systray2`) stood alone for almost two months,
+  while the main process had borne the app's name from the start. Renaming half is worse than not renaming: the
+  reader believes everything is gathered.*
 
-### B2. Tiến trình nền không được mở cửa sổ console
-Mọi đường phóng (lối tắt · autostart · tự khởi động lại sau cập nhật · phóng từ UI) đều phải ẩn.
-Một cửa sổ đen là bề mặt kỹ thuật rò ra người dùng, và **đóng nhầm nó là giết tiến trình**.
-Giấu console thì **bắt buộc** phải có đường xem nhật ký trong app — nếu không là bịt luôn phép
-chẩn đoán *"vì sao không chạy"*.
+### B2. Background processes must not open a console window
+Every launch path (shortcut · autostart · self-restart after an update · launch from the UI) must be hidden.
+A black window is a technical surface leaking to the person using the app, and **closing it by mistake kills the process**.
+Hiding the console **requires** a way to view the log inside the app — otherwise the diagnosis
+*"why is it not running"* gets blocked too.
 
-### B3. Một kẻ ghi cho mỗi kho; nhiều ĐÍCH thì mỗi đích một sổ
-Ghi vào hai kho khác nhau là hợp lệ. Thứ phải tách là **sổ theo dõi tiến độ**: dùng chung một khoá
-cho mọi đích thì đích nào ghi trước sẽ nuốt phần của đích sau, im lặng và vĩnh viễn.
+### B3. One writer per data store; several TARGETS ⇒ one ledger per target
+Writing to two different data stores is valid. What must be separated is **the progress ledger**: sharing one key
+for every target makes whichever target writes first swallow the later target's share, silently and permanently.
 
-### B4. Hai kiểu version-up
-① TỰ ĐỘNG (app tự check+tải+apply) → `backend/src/update/` (phối `attic/`+`dist/`+`migrations/`). ② THỦ CÔNG (chốt bản X, up máy đích/VM) → git tag → `dist/` build → `backend/scripts/deploy.*` → backup bản đang chạy về `attic/` TRƯỚC khi đè → rollback nếu hỏng. Dùng hạ tầng có sẵn, KHÔNG concern mới.
+### B4. Two kinds of version-up
+① AUTOMATIC (the app checks+downloads+applies itself) → `backend/src/update/` (coordinating `attic/`+`dist/`+`migrations/`). ② MANUAL (settle build X, push it to the target machine/VM) → git tag → `dist/` build → `backend/scripts/deploy.*` → back up the running build into `attic/` BEFORE overwriting → roll back if broken. Use the existing infrastructure, NO new concern.
 
-### B5. Deploy là việc HAI CHIỀU
-KHÔNG chỉ push 1 chiều. Máy đích có backup lần trước → verify khớp `attic/` local TRƯỚC khi đè (lệch = có sửa tay ngoài luồng, điều tra trước); deploy xong kéo bản-vừa-thay về `attic/` local. Cùng nguyên lý additive-merge của đồng bộ dữ liệu.
+### B5. Deploying is TWO-WAY work
+NOT a one-way push. The target machine has the previous backup → verify it matches the local `attic/` BEFORE overwriting (a difference = hand edits outside the flow, investigate first); after deploying pull the just-replaced build back into the local `attic/`. The same principle as the additive merge of data sync.
 
-### B6. Test — chạy app là phép thử chính
-KHÔNG bắt buộc — chạy chính app = phép kiểm thử; folder test chỉ cho lõi logic dễ sai ngầm (search/migration/privacy). FE: e2e/story co-locate hoặc `frontend/test`.
+### B6. Tests — running the app is the main test
+NOT required — running the app itself = the test; a test folder only for logic cores that break quietly (search/migration/privacy). FE: e2e/stories co-located or `frontend/test`.
 
-### B7. Đánh số phiên bản
-git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `migrations`=schema · `05_CHANGES`=log. KHÔNG folder `versions/` chép tay. **Bump RELEASE-BASED: số version chỉ tăng khi RELEASE/deploy 1 bản, KHÔNG bump per-commit/per-feature; số chọn theo bảng của luật `Skill_Dev_Release` (semver M.m.p — minor=tính năng, patch=fix deploy); mọi việc giữa 2 release GOM vào version kế; nguồn số = `package.json`(Node)/`__version__`(Py) — 1 chỗ; release-notes = `05_CHANGES`.**
+### B7. Version numbering
+git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `migrations`=schema · `05_CHANGES`=log. NO hand-copied `versions/` folder. **RELEASE-BASED bumps: the version number rises only when RELEASING/deploying a build, NOT per commit/per feature; the number is chosen by the table of `Skill_Dev_Release` (semver M.m.p — minor=feature, patch=deployed fix); all work between 2 releases GOES INTO the next version; the number's source = `package.json`(Node)/`__version__`(Py) — 1 place; release notes = `05_CHANGES`.**
 
-## Quy ước nhận từ luật đã gộp
+## Conventions taken over from merged laws
 
-- **Bố cục:** bố cục đã chốt là bất biến (`Rule_Keys_62_DesignChangeApproval`); mọi dòng và panel TỔNG nằm DƯỚI nội dung,
-  như bảng tính.
-- **Chữ giao diện qua i18n:** mọi chuỗi người dùng thấy đi qua i18n, đủ hai bộ từ điển, đổi bằng thiết lập; không chuỗi
-  hardcode; thuật ngữ kỹ thuật giữ nguyên. Từ điển UI: slot `Frontend_137_UiDictionary`.
-- **Tách lớp:** giao diện chỉ gọi API của máy chủ; nghiệp vụ, truy vấn, gọi dịch vụ ngoài nằm ở máy chủ. Giao diện gửi tên
-  truy vấn + tham số, không gửi câu truy vấn thô.
-- **App của một hệ** (`Rule_Keys_90_AppFamilyContract`): dữ liệu ở DB chung của hệ (repo `app-data` giữ, app không DB riêng, không
-  DDL) · vai cấp ở màn quản trị chung của `system-manager` (app không dựng màn quản trị) · log sáu nhóm sự kiện bằng mã trong bảng
-  hợp đồng của repo `app-data`.
-  - Kiểm phiên đăng nhập: nhớ kết quả kiểm một phiên trong bộ nhớ app tối đa 10 giây, bỏ ngay khi đăng xuất · thu hồi · khoá ·
-    đổi mật khẩu · đổi vai — kiểm mỗi request bằng câu SQL làm máy DB gánh vô ích. Thu hồi trên màn chung có hiệu lực ở app chậm
-    tối đa một chu kỳ nhớ đó.
-  - Nối DB có hạn chờ: một lượt nối treo bị bỏ lại sau 60 giây, tối đa vài lượt treo cùng lúc; một lượt nối treo không được chặn
-    đăng nhập của mọi người tới khi khởi động lại.
-- **Bảo mật gác ở máy chủ, mặc định chặn:** thêm chức năng ghi mới ⇒ chặn mọi vai chưa khai cho phép; ẩn nút trên giao diện
-  không tính là bảo mật. Mọi endpoint trả dữ liệu đứng sau lớp đăng nhập.
-- **Câu truy vấn có tên trong mã chạy dạng chuỗi:** worker nạp bằng eval không import được kho câu ⇒ truyền câu có tên qua
+- **Layout:** a settled layout is invariant (`Rule_Keys_62_DesignChangeApproval`); every TOTAL row and panel sits BELOW the content,
+  as in a spreadsheet.
+- **Interface words through i18n:** every string the person using the app sees goes through i18n, both dictionaries complete, switched by a setting; no hard-coded
+  strings; technical terms kept as they are. The UI dictionary: slot `Frontend_137_UiDictionary`.
+- **Layer separation:** the interface only calls the server's API; business logic, queries, calls to outside services sit on the server. The interface sends a query
+  name + parameters, never raw query text.
+- **An app of a family** (`Rule_Keys_90_AppFamilyContract`): data in the family's shared DB (kept by the `app-data` repo, the app has no DB of its own, no
+  DDL) · roles granted on the shared admin screen of `system-manager` (the app builds no admin screen) · logs of six event groups by the codes in the contract
+  table of the `app-data` repo.
+  - Checking a login session: remember the result of checking a session in app memory for at most 10 seconds, dropped at once on logout · revocation · lock ·
+    password change · role change — checking every request with an SQL query makes the DB server carry useless load. A revocation on the shared screen takes effect in the app at most
+    one such memory period later.
+  - DB connections have a timeout: a hanging connection attempt is abandoned after 60 seconds, at most a few hanging attempts at once; a hanging attempt must not block
+    everyone's login until a restart.
+- **Security guarded on the server, blocked by default:** a new write function ⇒ blocks every role not declared as allowed; hiding a button in the interface
+  does not count as security. Every endpoint returning data stands behind the login layer.
+- **Named queries in code run as strings:** a worker loaded with eval cannot import the query library ⇒ pass named queries through
   `workerData` (`Rule_Gate_35_OneHome`).
-- **Thư mục tạm của test:** bộ chạy test gom thư mục tạm của mọi tiến trình con vào một thư mục cha của lượt chạy, xoá khi
-  xong và dọn các lượt bỏ dở; số thư mục trong thư mục tạm của hệ thống trước và sau một lượt chạy bằng nhau
+- **Test temp folders:** the test runner gathers the temp folders of every child process into one parent folder of the run, deleted when
+  done, and tidies abandoned runs; the number of folders in the system temp folder before and after a run is equal
   (`Rule_Gate_04_ScratchFiles`).
 
 ## Implements · Thi hành luật

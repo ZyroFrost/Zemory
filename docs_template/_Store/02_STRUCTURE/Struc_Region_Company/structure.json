@@ -6,7 +6,9 @@
     "Glossary_156_Glossary",
     "Template_157_Template",
     "Legacy_158_Legacy",
-    "Project_159_Project","Profile_170_Profile"
+    "Project_159_Project",
+    "Profile_170_Profile",
+    "WorkspaceManager_171_WorkspaceManager"
   ],
   "relations": [
     "owner",

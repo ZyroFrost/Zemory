@@ -124,6 +124,26 @@ interface ZConfig {
   webPull?: Record<string, { at: string; ok: boolean; status: string; pulled?: number; error?: string }>;
   /** Tên các tool mà tin `tool_use` của chúng ĐƯỢC nhúng vector — xem getEmbedTools. */
   embedTools?: string[];
+  /** The root of this machine's data tree (Struc_Disk_Data), as the host names it — see getTreeRoot. */
+  treeRoot?: string;
+}
+
+/**
+ * The root of this machine's data tree (Struc_Disk_Data §Tree root): a drive root (`D:\`), a folder, or a cloud folder
+ * such as `%OneDrive%\` when the owner keeps everything there. The slots below the root are the same everywhere; only the
+ * root is per machine. Empty = not declared, and `conform --layout` then needs the root on the command line.
+ * The host's path is kept; readers translate it at their own door (the container sees it through the data-root mount).
+ */
+export function getTreeRoot(): string {
+  const v = read().treeRoot;
+  return typeof v === "string" ? v.trim() : "";
+}
+
+export function setTreeRoot(path: string): void {
+  const c = read();
+  if (path.trim()) c.treeRoot = path.trim();
+  else delete c.treeRoot;
+  write(c);
 }
 
 /**

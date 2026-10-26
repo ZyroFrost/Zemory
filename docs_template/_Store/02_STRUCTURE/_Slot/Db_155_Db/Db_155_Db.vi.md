@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 # Db_155_Db db — repo dữ liệu của một hệ
@@ -18,7 +18,8 @@ nạp dữ liệu, tài liệu về nguồn. Dấu `_` đầu tên nói đây l�
 | trung tâm log | `_DB_Log` | `Struc_Repo_LogCenter` | cung cấp `log`; không có `owner` |
 
 Một tổ chức có đúng MỘT kho dữ liệu (nơi cung cấp `data`) và đúng MỘT trung tâm log (nơi cung cấp `log`) — luật "mỗi vai dịch vụ
-một nơi cung cấp" của `Struc_Region_Company`. Hệ dữ liệu của ứng dụng thì mỗi ứng dụng một repo.
+một nơi cung cấp" của `Struc_Region_Company`. Hệ dữ liệu của ứng dụng thì mỗi ứng dụng một repo. Tổ chức không có DW thì repo tổng quản nằm ở
+`_WorkspaceManager\` (WorkspaceManager_171).
 
 ## Được chứa / không chứa
 

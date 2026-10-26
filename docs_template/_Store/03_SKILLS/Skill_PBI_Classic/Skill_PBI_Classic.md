@@ -1,187 +1,187 @@
 ---
 id: Skill_PBI_Classic
 name: pbi-classic
-version: 6
+version: 7
 type: process
 description: Build the CLASSIC copy of a Power BI report - keep the OLD design exactly, move only the model onto the warehouse: map tables to Dim_*/Fact_*, port measures, rebind visuals, then MEASURE how far the numbers match the old one. Use whenever an old dashboard moves onto the warehouse, the old report serves as the warehouse's test, or the question is what the warehouse still lacks. Not for a new design. Vietnamese triggers - "bản classic", "tái tạo dashboard cũ", "đổi model sang DW", "so số với bản cũ", "kho còn thiếu gì".
 ---
 
-# Bản `Classic` — giữ nguyên thiết kế CŨ, chỉ đổi lớp model sang kho
+# The `Classic` kind — the OLD design kept as is, only the model layer moved to the DW
 
-> 🔴 **`Classic` = thiết kế CŨ chạy trên nền dữ liệu MỚI.** Tên này là thuật ngữ đã dùng trong estate
-> (`ABC_IncomeStatementClassic`) — **đừng đọc ra thành "bản mới"**. Bản thiết kế mới là một artifact
-> KHÁC, sống song song và không đè nhau; lẫn hai cái là mất mốc so sánh duy nhất.
+> 🔴 **`Classic` = the OLD design running on the NEW data.** The name is a term already used in the estate
+> (`ABC_IncomeStatementClassic`) — **do not read it as "the new copy"**. The new design is a DIFFERENT
+> artifact, living side by side without overwriting; mixing the two loses the only reference point for comparison.
 >
-> File này nói **CÁCH DỰNG BẢN CLASSIC**. Thao tác file `.pbip` (bookmark · nút · icon · lưới) ở skill
-> **`pbi-pbip`**; luật THIẾT KẾ ở `Skill_PBI_Base` `reference/design.md`.
-> Khác `pbi-pbip` ở chỗ: `pbi-pbip` sửa một report ĐANG là của mình, file này **chuyển một report của người
-> khác sang nền dữ liệu khác mà không được đổi hình hài nó**.
+> This file says **HOW TO BUILD THE CLASSIC COPY**. Operating on `.pbip` files (bookmarks · buttons · icons · the grid) is in the
+> **`pbi-pbip`** skill; the DESIGN rules are in `Skill_PBI_Base` `reference/design.md`.
+> It differs from `pbi-pbip` in this: `pbi-pbip` edits a report that IS yours, this file **moves someone else's report
+> onto another data base without being allowed to change its shape**.
 
-## 0. Vì sao làm kiểu này — đọc trước khi bàn phương án
+## 0. Why it is done this way — read before discussing options
 
-Bản cũ là **mốc so sánh DUY NHẤT**. Giữ nguyên thiết kế rồi chỉ thay lớp dữ liệu thì mọi ô lệch đều
-quy về đúng một nguyên nhân: **kho**. Đổi thiết kế cùng lúc là tự bỏ mốc đó, và sau đó không ai
-chứng minh được số sai vì kho hay vì mình vẽ lại.
+The old copy is **the ONLY reference point for comparison**. Keeping the design and swapping only the data layer makes every cell that differs
+come down to exactly one cause: **the DW**. Changing the design at the same time throws that reference away, and afterwards nobody
+can prove whether a figure is wrong because of the DW or because of the redraw.
 
-⇒ **Đầu ra có giá trị nhất KHÔNG phải cái report** — mà là **danh sách kho còn thiếu**, lộ ra do
-report đòi mà kho không đáp được.
+⇒ **The most valuable output is NOT the report** — it is **the list of what the DW still lacks**, exposed because
+the report asks for things the DW cannot answer.
 
-## 1. Ba điều KHÔNG làm
+## 1. Things NOT to do
 
-- **KHÔNG đổi thiết kế.** Toạ độ · cỡ chữ · bố cục · thứ tự trang giữ nguyên. Thấy chỗ xấu thì **BÁO**
-  (`Skill_PBI_Base` `reference/design.md` §3.5). Lưới 5 và bảng màu của chuẩn **không áp** cho bản mô phỏng.
-- **KHÔNG bịa số.** Chỗ kho chưa đáp được thì để **trống có ghi chú**, không thay bằng ước lượng.
-  *Bản cũ đã trả giá đúng chỗ này: `[COGs_PnL] = TotalSale × 0.39` — một tỷ lệ ước mang cái tên nghe
-  như thật, và có người đi tìm chi phí trong đó.*
-- 🔴 **KHÔNG ép kho về hình dạng bảng cũ.** Viết `CASE WHEN`/`UNION ALL` để nặn `Fact_*` thành đúng
-  khung bảng cũ thì **phép kiểm mất nghĩa**. Nguyên văn *"m chỉnh sửa linh tinh rồi
-  việc check DW có tác dụng gì"*. Phải **kéo thẳng bảng gốc** rồi join qua khoá.
-- 🔴 **KHÔNG "chuẩn hoá" chữ NGƯỜI ĐỌC THẤY.** Bản `Classic` chạy **hai tầng tên**:
-  **trong model** (bảng · cột · measure · thư mục) theo **chuẩn mới**; **nhãn trên visual, tiêu đề, nhãn
-  slicer** giữ **nguyên văn bản cũ**. Xung đột ⇒ **UI THẮNG** — đổi nhãn cho "đúng chuẩn" là làm bản mô
-  phỏng khác bản cũ ở đúng chỗ người dùng nhìn. Bảng đối chiếu bốn loại file `Legacy`/`Classic`/`White`/`Red`:
-  skill `pbi-pbip` §0.
+- **Do NOT change the design.** Coordinates · font sizes · layout · page order stay as they are. Seeing something ugly ⇒ **REPORT** it
+  (`Skill_PBI_Base` `reference/design.md` §3.5). The standard's 5 grid and colour table **do not apply** to the replica.
+- **Do NOT invent figures.** Where the DW cannot answer yet, leave it **empty with a note**, never replaced by an estimate.
+  *The old copy paid for exactly this: `[COGs_PnL] = TotalSale × 0.39` — an estimated ratio with a name that sounds
+  real, and someone went looking for costs in it.*
+- 🔴 **Do NOT force the DW into the old table shapes.** Writing `CASE WHEN`/`UNION ALL` to mould `Fact_*` into exactly the old table
+  frame makes **the check meaningless**: tweaking things at random leaves checking the DW with no purpose. **Pull the source tables directly**
+  and join through keys.
+- 🔴 **Do NOT "standardise" the words THE READER SEES.** The `Classic` copy runs **two layers of names**:
+  **inside the model** (tables · columns · measures · folders) by **the new standard**; **labels on visuals, titles, slicer
+  labels** keep **the old wording**. On conflict ⇒ **THE UI WINS** — changing a label to be "standard" makes the replica
+  differ from the old copy exactly where people look. The comparison table of the four file kinds `Legacy`/`Classic`/`White`/`Red`:
+  the `pbi-pbip` skill §0.
 
-## 1b. 🔴 XOÁ SẠCH MODEL CŨ TRƯỚC KHI DỰNG — không phải dọn sau
+## 1b. 🔴 DELETE THE OLD MODEL COMPLETELY BEFORE BUILDING — not tidied afterwards
 
-Áp cho **mọi bậc đọc kho**: `Classic` · `White` · `Red`. Bậc `Legacy` thì không — nó *là* bản hệ cũ.
-
-```
-SAI:  đổi nguồn từng bảng -> bảng nào không ai dùng thì ĐỂ LẠI
-ĐÚNG: XOÁ HẾT bảng đọc hệ cũ -> rồi mới kéo bảng kho về
-```
-
-**Phép kiểm #7 ở §4 (*"model còn đọc nguồn hệ cũ"*) là MỤC TIÊU CỦA CẢ LƯỢT, không phải một
-mục trong danh sách.** Một bảng còn trỏ một nguồn khai ở `legacy_sources` là bản mô phỏng
-**chưa rời hệ cũ**, nên nó không chứng minh được điều nó sinh ra để chứng minh.
-
-🔴 **"Không visual nào dùng" KHÔNG phải lý do giữ lại.** Đó đúng là câu biện minh đã xảy ra thật
-(một report Classic): 6 bảng hệ cũ + 2 bảng SharePoint được giữ với lý do
-0 visual, model vẫn load xanh, Desktop không kêu gì — và người dùng phải tự phát hiện khi mở danh sách
-bảng ra nhìn. **Máy không bắt được, chỉ mắt người bắt được** ⇒ phải là luật, không phải thói quen.
-
-**Xoá một bảng là xoá SÁU chỗ** — thiếu một chỗ thì Desktop không mở được:
-```
-tables/<Tên>.tmdl            quan hệ trong relationships.tmdl
-LocalDateTable mồ côi        measure chỉ dùng bảng đó
-mục trong cultures/*.tmdl    tên trong annotation PBI_QueryOrder của model.tmdl
-```
-
-**Nghiệm thu, chạy trước khi mở Desktop:**
-```
-grep -lE '<mọi mục của legacy_sources, nối bằng |>' tables/*.tmdl   ->  PHẢI RỖNG
-```
-⚠ Báo oan hay gặp: tên bảng giữ chứa tên bảng đã xoá như chuỗi con (`DimStore` nằm trong
-`DimStore <Tên công ty>`, và `DimStore_<ten_cong_ty>` trong lược đồ ngôn ngữ). Khớp theo **ranh giới từ**, đừng
-khớp chuỗi con.
-
-🔴 **Classic KHÔNG nhận luật chỉnh UI nào** *("classic là giữ nguyên thiết kế, ko có chuẩn chỉnh UI nào áp lên Classic hết" — tiêu đề Classic bị đổi font / viết hoa theo luật White rồi phải trả lại)*: font, cỡ, canh lề, viết hoa tiêu đề, bề rộng cột, màu, bố cục… giữ như bản cũ. Classic chỉ đổi lớp DỮ LIỆU (model → kho, measure, khoá nối). Cổng: mọi luật thiết kế White/Red (`title-font` · `title-case` · `row-wrap` · `header-wrap` · `narrow-table` …) bỏ qua `_Classic` / `_Legacy`.
-
-🔴 **Bảng và đường nối CHỈ theo kho** *(chuẩn kho sửa lại 13/10)*: mọi `Dim_/Fact_/Bridge_/Agg_` của model là
-bảng kho CÙNG TÊN (không bảng DAX tự dựng, không bảng ghép tay); mọi relationship đi đúng khoá ngoại kho có. Kho thiếu bảng / khoá
-⇒ xin kho thêm, KHÔNG tự dựng tạm. Áp cho Classic · White · Red. Cổng `dw-only-tables` (lớp static + dw).
-
-⚠ **Desktop tự sinh `LocalDateTable` mỗi lần refresh** (auto date/time). Với `Import` thì vô hại,
-nhưng **`DirectQuery` không cho** ⇒ tắt auto date/time trước khi chuyển bậc.
-
-## 2. Quy trình — sáu bước
+Applies to **every tier reading the DW**: `Classic` · `White` · `Red`. Not the `Legacy` tier — it *is* the old system's copy.
 
 ```
-1. COPY bản cũ ra ngoài vùng mirror   _Legacy là Syncthing RECEIVEONLY:
-                                      sửa tại chỗ sẽ bị revert, luôn copy ra trước
-2. Save As .pbip                      .pbix thì DAX bị nén XPress9, agent mù (naming.md §5)
-3. MỞ model cũ                        liệt kê: bảng · nguồn · measure · cột tính · binding
-4. THAY bảng                          xoá sạch bảng cũ -> kéo THẲNG bảng gốc của kho:
-                                      Source{[Schema="dbo",Item="<Bảng>"]}[Data]
-5. PORT measure                       DAX thường trên bảng kho, giữ ĐÚNG tên cũ nếu còn dùng
-6. NỐI lại binding                    mọi visual.json trỏ về tên bảng/cột mới
+WRONG: switch the source table by table -> tables nobody uses are LEFT BEHIND
+RIGHT: DELETE EVERY table reading the old system -> only then pull the DW tables in
 ```
 
-📌 **Số của một lượt thật (2026-09-15, `Store Dashboard Income Statement`)** để biết khối lượng:
-11 bảng cũ → **6 bảng kho** + 3 quan hệ · **53 measure → 92** · **319 binding** trên ~100 file visual.
+**Check #7 in §4 (*"the model still reads an old-system source"*) is THE GOAL OF THE WHOLE ROUND, not one
+item in a list.** A table still pointing at a source declared in `legacy_sources` means the replica
+**has not left the old system**, so it cannot prove what it exists to prove.
 
-🔴 **Report MỎNG (thin, nối live model khác) có measure CẤP REPORT** trong `definition/reportExtensions.json`; visual trỏ tới chúng
-bằng `SourceRef` có **`"Schema": "extension"`**. Chuyển các measure đó vào model của bản Classic thì **gỡ luôn khoá `Schema`** ở mọi tham
-chiếu (cả trang tooltip ẩn). Giữ lại ⇒ refresh xong visual báo *"Something's wrong with one or more fields"*, và nút **Fix this XOÁ
-trường** thay vì nối lại *(04 IP Classic 17/10: mất 3 cột của "Revenue Yesterday of Store" + tooltip "Same Store SG LM")*. Cổng
+🔴 **"No visual uses it" is NOT a reason to keep it.** That is exactly the excuse that really happened
+(a Classic report): 6 old-system tables + 2 SharePoint tables were kept because of
+0 visuals, the model still loaded green, Desktop said nothing — and the owner had to find it themselves when opening the table
+list to look. **The machine does not catch it, only human eyes do** ⇒ it must be a rule, not a habit.
+
+**Deleting a table means deleting it in SIX places** — miss one and Desktop does not open:
+```
+tables/<Name>.tmdl            relationships in relationships.tmdl
+orphan LocalDateTable         measures using only that table
+entries in cultures/*.tmdl    the name in the PBI_QueryOrder annotation of model.tmdl
+```
+
+**Acceptance, run before opening Desktop:**
+```
+grep -lE '<every item of legacy_sources, joined by |>' tables/*.tmdl   ->  MUST BE EMPTY
+```
+⚠ A frequent false alarm: a kept table name holds a deleted table name as a substring (`DimStore` inside
+`DimStore <Company name>`, and `DimStore_<company_name>` in the language schema). Match on **word boundaries**, never
+on substrings.
+
+🔴 **Classic takes NO UI-adjusting rule** (Classic keeps the design; a Classic title once had its font / capitalisation changed by the White rules and had to be put back): font, size, alignment, title capitalisation, column widths, colours, layout… stay as in the old copy. Classic changes only the DATA layer (model → DW, measures, join keys). Gate: every White/Red design rule (`title-font` · `title-case` · `row-wrap` · `header-wrap` · `narrow-table` …) skips `_Classic` / `_Legacy`.
+
+🔴 **Tables and joins follow ONLY the DW** *(the DW standard revised 13/10)*: every `Dim_/Fact_/Bridge_/Agg_` of the model is a
+DW table WITH THE SAME NAME (no self-built DAX tables, no hand-assembled tables); every relationship follows exactly a foreign key the DW has. The DW lacks a table / key
+⇒ ask the DW to add it, NEVER build a stopgap yourself. Applies to Classic · White · Red. Gate `dw-only-tables` (static + dw layers).
+
+⚠ **Desktop generates `LocalDateTable` itself on every refresh** (auto date/time). Harmless with `Import`,
+but **`DirectQuery` does not allow it** ⇒ turn auto date/time off before moving tiers.
+
+## 2. The procedure — six steps
+
+```
+1. COPY the old copy out of the mirror area   _Legacy is Syncthing RECEIVEONLY:
+                                              editing in place gets reverted, always copy out first
+2. Save As .pbip                              in .pbix the DAX is XPress9-compressed, the agent is blind (naming.md §5)
+3. OPEN the old model                         list: tables · sources · measures · calculated columns · bindings
+4. REPLACE the tables                         delete the old tables completely -> pull the DW's source tables DIRECTLY:
+                                              Source{[Schema="dbo",Item="<Table>"]}[Data]
+5. PORT the measures                          plain DAX on DW tables, keeping EXACTLY the old names when still used
+6. RECONNECT the bindings                     every visual.json pointing at the new table/column names
+```
+
+📌 **The figures of a real round (2026-09-15, `Store Dashboard Income Statement`)** to know the volume:
+11 old tables → **6 DW tables** + 3 relationships · **53 measures → 92** · **319 bindings** over ~100 visual files.
+
+🔴 **A THIN report (connected live to another model) has REPORT-LEVEL measures** in `definition/reportExtensions.json`; visuals point at them
+with a `SourceRef` carrying **`"Schema": "extension"`**. Moving those measures into the Classic copy's model means **removing the `Schema` key** in every
+reference (hidden tooltip pages included). Kept ⇒ after a refresh the visual reports *"Something's wrong with one or more fields"*, and the **Fix this** button DELETES
+the field instead of reconnecting it *(04 IP Classic 17/10: lost 3 columns of "Revenue Yesterday of Store" + the tooltip "Same Store SG LM")*. Gate
 `extension-ref`.
 
-🔴 **Bước 3 phải ra một FILE bằng chứng**, không giữ trong đầu: bảng cũ đọc nguồn nào · measure nào
-tính gì · cột nào là cột tính tại chỗ. Không có file này thì bước 6 không biết nối về đâu, và cuối
-lượt không trả lời được câu *"cái gì chưa port"*.
+🔴 **Step 3 must produce an evidence FILE**, not kept in your head: which source each old table reads · what each measure
+computes · which columns are calculated in place. Without this file step 6 does not know where to reconnect, and at the end
+of the round the question *"what was not ported"* cannot be answered.
 
-## 3. Ba cột cờ của lớp TRÌNH BÀY — nằm trong model của report, KHÔNG vào kho
+## 3. Three flag columns of the PRESENTATION layer — in the report's model, NOT in the DW
 
-🔴 **Phép thử: *"thứ này có nằm trong Excel / server nguồn để kéo về không?"*** Không ⇒ nó là **logic
-trình bày**, dựng ở Power Query của report, **không được đưa vào kho**.
+🔴 **The test: *"is this in an Excel file / source server to pull from?"*** No ⇒ it is **presentation
+logic**, built in the report's Power Query, **never put into the DW**.
 
-Ví dụ đã chạy thật: cờ chọn dòng hiển thị · cờ "dòng này có trong danh mục cũ" · màu dòng port từ cột
-`Row_Color` của bảng cũ. Cả ba là lựa chọn trình bày **của một báo cáo**, không phải sự thật nghiệp vụ.
+An example that really ran: a flag choosing which rows show · a flag "this row is in the old catalogue" · the row colour ported from the old table's
+`Row_Color` column. All three are presentation choices **of one report**, not business facts.
 
-⚠ **Ca kinh điển — DÒNG TỔNG HỢP.** Hệ cũ hay có mấy dòng kiểu `MCP` · `PROFIT` · `EBITDA` nằm lẫn
-trong danh mục dòng. Dò ra chúng **không tồn tại ở nguồn gốc nào** (mã thật của ERP chỉ tới một mức
-nào đó) ⇒ chúng là **measure, không phải dòng dữ liệu**. Cho chúng vào kho là làm bẩn dim dùng chung
-của mọi phòng. Dựng ở Power Query của report, mang đúng mã cũ để binding không gãy.
+⚠ **The classic case — SUMMARY ROWS.** Old systems often have rows like `MCP` · `PROFIT` · `EBITDA` mixed
+into the row catalogue. Searching shows they **exist in no original source** (the ERP's real codes stop at some
+level) ⇒ they are **measures, not data rows**. Putting them into the DW dirties the dim shared by
+every department. Build them in the report's Power Query, carrying exactly the old codes so the bindings do not break.
 
-## 4. Bộ kiểm TĨNH — chạy TRƯỚC khi mở Desktop
+## 4. The STATIC checks — run BEFORE opening Desktop
 
-> 🔴 **Luật model đọc kho (DirectQuery · chuỗi server gateway `<warehouse_server>` · 0 nguồn hệ cũ ·
-> DAX chạy được trên web) ở `pbip §1b`** — cổng `dw-model` + `file-name` của `scripts/pbi_gate.py` chạy cho
-> mọi bản Classic/White/Red.
+> 🔴 **The rules of a model reading the DW (DirectQuery · the gateway server string `<warehouse_server>` · 0 old-system sources ·
+> DAX that runs on the web) are in `pbip §1b`** — the `dw-model` + `file-name` gates of `scripts/pbi_gate.py` run for
+> every Classic/White/Red copy.
 
-Mỗi lỗi Desktop từng bắt đều đẻ ra một phép kiểm ở đây, để lần sau bắt **trước** khi mở:
+Every error Desktop once caught produced a check here, so next time it is caught **before** opening:
 
-| # | Kiểm gì | Sinh ra từ |
+| # | Checks | Born from |
 |--:|---|---|
-| 1 | **tên measure trùng nhau khi BỎ QUA HOA/THƯỜNG** | `%COGS of Revenue` đụng `%Cogs of Revenue` |
-| 2 | tên cột trùng trong một bảng | — |
-| 3 | DAX trỏ cột không tồn tại | dùng giá trị của cột này làm tên cột kia |
-| 4 | `formatString` có nháy mà **không escape kiểu TMDL** | `"TRUE";"TRUE";"FALSE"` làm vỡ file |
-| 5 | binding của report không khớp model | nối lại hàng trăm tham chiếu |
-| 6 | `cultures` trỏ đối tượng không tồn tại | — |
-| 7 | model còn đọc nguồn hệ cũ | **mục tiêu của cả lượt** |
-| 8 | JSON hợp lệ | — |
+| 1 | **duplicate measure names IGNORING CASE** | `%COGS of Revenue` clashing with `%Cogs of Revenue` |
+| 2 | duplicate column names in one table | — |
+| 3 | DAX pointing at a column that does not exist | a value of one column used as the name of another |
+| 4 | a `formatString` with quotes **not escaped the TMDL way** | `"TRUE";"TRUE";"FALSE"` broke the file |
+| 5 | the report's bindings not matching the model | reconnecting hundreds of references |
+| 6 | `cultures` pointing at objects that do not exist | — |
+| 7 | the model still reads an old-system source | **the goal of the whole round** |
+| 8 | valid JSON | — |
 
-🔴 **Phép thứ 9 — LỆCH KIỂU giữa hai cột đem so sánh — TÁM PHÉP TRÊN KHÔNG BẮT ĐƯỢC**, vì cả hai cột
-đều tồn tại. Ca thật: `Dim_Date[MonthNumber]` là **text** (`"01".."12"`) còn `ParameterDate[Month]`
-của kho là **số** ⇒ 4 measure vỡ với *"DAX comparison operations do not support comparing values of
-type Text"*. **Chỉ lộ khi chạy DAX thật:** mở Desktop rồi nối
-`Provider=MSOLAP;Data Source=localhost:<cổng msmdsrv>`, chạy `EVALUATE ROW("v",[measure])` cho từng
-measure — cái nào ném lỗi là lộ ngay.
+🔴 **The 9th check — A TYPE MISMATCH between two columns compared — THE EIGHT CHECKS ABOVE DO NOT CATCH IT**, because both columns
+exist. A real case: `Dim_Date[MonthNumber]` is **text** (`"01".."12"`) while the DW's `ParameterDate[Month]`
+is a **number** ⇒ 4 measures broke with *"DAX comparison operations do not support comparing values of
+type Text"*. **It shows only when real DAX runs:** open Desktop then connect
+`Provider=MSOLAP;Data Source=localhost:<msmdsrv port>`, run `EVALUATE ROW("v",[measure])` for each
+measure — whichever throws an error shows at once.
 
-⚠ **Bẫy cùng họ, ÂM THẦM hơn: giá trị đổi mà kiểu KHÔNG đổi.** `Quarter` bản cũ là `"Q1".."Q4"`, kho
-trả `"1".."4"` — không lỗi gì cả, chỉ **đổi chữ trên slicer**. Chỉ lộ khi đọc `VALUES(...)` ra so.
-Vá bằng cột dẫn xuất (`QuarterLabel = "Q" & Quarter`), **không sửa chữ người đọc thấy**.
+⚠ **A trap of the same family, QUIETER: the value changes while the type does NOT.** The old copy's `Quarter` is `"Q1".."Q4"`, the DW
+returns `"1".."4"` — no error at all, only **the words on the slicer change**. It shows only when reading `VALUES(...)` out to compare.
+Fixed with a derived column (`QuarterLabel = "Q" & Quarter`), **never editing the words the reader sees**.
 
-## 5. Ba con số phải báo — định nghĩa TRƯỚC khi làm
+## 5. Three figures to report — defined BEFORE doing the work
 
 ```
-ĐỘ PHỦ MEASURE   số measure port được / tổng measure cũ     (port được = chạy ra số, không lỗi)
-ĐỘ PHỦ FIELD     số field visual nối được / tổng field cũ
-ĐỘ KHỚP SỐ       số ô khớp bản cũ / tổng ô đối chiếu
+MEASURE COVERAGE   measures ported / total old measures     (ported = runs to a figure, no error)
+FIELD COVERAGE     visual fields reconnected / total old fields
+FIGURE MATCH       cells matching the old copy / total cells compared
 ```
 
-- 🔴 **"Port được" ≠ "đúng số".** Một measure chạy ra số vẫn có thể sai; **độ khớp số là cổng riêng**.
-- 🔴 **Ô không đối chiếu được (vì kho thiếu nguồn) KHÔNG tính là lệch** — xếp riêng thành nhóm *"chưa
-  đối chiếu được"* kèm lý do. Gộp nó vào nhóm lệch là làm hỏng chính con số cần báo.
-- 🔴 **QUÉT FULL mọi kỳ × mọi đơn vị × mọi dòng** (`Rule_Keys_11_VerifyClaims` bước 7), chia lô mà quét — đừng chọn
-  mẫu. API dò dữ liệu **cắt ở `query_row_cap` dòng mà không báo** (`Skill_Task_Pull`), nên không chia lô là ra số
-  thiếu trong im lặng.
+- 🔴 **"Ported" ≠ "the right figure".** A measure running to a figure can still be wrong; **the figure match is a separate gate**.
+- 🔴 **Cells that cannot be compared (because the DW lacks the source) do NOT count as differing** — put them in a separate group *"not yet
+  comparable"* with the reason. Merging them into the differing group ruins the very figure to report.
+- 🔴 **SCAN EVERYTHING: every period × every unit × every row** (`Rule_Keys_11_VerifyClaims` step 7), in batches — never sample.
+  The data-probing API **cuts at `query_row_cap` rows without saying** (`Skill_Task_Pull`), so without batches the figures come out
+  short in silence.
 
-**Cách đo khớp:** `FULL OUTER JOIN` hai bên cùng instance, gom theo khoá kỳ + đơn vị + dòng, đếm ô
-lệch. *Lượt thật: `46.764` ô → khớp `46.760`, lệch `4` — và cả 4 đều là **hệ cũ sai**, không phải bản
-mới sai.*
+**How to measure the match:** a `FULL OUTER JOIN` of both sides on the same instance, grouped by period key + unit + row, counting the
+differing cells. *A real round: `46,764` cells → `46,760` matching, `4` differing — and all 4 were **the old system being wrong**, not the new
+copy.*
 
-🔴 **Lệch KHÔNG mặc nhiên là mình sai.** Truy tới cùng rồi mới kết luận: bản cũ có thể đang đọc một
-bảng **đóng băng** (nạp một lần rồi đứng yên) trong khi kho đọc nguồn live ⇒ **số của kho đúng hơn**,
-và đó là một **defect của hệ cũ** phải ghi vào catalog, không phải lỗi phải vá cho khớp.
+🔴 **A difference does NOT by default mean you are wrong.** Trace it to the end before concluding: the old copy may be reading a
+**frozen** table (loaded once and never again) while the DW reads the live source ⇒ **the DW's figure is more correct**,
+and that is a **defect of the old system** to write into the catalogue, not an error to patch until it matches.
 
-## 6. Nghiệm thu
+## 6. Acceptance
 
-Một **trang** xong khi: mọi visual nối được field · mọi measure chạy ra số · số khớp bản cũ, **trừ**
-những ô đã khai rõ ở nhóm *"chưa đối chiếu được"*.
-Cả **báo cáo** xong khi mọi trang hiện đều đạt **và** danh sách kho-còn-thiếu đã gửi sang repo sở hữu
-kho (`repo quản lý vùng`) — repo đó giữ DDL, repo phòng chỉ đặt yêu cầu và nghiệm thu.
+A **page** is done when: every visual has its fields reconnected · every measure runs to a figure · the figures match the old copy, **except**
+the cells declared clearly in the *"not yet comparable"* group.
+The whole **report** is done when every page shown passes **and** the list of what the DW still lacks has been sent to the repo owning
+the DW (`region manager repo`) — that repo keeps the DDL, the department repo only places the request and accepts the result.
 
-⚠ **Bản mô phỏng trông y hệt bản cũ nhưng số đến từ kho** ⇒ `spec.md` của case **và chính báo cáo**
-phải nói rõ, nếu không thì rơi đúng bẫy *hai thứ khác bản chất mang cùng một tên*.
+⚠ **The replica looks exactly like the old copy but its figures come from the DW** ⇒ the case's `spec.md` **and the report itself**
+must say so clearly, or it falls into exactly the trap of *two things different in nature carrying the same name*.

@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Struc_Region_Company
@@ -16,6 +16,7 @@ theo vai, và các thư mục công việc không phải repo. Quan hệ giữa 
 |---|---|
 | repo của một phòng ban | `Dept_<MÃ>\` (Dept_154) — bộ Struc_Repo_Dept |
 | repo của một hệ dữ liệu: DW · dữ liệu của một app · trung tâm log | `_DB_<Hệ>\` (Db_155) — Struc_Repo_WorkspaceManager · AppData · LogCenter |
+| repo quản các repo của tổ chức khi tổ chức không chạy DW (không database, không app) | `_WorkspaceManager\` (WorkspaceManager_171) — Struc_Repo_WorkspaceManager |
 | bảng thuật ngữ nghiệp vụ dùng chung (thư mục đồng bộ) | `_Glossary\` (Glossary_156) |
 | khuôn báo cáo dùng chung của một công cụ (thư mục đồng bộ) | `_<Công cụ>_Template\` (Template_157) |
 | việc cũ giữ chỉ đọc | `_Legacy\<Nguồn>\` (Legacy_158) |
@@ -26,7 +27,7 @@ theo vai, và các thư mục công việc không phải repo. Quan hệ giữa 
 ```
 Workspace\Company\Acme\
 ├── Dept_FIN\  Dept_LOG\
-├── _DB_Warehouse\  _DB_Log\
+├── _DB_Warehouse\  _DB_Log\         (hoặc _WorkspaceManager\ khi không có DW)
 ├── _Glossary\  _PBI_Template\  _Legacy\OldServer\
 ├── _Project\ERP\_Hub\  _Project\ERP\AcmeFlow\
 └── Designs\  Drawings\                 thư mục công việc, không phải repo
@@ -38,6 +39,7 @@ Workspace\Company\Acme\
 - Repo luôn mang một vai ở trên; repo đặt tên như thư mục công việc bị báo. Thư mục tên `Dept_` hay `_` phải khớp vai của nó
   (`Dept_` + mã VIẾT HOA).
 - Mỗi vai dịch vụ (`data` · `log` · `glossary` · `template`) có đúng một nơi cung cấp trong tổ chức.
+- Đúng một repo quản các repo của tổ chức: repo DW khi có, không có thì `_WorkspaceManager\` (WorkspaceManager_171).
 - Giấy tờ của chủ máy với tổ chức nằm Ở ĐÂY, trong `_Profile\` (luật khối của `Struc_Disk_Data`); giấy tờ dùng cho mọi tổ chức (CV,
   định danh) ⇒ `Documents\Profile\`.
 - Không có file lẻ ở cấp tổ chức.

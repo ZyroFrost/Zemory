@@ -659,7 +659,7 @@ function writeSession(db: MemoryDB, args: WriteSessionArgs): number {
 
   const ins = db.prepare(Q.insertMessage);
   let inserted = 0;
-  for (const m of a.msgs) inserted += ins.run(a.sessionId, m.uuid, m.role, redact(m.content), m.tool, m.ts).changes;
+  for (const m of a.msgs) inserted += ins.run({ session: a.sessionId, uuid: m.uuid ?? null, role: m.role, content: redact(m.content), tool: m.tool ?? null, ts: m.ts ?? null }).changes;
   writeAttachments(db, a.sessionId, a.msgs);
 
   db.prepare(Q.refreshSessionStats).run({ id: a.sessionId });
@@ -805,7 +805,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
 
     const ins = db.prepare(Q.insertMessage);
     let inserted = 0;
-    for (const m of msgs) inserted += ins.run(sessionId, m.uuid, m.role, redact(m.content), m.tool, m.ts).changes;
+    for (const m of msgs) inserted += ins.run({ session: sessionId, uuid: m.uuid ?? null, role: m.role, content: redact(m.content), tool: m.tool ?? null, ts: m.ts ?? null }).changes;
     writeAttachments(db, sessionId, msgs);
 
     db.prepare(Q.refreshSessionStats).run({ id: sessionId });

@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # Struc_Repo_WorkspaceManager
@@ -13,6 +13,8 @@ cung cấp cho cả cụm. Template này khác nhau theo từng cụm của ngư
 - Cung cấp cho cả cụm: `data` (DW, kho dữ liệu) · `workspace-values` (giá trị của cụm, slot `Data_140_WorkspaceValues`) · `mail`
   (bộ mail chung, slot `Config_139_Mail`).
 - Không thuộc quyền repo nào (cấp cao nhất của cụm).
+- Nằm ở `_DB_<Hệ>\` khi giữ DW (Db_155), không thì ở `_WorkspaceManager\` (WorkspaceManager_171) — khi đó cung cấp `workspace-values` và
+  `mail`, không cung cấp `data`.
 - **Sửa chuẩn chung là việc của repo này.** Một quy tắc áp cho mọi repo của cụm (slot · luật · skill · khối máy sinh) ⇒ repo
   này sửa ở HS rồi chạy `zemory sync`; `conform` của mỗi repo bắt phần còn lệch. Không nhắn từng repo tự sửa tay, không để repo
   nào sửa trước chuẩn. Sync ghi vào repo có vai `dept` là ngoại lệ duy nhất của luật chỉ-đo-không-ghi; mọi thay đổi khác trong
