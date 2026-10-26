@@ -2,15 +2,16 @@
 id: Rule_21
 aka: 02-21
 name: what-enters-git
-version: 11
+version: 12
 kind: action
 code: 03_Safety
 ---
 # Rule_Gate_21_WhatEntersGit — What never enters git
 
 ## What
-Three things never go into git: real secrets, real data, and heavy binaries without LFS. Tracked files only name an environment
-variable; secrets live in one place inside the repo, `data/secrets/`, blocked by `.gitignore`.
+Three things never go into git: real secrets, real data, and heavy binaries without LFS. Tracked files only name where a secret is
+read from (an environment variable or a vault entry), never its value. A secret has exactly one home, chosen by whose it is: a
+login to a system lives in the machine's `_ConfigVault`; a secret of one repo's own product lives in that repo's `data/secrets/`.
 
 ## When
 - About to stage or commit a file.
@@ -19,24 +20,30 @@ variable; secrets live in one place inside the repo, `data/secrets/`, blocked by
 
 ## Do
 1. Real secrets (password · key · connection string · vault · `.env`) never go into git, encrypted or not.
-2. A tracked file (`config/` · `*.example.*` · `.env.example`) names only the environment variable (for example `password_env`),
-   never the value.
-3. Secrets live in one place inside the repo tree: `data/secrets/` (the encrypted vault in `data/secrets/vault/`), blocked by
-   `.gitignore`. The only exception is `.env` at the root, because tools read it there. No secret folder outside the repo tree:
-   safety comes from `.gitignore` and the sync scope, not from location. An exception that must sit outside the tree (for example
-   a pointer to where data lives) is written in the repo's constitution and holds no secret.
-4. To another machine: secrets go through the sync channel, never through git.
+2. A tracked file (`config/` · `*.example.*` · `.env.example`) names only where the value is read from (an environment variable such
+   as `password_env`, or a login's line in the vault such as `logcentral.ro` in `_ConfigVault/sql/credentials/<server>.env`), never the value.
+3. One home per secret, by whose it is:
+   a. A login to a system that a program or an agent uses — a database login, an ssh key, an API account, a VPN profile — lives in
+      `_ConfigVault/<tool>/credentials/` (`ConfigVault_151_ConfigVault`), one copy for the whole machine, shared by every repo that
+      uses that login. Scripts read it at run time and never print it or copy it into a repo.
+   b. A secret that belongs to one repo's own product only (its encryption key, its app's own vault) lives in that repo's
+      `data/secrets/` (the encrypted vault in `data/secrets/vault/`), blocked by `.gitignore`. `.env` at the root is allowed because
+      tools read it there.
+   c. No third place: no copy of a vault login inside a repo, no secret folder anywhere else.
+4. To another machine: a repo's `data/secrets/` goes through the sync channel; `_ConfigVault` is never synced and goes by hand over a
+   safe path. Never through git.
 5. Real data (sources · extracts · customer data) never goes into git. The repo keeps only small fake samples, enough to open the
    product. Where: the data and sample slots of `02_STRUCTURE`.
 6. Heavy binaries (`.pbix` · `.twb` · `.fig` · `.psd` · models) are not committed directly; they follow the LFS lines in
    `.gitattributes`.
 
 ## Example
-- Situation: a job needs a password to connect to the source database.
-- ✗ Wrong: write the connection string with the password into a committed config file; or make a "vault" folder on another drive
-  to be safe.
-- ✓ Right: the config says only `password_env: DB_SOURCE_PASSWORD`; the real value sits in `data/secrets/`, blocked by
-  `.gitignore`; to another machine it goes through the sync channel.
+- Situation: a job in the log repo needs the read-only SQL login that the warehouse server gave it; two other repos use the same
+  login.
+- ✗ Wrong: write the connection string with the password into a committed config file; or put a copy of the password in the
+  `data/secrets/` of each of the three repos, so changing it means finding every copy.
+- ✓ Right: the password sits once, on the line `logcentral.ro=` of `_ConfigVault/sql/credentials/sasin-data.env`; the config of
+  each repo names the login and the server; the job reads it at run time.
 
 ## Check
 - The pre-commit check blocks a file with a secret name (`secretNames`) from being staged, also for commits made by a person.
@@ -44,7 +51,10 @@ variable; secrets live in one place inside the repo, `data/secrets/`, blocked by
   a password · a private key · a cloud access key); the pre-commit check looks for the same patterns in the staged diff. Passed: a
   value read from an environment variable · a placeholder (`<password>` · `changeme`) · `.env` · `data/secrets/` · `.md` text.
   Test files: one reminder per session (fake passwords are normal). Secrets have no flag.
+- `_ConfigVault` is outside every repo, so git never sees it; writing there is a write outside the project (`Rule_Gate_44_RepoScope`).
+- Whether a secret sits in the right one of the two homes is judgment.
 
 ## Links · Liên kết
 - Repo declares · Repo khai: `Cons_Gate_14_Access` — the repo declares its secrets and access · repo khai bí mật và quyền truy cập
+- Related · Liên quan: `ConfigVault_151_ConfigVault` — the machine's vault, home of logins · két của máy, nhà của thông tin đăng nhập
 - Implements · Thi hành: `Skill_Harness_SyncPath` — secrets to a second machine · bí mật sang máy thứ hai

@@ -33,7 +33,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Idea_091_Idea`](_Slot/Idea_091_Idea/Idea_091_Idea.md) | `.idea/` | editor config |
 | [`Root_093_Env`](_Slot/Root_093_Env/Root_093_Env.md) | `.env` | the real runtime secrets |
 | [`Data_094_Data`](_Slot/Data_094_Data/Data_094_Data.md) | `data/` | runtime / real files per machine |
-| [`Data_102_Secrets`](_Slot/Data_102_Secrets/Data_102_Secrets.md) | `data/secrets/` | every secret of the repo: keys · tokens · the encrypted vault |
+| [`Data_102_Secrets`](_Slot/Data_102_Secrets/Data_102_Secrets.md) | `data/secrets/` | the secrets of the repo's own product: keys · tokens · the encrypted vault |
 | [`Reports_111_Reports`](_Slot/Reports_111_Reports/Reports_111_Reports.md) | `reports/` | BI deliverable |
 | [`Models_112_Models`](_Slot/Models_112_Models/Models_112_Models.md) | `models/` | deliverable data: the model layer, or the build chain of one database |
 | [`Content_113_Content`](_Slot/Content_113_Content/Content_113_Content.md) | `content/` | docs-only deliverable |

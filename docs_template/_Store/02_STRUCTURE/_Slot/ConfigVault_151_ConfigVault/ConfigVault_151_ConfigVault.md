@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 7
+version: 8
 path: _ConfigVault/<tool>/
 scope: layout
 ---
@@ -24,8 +24,15 @@ _ConfigVault\
 ├── README.md          the ONE register of the vault (see below)
 ├── ssh\               config · keys · known_hosts — flat, as ssh reads one folder
 ├── git\  vpn\  zemory\
+├── sql\credentials\   SQL logins programs and agents use: one <real server>.env per server, one line <login>=<password>
 └── <tool>\            one or two files straight; several kinds ⇒ configs\ · credentials\ · cache\
 ```
+
+- The vault is the ONE home of every login to a system that a program or an agent uses, shared by all repos on the machine
+  (`Rule_Gate_21_WhatEntersGit` step 3a). A repo's config names the login and the server (`logcentral.ro` on `sasin-data`), never
+  the value; a script reads it at run time and never prints it. A secret of one repo's own product stays in that repo's
+  `data/secrets/`.
+- A login entry holds the secret only; who owns it, what it may do and which repos use it go in the README table of that tool.
 
 - `configs\` — settings (readable, not secret) · `credentials\` — keys, tokens, passwords · `cache\` — what the tool rebuilds by
   itself, its logs included; deleting it loses nothing.
@@ -42,6 +49,12 @@ _ConfigVault\
   never a key file name.
 - A key file names the REAL machine: `id_<type>_<host name in lower case>` (`id_ed25519_server-dev` · `id_ed25519_acme-data`). The
   host name is measured, not remembered: `ssh <alias> hostname`. A machine renamed ⇒ its key renamed, the alias stays.
+- Account names use DOTS, file names use underscores or hyphens: a person `name.surname` (`huy.nguyen`) · a service
+  `<service>.<access>` when the access never changes (`logcentral.ro`), else `<service>` · the agent account `svc.agent`.
+- A SQL login file is named after the REAL server: `sql\credentials\<host name in lower case>.env` (`sasin-data.env`); inside,
+  one `<login>=<password>` line per login, nothing else but `#` comments. The person pastes the password after `=`.
+- Agent accounts on servers: ONE shared account `svc.agent`, never named after a vendor; each agent logs in with its own ssh key whose
+  comment is the agent's name, so the server's ssh log tells which agent came in; removing an agent = removing its key.
 
 ## Rules
 
