@@ -95,6 +95,20 @@ export const Q = {
   replaceShipDdl: "CREATE TABLE IF NOT EXISTS main.session_replaced (session_id TEXT PRIMARY KEY, keys TEXT NOT NULL, max_ts TEXT, at TEXT NOT NULL)",
   replaceShip: "INSERT OR REPLACE INTO main.session_replaced SELECT session_id, keys, max_ts, at FROM src.session_replaced WHERE session_id IN (SELECT id FROM main.sessions)",
   deleteMessageById: "DELETE FROM messages WHERE id = ?",
+  // the receiver of a replace: an incoming line under a uuid it already holds (INSERT OR IGNORE kept the old text)
+  replaceIncomingUuidRows:
+    "SELECT uuid, role, content, tool_name, timestamp FROM src.messages WHERE session_id = ? AND uuid IS NOT NULL",
+  messageBySessionUuid: "SELECT id, role, timestamp, content FROM messages WHERE session_id = ? AND uuid = ?",
+  messageTextUpdate: "UPDATE messages SET role = ?, content = ?, tool_name = ?, timestamp = ? WHERE id = ?",
+  // `memory reship`: the rows of a session written again under new ids, its attachments moved along
+  reshipSessionRows: "SELECT id, uuid, role, content, tool_name, timestamp FROM messages WHERE session_id = ? ORDER BY id",
+  reshipInsertRow: "INSERT INTO messages (session_id, uuid, role, content, tool_name, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+  reshipLinkRows:
+    "SELECT l.message_id, l.attachment_id, l.name FROM attachment_link l JOIN messages m ON m.id = l.message_id WHERE m.session_id = ?",
+  reshipLinkDelete: "DELETE FROM attachment_link WHERE message_id = ?",
+  reshipLinkInsert: "INSERT OR IGNORE INTO attachment_link (message_id, attachment_id, name) VALUES (?, ?, ?)",
+  reshipAttachmentMove: "UPDATE attachment SET message_id = ? WHERE message_id = ?",
+  sessionHost: "SELECT id, source, host FROM sessions WHERE id = ?",
   deleteSessionDigest: "DELETE FROM session_digest WHERE session_id = ?",
   // `memory redact`: every message with its session's source, so the dry run counts per source
   redactScanMessages:

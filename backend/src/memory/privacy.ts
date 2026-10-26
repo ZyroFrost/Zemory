@@ -8,6 +8,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import { currentMemoryDb, currentMemoryDir, openMemory, type MemoryDB } from "./db.js";
 import { redact, redactHits } from "./redact.js";
 import { countForgetVectors, forgetVectors, vecConnect } from "./vectors.js";
+import { reshipSession } from "./replace.js";
 import { Q } from "./store/queries.js";
 
 function timestamp(): string {
@@ -405,5 +406,53 @@ export async function reRedactMemory(opts: ReRedactMemoryOptions = {}): Promise<
     };
   } finally {
     db.close();
+  }
+}
+
+export interface ReshipMemoryOptions {
+  dbPath?: string;
+  sessions: string[];
+  force?: boolean;
+  skipBackup?: boolean;
+  backupPath?: string;
+}
+
+export interface ReshipMemoryResult {
+  dbPath: string;
+  dryRun: boolean;
+  backupPath: string | null;
+  /** One line per session asked for: what it holds and where it was born (`missing` = no such session here). */
+  sessions: { id: string; source: string | null; host: string | null; messages: number; missing: boolean }[];
+  messages: number;
+  vectors: number;
+}
+
+/**
+ * `memory reship`: this machine holds the right copy of a session and every other machine should take it - the case where
+ * the origin cannot decide (a session born on a third machine), or where its copy was fixed after it last shipped.
+ * Writes the session's rows again under new ids and records the replace (memory/replace.ts), so the next delta carries
+ * both; a receiver takes the text under the same uuid and drops the lines the list does not hold.
+ */
+export async function reshipMemory(opts: ReshipMemoryOptions): Promise<ReshipMemoryResult> {
+  const dbPath = opts.dbPath ?? currentMemoryDb();
+  const db = openMemory(dbPath);
+  try {
+    const sessions = opts.sessions.map((id) => {
+      const s = db.prepare(Q.sessionHost).get(id) as { id: string; source: string | null; host: string | null } | undefined;
+      const n = s ? (db.prepare(Q.sessionContentRows).all(id) as unknown[]).length : 0;
+      return { id, source: s?.source ?? null, host: s?.host ?? null, messages: n, missing: !s };
+    });
+    const messages = sessions.reduce((a, s) => a + s.messages, 0);
+    if (!opts.force || !messages) return { dbPath, dryRun: !opts.force, backupPath: null, sessions, messages, vectors: 0 };
+    const backup = opts.skipBackup ? null : await backupMemory({ dbPath, outPath: opts.backupPath, force: opts.backupPath ? false : true });
+    let oldIds: number[] = [];
+    db.transaction(() => {
+      for (const s of sessions) if (!s.missing) oldIds = oldIds.concat(reshipSession(db, s.id));
+    })();
+    db.close();
+    const vectors = oldIds.length ? forgetVectors(dbPath, oldIds) : 0;
+    return { dbPath, dryRun: false, backupPath: backup?.outPath ?? null, sessions, messages, vectors };
+  } finally {
+    if (db.open) db.close();
   }
 }

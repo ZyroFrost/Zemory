@@ -43,7 +43,7 @@ import { type ScopeNode, scopeTree, toggleLane } from "../memory/scope.js";
 import { uplinkReport } from "../memory/uplinkguard.js";
 import { promotionReport } from "../memory/promote.js";
 import { getDriveDir, getScopeExclude, setScopeExclude, setWebAuth, setWebPull, type ScopeLane } from "../config/settings.js";
-import { backupMemory, forgetMemory, reRedactMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
+import { backupMemory, forgetMemory, reRedactMemory, reshipMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
 import { acquireCliWriteLock, cliWriteHolder, releaseCliWriteLock } from "../jobs/writegate.js";
 import { flagValue, positionalArgs } from "./_shared.js";
 import { Q } from "../memory/store/queries.js";
@@ -184,10 +184,10 @@ function printHits(query: string, scopeLabel: string, hits: SearchHit[], abstain
 // run directly (fallback). Auto-expiring hold + the engine's own retry are the
 // safety nets. Kept advisory (no delegation) so a multi-hour `embed --all` never
 // hits an HTTP timeout.
-const HEAVY_WRITES = new Set(["scan", "scan-web", "embed", "digest", "sync", "forget", "redact"]);
+const HEAVY_WRITES = new Set(["scan", "scan-web", "embed", "digest", "sync", "forget", "redact", "reship"]);
 /** Commands whose `--force` means "apply" (delete / rewrite for real), never "run over another writer's lock". 2026-10-26:
  *  `forget --force` ran beside the channel and the fast lane, took no write lock and died on "database is locked". */
-const FORCE_MEANS_APPLY = new Set(["forget", "redact"]);
+const FORCE_MEANS_APPLY = new Set(["forget", "redact", "reship"]);
 
 /**
  * CỜ LẠ BỊ TỪ CHỐI — không "bỏ qua âm thầm rồi chạy thật".
@@ -1369,6 +1369,30 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     console.log("  Full text: `zemory memory show <#id>`. Drop a message: `zemory memory forget --message <#id>`.");
     return;
   }
+  if (sub === "reship") {
+    const sessions = args.flatMap((a, i) => (a === "--session" && args[i + 1] ? [args[i + 1]] : []));
+    if (!sessions.length) {
+      console.log("usage: zemory memory reship --session <id> [--session <id> ...] [--force]");
+      console.log("  This machine's copy of the session is the right one: write it again and have every other machine take it");
+      console.log("  at the next sync (same uuid takes this text; lines the copy does not hold are dropped there).");
+      console.log("  Dry-run by default. --force applies, with a local backup unless --no-backup is present.");
+      return;
+    }
+    const r = await reshipMemory({
+      dbPath: flagValue(args, "--db"),
+      sessions,
+      force: args.includes("--force"),
+      skipBackup: args.includes("--no-backup"),
+      backupPath: flagValue(args, "--backup"),
+    });
+    console.log(`zemory memory reship — ${r.dryRun ? "dry-run" : "rewritten"} ${r.messages} message(s) in ${r.sessions.filter((s) => !s.missing).length} session(s), ${r.vectors} vector row(s) to embed again`);
+    for (const s of r.sessions) {
+      console.log(s.missing ? `  ${s.id}  not in this store` : `  ${s.id}  ${s.source} · ${s.messages} message(s) · born on ${s.host ?? "unknown"}`);
+    }
+    if (r.backupPath) console.log(`  backup: ${r.backupPath}`);
+    if (r.dryRun) console.log("  re-run with --force to apply; the next sync carries it.");
+    return;
+  }
   if (sub === "redact") {
     const r = await reRedactMemory({
       dbPath: flagValue(args, "--db"),
@@ -1954,6 +1978,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "  forget [selectors] [--force]",
       "                    dry-run/delete memory rows by --session, --project, --source, --before, or --message.",
       "  redact [--force]   re-apply secret redaction to already ingested memory rows.",
+      "  reship --session <id> [--force]",
+      "                    this machine's copy of a session wins: the next sync makes every other machine take it.",
       "  audit             scan stored content for hidden control characters (read-only, changes nothing).",
       "  bench             RAG gate benchmark: FTS-only vs hybrid recall on a labeled corpus.",
       "  show <#id>        print the full message for a search hit.",

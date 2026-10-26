@@ -38,7 +38,7 @@ import { markVectorsShipped, unshippedVectorIds } from "./vectors.js";
 import { type ScopeLane, laneSqlClause } from "./scope.js";
 import { type SyncLevel, getScopeExclude, getSyncAttachments, getSyncLevel } from "../config/settings.js";
 import { Q } from "./store/queries.js";
-import { applyReplaces, receiveReplaces, shipReplaces } from "./replace.js";
+import { applyReplaces, followReplacedText, receiveReplaces, shipReplaces } from "./replace.js";
 import { forgetVectors } from "./vectors.js";
 
 const MAGIC = "ZEMORY-MEMORY-ENC v1\n";
@@ -813,7 +813,7 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
           }
           // a session replaced whole at its origin: drop the older copies here once every listed line has arrived
           receiveReplaces(db, hostname() || "unknown");
-          replacedIds = applyReplaces(db);
+          replacedIds = [...followReplacedText(db), ...applyReplaces(db)];
           db.exec("DELETE FROM sessions WHERE message_count = 0 AND id IN (SELECT id FROM src.sessions)");
         })();
       } finally {
