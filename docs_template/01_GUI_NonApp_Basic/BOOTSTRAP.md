@@ -195,10 +195,10 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 160 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md` | 50 |
 | 161 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.vi.md` | 39 |
 | 162 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/gate.json` | 21 |
-| 163 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/Rule_Gate_21_WhatEntersGit.md` | 51 |
-| 164 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/Rule_Gate_21_WhatEntersGit.vi.md` | 40 |
+| 163 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/Rule_Gate_21_WhatEntersGit.md` | 61 |
+| 164 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/Rule_Gate_21_WhatEntersGit.vi.md` | 48 |
 | 165 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/gate.json` | 74 |
-| 166 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/hook.cjs` | 152 |
+| 166 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/hook.cjs` | 153 |
 | 167 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope/Rule_Gate_44_RepoScope.md` | 46 |
 | 168 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope/Rule_Gate_44_RepoScope.vi.md` | 36 |
 | 169 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope/gate.json` | 84 |
@@ -244,8 +244,8 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 209 | `docs/agent/02_STRUCTURE/_Slot/Content_113_Content/Content_113_Content.vi.md` | 11 |
 | 210 | `docs/agent/02_STRUCTURE/_Slot/Data_094_Data/Data_094_Data.md` | 19 |
 | 211 | `docs/agent/02_STRUCTURE/_Slot/Data_094_Data/Data_094_Data.vi.md` | 15 |
-| 212 | `docs/agent/02_STRUCTURE/_Slot/Data_102_Secrets/Data_102_Secrets.md` | 18 |
-| 213 | `docs/agent/02_STRUCTURE/_Slot/Data_102_Secrets/Data_102_Secrets.vi.md` | 14 |
+| 212 | `docs/agent/02_STRUCTURE/_Slot/Data_102_Secrets/Data_102_Secrets.md` | 21 |
+| 213 | `docs/agent/02_STRUCTURE/_Slot/Data_102_Secrets/Data_102_Secrets.vi.md` | 17 |
 | 214 | `docs/agent/02_STRUCTURE/_Slot/Data_129_Extract/Data_129_Extract.md` | 12 |
 | 215 | `docs/agent/02_STRUCTURE/_Slot/Data_129_Extract/Data_129_Extract.vi.md` | 8 |
 | 216 | `docs/agent/02_STRUCTURE/_Slot/Data_130_Adhoc/Data_130_Adhoc.md` | 15 |
