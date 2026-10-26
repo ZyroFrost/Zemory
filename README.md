@@ -17,7 +17,7 @@ offline.
 > the apps you build with the harness: scaffolding LLM/AI apps is a first-class use. Use the harness
 > alone, the memory alone, or both.
 
-![Version](https://img.shields.io/badge/version-4.8.2-informational)
+![Version](https://img.shields.io/badge/version-4.8.3-informational)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520.11%20%3C25-3c873a)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
@@ -771,6 +771,7 @@ zemory memory key set --from <file>       Take the key file of another install o
 zemory memory forget [--session id]       Forget rows (dry run by default, backup on --force)
 zemory memory forget --duplicates         Only the copies of a uuid-less message (same session, role, time, content); the first stays
 zemory memory redact                      Re-apply redaction to stored rows (dry run counts per pattern and per source)
+zemory memory reship --session <id>       This machine's copy of a session wins; the next sync makes the others take it
 zemory memory backup | restore            Raw local SQLite backup / restore
 zemory memory verify | audit              Is the store intact · counts that look wrong
 zemory memory salvage <db> <out>          Rescue readable rows from a corrupted store
