@@ -91,7 +91,14 @@ export const Q = {
     "INSERT INTO session_replace_pending (session_id, keys, max_ts, at) VALUES (?, ?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET keys = excluded.keys, max_ts = excluded.max_ts, at = excluded.at WHERE excluded.at >= session_replace_pending.at",
   replacePendingAll: "SELECT session_id, keys, max_ts FROM session_replace_pending",
   replacePendingDelete: "DELETE FROM session_replace_pending WHERE session_id = ?",
-  replaceIncoming: "SELECT r.session_id, r.keys, r.max_ts, r.at, s.host FROM src.session_replaced r JOIN sessions s ON s.id = r.session_id",
+  replaceIncoming: "SELECT r.session_id, r.keys, r.max_ts, r.at, s.host, s.origin FROM src.session_replaced r JOIN sessions s ON s.id = r.session_id",
+  // the merge, web sessions: the bigger copy wins - an incoming line under a uuid this store holds shorter takes the longer text
+  webLongerWins: `UPDATE messages SET content = (SELECT s.content FROM src.messages s WHERE s.session_id = messages.session_id AND s.uuid = messages.uuid)
+    WHERE uuid IS NOT NULL
+      AND session_id IN (SELECT id FROM sessions WHERE origin = 'web')
+      AND (session_id, uuid) IN (SELECT session_id, uuid FROM src.messages WHERE uuid IS NOT NULL)
+      AND length(COALESCE((SELECT s.content FROM src.messages s WHERE s.session_id = messages.session_id AND s.uuid = messages.uuid), '')) > length(COALESCE(content, ''))
+    RETURNING id, session_id`,
   replaceShipDdl: "CREATE TABLE IF NOT EXISTS main.session_replaced (session_id TEXT PRIMARY KEY, keys TEXT NOT NULL, max_ts TEXT, at TEXT NOT NULL)",
   replaceShip: "INSERT OR REPLACE INTO main.session_replaced SELECT session_id, keys, max_ts, at FROM src.session_replaced WHERE session_id IN (SELECT id FROM main.sessions)",
   deleteMessageById: "DELETE FROM messages WHERE id = ?",

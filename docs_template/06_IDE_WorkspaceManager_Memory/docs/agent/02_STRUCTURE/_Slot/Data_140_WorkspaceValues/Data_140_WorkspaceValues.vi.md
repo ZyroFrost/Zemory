@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Data_140_WorkspaceValues workspace-values — giá trị thật của cụm
@@ -16,7 +16,7 @@ lang: vi
 | khoá | là gì |
 |---|---|
 | `warehouse_server` · `warehouse_db` | chuỗi máy chủ của kho dữ liệu (gateway so khớp từng chữ) và tên cơ sở dữ liệu |
-| `theme_file` · `icons_dir` · `template_report` · `glossary_dir` | theme báo cáo · thư viện icon · khuôn gốc · bảng thuật ngữ — đường dẫn trong tổng quản |
+| `theme_file` · `icons_dir` · `template_report` · `glossary_dir` | theme báo cáo · thư viện icon · khuôn gốc · bảng thuật ngữ — đường dẫn; theme, icon và khuôn nằm ở `_Design\` của tổ chức (Design_172), bảng thuật ngữ nằm trong tổng quản |
 | `design_values` | bảng giá trị thiết kế của cụm: mã màu theo vai, thông số khung, số đo trên trang gốc, logo — đường dẫn trong tổng quản (luật thiết kế: `Skill_PBI_Base`) |
 | `dept_codes` · `acronyms` | bộ mã phòng ban · từ viết tắt nghiệp vụ được giữ in hoa trong tiêu đề |
 | `legacy_sources` | nguồn, site, thư mục, khoá của hệ cũ mà model và task không được đọc |

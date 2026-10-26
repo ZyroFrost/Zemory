@@ -1,7 +1,7 @@
 ---
 id: Slot_140
 name: workspace-values
-version: 7
+version: 8
 path: data/region/
 checked: [Data_094_Data, Config_075_Config]
 ---
@@ -19,7 +19,7 @@ checked: [Data_094_Data, Config_075_Config]
 | key | what it is |
 |---|---|
 | `warehouse_server` · `warehouse_db` | the data warehouse's server string (the gateway matches it letter for letter) and the database name |
-| `theme_file` · `icons_dir` · `template_report` · `glossary_dir` | report theme · icon library · original template · terms table — paths in the manager |
+| `theme_file` · `icons_dir` · `template_report` · `glossary_dir` | report theme · icon library · original template · terms table — paths; the theme, icons and template live in the organisation's `_Design\` (Design_172), the terms table in the manager |
 | `design_values` | the group's table of design values: colour codes by role, frame measures, measurements on the original page, logo — a path in the manager (design law: `Skill_PBI_Base`) |
 | `dept_codes` · `acronyms` | the department codes · business acronyms kept upper-case in titles |
 | `legacy_sources` | sources, sites, folders, keys of the old system that models and tasks must not read |

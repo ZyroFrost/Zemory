@@ -1,7 +1,7 @@
 ---
 id: Slot_154
 name: dept
-version: 4
+version: 5
 path: Dept_<Mã>/
 match: ^Dept_[A-Z]{2,4}$
 scope: layout
@@ -30,7 +30,7 @@ Examples: `D:\Workspace\Company\Acme\Dept_FIN\` (finance) · `D:\Workspace\Compa
 ## Rules
 
 - A department keeps NO copy of a source system's data: figures are read through the `_DB_<System>` repo it `uses`, tables are never copied into the department repo.
-- A department keeps NO private copy of the shared report template: the template comes from the organisation's `_<Tool>_Template\`.
+- A department keeps NO private copy of the shared report template: the template comes from the organisation's `_Design\<Tool>_Template\`, logos and icons from `_Design\Assets\` (Design_172): a report copies the files it uses into its own place and commits them.
 - A department repo's git is a backup on the machine (`git: local` in the frame): it has a commit history, NO remote, no push.
 
 ## Naming

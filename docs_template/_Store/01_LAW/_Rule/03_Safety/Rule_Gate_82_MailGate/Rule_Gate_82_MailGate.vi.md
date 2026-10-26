@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Rule_Gate_82_MailGate — The agent never sends mail on its own
@@ -31,3 +31,6 @@ này.
   launcher `bin\*` — trực tiếp hoặc sau `scripts/task_run.py ... --` — mà pipeline của nó có script gửi mail (lượt thử cũng gửi
   tới người vận hành) · `git send-email`.
 - Chữ không phải lệnh gửi: thân heredoc và lệnh git (commit message có chữ "mail") không bị soát.
+- Đọc không phải lệnh gửi: một đoạn của lệnh mở đầu bằng lệnh đọc (`cat` · `type` · `head` · `tail` · `grep` · `rg` · `findstr` ·
+  `Select-String` · `Get-Content` · `Get-FileHash` · `ls` · `dir` · `wc` · `echo` …), kể cả khi chạy qua `ssh <máy> "…"`, không bị
+  soát; mọi lệnh khác vẫn bị soát.

@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_Reference
 name: repo-reference
-version: 2
+version: 3
 profile: non-app
 label: REFERENCE
 intro: : repo tham chiếu dùng chung — bảng thuật ngữ, hồ sơ hệ cũ, khuôn báo cáo gốc; chỉ để tra, không chạy việc
@@ -16,5 +16,5 @@ The structure standard of a reference repo: every slot of `Struc_Repo_NonApp` (d
 
 ## Role
 
-- Provides, depending on the repo: `glossary` (the terms table) · `legacy` (old-system records) · `template` (the original report templates).
+- Provides, depending on the repo: `glossary` (the terms table) · `legacy` (old-system records) · `design` (`_Design\`: the report templates of each tool and the interface assets, Design_172).
 - Manages no repo and belongs to none.

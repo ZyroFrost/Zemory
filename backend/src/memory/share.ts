@@ -812,8 +812,11 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
             );
           }
           // a session replaced whole at its origin: drop the older copies here once every listed line has arrived
+          // web sessions: the bigger copy wins (plan/24 §14); the lines whose text grew lose their stale vectors and digest
+          const grown = db.prepare(Q.webLongerWins).all() as { id: number; session_id: string }[];
+          if (grown.length && db.prepare(Q.tableExists).get("session_digest")) for (const sid of new Set(grown.map((g) => g.session_id))) db.prepare(Q.deleteSessionDigest).run(sid);
           receiveReplaces(db, hostname() || "unknown");
-          replacedIds = [...followReplacedText(db), ...applyReplaces(db)];
+          replacedIds = [...grown.map((g) => g.id), ...followReplacedText(db), ...applyReplaces(db)];
           db.exec("DELETE FROM sessions WHERE message_count = 0 AND id IN (SELECT id FROM src.sessions)");
         })();
       } finally {

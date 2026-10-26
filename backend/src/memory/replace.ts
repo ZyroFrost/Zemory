@@ -37,9 +37,10 @@ export function shipReplaces(db: Db): number {
 /** Receive side: queue the incoming replaces of sessions this machine is not the origin of. */
 export function receiveReplaces(db: Db, ownHost: string): number {
   if (!db.prepare(Q.srcTableExists).get("session_replaced")) return 0;
-  const rows = db.prepare(Q.replaceIncoming).all() as { session_id: string; keys: string; max_ts: string | null; at: string; host: string | null }[];
+  const rows = db.prepare(Q.replaceIncoming).all() as { session_id: string; keys: string; max_ts: string | null; at: string; host: string | null; origin: string | null }[];
   let queued = 0;
   for (const r of rows) {
+    if (r.origin === "web") continue; // web: the web is the origin and the bigger copy wins (plan/24 §14) - never drop lines
     if (!r.host || r.host === ownHost || r.host === "unknown") continue; // this machine is the origin (or cannot tell): it keeps its copy
     queued += db.prepare(Q.replacePendingUpsert).run(r.session_id, r.keys, r.max_ts, r.at).changes;
   }

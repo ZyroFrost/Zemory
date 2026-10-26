@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Dept_154_Dept dept — repo của một phòng ban
@@ -26,7 +26,7 @@ Ví dụ: `D:\Workspace\Company\Acme\Dept_FIN\` (phòng tài chính) · `D:\Work
 ## Luật
 
 - Phòng KHÔNG giữ bản sao dữ liệu của hệ nguồn: số liệu đọc qua repo `_DB_<Hệ>` mà nó `uses`, không chép bảng về repo phòng.
-- Phòng KHÔNG giữ bản riêng của khuôn báo cáo chung: khuôn lấy từ `_<Công cụ>_Template\` của tổ chức.
+- Phòng KHÔNG giữ bản riêng của khuôn báo cáo chung: khuôn lấy từ `_Design\<Công cụ>_Template\` của tổ chức, logo và icon từ `_Design\Assets\` (Design_172): báo cáo chép đúng tệp nó dùng vào chỗ của nó và commit.
 - Git của repo phòng ban là bản lưu tại máy (`git: local` trong khung): có lịch sử commit, KHÔNG có remote, không push.
 
 ## Khuôn tên

@@ -9,7 +9,7 @@
     "provides": [
       "glossary",
       "legacy",
-      "template"
+      "design"
     ]
   }
 }

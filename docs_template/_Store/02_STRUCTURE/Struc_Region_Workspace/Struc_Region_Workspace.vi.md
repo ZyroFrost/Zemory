@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Struc_Region_Workspace
@@ -38,7 +38,7 @@ Vai của tám template repo hiện có (đọc từ `structure.json › role` c
 | `Struc_Repo_App` | `app` | — | `system-manager` | tuỳ chọn | — | `_Project\ERP\AcmeFlow` |
 | `Struc_Repo_AppData` | `app-data` | — | `system-manager` | bắt buộc | `app-data` | `_DB_Erp` |
 | `Struc_Repo_LogCenter` | `log-center` | — | — | không có | `log` | `_DB_Log` |
-| `Struc_Repo_Reference` | `reference` | — | — | không có | `glossary` · `legacy` · `template` (tuỳ repo) | `_Glossary` · `_Legacy` · `_PBI_Template` |
+| `Struc_Repo_Reference` | `reference` | — | — | không có | `glossary` · `legacy` · `design` (tuỳ repo) | `_Glossary` · `_Legacy` · `_Design` |
 | `Struc_Repo_NonApp` | `non-app` | — | — | tuỳ chọn | — | repo cá nhân không phải ứng dụng |
 
 Bảng này chép từ khai báo của template để người đọc tra nhanh; nguồn sự thật là `structure.json` của từng template — sửa
@@ -56,18 +56,18 @@ vai thì sửa ở đó rồi sửa bảng này cho khớp.
 
 ```
 "owner": "<tên thư mục repo tổng quản>",
-"uses": { "data": "<repo>", "mail": "<repo>", "log": "<repo>", "template": "<repo>", "glossary": "<repo>" }
+"uses": { "data": "<repo>", "mail": "<repo>", "log": "<repo>", "design": "<repo>", "glossary": "<repo>" }
 ```
 
 Ví dụ hoàn chỉnh — `docs\.harness.json` của repo phòng tài chính `Dept_FIN` trong tổ chức Acme:
 
 ```
 "owner": "_DB_Warehouse",
-"uses": { "data": "_DB_Warehouse", "template": "_PBI_Template", "glossary": "_Glossary" }
+"uses": { "data": "_DB_Warehouse", "design": "_Design", "glossary": "_Glossary" }
 ```
 
 Đọc ra: kho dữ liệu `_DB_Warehouse` là tổng quản của phòng (đường liền) và đồng thời cấp số liệu cho phòng (đường chấm); phòng
-lấy khuôn báo cáo từ `_PBI_Template` và thuật ngữ từ `_Glossary`.
+lấy khuôn báo cáo và tài nguyên giao diện từ `_Design` và thuật ngữ từ `_Glossary`.
 
 - `owner`: theo luật `owner` của template; bỏ trống khi template khai `none`.
 - `uses`: mỗi mảng trỏ đúng một repo.

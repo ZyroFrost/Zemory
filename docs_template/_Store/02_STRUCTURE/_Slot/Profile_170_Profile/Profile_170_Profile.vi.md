@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Profile_170_Profile profile — giấy tờ của chủ máy với một tổ chức
@@ -7,7 +7,7 @@ lang: vi
 ## Vai trò
 
 `Workspace\Company\<Tổ chức>\_Profile\` chứa giấy tờ gắn chủ máy với CHÍNH tổ chức này, theo luật khối của `Struc_Disk_Data` (một thứ
-nằm ở khối nhỏ nhất chứa mọi thứ dùng nó): hợp đồng lao động, báo cáo thử việc và đánh giá hằng năm, biên bản bàn giao, logo và hồ sơ
+nằm ở khối nhỏ nhất chứa mọi thứ dùng nó): hợp đồng lao động, báo cáo thử việc và đánh giá hằng năm, biên bản bàn giao, hồ sơ
 công ty, mật khẩu các hệ thống của tổ chức. Đem sang chỗ khác là lạc; ở đây chúng nằm cùng mọi thứ khác của tổ chức và đi theo nó.
 
 ## Bên trong
@@ -19,7 +19,7 @@ _Profile\
 ├── Contract\      hợp đồng lao động, phụ lục
 ├── Review\        báo cáo thử việc, đánh giá hằng năm
 ├── Handover\      biên bản bàn giao khi vào hoặc nghỉ
-├── Brand\         logo, hồ sơ công ty
+├── Brand\         hồ sơ công ty, quy chuẩn nhận diện (tệp logo nằm ở _Design\Assets\Logo\)
 └── Secret\        mật khẩu các hệ thống của tổ chức mà người đọc
 ```
 

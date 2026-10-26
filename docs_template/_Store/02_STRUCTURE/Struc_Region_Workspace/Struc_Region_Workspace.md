@@ -1,7 +1,7 @@
 ---
 id: Struc_Region_Workspace
 name: region-workspace
-version: 7
+version: 8
 scope: region
 checked: [Struc_Repo_Dept]
 ---
@@ -41,7 +41,7 @@ The roles of the eight existing repo templates (read from each template's `struc
 | `Struc_Repo_App` | `app` | — | `system-manager` | optional | — | `_Project\ERP\AcmeFlow` |
 | `Struc_Repo_AppData` | `app-data` | — | `system-manager` | required | `app-data` | `_DB_Erp` |
 | `Struc_Repo_LogCenter` | `log-center` | — | — | none | `log` | `_DB_Log` |
-| `Struc_Repo_Reference` | `reference` | — | — | none | `glossary` · `legacy` · `template` (by repo) | `_Glossary` · `_Legacy` · `_PBI_Template` |
+| `Struc_Repo_Reference` | `reference` | — | — | none | `glossary` · `legacy` · `design` (by repo) | `_Glossary` · `_Legacy` · `_Design` |
 | `Struc_Repo_NonApp` | `non-app` | — | — | optional | — | a personal repo that is not an application |
 
 This table is copied from the templates' declarations for quick lookup; the source of truth is each template's `structure.json` — change a
@@ -51,7 +51,7 @@ role there, then make this table match.
 
 - **Manager (`owner`) — a solid line, exactly one.** The manager decides the frame and the standard of the repos it manages. A top-level repo has no
   manager. Two repos are never both the manager of one repo.
-- **Service (`uses`) — a dotted line, by area.** A repo uses another repo's service in exactly one area (data · log · mail · template ·
+- **Service (`uses`) — a dotted line, by area.** A repo uses another repo's service in exactly one area (data · log · mail · design ·
   terms …). The provider has a say only in that area.
 - When the two disagree: within the service area the provider wins; in everything else the manager wins.
 
@@ -59,18 +59,18 @@ role there, then make this table match.
 
 ```
 "owner": "<folder name of the manager repo>",
-"uses": { "data": "<repo>", "mail": "<repo>", "log": "<repo>", "template": "<repo>", "glossary": "<repo>" }
+"uses": { "data": "<repo>", "mail": "<repo>", "log": "<repo>", "design": "<repo>", "glossary": "<repo>" }
 ```
 
 A complete example — the `docs\.harness.json` of the finance department repo `Dept_FIN` in the organisation Acme:
 
 ```
 "owner": "_DB_Warehouse",
-"uses": { "data": "_DB_Warehouse", "template": "_PBI_Template", "glossary": "_Glossary" }
+"uses": { "data": "_DB_Warehouse", "design": "_Design", "glossary": "_Glossary" }
 ```
 
 Read as: the data warehouse `_DB_Warehouse` is the department's manager (solid line) and also supplies its figures (dotted line); the department
-takes its report template from `_PBI_Template` and its terms from `_Glossary`.
+takes its report template and interface assets from `_Design` and its terms from `_Glossary`.
 
 - `owner`: by the template's `owner` rule; left empty when the template declares `none`.
 - `uses`: each area points at exactly one repo.
