@@ -138,7 +138,7 @@ function resolveStoreRoot(): string {
 export const MEMORY_DB_PINNED_BY_ENV = Boolean(ENV_DB);
 export const MEMORY_DB = ENV_DB || join(resolveStoreRoot(), "global_memory.db");
 
-const SCHEMA_VERSION = 27;
+const SCHEMA_VERSION = 28;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -925,6 +925,13 @@ function migrate(db: MemoryDB, fromVersion: number): void {
       db.exec("ALTER TABLE peer_file_queue ADD COLUMN dismissed_at TEXT");
     }
     version = 27;
+  }
+  if (version < 28) {
+    // v28 (2026-10-26): a web session's host is "web" - the web is its origin, no machine is (plan/24 §14). Measured that day:
+    // the machine that read an export or ran scan-web stamped its own name, the merge never updates a host, and two stores
+    // disagreed on 102 chatgpt-web sessions.
+    db.exec("UPDATE sessions SET host = 'web' WHERE origin = 'web' AND (host IS NULL OR host <> 'web')");
+    version = 28;
   }
   db.prepare("UPDATE schema_version SET version=?").run(version);
 }

@@ -33,6 +33,10 @@ const PARSER_VERSION = 6;
 // ran the agent, so the ingesting host IS the producing host. Stamped onto each
 // session for per-PC provenance (PC → source → project rollups).
 const HOST = hostname() || "unknown";
+/** The host a session is stamped with. Web chat has no machine of origin - the web is the origin - so every machine stamps
+ *  it "web" (owner 2026-10-26; before, the machine that read an export stamped its own name and two stores disagreed on 102
+ *  chatgpt-web sessions). */
+const hostFor = (origin: string | undefined | null): string => (origin === "web" ? "web" : HOST);
 
 export interface SessionReport {
   id: string;
@@ -651,7 +655,7 @@ function writeSession(db: MemoryDB, args: WriteSessionArgs): number {
        -- COALESCE, KHÔNG ghi đè: lượt nạp không biết tài khoản (đường local, bundle từ máy
        -- khác) không được xoá dấu tài khoản mà một lượt kéo web trước đó đã đóng đúng.
        account      = COALESCE(excluded.account, sessions.account)`,
-  ).run({ id: a.sessionId, source: a.source, origin: a.origin, project: canonProjectRoot(a.project ?? a.cwd ?? null), cwd: canonProjectRoot(a.cwd ?? null), title: a.title ?? null, host: HOST, account: a.account ?? null });
+  ).run({ id: a.sessionId, source: a.source, origin: a.origin, project: canonProjectRoot(a.project ?? a.cwd ?? null), cwd: canonProjectRoot(a.cwd ?? null), title: a.title ?? null, host: hostFor(a.origin), account: a.account ?? null });
 
   const before = a.wholeReplace
     ? (db.prepare(Q.countSessionMessages).get(a.sessionId) as { c: number }).c
@@ -799,7 +803,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
          cwd          = COALESCE(excluded.cwd, sessions.cwd),
          title        = COALESCE(excluded.title, sessions.title),
          host         = excluded.host`,
-    ).run({ id: sessionId, source: file.source, origin: adapter.origin ?? "local", project: canonProjectRoot(cwd ?? null), cwd: canonProjectRoot(cwd ?? null), title: title ?? null, host: HOST });
+    ).run({ id: sessionId, source: file.source, origin: adapter.origin ?? "local", project: canonProjectRoot(cwd ?? null), cwd: canonProjectRoot(cwd ?? null), title: title ?? null, host: hostFor(adapter.origin) });
 
     const before = wholeReplace
       ? (db.prepare(Q.countSessionMessages).get(sessionId) as { c: number }).c

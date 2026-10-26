@@ -1,7 +1,7 @@
 ---
 id: Rule_82
 name: mail-gate
-version: 7
+version: 8
 kind: action
 code: 03_Safety
 ---
@@ -34,6 +34,9 @@ this mail to this person.
   content calls a mail send · running a launcher `bin\*` — directly or behind `scripts/task_run.py ... --` — whose pipeline has
   a script that sends (a test run mails the operator too) · `git send-email`.
 - Text is not a send: a heredoc body and a git command (a commit message that says "mail") are not judged.
+- Reading is not a send: a part of the command led by a reader (`cat` · `type` · `head` · `tail` · `grep` · `rg` · `findstr` ·
+  `Select-String` · `Get-Content` · `Get-FileHash` · `ls` · `dir` · `wc` · `echo` …), also when run over `ssh <host> "…"`, is not
+  judged; any other command still is.
 
 ## Links · Liên kết
 - Related · Liên quan: `Skill_Doc_WriteStyle` — how a mail is written when it is sent · cách viết mail khi được gửi

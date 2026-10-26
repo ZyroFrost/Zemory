@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # ConfigVault_151_ConfigVault configvault — két chứa thiết lập và khoá công cụ của cả máy
@@ -21,12 +21,12 @@ _ConfigVault\
 ├── README.md          sổ DUY NHẤT của két (xem dưới)
 ├── ssh\               config · khoá · known_hosts — để phẳng, vì ssh đọc một thư mục
 ├── git\  vpn\  zemory\
-├── sql\credentials\   login SQL mà chương trình và agent dùng: mỗi máy chủ một <máy thật>.env, mỗi dòng <login>=<mật khẩu>
+├── sql\credentials\   login SQL mà chương trình và agent dùng: MỘT logins.env, mỗi máy chủ một khối, mỗi login hai dòng
 └── <công cụ>\         một hai tệp thì để thẳng; nhiều loại ⇒ configs\ · credentials\ · cache\
 ```
 
 - Két là nhà DUY NHẤT của mọi thông tin đăng nhập vào một hệ thống mà chương trình hay agent dùng, mọi repo trên máy dùng chung
-  (`Rule_Gate_21_WhatEntersGit` bước 3a). Config của repo ghi tên login và máy (`logcentral.ro` trên `sasin-data`), không ghi
+  (`Rule_Gate_21_WhatEntersGit` bước 3a). Config của repo ghi tên login và máy (`logcentral_reader` trên `db-main`), không ghi
   giá trị; script đọc lúc chạy và không in ra. Bí mật riêng của sản phẩm một repo vẫn ở `data/secrets/` của repo đó.
 - Một mục đăng nhập chỉ chứa bí mật; ai giữ, được làm gì, repo nào dùng thì ghi ở bảng của công cụ đó trong README.
 
@@ -44,11 +44,15 @@ _ConfigVault\
   ghi tên file khoá.
 - File khoá đặt theo MÁY THẬT: `id_<loại>_<tên máy viết thường>` (`id_ed25519_server-dev` · `id_ed25519_acme-data`). Tên máy phải đo,
   không nhớ: `ssh <alias> hostname`. Máy đổi tên ⇒ đổi tên khoá, alias giữ nguyên.
-- Tên TÀI KHOẢN dùng DẤU CHẤM, tên FILE dùng gạch dưới hoặc gạch ngang: người `tên.họ` (`huy.nguyen`) · dịch vụ
-  `<dịch vụ>.<quyền>` khi quyền không bao giờ đổi (`logcentral.ro`), không thì `<dịch vụ>` · tài khoản agent `svc.agent`.
-- File login SQL đặt theo MÁY CHỦ THẬT: `sql\credentials\<tên máy viết thường>.env` (`sasin-data.env`); bên trong mỗi login một
-  dòng `<login>=<mật khẩu>`, ngoài ra chỉ có chú thích `#`. Người dán mật khẩu vào sau dấu `=`.
-- Tài khoản agent trên máy chủ: MỘT tài khoản chung `svc.agent`, không đặt theo hãng; mỗi agent đăng nhập bằng khoá ssh riêng, chú
+- Tài khoản của NGƯỜI dùng dấu chấm: `tên.họ` (`jane.doe`). Tài khoản chương trình hay agent dùng GẠCH DƯỚI,
+  `<phân hệ>_<vai>`: `svc_agent` trên máy chủ · `datawarehouse_agent` · `erp_agent` · `logcentral_reader`. Dấu chấm phải bọc trong
+  mọi câu lệnh (`[ ]` trên SQL Server, `" "` trên PostgreSQL) và `adduser` của Debian/Ubuntu từ chối nó; gạch dưới chạy mọi nơi
+  không phải bọc. Tên file dùng gạch dưới hoặc gạch ngang.
+- Login SQL nằm trong MỘT tệp `sql\credentials\logins.env`, không tách tệp theo máy chủ: mỗi MÁY CHỦ THẬT một khối `#`, trong đó
+  mỗi login hai dòng `<MÁY>_<TÊN>_ID=<login>` (ghi sẵn) và `<MÁY>_<TÊN>_PASS=`. `<MÁY>` là tên máy, `<TÊN>` là tên login, cả hai viết
+  hoa, dấu chấm và gạch ngang thành gạch dưới (`DB_MAIN_LOGCENTRAL_READER_ID=logcentral_reader` · `DB_MAIN_LOGCENTRAL_READER_PASS=`),
+  nên một tên login ở hai máy vẫn là hai khoá. Ngoài ra chỉ có chú thích `#`. Người dán mật khẩu vào sau dấu `=` của dòng `_PASS`.
+- Tài khoản agent trên máy chủ: MỘT tài khoản chung `svc_agent`, không đặt theo hãng; mỗi agent đăng nhập bằng khoá ssh riêng, chú
   thích khoá là tên agent, để log ssh của máy chủ biết agent nào vào; gỡ một agent = gỡ khoá của nó.
 
 ## Luật

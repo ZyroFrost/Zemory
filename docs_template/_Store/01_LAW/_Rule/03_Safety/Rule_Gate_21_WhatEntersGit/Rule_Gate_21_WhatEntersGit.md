@@ -2,7 +2,7 @@
 id: Rule_21
 aka: 02-21
 name: what-enters-git
-version: 12
+version: 13
 kind: action
 code: 03_Safety
 ---
@@ -21,7 +21,7 @@ login to a system lives in the machine's `_ConfigVault`; a secret of one repo's 
 ## Do
 1. Real secrets (password · key · connection string · vault · `.env`) never go into git, encrypted or not.
 2. A tracked file (`config/` · `*.example.*` · `.env.example`) names only where the value is read from (an environment variable such
-   as `password_env`, or a login's line in the vault such as `logcentral.ro` in `_ConfigVault/sql/credentials/<server>.env`), never the value.
+   as `password_env`, or a login's key in the vault such as `DB_MAIN_LOGCENTRAL_READER_PASS` in `_ConfigVault/sql/credentials/logins.env`), never the value.
 3. One home per secret, by whose it is:
    a. A login to a system that a program or an agent uses — a database login, an ssh key, an API account, a VPN profile — lives in
       `_ConfigVault/<tool>/credentials/` (`ConfigVault_151_ConfigVault`), one copy for the whole machine, shared by every repo that
@@ -42,7 +42,7 @@ login to a system lives in the machine's `_ConfigVault`; a secret of one repo's 
   login.
 - ✗ Wrong: write the connection string with the password into a committed config file; or put a copy of the password in the
   `data/secrets/` of each of the three repos, so changing it means finding every copy.
-- ✓ Right: the password sits once, on the line `logcentral.ro=` of `_ConfigVault/sql/credentials/sasin-data.env`; the config of
+- ✓ Right: the password sits once, on the line `DB_MAIN_LOGCENTRAL_READER_PASS=` of `_ConfigVault/sql/credentials/logins.env`; the config of
   each repo names the login and the server; the job reads it at run time.
 
 ## Check

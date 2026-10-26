@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 8
+version: 9
 path: _ConfigVault/<tool>/
 scope: layout
 ---
@@ -24,12 +24,12 @@ _ConfigVault\
 ├── README.md          the ONE register of the vault (see below)
 ├── ssh\               config · keys · known_hosts — flat, as ssh reads one folder
 ├── git\  vpn\  zemory\
-├── sql\credentials\   SQL logins programs and agents use: one <real server>.env per server, one line <login>=<password>
+├── sql\credentials\   SQL logins programs and agents use: ONE logins.env, a block per server, two lines per login
 └── <tool>\            one or two files straight; several kinds ⇒ configs\ · credentials\ · cache\
 ```
 
 - The vault is the ONE home of every login to a system that a program or an agent uses, shared by all repos on the machine
-  (`Rule_Gate_21_WhatEntersGit` step 3a). A repo's config names the login and the server (`logcentral.ro` on `sasin-data`), never
+  (`Rule_Gate_21_WhatEntersGit` step 3a). A repo's config names the login and the server (`logcentral_reader` on `db-main`), never
   the value; a script reads it at run time and never prints it. A secret of one repo's own product stays in that repo's
   `data/secrets/`.
 - A login entry holds the secret only; who owns it, what it may do and which repos use it go in the README table of that tool.
@@ -49,11 +49,16 @@ _ConfigVault\
   never a key file name.
 - A key file names the REAL machine: `id_<type>_<host name in lower case>` (`id_ed25519_server-dev` · `id_ed25519_acme-data`). The
   host name is measured, not remembered: `ssh <alias> hostname`. A machine renamed ⇒ its key renamed, the alias stays.
-- Account names use DOTS, file names use underscores or hyphens: a person `name.surname` (`huy.nguyen`) · a service
-  `<service>.<access>` when the access never changes (`logcentral.ro`), else `<service>` · the agent account `svc.agent`.
-- A SQL login file is named after the REAL server: `sql\credentials\<host name in lower case>.env` (`sasin-data.env`); inside,
-  one `<login>=<password>` line per login, nothing else but `#` comments. The person pastes the password after `=`.
-- Agent accounts on servers: ONE shared account `svc.agent`, never named after a vendor; each agent logs in with its own ssh key whose
+- A PERSON's account uses a dot: `name.surname` (`jane.doe`). An account a program or an agent uses takes an UNDERSCORE,
+  `<subsystem>_<role>`: `svc_agent` on servers · `datawarehouse_agent` · `erp_agent` · `logcentral_reader`. A dot must be quoted in
+  every statement (`[ ]` on SQL Server, `" "` on PostgreSQL) and `adduser` on Debian/Ubuntu refuses it; an underscore works
+  everywhere unquoted. File names use underscores or hyphens.
+- SQL logins live in ONE file, `sql\credentials\logins.env`, never one file per server: a `#` block per REAL server, inside it
+  two lines per login, `<SERVER>_<NAME>_ID=<login>` (written in advance) and `<SERVER>_<NAME>_PASS=`. `<SERVER>` is the host name,
+  `<NAME>` the login, both in upper case with dots and hyphens as underscores (`DB_MAIN_LOGCENTRAL_READER_ID=logcentral_reader` ·
+  `DB_MAIN_LOGCENTRAL_READER_PASS=`), so one login name on two servers stays two keys. Nothing else but `#` comments. The
+  person pastes the password after `=` of the `_PASS` line.
+- Agent accounts on servers: ONE shared account `svc_agent`, never named after a vendor; each agent logs in with its own ssh key whose
   comment is the agent's name, so the server's ssh log tells which agent came in; removing an agent = removing its key.
 
 ## Rules

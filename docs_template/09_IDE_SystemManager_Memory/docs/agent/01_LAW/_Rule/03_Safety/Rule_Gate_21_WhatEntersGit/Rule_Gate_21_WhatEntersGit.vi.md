@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 # Rule_Gate_21_WhatEntersGit — What never enters git
@@ -17,7 +17,7 @@ Ba thứ không bao giờ vào git: bí mật thật, dữ liệu thật, và nh
 ## Phải làm gì
 1. Bí mật thật (mật khẩu · khoá · chuỗi kết nối · két · `.env`) không lên git, kể cả khi đã mã hoá.
 2. File git theo dõi (`config/` · `*.example.*` · `.env.example`) chỉ ghi chỗ đọc giá trị (biến môi trường như `password_env`, hay
-   dòng của một login trong két như `logcentral.ro` trong `_ConfigVault/sql/credentials/<máy>.env`), không ghi giá trị.
+   khoá của một login trong két như `DB_MAIN_LOGCENTRAL_READER_PASS` trong `_ConfigVault/sql/credentials/logins.env`), không ghi giá trị.
 3. Mỗi bí mật một nhà, theo chủ của nó:
    a. Thông tin đăng nhập vào một hệ thống mà chương trình hay agent dùng — login cơ sở dữ liệu, khoá ssh, tài khoản API, hồ sơ VPN —
       nằm ở `_ConfigVault/<tool>/credentials/` (`ConfigVault_151_ConfigVault`), một bản cho cả máy, mọi repo dùng login đó dùng
@@ -35,7 +35,7 @@ Ba thứ không bao giờ vào git: bí mật thật, dữ liệu thật, và nh
 - Tình huống: một job của repo log cần login SQL chỉ đọc mà máy chủ DW cấp; hai repo khác cũng dùng login đó.
 - ✗ Sai: ghi thẳng chuỗi kết nối có mật khẩu vào file config được commit; hoặc chép mật khẩu vào `data/secrets/` của cả ba repo,
   đổi mật khẩu là phải đi tìm từng bản.
-- ✓ Đúng: mật khẩu nằm một lần, ở dòng `logcentral.ro=` của `_ConfigVault/sql/credentials/sasin-data.env`; config của mỗi repo ghi
+- ✓ Đúng: mật khẩu nằm một lần, ở dòng `DB_MAIN_LOGCENTRAL_READER_PASS=` của `_ConfigVault/sql/credentials/logins.env`; config của mỗi repo ghi
   tên login và máy; job đọc lúc chạy.
 
 ## Máy kiểm

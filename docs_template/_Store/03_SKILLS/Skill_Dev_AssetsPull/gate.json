@@ -1,0 +1,20 @@
+{
+  "trigger": "lấy · cập nhật logo, icon, tài nguyên giao diện dùng chung",
+  "prompt": {
+    "kind": "dev-assets-pull",
+    "re": "\\b(lay logo|lay icon|cap nhat logo|cap nhat icon|bo icon|tai nguyen giao dien|assets chung)\\b",
+    "text": "[zemory] Shared logos/icons: follow skill dev-assets-pull — copies from _Design\\Assets\\ committed in the repo, checked against the source, never pointed at."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "lấy logo công ty vào app"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
+}

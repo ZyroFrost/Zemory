@@ -116,7 +116,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 81 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_34_DocsFollowChange/Rule_Gate_34_DocsFollowChange.md` | 38 |
 | 82 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_34_DocsFollowChange/Rule_Gate_34_DocsFollowChange.vi.md` | 27 |
 | 83 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_34_DocsFollowChange/gate.json` | 21 |
-| 84 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome/Rule_Gate_35_OneHome.md` | 46 |
+| 84 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome/Rule_Gate_35_OneHome.md` | 47 |
 | 85 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome/Rule_Gate_35_OneHome.vi.md` | 36 |
 | 86 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome/gate.json` | 153 |
 | 87 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome/hook.cjs` | 111 |
