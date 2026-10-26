@@ -6,28 +6,57 @@
 
 import { currentMemoryDb, openMemory } from "./db.js";
 
-const PATTERNS: RegExp[] = [
-  /sk-ant-[A-Za-z0-9-]{20,}/g, // Anthropic
-  /sk-(?:proj-)?[A-Za-z0-9_-]{20,}/g, // OpenAI
-  /AKIA[0-9A-Z]{16}/g, // AWS access key id
-  /gh[pousr]_[A-Za-z0-9]{20,}/g, // GitHub tokens
-  /AIza[0-9A-Za-z\-_]{35}/g, // Google API key
-  /xox[baprs]-[A-Za-z0-9-]{10,}/g, // Slack
-  /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, // JWT
+const PATTERNS: { name: string; re: RegExp }[] = [
+  { name: "anthropic", re: /sk-ant-[A-Za-z0-9-]{20,}/g },
+  { name: "openai", re: /sk-(?:proj-)?[A-Za-z0-9_-]{20,}/g },
+  { name: "aws-key-id", re: /AKIA[0-9A-Z]{16}/g },
+  { name: "github", re: /gh[pousr]_[A-Za-z0-9]{20,}/g },
+  { name: "google", re: /AIza[0-9A-Za-z\-_]{35}/g },
+  { name: "slack", re: /xox[baprs]-[A-Za-z0-9-]{10,}/g },
+  { name: "jwt", re: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g },
   // Shape-based (not prefix): each regex matches ONLY the secret span so the
   // uniform [REDACTED] replacement keeps surrounding structure readable.
-  /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g, // PEM private key block
-  /(?<=\b[Bb]earer\s)[A-Za-z0-9._~+/=-]{20,}/g, // Authorization: Bearer <token>
-  /(?<=:\/\/)[^\s:@/]+:[^\s:@/]+(?=@[^\s/]+)/g, // user:pass in a scheme://user:pass@host connection string
-  /(?<=\b(?:password|passwd|pwd|api[_-]?key|secret|access[_-]?token|client[_-]?secret|private[_-]?key)["']?\s*[:=]\s*["'])[^"'\n]{6,}(?=["'])/gi, // quoted secret assignment value
+  { name: "pem", re: /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g },
+  { name: "bearer", re: /(?<=\b[Bb]earer\s)[A-Za-z0-9._~+/=-]{20,}/g },
+  { name: "url-userinfo", re: /(?<=:\/\/)[^\s:@/]+:[^\s:@/]+(?=@[^\s/]+)/g },
+  {
+    name: "quoted-assignment",
+    re: /(?<=\b(?:password|passwd|pwd|api[_-]?key|secret|access[_-]?token|client[_-]?secret|private[_-]?key)["']?\s*[:=]\s*["'])[^"'\n]{6,}(?=["'])/gi,
+  },
+  // Unquoted `KEY=value`: a .env line, or `PWD=...;` inside an ODBC connection string. Measured 2026-10-26: four real
+  // passwords and a client secret sat in both machines' stores because only the quoted form was caught. No word
+  // boundary in front, so FABI_WEBHOOK_SECRET / CLIENT_SECRET match; one line only ([ \t], never \s), so an empty
+  // `SECRET=` never swallows the next line. Skipped: `==`, `${VAR}` / `$VAR`, `%VAR%`, `@param`, a comment, an already
+  // [REDACTED] value, and code: a call or index (`os.getenv(`, `environ[`), a dotted name (`args.password`), a format
+  // field (`{pwd}`), a path (`PWD=/home/...`), true/false/none/null. Measured on the real store 2026-10-26: without
+  // the code exclusions 1002 messages matched, mostly code; with them 382, nearly all real values or placeholders.
+  // A hand-made placeholder `<...>` is replaced too, so a copy masked by hand and a copy masked here end up the same
+  // text on every machine. The value stops at a quote or backslash, so JSON columns stay valid.
+  {
+    name: "unquoted-assignment",
+    re: /(?<=(?:password|passwd|pwd|secret|secret[_-]?key|api[_-]?key|access[_-]?token|private[_-]?key)[ \t]*=[ \t]*)(?:<[^<>\s;'"\\]{1,40}>|(?![=$%@#[<{|`/(]|(?:true|false|none|null)\b)(?![A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+(?:[\s;'"\\,&)}\]]|$))[^\s;'"\\,&()[\]{}|`]{4,}(?=[\s;'"\\,&)}\]]|$))/gi,
+  },
 ];
 
 /** Replace credential-shaped substrings with [REDACTED]. */
 export function redact(text: string): string {
   if (!text) return text;
   let out = text;
-  for (const re of PATTERNS) out = out.replace(re, "[REDACTED]");
+  for (const { re } of PATTERNS) out = out.replace(re, "[REDACTED]");
   return out;
+}
+
+/** The names of the patterns that would change `text` (for the dry run's per-pattern count). */
+export function redactHits(text: string): string[] {
+  if (!text) return [];
+  const hits: string[] = [];
+  let out = text;
+  for (const { name, re } of PATTERNS) {
+    const next = out.replace(re, "[REDACTED]");
+    if (next !== out) hits.push(name);
+    out = next;
+  }
+  return hits;
 }
 
 // ── QUÉT CHIỀU VÀO: ký tự ẨN dùng để giấu chỉ dẫn ──────────────────────────────

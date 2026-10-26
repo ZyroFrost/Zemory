@@ -1383,6 +1383,15 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     console.log(
       `  scanned: ${r.scanned.messages} message(s), ${r.scanned.artifactCommands} artifact command(s), ${r.scanned.artifactIndex} artifact index row(s), ${r.scanned.sessionDigests} session digest(s)`,
     );
+    const list = (m: Record<string, number>) =>
+      Object.entries(m)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([k, n]) => `${k} ${n}`)
+        .join(" · ");
+    if (r.changed.messages) {
+      console.log(`  by pattern: ${list(r.byPattern)}`);
+      console.log(`  by source:  ${list(r.bySource)}`);
+    }
     if (r.backupPath) console.log(`  backup: ${r.backupPath}`);
     if (r.dryRun) console.log("  re-run with --force to apply redactions.");
     return;

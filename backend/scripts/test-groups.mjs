@@ -5,6 +5,7 @@ export const HEAVY = [
   // nạp model ONNX (embed / rerank)
   "embed.test.mjs",
   "embed-profile.test.mjs",
+  "ingest-no-uuid-dedup.test.mjs", // embeds through the real model; measured with gate-cage 2026-10-26: ~2 GB peak
   "memory-privacy.test.mjs",
   "rerank.test.mjs",
   "vecship-chunks.test.mjs",

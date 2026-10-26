@@ -18,6 +18,7 @@ import { pruneOrphanAttachments } from "./attachments.js";
 import { isExcluded } from "./scope.js";
 import { getScopeExclude, type ScopeLane } from "../config/settings.js";
 import { Q } from "./store/queries.js";
+import { recordReplace } from "./replace.js";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
 
 // v4 (2026-07-26): GỠ `clip()` 4.000 ký tự khỏi mọi adapter (lớp `messages` phải ĐẦY theo
@@ -663,6 +664,8 @@ function writeSession(db: MemoryDB, args: WriteSessionArgs): number {
   writeAttachments(db, a.sessionId, a.msgs);
 
   db.prepare(Q.refreshSessionStats).run({ id: a.sessionId });
+  // a replace of rows already held: the other machines follow it (memory/replace.ts)
+  if (a.wholeReplace && before > 0) recordReplace(db, a.sessionId);
 
   db.prepare(Q.deleteEmptySession).run({ id: a.sessionId });
   return a.wholeReplace ? Math.max(0, inserted - before) : inserted;
@@ -809,6 +812,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
     writeAttachments(db, sessionId, msgs);
 
     db.prepare(Q.refreshSessionStats).run({ id: sessionId });
+    if (wholeReplace && before > 0) recordReplace(db, sessionId);
 
     // Zero chat lines = junk (failed/empty session) → don't keep the row.
     db.prepare(Q.deleteEmptySession).run({ id: sessionId });
