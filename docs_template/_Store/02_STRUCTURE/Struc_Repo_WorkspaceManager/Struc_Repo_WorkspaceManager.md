@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_WorkspaceManager
 name: repo-workspace-manager
-version: 6
+version: 7
 profile: non-app
 label: WORKSPACE-MANAGER
 intro: : repo tổng quản của một cụm — giữ dữ liệu dùng chung (DW, kho dữ liệu), giá trị của cụm, bộ mail chung; quyết khung và chuẩn của các repo phòng ban nó quản
@@ -22,6 +22,8 @@ provides to the whole group. This template differs from one owner's group to ano
 - Provides to the whole group: `data` (the DW, the data warehouse) · `workspace-values` (the group's values, slot `Data_140_WorkspaceValues`) · `mail`
   (the shared mail set, slot `Config_139_Mail`).
 - Belongs to no repo (the top level of the group).
+- Sits at `_DB_<System>\` when it holds the data warehouse (Db_155), otherwise at `_WorkspaceManager\` (WorkspaceManager_171) — then it
+  provides `workspace-values` and `mail`, not `data`.
 - **Changing the shared standard is this repo's work.** A rule that applies to every repo of the group (slot · law · skill · machine-written block) ⇒ this repo
   changes it in HS, then runs `zemory sync`; each repo's `conform` catches what is still off. Never message each repo to fix it by hand, never let a repo
   change ahead of the standard. Sync writing into a repo with the `dept` role is the one exception to the measure-only, never-write rule; every other change in

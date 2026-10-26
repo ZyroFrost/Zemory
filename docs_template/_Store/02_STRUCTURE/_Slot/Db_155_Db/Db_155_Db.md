@@ -1,7 +1,7 @@
 ---
 id: Slot_155
 name: db
-version: 3
+version: 4
 path: _DB_<Hệ>/
 scope: layout
 ---
@@ -21,7 +21,8 @@ tasks, documents about the sources. The leading `_` says it is shared by the who
 | log centre | `_DB_Log` | `Struc_Repo_LogCenter` | provides `log`; has no `owner` |
 
 An organisation has exactly ONE data warehouse (the provider of `data`) and exactly ONE log centre (the provider of `log`) — the law "each service role
-has one provider" of `Struc_Region_Company`. The data system of an application: one repo per application.
+has one provider" of `Struc_Region_Company`. The data system of an application: one repo per application. An organisation with no data warehouse has its managing repo at
+`_WorkspaceManager\` (WorkspaceManager_171) instead.
 
 ## May hold / may not hold
 

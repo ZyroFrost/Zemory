@@ -58,7 +58,7 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 23 | `.claude/skills/harness-structure/SKILL.md` | 123 |
 | 24 | `.claude/skills/harness-structure/Skill_Harness_Structure.vi.md` | 118 |
 | 25 | `.claude/skills/harness-structure/references/conventions.md` | 151 |
-| 26 | `.claude/skills/harness-structure/scripts/check_structure.py` | 259 |
+| 26 | `.claude/skills/harness-structure/scripts/check_structure.py` | 248 |
 | 27 | `.claude/skills/harness-sync-path/SKILL.md` | 108 |
 | 28 | `.claude/skills/harness-sync-path/Skill_Harness_SyncPath.vi.md` | 103 |
 | 29 | `.claude/skills/pbi-base/SKILL.md` | 54 |
@@ -390,12 +390,12 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 355 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/SKILL.md` | 123 |
 | 356 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/Skill_Harness_Structure.vi.md` | 118 |
 | 357 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/references/conventions.md` | 151 |
-| 358 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/scripts/check_structure.py` | 259 |
+| 358 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/scripts/check_structure.py` | 248 |
 | 359 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Skill_Harness_Structure.md` | 123 |
 | 360 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Skill_Harness_Structure.vi.md` | 118 |
 | 361 | `docs/agent/03_SKILLS/Skill_Harness_Structure/gate.json` | 20 |
 | 362 | `docs/agent/03_SKILLS/Skill_Harness_Structure/references/conventions.md` | 151 |
-| 363 | `docs/agent/03_SKILLS/Skill_Harness_Structure/scripts/check_structure.py` | 259 |
+| 363 | `docs/agent/03_SKILLS/Skill_Harness_Structure/scripts/check_structure.py` | 248 |
 | 364 | `docs/agent/03_SKILLS/Skill_Harness_SyncPath/Claude/harness-sync-path/SKILL.md` | 108 |
 | 365 | `docs/agent/03_SKILLS/Skill_Harness_SyncPath/Claude/harness-sync-path/Skill_Harness_SyncPath.vi.md` | 103 |
 | 366 | `docs/agent/03_SKILLS/Skill_Harness_SyncPath/Skill_Harness_SyncPath.md` | 108 |

@@ -69,13 +69,13 @@ Vì sao khoá bốn mục đó: thiếu *Nhịp* thì không ai biết nó đán
 đặt lịch* thì mỗi người đặt lịch một kiểu, cách làm bị chép vào ô lịch rồi lệch với file · thiếu
 *Các bước* thì phiên trắng phải đoán · thiếu *Sản phẩm* thì không có điều kiện dừng.
 
-## Đánh số task và pipeline
+## Tên case và đánh số stage
 
 ```
-tasks/ đánh số    tasks/NN_<cadence>/ — 00 tăng dần. Thường: 01_weekly · 02_monthly.
-MIRROR 3 nơi      Một task lặp phải cùng số NN xuyên ba chỗ, KHÔNG lệch:
-                    tasks/NN_<tên>/spec.md  ↔  pipelines/NN_<tên>/  ↔  data/NN_<tên>/
-Stage phẳng       pipelines/NN_<tên>/NN_mô-tả.py
+Tên case         tasks/<MÃ PHÒNG>_<NHỊP>_<TênViệc>/ — KHÔNG đánh số (Skill_Task_Case §Mở case).
+MIRROR đúng tên   tasks/<case>/spec.md  ↔  data/<case>/  — cùng một tên, không lệch.
+                  ETL nhiều case dùng chung → pipelines/<domain>/.
+Stage phẳng       tasks/<case>/pipeline/NN_mô-tả.py
                     00 = cổng / kiểm sẵn sàng (thường KHÔNG xuất data)
                     01, 02… = các bước theo thứ tự chạy
                   Mỗi stage chạy standalone được. Logic dùng chung → common.py
@@ -88,7 +88,7 @@ Output khớp số    File trung gian mang tiền tố số của stage sinh ra 
 Right-size stage  Chỉ tạo stage task THẬT cần — 2–4 là bình thường. KHÔNG chẻ vụn
                   cho "đủ bộ". Script domain cũ (theo từng hệ nguồn) KHÔNG bắt
                   đánh số, cùng tồn tại được.
-Launcher .cmd     <tên>.cmd ở GỐC: `<tên> <stage>` dispatch · `<tên> auto` = chạy
+Launcher .cmd     bin/<tên>.cmd (slot Bin_082_Bin): `<tên> <stage>` dispatch · `<tên> auto` = chạy
                   cổng 00 (exit-code gate) rồi chuỗi stage nếu đủ điều kiện.
                   File .cmd THUẦN ASCII — dấu tiếng Việt làm cmd.exe vỡ parse.
 ```

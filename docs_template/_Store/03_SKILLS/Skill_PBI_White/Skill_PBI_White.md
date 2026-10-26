@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_White
 name: pbi-white
-version: 15
+version: 16
 aka: pbi-mix
 replaces: [Skill_PBI_Mix]
 type: process
@@ -10,188 +10,188 @@ description: Build the WHITE copy (named Mix before 2026-10-19) of a Power BI re
 installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
 ---
 
-# Bản `White` — bố cục CŨ, khung nhận diện MỚI, chạy trên DW
+# The `White` kind — the OLD layout, the NEW identity frame, running on the DW
 
-> 🔴 **`White` (tên trước 19/10: `Mix`) = giá trị thứ ba của token LOẠI THIẾT KẾ (`Skill_PBI_Base` `reference/naming.md`).**
-> Bốn vế: **DW** + **header/màu theo `Red`** + **bố cục & điều hướng theo `Legacy`** + **lưới 5
-> toàn file**. Ba loại kia: `Legacy` không đụng · `Classic` giữ NGUYÊN thiết kế cũ để đo số ·
-> `Red` thiết kế mới hoàn toàn. `White` là bản duy nhất **cố ý trộn** ⇒ cũng là bản duy nhất có hai
-> bộ luật kéo ngược nhau.
+> 🔴 **`White` (named `Mix` before 19/10) = the third value of the DESIGN KIND token (`Skill_PBI_Base` `reference/naming.md`).**
+> Four clauses: **DW** + **header/colours by `Red`** + **layout & navigation by `Legacy`** + **the 5 grid
+> over the whole file**. The other three: `Legacy` untouched · `Classic` keeps the old design AS IS to measure figures ·
+> `Red` a completely new design. `White` is the only copy **mixing on purpose** ⇒ also the only copy with two
+> rule sets pulling in opposite directions.
 
-## 0a. 🔴 CÁI NGƯỜI DÙNG ĐÃ CHỈNH THÌ KHÔNG ĐƯỢC ĐỤNG
+## 0a. 🔴 WHAT THE OWNER HAS ADJUSTED MUST NOT BE TOUCHED
 
-> *"cái nào t đã save thì giữ nguyên, chỉ fix cái t nói, cấm m tự ý fix cái t đã đổi"*
+> What the owner has saved stays as it is; fix only what the owner names, never "fix" on your own what the owner changed.
 
-- **Chỉ sửa đúng thứ người dùng nêu tên.** Không "tiện tay chuẩn hoá" những thứ xung quanh.
-- Quét hàng loạt (`đổi hết title`, `đặt lại hết toạ độ`) **rất dễ đè lên bản người dùng vừa chỉnh** —
-  trước khi quét, hỏi: *người dùng có vừa động vào nhóm này không?*
-- 🔴 **CẤM `Stop-Process -Force` một phiên Desktop.** Chỉ `CloseMainWindow()`. Không thoát được
-  (đang bật hộp thoại hỏi lưu) thì **DỪNG và báo người dùng** — hộp thoại đó chính là bằng chứng
-  **có thay đổi chưa lưu**. Đã trả giá: force-kill làm mất bản sửa legend người dùng đang làm dở,
-  rồi người dùng tưởng agent tự ý sửa ngược thiết kế.
+- **Edit only exactly what the owner names.** No "standardising in passing" of the things around it.
+- Bulk sweeps (`change every title`, `reset every coordinate`) **very easily overwrite what the owner just adjusted** —
+  before sweeping, ask: *has the owner just touched this group?*
+- 🔴 **NEVER `Stop-Process -Force` a Desktop session.** Only `CloseMainWindow()`. It cannot exit
+  (a save-prompt dialog is open) ⇒ **STOP and tell the owner** — that dialog is the very evidence
+  **there are unsaved changes**. The price paid: a force-kill lost a legend edit the owner was in the middle of,
+  and the owner then believed the agent had reversed the design on its own.
 
-## 0. Ranh giới: cái nào theo bản nào
+## 0. The boundary: which part follows which copy
 
-🔴 **HAI KHUÔN THAM CHIẾU, ĐỪNG TRỘN**:
+🔴 **TWO REFERENCE MOULDS, DO NOT MIX THEM**:
 
-| Hỏi gì | Mở file nào |
+| Question | Open which file |
 |---|---|
-| **Tab hoạt động thế nào** — bookmark lật trạng thái, nút `_On`/`_Off`, vạch đỏ | **`Red`** (`ABC_03_INCOME-STATEMENT-OM_IP_Red`) |
-| **Đặt tên · cấu trúc nhóm selection · tên bookmark** | **`Ori`** (khuôn gốc của vùng, `template_report`) |
+| **How tabs work** — bookmarks flipping states, `_On`/`_Off` buttons, the red bar | **`Red`** (`ABC_03_INCOME-STATEMENT-OM_IP_Red`) |
+| **Naming · selection group structure · bookmark names** | **`Ori`** (the region's original mould, `template_report`) |
 
-Lấy nhầm nguồn là ra bản không giống bản nào — `Red` có tab thật nhưng tên nhóm theo nghiệp vụ của
-nó; `Ori` có chuẩn tên chặt nhưng **không** có tab.
+Taking the wrong source gives a copy resembling neither — `Red` has real tabs but group names by its own
+business; `Ori` has a strict naming standard but **no** tabs.
 
-| Mặt | Theo |
+| Aspect | Follows |
 |---|---|
-| Nguồn dữ liệu | **DW** |
-| Dải header, logo, bảng màu, theme | **`Red`** — dải `1280x50`, logo `150x50`, design.md §3.4 |
-| Vị trí khối nội dung, thứ tự trang, cách chia trang | **`Legacy`** — người đọc đã quen |
-| Lưới toạ độ | **lưới 5 toàn file**, áp cả cho khối chép từ Legacy |
-| Cột nav trái | **BỎ**, nút chức năng dồn lên header |
+| Data source | **DW** |
+| Header strip, logo, colour table, theme | **`Red`** — strip `1280x50`, logo `150x50`, design.md §3.4 |
+| Positions of content blocks, page order, how pages are split | **`Legacy`** — readers are used to it |
+| Coordinate grid | **the 5 grid over the whole file**, applied to blocks copied from Legacy too |
+| Left nav column | **DROPPED**, function buttons moved up into the header |
 
-🔴 **Xung đột thì KHUNG NHẬN DIỆN thắng, không phải UI cũ** — **ngược** với `Classic` (ở đó *"UI
-thắng"* vì nó là bản mô phỏng để đo số). Nhầm hai luật này là dựng ra bản không giống bản nào.
+🔴 **On conflict THE IDENTITY FRAME wins, not the old UI** — **the opposite** of `Classic` (there *"the UI
+wins"* because it is a replica for measuring figures). Mixing up these two rules builds a copy resembling neither.
 
-## 1. 🔴 HEADER NEO ĐƯỢC HAY KHÔNG — quyết định TRƯỚC, vì nó định đoạt cả file
+## 1. 🔴 CAN THE HEADER BE ANCHORED — decided FIRST, because it determines the whole file
 
-**Power BI KHÔNG có pin / sticky / freeze cho object trên canvas.** Đo 2026-09-22 trên PBIR của 4
-report: chỉ hai khoá nghe giống mà **không phải** — `lockAspect` (khoá tỷ lệ **ảnh**) và
-`pinKeyFieldsToTop` (ghim cột khoá **bên trong** một matrix). Không khoá nào ghim visual trên canvas.
+**Power BI has NO pin / sticky / freeze for objects on the canvas.** Measured 2026-09-22 on the PBIR of 4
+reports: only two keys sound similar and **are not** — `lockAspect` (locks a **picture's** ratio) and
+`pinKeyFieldsToTop` (pins key columns **inside** a matrix). No key pins a visual on the canvas.
 
-⇒ **Header của khuôn gốc trông như neo chỉ vì canvas của nó đúng `720` — không có gì để cuộn.**
-Canvas `> 720` thì **cả canvas cuộn**, header trôi theo.
+⇒ **The original mould's header looks anchored only because its canvas is exactly `720` — nothing to scroll.**
+A canvas `> 720` makes **the whole canvas scroll**, the header drifting with it.
 
-**Hai đường, KHÔNG có đường thứ ba:** ① **giữ trang cao** — header trôi mất, bộ lọc phải chuyển sang
-`Filters pane` gốc (§2), không phải dựng lại · ② **canvas 720 + chia tab** — header đứng yên, panel
-tự dựng vẫn chạy, nhưng **dựng lại toàn bộ**, mỗi trang 2–5 tab.
-🔴 **Chốt với người dùng TRƯỚC khi đụng file** — một report AM thật ra **≈26 tab**, chia sai là hỏng 26 lần.
+**Two ways, NO third:** ① **keep the page tall** — the header drifts away, the filters must move to the native
+`Filters pane` (§2), not be rebuilt · ② **a 720 canvas + split into tabs** — the header stays still, the self-built panels
+still work, but **everything is rebuilt**, 2–5 tabs per page.
+🔴 **Settle it with the owner BEFORE touching the file** — one real AM report comes to **≈26 tabs**, splitting wrong breaks it 26 times.
 
-## 2. Filters pane gốc — bề mặt DUY NHẤT neo được
+## 2. The native Filters pane — the ONLY surface that can be anchored
 
-Giữ trang cao thì bộ lọc **vẫn** neo được: `Filters pane` **không nằm trên canvas**, nó là chrome
-ngoài khung báo cáo — bookmark điều khiển được, format riêng từng trang, khai màu qua theme
-(`outspacePane` + `filterCard`). ⚠ `Lock filter` = **khoá sửa**, KHÔNG phải neo.
-⚠ **Publish-to-web không hiện pane này.**
+Keeping the page tall, the filters **can still** be anchored: the `Filters pane` **is not on the canvas**, it is chrome
+outside the report frame — bookmarks can control it, it is formatted per page, colours declared through the theme
+(`outspacePane` + `filterCard`). ⚠ `Lock filter` = **locks editing**, NOT anchoring.
+⚠ **Publish-to-web does not show this pane.**
 
-## 3. Cây nhóm — chép từ khuôn gốc, KHÔNG dựng phẳng
+## 3. The group tree — copied from the original mould, NOT built flat
 
-🔴 **Lỗi tốn nhất của bản White đầu tiên: dựng PHẲNG** — một trang có **39 object nằm thẳng cấp trang**,
-trong khi khuôn gốc khuôn gốc của vùng (`template_report`) có **đúng 4 nhóm gốc** ở mọi trang.
+🔴 **The most expensive error of the first White copy: building FLAT** — one page had **39 objects sitting straight at page level**,
+while the region's original mould (`template_report`) has **exactly 4 root groups** on every page.
 
 ```
 Filter      0,0   1280x720   BG_Filter + Filter_Panel(850,0 370x720)
-User_Guide  0,0   1280x720   BackGround + 6 nhóm callout
+User_Guide  0,0   1280x720   BackGround + 6 callout groups
 Background  5,0   1275x721   Title(55,0 750x70) + Button(0,10 1265x700) + BG Chart
 Chart      70,80  1210x631   Card(0,0 810x120, 3 cardVisual) + Map + areaChart + Bottom
 ```
 
-**Bản `White` áp y hệt, trừ hai chỗ:** `Background` để `0,0 1280x720` (khuôn gốc lệch `x=5` là để chừa
-cột nav — White bỏ cột đó) · `Background > Button` chỉ còn nút chức năng trên header, không `BT_Page_*`.
+**The `White` copy applies it exactly, except two places:** `Background` at `0,0 1280x720` (the original mould is offset `x=5` to leave room
+for the nav column — White drops that column) · `Background > Button` keeps only the function buttons on the header, no `BT_Page_*`.
 
-🔴 **`position` là toạ độ TƯƠNG ĐỐI so với nhóm cha.** Bọc nhóm quanh visual đã đặt sẵn mà không trừ
-offset là **nội dung văng ra ngoài hộp nhóm**. Ca thật: nhóm ở `y=135` giữ con ở `y=-65` ⇒ ba thẻ KPI
-render ở `y=235`, **giữa vùng biểu đồ**, trong khi khung nhóm trông vẫn đúng chỗ — người dùng mô tả là
-*"dashboard nhảy tán loạn"*. **Kiểm:** `x,y ≥ 0` và `x+w ≤ W(cha)` và `y+h ≤ H(cha)`.
+🔴 **`position` is a coordinate RELATIVE to the parent group.** Wrapping a group around visuals already placed without subtracting
+the offset makes **the content fly outside the group box**. A real case: a group at `y=135` holding children at `y=-65` ⇒ three KPI cards
+rendered at `y=235`, **in the middle of the chart area**, while the group frame still looked right — the owner described it as
+*"the dashboard jumping all over"*. **Check:** `x,y ≥ 0` and `x+w ≤ W(parent)` and `y+h ≤ H(parent)`.
 
-## 3b. CÔNG THỨC KHOẢNG CÁCH HEADER — tính theo CHỮ, không để khung cứng
+## 3b. THE HEADER SPACING FORMULA — computed from the TEXT, never a fixed frame
 
-🔴 **Đừng để khung cố định rồi nối tên trang vào sau** — chữ ngắn để lại một mảng trống, chữ dài thì
-tràn. Ca thật: khung `REVENUE` để cứng `360` trong khi chữ chỉ rộng `~111` ⇒ **thừa 249px chết** trên
-8/9 trang; `ABC OPERATION` để khung `1310` **tràn cả canvas 1280**.
+🔴 **Do not keep a fixed frame and append the page name after it** — short text leaves a blank patch, long text
+overflows. A real case: the `REVENUE` frame fixed at `360` while the text was only `~111` wide ⇒ **249px of dead space** on
+8/9 pages; `ABC OPERATION` given a `1310` frame **overflowed the whole 1280 canvas**.
 
 ```
-k  (đã HIỆU CHUẨN cho font ĐẬM của header, hệ số 1.271 trên bảng gốc):
-     HOA .839 · thường .661 · space .356 · số .763 · '&' .991
+k  (CALIBRATED for the header's BOLD font, factor 1.271 on the old table):
+     UPPER .839 · lower .661 · space .356 · digit .763 · '&' .991
 
-W_chữ(t, size) = size × Σ k(ký tự)
-w(khung)       = grid5( W_chữ + padding.left + padding.right )
-x(khung kế)    = x(khung trước) + w(khung trước)     <- NỐI NGAY SAU, không cộng khe
+W_text(t, size) = size × Σ k(character)
+w(frame)        = grid5( W_text + padding.left + padding.right )
+x(next frame)   = x(previous frame) + w(previous frame)     <- APPENDED RIGHT AFTER, no gap added
 
-grid5(x) = 5 × ceil((x − 1) / 5)       <- lên lưới 5, DUNG SAI 1px
+grid5(x) = 5 × ceil((x − 1) / 5)       <- up to the 5 grid, a 1px TOLERANCE
 ```
 
-**Hiệu chuẩn từ MỘT điểm đo thật của người dùng (2026-09-24):** `STORE REPORT` · `24` · đậm ·
-`padding 20+20` · người dùng tự kéo khung tới **`270`** ⇒ bề ngang chữ `= 230` ⇒ `Σk = 230/24 = 9.583`,
-trong khi bảng cũ cho `7.54` ⇒ **hệ số `1.271`**. Bảng cũ tính **thiếu 27%** vì header dùng **font
-đậm**. Kiểm lại: `STORE REPORT → 270` ✓ (đúng số người dùng) · `Monthly Report ABC → 210, x=435`.
+**Calibrated from ONE real measurement point of the owner (2026-09-24):** `STORE REPORT` · `24` · bold ·
+`padding 20+20` · the owner dragged the frame to **`270`** ⇒ the text width `= 230` ⇒ `Σk = 230/24 = 9.583`,
+while the old table gave `7.54` ⇒ **factor `1.271`**. The old table computed **27% short** because the header uses **a bold
+font**. Checked again: `STORE REPORT → 270` ✓ (exactly the owner's number) · `Monthly Report ABC → 210, x=435`.
 
-🔴 **Khe thở giữa hai khung nằm SẴN trong `padding.right`** — đừng cộng thêm `3 × fontSize` nữa,
-cộng là tên trang trôi ra xa. Người dùng chốt: *"tên trang phải nối vào ngay phía sau"*.
+🔴 **The breathing gap between two frames is ALREADY in `padding.right`** — do not add another `3 × fontSize`,
+adding it makes the page name drift far away. The owner settled it: the page name is appended right after.
 
-🔴 **Khung tên trang KHÔNG BAO GIỜ nhỏ hơn chữ** *(header hiện `Daily &`)*: `grid5` có dung sai −1 px, nên chữ
-`Daily & Hourly` rộng 160,1 px nằm trong khung 160 ⇒ Desktop xuống dòng, mất `Hourly`. Khung tên trang (không đệm) làm tròn lên
-KHÔNG dung sai: `5 × ceil(chữ / 5)`. Cổng `header-text` đỏ khi khung < chữ.
+🔴 **The page-name frame is NEVER smaller than its text** *(the header showed `Daily &`)*: `grid5` has a −1 px tolerance, so the text
+`Daily & Hourly`, 160.1 px wide, sat in a 160 frame ⇒ Desktop wrapped the line, losing `Hourly`. The page-name frame (no padding) rounds up
+WITHOUT tolerance: `5 × ceil(text / 5)`. Gate `header-text` is red when the frame < the text.
 
-🔴 **Làm tròn LÊN, không làm tròn gần nhất.** Thiếu 1px là cụt chữ (`STORE R…` · `Monthly Report`
-mất chữ `ABC`); thừa 4px thì không ai thấy. Dung sai 1px để không nhảy cả một bậc vô ích.
+🔴 **Round UP, never to the nearest.** 1px short cuts the text (`STORE R…` · `Monthly Report`
+losing the word `ABC`); 4px extra nobody sees. The 1px tolerance avoids jumping a whole step for nothing.
 
-🔴 **PHẢI CỘNG PADDING THẬT CỦA KHUNG, đừng để hằng `+20`.** Khung tên báo cáo đang có
-`padding.left 20 + right 20 = 40`. Công thức cũ ghi `+20` ⇒ tính thiếu **40px** ⇒ `STORE REPORT`
-(chữ rộng `181`) lọt vào khung `200`, chỗ cho chữ chỉ còn `160` ⇒ **cụt thành `STORE R…`**.
-Đã trả giá 2026-09-24. Số đúng: khung `220` · tên trang `x=440`, khung `165` · nhóm `Title` `605`.
+🔴 **ADD THE FRAME'S REAL PADDING, never a constant `+20`.** The report-name frame has
+`padding.left 20 + right 20 = 40`. The old formula wrote `+20` ⇒ **40px** short ⇒ `STORE REPORT`
+(text `181` wide) put in a `200` frame, leaving only `160` for the text ⇒ **cut to `STORE R…`**.
+Paid for 2026-09-24. The right numbers: frame `220` · page name `x=440`, frame `165` · the `Title` group `605`.
 
-⚠ **Cổng tìm hai khung này theo CẤU TRÚC, không theo tên** (hai shape chữ trong nhóm `Title`,
-xếp theo `x`) — vì với shape đang bật title thì `title.text` chính là chữ hiển thị, đổi tên báo cáo
-là mất dấu. Lượt đầu cổng báo xanh oan đúng vì lý do này.
+⚠ **The gate finds these two frames by STRUCTURE, not by name** (the two text shapes in the `Title` group,
+ordered by `x`) — because for a shape with its title on, `title.text` is the displayed text itself, renaming the report
+loses the trace. The gate's first round reported falsely green for exactly this reason.
 
-🔴 **ĐỔI CHỮ TRONG HEADER = PHẢI CHẠY LẠI CẢ HAI VẾ.** Đổi `REVENUE→STORE REPORT` mà không nới
-khung và **không đẩy tên trang theo** thì chữ bị cắt còn `STORE …` và tên trang nằm đè lên.
-Đã trúng 2026-09-24 — công thức **đã có sẵn ở ngay trên** mà vẫn quên áp.
-⇒ Nay có **cổng `header-text`** ở §7 tự tính lại; không còn trông vào trí nhớ.
+🔴 **CHANGING THE HEADER TEXT = BOTH CLAUSES MUST RUN AGAIN.** Changing `REVENUE→STORE REPORT` without widening
+the frame and **without pushing the page name along** cuts the text to `STORE …` and the page name sits on top of it.
+Hit 2026-09-24 — the formula **was right there above** and still not applied.
+⇒ There is now a **`header-text` gate** in §7 recomputing it; no longer relying on memory.
 
-Số đã chốt cho trang 1: `STORE REPORT` (24) → khung `200` · `Monthly Report ABC` (17) → `x=420`,
-khung `185` · nhóm `Title` rộng `605`.
+The numbers settled for page 1: `STORE REPORT` (24) → frame `200` · `Monthly Report ABC` (17) → `x=420`,
+frame `185` · the `Title` group `605` wide.
 
-**Căn cứ — 6 điểm đo, hai nguồn độc lập:** 5 trang khuôn gốc (`fontSize 16`, khoảng đệm đo được
-`47,4 ≈ 2,96 × 16`) + bản người dùng tự chỉnh (`REVENUE`, `fontSize 24`, đệm `78,6 ≈ 3,27 × 24`) ⇒ hằng số
-**3 × fontSize**. Công thức tái tạo khuôn gốc sai lệch **±12px**, bản người dùng **±7px**.
+**The basis — 6 measurement points, two independent sources:** 5 pages of the original mould (`fontSize 16`, measured spacing
+`47.4 ≈ 2.96 × 16`) + the owner's own adjusted copy (`REVENUE`, `fontSize 24`, spacing `78.6 ≈ 3.27 × 24`) ⇒ the constant
+**3 × fontSize**. The formula reproduces the original mould within **±12px**, the owner's copy within **±7px**.
 
-## 3c. TÊN TRANG · TÊN BOOKMARK · CÂY SELECTION — chuẩn khuôn gốc
+## 3c. PAGE NAMES · BOOKMARK NAMES · THE SELECTION TREE — the original mould's standard
 
-**Tên trang** — Title Case, có khoảng trắng, **không dính chữ, không ALL CAPS**:
-khuôn gốc `Sales Overview` · `Payment & Channel` · `Product Performance`.
-Đã sửa: `MonthlyReport ABC→Monthly Report ABC` · `ABC OPERATION→ABC Operation` ·
+**Page names** — Title Case, with spaces, **no words glued together, no ALL CAPS**:
+the original mould's `Sales Overview` · `Payment & Channel` · `Product Performance`.
+Fixed: `MonthlyReport ABC→Monthly Report ABC` · `ABC OPERATION→ABC Operation` ·
 `DSR SYSTEM CURRENT MONTH→DSR System Current Month`.
-⚠ **Tên file đã mang hậu tố `_AM`** ⇒ **không nhắc lại "for AM" trong tên trang**.
+⚠ **The file name already carries the `_AM` suffix** ⇒ **do not repeat "for AM" in page names**.
 
-🔴 **Tên trang phải nói trang đó LÀ GÌ**. Cấm tên chung theo phòng
-hay đơn vị (`Phòng Kinh Doanh`, `ABC`, `Report`, `Dashboard`, `Page 1`): người mở file đã biết file của phòng
-nào. Tên trang nói nội dung: `Tổng Quan` · `Weekly Report ABC` · `Combo 69K`. Cổng `page-name`.
+🔴 **A page name must say WHAT the page IS**. Generic names by department
+or unit are forbidden (`Phòng Kinh Doanh`, `ABC`, `Report`, `Dashboard`, `Page 1`): whoever opens the file already knows whose department
+it is. A page name states the content: `Tổng Quan` · `Weekly Report ABC` · `Combo 69K`. Gate `page-name`.
 
-**Tên bookmark** — khuôn gốc: `<PageKey>_<Action>`, 6 cái mỗi trang, gom theo trang:
+**Bookmark names** — the original mould: `<PageKey>_<Action>`, 6 per page, grouped by page:
 `_Main` · `_OpenUserGuide` · `_OpenFilter` · `_OpenInsights` · `_CloseHidden` · `_ClearFilter`.
-Bản White thêm tiền tố **số thứ tự trang**: `01_Monthly_OpenFilter` · `08_Operation_CloseHidden`.
-🔴 **Số = vị trí THẬT của trang trong các trang hiện, không số ảo**: 15 trang thì 01…15, đúng
-thứ tự `pages.json`. Thêm, xoá hay đổi thứ tự trang ⇒ **đánh số lại mọi bookmark**; trang bị xoá thì **xoá bookmark của
-nó** và đôn số các trang dưới lên. Lệnh `mix_builder.py --renumber-bookmarks` (xếp luôn `bookmarks.json` theo trang);
-bộ dựng tự lấy số từ vị trí trang (`key` trong spec không mang số). Cổng `bm-number`.
-📌 Bắt 27/09: 11/15 trang còn mang số Legacy (`07_Hourly` ở trang 4, `23_MCP` ở trang 15) sau khi 8 trang bị xoá.
-⚠ Khuôn gốc có lỗi gõ `Overview_OpenFIlter` — **đừng chép theo**.
+The White copy adds a **page sequence number** prefix: `01_Monthly_OpenFilter` · `08_Operation_CloseHidden`.
+🔴 **The number = the page's REAL position among the shown pages, no phantom numbers**: 15 pages means 01…15, exactly
+the order of `pages.json`. Adding, deleting or reordering pages ⇒ **renumber every bookmark**; a deleted page ⇒ **delete its
+bookmarks** and move the pages below up a number. The command `mix_builder.py --renumber-bookmarks` (also orders `bookmarks.json` by page);
+the builder takes the number from the page's position itself (the `key` in the spec carries no number). Gate `bm-number`.
+📌 Caught 27/09: 11/15 pages still carried Legacy numbers (`07_Hourly` on page 4, `23_MCP` on page 15) after 8 pages were deleted.
+⚠ The original mould has a typo `Overview_OpenFIlter` — **do not copy it**.
 
-### Cây selection — ĐÓNG GÓI và ĐẶT TÊN
+### The selection tree — PACKAGING and NAMING
 
-🔴 **MỌI dashboard đều phải có NỀN LÀ SHAPE RIÊNG.** Không dùng `background` của chính visual —
-shape rời mới sửa được. Một dashboard = **một nhóm** gồm: **nền + visual chính + mọi nút/mảnh lẻ
-phục vụ nó**. Thẻ KPI cũng là dashboard: nhóm nó gồm **nền + thẻ + phần trăm**. Visual trong nhóm có `BG_` để
-`visualContainerObjects.background.show = false` — nền riêng của nó (màu theme làm tối 10%, `#FAFAFA`…) phủ lên khung, khối đó
-ra màu khác các khối bên cạnh. Cổng `own-background` (cổng `dashboard` chỉ đếm số `BG_`).
+🔴 **EVERY dashboard must have ITS OWN BACKGROUND SHAPE.** Never the visual's own `background` —
+only a separate shape can be edited. One dashboard = **one group** of: **the background + the main visual + every button/loose piece
+serving it**. A KPI card is a dashboard too: its group is **background + card + percentage**. A visual in a group with a `BG_` sets
+`visualContainerObjects.background.show = false` — its own background (the theme colour darkened 10%, `#FAFAFA`…) covers the frame, and that block
+comes out a different colour from the blocks beside it. Gate `own-background` (the `dashboard` gate only counts the `BG_`).
 
-🔴 **Mọi tên trong Selection theo đúng một dạng: `<LoạiTínhNăng>_<Tên>`.**
+🔴 **Every name in Selection follows exactly one form: `<FeatureKind>_<Name>`.**
 
-| | Dạng | Ví dụ |
+| | Form | Example |
 |---|---|---|
-| **nhóm** | tên thuần của thực thể | `Revenue` · `OldStore` · `Tab1_TongQuan` |
-| **lá** | `<Loại>_<Tên>` | `Card_Revenue` · `BG_Revenue` · `Pct_RevenueOfTarget` |
+| **group** | the plain name of the entity | `Revenue` · `OldStore` · `Tab1_TongQuan` |
+| **leaf** | `<Kind>_<Name>` | `Card_Revenue` · `BG_Revenue` · `Pct_RevenueOfTarget` |
 
-Bộ tiền tố đang dùng: `BG_` nền · `Card_` thẻ KPI · `Pct_` phần trăm lẻ · `Chart_` biểu đồ ·
-`BT_` nút · `Text_` chữ/nhãn · `Slicer_` bộ lọc · `Logo_` · `Line_`. Cặp bật/tắt thêm hậu tố
-`_On` / `_Off`, **cùng gốc tên**: `BT_Glossary_Off` ↔ `BT_Glossary_On`.
+The prefixes in use: `BG_` background · `Card_` KPI card · `Pct_` loose percentage · `Chart_` chart ·
+`BT_` button · `Text_` text/label · `Slicer_` filter · `Logo_` · `Line_`. On/off pairs add the suffix
+`_On` / `_Off`, **with the same name root**: `BT_Glossary_Off` ↔ `BT_Glossary_On`.
 
-🔴 **VIẾT TẮT PHẢI CÓ NGƯỠNG**: chỉ tắt khi **từ gốc ≥ 6 ký tự** và
-**rút được ≥ 3 ký tự**. Rút được ít thì viết đầy đủ.
+🔴 **ABBREVIATIONS NEED A THRESHOLD**: abbreviate only when **the original word is ≥ 6 characters** and
+**≥ 3 characters are saved**. Saving fewer ⇒ write it in full.
 
-| Tắt | Từ gốc | Rút | |
+| Short | Original | Saved | |
 |---|---|---|---|
 | `BG` | Background | 8 | ✅ |
 | `BT` | Button | 4 | ✅ |
@@ -200,367 +200,367 @@ Bộ tiền tố đang dùng: `BG_` nền · `Card_` thẻ KPI · `Pct_` phần 
 | `IMG` | Image | 2 | ⛔ → `Image_` |
 | `LBL` | Label | 2 | ⛔ → `Label_` |
 
-> *"text với txt khác nhau có 1 ký tự, viết tắt làm gì"* — đã phải sửa `TXT_ → Text_`.
+> Text and txt differ by one character, there is no point abbreviating — `TXT_ → Text_` had to be fixed.
 
-⚠ **LUẬT NÀY ÁP CHO CẤU TRÚC NHÓM LỚN, không áp cho nhãn bên trong nhóm** *(người dùng làm rõ
-2026-09-24)*. Chữ nằm **trong** một nhóm và là **nhãn cho người đọc** thì cứ để to, để thường:
-`Year` · `Area Manager` · `FILTERS PANEL` trong `Filter_Panel`, tên báo cáo/tên trang trong `Title`.
-Với chúng `title.text` **là chữ người dùng nhìn thấy** — đổi thành `Text_AreaManager` là bảng lọc
-hiện ra đúng chữ đó. Cổng tự miễn theo **cấu trúc** (con của `Filter_Panel` và `Title`), không phải
-danh sách cứng.
+⚠ **THIS RULE APPLIES TO THE LARGE GROUP STRUCTURE, not to labels inside a group** *(the owner clarified
+2026-09-24)*. Text sitting **inside** a group that is **a label for the reader** stays large and plain:
+`Year` · `Area Manager` · `FILTERS PANEL` in `Filter_Panel`, the report name/page name in `Title`.
+For them `title.text` **is the text the owner sees** — renaming it to `Text_AreaManager` makes the filter panel
+show exactly that text. The gate exempts them by **structure** (children of `Filter_Panel` and `Title`), not by
+a hard-coded list.
 
-⛔ **Cấm khoảng trắng · cấm gạch ngang · cấm ALL CAPS** (viết tắt ≤3 ký tự như `TC` `TA` `GA` `GC`
-thì được). Đã phải sửa cả loạt: `Tab1 - Tong Quan→Tab1_TongQuan` · `BG Title→BG_Header` ·
+⛔ **No spaces · no hyphens · no ALL CAPS** (abbreviations ≤3 characters such as `TC` `TA` `GA` `GC`
+are allowed). A whole batch had to be fixed: `Tab1 - Tong Quan→Tab1_TongQuan` · `BG Title→BG_Header` ·
 `FILTERS PANEL→TXT_FilterPanel` · `Old Store→OldStore` · `Area Manager→TXT_AreaManager`.
 
-> 🔴 **Đây là luật người dùng đã nói từ đầu mà tôi không áp** — đợi bị chỉ từng chỗ mới sửa.
-> Có cấu trúc rồi thì **áp cho CẢ trang ngay**, đừng đặt tên tuỳ hứng rồi chờ bị bắt.
+> 🔴 **This is a rule the owner stated from the start that I did not apply** — waiting to be shown each place before fixing.
+> Once there is a structure, **apply it to the WHOLE page at once**, never name things at whim and wait to be caught.
 
-🔴🔴 **TRƯỚC KHI ĐỔI TÊN: xem title ĐANG BẬT hay TẮT.** Trong Power BI, tên hiện ở Selection và
-tiêu đề hiện trên canvas là **CÙNG MỘT trường** `visualContainerObjects.title.text`.
+🔴🔴 **BEFORE RENAMING: check whether the title is ON or OFF.** In Power BI, the name shown in Selection and
+the title shown on the canvas are **THE SAME field** `visualContainerObjects.title.text`.
 
-| `title.show` | `title.text` là gì | Đổi tên được không |
+| `title.show` | what `title.text` is | Can it be renamed |
 |---|---|---|
-| `false` | **chỉ là nhãn Selection** | ✅ đổi thoải mái |
-| `true` | **chữ ĐANG HIỆN trên màn hình** | ⛔ đổi = đổi luôn chữ người dùng nhìn thấy |
+| `false` | **only the Selection label** | ✅ rename freely |
+| `true` | **the text SHOWING on screen** | ⛔ renaming = changing the text the owner sees |
 
-Đã trả giá 2026-09-24: đổi tên cả trang cho "đúng cấu trúc" ⇒ header hiện `TXT_ReportType` thay vì
-`REVENUE`, bảng lọc hiện `TXT_Year` thay vì `Year`. **19 visual phải khôi phục.**
+Paid for 2026-09-24: renaming a whole page for "the right structure" ⇒ the header showed `TXT_ReportType` instead of
+`REVENUE`, the filter panel showed `TXT_Year` instead of `Year`. **19 visuals had to be restored.**
 
-⚠ Bẫy phụ — **mặc định của `show` khi KHÔNG khai là khác nhau theo loại visual**:
-`shape` · `image` · `textbox` ⇒ title **TẮT**; còn **chart ⇒ title BẬT**. Nên với chart, viết thêm
-`"show": false` cho "gọn" là **tắt mất tiêu đề**, và xoá `show` đi là **bật lại**. Đừng dùng
-`setdefault` mù trên trường này.
+⚠ A side trap — **the default of `show` when NOT declared differs by visual kind**:
+`shape` · `image` · `textbox` ⇒ title **OFF**; while **charts ⇒ title ON**. So for a chart, writing an extra
+`"show": false` "for tidiness" **turns the title off**, and deleting `show` **turns it back on**. Do not use a blind
+`setdefault` on this field.
 
-✅ **Muốn có CẢ tên chuẩn lẫn chữ đúng trên shape:** để chữ ở `objects.text` (như dải tab), rồi
-`title.show=false` + `title.text=<Tên_Chuẩn>`.
+✅ **To have BOTH a standard name and the right text on a shape:** put the text in `objects.text` (like the tab strip), then
+`title.show=false` + `title.text=<Standard_Name>`.
 
-🔴 **CHART ĐANG HIỆN TIÊU ĐỀ: GIỮ CHỮ GỐC, NHÓM MỚI MANG TÊN CHUẨN**
-> *"group cần giữ chuẩn tên, bên trong file của nó tên như ban đầu là dc"*
+🔴 **A CHART SHOWING ITS TITLE: KEEP THE ORIGINAL TEXT, THE NEW GROUP CARRIES THE STANDARD NAME**
+> Groups keep the standard names; the files inside keep their original names.
 
-- **Nhóm** (`visualGroup`) theo dạng tên chuẩn ở bảng trên — đây là chỗ Selection được đọc.
-- **Visual lá đang hiện tiêu đề** lấy lại đúng trường `title` của bản Legacy: chữ cố định giữ
-  nguyên, **tiêu đề động từ measure** (trang Monthly: `~Report Titile` · `~Lfl Titile` …) lấy biểu
-  thức đã nối sang model DW từ bản `Classic` cùng id visual. Kiểu chữ vẫn theo §4g.
-- **Bản Legacy TẮT tiêu đề thì White cũng TẮT** — trang Weekly gốc dùng tiêu đề TRỤC (`categoryAxis.titleText`,
-  chữ đỏ dưới chart) làm nhãn; bật tiêu đề lên là ra hai nhãn chồng nhau.
-- Đã trả giá 2026-09-24→26: 27 chart của Monthly · Weekly · Daily Sales hiện `Chart_RevenueByDay`…
-  Cổng `title-original` của `scripts/pbi_gate.py` nay báo đỏ khi tiêu đề đang hiện mang tiền tố Selection.
+- **Groups** (`visualGroup`) follow the standard name form in the table above — this is where Selection is read.
+- **Leaf visuals showing a title** take back exactly the `title` field of the Legacy copy: fixed text stays
+  as it is, **dynamic titles from measures** (the Monthly page: `~Report Titile` · `~Lfl Titile` …) take the expression
+  already reconnected to the DW model from the `Classic` copy with the same visual id. The font still follows §4g.
+- **Legacy has the title OFF ⇒ White has it OFF too** — the original Weekly page uses AXIS titles (`categoryAxis.titleText`,
+  red text under the chart) as labels; turning the title on gives two labels on top of each other.
+- Paid for 2026-09-24→26: 27 charts of Monthly · Weekly · Daily Sales showed `Chart_RevenueByDay`…
+  The `title-original` gate of `scripts/pbi_gate.py` now reports red when a showing title carries a Selection prefix.
 
-⚠ **Nền là `shape` thì khai thẳng `outline.show=false`** — không khai là để Power BI tự quyết, và
-người dùng sẽ hỏi *"ai mượn m thêm viền"*.
+⚠ **A background that is a `shape` declares `outline.show=false` explicitly** — not declaring it leaves Power BI to decide, and
+the owner will ask who asked for a border.
 
-- **Phân tab thì mọi thứ nhảy theo tab phải nằm TRONG nhóm của tab đó.** Cái gì ở dưới đổi theo tab
-  thì thuộc nhóm tab, không được nằm ngoài. *(Hàng card KHÔNG đổi theo tab ⇒ nằm ngoài nhóm tab.)*
-- Tên tab = **đúng nhãn thẻ tab**.
+- **With tabs, everything changing with a tab must sit INSIDE that tab's group.** Whatever below changes with the tab
+  belongs to the tab group, never outside it. *(The card row does NOT change with the tab ⇒ it sits outside the tab groups.)*
+- The tab name = **exactly the tab card's label**.
 
-## 3d. BOOKMARK — backend phải giống khuôn gốc, KHÔNG dùng "Selected visuals"
+## 3d. BOOKMARKS — the backend must match the original mould, NOT "Selected visuals"
 
-**`targetVisualNames` có HAI cách dùng, chọn theo việc — không phải cứ để rỗng là đúng.**
-Đo trên `Red` 2026-09-24:
+**`targetVisualNames` has TWO uses, chosen by the job — leaving it empty is not always right.**
+Measured on `Red` 2026-09-24:
 
-| Loại bookmark | `targetVisualNames` | Vì sao |
+| Bookmark kind | `targetVisualNames` | Why |
 |---|---|---|
-| **tab** (`_Tab1_…`) | **`[]` rỗng** ⇒ áp CẢ TRANG | đổi tab thì đóng luôn panel đang mở |
-| **panel** (`_OpenFilter` · `_OpenGlossary` · `_CloseHidden`) | **danh sách id** | mở phễu **không được** thổi bay tab đang chọn |
-| **lượt xem con** trong một khối (vd đổi chart trong `RevenueTrend`) | **danh sách id của đúng khối** | bấm nút **không được** đụng gì ngoài khối |
+| **tab** (`_Tab1_…`) | **`[]` empty** ⇒ applies to THE WHOLE PAGE | switching tabs also closes the open panel |
+| **panel** (`_OpenFilter` · `_OpenGlossary` · `_CloseHidden`) | **a list of ids** | opening the funnel **must not** blow away the selected tab |
+| **a sub-view** inside a block (e.g. switching the chart in `RevenueTrend`) | **the list of ids of exactly that block** | pressing the button **must not** touch anything outside the block |
 
-🔴🔴 **`targetVisualNames: []` mà `explorationState` KHÔNG ĐỦ visual = ăn mất visual.**
-Rỗng nghĩa là *áp cả trang*, nên Power BI lấy ảnh chụp trong bookmark áp lên **mọi** visual —
-cái nào không có trong ảnh chụp thì bị reset. Ca thật 2026-09-24: hai bookmark đổi chart để
-`[]` nhưng chỉ liệt kê **19/75** visual ⇒ người dùng báo *"bấm đổi tab ngược lại bị mất 1 chart,
-1 bookmark đang ko lưu đủ card"*.
-**Luật: `[]` thì `explorationState` phải ĐỦ MỌI visual lá của trang. Không đủ thì phải khai
-`targetVisualNames` là danh sách.** Cổng `bm-complete` bên §7 canh đúng việc này.
+🔴🔴 **`targetVisualNames: []` with an `explorationState` NOT holding every visual = visuals get eaten.**
+Empty means *apply to the whole page*, so Power BI applies the bookmark's snapshot to **every** visual —
+whatever is not in the snapshot gets reset. A real case 2026-09-24: two chart-switching bookmarks left
+`[]` but listed only **19/75** visuals ⇒ the owner reported that switching tabs back lost a chart and one bookmark did not save every
+card.
+**The rule: with `[]`, `explorationState` must hold EVERY leaf visual of the page. Otherwise declare
+`targetVisualNames` as a list.** The `bm-complete` gate in §7 watches exactly this.
 
-⚠ **Ẩn một nhóm thì phải khai ẩn luôn MỌI NHÓM CON bên trong**, nếu không cây nhóm nói "hiện"
-trong khi danh sách lá nói "ẩn" — mâu thuẫn, và Desktop xử theo cái nào là hên xui.
+⚠ **Hiding a group means declaring EVERY CHILD GROUP inside hidden too**, or the group tree says "shown"
+while the leaf list says "hidden" — a contradiction, and which one Desktop follows is luck.
 
-⚠ Danh sách đó **có chứa cả id NHÓM**, không chỉ visual lá (đo trên `MCPReport_OpenFIlter`).
+⚠ That list **holds group ids too**, not only leaf visuals (measured on `MCPReport_OpenFIlter`).
 
-🔴 **Danh sách đích CHỈ có tác dụng khi kèm `options.applyOnlyToTargetVisuals = true`**.
-Schema bookmark 2.1.0: *"Only applies changes to selected visuals when the bookmark was captured."* Thiếu cờ này
-thì Power BI áp ảnh chụp lên **cả trang**, nên bấm phễu ở tab 2 là trang nhảy về tab lúc chụp. Khuôn Red cũng
-thiếu cờ (0 bookmark trong mọi repo có nó) ⇒ đừng chép theo khuôn ở điểm này. Bộ dựng ghi cờ cho mọi bookmark có
-danh sách; lệnh `--scope-bookmarks` vá bookmark có sẵn. Cổng `bm-scope`.
+🔴 **The target list works ONLY with `options.applyOnlyToTargetVisuals = true`**.
+Bookmark schema 2.1.0: *"Only applies changes to selected visuals when the bookmark was captured."* Without this flag
+Power BI applies the snapshot to **the whole page**, so clicking the funnel on tab 2 jumps the page back to the tab at capture time. The Red mould also
+lacks the flag (0 bookmarks in any repo have it) ⇒ do not copy the mould on this point. The builder writes the flag for every bookmark with
+a list; the command `--scope-bookmarks` fixes existing bookmarks. Gate `bm-scope`.
 
-🔴 **Không slicer nào được hiện `(Blank)`** *(design.md §2.4)*. Mọi cột
-mà slicer hiện đều gắn bộ lọc cấp visual **"is not blank"**: `Not (<cột> = null)`, đúng khuôn Desktop ghi (lấy từ slicer
-`IsCurrentYear` của Classic). Đo 27/09 trên DW, sau bộ lọc `BusinessUnit = Southern`: 16/23 cột nuôi slicer có
-`(Blank)` — 4 cửa hàng miền Nam chưa gán Area Manager (292 ADV · 172 THĐ · 334 TL10 · 594CMT8), còn lại là dòng
-trống ảo do fact mang mã không có trong dim. Không có chuỗi rỗng, chỉ null. Bộ lọc nằm trên slicer nên **không**
-bỏ số của cửa hàng đó khỏi chart. Lệnh `--no-blank`, cổng `slicer-blank`.
+🔴 **No slicer may show `(Blank)`** *(design.md §2.4)*. Every column
+a slicer shows gets a visual-level filter **"is not blank"**: `Not (<column> = null)`, exactly the mould Desktop writes (taken from the slicer
+`IsCurrentYear` of Classic). Measured 27/09 on the DW, after the filter `BusinessUnit = Southern`: 16/23 columns feeding slicers had
+`(Blank)` — 4 southern stores not yet assigned an Area Manager (292 ADV · 172 THĐ · 334 TL10 · 594CMT8), the rest phantom blank
+rows from facts carrying codes not in the dim. No empty strings, only nulls. The filter sits on the slicer so it does **not**
+remove those stores' figures from the charts. Command `--no-blank`, gate `slicer-blank`.
 
-🔴 **Slicer hiện SỐ lưu dạng CHỮ phải có cột sắp xếp số** *(ô Week hiện `27, 28, 29, 3, 30` — "bộ đếm của slicer
-đang ko xếp thứ tự dc 2 số")*. Nhãn kiểu `CurrentWeek` / `27` nằm trong một cột chữ nên Power BI xếp theo chữ. Thêm cột số
-ẩn tính trong SQL partition của `Dim_Date` **theo đúng điều kiện sinh ra nhãn** (nhãn đặc biệt = 0, còn lại = số tuần) rồi khai
-`sortByColumn` — mỗi nhãn đúng một số, nên hợp lệ dù cột lặp qua các năm. Đã có: `IsCurrentWeek → IsCurrentWeekSort`,
-`SortWeekToDate → SortWeekToDateSort` (4 model ABC, Classic + White chung backend). Số có số 0 đứng trước (`MonthNumber` `01`)
-không cần. Cổng `slicer-sort` ở lớp engine: đọc giá trị thật của mọi cột chữ đang nuôi slicer mà chưa có `sortByColumn`;
-≥ 2 giá trị là số mà thứ tự chữ ≠ thứ tự số ⇒ đỏ (thử đỏ 01/10: bắt đúng 2 cột trên, `IsCurrentMonth` không bị báo oan).
+🔴 **A slicer showing NUMBERS stored as TEXT needs a numeric sort column** *(the Week box showed `27, 28, 29, 3, 30` — the slicer's counter
+could not order two-digit numbers)*. Labels like `CurrentWeek` / `27` sit in a text column so Power BI sorts them as text. Add a hidden numeric column
+computed in the SQL partition of `Dim_Date` **by exactly the condition producing the label** (special labels = 0, the rest = the week number) then declare
+`sortByColumn` — each label exactly one number, so it is valid even though the column repeats across years. Done: `IsCurrentWeek → IsCurrentWeekSort`,
+`SortWeekToDate → SortWeekToDateSort` (4 ABC models, Classic + White sharing the backend). Numbers with a leading zero (`MonthNumber` `01`)
+do not need it. Gate `slicer-sort` on the engine layer: reads the real values of every text column feeding a slicer without a `sortByColumn`;
+≥ 2 numeric values whose text order ≠ numeric order ⇒ red (tested red 01/10: caught exactly the 2 columns above, `IsCurrentMonth` not falsely reported).
 
-🔴 **Bảng lọc giữ NÚT REFRESH của Ori** *("filter bị mất nút refresh ban đầu từ ori")*:
-ảnh `BT_ClearFilter` trong `Filter_Panel`, đặt `240,20` cỡ `40x40` (góc phải tiêu đề), icon `refresh_2_white`,
-tooltip `Clear All Filters`, trỏ bookmark `<NN_Trang>_ClearFilter`. Bookmark đó **chỉ chụp Dữ liệu** của các
-slicer trong bảng (`suppressDisplay` + `applyOnlyToTargetVisuals`, đích = mọi slicer của bảng) ⇒ bấm là slicer về
-mặc định của trang (Year = Current Year, còn lại All), **tab không đổi, bảng lọc vẫn mở**. Trạng thái slicer ghi
-theo khuôn Desktop: bộ lọc visual (`howCreated 1`) + lựa chọn của slicer là bộ lọc `Categorical` (`howCreated 0`,
-không có `filter` = không chọn gì). Nút đi theo tiêu đề `FILTERS PANEL` trong mọi bookmark khác của trang.
-Lệnh `mix_builder.py --clear-filter` (dựng lại trang là tự chạy); cổng `clear-filter` canh **mọi report có
-bảng lọc, mọi bậc** — file của XYZ chạy cổng là thấy.
+🔴 **The filter panel keeps Ori's REFRESH BUTTON** *(the filter lost the original refresh button from Ori)*:
+the image `BT_ClearFilter` in `Filter_Panel`, placed at `240,20` size `40x40` (the title's right corner), icon `refresh_2_white`,
+tooltip `Clear All Filters`, pointing at the bookmark `<NN_Page>_ClearFilter`. That bookmark **captures only the Data** of the panel's
+slicers (`suppressDisplay` + `applyOnlyToTargetVisuals`, targets = every slicer of the panel) ⇒ clicking puts the slicers back to
+the page's defaults (Year = Current Year, the rest All), **the tab unchanged, the filter panel still open**. Slicer states are written
+by Desktop's mould: a visual filter (`howCreated 1`) + the slicer's selection as a `Categorical` filter (`howCreated 0`,
+no `filter` = nothing selected). The button follows the `FILTERS PANEL` title in every other bookmark of the page.
+Command `mix_builder.py --clear-filter` (rebuilding a page runs it); gate `clear-filter` watches **every report with
+a filter panel, every tier** — XYZ's files show it when the gate runs.
 
-🔴 **Mọi thứ trong bảng lọc nằm TRÊN nền `BG_FilterPanel` (z = 0)** *(ô lọc đầu mất nhãn — 60 nhãn/ô/nút
-trên 15 trang có z ≤ nền, z bằng nhau thì Desktop vẽ tuỳ)*. Lệnh `--panel-title` đặt nền z = 0; cổng `panel-title`.
+🔴 **Everything in the filter panel sits ABOVE the background `BG_FilterPanel` (z = 0)** *(the first filter box lost its label — 60 labels/boxes/buttons
+on 15 pages had z ≤ the background, and with equal z Desktop draws at random)*. Command `--panel-title` sets the background to z = 0; gate `panel-title`.
 
-🔴 **Tiêu đề lớn `FILTERS PANEL` phải nằm TRÊN nền bảng lọc**: bản Red đặt `y=20`,
-`z` cao hơn `BG_FilterPanel`, lề trái 10. White để `z=0` dưới nền `z=2000` nên mở bảng lọc là mất chữ. Lệnh
-`--panel-title`, cổng `panel-title`. Khuôn Weekly đã sửa nên trang dựng lại chép đúng.
+🔴 **The big title `FILTERS PANEL` must sit ABOVE the filter panel background**: the Red copy places it at `y=20`,
+`z` higher than `BG_FilterPanel`, left margin 10. White had `z=0` under a background at `z=2000` so opening the filter panel lost the text. Command
+`--panel-title`, gate `panel-title`. The Weekly mould has been fixed so rebuilt pages copy it right.
 
-🔴 **Ô chọn (slicer) theo đúng MỘT kiểu, kiểu của bản Red** *("filter không đồng bộ màu
-mới, không giống màu nhau")*: nền ô `#E8E8E8`, chữ `#2D2D2D`, khung `#E8E8E8`. Màu Legacy (`#ECDBDD` hồng,
-`#AC222C` đỏ, `#558563` xanh lá, `#F3CAE4` của MCP) bỏ hết. Lệnh `--slicers`, cổng `slicer-style`.
-🔴 **Mọi chữ của khung là TIẾNG ANH, chỉ dữ liệu là tiếng Việt** *("fix lại chuẩn hết đi, toàn bộ tiếng anh, vì DW
-đưa data xuống cũng là tiếng anh ... chỉ có nội dung bên trong là tiếng việt, cột là chuẩn tiếng anh")*: tên trang, tên tab, tiêu đề
-visual, tên cột / legend, thư mục measure; giá trị dữ liệu (tên hàng, tên đội 'Sale Nhà Hàng') giữ nguyên. Tên ngắn, danh từ, không
-động từ ("Bán ..."), nói đúng mục đích trang. Cổng `ui-english` (hiện kiểm tên trang + tab; tiêu đề / cột: đợt 2).
-🔴 **Ô lọc TẮT cả header của slicer** *("filter lỗi ko xài dc")*: `objects.header.show false`. Bật header trong ô 40 px thì
-chỉ còn dòng chữ header ("Month", "Year"), dropdown bị đẩy ra ngoài, bấm không chọn được — tên ô là việc của nhãn phía trên. Lệnh
-`--slicers`, cổng `slicer-style` (thử đỏ 12/10: 14 ô DR White). Slicer chép từ Legacy giữ khối `header` có font/màu mà KHÔNG có `show` ⇒ mặc định BẬT, tên trường in lần hai trong ô: cổng `slicer-header`.
-🔴 **Một tháng so sánh = MỘT slicer "Compare With" trên `Parameter_Date[Year Month]`** *(13/10: "filter 2 cái select year thì sao
-chọn má? cái này nó là từ year tới year đúng ko")*: cặp slicer Year + Month của Legacy đọc thành "từ … đến …" ⇒ gộp làm một, giữ tháng
-đang chọn; cột so sánh gọi theo nó (`Compare Month` · `% Revenue Compare` · `Change` · `% Change`, KHÔNG `Base`/`Variance`). Hai slicer
-cùng cột mà mỗi ô lọc chart riêng (01 Total Bill On Month) ⇒ đặt tên theo chart (`Month A`/`Month B`), cấm hai ô cùng tên. Cổng
-`compare-month` + `slicer-unique` (hai ô cùng tên hiển thị, hoặc cùng tên cột ở hai bảng, là đỏ).
-🔴 **Slicer bảng lọc nối liền nhau theo bước cố định 65 px** (nhãn 20 + ô 40 + khe 5) *(13/10, 01 Product: "sao filter mới
-lại bị rỗng 1 hàng")*: bỏ / gộp một slicer thì kéo các ô bên dưới lên, không để hàng trống. Cổng `filter-rows`.
-🔴 **Filter "không trống" trên cột SỐ chỉ loại `null`** *(13/10)*: hai nhãn Kimball `'Unknown'`/`'Not Applicable'` là CHỮ — đặt lên cột số
-(Year) là slicer chết "CONTAINSROW does not support comparing values of type Text with values of type Integer". `not_blank_filter`
-đọc kiểu cột từ model; cổng `literal-type` chặn mọi giá trị filter khác kiểu cột (chữ trên số, số `5L` trên cột chữ `'05'`), ở cả dạng `In` lẫn
-dạng so sánh `Not(cột = 'Unknown')`. Vá hàng loạt: `scripts/fix_literal_type.py` (chạy thử trước, `--apply` mới ghi).
-🔴 **Không visual dữ liệu nào bị ẩn ở MỌI trạng thái trong khi khung nền của nó hiện** — khung trống, người đọc thấy "mất
-dashboard". Visual theo đúng trạng thái của `BG_` cùng nhóm trong từng bookmark. Cổng `dead-visual`.
-🔴 **Mọi bảng / matrix kín khung: Auto-size behaviour = Grow to fit** *("so với tổng size của chính group chứa")*:
-`columnHeaders.autoSizeColumnWidth true` + `columnAdjustment 'growToFit'` (khuôn đọc từ chính Desktop) — Desktop tự giãn cột cho kín
-khung với bao nhiêu cột dữ liệu đưa ra; không đặt bề rộng tay (matrix Tháng × Kênh: DW 5 kênh, kỳ này 3 kênh có số ⇒ đếm cột
-trước là sai). Lệnh `mix_builder.py --grow-to-fit`, cổng `narrow-table`. Ngoại lệ: bảng đã đo trên engine bằng `matrix_fit.py` (auto-size tắt + bề rộng cho mọi measure, §5l-quinquies) — `narrow-table` · `header-wrap` bỏ qua nó, cổng `matrix-fit` lớp engine giữ.
-🔴 **Đổi chữ header (tên report / tên trang) ⇒ chạy lại `--fit-header`** *('Franchise' bị cắt còn 'Fra' ở nhiều trang — đổi tên tại chỗ giữ khung của tên cũ 'NQ' 40 px)*: khung tên report = grid5(chữ + lề), tên trang nối ngay sau, nhóm Title kết thúc ở cuối tên trang, khung tên trang = chữ + 20 px (`NAME_SLACK` — Desktop chừa khoảng trong khung chữ; 14/10 khung sát chữ 100 px hiện 'Overvie', 120 px hiện đủ). Cổng `header-text` chạy trên MỌI trang (trước chỉ trang strict ⇒ lọt) và báo khi nhóm Title chạm dải tab.
-🔴 **Tiêu đề cột dài ⇒ 2 dòng, công thức tự đổi** *("title quá dài ntn thì phải cắt ra 2 dòng ... mọi bảng luôn, bảng nào
-title dài thì đổi công thức tự động")*: Grow to fit đặt MỌI tiêu đề trên MỘT dòng (tên mặt hàng 300 px một cột). Bảng có tiêu đề > 150 px
-(`HEADER_WRAP`) ⇒ tắt auto-size, bề rộng cố định theo `pbi_gate.column_plan`: tiêu đề > 80 px = nửa chữ + 20 (2 dòng), measure ≥ 70,
-cột tên hàng giữ bề rộng sẵn có (mặc định 400 — tên trong DW dài tới ~700 px, tự xuống dòng); tổng thiếu khung thì giãn đều cho kín.
-Matrix có trường Columns (tiêu đề lấy từ dữ liệu) vẫn Grow to fit. Cùng lệnh `--grow-to-fit` tự chọn công thức; cổng `header-wrap`
-(thử đỏ 14/10: bảng Quy Đổi E-Commerce).
-🔴 **Tên hàng dài ⇒ cột tên = nửa tên dài nhất + 20, 2 dòng** *("tên sản phẩm quá dài cũng nên tách làm 2, chia đôi ra để đừng có đẩy phần cột khác quá dài")*: tên dài nhất đo từ DW (đọc thẳng cột của Dim, chỉ dòng `IsActive = 1` khi Dim có cột đó — 19/10: lọc qua fact treo DW hơn 30 phút trên `Fact_SaleDetail` và giữ khoá chặn job nạp), cỡ chữ của rowHeaders; > 300 px (`ROW_WRAP`) ⇒ ghi `columnWidth` cho cột tên — Grow to fit vẫn giữ bề rộng đã ghi. **Mọi cột chữ vừa khít, không dư** *("cột ko dc dư chứ, phải vừa khít chữ" — cột mã 8 ký tự bị 366 px)*: = max(chữ dài nhất trong DW, tiêu đề) + 20; chỉ matrix layout **Stepped** (các cấp dồn một cột) mới dùng chung bề rộng — Tabular / Outline mỗi trường một cột. Cùng lệnh `--grow-to-fit`; cổng `row-wrap` (lớp dw) báo cả dư lẫn thiếu.
-🔴 **Hai dòng = chia theo TỪ, không bao giờ 3 dòng, không cắt giữa chữ** *("'Month Numbe r' ... 2 dòng mà nhảy ra 3 dòng là ko dc ... ko có để 2 dòng mà xuống 1 có chữ")*: bề rộng 2 dòng = `pbi_gate.wrap_width` — điểm chia giữa hai từ cho dòng dài nhất ngắn nhất, không nhỏ hơn từ dài nhất (nửa chữ thô ra 3 dòng / cắt 'Numbe·r'); tên dữ liệu đo trên 30 tên dài nhất trong DW (kể cả mọi tên bằng độ dài tên thứ 30 — TOP 30 trơn chọn khác nhau mỗi lượt, cổng lật đỏ/xanh). Matrix có trường Columns: tên trường đó hiện ở ô GÓC trên cột hàng CUỐI ⇒ cột đó chứa luôn tên này; đặt nhãn đọc được (`MonthNumber` ⇒ `Month`). Cổng `header-wrap` · `row-wrap`.
-🔴 **Tiêu đề visual: MỘT kiểu chữ, MỘT kiểu viết** *("bộ kiểm title phải bold đâu? lại sót nữa" + "ko có được viết in hoa rồi viết hoa đầu chữ tùm lum, 1 chuẩn duy nhất là viết hoa caption đầu")*: font **Segoe UI Semibold** 12, canh trái (không khai font = Segoe thường của theme ⇒ tiêu đề mảnh); chữ **viết hoa đầu mỗi từ**, không từ nào IN HOA trừ viết tắt nghiệp vụ (`TITLE_ACRO`: NQ · DT · B2B · POS · VAT · MTD …), từ nối tiếng Anh (by · vs · of …) viết thường; thuật ngữ `Sell In` / `Sell Out` giữ nguyên. Lệnh `mix_builder.py --title-style`. Cổng `title-font` + `title-case` (White/Red — KHÔNG Classic, xem pbi-classic) — **cùng tên, cùng logic với repo phòng ban** (ABC có từ 12–13/10) để khi ABC gộp chuẩn không ra hai luật trùng việc.
-🔴 **Matrix lấy dữ liệu làm tiêu đề cột cũng 2 dòng** *("trang này phải theo chuẩn 2 dòng chứ? sao cột dài thòng vậy")*: trường ở Columns là tên dài (mặt hàng…) ⇒ bề rộng cột số = tên dài nhất trong DW chia 2 dòng theo từ + 20, chia đều cho các cột số dưới một tiêu đề, mỗi cột ≥ 70; tên ngắn (tháng, ngày, mã) giữ Grow to fit. `--grow-to-fit`, cổng `row-wrap` (lớp dw).
-🔴 **Cột đo (số, %) của bảng có trường cột: vừa khít chữ đậm dài nhất, cùng một bề rộng, tiêu đề tự xuống 2 dòng** *(21/10, đo trên bảng người dùng nắn tay: 72,7 px = chữ đậm dài nhất của dòng Total `17,638M` 54,7 px + đệm 18)*: số và % trong ô không bao giờ xuống dòng; tiêu đề đo dài (`% Sell In / Sell Out` 116 px một dòng) xuống 2 dòng để cả bảng hẹp lại, không phải lý do để nới cột; mọi cột đo của một bảng cùng bề rộng (chênh ≤ 4 px). Cổng `measure-fit` canh hai chiều trên cột đã có bề rộng cố định: nhỏ hơn mức tối thiểu theo định dạng (`999.99%` cho %, `9,999M` cho số, chữ đậm + 18; ô thật dài hơn mức này chứ không ngắn hơn) hoặc lệch nhau quá 4 px ⇒ đỏ. Cột chưa đặt bề rộng thì cổng bỏ qua (Grow to fit, hoặc người dùng nắn tay trong Desktop); bề rộng đã nắn tay giữ nguyên.
-🔴 **Tiêu đề cột lấy từ dữ liệu: MỘT bề rộng chung, cân 2 dòng** *("gom 2 dòng sao cho nó 2 dòng ngang nhau để cân bằng")*: Power BI giữ MỘT bề rộng mỗi cột giá trị cho mọi phần tử (Desktop lưu `columnWidth` theo measure, không theo phần tử) ⇒ không cân được từng tên. Số của loại cột này thường ngắn (mặt hàng NQ: lớn nhất 78.303 = 59 px) nên tiêu đề nhận thêm dòng thay vì kéo cột *("size cột bị dài vô lý ... số ít thì đâu cần title dài" — chọn tối đa 3 dòng: 270 → 195 px)*. Chuẩn = `balanced_width`: bề rộng nhỏ nhất mà mọi tên vừa `MEMBER_MAX_LINES` = 4 dòng (≤ 2% được 5; 3 dòng vẫn để bề rộng quá rộng), không hẹp hơn từ dài nhất, không dưới 70; đo trên ĐÚNG các tên visual hiện (DAX `FILTER(VALUES(trường), NOT ISBLANK(measure))` qua `scripts/pbi_engine_query.ps1`). Lệnh `mix_builder.py --member-width` (report phải đang mở trong Desktop); cổng lớp dw chỉ chặn khoảng 70 … đủ cho mọi tên trong DW. Đừng báo con số ước lượng từ mẫu (14/10: mẫu 200 tên cho 230, tập thật 248 tên cho 265).
-🔴 **Bảng chi tiết không bị bóp vì chart ít thông tin** *("3 chart ... mà cái bảng dưới lại bị bóp nhỏ? ko hợp lý, sao ko tách ra")*: trang có thẻ số + nhiều chart + một bảng chi tiết lớn ⇒ tách tab (Summary = thẻ + chart, Detail = bảng cao hết tab; `card_tabs: (0)`, nút đổi chế độ xem giữ trong khối bảng qua `switch_block`). Vùng tab cao 675.
-🔴 **Field parameter: `groupByColumn` + giá trị chọn phải có thật** *("Something's wrong with one or more fields ... Parameter_PhanTichTheo" rồi bảng trống)*: cột hiển thị của bảng tham số mang `relatedColumnDetails / groupByColumn: 'Parameter Fields'` (thiếu ⇒ Missing_References); đổi tên bảng measure (`Measure` → `#Measure`) thì sửa luôn giá trị ô lọc + bookmark chọn sẵn (`'''Measure''[Số lượng]'` → `'#Measure'[…]`) — giá trị lạ chọn trúng không trường nào, ô số trống. Cổng `param-groupby` · `param-value` (thử đỏ 14/10: 7 chỗ Franchise White). Lỗi kỹ thuật ⇒ sửa cả Classic.
-🔴 **Trang Overview luôn đứng đầu**: report có trang `Overview` thì nó là trang 1 (và trang mở). Đổi thứ tự trang ⇒ chạy `--measure-folders` + `--renumber-bookmarks`. Cổng `overview-first`.
-🔴 **Tên tab viết hoa chữ đầu MỌI từ** *("ko có gì lúc Tổng quan rồi Nhân Viên tùm lum")*: `Sales Rep` · `Monthly` ·
-`Items` — tab, bản chép trong bookmark, dòng Glossary và `mix_specs` cùng một chữ. Chữ hoa rộng hơn ⇒ đo lại bề rộng tab. Cổng `tab-case`.
-🔴 **Một chữ thuộc về TRANG hoặc TAB, không cả hai** *(trang Overview có tab Overview — "cần quy định lại từ overview là của
-trang hay tab"; chốt: Overview là TRANG)*: tab đầu mọi trang = `Summary`; tên tab không trùng tên bất kỳ trang nào (không phân biệt
-hoa thường). Cổng `tab-page-name`.
-🔴 **Thứ tự: trường sắp xếp phải nằm trong chính visual; chart thanh theo danh mục xếp từ lớn xuống nhỏ** *("phải xếp
-từ cao xuống thấp")*: đổi measure của chart thì đổi cả `sortDefinition` — sắp theo measure không còn trong chart thì Desktop bỏ
-lệnh sắp, thanh ra lộn xộn. Cổng `sort-order`.
-🔴 **Doanh thu so chỉ tiêu = 3 cột ĐỨNG CẠNH, cùng bề rộng: `-VAT` · `+VAT` · `Target`** *(đã thử cột chồng "Doanh Thu + Còn
-Thiếu" rồi bỏ — "1 cột ntn còn nhỏ nhìn hơn ... mỗi chart 3 cột, size phải bằng nhau"; tên cột theo nghiệp vụ, "ghi +VAT và
--VAT đi cho ngắn gọn")*: `lineClusteredColumnComboChart`, Y = `#Revenue Net` / `#Revenue With VAT` / `Target`. Target KHÔNG bao giờ chồng
-lên doanh thu (cột chồng cộng hai số không cộng được). Cổng `target-stack`.
-🔴 **Chart cùng hàng = cùng bề rộng cột, cùng legend** *("size ngang của cột phải đồng bộ")*: cùng `categoryAxis.innerPadding`,
-cùng bật/tắt legend. Trục đã bật mà chữ màu nền (trắng) thì tắt trục. Cổng `row-uniform` · `axis-invisible`.
-🔴 **Tiêu đề khối bằng textbox: lề trên/dưới = 0, cao ≥ 1,5 × cỡ chữ** *("title phải ko dc có padding ở trên ... cuối title
-có 1 cục màu xám")*: lề mặc định của textbox đẩy chữ xuống ⇒ 12pt trong 25 px bị cắt nửa dưới và hiện thanh cuộn xám ở cuối ô.
-Đặt `visualContainerObjects.padding` top/bottom/left/right `0D`; 12pt ≥ 24 px · 11pt ≥ 22 px. Cổng `title-padding` (textbox < 40 px).
-🔴 **Legend / tên series = TÊN field, KHÔNG chú thích trong ngoặc** *("t ko mượn legend phải mở ngoặc ... việc chú thích là nút
-glossary đã làm rồi")*: `Sell In (Bán NQ)` → `Sell In`. Giải nghĩa nằm ở Glossary. Cổng `legend-plain`.
-🔴 **Nhãn số KHÔNG đè nhau** *("ko để nó đè số ntn")*: chart cột/thanh cần (rộng − 50) ÷ (số nhóm × số series có nhãn) ≥ 52 px
-mỗi nhãn. Thiếu chỗ thì để nhãn MỘT series (số thực / số chính), series kia `showSeries false` (vẫn có cột + tooltip) — không bóp chữ,
-không xoay. Cổng `label-overlap` (thử đỏ 12/10: 3 chart quý 281 px + Sell In 360 px).
-🔴 **Cùng MỘT cỡ, KHÔNG thanh header, KHÔNG khung lồng** *("lỗi tùm lum, bấm vào nó bị
-đè mất, rồi sai cả size box … trỏ chuột vào nó bị mất hết chữ")*: đo 01/10 White AM có **9 kiểu trên 77 ô** — chữ 9 / 10 / 13 /
-14 / mặc định, khung nền trong suốt 93% bao quanh một ô nhỏ hơn, `visualHeader` bật (rê chuột là thanh header phủ lên chữ).
-Chuẩn: `items.textSize 10D` (mặc định của Red) · `visualContainerObjects.background.show false` · `visualHeader.show false` ·
-viền `#E8E8E8` 1 px · `pendingChangesIcon` tắt. Cùng lệnh `--slicers`, cùng cổng `slicer-style` (thử đỏ: 77/77 → 0).
+🔴 **Selection boxes (slicers) follow exactly ONE style, the Red copy's** *(the filters did not match the new colours, nor each
+other)*: box background `#E8E8E8`, text `#2D2D2D`, frame `#E8E8E8`. The Legacy colours (`#ECDBDD` pink,
+`#AC222C` red, `#558563` green, `#F3CAE4` of MCP) all dropped. Command `--slicers`, gate `slicer-style`.
+🔴 **Every word of the frame is ENGLISH, only the data is Vietnamese** *(everything standardised to English, because the DW delivers
+its data in English too; only the content inside is Vietnamese, columns are standard English)*: page names, tab names, visual
+titles, column / legend names, measure folders; data values (item names, team names 'Sale Nhà Hàng') stay as they are. Short names, nouns, no
+verbs ("Bán ..."), stating exactly the page's purpose. Gate `ui-english` (checks page + tab names now; titles / columns: round 2).
+🔴 **Filter boxes turn OFF the slicer header** *(the filters broke and could not be used)*: `objects.header.show false`. With the header on in a 40 px box
+only the header text line remains ("Month", "Year"), the dropdown pushed out, clicking selects nothing — the box's name is the job of the label above. Command
+`--slicers`, gate `slicer-style` (tested red 12/10: 14 boxes of DR White). A slicer copied from Legacy keeps a `header` block with font/colour but NO `show` ⇒ ON by default, the field name printed a second time in the box: gate `slicer-header`.
+🔴 **A comparison month = ONE "Compare With" slicer on `Parameter_Date[Year Month]`** *(13/10: with two year selection boxes, which one
+do you choose? it reads as from year to year)*: Legacy's Year + Month slicer pair reads as "from … to …" ⇒ merged into one, keeping the selected
+month; the comparison columns are named by it (`Compare Month` · `% Revenue Compare` · `Change` · `% Change`, NOT `Base`/`Variance`). Two slicers
+on the same column each filtering its own chart (01 Total Bill On Month) ⇒ named after the chart (`Month A`/`Month B`), never two boxes with the same name. Gates
+`compare-month` + `slicer-unique` (two boxes with the same shown name, or the same column name in two tables, are red).
+🔴 **Filter panel slicers follow each other at a fixed step of 65 px** (label 20 + box 40 + gap 5) *(13/10, 01 Product: the new filter
+had an empty row)*: dropping / merging a slicer pulls the boxes below up, never leaving an empty row. Gate `filter-rows`.
+🔴 **A "not blank" filter on a NUMBER column excludes only `null`** *(13/10)*: the two Kimball labels `'Unknown'`/`'Not Applicable'` are TEXT — put on a number column
+(Year) they make a dead slicer "CONTAINSROW does not support comparing values of type Text with values of type Integer". `not_blank_filter`
+reads the column type from the model; gate `literal-type` blocks every filter value of a type other than the column's (text on numbers, the number `5L` on a text column `'05'`), in both the `In` form and
+the comparison form `Not(column = 'Unknown')`. Bulk fix: `scripts/fix_literal_type.py` (dry run first, `--apply` writes).
+🔴 **No data visual is hidden in EVERY state while its background frame shows** — an empty frame, the reader sees "a missing
+dashboard". A visual follows exactly the state of the `BG_` in the same group in each bookmark. Gate `dead-visual`.
+🔴 **Every table / matrix fills its frame: Auto-size behaviour = Grow to fit** *(compared with the total size of the group holding it)*:
+`columnHeaders.autoSizeColumnWidth true` + `columnAdjustment 'growToFit'` (the mould read from Desktop itself) — Desktop widens the columns to fill
+the frame with however many data columns appear; never set widths by hand (a Month × Channel matrix: the DW has 5 channels, this period 3 channels have figures ⇒ counting columns
+first is wrong). Command `mix_builder.py --grow-to-fit`, gate `narrow-table`. Exception: tables measured on the engine with `matrix_fit.py` (auto-size off + a width for every measure, §5l-quinquies) — `narrow-table` · `header-wrap` skip them, the engine-layer gate `matrix-fit` holds them.
+🔴 **Changing the header text (report name / page name) ⇒ run `--fit-header` again** *('Franchise' cut to 'Fra' on many pages — renaming in place kept the frame of the old name 'NQ', 40 px)*: the report-name frame = grid5(text + margins), the page name appended right after, the Title group ending at the end of the page name, the page-name frame = text + 20 px (`NAME_SLACK` — Desktop leaves space inside a text frame; 14/10 a frame tight to the text, 100 px, showed 'Overvie', 120 px showed it all). Gate `header-text` runs on EVERY page (before only on strict pages ⇒ slipped through) and reports when the Title group touches the tab strip.
+🔴 **A long column header ⇒ 2 lines, the formula switches by itself** *(a title that long must be cut into 2 lines … in every table, any table
+with long titles switches formula automatically)*: Grow to fit puts EVERY header on ONE line (an item name 300 px for one column). A table with a header > 150 px
+(`HEADER_WRAP`) ⇒ auto-size off, fixed widths by `pbi_gate.column_plan`: a header > 80 px = half the text + 20 (2 lines), measures ≥ 70,
+the item-name column keeps its existing width (default 400 — names in the DW run to ~700 px, wrapping by themselves); a total short of the frame is widened evenly to fill it.
+A matrix with a Columns field (headers taken from data) stays Grow to fit. The same command `--grow-to-fit` picks the formula; gate `header-wrap`
+(tested red 14/10: the E-Commerce Conversion table).
+🔴 **Long item names ⇒ the name column = half the longest name + 20, 2 lines** *(long product names should be split in two, halved so they do not push the other columns too wide)*: the longest name measured from the DW (reading the Dim's column directly, only rows with `IsActive = 1` when the Dim has that column — 19/10: filtering through the fact hung the DW for over 30 minutes on `Fact_SaleDetail` and held locks blocking the load job), at the font size of rowHeaders; > 300 px (`ROW_WRAP`) ⇒ write `columnWidth` for the name column — Grow to fit still keeps the written width. **Every text column fits exactly, no slack** *(a column must not have slack, it must fit the text exactly — an 8-character code column was 366 px)*: = max(the longest text in the DW, the header) + 20; only a **Stepped** matrix layout (levels stacked in one column) shares one width — Tabular / Outline give each field its own column. The same command `--grow-to-fit`; gate `row-wrap` (dw layer) reports both slack and shortfall.
+🔴 **Two lines = split by WORD, never 3 lines, never cutting inside a word** *('Month Numbe r' … two lines spilling into 3 is not allowed … never leave a line holding a single letter)*: the 2-line width = `pbi_gate.wrap_width` — the split point between two words giving the shortest longest line, never smaller than the longest word (a raw half of the text gives 3 lines / cuts 'Numbe·r'); data names measured on the 30 longest names in the DW (including every name as long as the 30th — a plain TOP 30 picks differently each round, flipping the gate red/green). A matrix with a Columns field: that field's name shows in the CORNER cell above the LAST row column ⇒ that column also holds this name; give it a readable label (`MonthNumber` ⇒ `Month`). Gates `header-wrap` · `row-wrap`.
+🔴 **Visual titles: ONE font, ONE way of writing** *(where is the bold check on titles? missed again — and no mixing of ALL CAPS and capitalised words at random, the one standard is a capitalised caption)*: font **Segoe UI Semibold** 12, left-aligned (no font declared = the theme's plain Segoe ⇒ a thin title); text **capitalising the first letter of each word**, no word in CAPITALS except business abbreviations (`TITLE_ACRO`: NQ · DT · B2B · POS · VAT · MTD …), English connecting words (by · vs · of …) in lower case; the terms `Sell In` / `Sell Out` stay as they are. Command `mix_builder.py --title-style`. Gates `title-font` + `title-case` (White/Red — NOT Classic, see pbi-classic) — **the same names, the same logic as the department repo** (ABC has had them since 12–13/10) so that when ABC merges the standard there are not two rules doing the same job.
+🔴 **A matrix taking its column headers from data is 2 lines too** *(this page must follow the 2-line standard — why are the columns so long?)*: a field in Columns with long names (items…) ⇒ the number columns' width = the longest name in the DW split into 2 lines by word + 20, divided evenly among the number columns under one header, each column ≥ 70; short names (months, days, codes) stay Grow to fit. `--grow-to-fit`, gate `row-wrap` (dw layer).
+🔴 **Measure columns (numbers, %) of a table with a column field: fit exactly the longest bold text, one shared width, headers wrapping to 2 lines by themselves** *(21/10, measured on a table the owner adjusted by hand: 72.7 px = the longest bold text of the Total row `17,638M` 54.7 px + padding 18)*: numbers and % in cells never wrap; a long header (`% Sell In / Sell Out` 116 px on one line) wraps to 2 lines so the whole table narrows, never a reason to widen the column; every measure column of a table has the same width (difference ≤ 4 px). Gate `measure-fit` watches both directions on columns with a fixed width: smaller than the minimum for the format (`999.99%` for %, `9,999M` for numbers, bold text + 18; real cells are longer than this, never shorter) or differing by more than 4 px ⇒ red. Columns without a set width the gate skips (Grow to fit, or adjusted by hand in Desktop); widths adjusted by hand stay as they are.
+🔴 **Column headers taken from data: ONE shared width, balanced over 2 lines** *(group the two lines so they are about equally long)*: Power BI keeps ONE width per value column for every member (Desktop stores `columnWidth` per measure, not per member) ⇒ each name cannot be balanced. The figures of this kind of column are usually short (NQ items: the largest 78,303 = 59 px) so the header takes extra lines instead of stretching the column *(the column width was absurdly long … with small figures there is no need for long titles — chosen at most 3 lines: 270 → 195 px)*. The standard = `balanced_width`: the smallest width at which every name fits `MEMBER_MAX_LINES` = 4 lines (≤ 2% may take 5; 3 lines still leave the width too wide), never narrower than the longest word, never under 70; measured on EXACTLY the names the visual shows (DAX `FILTER(VALUES(field), NOT ISBLANK(measure))` through `scripts/pbi_engine_query.ps1`). Command `mix_builder.py --member-width` (the report must be open in Desktop); the dw-layer gate only blocks the range 70 … enough for every name in the DW. Do not report a figure estimated from a sample (14/10: a sample of 200 names gave 230, the real set of 248 names gave 265).
+🔴 **A detail table is not squeezed for charts with little information** *(3 charts … while the table below gets squeezed small? that makes no sense, why not split it out)*: a page with number cards + several charts + one big detail table ⇒ split into tabs (Summary = cards + charts, Detail = the table the full height of the tab; `card_tabs: (0)`, the view-switching button kept inside the table block through `switch_block`). The tab area is 675 tall.
+🔴 **Field parameters: `groupByColumn` + the selected values must be real** *("Something's wrong with one or more fields ... Parameter_PhanTichTheo" and then an empty table)*: the display column of the parameter table carries `relatedColumnDetails / groupByColumn: 'Parameter Fields'` (missing ⇒ Missing_References); renaming the measure table (`Measure` → `#Measure`) means fixing the filter box values + the preselecting bookmarks too (`'''Measure''[Số lượng]'` → `'#Measure'[…]`) — an odd value selects no field, the number boxes go empty. Gates `param-groupby` · `param-value` (tested red 14/10: 7 places in Franchise White). A technical error ⇒ fix Classic too.
+🔴 **The Overview page always comes first**: a report with an `Overview` page has it as page 1 (and the opening page). Changing the page order ⇒ run `--measure-folders` + `--renumber-bookmarks`. Gate `overview-first`.
+🔴 **Tab names capitalise the first letter of EVERY word** *(no mixing of 'Tổng quan' with 'Nhân Viên' at random)*: `Sales Rep` · `Monthly` ·
+`Items` — the tab, its copy in bookmarks, the Glossary line and `mix_specs` carry the same text. Capitals are wider ⇒ measure the tab widths again. Gate `tab-case`.
+🔴 **A word belongs to a PAGE or a TAB, never both** *(the Overview page had an Overview tab — the word overview needed a ruling: page
+or tab; settled: Overview is a PAGE)*: the first tab of every page = `Summary`; a tab name never equals any page name (case-
+insensitive). Gate `tab-page-name`.
+🔴 **Order: the sort field must be inside the visual itself; category bar charts sort from largest to smallest** *(it must be ordered
+from high to low)*: changing a chart's measure changes its `sortDefinition` too — a sort by a measure no longer in the chart makes Desktop drop
+the sort, the bars come out jumbled. Gate `sort-order`.
+🔴 **Revenue against target = 3 columns SIDE BY SIDE, the same width: `-VAT` · `+VAT` · `Target`** *(a stacked "Revenue + Shortfall" column was tried and
+dropped — one column like that looks even smaller … each chart 3 columns, the sizes must be equal; column names by the business, "+VAT" and
+"-VAT" for brevity)*: `lineClusteredColumnComboChart`, Y = `#Revenue Net` / `#Revenue With VAT` / `Target`. The target NEVER stacks
+on revenue (a stacked column adds two figures that cannot be added). Gate `target-stack`.
+🔴 **Charts on one row = the same column width, the same legend** *(the horizontal size of the columns must be consistent)*: the same `categoryAxis.innerPadding`,
+the legend on or off for all. An axis that is on but has text in the background colour (white) is turned off. Gates `row-uniform` · `axis-invisible`.
+🔴 **Block titles made of textboxes: top/bottom padding = 0, height ≥ 1.5 × the font size** *(a title must have no padding on top … the end of the title
+had a grey lump)*: a textbox's default padding pushes the text down ⇒ 12pt in 25 px gets its lower half cut and shows a grey scrollbar at the end of the box.
+Set `visualContainerObjects.padding` top/bottom/left/right `0D`; 12pt ≥ 24 px · 11pt ≥ 22 px. Gate `title-padding` (textboxes < 40 px).
+🔴 **Legend / series names = the field NAME, NO explanation in parentheses** *(nobody asked for the legend to open parentheses … explaining is
+what the Glossary button already does)*: `Sell In (Bán NQ)` → `Sell In`. The explanation lives in the Glossary. Gate `legend-plain`.
+🔴 **Number labels do NOT overlap** *(do not let figures overlap like this)*: a column/bar chart needs (width − 50) ÷ (groups × series with labels) ≥ 52 px
+per label. Not enough room ⇒ labels for ONE series (the actual / main figure), the other series `showSeries false` (still with columns + tooltips) — no squeezing the text,
+no rotating. Gate `label-overlap` (tested red 12/10: 3 quarterly charts 281 px + Sell In 360 px).
+🔴 **ONE size, NO header bar, NO nested frames** *(errors everywhere: clicking makes it get covered, the box sizes are wrong … hovering
+makes all the text disappear)*: measured 01/10 White AM had **9 styles across 77 boxes** — text 9 / 10 / 13 /
+14 / default, a 93% transparent background frame around a smaller box, `visualHeader` on (hovering lays the header bar over the text).
+The standard: `items.textSize 10D` (Red's default) · `visualContainerObjects.background.show false` · `visualHeader.show false` ·
+border `#E8E8E8` 1 px · `pendingChangesIcon` off. The same command `--slicers`, the same gate `slicer-style` (tested red: 77/77 → 0).
 
-🔴 **MỘT BỘ LỌC CHUNG, ĐỒNG BỘ THEO LOẠI KỲ** *("filter có nên làm 1 bộ chung cho mọi trang và tab ko? t
-thấy mỗi trang filter riêng nó bị rối" → chọn "bộ chung + đồng bộ", phạm vi "theo loại kỳ")*:
-- **Thứ tự mọi trang:** `Year` · `Month` · `Area Manager` · `District` · `StoreName` · `Channel`, rồi ô riêng của trang (Week,
-  Day, Metric, chương trình, MonthNumber…). Trang không có kỳ nào thì bỏ ô đó, giữ thứ tự phần còn lại.
-- **Ô vị trí** (`AreaManagerShortName` · `District` · `ShortName` · `ChannelGroup+ChannelNameStandard`) có trên **mọi trang có
-  bảng lọc** — thiếu thì chép từ ô cùng trường ở Monthly, bỏ lựa chọn. Miễn có lý do: `Channel` ở MCP và Power Consumption
-  (P&L, chi phí điện: không có chiều kênh). Trường tương đương được tính là có, không đồng bộ: `Dim_Store.AreaManager` (MCP),
+🔴 **ONE SHARED FILTER SET, SYNCED BY PERIOD KIND** *(should the filters be one shared set for every page and tab? a filter per page
+is confusing → chosen "a shared set + sync", scope "by period kind")*:
+- **The order on every page:** `Year` · `Month` · `Area Manager` · `District` · `StoreName` · `Channel`, then the page's own boxes (Week,
+  Day, Metric, programme, MonthNumber…). A page without some period drops that box, keeping the order of the rest.
+- **Location boxes** (`AreaManagerShortName` · `District` · `ShortName` · `ChannelGroup+ChannelNameStandard`) are on **every page with
+  a filter panel** — missing ⇒ copied from the box with the same field on Monthly, selection dropped. Exempt with a reason: `Channel` on MCP and Power Consumption
+  (P&L, electricity cost: no channel dimension). Equivalent fields count as present, not synced: `Dim_Store.AreaManager` (MCP),
   `ChannelType+ChannelName` (DSR).
-- 🔴 **Mọi chiều phân loại cố định, ít giá trị mà số trên trang cắt được theo nó đều có ô lọc** — cột chữ của Dim có 2–40 giá trị
-  nghiệp vụ trên DW (không tính `null` / `'Unknown'` / `'Not Applicable'` / `'#NA'`), không phải cột kỹ thuật (mã, thuế, tài khoản,
-  trạng thái, liên lạc, ghi chú). Phòng khai bộ của mình ở `filter_set` (`config/pbi-gate.json`) sau các khoá vị trí; cột ít giá trị
-  mà không lấy thì ghi lý do. Trước khi đặt ô, đo ô đó lọc tới được fact nào của trang (quan hệ + DAX của measure): ô chỉ lọc được
-  một phần số mà không báo là sai. Trùng nghĩa với ô có sẵn ⇒ giữ ô có sẵn, đổi nhãn + gắn sync, không thêm ô thứ hai. Máy làm:
-  `scripts/add_filter_set.py`. Máy canh: cổng `filter-set`; quét cả repo: `pbi_gate.py --audit`.
-- 🔴 **Mọi ô lọc đều chọn được nhiều giá trị và có dòng "Select all"** (`objects.selection.selectAllCheckboxEnabled = true`, không
-  `singleSelect` / `strictSingleSelect`) — ô không có đường chọn tất cả là người đọc kẹt ở một lựa chọn; ô kỳ (Year / Month) vẫn chọn
-  sẵn `Current Year` / `Current Month`. Miễn duy nhất: field parameter (`Parameter_*`, một trường mỗi lần). Cổng `select-all`.
-- 🔴 **Một ô lọc = MỘT cách gom** — giá trị của một ô không được là giá trị của ô khác trong bộ chung (ô Team Leader liệt kê kênh
-  "E-Commerce" giữa tên người là trộn hai cách gom). Sửa ở dữ liệu: cột nào giữ cách gom nào (kênh ở cột kênh, trưởng nhóm chỉ là
-  người); giá trị phải nằm lại nhưng không thuộc ô (thành viên không có dòng nào) thì khai `exclude` cho mục của ô trong `filter_set`,
-  kèm lý do — `scripts/add_filter_set.py` đưa nó vào bộ lọc "không trống" của ô và mọi bookmark chụp ô. Cổng `filter-mixed` (lớp dw,
-  so với bộ từ vựng `filter_set` của cả repo).
-- **Đồng bộ** = `visual.syncGroup {groupName: 'FilterSet_<Key>', fieldChanges: true, filterChanges: true}` (khuôn Desktop ghi,
-  13 ô Combo/khác). `Month` **chỉ** có ở trang theo tháng (Monthly · Daily · Product · Product Mix · Operation · DSR) — KHÔNG
-  thêm vào Weekly / Executive: Month mặc định `Current Month`, ép lên Weekly là Weekly chỉ còn tuần của tháng đó. Trang khuyến
-  mãi / Combo / MCP giữ ô kỳ riêng (`DateKey`, `MonthNumber`, `Year`) ở cuối, không đồng bộ với Year/Month.
-- 🔴 **Ô tháng: chọn `Current Month`, KHÔNG BAO GIỜ một tháng cố định · Monthly đứng NGOÀI nhóm đồng bộ** *(sau khi
-  tra cách làm phổ biến)*. Slicer Power BI "dính" giá trị lúc Save: lần Save 04/10 02:20 ghi `'09'` ⇒ 6 trang White AM đứng ở tháng 9.
-  Cột `Dim_Date.IsCurrentMonth` gắn nhãn chữ `Current Month` cho tháng có bán cuối (`MaxSale`) ⇒ chọn nhãn đó là trang tự lăn sang
-  tháng mới. Trang **Monthly** theo Legacy **không chọn tháng nào** (4 chart theo tháng ra cả năm) nên **không** nằm trong
-  `FilterSet_Month` — đồng bộ là nó nhận luôn một tháng của trang khác. Danh sách miễn: `pbi_gate.FILTER_UNSYNCED` (một nguồn,
-  `scripts/add_filter_set.py` đọc lại). Cổng `filter-set`: ô tháng đồng bộ mà khác `'Current Month'` ⇒ đỏ · Monthly còn đồng bộ hoặc
-  chọn sẵn ⇒ đỏ (thử âm 05/10: gài 3 ⇒ đỏ đúng 3). Ori không có "current" (một slicer khoảng ngày `Between`); slicer **Date Picker**
-  (GA 08/2026, neo "Last date") là hướng thử sau — người dùng dựng mẫu trong Desktop trước, tuần thứ Sáu của ABC nó không làm được.
-- 🔴 **'Current …' là kỳ MỚI NHẤT trong danh sách — nhãn và bộ lọc của ô dùng CHUNG MỘT mốc ngày.** Ô kỳ có thành viên
-  'Current Month' / 'Current Year' / 'Current Week' thì không thành viên nào khác được chứa ngày sau ngày cuối của thành viên
-  'Current …' (dưới chính bộ lọc cấp visual của ô). Hỏng điển hình: nhãn 'Current Month' tính theo một mốc (tháng đã đóng sổ)
-  còn cột cờ lọc ô (`Flag_is_use`, `DateWithSale`…) tính theo mốc khác (tháng lớn nhất có số) ⇒ ô hiện 'Current Month' rồi
-  vẫn còn tháng sau nó — vô nghĩa. Sửa: nhãn và cờ lấy từ CÙNG một biểu thức mốc (trong SQL partition hoặc cùng một cột).
-  Muốn mặc định mở một kỳ khác kỳ mới nhất thì đó là quyết định trình bày, hỏi người dùng — không tách mốc. Cổng `slicer-current`
-  (lớp engine): mỗi ô trên bảng ngày, đếm thành viên khác 'Current …' có `MAX(ngày)` > ngày cuối của 'Current …' ⇒ > 0 là đỏ.
-  Dùng `MAX`, không `MIN`: thành viên tháng gộp nhiều năm ('10' = 10/2025 + 10/2026), ngày đầu che mất phần vượt.
-- **Một hình học:** nhãn 20 + ô 40, bước 65 từ `y = 65` ⇒ tối đa **10 ô**. Bản cũ co ô theo số ô (`step − 30`): Product
-  10 ô còn 34 px trong khi trang 6 ô cao 50 — đúng cái người dùng gọi là "sai cả size box".
-- 🔴 **Nhãn phải đúng ô ngay dưới nó** *(ô Day của Daily nằm dưới nhãn "Area Manager")*. `--filter-set` thêm ô vị trí
-  **không kèm nhãn**, rồi `panel_layout` ghép nhãn theo vị trí ⇒ nhãn cũ trượt xuống ô kế bên: Combo "Monthnumber" trên ô Area
-  Manager, Power "StoreName" trên District, Promotion "DISCOUNTNAME" trên Channel (11 nhãn trên hai White). Cổng `panel-label`: nhãn
-  phải khớp tên field của ô (hoặc tên tương đương trong `PANEL_ALIASES`: Month ~ IsCurrentMonth, Area Manager ~ AreaManagerShortName…).
-  Thêm ô mới thì **thêm nhãn cùng lúc**.
-- Operation từng có **hai ô Week** (`SortWeekToDate` lọc Tuần + WoW, `IsCurrentWeek` chỉ lọc WoW) ⇒ giữ `SortWeekToDate`.
-- **Máy làm:** `scripts/add_filter_set.py` (thêm ô + nhãn + syncGroup, vá bookmark) → dựng lại trang (bộ dựng xếp theo `filter_rank`) hoặc
-  `--panel-layout` cho trang không có spec (Monthly). **Máy canh:** cổng `filter-set` (thiếu ô · sai thứ tự · chưa đồng bộ ·
-  ô khác 40 px). Thử đỏ 01/10: AM 145 / OM 180 lỗi → 0.
-- ⚠ Bẫy đã trả giá khi làm: đổi chiều cao nhãn làm bộ dựng không tìm ra mẫu nhãn trên Weekly (`StopIteration`) ⇒ mọi trang
-  dựng sau Weekly hỏng lặng, vì lệnh hàng loạt chỉ lọc dòng "Error". Chạy hàng loạt thì **đếm số trang dựng xong**.
-`options.suppressData = true` cho mọi bookmark chỉ đổi ẩn/hiện.
+- 🔴 **Every fixed, low-cardinality classifying dimension by which the page's figures can be cut has a filter box** — a text column of a Dim with 2–40 business
+  values in the DW (not counting `null` / `'Unknown'` / `'Not Applicable'` / `'#NA'`), not a technical column (codes, tax, accounts,
+  status, contacts, notes). The department declares its own set in `filter_set` (`config/pbi-gate.json`) after the location keys; a low-cardinality column
+  not taken has its reason written. Before placing a box, measure which facts of the page it reaches (relationships + the measures' DAX): a box filtering only
+  part of the figures without saying so is wrong. Same meaning as an existing box ⇒ keep the existing one, change its label + attach the sync, never a second box. The machine does it:
+  `scripts/add_filter_set.py`. The machine watches: gate `filter-set`; a whole-repo scan: `pbi_gate.py --audit`.
+- 🔴 **Every filter box allows multiple values and has a "Select all" row** (`objects.selection.selectAllCheckboxEnabled = true`, no
+  `singleSelect` / `strictSingleSelect`) — a box without a way to select everything leaves the reader stuck on one choice; period boxes (Year / Month) still preselect
+  `Current Year` / `Current Month`. The only exemption: field parameters (`Parameter_*`, one field at a time). Gate `select-all`.
+- 🔴 **One filter box = ONE way of grouping** — a box's values must not be values of another box in the shared set (a Team Leader box listing the channel
+  "E-Commerce" among people's names mixes two groupings). Fixed in the data: each column keeps one grouping (channels in the channel column, team leaders only
+  people); values that must stay but do not belong to the box (members with no rows) are declared `exclude` for the box's item in `filter_set`,
+  with the reason — `scripts/add_filter_set.py` puts them into the box's "not blank" filter and into every bookmark capturing the box. Gate `filter-mixed` (dw layer,
+  compared with the `filter_set` vocabulary of the whole repo).
+- **Syncing** = `visual.syncGroup {groupName: 'FilterSet_<Key>', fieldChanges: true, filterChanges: true}` (the mould Desktop writes,
+  13 Combo/other boxes). `Month` is **only** on monthly pages (Monthly · Daily · Product · Product Mix · Operation · DSR) — NOT
+  added to Weekly / Executive: Month defaults to `Current Month`, forced onto Weekly it leaves Weekly only the weeks of that month. Promotion /
+  Combo / MCP pages keep their own period boxes (`DateKey`, `MonthNumber`, `Year`) at the end, not synced with Year/Month.
+- 🔴 **The month box: select `Current Month`, NEVER a fixed month · Monthly stands OUTSIDE the sync group** *(after
+  looking up the common practice)*. A Power BI slicer "sticks" to its value at Save: the Save of 04/10 02:20 wrote `'09'` ⇒ 6 pages of White AM stood on month 9.
+  The column `Dim_Date.IsCurrentMonth` labels the month with the latest sales (`MaxSale`) with the text `Current Month` ⇒ selecting that label makes the page roll over
+  to the new month by itself. The **Monthly** page by Legacy **selects no month** (4 monthly charts show the whole year) so it is **not** in
+  `FilterSet_Month` — syncing would make it take a month from another page. The exemption list: `pbi_gate.FILTER_UNSYNCED` (one source,
+  `scripts/add_filter_set.py` reads it back). Gate `filter-set`: a synced month box other than `'Current Month'` ⇒ red · Monthly still synced or
+  preselected ⇒ red (negative test 05/10: planted 3 ⇒ exactly 3 red). Ori has no "current" (a date-range slicer `Between`); the **Date Picker** slicer
+  (GA 08/2026, anchored "Last date") is a direction to try later — the owner builds a sample in Desktop first; it cannot do ABC's Friday weeks.
+- 🔴 **'Current …' is the NEWEST period in the list — the box's label and its filter use ONE SHARED date anchor.** A period box with a member
+  'Current Month' / 'Current Year' / 'Current Week' has no other member holding a date after the last date of the member
+  'Current …' (under the box's own visual-level filter). The typical failure: the label 'Current Month' computed from one anchor (the month closed in the books)
+  while the flag column filtering the box (`Flag_is_use`, `DateWithSale`…) is computed from another (the largest month with figures) ⇒ the box shows 'Current Month' and
+  still has a month after it — meaningless. Fix: the label and the flag take the SAME anchor expression (in the SQL partition or one column).
+  Wanting to open on a period other than the newest by default is a presentation decision, ask the owner — never split the anchor. Gate `slicer-current`
+  (engine layer): for each box on the date table, count members other than 'Current …' with `MAX(date)` > the last date of 'Current …' ⇒ > 0 is red.
+  Use `MAX`, not `MIN`: a month member merges several years ('10' = 10/2025 + 10/2026), the first date hides the part beyond.
+- **One geometry:** label 20 + box 40, a step of 65 from `y = 65` ⇒ at most **10 boxes**. The old copy shrank boxes by the number of boxes (`step − 30`): Product
+  with 10 boxes had 34 px while a page with 6 boxes had 50 — exactly what the owner called "the box sizes are wrong".
+- 🔴 **A label must belong to the box right under it** *(Daily's Day box sat under the label "Area Manager")*. `--filter-set` added location boxes
+  **without labels**, then `panel_layout` paired labels by position ⇒ the old labels slid onto the next box: Combo "Monthnumber" over the Area
+  Manager box, Power "StoreName" over District, Promotion "DISCOUNTNAME" over Channel (11 labels across two Whites). Gate `panel-label`: a label
+  must match the box's field name (or an equivalent name in `PANEL_ALIASES`: Month ~ IsCurrentMonth, Area Manager ~ AreaManagerShortName…).
+  Adding a box ⇒ **add its label at the same time**.
+- Operation once had **two Week boxes** (`SortWeekToDate` filtering Week + WoW, `IsCurrentWeek` filtering only WoW) ⇒ keep `SortWeekToDate`.
+- **The machine does it:** `scripts/add_filter_set.py` (adds box + label + syncGroup, fixes bookmarks) → rebuild the page (the builder orders by `filter_rank`) or
+  `--panel-layout` for pages without a spec (Monthly). **The machine watches:** gate `filter-set` (missing box · wrong order · not synced ·
+  a box other than 40 px). Tested red 01/10: AM 145 / OM 180 errors → 0.
+- ⚠ A trap paid for while doing it: changing the label height made the builder unable to find the label mould on Weekly (`StopIteration`) ⇒ every page
+  built after Weekly broke silently, because the bulk command only filtered "Error" lines. In a bulk run, **count the pages built**.
+`options.suppressData = true` for every bookmark that only switches showing/hiding.
 
-🔴 **Luật cũ ghi "nhóm CHA bị ẩn thì bookmark mở con vô nghĩa" — ĐO LẠI THÌ SAI.**
-`Red` làm đúng y như vậy mà vẫn chạy: nhóm `Tab2` `isHidden=true`, con nó cũng `isHidden=true`,
-bookmark `MCP_Tab2` bật **con** lên và **không đụng gì tới nhóm** trong `visualContainers`.
-Lý do: **nhóm có chỗ riêng trong bookmark** — xem `visualContainerGroups` ở §5b. Nhóm nào đóng/mở
-thì khai ở đó; `isHidden` trong `visual.json` chỉ là trạng thái lúc lưu, không phải xiềng.
+🔴 **The old rule saying "a hidden PARENT group makes a bookmark opening its child pointless" — MEASURED AGAIN, IT IS WRONG.**
+`Red` does exactly that and still works: the group `Tab2` `isHidden=true`, its children `isHidden=true` too,
+the bookmark `MCP_Tab2` turns the **children** on and **does not touch the group** in `visualContainers`.
+The reason: **groups have their own place in a bookmark** — see `visualContainerGroups` in §5b. Whichever group closes/opens
+is declared there; `isHidden` in `visual.json` is only the state at save time, not a shackle.
 
-## 3e. TAB — chép khuôn "nút chuyển trang" của khuôn gốc
+## 3e. TABS — copying the original mould's "page switch button"
 
-> Thay hẳn §5 bên dưới ở phần *cách dựng*: đã tìm được khuôn thật, không phải "tự dựng" nữa.
+> Replaces §5 below for *how to build*: the real mould was found, no longer "self-built".
 
-**Vị trí:** tab nằm **trong header**, neo **từ PHẢI qua**, sát nút ⓘ. Đo trên bản AM: nút ⓘ
-(`BT_OpenGuide`) ở `x=1195` ⇒ tab cuối kết ở `1180` (khe `15`).
+**Position:** tabs sit **in the header**, anchored **from the RIGHT**, right next to the ⓘ button. Measured on the AM copy: the ⓘ button
+(`BT_OpenGuide`) at `x=1195` ⇒ the last tab ends at `1180` (gap `15`).
 
-**Khuôn gốc — mỗi nút chuyển trang là 2 image chồng + 1 shape nền:**
+**The original mould — each page switch button is 2 stacked images + 1 background shape:**
 ```
-image BT_<Tên>_Off              trạng thái thường
-image BT_<Tên>_On    <- action  trạng thái đang chọn
-shape tabRoundTopCorners 55x50  nền bo góc, CHỈ hiện ở tab đang chọn
+image BT_<Name>_Off              the normal state
+image BT_<Name>_On    <- action  the selected state
+shape tabRoundTopCorners 55x50  a rounded background, SHOWN only on the selected tab
    tileShape = 'tabRoundTopCorners'
    tabRoundCornerTop = 0 · tabRoundCornerTopRight = 1 · tabRoundCornerBottom = 20
-   fill    = MỘT mục có màu (KHÔNG có mục thứ hai 'show:false')
+   fill    = ONE coloured item (NO second item 'show:false')
    outline = show:false
-   vcObjects = chỉ title + lockAspect  ->  KHÔNG có 'background'
+   vcObjects = only title + lockAspect  ->  NO 'background'
 ```
 
-🔴 **Ba thứ làm tab "chỉnh shape không dính", đã trả giá cả ba:**
-1. `objects.fill` có **mục thứ hai `show:false`** ⇒ shape **vô hình**, bo góc có cũng không thấy.
-2. `visualContainerObjects.background.show = true` ⇒ đang nhìn **nền hình CHỮ NHẬT của container**,
-   nó **không theo hình dạng tab** — chỉnh bo góc bao nhiêu cũng vô ích.
-3. Đặt cả `tabRoundCorner* = 100` **cộng** `tabCutCornerSnipSize = 999` ⇒ hai thuộc tính đánh nhau.
+🔴 **Three things making a tab "ignore shape edits", all three paid for:**
+1. `objects.fill` with **a second item `show:false`** ⇒ the shape is **invisible**, rounded corners or not.
+2. `visualContainerObjects.background.show = true` ⇒ you are looking at **the container's RECTANGULAR background**,
+   it **does not follow the tab shape** — no amount of corner rounding helps.
+3. Setting both `tabRoundCorner* = 100` **and** `tabCutCornerSnipSize = 999` ⇒ the two properties fight.
 
-**Ý đồ thiết kế của người dùng (2026-09-23):** tab **đang mở** tô **trùng màu nền vùng nội dung** để tạo cảm
-giác tab bao trùm phần dưới; tab **đang tắt** sáng nhẹ hơn một chút.
+**The owner's design intent (2026-09-23):** the **open** tab is painted **the same colour as the content area background** to give the
+feeling that the tab wraps the part below; **off** tabs are a little lighter.
 
-⚠ Nhãn chữ để trong `objects.text` của shape (canh giữa), **không** để ở `visualContainerObjects.title`
-— để nó ăn theo hình tab. (`title.text` dùng cho **tên hiện trong Selection**, xem §3c.)
+⚠ The label text goes in the shape's `objects.text` (centred), **not** in `visualContainerObjects.title`
+— so it follows the tab shape. (`title.text` is for **the name shown in Selection**, see §3c.)
 
-### 3e-bis. TAB BẢN WHITE — chuẩn do người dùng tự chỉnh rồi SAVE *(2026-09-24)*
+### 3e-bis. WHITE TABS — the standard the owner adjusted and SAVED *(2026-09-24)*
 
-**Tab CHỈ CÓ CHỮ, tuyệt đối không chèn image.** Người dùng đã tự sửa trong Desktop rồi lưu, lấy đúng bản
-đó làm chuẩn:
+**Tabs have ONLY TEXT, never an image.** The owner fixed it in Desktop and saved, and exactly that copy
+is the standard:
 
 ```
-hình   tileShape='tabRoundTopCorners' · Top=25 · TopRight=20 · Bottom=0
-chữ    fontSize 12 · bold · canh giữa        <- "chữ to"
-ON  (đang mở) nền ThemeDataColor(0, -0.1)  ~ #E6E6E6, TRÙNG màu nền trang #E8E8E8
-              chữ ThemeDataColor(1,  0)    = #2D2D2D
-              y=0 · h=45 · padding.top=5   <- nhô cao hơn, như dính vào vùng nội dung
-OFF (tắt)     nền ThemeDataColor(0, -0.2)  ~ #CCCCCC
-              chữ ThemeDataColor(1,  0.4)  = xám đậm      <- user gọi "màu xám đậm"
+shape  tileShape='tabRoundTopCorners' · Top=25 · TopRight=20 · Bottom=0
+text   fontSize 12 · bold · centred        <- "large text"
+ON  (open)    background ThemeDataColor(0, -0.1)  ~ #E6E6E6, THE SAME as the page background #E8E8E8
+              text ThemeDataColor(1,  0)           = #2D2D2D
+              y=0 · h=45 · padding.top=5   <- sticking up higher, as if attached to the content area
+OFF (off)     background ThemeDataColor(0, -0.2)  ~ #CCCCCC
+              text ThemeDataColor(1,  0.4)         = dark grey      <- the owner calls it "dark grey"
               y=5 · h=40 · padding.top=0
 ```
 
-🔴 **Mỗi tab là HAI shape chồng nhau `_On` / `_Off`**, cùng trỏ về **cùng một** bookmark tab; bookmark
-lật cái nào hiện. Bookmark **không chụp được màu**, nên đổi màu theo trạng thái **chỉ có cách này**.
+🔴 **Each tab is TWO stacked shapes `_On` / `_Off`**, both pointing at **the same** tab bookmark; the bookmark
+flips which one shows. A bookmark **cannot capture colours**, so changing colours by state **has only this way**.
 
-🔴 **LUẬT BẤT BIẾN: mỗi cặp `_On`/`_Off` phải có ĐÚNG MỘT cái hiện.** Cả hai cùng hiện thì người dùng
-thấy **hai tab cùng bật** — đúng lỗi người dùng từng báo. Mặc định trang: **tab 1 `_On` hiện, tab 1
-`_Off` ẩn, tab 2 `_On` ẩn, tab 2 `_Off` hiện.**
+🔴 **THE INVARIANT: each `_On`/`_Off` pair has EXACTLY ONE showing.** Both showing makes the owner
+see **two tabs on at once** — exactly the bug the owner once reported. The page default: **tab 1 `_On` shown, tab 1
+`_Off` hidden, tab 2 `_On` hidden, tab 2 `_Off` shown.**
 
-🔴 **`<Trang>_Main` phải TRÙNG KHÍT bookmark của tab mặc định** — nó vừa là "về trạng thái gốc của
-trang" vừa là "tab 1 đang bật". Hai cái lệch nhau là bấm Reset xong tab hiện sai.
+🔴 **`<Page>_Main` must MATCH EXACTLY the default tab's bookmark** — it is both "back to the page's original state"
+and "tab 1 on". The two differing means after pressing Reset the wrong tab shows.
 
-⚠ **Save trong Desktop LẬT lại cặp này.** Desktop ghi **trạng thái đang xem** thành mặc định trang;
-lúc người dùng mở file mà không bấm bookmark nào thì cả 4 shape đều hiện, Save phát là **cả 4 vào file với
-`isHidden` sạch**. Đã trúng thật: 4/4 shape tab về `isHidden=false`. ⇒ **Mỗi lần người dùng Save xong, kiểm
-lại cặp `_On`/`_Off` trước khi làm tiếp** — đừng tin trạng thái mình ghi lượt trước còn nguyên.
+⚠ **A Save in Desktop FLIPS this pair back.** Desktop writes **the state being viewed** as the page default;
+when the owner opens the file without clicking any bookmark all 4 shapes show, one Save and **all 4 go into the file with
+a clean `isHidden`**. Hit for real: 4/4 tab shapes back to `isHidden=false`. ⇒ **After each Save by the owner, check
+the `_On`/`_Off` pairs again before going on** — never trust that the state you wrote last round is still intact.
 
 🔴 `ThemeDataColor.ColorId`: `0` = `background` · `1` = `foreground` · **`2` = `dataColors[0]`**, `3` = `dataColors[1]` … `9` =
-`dataColors[7]`. *(Sửa 01/10 — bản cũ ghi "`2` = nền phụ · `3` = `tableAccent`, từ `4` mới tới màu data" là SAI: đo trên file mẫu
-Original, thẻ `ColorId 6` hiện `#13678A` = `dataColors[4]`; theo bản cũ phải là xanh lá `#199900`.)* `Percent` âm = đậm, dương = nhạt.
+`dataColors[7]`. *(Fixed 01/10 — the old version saying "`2` = secondary background · `3` = `tableAccent`, data colours only from `4`" was WRONG: measured on the
+Original sample file, a card with `ColorId 6` shows `#13678A` = `dataColors[4]`; by the old version it should have been the green `#199900`.)* A negative `Percent` = darker, positive = lighter.
 
-## 4. Hàng card — `cardVisual`, icon NẰM TRONG visual
+## 4. The card row — `cardVisual`, the icon INSIDE the visual
 
-- 🔴 **Icon là `ResourcePackageItem` trỏ PNG cục bộ — KHÔNG phải measure.** Sổ cũ ghi nó trỏ measure
-  họ `~URL_*`; đo trên khuôn gốc thì **sai**, theo sổ là đẻ ra 6 measure vô dụng.
-- 🔴 **`card` cũ và `cardVisual` KHÁC schema truy vấn** — `queryState.Values` ↔ `queryState.Data`.
-- ⚠ **Đừng phủ ảnh rời lên `card` cũ** để giả làm icon: ảnh nhỏ, lệch, nhãn phải dựng bằng shape rời
-  vì `card` cũ vẽ *số trên — nhãn dưới*. Đã bị người dùng bác hai lượt.
-- 📌 Khuôn JSON đầy đủ + cỡ icon theo cỡ card: [`reference/measured.md`](reference/measured.md) §1.
+- 🔴 **The icon is a `ResourcePackageItem` pointing at a local PNG — NOT a measure.** The old ledger said it pointed at measures
+  of the `~URL_*` family; measured on the original mould that is **wrong**, following the ledger produced 6 useless measures.
+- 🔴 **The old `card` and `cardVisual` have DIFFERENT query schemas** — `queryState.Values` ↔ `queryState.Data`.
+- ⚠ **Do not lay a separate picture over an old `card`** to fake an icon: the picture is small, off, the label must be built with a separate shape
+  because the old `card` draws *figure on top — label below*. Rejected by the owner twice.
+- 📌 The full JSON mould + icon size by card size: [`reference/measured.md`](reference/measured.md) §1.
 
-### 4b. THIẾT KẾ THẺ — đơn giản, KHÔNG viền
+### 4b. CARD DESIGN — simple, NO border
 
 ```
-nền thẻ   #FFFFFF        bo góc 12
-viền      KHÔNG có       (border.color = #FFFFFF, không phải màu nhấn)
-nền trang #E8E8E8        để thẻ nổi lên
-icon      nằm TRONG card, bên TRÁI, mỗi thẻ MỘT màu
+card background #FFFFFF        rounded corners 12
+border          NONE           (border.color = #FFFFFF, not an accent colour)
+page background #E8E8E8        so the cards stand out
+icon            INSIDE the card, on the LEFT, ONE colour per card
 ```
 
-🔴 **Đừng tự ý đi viền màu.** Bản đầu để `border.color = #C51E24` ⇒ 6 thẻ viền đỏ, người dùng bác.
+🔴 **Do not add coloured borders on your own.** The first version had `border.color = #C51E24` ⇒ 6 cards with red borders, rejected by the owner.
 
-**Màu thẻ lấy từ BẢNG MÀU ĐÓNG (design.md §1.1), gán theo NGHĨA chứ không theo mắt:**
+**Card colours come from THE CLOSED COLOUR TABLE (design.md §1.1), assigned by MEANING, not by eye:**
 
-| Thẻ | HEX | Căn cứ trong bảng |
+| Card | HEX | Basis in the table |
 |---|---|---|
-| Revenue | `#3D7EBF` | chuỗi 1 — nhóm **doanh thu** |
-| Target | `#C51E24` | Primary Red — màu nhấn |
-| TC | `#2E9C7A` | chuỗi 3 |
-| TA | `#D2792F` | chuỗi 2 |
-| GC | `#5A5FA8` | chuỗi 4 — chỉ số tổng hợp |
+| Revenue | `#3D7EBF` | series 1 — the **revenue** group |
+| Target | `#C51E24` | Primary Red — the accent colour |
+| TC | `#2E9C7A` | series 3 |
+| TA | `#D2792F` | series 2 |
+| GC | `#5A5FA8` | series 4 — a composite indicator |
 | GA | `#136C99` | Hierarchy Blue |
 
-⚠ **Bảng màu là DANH SÁCH ĐÓNG** — thiếu màu thì **HỎI**, cấm tự pha.
+⚠ **The colour table is a CLOSED LIST** — a colour missing ⇒ **ASK**, never mix one yourself.
 
-🔴 **XUNG ĐỘT CHƯA GIẢI — số trong thẻ có được tô màu không?**
-Ảnh mẫu người dùng đưa có **số tô màu theo thẻ**. Nhưng design.md §1.3 ghi
-*"MỌI chữ trên nền sáng → `#2D2D2D`, không có ngoại lệ"*. Hiện đang **chỉ tô icon, số để `#2D2D2D`**.
-Muốn tô số thì **phải sửa chuẩn ở repo quản lý vùng trước**, không phá lệ trong im lặng.
+🔴 **AN UNRESOLVED CONFLICT — may the figure in a card be coloured?**
+The sample picture the owner gave has **figures coloured by card**. But design.md §1.3 says
+*"EVERY text on a light background → `#2D2D2D`, no exception"*. Currently **only the icon is coloured, the figure stays `#2D2D2D`**.
+To colour the figures **the standard must first be changed in the region manager repo**, never broken silently.
 
-### 4c. BỘ KHOÁ `cardVisual` — chép nguyên, thiếu cụm là bố cục nhảy
+### 4c. THE `cardVisual` KEY SET — copied whole, a missing cluster makes the layout jump
 
-Khuôn đo trên thẻ chuẩn của `Red` (`.../b3ad2f4c.../4f2c0e7c73d84cd89db3`). **Thiếu cụm `layout`
-là PBI rơi về bố cục mặc định** — lúc đó chỉnh `value.bold`, chỉnh vị trí icon đều như không:
+The mould measured on the standard card of `Red` (`.../b3ad2f4c.../4f2c0e7c73d84cd89db3`). **Without the `layout` cluster
+PBI falls back to the default layout** — then editing `value.bold` or the icon position does nothing:
 
 ```
-objects.layout   [ {style:'Cards'} ,                       <- mục THƯỜNG
+objects.layout   [ {style:'Cards'} ,                       <- a NORMAL item
                    {backgroundShow:false, rectangleRoundedCurve:25L}@default ]
 objects.spacing  { verticalSpacing: 0L }@default
 objects.padding  { paddingSelection: 'Narrow' }@default
@@ -570,48 +570,48 @@ objects.value    { show:true }  +  { bold, fontSize, fontColor,
                    textWrap:false, showBlankAs:'No Data' }@default
 objects.image    { show, image{name,url:ResourcePackageItem,scaling},
                    position:'Left', size, padding, imageType:'image' }@default
-accentBar · grid · divider · referenceLabel{Title,Value}   đều show:false@default
+accentBar · grid · divider · referenceLabel{Title,Value}   all show:false@default
 
-visualContainerObjects.padding   { left:10D, top:5D, bottom:5D }   <- KHÔNG phải 0 bốn phía
+visualContainerObjects.padding   { left:10D, top:5D, bottom:5D }   <- NOT 0 on all four sides
 visualContainerObjects.visualHeader { show:false }
 ```
 
-🔴 **`image.imageAreaSize` GIỚI HẠN BỀ NGANG cột ảnh — thiếu nó là icon phình chiếm hết thẻ.**
-Thẻ `150×90` của bản White: `imageAreaSize 18L · size 8L · padding 4L`. Icon neo được vào đầu là nhờ
-`position:'Left'` **cộng** `visualContainerObjects.padding.left` khác 0.
+🔴 **`image.imageAreaSize` LIMITS THE WIDTH of the picture column — without it the icon swells over the whole card.**
+The White copy's `150×90` card: `imageAreaSize 18L · size 8L · padding 4L`. The icon anchors at the start thanks to
+`position:'Left'` **plus** a non-zero `visualContainerObjects.padding.left`.
 
-⚠ Thẻ chỉ rộng `150` ⇒ **mỗi pixel cột ảnh ăn thẳng vào nhãn**. Icon to một chút là `REVENUE` cụt
-thành `REVE...`. Đổi cỡ icon thì **nhìn lại nhãn dài nhất** trước khi báo xong.
+⚠ The card is only `150` wide ⇒ **every pixel of the picture column eats straight into the label**. A slightly bigger icon cuts `REVENUE`
+to `REVE...`. Changing the icon size ⇒ **look at the longest label again** before reporting done.
 
-🔴 **Padding khung để 0 cả bốn phía ⇒ nội dung dán sát mép**, nhìn như icon bị thả trôi. Red dùng
+🔴 **Frame padding 0 on all four sides ⇒ the content sticks to the edges**, looking as if the icon was dropped loose. Red uses
 `left 10 / top 5 / bottom 5`.
 
-⚠ **`%` đi kèm value:** bản White đang để `%` là **một `card` cũ rời** chồng lên thẻ, không phải
-reference label. Muốn nó *"kế bên value"* thì đặt toạ độ ngang hàng dải value của thẻ
-(thẻ `150×90` ⇒ `%` ở `x=95 y=50 w=52 h=22`). **Chưa dùng `referenceLabelLayout.position` cho
-kiểu "beside"** — trong cả 4 report của repo chỉ đọc được giá trị `'below'`, chưa có file thật nào
-chứng minh tên giá trị còn lại, mà **đoán tên giá trị chính là thói quen làm vỡ file**.
+⚠ **The `%` with the value:** the White copy has the `%` as **a separate old `card`** laid over the card, not a
+reference label. To have it *"beside the value"* place it level with the card's value strip
+(a `150×90` card ⇒ the `%` at `x=95 y=50 w=52 h=22`). **`referenceLabelLayout.position` is not yet used for
+a "beside" style** — across all 4 reports of the repo only the value `'below'` could be read, no real file yet
+proves the name of the other value, and **guessing value names is exactly the habit that breaks files**.
 
-### 4d. KHUÔN THẺ KPI — đo trên mẫu người dùng TỰ DỰNG *(2026-09-24)*
+### 4d. THE KPI CARD MOULD — measured on a sample the owner BUILT THEMSELVES *(2026-09-24)*
 
-Người dùng tự dựng nhóm `Revenue` trong Desktop rồi lưu ⇒ **đó là khuôn, nhân bản ra 5 thẻ còn lại**.
-Toạ độ con là **tương đối so với nhóm**:
+The owner built the `Revenue` group in Desktop and saved it ⇒ **that is the mould, copied for the other 5 cards**.
+Child coordinates are **relative to the group**:
 
 ```
-nhóm  <Tên>                x=X y=0  w=150.47759000734754 h=105.28655400440853 z=2000
-  Card_<Tên>  cardVisual   x=0 y=0  w=150.47759000734754 h=90.28655400440853  z=2000
-  Pct_<...>   card (cũ)    x=5 y=70 w=100                h=25                 z=1000
-  BG_<Tên>    shape        x=0 y=15 w=150                h=90.286554004408529 z=0
+group  <Name>                x=X y=0  w=150.47759000734754 h=105.28655400440853 z=2000
+  Card_<Name>  cardVisual   x=0 y=0  w=150.47759000734754 h=90.28655400440853  z=2000
+  Pct_<...>    card (old)   x=5 y=70 w=100                h=25                 z=1000
+  BG_<Name>    shape        x=0 y=15 w=150                h=90.286554004408529 z=0
         tileShape='rectangleRoundedByPixel' · rectangleRoundedCurve=12L
-        fill@default = ThemeDataColor(0,0)  (trắng)
+        fill@default = ThemeDataColor(0,0)  (white)
 ```
-⚠ **`Card_` và `BG_` lệch nhau 15px theo trục y** trong mẫu gốc — giữ nguyên, đừng "sửa cho thẳng".
-Hàng thẻ nằm ở dải `y=15..105`, khớp với `RevenueByChannel` bên cạnh.
+⚠ **`Card_` and `BG_` are offset by 15px on the y axis** in the original sample — keep it, do not "straighten" it.
+The card row sits in the strip `y=15..105`, matching `RevenueByChannel` beside it.
 
-**Thẻ KHÔNG dùng icon nữa** — `image.show=false`, **giữ nguyên object ảnh**
-để bật lại được. Thay vào đó **màu chữ của value = màu của icon cũ**:
+**Cards NO longer use icons** — `image.show=false`, **keeping the picture object**
+so it can be turned back on. Instead **the value's text colour = the old icon's colour**:
 
-| Thẻ | icon cũ | đo được từ PNG | dùng |
+| Card | old icon | measured from the PNG | used |
 |---|---|---|---|
 | Revenue | `kpi_revenue.png` | `#3878B8` | `#3D7EBF` |
 | Target | `kpi_target.png` | `#C01820` | `#C51E24` |
@@ -620,115 +620,115 @@ Hàng thẻ nằm ở dải `y=15..105`, khớp với `RevenueByChannel` bên c�
 | GC | `kpi_gc.png` | `#5858A8` | `#5A5FA8` |
 | GA | `kpi_ga.png` | `#106898` | `#136C99` |
 
-Sáu màu đo được **trùng khít bảng màu đóng** ở §4b ⇒ không phải pha màu mới.
-🔴 Việc này **phá lệ design.md §1.3** ("mọi chữ trên nền sáng → `#2D2D2D`") — người dùng chốt miệng
-2026-09-24; **phải sửa chuẩn ở repo quản lý vùng**, xem §4b.
+The six measured colours **match the closed colour table exactly** in §4b ⇒ no new colours mixed.
+🔴 This **breaks design.md §1.3** ("every text on a light background → `#2D2D2D`") — the owner settled it verbally
+2026-09-24; **the standard must be changed in the region manager repo**, see §4b.
 
-⚠ Thẻ chỉ có nhãn + value + `%`: **nhãn `label.fontSize=10D` bold `#2D2D2D`**, value **`18D`** bold
-canh trái, `%` là **một `card` cũ RỜI** đặt dưới value — rời mới sửa được.
+⚠ A card holds only a label + value + `%`: **the label `label.fontSize=10D` bold `#2D2D2D`**, the value **`18D`** bold
+left-aligned, the `%` is **a SEPARATE old `card`** placed under the value — separate so it can be edited.
 
-🔴 **CỠ SỐ CỦA THẺ = `18D`, CHUNG CHO MỌI THẺ**. Thẻ rộng `150`
-nhưng cột số chỉ chứa **~90 px**, vì cột ảnh (`imageAreaSize 18L`) vẫn giữ chỗ khi ảnh đã tắt.
-Đo bằng font Segoe UI đậm: ở cỡ 20, `78.54K` = 86 px (vừa) còn `139.04K` = 101 px ⇒ thẻ TA hiện
-`139.0…` dù số đã rút gọn đúng 2 chữ số thập phân. Cỡ 18 ⇒ `139.04K` ≈ 91 px.
-- Đổi cỡ thì đổi **cả hàng thẻ trên mọi trang**, không hạ riêng một thẻ (lệch cỡ với thẻ bên cạnh).
-- `imageAreaSize` Desktop mới ghi đúng một giá trị `18L` ⇒ **đừng đoán giá trị khác** để nới cột số.
-- Cổng `kpi-card` của `scripts/pbi_gate.py` báo đỏ khi `value.fontSize` khác `18D`.
-- **"Card" = ô số nhỏ ở đầu trang, KHÔNG phải chart**. Luật cỡ 18 áp cho
-  cả **card kiểu cũ** (`card`, tên `Card_*`, ví dụ lưới 25 ô của ABC Operation) — số của nó nằm ở
-  `objects.labels.fontSize`. `Pct_*` là `card` cũ dùng làm dòng % dưới thẻ ⇒ **không** áp.
+🔴 **THE CARD FIGURE SIZE = `18D`, SHARED BY EVERY CARD**. The card is `150` wide
+but the figure column holds only **~90 px**, because the picture column (`imageAreaSize 18L`) keeps its room even with the picture off.
+Measured in bold Segoe UI: at size 20, `78.54K` = 86 px (fits) while `139.04K` = 101 px ⇒ the TA card showed
+`139.0…` though the figure was correctly shortened to 2 decimals. Size 18 ⇒ `139.04K` ≈ 91 px.
+- Changing the size changes **the whole card row on every page**, never lowering one card alone (a size off from the card beside it).
+- Recent Desktop writes only one `imageAreaSize` value, `18L` ⇒ **do not guess another value** to widen the figure column.
+- The `kpi-card` gate of `scripts/pbi_gate.py` reports red when `value.fontSize` differs from `18D`.
+- **"Card" = a small figure box at the top of the page, NOT a chart**. The size-18 rule applies to
+  **old-style cards** too (`card`, named `Card_*`, e.g. the 25-box grid of ABC Operation) — their figure sits in
+  `objects.labels.fontSize`. `Pct_*` are old `card`s used as the % line under a card ⇒ **not** applied.
 
-### 4d-bis. CARD TỰ TẠO 1–3 CÁI THÌ BỎ · CARD LEGACY THÌ GIỮ, THÊM CHO ĐỦ 4
+### 4d-bis. 1–3 SELF-MADE CARDS ARE DROPPED · LEGACY CARDS ARE KEPT, TOPPED UP TO 4
 
-> *"có mấy trang có 2-3 card thì để làm gì? bỏ luôn card đi"* — luật này **chỉ áp cho card TỰ TẠO MỚI**.
+> Pages with 2–3 cards serve no purpose, drop the cards — this rule **applies only to NEWLY SELF-MADE cards**.
 
-- **Card có sẵn từ Legacy thì GIỮ.** Dựng lại trên khuôn thẻ §4d, dùng đúng measure bản Classic đã nối, rồi
-  **thêm card cho đủ tối thiểu 4** bằng chỉ số trang đó đang đọc. Lấy measure đã có trong model, ưu tiên cặp
-  giá trị + dòng `Pct_` so kỳ như lưới ABC Operation.
-- Card **tự tạo mới** (Legacy không có) mà trang chỉ có 1–3 cái ⇒ **xoá cả nhóm `Card`**, tab Tổng quan về
-  `y=15 h=660`, xoá khỏi bookmark · `visualInteractions` · Glossary.
-- Một card Legacy được coi là **còn** khi còn đúng id, hoặc measure của nó (hay measure bọc nó, `= [X]`) hiện
-  trên một thẻ hoặc dòng `Pct_` cùng trang. Bỏ có chủ đích thì khai `dropped_visuals` (§4i).
-- 📌 **Bản 26/09 áp sai**: đã xoá card Legacy của Daily Sales (3) · Executive (7) · Product Mix (3), rồi lượt cắt
-  model xoá luôn `#Count Store This Month` và `%Total Cost Lt`. Dựng lại 27/09: Daily Sales 4 thẻ · Product Mix
-  4 thẻ · Executive 7 thẻ, bằng mục `__cards__` của bộ dựng (§8); hai measure chép lại nguyên văn từ Classic.
-- Cổng: `few-cards` (trang còn 1–3 card) + `legacy-parity` (card Legacy vắng mặt mà không khai lý do).
-- 🔴 **MỌI ô số trên MỌI trang theo khuôn thẻ KPI — không còn lưới `card` kiểu cũ** *("cấu trúc card bạn cũng ko áp
-  cho hết mọi trang, bộ dò ki vậy ko dò dc à")*. Đo 01/10: Operation 25 ô + Promotion Increase Sale 12 ô vẫn là `card` cũ, nền màu
-  ngoài bộ (`#2BF23E`, `#730C0C`, `#34C7E1`) — cổng cũ không soi loại `card`. Nay dựng bằng `__cards__` (một tab được **nhiều hàng**:
-  hàng thứ hai đặt ở `y = 110`, id nhóm theo `y`):
-  - **Operation (người dùng chọn "2 hàng, Gap vào dòng %")**: hàng 1 Revenue · Target MTD · Target · FC · ADS · Sale LM; hàng 2 TC · TA ·
-    GC · GA · Same Store. Mỗi chỉ số một thẻ, dòng % = so LMTD / of Target / FC vs LM / vs LY; 6 thẻ Gap tuyệt đối bỏ (đọc ở bảng
-    Tháng/MoM); bảng Same Store một dòng thành thẻ. Dưới hai hàng: donut kênh + doanh thu theo ngày (dời từ tab Ngày, tab đó bỏ).
-  - **Promotion Increase Sale (người dùng chọn "6 thẻ KM")**: 6 thẻ phần khuyến mãi — Sale · TC (of Sales / of TC, tỉ trọng, không tô) ·
-    TA · GA · GS (vs all = KM / mọi bill − 1, measure mới ở cả 4 model) · GC (of GC). Số toàn cửa hàng bỏ khỏi hàng thẻ.
-  - Cổng `card-structure`: `card` (trừ dòng `Pct_`) trên trang hiện ⇒ đỏ. Thử đỏ trên HEAD: 37 ô → 0.
+- **Cards already in Legacy are KEPT.** Rebuilt on the card mould of §4d, using exactly the measures the Classic copy reconnected, then
+  **cards added up to a minimum of 4** with indicators that page already reads. Take measures already in the model, preferring a
+  value + a `Pct_` period-comparison line pair like the ABC Operation grid.
+- **Newly self-made** cards (Legacy has none) on a page with only 1–3 of them ⇒ **delete the whole `Card` group**, the Overview tab back to
+  `y=15 h=660`, removed from bookmarks · `visualInteractions` · the Glossary.
+- A Legacy card counts as **still present** while its id remains, or its measure (or a measure wrapping it, `= [X]`) shows
+  on a card or `Pct_` line on the same page. Dropping one on purpose ⇒ declare it in `dropped_visuals` (§4i).
+- 📌 **The 26/09 version applied it wrongly**: it deleted the Legacy cards of Daily Sales (3) · Executive (7) · Product Mix (3), then the model-trimming
+  round also deleted `#Count Store This Month` and `%Total Cost Lt`. Rebuilt 27/09: Daily Sales 4 cards · Product Mix
+  4 cards · Executive 7 cards, with the builder's `__cards__` item (§8); the two measures copied back word for word from Classic.
+- Gates: `few-cards` (a page left with 1–3 cards) + `legacy-parity` (a Legacy card absent without a declared reason).
+- 🔴 **EVERY figure box on EVERY page follows the KPI card mould — no old-style `card` grids remain** *(the card structure was not applied
+  to every page either — can the checker not find that?)*. Measured 01/10: Operation 25 boxes + Promotion Increase Sale 12 boxes were still old `card`s, background colours
+  outside the set (`#2BF23E`, `#730C0C`, `#34C7E1`) — the old gate did not look at the `card` kind. Now built with `__cards__` (a tab may have **several rows**:
+  the second row placed at `y = 110`, group ids by `y`):
+  - **Operation (the owner chose "2 rows, Gap into the % line")**: row 1 Revenue · Target MTD · Target · FC · ADS · Sale LM; row 2 TC · TA ·
+    GC · GA · Same Store. One card per indicator, the % line = vs LMTD / of Target / FC vs LM / vs LY; the 6 absolute Gap cards dropped (read in the
+    Month/MoM table); the one-row Same Store table became a card. Under the two rows: the channel donut + revenue by day (moved from the Day tab, that tab dropped).
+  - **Promotion Increase Sale (the owner chose "6 promotion cards")**: 6 cards of the promotion part — Sale · TC (of Sales / of TC, shares, not coloured) ·
+    TA · GA · GS (vs all = promotion / every bill − 1, a new measure in all 4 models) · GC (of GC). Whole-store figures dropped from the card row.
+  - Gate `card-structure`: a `card` (except `Pct_` lines) on a shown page ⇒ red. Tested red on HEAD: 37 boxes → 0.
 
-### 4e. HÀNG CARD THUỘC TAB NÀO
+### 4e. WHICH TAB THE CARD ROW BELONGS TO
 
-**Hàng card là của tab "Tổng quan".** Tab "Chi tiết" **không có card** và chiếm **trọn** vùng nội
-dung. ⇒ nhóm `Card` phải nằm **TRONG** nhóm `Tab1_TongQuan`, không được để ngoài.
+**The card row belongs to the "Overview" tab.** The "Detail" tab **has no cards** and takes **the whole** content
+area. ⇒ the `Card` group must sit **INSIDE** the `Tab1_TongQuan` group, never outside it.
 
-> Luật này **thay** câu ghi ngày 23/09 *("hàng card KHÔNG đổi theo tab ⇒ nằm ngoài nhóm tab")*.
+> This rule **replaces** the sentence of 23/09 *("the card row does NOT change with the tab ⇒ it sits outside the tab groups")*.
 
-🔴 **Độ lệch 15px của thẻ LÀM HỎNG mốc trên của tab không có card.** Hộp `Card_*` ở `y=0` còn nền
-`BG_*` ở `y=15`, nên hộp thẻ **nhô cao hơn phần nhìn thấy 15px** và kéo biên nhóm `Chart` lên `y=40`,
-trong khi header cao `50`.
+🔴 **The cards' 15px offset BREAKS the top edge of a tab without cards.** The `Card_*` box at `y=0` while the background
+`BG_*` at `y=15`, so the card box **sticks up 15px above its visible part** and pulls the `Chart` group's edge up to `y=40`,
+while the header is `50` tall.
 
-| | mốc trong `Chart` | tuyệt đối | |
+| | edge inside `Chart` | absolute | |
 |---|---|---|---|
-| `Tab1_TongQuan` (có card) | `y=0` | `40..715` | ✅ 15px đầu là phần nhô **vô hình** |
-| `Tab2_ChiTiet` (không card) | `y=0` | `40..715` | ⛔ **đè lên header** — |
-| `Tab2_ChiTiet` đã sửa | `y=15` | `55..715` | ✅ cao `660` |
+| `Tab1_TongQuan` (with cards) | `y=0` | `40..715` | ✅ the first 15px are the **invisible** overhang |
+| `Tab2_ChiTiet` (no cards) | `y=0` | `40..715` | ⛔ **covers the header** — |
+| `Tab2_ChiTiet` fixed | `y=15` | `55..715` | ✅ `660` tall |
 
-`660 = 320 + 20 + 320`, mọi số chia hết 5. **Tab nào không có hàng card thì phải tự bù 15px** —
-đừng lấy mốc của tab có card áp sang.
+`660 = 320 + 20 + 320`, every figure divisible by 5. **A tab without a card row must make up the 15px itself** —
+never take the edge of a tab with cards over to it.
 
-**Mỗi thẻ đều phải có `%` bên dưới.** Chọn measure theo **DAX đã đọc**, không theo tên:
+**Every card must have a `%` underneath.** Choose the measure by **the DAX read**, not by the name:
 
-| Thẻ | `%` | DAX |
+| Card | `%` | DAX |
 |---|---|---|
-| Revenue | `%Revenue of Target` | `[#Total Sale]/[#Switch Target]` — tỉ lệ đạt |
-| Target | `%Grow Sales of Target` | `[#Total Sale]/[#Switch Target] - 1` — vượt/hụt |
+| Revenue | `%Revenue of Target` | `[#Total Sale]/[#Switch Target]` — the achievement rate |
+| Target | `%Grow Sales of Target` | `[#Total Sale]/[#Switch Target] - 1` — over/under |
 | TC · TA · GC · GA | `%Grow <X> vs LMTD` | `[#TM <X> Ld]/[#<X> LMTD Completed Day] - 1` |
 
-⚠ Họ `%Grow … vs LMTD` là **họ duy nhất phủ đủ cả 4 chỉ số** — không có `%<X> of Target` cho
-TC/TA/GC/GA. Đừng bịa tên measure theo quy luật; **mở `#Measure.tmdl` đọc DAX rồi mới gán.**
+⚠ The `%Grow … vs LMTD` family is **the only family covering all 4 indicators** — there is no `%<X> of Target` for
+TC/TA/GC/GA. Never invent measure names by a pattern; **open `#Measure.tmdl` and read the DAX before assigning.**
 
-⚠ **Màu title của chart: `#2D2D2D`** (design.md §1.3). Bản Legacy để `#3300FF` — chép nguyên
-là lệch chuẩn; 9 chart đã phải sửa lại.
+⚠ **Chart title colour: `#2D2D2D`** (design.md §1.3). The Legacy copy uses `#3300FF` — copying it as is
+is off-standard; 9 charts had to be fixed.
 
-### 4f. 🔴 LƯỚI CÁCH ĐỀU 5 — luật hình học của cả trang
+### 4f. 🔴 THE EVEN 5 GRID — the geometric law of the whole page
 
-**Mọi khe hở trên trang đều đúng `5`. Không có `10`, không có số lẻ.**
+**Every gap on the page is exactly `5`. No `10`, no odd numbers.**
 
-🔴 **CHIA ĐỀU LÀ BẰNG NHAU TUYỆT ĐỐI** *("nếu trên dưới chia bằng nhau thì số chia và vị trí nằm phải
-giống nhau")*. Khe giữ `5`; khối nào được chia đều thì **cùng kích thước tới từng số lẻ**, kể cả khi ra ngoài lưới 5:
-2 khối trên vùng tab cao 660 = `327.5 + 5 + 327.5` · 2 cột trên 1270 = `632.5 + 5 + 632.5` · 4 ô trên 1270 = `313.75 × 4`.
-**Cấm làm tròn rồi dồn phần thừa cho một ô** (`325 + 5 + 330`, `315 · 315 · 315 · 310`) — đó là lệch thấy được bằng mắt.
-Đo 08/10: 33 cặp `325/330` ở các report White của ABC, 4 hàng thẻ `315/310` + 3 cặp ở XYZ. Máy canh: luật `equal-split`; ngoại lệ
-của `grid5` chỉ cho số lẻ khi khối có anh em cùng cỡ, khối liền sau nó, và những gì nằm trong nó.
+🔴 **AN EVEN SPLIT IS ABSOLUTELY EQUAL** *(when top and bottom are split equally the split sizes and positions must
+be identical)*. The gap stays `5`; blocks split evenly have **the same size down to every decimal**, even when off the 5 grid:
+2 blocks in a tab area 660 tall = `327.5 + 5 + 327.5` · 2 columns over 1270 = `632.5 + 5 + 632.5` · 4 boxes over 1270 = `313.75 × 4`.
+**Never round and push the remainder onto one box** (`325 + 5 + 330`, `315 · 315 · 315 · 310`) — that is a difference the eye sees.
+Measured 08/10: 33 pairs of `325/330` in ABC's White reports, 4 card rows of `315/310` + 3 pairs at XYZ. The machine watches: the rule `equal-split`; the exception
+of `grid5` allows decimals only for a block with siblings of the same size, the block right after it, and what sits inside it.
 
 ```
 canvas 1280 x 720 · header 0..50
-vùng nội dung   x 5..1275   y 55..715      <- lề trang 5 mỗi phía
+content area   x 5..1275   y 55..715      <- a page margin of 5 on each side
 ```
 
-| Khe | Bằng |
+| Gap | Equals |
 |---|---|
-| lề ngoài cùng của trang | `5` |
-| từ đáy header xuống khối đầu tiên | `5` |
-| giữa hai khối dashboard bất kỳ | `5` |
-| **chart thụt vào trong khung `BG_` của chính nó** | **`5` mỗi phía** |
-| từ rìa phải `BG_` tới nút của dashboard đó | `5` |
+| the outermost page margin | `5` |
+| from the bottom of the header to the first block | `5` |
+| between any two dashboard blocks | `5` |
+| **a chart indented inside its own `BG_` frame** | **`5` on each side** |
+| from the right edge of `BG_` to that dashboard's button | `5` |
 
-🔴 **Bẫy "lề 10": lồng hai lớp cùng thụt 5.** Nhóm `Chart` đã ở `x=5`, con bên trong lại để `x=5`
-nữa ⇒ ra `10`. **Lớp ngoài giữ lề, lớp trong bắt đầu từ `0`.**
+🔴 **The "margin 10" trap: two nested layers both indented 5.** The `Chart` group is already at `x=5`, a child inside also at `x=5`
+⇒ it comes out `10`. **The outer layer keeps the margin, the inner layer starts from `0`.**
 
-**Khối `BG_` + chart:** `BG_` đặt `(0, 0, w, h)`; chart đặt `(5, 5, w−10, h−10)`.
-Nút của dashboard neo **góc phải trên**: `x = w − 5 − rộng_nút`, `y = 5`; hai nút cạnh nhau cách `5`.
+**A `BG_` + chart block:** `BG_` at `(0, 0, w, h)`; the chart at `(5, 5, w−10, h−10)`.
+A dashboard's buttons anchor at **the top right corner**: `x = w − 5 − button width`, `y = 5`; two buttons side by side `5` apart.
 
-**Bố cục trang 1 đã chốt** (toạ độ trong nhóm `Chart` ở `(5,40)`):
+**The settled layout of page 1** (coordinates inside the `Chart` group at `(5,40)`):
 
 ```
 Tab1_TongQuan (0,0,1270,675)          Tab2_ChiTiet (0,15,1270,660)
@@ -736,184 +736,184 @@ Tab1_TongQuan (0,0,1270,675)          Tab2_ChiTiet (0,15,1270,660)
   RevenueTrend    (0,110, 720,250)      RevenueDistribution (  0,330, 560,330)
   ChannelMix    (725,110, 545,250)      ChannelByMonth      (565,330, 705,330)
   OldStore        (0,365,1270,310)
-hàng thẻ: 6 x 150 khe 5  +  pie 340  =  1270
+card row: 6 x 150 gap 5  +  pie 340  =  1270
 ```
 
-### 4g. TITLE VÀ LEGEND — một cỡ, đều NEO TRÁI
+### 4g. TITLES AND LEGENDS — one size, all ANCHORED LEFT
 
 ```
 title  : fontSize 12D · alignment 'left' · fontColor '#2D2D2D'
-legend : chart trục 'Top' (neo trái) · donut/pie 'RightCenter'   <- 'TopLeft' KHÔNG hợp lệ
+legend : axis charts 'Top' (anchored left) · donut/pie 'RightCenter'   <- 'TopLeft' is NOT valid
 ```
-⛔ **Không canh giữa.** Bản Legacy để mỗi chart một cỡ (`9` · `12` · `13` · `17`) và canh giữa —
-chép nguyên là lệch. Đã phải nắn lại 9 chart.
+⛔ **No centring.** The Legacy copy gives each chart its own size (`9` · `12` · `13` · `17`) and centres them —
+copying it as is drifts. 9 charts had to be reshaped.
 
-### 4h. TÊN BÁO CÁO TRONG HEADER phải theo TÊN FILE ĐÃ CHỐT
+### 4h. THE REPORT NAME IN THE HEADER follows THE SETTLED FILE NAME
 
-File là `ABC_02_STORE-REPORT-AM_Live` (Store Report) mà header vẫn để `REVENUE` ⇒ sai. **Đổi tên file thì sửa luôn chữ
-trong header** — nó nằm ở `visualContainerObjects.title.text` của shape `TXT_ReportType`. Header chỉ lấy phần
-`<CHỨC-NĂNG>`, thay `-` bằng dấu cách (`STORE REPORT`): **không** đưa số, mã phòng, bậc hay hậu tố cách nạp
-`Live`/`Scheduled` vào header (04/10, khuôn file chốt lại 05/10).
+The file is `ABC_02_STORE-REPORT-AM_Live` (Store Report) while the header still says `REVENUE` ⇒ wrong. **Renaming the file means editing the header
+text too** — it sits in `visualContainerObjects.title.text` of the shape `TXT_ReportType`. The header takes only the
+`<FUNCTION>` part, replacing `-` with spaces (`STORE REPORT`): **no** number, department code, tier or load-mode suffix
+`Live`/`Scheduled` in the header (04/10, the file mould settled again 05/10).
 
-### 4i. HÀNG CARD CHỈ CHỨA CARD
+### 4i. THE CARD ROW HOLDS ONLY CARDS
 
-Nhóm `Card` chỉ chứa **nhóm thẻ**: nền `BG_` + `cardVisual` hoặc `Card_*` + dòng `Pct_`. Chart, matrix hay bảng
-chèn vào dải card là **thừa ⇒ bỏ**. Quyết định này của người dùng **thắng** luật đủ visual Legacy (§5k). Visual bỏ thì
-khai theo id ở `dropped_visuals` trong `config/pbi-gate.json`, **kèm lý do**; cổng `legacy-parity` bỏ qua đúng id đó.
-- Đã áp 27/09: Monthly bỏ pie `REVENUE BY CHANNEL` (doanh thu theo nhóm kênh) khỏi dải card. Sáu thẻ giãn đều
-  hết bề ngang, rộng `205/210` xen kẽ, cách nhau 5. Cơ cấu kênh vẫn đọc được ở donut `ChannelMix` ngay dưới.
-- Cổng `card-row`.
+The `Card` group holds only **card groups**: a `BG_` background + a `cardVisual` or `Card_*` + a `Pct_` line. A chart, matrix or table
+inserted into the card strip is **excess ⇒ dropped**. This decision of the owner **wins over** the complete-Legacy-visuals rule (§5k). A dropped visual
+is declared by id in `dropped_visuals` in `config/pbi-gate.json`, **with the reason**; the `legacy-parity` gate skips exactly that id.
+- Applied 27/09: Monthly dropped the pie `REVENUE BY CHANNEL` (revenue by channel group) from the card strip. The six cards spread evenly
+  across the full width, `205/210` wide alternately, 5 apart. The channel mix can still be read in the `ChannelMix` donut right below.
+- Gate `card-row`.
 
-### 4j. MỌI % PHẢI GHI KỲ SO VÀ CÓ MÀU TĂNG/GIẢM
+### 4j. EVERY % MUST STATE ITS COMPARISON PERIOD AND HAVE AN UP/DOWN COLOUR
 
-Một con số `55.73%` trần là sai, vì người đọc không biết nó so với gì. Thiếu một trong hai thứ dưới là sai.
+A bare `55.73%` is wrong, because the reader does not know what it is compared with. Missing either of the two things below is wrong.
 
-1. **Kỳ so nằm trong con số hoặc trong nhãn.** Dòng `Pct_` dưới thẻ không có nhãn ⇒ đưa kỳ vào format:
+1. **The comparison period sits in the figure or in the label.** A `Pct_` line under a card has no label ⇒ put the period into the format:
    ```
    formatString: +0.00% "MoM";-0.00% "MoM";0.00% "MoM"
    ```
-   **Không đổi format của measure gốc**: bảng và trục chart cũng dùng nó, đổi là mỗi ô mang thêm chữ `MoM`.
-   Làm **measure bọc** riêng cho dòng `Pct_`, tên theo model.md §3:
-   `%MoM <Chỉ số> with symbol = [<measure gốc>]`. Trang tuần dùng `%WoW …`; tỉ lệ so chỉ tiêu dùng
-   `%<Chỉ số> vs Target with symbol` hoặc `%<Chỉ số> of Target with symbol`.
-   Trang lọc tháng đang chạy thì so **MTD với cùng số ngày tháng trước (LMTD)**, đừng so nửa tháng với cả tháng.
-   Các measure `%Grow … vs LMTD` của model đã tính đúng như vậy.
-   Thẻ `Card_*` kiểu cũ hiện nhãn tên measure (`%Grow GA vs LMTD`), nên kỳ đã nằm trong nhãn. Cột bảng và series
-   chart cũng thế: tên cột, tên series đã nói kỳ.
-2. **Màu theo chiều, BẮT BUỘC.** Tăng `#00B050`, giảm `#C51E24`. Tô bằng **màu có điều kiện trên CHÍNH measure
-   đó**, hoặc measure nó bọc: `> 0` xanh, `< 0` đỏ. Tỉ lệ đạt chỉ tiêu (`%… of Target`, `%FC vs LM`) lấy ngưỡng `1`
-   thay cho `0`. Cấm % một màu cố định (xám/đen). Hai mã `#009900` / `#FF6666` của khuôn Weekly cũ nằm ngoài bảng
-   màu, đã nắn và đã gỡ khỏi `PALETTE` của cổng.
-   - 📌 **Lỗi bắt được 27/09:** 5 dòng `Pct_` của Weekly hiện `%Grow … WoW` nhưng tô màu theo `%Revenue of Target`.
-   - Áp cho **chữ**: dòng `Pct_`, số của thẻ `Card_*`, nhãn dữ liệu chart, `values.fontColor` của bảng.
-   - **Chỉ hai màu:** dải vàng "gần đạt" của tỉ lệ chỉ tiêu (`#ACAC04`, `#A38600`, `#F1A1A1`) bị gỡ,
-     chỉ còn ngưỡng chính (đạt `≥ 1` xanh, dưới đỏ). Nền ô bảng tô tông nhạt (`values.backColor`: `#84F49E`,
-     `#EAAEB4`…) chuyển thành **màu chữ** theo cặp trên, nền bỏ. Nền dạng thang màu (`FillRule`, bản đồ nhiệt)
-     không phải màu tăng/giảm ⇒ giữ. Lệnh `--pct` của bộ dựng (`PCT_TWO_COLORS` trong `mix_specs.py`).
-   - **% tỉ trọng hoặc tỉ lệ chi phí** (phần của một tổng, không có chiều tốt/xấu: `%TC of Promotions`,
-     `%Total Cost`) khai ở `pct_neutral` trong `config/pbi-gate.json`, kèm lý do. Nhãn vẫn phải nói tỉ lệ của gì.
+   **Do not change the source measure's format**: tables and chart axes use it too, changing it makes every cell carry the word `MoM`.
+   Make a separate **wrapping measure** for the `Pct_` line, named by model.md §3:
+   `%MoM <Indicator> with symbol = [<source measure>]`. Weekly pages use `%WoW …`; target ratios use
+   `%<Indicator> vs Target with symbol` or `%<Indicator> of Target with symbol`.
+   A page filtering the running month compares **MTD with the same number of days of the previous month (LMTD)**, never half a month with a whole month.
+   The model's `%Grow … vs LMTD` measures already compute it that way.
+   Old-style `Card_*` cards show the measure name as the label (`%Grow GA vs LMTD`), so the period is already in the label. Table columns and chart
+   series likewise: the column name, the series name already state the period.
+2. **Colour by direction, REQUIRED.** Up `#00B050`, down `#C51E24`. Painted with **conditional colour on THAT VERY measure**,
+   or the measure it wraps: `> 0` green, `< 0` red. Target achievement ratios (`%… of Target`, `%FC vs LM`) take the threshold `1`
+   instead of `0`. A % in one fixed colour (grey/black) is forbidden. The two codes `#009900` / `#FF6666` of the old Weekly mould are outside the colour
+   table, reshaped and removed from the gate's `PALETTE`.
+   - 📌 **An error caught 27/09:** 5 `Pct_` lines of Weekly showed `%Grow … WoW` but were coloured by `%Revenue of Target`.
+   - Applies to **text**: `Pct_` lines, the figures of `Card_*` cards, chart data labels, a table's `values.fontColor`.
+   - **Only two colours:** the yellow "nearly reached" band of target ratios (`#ACAC04`, `#A38600`, `#F1A1A1`) was removed,
+     leaving only the main threshold (reached `≥ 1` green, below red). Pale cell backgrounds in tables (`values.backColor`: `#84F49E`,
+     `#EAAEB4`…) turned into **text colours** by the pair above, the backgrounds dropped. Colour-scale backgrounds (`FillRule`, heat maps)
+     are not up/down colours ⇒ kept. The builder's `--pct` command (`PCT_TWO_COLORS` in `mix_specs.py`).
+   - **Share or cost-ratio %** (part of a total, with no good/bad direction: `%TC of Promotions`,
+     `%Total Cost`) are declared in `pct_neutral` in `config/pbi-gate.json`, with the reason. The label must still say what it is a ratio of.
 
-Cổng: `pct-period` (dòng `Pct_` không nhãn thì format phải có chữ kỳ) · `pct-color` (màu điều kiện, đúng measure, đúng hai mã).
+Gates: `pct-period` (a `Pct_` line without a label must have the period word in its format) · `pct-color` (conditional colour, the right measure, the right two codes).
 
-3. **MỌI thẻ trong hàng card đều có dòng %** *("mọi card nên có % mới đủ chứ")* — thẻ không có
-   dòng `Pct_` là thẻ thiếu. Thẻ mà bản thân số đã là tỉ lệ (`% Target`, `% Margin`…) thì dòng % là **thay đổi so kỳ
-   trước tính bằng ĐIỂM %**, format `+0.00 "pp MoM"` — không dùng `%` lần hai, vì `+5.00%` của một tỉ lệ đọc ra thành
-   "tăng 5 phần trăm của tỉ lệ". Cùng luật màu mục 2 (> 0 xanh, < 0 đỏ).
-   Số mà TĂNG là XẤU (hoàn trả, chi phí) thì dòng % **đảo màu**: tăng đỏ, giảm xanh (`mix_cards.py`: `(measure, label, 'inverse')`).
+3. **EVERY card in the card row has a % line** *(every card should have a % to be complete)* — a card without
+   a `Pct_` line is an incomplete card. A card whose figure is itself a ratio (`% Target`, `% Margin`…) has a % line that is **the change against the previous
+   period in PERCENTAGE POINTS**, format `+0.00 "pp MoM"` — never `%` a second time, because `+5.00%` of a ratio reads as
+   "up 5 percent of the ratio". The same colour rule as item 2 (> 0 green, < 0 red).
+   A figure where RISING is BAD (refunds, costs) has its % line **colours reversed**: up red, down green (`mix_cards.py`: `(measure, label, 'inverse')`).
 
-### 4k. BỘ MÀU = THEME CỦA VÙNG (`theme_file`)
+### 4k. THE COLOUR SET = THE REGION'S THEME (`theme_file`)
 
-> Qua 6 vòng thử trên White AM trong ngày 30/09: *"màu đậm nhiều quá, nóng lạnh ko cân bằng"* → *"card cũng phải đủ bộ màu"* →
-> *"chart cần dùng bộ màu nhạt, còn card thì màu đậm"* → *"có bộ màu nào khác luôn để dùng cho chart"* → *"chart ko nên dùng
-> các màu trùng với tông xanh lá và đỏ"* → *"màu nào trung tính hơn cho mấy cột, màu xanh lá cho đậm hơn"*.
+> Over 6 rounds of trials on White AM on 30/09: too many dark colours, warm and cool unbalanced → the cards need the full colour set too →
+> charts should use a pale set and cards the dark one → is there another set to use for charts → charts should not use
+> colours overlapping the green and red tones → a more neutral colour for the columns, a darker green.
 
-| Chỗ | Màu | Luật |
+| Place | Colour | Rule |
 |---|---|---|
-| **Số trên thẻ** | ô màu theme theo thứ tự (= `dataColors` của theme vùng) | thẻ thứ *i* → ô *i*, quay vòng (01/10, thay bộ B) |
-| **Cột chính của chart** | **đúng dãy `dataColors` của theme vùng (`theme_file`)** | mỗi chart một màu theo thứ tự, chart kế tiếp trong tab nối dãy; cột chính thứ hai cùng chart lấy màu kế tiếp (*"check Original mẫu của t đang xài màu gì, xài chính xác dãy màu đó"* — thay dãy trung tính) |
-| **Kỳ so** (tên có LY · LM · LMTD · LW · PY · Last · Target) | `#A2A2A2` (= `neutral` của theme vùng), kỳ so thứ hai `#595959`; chart có **3–4 kỳ so** dùng `#A2A2A2 · #7F7F7F · #595959 · #3F3F3F` theo thứ tự (LW·LM·LY·Target cùng ra `#595959`) — chart 1–2 kỳ so giữ nguyên màu cũ (`compares_by_count`) | measure `%` không bao giờ là kỳ so, kể cả tên có chữ Target |
-| **Đường % (Y2)** | hai màu đậm nhất của theme vùng | nhãn % **in đậm**, `labelPosition 'Above'`, **không** ô nền (ô nền che mất đường) |
-| **Tăng / giảm** | chữ trên nền trắng (dòng % dưới thẻ, cột % matrix): `#007A36` / `#C51E24` · **nhãn % trên chart**: xanh sáng `#4ADE80` / `#C51E24` | `#00B050` bỏ (2,9:1 trên trắng). Nhãn chart đè lên cột đậm của theme vùng: `#007A36` chỉ 1,2–1,5:1 ⇒ *"màu % xanh lá nên xanh nhạt và sáng hơn"*; `#4ADE80` 3,6–8,5:1 trên cột đậm, nhưng chỉ 1,7:1 trên trắng nên KHÔNG dùng cho chữ trên nền trắng |
-| Pie · chart chia theo kênh | các màu của theme vùng theo thứ tự · `(Blank)` `#A2A2A2` | = `dataColors` của theme |
+| **Figures on cards** | the theme's colour slots in order (= the region theme's `dataColors`) | card *i* → slot *i*, cycling (01/10, replacing set B) |
+| **A chart's main columns** | **exactly the `dataColors` sequence of the region's theme (`theme_file`)** | each chart one colour in order, the next chart in the tab continues the sequence; a second main column in the same chart takes the next colour (check which colours the owner's Original sample uses and use exactly that sequence — replacing the neutral sequence) |
+| **Comparison periods** (names with LY · LM · LMTD · LW · PY · Last · Target) | `#A2A2A2` (= the region theme's `neutral`), the second comparison period `#595959`; a chart with **3–4 comparison periods** uses `#A2A2A2 · #7F7F7F · #595959 · #3F3F3F` in order (LW·LM·LY·Target all come out `#595959`) — charts with 1–2 comparison periods keep their old colours (`compares_by_count`) | a `%` measure is never a comparison period, even with Target in its name |
+| **% lines (Y2)** | the two darkest colours of the region's theme | % labels **bold**, `labelPosition 'Above'`, **no** label box (a box covers the line) |
+| **Up / down** | text on a white background (the % line under a card, % matrix columns): `#007A36` / `#C51E24` · **% labels on charts**: bright green `#4ADE80` / `#C51E24` | `#00B050` dropped (2.9:1 on white). Chart labels over the region theme's dark columns: `#007A36` is only 1.2–1.5:1 ⇒ the green % should be paler and brighter; `#4ADE80` 3.6–8.5:1 on dark columns, but only 1.7:1 on white so NOT used for text on white |
+| Pies · charts split by channel | the region theme's colours in order · `(Blank)` `#A2A2A2` | = the theme's `dataColors` |
 
-- Dãy của theme vùng có thể có xanh lá và xanh ngọc đậm — dùng NGUYÊN dãy của theme (thay luật "chart cấm họ xanh lá" của chiều 30/09); nhãn % trên chart đọc được nhờ xanh sáng `#4ADE80` in đậm.
-- 🔴 **Màu của dãy ghi bằng THAM CHIẾU THEME (`ThemeDataColor`), KHÔNG ghi mã HEX** *("do bạn chỉnh thủ công nên màu
-  của theme ko áp dc … áp màu của theme y chang màu của ori")* — như file mẫu Original. Theme của White = theme vùng (`dataColors`
-  + `good` · `neutral` · `bad`). Thẻ thứ *i* → ô *i* của theme; chart theo ô, nối dãy trong tab. Chỉ màu
-  hệ thống (xám kỳ so, xanh/đỏ tăng giảm, header matrix) còn ghi mã. `mix_palette.colour()`; cổng `chart-palette` + kiểm thẻ chỉ
-  nhận `ColorId 2..9`.
-- 🔴 **MỌI chart đều mang màu của bộ, không chart nào để trống** *("mọi chart đều phải theo mã màu, bạn ko áp hết
-  đủ cho chart")*. Chart của measure (không có trường chia) phải khai màu từng chuỗi — để trống thì Power BI vẽ theme 1/2 cho
-  MỌI chart, hai chart cạnh nhau trùng màu. Phủ đủ: loại có chữ `Chart` **và** `treemap` · `funnel` (treemap đặt trường chia ở vai
-  `Group`, không phải `Category`); measure của **mọi** bảng measure (`#Measure.` và `Measure.` của model OM). Đo 01/10 trước khi
-  sửa: 2 treemap Daily còn màu Legacy (`#4FAEED`, `#AA34BC`…), 6 chart Power Consumption bị bỏ qua vì `Measure.`. Cổng
-  `chart-palette` (+ `chart-coloured`: chart của measure không khai màu ⇒ đỏ).
-- 🔴 **NHÃN DỮ LIỆU KHÔNG CÓ Ô NỀN — MỌI SỐ % IN ĐẬM** *("đã có luật ko tạo nền cho % phía sau rồi mà, nó làm che mất
-  chart, chỉ in đậm bold số lên thôi, in đậm mọi số %")*. Luật cũ chỉ áp cho đường % trục Y2 có màu điều kiện ⇒ 10 mục nhãn còn ô
-  nền (mục chung `all` của chart, nhãn chuỗi số tiền) ở Weekly · Daily · Power Consumption. Nay: **mọi** mục `labels` của mọi chart
-  `enableBackground false` (bỏ `backgroundColor`); **mọi** chuỗi % (measure tên bắt đầu `%`, ở Y · Values · Y2) có nhãn thì
-  `bold true`. Áp cả dòng `Pct_` dưới thẻ.
-  🔴 **CHỖ ĐẶT KHOÁ — tái phạm 01/10, người dùng bắt lại:** `bold` · `enableBackground` · `labelPosition` là khoá của **cả chuỗi** ⇒ nằm ở
-  mục `labels` có selector **chỉ `metadata`** (Desktop ghi: bold 37/52, enableBackground 106/124 ở dạng này). Mục theo điểm
-  (`data: dataViewWildcard` + `metadata`) **chỉ chứa màu điều kiện** — để bold / nền ở đó thì Power BI BỎ QUA, nhãn mất đậm và hiện
-  lại ô nền mặc định. Lỗi do chính lượt chuyển màu sang theo điểm (`b3be6525`) gây ra: 27 nhãn % / bản. Đã sửa + nhìn render
-  trang Monthly (nhãn đậm, không nền). Cổng `pct-label` đỏ khi khoá tĩnh nằm trong mục theo điểm. ⚠ Cột % trong **matrix** chưa in đậm: không file Desktop nào trong estate ghi chữ
-  đậm theo từng cột (đếm 01/10) ⇒ chưa có khoá để chép, KHÔNG tự chế. Cổng `label-box` · `pct-bold` (thử đỏ trên HEAD: 10 lỗi → 0).
-- Mọi cặp màu đứng chung một chart đã chấm bằng `validate_palette.js` (skill `dataviz`); đổi màu thì chấm lại, không pha bằng mắt.
-- **Máy làm:** `PALETTE` trong `mix_specs.py` + `python scripts/mix_palette.py --cards`. **Máy canh** *(01/10: "mấy cái skill đều phải lên
-  script dò dc hết")*: `theme-standard` (theme report = theme chuẩn của vùng) · `chart-palette` (ô theme / màu ngoài bộ, hai chart cùng tab
-  trùng màu) · `chart-fill-shape` · `compare-grey` (kỳ so phải xám) · `pct-label` (nhãn % đậm, `Above`, không nền) · `pct-color`.
-  Thử âm 01/10 trên bản sao: 5/5 lỗi cố tình gây đều bị bắt.
-- 🔴 **Chart MỘT chuỗi ghi màu ở mục `dataPoint` KHÔNG selector** — gắn `selector.metadata` thì Desktop LỜ ĐI, vẽ màu 1 của
-  theme, không báo gì. Đo trên file Desktop tự ghi: combo 1 cột dùng mục không selector 15 lần; từ 2 measure trên trục chính
-  mới dùng `metadata`. Trả giá 30/09: 6 chart trang Product + `REVENUE & TARGET` cùng một màu. Cổng `chart-fill-shape`;
-  luật trùng màu trong tab nay xét cả mục không selector (trước đó chart một chuỗi lọt qua).
+- The region theme's sequence may contain dark greens and teals — use the theme's sequence AS IS (replacing the "charts must not use the green family" rule of the afternoon of 30/09); % labels on charts stay readable thanks to bold bright green `#4ADE80`.
+- 🔴 **Sequence colours are written as THEME REFERENCES (`ThemeDataColor`), NOT HEX codes** *(adjusting by hand made the theme's colours
+  stop applying … apply the theme's colours exactly like Ori)* — as in the Original sample file. White's theme = the region theme (`dataColors`
+  + `good` · `neutral` · `bad`). Card *i* → slot *i* of the theme; charts by slot, continuing the sequence within the tab. Only system
+  colours (comparison grey, up/down green/red, matrix headers) are still written as codes. `mix_palette.colour()`; gate `chart-palette` + cards checked to accept only
+  `ColorId 2..9`.
+- 🔴 **EVERY chart carries the set's colours, no chart left blank** *(every chart must follow the colour codes, you did not apply them
+  to all the charts)*. A chart of measures (no splitting field) must declare each series' colour — left blank, Power BI paints theme 1/2 for
+  EVERY chart, two charts side by side the same colour. Covering all: kinds with the word `Chart` **and** `treemap` · `funnel` (a treemap puts its splitting field in the role
+  `Group`, not `Category`); the measures of **every** measure table (`#Measure.` and `Measure.` of the OM model). Measured 01/10 before
+  the fix: 2 Daily treemaps still had Legacy colours (`#4FAEED`, `#AA34BC`…), 6 Power Consumption charts skipped because of `Measure.`. Gate
+  `chart-palette` (+ `chart-coloured`: a chart of measures without declared colours ⇒ red).
+- 🔴 **DATA LABELS HAVE NO BOX — EVERY % FIGURE IN BOLD** *(there is already a rule against a background behind the %, it covers
+  the chart; only bold figures, every % in bold)*. The old rule applied only to Y2 % lines with conditional colour ⇒ 10 label items still had a
+  box (the chart's shared `all` item, labels of money series) on Weekly · Daily · Power Consumption. Now: **every** `labels` item of every chart
+  `enableBackground false` (removing `backgroundColor`); **every** % series (measures named starting with `%`, in Y · Values · Y2) with labels gets
+  `bold true`. Also applied to the `Pct_` lines under cards.
+  🔴 **WHERE THE KEYS GO — a repeat offence 01/10, caught by the owner again:** `bold` · `enableBackground` · `labelPosition` are keys of **the whole series** ⇒ they sit in
+  the `labels` item whose selector has **only `metadata`** (Desktop writes: bold 37/52, enableBackground 106/124 in this form). The per-point item
+  (`data: dataViewWildcard` + `metadata`) **holds only the conditional colour** — putting bold / backgrounds there makes Power BI IGNORE them, the labels lose bold and
+  the default box shows again. The error came from the very round moving the colours to per-point (`b3be6525`): 27 % labels per copy. Fixed + the render
+  of the Monthly page looked at (bold labels, no box). Gate `pct-label` red when a static key sits in a per-point item. ⚠ % columns in a **matrix** are not bold yet: no Desktop file in the estate writes bold text
+  per column (counted 01/10) ⇒ no key to copy yet, NEVER invent one. Gates `label-box` · `pct-bold` (tested red on HEAD: 10 errors → 0).
+- Every pair of colours standing in one chart was scored with `validate_palette.js` (the `dataviz` skill); changing colours ⇒ score again, never mix by eye.
+- **The machine does it:** `PALETTE` in `mix_specs.py` + `python scripts/mix_palette.py --cards`. **The machine watches** *(01/10: every skill must have
+  scripts that detect it all)*: `theme-standard` (the report theme = the region's standard theme) · `chart-palette` (theme slots / colours outside the set, two charts in one tab
+  the same colour) · `chart-fill-shape` · `compare-grey` (comparison periods must be grey) · `pct-label` (% labels bold, `Above`, no box) · `pct-color`.
+  Negative test 01/10 on a copy: 5/5 deliberately planted errors all caught.
+- 🔴 **A ONE-series chart writes its colour in a `dataPoint` item WITHOUT a selector** — attaching `selector.metadata` makes Desktop IGNORE it, painting theme colour 1,
+  without a word. Measured on files Desktop wrote itself: a one-column combo uses the selector-less item 15 times; only from 2 measures on the main axis
+  does it use `metadata`. Paid for 30/09: 6 charts on the Product page + `REVENUE & TARGET` all one colour. Gate `chart-fill-shape`;
+  the same-colour-within-a-tab rule now also considers selector-less items (one-series charts slipped through before).
 
-### 4l. MATRIX — MỘT KIỂU CHO MỌI BẢNG
+### 4l. MATRICES — ONE STYLE FOR EVERY TABLE
 
-> *"matrix đang quá xấu, ko có cả header bold, màu header, rồi màu condition, cái này đều phải đưa vào luật và skill áp dụng cho mọi matrix"*
-> — đo 30/09: 36 matrix của White AM, 2 cái header đậm, 24 cái mỗi cái một màu header, 23 cột % không có màu tăng/giảm.
+> The matrices are too ugly, no bold headers, no header colours, no conditional colours — this must all go into the rules and the skill applied to every matrix
+> — measured 30/09: 36 matrices of White AM, 2 with bold headers, 24 each with its own header colour, 23 % columns without up/down colours.
 
-| Phần | Chuẩn |
+| Part | Standard |
 |---|---|
-| Header cột | nền `#44546A`, chữ `#FFFFFF` **đậm**, cỡ `10D`; màu header riêng từng cột (Legacy) bỏ |
-| Cột tên hàng | chữ `#2D2D2D` trên nền trắng |
-| Giá trị | chữ `#2D2D2D`, xen kẽ hàng `#FFFFFF` / `#F4F6F8` (`backColorPrimary/Secondary`); nền phẳng từng cột bỏ, **heat-map (`FillRule`) giữ** |
-| Total / subtotal | **đậm**, nền `#E3E8EE` |
-| Cột % | tô theo CHÍNH measure đó: tăng `#007A36`, giảm `#C51E24`; tỉ lệ đạt chỉ tiêu ngưỡng `1`. **Nhận cột % theo FORMAT của measure**, không theo tên (`vsWTDLW` là %). Tỉ trọng / chi phí khai `pct_neutral` thì không tô |
-| Lưới | chỉ kẻ ngang `#E3E3E3` 1 px, bỏ vạch dọc |
-| **Tiêu đề** | **giống tiêu đề chart**: hiện, canh trái, Segoe UI Semibold `12D`, `#2D2D2D`, KHÔNG nền tiêu đề (bỏ dải hồng Legacy) — *"mấy cái matrix đang ko đúng cấu trúc title giống mấy chart kia"*. Chữ = chữ Legacy nếu có; không có thì tiêu đề người đọc theo trường của bảng (`mix_specs.MATRIX_TITLES`, 26 bảng) — CẤM hiện tên kỹ thuật `Table_…`. Spec bộ dựng để tên `None` cho các bảng này, nếu không lần dựng lại sẽ tắt tiêu đề |
+| Column headers | background `#44546A`, text `#FFFFFF` **bold**, size `10D`; per-column header colours (Legacy) dropped |
+| Row-name column | text `#2D2D2D` on white |
+| Values | text `#2D2D2D`, alternating rows `#FFFFFF` / `#F4F6F8` (`backColorPrimary/Secondary`); flat per-column backgrounds dropped, **heat maps (`FillRule`) kept** |
+| Total / subtotal | **bold**, background `#E3E8EE` |
+| % columns | coloured by THAT VERY measure: up `#007A36`, down `#C51E24`; target achievement ratios threshold `1`. **% columns are recognised by the measure's FORMAT**, not by name (`vsWTDLW` is a %). Shares / costs declared in `pct_neutral` are not coloured |
+| Grid | horizontal lines only `#E3E3E3` 1 px, vertical lines dropped |
+| **Title** | **like chart titles**: shown, left-aligned, Segoe UI Semibold `12D`, `#2D2D2D`, NO title background (the pink Legacy strip dropped) — the matrices did not follow the same title structure as the charts. The text = the Legacy text when there is one; otherwise a reader's title from the table's fields (`mix_specs.MATRIX_TITLES`, 26 tables) — showing a technical name `Table_…` is FORBIDDEN. The builder's spec gives these tables the name `None`, or a rebuild turns their titles off |
 
-- **Bản đồ nhiệt (màu mức độ)** *(bảng giờ × thứ + khung giờ × thứ)*: một tông, trắng →
-  màu đầu của theme pha trắng 45% (chữ `#2D2D2D` còn 5,3:1 ở ô đậm nhất, khỏi cần màu chữ theo giá trị vì chưa có khuôn
-  Desktop để chép); thang tính trên CẢ bảng; dòng tổng không tô (`dataViewWildcard matchingOption 1`). Lệnh
-  `mix_palette.py --heatmap <pageId> <visualId>…`. Chart không tô (chiều cao cột đã nói mức độ).
-  🔴 **Điểm màu trong `FillRule` là `{"Literal": …}` TRẦN — KHÔNG bọc `expr`** *(05/10)*: bọc `{"expr": {"Literal": …}}`
-  thì vẫn VẼ đúng, nhưng Desktop **không lưu được nữa** — Save · Save As · Publish chết lặng, không báo gì
-  (`NullReferenceException` ở `GetEnhancedReportDocument`). Hai bản White mất Save một ngày vì đúng chỗ này (`84cb1304`),
-  dò ra bằng chia đôi commit trên sandbox. Cổng `fillrule-bare` chặn từ nay.
-  🔴 **Thang màu Legacy CHẾT LẶNG:** đo 04/10 mỗi bản White có **56 mục `FillRule`** trỏ tên trường cũ (`Measure.TotalSale`,
-  `Measure.Sale/DateofWeek`…) không còn trong bảng ⇒ Power BI lờ đi, không báo gì. `--heatmap` bỏ mục chết của bảng nó tô.
-  Gốc (đo 3 bản): Legacy + Classic có 21 mục chết sẵn; White thêm **33** — bước nối lại field của White đổi `Input` của thang sang
-  tên DW nhưng KHÔNG đổi `selector.metadata` (Classic đổi cả hai). Sửa 04/10 (*"bổ sung đủ màu lại"*):
-  `mix_palette.py --repair-fillrules` — `Input` là một field của bảng ⇒ trỏ selector về nó (màu về như Legacy, 33/bản);
-  `Input` không thuộc bảng ⇒ xoá (21/bản, Legacy cũng chưa từng hiện). Cổng `fillrule-dead` (thử âm: gài 1 ⇒ đỏ đúng 1).
-  ⚠ Đổi tên field trên visual thì đổi CẢ `Input` lẫn `selector.metadata` của mọi `FillRule`.
-- **Máy làm:** `python scripts/mix_palette.py --matrices` (chạy lại được). **Máy canh:** cổng `matrix-style` (header · xen kẽ · total · cột % · tiêu đề) + `matrix-grid` (chỉ kẻ ngang) + `topn-column` (Top/Bottom N cột đứng) — thử âm trên White OM chưa tô: 42 lỗi.
-- 🔴 **Chart Top / Bottom N = CỘT ĐỨNG** (`clusteredColumnChart`), không cột ngang — *"mẫu này nên là chart dọc mới đủ hiện top5"*.
-  `python scripts/mix_palette.py --bars-to-columns` (đổi `visualType`, giữ nguyên vai trò + định dạng; 12 chart Product · Product Mix).
-  ⚠ Top 5 hiện 1 món KHÔNG phải lỗi khi tháng mới vừa bắt đầu (đo 01/10 sáng: 1 hoá đơn trong ngày) — chọn tháng trước để kiểm.
-- Mọi khoá đều do Desktop ghi (`columnHeaders.backColor` 356 lần, `values.backColorSecondary` 172, `subTotals.bold` 15…).
+- **Heat maps (intensity colours)** *(the hour × weekday table + time slot × weekday)*: one tone, white →
+  the theme's first colour mixed with 45% white (text `#2D2D2D` still 5.3:1 on the darkest cell, so no text colour by value, since there is no Desktop mould
+  to copy yet); the scale computed over the WHOLE table; the total row not coloured (`dataViewWildcard matchingOption 1`). Command
+  `mix_palette.py --heatmap <pageId> <visualId>…`. Charts are not coloured (column height already shows the intensity).
+  🔴 **Colour points in a `FillRule` are BARE `{"Literal": …}` — NOT wrapped in `expr`** *(05/10)*: wrapped as `{"expr": {"Literal": …}}`
+  it still DRAWS right, but Desktop **can no longer save** — Save · Save As · Publish die silently, with no message
+  (`NullReferenceException` in `GetEnhancedReportDocument`). Two White copies lost Save for a day because of exactly this (`84cb1304`),
+  found by bisecting commits in a sandbox. Gate `fillrule-bare` blocks it from now on.
+  🔴 **Legacy colour scales DIE SILENTLY:** measured 04/10 each White copy had **56 `FillRule` items** pointing at old field names (`Measure.TotalSale`,
+  `Measure.Sale/DateofWeek`…) no longer in the table ⇒ Power BI ignores them, without a word. `--heatmap` drops the dead items of the table it colours.
+  The root (measured on 3 copies): Legacy + Classic had 21 dead items already; White added **33** — White's field-reconnecting step changed the scale's `Input` to
+  the DW name but NOT `selector.metadata` (Classic changed both). Fixed 04/10 (put every colour back):
+  `mix_palette.py --repair-fillrules` — an `Input` that is a field of the table ⇒ the selector points back to it (colours back as in Legacy, 33/copy);
+  an `Input` not belonging to the table ⇒ deleted (21/copy, Legacy never showed them either). Gate `fillrule-dead` (negative test: planted 1 ⇒ exactly 1 red).
+  ⚠ Renaming a field on a visual renames BOTH the `Input` and the `selector.metadata` of every `FillRule`.
+- **The machine does it:** `python scripts/mix_palette.py --matrices` (rerunnable). **The machine watches:** gate `matrix-style` (headers · alternating rows · totals · % columns · titles) + `matrix-grid` (horizontal lines only) + `topn-column` (Top/Bottom N vertical columns) — negative test on an uncoloured White OM: 42 errors.
+- 🔴 **Top / Bottom N charts = VERTICAL COLUMNS** (`clusteredColumnChart`), not horizontal bars — this sample should be a vertical chart to show the top 5.
+  `python scripts/mix_palette.py --bars-to-columns` (changes `visualType`, keeping the roles + formatting; 12 charts on Product · Product Mix).
+  ⚠ A Top 5 showing 1 item is NOT an error when a new month has just started (measured 01/10 morning: 1 invoice that day) — choose the previous month to check.
+- Every key is one Desktop writes (`columnHeaders.backColor` 356 times, `values.backColorSecondary` 172, `subTotals.bold` 15…).
 
-- 🔴 **TÊN CỘT = CHỮ NGƯỜI ĐỌC, TIẾNG ANH TITLE CASE** *(chốt 13/10: "tên cột đang ko đúng chuẩn loạn xạ hết" → chọn tiếng Anh,
-  cùng giọng tiêu đề visual)*: mọi trường đang hiện trên bảng / matrix / chart (displayName, không có thì tên trường) — cấm gạch dưới
-  (`chi_tieu`, `ITEM_NAME`), số đuôi (`Revenue2`, `StoreName2`), chữ dính (`StoreName`, `Monthnumber`), từ ALL-CAPS không phải viết tắt
-  nghiệp vụ (`PARENT3NAME`, `DISCOUNT`), `%` trơn / `%1` (phải nói % của gì: `% Revenue`, `% Ebitda`). Đặt `displayName` ở projection,
-  tên measure giữ nguyên. Cổng `column-name` (White/Red; Classic giữ chữ Legacy). 03 White đã đặt: Line · Code · Cost Line · Store ·
+- 🔴 **COLUMN NAMES = READER'S WORDS, ENGLISH TITLE CASE** *(settled 13/10: the column names are off-standard and chaotic → English chosen,
+  the same voice as visual titles)*: every field showing on a table / matrix / chart (the displayName, or the field name without one) — no underscores
+  (`chi_tieu`, `ITEM_NAME`), trailing numbers (`Revenue2`, `StoreName2`), glued words (`StoreName`, `Monthnumber`), ALL-CAPS words that are not business
+  abbreviations (`PARENT3NAME`, `DISCOUNT`), a bare `%` / `%1` (it must say % of what: `% Revenue`, `% Ebitda`). Set `displayName` in the projection,
+  keeping the measure name. Gate `column-name` (White/Red; Classic keeps the Legacy words). 03 White has set: Line · Code · Cost Line · Store ·
   Actual · % Revenue · Actual LY · Growth LY · Base Month · % Revenue Base · Variance · % Variance · LYTD.
-- 🔴 **BIẾN TIẾNG ANH, DỮ LIỆU ĐƯỢC TIẾNG VIỆT** *(chốt 18/10)*: tên measure là biến ⇒ tiếng Anh, không dấu tiếng Việt
-  (`'Doanh Thu Thuần'` ⇒ `Net Revenue`; chữ người đọc cần đặt ở `displayName`) — cổng `measure-name` (White/Red). Chữ hiện ra mà là
-  NỘI DUNG dữ liệu thì giữ tiếng Việt: measure đếm đúng MỘT mặt hàng (DAX lọc một `ItemID`, vd `EcomComboQty_TGVI0087`) mang tiêu
-  đề là tên mặt hàng (`Mì trộn tương đen Super Cay (120gr/gói)`) — `column-name` và `glossary-cover` bỏ qua tiêu đề đó.
-- 🔴 **MỖI % PHẢI ĐƯỢC KHAI: TỈ TRỌNG hay CÓ CHIỀU** *(13/10: "% đang ko có màu xanh đỏ đúng chuẩn lên xuống")*: tên `% … of Revenue /
-  of Total` không nói được — `%Actual of Revenue` là tỉ trọng của một dòng P&L (cột trộn doanh thu và chi phí ⇒ không màu), `%Ebitda of
-  Revenue` là biên lợi nhuận (> 0 xanh). Tỉ trọng ⇒ `pct_neutral` (pbi-gate.json), có chiều ⇒ `PALETTE['pct_threshold']` (mix_specs) —
-  nhãn % trên chart chỉ được tô khi measure nằm trong danh sách này. Cổng `pct-decided` (chưa khai ⇒ đỏ; % có chiều trên Y2 thiếu luật màu nhãn ⇒ đỏ).
+- 🔴 **VARIABLES IN ENGLISH, DATA MAY BE VIETNAMESE** *(settled 18/10)*: measure names are variables ⇒ English, no Vietnamese diacritics
+  (`'Doanh Thu Thuần'` ⇒ `Net Revenue`; words the reader needs go in `displayName`) — gate `measure-name` (White/Red). Text shown that is
+  data CONTENT stays Vietnamese: a measure counting exactly ONE item (DAX filtering one `ItemID`, e.g. `EcomComboQty_TGVI0087`) carries the item's name
+  as its title (`Mì trộn tương đen Super Cay (120gr/gói)`) — `column-name` and `glossary-cover` skip that title.
+- 🔴 **EVERY % MUST BE DECLARED: A SHARE or DIRECTIONAL** *(13/10: the % do not have the right green/red for up and down)*: names like `% … of Revenue /
+  of Total` do not tell — `%Actual of Revenue` is the share of one P&L line (a column mixing revenue and costs ⇒ no colour), `%Ebitda of
+  Revenue` is a profit margin (> 0 green). Shares ⇒ `pct_neutral` (pbi-gate.json), directional ⇒ `PALETTE['pct_threshold']` (mix_specs) —
+  % labels on charts may be coloured only when the measure is in this list. Gate `pct-decided` (undeclared ⇒ red; a directional % on Y2 without a label colour rule ⇒ red).
 
-### 4m. ICON TRÊN THẺ KPI — neo góc phải trên, màu của số, nét 17,5 px
+### 4m. ICONS ON KPI CARDS — anchored top right, the figure's colour, a 17.5 px stroke
 
-> *"khoảng trống bên phải của card giờ sẽ để icon, phần icon là phần khó và phải làm cho kỹ"* → sửa cùng ngày: *"chỉ offset 5 2
-> cạnh trên thôi, ở dưới cách ra để icon neo lên góc phải trên, cho nó nhỏ lại tầm 40%, mục đích là phải ko chạm vào phần chữ ở hàng 3"*.
+> The empty space on the right of the card now holds an icon, and the icon part is hard and must be done carefully → corrected the same day: offset 5 only on
+> the two top sides, leave space below so the icon anchors to the top right, about 40% smaller, so it never touches the text of row 3.
 
-| Điều | Luật | Số đo (thẻ cao 90) |
+| Point | Rule | Measured (a card 90 tall) |
 |---|---|---|
-| Khung | **hình vuông neo góc PHẢI TRÊN**, cách mép trên và mép phải của nền thẻ (`BG_`) đúng **5 px**; phía dưới để trống | cạnh = 60% của `(cao − 10)`, làm tròn XUỐNG lưới 5 ⇒ **45 px**, y 20–65 |
-| Không chạm chữ | dòng % (hàng 3, `Pct_`) bắt đầu dưới đáy icon ≥ 5 px; hộp số (`Card_`, hàng 2) dừng trước icon 5 px | `Pct_` y 70 · `Card_` rộng = `x_icon − 5` |
-| Màu | **màu của chính số trên thẻ** (ô theme của thẻ đó) — sinh từ bản đen của thư viện icon, giữ alpha, tên `<icon>_<hex>.png` trong `RegisteredResources` của report | thẻ 1 → ô 1 của theme · thẻ 2 → ô 2 … |
-| Nét | MỌI icon cùng mốc của thư viện icon **17,0–18,0 px trên ảnh 512** (`2 × px đục / px viền`, design.md §2.6) | 11 icon đo 17,3–17,7 |
-| Nội dung | một icon nói đúng chỉ số, outline ít nét, **Tabler (MIT)** | xem bảng dưới |
+| Frame | **a square anchored at the TOP RIGHT**, exactly **5 px** from the top and right edges of the card background (`BG_`); the space below left empty | side = 60% of `(height − 10)`, rounded DOWN to the 5 grid ⇒ **45 px**, y 20–65 |
+| Not touching text | the % line (row 3, `Pct_`) starts ≥ 5 px below the bottom of the icon; the figure box (`Card_`, row 2) stops 5 px before the icon | `Pct_` y 70 · `Card_` width = `x_icon − 5` |
+| Colour | **the colour of the card's own figure** (that card's theme slot) — generated from the black version in the icon library, keeping alpha, named `<icon>_<hex>.png` in the report's `RegisteredResources` | card 1 → theme slot 1 · card 2 → slot 2 … |
+| Stroke | EVERY icon on the icon library's common mark **17.0–18.0 px on a 512 image** (`2 × opaque px / outline px`, design.md §2.6) | 11 icons measured 17.3–17.7 |
+| Content | one icon saying exactly the indicator, an outline with few strokes, **Tabler (MIT)** | see the table below |
 
-| Thẻ | Icon | | Thẻ | Icon |
+| Card | Icon | | Card | Icon |
 |---|---|---|---|---|
 | Revenue · Revenue MTD | `cash-banknote` | | GC | `users` |
 | Target | `target` | | GA | `user-dollar` |
@@ -921,764 +921,764 @@ Cổng: `pct-period` (dòng `Pct_` không nhãn thì format phải có chữ k�
 | TA | `receipt-dollar` | | COGS · COGS LT | `package` · `packages` |
 | ADS | `calendar-dollar` | | Stores | `building-store` |
 
-- **Máy làm:** `python scripts/card_icons.py render` (tải SVG Tabler 3.19, Chrome headless 512 px, **dò `stroke-width` tới khi ĐO ra
-  17,5 ± 0,5** — Tabler mặc định 2 ⇒ 42,7 px; 11 icon ra 0,706–0,787), ghi bản ⬛/🟥/⬜ vào thư viện icon `repo quản lý vùng/assets/icons/` + dòng
-  trong `README.md`; `MIX_ROOT=<report> python scripts/card_icons.py place` (visual ảnh `Image_<Key>` trong nhóm thẻ, id cố định theo
-  trang + key ⇒ chạy lại không đẻ thêm; mọi bookmark chụp thẻ thì chụp luôn icon cùng trạng thái). Thẻ mới ⇒ thêm vào `ICONS`.
-- **Máy canh:** cổng `card-icon` (thiếu icon · sai khung/vị trí · ảnh chưa đăng ký · màu khác màu số · nét ngoài 17–18 px · dòng %
-  chạm icon · hộp số chạy dưới icon). Thử âm: White OM chưa đặt ⇒ 26 lỗi; bản khung vuông cũ ⇒ 32 hộp chữ chạy dưới icon.
-- Khuôn visual ảnh = khuôn Desktop ghi (`image.sourceFile` + `fit 'Fill'`, repo phòng ban `logo công ty`); cổng `card-row` và `bg-inset` miễn
-  đúng `Image_<Key>` nằm cạnh `Card_<Key>`.
-- ⚠ Chưa làm: lưới thẻ KIỂU CŨ (`card`, không có `BG_` riêng) ở trang Operation (25 ô) và Promotion Increase Sale (12 ô).
+- **The machine does it:** `python scripts/card_icons.py render` (downloads Tabler 3.19 SVGs, headless Chrome at 512 px, **searches `stroke-width` until it MEASURES
+  17.5 ± 0.5** — Tabler's default 2 ⇒ 42.7 px; the 11 icons came out 0.706–0.787), writes the ⬛/🟥/⬜ versions into the icon library `<region manager repo>/assets/icons/` + a line
+  in `README.md`; `MIX_ROOT=<report> python scripts/card_icons.py place` (an image visual `Image_<Key>` in the card group, its id fixed by
+  page + key ⇒ a rerun creates nothing extra; every bookmark capturing the card also captures the icon in the same state). A new card ⇒ added to `ICONS`.
+- **The machine watches:** gate `card-icon` (missing icon · wrong frame/position · image not registered · a colour other than the figure's · a stroke outside 17–18 px · the % line
+  touching the icon · the figure box running under the icon). Negative test: an unplaced White OM ⇒ 26 errors; the old square-frame version ⇒ 32 text boxes running under icons.
+- The image visual mould = the mould Desktop writes (`image.sourceFile` + `fit 'Fill'`, the department repo's company logo); gates `card-row` and `bg-inset` exempt
+  exactly an `Image_<Key>` beside a `Card_<Key>`.
+- ⚠ Not done yet: OLD-STYLE card grids (`card`, without their own `BG_`) on the Operation page (25 boxes) and Promotion Increase Sale (12 boxes).
 
-## 5. Dải tab — khuôn gốc KHÔNG có, nên phải tự dựng cho đúng
+## 5. The tab strip — the original mould has NONE, so it must be built right
 
-Khuôn gốc không có tab (canvas 720 vừa một màn) ⇒ luật lấy từ `pbip §3`, ba cái hay sai: **bookmark
-tab chụp CẢ TRANG** (`targetVisualNames: []` + `suppressData: true`) · **khai đủ mọi nhóm lồng
-giữa** · **mỗi tab hai shape nhãn cộng một vạch đỏ**, đổi tab lật cả ba.
+The original mould has no tabs (a 720 canvas fits one screen) ⇒ the rules come from `pbip §3`, three often wrong: **tab bookmarks
+capture THE WHOLE PAGE** (`targetVisualNames: []` + `suppressData: true`) · **every nested group in between declared** ·
+**each tab has two label shapes plus a red bar**, switching tabs flips all three.
 
-~~🔴 Nhãn tab là `shape`, mà `shape` mang `visualLink` KHÔNG bấm được — phủ PNG trong suốt lên trên.~~
-🔴 **LUẬT NÀY SAI, ĐÃ BỎ (2026-09-24).** `shape` mang `visualLink` **bấm được bình thường** — đo trên
-`Red`: `BG_UserGuide` là `shape` và đang mang `visualLink`. Nút của tôi im lặng là vì **đặt sai chỗ**,
-xem §5b. **Không cần PNG hit-area**; người dùng đã nói thẳng *"tab ko cần image chỉ text"*.
+~~🔴 Tab labels are `shape`s, and a `shape` carrying `visualLink` CANNOT be clicked — lay a transparent PNG over it.~~
+🔴 **THIS RULE IS WRONG, DROPPED (2026-09-24).** A `shape` carrying `visualLink` **is clickable as normal** — measured on
+`Red`: `BG_UserGuide` is a `shape` and carries `visualLink`. My buttons were silent because they were **put in the wrong place**,
+see §5b. **No PNG hit area is needed**; the owner said plainly that tabs need no image, only text.
 
-**Vùng nội dung** = `720 − 50 (header) − 5 − 30 (dải tab) − 5 − cao hàng card`; hàng card `90` ⇒ còn
-**530**, khe `5` giữa hai khối. Công thức đếm tab: [`reference/measured.md`](reference/measured.md) §4.
+**The content area** = `720 − 50 (header) − 5 − 30 (tab strip) − 5 − card row height`; a `90` card row ⇒ leaves
+**530**, a `5` gap between two blocks. The tab-counting formula: [`reference/measured.md`](reference/measured.md) §4.
 
-## 5b. 🔴 BA LỖI LÀM VỠ FILE — đều do TỰ CHẾ KHOÁ, Desktop chặn mở *(2026-09-23)*
+## 5b. 🔴 THREE ERRORS THAT BREAK THE FILE — all from INVENTED KEYS, Desktop refuses to open *(2026-09-23)*
 
-> **Gốc chung của cả ba: viết fragment PBIR theo suy luận thay vì chép từ file ĐANG CHẠY.**
-> JSON vẫn hợp lệ nên **không cổng parse nào bắt được** — chỉ Desktop bắt, mà lúc đó đã mất một lượt.
-> **Luật: mọi khoá phải ĐỌC ĐƯỢC từ một file thật trước khi dùng. Không thấy = không có.**
+> **The shared root of all three: writing PBIR fragments by inference instead of copying from a RUNNING file.**
+> The JSON is still valid so **no parse gate catches it** — only Desktop does, and by then a round is lost.
+> **The rule: every key must be READ from a real file before use. Not seen = does not exist.**
 
-| # | Tôi viết | Đúng phải là | Desktop báo |
+| # | I wrote | Right is | Desktop reports |
 |---|---|---|---|
-| 1 | `visualContainerObjects` ở **gốc** `visual.json` | nằm **trong `visual`** | *"additional property … in the root property"* |
-| 2 | `singleVisualGroup` trong `visualContainers` | nhóm đi lối riêng: **`visualContainerGroups`** | *"additional property 'singleVisualGroup' …"* (30 lỗi một lượt) |
-| 3 | `visual.visualLink` | **`visual.visualContainerObjects.visualLink`** | không báo gì — **nút im lặng không bấm được** |
-| 4 | `$schema` bookmark bản **1.1.0** | **2.1.0** — đúng bản Desktop đang ghi trong chính file đó | tuỳ ca |
-| 5 | thiếu cụm `objects.layout` trên `cardVisual` | phải có `layout.style='Cards'` | không báo — **`value.bold` chỉnh cũng như không** |
+| 1 | `visualContainerObjects` at the **root** of `visual.json` | sits **inside `visual`** | *"additional property … in the root property"* |
+| 2 | `singleVisualGroup` in `visualContainers` | groups take their own path: **`visualContainerGroups`** | *"additional property 'singleVisualGroup' …"* (30 errors in one round) |
+| 3 | `visual.visualLink` | **`visual.visualContainerObjects.visualLink`** | nothing — **the button is silent, not clickable** |
+| 4 | bookmark `$schema` version **1.1.0** | **2.1.0** — exactly the version Desktop writes in that very file | depends on the case |
+| 5 | the `objects.layout` cluster missing on a `cardVisual` | `layout.style='Cards'` must be there | nothing — **editing `value.bold` does nothing** |
 
-### 5b-bis. 🔴 "CHỈ CÓ TRONG FILE MÌNH" ≠ "MÌNH BỊA RA"
+### 5b-bis. 🔴 "ONLY IN MY FILE" ≠ "I MADE IT UP"
 
-`image.imageAreaSize` và `image.fit` chỉ xuất hiện trên 6 thẻ của bản White, không thấy ở `Red` —
-tôi kết luận là mình tự chế rồi **xoá cả hai**. Sai: **người dùng tự bóp icon trong Desktop**, và Desktop
-ghi ra hai khoá đó. Xoá xong `cardVisual` hết giới hạn vùng ảnh ⇒ **icon phình chiếm hết thẻ, nhãn bị
-cắt còn `REVE...`**. Người dùng đã bảo bóp nhỏ hai lượt, tôi phóng to lại một lượt.
+`image.imageAreaSize` and `image.fit` appeared only on the 6 cards of the White copy, not in `Red` —
+I concluded I had invented them and **deleted both**. Wrong: **the owner shrank the icons in Desktop**, and Desktop
+wrote those two keys. After deleting them the `cardVisual` lost its picture-area limit ⇒ **the icon swelled over the whole card, the label cut
+to `REVE...`**. The owner had asked twice to shrink them, and I enlarged them again once.
 
-> **Luật:** khoá lạ mà **chỉ mình file này có** thì hỏi *"ai ghi ra nó?"* trước khi xoá.
-> `git log` không trả lời được (file chưa commit) ⇒ **hỏi người dùng**. Xoá một khoá đang có tác dụng
-> tốn đúng bằng bịa thêm một khoá không có.
-> Hệ quả thứ hai: `fit` **là khoá thật** của visual `image` (`fit='Fill'`) **và** của `cardVisual`.
-> Đối chiếu phải đúng LOẠI visual, cấm chặn mù theo tên khoá.
+> **The rule:** an odd key **only this file has** ⇒ ask *"who wrote it?"* before deleting.
+> `git log` cannot answer (the file is not committed) ⇒ **ask the owner**. Deleting a key that has an effect
+> costs exactly as much as inventing a key that does not exist.
+> The second consequence: `fit` **is a real key** of the `image` visual (`fit='Fill'`) **and** of `cardVisual`.
+> Comparisons must use the right visual KIND, never blocking blindly by key name.
 
-**Khuôn bookmark 2.1.0 đúng — đo trên `Red` VÀ trên bookmark Desktop tự ghi trong bản White:**
+**The right 2.1.0 bookmark mould — measured on `Red` AND on bookmarks Desktop wrote itself in the White copy:**
 ```
-$schema  .../definition/bookmark/2.1.0/schema.json     <- phải trùng bản Desktop đang ghi
-options  { targetVisualNames: [] | [danh sách], suppressData: true }
+$schema  .../definition/bookmark/2.1.0/schema.json     <- must equal the version Desktop writes
+options  { targetVisualNames: [] | [list], suppressData: true }
 explorationState = {
   version: "1.3",  activeSection: "<pageId>",  objects: {},
   sections: { "<pageId>": {
-      visualContainers      : { <CHỈ visual LÁ> : { "singleVisual": {
+      visualContainers      : { <ONLY LEAF visuals> : { "singleVisual": {
                                    visualType, objects:{},
-                                   display:{mode:"hidden"}     <- chỉ khi ẩn
+                                   display:{mode:"hidden"}     <- only when hidden
                               } } },
-      visualContainerGroups : { <CHỈ NHÓM cấp trang> : {
+      visualContainerGroups : { <ONLY page-level GROUPS> : {
                                    isHidden: bool,
-                                   children: { <nhóm con>: {...} }   <- LỒNG NHAU
+                                   children: { <child group>: {...} }   <- NESTED
                               } }
   } }
 }
 ```
-🔴 **Lá và nhóm KHÔNG được trộn.** Đo `MCP_Tab2_NuaDauNam`: `visualContainers` 98 mục **toàn lá, 0
-nhóm**; cây `visualContainerGroups` 30 node **toàn nhóm, 0 lá**. Chỉ **nhóm cấp trang** làm khoá
-ngoài cùng, nhóm con nằm trong `children`.
+🔴 **Leaves and groups must NOT be mixed.** Measured on `MCP_Tab2_NuaDauNam`: `visualContainers` 98 items **all leaves, 0
+groups**; the `visualContainerGroups` tree 30 nodes **all groups, 0 leaves**. Only **page-level groups** are outermost keys,
+child groups sit in `children`.
 
-⚠ **Bật/tắt cả một khối thì khai ở `visualContainerGroups`**, đừng đi lật từng lá — ngắn hơn, và
-không vỡ khi thêm visual vào nhóm.
+⚠ **Turning a whole block on/off is declared in `visualContainerGroups`**, never flipping each leaf — shorter, and
+it does not break when a visual is added to the group.
 
-⚠ **KHÔNG tắt tiến trình Power BI Desktop** — máy có thể đang refresh một
-file khác, giết tiến trình là mất lượt refresh dài. Muốn đóng thì **liệt kê PID + tiêu đề cửa sổ**,
-đóng **đúng PID đang giữ file mình**, xong việc **tự mở lại**.
+⚠ **Do NOT kill the Power BI Desktop process** — the machine may be refreshing another
+file, killing the process loses a long refresh. To close it **list the PIDs + window titles**,
+close **exactly the PID holding your file**, and when done **reopen it yourself**.
 
-## 5c. 🔴 HAI MỤC FORMATTING — viết nhầm mục là "chỉnh mà không thấy đổi" *(2026-09-24)*
+## 5c. 🔴 TWO FORMATTING ITEMS — writing into the wrong one is "edited but nothing changes" *(2026-09-24)*
 
-Desktop tách mỗi cụm format làm **hai mục** trong mảng, và **chỉ một mục có tác dụng**:
+Desktop splits each format cluster into **two items** in an array, and **only one item takes effect**:
 
 ```
 "fill": [
-  { "properties": { "show": ... } },                          <- mục THƯỜNG: chỉ bật/tắt
+  { "properties": { "show": ... } },                          <- the NORMAL item: on/off only
   { "properties": { "fillColor": ... , "transparency": ... },
-    "selector": { "id": "default" } }                         <- mục CÓ selector: GIÁ TRỊ THẬT
+    "selector": { "id": "default" } }                         <- the item WITH a selector: THE REAL VALUES
 ]
 ```
-Đo trên `12ce85014a78cb37c098` (nền header, Desktop ghi): `show` nằm mục thường, `fillColor` nằm mục
-`selector.id = "default"`. **Viết màu vào mục thường ⇒ Desktop bỏ qua im lặng** — đúng cái người dùng gọi là
-*"sai màu"* ở dải tab.
+Measured on `12ce85014a78cb37c098` (the header background, written by Desktop): `show` sits in the normal item, `fillColor` in the item
+`selector.id = "default"`. **Writing the colour into the normal item ⇒ Desktop ignores it silently** — exactly what the owner called
+*"the wrong colour"* on the tab strip.
 
-✅ **Cách an toàn: ghi CẢ HAI mục cùng một giá trị.** Mục nào thắng cũng ra một kết quả.
+✅ **The safe way: write BOTH items with the same value.** Whichever item wins gives one result.
 
-### 5d. TRẠNG THÁI BẬT CỦA NÚT — phải NHÌN THẤY được
+### 5d. A BUTTON'S ON STATE — it must BE VISIBLE
 
-Khuôn gốc đổi **ảnh** giữa hai trạng thái: `dictionary_3_white.png` (tắt) ↔ `dictionary_3.png` (bật).
-Bộ icon bản White **không có biến thể "bật"** ⇒ đánh dấu bằng **khung đỏ** trên nút `_On`:
+The original mould swaps **pictures** between the two states: `dictionary_3_white.png` (off) ↔ `dictionary_3.png` (on).
+The White copy's icon set **has no "on" variant** ⇒ it is marked with **a red frame** on the `_On` button:
 
 ```
 visualContainerObjects.border = { show:true, color:'#C51E24', width:2D, radius:6D }
 ```
-🔴 **Cặp `_On`/`_Off` mà dùng CÙNG một ảnh thì bấm xong không thấy gì đổi** — người dùng sẽ báo
-*"nút chưa có trạng thái bật"*. Đã trúng với nút Glossary.
+🔴 **An `_On`/`_Off` pair using THE SAME picture shows no change after clicking** — the owner will report
+that the button has no on state. Hit with the Glossary button.
 
-### 5e. 🔁 DẤU HIỆU LẶP: Desktop Save là LẬT hết trạng thái mặc định
+### 5e. 🔁 A RECURRING SIGN: a Desktop Save FLIPS every default state
 
-Cứ mỗi lần người dùng mở Desktop rồi Save, **mọi cặp `_On`/`_Off` và mọi visual ẩn theo lượt xem con đều
-về "hiện"**. Đã trúng **hai lần** trong cùng một ngày. ⇒ Giữ một bước **đặt lại mặc định** chạy được
-nhiều lần, và chạy nó **trước khi nghiệm thu**, đừng tin trạng thái mình ghi lượt trước còn nguyên.
+Each time the owner opens Desktop and Saves, **every `_On`/`_Off` pair and every visual hidden by a sub-view comes back
+"shown"**. Hit **twice** in the same day. ⇒ Keep a **reset-to-defaults** step that can run
+many times, and run it **before acceptance**; never trust that the state you wrote last round is still intact.
 
-### 5f. NÚT BẬT/TẮT — hai nút chồng nhau phải KHỚP TỪNG SỐ
+### 5f. ON/OFF BUTTONS — two stacked buttons must MATCH TO THE NUMBER
 
 ```
-_On và _Off:  x · y · width · height  PHẢI BẰNG NHAU
-              z(_On) > z(_Off)
-              rìa phải cách viền khung chứa nó đúng 5
+_On and _Off:  x · y · width · height  MUST BE EQUAL
+               z(_On) > z(_Off)
+               the right edge exactly 5 from the border of its container
 ```
-🔴 **Lệch một chút là bấm trúng cái nằm dưới** ⇒ triệu chứng *"bật được mà tắt không được"*.
-Ngoại lệ duy nhất: **cặp tab** `BT_Tab<số>_…` — tab đang bật **nhô cao hơn** (`y=0 h=45` so với
-`y=5 h=40`), đó là thiết kế người dùng chốt. Cổng `cap On/Off` bỏ qua đúng cặp này.
+🔴 **A slight offset makes the click hit the one underneath** ⇒ the symptom *"it turns on but cannot turn off"*.
+The only exception: **tab pairs** `BT_Tab<n>_…` — the active tab **sticks up higher** (`y=0 h=45` against
+`y=5 h=40`), a design the owner settled. The `On/Off pair` gate skips exactly these pairs.
 
-🔴 **MỘT chức năng = MỘT cặp nút. Cấm hai cặp cùng làm một việc ở hai nhóm khác nhau.**
-Ca thật: nút đóng phễu có **hai bản** — một trong bảng `Filter_Panel`, một ở `Header` — trùng
-**đúng toạ độ tuyệt đối** `(1235,5,40,40)`. Hai lớp đè nhau, lớp nào ăn click tuỳ z của nhóm cha
-⇒ bấm không tắt được. Đã xoá bản trong bảng, giữ cặp ở header.
+🔴 **ONE function = ONE button pair. Two pairs doing the same job in two different groups are forbidden.**
+A real case: the button closing the funnel had **two copies** — one in the `Filter_Panel` table, one in the `Header` — at
+**exactly the same absolute coordinates** `(1235,5,40,40)`. Two layers stacked, which one takes the click depends on the parent groups' z
+⇒ clicking could not turn it off. The copy in the panel was deleted, the pair in the header kept.
 
-🔴 **Ô VUÔNG TÍM GIỮA NÚT = ảnh `tab_transparent_hit_area.png` còn sót.** Di tích từ lúc tưởng sai
-rằng `shape` không mang được `visualLink`. **Shape mang được** (đo trên `Red`: `BG_UserGuide`).
-Thấy ô lạ trên nút ⇒ tìm `image` nằm chồng lên nó rồi **xoá**, đừng đi chỉnh màu.
+🔴 **A PURPLE SQUARE IN THE MIDDLE OF A BUTTON = a leftover `tab_transparent_hit_area.png` image.** A relic of the time it was wrongly believed
+that a `shape` cannot carry `visualLink`. **A shape can** (measured on `Red`: `BG_UserGuide`).
+Seeing an odd box on a button ⇒ find the `image` stacked over it and **delete** it, never adjust colours.
 
-### 5g. NHÃN THẺ — thẻ hẹp thì VIẾT TẮT như bản gốc
+### 5g. CARD LABELS — narrow cards ABBREVIATE as the original does
 
-Thẻ chỉ rộng `150`, nhãn dài là **tràn mất chữ**: `TOTAL CHECK…` · `GUEST AVG (…`.
-Bản gốc dùng nhãn ngắn — chép đúng:
+A card is only `150` wide, long labels **overflow and lose text**: `TOTAL CHECK…` · `GUEST AVG (…`.
+The original uses short labels — copy them exactly:
 
-| measure | nhãn |
+| measure | label |
 |---|---|
 | `#Total Sale` | `Revenue` |
 | `#Switch Target` | `Target` |
 | `#TC` · `#TA` · `#GC` · `#GA` | `TC` · `TA` · `GC` · `GA` |
 
-Nhãn nằm ở `query.queryState.Data.projections[0].displayName`, **không phải** `title.text`.
+The label sits in `query.queryState.Data.projections[0].displayName`, **not** in `title.text`.
 
-🔴 **THUẬT TOÁN: nhãn ≤ rộng thẻ − 60 px, đo bằng font thật** *("card thứ 3 sao tên dài vậy, cần thuật toán để
-bảo đảm tên ko quá dài tràn khỏi card")*. Đo render Product Mix: hộp `Card_` 260 px chỉ hiện 205 px chữ (`COGS incl. damaged &
-packagi…` = 204,9 px Segoe UI đậm 10; nhãn đủ 210,4) ⇒ cột ảnh + lề ăn 55 px, giữ thêm 5. Rộng thẻ lấy SAU khi `card_icons` thu hộp.
-Quá dài ⇒ `mix_builder.py --card-labels` bỏ vế bổ nghĩa (`incl. …` · `(…)` · `- …` · `gồm …`), nghĩa đủ để ở Glossary trang; bỏ vế
-vẫn dài ⇒ in ra cho NGƯỜI đặt tên, máy không tự chế viết tắt. Cổng `card-label` (`pbi_gate.card_label` + `CARD_LABEL_SLACK`).
-⚠ Luật chung: **nhãn dài hơn bề ngang thẻ thì viết tắt theo bản gốc**, đừng thu nhỏ cỡ chữ riêng
-một thẻ — thu chữ làm thẻ này lệch cỡ với các thẻ còn lại. Cỡ **số** chung của mọi thẻ đã chốt ở §4d
-(`18D`); muốn đổi nữa thì đổi cả hàng.
+🔴 **THE ALGORITHM: label ≤ card width − 60 px, measured with the real font** *(why is the third card's name so long? an algorithm is needed to
+make sure names never overflow the card)*. Measured on a Product Mix render: a `Card_` box of 260 px shows only 205 px of text (`COGS incl. damaged &
+packagi…` = 204.9 px Segoe UI bold 10; the full label 210.4) ⇒ the picture column + margins eat 55 px, plus 5 kept. The card width is taken AFTER `card_icons` shrinks the box.
+Too long ⇒ `mix_builder.py --card-labels` drops the qualifying clause (`incl. …` · `(…)` · `- …` · `gồm …`), the full meaning goes in the page's Glossary; still long after
+dropping the clause ⇒ printed for a PERSON to name it, the machine never invents abbreviations. Gate `card-label` (`pbi_gate.card_label` + `CARD_LABEL_SLACK`).
+⚠ The general rule: **a label longer than the card's width is abbreviated as the original does**, never shrinking the font of one
+card — shrinking the text makes this card a different size from the others. The **figure** size shared by every card is settled in §4d
+(`18D`); changing it again means changing the whole row.
 
-### 5h. LEGEND — NGƯỜI DÙNG SỞ HỮU, AGENT KHÔNG ĐƯỢC GHI
+### 5h. LEGENDS — THE OWNER OWNS THEM, THE AGENT MUST NOT WRITE THEM
 
-🔴 **`TopLeft` KHÔNG TỒN TẠI trong Power BI**. Desktop chỉ ghi `Top` · `Bottom` · `Left` · `Right` ·
-`TopCenter` · `BottomCenter` · `LeftCenter` · `RightCenter` — đếm trên mọi file Legacy/Classic/Red, không file nào có
-`TopLeft`; nó do agent tự chế ở `aa676ee`. Hậu quả: legend xếp dọc đè lên nhãn trục, và mỗi lần người dùng Save `Top` (đúng)
-thì cổng cũ báo sai rồi agent "sửa" ngược về `TopLeft` ⇒ *"legend lưu rồi mà mở lại toàn mất"*.
-**Neo trái = `Top`** cho chart trục · **donut/pie = `RightCenter`**.
+🔴 **`TopLeft` DOES NOT EXIST in Power BI**. Desktop writes only `Top` · `Bottom` · `Left` · `Right` ·
+`TopCenter` · `BottomCenter` · `LeftCenter` · `RightCenter` — counted over every Legacy/Classic/Red file, no file has
+`TopLeft`; the agent invented it in `aa676ee`. The consequence: the legend stacked vertically over the axis labels, and each time the owner Saved `Top` (right)
+the old gate reported it wrong and the agent "fixed" it back to `TopLeft` ⇒ the legend, though saved, kept disappearing on reopening.
+**Anchored left = `Top`** for axis charts · **donut/pie = `RightCenter`**.
 
 
-> *"cái legend tui đã lưu về topleft hết mọi dashboard rồi, sao bạn cứ làm mất nó… ko đc đụng vào nữa"*
+> The owner had saved every dashboard's legend to the top left, and the agent kept losing it — it must not be touched again.
 
-Chuẩn là **`Top`** (chart trục) / **`RightCenter`** (donut/pie), nhưng **agent CHỈ ĐƯỢC BÁO, không được ghi**. Cổng xếp legend
-vào **cảnh báo**, không chặn — nếu chặn thì agent kẹt không mở được Desktop mà lại không có quyền sửa.
+The standard is **`Top`** (axis charts) / **`RightCenter`** (donut/pie), but **the agent may ONLY REPORT, never write**. The gate classes legends
+as **warnings**, not blocking — blocking would leave the agent stuck, unable to open Desktop yet without the right to fix it.
 
-### 5i. CẶP NÚT PHẢI CÙNG GỐC TÊN, nếu không cổng KHÔNG thấy nó là một cặp
+### 5i. A BUTTON PAIR MUST SHARE A NAME ROOT, or the gate does NOT see it as a pair
 
-Khuôn gốc đặt tên lệch gốc: `BT_Glossary_Off` ↔ `BT_OpenGlossary_On`, và `BT_OpenFilter` ↔
-`BT_CloseFilter_On`. Cắt hậu tố ra thì gốc **khác nhau** ⇒ cổng không ghép thành cặp ⇒ **cả hai cùng
-hiện mà không ai báo**, người dùng thấy *"viền đỏ ở cả 2 nút ngoài"*. Đã đổi thành:
+The original mould names with mismatched roots: `BT_Glossary_Off` ↔ `BT_OpenGlossary_On`, and `BT_OpenFilter` ↔
+`BT_CloseFilter_On`. With the suffixes cut the roots **differ** ⇒ the gate does not pair them ⇒ **both
+show without anyone reporting it**, the owner sees red frames on both outer buttons. Renamed to:
 
 ```
 BT_Glossary_Off / BT_Glossary_On
 BT_Filter_Off   / BT_Filter_On
 ```
-⚠ **Đây là chỗ CỐ Ý lệch khuôn gốc** — khuôn gốc tự nó đặt tên không nhất quán (nó còn có lỗi gõ
-`Overview_OpenFIlter`). Luật đặt tên `<Loại>_<Tên>_<On|Off>` thắng.
+⚠ **This is a place DELIBERATELY off the original mould** — the original mould is itself inconsistent in naming (it also has the typo
+`Overview_OpenFIlter`). The naming rule `<Kind>_<Name>_<On|Off>` wins.
 
-### 5j. 🔴 MẶC ĐỊNH TRANG: CHỈ MỘT NHÓM TAB ĐƯỢC HIỆN
+### 5j. 🔴 THE PAGE DEFAULT: ONLY ONE TAB GROUP MAY SHOW
 
-Bookmark đúng **không cứu được** chuyện này — đây là trạng thái **lúc mở file**, trước khi bấm gì.
-Cả hai nhóm tab cùng `isHidden=false` ⇒ nội dung hai tab vẽ chồng lên nhau thành một khối
-Ẩn nhóm tab thì **ẩn luôn mọi thứ bên trong nó**, đúng cách `Red` làm.
-
-```
-Tab1_TongQuan  isHidden = false   (+ mọi con: hiện)
-Tab2_ChiTiet   isHidden = true    (+ mọi con: ẩn)
-```
-⚠ Mỗi lần người dùng Save trong Desktop là cờ này bị lật — **chạy lại bước đặt lại mặc định trước khi
-nghiệm thu**. Cổng `tab mac dinh` canh đúng việc đó.
-
-## 5k. ĐỦ TRANG · ĐỦ VISUAL · GLOSSARY RIÊNG · KHUNG 1280x720
-
-> *"mix cũng phải chuẩn DW mới, chính xác với legacy, nhân bản đủ mọi trang"*
-
-- **Mọi trang của Legacy phải có trong White** (cùng id trang), **theo đúng thứ tự trang của Legacy**.
-  Trang White còn thiếu thì **chép từ bản `Classic`** (cùng model DW, visual đã nối lại field) rồi dựng
-  lên khung White. Trang ẩn (tooltip · drill-through · chiến dịch cũ) giữ nguyên như Classic.
-- **Mọi visual nội dung của Legacy phải có mặt** (so theo id). Card Legacy tính theo §4d-bis (còn id, hoặc
-  measure của nó còn trên thẻ cùng trang); visual bỏ có chủ đích khai `dropped_visuals` (§4i). Visual thiếu vì **DW chưa có nguồn** thì khai trang đó ở `known_gaps`
-  trong `config/pbi-gate.json`, **kèm lý do** — cổng chuyển thành cảnh báo; trang không khai vẫn đỏ.
-  Trang Legacy **bỏ có chủ đích** (hết hạn, §5m) khai ở `dropped_pages`, không phải `known_gaps`.
-  Hiện bỏ: 3 tooltip · `Detail` · `Lucky Wheel` · `Reward On Zalo` · `Thẻ Xuân May Mắn T1/T2`.
-- 🔴 **White nhân bản từ White của report KHÁC phải đổi mã theo Legacy CỦA CHÍNH NÓ** *(08/10, White 01 dựng từ White AM)*: AM và OM
-  Legacy **không chung một mã visual nào**, kể cả trang giống hệt ⇒ cổng thấy 11 trang Legacy "mất". Ghép từng visual sang song sinh
-  OM theo loại + bộ field + tiêu đề (vị trí phân định khi trùng; cặp lệch tên field kiểm bằng tay), thay mã trong mọi file
-  `definition` + khoá của report đó trong `pbi-gate.json` (CHỈ khối của report đó — White AM dùng chung mã). Visual OM không có song
-  sinh (chế độ xem phụ của Legacy, vd Daily "Detail") chép từ Classic cùng số rồi dựng lên khung White. Ca 08/10: 167 mã, 2.238 chỗ.
-- **Mọi trang hiện = `1280x720`**, nội dung dài chia tab (§1 đã chốt đường "canvas 720 + tab").
-- **Mỗi trang một Glossary riêng**, viết theo `write-style`, chỉ nói điều đã đọc được từ DAX/field —
-  câu nào chưa kiểm được thì bỏ. Chép Glossary trang khác sang là lỗi (cổng `glossary`).
-- **Tên trang Title Case, một dấu cách**: `Product WHITE → Product Mix` · `Promotion  Increase Sale →
-  Promotion Increase Sale`. Đổi thứ tự trang thì **đánh số lại tiền tố bookmark** theo thứ tự mới.
-- Cổng: `canvas` · `legacy-parity` · `glossary` · `few-cards` — chạy `--page all` để kiểm nghiêm MỌI trang hiện.
-
-- 🔴 **Glossary gọi tên MỌI chữ người đọc thấy trên trang** *(13/10: "cái nút grossary ở mỗi trang có cổng kiểm là phải chú
-  thích đủ cho mọi từ xuất hiện trong dashboard trong trang đó chưa?")*: tiêu đề thẻ / chart / bảng, tên cột · trục · legend · tooltip,
-  nhãn bảng lọc, và chữ in hoa measure in ra trong ô (`STAR` · `HORSE` · `HIGH`…). Từ thường ngày (Store, Month, Revenue… danh sách
-  `GLOSSARY_COMMON`) miễn; viết tắt phải xuất hiện đúng như in. Cổng `glossary-cover` (gặp lần đầu: 01 White 16 trang · 02 White 13 · 03 White 5).
-  **Nguồn Glossary = `scripts/mix_glossary.py`** (mọi trang của 3 White): sửa ở đó rồi `python scripts/mix_glossary.py --apply <report>`;
-  `mix_builder` dựng lại trang cũng đọc từ đó (spec chỉ là dự phòng) — không còn sửa tay `Text_Glossary`.
-- 🔴 **Viết tắt ghi NGUYÊN GỐC đã tra, một lần mỗi trang** *(13/10: "từ viết tắt phải tra ra từ nguyên gốc và viết vào chứ,
-  cái này cũng phải có cổng kiểm")*: `TC (Transaction Count): số hoá đơn`, đặt ở dòng định nghĩa của mục VIẾT TẮT. Nguồn tra theo
-  thứ tự: bảng thuật ngữ nghiệp vụ của vùng (`glossary_dir`) → từ điển hệ cũ (`legacy_sources`) →
-  docs DW (`lineage_catalog`: COL = Cost Of Labor) → DAX của chính report. Từ điển nằm ở `pbi_gate.ACRONYM_ORIGIN`, mỗi mục
-  kèm nguồn; chữ chưa có nguồn công ty (TA, GA, ADS) ghi theo chuẩn ngành F&B và báo người dùng. ⚠ Cùng chữ khác nghĩa theo phòng:
-  `FC` của báo cáo Tài chính là Franchise, của báo cáo vận hành là Forecast (`#FC = SUMX(Dim_Store, [#Fore Cast Sale Month])`) — nghĩa
-  theo DAX của report. Cổng `acronym-origin`: viết tắt trong Glossary / trên trang chưa ghi nguyên gốc ⇒ đỏ; chữ chưa có trong
-  từ điển ⇒ đỏ, bắt tra trước. Mỗi phòng tự viết Glossary của mình: chữ viết tắt riêng của phòng (NQ, DT, CAM…) khai ở khoá
-  `acronyms` của `config/pbi-gate.json` (`origin` + `source` ghi chỗ đã tra), không đợi từ điển chung của vùng. Câu tiếng Việt trên
-  trang là lời văn: cổng `glossary-cover` chỉ đòi định nghĩa chữ viết tắt trong đó, đọc theo chữ trọn vẹn (không cắt "Nhiều" thành "Nhi").
-- 🔴 **Một định nghĩa một dòng** *(14/10: "mỗi 1 định nghĩa phải xuống dòng chứ ko có dính chùm ntn")*: mỗi gạch đầu dòng
-  của Glossary chứa đúng một câu dạng `X: …` / `X = …`; câu giải thích thêm đi liền sau định nghĩa của nó. Viết tắt đã nằm trong
-  ngoặc thì không lồng ngoặc: `…, DSR (Daily Sales Report), …`. Cổng `glossary-one-def` (`pbi_gate.split_definitions`;
-  `06:00` không tính là định nghĩa). Đợt 14/10 tách 218 dòng trên 36 trang.
-- 🔴 **Chú giải nằm TRONG Glossary, không ghim khung trên trang** *(13/10: "chú giải phải nằm trong nút grossary chứ?")*:
-  khung REMARKS của Product Mix (Star/Horse/Challenge/Dog) chuyển vào mục "Xếp nhóm món" của Glossary, kèm cách tính Popularity /
-  Profitability đọc từ DAX; bảng Product Detail chiếm trọn tab.
-- 🔴 **Từ cổng bắt được thì SỬA TÊN trước, giải thích sau**: chữ sai chính tả / dính chữ / tên trường thô (`Swith METRIX` ·
-  `%GrowvsLW` · `ADS To Archive TG` · `DatePart_Lable` · `PARENT2NAME` · `AMs` · `CapChiTieu`) là lỗi `column-name`, không phải từ
-  cần chú giải. Tên mới đọc từ DAX: `% Net Sale of Sale` thực ra là `(Net Sale − COGS) / doanh thu` ⇒ `% Net Margin of Revenue`;
-  `Item Cost` là % ⇒ `% COGS`; `GM` là số tiền ⇒ `Margin`. Nhãn bảng lọc đổi thì đặt cùng `displayName` cho trường của slicer
-  (cổng `panel-label` so nhãn với tên đó). `column-name` kiểm cả visual ẨN mặc định (nội dung tab) — trước 13/10 nó bỏ qua
-  nên ~85 tên mỗi White lọt.
-
-## 5l. 🔴 CHART KHÔNG ĐƯỢC TỰ CUỘN · CHART DÀI HAI CÁI MỘT TAB, XẾP TRÊN DƯỚI
-
-> *"1 trang 4 chart là ko dc khi nó là chart dài, phải tách 1 trang 2 chart trên dưới thôi, mọi chart
-> ko dc để nó có autoscroll, phải canh sao mà chart độ dài lẫn cao đều vừa khít"*
-
-**Vì sao chart tự cuộn:** trục phân loại cho mỗi nhóm tối thiểu `preferredCategoryWidth` px — **thấp nhất
-20 px, không hạ được nữa** (Desktop chỉ từng ghi `20D` · `21D` · `180D`; file Ori dùng `20D`). Khi
-`số nhóm × độ rộng nhóm > phần vẽ` thì Power BI thêm thanh cuộn. Trục số liên tục (`axisType 'Scalar'`
-với field số) không bao giờ cuộn — nhưng field chữ (như `WeekPeriod`) thì `Scalar` bị bỏ qua.
+A correct bookmark **cannot save** this — it is the state **when the file opens**, before anything is clicked.
+Both tab groups with `isHidden=false` ⇒ the content of the two tabs drawn on top of each other as one block.
+Hiding a tab group **hides everything inside it too**, exactly as `Red` does.
 
 ```
-số nhóm (cận trên)   tuần 53 · ngày 31 · cửa hàng 50 · giờ 24 · tháng 12 · thứ 7 · món = Top N của filter
-phần vẽ (trục ngang) = width - 80 (trục trái + lề) - 60 nếu có trục phụ Y2
-phần vẽ (bar ngang)  = height - 60
-cần                  = số nhóm x max(20, preferredCategoryWidth)      <= phần vẽ
+Tab1_TongQuan  isHidden = false   (+ every child: shown)
+Tab2_ChiTiet   isHidden = true    (+ every child: hidden)
 ```
-- ⇒ **chart theo tuần / theo ngày chỉ vừa khi trải HẾT bề ngang** (`1260`): 53 × 20 = 1060 px.
-- **Chart dài = ≥ 28 nhóm.** Mỗi tab **tối đa 3 khối chart dài** *(nới từ 2, theo quy tắc tối cao: "m ko thấy chart này
-  có 1 cột mà chứa hết cả trang ko, 2 chart có đúng 2 cột mà chiếm hết 1 tab")*, mỗi khối **≥ 150 px**, xếp **trên dưới**; bản cũ
-  ghi 2, mỗi khối `1270 × 325/330`
-  (tab có hàng card: `280 + 280` dưới hàng card).
-- **Không dồn 4 chart lớn một tab** (khối cao ≥ 250) kể cả chart ngắn — tách tab. ⚠ Luật này **không** cho phép
-  tách ra tab THƯA: khối ít nội dung thì làm THẤP (< 250) rồi dồn chung tab — xem §5l-bis.
-- **Chart dài bật `categoryAxis.concatenateLabels = true`** —
-  nhãn hai tầng (số tuần + khoảng ngày) nằm một dòng, không bị ngắt chữ. Lệnh:
-  `python scripts/mix_builder.py --concat-long` (bật cho mọi chart ≥ 28 nhóm); cổng `long-chart` báo khi thiếu.
-- Chart ghi "Top 5" mà **không có bộ lọc Top N** là hiện toàn bộ món rồi cuộn (bản Legacy của Product Mix
-  mắc lỗi này): thêm filter `TopN` **chép từ một chart Top N có thật** (khuôn ở Product `Top 5 Revenue`),
-  chỉ đổi `OrderBy…Property` sang measure của chart.
-- 🔴 **Top / Bottom N phải hiện ĐÚNG N** *("bottom 5 mà lại hiện full list … nói ra phải hiện 5")*. Bộ lọc
-  TopN của Power BI **giữ đồng hạng**: 12 món cùng bán 1 phần ⇒ "Bottom 5 Bad Selling Product" hiện 12.
-  **Cách đúng (04/10): GIỮ bộ lọc TopN, chỉ đổi measure sắp** sang `~Sort Key <measure> <Asc|Desc>` = giá trị ± hạng tên món
-  (`RANKX(ALL(món), MIN(món))`) × 1E-7 ⇒ không hai món bằng khoá ⇒ đúng N. Lệnh `mix_builder.py --topn-tiebreak` (13 chart/bản).
-  ⛔ **Đường cụt đã trả giá:** lọc bằng measure `TOPN(N, ALLSELECTED(món)…) = 1` (`--topn-exact`, 03/10) làm "Bottom 5 Bad
-  RevenueProduct" TRẮNG — `ALLSELECTED` không thấy bộ lọc riêng của chart (loại món "Cấp 0 …") nên chọn 5 món "Cấp 0" rồi bộ lọc
-  kia loại sạch. Bộ lọc TopN thì tôn trọng bộ lọc khác của chart. `ItemCode` không phá hoà được (537 mã / 1627 tên, 1681 trống).
-  Cổng `topn-exact`: TopN sắp theo measure thường ⇒ đỏ · còn measure-filter `~Top/~Bottom N` ⇒ đỏ · tiêu đề hứa "Top/Bottom N"
-  mà không có TopN ⇒ đỏ · N tiêu đề ≠ N bộ lọc ⇒ đỏ. Classic/Legacy miễn (giữ hành vi cũ để so số).
-- 🔴 **CHART CỘT KHÔNG ĐƯỢC TREO NGƯỢC TỪ TRÊN XUỐNG** *("ko đc đảo chiều chart từ trên xuống")*. Số âm trên trục
-  cột/thanh vẽ cột chĩa xuống (Bottom 5 Bad MarginProduct: lãi gộp −0,7…−13,4 triệu). Vẽ **đại lượng dương mang đúng nghĩa**: mức
-  lỗ `#Margin Loss = -[#Total Profit]`, format `-#,0.00;#,0.00;0` ⇒ cột mọc lên, nhãn vẫn có dấu trừ; đảo chiều sắp của chart để
-  giữ thứ tự trục; bộ lọc Bottom 5 vẫn xếp theo lãi gộp. Miễn: measure `%` (tăng trưởng âm là nghĩa của nó).
-  Cổng `neg-bars` (lớp engine): mỗi chart cột/thanh × measure số tiền/số lượng ⇒ `MINX(<trục, trong đúng Top/Bottom N của chart>,
-  [m])` < 0 ⇒ đỏ.
-- Cổng: `axis-scroll` (ước tính trên) · `long-chart` · `tab-big-charts`. Ước tính là **cận trên an toàn**; mở
-  Desktop vẫn là cổng cuối — chart nào vẫn cuộn thì báo, đừng hạ độ rộng nhóm dưới 20.
-- **Trang hiện dùng `displayOption: FitToWidth`** như trang 1 (cổng `display-option`). Thanh cuộn cả trang còn
-  có thể do **phóng to cửa sổ app**, không phải do canvas sai — đo `page.json` trước khi kết luận.
+⚠ Each Save by the owner in Desktop flips this flag — **run the reset-to-defaults step again before
+acceptance**. The `default tab` gate watches exactly that.
 
-## 5l-bis. 🔴 TÁCH TAB ĐỂ GIẢM TẢI, KHÔNG ĐỂ CHIA THEO TÊN — MỖI TAB PHẢI KÍN
+## 5k. EVERY PAGE · EVERY VISUAL · ITS OWN GLOSSARY · THE 1280x720 FRAME
 
-> *"tách tab để giảm tải 1 chart dồn vào trang, ko phải để tách ra theo tên cho đẹp, nên 1 tab luôn phải kín data
-> và chart, chỉ chart nào cần dài mới dc nằm hẳn 1 trang, còn mọi chart nào nhỏ nhét dc thì phải nhét vào hết để
-> tối ưu"* · *"ko dc tách tab khi nội dung mỗi tab quá ít, mỗi tab phải lắp đầy hết nội dung ko được để khoảng trống"*
+> White must follow the new DW standard too, exact against Legacy, copying every page.
 
-0. 🔴🔴 **QUY TẮC TỐI CAO: TỐI ƯU KHÔNG GIAN — KHÔNG KHOẢNG TRỐNG, HẠN CHẾ TAB** *("quy hoạch tối ưu
-   không gian, ko được để thừa khoảng trống" · "tab cũng hạn chế, gộp các tab lại với nhau, đéo phải là mày đc phép spam 1 đống tab rồi
-   bên trong chứa có 1 tí thông tin" · "bóp hẳn chart và gộp lại với các tab đang ko chứa nhiều thông tin")*. Mọi luật bố cục khác đứng
-   SAU luật này. Trả giá 01/10: để thoả "bảng cuộn riêng tab" agent đẻ thêm ~15 tab (Daily 6, Product 7, Operation 8, Delivery 6) và
-   kéo một chart theo ngày cao 465 px cho kín tab. Luật nào đẩy ra tab thưa ⇒ **hỏi người dùng thứ tự ưu tiên**, không tự đẻ tab.
-   **Cách đọc đúng ("cuộn nhiều và chứa đầy thông tin, thì tab riêng, còn mấy cái chart chứa ít và khoảng trống nhiều
-   thì gộp lại, mâu thuẫn chỗ đéo nào")** — không có mâu thuẫn:
-   - Bảng **cuộn DỌC nhiều** (≥ 1,5 lần khung — 45 cửa hàng, 250 món) = đầy thông tin ⇒ tab riêng (§5l-quater). Bảng ít dòng chỉ cuộn
-     ngang (7 chỉ số × các ngày) **không** chiếm tab: dồn chung, làm thấp đúng số dòng.
-   - Chart **ít thông tin** — pie / donut / treemap vài lát, chart 5–17 điểm, chart một chuỗi — **thu nhỏ và gộp** vào tab đang thưa;
-     pie / donut / treemap / funnel KHÔNG tính vào trần "3 chart lớn một tab" (cổng `tab-big-charts` bỏ qua).
-   - Gộp theo **chủ đề**: Daily & Hourly = Doanh thu · Giao dịch · Cơ cấu giờ (GC/GA theo ngày, theo giờ, 2 treemap, bảng khung
-     giờ) · Theo thứ (giờ × thứ, kênh theo thứ, khung giờ × thứ) · Chi tiết · CH × Giờ. Đã gộp 01/10: Product Cơ cấu DT + LN ·
-     Executive Lợi nhuận + TC&TA + GC&GA ⇒ Chỉ số · Operation Chỉ số vào Kênh · Promotion bảng theo ngày vào Tổng quan · Delivery
-     Tổng hợp + Theo ngày · Power DT tháng vào Theo tháng (tổng: 39 → 32 tab trên 7 trang).
-   - Trang gộp thì **tên trang nói đủ cả hai** ("trang Daily có kèm Hourly sao ko ghi cả 2 vào trong tên") ⇒
+- **Every page of Legacy must be in White** (the same page id), **in exactly Legacy's page order**.
+  A White page still missing is **copied from the `Classic` copy** (the same DW model, visuals with fields reconnected) then built
+  onto the White frame. Hidden pages (tooltips · drill-through · old campaigns) stay as in Classic.
+- **Every content visual of Legacy must be present** (compared by id). Legacy cards count by §4d-bis (the id remains, or
+  its measure is still on a card on the same page); visuals dropped on purpose are declared in `dropped_visuals` (§4i). Visuals missing because **the DW has no source yet** have their page declared in `known_gaps`
+  in `config/pbi-gate.json`, **with the reason** — the gate turns them into warnings; undeclared pages stay red.
+  Legacy pages **dropped on purpose** (expired, §5m) are declared in `dropped_pages`, not `known_gaps`.
+  Currently dropped: 3 tooltips · `Detail` · `Lucky Wheel` · `Reward On Zalo` · `Thẻ Xuân May Mắn T1/T2`.
+- 🔴 **A White copied from the White of ANOTHER report must change its ids by ITS OWN Legacy** *(08/10, White 01 built from White AM)*: the AM and OM
+  Legacy **share no visual id at all**, even on identical pages ⇒ the gate saw 11 Legacy pages "lost". Pair each visual with its OM twin
+  by kind + field set + title (position decides on ties; pairs with mismatched field names checked by hand), replace the ids in every file of
+  `definition` + that report's keys in `pbi-gate.json` (ONLY that report's block — White AM uses shared ids). OM visuals without a twin
+  (Legacy's secondary views, e.g. Daily "Detail") are copied from the Classic of the same number then built onto the White frame. The case of 08/10: 167 ids, 2,238 places.
+- **Every shown page = `1280x720`**, long content split into tabs (§1 settled the "720 canvas + tabs" way).
+- **Each page its own Glossary**, written by `write-style`, saying only what was read from the DAX/fields —
+  sentences not yet checked are dropped. Copying another page's Glossary is an error (gate `glossary`).
+- **Page names in Title Case, one space**: `Product WHITE → Product Mix` · `Promotion  Increase Sale →
+  Promotion Increase Sale`. Reordering pages ⇒ **renumber the bookmark prefixes** by the new order.
+- Gates: `canvas` · `legacy-parity` · `glossary` · `few-cards` — run `--page all` to check EVERY shown page strictly.
+
+- 🔴 **The Glossary names EVERY word the reader sees on the page** *(13/10: does the glossary button on each page have a gate checking that it
+  explains every word appearing in that page's dashboards?)*: card / chart / table titles, column · axis · legend · tooltip names,
+  filter panel labels, and the capitalised words measures print in cells (`STAR` · `HORSE` · `HIGH`…). Everyday words (Store, Month, Revenue… the list
+  `GLOSSARY_COMMON`) are exempt; abbreviations must appear exactly as printed. Gate `glossary-cover` (first met: 01 White 16 pages · 02 White 13 · 03 White 5).
+  **The Glossary source = `scripts/mix_glossary.py`** (every page of the 3 Whites): edit there then `python scripts/mix_glossary.py --apply <report>`;
+  `mix_builder` rebuilding a page reads from there too (the spec is only a fallback) — no more hand edits of `Text_Glossary`.
+- 🔴 **Abbreviations are written with the ORIGINAL looked up, once per page** *(13/10: abbreviations must be looked up to their origin and written down,
+  with a gate checking this too)*: `TC (Transaction Count): số hoá đơn`, placed in the definition line of the ABBREVIATIONS item. Sources looked up in
+  order: the region's business terminology table (`glossary_dir`) → the old system's dictionary (`legacy_sources`) →
+  the DW docs (`lineage_catalog`: COL = Cost Of Labor) → the report's own DAX. The dictionary sits in `pbi_gate.ACRONYM_ORIGIN`, each item
+  with its source; words without a company source (TA, GA, ADS) follow the F&B industry standard and are reported to the owner. ⚠ The same word with different meanings per department:
+  `FC` in Finance reports is Franchise, in operations reports Forecast (`#FC = SUMX(Dim_Store, [#Fore Cast Sale Month])`) — the meaning
+  follows the report's DAX. Gate `acronym-origin`: an abbreviation in the Glossary / on the page without its original ⇒ red; a word not yet in
+  the dictionary ⇒ red, forcing a lookup first. Each department writes its own Glossary: the department's own abbreviations (NQ, DT, CAM…) are declared in the key
+  `acronyms` of `config/pbi-gate.json` (`origin` + `source` naming where it was looked up), not waiting for the region's shared dictionary. Vietnamese sentences on
+  a page are prose: the `glossary-cover` gate only requires defining the abbreviations in them, reading whole words (never cutting "Nhiều" into "Nhi").
+- 🔴 **One definition, one line** *(14/10: each definition must be on its own line, not lumped together like this)*: each bullet
+  of the Glossary holds exactly one sentence of the form `X: …` / `X = …`; an extra explanatory sentence follows right after its definition. An abbreviation already in
+  parentheses is not nested in more parentheses: `…, DSR (Daily Sales Report), …`. Gate `glossary-one-def` (`pbi_gate.split_definitions`;
+  `06:00` does not count as a definition). The round of 14/10 split 218 lines across 36 pages.
+- 🔴 **Explanations live IN the Glossary, not pinned as a frame on the page** *(13/10: explanations should be inside the glossary button)*:
+  the REMARKS frame of Product Mix (Star/Horse/Challenge/Dog) moved into the Glossary item "Item grouping", with how Popularity /
+  Profitability are computed read from the DAX; the Product Detail table takes the whole tab.
+- 🔴 **Words the gate catches get their NAME FIXED first, explained after**: misspelt / glued words / raw field names (`Swith METRIX` ·
+  `%GrowvsLW` · `ADS To Archive TG` · `DatePart_Lable` · `PARENT2NAME` · `AMs` · `CapChiTieu`) are `column-name` errors, not words
+  needing explanation. New names are read from the DAX: `% Net Sale of Sale` is really `(Net Sale − COGS) / revenue` ⇒ `% Net Margin of Revenue`;
+  `Item Cost` is a % ⇒ `% COGS`; `GM` is an amount ⇒ `Margin`. A changed filter panel label sets the same `displayName` for the slicer's field
+  (the `panel-label` gate compares the label with that name). `column-name` checks visuals HIDDEN by default too (tab content) — before 13/10 it skipped them
+  so ~85 names per White slipped through.
+
+## 5l. 🔴 CHARTS MUST NOT SCROLL BY THEMSELVES · LONG CHARTS TWO TO A TAB, STACKED TOP AND BOTTOM
+
+> Four charts on a page is not allowed when they are long charts; split them two per page, top and bottom; no chart
+> may scroll by itself; size them so both the length and height of each chart fit exactly.
+
+**Why a chart scrolls by itself:** the category axis gives each group at least `preferredCategoryWidth` px — **the lowest is
+20 px, it cannot go lower** (Desktop has only ever written `20D` · `21D` · `180D`; the Ori file uses `20D`). When
+`groups × group width > the plot area` Power BI adds a scrollbar. A continuous numeric axis (`axisType 'Scalar'`
+with a numeric field) never scrolls — but for a text field (like `WeekPeriod`) `Scalar` is ignored.
+
+```
+groups (upper bound)  weeks 53 · days 31 · stores 50 · hours 24 · months 12 · weekdays 7 · items = the filter's Top N
+plot area (horizontal axis) = width - 80 (left axis + margin) - 60 when there is a secondary Y2 axis
+plot area (horizontal bars) = height - 60
+needed                      = groups x max(20, preferredCategoryWidth)      <= plot area
+```
+- ⇒ **weekly / daily charts fit only when spread across the FULL width** (`1260`): 53 × 20 = 1060 px.
+- **A long chart = ≥ 28 groups.** Each tab **at most 3 long chart blocks** *(raised from 2, by the supreme rule: a chart with only
+  one column filling the whole page, two charts with exactly 2 columns taking a whole tab)*, each block **≥ 150 px**, stacked **top and bottom**; the old version
+  said 2, each block `1270 × 325/330`
+  (a tab with a card row: `280 + 280` under the card row).
+- **No 4 large charts in one tab** (blocks ≥ 250 tall) even when the charts are short — split tabs. ⚠ This rule does **not** allow
+  splitting into SPARSE tabs: blocks with little content are made SHORT (< 250) and packed into a shared tab — see §5l-bis.
+- **Long charts turn on `categoryAxis.concatenateLabels = true`** —
+  two-level labels (week number + date range) sit on one line, without breaking words. Command:
+  `python scripts/mix_builder.py --concat-long` (turned on for every chart ≥ 28 groups); gate `long-chart` reports when missing.
+- A chart saying "Top 5" **without a Top N filter** shows every item and then scrolls (the Legacy copy of Product Mix
+  has this error): add a `TopN` filter **copied from a real Top N chart** (the mould on Product `Top 5 Revenue`),
+  changing only `OrderBy…Property` to the chart's measure.
+- 🔴 **Top / Bottom N must show EXACTLY N** *(bottom 5 showing the full list … what is promised must show 5)*. Power BI's
+  TopN filter **keeps ties**: 12 items each sold 1 portion ⇒ "Bottom 5 Bad Selling Product" shows 12.
+  **The right way (04/10): KEEP the TopN filter, change only the sort measure** to `~Sort Key <measure> <Asc|Desc>` = the value ± the item's name rank
+  (`RANKX(ALL(item), MIN(item))`) × 1E-7 ⇒ no two items with the same key ⇒ exactly N. Command `mix_builder.py --topn-tiebreak` (13 charts/copy).
+  ⛔ **A dead end already paid for:** filtering with a measure `TOPN(N, ALLSELECTED(item)…) = 1` (`--topn-exact`, 03/10) made "Bottom 5 Bad
+  RevenueProduct" BLANK — `ALLSELECTED` does not see the chart's own filter (item type "Cấp 0 …") so it picked 5 "Cấp 0" items and then the other
+  filter removed them all. The TopN filter respects the chart's other filters. `ItemCode` cannot break ties (537 codes / 1627 names, 1681 blank).
+  Gate `topn-exact`: TopN sorting by a plain measure ⇒ red · a remaining measure filter `~Top/~Bottom N` ⇒ red · a title promising "Top/Bottom N"
+  without a TopN ⇒ red · the title's N ≠ the filter's N ⇒ red. Classic/Legacy exempt (keeping the old behaviour to compare figures).
+- 🔴 **COLUMN CHARTS MUST NOT HANG UPSIDE DOWN** *(the chart direction must not be flipped top to bottom)*. Negative numbers on a column/bar axis
+  draw columns pointing down (Bottom 5 Bad MarginProduct: gross margin −0.7…−13.4 million). Draw **a positive quantity carrying the right meaning**: the loss
+  `#Margin Loss = -[#Total Profit]`, format `-#,0.00;#,0.00;0` ⇒ the columns grow upwards, the labels still carry the minus sign; flip the chart's sort to
+  keep the axis order; the Bottom 5 filter still sorts by gross margin. Exempt: `%` measures (negative growth is their meaning).
+  Gate `neg-bars` (engine layer): each column/bar chart × amount/quantity measure ⇒ `MINX(<the axis, within exactly the chart's Top/Bottom N>,
+  [m])` < 0 ⇒ red.
+- Gates: `axis-scroll` (the estimate above) · `long-chart` · `tab-big-charts`. The estimate is **a safe upper bound**; opening
+  Desktop is still the final gate — a chart still scrolling is reported, never lowering the group width below 20.
+- **Shown pages use `displayOption: FitToWidth`** like page 1 (gate `display-option`). A whole-page scrollbar can also
+  come from **a zoomed app window**, not a wrong canvas — measure `page.json` before concluding.
+
+## 5l-bis. 🔴 SPLIT TABS TO LIGHTEN THE LOAD, NOT TO DIVIDE BY NAME — EVERY TAB MUST BE FULL
+
+> Tabs are split to lighten a page crowded with charts, not to divide by name for looks, so a tab must always be full of data
+> and charts; only a chart that needs length may take a whole page, every small chart that can be packed in must be packed in to
+> optimise · tabs must not be split when each tab holds too little; each tab must be filled with content, no empty space left.
+
+0. 🔴🔴 **THE SUPREME RULE: OPTIMISE THE SPACE — NO EMPTY SPACE, AS FEW TABS AS POSSIBLE** *(plan the space optimally,
+   leaving no extra empty space · tabs are limited too, merge tabs together, you are not allowed to spam a pile of tabs each
+   holding a little information · shrink the charts and merge them with the tabs that do not hold much)*. Every other layout rule stands
+   BEHIND this one. Paid for 01/10: to satisfy "scrolling tables in their own tab" the agent created ~15 more tabs (Daily 6, Product 7, Operation 8, Delivery 6) and
+   stretched a daily chart to 465 px to fill a tab. A rule pushing towards sparse tabs ⇒ **ask the owner for the priority order**, never create tabs on your own.
+   **The right reading (scrolling a lot and full of information ⇒ its own tab, while charts with little content and lots of empty space
+   get merged — there is no contradiction)**:
+   - A table **scrolling VERTICALLY a lot** (≥ 1.5 times the frame — 45 stores, 250 items) = full of information ⇒ its own tab (§5l-quater). A table with few rows only scrolling
+     sideways (7 indicators × the days) does **not** take a tab: packed in, made exactly as short as its rows.
+   - Charts with **little information** — pies / donuts / treemaps with a few slices, charts with 5–17 points, one-series charts — **shrunk and merged** into sparse tabs;
+     pies / donuts / treemaps / funnels do NOT count towards the "3 large charts per tab" cap (the `tab-big-charts` gate skips them).
+   - Merged by **topic**: Daily & Hourly = Revenue · Transactions · Hour mix (GC/GA by day, by hour, 2 treemaps, the time slot
+     table) · By weekday (hour × weekday, channel by weekday, time slot × weekday) · Detail · Store × Hour. Merged 01/10: Product Revenue mix + Profit ·
+     Executive Profit + TC&TA + GC&GA ⇒ Indicators · Operation Indicators into Channels · Promotion daily table into Overview · Delivery
+     Summary + By day · Power monthly revenue into By month (total: 39 → 32 tabs over 7 pages).
+   - A merged page has **a page name saying both** (the Daily page includes Hourly, so why not put both in the name) ⇒
      `Daily & Hourly` (`mix_builder.py --rename-page`).
-   🔴🔴 **CHIỀU NGANG mới là chỗ dư — chart rộng theo SỐ NHÓM, xếp CẠNH NHAU** *("rõ ràng dashboard là cột, thứ bị dư
-   là chiều ngang đéo phải chiều dọc, m lại đi nhét thêm 1 chart ở dưới nữa, bóp nhỏ thêm chiều dọc rồi làm trống thêm chiều ngang" ·
-   "check file ori … để coi biết cách làm")*. Đo file mẫu Ori (khuôn gốc của vùng, `template_report`, đọc `Report/Layout`):
-   7 thứ trong 170 px × 3 chart cạnh nhau · 12 tháng 590–810 px · ~6 hãng 400 px · chỉ bảng chi tiết mới trải hết ⇒ **~60 px một
-   nhóm** (khớp skill `dataviz`: cột ≤ 24 px, phần còn lại là khoảng thở). Công thức: `cần = 80 (+60 nếu có trục Y2) + số nhóm × 60`;
-   trục **ngày** (`Dim_Date[Day]`, số) đặt **liên tục** `categoryAxis.axisType 'Scalar'` ⇒ 20 px một ngày, 31 ngày vừa nửa tab, không
-   cuộn (`mix_palette.py --scalar-days`; trục phân cấp Tháng > Ngày thì giữ dạng nhóm). Chart rộng > 1,25 × cần (sàn 320 px) mà tab
-   còn khối khác ⇒ SAI: đặt cạnh chart khác. Tự áp cho MỌI trang, không đợi người dùng chỉ từng tab — cổng `chart-width` liệt kê hết
-   (02/10: 8 chart ngày nhóm, 12 tháng trải 1260 ở Executive / Monthly / Product Mix / Power, Top 5 625 px, Top 10 1260 px). Lưới
-   2 × 2 nửa ngang không tính là 'chart lớn' (`tab-big-charts` chỉ đếm khối rộng > 640).
-   🔴 **Số nhóm là số nhóm HIỆN RA, không phải cận trên của trường** *(chart "… By Month" vẽ 2 cột trong
-   khối 2 ô)*: slicer `IsCurrentMonth` **đang chọn sẵn** giá trị mà lọc chart (không có tương tác `NoFilter`) ⇒ trục tháng có **1**
-   nhóm, không phải 12 (`pbi_gate.month_cut`, áp cho `chart-width` + `axis-scroll`). Legacy Monthly không chọn gì ⇒ vẫn 12.
-   ⚠ Dựng lại trang mà rơi tương tác `NoFilter` của Legacy là đổi số nhóm lặng lẽ: Legacy Product WHITE để slicer tháng `NoFilter`
-   chart By Month (cả năm), Classic + White mất ⇒ Classic đã trả lại (05/10); White người dùng chọn giữ lọc tháng, chart thu về 1 ô.
-   Tên món dài (combo 40+ ký tự) mà cổng chỉ thấy số nhóm ⇒ khai `chart_width_exempt` trong `config/pbi-gate.json` kèm lý do
-   (Bottom 5 Bad Selling 2 ô) — cổng chuyển thành cảnh báo.
-1. **Lý do DUY NHẤT để thêm một tab là tải**: nội dung không vừa `1270 × 660` mà không vi phạm §5l (chart tự cuộn ·
-   quá 2 chart dài · quá 3 khối ≥ 250). **Chia tab theo chủ đề/tên cho gọn là SAI.**
-2. **Chỉ chart DÀI (§5l, ≥ 28 nhóm) hoặc bảng nhiều dòng thật sự** mới được chiếm trọn một tab. Chart nhỏ, bảng vài
-   dòng, thẻ số **phải dồn chung** một tab tới khi kín.
-3. **Chiều cao khối theo LƯỢNG NỘI DUNG, không theo khung**: bảng 1–3 dòng mà khung cao 300 là khoảng trống. Khối
-   ít nội dung làm thấp (< 250 thì không tính là chart lớn ở cổng `tab-big-charts`) rồi xếp thêm khối khác vào.
-4. **Hai tab kề nhau cùng thưa ⇒ GỘP**, kể cả khi hai tab mang hai chủ đề khác nhau. Tên tab gộp là **MỘT từ ngắn bao
-   được cả hai**, không ghép hai tên bằng `&` (`Kênh bán`, không phải `Người bán & Sàn`).
-5. 🔴 **Nút tab rộng ít nhất chữ + 15 px** *(`Doanh…`, `Cơ cấu…`)* — `Doanh thu` 79 px trong nút 85 bị cắt, `Tổng
-   quan` 81 px trong nút 100 hiện đủ. Thu `tabw` để nhét thêm tab là sai: gộp tab thay vì bóp nút. Cổng `tab-label` đo chữ thật
-   (Segoe UI đậm 12).
-   🔴 **Nhãn tab tối đa 10 ký tự, tính cả dấu cách** *("tên tab ko dc quá dài, phải có luật giới
-   hạn chữ… nghĩ ra từ nào ngắn hơn và bao đủ hàm ý tự nhiên hơn")*. Nút tab chữ đậm 12pt rộng 90–125px: `Người bán & Sàn`
-   (15) bị cắt thành `Người bán &..`. Đo 29/09: mọi nhãn còn lại của XYZ + ABC ≤ 10. Cổng `tab-label`.
-6. **Cùng một loại dữ liệu thì cùng MỘT visual**, không tách visual theo giá trị bộ lọc: ba pivot người bán giống hệt nhau
-   chỉ khác bộ lọc kênh ⇒ một pivot có cấp `Kênh` ở đầu; bảng `Web` một dòng tách khỏi bảng kênh sàn ⇒ web là một dòng
-   của bảng kênh. Visual thừa khai `dropped_visuals` kèm lý do. Visual nào nhìn giống visual khác thì **tiêu đề phải nói
-   nó là gì** — tiêu đề cột là chữ người đọc (`Trưởng nhóm`, không phải `LeaderGroup`; `% Target`, không phải `%`).
+   🔴🔴 **THE HORIZONTAL direction is where the slack is — charts as wide as their NUMBER OF GROUPS, placed SIDE BY SIDE** *(clearly the dashboard is columns, what is in
+   excess is the horizontal direction, not the vertical; you stuffed another chart below, squeezed the height further and left even more horizontal space empty ·
+   check the ori file … to see how it is done)*. Measured on the Ori sample file (the region's original mould, `template_report`, reading `Report/Layout`):
+   7 weekdays in 170 px × 3 charts side by side · 12 months 590–810 px · ~6 brands 400 px · only the detail table spans the full width ⇒ **~60 px per
+   group** (matching the `dataviz` skill: columns ≤ 24 px, the rest breathing space). The formula: `needed = 80 (+60 with a Y2 axis) + groups × 60`;
+   a **day** axis (`Dim_Date[Day]`, numeric) is set **continuous** `categoryAxis.axisType 'Scalar'` ⇒ 20 px per day, 31 days fit half a tab, no
+   scrolling (`mix_palette.py --scalar-days`; a hierarchical Month > Day axis keeps the category form). A chart wider than 1.25 × needed (floor 320 px) while the tab
+   still has other blocks ⇒ WRONG: place it beside another chart. Applied to EVERY page on your own, without waiting for the owner to point at each tab — the `chart-width` gate lists them all
+   (02/10: 8 category-day charts, 12 months spread over 1260 on Executive / Monthly / Product Mix / Power, Top 5 625 px, Top 10 1260 px). A 2 × 2 grid
+   of half widths does not count as 'large charts' (`tab-big-charts` counts only blocks wider than 640).
+   🔴 **The number of groups is the number SHOWN, not the field's upper bound** *(a "… By Month" chart drew 2 columns in
+   a block of 2 cells)*: the slicer `IsCurrentMonth` **preselects** a value that filters the chart (no `NoFilter` interaction) ⇒ the month axis has **1**
+   group, not 12 (`pbi_gate.month_cut`, applied to `chart-width` + `axis-scroll`). Legacy Monthly selects nothing ⇒ still 12.
+   ⚠ Rebuilding a page that drops Legacy's `NoFilter` interaction changes the number of groups silently: Legacy Product WHITE kept the month slicer `NoFilter`
+   for the By Month chart (the whole year), Classic + White lost it ⇒ Classic put it back (05/10); for White the owner chose to keep the month filter, the chart shrunk to 1 cell.
+   Long item names (combos of 40+ characters) where the gate sees only the number of groups ⇒ declare `chart_width_exempt` in `config/pbi-gate.json` with the reason
+   (Bottom 5 Bad Selling 2 cells) — the gate turns it into a warning.
+1. **The ONLY reason to add a tab is load**: the content does not fit `1270 × 660` without breaking §5l (charts scrolling by themselves ·
+   more than 2 long charts · more than 3 blocks ≥ 250). **Splitting tabs by topic/name for tidiness is WRONG.**
+2. **Only LONG charts (§5l, ≥ 28 groups) or tables with really many rows** may take a whole tab. Small charts, tables with a few
+   rows, number cards **must be packed together** into one tab until it is full.
+3. **Block height by THE AMOUNT OF CONTENT, not by the frame**: a 1–3 row table in a frame 300 tall is empty space. Blocks
+   with little content are made short (< 250 does not count as a large chart in the `tab-big-charts` gate) and more blocks are laid in.
+4. **Two adjacent tabs both sparse ⇒ MERGE them**, even when the two tabs carry different topics. The merged tab's name is **ONE short word covering
+   both**, never joining two names with `&` (`Kênh bán`, not `Người bán & Sàn`).
+5. 🔴 **A tab button is at least the text + 15 px wide** *(`Doanh…`, `Cơ cấu…`)* — `Doanh thu` at 79 px in an 85 button gets cut, `Tổng
+   quan` at 81 px in a 100 button shows in full. Shrinking `tabw` to fit more tabs is wrong: merge tabs instead of squeezing buttons. Gate `tab-label` measures the real text
+   (Segoe UI bold 12).
+   🔴 **A tab label is at most 10 characters, spaces included** *(tab names must not be too long, there must be a character
+   limit… think of shorter words that still carry the meaning more naturally)*. A bold 12pt tab button is 90–125px wide: `Người bán & Sàn`
+   (15) got cut to `Người bán &..`. Measured 29/09: every remaining label of XYZ + ABC ≤ 10. Gate `tab-label`.
+6. **The same kind of data uses ONE visual**, never split into visuals by filter value: three identical seller pivots
+   differing only by the channel filter ⇒ one pivot with a `Channel` level first; a one-row `Web` table split from the marketplace channel table ⇒ web is one row
+   of the channel table. Excess visuals are declared in `dropped_visuals` with the reason. A visual looking like another visual must have **a title saying
+   what it is** — column headers are the reader's words (`Trưởng nhóm`, not `LeaderGroup`; `% Target`, not `%`).
 
-7. 🔴 **Chart ÍT thông tin không chiếm chỗ lớn** *("mấy cái chart by day thông tin ko có gì thì ai lại để 1 cái chart
-   to đùng chiếm hết chỗ thế này")*. Chart **một chuỗi** (một measure, không chia, hoặc chia theo trường không phải thời gian —
-   tên chương trình bị lọc còn một giá trị vẫn là một chuỗi) cao **tối đa nửa tab, 330 px**; chỗ còn lại cho nội dung khác. Chia
-   theo năm (`Dim_Date.*`, Seasonal) hoặc theo trường có danh sách cố định (nhóm kênh, AM — `pbi_gate.MULTI_SPLIT`) là nhiều chuỗi. Ca thật: Promotion `Sale of Promotion By Day` cao 465 px sau khi tách bảng ⇒
-   270 px + chart Top 10 món khuyến mãi theo số lượng bên dưới. Cổng `chart-size`. ⚠ Luật "tab kín" (mục 1–3) **không** được lấp
-   bằng cách kéo to chart ít thông tin — thiếu nội dung thì trình người dùng thêm khối, đừng phóng chart.
+7. 🔴 **Charts with LITTLE information do not take a large space** *(the by-day charts hold almost nothing, who would make them
+   huge, taking all the space like this)*. A **one-series** chart (one measure, not split, or split by a field that is not time —
+   a programme name filtered down to one value is still one series) is **at most half a tab, 330 px** tall; the rest goes to other content. Splitting
+   by year (`Dim_Date.*`, Seasonal) or by a field with a fixed list (channel group, AM — `pbi_gate.MULTI_SPLIT`) is several series. A real case: Promotion `Sale of Promotion By Day` 465 px tall after splitting out the table ⇒
+   270 px + a Top 10 promotion items by quantity chart below. Gate `chart-size`. ⚠ The "full tab" rule (items 1–3) must **not** be satisfied
+   by enlarging charts with little information — short of content ⇒ propose more blocks to the owner, never inflate a chart.
 
-**Ca thật (XYZ `01DR_Overview_Mix`, trang Tổng Quan, 29/09):** tab `Người bán` (3 bảng, bảng dài nhất 13 dòng) và tab
-`Sàn & NQ` (3 bảng 1–3 dòng) mỗi tab trống quá nửa — cả hai sinh ra vì một bản dựng trước tách tab `Chi tiết` để né
-`tab-big-charts` bằng cách giữ mọi khung cao 325–660. Gộp thành `Người bán & Sàn`: 3 bảng người bán cao 410 +
-3 bảng kênh cao 245 ⇒ 5 tab còn 4, cổng vẫn xanh.
+**A real case (XYZ `01DR_Overview_Mix`, the Overview page, 29/09):** the tab `Người bán` (3 tables, the longest 13 rows) and the tab
+`Sàn & NQ` (3 tables of 1–3 rows) each more than half empty — both born because an earlier build split out a `Chi tiết` tab to dodge
+`tab-big-charts` by keeping every frame 325–660 tall. Merged into `Người bán & Sàn`: 3 seller tables 410 tall +
+3 channel tables 245 tall ⇒ 5 tabs down to 4, the gate still green.
 
-🔴 **Đặt cạnh mà làm chart kia thành cột dọc trắng là SAI** *(13/10, 01 Monthly: "bạn để donut dài dọc cả 2 hàng làm
-cho donut group bị trắng")*: bản 02/10 thu combo Old/New Store về 860 rồi kéo donut Channel thành cột 405 × 565 ⇒ vòng tròn
-chỉ lấy bề ngang, nửa khối trắng. Donut/pie TRÒN ⇒ nằm MỘT hàng (Monthly: Trend 720 + Donut 545 cao 250, combo 1270 hàng
-dưới, `chart_width_exempt`). Cổng `donut-shape`: bỏ 60 px tiêu đề + legend, phần còn lại cao hơn bề ngang ⇒ đỏ.
+🔴 **Placing side by side so that the other chart becomes a blank vertical column is WRONG** *(13/10, 01 Monthly: you stretched the donut vertically over both rows, leaving
+the donut group blank)*: the 02/10 version shrank the Old/New Store combo to 860 and stretched the Channel donut into a column 405 × 565 ⇒ the circle
+took only the width, half the block blank. Donuts/pies are ROUND ⇒ they sit in ONE row (Monthly: Trend 720 + Donut 545 at 250 tall, the combo 1270 in the row
+below, `chart_width_exempt`). Gate `donut-shape`: dropping 60 px of title + legend, the rest taller than its width ⇒ red.
 
-### 5l-ter. 🔴 CHART CÙNG KIỂU PHẢI NẰM CÙNG MỘT DÃY
+### 5l-ter. 🔴 CHARTS OF THE SAME KIND SIT IN THE SAME ROW
 
-> *"tự nhiên có 1 chart cũng chỉ 2 cột nằm ở trên trong khi 3 cái dưới cũng tương tự mà chia 3, nó phải nằm chung
-> với nhau hết 1 dãy nếu chart tương tự nhau"*
+> Suddenly one chart with only 2 columns sat on top while the 3 below, just as similar, were split into 3 — similar charts must sit together
+> in one row.
 
-- **Cùng loại visual + cùng bộ field** (chỉ khác bộ lọc: tổng · theo kênh · theo miền…) ⇒ **một dãy ngang**, cùng
-  `y`; chart cùng chiều cao, chia đều bề ngang (`(1270 - 5 × (N - 1)) / N`, **giữ nguyên số lẻ, không làm tròn, không
-  dồn thừa** — §4f).
-  Bảng thì chiều cao theo số dòng (§5l-bis mục 3) — và nếu chỉ khác bộ lọc thì gộp thành một (§5l-bis mục 6).
-- Cấm tách một chart ra hàng riêng chỉ vì nó là "tổng": người đọc so các chart cùng kiểu bằng mắt theo hàng ngang.
-- **Ca thật (XYZ, tab `Theo tháng`, 29/09):** `Doanh Thu Tổng` (cột Doanh Thu/Target + %) nằm một hàng rộng 1270, ba
-  chart NQ · E-Commerce · B2B cùng khuôn nằm hàng dưới ⇒ gộp thành **một dãy 4** (`313.75 × 4`; bản 29/09 ghi
-  `315 · 315 · 315 · 310` — đã sửa 08/10 vì lệch ô cuối).
+- **The same visual kind + the same field set** (differing only by filter: total · by channel · by region…) ⇒ **one horizontal row**, the same
+  `y`; the charts the same height, splitting the width evenly (`(1270 - 5 × (N - 1)) / N`, **keeping the decimals, never rounding, never pushing the
+  remainder** — §4f).
+  Tables take their height from their row count (§5l-bis item 3) — and when they differ only by filter they are merged into one (§5l-bis item 6).
+- Never split a chart onto its own row just because it is "the total": the reader compares charts of the same kind by eye along the row.
+- **A real case (XYZ, tab `Theo tháng`, 29/09):** `Doanh Thu Tổng` (Revenue/Target columns + %) on a row 1270 wide, three
+  charts NQ · E-Commerce · B2B of the same mould on the row below ⇒ merged into **one row of 4** (`313.75 × 4`; the 29/09 version wrote
+  `315 · 315 · 315 · 310` — fixed 08/10 because the last cell was off).
 
-### 5l-quater. 🔴 MATRIX KHÔNG DÙNG ĐỂ HIỆN THÔNG TIN ÍT · KHỐI KHÔNG BỎ TRỐNG
+### 5l-quater. 🔴 MATRICES ARE NOT FOR SHOWING LITTLE INFORMATION · NO BLOCK LEFT EMPTY
 
-> *"tại sao có 1 dòng ở dashboard vậy? nếu là 1 dòng phải dùng chart khác chứ ai đi dùng matrix"* · *"matrix ko bao giờ dc dùng
-> để hiển thị thông tin ít, nếu mà chỉ chứa vài legend thì ng ta dùng chart khác"* · *"hiện ko bao nhiêu mà nằm hẳn 1 tab.... 1 là
-> phải đổi chart bự hơn, 2 là bổ sung thêm các chart liên quan trực quan hơn để vào thêm"*
+> Why is there a dashboard with one row? one row needs another chart, nobody uses a matrix for that · a matrix is never used
+> to show little information; with only a few legend items people use another chart · it shows almost nothing yet takes a whole tab.... either
+> switch to a bigger chart, or add related, more visual charts to fill it.
 
-| Matrix / bảng đang hiện | Dùng thay |
+| Matrix / table showing | Use instead |
 |---|---|
-| **1 dòng** (không field dòng/cột; bảng chỉ toàn measure) | thẻ số — một `cardVisual` nhiều giá trị |
-| **vài nhóm** (một field dòng ≤ 6 giá trị, không field cột: 4 kênh sàn, 3 đội…) | biểu đồ — cột theo nhóm; measure khác đơn vị (số đơn vs tiền) vào tooltip |
-| nhiều dòng nhưng khối còn trống phần lớn (13 dòng trong khung 660) | thu khối vừa số dòng, phần còn lại đặt **biểu đồ liên quan** (vd Doanh Thu vs Target theo người bán) |
+| **1 row** (no row/column field; a table of measures only) | a number card — one `cardVisual` with several values |
+| **a few groups** (one row field ≤ 6 values, no column field: 4 marketplace channels, 3 teams…) | a chart — columns by group; measures in different units (order counts vs money) go into the tooltip |
+| many rows but the block mostly empty (13 rows in a 660 frame) | shrink the block to the rows, the rest holds **a related chart** (e.g. Revenue vs Target by seller) |
 
-- Bản `Classic` KHÔNG áp (giữ thiết kế cũ) — luật này cho bước dựng `White`: matrix bê từ Legacy phải xét lại theo bảng trên.
-- Máy canh: luật `matrix-few` của `pbi_gate.py` — lớp tĩnh bắt matrix 1 dòng, lớp engine đếm giá trị thật của field dòng (≤ 6 = đỏ).
-  Phần "khối bỏ trống" là phán đoán (số dòng × cỡ dòng còn tuỳ dữ liệu) — soát bằng mắt khi chụp từng tab.
-- *Ca thật (XYZ 08/10, Overview White):* `Doanh Thu POS Nhượng Quyền` 1 dòng × 2 số trong khung 360×270 → thẻ 2 giá trị ·
-  `E-Commerce Theo Kênh` + `Thực Nhận Và Hoàn Trả Theo Kênh` 4 kênh → cột theo kênh · tab `Kênh bán` hai matrix 11–13 dòng
-  chiếm trọn 660 → matrix nửa trên, hai biểu đồ thanh `Doanh Thu Và Target Theo Người Bán` nửa dưới.
-- **Máy kiểm được (chưa có ở cổng):** trong một tab, nhóm visual theo `visualType` + tập field của `queryState` bỏ
-  bộ lọc; nhóm nào có mặt ở ≥ 2 giá trị `y` khác nhau ⇒ lỗi. Luật §5l-bis chỉ đo gần đúng (lớp engine: số dòng
-  trả về × ~20 px so với chiều cao khung) — người dùng coi là luật thẩm mỹ, nên nếu dựng thì ở mức cảnh báo.
+- The `Classic` copy does NOT apply it (keeping the old design) — this rule is for the `White` build step: matrices carried over from Legacy are reconsidered by the table above.
+- The machine watches: the `matrix-few` rule of `pbi_gate.py` — the static layer catches 1-row matrices, the engine layer counts the real values of the row field (≤ 6 = red).
+  The "empty block" part is a judgment (rows × row size depends on the data) — checked by eye when capturing each tab.
+- *A real case (XYZ 08/10, Overview White):* `Doanh Thu POS Nhượng Quyền` 1 row × 2 figures in a 360×270 frame → a 2-value card ·
+  `E-Commerce Theo Kênh` + `Thực Nhận Và Hoàn Trả Theo Kênh` 4 channels → columns by channel · the tab `Kênh bán` with two matrices of 11–13 rows
+  taking the whole 660 → the matrix in the upper half, two bar charts `Doanh Thu Và Target Theo Người Bán` in the lower half.
+- **Machine-checkable (not yet in the gate):** within a tab, group visuals by `visualType` + the field set of `queryState` without
+  filters; a group present at ≥ 2 different `y` values ⇒ an error. The §5l-bis rule is measured only approximately (engine layer: rows
+  returned × ~20 px against the frame height) — the owner considers it an aesthetic rule, so if built it is at warning level.
 
-### 5l-quater. 🔴 BẢNG CUỘN NHIỀU NẰM RIÊNG MỘT TAB
+### 5l-quater. 🔴 TABLES SCROLLING A LOT SIT IN A TAB OF THEIR OWN
 
-> *"mấy matrix này phải tách ra 2 tab riêng ko gộp dc vì nó chứa lượng scroll nhiều, mọi cái scroll bar quá lớn đặc biệt là
-> matrix đều phải tách nằm riêng 1 tab"* — Weekly tab Chi tiết: bảng cửa hàng × tuần (~40 tuần, 45 cửa hàng) và bảng món ×
-> tuần dồn chung một tab.
+> These matrices must be split into 2 separate tabs and cannot be merged because they scroll a lot; everything with a very large scrollbar, above all
+> matrices, must sit alone in a tab — Weekly's Detail tab: the store × week table (~40 weeks, 45 stores) and the item ×
+> week table packed into one tab.
 
-- Bảng (`pivotTable` · `tableEx`) có nội dung **≥ 1,5 lần khung** theo bất kỳ chiều nào là **khối DUY NHẤT của tab** —
-  khung `(0, 0, 1270, 660)`, bảng `(5, 5, 1260, 650)`. Luật này **thắng** §5l-bis mục 1 (tab kín): bảng cuộn nhiều được
-  chiếm trọn tab dù trông thưa.
-- **Đo:** ngang = công thức §5n, **KHÔNG tin bộ lọc `~Recent`** (bộ lọc measure trên matrix không cắt cột — người dùng nhìn
-  Weekly 01/10: ~40 cột tuần dưới `~Recent 4 Weeks`; XYZ đo render cùng kết luận). Dọc = `40 + (số dòng + 1) × 20` so
-  với chiều cao khung; số dòng theo trường hàng **cấp đầu** (pivot mở ở dạng thu gọn), bảng cận trên ở `pbi_gate.ROWS_N`
-  (45 cửa hàng · 250 món · 31 ngày · 53 tuần …).
-- Tách ra thì tab mới mang nhãn ngắn nói nội dung (`Cửa hàng` · `Món` · `CH × Giờ`), vẫn ≤ 10 ký tự (§5l-bis mục 5).
-- Cổng `scroll-alone`. Đo 01/10 khi dựng: AM 15 chỗ / OM 19 chỗ trên 7–8 trang.
+- A table (`pivotTable` · `tableEx`) whose content is **≥ 1.5 times its frame** in any direction is **the ONLY block of its tab** —
+  the frame `(0, 0, 1270, 660)`, the table `(5, 5, 1260, 650)`. This rule **wins over** §5l-bis item 1 (full tabs): a table scrolling a lot may
+  take a whole tab even though it looks sparse.
+- **Measure:** horizontally = the §5n formula, **do NOT trust a `~Recent` filter** (a measure filter on a matrix does not cut columns — the owner looked at
+  Weekly 01/10: ~40 week columns under `~Recent 4 Weeks`; XYZ measured a render with the same conclusion). Vertically = `40 + (rows + 1) × 20` against
+  the frame height; rows by the **first-level** row field (pivots open collapsed), the upper-bound table in `pbi_gate.ROWS_N`
+  (45 stores · 250 items · 31 days · 53 weeks …).
+- Split out, the new tab carries a short label saying its content (`Cửa hàng` · `Món` · `CH × Giờ`), still ≤ 10 characters (§5l-bis item 5).
+- Gate `scroll-alone`. Measured 01/10 while building: AM 15 places / OM 19 places over 7–8 pages.
 
-### 5l-quinquies. 🔴 LỚP ĐỌC PIXEL — khối nào còn > 30% TRỐNG khi đã đầy dữ liệu
+### 5l-quinquies. 🔴 THE PIXEL-READING LAYER — which block is still > 30% EMPTY when full of data
 
-> *"thêm 1 lớp đọc pixel … khi 1 group nó bị phần nền chiếm nhiều hơn 30% là xét bị trống"* · *"chart full tuần thì phải đếm hết
-> max tuần của năm"*. Cổng tĩnh chỉ ước theo toạ độ + số nhóm; chỉ ảnh render mới thấy chart thật sự vẽ kín tới đâu.
+> Add a pixel-reading layer … when a group's background takes more than 30% it counts as empty · a full-week chart must count all
+> the maximum weeks of the year. The static gate only estimates from coordinates + group counts; only a rendered image shows how far a chart really fills.
 
 ```
-python scripts/pbi_pixel.py reports/<report> --user-ok [--page <pageId>] [--tab <chữ>] [--as-of 2025-12-31]
+python scripts/pbi_pixel.py reports/<report> --user-ok [--page <pageId>] [--tab <text>] [--as-of 2025-12-31]
 ```
-- 🔴 **HỎI NGƯỜI DÙNG TRƯỚC, rồi mới chạy với `--user-ok`** *("t chưa bao giờ đồng ý mấy cái tạo file kiểm thử vớ vẩn tùm lum,
-  t luôn cho file fix thẳng" · `Skill_Task_Case` §Không bản nháp)*. Lớp này buộc phải có bản sao (ghim ngày, đổi trạng thái trang),
-  nên bản sao nằm ở thư mục NGẮN ở gốc ổ, NGOÀI mọi repo (`D:\_pbx_<pid>` — không dùng `%TEMP%`: vượt MAX_PATH, Desktop cắt file
-  lặng lẽ, `pbi-pbip`) và **tự xoá khi chạy xong** — không còn `data/_sbx_px`, không còn
-  `--reuse-shots`, hook `pbi-open-gate` không miễn đường nào nữa. Cách làm: chép định nghĩa + `cache.abf` nhỏ (bỏ `*.bak`); mỗi
-  trang × tab (bookmark `NN_<Trang>_Tab<số>_…`, trang không tab thì `_Main`) mở Desktop một lần, áp bookmark tab làm trạng thái mặc
-  định, `FitToPage`, thêm 2 ô mốc tím ở hai góc để định vị canvas trong ảnh.
-- **Quy về SỨC CHỨA bằng cách đo lúc đầy, không ngoại suy:** bản sao ghim `Dim_Date.MaxSale` = `--as-of` (mặc định
-  31/12/2025) ⇒ mọi slicer "Current …" ra một kỳ đủ: tháng 31 ngày, đủ 12 tháng, đủ tuần của năm. Mọi cờ `Current/Last/5Week` của
-  `Dim_Date` đều sinh từ đúng một biểu thức `MaxSale` (đo 02/10, cả hai White); measure lọc `< TODAY()` vẫn ra trọn kỳ cũ.
-- 🔴 **Đổi chữ câu SQL ⇒ Desktop hỏi "Native Database Query – approve?"** (duyệt theo đúng chữ câu, một lần mỗi mốc ngày). Hộp
-  thoại là HTML, `PrintWindow` chụp ra ĐEN; trong lúc chờ duyệt mọi visual quay chấm tải mãi và lệnh đóng cũng kẹt. Công cụ đọc
-  chữ hộp thoại qua `WM_HTML_GETOBJECT` và **chỉ bấm Run khi chữ chứa đúng câu ghim của nó** — câu lạ không bao giờ tự duyệt.
-- **"Đã vẽ xong"** = ba ảnh liền không ô 10×10 nào đổi (so trung bình cả canvas bị chấm tải lừa — trả giá 02/10). Đóng bằng
-  `CloseMainWindow` + "Don't save" (`GateClose`), không bao giờ kill.
-- **Phép đo — nở mực 25 px:** khối = nhóm có nền `BG_` + ít nhất một chart/bảng (thẻ, slicer, nút không tính). Mỗi điểm mực
-  chiếm 25 px quanh nó (nửa bước ~60 px một nhóm của Ori); nền còn sót là TRỐNG. **> 30% ⇒ đỏ**, ảnh cắt tô đỏ phần trống lưu
-  cạnh ảnh chụp. 🔴 **Đừng đếm nền thô:** khoảng thở giữa cột + phần dưới đường line làm MỌI chart đỏ (combo 12 tháng kín vẫn ra
-  67%). Hiệu chuẩn 02/10 trên Monthly: donut dồn góc 57% · line 32% · combo 12 tháng 13%.
-- **Bốn cách đo theo loại khối** (đều hiệu chuẩn trên render thật 02/10, mỗi cách sinh từ một ca báo oan):
-  | Khối | Trống = | Vì sao |
+- 🔴 **ASK THE OWNER FIRST, only then run with `--user-ok`** *(the owner never agreed to creating random test files everywhere,
+  the owner always has files fixed directly · `Skill_Task_Case` §No drafts)*. This layer must have a copy (pinning the date, changing page states),
+  so the copy sits in a SHORT folder at the drive root, OUTSIDE every repo (`D:\_pbx_<pid>` — never `%TEMP%`: MAX_PATH is exceeded, Desktop cuts files
+  silently, `pbi-pbip`) and **deletes itself when the run ends** — no more `data/_sbx_px`, no more
+  `--reuse-shots`, the `pbi-open-gate` hook exempts no path any more. How: copy the definition + a small `cache.abf` (dropping `*.bak`); each
+  page × tab (bookmark `NN_<Page>_Tab<n>_…`, pages without tabs `_Main`) opens Desktop once, applies the tab bookmark as the default
+  state, `FitToPage`, adds 2 purple marker cells in two corners to locate the canvas in the image.
+- **Brought to CAPACITY by measuring when full, never extrapolating:** the copy pins `Dim_Date.MaxSale` = `--as-of` (default
+  31/12/2025) ⇒ every "Current …" slicer gives a complete period: a 31-day month, all 12 months, every week of the year. Every `Current/Last/5Week` flag of
+  `Dim_Date` comes from exactly one `MaxSale` expression (measured 02/10, both Whites); measures filtering `< TODAY()` still give the whole old period.
+- 🔴 **Changing the SQL text ⇒ Desktop asks "Native Database Query – approve?"** (approved by the exact query text, once per date pin). The dialog
+  is HTML, `PrintWindow` captures it BLACK; while it waits for approval every visual spins loading dots forever and the close command hangs too. The tool reads
+  the dialog's text through `WM_HTML_GETOBJECT` and **clicks Run only when the text holds exactly its own pinned query** — an unknown query is never approved automatically.
+- **"Finished drawing"** = three images in a row with no 10×10 cell changed (comparing the whole canvas average gets fooled by loading dots — paid for 02/10). Closed with
+  `CloseMainWindow` + "Don't save" (`GateClose`), never killed.
+- **The measurement — ink spread 25 px:** a block = a group with a `BG_` background + at least one chart/table (cards, slicers, buttons do not count). Each ink point
+  occupies 25 px around it (half the ~60 px per group step of Ori); background left over is EMPTY. **> 30% ⇒ red**, a crop with the empty part painted red saved
+  beside the capture. 🔴 **Do not count raw background:** the breathing space between columns + the part under a line makes EVERY chart red (a full 12-month combo still came out
+  67%). Calibrated 02/10 on Monthly: a donut pushed into a corner 57% · a line 32% · a 12-month combo 13%.
+- **Four ways of measuring by block kind** (all calibrated on real renders 02/10, each born from a false alarm):
+  | Block | Empty = | Why |
   |---|---|---|
-  | chart có trục (cột/đường/combo) | bề ngang không nhóm nào dùng + dải ngang không có mực | phần trên cột thấp / dưới đường line là HÌNH DẠNG số liệu (50 cửa hàng xếp giảm dần đo diện tích ra 45%) |
-  | pivot ≥ 2 cấp hàng (có nút ⊞) | chỉ bề ngang không cột nào dùng | sức chứa = lúc BUNG; chiều dọc dưới hàng thu gọn là chỗ để bung (Combo: 20+ combo × 50 cửa hàng) |
-  | còn lại (donut, pie, treemap, bảng 1 cấp) | nền sau nở mực **và thông ra mép khối** | lỗ kín trong mực là một phần hình vẽ — donut lý tưởng tự trống ~40% |
-  | **cả tab** | vùng nội dung 1270×660 không khối nào phủ | co khung theo nội dung thì lỗ dời ra tab — vẫn là trống |
-- **`B` = khối trắng trơn (> 95% nền)**: công cụ chờ tiếp tới hạn (`--max-wait`) vì chấm tải chỉ vài pixel, ảnh trông "đứng yên"
-  trong khi DirectQuery nặng chưa vẽ (COGS 45 cửa hàng × 12 tháng: 99% lúc đang tải → 30% khi xong). Hết hạn vẫn trắng ⇒ báo
-  `BLANK` (không có số hoặc chưa tải xong), KHÔNG gộp với lỗi bố cục.
-- 🔴 **Matrix KHÔNG giãn cột theo khung** — khung rộng hơn bảng là phần bên phải trống. Sửa bằng giãn cột, không bằng thu khung
-  rồi để lỗ: `mix_builder.py --fit-columns <pageId> <visualId>…` (bảng không có trường Columns, chia theo ước lượng của cổng
-  `table_overflow`) · `--fit-values <pageId> <visualId> "<v1>|<v2>…"` (có trường Columns: chữ giá trị lấy ĐÚNG như trên render,
-  cột tiêu đề hàng 150 = quy ước `matrix_scroll`). Khoá do Desktop ghi: `autoSizeColumnWidth=false` + `columnWidth`.
-  Cổng tĩnh `narrow-table` (bảng ~300 px một mình trong khung 1260): bảng chiếm < 60% khung
-  (khung ≥ 400) ⇒ đỏ. Bảng cuộn dọc nhiều mà hẹp thì **giãn cột, giữ riêng tab** (người dùng chọn thay vì gộp: gộp cạnh bảng theo ngày làm
-  bảng đó mất 12 → 4–8 ngày).
-- **Cổng tĩnh `tab-hole`** (*"cái 1 group lệch kì vậy"* — DeliveryAM kết thúc ở 540 cạnh khối kết thúc ở 660,
-  cổng cũ không thấy): trong một tab, mọi ô 10×10 px phải có khối phủ (khe 5 px không chứa nổi ô 10). Tab có hàng thẻ cao **675**,
-  khối dưới cùng phải xuống tới 675, không phải 660 — bắt được Operation tab KPI ở cả hai White.
-- **Cổng tĩnh `tab-blank`** (`pbi_gate`): bookmark `_Tab<N>_` phải hiện ít nhất một visual nội dung của nhóm tab đó. Sinh từ lỗi
-  lớp pixel bắt được 02/10: khối `__keep__` (có chuyển view con) nằm ở tab không mặc định lấy trạng thái từ `_Main` cũ — nơi
-  cả tab ẩn — nên tab `Chi tiết` của Daily & Hourly mở ra TRẮNG, nút Revenue / TC&TA cũng ẩn. `mix_builder` nay lấy trạng thái
-  mặc định của khối đó từ bookmark chuyển view đầu tiên của nó.
-- Một lượt White ≈ 40 tab × 2–4 phút, chạy nền; đừng thu nhỏ cửa sổ Desktop đang chụp (`PrintWindow` không chụp cửa sổ thu nhỏ).
-  Lệnh nền có trần 2 giờ ⇒ chia lượt bằng `--tab "<a>,<b>,…"`; kết quả đọc ở output của lượt chạy (bản sao + ảnh xoá khi chạy xong).
-- ⚠ `mix_palette.py` từng KHÔNG idempotent: mỗi lần chạy nối thêm một mục màu % trùng (HEAD có tới 11 bản). Đã sửa 02/10 + dọn mục
-  trùng; chạy lần hai phải ra `charts changed: 0`.
+  | an axis chart (columns/line/combo) | width no group uses + horizontal bands without ink | the part above low columns / under a line is THE SHAPE of the data (50 stores sorted descending measured by area gave 45%) |
+  | a pivot with ≥ 2 row levels (with ⊞ buttons) | only width no column uses | the capacity = when EXPANDED; the height under collapsed rows is room to expand (Combo: 20+ combos × 50 stores) |
+  | the rest (donut, pie, treemap, one-level table) | background after ink spread **and open to the block's edge** | closed holes in the ink are part of the drawing — an ideal donut is ~40% empty by itself |
+  | **the whole tab** | the content area 1270×660 covered by no block | shrinking frames to their content moves the holes out to the tab — still empty |
+- **`B` = a plain white block (> 95% background)**: the tool keeps waiting up to its limit (`--max-wait`) because loading dots are only a few pixels, the image looks "still"
+  while a heavy DirectQuery has not drawn yet (COGS 45 stores × 12 months: 99% while loading → 30% when done). Still white at the limit ⇒ reported
+  `BLANK` (no figures or not finished loading), NOT merged with layout errors.
+- 🔴 **A matrix does NOT stretch its columns to the frame** — a frame wider than the table leaves the right side empty. Fix by widening the columns, never by shrinking the frame
+  and leaving a hole: `mix_builder.py --fit-columns <pageId> <visualId>…` (tables without a Columns field, split by the estimate of the gate
+  `table_overflow`) · `--fit-values <pageId> <visualId> "<v1>|<v2>…"` (with a Columns field: the value texts taken EXACTLY as on the render,
+  the row header column 150 = the `matrix_scroll` convention). Keys Desktop writes: `autoSizeColumnWidth=false` + `columnWidth`.
+  The static gate `narrow-table` (a table ~300 px alone in a 1260 frame): a table taking < 60% of its frame
+  (frame ≥ 400) ⇒ red. A narrow table scrolling vertically a lot ⇒ **widen the columns, keep it in its own tab** (the owner chose this over merging: merging it beside the by-day table made
+  that table lose 12 → 4–8 days).
+- **The static gate `tab-hole`** *(why is that one group off like that — DeliveryAM ended at 540 beside a block ending at 660,
+  the old gate did not see it)*: within a tab, every 10×10 px cell must be covered by a block (a 5 px gap cannot hold a 10 cell). A tab with a card row is **675** tall,
+  the bottom block must reach 675, not 660 — caught the Operation KPI tab in both Whites.
+- **The static gate `tab-blank`** (`pbi_gate`): a `_Tab<N>_` bookmark must show at least one content visual of that tab group. Born from an error
+  the pixel layer caught 02/10: a `__keep__` block (with sub-view switching) on a non-default tab took its state from the old `_Main` — where
+  the whole tab was hidden — so the `Chi tiết` tab of Daily & Hourly opened BLANK, the Revenue / TC&TA buttons hidden too. `mix_builder` now takes that block's default
+  state from its first view-switching bookmark.
+- One White round ≈ 40 tabs × 2–4 minutes, run in the background; do not minimise the Desktop window being captured (`PrintWindow` does not capture minimised windows).
+  Background commands have a 2-hour cap ⇒ split rounds with `--tab "<a>,<b>,…"`; results are read from the run's output (the copy + images deleted when the run ends).
+- ⚠ `mix_palette.py` was once NOT idempotent: each run appended another duplicate % colour item (HEAD had as many as 11 copies). Fixed 02/10 + the duplicate
+  items cleaned; a second run must give `charts changed: 0`.
 
-- 🔴 **Bảng / matrix: cột vừa số dài nhất, tổng vừa khít khung — KHÔNG cuộn ngang, chỉ cuộn dọc** *(14/10: "toàn bộ
-  matrix phải tự cân chỉnh lại size cột … rộng tối đa = với số dài nhất của cột đó để nó ko nhảy xuống dòng … cột phải vừa khít
-  với chiều dài tổng … chỉ cho scroll dọc thôi")*. Công cụ `scripts/matrix_fit.py` — đo trên ENGINE, không ước lượng:
-  `measure <report> <plan.json ngoài repo> ["Trang,Trang"]` (Desktop đang MỞ file: dựng lại truy vấn của từng bảng theo bộ lọc
-  report / trang / visual + lựa chọn slicer, kể cả nội dung tab; lấy chuỗi ĐÃ ĐỊNH DẠNG dài nhất của mỗi measure, tính cả dòng /
-  cột tổng NẾU bảng hiện chúng; tiền tổng tính dư ×1,5 vì tháng còn chạy) → `apply <plan.json>` (Desktop ĐÓNG: ghi `columnWidth`
-  theo từng trường + `autoSizeColumnWidth false`; chỗ trống chia đều cho các cột số để vừa khít). Không vừa ⇒ **cách A (chốt
-  14/10): số ≥ 1 triệu chuyển sang triệu một số lẻ** (`columnFormatting.labelDisplayUnits 1000000D` + `labelPrecision 1L`, "111.4M").
-  ⚠ Matrix có trường Columns: Power BI cho MỘT độ rộng cho mọi cột của một measure ⇒ "mỗi cột" = mỗi measure; tên cột (Yesterday)
-  trải trên các measure dưới nó ⇒ chia đều. ⚠ Measure đổi theo ô Metric (`[~Selected Metric]`) KHÔNG khoá đơn vị trên cột (chọn
-  TC sẽ ra 0.0M) ⇒ measure TỰ chia: `VAR v = SWITCH(...) RETURN IF([~Selected Metric] IN {"Revenue","ADS"}, DIVIDE(v,1000000), v)`
-  + `formatStringDefinition = IF(... , "#,0.0""M""", "#,0")` (`~Metrix by Ty Hour`, chỉ matrix dùng). ⛔ Đã trả giá 14/10:
-  (a) dấu phẩy chia nghìn `#,0.0,,` Power BI KHÔNG hiểu — in nguyên ",,M"; (b) measure có `formatStringDefinition` thì PHẢI bỏ
-  `formatString` tĩnh — giữ cả hai Desktop báo "Issues were found" và không nạp model (cổng `measure-format-both`, chặn mở file);
-  (c) không đặt `///` trước `formatStringDefinition`. ⚠ Độ rộng kéo tay trên MỘT giá trị (selector `data`: giờ 11, 'Mon') đè độ
-  rộng theo trường ⇒ `apply` xoá chúng. ⚠ Số cột của trường Columns không phải ngày = mọi giá trị có số trong 12 tháng (giờ 0
-  và 7 lúc có lúc không: 16 → 18 cột); matrix MỘT measure không hiện dòng tên measure ⇒ tên đó không tính bề rộng. Cổng
-  `matrix-fit` ở lớp engine (khi file đang mở): số xuống dòng, tổng vượt khung, hay còn độ rộng kéo tay theo giá trị ⇒ đỏ.
-  Thử thật 14/10 trên 01 Daily & Hourly: 7 bảng vừa khung, tab CH × Giờ 18 giờ không cuộn ngang (render pbi_pixel).
-- 🔴 **Nút chuyển view đặt trên bảng KHÔNG được đè hàng tiêu đề cột** *(14/10, Daily & Hourly tab Chi tiết: "nút ở đây bị lỗi,
-  bị đè lên matrix")*: nút `BT_` 90 × 30 nằm trong dòng tiêu đề của bảng (~20) ⇒ thò 10 xuống header. Giữ nguyên khung bảng và
-  nút; cho bảng `visualContainerObjects.padding.top = 15D`. Cổng `button-over-table` (nút cùng nhóm, đè lên vùng bảng ⇒ lề trên ≥
-  đáy nút − đỉnh bảng − 20). Lần đầu bắt: 01 Daily 4 bảng (`BT_Store*`, `BT_HourWeekday*`), 02 Daily 2 bảng.
-  ⚠ Độ rộng cột người dùng kéo trong Desktop (`columnWidth`) là quyết định của người dùng — `table_overflow` đọc cả cột trường dòng (trước
-  14/10 nó tự ước 113 cho cột Day Part người dùng đặt 82, báo cuộn oan).
-- 🔴 **Đáy cột các chart cùng hàng nằm trên MỘT đường** *(13/10, Product Mix: "điểm đáy của mấy cái cột đang ko đều nhau so
-  với các chart khác, phải nhìn đều nhau hết chứ")*: nhãn trục (tên món) xuống dòng theo tên dài nhất của từng chart ⇒ mỗi chart
-  một vùng nhãn ⇒ đáy cột lệch (đo 13/10: 318 / 351 / 335 / 388 rồi 642 / 610 / 576). Sửa: (1) mọi chart cột trục chữ của một hàng
-  cùng trần nhãn `categoryAxis.maxMarginFactor` đủ thấp để tên nào cũng chạm trần (Product Mix + Product: `20L`; tên dài cắt "…",
-  rê chuột xem đủ) — cổng tĩnh `axis-cap`; (2) chart trục tháng nhãn một dòng không bao giờ chạm trần ⇒ thu chiều cao chart theo số
-  đo (245, lề dưới 25) và khai `baseline_align` trong `pbi-gate.json` kèm số đo — chỉ lề dưới được miễn; (3) chart số âm (Bottom
-  Margin = `−Margin`) có món còn lãi ⇒ cột cắm dưới vạch 0, trục giãn ⇒ vẽ cột bằng `MAX(loss, 0)` (`#Margin Loss Bar`), số thật ở
-  tooltip. ĐỪNG đặt `valueAxis.start = 0` bằng tay: Power BI bỏ khoảng trống trên, nhãn cột cao nhất đè lên thân cột.
-  Lớp pixel đo đáy cột (`baseline`): dòng thấp nhất còn màu cột (màu bão hoà, chữ/lưới xám không tính); các khối cùng hàng lệch
-  > 3 đơn vị ⇒ đỏ. `--copy-shots <thư mục ngoài repo>` giữ ảnh để soi.
+- 🔴 **Tables / matrices: columns as wide as their longest figure, the total fitting the frame exactly — NO horizontal scrolling, vertical only** *(14/10: every
+  matrix must re-balance its column sizes by itself … the maximum width = the longest figure of that column so it does not wrap … the columns must fit exactly
+  the total length … only vertical scrolling allowed)*. The tool `scripts/matrix_fit.py` — measured on the ENGINE, not estimated:
+  `measure <report> <plan.json outside the repo> ["Page,Page"]` (Desktop has the file OPEN: rebuilds each table's query with the report / page / visual
+  filters + slicer selections, tab content included; takes the longest FORMATTED string of each measure, including total rows /
+  columns WHEN the table shows them; total amounts taken ×1.5 because the month is still running) → `apply <plan.json>` (Desktop CLOSED: writes `columnWidth`
+  per field + `autoSizeColumnWidth false`; spare room split evenly among the number columns to fit exactly). Does not fit ⇒ **way A (settled
+  14/10): figures ≥ 1 million switch to millions with one decimal** (`columnFormatting.labelDisplayUnits 1000000D` + `labelPrecision 1L`, "111.4M").
+  ⚠ A matrix with a Columns field: Power BI gives ONE width to every column of one measure ⇒ "each column" = each measure; a column name (Yesterday)
+  spanning the measures under it ⇒ split evenly. ⚠ A measure changing by the Metric box (`[~Selected Metric]`) does NOT lock the unit on the column (choosing
+  TC would give 0.0M) ⇒ the measure divides ITSELF: `VAR v = SWITCH(...) RETURN IF([~Selected Metric] IN {"Revenue","ADS"}, DIVIDE(v,1000000), v)`
+  + `formatStringDefinition = IF(... , "#,0.0""M""", "#,0")` (`~Metrix by Ty Hour`, used only by the matrix). ⛔ Paid for 14/10:
+  (a) the thousands-scaling commas `#,0.0,,` Power BI does NOT understand — it prints ",,M" literally; (b) a measure with `formatStringDefinition` MUST drop
+  its static `formatString` — keeping both makes Desktop report "Issues were found" and not load the model (gate `measure-format-both`, blocks opening the file);
+  (c) never put `///` before `formatStringDefinition`. ⚠ Widths dragged by hand on ONE value (selector `data`: hour 11, 'Mon') override the width
+  per field ⇒ `apply` deletes them. ⚠ The number of columns of a Columns field that is not days = every value with figures in 12 months (hours 0
+  and 7 come and go: 16 → 18 columns); a ONE-measure matrix shows no measure-name row ⇒ that name does not count for width. Gate
+  `matrix-fit` on the engine layer (while the file is open): figures wrapping, a total exceeding the frame, or hand-dragged widths per value left ⇒ red.
+  Tested for real 14/10 on 01 Daily & Hourly: 7 tables fitting their frames, the Store × Hour tab with 18 hours not scrolling sideways (pbi_pixel render).
+- 🔴 **A view-switching button placed on a table must NOT cover the column header row** *(14/10, Daily & Hourly Detail tab: the button here is broken,
+  it covers the matrix)*: a 90 × 30 `BT_` button in the table's header line (~20) ⇒ sticks 10 down into the header. Keep the table frame and the
+  button as they are; give the table `visualContainerObjects.padding.top = 15D`. Gate `button-over-table` (a button in the same group, over the table area ⇒ top padding ≥
+  button bottom − table top − 20). First caught: 01 Daily 4 tables (`BT_Store*`, `BT_HourWeekday*`), 02 Daily 2 tables.
+  ⚠ Column widths the owner drags in Desktop (`columnWidth`) are the owner's decision — `table_overflow` reads the row-field columns too (before
+  14/10 it estimated 113 by itself for a Day Part column the owner set to 82, a false scrolling report).
+- 🔴 **The column bottoms of charts on one row sit on ONE line** *(13/10, Product Mix: the bottom points of the columns are uneven against
+  the other charts, they must all look level)*: axis labels (item names) wrap by each chart's longest name ⇒ each chart
+  gets its own label area ⇒ the column bottoms differ (measured 13/10: 318 / 351 / 335 / 388 then 642 / 610 / 576). Fix: (1) every text-axis column chart of a row
+  has the same label cap `categoryAxis.maxMarginFactor`, low enough for every name to hit the cap (Product Mix + Product: `20L`; long names cut with "…",
+  hover to see in full) — the static gate `axis-cap`; (2) month-axis charts with one-line labels never hit the cap ⇒ shrink the chart height by the
+  measurement (245, bottom margin 25) and declare `baseline_align` in `pbi-gate.json` with the measurement — only the bottom margin is exempt; (3) negative-figure charts (Bottom
+  Margin = `−Margin`) with items still in profit ⇒ columns plunge below the 0 line, the axis stretches ⇒ draw the columns with `MAX(loss, 0)` (`#Margin Loss Bar`), the real figure in
+  the tooltip. Do NOT set `valueAxis.start = 0` by hand: Power BI drops the top margin, the label of the tallest column covers its body.
+  The pixel layer measures column bottoms (`baseline`): the lowest line still with column colour (saturated colours; grey text/grid do not count); blocks on one row off
+  by > 3 units ⇒ red. `--copy-shots <folder outside the repo>` keeps the images for inspection.
 
-## 5n. 🔴 BẢNG PIVOT KHÔNG CUỘN NGANG — CHỈ HIỆN CÁC KỲ GẦN NHẤT
+## 5n. 🔴 PIVOT TABLES DO NOT SCROLL SIDEWAYS — SHOW ONLY THE MOST RECENT PERIODS
 
-> *"trang này scroll dài thòng vì nó tính theo week mà weekly thì nhiều lắm"* → duyệt cách 1.
+> This page scrolls endlessly because it goes by week and there are many weeks → way 1 approved.
 
-Bảng có **cột trải theo kỳ** (tuần 53 · ngày 31 · tháng 12 · giờ 17) × nhiều chỉ số là hàng trăm cột.
-Độ rộng cột của matrix do Power BI tự co, **không có khoá ép** ⇒ cách duy nhất là **bớt số kỳ hiện cùng lúc**.
+A table with **columns spread over periods** (53 weeks · 31 days · 12 months · 17 hours) × many indicators is hundreds of columns.
+A matrix's column widths are shrunk by Power BI itself, **there is no key forcing them** ⇒ the only way is **fewer periods shown at once**.
 
 ```
-ngang cần ~ 150 (cột tên hàng) + số_kỳ x số_chỉ_số x 90 px      <= bề ngang bảng (1260 khi trải hết)
+width needed ~ 150 (row name column) + periods x indicators x 90 px      <= the table width (1260 when spanning the full width)
 ```
-| Công cụ | Khi nào | Lệnh |
+| Tool | When | Command |
 |---|---|---|
-| measure `~Recent <N> <Days\|Weeks\|Months>` + bộ lọc visual `= 1` | kỳ ở cột, còn chỗ cho ≥ 1 kỳ | `python scripts/mix_builder.py --recent Weeks 4 <pageId> <visualId>…` |
-| `objects.values.valuesOnRow = true` (khoá Desktop ghi 127 lần) | quá nhiều chỉ số ở cột | `--values-on-row <pageId> <visualId>…` |
-| đổi `Rows` ↔ `Columns` | chiều kia ít phần tử hơn (thứ × giờ) | `--swap-rows-columns <pageId> <visualId>…` |
-| miễn, khai `matrix_exempt` trong `pbi-gate.json` kèm lý do | bảng để **xuất dữ liệu** · chưa có cách gọn (chờ người dùng) | — |
+| a measure `~Recent <N> <Days\|Weeks\|Months>` + a visual filter `= 1` | periods in columns, room for ≥ 1 period | `python scripts/mix_builder.py --recent Weeks 4 <pageId> <visualId>…` |
+| `objects.values.valuesOnRow = true` (a key Desktop wrote 127 times) | too many indicators in columns | `--values-on-row <pageId> <visualId>…` |
+| swap `Rows` ↔ `Columns` | the other direction has fewer members (weekday × hour) | `--swap-rows-columns <pageId> <visualId>…` |
+| exempt, declare `matrix_exempt` in `pbi-gate.json` with the reason | tables for **exporting data** · no tidy way yet (waiting for the owner) | — |
 
-- `~Recent N …` = 1 khi cột **CHỨA ít nhất một ngày nằm trong N kỳ tính lùi từ ngày có bán cuối cùng trong phạm vi
-  slicer** (`ALLSELECTED(Dim_Date)` + `HasSales`) ⇒ mặc định là các kỳ mới nhất; **chọn kỳ khác ở bảng lọc là bảng dời
-  theo**. 🔴 Không dùng phép "khoảng MIN–MAX ngày của ô giao cửa sổ" *(XYZ bắt 01/10, ABC đo engine)*: cột không mang năm
-  (`MonthNumber` `'01'`, `Day` 5) khi bảng lọc để All trải qua mọi năm của `Dim_Date` nên luôn giao ⇒ White AM không lọc
-  năm/tháng: công thức cũ hiện 31/31 ngày, 12/12 tháng; công thức `NOT ISEMPTY ( FILTER ( VALUES ( Dim_Date[DateKey] ), … ) )`
-  hiện 12 ngày, 1 tháng. Measure có sẵn: `mix_builder.py --fix-recent`. Tuần tính **thứ Sáu → thứ Năm** (`WEEKDAY(…,15)`), không dùng bộ lọc tương đối có sẵn (tuần thứ Hai).
-  Measure nằm `0. Calculation`, tiền tố `~` (điều khiển hiển thị).
-- Đã áp: Weekly 2 bảng (4 tuần) · ABC Week Overview (3 tuần) · ABC Month Overview + MoM (tháng gần nhất, mỗi bảng
-  trải hết bề ngang, xếp trên dưới) · ABC bảng theo ngày (12 ngày) · MCP (3 tháng × 3 chỉ số) · Promotion 2 bảng
-  theo ngày (12 / 6 ngày) · Hourly bảng thứ × giờ đổi chiều. Miễn: Export Promotion · Hourly cửa hàng × giờ (chờ chốt).
-- **Cuộn DỌC của bảng là bình thường** (50 cửa hàng trong khung 325). Chỉ cấm cuộn **ngang**.
-- Cổng `matrix-scroll` (chặn) ước tính theo công thức trên, hiểu cả bộ lọc `~Recent`, `valuesOnRow` và `matrix_exempt`.
-- 🔴 **Bảng KHÔNG có cột theo kỳ cũng không được cuộn ngang vì THIẾU MỘT CHÚT** *("quá dài thì phải
-  cho scroll dài, nhưng quá ngắn thì phải cân chỉnh sao cho mất luôn scroll bar, đẩy cột, đẩy chart hoặc đẩy luôn group")*.
-  Tràn ít ⇒ **nới khung, dời khối, đổi bố cục** tới khi hết thanh cuộn — cấm thu khung nhỏ hơn nội dung để nhét thêm khối.
-  Chỉ bảng dài THẬT (hàng chục cột: quy đổi combo 19 cột, bảng xuất dữ liệu) mới được cuộn, khai `matrix_exempt` kèm lý do.
-  - Ước bề ngang: mỗi cột rộng bằng cái lớn hơn giữa **tiêu đề** và **giá trị điển hình** (tiền `#,0` ~11 ký tự, `%` ~7),
-    ~0,73 px × cỡ chữ mỗi ký tự + 14 px đệm; cột tên hàng dạng bậc thang lấy tên **cấp đầu** + 12 px mỗi cấp. Cột đã khai
-    `columnWidth` thì lấy đúng số đó.
-  - *Ca thật XYZ 29/09:* bảng kênh sàn 5 cột và bảng web thu còn 445 px, bảng POS 340 px để nhét 3 bảng một hàng ⇒ cả ba
-    cuộn ngang, số `3,006,718,252` xuống dòng. Sửa: bảng kênh 625 px, POS 625 px (xếp lại cả tab).
-  - Cổng `table-overflow` (chặn, **ước lượng**): đỏ được trên đúng 3 bảng lỗi đó, không báo oan 3 bảng người bán 410 px vẫn vừa.
-- 🔴 **Sau MỖI lần Desktop Save: `python scripts/mix_builder.py --after-desktop-save`** — áp lại trạng thái
-  `_Main` cho mọi trang (Save ghi tab đang xem thành mặc định, lần 26/09 lật 39 visual Weekly) và đặt
-  `activePageName` về trang đầu. Cổng `default-main` · `open-page` báo khi quên.
+- `~Recent N …` = 1 when the column **HOLDS at least one date within the N periods counted back from the last date with sales within the
+  slicer scope** (`ALLSELECTED(Dim_Date)` + `HasSales`) ⇒ by default the newest periods; **choosing another period in the filter panel moves the table
+  with it**. 🔴 Never use "the MIN–MAX date range of the cell intersecting the window" *(XYZ caught it 01/10, ABC measured on the engine)*: a column without a year
+  (`MonthNumber` `'01'`, `Day` 5) with the filter panel on All spans every year of `Dim_Date` so it always intersects ⇒ White AM with no year/month
+  filter: the old formula showed 31/31 days, 12/12 months; the formula `NOT ISEMPTY ( FILTER ( VALUES ( Dim_Date[DateKey] ), … ) )`
+  showed 12 days, 1 month. Existing measures: `mix_builder.py --fix-recent`. Weeks run **Friday → Thursday** (`WEEKDAY(…,15)`), never the built-in relative filter (Monday weeks).
+  The measure sits in `0. Calculation`, prefix `~` (display control).
+- Applied: Weekly 2 tables (4 weeks) · ABC Week Overview (3 weeks) · ABC Month Overview + MoM (the latest month, each table
+  spanning the full width, stacked top and bottom) · the ABC by-day table (12 days) · MCP (3 months × 3 indicators) · Promotion 2 tables
+  by day (12 / 6 days) · the Hourly weekday × hour table swapped. Exempt: Export Promotion · Hourly store × hour (awaiting a decision).
+- **VERTICAL scrolling of a table is normal** (50 stores in a 325 frame). Only **horizontal** scrolling is forbidden.
+- Gate `matrix-scroll` (blocking) estimates by the formula above, understanding `~Recent` filters, `valuesOnRow` and `matrix_exempt`.
+- 🔴 **A table WITHOUT period columns must not scroll sideways either for being A LITTLE SHORT** *(too long ⇒ allow long
+  scrolling, but just a little short ⇒ adjust until the scrollbar disappears, pushing columns, charts or the whole group)*.
+  A small overflow ⇒ **widen the frame, move blocks, change the layout** until the scrollbar is gone — never shrink a frame below its content to fit in another block.
+  Only REALLY long tables (dozens of columns: the 19-column combo conversion, data-export tables) may scroll, declared in `matrix_exempt` with the reason.
+  - Estimating width: each column as wide as the larger of **its header** and **a typical value** (money `#,0` ~11 characters, `%` ~7),
+    ~0.73 px × the font size per character + 14 px padding; a stepped row-name column takes the **first-level** name + 12 px per level. A column with a declared
+    `columnWidth` takes exactly that number.
+  - *A real case XYZ 29/09:* the 5-column marketplace channel table and the web table shrunk to 445 px, the POS table 340 px to fit 3 tables in a row ⇒ all three
+    scrolled sideways, the figure `3,006,718,252` wrapped. Fix: the channel table 625 px, POS 625 px (the whole tab laid out again).
+  - Gate `table-overflow` (blocking, **an estimate**): red on exactly those 3 faulty tables, no false report on the 3 seller tables at 410 px that still fit.
+- 🔴 **After EVERY Desktop Save: `python scripts/mix_builder.py --after-desktop-save`** — reapplies the `_Main`
+  state to every page (Save writes the viewed tab as the default, the time on 26/09 flipped 39 Weekly visuals) and sets
+  `activePageName` back to the first page. Gates `default-main` · `open-page` report when forgotten.
 
-- **Bảng Hourly cửa hàng × giờ**: không cắt được kỳ (cột là giờ trong ngày, không phải kỳ).
-  Giữ đủ 17 cột giờ có bán, **cố định mỗi cột 60 px**: `columnHeaders.autoSizeColumnWidth = false` + một
-  `columnWidth` cho mỗi giá trị `HourStart` (lệnh `--column-width`). 150 + 17 × 60 = 1.170 px ≤ khung 1.260 px.
-  Cổng `matrix-scroll` đọc độ rộng đã khai cứng thay cho mức ước 90 px một cột.
+- **The Hourly store × hour table**: periods cannot be cut (the columns are hours of the day, not periods).
+  Keep all 17 hour columns with sales, **each column fixed at 60 px**: `columnHeaders.autoSizeColumnWidth = false` + one
+  `columnWidth` for each `HourStart` value (command `--column-width`). 150 + 17 × 60 = 1,170 px ≤ the 1,260 px frame.
+  Gate `matrix-scroll` reads the hard-declared widths instead of the estimate of 90 px per column.
 
-## 5m. CẮT THỨ HẾT HẠN — trang · tooltip · model thừa
+## 5m. CUTTING WHAT HAS EXPIRED — pages · tooltips · surplus model
 
-> *"đây là thiết kế mới, ko cần xài mấy cái đã hết hạn, cắt dc model dw thừa ko xài nữa"*
+> This is a new design, it does not need what has expired; the surplus DW model no longer used can be cut.
 
-- Trang ẩn của **chiến dịch đã kết thúc**, **tooltip cũ**, drill-through cũ ⇒ bỏ khỏi White; khai ở
-  `dropped_pages` trong `config/pbi-gate.json` kèm lý do (cổng `legacy-parity` bỏ qua đúng các trang đó).
-- Chart nào còn `visualContainerObjects.visualTooltip.section` trỏ trang đã xoá ⇒ gỡ khối `visualTooltip`.
-- **Cắt model thừa**: bảng/measure không còn visual, bộ lọc hay measure nào dùng (tính lan qua DAX). Xoá bảng
-  = xoá ở `tables/` · `relationships.tmdl` · `model.tmdl` (`ref table` + `PBI_QueryOrder`) · `cultures`.
-  🔴 **Quét tham chiếu theo MỌI chỗ `"Property": "<tên>"`**, không chỉ cặp `Entity`+`Property`: bộ lọc
-  **Top N** gọi measure qua **bí danh** `SourceRef.Source: "m"` — bỏ sót là cắt nhầm measure đang dùng
-  (đã trả giá 26/09: `#Filter Product` · `#Filter Margin Product` · `#Sale Dt`, phải chèn lại).
-  🔴 **`cultures`**: xoá mục `Entities` của measure **và** mọi mục `Relationships` có `Roles…Target.Entity`
-  trỏ tới mục vừa xoá — để lại là trỏ vào khoảng trống.
-- **Giữ bảng nằm giữa đường quan hệ nối hai bảng đang dùng** dù không ai gọi tên nó — cắt là đổi số.
-- Giữ measure `~Placeholder` của thư mục trang còn sống (model.md §2).
+- Hidden pages of **finished campaigns**, **old tooltips**, old drill-throughs ⇒ dropped from White; declared in
+  `dropped_pages` in `config/pbi-gate.json` with the reason (the `legacy-parity` gate skips exactly those pages).
+- A chart still carrying `visualContainerObjects.visualTooltip.section` pointing at a deleted page ⇒ remove the `visualTooltip` block.
+- **Cut the surplus model**: tables/measures no longer used by any visual, filter or measure (followed through the DAX). Deleting a table
+  = deleting it in `tables/` · `relationships.tmdl` · `model.tmdl` (`ref table` + `PBI_QueryOrder`) · `cultures`.
+  🔴 **Scan references by EVERY `"Property": "<name>"`**, not only `Entity`+`Property` pairs: a **Top N** filter
+  calls a measure through **an alias** `SourceRef.Source: "m"` — missing it cuts a measure still in use
+  (paid for 26/09: `#Filter Product` · `#Filter Margin Product` · `#Sale Dt`, had to be put back).
+  🔴 **`cultures`**: delete the measure's `Entities` item **and** every `Relationships` item whose `Roles…Target.Entity`
+  points at the deleted item — leaving them points into nothing.
+- **Keep tables sitting on a relationship path between two tables in use** even when nobody names them — cutting them changes the figures.
+- Keep the `~Placeholder` measures of the folders of pages still alive (model.md §2).
 
-## 5o. SƠ ĐỒ MODEL — theo chuẩn `pbi-pbip` §1c
+## 5o. THE MODEL DIAGRAM — by the `pbi-pbip` §1c standard
 
-Chạy `python scripts/pbi_diagram.py reports/ABC_02_STORE-REPORT-AM_DR_White` (hoặc `mix_builder.py --diagram`). Tầng của White ở
-`config/pbi-diagram.json`: 8 fact khuyến mãi/chiến dịch ở trên, 8 fact bán hàng ở dưới, 8 dim ở giữa, hai fact chiến
-dịch nhét dưới `Dim_PromotionMetric`/`Dim_PromotionCampaign`, `#Measure` cột cuối (tối đa 13 cột bảng, 29/09). Cổng `diagram`.
+Run `python scripts/pbi_diagram.py reports/ABC_02_STORE-REPORT-AM_DR_White` (or `mix_builder.py --diagram`). White's tiers are in
+`config/pbi-diagram.json`: 8 promotion/campaign facts on top, 8 sales facts at the bottom, 8 dims in the middle, two campaign facts
+tucked under `Dim_PromotionMetric`/`Dim_PromotionCampaign`, `#Measure` in the last column (at most 13 table columns, 29/09). Gate `diagram`.
 
-## 5p. BẢNG AGG CỦA DW — measure nào đọc bảng nào *(repo quản lý vùng dựng 2026-09-27, chỉ áp cho White; Classic giữ bảng cũ để đối chiếu)*
+## 5p. THE DW'S AGG TABLES — which measure reads which table *(built by the region manager repo 2026-09-27, applied only to White; Classic keeps the old tables for comparison)*
 
-| Measure | Bảng | Ghi chú |
+| Measure | Table | Note |
 |---|---|---|
-| `#Sale of Promotion` | `Agg_PromotionDaily[Amount]` | ngày × cửa hàng × kênh × chương trình |
-| `#TC of Promotions` | `Agg_PromotionProgramSetDaily[BillCount]` | grain theo **tổ hợp** chương trình của bill ⇒ chọn nhiều chương trình vẫn đếm mỗi bill một lần |
-| `#GC of Promotions` | từ 01/09/2025 `Agg_PromotionDaily`, trước đó `Agg_PromotionProgramSetDaily` | lọc ngày bằng cột `ShiftDate` của chính bảng Agg, **không** bằng `Dim_Date` (đè slicer ngày) |
+| `#Sale of Promotion` | `Agg_PromotionDaily[Amount]` | day × store × channel × programme |
+| `#TC of Promotions` | `Agg_PromotionProgramSetDaily[BillCount]` | the grain by the bill's **combination** of programmes ⇒ selecting several programmes still counts each bill once |
+| `#GC of Promotions` | from 01/09/2025 `Agg_PromotionDaily`, before that `Agg_PromotionProgramSetDaily` | the date filtered by the Agg table's own `ShiftDate` column, **not** by `Dim_Date` (overriding the date slicer) |
 | `#Total … Treatas` | `VALUES(Agg_PromotionDaily[StoreID])` | |
 | `~Quantity of Promotions` | `Agg_SaleDiscountDaily[Quantity]` | |
-| `#Revenue Monthly` | `Agg_SaleDetailMonthly[LineAmount]` | **chỉ** trang lọc theo năm/tháng/cửa hàng/kênh (Executive) |
+| `#Revenue Monthly` | `Agg_SaleDetailMonthly[LineAmount]` | **only** pages filtered by year/month/store/channel (Executive) |
 
-- `Dim_DiscountProgram` 1–* `Bridge_DiscountProgramSet` (theo `ProgramID`). Từ bảng cầu sang `Agg_PromotionProgramSetDaily`
-  **không** dùng quan hệ nhiều-nhiều: measure chuyển danh sách `ProgramSetKey` bằng `TREATAS` khi `Dim_DiscountProgram`
-  đang bị lọc (không repo nào có quan hệ nhiều-nhiều do Desktop ghi để chép khuôn; số đo trước/sau vẫn khớp 10/10).
-- 🔴 **Model view trống dây ngay sau khi mở là bình thường** *(người dùng hỏi 27/09)*: Desktop vẽ dây sau khi model
-  DirectQuery nạp xong (~2 phút). Kiểm DMV trước khi kết luận thiếu quan hệ — xem `pbi-pbip` §1c mục 6.
-- 🔴 **`#Revenue` trên bảng tháng sai khi trang có bộ lọc dưới mức tháng.** Product Mix và Product có slicer khung giờ
-  (`Fact_Sale[DatePartSale]`) và loại ngày (`Fact_SaleDetail[WeekdayType]`), Weekly đọc theo tuần ⇒ ba trang đó giữ
-  `#Revenue` trên `Fact_SaleDetail`. Cổng nhận `#Revenue Monthly` thay `#Revenue` nhờ khoá `equivalent_measures`.
-- 🔴 **Cột `Discount` của `Agg_SaleDiscountDaily` = `-[AmountTotal]`, không phải `-[Amount]`.** Tin repo quản lý vùng ghi `-[Amount]`
-  vì nghĩ pivot đặt `Discount` ở hàng; thật ra hai pivot trang Promotion đặt nó ở **giá trị** (Legacy `Sum(DISCOUNT)`),
-  còn `Amount` là mức giảm một dòng nằm trong grain ⇒ cộng `-Amount` trên bảng Agg ra sai tổng.
-- `ProgramID` là `int64` ở cả dim và hai fact (bỏ `CAST … nvarchar` và bước ép text) — cùng kiểu với bảng Agg.
+- `Dim_DiscountProgram` 1–* `Bridge_DiscountProgramSet` (by `ProgramID`). From the bridge table to `Agg_PromotionProgramSetDaily`
+  **no** many-to-many relationship is used: the measure moves the `ProgramSetKey` list with `TREATAS` while `Dim_DiscountProgram`
+  is filtered (no repo has a many-to-many relationship written by Desktop to copy the mould from; the before/after figures still match 10/10).
+- 🔴 **An empty model view right after opening is normal** *(the owner asked 27/09)*: Desktop draws the lines after the DirectQuery model
+  finishes loading (~2 minutes). Check the DMV before concluding a relationship is missing — see `pbi-pbip` §1c item 6.
+- 🔴 **`#Revenue` on the monthly table is wrong when the page has a filter below month level.** Product Mix and Product have a time-slot slicer
+  (`Fact_Sale[DatePartSale]`) and a day-type slicer (`Fact_SaleDetail[WeekdayType]`), Weekly reads by week ⇒ those three pages keep
+  `#Revenue` on `Fact_SaleDetail`. The gate accepts `#Revenue Monthly` in place of `#Revenue` thanks to the key `equivalent_measures`.
+- 🔴 **The `Discount` column of `Agg_SaleDiscountDaily` = `-[AmountTotal]`, not `-[Amount]`.** The region manager repo's message said `-[Amount]`
+  believing the pivot put `Discount` in rows; in fact the two pivots of the Promotion page put it in **values** (Legacy `Sum(DISCOUNT)`),
+  while `Amount` is a one-line discount inside the grain ⇒ adding `-Amount` on the Agg table gives a wrong total.
+- `ProgramID` is `int64` in both the dim and the two facts (the `CAST … nvarchar` and the text-forcing step dropped) — the same type as the Agg table.
 
-## 5r. TÊN TRANG KHÔNG MANG MÃ PHÒNG BAN, KHÔNG MANG CHỮ REPORT / DASHBOARD
+## 5r. PAGE NAMES CARRY NO DEPARTMENT CODE, NO WORD REPORT / DASHBOARD
 
-> 30/09: *"store report rồi giờ còn monthly report, t nghĩ là trang nên rút gọn tên lại hết, mấy cái chữ report với dashboard là nó thừa"*
-> ⇒ header đã ghi `STORE REPORT`: `Monthly Report → Monthly` · `Weekly Report → Weekly` · `Daily Sales Report → Daily` (trang đặt theo KỲ như Monthly · Weekly · Hourly, bỏ cả chữ Sales) ·
+> 30/09: with store report already there, now a monthly report too — the page names should all be shortened; the words report and dashboard are excess
+> ⇒ the header already says `STORE REPORT`: `Monthly Report → Monthly` · `Weekly Report → Weekly` · `Daily Sales Report → Daily` (pages named by PERIOD like Monthly · Weekly · Hourly, the word Sales dropped too) ·
 > `Hourly Report → Hourly` · `Executive Dashboard → Executive` · `MCP Report → MCP` · `Delivery Details Report → Delivery Details` ·
-> `Monthly Sales Report By Item → Monthly Sales By Item`. Cổng `page-name` đỏ khi tên trang còn chữ `Report` / `Dashboard`.
-> ⚠ Bỏ / đổi tên trang làm lệch chữ cái thư mục measure ⇒ `--measure-folders` (30/09 sửa: nhận thư mục cũ theo TÊN trang, không theo
-> chữ cái; placeholder đã có thì dời, không khai lần hai).
+> `Monthly Sales Report By Item → Monthly Sales By Item`. The `page-name` gate is red when a page name still holds `Report` / `Dashboard`.
+> ⚠ Dropping / renaming pages shifts the measure folder letters ⇒ `--measure-folders` (fixed 30/09: old folders recognised by page NAME, not by
+> letter; an existing placeholder is moved, not declared twice).
 
 
-Report đã là của phòng ⇒ tên trang **không** thêm `ABC`: `Monthly Report` · `Weekly Report` · `Daily Sales
-Report` · `Operation` (không phải `... ABC`, `ABC Operation`). Tên ngắn, nói trang là gì. Đổi tên bằng
-`mix_builder.py --rename-page <pageId> "<tên mới>"` — sửa cùng lúc `page.json`, chữ trên header (kèm bề ngang
-khung) và thư mục measure chữ cái của trang. Cổng `page-name` báo đỏ khi tên trang còn mã phòng ban.
+The report already belongs to the department ⇒ page names **do not** add `ABC`: `Monthly Report` · `Weekly Report` · `Daily Sales
+Report` · `Operation` (not `... ABC`, `ABC Operation`). Short names, saying what the page is. Rename with
+`mix_builder.py --rename-page <pageId> "<new name>"` — editing at once `page.json`, the header text (with the frame
+width) and the page's lettered measure folder. The `page-name` gate reports red when a page name still holds the department code.
 
-🔴 **Report chỉ có MỘT trang hiện ⇒ trang đó tên `Overview`, không lặp tên report.** Header đã mang tên report; tên trang
-nhắc lại cùng chữ là thông tin rỗng. Đếm theo trang HIỆN (`HiddenInViewMode` không tính). Đổi bằng
-`mix_builder.py --rename-page <pageId> "Overview"`, đổi `key` trong `mix_specs` thành `Overview` rồi dựng lại trang (bookmark
-`01_Overview_*`, thư mục measure `B. Overview`). Tab đầu vẫn là `Summary` (`Overview` là tên TRANG, luật `tab-page-name`).
-Cổng `single-page-overview` (lớp tĩnh): report một trang hiện mà tên trang khác `Overview` ⇒ đỏ.
+🔴 **A report with only ONE shown page ⇒ that page is named `Overview`, never repeating the report name.** The header already carries the report name; a page name
+repeating the same words is empty information. Counted by SHOWN pages (`HiddenInViewMode` does not count). Rename with
+`mix_builder.py --rename-page <pageId> "Overview"`, change the `key` in `mix_specs` to `Overview` then rebuild the page (bookmarks
+`01_Overview_*`, the measure folder `B. Overview`). The first tab is still `Summary` (`Overview` is a PAGE name, the `tab-page-name` rule).
+Gate `single-page-overview` (static layer): a report with one shown page named other than `Overview` ⇒ red.
 
-## 5q. THƯ MỤC MEASURE MANG CHỮ CÁI, KHÔNG MANG SỐ
+## 5q. MEASURE FOLDERS CARRY LETTERS, NOT NUMBERS
 
-Power BI xếp tên thư mục theo **chữ**: `1.` `10.` `11.` `2.` … ⇒ số thứ tự trang vô dụng từ trang 10. Đổi sang chữ cái:
-`A. Calculation` (dùng chung) rồi `B.` … theo **đúng thứ tự trang hiện**, tên thư mục = **tên trang** (`B. Monthly Report
-ABC` … `P. MCP Report`). Trang chưa có measure giữ thư mục bằng `~Placeholder <key>` ẩn (model.md §2). Thư mục
-của trang đã xoá (`10. Detail`) về `A. Calculation`. Đổi thứ tự trang ⇒ chạy lại `mix_builder.py --measure-folders`
-(bảng thư mục cũ → trang ở `MEASURE_FOLDER_PAGE`). Cổng `measure-folder`. Luật thư mục: model.md §2.
+Power BI sorts folder names as **text**: `1.` `10.` `11.` `2.` … ⇒ page sequence numbers are useless from page 10 on. Switched to letters:
+`A. Calculation` (shared) then `B.` … in **exactly the order of the shown pages**, the folder name = **the page name** (`B. Monthly Report
+ABC` … `P. MCP Report`). A page without measures keeps its folder with a hidden `~Placeholder <key>` (model.md §2). The folders
+of deleted pages (`10. Detail`) go back to `A. Calculation`. Reordering pages ⇒ run `mix_builder.py --measure-folders` again
+(the table of old folders → pages in `MEASURE_FOLDER_PAGE`). Gate `measure-folder`. The folder rule: model.md §2.
 
-## 6. Bẫy đã trả giá
+## 6. Traps already paid for
 
-- 🔴 **Desktop TỰ SỬA FILE khi Save** — ghi trạng thái đang xem thành mặc định trang (đo thật: 16
-  visual đổi ẩn/hiện) · dọn resource không ai tham chiếu (mất PNG trong suốt ⇒ nút hết bấm được) ·
-  giữ thẻ lọc nhưng **xoá giá trị** (`BusinessUnit` mất `'Southern'` ⇒ đổi số toàn báo cáo, lặng).
-  Dò bằng cách so **TẬP HỢP** với `git show HEAD:<path>`, đừng đọc `git diff` tuyến tính.
-- 🔴 **PBIR và `Report/Layout` của `.pbix` là HAI schema khác nhau** — chuyển tay là vỡ file; chép
-  khuôn từ một visual PBIR **đang render**. **`$schema` phải trùng phiên bản file đang khai.**
-- 🔴 **Desktop báo *"ran out of memory loading the data model"* KHÔNG phải lỗi file** — đo RAM trước
-  khi kết luận, đừng đi sửa một file đang đúng.
-- 🔴 **`visualLink` nằm ở `visual.visualContainerObjects`** (đặt ở `visual.visualLink` thì nút im lặng); mọi link phải trỏ tới
-  bookmark **có thật** (design.md §2.2).
-  ⚠ Ghi file **giữ đúng EOL đang có trên đĩa** (`Rule_Gate_24_EolKeep`) — Desktop ghi PBIR là **CRLF**.
+- 🔴 **Desktop EDITS THE FILE ITSELF on Save** — writes the viewed state as the page default (measured for real: 16
+  visuals switched hidden/shown) · tidies resources nobody references (lost the transparent PNG ⇒ the buttons could no longer be clicked) ·
+  keeps a filter card but **deletes its value** (`BusinessUnit` lost `'Southern'` ⇒ changing the figures of the whole report, silently).
+  Detect it by comparing **SETS** with `git show HEAD:<path>`, never reading a linear `git diff`.
+- 🔴 **PBIR and the `.pbix`'s `Report/Layout` are TWO different schemas** — converting by hand breaks the file; copy
+  the mould from a PBIR visual **that renders**. **`$schema` must equal the version the file declares.**
+- 🔴 **Desktop reporting *"ran out of memory loading the data model"* is NOT a file error** — measure the RAM before
+  concluding, never go fixing a file that is right.
+- 🔴 **`visualLink` sits in `visual.visualContainerObjects`** (placed in `visual.visualLink` the button is silent); every link must point at
+  a bookmark **that exists** (design.md §2.2).
+  ⚠ Write files **keeping exactly the EOL on disk** (`Rule_Gate_24_EolKeep`) — Desktop writes PBIR as **CRLF**.
 
-📌 Số đo + cách đọc hộp thoại khi title rỗng: [`reference/measured.md`](reference/measured.md) §2–§3.
+📌 Figures + how to read the dialog when a title is empty: [`reference/measured.md`](reference/measured.md) §2–§3.
 
-## 7. Nghiệm thu
+## 7. Acceptance
 
-> 🔴 **CHẠY LỆNH, ĐỪNG ĐỌC CHECKLIST.** Toàn bộ cổng dưới đã thành phép máy:
+> 🔴 **RUN THE COMMAND, DO NOT READ A CHECKLIST.** Every gate below has become a machine check:
 >
 > ```
-> python scripts/pbi_gate.py reports/<tên_report> --page <pageId>     # một trang
-> python scripts/pbi_gate.py reports/<tên_report> --page all          # mọi trang hiện (White đang ở đây)
+> python scripts/pbi_gate.py reports/<report_name> --page <pageId>     # one page
+> python scripts/pbi_gate.py reports/<report_name> --page all          # every shown page (White is here)
 > ```
-> Ra `GATE GREEN` mới được mở Desktop. `--page` là trang đã áp chuẩn đầy đủ; trang khác chỉ cảnh báo.
-> **Mỗi lần người dùng phải chỉ lại một lỗi đã có luật ⇒ thêm phép kiểm vào script đó**, đừng chỉ thêm chữ
-> vào file này (`HP điều 18`). Văn xuôi không tự thi hành — đó là lý do cùng một lỗi lặp nhiều lượt.
+> Only `GATE GREEN` allows opening Desktop. `--page` is a page with the standard fully applied; other pages only warn.
+> **Each time the owner has to point out again an error that already has a rule ⇒ add a check to that script**, never only add words
+> to this file (`HP article 18`). Prose does not enforce itself — that is why the same error recurs over many rounds.
 
 
-**Tám cổng tĩnh, chạy hết TRƯỚC khi mở Desktop — mọi cổng phải ra 0:**
+**The static gates, all run BEFORE opening Desktop — every gate must give 0:**
 
 ```
-grid5       mọi x·y·width·height chia hết 5, mọi object  <- QUY TẮC 0-5, áp CẢ TRANG
-            (lấy từ bộ Red: mọi số phải kết bằng 0 hoặc 5)
-tràn nhóm   x,y >= 0 và x+w <= W(cha) và y+h <= H(cha)
-nhóm gốc    số nhóm cấp trang = đúng 4
-bookmark    không trỏ vào visual đã xoá  ·  $schema đúng bản Desktop đang ghi (2.1.0)
-header-text khung tên báo cáo = W_chữ + 20  ·  x(tên trang) = x(tên file) + W_chữ + 3 x size
-legend      chart trục = 'Top' (neo trái), donut/pie = 'RightCenter'; 'TopLeft' KHÔNG hợp lệ.
-            Không khai = mặc định 'Top'. Chỉ CẢNH BÁO, agent không sửa
-grid5       mọi x·y·width·height chia hết 5 — trừ CHIA ĐỀU ra số lẻ (327.5 · 632.5 · 313.75): khối có anh em
-            cùng cỡ, khối liền sau nó, và những gì nằm trong nó (§4f)
-equal-split hai khối kề nhau cùng cột / cùng hàng lệch nhau <= 5 px = chia lệch (325/330) -> chia đều tuyệt đối
-matrix-few  matrix 1 dòng -> thẻ số · một field dòng <= 6 giá trị, không field cột -> biểu đồ (lớp engine đếm) (§5l-quater)
-axis-sort   trục WeekPeriod phải khai sortDefinition theo WeekFridayStart Ascending
-            (WeekPeriod lặp lại qua các năm nên không gắn sortByColumn được; thiếu = tuần
-            xếp theo doanh thu 19 16 29 38... - bắt được ở trang Weekly 2026-09-25)
-bg-inset    trong nhóm dashboard: chart thụt vào BG đúng 5 mỗi phía
-            khối 2 lớp kiểu Original template trang 2 (user 09/10): khung ngoài = BG + Title_ + các nhóm con (mỗi nhóm
-            một BG); nhóm con = Title_ ghi tên nhóm (hoặc Card_) trên chart — chart bắt đầu 5 dưới tiêu đề, 3 cạnh còn lại 5; KHÔNG tự thêm thẻ/icon khi user chỉ xin tiêu đề
-bm-orphan   bookmark không trỏ vào visual ĐÃ XOÁ
-on-off-pair mỗi cặp <Tên>_On / <Tên>_Off phải có ĐÚNG MỘT cái isHidden=false
-            VÀ khớp từng số x·y·w·h, VÀ z(_On) > z(_Off)   (trừ cặp tab)
-bm-main     <Trang>_Main phải trùng khít bookmark tab mặc định
-bm-complete targetVisualNames rỗng -> explorationState phải ĐỦ mọi visual lá
-            (thiếu = bấm nút xong mất visual)
-bm-structure visualContainers KHÔNG chứa id nhóm
-            visualContainerGroups KHÔNG chứa id lá        <- trộn là vỡ file
-visual-link trỏ tới bookmark CÓ THẬT
-            nằm trong visual.visualContainerObjects  (KHÔNG phải visual.visualLink)
-kpi-card    cardVisual PHẢI có objects.layout.style='Cards'
-            (thiếu -> PBI rơi về bố cục mặc định, bold/vị trí icon đều vô hiệu)
-images      mọi ItemName dùng đều khai trong report.json, và mọi mục khai có file thật
-JSON        mọi file definition/**/*.json parse được
-root-keys   visual.json chỉ được có 9 khoá gốc:
+grid5       every x·y·width·height divisible by 5, every object  <- THE 0-5 RULE, over THE WHOLE PAGE
+            (taken from the Red set: every number must end in 0 or 5)
+group-overflow x,y >= 0 and x+w <= W(parent) and y+h <= H(parent)
+root-groups the number of page-level groups = exactly 4
+bookmark    no pointing at deleted visuals  ·  $schema the version Desktop writes (2.1.0)
+header-text the report-name frame = W_text + 20  ·  x(page name) = x(file name) + W_text + 3 x size
+legend      axis charts = 'Top' (anchored left), donut/pie = 'RightCenter'; 'TopLeft' is NOT valid.
+            Undeclared = the default 'Top'. Only a WARNING, the agent does not fix it
+grid5       every x·y·width·height divisible by 5 — except an EVEN SPLIT giving decimals (327.5 · 632.5 · 313.75): a block with siblings
+            of the same size, the block right after it, and what sits inside it (§4f)
+equal-split two adjacent blocks in one column / one row differing by <= 5 px = an uneven split (325/330) -> split absolutely evenly
+matrix-few  a 1-row matrix -> a number card · one row field with <= 6 values, no column field -> a chart (the engine layer counts) (§5l-quater)
+axis-sort   a WeekPeriod axis must declare sortDefinition by WeekFridayStart Ascending
+            (WeekPeriod repeats across years so sortByColumn cannot be attached; missing = weeks
+            sorted by revenue 19 16 29 38... - caught on the Weekly page 2026-09-25)
+bg-inset    inside a dashboard group: the chart indented into its BG by exactly 5 on each side
+            the two-layer block like page 2 of the Original template (owner 09/10): the outer frame = BG + Title_ + the child groups (each group
+            its own BG); a child group = a Title_ naming the group (or a Card_) above the chart — the chart starts 5 below the title, the other 3 sides 5; NEVER add cards/icons on your own when the owner asks only for titles
+bm-orphan   bookmarks not pointing at DELETED visuals
+on-off-pair each <Name>_On / <Name>_Off pair has EXACTLY ONE with isHidden=false
+            AND matches every number x·y·w·h, AND z(_On) > z(_Off)   (except tab pairs)
+bm-main     <Page>_Main must match exactly the default tab's bookmark
+bm-complete empty targetVisualNames -> explorationState must hold EVERY leaf visual
+            (missing = clicking the button loses visuals)
+bm-structure visualContainers holds NO group ids
+            visualContainerGroups holds NO leaf ids        <- mixing breaks the file
+visual-link points at a bookmark THAT EXISTS
+            sits in visual.visualContainerObjects  (NOT visual.visualLink)
+kpi-card    a cardVisual MUST have objects.layout.style='Cards'
+            (missing -> PBI falls back to the default layout, bold/icon position all ineffective)
+images      every ItemName used is declared in report.json, and every declared item has a real file
+JSON        every file definition/**/*.json parses
+root-keys   visual.json may have only 9 root keys:
             $schema · name · position · visual · visualGroup
             parentGroupName · isHidden · howCreated · filterConfig
 ```
 
-🔴 **Cổng "khoá gốc" sinh ra từ một lỗi thật (2026-09-23):** đặt `visualContainerObjects` ở **gốc**
-file thay vì trong `visual` ⇒ Desktop chặn mở: *"An additional property 'visualContainerObjects' was
-included in the root property"*. **JSON vẫn hợp lệ**, cổng parse không bắt được — chỉ cổng khoá gốc
-bắt. Mọi khối format (`visualContainerObjects` · `objects`) nằm **TRONG `visual`**.
+🔴 **The "root keys" gate was born from a real error (2026-09-23):** placing `visualContainerObjects` at **the root**
+of the file instead of inside `visual` ⇒ Desktop refused to open: *"An additional property 'visualContainerObjects' was
+included in the root property"*. **The JSON is still valid**, the parse gate does not catch it — only the root-keys gate
+catches it. Every format block (`visualContainerObjects` · `objects`) sits **INSIDE `visual`**.
 
-🔴 **Cổng THẬT vẫn là mở Desktop** — *"JSON hợp lệ không chứng minh gì"*: khoá bịa và giá trị không
-tồn tại đều đúng cú pháp. Chưa mở được Desktop thì **khai thẳng là CHƯA NGHIỆM THU**. Mở Desktop là
-**bước CUỐI** — mở rồi còn sửa file là mất việc (`pbip §1`).
+🔴 **The REAL gate is still opening Desktop** — *"valid JSON proves nothing"*: invented keys and values that do not
+exist are all syntactically valid. Desktop not yet opened ⇒ **declare plainly NOT YET ACCEPTED**. Opening Desktop is
+**the LAST step** — editing files after it opens loses the work (`pbip §1`).
 
-## 8. BỘ DỰNG TRANG — `scripts/mix_builder.py` + `scripts/mix_specs.py`
+## 8. THE PAGE BUILDER — `scripts/mix_builder.py` + `scripts/mix_specs.py`
 
-> Bản trước nằm ở thư mục nháp và **mất khi hết phiên** ⇒ nay ở `scripts/`, có git.
+> The earlier version sat in a scratch folder and **was lost when the session ended** ⇒ now in `scripts/`, under git.
 
 ```
 python scripts/mix_builder.py <pageId> [<pageId> ...]
 ```
-- **Khung** (header · bảng lọc · Glossary · nút · dải tab) chép từ trang **Weekly** đã chuẩn; **slicer và
-  visual nội dung** của trang đích giữ nguyên id, xếp lại theo `mix_specs.py`.
-- Slicer không có nhãn (nằm ở dải header bản cũ) ⇒ sinh nhãn từ tên field hiển thị, chuyển `Dropdown`.
-- **Mỗi khung `BG_` ôm đúng MỘT visual** thụt 5 (cổng `bg-inset`); card (`Card_`) và nút (`BT_`) được miễn.
-  Visual được đặt tên mà chưa có tiêu đề ⇒ khai `title.show=false` để tên kỹ thuật không lộ.
-- Bookmark sinh lại: `Red` · `CloseHidden` · `OpenFilter` · `OpenGlossary` · mỗi tab một cái —
-  tab/`Red` chụp cả trang, lớp phủ khoanh vùng. Trạng thái mặc định trang = `Red`.
-- **Chạy lại được** trên trang đã dựng (khung cũ bị xoá và sinh lại). Ghi file giữ **đúng kiểu Desktop**:
-  cùng EOL, **không** dấu xuống dòng cuối — thêm vào là mỗi file lệch một dòng giả.
-- Spec hỗ trợ: `('__keep__', pos, groupId)` giữ NGUYÊN một nhóm có sẵn (hàng card · khối có nút chuyển
-  view) · `card_tabs=(0)` tab có hàng card ở `(0,0,1270,675)` · `('__loose__', None, [...])` visual đặt thẳng
-  trong tab. Bookmark khoanh vùng của khối chuyển view **được giữ** (lọc bỏ visual đã xoá); trạng thái mặc định
-  của nhóm giữ lại lấy từ bookmark `_Main` **cũ**, không từ file (Desktop Save lật trạng thái trong file).
-- Khung tìm trên trang Weekly **theo tên Selection**, không theo id — Weekly tự dựng lại thì id đổi.
-- Sau khi dựng: `pbi_gate --page all` phải xanh rồi mới mở Desktop.
-- Mục `('__cards__', (0,0,1270,105), tiles)` dựng hàng thẻ từ thẻ `Revenue` của Weekly, mỗi thẻ là
-  `(key, nhãn, measure, màu số, measure dòng % hoặc None, ngưỡng màu)`. Thẻ chia đều bề ngang, id cố định theo
-  trang + key nên chạy lại không sinh id mới (§4d-bis).
-- Lệnh sửa theo luật 27/09, dữ liệu từng trang nằm trong `mix_specs.py`:
+- **The frame** (header · filter panel · Glossary · buttons · tab strip) is copied from the standardised **Weekly** page; **the slicers and
+  content visuals** of the target page keep their ids, laid out again by `mix_specs.py`.
+- Slicers without labels (sitting in the old copy's header strip) ⇒ labels generated from the shown field names, switched to `Dropdown`.
+- **Each `BG_` frame wraps exactly ONE visual** indented 5 (gate `bg-inset`); cards (`Card_`) and buttons (`BT_`) are exempt.
+  A named visual without a title ⇒ declares `title.show=false` so the technical name does not show.
+- Bookmarks regenerated: `Red` · `CloseHidden` · `OpenFilter` · `OpenGlossary` · one per tab —
+  tabs/`Red` capture the whole page, overlays are scoped. The page's default state = `Red`.
+- **Rerunnable** on an already built page (the old frame is deleted and regenerated). Files are written **exactly the Desktop way**:
+  the same EOL, **no** trailing newline — adding one makes every file differ by a fake line.
+- Spec support: `('__keep__', pos, groupId)` keeps an existing group AS IS (a card row · a block with a view-switching
+  button) · `card_tabs=(0)` a tab with a card row at `(0,0,1270,675)` · `('__loose__', None, [...])` visuals placed directly
+  in the tab. The scoped bookmarks of a view-switching block **are kept** (deleted visuals filtered out); the default state
+  of a kept group is taken from the **old** `_Main` bookmark, not from the file (a Desktop Save flips the states in the file).
+- The frame is found on the Weekly page **by Selection name**, not by id — when Weekly is rebuilt the ids change.
+- After building: `pbi_gate --page all` must be green before opening Desktop.
+- The item `('__cards__', (0,0,1270,105), tiles)` builds the card row from Weekly's `Revenue` card, each card being
+  `(key, label, measure, figure colour, % line measure or None, colour threshold)`. Cards split the width evenly, ids fixed by
+  page + key so a rerun creates no new ids (§4d-bis).
+- Fix commands by the 27/09 rules, each page's data in `mix_specs.py`:
   ```
-  python scripts/mix_builder.py --restore-measures    # chép lại measure đã cắt nhầm, nguyên văn từ Classic
-  python scripts/mix_builder.py --pct                 # measure bọc có chữ kỳ + màu tăng/giảm (§4j)
-  python scripts/mix_builder.py --drop-visuals        # bỏ visual không phải thẻ khỏi dải card (§4i)
-  python scripts/mix_builder.py --spread-cards <pageId>   # giãn đều thẻ sau khi bỏ
-  python scripts/mix_builder.py --diagram             # xếp sơ đồ model theo DIAGRAM_POS (pbip §1c)
+  python scripts/mix_builder.py --restore-measures    # copies back wrongly cut measures, word for word from Classic
+  python scripts/mix_builder.py --pct                 # wrapping measures with the period word + up/down colours (§4j)
+  python scripts/mix_builder.py --drop-visuals        # drops non-card visuals from the card strip (§4i)
+  python scripts/mix_builder.py --spread-cards <pageId>   # spreads the cards evenly after dropping
+  python scripts/mix_builder.py --diagram             # lays out the model diagram by DIAGRAM_POS (pbip §1c)
   ```
-- 🔴 **SỬA THẲNG FILE THẬT, KHÔNG chạy thử trên bản sao** *(`Skill_Task_Case` §Không bản nháp — thay luật cũ "chạy
-  thử trên bản sao `data/_sbx_<tên>`", luật đó đẻ ra 11 thư mục ≈ 2,2 GB không ai duyệt)*. Mốc an toàn = git: commit trạng thái hiện
-  có (gồm bản Save của người dùng, §0a) TRƯỚC khi chạy lệnh, rồi chạy thẳng `MIX_ROOT=reports/<report>`; hỏng thì
-  `git` đưa về. Lệnh nào quét cả report thì chạy `--dry` (nếu có) để thấy phạm vi trước.
+- 🔴 **EDIT THE REAL FILE DIRECTLY, NO trial runs on a copy** *(`Skill_Task_Case` §No drafts — replacing the old rule "try
+  on a copy `data/_sbx_<name>`", a rule that produced 11 folders ≈ 2.2 GB nobody reviewed)*. The safety point = git: commit the current state
+  (including the owner's Save, §0a) BEFORE running the command, then run directly with `MIX_ROOT=reports/<report>`; broken ⇒
+  `git` brings it back. A command sweeping the whole report runs `--dry` (when it has one) first to see the scope.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the White design standard a report keeps once approved (frame, filters, grid) · chuẩn thiết kế White mà report giữ sau khi được duyệt (khung, bộ lọc, lưới)

@@ -35,8 +35,14 @@ export const Q = {
   // the vectors a block ships: its messages in (from, to], and one message by id (a catch-up id)
   shipMessagesBetween: "SELECT id, session_id, uuid, timestamp, content FROM messages WHERE id > ? AND id <= ? ORDER BY id",
   shipMessageById: "SELECT id, session_id, uuid, timestamp, content FROM messages WHERE id = ?",
+  // A message with a uuid is deduplicated by UNIQUE(session_id, uuid). One without (codex, tool lines) is matched on content
+  // identity, the same key the bundle merge uses: a re-read of a transcript whose ingest mark was lost re-inserted every
+  // uuid-less line (2026-10-26: 5,658 copies in the second machine's codex sessions).
   insertMessage: `INSERT OR IGNORE INTO messages (session_id, uuid, role, content, tool_name, timestamp)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+     SELECT @session, @uuid, @role, @content, @tool, @ts
+      WHERE @uuid IS NOT NULL OR NOT EXISTS (
+        SELECT 1 FROM messages WHERE session_id = @session AND uuid IS NULL
+           AND role IS @role AND timestamp IS @ts AND content IS @content)`,
   // Whole-replace re-ingest of ONE session from its source transcript (HP điều 3: the transcript is the source).
   deleteSessionMessages: "DELETE FROM messages WHERE session_id = ?",
 

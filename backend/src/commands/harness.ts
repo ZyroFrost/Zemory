@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readSync, readdirSync } from "node:fs";
 import { basename, dirname, relative, resolve, join } from "node:path";
 import { analyzeMigration } from "../docs/migrate.js";
-import { checkLayout, LAYOUT_STRUCTURE, layoutKindOf, type LayoutKind } from "../docs/layout.js";
+import { checkLayout, isCloudRoot, LAYOUT_STRUCTURE, layoutKindOf, sameRoot, type LayoutKind } from "../docs/layout.js";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
 import { currentMemoryDir, currentMemoryDb } from "../memory/db.js";
 import { currentProjectRoot, findProjectRoot, harnessPathsAt, ledgerFile, loadContext, readMarker } from "../core/config.js";
@@ -28,7 +28,7 @@ import { desktopShortcutStatus, judgeLaunch, launchFacts, setDesktopShortcut } f
 import { getShortcutPrompted, setShortcutPrompted } from "../config/settings.js";
 import { cloudSyncReport, formatCloudReport } from "../memory/cloudguard.js";
 import { uplinkReport, uplinkStaleMs } from "../memory/uplinkguard.js";
-import { getDriveDir } from "../config/settings.js";
+import { getDriveDir, getTreeRoot, setTreeRoot } from "../config/settings.js";
 import { sweepScratchpads } from "../jobs/scratchpad.js";
 import { applySkills, applyStandard, isStandardSource, skillDiff, stampRepo, standardDiff } from "../docs/standard.js";
 import { applyKit, repoKit, type KitApplyResult } from "../docs/kit-apply.js";
@@ -943,17 +943,32 @@ export function cmdConform(args: string[]): void {
 }
 
 /**
- * `zemory conform --layout <root> [--as drive|workspace|company] [--json]` - a data drive, its Workspace/ or one
+ * `zemory conform --layout [<root>] [--as drive|workspace|company] [--json]` - a data drive, its Workspace/ or one
  * organisation's folder against the HS layout structures (plan/32). The root is named the way the host names it; in the
- * Docker install it is read through the read-only data-root mount.
+ * Docker install it is read through the read-only data-root mount. With no root, the machine's declared tree root
+ * (`treeRoot`, Struc_Disk_Data §Tree root) is checked; `--set-root <path>` declares it (`--set-root ""` clears it).
  */
 function conformLayout(args: string[]): void {
+  const setIdx = args.indexOf("--set-root");
+  if (setIdx >= 0) {
+    const p = args[setIdx + 1] ?? "";
+    if (p && !existsSync(toLocalPath(p) !== p ? toLocalPath(p) : resolve(p))) {
+      console.log(`zemory conform --layout --set-root: ${p} is not reachable here`);
+      process.exitCode = 1;
+      return;
+    }
+    setTreeRoot(p);
+    console.log(p ? `zemory conform --layout: tree root of this machine = ${p}` : "zemory conform --layout: tree root cleared");
+    return;
+  }
   const i = args.indexOf("--layout");
-  const given = args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : "";
+  const treeRoot = getTreeRoot();
+  const given = args[i + 1] && !args[i + 1].startsWith("--") ? args[i + 1] : treeRoot;
   const asIdx = args.indexOf("--as");
   const as = asIdx >= 0 ? args[asIdx + 1] : "";
   if (!given) {
-    console.log("usage: zemory conform --layout <root> [--as drive|workspace|company] [--json]");
+    console.log("usage: zemory conform --layout [<root>] [--as drive|workspace|company] [--json]");
+    console.log("       zemory conform --layout --set-root <path>   (declare this machine's tree root once)");
     process.exitCode = 1;
     return;
   }
@@ -965,7 +980,8 @@ function conformLayout(args: string[]): void {
     process.exitCode = 1;
     return;
   }
-  const kind = (as as LayoutKind) || layoutKindOf(given) || layoutKindOf(root);
+  // the declared tree root is a drive-kind root wherever it sits (a folder, a OneDrive folder)
+  const kind = (as as LayoutKind) || (sameRoot(given, treeRoot) ? "drive" : null) || layoutKindOf(given) || layoutKindOf(root);
   if (!kind) {
     console.log(`zemory conform --layout: cannot tell what ${given} is - add --as drive|workspace|company`);
     process.exitCode = 1;
@@ -976,7 +992,8 @@ function conformLayout(args: string[]): void {
     process.exitCode = 1;
     return;
   }
-  const rep = checkLayout(root, kind);
+  // read through a mount the folder's own name is gone: the host's path says whether it is a OneDrive folder
+  const rep = checkLayout(root, kind, undefined, isCloudRoot(given) || isCloudRoot(root));
   const shown = rep.findings.map((f) => ({ ...f, path: toHostPath(f.path) }));
   if (args.includes("--json")) {
     console.log(JSON.stringify({ ...rep, root: given, findings: shown }, null, 2));

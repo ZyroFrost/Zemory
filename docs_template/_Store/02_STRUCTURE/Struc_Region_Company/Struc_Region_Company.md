@@ -1,7 +1,7 @@
 ---
 id: Struc_Region_Company
 name: region-company
-version: 4
+version: 5
 scope: region
 ---
 # Struc_Region_Company
@@ -18,6 +18,7 @@ follow `Struc_Region_Workspace`.
 |---|---|
 | a repo of one department | `Dept_<CODE>\` (Dept_154) — set by Struc_Repo_Dept |
 | a repo of a data system: warehouse · an app's data · log centre | `_DB_<System>\` (Db_155) — Struc_Repo_WorkspaceManager · AppData · LogCenter |
+| the repo managing the organisation's repos when it runs no data warehouse (no database, no app) | `_WorkspaceManager\` (WorkspaceManager_171) — Struc_Repo_WorkspaceManager |
 | the shared business glossary (a synced folder) | `_Glossary\` (Glossary_156) |
 | a shared report template of one tool (a synced folder) | `_<Tool>_Template\` (Template_157) |
 | old work kept read only | `_Legacy\<Source>\` (Legacy_158) |
@@ -28,7 +29,7 @@ follow `Struc_Region_Workspace`.
 ```
 Workspace\Company\Acme\
 ├── Dept_FIN\  Dept_LOG\
-├── _DB_Warehouse\  _DB_Log\
+├── _DB_Warehouse\  _DB_Log\         (or _WorkspaceManager\ when there is no data warehouse)
 ├── _Glossary\  _PBI_Template\  _Legacy\OldServer\
 ├── _Project\ERP\_Hub\  _Project\ERP\AcmeFlow\
 └── Designs\  Drawings\                 work folders, not repos
@@ -40,6 +41,8 @@ Workspace\Company\Acme\
 - A repo always takes a role above; a repo named like a work folder is reported. A folder named with `Dept_` or `_` must match its
   role (`Dept_` + an UPPER-CASE code).
 - Each service role (`data` · `log` · `glossary` · `template`) has exactly one provider in the organisation.
+- Exactly one repo manages the organisation's repos: the data warehouse repo when there is one, otherwise `_WorkspaceManager\`
+  (WorkspaceManager_171).
 - The owner's papers with the organisation live HERE, in `_Profile\` (block law of `Struc_Disk_Data`); papers used for any
   organisation (CV, identity) ⇒ `Documents\Profile\`.
 - No loose file at the organisation level.

@@ -17,7 +17,7 @@ offline.
 > the apps you build with the harness: scaffolding LLM/AI apps is a first-class use. Use the harness
 > alone, the memory alone, or both.
 
-![Version](https://img.shields.io/badge/version-4.7.8-informational)
+![Version](https://img.shields.io/badge/version-4.8.0-informational)
 ![Node](https://img.shields.io/badge/node-%E2%89%A520.11%20%3C25-3c873a)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6)
 ![License](https://img.shields.io/badge/license-Apache--2.0-blue)
@@ -47,6 +47,7 @@ offline.
 - [Core concepts](#core-concepts)
 - [The harness: a parts store, sets, and a folder harness per repo](#the-harness-a-parts-store-sets-and-a-folder-harness-per-repo)
 - [Where things live on disk](#where-things-live-on-disk)
+- [The data tree of a machine](#the-data-tree-of-a-machine)
 - [Guardrails (layer-1 machine locks)](#guardrails-layer-1-machine-locks)
 - [The graph](#the-graph)
 - [Dead paths](#dead-paths)
@@ -431,10 +432,10 @@ repo on its next sync, and a repo always knows which version of each part it car
 
 | shelf | holds | today |
 |---|---|---|
-| `01_LAW/_Rule` | shared working laws, in five chapters: `01_Harness` · `02_Work` · `03_Safety` · `04_Writing` · `05_Domain` | 33 (22 Gate · 8 Keys · 3 Core) |
+| `01_LAW/_Rule` | shared working laws, in five chapters: `01_Harness` · `02_Work` · `03_Safety` · `04_Writing` · `05_Domain` | 38 (24 Gate · 14 Keys) |
 | `01_LAW/_Cons` | constitution frames a repo fills in, in four chapters: `01_Scope` · `02_Data` · `03_System` · `04_Security` | 8 |
-| `02_STRUCTURE` | repo structures (`Struc_Repo_*`, plus `Struc_Region_Workspace`), slots (`_Slot/`, one per folder concern), hosts (`_Host/`: GUI · IDE · CLI) | 9 structures · 138 slots · 3 hosts |
-| `03_SKILLS` | playbooks an agent opens on a trigger, with the scripts they install | 29 |
+| `02_STRUCTURE` | repo structures (`Struc_Repo_*`, plus `Struc_Region_Workspace`), slots (`_Slot/`, one per folder concern), hosts (`_Host/`: GUI · IDE · CLI) | 11 structures (repo, region, disk) · 168 slots · 3 hosts |
+| `03_SKILLS` | playbooks an agent opens on a trigger, with the scripts they install | 30 |
 | `04_TODO.md` · `05_CHANGES.md` | the frames of a repo's backlog and changelog, written once at init | — |
 
 Retired parts move to the store's `Archive/` with their history. A part carries its own gate where it
@@ -467,6 +468,8 @@ agent pays for English only, and any number of languages can be added without to
   `docs/agent` and points at the header (editing one takes the one-use flag `.allow-translation`). The
   HS check reds a header that carries another language's sections, and a translation that lost a
   section or a step. The cockpit's Harness screen shows the translation matching its language.
+
+Every part of the shipped store has its English header and a Vietnamese translation (4.8.0; plan/33).
 
 HS is a default, not a mandate: any user can add slots of their own (custom slots, used by a set or by a
 single repo through `"slots"` in its `docs/.harness.json`), write their own parts, or rebuild the store
@@ -507,7 +510,9 @@ AGENTS.md · CLAUDE.md                                  the thin entry (CLAUDE.m
 call or a test goes red, so an agent cannot break it by forgetting. A **Keys** law is held by a keyword:
 when a request mentions its subject, the law is put in front of the agent. A **Core** law has nothing
 that can judge it, so it is the only text every session must read, and `conform` caps the Core text at
-22,000 characters because it is re-injected after every context compaction. An agent reads a few
+22,000 characters because it is re-injected after every context compaction. Since 4.7.8 every shared
+law of HS is Gate or Keys (`Rule_Gate_73`: every law has a machine check, a keyword hook at the least, and
+a test reds a law without one); Core stays for a repo's own articles that nothing can judge. An agent reads a few
 thousand characters per session instead of the whole rulebook, and the rules that matter most cannot be
 skipped.
 
@@ -530,7 +535,8 @@ tested rather than assumed.
 **Roles in a region.** A structure can declare a role: what it manages, who manages it, what it provides
 (`structure.json` › `role`). A repo names its manager and the repos whose data it uses in its marker
 (`docs/.harness.json`: `owner`, `uses`), and `conform` checks those names against the roles. The role
-that pays off daily is the workspace manager: `zemory sync` run there brings itself up to the store,
+that pays off daily is the workspace manager (the data warehouse repo `_DB_<System>\`, or `_WorkspaceManager\`
+in an organisation with no database and no app): `zemory sync` run there brings itself up to the store,
 then goes on to every repo it manages, so one command updates a whole region. A system manager does the
 same for a family of apps and their data repo. Shared reference folders of a region (a glossary, legacy
 material, report templates) are declared in the manager's structure and need no harness of their own.
@@ -593,6 +599,32 @@ On a fresh install both live in **`~/.zemory/`**. `zemory memory relocate <dir>`
 ```
 
 The pointer stays in `$HOME` because keeping it beside the store would be circular.
+
+---
+
+## The data tree of a machine
+
+Beyond each repo, HS also describes the whole data tree of a machine (`Struc_Disk_Data`): one fixed set of top-level folders
+(`Workspace\` · `Software\` · `Study\` · `Documents\` · `Memories\` · `Game\` · `Library\` · `Media\` · `Downloads\` · `Backup\` ·
+`Archive\` · `Recovery\` · `_ConfigVault\` · `_Models\`), then `Workspace\Company\<Org>\` for each organisation and
+`Software\<Group>\[<Vendor>\]<App>\{Setup,App,Data}` for each program. The tree is a dictionary to look names up in, not a
+list to create: a folder exists only when it holds something, and the check never asks for a missing one.
+
+**The root is per machine; the slots are the same everywhere.** The root can be a drive (`D:\`), a folder on a drive, or a
+OneDrive folder for an owner who keeps everything in OneDrive so every file is synced. Declare it once on each machine:
+
+```bash
+zemory conform --layout --set-root "C:\Users\me\OneDrive - Acme"   # stored as treeRoot in this machine's config.json
+zemory conform --layout                                         # checks the declared root (or give a root on the command line)
+zemory conform --layout <drive>\Workspace\Company\<Org>           # one organisation
+```
+
+The check reds a loose file at the root, a folder with no slot, a repo outside `Workspace\`, an item in a program folder outside
+`Setup\` · `App\` · `Data\`, and a study project with no matching `Study\` folder. A junction or symlink counts as a folder (a tree
+split over several drives links its blocks). In a OneDrive root the files live there for real, with no link — OneDrive does not
+sync through a link placed inside it — and the folders the OneDrive client puts at its root (`Desktop\`, `Pictures\`, its app
+folders) are left alone. What must not sit in a synced folder (a live database, a virtual disk, `node_modules` and other rebuilt
+folders) stays on a local drive outside the tree. The Docker install reads the root through its data-root mount (`HOST_DATA_ROOT`).
 
 ---
 
@@ -721,7 +753,7 @@ zemory memory embed [--all] [--rebuild]   Build or refresh the vector index
 zemory memory bench --recall              Score recall against the labelled corpus (strict + equivalent)
 zemory memory promote                     Find repeated corrections in episodic memory; proposes, never writes
 zemory memory scope [exclude|include]     Provenance tree; exclude a lane from ingest, sync and recall
-zemory memory hosts                       Sessions by machine → agent → project
+zemory memory hosts [--sets]              Sessions by machine → agent → project; --sets prints per-source fingerprints to compare machines
 zemory memory digest <session>            A session's summary digest
 zemory memory reopen [--all]              Reopen ingest for sessions missing messages, so `scan` pulls them again
 zemory memory files ls|extract|add|collect|fetch|verify|gc
@@ -737,6 +769,7 @@ zemory memory import <f.enc> [--merge]    In: default REPLACES the store (old on
 zemory memory keygen | key show|set|path  Share key = your identity; `key show` prints only a fingerprint
 zemory memory key set --from <file>       Take the key file of another install on this machine (native → Docker)
 zemory memory forget [--session id]       Forget rows (dry run by default, backup on --force)
+zemory memory forget --duplicates         Only the copies of a uuid-less message (same session, role, time, content); the first stays
 zemory memory redact                      Re-apply redaction to stored rows
 zemory memory backup | restore            Raw local SQLite backup / restore
 zemory memory verify | audit              Is the store intact · counts that look wrong
@@ -757,6 +790,8 @@ zemory store assemble                     Rebuild every set from HS (after chang
 zemory gates [--all] [--json]             Does each repo run its gates: guard · pre-commit · a row per article
 zemory peers [--repo X] [--check]         Which local agent session to message for a repo
 zemory conform [--gate]                   Score how closely the folder follows the standard
+zemory conform --layout [<root>] [--set-root <path>]
+                                          The machine's data tree against HS (no root: the declared treeRoot)
 zemory validate                           Lint the docs (links, length caps, supersede)
 zemory structure                          Print the structure standard
 zemory paths check|sweep|fix              Dead paths in docs and config
@@ -780,7 +815,8 @@ zemory hook guard                         Regenerate the layer-1 locks (init and
 zemory selfupdate [--check]               Pull + rebuild; a local edit the update also changes is asked about
                                           (--keep-local · --take-new), the local copy kept aside
 zemory sweep [--dry-run] [--all]          Close leftover browser processes zemory started
-zemory project move <from> <to> [--apply] Move a repo folder with its memory, sessions and settings (dry run by default)
+zemory project move <from> <to> [--apply] Move a repo folder with its memory, sessions and settings (dry run by default);
+                                          another drive or a WSL path (typed in PowerShell) is copied and checked, the source kept
 zemory --version
 ```
 
@@ -1055,7 +1091,9 @@ the code runs. In brief:
 
 ## Roadmap
 
-**Shipped recently:** the Docker install for Windows and Linux, with one-command installers, web-chat
+**Shipped recently:** the per-machine tree root (`treeRoot`, OneDrive roots) and `_WorkspaceManager\` (4.8.0) · every
+shared law machine-held (`Rule_Gate_73`) and sync acceptance by session sets (4.7.8) · the store translated to English headers
+with Vietnamese beside them · the Docker install for Windows and Linux, with one-command installers, web-chat
 capture on a virtual display and `zemory store assemble` (4.3.0) · the parts store and nine sets (4.0.0), with `init` building from a set, three-way
 `sync`, `sync --check`, the Standard and Gates chips, `gates` · `impact` · `peers` · the four-level graph
 (trial) · the check before a store change (`Rule_Gate_85`) · free deletion of the agent's own scratch ·
@@ -1071,14 +1109,11 @@ per-file questions in `selfupdate` · the 300-line local auto-commit · `setup m
   after asking the user, rebuild the sets (`zemory store assemble`) and sync every repo `zemory impact`
   lists, without two repos overwriting each other. Missing today: overwrite protection, and filtering
   `*.orig` / `*.rej` out of parts.
-- **Acceptance by a real run** of the 4.0.0 harness: a brand-new repo built from a set (app and non-app)
-  passing `conform` and `gates` with its hooks blocking for real, and the same in Claude Desktop.
 - **The four-level graph**, after review: status colours from `conform` / `gates` on levels 1–3, and an
   Obsidian-style local view for level 4 (inferred edges off by default, slots as colour groups, labels by
   zoom).
 - **A cross-network acceptance run** of the peer-to-peer channel between two real networks.
 - **This repo onto its own set**, out of the file harness.
-- **Translating the shipped standard documents** into English.
 - **Flagging throw-away sessions** (a few typed characters, a chat sent to the wrong project) so they
   stop surfacing in recall; mechanical, flag only, never delete.
 - **Late interaction / ColBERT**, blocked on a model: of 100 surveyed, two understand Vietnamese, and

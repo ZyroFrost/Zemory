@@ -133,6 +133,9 @@ export interface ForgetMemoryOptions {
   source?: string;
   before?: string;
   message?: number;
+  /** Only the COPIES of a uuid-less message: same session, role, timestamp and content as a row with a smaller id (the first
+   *  one is kept). The key the bundle merge and the ingest use, so what is removed is exactly what they would never insert. */
+  duplicates?: boolean;
   force?: boolean;
   skipBackup?: boolean;
   backupPath?: string;
@@ -193,7 +196,14 @@ function buildForgetWhere(opts: ForgetMemoryOptions): { where: string; params: R
     params.message = opts.message;
     selectors.push(`message=${opts.message}`);
   }
-  if (!clauses.length) throw new Error("Refusing to forget without a selector. Use --session, --project, --source, --before, or --message.");
+  if (opts.duplicates) {
+    clauses.push(
+      `m.uuid IS NULL AND EXISTS (SELECT 1 FROM messages d WHERE d.session_id = m.session_id AND d.uuid IS NULL
+         AND d.role IS m.role AND d.timestamp IS m.timestamp AND d.content IS m.content AND d.id < m.id)`,
+    );
+    selectors.push("duplicates");
+  }
+  if (!clauses.length) throw new Error("Refusing to forget without a selector. Use --session, --project, --source, --before, --message or --duplicates.");
   return { where: clauses.join(" AND "), params, selectors };
 }
 

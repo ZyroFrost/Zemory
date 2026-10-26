@@ -179,6 +179,28 @@ function programsIn(groupDir: string): string[] {
   return out;
 }
 
+/**
+ * A tree rooted in a OneDrive folder (Struc_Disk_Data §Tree root): the client puts its own folders at that root - the
+ * known folders it moves there (Desktop · Pictures · Music · Videos; `Documents` is a slot of the tree itself, so it is
+ * checked), its app and attachment folders, the Personal Vault link, a hidden marker named by a GUID. They are not
+ * the owner's tree and are left alone, like what Windows puts at a drive root.
+ */
+const CLOUD_OWN = /^(Desktop|Pictures|Music|Videos|Attachments|Apps|Recordings|Microsoft Teams Chat Files|Microsoft Copilot Chat Files|Personal Vault\.lnk|\.[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})$/;
+
+/** Is `root` a OneDrive folder: named the way the client names it, or the folder the client's own variables point at. */
+export function isCloudRoot(root: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  const norm = (p: string): string => p.replace(/[\\/]+$/, "").toLowerCase();
+  const name = root.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+  if (/^OneDrive( - .+)?$/i.test(name)) return true;
+  return [env.OneDrive, env.OneDriveCommercial, env.OneDriveConsumer].some((v) => !!v && norm(v) === norm(root));
+}
+
+/** Two spellings of one root (case, trailing separator, slash direction) are the same root. */
+export function sameRoot(a: string, b: string): boolean {
+  const norm = (p: string): string => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  return !!a && !!b && norm(a) === norm(b);
+}
+
 /** Which kind of layout a root is, from where it sits: a drive root · a folder named Workspace · a folder in Company/. */
 export function layoutKindOf(root: string): LayoutKind | null {
   // read the path as the host names it: a Windows drive root is a drive even where node parses POSIX paths (the container)
@@ -210,8 +232,11 @@ function onSomeSlot(slots: LayoutSlot[], rel: string[]): boolean {
   });
 }
 
-/** Check a real tree against its layout structure; a drive check goes on into Workspace/ and every organisation. */
-export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) ?? "drive", storeDir = STORE_DIR): LayoutReport {
+/**
+ * Check a real tree against its layout structure; a drive check goes on into Workspace/ and every organisation. `cloud`
+ * says the root is a OneDrive folder - the caller knows it from the host's path when the tree is read through a mount.
+ */
+export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) ?? "drive", storeDir = STORE_DIR, cloud = isCloudRoot(root)): LayoutReport {
   const slots = layoutSlots(kind, storeDir);
   const out: LayoutReport = { root, kind, structure: LAYOUT_STRUCTURE[kind], checked: 0, findings: [] };
   const add = (f: LayoutFinding): void => {
@@ -223,6 +248,7 @@ export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) 
     out.findings.push(...r.findings);
   };
   for (const e of entries(root)) {
+    if (kind === "drive" && cloud && CLOUD_OWN.test(e.name)) continue;
     out.checked++;
     const abs = join(root, e.name);
     if (!e.dir) {

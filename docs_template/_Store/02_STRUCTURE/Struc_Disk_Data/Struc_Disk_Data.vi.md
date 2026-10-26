@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 # Struc_Disk_Data
@@ -134,6 +134,23 @@ game hay khoá học tải về. Xếp luôn dùng chuỗi câu hỏi ở trên.
 Thư mục cấp 1 bắt đầu bằng `_` là nơi chứa dùng chung của cả máy (nhiều chương trình và repo trỏ vào, chủ máy không làm việc
 trong đó); có hai nơi, `_ConfigVault\` và `_Models\`.
 
+## Gốc cây — theo từng máy
+
+Các slot ở trên giống nhau trên mọi máy; chỉ gốc thay đổi. Gốc là một trong ba: gốc một ổ (`D:\`) · một thư mục trên ổ
+(`E:\Data\`) · một thư mục OneDrive (`%OneDrive%\`), khi chủ máy để mọi thứ trong OneDrive cho mọi file đều được đồng bộ.
+
+1. Khai gốc một lần trên mỗi máy: `zemory conform --layout --set-root <gốc>` (khoá `treeRoot` trong `config.json` cạnh Global Memory
+   của máy đó). Sau đó `zemory conform --layout` không ghi gốc sẽ kiểm gốc đã khai; máy không khai gì thì vẫn ghi gốc trên dòng lệnh.
+2. Gốc nằm trong OneDrive thì giữ file thật; không dùng điểm nối. OneDrive không đồng bộ qua junction hay symlink đặt bên trong
+   nó, nên một khối dựng ở chỗ khác rồi nối vào sẽ không bao giờ lên mây.
+3. Thứ không được nằm trong thư mục đồng bộ thì ở ổ cục bộ, ngoài cây, và `_README.md` ở gốc ghi nó nằm đâu: database đang chạy
+   (Global Memory, SQLite của app) · ổ ảo (`.vhdx` của WSL, Docker) · thư mục công cụ dựng lại được (`node_modules\`, `.venv\`,
+   cache, file model).
+4. Các thư mục client OneDrive tự đặt ở gốc đó — các thư mục quen thuộc nó dời lên (`Desktop\` · `Pictures\` · `Music\` ·
+   `Videos\`), thư mục ứng dụng và tệp đính kèm, `Personal Vault.lnk` — phép kiểm để yên. `Documents\` là slot của cây và theo
+   Documents_152, kể cả khi OneDrive dời nó lên đó.
+5. Bản cài Docker đọc gốc qua mount gốc dữ liệu: `HOST_DATA_ROOT` trỏ đúng thư mục của `treeRoot`.
+
 ## Một cây logic, nhiều nơi lưu — gợi ý, không bắt buộc
 
 Cây là MỘT cây logic, máy có bao nhiêu ổ cũng vậy. Mỗi khối dữ liệu nằm thật ở đúng một nơi lưu; mọi nơi khác cần nó chỉ có một
@@ -152,7 +169,7 @@ Năm luật, khi cây chia ra nhiều nơi lưu:
 | ổ trong máy | junction trên Windows (`mklink /J`), symlink trên Linux; không dùng bind mount |
 | ổ ngoài | gán chữ ổ cố định, hoặc gắn ổ vào một thư mục |
 | NAS | symlink tới đường mạng (`mklink /D`); junction không trỏ được tới thư mục chia sẻ trên mạng |
-| ổ đám mây | mount vào một điểm cố định; database đang chạy KHÔNG BAO GIỜ nằm ở phía đám mây |
+| ổ đám mây | mount vào một điểm cố định; database đang chạy KHÔNG BAO GIỜ nằm ở phía đám mây; làm gốc cây thì xem §Gốc cây |
 
 Ví dụ — ổ dữ liệu chính `D:` và một SSD nhanh `H:` giữ model, save game và ổ ảo của WSL:
 
@@ -171,8 +188,8 @@ D:\                                        H:\
 ```
 
 Mỗi thư mục tách nhỏ có một `_README.md` ở cả hai ổ (luật 3); phép kiểm coi đó là file duy nhất một thư mục tách nhỏ được chứa. Vai thường gặp của các ổ: ổ dữ liệu chính giữ cả cây · ổ dữ liệu thứ hai giữ các khối dời
-khỏi ổ chính (media lớn, archive) · SSD nhanh giữ thứ cần tốc độ (game, model, ổ ảo) và có bản sao lưu ở nơi khác · ổ hệ thống và
-ổ đám mây không thuộc cây.
+khỏi ổ chính (media lớn, archive) · SSD nhanh giữ thứ cần tốc độ (game, model, ổ ảo) và có bản sao lưu ở nơi khác · ổ hệ thống không
+thuộc cây; thư mục đám mây hoặc là gốc cây (§Gốc cây) hoặc không thuộc cây.
 
 ## Ổ hệ thống
 
@@ -213,7 +230,7 @@ Ai thêm một slot, sửa một slot hay dựng một cây mới thì làm đ�
 
 ## Phép kiểm
 
-`zemory conform --layout <gốc dữ liệu>` báo đỏ: file lẻ ở gốc (`loose-file`) · thư mục cấp 1 không có slot (`unknown-folder`) ·
+`zemory conform --layout [<gốc dữ liệu>]` (không ghi gốc: `treeRoot` đã khai) báo đỏ: file lẻ ở gốc (`loose-file`) · thư mục cấp 1 không có slot (`unknown-folder`) ·
 repo ngoài `Workspace\` (`repo-outside-workspace`) · nhóm trong `Software\` ngoài Software_148 hoặc phần trong `Game\` ngoài
 Game_164 (`unknown-value`) · thứ nằm trong thư mục phần mềm mà ngoài `Setup\`, `App\`, `Data\` (`program-stray`) · dự án học không
 có thư mục `Study\` tương ứng mà cũng không có `_README.md` (`study-unmatched`). Lệnh đi tiếp vào `Workspace\` và từng tổ chức. Chuỗi câu hỏi của luật 1 và năm luật của cây

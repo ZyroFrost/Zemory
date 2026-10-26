@@ -1319,9 +1319,10 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     return;
   }
   if (sub === "forget") {
-    const hasSelector = ["--session", "--project", "--source", "--agent", "--before", "--message"].some((flag) => args.includes(flag));
+    const hasSelector = ["--session", "--project", "--source", "--agent", "--before", "--message", "--duplicates"].some((flag) => args.includes(flag));
     if (!hasSelector) {
-      console.log("usage: zemory memory forget [--session <id>] [--project <path>] [--source <agent>] [--before <date>] [--message <#id>] [--force]");
+      console.log("usage: zemory memory forget [--session <id>] [--project <path>] [--source <agent>] [--before <date>] [--message <#id>] [--duplicates] [--force]");
+      console.log("  --duplicates: only the copies of a message without uuid (same session, role, time, content); the first one stays.");
       console.log("  Dry-run by default. Re-run with --force to delete matched memory DB rows.");
       console.log("  Deletion creates a local backup unless --no-backup is present.");
       return;
@@ -1335,6 +1336,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       source: flagValue(args, "--source") ?? flagValue(args, "--agent"),
       before: flagValue(args, "--before"),
       message: message ? Number(message) : undefined,
+      duplicates: args.includes("--duplicates"),
       force: args.includes("--force"),
       skipBackup: args.includes("--no-backup"),
       backupPath: flagValue(args, "--backup"),
