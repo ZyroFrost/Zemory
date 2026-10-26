@@ -113,7 +113,7 @@ RULES = [
     ('tab-case', 'every word of a tab label starts with a capital (Tổng Quan, Theo Tháng) - one way on every tab - user 2026-10-14'),
     ('sort-order', "a sort field is one of the visual's own fields (else Desktop drops it), and a bar chart by category runs from the largest value down - user 2026-10-14"),
     ('tab-label',   'White: a tab label is at most 10 characters - bold 12pt in a 90-125px button, longer is cut off ("Nguoi ban &..")'),
-    ('theme-standard', 'White: the report theme carries the company theme data colours + good/neutral/bad (the region manager/assets/theme/the region theme file = Theme1 of the Original template)'),
+    ('theme-standard', 'White: the report theme carries the company theme data colours + good/neutral/bad (the region value theme_file in the _Design/PBI_Template/ of the organisation = Theme1 of the Original template)'),
     ('compare-grey', 'White: a comparison series (LY / LM / LMTD / LW / PY / Last / Target, not a %) is grey #A2A2A2 (a second one #595959; 3-4 on one chart add #7F7F7F / #3F3F3F), never a theme slot'),
     ('tab-hole',    'White: inside a tab every 10x10 px spot is covered by a block - blocks of one row end on the same bottom (user 08/10, Delivery)'),
     ('row-wrap', 'White/Red, dw: every text column of a table / matrix fits its text - max(longest warehouse value, header) + padding, half of it (two lines) over ROW_WRAP px; no spare room (Stepped matrix: one shared column) - user 2026-10-14'),
@@ -3931,7 +3931,7 @@ def check_report_level(report_dir, rep, d_def, vis, fail):
         for k in ('dataColors', 'good', 'neutral', 'bad'):
             a_, b_ = m_t.get(k), s_t.get(k)
             if norm(a_) != norm(b_):
-                fail.append("theme %s = %s - the company theme (the region manager/assets/theme/the region theme file) has %s (skill pbi-white 4k)"
+                fail.append("theme %s = %s - the company theme (the region value theme_file, in _Design/PBI_Template/) has %s (skill pbi-white 4k)"
                             % (k, a_, b_))
     compare_rx = re.compile(r'(\bLY\b|\bLM\b|LMTD|\bLW\b|\bPY\b|Last|Previous|Target|\bTG\b)')
     for (pg, i), d in vis.items():

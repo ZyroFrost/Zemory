@@ -24,7 +24,7 @@ trúc đó từ HS, không cần xem máy khác, không học từ dữ liệu m
 │   │   ├── Dept_<Mã>/                repo phòng ban              → bộ Dept
 │   │   ├── _DB_<Hệ>/                 DW · hệ nguồn · log          → bộ AppData · LogCenter
 │   │   ├── _Glossary/                thuật ngữ chung (đồng bộ)
-│   │   ├── _<Công cụ>_Template/      khuôn báo cáo chung (đồng bộ)
+│   │   ├── _Design/                  khuôn báo cáo + tài nguyên giao diện chung (đồng bộ)
 │   │   ├── _Legacy/<Nguồn>/          việc cũ, chỉ đọc
 │   │   └── _Project/<Nhóm>/<repo>/   ứng dụng nội bộ · của bên cung cấp → bộ App
 │   ├── Personal/<Loại>/…             code của chủ máy: StudyProjects · Games · Apps
@@ -160,7 +160,7 @@ Rule_Gate_27_HarnessLanguage/
 1. Cài zemory (`README.md` của repo zemory › Quickstart / Docker).
 2. Xếp ổ dữ liệu theo §1; kiểm: `zemory conform --layout <gốc ổ>` — sửa tới khi sạch.
 3. Đưa repo về đúng chỗ: clone từng repo vào `Workspace/Company/<Tổ chức>/…`, `Personal/…`; thư mục đồng bộ (`_Glossary` ·
-   `_<Công cụ>_Template`) nhận qua Syncthing. Kiểm từng tổ chức: `zemory conform --layout <thư mục tổ chức>`.
+   `_Design`) nhận qua Syncthing. Kiểm từng tổ chức: `zemory conform --layout <thư mục tổ chức>`.
 4. Mỗi repo chưa ráp: `zemory init` trong repo, chọn bộ theo vai (§5). Repo đã ráp: `zemory sync --standard` để lên bản HS mới.
 5. Phần mềm: chạy bộ cài trong `Software/<Nhóm>/<Ứng dụng>/Setup/`; cấu hình và khoá trong `_ConfigVault/` mang sang bằng tay.
 

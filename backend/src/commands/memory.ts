@@ -43,7 +43,7 @@ import { type ScopeNode, scopeTree, toggleLane } from "../memory/scope.js";
 import { uplinkReport } from "../memory/uplinkguard.js";
 import { promotionReport } from "../memory/promote.js";
 import { getDriveDir, getScopeExclude, setScopeExclude, setWebAuth, setWebPull, type ScopeLane } from "../config/settings.js";
-import { backupMemory, forgetMemory, reRedactMemory, reshipMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
+import { backupMemory, forgetMemory, listBackups, pruneBackupFiles, reRedactMemory, reshipMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
 import { acquireCliWriteLock, cliWriteHolder, releaseCliWriteLock } from "../jobs/writegate.js";
 import { flagValue, positionalArgs } from "./_shared.js";
 import { Q } from "../memory/store/queries.js";
@@ -1206,6 +1206,24 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     }
     return;
   }
+  if (sub === "backups") {
+    // The GM's backups and their cleanup (constitution article 19): the guard blocks deleting a .db by hand, this is the door.
+    const mb = (n: number) => `${(n / 1048576).toFixed(0)} MB`;
+    if (!args.includes("--prune")) {
+      const all = listBackups(flagValue(args, "--db"));
+      console.log(`zemory memory backups — ${all.length} backup(s), ${mb(all.reduce((a, b) => a + b.bytes, 0))}`);
+      for (const b of all) console.log(`  ${b.at}  ${mb(b.bytes).padStart(9)}  ${b.path}`);
+      if (all.length) console.log("  clean: zemory memory backups --prune [--keep N] [--before <iso>] (dry run first, --force deletes)");
+      return;
+    }
+    const keep = flagValue(args, "--keep");
+    const r = pruneBackupFiles({ dbPath: flagValue(args, "--db"), keep: keep ? Number(keep) : undefined, before: flagValue(args, "--before"), force: args.includes("--force") });
+    console.log(`zemory memory backups --prune — ${r.dryRun ? "dry-run" : "deleted"} ${r.drop.length} backup(s), ${mb(r.drop.reduce((a, b) => a + b.bytes, 0))}; ${r.keep.length} kept`);
+    for (const b of r.drop) console.log(`  ${r.dryRun ? "would delete" : "deleted"}  ${b.at}  ${b.path}`);
+    for (const b of r.keep) console.log(`  keep  ${b.at}  ${b.path}`);
+    if (r.dryRun && r.drop.length) console.log("  re-run with --force to delete them.");
+    return;
+  }
   if (sub === "backup") {
     const out = positionalArgs(args.slice(1))[0];
     const r = await backupMemory({
@@ -1969,6 +1987,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "                    rescue the tables that are still readable from a corrupt store into a new file.",
       "  stats             print one JSON line of the heavy numbers (used by the daemon; humans read info).",
       "  backup [out.db]    raw local SQLite backup (use export for encrypted sharing).",
+      "  backups [--prune [--keep N] [--before <iso>] [--force]]",
+      "                    list the GM's backups; --prune deletes the old ones (newest 2 kept; dry run first).",
       "  restore <backup.db> [--force]",
       "                    restore a raw local SQLite backup; renames the previous DB aside.",
       "  export <out.zemory.enc> [--key-file <path>]",
