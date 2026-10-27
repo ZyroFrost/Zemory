@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # Struc_Region_Workspace
@@ -34,7 +34,7 @@ Vai của tám template repo hiện có (đọc từ `structure.json › role` c
 |---|---|---|---|---|---|---|
 | `Struc_Repo_WorkspaceManager` | `workspace-manager` | `dept` | — | không có | `data` · `workspace-values` · `mail` | kho dữ liệu `_DB_Warehouse` |
 | `Struc_Repo_Dept` | `dept` | — | `workspace-manager` | bắt buộc | — | `Dept_FIN` |
-| `Struc_Repo_SystemManager` | `system-manager` | `app` · `app-data` | — | không có | — | `_Project\ERP\_Hub` |
+| `Struc_Repo_SystemManager` | `system-manager` | `app` · `app-data` | — | không có | `gateway` · `sign-in` | `_Project\ERP\_Hub` |
 | `Struc_Repo_App` | `app` | — | `system-manager` | tuỳ chọn | — | `_Project\ERP\AcmeFlow` |
 | `Struc_Repo_AppData` | `app-data` | — | `system-manager` | bắt buộc | `app-data` | `_DB_Erp` |
 | `Struc_Repo_LogCenter` | `log-center` | — | — | không có | `log` | `_DB_Log` |

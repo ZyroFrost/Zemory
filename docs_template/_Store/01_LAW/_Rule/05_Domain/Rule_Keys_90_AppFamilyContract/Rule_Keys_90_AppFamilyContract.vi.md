@@ -1,20 +1,23 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
-# Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one admin screen and its log codes
+# Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
 
 ## Luật là gì
-Các app cùng một hệ (repo vai `app`, do một `system-manager` quản, dùng một repo `app-data`) dùng chung ba thứ và không tự làm bản
-riêng: một DB giao dịch của cả hệ, một màn quản trị của system-manager để cấp vai, và bộ mã log vận hành do repo `app-data` giữ.
+Các app cùng một hệ (repo vai `app`, do một `system-manager` quản, dùng một repo `app-data`) dùng chung bốn thứ và không tự làm bản
+riêng: một DB giao dịch của cả hệ, một đăng nhập của `system-manager`, một màn quản trị của `system-manager` để cấp vai, và bộ mã log
+vận hành do repo `app-data` giữ. `system-manager` chỉ giữ phần dùng chung — cổng, đăng nhập, màn quản trị và đường dẫn tới các app;
+mỗi app tự phục vụ trang và API của chính nó.
 
 Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nhà nhưng không chỉ nhà nào giữa các repo của một hệ;
 `Skill_Dev_AppDesign` và `Skill_Dev_DbDesign` dạy cách làm, không đặt nghĩa vụ này; `Struc_Repo_SystemManager` và
 `Struc_Repo_AppData` khai vai nhưng không giao nghĩa vụ giữa các vai.
 
 ## Khi nào áp
-- Dựng hay sửa một app của hệ: bảng nó cần, đăng nhập, vai, màn quản trị, ghi log.
-- Có người đề xuất DB riêng cho một app, hoặc màn quản trị nằm trong một app.
+- Dựng hay sửa một app của hệ: bảng nó cần, đăng nhập, vai, màn quản trị, ghi log, trang hay API của nó.
+- Có người đề xuất DB riêng cho một app, trang đăng nhập hay màn quản trị nằm trong một app, hoặc đặt trang hay API của một app vào
+  trong `system-manager`.
 
 ## Phải làm gì
 1. Dữ liệu nằm trong một DB của cả hệ, do repo `app-data` giữ. App không có DB riêng, kể cả app lớn: mọi DB của hệ ở cùng một máy
@@ -26,12 +29,24 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
    đổi tài khoản và vai · truy vấn dữ liệu tự do · đổi cài đặt ảnh hưởng người khác. Mã và mức lấy từ bảng hợp đồng của repo
    `app-data`; mã chưa có ⇒ xin repo đó thêm trước. Không ghi mật khẩu, token, chuỗi kết nối; người chưa biết là NULL, không phải
    chuỗi rỗng.
+4. Đăng nhập dùng chung: `system-manager` có trang đăng nhập duy nhất của hệ và cấp phiên duy nhất. App đọc phiên đó từ DB của hệ ở
+   backend của chính nó, kiểm vai của chính nó ở đó, và chuyển người chưa có phiên sống về trang đăng nhập của `system-manager` kèm
+   địa chỉ để quay lại. App không có trang đăng nhập, không cookie phiên riêng, không màn đổi mật khẩu; đăng xuất và đổi mật khẩu đi
+   qua `system-manager`.
+5. `system-manager` chỉ giữ phần dùng chung: cổng (một địa chỉ, mỗi app một đường dẫn), đăng nhập, màn quản trị và đường dẫn tới các
+   app. Mỗi app tự phục vụ frontend và backend của nó dưới đường dẫn của nó; `system-manager` không bao giờ chứa trang hay API nghiệp
+   vụ của app, và các app không gọi nhau qua nó. Thứ hai app dùng chung là DB của hệ.
 
 ## Ví dụ
 - Tình huống: một app báo cáo mới cần vai cho người xem và muốn ghi ai mở bảng nào.
 - ✗ Sai: cho app một DB riêng có bảng `users`, một trang quản trị để cấp vai, và mã log tự đặt tại chỗ.
 - ✓ Đúng: thêm một dòng app trong DB của hệ, cấp vai trên màn quản trị của `system-manager`, ghi log đăng nhập, bị từ chối, đổi vai
   bằng mã của repo `app-data`; lượt mở bảng thì không ghi.
+- Tình huống: một app đồng bộ file chuyển ra sau cổng của hệ mà vẫn còn trang đăng nhập riêng.
+- ✗ Sai: giữ trang đăng nhập và cookie riêng, hoặc nhờ `system-manager` phục vụ hộ trang và API của app.
+- ✓ Đúng: app bỏ trang đăng nhập, đọc phiên của `system-manager` và kiểm vai của mình ở backend, chuyển người chưa có phiên về trang
+  đăng nhập chung kèm địa chỉ quay lại, và vẫn tự phục vụ trang của nó dưới đường dẫn của nó.
 
 ## Máy kiểm
-- Nhắc theo từ khoá: lời yêu cầu về DB riêng của app, màn quản trị, vai hay log vận hành thì hiện luật này; phần còn lại là phán đoán.
+- Nhắc theo từ khoá: lời yêu cầu về DB riêng của app, đăng nhập riêng hay chung, màn quản trị, vai hay log vận hành thì hiện luật
+  này; phần còn lại là phán đoán.
