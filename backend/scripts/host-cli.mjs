@@ -84,6 +84,11 @@ export function ensureKeepAlive(env, o = {}) {
     out = "started";
   }
   try {
+    ensureEngine(env, o);
+  } catch {
+    /* fail-open: the command itself still runs */
+  }
+  try {
     healDriveMount(env, o);
   } catch {
     /* fail-open: the command itself still runs */
@@ -95,6 +100,23 @@ export function ensureKeepAlive(env, o = {}) {
     /* the next call looks again */
   }
   return out;
+}
+
+/**
+ * The engine inside the distro must run whatever an optional mount does. Measured 2026-10-28: after a reboot the Drive letter
+ * was missing, its fstab line (no nofail) failed local-fs.target, systemd cancelled docker.service and zemory was down 1 h 26
+ * min. At the keep-alive look: a drive line in /etc/fstab without nofail gets it, and a stopped engine is started. Fail-open.
+ */
+export function ensureEngine(env, o = {}) {
+  const platform = o.platform ?? process.platform;
+  if (platform !== "win32" || !env.ZEMORY_WSL_DISTRO) return "skipped";
+  const run = o.run ?? ((args) => spawnSync("wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, ...args], { encoding: "utf8", windowsHide: true, timeout: 120_000 }));
+  run(["-u", "root", "--exec", "sh", "-c", "sed -i -E 's#^([A-Z]: /mnt/[a-z] drvfs metadata,noatime) 0 0$#\\1,nofail 0 0#' /etc/fstab"]);
+  const state = String(run(["-u", "root", "--exec", "systemctl", "is-active", "docker"]).stdout ?? "").trim();
+  if (state === "active") return "running";
+  run(["-u", "root", "--exec", "sh", "-c", "systemctl reset-failed; systemctl start docker"]);
+  const again = String(run(["-u", "root", "--exec", "systemctl", "is-active", "docker"]).stdout ?? "").trim();
+  return again === "active" ? "started" : "failed";
 }
 
 /**

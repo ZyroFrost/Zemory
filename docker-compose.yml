@@ -50,7 +50,7 @@ services:
       - ${HOST_WORKSPACE:?set HOST_WORKSPACE to the folder holding your repos}:/host/workspace
       # the Drive sync folder, written to (the channel appends its blocks there). Docker Desktop cannot see a Google Drive
       # letter (G:) and silently mounts an empty folder instead (measured 2026-10-22): mount it in Ubuntu first
-      # (/etc/fstab: `G: /mnt/g drvfs metadata,noatime 0 0`) and name the Ubuntu path here
+      # (/etc/fstab: `G: /mnt/g drvfs metadata,noatime,nofail 0 0` - nofail, or a missing letter at boot stops the engine) and name the Ubuntu path here
       - ${HOST_DRIVE:-${ZEMORY_STORE}/no-drive}:/host/drive
       # the data drive's root, read-only: `zemory conform --layout` checks the whole drive (Struc_Disk_Data: Software/ · _ConfigVault/ ·
       # Workspace/ …). Its pair comes LAST in ZEMORY_PATH_MAP - the shortest prefix, so every longer one wins first
