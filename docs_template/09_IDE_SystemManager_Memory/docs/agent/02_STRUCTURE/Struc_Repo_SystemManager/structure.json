@@ -9,6 +9,9 @@
     ],
     "managed_by": [],
     "owner": "none",
-    "provides": []
+    "provides": [
+      "gateway",
+      "sign-in"
+    ]
   }
 }

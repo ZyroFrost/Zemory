@@ -84,12 +84,41 @@ export function ensureKeepAlive(env, o = {}) {
     out = "started";
   }
   try {
+    healDriveMount(env, o);
+  } catch {
+    /* fail-open: the command itself still runs */
+  }
+  try {
     mkdirSync(dirname(stamp), { recursive: true });
     writeFileSync(stamp, "");
   } catch {
     /* the next call looks again */
   }
   return out;
+}
+
+/**
+ * A Windows drive mounted into WSL (drvfs, e.g. Google Drive's G: for the Drive channel) goes stale when the program behind
+ * the letter restarts: the mount is still listed, every read fails with "Invalid argument" (measured 2026-10-27: Google
+ * Drive restarted at 03:30, the auto-sync failed every round for 9 hours). At the keep-alive look: a stale mount whose letter
+ * still exists on Windows is mounted again and the container restarted so its bind mount sees it. Fail-open.
+ */
+export function healDriveMount(env, o = {}) {
+  const platform = o.platform ?? process.platform;
+  const drive = env.HOST_DRIVE ?? "";
+  const m = drive.match(/^\/mnt\/([a-z])(\/|$)/i);
+  if (platform !== "win32" || !env.ZEMORY_WSL_DISTRO || !m) return "skipped";
+  const run = o.run ?? ((args) => spawnSync("wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, ...args], { encoding: "utf8", windowsHide: true, timeout: 60_000 }));
+  const look = run(["--exec", "stat", "-c", "%F", drive]);
+  if (look.status === 0) return "ok";
+  if (!/invalid argument/i.test(String(look.stderr ?? ""))) return "absent"; // not mounted, or the folder is gone: nothing to heal
+  const letter = m[1].toLowerCase();
+  const exists = o.letterExists ?? ((l) => existsSync(`${l.toUpperCase()}:\\`));
+  if (!exists(letter)) return "absent";
+  run(["-u", "root", "--exec", "sh", "-c", `umount -l /mnt/${letter}; mount /mnt/${letter}`]);
+  if (run(["--exec", "stat", "-c", "%F", drive]).status !== 0) return "failed";
+  run(["--exec", "docker", "restart", env.ZEMORY_CONTAINER || "zemory"]);
+  return "healed";
 }
 
 function main() {

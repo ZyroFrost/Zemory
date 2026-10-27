@@ -1,0 +1,126 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit"
+    ]
+  },
+  "block": [
+    {
+      "note": "a fix entry that names no lesson",
+      "files": {
+        "docs/agent/05_CHANGES.md": "# Changes\n",
+        "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md": "# Sổ kinh nghiệm\n## L-7 — x\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/05_CHANGES.md",
+        "old_string": "# Changes",
+        "new_string": "# Changes\n\n## [2026-10-27] — sửa lỗi deadlock ở bước dò nguồn\n- retry qua lớp bọc"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "sửa lỗi xong rồi"
+    }
+  ],
+  "pass": [
+    {
+      "note": "the fix entry names its lesson",
+      "files": {
+        "docs/agent/05_CHANGES.md": "# Changes\n",
+        "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md": "# Sổ kinh nghiệm\n## L-7 — x\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/05_CHANGES.md",
+        "old_string": "# Changes",
+        "new_string": "# Changes\n\n## [2026-10-27] — sửa lỗi deadlock ở bước dò nguồn (L-7)"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "the fix entry says why there is no lesson",
+      "files": {
+        "docs/agent/05_CHANGES.md": "# Changes\n",
+        "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md": "# Sổ kinh nghiệm\n## L-7 — x\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/05_CHANGES.md",
+        "old_string": "# Changes",
+        "new_string": "# Changes\n\n## [2026-10-27] — sửa lỗi một bản ghi sai\n- không có bài học: dữ liệu sai một lần"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a repo without the ledger frame is not judged",
+      "files": {
+        "docs/agent/05_CHANGES.md": "# Changes\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/05_CHANGES.md",
+        "old_string": "# Changes",
+        "new_string": "# Changes\n\n## [2026-10-27] — fix the source scan"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "an entry that reports no fix",
+      "files": {
+        "docs/agent/05_CHANGES.md": "# Changes\n",
+        "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md": "# Sổ kinh nghiệm\n## L-7 — x\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/05_CHANGES.md",
+        "old_string": "# Changes",
+        "new_string": "# Changes\n\n## [2026-10-27] — thêm báo cáo tuần"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "chạy lại bộ test"
+    }
+  ],
+  "prompt": {
+    "kind": "Rule_91",
+    "re": "\\b(sua (loi )?xong|fix xong|da sua xong|sua xong roi|xong loi)\\b",
+    "text": "[zemory] Rule_Gate_91_LessonsFirst: a fix is done when its lesson L-<n> is in the ledger (Cons_Gate_17_LessonsLedger) and the changelog entry names it."
+  }
+}
