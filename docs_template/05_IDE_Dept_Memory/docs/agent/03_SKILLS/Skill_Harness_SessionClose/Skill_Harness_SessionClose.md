@@ -2,10 +2,10 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 19
+version: 20
 type: process
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
-from: _Store/03_SKILLS/Skill_Harness_SessionClose @v19 #8e240513399f
+from: _Store/03_SKILLS/Skill_Harness_SessionClose @v20 #3d1c2cc926ca
 ---
 
 # session-close — closing a session / writing the ledgers
@@ -108,6 +108,9 @@ work DONE — it is NOT a licence to write everything thought of into the ledger
   heading) — the machine links only with that key, and once linked whoever lands on the OLD entry sees the label
   “⚠ ĐÃ BỊ THAY”. Written without a date ⇒ a dead decision still shows as alive (`Docs_005_Agent`).
   A bare date when that day has several entries ⇒ **ignored**, not guessed. **Never edit/delete an old entry.**
+- **An entry that reports a fix names its lesson** (`Rule_Gate_91_LessonsFirst`): `L-<n>` from the ledger
+  `Cons_Gate_17_LessonsLedger`, or the line `không có bài học: <lý do>` when new code cannot bring the fault back. In a repo that
+  carries the ledger frame the guard blocks the entry otherwise.
 - **A SHORT entry — a cap of ~30 lines (a rule, not a suggestion).** An entry needs only three things: **what changed · why ·
   the measurement**. Design details → `docs/plan/`; a narrative of the process → drop it. *The reason is arithmetic: the
   active area is only ~180 lines, four 50-line entries take it all, so long writing makes the archive mechanism itself
@@ -199,3 +202,4 @@ files, never writes back to the files).
 ## Implements · Thi hành luật
 - `Rule_Gate_34_DocsFollowChange` — the documents brought up to date before the session ends · tài liệu được cập nhật trước khi hết phiên
 - `Rule_Gate_38_TodoDoor` — closing finished items and archiving the ledger · đóng mục đã xong và dời sổ
+- `Rule_Gate_91_LessonsFirst` — the changelog entry of a fix names its lesson · mục changelog của lần sửa nêu bài học

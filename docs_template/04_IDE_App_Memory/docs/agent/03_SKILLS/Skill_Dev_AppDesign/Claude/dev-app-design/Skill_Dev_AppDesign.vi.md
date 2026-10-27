@@ -1,5 +1,5 @@
 ---
-version: 18
+version: 19
 lang: vi
 ---
 
@@ -298,6 +298,26 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
     tối đa một chu kỳ nhớ đó.
   - Nối DB có hạn chờ: một lượt nối treo bị bỏ lại sau 60 giây, tối đa vài lượt treo cùng lúc; một lượt nối treo không được chặn
     đăng nhập của mọi người tới khi khởi động lại.
+  - **Đăng nhập chung** (luật 90 bước 4–5). Tên thật của hệ (cookie, mã app, đường đăng nhập, số giờ hết hạn) viết một lần trong hiến
+    pháp của repo `system-manager`; `Cons_Gate_14_Access` của app trỏ về đó và chỉ thêm phần riêng của nó.
+    · **Đọc, không cấp:** cookie phiên của `system-manager` tới được app vì app nằm cùng địa chỉ, dưới đường dẫn riêng. App đọc nó ở
+      backend, không bao giờ đặt hay xoá.
+    · **Câu kiểm phiên:** token tra trong bảng phiên của DB hệ với mã số app của `system-manager` (tra theo mã app một lần lúc mở kết
+      nối, không ghi cứng số), đủ hai mốc hết hạn của `system-manager` (tuyệt đối và trượt khi không dùng), join tài khoản, và vai lấy
+      từ bảng vai với mã số của CHÍNH app này. Lượt tra thật thì chạm giờ thấy cuối; app không bao giờ xoá phiên của `system-manager`
+      và không ghi log hết hạn của nó.
+    · **Trả lời:** không cookie · không có phiên sống · tài khoản bị khoá · còn mật khẩu tạm phải đổi ⇒ trang: chuyển về đăng nhập
+      chung kèm `next`; API: 401 mang địa chỉ đăng nhập. Phiên sống mà không có vai ở app này ⇒ 403 "không có quyền ở <app>" — không
+      đẩy về đăng nhập, kẻo thành vòng lặp. Phiên sống có vai ⇒ qua.
+    · **`next`** là đường đầy đủ tính từ gốc địa chỉ, gồm tiền tố riêng của app và query (`/<app>/jobs?id=3`); lệnh chuyển trỏ tới
+      trang đăng nhập chung ở gốc, không phải `/<app>/login` (lớp base-path không được gắn tiền tố vào). `system-manager` chỉ nhận
+      `next` bắt đầu bằng đúng một `/`.
+    · **Frontend:** nhận 401 ⇒ đi tới địa chỉ nó mang. Đăng xuất ⇒ gọi đăng xuất của `system-manager` bằng đường tuyệt đối, rồi về
+      trang đăng nhập của nó. Đổi mật khẩu và hồ sơ ⇒ link sang `system-manager`. Header của app có link về `system-manager`.
+    · **Bỏ đăng nhập riêng:** nhận cả cookie cũ lẫn cookie chung một thời gian, qua sáu phép kiểm dưới, rồi gỡ đường cũ.
+    · **Sáu phép kiểm sau cổng:** ① không cookie ⇒ chuyển đúng `next`, API 401 · ② đăng nhập ⇒ quay về đúng trang app · ③ không có
+      vai ⇒ 403, không vòng lặp · ④ bỏ vai trên màn quản trị chung ⇒ bị từ chối trong một chu kỳ nhớ phiên · ⑤ đăng xuất từ app ⇒
+      `system-manager` đòi đăng nhập lại · ⑥ khoá tài khoản ⇒ bị từ chối ở lượt tra kế.
 - **Bảo mật gác ở máy chủ, mặc định chặn:** thêm chức năng ghi mới ⇒ chặn mọi vai chưa khai cho phép; ẩn nút trên giao diện
   không tính là bảo mật. Mọi endpoint trả dữ liệu đứng sau lớp đăng nhập.
 - **Câu truy vấn có tên trong mã chạy dạng chuỗi:** worker nạp bằng eval không import được thư viện câu ⇒ truyền câu có tên qua
@@ -309,4 +329,4 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
 ## Implements · Thi hành luật
 - `Cons_Gate_13_Architecture` — how the layers of an app are built · cách dựng các lớp của app
 - `Rule_Keys_62_DesignChangeApproval` — the design standard whose suggestions are shown first · chuẩn thiết kế mà gợi ý phải trình trước
-- `Rule_Keys_90_AppFamilyContract` — an app of a family: one database, one admin screen, the family's log codes · app của một hệ: một DB, một màn quản trị, mã log của hệ
+- `Rule_Keys_90_AppFamilyContract` — an app of a family: one database, one sign-in, one admin screen, the family's log codes · app của một hệ: một DB, một đăng nhập, một màn quản trị, mã log của hệ

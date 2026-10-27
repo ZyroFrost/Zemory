@@ -2,10 +2,10 @@
 id: Skill_Harness_SyncPath
 aka: sync-path
 name: harness-sync-path
-version: 14
+version: 15
 type: process
 description: Declare and PROVE how every new artifact reaches a second machine - code, data layer, derived index, secret, model, config. Run before calling any build "done", when adding a new storage or index layer, when handing a repo to another PC, or when something works on one machine but not the other. Vietnamese triggers - "đồng bộ 2 máy", "máy thứ hai", "bàn giao máy mới", "pull về máy kia", "kẹt giữa 2 máy", "sync đa máy", "máy kia chạy được chưa".
-from: _Store/03_SKILLS/Skill_Harness_SyncPath @v14 #cc01e8a9abd4
+from: _Store/03_SKILLS/Skill_Harness_SyncPath @v15 #112fcd35b6d3
 ---
 
 # sync-path — everything produced must have a PATH to another machine, and it must be MEASURED
@@ -32,7 +32,7 @@ the work is not done, even if the code runs.
 | **rebuilt on the target machine** | cheap derived layers · build output (`dist/`) · cache | must state the **build command** and the **cost** (how long) |
 | **downloaded at run time** | model weights · heavy assets | not committed — remember it may be needed at USE/QUERY time too, not only at build time |
 
-## 2. Three required questions — answered by MEASURING, not from memory
+## 2. Four required questions — answered by MEASURING, not from memory
 
 Before treating something as done:
 
@@ -43,6 +43,8 @@ Before treating something as done:
    **is thrown away silently**.
 3. **Does the target machine run at once?** List everything it needs; ONE missing is a shortfall. For a repo with a data
    store, at least: **code · data+index · key · model**.
+4. **A fault fixed on the way: is its lesson written?** A fault whose cause is how code is written or run gets `L-<n>` in the
+   ledger `Cons_Gate_17_LessonsLedger` before done (`Rule_Gate_91_LessonsFirst`).
 
 ## 3. MEASURE — a closed loop, never trust "a file means usable"
 
@@ -106,3 +108,4 @@ Adding a new storage/index layer **without** being able to add a gate watching i
 ## Implements · Thi hành luật
 - `Rule_Gate_01_DoneMeansRun` — the path to a second machine, measured at the receiving end · đường sang máy thứ hai, đo ở đầu nhận
 - `Rule_Gate_21_WhatEntersGit` — secrets travel by the sync channel, never by git · bí mật đi qua kênh đồng bộ, không qua git
+- `Rule_Gate_91_LessonsFirst` — a fault fixed on the way gets its lesson before done · lỗi gặp trên đường phải có bài học trước khi xong

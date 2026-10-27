@@ -857,6 +857,35 @@ function check(payload, root, policy) {
   } catch { return null; }
 }`, true),
 
+  // 02-91 — a fix is done when its lesson is written (Rule_Gate_91_LessonsFirst): in a repo that carries the lessons ledger
+  // (frame Cons_Gate_17_LessonsLedger), a NEW changelog entry that reports a fix names a lesson L-<n> or says why there is
+  // none. A repo without the frame is not judged. The way through is the lesson or the reason line; there is no flag.
+  hook("02-91_lessons-first.cjs", String.raw`
+const FIX = /(sửa lỗi|sua loi|\bfix(?:ed|es)?\b|\bbug\b|sự cố|su co|\bincident\b|\bregression\b|hồi quy|hoi quy)/i;
+const MARK = /\bL-\d+\b|không có bài học\s*:|khong co bai hoc\s*:|no lesson\s*:/i;
+const LEDGER = /(^|\/)(0[56]_CHANGES|CHANGELOG)\.md$/i;
+function hasLedger(root) {
+  const base = path.join(root, "docs", "agent", "01_LAW", "_Cons");
+  let codes = [];
+  try { codes = fs.readdirSync(base); } catch { return false; }
+  for (const c of codes) {
+    try { if (fs.readdirSync(path.join(base, c)).some((d) => /_LessonsLedger$/.test(d))) return true; } catch { /* not a folder */ }
+  }
+  return false;
+}
+function check(payload, root, policy) {
+  try {
+    const e = edit(payload, root);
+    if (!e || !LEDGER.test(e.rel) || !hasLedger(root)) return null;
+    const text = e.newLines.join("\n");
+    if (!/^\s*##\s+\[/m.test(text)) return null; // only a new entry is judged, not a later touch of an old one
+    if (!FIX.test(text) || MARK.test(text)) return null;
+    return blocked(root, policy, "02-91", "a new changelog entry in " + e.rel + " reports a fix but names no lesson: add L-<n> to the " +
+      "lessons ledger (Cons_Gate_17_LessonsLedger) and name it in the entry, or write \"không có bài học: <lý do>\" when new code " +
+      "cannot bring the fault back (a one-off data fault, an outside outage).");
+  } catch { return null; }
+}`, true),
+
   hook("02-82_mail-gate.cjs", String.raw`
 const SENDS = /smtplib|\bsend_message\s*\(|\bsendmail\s*\(|\/sendMail\b|Send-MailMessage|Send-MgUserMail|\bgit\s+send-email\b/i;
 const MAIL_SCRIPT = /(^|[\\\/\s"'])([\w.-]*mail[\w.-]*|[\w.-]*send[\w.-]*|[\w.-]*alert[\w.-]*)\.(py|ps1|cmd|bat)\b/i;

@@ -1,5 +1,5 @@
 ---
-version: 14
+version: 15
 lang: vi
 ---
 
@@ -27,7 +27,7 @@ việc chưa xong, dù code chạy.
 | **dựng lại tại máy đích** | lớp dẫn xuất rẻ · output build (`dist/`) · cache | phải ghi rõ **lệnh dựng** và **giá** (bao lâu) |
 | **tải lúc chạy** | model weight · asset nặng | không commit — nhớ nó có thể cần cả lúc DÙNG/TRUY VẤN, không chỉ lúc dựng |
 
-## 2. Ba câu hỏi bắt buộc — trả lời bằng ĐO, không bằng trí nhớ
+## 2. Bốn câu hỏi bắt buộc — trả lời bằng ĐO, không bằng trí nhớ
 
 Trước khi coi một thứ là xong:
 
@@ -38,6 +38,8 @@ Trước khi coi một thứ là xong:
    còn lại **bị vứt trong im lặng**.
 3. **Máy đích chạy được ngay chưa?** Liệt kê đủ thứ nó cần; thiếu MỘT là hụt. Với repo có
    kho dữ liệu, tối thiểu: **mã · dữ liệu+chỉ mục · chìa · model**.
+4. **Lỗi sửa trên đường đã có bài học chưa?** Lỗi có gốc ở cách viết code hay vận hành phải có `L-<số>` trong sổ
+   `Cons_Gate_17_LessonsLedger` trước khi gọi là xong (`Rule_Gate_91_LessonsFirst`).
 
 ## 3. ĐO — vòng khép kín, không tin "file có nghĩa là dùng được"
 
@@ -101,3 +103,4 @@ Thêm một lớp lưu/chỉ mục mới mà **không** thêm được cổng ca
 ## Implements · Thi hành luật
 - `Rule_Gate_01_DoneMeansRun` — the path to a second machine, measured at the receiving end · đường sang máy thứ hai, đo ở đầu nhận
 - `Rule_Gate_21_WhatEntersGit` — secrets travel by the sync channel, never by git · bí mật đi qua kênh đồng bộ, không qua git
+- `Rule_Gate_91_LessonsFirst` — a fault fixed on the way gets its lesson before done · lỗi gặp trên đường phải có bài học trước khi xong

@@ -1,5 +1,5 @@
 ---
-version: 19
+version: 20
 lang: vi
 ---
 
@@ -103,6 +103,8 @@ việc ĐÃ LÀM — nó KHÔNG phải giấy phép ghi mọi thứ nghĩ ra và
   của nó) — máy chỉ nối được khi có khoá đó, và nối rồi thì ai tra trúng entry CŨ mới thấy nhãn
   “⚠ ĐÃ BỊ THAY”. Viết trống ngày ⇒ quyết định chết vẫn hiện như đang sống (`Docs_005_Agent`).
   Ngày trần khi hôm đó có nhiều entry ⇒ **bị bỏ qua**, không đoán. **Không sửa/xoá entry cũ.**
+- **Entry báo sửa lỗi phải nêu bài học** (`Rule_Gate_91_LessonsFirst`): `L-<số>` trong sổ `Cons_Gate_17_LessonsLedger`,
+  hoặc dòng `không có bài học: <lý do>` khi code mới không thể đem lỗi đó lại. Repo có khung sổ thì guard chặn nếu thiếu.
 - **Entry NGẮN — trần ~30 dòng (luật, không phải gợi ý).** Một entry chỉ cần ba thứ: **đổi gì · vì
   sao · số đo**. Chi tiết thiết kế → `docs/plan/`; tường thuật quá trình → bỏ. *Lý do là số học: vùng
   active chỉ ~180 dòng, bốn entry 50 dòng là chiếm trọn, tức viết dài làm chính cơ chế archive thành
@@ -194,3 +196,4 @@ ghi ngược file).
 ## Implements · Thi hành luật
 - `Rule_Gate_34_DocsFollowChange` — the documents brought up to date before the session ends · tài liệu được cập nhật trước khi hết phiên
 - `Rule_Gate_38_TodoDoor` — closing finished items and archiving the ledger · đóng mục đã xong và dời sổ
+- `Rule_Gate_91_LessonsFirst` — the changelog entry of a fix names its lesson · mục changelog của lần sửa nêu bài học

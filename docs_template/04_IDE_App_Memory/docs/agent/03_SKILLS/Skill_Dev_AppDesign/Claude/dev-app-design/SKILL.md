@@ -2,11 +2,11 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 18
+version: 19
 type: process
 checked: [Rule_Gate_35_OneHome, Skill_Dev_DbDesign, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_Dev_AppDesign @v18 #62e83a54c813
+from: _Store/03_SKILLS/Skill_Dev_AppDesign @v19 #81938d55765a
 ---
 
 # app-design — the APP design standard (FE + BE)
@@ -304,6 +304,24 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
     one such memory period later.
   - DB connections have a timeout: a hanging connection attempt is abandoned after 60 seconds, at most a few hanging attempts at once; a hanging attempt must not block
     everyone's login until a restart.
+  - **Shared sign-in** (law 90 Do 4–5). The family's real names (cookie, app codes, sign-in path, expiry hours) are written once in the `system-manager`
+    repo's constitution; the app's own `Cons_Gate_14_Access` points there and adds only what is its own.
+    · **Read, never issue:** the `system-manager`'s session cookie reaches the app because the app sits on the same address under its own path. The app reads it
+      on its backend and never sets or clears it.
+    · **The session check:** the token, looked up in the family DB's session table with the `system-manager`'s app id (looked up by app code once when the
+      connection opens, never a hard-coded number), both expiry limits of the `system-manager` (absolute and sliding idle), joined to the account, and the role from
+      the role table with THIS app's id. A real lookup touches the last-seen time; the app never deletes a `system-manager` session and never logs its expiry.
+    · **The answer:** no cookie · no live session · account locked · temporary password still to change ⇒ page: redirect to the shared sign-in with `next`;
+      API: 401 that carries the sign-in address. Live session, no role in this app ⇒ 403 "no access to <app>" — never back to sign-in, or it loops.
+      Live session with a role ⇒ through.
+    · **`next`** is the full path from the root of the address, the app's own prefix and query included (`/<app>/jobs?id=3`); the redirect points at the
+      shared sign-in at the root, not at `/<app>/login` (a base-path layer must not prefix it). The `system-manager` accepts only `next` that starts with one `/`.
+    · **Frontend:** a 401 ⇒ go to the address it carries. Sign out ⇒ call the `system-manager`'s sign-out by its absolute path, then go to its sign-in.
+      Change of password and profile ⇒ a link to the `system-manager`. The app's header links back to the `system-manager`.
+    · **Moving off an own sign-in:** accept the old cookie and the shared one for a while, pass the six checks below, then remove the old path.
+    · **Six checks behind the gateway:** ① no cookie ⇒ redirect with the right `next`, API 401 · ② sign in ⇒ back on the same app page · ③ no role ⇒ 403, no
+      loop · ④ role removed on the shared admin screen ⇒ refused within one session-memory period · ⑤ sign out from the app ⇒ the `system-manager` asks to sign
+      in again · ⑥ account locked ⇒ refused at the next lookup.
 - **Security guarded on the server, blocked by default:** a new write function ⇒ blocks every role not declared as allowed; hiding a button in the interface
   does not count as security. Every endpoint returning data stands behind the login layer.
 - **Named queries in code run as strings:** a worker loaded with eval cannot import the query library ⇒ pass named queries through
@@ -315,4 +333,4 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
 ## Implements · Thi hành luật
 - `Cons_Gate_13_Architecture` — how the layers of an app are built · cách dựng các lớp của app
 - `Rule_Keys_62_DesignChangeApproval` — the design standard whose suggestions are shown first · chuẩn thiết kế mà gợi ý phải trình trước
-- `Rule_Keys_90_AppFamilyContract` — an app of a family: one database, one admin screen, the family's log codes · app của một hệ: một DB, một màn quản trị, mã log của hệ
+- `Rule_Keys_90_AppFamilyContract` — an app of a family: one database, one sign-in, one admin screen, the family's log codes · app của một hệ: một DB, một đăng nhập, một màn quản trị, mã log của hệ
