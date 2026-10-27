@@ -1,7 +1,7 @@
 ---
 id: Struc_Region_Workspace
 name: region-workspace
-version: 8
+version: 9
 scope: region
 checked: [Struc_Repo_Dept]
 ---
@@ -37,7 +37,7 @@ The roles of the eight existing repo templates (read from each template's `struc
 |---|---|---|---|---|---|---|
 | `Struc_Repo_WorkspaceManager` | `workspace-manager` | `dept` | — | none | `data` · `workspace-values` · `mail` | the data warehouse `_DB_Warehouse` |
 | `Struc_Repo_Dept` | `dept` | — | `workspace-manager` | required | — | `Dept_FIN` |
-| `Struc_Repo_SystemManager` | `system-manager` | `app` · `app-data` | — | none | — | `_Project\ERP\_Hub` |
+| `Struc_Repo_SystemManager` | `system-manager` | `app` · `app-data` | — | none | `gateway` · `sign-in` | `_Project\ERP\_Hub` |
 | `Struc_Repo_App` | `app` | — | `system-manager` | optional | — | `_Project\ERP\AcmeFlow` |
 | `Struc_Repo_AppData` | `app-data` | — | `system-manager` | required | `app-data` | `_DB_Erp` |
 | `Struc_Repo_LogCenter` | `log-center` | — | — | none | `log` | `_DB_Log` |
