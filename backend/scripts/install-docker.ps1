@@ -84,7 +84,9 @@ function Install-ZemoryDocker {
   # the data drive the workspace sits on, read-only in the container: `zemory conform --layout` checks the whole drive
   $dataRoot = [IO.Path]::GetPathRoot($ws)
   $envLines += "HOST_DATA_ROOT=$(WslPath $dataRoot)", "HOST_DATA_ROOT_NATIVE=$($dataRoot.TrimEnd('\'))"
-  # the Drive sync folder of the native config, if any: a Google Drive letter is mounted in Ubuntu (drvfs, /etc/fstab)
+  # the Drive sync folder of the native config, if any: a Google Drive letter is mounted in Ubuntu (drvfs, /etc/fstab).
+  # `nofail`: measured 2026-10-28, the letter was missing at boot (Drive not signed in yet), mnt-g.mount failed, local-fs.target
+  # failed with it and systemd cancelled docker.service - zemory was down 1 h 26 min over an optional sync folder.
   # and compose binds the Ubuntu path
   $nativeLoc = Join-Path $env:USERPROFILE ".zemory\location.json"
   $nativeData = $null; $nativeMem = $null
@@ -94,7 +96,7 @@ function Install-ZemoryDocker {
   if ($nativeData -and (Test-Path (Join-Path $nativeData "config.json"))) { $drive = (Get-Content (Join-Path $nativeData "config.json") -Raw | ConvertFrom-Json).drive }
   if ($drive) {
     $letter = $drive.Substring(0, 1).ToLower()
-    wsl.exe -d $distro -u root -- sh -c "mkdir -p /mnt/$letter; grep -q '^$($letter.ToUpper()): /mnt/$letter ' /etc/fstab || echo '$($letter.ToUpper()): /mnt/$letter drvfs metadata,noatime 0 0' >> /etc/fstab; mountpoint -q /mnt/$letter || mount /mnt/$letter"
+    wsl.exe -d $distro -u root -- sh -c "mkdir -p /mnt/$letter; sed -i 's|^\($($letter.ToUpper()): /mnt/$letter drvfs metadata,noatime\) 0 0$|\1,nofail 0 0|' /etc/fstab; grep -q '^$($letter.ToUpper()): /mnt/$letter ' /etc/fstab || echo '$($letter.ToUpper()): /mnt/$letter drvfs metadata,noatime,nofail 0 0' >> /etc/fstab; mountpoint -q /mnt/$letter || mount /mnt/$letter"
     $envLines += "HOST_DRIVE=$(WslPath $drive)", "HOST_DRIVE_NATIVE=$drive"
     Say "ok  Drive folder $drive (mounted in $distro at /mnt/$letter)"
   }
