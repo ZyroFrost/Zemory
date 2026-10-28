@@ -1,0 +1,24 @@
+{
+  "trigger": "đổi tên repo · dời repo · chuyển thư mục repo sang chỗ khác · zemory project move",
+  "prompt": {
+    "kind": "harness-repo-move",
+    "re": "\\b(doi ten repo|doi repo|chuyen thu muc repo|move repo|rename repo|project move)\\b",
+    "text": "[zemory] Repo move: follow skill harness-repo-move - dry run first, then point the old sessions (cwd, titles) at the new path and accept with the full table."
+  },
+  "block": [
+    {
+      "note": "a rename request",
+      "prompt": "đổi tên repo _DB_AppCore thành _DB_ERP"
+    },
+    {
+      "note": "a move request",
+      "prompt": "dời repo sang ổ D"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi tên cột trong báo cáo tháng"
+    }
+  ]
+}

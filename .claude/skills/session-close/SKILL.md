@@ -54,26 +54,47 @@ Chạy `zemory archive` ngay sau khi ghi. Nó làm hai việc KHÁC NHAU, đúng
 **Chép NGUYÊN VĂN, KHÔNG tóm tắt** — archive là để TRA LẠI. Cả hai tầng được reindex nên mục vừa chuyển
 tra được ngay (`zemory changelog search` · `zemory memory search`).
 
-**Bước 3b — QUÉT RÁC (bắt buộc; luật `02_RULES` *".gitignore là GIẤU, không phải DỌN"*):**
-Chốt phiên là chỗ DUY NHẤT chắc chắn chạy cuối phiên, nên phép quét đặt ở đây. Ba phép, in số ra
-rồi mới kết luận — im lặng không tính là sạch:
-- **① file lạ ở gốc + file nháp còn sót:** liệt kê untracked NGOÀI các đường gitignore hợp lệ
-  (`data/` · `exports/` · két bí mật), và MỌI file khớp `_scratch_*` · `.tmp*` bất kể ở đâu.
-  Có ⇒ xoá (hỏi user nếu file có vẻ là sản phẩm), KHÔNG để lại "dọn sau".
-- **② thư mục gitignore có phình không:** đo dung lượng từng thư mục dữ liệu; vượt ngưỡng repo tự
-  đặt (mặc định gợi ý **2 GB**) ⇒ BÁO kèm 3 thư mục con to nhất. Đây đúng chỗ đã nuốt **3 GB**
-  (một venv 13.830 file + một `.rar` 1,34 GB trùng với folder đã giải nén cạnh nó) mà không cổng
-  nào thấy, vì nó nằm dưới đường đã gitignore.
-- **③ gốc repo có file thực thi không:** `.cmd`/`.sh`/`.bat` ở gốc ⇒ sai chuẩn, phải nằm `bin/`
-  (`03_STRUCTURE §5` *Gốc repo sạch*). Đo thật: cơ chế launcher-ở-gốc đã đẻ 5 file rỗng 0 byte,
-  2 file lọt vào git.
+**Bước 3b — DỌN NHỮNG GÌ PHIÊN BỎ LẠI (bắt buộc; luật `02_RULES` *".gitignore là GIẤU, không phải DỌN"*):**
+Chốt phiên là chỗ DUY NHẤT chắc chắn chạy cuối phiên, nên phép dọn đặt ở đây. Agent để rác ra xa ngoài repo: script trong thư
+mục nháp, thư mục tạm trên ổ dữ liệu, bản sao lưu chụp trước khi sửa, cờ duyệt, tiến trình đã mở, chỗ sửa ở repo khác. *Đo 28/10
+trong một phiên: một thư mục tạm ở cấp workspace, một compose override và hai bản sao lưu phiên ngoài repo, thư mục nháp chạm trần
+hai lần, hai cờ đã dùng sót ở repo khác, một lượt cổng tự chạy lại ở nền, 44 chỗ sửa chưa commit ở 17 repo khác — phép quét ba mục
+cũ không thấy cái nào.* Bảng đầy đủ là `Skill_Harness_SessionClose` v22 Bước 3b ở HS; tóm tắt để chạy:
+
+**Biết thứ nào là của phiên:** transcript của phiên (`~/.claude/projects/<repo>/<session>.jsonl`: mọi Write · Edit · `New-Item` ·
+`mkdir` · `Copy-Item` · đích `tar`/`cp`, mọi tác vụ `run_in_background`) hoặc `zemory memory digest <session>`. Đường do phiên tạo
+thì phiên dọn; thứ khác trông như rác thì BÁO, không xoá theo phỏng đoán. Chạy đủ mọi dòng, in số từng dòng — 0 là kết quả, im
+lặng thì không:
+
+| # | Thứ gì | Rồi làm gì |
+|---|---|---|
+| ① | file lạ trong repo: untracked ngoài gitignore hợp lệ; `_scratch_*` · `.tmp*` · `*.bak` · `*.orig` · `*.rej` | của phiên ⇒ xoá; trông như sản phẩm ⇒ hỏi user |
+| ② | thư mục nháp của phiên (`<tmp>/claude/<repo>/<session>/scratchpad`) | xoá mọi thứ đã dùng xong; file giữ lại ghi vì sao (`02-4`) |
+| ③ | thứ phiên tạo NGOÀI repo (thư mục tạm · compose override · bản chép · file tải về) | xoá; cái nghiệm thu còn cần thì giữ, nêu tên + điều kiện xoá |
+| ④ | bản sao lưu chụp trước khi sửa (`*.tar` · `*.zip` · `*.bak`) | nghiệm thu qua ⇒ xoá; chưa ⇒ giữ và nêu tên |
+| ⑤ | cờ duyệt `.allow-*` (`docs/hooks` · `docs/.harness-state`) ở repo này và mọi repo phiên đã ghi | xoá cờ đã dùng hoặc hết hạn |
+| ⑥ | tiến trình, tác vụ nền: `run_in_background` · monitor · dev server · lượt test · container chạy một lần (`docker ps -a`) | dừng cái đã xong; cái còn cần thì nêu đang chờ gì |
+| ⑦ | chỗ sửa còn ở repo khác (`git status --short` từng repo phiên đã ghi) | file của phiên ⇒ commit ở đó `--only <đường>` sau khi kiểm diff; lẫn việc của repo đó ⇒ báo phiên repo đó |
+| ⑧ | rác git: nhánh · stash · worktree phiên tạo | đã gộp/bỏ ⇒ gỡ; còn việc ⇒ nêu tên |
+| ⑨ | khoá cũ `.harness-state/*.lock` mà tiến trình đã mất | xoá |
+| ⑩ | ghi vào ổ bị cấm (máy này: mọi ổ ngoài D) | dời hoặc xoá; báo từng chỗ |
+| ⑪ | thư mục gitignore phình (gợi ý **2 GB**) — *đo thật: 3 GB venv + `.rar` trùng, không cổng nào thấy* | BÁO kèm 3 thư mục con to nhất |
+| ⑫ | `.cmd` · `.sh` · `.bat` ở gốc repo (`03_STRUCTURE §5` *Gốc repo sạch*) | dời vào `bin/` |
+
+Không bao giờ xoá: dữ liệu user tạo hay tải về · việc chưa commit của chính repo khác · thứ phiên không tạo — chỉ báo. Xoá ngoài
+repo vẫn cần cờ `.allow-outside`.
 
 Gợi ý lệnh (Windows PowerShell — đổi theo repo):
 ```
-git status --porcelain | Select-String '^\?\?'          # ① file lạ
-Get-ChildItem -Recurse -File -Filter '_scratch_*'        # ① nháp còn sót
-Get-ChildItem data -Directory | ForEach-Object { '{0,8:N0} MB  {1}' -f ((Get-ChildItem $_ -Recurse -File | Measure-Object Length -Sum).Sum/1MB), $_.Name }
-Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'   # ③ gốc
+git status --porcelain | Select-String '^\?\?'                                   # ① file lạ
+Get-ChildItem -Recurse -File -Include '_scratch_*','.tmp*','*.bak','*.orig','*.rej' # ① sót lại
+Get-ChildItem "$env:TEMP\claude\<repo>\<session>\scratchpad"                      # ② thư mục nháp
+Get-ChildItem -Recurse -Force -Filter '.allow-*' docs                             # ⑤ cờ
+docker ps -a --filter "status=exited"                                             # ⑥ container chạy một lần
+git branch; git stash list; git worktree list                                     # ⑧ rác git
+Get-ChildItem data -Directory | ForEach-Object { '{0,8:N0} MB  {1}' -f ((Get-ChildItem $_ -Recurse -File | Measure-Object Length -Sum).Sum/1MB), $_.Name }  # ⑪
+Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'              # ⑫ gốc
 ```
+Báo cáo nêu từng dòng kèm số và việc đã làm: `② nháp 5 → 0 · ③ ngoài repo xoá 2, giữ 1 (sao lưu tới khi mở lại phiên) · …`.
 
 **Bước cuối:** `zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO user. Không tự `git push` (`02_RULES §Git`).

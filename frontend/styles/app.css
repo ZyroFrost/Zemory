@@ -46,8 +46,16 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:6px}
 ::-webkit-scrollbar-track{background:transparent}
-.app{display:grid;grid-template-columns:230px 1fr;height:100vh;transition:grid-template-columns .15s ease}
-.app.railcoll{grid-template-columns:64px 1fr}
+.app{--rail-w:230px;position:relative;display:grid;grid-template-columns:var(--rail-w) 1fr;height:100vh;transition:grid-template-columns .15s ease}
+.app.railcoll{--rail-w:64px}
+/* Rail collapse: a round arrow centred on the rail's right border, beside the logo; it rides the rail's width and turns
+   to point outward when collapsed (user 2026-10-28). */
+.rail-toggle{position:absolute;z-index:5;top:26px;left:calc(var(--rail-w) - 13px);width:26px;height:26px;padding:0;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border-strong);
+  color:var(--text-dim);cursor:pointer;transition:left .15s ease,color .12s,border-color .12s}
+.rail-toggle:hover{color:var(--primary);border-color:var(--primary)}
+.rail-toggle svg{width:14px;height:14px;transition:transform .15s ease}
+.railcoll .rail-toggle svg{transform:rotate(180deg)}
 /* rail */
 .rail{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:14px 12px;gap:2px;min-width:0;overflow:hidden}
 .railcoll .rail{padding:14px 8px}
@@ -61,12 +69,8 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 /* Logo là <img> (đổi từ chữ "Z" sang initials). Bỏ gradient + căn chữ của bản cũ:
    ảnh object-fit:cover phủ kín nên chúng chỉ là code chết. --logo-plate là nền dự
    phòng khi ảnh chưa tải. */
-.brand .logo{width:36px;height:36px;border-radius:9px;border:1.5px solid var(--primary);box-shadow:var(--glow)}
+.brand .logo{flex:0 0 auto;width:36px;height:36px;border-radius:9px;border:1.5px solid var(--primary);box-shadow:var(--glow)}
 .brand img.logo{border:0;background:var(--logo-plate);object-fit:cover;padding:0}
-/* Logo kiêm nút thu gọn: hover đè icon ‹/› lên logo (2026-08-21, mượn ý OpenRCA) */
-.logo-wrap{position:relative;display:inline-flex;cursor:pointer;flex:0 0 auto}
-.logo-wrap .coll-ico{position:absolute;inset:0;display:none;align-items:center;justify-content:center;border-radius:9px;background:var(--surface);border:1.5px solid var(--primary);color:var(--primary);font-size:18px;line-height:1}
-.logo-wrap:hover .coll-ico{display:flex}
 /* Chấm chip cập nhật chỉ cam khi CÓ việc (.warn); mặc định xanh như chip sức khoẻ (user 2026-08-29: "đã báo ổn sao vẫn cam"). */
 .status-chip.upd .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
 .brand b{font-size:16px;letter-spacing:.02em}

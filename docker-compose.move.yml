@@ -1,0 +1,8 @@
+# The one-off container `zemory project move --apply` runs in (backend/scripts/host-cli.mjs). The daemon's container keeps
+# ~/.claude read-only and is the daemon itself, so a move can neither rename the Claude Code session folder nor run while
+# the daemon is stopped (measured 2026-10-28). The host command stops the daemon's container, runs the move with this file
+# on top of docker-compose.yml (~/.claude writable, nothing published), then starts the container again.
+services:
+  zemory:
+    volumes:
+      - ${HOST_HOME:?set HOST_HOME to your home folder}/.claude:/home/node/.claude

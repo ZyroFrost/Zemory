@@ -111,6 +111,26 @@ function Install-Zemory {
   npm run build; Native "build"
   if ($env:ZEMORY_INSTALL_STOP -eq "build") { Say "stopped after build (ZEMORY_INSTALL_STOP)"; return }
   npm install -g .; Native "linking the global zemory command"
+
+  # ── 2b. One install per machine: the Docker one goes quiet (the mirror of install-docker.ps1 step 4) ────────────────
+  # Before any zemory command below: on a machine that chose Docker the native command refuses the memory commands.
+  $shim = Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps\zemory.cmd"
+  if ((Test-Path $shim) -and ((Get-Content $shim -Raw) -match "host-cli\.mjs")) { Remove-Item $shim -Force; Say "removed the Docker command $shim" }
+  $run = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
+  if (Get-ItemProperty -Path $run -Name "Zemory (WSL)" -ErrorAction SilentlyContinue) { Remove-ItemProperty -Path $run -Name "Zemory (WSL)"; Say "removed the Docker keep-alive (Run: Zemory (WSL))" }
+  $ping = $null
+  try { $ping = Invoke-RestMethod "http://127.0.0.1:4444/ping" -TimeoutSec 3 } catch { }
+  if ($ping -and $ping.app -eq "zemory" -and $ping.runtime -eq "docker") {
+    $distro = if ($env:ZEMORY_DISTRO) { $env:ZEMORY_DISTRO } else { (wsl.exe -l -q) -replace "`0", "" | Where-Object { $_ -like "Ubuntu*" } | Select-Object -First 1 }
+    Say "stopping the Docker zemory (container zemory in $distro) - its memory store stays in that distro"
+    wsl.exe -d $distro -- docker update --restart=no zemory *> $null
+    wsl.exe -d $distro -- docker stop zemory *> $null
+  }
+  # the machine's choice (backend/src/util/install-choice.ts); WriteAllText: Set-Content -Encoding utf8 adds a BOM
+  $choice = Join-Path $env:USERPROFILE ".zemory\install.json"
+  New-Item -ItemType Directory -Force (Split-Path $choice) | Out-Null
+  [IO.File]::WriteAllText($choice, (@{ runtime = "native"; at = (Get-Date).ToUniversalTime().ToString("o"); by = "install.ps1" } | ConvertTo-Json))
+  Say "ok  recorded the choice in $choice (the Docker command, if one is left, now points here)"
   ReloadPath
 
   # ── 3. This machine's memory ─────────────────────────────────────────────────────────────────────────────────────

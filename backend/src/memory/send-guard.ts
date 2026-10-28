@@ -199,11 +199,17 @@ export const projectDirName = (p: string): string => p.replace(/[\\/]+$/, "").re
  * still carry `cwd` `_Warehouse_Old` (the old name); judged by `cwd`, every correct `_DB_Warehouse_…`
  * title read as wrong. `roots` = the known repo folders; a project folder no root matches falls back to `cwd`.
  */
+/** The last folder of a path written by any machine. `basename` splits on the running system's separator only: in the
+ *  container a Windows cwd came back whole, and `peers --check` asked for `D:\…\_SasinONE_<Model>_<d-m-yyyy>` (28/10). */
+export function folderName(p: string): string {
+  return p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
+}
+
 export function listStoredSessions(roots: string[] = []): StoredSession[] {
   const home = claudeHome();
   const pdir = join(home, "projects");
   if (!existsSync(pdir)) return [];
-  const byDir = new Map(roots.map((r) => [projectDirName(r), basename(r.replace(/[\\/]+$/, ""))] as const));
+  const byDir = new Map(roots.map((r) => [projectDirName(r), folderName(r)] as const));
   const cache = readCache();
   const out: StoredSession[] = [];
   for (const d of readdirSync(pdir)) {
@@ -220,7 +226,7 @@ export function listStoredSessions(roots: string[] = []): StoredSession[] {
       const cwd = cache[file]?.cwd ?? null;
       // No root and no cwd ⇒ the repo is UNKNOWN (""). Never fall back to the encoded folder name: a retitle built on it
       // wrote `D--w-Dept_FIN_Claude_Dept_FIN_1-9-2026` in the first test run — suggestTitle refuses an empty repo.
-      const repo = byDir.get(d.toLowerCase()) ?? (cwd ? basename(cwd.replace(/[\\/]+$/, "")) : "");
+      const repo = byDir.get(d.toLowerCase()) ?? (cwd ? folderName(cwd) : "");
       out.push({
         sessionId: basename(f, ".jsonl"),
         file,
@@ -353,7 +359,7 @@ export function listPeers(isAlive: (pid: number) => boolean = alive): PeerSessio
     // `/rename` sets the messaging name itself — that IS the user's title.
     if (!title && nameSource === "user" && name) title = name;
     const cwd = String(j.cwd ?? "");
-    const repo = basename(cwd.replace(/[\\/]+$/, ""));
+    const repo = folderName(cwd);
     out.push({
       pid,
       sessionId,

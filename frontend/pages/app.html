@@ -11,9 +11,7 @@
 <body>
 <div class="app">
   <aside class="rail">
-    <!-- Logo kiêm nút thu gọn rail (user chốt 2026-08-21, mượn ý OpenRCA): trỏ chuột vào logo
-         hiện icon ‹/›, bấm là gập/mở. Nút ‹ rời ở rail-foot đã bỏ — một việc một chỗ bấm. -->
-    <div class="brand"><span class="logo-wrap" id="brandLogo" data-i18n-title="rail.collapse" title="Thu gọn / mở rộng menu"><img class="logo" src="/assets/logo-192.png" alt="Zemory"><span class="coll-ico" id="brandCollIco">‹</span></span><div><b>Zemory</b><small>AI Memory OS</small></div></div>
+    <div class="brand"><img class="logo" src="/assets/logo-192.png" alt="Zemory"><div><b>Zemory</b><small>AI Memory OS</small></div></div>
     <nav class="nav" id="nav">
       <a data-s="home" class="on"><span class="ic">⌂</span> <span data-i18n="nav.home">Trang chủ</span></a>
       <a data-s="recall"><span class="ic">🔍</span> <span data-i18n="nav.recall">Recall</span></a>
@@ -44,6 +42,10 @@
       <div class="status-chip" id="railHealthChip" data-nav="system" style="cursor:pointer" title="Features"><span class="cic" data-icon="health"></span><span class="dot" id="railDot"></span><div><b style="font-size:12px" id="railHealth">—</b><div class="muted" style="font-size:10.5px" id="railHealthSub" data-i18n="st.operational">Hoạt động tốt</div></div></div>
     </div>
   </aside>
+  <!-- Rail collapse (user 2026-10-28): a round arrow always visible on the rail's edge - the arrow hidden behind the logo's
+       hover (2026-08-21) was hard to find. Still one control: the logo is no longer a toggle. Outside the rail, whose
+       overflow:hidden would clip a button straddling its border. -->
+  <button class="rail-toggle" id="railToggle" type="button" data-i18n-title="rail.collapse" data-i18n-aria="rail.collapse" title="Thu gọn / mở rộng menu" aria-label="Thu gọn / mở rộng menu"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
 
   <main class="main">
     <div class="topbar">

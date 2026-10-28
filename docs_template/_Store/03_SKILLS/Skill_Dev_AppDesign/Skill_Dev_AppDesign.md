@@ -2,7 +2,7 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 20
+version: 21
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Dev_DbDesign, Struc_Repo_SystemManager, Struc_Repo_AppData]

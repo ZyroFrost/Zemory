@@ -2,10 +2,10 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 21
+version: 22
 type: process
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
-from: _Store/03_SKILLS/Skill_Harness_SessionClose @v21 #9b8649b547b6
+from: _Store/03_SKILLS/Skill_Harness_SessionClose @v22 #0aa309706d4e
 ---
 
 # session-close — closing a session / writing the ledgers
@@ -155,29 +155,52 @@ reindexed so an item just moved can be found at once (`zemory changelog search` 
   not count lines: ledger lines vary a lot in density (measured 20–34 tokens/line) so "300 lines" can be
   6k or 10k tokens — counting lines measures the wrong thing.*
 
-## Step 3b — SWEEP THE LITTER (required; the `01_LAW/_Rule` rule *".gitignore HIDES, it does not TIDY"*)
+## Step 3b — SWEEP WHAT THE SESSION LEFT BEHIND (required; the `01_LAW/_Rule` rule *".gitignore HIDES, it does not TIDY"*)
 
-Closing a session is the ONLY place sure to run at the end of a session, so the sweep sits here. Three checks, print the numbers
-before concluding — silence does not count as clean:
+Closing a session is the ONLY place sure to run at the end of a session, so the sweep sits here. An agent leaves litter far
+beyond the repo: scripts in its scratch folder, temp folders it made on the data drive, backups it took before an edit, approval
+flags, processes it started, edits it made in other repos. *Measured 28/10 in one session: a temp folder at the workspace level, a
+compose override and two session backups outside the repo, a scratch folder at its cap twice, two used flags left in another
+repo, a gate run retrying in the background, 44 uncommitted edits in 17 other repos — the old three-check sweep saw none of them.*
 
-- **① stray files at the root + leftover scratch files:** list untracked files OUTSIDE the valid gitignored paths
-  (`data/` · `exports/` · the secret safe), and EVERY file matching `_scratch_*` · `.tmp*` wherever it is. Any ⇒ delete
-  (ask first when a file looks like a product), NEVER leave "tidy later".
-- **② are gitignored folders swelling:** measure the size of each data folder; past the threshold the repo set itself
-  (suggested default **2 GB**) ⇒ REPORT with the 3 biggest subfolders. This is exactly the place that swallowed **3 GB** (a venv of
-  13,830 files + a 1.34 GB `.rar` duplicating the extracted folder beside it) without any gate seeing it, because it
-  sat under a gitignored path.
-- **③ executable files at the repo root:** `.cmd`/`.sh`/`.bat` at the root ⇒ off-standard, they belong in `bin/`
-  (`02_STRUCTURE` section *Clean repo root*). Measured for real: the launcher-at-the-root mechanism produced 5 empty 0-byte files,
-  2 of them slipped into git.
+**How to know what is the session's:** the session's own record, not a guess from a file name. List the paths the session wrote
+or created: its transcript (`~/.claude/projects/<repo>/<session>.jsonl`: every Write · Edit · `New-Item` · `mkdir` · `Copy-Item`
+· `tar`/`cp` target, and every `run_in_background` task) or `zemory memory digest <session>`. A path the session created is
+the session's to remove; anything else that looks stray is REPORTED, never deleted on a guess.
+
+Run every row, print its number — **0 is a result, silence is not**:
+
+| # | What | How to measure | Then |
+|---|---|---|---|
+| ① | stray files in the repo | untracked files outside the valid gitignored paths (`data/` · `exports/` · the secret safe); every `_scratch_*` · `.tmp*` · `*.bak` · `*.orig` · `*.rej` anywhere | the session's ⇒ delete; looks like a product ⇒ ask |
+| ② | the session's scratch folder | `<tmp>/claude/<repo>/<session>/scratchpad`: count and list | delete everything used up; a file kept says in one line why (`Rule_Gate_04_ScratchFiles`) |
+| ③ | what the session made OUTSIDE the repo | the paths from the transcript that lie outside the repo (temp folders · compose overrides · copies · downloads) and still exist | delete; one that holds a backup the acceptance still needs (a reopened session, a compared copy) is kept and named in the report with the condition to delete it |
+| ④ | backups taken before an edit | `*.tar` · `*.zip` · `*.bak` copies the session made (session-file backups of a repo move, a file copied before a patch) | the acceptance passed ⇒ delete; not yet ⇒ keep and name |
+| ⑤ | approval flags | `docs/.harness-state/.allow-*` in this repo and in every repo the session wrote into | delete every used or expired flag (`conform` lists them as `dead-flag`) |
+| ⑥ | processes and background tasks | every `run_in_background` task and monitor the session started · dev servers · test runs · one-off containers (`docker ps -a`) | stop what is done; one still needed is named with what it waits for |
+| ⑦ | edits left in other repos | `git status --short` in every repo the session wrote into | the session's own files ⇒ commit them there with `--only <paths>` after checking each diff holds only its edit; mixed with that repo's own work ⇒ report to that repo's session |
+| ⑧ | git litter | branches · stashes · worktrees the session created (`git branch` · `git stash list` · `git worktree list`) | merged or abandoned ⇒ remove; with work on it ⇒ name it |
+| ⑨ | stale locks | `.harness-state/*.lock` (sync · assemble) whose process is gone | delete (a lock of a live process stays) |
+| ⑩ | writes to a forbidden drive | the transcript's paths on a drive the machine's rules forbid (e.g. `C:` when only the data drive may be written) | move or delete; report each one |
+| ⑪ | gitignored folders swelling | the size of each data folder; past the threshold the repo set itself (suggested **2 GB**) | REPORT with the 3 biggest subfolders — *measured: 3 GB (a venv of 13,830 files + a 1.34 GB `.rar` duplicating the folder beside it) under a gitignored path, seen by no gate* |
+| ⑫ | executables at the repo root | `.cmd` · `.sh` · `.bat` at the root | off-standard ⇒ into `bin/` (`02_STRUCTURE` section *Clean repo root*) — *measured: a launcher mechanism left 5 empty 0-byte files at the root, 2 in git* |
+
+Never delete: data the requester made or downloaded · a repo's own uncommitted work · anything the session did not create — those
+are reported. A delete outside the repo still needs the approval flags of `Rule_Gate_44_RepoScope`.
 
 Suggested commands (Windows PowerShell — adapt to the repo):
 ```
-git status --porcelain | Select-String '^\?\?'          # ① stray files
-Get-ChildItem -Recurse -File -Filter '_scratch_*'        # ① leftover scratch
-Get-ChildItem data -Directory | ForEach-Object { '{0,8:N0} MB  {1}' -f ((Get-ChildItem $_ -Recurse -File | Measure-Object Length -Sum).Sum/1MB), $_.Name }
-Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'   # ③ root
+git status --porcelain | Select-String '^\?\?'                                   # ① stray files
+Get-ChildItem -Recurse -File -Include '_scratch_*','.tmp*','*.bak','*.orig','*.rej' # ① leftovers
+Get-ChildItem "$env:TEMP\claude\<repo>\<session>\scratchpad"                      # ② scratch folder
+Get-ChildItem -Recurse -Force -Filter '.allow-*' docs                             # ⑤ flags
+docker ps -a --filter "status=exited"                                             # ⑥ one-off containers
+git branch; git stash list; git worktree list                                     # ⑧ git litter
+Get-ChildItem data -Directory | ForEach-Object { '{0,8:N0} MB  {1}' -f ((Get-ChildItem $_ -Recurse -File | Measure-Object Length -Sum).Sum/1MB), $_.Name }  # ⑪
+Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'              # ⑫ root
 ```
+The report names each row with its number and what was done: `② scratch 5 → 0 · ③ outside 2 deleted, 1 kept (backup until the
+session is reopened) · ⑦ 17 repos committed (--only) · …`.
 
 ## Last step
 

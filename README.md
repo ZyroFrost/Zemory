@@ -213,6 +213,39 @@ build of a large repo's code graph is still several times slower than natively. 
 VM in `%USERPROFILE%\.wslconfig` (`memory=4GB`), since WSL takes half the machine's RAM by default.
 `backend/scripts/docker-parity.mjs` compares the two installs repo by repo (one up at a time).
 
+**One install per machine, and every other door says so.** Each installer records the machine's choice in
+`~/.zemory/install.json` (`{"runtime": "docker" | "native", "at": …, "by": …}`) and turns the other install off:
+
+| You run | On a machine that chose | What happens |
+|---|---|---|
+| `install-docker.ps1` / `install-docker.sh` | either | stops the native daemon, removes its autostart and global command, moves its memory store in once, starts the container, records `docker` |
+| `install.ps1` | either | removes the Docker `zemory` command (`%LOCALAPPDATA%\Microsoft\WindowsApps\zemory.cmd`) and its keep-alive (Run: `Zemory (WSL)`), stops the container and sets it not to restart (its store stays in the distro), records `native` |
+| `zemory …` (the global command) | Docker | forwards into the container: the one way that answers |
+| `node <clone>/dist/cli.js memory …` (the native build, called directly) | Docker | stops with one line naming the `zemory` command and the web search below, and exit 1. It never answers from the emptied native store, which printed "no matches" for every question before (2026-10-28) |
+| the Docker `zemory` command left over | native | stops with one line: it is left over, run `install.ps1` again to remove it or `install-docker.ps1` to switch |
+
+A machine installed before the file existed is known by the install answering on port 4444. The Docker
+command records the choice the first time the container answers. `GLOBAL_MEMORY_DB` (tests, an explicit
+store) is always used as given.
+
+**Search the memory from another repo.** An agent in any repo, on either install, runs the global
+command from the repo's folder:
+
+```powershell
+zemory memory search "<what a past session decided>" --all     # every project; without --all: this repo only
+```
+
+On a Docker machine the command forwards into the container and can take a minute or more over the whole
+memory, so give it a long timeout. Without a shell, the cockpit answers the same search over HTTP on this
+machine only:
+
+```text
+GET http://127.0.0.1:4444/memory-search?q=<query>&all=1      → JSON list of hits (id, project, role, timestamp, snippet)
+```
+
+Never call `node <clone>/dist/cli.js` for memory on a Docker machine: that is the native build, and it
+stops and says so.
+
 **Why `fetch-prebuilds` comes first.** `better-sqlite3` downloads its prebuilt binary from
 `github.com/<repo>/releases/download/…`. On networks that block or throttle that host (one corporate
 network, measured: 1 of 10 attempts succeeded while `api.github.com` succeeded 10 of 10) it falls back

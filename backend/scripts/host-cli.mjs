@@ -9,6 +9,7 @@
 //   D:\Workspace) or HOST_WORKSPACE (Linux); ZEMORY_CONTAINER overrides the container name (default zemory).
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -155,8 +156,89 @@ export function healDriveMount(env, o = {}) {
   return "healed";
 }
 
+/** The file every installer writes the machine's choice to (backend/src/util/install-choice.ts reads the same one). */
+export function installChoiceFile(env = process.env) {
+  return join(env.USERPROFILE || env.HOME || homedir(), ".zemory", "install.json");
+}
+
+/** "docker" | "native" | null (no installer wrote it, or a broken file). */
+export function readInstallChoice(file) {
+  try {
+    const r = JSON.parse(readFileSync(file, "utf8")).runtime;
+    return r === "docker" || r === "native" ? r : null;
+  } catch {
+    return null;
+  }
+}
+
+/** What this command says on a machine that went back to the native install: it is left over, and which way works. */
+export function nativeMachineMessage(file) {
+  return `zemory (docker): this machine runs the native zemory (${file}) - this Docker command is left over. ` +
+    "The native install's own zemory command answers; run install.ps1 again to remove this one, or install-docker.ps1 to " +
+    "switch the machine to Docker.\n";
+}
+
+/** A host path as the docker client sees it: on Windows the client runs in the WSL distro, so `D:\x` is `/mnt/d/x`. */
+export function dockerSidePath(p, env, platform = process.platform) {
+  if (platform !== "win32" || !env.ZEMORY_WSL_DISTRO || env.DOCKER_BIN) return p;
+  const m = /^([A-Za-z]):[\\/]?(.*)$/.exec(p);
+  return m ? `/mnt/${m[1].toLowerCase()}/${m[2].replace(/\\/g, "/")}` : p;
+}
+
+/** `zemory project move <from> <to> --apply`: the one command the daemon's own container cannot run (its daemon is the
+ *  container itself, and ~/.claude is mounted read-only there). */
+export function isMoveApply(argv) {
+  return argv[0] === "project" && argv[1] === "move" && argv.includes("--apply");
+}
+
+/** The three docker calls of a move: stop the daemon's container, run the move in a one-off container (~/.claude writable,
+ *  docker-compose.move.yml), start the container again. */
+export function moveCalls(env, argv, dir, platform = process.platform) {
+  const container = env.ZEMORY_CONTAINER || "zemory";
+  const f = (name) => dockerSidePath(join(COMPOSE_DIR, name), env, platform);
+  const run = ["compose", "-f", f("docker-compose.yml"), "-f", f("docker-compose.move.yml"), "run", "--rm", "--no-deps", "-T",
+    ...(dir ? ["-w", dir] : []), "zemory", "zemory", ...argv];
+  return { stop: dockerCall(env, ["stop", container], platform), run: dockerCall(env, run, platform), start: dockerCall(env, ["start", container], platform) };
+}
+
+/** The processes holding a file or folder under `path` (Windows only: a rename refused with EACCES names none of them). */
+function holders(path) {
+  const script = join(HERE, "who-holds.ps1");
+  if (process.platform !== "win32" || !existsSync(script)) return "";
+  const r = spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-Path", path],
+    { encoding: "utf8", windowsHide: true, timeout: 300_000 });
+  return String(r.stdout ?? "").trim();
+}
+
+function runMove(env, argv, dir) {
+  const calls = moveCalls(env, argv, dir);
+  process.stderr.write("zemory (docker): project move --apply stops the zemory container, moves in a one-off container, then starts it again.\n");
+  spawnSync(calls.stop[0], calls.stop[1], { stdio: "ignore", windowsHide: true });
+  let status;
+  try {
+    const r = spawnSync(calls.run[0], calls.run[1], { encoding: "utf8", windowsHide: true, stdio: ["inherit", "pipe", "pipe"] });
+    const out = `${r.stdout ?? ""}${r.stderr ?? ""}`.split(/\r?\n/).filter((l) => !/Processing \/etc\/fstab/.test(l)).join("\n");
+    process.stdout.write(out.endsWith("\n") ? out : out + "\n");
+    status = r.status ?? 1;
+    if (status !== 0 && /\b(EACCES|EPERM|EBUSY)\b/.test(out)) {
+      const held = holders(resolve(argv[2]));
+      process.stdout.write(held ? `  Holding it now:\n${held.split("\n").map((l) => `    ${l}`).join("\n")}\n` : "  No holder found from here (a service, or another user's process).\n");
+    }
+  } finally {
+    spawnSync(calls.start[0], calls.start[1], { stdio: "ignore", windowsHide: true });
+  }
+  process.exit(status);
+}
+
 function main() {
   const env = { ...readEnv(join(COMPOSE_DIR, ".env")), ...process.env };
+  // one install per machine: the choice the installers recorded decides which command answers
+  const choiceFile = installChoiceFile(env);
+  const chosen = readInstallChoice(choiceFile);
+  if (chosen === "native") {
+    process.stderr.write(nativeMachineMessage(choiceFile));
+    process.exit(1);
+  }
   try {
     ensureKeepAlive(env);
   } catch {
@@ -169,6 +251,7 @@ function main() {
     process.stderr.write(`zemory (docker): ${process.cwd()} is outside the mounted workspace (${workspace || "not set"}); ` +
       "the command runs in the container's own folder, so a command that works on the current repo will not see it.\n");
   }
+  if (isMoveApply(process.argv.slice(2))) runMove(env, process.argv.slice(2), dir);
   const tty = Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const args = ["exec", "-i", ...(tty ? ["-t"] : []), ...(dir ? ["-w", dir] : []), container, "zemory", ...process.argv.slice(2)];
   const [bin, argv] = dockerCall(env, args);
@@ -176,6 +259,16 @@ function main() {
   if (r.error) {
     process.stderr.write(`zemory (docker): could not run docker (${r.error.message}). Is Docker running and the zemory container up?\n`);
     process.exit(127);
+  }
+  // a machine installed before the choice file: the container answered, so this machine runs Docker - record it once,
+  // so the native command finds the choice even while the container is down
+  if (r.status === 0 && !chosen) {
+    try {
+      mkdirSync(dirname(choiceFile), { recursive: true });
+      writeFileSync(choiceFile, JSON.stringify({ runtime: "docker", at: new Date().toISOString(), by: "host-cli" }, null, 2) + "\n");
+    } catch {
+      /* only a record: the command already ran */
+    }
   }
   process.exit(r.status ?? 1);
 }

@@ -11,7 +11,7 @@ import { listKnownProjects } from "../projects.js";
 import { partImpact } from "../docs/law-sync.js";
 import { partLinks } from "../docs/law-links.js";
 import { leafOf, readKits } from "../docs/store.js";
-import { assembleSet } from "../docs/kit-apply.js";
+import { assembleSet, privateNameHits } from "../docs/kit-apply.js";
 
 export function cmdGates(args: string[]): void {
   const unknown = args.filter((a) => a !== "--all" && a !== "--json" && a !== "--write-top");
@@ -92,6 +92,15 @@ export function cmdStore(args: string[]): void {
   const [sub, ...rest] = args;
   if (sub !== "assemble" || rest.length) {
     console.log("  usage: zemory store assemble   (rebuild every set folder from HS, then commit the part with the sets)");
+    process.exitCode = 1;
+    return;
+  }
+  // HS is copied into every repo: a private name in a part is refused here, the step every edit of HS goes through
+  const leak = privateNameHits().hits;
+  if (leak.length) {
+    console.log(`zemory store assemble — HS carries a private name on ${leak.length} line(s); nothing was assembled. Replace each with a generic name:`);
+    for (const h of leak.slice(0, 20)) console.log(`  ✗ ${h}`);
+    if (leak.length > 20) console.log(`  … and ${leak.length - 20} more`);
     process.exitCode = 1;
     return;
   }

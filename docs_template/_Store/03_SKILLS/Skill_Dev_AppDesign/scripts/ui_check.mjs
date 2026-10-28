@@ -3,7 +3,7 @@
 //
 // Opens every page of the app at every width in a real browser (Edge/Chrome through the DevTools protocol) and measures the
 // rendered page - never a screenshot by eye. Config: ui_check.json at the repo root (or --config <file>):
-//   { "url": "http://127.0.0.1:5173/" | "file:///.../page.html",
+//   { "url": "http://localhost:5173/" | "file:///.../page.html",
 //     "pages": [ { "name": "users", "hash": "users" } | { "name": "access", "click": "#nav [data-to=access]" } ],
 //     "widths": [1920, 1440, 1100, 900, 390],      // optional; <= 768 is measured as a phone
 //     "settle_ms": 900,                              // optional: wait after each navigation (animations)
@@ -146,7 +146,7 @@ const MEASURE = (ignore, o) => `(() => {
 let code = 0;
 const findings = [];
 try {
-  let tabs; for (let i = 0; i < 60; i++) { try { tabs = await (await fetch(`http://127.0.0.1:${PORT}/json`)).json(); break; } catch { await sleep(250); } }
+  let tabs; for (let i = 0; i < 60; i++) { try { tabs = await (await fetch(`http://localhost:${PORT}/json`)).json(); break; } catch { await sleep(250); } }
   if (!tabs) throw Object.assign(Error("browser did not open its DevTools port"), { notChecked: true });
   ws = new WebSocket(tabs.find(t => t.type === "page").webSocketDebuggerUrl);
   await new Promise((r, j) => { ws.onopen = r; ws.onerror = j; });

@@ -145,6 +145,12 @@ function Install-ZemoryDocker {
   for ($i = 0; $i -lt 60; $i++) { try { $ping = Invoke-RestMethod "http://127.0.0.1:4444/ping" -TimeoutSec 3; if ($ping.runtime -eq "docker") { break } } catch { }; Start-Sleep 2 }
   if (-not $ping -or $ping.runtime -ne "docker") { throw "the container did not answer on http://127.0.0.1:4444 - see 'wsl -d $distro -- docker logs zemory'" }
   Say "ok  the cockpit answers on http://127.0.0.1:4444"
+  # the machine's choice (backend/src/util/install-choice.ts): the native command reads it and points here instead of
+  # answering from the store this install moved out. WriteAllText: Set-Content -Encoding utf8 adds a BOM JSON.parse rejects.
+  $choice = Join-Path $env:USERPROFILE ".zemory\install.json"
+  New-Item -ItemType Directory -Force (Split-Path $choice) | Out-Null
+  [IO.File]::WriteAllText($choice, (@{ runtime = "docker"; at = (Get-Date).ToUniversalTime().ToString("o"); by = "install-docker.ps1" } | ConvertTo-Json))
+  Say "ok  recorded the choice in $choice (the native command now points here)"
   node (Join-Path $dir "backend\scripts\host-hook.mjs") install; Native "hook install"
   $bin = Join-Path $env:LOCALAPPDATA "Microsoft\WindowsApps"   # on every user's PATH
   Set-Content -Path (Join-Path $bin "zemory.cmd") -Value "@node `"$(Join-Path $dir 'backend\scripts\host-cli.mjs')`" %*" -Encoding ascii

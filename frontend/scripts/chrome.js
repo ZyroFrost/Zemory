@@ -195,15 +195,14 @@
     document.addEventListener('mouseout',function(e){var el=e.target.closest&&e.target.closest('[data-hint]');if(el)hide();});
     document.addEventListener('click',function(e){var el=e.target.closest&&e.target.closest('.qh[data-hint]');if(el){e.stopPropagation();if(qt.classList.contains('on'))hide();else show(el);}});
   })();
-  // ---- Nav rail collapse — nút là CHÍNH CÁI LOGO (2026-08-21, user chốt, mượn ý OpenRCA):
-  //      hover logo hiện icon ‹/›, bấm là gập/mở; persisted, no server round-trip.
+  // ---- Nav rail collapse: the round arrow on the rail's edge (user 2026-10-28; the arrow hidden in the logo's hover was
+  //      hard to find). The arrow turns by CSS (.railcoll); persisted per viewer, no server round-trip.
   function railSetCollapsed(on){
-    var app=document.querySelector('.app'),ico=zid('brandCollIco');
+    var app=document.querySelector('.app');
     if(app)app.classList.toggle('railcoll',on);
-    if(ico)ico.textContent=on?'›':'‹';
     try{localStorage.setItem('zemory.railCollapsed',on?'1':'0');}catch(_){}
   }
-  (function(){var lg=zid('brandLogo');if(lg)lg.addEventListener('click',function(){railSetCollapsed(!document.querySelector('.app').classList.contains('railcoll'));});
+  (function(){var tg=zid('railToggle');if(tg)tg.addEventListener('click',function(){railSetCollapsed(!document.querySelector('.app').classList.contains('railcoll'));});
     var saved='0';try{saved=localStorage.getItem('zemory.railCollapsed')||'0';}catch(_){}
     if(saved==='1')railSetCollapsed(true);
   })();

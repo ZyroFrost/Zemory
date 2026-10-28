@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 # Cons_Gate_17_LessonsLedger — Sổ kinh nghiệm của repo
@@ -12,6 +12,11 @@ khi code mới hay tác vụ mới được viết theo cách cũ; chỉ một c
 Mỗi repo giữ trong `Cons.md` của khung này những bài học mà chính các lỗi đã sửa của nó để lại: mỗi bài học một mục `L-<số>`, mỗi mục
 là một câu luật mà code mới và vận hành phải theo, kèm cách máy hoặc người đọc kiểm. Sổ thuộc về repo và lớn lên cùng repo; đọc nó
 trước khi viết code mới trong vùng mà một bài học đã phủ. Sổ có một cú pháp cố định, để script cổng của repo đọc được mà không đoán.
+
+Header ghi `core: false`: sổ KHÔNG nằm trong danh sách luật bị bắt đọc trước hành động đầu tiên của mỗi phiên và được chèn lại sau
+khi nén context. Sổ lớn thêm sau mỗi lỗi được sửa, nên bắt đọc cả sổ ở mọi phiên đã đẩy phần lõi vượt trần (đo 28/10 ở
+một repo workspace-manager: 13 bài học). Thay vào đó sổ được đọc khi cần: trước khi viết code mới, tác vụ mới hay nguồn mới, đọc các mục có
+`Vùng` nêu đúng vùng đó (`Rule_Gate_91_LessonsFirst` bước 5); cổng của repo đọc cả sổ bằng máy.
 
 ## Khi nào áp
 - Một lỗi được sửa có gốc ở cách viết code hay cách vận hành (không phải một bản ghi dữ liệu sai một lần).

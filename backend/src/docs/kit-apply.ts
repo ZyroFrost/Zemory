@@ -237,9 +237,40 @@ function markSetsCurrent(storeDir: string, fp = storeFingerprint(storeDir)): voi
  * `zemory sync`, instead of a hand call to `assembleSet` that only the zemory session knew (v18/v19). Returns the rebuilt
  * set names, and the ones that failed with why.
  */
+/**
+ * Lines of HS that carry a private name (an organisation, repo, machine or user) - HS is copied into every repo and
+ * published, so it stays generic (plan/32 §4). The names are this machine's data, `data/private-names.txt` beside the store's
+ * clone (git-ignored); no list = nothing to check (`ran: false`). A repo may write HS itself (Rule_Gate_83), and the only
+ * check used to sit in Zemory's own gate: an org's header name went into two parts and every set unseen (28/10). Every edit
+ * of HS reaches the sets through an assembly, so the assembly refuses while a hit is left.
+ */
+export function privateNameHits(storeDir = STORE_DIR): { ran: boolean; hits: string[] } {
+  const list = join(dirname(dirname(storeDir)), "data", "private-names.txt");
+  if (!existsSync(list)) return { ran: false, hits: [] };
+  const names = readFileSync(list, "utf8").split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
+  if (!names.length) return { ran: false, hits: [] };
+  const esc = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(^|[^A-Za-z0-9])(${names.map(esc).join("|")})([^A-Za-z0-9]|$)`, "i");
+  const hits: string[] = [];
+  const walk = (dir: string): void => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name);
+      if (e.isDirectory()) { if (e.name !== "__pycache__" && e.name !== ".harness-state") walk(p); continue; }
+      let text: string;
+      try { text = readFileSync(p, "utf8"); } catch { continue; }
+      if (text.includes("\u0000")) continue; // binary
+      text.split(/\r?\n/).forEach((l, i) => { if (re.test(l)) hits.push(`${relative(dirname(storeDir), p).replace(/\\/g, "/")}:${i + 1}: ${l.trim().slice(0, 160)}`); });
+    }
+  };
+  walk(storeDir);
+  return { ran: true, hits };
+}
+
 export function rebuildStaleSets(storeDir = STORE_DIR): { rebuilt: string[]; failed: string[] } {
   const rebuilt: string[] = [];
   const failed: string[] = [];
+  const leak = privateNameHits(storeDir).hits;
+  if (leak.length) return { rebuilt, failed: [`HS carries a private name on ${leak.length} line(s) - nothing rebuilt; first: ${leak[0]}`] };
   for (const k of setsBehind(storeDir)) {
     const r = assembleSet(k, storeDir);
     if ("error" in r) failed.push(`${k.name}: ${r.error}`);
