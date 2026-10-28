@@ -2,6 +2,7 @@
 // remembers it by path (memory/projectmove.ts). Without --apply it only prints what would change.
 // --claude-config: another Claude Code settings file carrying the same "projects" map (a claude-swap slot copy).
 import { projectMove, renameClaudeProjectKey } from "../memory/projectmove.js";
+import { RUNTIME } from "../util/runtime.js";
 
 async function daemonAlive(): Promise<boolean> {
   const port = Number(process.env.ZEMORY_UI_PORT || 4444);
@@ -28,11 +29,27 @@ export async function cmdProject(args: string[]): Promise<void> {
   }
   // A scan running between the steps would read the renamed session folder as new files.
   if (apply && (await daemonAlive())) {
-    console.log("zemory project move: the daemon is running — stop it first (tray ▸ Quit), then run again. Nothing was changed.");
+    // In the container the daemon is the container's own process, so it can never be stopped from here (measured 28/10):
+    // the host's zemory command stops the container and runs the move in a one-off container beside it.
+    console.log(RUNTIME === "docker"
+      ? "zemory project move: this runs inside the daemon's container — run it from the host's zemory command, which stops the container, moves in a one-off container with ~/.claude writable, and starts it again. Nothing was changed."
+      : "zemory project move: the daemon is running — stop it first (tray ▸ Quit), then run again. Nothing was changed.");
     process.exitCode = 1;
     return;
   }
-  const r = projectMove(from, to, { apply });
+  let r: ReturnType<typeof projectMove>;
+  try {
+    r = projectMove(from, to, { apply });
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code ?? "";
+    if (!/^(EACCES|EPERM|EBUSY)$/.test(code)) throw e;
+    // Windows refuses to rename a folder while any program holds a file or a folder inside it (measured 28/10: a closed VS
+    // Code window left two helper processes on .git and the root, Explorer kept a subfolder) - the error names none of them
+    console.log(`zemory project move: ${code} — a program holds a file or folder inside ${from} (an editor window, Explorer, a terminal standing in it, a file watcher).`);
+    console.log("  Close it and run again: every step looks at the current state first, so a run stopped here simply continues.");
+    process.exitCode = 1;
+    return;
+  }
   if (r.blockers.length) {
     console.log(`zemory project move: cannot move — nothing was changed:`);
     for (const b of r.blockers) console.log(`  ✗ ${b}`);
@@ -45,5 +62,15 @@ export async function cmdProject(args: string[]): Promise<void> {
     const n = renameClaudeProjectKey(f, r.from, r.to, apply);
     console.log(`  ${n ? (apply ? "✓" : "→") : "·"} ${("claude config " + f).padEnd(48)} ${String(n).padStart(5)}`);
   }
-  console.log(apply ? "  Done. Run `zemory doctor` in the new folder." : "  Add --apply to write.");
+  if (!apply) {
+    console.log("  Add --apply to write.");
+    return;
+  }
+  // The move renames the session folder only; the skill's steps 2-3 are still to do (Skill_Harness_RepoMove), and no other
+  // place says so at the moment it matters (28/10: the SasinHub move ran without the skill being opened).
+  console.log("  Done. Next, by skill harness-repo-move (Skill_Harness_RepoMove):");
+  console.log("  2. point the old sessions at the new path: in ~/.claude/projects/<new session folder>/*.jsonl, back up first, then edit");
+  console.log("     cwd · trackingPath (paths) and customTitle · agentName (<Repo>_<Model>_<d-m-yyyy>) value by JSON value, never a line-wide replace;");
+  console.log("  3. accept with the whole table: folder · git log -1 and status unchanged · `zemory conform --gate` in the new folder ·");
+  console.log("     0 old names in those fields · `zemory peers --all --check` · an old session reopened; then list what still points at the old path.");
 }

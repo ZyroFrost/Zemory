@@ -9,7 +9,8 @@ import { currentMemoryDb, openMemory } from "../memory/db.js";
 import { scanHiddenChars } from "../memory/redact.js";
 import { appVersion, currentProjectRoot } from "../core/config.js";
 import { uiPort } from "../ui.js";
-import { foreignRuntime, otherRuntimeMessage, type Runtime } from "../util/runtime.js";
+import { foreignRuntime, otherRuntimeMessage, RUNTIME, type Runtime } from "../util/runtime.js";
+import { dockerMachineMessage, readInstallChoice } from "../util/install-choice.js";
 import { type ScanReport, memoryHostTree, memoryInfo, scan } from "../memory/ingest.js";
 import { type Digest, digestBackfill, getDigest, searchDigests } from "../memory/digest.js";
 import { embedConfig, embedProfileSpec } from "../memory/embed.js";
@@ -254,6 +255,18 @@ export async function cmdMemory(args: string[]): Promise<void> {
   const sub = args[0];
   // Cờ lạ ⇒ dừng NGAY, trước cả write-gate (xem `rejectUnknownFlags`).
   if (rejectUnknownFlags(sub, args)) return;
+  // One install per machine (util/install-choice.ts): the native command on a machine that chose Docker answers from a
+  // store nobody writes any more, so it stops and names the way that answers - every memory command, reads too. The
+  // choice file says it; a machine installed before that file is known by the Docker install answering on the port.
+  // GLOBAL_MEMORY_DB names a store on purpose (tests, an explicit call): that store is used.
+  if (RUNTIME === "native" && !process.env.GLOBAL_MEMORY_DB?.trim() && process.env.ZEMORY_DAEMON_CHILD !== "1") {
+    const chosen = readInstallChoice()?.runtime;
+    if (chosen === "docker" || (!chosen && (await otherInstall()) === "docker")) {
+      console.error(`zemory memory${sub ? ` ${sub}` : ""}: ${dockerMachineMessage(uiPort())}`);
+      process.exitCode = 1;
+      return;
+    }
+  }
   // Write gate: hold the daemon's scheduler off while a heavy write runs here.
   // Shape matters (audit 2026-07-21): the old version wrapped the RUN in the
   // same try as the acquire, so an inner error was swallowed and the whole

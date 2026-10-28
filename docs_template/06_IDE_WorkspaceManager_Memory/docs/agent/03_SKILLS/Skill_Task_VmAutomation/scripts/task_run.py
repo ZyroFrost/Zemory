@@ -21,7 +21,7 @@ change the store part, never the repo copy.
 
 Which repo is acting (Rule_Keys_90 step 3): `repo_name()` = the folder name of the repo's root (`git rev-parse
 --show-toplevel`, else the folder holding docs/.harness.json), never a naming pattern. The launcher gets it as env
-SASIN_REPO, so a task's script sends it as header `X-Sasin-Repo` to an app of the family, or writes it to the log's
+ACTING_REPO, so a task's script sends it as header `X-Acting-Repo` to an app of the family, or writes it to the log's
 acting-repo column when it inserts into the family's database itself. Attribution only, never a permission.
 """
 import argparse
@@ -36,7 +36,7 @@ from pathlib import Path
 
 CONN_KEYS = ("WAREHOUSE_CONN", "APPDATA_CONN")     # the DW (role workspace-manager) · the app-data repo (role app-data)
 POINTER_KEY = "RUNLOG_CONN_KEY"                    # a data repo names its own key in its .env: RUNLOG_CONN_KEY=<KEY>
-REPO_ENV = "SASIN_REPO"                            # the acting repo, handed to the launcher (Rule_Keys_90 step 3)
+REPO_ENV = "ACTING_REPO"                            # the acting repo, handed to the launcher (Rule_Keys_90 step 3)
 REPO_MAX = 64
 
 

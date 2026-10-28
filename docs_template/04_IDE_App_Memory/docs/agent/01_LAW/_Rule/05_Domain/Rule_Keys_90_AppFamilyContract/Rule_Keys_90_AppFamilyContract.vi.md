@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 9
 lang: vi
 ---
 # Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
@@ -41,7 +41,7 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
    Mỗi dòng ghi cả NGƯỜI lẫn REPO đã làm: agent làm bằng chính tài khoản của người dùng, và repo nơi agent chạy được ghi cạnh tài
    khoản đó (cột repo làm việc của log, NULL khi là người dùng trình duyệt). Tên là tên thư mục gốc của repo — `git rev-parse
    --show-toplevel`, không có thì là thư mục chứa `docs/.harness.json` — không bao giờ theo quy ước đặt tên. Mọi lệnh agent gọi vào
-   một app của hệ kèm header `X-Sasin-Repo: <tên đó>`; app chỉ nhận tên thường (`[A-Za-z0-9._-]`, tối đa 64 ký tự) và ghi vào cột.
+   một app của hệ kèm header `X-Acting-Repo: <tên đó>`; app chỉ nhận tên thường (`[A-Za-z0-9._-]`, tối đa 64 ký tự) và ghi vào cột.
    Code ghi thẳng vào DB của hệ liệt kê cột đó trong câu INSERT với cùng tên. Tên chỉ để ghi nhận, không bao giờ là quyền: quyền vẫn
    theo vai của người.
 4. Đăng nhập dùng chung: `system-manager` có trang đăng nhập duy nhất của hệ và cấp phiên duy nhất. App đọc phiên đó từ DB của hệ ở
@@ -74,8 +74,8 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
 - Tình huống: agent của nhiều repo phòng ban đẩy file qua một app đồng bộ file, mỗi agent một tài khoản riêng.
 - ✗ Sai: giữ mỗi agent một tài khoản, nên log chỉ thấy agent mà không thấy người; hoặc đoán repo theo quy ước đặt tên kiểu
   `Dept_<tên>`, gãy ngay ở repo đầu tiên đặt tên khác.
-- ✓ Đúng: agent dùng tài khoản của người dùng và gửi `X-Sasin-Repo: Dept_IT` (thư mục gốc repo của nó); dòng log ghi người
-  `huy.nguyen` · repo `Dept_IT` · `push_apply`, và vai của người quyết định việc nào được làm.
+- ✓ Đúng: agent dùng tài khoản của người dùng và gửi `X-Acting-Repo: Dept_ABC` (thư mục gốc repo của nó); dòng log ghi người
+  `jane.doe` · repo `Dept_ABC` · `push_apply`, và vai của người quyết định việc nào được làm.
 
 ## Máy kiểm
 - Nhắc theo từ khoá: lời yêu cầu về DB riêng của app, đăng nhập riêng hay chung, màn quản trị, vai hay log vận hành thì hiện luật

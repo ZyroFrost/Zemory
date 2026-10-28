@@ -1,12 +1,12 @@
 ---
 id: Skill_Task_VmAutomation
 name: task-vm-automation
-version: 11
+version: 12
 type: process
 aka: vm-automation
 description: Put a periodic task (Daily / Weekly / Monthly) on the VM to RUN BY ITSELF - the vm_deploy.json manifest, the schedule, the Log_JobRun run log, results to the region's SharePoint, the _SharePoint.url shortcut. Use whenever a task goes onto the VM, is automated or scheduled, or its VM run is checked. Vietnamese triggers - "đưa task lên VM", "tự động hoá task", "đặt lịch trên VM", "task chạy trên VM chưa".
 installs: [scripts/task_run.py, scripts/make_output_links.py, scripts/move_outputs_to_vm.py]
-from: _Store/03_SKILLS/Skill_Task_VmAutomation @v11 #62097db6123b
+from: _Store/03_SKILLS/Skill_Task_VmAutomation @v12 #18d005d593ba
 ---
 
 # task-vm-automation — putting a task on automatic runs on the VM
@@ -72,10 +72,10 @@ department repo + the VM schedule), what is on the old system stays as it is. A 
   for every repo, no hand-copied variants. A data repo naming its key differently ⇒ declares in its `.env` `RUNLOG_CONN_KEY=<KEY NAME>`
   (`task_run` reads that key before the default key; on the VM only `.env` travels, so it is declared here, not in the marker) — and both keys go into
   the `.env` of `vm_deploy.json`.
-- **The acting repo (`Rule_Keys_90` step 3):** `task_run.py` hands the launcher env `SASIN_REPO` = the folder name of the repo's root
+- **The acting repo (`Rule_Keys_90` step 3):** `task_run.py` hands the launcher env `ACTING_REPO` = the folder name of the repo's root
   (`git rev-parse --show-toplevel`, else the folder holding `docs/.harness.json`; plain `[A-Za-z0-9._-]`, at most 64). A task that calls an
-  app of the family sends it as header `X-Sasin-Repo`; a task that inserts into the family's operation log itself fills the acting-repo
-  column with it. Attribution only, never a permission. A caller that already set `SASIN_REPO` keeps its value.
+  app of the family sends it as header `X-Acting-Repo`; a task that inserts into the family's operation log itself fills the acting-repo
+  column with it. Attribution only, never a permission. A caller that already set `ACTING_REPO` keeps its value.
 - **Checking `reference/` on the VM:** `python scripts\move_outputs_to_vm.py --reference` lists the `reference/` files the machine has and the VM lacks or
   holds with different content, exit code 1 when any (no SharePoint login); with `--apply` it copies the missing files, files with different content are not overwritten.
 - **Reference files** code/tests need to rebuild the handed-out copy correctly (samples others sent · acceptance baselines) — not inputs of a run ⇒ placed by DIRECTION (05/10):

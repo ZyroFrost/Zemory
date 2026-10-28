@@ -1,7 +1,7 @@
 ---
 id: Rule_90
 name: app-family-contract
-version: 8
+version: 9
 kind: judgment
 code: 05_Domain
 checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_Dev_AppDesign, Skill_Dev_DbDesign, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -80,8 +80,8 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
 - Situation: agents of several department repos push files through a file-sync app, each with an account of its own.
 - ✗ Wrong: keep one account per agent, so the log shows the agent and never the person; or guess the repo from a naming rule
   such as `Dept_<name>`, which breaks on the first repo named another way.
-- ✓ Right: the agent uses the person's account and sends `X-Acting-Repo: Dept_IT` (its repo's root folder); the row reads
-  person `huy.nguyen` · repo `Dept_IT` · `push_apply`, and the person's role decides what was allowed.
+- ✓ Right: the agent uses the person's account and sends `X-Acting-Repo: Dept_ABC` (its repo's root folder); the row reads
+  person `jane.doe` · repo `Dept_ABC` · `push_apply`, and the person's role decides what was allowed.
 
 ## Check
 - Keyword reminder: a request about an app's own database, its own or the shared sign-in, an admin screen, roles or the operation

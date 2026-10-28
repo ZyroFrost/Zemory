@@ -1,10 +1,11 @@
 ---
 id: Cons_17
 name: lessons-ledger
-version: 2
+version: 3
 kind: content
 code: 03_System
 frame: true
+core: false
 checked: [Cons_Gate_13_Architecture, Rule_Gate_01_DoneMeansRun, Rule_Keys_11_VerifyClaims, Rule_Gate_83_HarnessFromStore]
 ---
 # Cons_Gate_17_LessonsLedger — The repo's ledger of lessons
@@ -18,6 +19,11 @@ Every repo keeps, in the `Cons.md` of this frame, the lessons its own fixed faul
 rule new code and operations follow, with the way a machine or a reader checks it. The ledger belongs to the repo and grows with
 it; it is read before new code is written in the area a lesson covers. It has one fixed grammar, so a repo's gate script can read
 it without guessing.
+
+The header says `core: false`: the ledger is NOT in the list of laws read before every session's first action and put back after a
+compaction. It grows with every fixed fault, so forcing it whole into every session pushed the core past its cap (measured 28/10 on
+a workspace-manager repo: 13 lessons). It is read on demand instead: before new code, a new job or a new source is written, the entries
+whose `Vùng` names that area are read (`Rule_Gate_91_LessonsFirst` step 5); the repo's gate reads the whole ledger by machine.
 
 ## When
 - A fault is fixed whose cause is how code is written or how the system is run (not a one-off bad record).

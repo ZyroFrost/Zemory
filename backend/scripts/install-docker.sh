@@ -65,6 +65,11 @@ until curl -fsS -m 3 http://127.0.0.1:4444/ping 2>/dev/null | grep -q '"runtime"
   i=$((i + 1)); [ "$i" -gt 60 ] && die "the container did not answer on http://127.0.0.1:4444 - see 'docker logs zemory'"; sleep 2
 done
 say "ok  the cockpit answers on http://127.0.0.1:4444"
+# the machine's choice (backend/src/util/install-choice.ts): the native command reads it and points here instead of
+# answering from the store this install moved out
+mkdir -p "$HOME/.zemory"
+printf '{\n  "runtime": "docker",\n  "at": "%s",\n  "by": "install-docker.sh"\n}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$HOME/.zemory/install.json"
+say "ok  recorded the choice in ~/.zemory/install.json (the native command now points here)"
 
 node "$DIR/backend/scripts/host-hook.mjs" install
 mkdir -p "$HOME/.local/bin"

@@ -1576,8 +1576,13 @@ export function folderCoreFiles(agentDir: string): string[] {
   };
   // An older harness still has PURPOSE.md on the constitution shelf; the current one writes it in Cons_Gate_09_Purpose/Cons.md.
   const purpose = join(shelfDir(agentDir, SHELF.constitution), "PURPOSE.md");
+  // A frame whose header says `core: false` is read on demand, not before every session: a ledger that grows with the repo
+  // (Cons_Gate_17_LessonsLedger) is read by area before new code there, and forcing it pushed DW's core past the cap (28/10).
+  const onDemand = new Set(listParts(agentDir, SHELF.constitution).filter((p) => isFrame(p) && String(p.meta.core ?? "") === "false").map((p) => p.dir));
   // a frame's gate checks that its Cons.md is written; what the repo wrote there is judgment, so it stays
-  const constitution = constitutionFiles(agentDir).filter((f) => basename(f) === CONS_REPO_FILE || !hooked(dirname(f)));
+  const constitution = constitutionFiles(agentDir)
+    .filter((f) => !onDemand.has(dirname(f)))
+    .filter((f) => basename(f) === CONS_REPO_FILE || !hooked(dirname(f)));
   const rules = listParts(agentDir, SHELF.rules)
     .filter((p) => !isRetired(p) && p.kind === "judgment" && !hooked(p.dir))
     .map((p) => mainPath(p.dir, mainOf(p)));

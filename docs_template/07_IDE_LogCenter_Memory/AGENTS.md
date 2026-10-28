@@ -54,3 +54,4 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | điền số vào template → xuất deliverable | `.claude/skills/task-fill/SKILL.md` |
 | kéo dữ liệu từ nguồn về | `.claude/skills/task-pull/SKILL.md` |
 | đẩy deliverable lên đích (BI · Drive · SharePoint) | `.claude/skills/task-upload/SKILL.md` |
+| đổi tên repo · dời repo · chuyển thư mục repo sang chỗ khác · zemory project move | `.claude/skills/harness-repo-move/SKILL.md` |

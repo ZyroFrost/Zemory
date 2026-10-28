@@ -1,5 +1,5 @@
 ---
-version: 21
+version: 22
 lang: vi
 ---
 
@@ -149,29 +149,52 @@ reindex nên mục vừa chuyển tra được ngay (`zemory changelog search` �
   không đếm dòng: dòng ở sổ dày mỏng rất khác nhau (đo được 20–34 token/dòng) nên "300 dòng" có thể là
   6k hay 10k token — đếm dòng là đo sai thứ.*
 
-## Bước 3b — QUÉT RÁC (bắt buộc; luật `01_LAW/_Rule` *".gitignore là GIẤU, không phải DỌN"*)
+## Bước 3b — DỌN NHỮNG GÌ PHIÊN BỎ LẠI (bắt buộc; luật `01_LAW/_Rule` *".gitignore là GIẤU, không phải DỌN"*)
 
-Chốt phiên là chỗ DUY NHẤT chắc chắn chạy cuối phiên, nên phép quét đặt ở đây. Ba phép, in số ra rồi
-mới kết luận — im lặng không tính là sạch:
+Chốt phiên là chỗ DUY NHẤT chắc chắn chạy cuối phiên, nên phép dọn đặt ở đây. Agent để rác ra xa ngoài repo: script trong thư
+mục nháp, thư mục tạm tạo trên ổ dữ liệu, bản sao lưu chụp trước khi sửa, cờ duyệt, tiến trình đã mở, chỗ sửa ở repo khác.
+*Đo 28/10 trong một phiên: một thư mục tạm ở cấp workspace, một file compose override và hai bản sao lưu phiên nằm ngoài repo,
+thư mục nháp chạm trần hai lần, hai cờ đã dùng sót ở repo khác, một lượt cổng tự chạy lại ở nền, 44 chỗ sửa chưa commit ở 17 repo
+khác — phép quét ba mục cũ không thấy cái nào.*
 
-- **① file lạ ở gốc + file nháp còn sót:** liệt kê untracked NGOÀI các đường gitignore hợp lệ
-  (`data/` · `exports/` · két bí mật), và MỌI file khớp `_scratch_*` · `.tmp*` bất kể ở đâu. Có ⇒ xoá
-  (hỏi trước nếu file có vẻ là sản phẩm), KHÔNG để lại "dọn sau".
-- **② thư mục gitignore có phình không:** đo dung lượng từng thư mục dữ liệu; vượt ngưỡng repo tự đặt
-  (mặc định gợi ý **2 GB**) ⇒ BÁO kèm 3 thư mục con to nhất. Đây đúng chỗ đã nuốt **3 GB** (một venv
-  13.830 file + một `.rar` 1,34 GB trùng với folder đã giải nén cạnh nó) mà không cổng nào thấy, vì nó
-  nằm dưới đường đã gitignore.
-- **③ gốc repo có file thực thi không:** `.cmd`/`.sh`/`.bat` ở gốc ⇒ sai chuẩn, phải nằm `bin/`
-  (`02_STRUCTURE` mục *Gốc repo sạch*). Đo thật: cơ chế launcher-ở-gốc đã đẻ 5 file rỗng 0 byte, 2 file
-  lọt vào git.
+**Biết thứ nào là của phiên:** dựa vào chính bản ghi của phiên, không đoán theo tên file. Liệt kê các đường phiên đã ghi hay tạo:
+transcript của phiên (`~/.claude/projects/<repo>/<session>.jsonl`: mọi Write · Edit · `New-Item` · `mkdir` · `Copy-Item` · đích
+của `tar`/`cp`, và mọi tác vụ `run_in_background`) hoặc `zemory memory digest <session>`. Đường do phiên tạo thì phiên dọn; thứ
+khác trông như rác thì BÁO, không xoá theo phỏng đoán.
+
+Chạy đủ mọi dòng, in số của từng dòng — **0 là một kết quả, im lặng thì không**:
+
+| # | Thứ gì | Đo thế nào | Rồi làm gì |
+|---|---|---|---|
+| ① | file lạ trong repo | untracked ngoài các đường gitignore hợp lệ (`data/` · `exports/` · két bí mật); mọi `_scratch_*` · `.tmp*` · `*.bak` · `*.orig` · `*.rej` ở bất kỳ đâu | của phiên ⇒ xoá; trông như sản phẩm ⇒ hỏi |
+| ② | thư mục nháp của phiên | `<tmp>/claude/<repo>/<session>/scratchpad`: đếm và liệt kê | xoá mọi thứ đã dùng xong; file giữ lại ghi một dòng vì sao (`Rule_Gate_04_ScratchFiles`) |
+| ③ | thứ phiên tạo NGOÀI repo | các đường trong transcript nằm ngoài repo (thư mục tạm · compose override · bản chép · file tải về) mà còn tồn tại | xoá; cái đang giữ bản sao lưu mà phép nghiệm thu còn cần (phiên chưa mở lại, bản đối chiếu) thì giữ và nêu tên trong báo cáo kèm điều kiện để xoá |
+| ④ | bản sao lưu chụp trước khi sửa | các bản `*.tar` · `*.zip` · `*.bak` phiên tạo (sao lưu file phiên khi dời repo, file chép trước khi vá) | nghiệm thu đã qua ⇒ xoá; chưa ⇒ giữ và nêu tên |
+| ⑤ | cờ duyệt | `docs/.harness-state/.allow-*` ở repo này và ở mọi repo phiên đã ghi vào | xoá mọi cờ đã dùng hoặc hết hạn (`conform` báo là `dead-flag`) |
+| ⑥ | tiến trình và tác vụ nền | mọi tác vụ `run_in_background` và monitor phiên mở · dev server · lượt test · container chạy một lần (`docker ps -a`) | dừng cái đã xong; cái còn cần thì nêu tên và nó đang chờ gì |
+| ⑦ | chỗ sửa còn ở repo khác | `git status --short` ở mọi repo phiên đã ghi vào | file của chính phiên ⇒ commit ở đó bằng `--only <đường>` sau khi kiểm diff chỉ chứa chỗ sửa của phiên; lẫn với việc của repo đó ⇒ báo phiên của repo đó |
+| ⑧ | rác git | nhánh · stash · worktree phiên tạo (`git branch` · `git stash list` · `git worktree list`) | đã gộp hay bỏ ⇒ gỡ; còn việc trên đó ⇒ nêu tên |
+| ⑨ | khoá cũ | `.harness-state/*.lock` (sync · assemble) mà tiến trình đã mất | xoá (khoá của tiến trình còn sống thì giữ) |
+| ⑩ | ghi vào ổ bị cấm | các đường trong transcript nằm trên ổ mà luật của máy cấm ghi (ví dụ `C:` khi chỉ được ghi ổ dữ liệu) | dời hoặc xoá; báo từng chỗ |
+| ⑪ | thư mục gitignore phình | dung lượng từng thư mục dữ liệu; vượt ngưỡng repo tự đặt (gợi ý **2 GB**) | BÁO kèm 3 thư mục con to nhất — *đo thật: 3 GB (một venv 13.830 file + một `.rar` 1,34 GB trùng folder cạnh nó) dưới đường đã gitignore, không cổng nào thấy* |
+| ⑫ | file thực thi ở gốc repo | `.cmd` · `.sh` · `.bat` ở gốc | sai chuẩn ⇒ vào `bin/` (`02_STRUCTURE` mục *Gốc repo sạch*) — *đo thật: cơ chế launcher để lại 5 file rỗng 0 byte ở gốc, 2 file lọt vào git* |
+
+Không bao giờ xoá: dữ liệu người yêu cầu tạo hay tải về · việc chưa commit của chính repo đó · thứ phiên không tạo — những thứ đó chỉ báo.
+Xoá ngoài repo vẫn cần cờ duyệt của `Rule_Gate_44_RepoScope`.
 
 Gợi ý lệnh (Windows PowerShell — đổi theo repo):
 ```
-git status --porcelain | Select-String '^\?\?'          # ① file lạ
-Get-ChildItem -Recurse -File -Filter '_scratch_*'        # ① nháp còn sót
-Get-ChildItem data -Directory | ForEach-Object { '{0,8:N0} MB  {1}' -f ((Get-ChildItem $_ -Recurse -File | Measure-Object Length -Sum).Sum/1MB), $_.Name }
-Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'   # ③ gốc
+git status --porcelain | Select-String '^\?\?'                                   # ① file lạ
+Get-ChildItem -Recurse -File -Include '_scratch_*','.tmp*','*.bak','*.orig','*.rej' # ① sót lại
+Get-ChildItem "$env:TEMP\claude\<repo>\<session>\scratchpad"                      # ② thư mục nháp
+Get-ChildItem -Recurse -Force -Filter '.allow-*' docs                             # ⑤ cờ
+docker ps -a --filter "status=exited"                                             # ⑥ container chạy một lần
+git branch; git stash list; git worktree list                                     # ⑧ rác git
+Get-ChildItem data -Directory | ForEach-Object { '{0,8:N0} MB  {1}' -f ((Get-ChildItem $_ -Recurse -File | Measure-Object Length -Sum).Sum/1MB), $_.Name }  # ⑪
+Get-ChildItem -File | Where-Object Extension -in '.cmd','.bat','.sh'              # ⑫ gốc
 ```
+Báo cáo nêu từng dòng kèm số và việc đã làm: `② nháp 5 → 0 · ③ ngoài repo xoá 2, giữ 1 (bản sao lưu tới khi mở lại phiên) ·
+⑦ 17 repo đã commit (--only) · …`.
 
 ## Bước cuối
 

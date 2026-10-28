@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
@@ -74,8 +74,8 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
 - Tình huống: agent của nhiều repo phòng ban đẩy file qua một app đồng bộ file, mỗi agent một tài khoản riêng.
 - ✗ Sai: giữ mỗi agent một tài khoản, nên log chỉ thấy agent mà không thấy người; hoặc đoán repo theo quy ước đặt tên kiểu
   `Dept_<tên>`, gãy ngay ở repo đầu tiên đặt tên khác.
-- ✓ Đúng: agent dùng tài khoản của người dùng và gửi `X-Acting-Repo: Dept_IT` (thư mục gốc repo của nó); dòng log ghi người
-  `huy.nguyen` · repo `Dept_IT` · `push_apply`, và vai của người quyết định việc nào được làm.
+- ✓ Đúng: agent dùng tài khoản của người dùng và gửi `X-Acting-Repo: Dept_ABC` (thư mục gốc repo của nó); dòng log ghi người
+  `jane.doe` · repo `Dept_ABC` · `push_apply`, và vai của người quyết định việc nào được làm.
 
 ## Máy kiểm
 - Nhắc theo từ khoá: lời yêu cầu về DB riêng của app, đăng nhập riêng hay chung, màn quản trị, vai hay log vận hành thì hiện luật
