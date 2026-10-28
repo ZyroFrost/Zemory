@@ -1,7 +1,7 @@
 ---
 id: Rule_90
 name: app-family-contract
-version: 4
+version: 5
 kind: judgment
 code: 05_Domain
 checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_Dev_AppDesign, Skill_Dev_DbDesign, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -29,6 +29,9 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
    table or column ⇒ ask the `app-data` repo; the app never changes structure (`Cons_Gate_11_WriteBoundary`).
 2. Identity is shared: one account per person for every app. Roles are per app (one role per person per app). Roles of every app
    are granted from the `system-manager`'s one admin screen, one role column per app; an app builds no admin screen of its own.
+   The ROLE SET of each app (its role names, their order on screen, their labels) is one table of the family's database, kept by
+   the `app-data` repo; the database refuses a role that is not in the app's set. The admin screen and every app read the set from
+   that table; neither keeps a copy in its code. A new app or a changed role set ⇒ a model of the `app-data` repo, never code.
 3. Every app writes each event of six groups as one row of the family's operation log: sign-in · end of session · access denied ·
    account and role changes · free-form data queries · settings that affect other users. Codes and levels come from the
    `app-data` repo's contract table; a code not in it ⇒ ask that repo to add it first. Never log passwords, tokens or connection
@@ -50,6 +53,11 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
 - ✗ Wrong: keep its sign-in page and cookie, or ask the `system-manager` to serve the app's pages and API for it.
 - ✓ Right: the app drops its sign-in page, reads the `system-manager`'s session and checks its own role on its backend, sends a
   person with no session to the shared sign-in with the address to return to, and keeps serving its own pages under its own path.
+- Situation: an app used only by the IT team drops its read-only role and keeps two roles.
+- ✗ Wrong: change the role list written in the app's code and the copy written in the `system-manager`'s code; the two drift, and
+  the admin screen still offers a role the app now refuses.
+- ✓ Right: the `app-data` repo changes the app's rows in the family's role table with a model; the admin screen and the app both
+  read the new set, no code changes.
 
 ## Check
 - Keyword reminder: a request about an app's own database, its own or the shared sign-in, an admin screen, roles or the operation
