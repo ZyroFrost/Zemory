@@ -1,7 +1,7 @@
 ---
 id: Rule_90
 name: app-family-contract
-version: 7
+version: 8
 kind: judgment
 code: 05_Domain
 checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_Dev_AppDesign, Skill_Dev_DbDesign, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -46,7 +46,7 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
    Each row names the person AND the repo that acted: an agent acts with the person's own account, and the repo it runs in is
    recorded beside that account (the log's acting-repo column, NULL for a person in the browser). The name is the folder name
    of the repo's root — `git rev-parse --show-toplevel`, else the folder that holds `docs/.harness.json` — never a naming
-   pattern. Every call an agent makes to an app of the family carries the header `X-Sasin-Repo: <that name>`; the app keeps
+   pattern. Every call an agent makes to an app of the family carries the header `X-Acting-Repo: <that name>`; the app keeps
    plain names only (`[A-Za-z0-9._-]`, at most 64 characters) and writes them to the column. Code that writes to the family's
    database directly lists the column in its INSERT with the same name. The name is attribution only, never a permission: rights
    still come from the person's role.
@@ -80,7 +80,7 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
 - Situation: agents of several department repos push files through a file-sync app, each with an account of its own.
 - ✗ Wrong: keep one account per agent, so the log shows the agent and never the person; or guess the repo from a naming rule
   such as `Dept_<name>`, which breaks on the first repo named another way.
-- ✓ Right: the agent uses the person's account and sends `X-Sasin-Repo: Dept_IT` (its repo's root folder); the row reads
+- ✓ Right: the agent uses the person's account and sends `X-Acting-Repo: Dept_IT` (its repo's root folder); the row reads
   person `huy.nguyen` · repo `Dept_IT` · `push_apply`, and the person's role decides what was allowed.
 
 ## Check
