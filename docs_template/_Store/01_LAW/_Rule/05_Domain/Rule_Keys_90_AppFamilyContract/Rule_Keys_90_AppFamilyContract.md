@@ -1,7 +1,7 @@
 ---
 id: Rule_90
 name: app-family-contract
-version: 6
+version: 7
 kind: judgment
 code: 05_Domain
 checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_Dev_AppDesign, Skill_Dev_DbDesign, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -43,6 +43,13 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
    account and role changes · free-form data queries · settings that affect other users. Codes and levels come from the
    `app-data` repo's contract table; a code not in it ⇒ ask that repo to add it first. Never log passwords, tokens or connection
    strings; a person not yet signed in is NULL, not an empty string.
+   Each row names the person AND the repo that acted: an agent acts with the person's own account, and the repo it runs in is
+   recorded beside that account (the log's acting-repo column, NULL for a person in the browser). The name is the folder name
+   of the repo's root — `git rev-parse --show-toplevel`, else the folder that holds `docs/.harness.json` — never a naming
+   pattern. Every call an agent makes to an app of the family carries the header `X-Sasin-Repo: <that name>`; the app keeps
+   plain names only (`[A-Za-z0-9._-]`, at most 64 characters) and writes them to the column. Code that writes to the family's
+   database directly lists the column in its INSERT with the same name. The name is attribution only, never a permission: rights
+   still come from the person's role.
 4. Sign-in is shared: the `system-manager` has the family's one sign-in page and issues the one session. An app reads that session
    from the family's database on its own backend, checks its own role there, and sends a person without a live session to the
    `system-manager`'s sign-in with the address to come back to. An app has no sign-in page, no session cookie of its own and no
@@ -70,6 +77,11 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
   may grant which.
 - ✓ Right: the app takes the levels of the frame it needs for what people may do; the job title and department come from HR
   data and narrow which boards and rows each person sees.
+- Situation: agents of several department repos push files through a file-sync app, each with an account of its own.
+- ✗ Wrong: keep one account per agent, so the log shows the agent and never the person; or guess the repo from a naming rule
+  such as `Dept_<name>`, which breaks on the first repo named another way.
+- ✓ Right: the agent uses the person's account and sends `X-Sasin-Repo: Dept_IT` (its repo's root folder); the row reads
+  person `huy.nguyen` · repo `Dept_IT` · `push_apply`, and the person's role decides what was allowed.
 
 ## Check
 - Keyword reminder: a request about an app's own database, its own or the shared sign-in, an admin screen, roles or the operation

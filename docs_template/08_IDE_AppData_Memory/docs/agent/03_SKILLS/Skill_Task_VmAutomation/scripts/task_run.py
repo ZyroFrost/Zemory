@@ -18,6 +18,11 @@ That repo is found by: env RUNLOG_REPO · the marker's `uses.app-data` · `uses.
 region manager · the first sibling `_DB_*` repo whose .env holds one of the keys (the VM, where docs/ is not deployed and one data
 repo sits beside the task). Nothing secret lives here. Shipped by zemory: store part Skill_Task_VmAutomation (its installs);
 change the store part, never the repo copy.
+
+Which repo is acting (Rule_Keys_90 step 3): `repo_name()` = the folder name of the repo's root (`git rev-parse
+--show-toplevel`, else the folder holding docs/.harness.json), never a naming pattern. The launcher gets it as env
+SASIN_REPO, so a task's script sends it as header `X-Sasin-Repo` to an app of the family, or writes it to the log's
+acting-repo column when it inserts into the family's database itself. Attribution only, never a permission.
 """
 import argparse
 import datetime as dt
@@ -31,6 +36,30 @@ from pathlib import Path
 
 CONN_KEYS = ("WAREHOUSE_CONN", "APPDATA_CONN")     # the DW (role workspace-manager) · the app-data repo (role app-data)
 POINTER_KEY = "RUNLOG_CONN_KEY"                    # a data repo names its own key in its .env: RUNLOG_CONN_KEY=<KEY>
+REPO_ENV = "SASIN_REPO"                            # the acting repo, handed to the launcher (Rule_Keys_90 step 3)
+REPO_MAX = 64
+
+
+def repo_name(start=None):
+    """Folder name of the repo's root: git toplevel, else the folder holding docs/.harness.json, else ''.
+    Kept to [A-Za-z0-9._-] and at most 64 characters (what the apps and the log column accept)."""
+    import re
+    here = Path(start or Path(__file__).resolve().parent)
+    root = None
+    try:
+        out = subprocess.run(["git", "-C", str(here), "rev-parse", "--show-toplevel"],
+                             capture_output=True, text=True, timeout=10)
+        if out.returncode == 0 and out.stdout.strip():
+            root = Path(out.stdout.strip())
+    except Exception:
+        pass
+    if root is None:
+        for p in [here] + list(here.parents):
+            if (p / "docs" / ".harness.json").is_file():
+                root = p
+                break
+    name = root.name if root else ""
+    return name if name and len(name) <= REPO_MAX and re.fullmatch(r"[A-Za-z0-9._-]+", name) else ""
 
 
 def keys_of(env):
@@ -124,8 +153,13 @@ def main():
     t0 = time.time()
     print("[task_run] %s start %s :: %s" % (a.task, started.strftime("%Y-%m-%d %H:%M:%S"), " ".join(cmd)), flush=True)
     urls, checks, ochecks, tail = [], [], [], []
+    env = dict(os.environ)
+    if not env.get(REPO_ENV):                                 # an outer caller may already have set it
+        name = repo_name()
+        if name:
+            env[REPO_ENV] = name
     try:
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
     except Exception as e:                                    # ONLY a failed start is 99
         p, rc, tail = None, 99, ["task_run could not start the launcher: %s" % e]
     if p is not None:

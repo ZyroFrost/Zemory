@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
@@ -38,6 +38,12 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
    đổi tài khoản và vai · truy vấn dữ liệu tự do · đổi cài đặt ảnh hưởng người khác. Mã và mức lấy từ bảng hợp đồng của repo
    `app-data`; mã chưa có ⇒ xin repo đó thêm trước. Không ghi mật khẩu, token, chuỗi kết nối; người chưa biết là NULL, không phải
    chuỗi rỗng.
+   Mỗi dòng ghi cả NGƯỜI lẫn REPO đã làm: agent làm bằng chính tài khoản của người dùng, và repo nơi agent chạy được ghi cạnh tài
+   khoản đó (cột repo làm việc của log, NULL khi là người dùng trình duyệt). Tên là tên thư mục gốc của repo — `git rev-parse
+   --show-toplevel`, không có thì là thư mục chứa `docs/.harness.json` — không bao giờ theo quy ước đặt tên. Mọi lệnh agent gọi vào
+   một app của hệ kèm header `X-Sasin-Repo: <tên đó>`; app chỉ nhận tên thường (`[A-Za-z0-9._-]`, tối đa 64 ký tự) và ghi vào cột.
+   Code ghi thẳng vào DB của hệ liệt kê cột đó trong câu INSERT với cùng tên. Tên chỉ để ghi nhận, không bao giờ là quyền: quyền vẫn
+   theo vai của người.
 4. Đăng nhập dùng chung: `system-manager` có trang đăng nhập duy nhất của hệ và cấp phiên duy nhất. App đọc phiên đó từ DB của hệ ở
    backend của chính nó, kiểm vai của chính nó ở đó, và chuyển người chưa có phiên sống về trang đăng nhập của `system-manager` kèm
    địa chỉ để quay lại. App không có trang đăng nhập, không cookie phiên riêng, không màn đổi mật khẩu; đăng xuất và đổi mật khẩu đi
@@ -65,6 +71,11 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
   danh nào.
 - ✓ Đúng: app lấy những cấp của khung nó cần cho việc người dùng được làm; chức danh và phòng ban lấy từ dữ liệu HR, dùng để thu hẹp
   bảng và dòng mỗi người thấy.
+- Tình huống: agent của nhiều repo phòng ban đẩy file qua một app đồng bộ file, mỗi agent một tài khoản riêng.
+- ✗ Sai: giữ mỗi agent một tài khoản, nên log chỉ thấy agent mà không thấy người; hoặc đoán repo theo quy ước đặt tên kiểu
+  `Dept_<tên>`, gãy ngay ở repo đầu tiên đặt tên khác.
+- ✓ Đúng: agent dùng tài khoản của người dùng và gửi `X-Sasin-Repo: Dept_IT` (thư mục gốc repo của nó); dòng log ghi người
+  `huy.nguyen` · repo `Dept_IT` · `push_apply`, và vai của người quyết định việc nào được làm.
 
 ## Máy kiểm
 - Nhắc theo từ khoá: lời yêu cầu về DB riêng của app, đăng nhập riêng hay chung, màn quản trị, vai hay log vận hành thì hiện luật
