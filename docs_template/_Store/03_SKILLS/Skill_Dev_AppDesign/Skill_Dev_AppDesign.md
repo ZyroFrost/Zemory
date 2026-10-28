@@ -2,8 +2,9 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 19
+version: 20
 type: process
+installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Dev_DbDesign, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
 ---
@@ -230,6 +231,37 @@ Rules written in a skill do not enforce themselves: a settled rule still gets br
 - Exit codes: 0 green · 1 errors (each place printed) · **3 not fully checked** (a layer needing a browser could not run) — never counted as green.
 - Frozen old-system files ⇒ a warning with the list of debts, never silent. Exemptions are declared with a reason; an exemption no longer matching anything ⇒ an error.
 - Adding a measurable rule to the skill ⇒ adding a code to the checker in the same round. Rules not yet machine-measurable (F0 · F0b) are the approver's work.
+
+### The shared surface check — `scripts/ui_check.mjs`
+
+This skill installs one browser check every app runs, so the rendered page is measured, never judged from a screenshot. It opens every
+page at every width in Edge/Chrome (DevTools protocol, headless, **real scrollbars** — `100vw` overflowing by the scrollbar is a bug
+to catch) and measures the layout:
+
+| code | rule | breaks when |
+|---|---|---|
+| U1 | F12 · M1 | the page scrolls sideways, or a phone widens its layout to fit something too wide |
+| U2 | F5 · F12 | an element sticks out of the window and is not inside a frame that scrolls or clips it on purpose |
+| U3 | F0c | controls on one row differ in height by more than 0.6 px |
+| U4 | F0 | dead space: a table fills less than `min_fill` (default 60 %) of its frame's width |
+| U5 | F5 · F13 | text overlaps text, or text overlaps a chart (≥ 60×30), in the page flow — a label placed on a chart on purpose (absolute) is not judged |
+| U6 | — | a chart frame (`chart` · `bars` · `spark` · `donut` · `ring` · `graph`) has nothing drawn in it |
+| U7 | F14 | a scroll area without `scrollbar-gutter: stable` |
+| U8 | F4 ② | a control or link without a readable label |
+| U9 | F4 ③ | Vietnamese broken into `?` by an encoding (`Th?ng k?`, a `?` shown alone instead of `—`) |
+
+- **Config** `ui_check.json` at the repo root: `url` (the dev server or a `file:///` mock-up) · `pages` (each `{name, hash}` or
+  `{name, click: "<selector>"}`) · `widths` (default 1920 · 1440 · 1100 · 900 · 390; ≤ 768 is measured as a phone) · `settle_ms` (wait
+  for animations) · `ignore` (selectors never judged: a decorative background, a closed overlay) · `codes` (`{"U4": {"min_fill": 0.5}}`,
+  `{"U6": {"off": true}}` — turning a code off is an exemption: write its reason in the repo).
+- **Run** `node scripts/ui_check.mjs` (· `--page <name>` · `--widths 1440,390` · `--config <file>`). Wire it into the repo's gate
+  (`repoGates`) for every repo with a UI; a change to a surface is not done until it is green at every width.
+- **Self-test** `node scripts/ui_check.mjs --self-test` builds a page that breaks every code once and must catch each one — run it
+  after changing the script.
+- The phone width is emulated directly through DevTools (`Emulation.setDeviceMetricsOverride`), so a 390 frame is exactly 390 — no
+  `<iframe>` needed; a page that still reports a frame wider than 390 is the U1 (M1) bug itself.
+- A mock-up or a template is checked the same way before it is shown for approval: a measurement that says green is the first
+  review, the eye is the second.
 
 ## M — PHONE (apps with a phone layout)
 

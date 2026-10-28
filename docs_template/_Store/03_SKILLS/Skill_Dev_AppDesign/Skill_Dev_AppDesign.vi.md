@@ -1,5 +1,5 @@
 ---
-version: 19
+version: 20
 lang: vi
 ---
 
@@ -225,6 +225,36 @@ Luật viết trong skill không tự thi hành: một luật đã chốt vẫn 
 - Mã thoát: 0 xanh · 1 lỗi (in từng chỗ) · **3 chưa kiểm đủ** (lớp cần trình duyệt không chạy được) — không bao giờ tính là xanh.
 - Tệp hệ cũ đóng băng ⇒ cảnh báo kèm danh sách nợ, không im. Miễn trừ khai kèm lý do; miễn trừ không còn khớp gì ⇒ lỗi.
 - Thêm một luật đo được vào skill ⇒ thêm mã vào bộ kiểm cùng lượt. Luật chưa đo được bằng máy (F0 · F0b) là việc của người duyệt.
+
+### Bộ kiểm bề mặt dùng chung — `scripts/ui_check.mjs`
+
+Skill này cài một phép kiểm bằng trình duyệt mà mọi app cùng chạy, để trang đã dựng được ĐO, không phán bằng mắt nhìn ảnh. Nó mở
+từng trang ở từng bề ngang trong Edge/Chrome (giao thức DevTools, headless, **có thanh cuộn thật** — `100vw` tràn đúng bằng bề
+ngang thanh cuộn là lỗi phải bắt) và đo bố cục:
+
+| mã | luật | đỏ khi |
+|---|---|---|
+| U1 | F12 · M1 | trang cuộn ngang, hoặc điện thoại nới khung bố cục để chứa thứ gì đó quá rộng |
+| U2 | F5 · F12 | một phần tử thò ra ngoài cửa sổ mà không nằm trong khung cố ý cuộn hay cắt nó |
+| U3 | F0c | control trên cùng một hàng lệch chiều cao quá 0,6 px |
+| U4 | F0 | khoảng trống chết: một bảng chiếm chưa tới `min_fill` (mặc định 60 %) bề ngang khung chứa nó |
+| U5 | F5 · F13 | chữ đè chữ, hoặc chữ đè lên biểu đồ (≥ 60×30) trong dòng chảy trang — nhãn cố ý đặt lên biểu đồ (absolute) không xét |
+| U6 | — | khung biểu đồ (`chart` · `bars` · `spark` · `donut` · `ring` · `graph`) không vẽ gì |
+| U7 | F14 | vùng cuộn thiếu `scrollbar-gutter: stable` |
+| U8 | F4 ② | control hoặc link không có nhãn đọc được |
+| U9 | F4 ③ | chữ Việt bị mã hoá vỡ thành `?` (`Th?ng k?`, một dấu `?` đứng một mình thay cho `—`) |
+
+- **Cấu hình** `ui_check.json` ở gốc repo: `url` (máy chủ dev hoặc một bản mẫu `file:///`) · `pages` (mỗi trang `{name, hash}` hoặc
+  `{name, click: "<selector>"}`) · `widths` (mặc định 1920 · 1440 · 1100 · 900 · 390; ≤ 768 đo như điện thoại) · `settle_ms` (chờ
+  animation) · `ignore` (selector không bao giờ xét: nền trang trí, lớp phủ đang đóng) · `codes` (`{"U4": {"min_fill": 0.5}}`,
+  `{"U6": {"off": true}}` — tắt một mã là một miễn trừ: ghi lý do trong repo).
+- **Chạy** `node scripts/ui_check.mjs` (· `--page <tên>` · `--widths 1440,390` · `--config <tệp>`). Nối vào cổng của repo
+  (`repoGates`) cho mọi repo có giao diện; một thay đổi bề mặt chưa xong cho tới khi xanh ở mọi bề ngang.
+- **Tự kiểm** `node scripts/ui_check.mjs --self-test` dựng một trang phạm mỗi mã một lần và phải bắt đủ từng mã — chạy sau mỗi lần
+  sửa script.
+- Bề ngang điện thoại được giả lập thẳng qua DevTools (`Emulation.setDeviceMetricsOverride`), nên khung 390 là đúng 390 — không
+  cần `<iframe>`; trang mà vẫn báo khung rộng hơn 390 thì đó chính là lỗi U1 (M1).
+- Bản mẫu hay template cũng kiểm như vậy trước khi đưa duyệt: phép đo xanh là vòng soát đầu, mắt người là vòng thứ hai.
 
 ## M — ĐIỆN THOẠI (app có bố cục điện thoại)
 
