@@ -27,6 +27,7 @@ import { sessionSets } from "../memory/sessionsets.js";
 import {
   exportMemoryBundle,
   importMemoryBundle,
+  containerSegments,
   mergeMemoryBundle,
   pruneDriveHost,
   readExportWatermark,
@@ -734,14 +735,24 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       return;
     }
     if (args.includes("--merge")) {
-      const r = await mergeMemoryBundle({
-        bundlePath: bundle,
-        dbPath: flagValue(args, "--db"),
-        keyFile: resolveShareKey(currentProjectRoot(), flagValue(args, "--key-file")),
-      });
-      console.log(`zemory memory import --merge — ${r.dbPath}`);
+      // The Drive store is segmented: `global_memory.enc` is only segment 1, sealed long ago; `.002`, `.003`… hold everything
+      // after it. Importing the file the docs name read segment 1 alone - measured 29/10, a new machine handed over this way
+      // would get 2,793 of 3,519 sessions and nothing after 2 Sept, with no word said. Pointed at segment 1, every segment
+      // beside it merges, in order (the same list the Drive sync reads).
+      const parts = containerSegments(bundle);
+      const keyFile = resolveShareKey(currentProjectRoot(), flagValue(args, "--key-file"));
+      let r: Awaited<ReturnType<typeof mergeMemoryBundle>> | null = null;
+      let sessionsAdded = 0;
+      let messagesAdded = 0;
+      for (const part of parts) {
+        r = await mergeMemoryBundle({ bundlePath: part, dbPath: flagValue(args, "--db"), keyFile });
+        sessionsAdded += r.sessionsAdded;
+        messagesAdded += r.messagesAdded;
+      }
+      if (!r) throw new Error(`nothing to import at ${bundle}`);
+      console.log(`zemory memory import --merge — ${r.dbPath}${parts.length > 1 ? `  (${parts.length} segments)` : ""}`);
       console.log(
-        `  +${r.sessionsAdded} session(s) · +${r.messagesAdded} message(s)  (now ${r.sessionsAfter} sessions · ${r.messagesAfter} messages)`,
+        `  +${sessionsAdded} session(s) · +${messagesAdded} message(s)  (now ${r.sessionsAfter} sessions · ${r.messagesAfter} messages)`,
       );
       const remaining = vectorRemaining(r.dbPath);
       if (remaining) console.log(`  ${remaining} message(s) need embedding → run \`zemory memory embed --all\` to vectorize the new ones.`);
@@ -1108,10 +1119,10 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         console.error(`CHANNEL SHORT by ${shortBy} message(s) (channel ${r.probeMessages} / store ${r.localMessages}) — suspected lost segment; check segment 1 of the shared store.`);
         process.exitCode = 1;
       }
-      console.log(`  the shared store is missing ${r.missing} vector(s) that this machine HAS.`);
-      if (!r.missing) console.log("  ✓ nothing missing — the shared store has every vector.");
-      else if (!r.pushed) console.log(`  (DRY-RUN) run again without --dry-run to append the catch-up block (~${mb(r.missing * 3072)}).`);
-      else console.log(`  ↑ APPENDED catch-up block: ${r.shipped} vector(s), ${mb(r.bytes)} — the shared store was not overwritten.`);
+      console.log(`  the shared store is missing ${r.messagesMissing} message(s) and ${r.missing} vector(s) that this machine HAS.`);
+      if (!r.missing && !r.messagesMissing) console.log("  ✓ nothing missing — the shared store has every message and every vector.");
+      else if (!r.pushed) console.log("  (DRY-RUN) run again without --dry-run to append the catch-up block.");
+      else console.log(`  ↑ APPENDED catch-up block: ${r.messagesShipped} message(s) · ${r.shipped} vector(s), ${mb(r.bytes)} — the shared store was not overwritten.`);
     } catch (error) {
       console.log(`  ⚠ ${error instanceof Error ? error.message : "catch-up failed"}`);
       // 🔴 STACK RA STDERR (2026-08-26). Lượt hỏng đầu tiên chỉ để lại `⚠ UNKNOWN: unknown error,
@@ -1751,6 +1762,21 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       `  folder: ${s.dir}  (${s.source === "env" ? "GLOBAL_MEMORY_DB env" : s.source === "pointer" ? "saved pointer" : "default ~/.zemory"})`,
     );
     console.log(`  size: ${s.exists ? `${(s.sizeKB / 1024).toFixed(1)} MB` : "(no DB yet)"}  ·  pointer: ${s.pointer}`);
+    // the counts two machines compare to know their memories match (29/10: the second machine had to query the DB by hand)
+    if (s.exists) {
+      try {
+        const { default: Database } = await import("better-sqlite3");
+        const db = new Database(s.dbPath, { readonly: true, fileMustExist: true });
+        try {
+          const c = db.prepare(Q.sessionTotals).get() as { n: number; m: number; last: string | null };
+          console.log(`  sessions: ${c.n.toLocaleString("en-US")}  ·  messages: ${c.m.toLocaleString("en-US")}  ·  newest: ${c.last ?? "-"}`);
+        } finally {
+          db.close();
+        }
+      } catch (e) {
+        console.log(`  sessions: could not be counted (${e instanceof Error ? e.message : String(e)})`);
+      }
+    }
     if (s.onCloud) console.log("  ⚠ this folder looks cloud-synced — a live DB here can corrupt. Prefer a plain local folder.");
     if (s.pinnedByEnv) console.log("  note: GLOBAL_MEMORY_DB pins the location; `memory relocate` is disabled until you unset it.");
     return;

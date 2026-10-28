@@ -35,7 +35,7 @@ import { scan } from "./ingest.js";
 import { embedFrontierId, embedPending, pruneOrphanVectors, vectorRemaining } from "./vectors.js";
 import { messageKey, receiveVectorsFrom, shipVectorsInto } from "./vecship.js";
 import { markVectorsShipped, unshippedVectorIds } from "./vectors.js";
-import { type ScopeLane, laneSqlClause } from "./scope.js";
+import { type ScopeLane, isExcluded, laneSqlClause } from "./scope.js";
 import { type SyncLevel, getScopeExclude, getSyncAttachments, getSyncLevel } from "../config/settings.js";
 import { Q } from "./store/queries.js";
 import { applyReplaces, followReplacedText, receiveReplaces, shipReplaces } from "./replace.js";
@@ -87,6 +87,12 @@ export interface ExportMemoryBundleOptions extends MemoryShareKeyOptions {
    * KHÔNG ghi đè kho chung (HP điều 16). Gói khi đó có thể 0 tin mà vẫn có ích.
    */
   vectorCatchUpIds?: number[];
+  /**
+   * `memory vectors-catchup` — local message ids the shared store does not hold at all (by the stable key): they travel in
+   * the same appended block, with their sessions. Measured 29/10: 1,755 messages never reached Drive - each past incident
+   * moved the watermark past a range no block carried (793 of them on the day the store moved to Docker).
+   */
+  messageCatchUpIds?: number[];
   /**
    * Do NOT stop the delta at the embed frontier: messages go now, their vectors follow in a later block through the
    * `vec_shipped` ledger. Only the p2p fast lane sets it (user 2026-10-12: *"Tin trước, vector sau"* — embedding first
@@ -246,7 +252,7 @@ interface RowsStats {
  */
 function buildRowsSnapshot(
   sourcePath: string,
-  opts: { excludeLanes?: ScopeLane[]; since?: number; until?: number; attachments?: boolean; ownHost?: string },
+  opts: { excludeLanes?: ScopeLane[]; since?: number; until?: number; attachments?: boolean; ownHost?: string; catchUpIds?: number[] },
 ): { path: string; cleanup: () => void; stats: RowsStats } {
   const dir = mkdtempSync(join(tmpdir(), "zemory-memory-rows-"));
   const out = join(dir, "global_memory.rows.db");
@@ -315,6 +321,15 @@ function buildRowsSnapshot(
              SELECT session_id, uuid, role, content, tool_name, timestamp FROM src.messages
              WHERE id > ?${untilSql}${ownMessages}${notExcluded("session_id")}`,
         ).run(since, ...ownParams, ...excl.params);
+        // catch-up: messages the shared store lacks, whatever their id or origin. The caller has already left out every
+        // session the scope excludes (vectorCatchUp); the id list sits in a TEMP table, so it never travels.
+        if (opts.catchUpIds?.length) {
+          db.exec(Q.catchUpIdsTable);
+          const put = db.prepare(Q.catchUpIdPut);
+          for (const id of opts.catchUpIds) put.run(id);
+          db.exec(Q.catchUpSessions);
+          db.exec(Q.catchUpMessages);
+        }
         db.exec("INSERT INTO main.known_stores SELECT * FROM src.known_stores");
         // the origin's whole replaces of the sessions carried here, so the receiver follows them (memory/replace.ts)
         shipReplaces(db);
@@ -387,6 +402,7 @@ export async function exportMemoryBundle(opts: ExportMemoryBundleOptions): Promi
           until,
           ownHost: opts.ownHost,
           attachments: opts.attachments ?? getSyncAttachments(),
+          catchUpIds: opts.messageCatchUpIds,
         })
       : await snapshotSqlite(sourcePath);
   const rows = "stats" in snapshot ? (snapshot.stats as RowsStats) : undefined;
@@ -1004,6 +1020,16 @@ function listSegments(dir: string, strict = false): { path: string; n: number }[
   }
   return out.sort((a, b) => a.n - b.n);
 }
+/**
+ * What `memory import <file> --merge` reads: segment 1 of a Drive store (`global_memory.enc`) stands for the whole store, so
+ * every segment beside it, in order; any other file is itself. An unreadable folder throws (never "only segment 1").
+ */
+export function containerSegments(file: string): string[] {
+  if (basename(file) !== MAIN_BUNDLE) return [file];
+  const segs = listSegments(dirname(resolve(file)), true).map((s) => s.path);
+  return segs.length ? segs : [file];
+}
+
 /**
  * Is the channel EMPTY, for the one decision "export a BASELINE (since = 0) instead of a delta": no segment in this dir.
  * The caller lists STRICTLY (unreadable ≠ empty — `segmentsReadVerdict`, incident 2026-09-17).
@@ -2464,7 +2490,10 @@ export async function vectorCatchUp(opts: {
 }): Promise<{
   container: string;
   missing: number;
+  /** Messages the shared store lacks altogether (by the stable key), outside the scope's excluded sessions. */
+  messagesMissing: number;
   shipped: number;
+  messagesShipped: number;
   bytes: number;
   pushed: boolean;
   /** Phiên/tin ĐẾM ĐƯỢC trong kho dựng lại TỪ KÊNH — vế "kênh có hụt không". */
@@ -2515,6 +2544,7 @@ export async function vectorCatchUp(opts: {
       !!d.prepare(Q.hasVecRowidsTable).get();
 
     const missingKeys = new Set<string>();
+    const probeKeys = new Set<string>();
     // 🔴 ĐẾM TIN/PHIÊN CỦA KÊNH — vế "CÓ HỤT KHÔNG", khác hẳn vế "thiếu vector" ở dưới.
     //
     // Vì sao phải có: `missing` bên dưới chỉ soi *"trong những tin ĐANG CÓ trên kênh, tin nào
@@ -2542,11 +2572,18 @@ export async function vectorCatchUp(opts: {
         .iterate() as Iterable<{ s: string; u: string | null; ts: string | null; c: string | null }>) {
         missingKeys.add(`${r.s}|${messageKey(r.u, r.ts, r.c)}`);
       }
+      // every message the shared store holds, by the stable key: what a local message must match to count as shipped
+      for (const r of p.prepare(Q.catchUpProbeKeys).iterate() as Iterable<{ s: string; u: string | null; ts: string | null; c: string | null }>) {
+        probeKeys.add(`${r.s}|${messageKey(r.u, r.ts, r.c)}`);
+      }
     } finally {
       p.close();
     }
 
     const ids: number[] = [];
+    // messages the shared store lacks altogether (not only their vector) - the scope's excluded sessions never travel
+    const msgIds: number[] = [];
+    const lanes = getScopeExclude();
     let localSessions = 0;
     let localMessages = 0;
     const src = new Database(dbPath, { readonly: true });
@@ -2565,12 +2602,25 @@ export async function vectorCatchUp(opts: {
           if (missingKeys.has(`${r.s}|${messageKey(r.u, r.ts, r.c)}`)) ids.push(r.i);
         }
       }
+      // A segment that could not be read says nothing about what is missing: shipping "everything it lacks" then would
+      // re-ship whole segments. Only a fully read store is compared.
+      if (!unreadable.length) {
+        for (const r of src.prepare(Q.catchUpLocalMessages).iterate() as Iterable<{
+          i: number; s: string; u: string | null; ts: string | null; c: string | null;
+          origin: string | null; host: string | null; source: string; account: string | null;
+        }>) {
+          if (probeKeys.has(`${r.s}|${messageKey(r.u, r.ts, r.c)}`)) continue;
+          // origin NULL reads as 'local', as laneSqlClause has it (COALESCE(origin,'local'))
+          if (isExcluded({ origin: r.origin ?? "local", host: r.host, source: r.source, account: r.account }, lanes)) continue;
+          msgIds.push(r.i);
+        }
+      }
     } finally {
       src.close();
     }
 
-    if (!ids.length || opts.dryRun) {
-      return { container, missing: ids.length, shipped: 0, bytes: 0, pushed: false, probeSessions, probeMessages, localSessions, localMessages, unreadable };
+    if ((!ids.length && !msgIds.length) || opts.dryRun) {
+      return { container, missing: ids.length, messagesMissing: msgIds.length, shipped: 0, messagesShipped: 0, bytes: 0, pushed: false, probeSessions, probeMessages, localSessions, localMessages, unreadable };
     }
 
     // ③ Gói CHỈ CÓ VECTOR: `sinceMessageId` đặt quá đỉnh kho ⇒ 0 tin, nhưng danh sách bù vẫn
@@ -2590,7 +2640,9 @@ export async function vectorCatchUp(opts: {
       keyFile: opts.keyFile,
       force: true,
       sinceMessageId: top,
-      vectorCatchUpIds: ids,
+      // the caught-up messages carry their vectors too (the receiver keys them by its own ids, as for any catch-up)
+      vectorCatchUpIds: [...ids, ...msgIds],
+      messageCatchUpIds: msgIds,
     });
 
     // KHOÁ KÊNH như mọi lượt ghi khác. Bản đầu của tôi nối thẳng — hai máy nối cùng lúc là
@@ -2624,7 +2676,7 @@ export async function vectorCatchUp(opts: {
     } finally {
       release();
     }
-    return { container, missing: ids.length, shipped: r.vectorsShipped ?? 0, bytes, pushed: true, probeSessions, probeMessages, localSessions, localMessages, unreadable };
+    return { container, missing: ids.length, messagesMissing: msgIds.length, shipped: r.vectorsShipped ?? 0, messagesShipped: r.rows?.messages ?? 0, bytes, pushed: true, probeSessions, probeMessages, localSessions, localMessages, unreadable };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
