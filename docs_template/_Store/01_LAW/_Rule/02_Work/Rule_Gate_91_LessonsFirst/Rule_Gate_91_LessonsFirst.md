@@ -2,7 +2,7 @@
 id: Rule_91
 aka: 02-91
 name: lessons-first
-version: 2
+version: 3
 kind: action
 code: 02_Work
 checked: [Rule_Gate_01_DoneMeansRun, Rule_Keys_11_VerifyClaims, Rule_Gate_34_DocsFollowChange]
@@ -41,8 +41,11 @@ says why.
   block and reds the gate; the changelog entry says `L-12`.
 
 ## Check
-- The guard blocks a new changelog entry that reports a fix (`sửa lỗi` · `fix` · `bug` · `sự cố` · `incident` · `regression` ·
-  `hồi quy`) and names no `L-<n>` and no `không có bài học:` / `no lesson:` line, in a repo that carries the ledger frame.
+- The guard blocks a new changelog entry that reports a fix and names no lesson, in a repo that carries the ledger frame. A fix
+  is a fix word (`sửa lỗi` · `fix` · `bug` · `sự cố` · `incident` · `regression` · `hồi quy`), or a line written as *fault ⇒
+  what was done* (a fault word such as `lỗi` · `hỏng` · `lệch` · `thiếu` · `trễ` · `hở` · `timeout`, and the arrow `⇒`). A lesson
+  is named by `L-<n>` (`L-7` · `L-007`, or `L007` of a ledger numbered before the frame), or by the line `không có bài học:` /
+  `no lesson:`.
 - `conform` (frame `Cons_Gate_17_LessonsLedger`) reds a missing, unwritten or template ledger.
 
 ## Links · Liên kết

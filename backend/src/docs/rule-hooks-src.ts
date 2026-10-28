@@ -622,7 +622,10 @@ const OWN = /(^|\/)docs\/agent\/03_SKILLS\/(Skill_Own_[A-Za-z0-9]+)\/(.+)$/;
 // an article of the repo's own constitution: numbered from 101, inside the constitution shelf (any chapter)
 const OWN_ART = /(^|\/)docs\/agent\/01_LAW\/_Cons\/(?:[^\/]+\/)?Cons_(?:Gate|Keys|Core)_(\d{3})_[A-Za-z0-9]+\/[^\/]+$/;
 const FROM = /^from:/m;
-function heads(t) { return (String(t).replace(/\r\n/g, "\n").match(/^## .*$/gm) || []).map((s) => s.trim()); }
+// the frame's sections: its "##" headings. An entry of a growing list is no section - the lessons ledger (Cons_Gate_17)
+// writes "### L-<n>", and its first template wrote "## L-<n>", which a repo must be able to replace
+const ENTRY = /^## L-?\d+\b/;
+function heads(t) { return (String(t).replace(/\r\n/g, "\n").match(/^## .*$/gm) || []).map((s) => s.trim()).filter((h) => !ENTRY.test(h)); }
 // the file as it will be after this call
 function afterText(payload, abs, exists) {
   const ti = payload.tool_input || {};
@@ -644,8 +647,8 @@ function check(payload, root, policy) {
     if (!e || !HARNESS.test(e.rel)) return null;
     if (fs.existsSync(path.join(root, "docs_template", "_Store"))) return null;
     const abs = path.isAbsolute(e.abs) ? e.abs : path.join(root, e.abs);
-    const how = " The frame's sections belong to HS: fill them; a section the repo needs and the frame lacks is proposed to the " +
-      "zemory session (Rule_Gate_85_ProposeChecked).";
+    const how = " The frame's sections belong to HS: fill them; a section the repo needs and the frame lacks is added to the " +
+      "frame on HS by this repo's session, once the user approves (Rule_Gate_83_HarnessFromStore step 3a).";
     if (CONS.test(e.rel) && e.exists) {
       const diff = shapeDiff(heads(fs.readFileSync(abs, "utf8")), heads(afterText(payload, abs, true)));
       return diff ? blocked(root, policy, "02-83", e.rel + " fills a constitution frame, and this change alters its sections:" + diff + how) : null;
@@ -862,7 +865,12 @@ function check(payload, root, policy) {
   // none. A repo without the frame is not judged. The way through is the lesson or the reason line; there is no flag.
   hook("02-91_lessons-first.cjs", String.raw`
 const FIX = /(sửa lỗi|sua loi|\bfix(?:ed|es)?\b|\bbug\b|sự cố|su co|\bincident\b|\bregression\b|hồi quy|hoi quy)/i;
-const MARK = /\bL-\d+\b|không có bài học\s*:|khong co bai hoc\s*:|no lesson\s*:/i;
+// a fix written as "fault ⇒ what was done" (DW pilot 28/10: "Làn POS hở 16 phút ⇒ khoá theo từng dim" named no fix word):
+// one line holding a fault word and the arrow
+const FAULT = /(?:^|[^\p{L}])(?:lỗi|hỏng|gãy|chết|mất|lệch|thiếu|sót|trễ|đỏ|hở|kẹt|treo|tụt|thừa|sai|deadlock|timeout|Msg\s*\d{3,5})(?![\p{L}])/iu;
+const faultArrow = (text) => text.split("\n").some((l) => l.includes("⇒") && FAULT.test(l));
+// L-<n>, padded or not (L-7 · L-007); a ledger kept before the frame numbered L<nnn> (DW: L001…L010, cited in commits)
+const MARK = /\bL-?\d+\b|không có bài học\s*:|khong co bai hoc\s*:|không bài học\s*:|no lesson\s*:/i;
 const LEDGER = /(^|\/)(0[56]_CHANGES|CHANGELOG)\.md$/i;
 function hasLedger(root) {
   const base = path.join(root, "docs", "agent", "01_LAW", "_Cons");
@@ -879,7 +887,7 @@ function check(payload, root, policy) {
     if (!e || !LEDGER.test(e.rel) || !hasLedger(root)) return null;
     const text = e.newLines.join("\n");
     if (!/^\s*##\s+\[/m.test(text)) return null; // only a new entry is judged, not a later touch of an old one
-    if (!FIX.test(text) || MARK.test(text)) return null;
+    if (!(FIX.test(text) || faultArrow(text)) || MARK.test(text)) return null;
     return blocked(root, policy, "02-91", "a new changelog entry in " + e.rel + " reports a fix but names no lesson: add L-<n> to the " +
       "lessons ledger (Cons_Gate_17_LessonsLedger) and name it in the entry, or write \"không có bài học: <lý do>\" when new code " +
       "cannot bring the fault back (a one-off data fault, an outside outage).");

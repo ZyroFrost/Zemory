@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 # Rule_Gate_91_LessonsFirst — Sửa xong là khi bài học đã được ghi
@@ -34,8 +34,10 @@ Lỗi mà code mới không thể đem lại (một bản ghi sai một lần, s
   khoá và làm cổng đỏ; mục changelog ghi `L-12`.
 
 ## Máy kiểm
-- Guard chặn một mục changelog mới báo sửa lỗi (`sửa lỗi` · `fix` · `bug` · `sự cố` · `incident` · `regression` · `hồi quy`) mà không
-  nêu `L-<số>` và không có dòng `không có bài học:` / `no lesson:`, ở repo có khung sổ kinh nghiệm.
+- Guard chặn một mục changelog mới báo sửa lỗi mà không nêu bài học, ở repo có khung sổ kinh nghiệm. Báo sửa lỗi là có từ sửa lỗi
+  (`sửa lỗi` · `fix` · `bug` · `sự cố` · `incident` · `regression` · `hồi quy`), hoặc một dòng viết dạng *lỗi ⇒ việc đã làm* (một từ
+  báo lỗi như `lỗi` · `hỏng` · `lệch` · `thiếu` · `trễ` · `hở` · `timeout`, kèm mũi tên `⇒`). Nêu bài học là có `L-<số>` (`L-7` ·
+  `L-007`, hoặc `L007` của sổ đánh số trước khi có khung), hoặc dòng `không có bài học:` / `no lesson:`.
 - `conform` (khung `Cons_Gate_17_LessonsLedger`) đỏ khi sổ thiếu, chưa viết, hoặc còn là bản mẫu.
 
 ## Links · Liên kết

@@ -6,12 +6,13 @@
 // off the standard into the repo's TODO ledger, so the repo's next session finds it in the file it reads first.
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
+import { withLock } from "./sync-lock.js";
 import { SHELF } from "./harness-names.js";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { conform, type ConformItem } from "./conform.js";
 import { generateGuards, guardDrift } from "./guard-gen.js";
-import { applyKit, repoKit, type KitApplyResult } from "./kit-apply.js";
+import { applyKit, rebuildStaleSets, repoKit, setsBehind, type KitApplyResult } from "./kit-apply.js";
 import { normalizeOwnConstitution, pruneMarkerProtected, repointLinks } from "./kit-migrate.js";
 import { regionRepos, repoRole } from "./region-links.js";
 import { rewriteInPlace, STIGNORE_ALLOW_START, writeStignoreAllow, type StignoreAllowResult } from "./stignore-gen.js";
@@ -94,9 +95,35 @@ export interface KitSyncResult {
   stignore: StignoreAllowResult | null;
   /** lines a slot requires added to / forbids removed from a line-list file ("<file>: + <line>"); empty on a dry run */
   slotLines: string[];
+  /** sets beside HS that were behind it: rebuilt (apply) or that a pass would rebuild (dry run), and the ones that failed */
+  sets: { behind: string[]; failed: string[] };
 }
 
-export function kitSync(root: string, opts: { kitRef?: string; apply: boolean }): KitSyncResult | { error: string } {
+/** The lock a writing sync of the set folders holds (beside them, never committed). */
+export const setsLockFile = (storeDir = STORE_DIR): string => join(dirname(storeDir), ".harness-state", "assemble.lock");
+/** The lock a writing sync of one repo holds. */
+export const repoLockFile = (root: string): string => join(harnessPathsAt(root).agent, "..", ".harness-state", "sync.lock");
+
+// `lockWaitMs`: how long to wait for another sync of the same repo; the daemon passes 0 (it answers at once, never blocks)
+export function kitSync(root: string, opts: { kitRef?: string; apply: boolean; sets?: boolean; lockWaitMs?: number }): KitSyncResult | { error: string } {
+  // plan/29 §14e ④: a part changed on HS leaves the set folders behind it; `zemory sync` of the repo that changed it
+  // rebuilds them first (`sets: true`), so no repo depends on the zemory session to run the assembly by hand. Only that
+  // command asks: an init builds one new repo, the app's button updates one repo, a manager's pass over its repos comes
+  // right after its own - none of them pays the ~30 s measure of the sets
+  let sets: KitSyncResult["sets"] = { behind: [], failed: [] };
+  if (!opts.sets) {
+    /* not asked */
+  } else if (opts.apply) {
+    const r = withLock(setsLockFile(), "rebuild the sets", rebuildStaleSets);
+    if ("error" in r) return { error: r.error };
+    sets = { behind: r.rebuilt, failed: r.failed };
+  } else sets = { behind: setsBehind().map((k) => k.name), failed: [] };
+  // §14e ③: two syncs of one repo (a manager's and the repo's own) never write it at the same time
+  if (!opts.apply) return syncRepo(root, opts, sets);
+  return withLock(repoLockFile(root), `sync ${basename(resolve(root))}`, () => syncRepo(root, opts, sets), opts.lockWaitMs);
+}
+
+function syncRepo(root: string, opts: { kitRef?: string; apply: boolean }, sets: KitSyncResult["sets"]): KitSyncResult | { error: string } {
   const assembly = applyKit(root, { kitRef: opts.kitRef, apply: opts.apply });
   if ("error" in assembly) return { error: assembly.error };
   const own = normalizeOwnConstitution(root, opts.apply);
@@ -123,7 +150,7 @@ export function kitSync(root: string, opts: { kitRef?: string; apply: boolean })
     // measured AFTER the parts are in place: what the pass could not fix is the repo's own work
     todo = writeStandardTodo(root, conform(root).items);
   }
-  return { assembly, own, repointed, dropped, guard, todo, stignore, slotLines };
+  return { assembly, own, repointed, dropped, guard, todo, stignore, slotLines, sets };
 }
 
 /** Files a slot gate may complete line by line: each line is one pattern, so a missing required text is one more line. */

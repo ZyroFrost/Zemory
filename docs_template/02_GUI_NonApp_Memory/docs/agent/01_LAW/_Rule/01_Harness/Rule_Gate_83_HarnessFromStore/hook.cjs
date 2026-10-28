@@ -118,7 +118,10 @@ const OWN = /(^|\/)docs\/agent\/03_SKILLS\/(Skill_Own_[A-Za-z0-9]+)\/(.+)$/;
 // an article of the repo's own constitution: numbered from 101, inside the constitution shelf (any chapter)
 const OWN_ART = /(^|\/)docs\/agent\/01_LAW\/_Cons\/(?:[^\/]+\/)?Cons_(?:Gate|Keys|Core)_(\d{3})_[A-Za-z0-9]+\/[^\/]+$/;
 const FROM = /^from:/m;
-function heads(t) { return (String(t).replace(/\r\n/g, "\n").match(/^## .*$/gm) || []).map((s) => s.trim()); }
+// the frame's sections: its "##" headings. An entry of a growing list is no section - the lessons ledger (Cons_Gate_17)
+// writes "### L-<n>", and its first template wrote "## L-<n>", which a repo must be able to replace
+const ENTRY = /^## L-?\d+\b/;
+function heads(t) { return (String(t).replace(/\r\n/g, "\n").match(/^## .*$/gm) || []).map((s) => s.trim()).filter((h) => !ENTRY.test(h)); }
 // the file as it will be after this call
 function afterText(payload, abs, exists) {
   const ti = payload.tool_input || {};
@@ -140,8 +143,8 @@ function check(payload, root, policy) {
     if (!e || !HARNESS.test(e.rel)) return null;
     if (fs.existsSync(path.join(root, "docs_template", "_Store"))) return null;
     const abs = path.isAbsolute(e.abs) ? e.abs : path.join(root, e.abs);
-    const how = " The frame's sections belong to HS: fill them; a section the repo needs and the frame lacks is proposed to the " +
-      "zemory session (Rule_Gate_85_ProposeChecked).";
+    const how = " The frame's sections belong to HS: fill them; a section the repo needs and the frame lacks is added to the " +
+      "frame on HS by this repo's session, once the user approves (Rule_Gate_83_HarnessFromStore step 3a).";
     if (CONS.test(e.rel) && e.exists) {
       const diff = shapeDiff(heads(fs.readFileSync(abs, "utf8")), heads(afterText(payload, abs, true)));
       return diff ? blocked(root, policy, "02-83", e.rel + " fills a constitution frame, and this change alters its sections:" + diff + how) : null;

@@ -3081,7 +3081,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // A kit repo (folder harness): the same pass as `zemory sync` in that repo — docs/kit-sync.ts, one implementation.
       if (repoKit(known.root)) {
         try {
-          const ks = kitSync(known.root, { apply: true });
+          // the button brings ONE repo up to HS on the daemon's loop: rebuilding the sets (~30 s) is the job of the sync of
+          // the repo that changed HS, and a sync of this repo already running is answered at once, not waited on
+          const ks = kitSync(known.root, { apply: true, lockWaitMs: 0 });
           if ("error" in ks) return json(res, { ok: false, error: ks.error });
           const steps = ks.assembly.steps;
           const written = steps.filter((s) => s.verdict === "absent" || s.verdict === "clean" || s.verdict === "merged").length;

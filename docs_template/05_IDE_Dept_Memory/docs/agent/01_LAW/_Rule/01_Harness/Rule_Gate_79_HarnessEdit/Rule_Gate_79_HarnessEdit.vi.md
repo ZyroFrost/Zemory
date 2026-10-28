@@ -1,13 +1,14 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # Rule_Gate_79_HarnessEdit — Changing HS needs the requester's approval; a law whose breach cannot be undone needs a machine check
 
 ## Luật là gì
 HS (`docs_template/_Store`) và các file harness không luật nào khác giữ (`docs/plan/`, `AGENTS.md`, `CLAUDE.md`) chỉ đổi khi người
-dùng đã cho phép đúng thay đổi đó trong phiên. Trong repo, bốn thư mục harness theo `Rule_Gate_83_HarnessFromStore`: repo không
-bao giờ sửa.
+dùng đã cho phép đúng thay đổi đó trong phiên. Luật áp cho phiên của MỌI repo, không riêng phiên zemory: repo tự sửa phần chung
+trên HS (`Rule_Gate_83_HarnessFromStore` bước 3a) và hỏi trước. Trong repo, bốn thư mục harness theo
+`Rule_Gate_83_HarnessFromStore`: repo không bao giờ sửa bản chép.
 
 ## Khi nào áp
 - Agent sắp tạo, sửa, xoá hay dời bất kỳ thứ gì trong HS, trong `docs/plan/`, hoặc `AGENTS.md` / `CLAUDE.md`.

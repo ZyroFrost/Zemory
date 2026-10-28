@@ -113,7 +113,12 @@ const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|03_SKIL
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 
 const FIX = /(sửa lỗi|sua loi|\bfix(?:ed|es)?\b|\bbug\b|sự cố|su co|\bincident\b|\bregression\b|hồi quy|hoi quy)/i;
-const MARK = /\bL-\d+\b|không có bài học\s*:|khong co bai hoc\s*:|no lesson\s*:/i;
+// a fix written as "fault ⇒ what was done" (DW pilot 28/10: "Làn POS hở 16 phút ⇒ khoá theo từng dim" named no fix word):
+// one line holding a fault word and the arrow
+const FAULT = /(?:^|[^\p{L}])(?:lỗi|hỏng|gãy|chết|mất|lệch|thiếu|sót|trễ|đỏ|hở|kẹt|treo|tụt|thừa|sai|deadlock|timeout|Msg\s*\d{3,5})(?![\p{L}])/iu;
+const faultArrow = (text) => text.split("\n").some((l) => l.includes("⇒") && FAULT.test(l));
+// L-<n>, padded or not (L-7 · L-007); a ledger kept before the frame numbered L<nnn> (DW: L001…L010, cited in commits)
+const MARK = /\bL-?\d+\b|không có bài học\s*:|khong co bai hoc\s*:|không bài học\s*:|no lesson\s*:/i;
 const LEDGER = /(^|\/)(0[56]_CHANGES|CHANGELOG)\.md$/i;
 function hasLedger(root) {
   const base = path.join(root, "docs", "agent", "01_LAW", "_Cons");
@@ -130,7 +135,7 @@ function check(payload, root, policy) {
     if (!e || !LEDGER.test(e.rel) || !hasLedger(root)) return null;
     const text = e.newLines.join("\n");
     if (!/^\s*##\s+\[/m.test(text)) return null; // only a new entry is judged, not a later touch of an old one
-    if (!FIX.test(text) || MARK.test(text)) return null;
+    if (!(FIX.test(text) || faultArrow(text)) || MARK.test(text)) return null;
     return blocked(root, policy, "02-91", "a new changelog entry in " + e.rel + " reports a fix but names no lesson: add L-<n> to the " +
       "lessons ledger (Cons_Gate_17_LessonsLedger) and name it in the entry, or write \"không có bài học: <lý do>\" when new code " +
       "cannot bring the fault back (a one-off data fault, an outside outage).");

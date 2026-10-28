@@ -29,11 +29,51 @@
       }
     },
     {
+      "note": "a fix written as fault => what was done, with no fix word and no lesson",
+      "files": {
+        "docs/agent/05_CHANGES.md": "# Changes\n",
+        "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md": "# Sổ kinh nghiệm\n## Lessons\n### L-7 — x\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/05_CHANGES.md",
+        "old_string": "# Changes",
+        "new_string": "# Changes\n\n## [2026-10-28] — làn POS\n- Làn POS hở 16 phút ⇒ khoá theo từng dim"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
       "note": "a request this rule's keywords catch",
       "prompt": "sửa lỗi xong rồi"
     }
   ],
   "pass": [
+    {
+      "note": "a fix entry names its lesson the way a ledger kept before the frame numbers it (L010)",
+      "files": {
+        "docs/agent/05_CHANGES.md": "# Changes\n",
+        "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md": "# Sổ kinh nghiệm\n## Lessons\n### L010 — x\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/05_CHANGES.md",
+        "old_string": "# Changes",
+        "new_string": "# Changes\n\n## [2026-10-28] — khớp dòng tụt 89,7% ⇒ huỷ món về muộn (L010)"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "outside": ".allow-outside"
+        }
+      }
+    },
     {
       "note": "the fix entry names its lesson",
       "files": {
