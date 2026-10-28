@@ -237,6 +237,11 @@ function runMove(env, argv, dir) {
 
 function main() {
   const env = { ...readEnv(join(COMPOSE_DIR, ".env")), ...process.env };
+  // internal: the hooks start this in the background (host-hook.mjs healDriveSoon) - heal a stale Drive mount, nothing else
+  if (process.argv[2] === "--heal-drive") {
+    try { healDriveMount(env); } catch { /* fail-open */ }
+    process.exit(0);
+  }
   // one install per machine: the choice the installers recorded decides which command answers
   const choiceFile = installChoiceFile(env);
   const chosen = readInstallChoice(choiceFile);

@@ -26,6 +26,19 @@ export const Q = {
   sessionAliasOf: "SELECT session_id AS id FROM session_alias WHERE alias_id = ?",
   // every session with its message count, ordered so two machines hash the same list the same way (`memory hosts --sets`)
   sessionSetRows: "SELECT source, id, message_count AS n FROM sessions ORDER BY source, id",
+  // message catch-up (`memory vectors-catchup`): every local message with its session's scope columns, the list of ids the
+  // shared store lacks (a TEMP table: the list never travels), and the rows those ids carry into the bundle
+  catchUpLocalMessages:
+    "SELECT m.id AS i, m.session_id AS s, m.uuid AS u, m.timestamp AS ts, m.content AS c, se.origin, se.host, se.source, se.account FROM messages m JOIN sessions se ON se.id = m.session_id",
+  catchUpProbeKeys: "SELECT session_id AS s, uuid AS u, timestamp AS ts, content AS c FROM messages",
+  catchUpIdsTable: "CREATE TEMP TABLE IF NOT EXISTS catchup_ids (id INTEGER PRIMARY KEY)",
+  catchUpIdPut: "INSERT OR IGNORE INTO temp.catchup_ids (id) VALUES (?)",
+  catchUpSessions:
+    "INSERT OR IGNORE INTO main.sessions SELECT * FROM src.sessions WHERE id IN (SELECT session_id FROM src.messages WHERE id IN (SELECT id FROM temp.catchup_ids))",
+  catchUpMessages:
+    "INSERT INTO main.messages (session_id, uuid, role, content, tool_name, timestamp) SELECT session_id, uuid, role, content, tool_name, timestamp FROM src.messages WHERE id IN (SELECT id FROM temp.catchup_ids)",
+  // the totals two machines compare to know their memories match (`memory where`)
+  sessionTotals: "SELECT COUNT(*) AS n, COALESCE(SUM(message_count), 0) AS m, MAX(ended_at) AS last FROM sessions",
   // the encoded folder name is spelt with the drive letter's case of the cwd Claude Code saw: compare without case
   sessionAliasOfAnyCase: "SELECT session_id AS id FROM session_alias WHERE lower(alias_id) = lower(?)",
   upsertSessionAlias: "INSERT INTO session_alias (alias_id, session_id) VALUES (?, ?) ON CONFLICT(alias_id) DO UPDATE SET session_id = excluded.session_id",

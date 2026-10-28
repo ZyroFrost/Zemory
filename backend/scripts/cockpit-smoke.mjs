@@ -103,8 +103,13 @@ try {
   browser.kill();
   pinging = false;
   await pinger;
-  await sleep(500);
-  try { rmSync(profile, { recursive: true, force: true }); } catch { /* the browser may still hold it */ }
+  // Edge's child processes outlive the kill by a few seconds and hold the profile: a single try failed silently and left
+  // 0.66 GB of profiles in TEMP (measured 2026-10-29, 7 folders). Retry for up to ~10 s, and say so when it still fails.
+  try {
+    rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 500 });
+  } catch (e) {
+    console.error(`cockpit-smoke: could not remove the browser profile ${profile} (${e?.code ?? e}) - delete it by hand`);
+  }
 }
 
 const answered = pings.slow + pings.failed === 0;

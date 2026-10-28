@@ -296,11 +296,12 @@ async function main() {
 
   sock.close();
   stopBrowser(child, profile);
-  await sleep(500);
+  // the browser's child processes hold the profile a few seconds past the stop: one try failed silently and left the
+  // throwaway profiles in TEMP (2026-10-29, cockpit-smoke the same way) - retry, and say so when it still fails
   try {
-    rmSync(profile, { recursive: true, force: true });
-  } catch {
-    /* a throwaway profile - nothing to keep */
+    rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 500 });
+  } catch (e) {
+    console.error(`shoot-ui: could not remove the browser profile ${profile} (${e?.code ?? e}) - delete it by hand`);
   }
   console.log(`\nXong. Anh o: ${OUT}`);
   console.log("Check them BY EYE before committing: any screen still loading should be recaptured with a longer wait.");
