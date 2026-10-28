@@ -1,5 +1,5 @@
 ---
-version: 15
+version: 16
 lang: vi
 ---
 
@@ -103,4 +103,3 @@ Thêm một lớp lưu/chỉ mục mới mà **không** thêm được cổng ca
 ## Implements · Thi hành luật
 - `Rule_Gate_01_DoneMeansRun` — the path to a second machine, measured at the receiving end · đường sang máy thứ hai, đo ở đầu nhận
 - `Rule_Gate_21_WhatEntersGit` — secrets travel by the sync channel, never by git · bí mật đi qua kênh đồng bộ, không qua git
-- `Rule_Gate_91_LessonsFirst` — a fault fixed on the way gets its lesson before done · lỗi gặp trên đường phải có bài học trước khi xong

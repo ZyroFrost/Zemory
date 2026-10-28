@@ -124,6 +124,9 @@ export function ensureEngine(env, o = {}) {
  * the letter restarts: the mount is still listed, every read fails with "Invalid argument" (measured 2026-10-27: Google
  * Drive restarted at 03:30, the auto-sync failed every round for 9 hours). At the keep-alive look: a stale mount whose letter
  * still exists on Windows is mounted again and the container restarted so its bind mount sees it. Fail-open.
+ * A healthy mount can still be invisible to the container: a container started while the letter was missing keeps an empty
+ * bind mount (measured 2026-10-28, fixed by a hand `docker compose restart`). The folder has files in WSL and none in the
+ * running container ⇒ the container is restarted ("rebound").
  */
 export function healDriveMount(env, o = {}) {
   const platform = o.platform ?? process.platform;
@@ -131,15 +134,24 @@ export function healDriveMount(env, o = {}) {
   const m = drive.match(/^\/mnt\/([a-z])(\/|$)/i);
   if (platform !== "win32" || !env.ZEMORY_WSL_DISTRO || !m) return "skipped";
   const run = o.run ?? ((args) => spawnSync("wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, ...args], { encoding: "utf8", windowsHide: true, timeout: 60_000 }));
+  const container = env.ZEMORY_CONTAINER || "zemory";
   const look = run(["--exec", "stat", "-c", "%F", drive]);
-  if (look.status === 0) return "ok";
+  if (look.status === 0) {
+    const first = (r) => (r.status === 0 ? String(r.stdout ?? "").trim() : null);
+    const inWsl = first(run(["--exec", "sh", "-c", 'ls -A "$1" | head -1', "sh", drive]));
+    if (!inWsl) return "ok"; // nothing to see, or the look failed: no evidence the container is blind
+    const inContainer = first(run(["--exec", "docker", "exec", container, "sh", "-c", "ls -A /host/drive | head -1"]));
+    if (inContainer !== "") return "ok"; // it sees files, or it is not running (the engine look owns that)
+    run(["--exec", "docker", "restart", container]);
+    return "rebound";
+  }
   if (!/invalid argument/i.test(String(look.stderr ?? ""))) return "absent"; // not mounted, or the folder is gone: nothing to heal
   const letter = m[1].toLowerCase();
   const exists = o.letterExists ?? ((l) => existsSync(`${l.toUpperCase()}:\\`));
   if (!exists(letter)) return "absent";
   run(["-u", "root", "--exec", "sh", "-c", `umount -l /mnt/${letter}; mount /mnt/${letter}`]);
   if (run(["--exec", "stat", "-c", "%F", drive]).status !== 0) return "failed";
-  run(["--exec", "docker", "restart", env.ZEMORY_CONTAINER || "zemory"]);
+  run(["--exec", "docker", "restart", container]);
   return "healed";
 }
 

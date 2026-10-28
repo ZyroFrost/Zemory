@@ -2,7 +2,7 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 20
+version: 21
 type: process
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
 ---
@@ -201,4 +201,3 @@ files, never writes back to the files).
 ## Implements · Thi hành luật
 - `Rule_Gate_34_DocsFollowChange` — the documents brought up to date before the session ends · tài liệu được cập nhật trước khi hết phiên
 - `Rule_Gate_38_TodoDoor` — closing finished items and archiving the ledger · đóng mục đã xong và dời sổ
-- `Rule_Gate_91_LessonsFirst` — the changelog entry of a fix names its lesson · mục changelog của lần sửa nêu bài học

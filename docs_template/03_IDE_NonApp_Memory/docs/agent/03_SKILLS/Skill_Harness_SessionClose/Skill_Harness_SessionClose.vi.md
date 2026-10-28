@@ -1,5 +1,5 @@
 ---
-version: 20
+version: 21
 lang: vi
 ---
 
@@ -196,4 +196,3 @@ ghi ngược file).
 ## Implements · Thi hành luật
 - `Rule_Gate_34_DocsFollowChange` — the documents brought up to date before the session ends · tài liệu được cập nhật trước khi hết phiên
 - `Rule_Gate_38_TodoDoor` — closing finished items and archiving the ledger · đóng mục đã xong và dời sổ
-- `Rule_Gate_91_LessonsFirst` — the changelog entry of a fix names its lesson · mục changelog của lần sửa nêu bài học
