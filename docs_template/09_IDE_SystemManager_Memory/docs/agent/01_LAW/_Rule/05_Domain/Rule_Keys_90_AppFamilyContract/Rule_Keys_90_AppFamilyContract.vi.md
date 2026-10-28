@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 6
 lang: vi
 ---
 # Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
@@ -25,6 +25,15 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
    app không bao giờ đổi cấu trúc (`Cons_Gate_11_WriteBoundary`).
 2. Danh tính dùng chung: mỗi người một tài khoản cho mọi app. Vai theo từng app (mỗi người một vai trong mỗi app). Vai của mọi app
    cấp từ một màn quản trị của `system-manager`, mỗi app một cột vai; app không dựng màn quản trị riêng.
+   BỘ VAI của mỗi app (tên vai, thứ tự trên màn, nhãn) là một bảng trong DB của hệ, do repo `app-data` giữ; DB từ chối vai không
+   thuộc bộ của app. Màn quản trị và mọi app đọc bộ vai từ bảng đó; không bên nào giữ bản chép trong code. App mới hay bộ vai đổi ⇒
+   một model của repo `app-data`, không bao giờ là code.
+   Mọi vai nằm trên MỘT khung 4 cấp cố định, cùng số là cùng cấp ở mọi app: 1 `viewer` (xem) · 2 `operator` (làm việc trên dữ liệu
+   của app) · 3 `manager` (+ tạo tài khoản và cấp vai thấp hơn mình, chỉ trong app đó) · 4 `admin` (mọi việc trong app; cấp tới
+   `manager`). Cấp cao có mọi quyền của cấp thấp. Mỗi app chỉ lấy những cấp nó cần (hai cấp cũng được), thêm bớt về sau được, không
+   bao giờ có cấp ngoài khung. Người cấp chỉ cấp được vai thấp hơn vai của mình, trong app mình có vai; `admin` của một app do `admin`
+   của `system-manager` cấp. `system-manager` giữ chuẩn này và kiểm khi ghi vai. Chức danh hay phòng ban không phải vai: đó là thuộc
+   tính của người, lấy từ HR, app dùng để thu hẹp dữ liệu một người thấy, không bao giờ gõ tay thành vai.
 3. Mọi app ghi mỗi sự kiện thuộc sáu nhóm thành một dòng log vận hành của hệ: đăng nhập · kết thúc phiên · bị từ chối truy cập ·
    đổi tài khoản và vai · truy vấn dữ liệu tự do · đổi cài đặt ảnh hưởng người khác. Mã và mức lấy từ bảng hợp đồng của repo
    `app-data`; mã chưa có ⇒ xin repo đó thêm trước. Không ghi mật khẩu, token, chuỗi kết nối; người chưa biết là NULL, không phải
@@ -46,6 +55,16 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
 - ✗ Sai: giữ trang đăng nhập và cookie riêng, hoặc nhờ `system-manager` phục vụ hộ trang và API của app.
 - ✓ Đúng: app bỏ trang đăng nhập, đọc phiên của `system-manager` và kiểm vai của mình ở backend, chuyển người chưa có phiên về trang
   đăng nhập chung kèm địa chỉ quay lại, và vẫn tự phục vụ trang của nó dưới đường dẫn của nó.
+- Tình huống: một app chỉ dành cho nhóm IT bỏ vai chỉ-xem, giữ hai vai.
+- ✗ Sai: sửa danh sách vai ghi trong code của app và bản chép ghi trong code của `system-manager`; hai bản trôi lệch, màn quản trị
+  vẫn cho chọn vai mà app nay từ chối.
+- ✓ Đúng: repo `app-data` sửa các dòng của app trong bảng vai của hệ bằng một model; màn quản trị và app cùng đọc bộ vai mới, không
+  đổi code.
+- Tình huống: một app sổ rủi ro muốn đặt vai theo chức danh (giám đốc điều hành, quản lý vùng, kiểm soát nội bộ).
+- ✗ Sai: biến mỗi chức danh thành một vai của app; chức danh gõ tay, lệch với HR, và không ai biết chức danh nào được cấp cho chức
+  danh nào.
+- ✓ Đúng: app lấy những cấp của khung nó cần cho việc người dùng được làm; chức danh và phòng ban lấy từ dữ liệu HR, dùng để thu hẹp
+  bảng và dòng mỗi người thấy.
 
 ## Máy kiểm
 - Nhắc theo từ khoá: lời yêu cầu về DB riêng của app, đăng nhập riêng hay chung, màn quản trị, vai hay log vận hành thì hiện luật

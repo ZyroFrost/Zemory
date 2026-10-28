@@ -1,8 +1,8 @@
 {
   "prompt": {
     "kind": "Rule_90",
-    "re": "\\b(db rieng|database rieng|co so du lieu rieng|own database|separate database|man quan tri|trang quan tri|admin screen|admin page|cap vai|cap quyen|grant role|auth_userapprole|auth_session|log_operation|log van hanh|ma log|log code|actionname|dang nhap chung|dang nhap rieng|trang dang nhap|shared sign-in|single sign-on|sso|own login|sign-in page)\\b",
-    "text": "[zemory] Rule_Keys_90_AppFamilyContract: an app of a family uses the family's ONE database (kept by the app-data repo; no database of its own, never DDL), the system-manager's ONE sign-in (the app reads that session and checks its own role; no sign-in page or session cookie of its own), its ONE admin screen for roles, and logs the six event groups with the app-data repo's codes. The system-manager holds only the gateway, sign-in, admin screen and links; each app serves its own pages and API."
+    "re": "\\b(db rieng|database rieng|co so du lieu rieng|own database|separate database|man quan tri|trang quan tri|admin screen|admin page|cap vai|cap quyen|phan quyen|phan vai|vai tro|bo vai|chuc danh|grant role|permission level|role set|auth_userapprole|auth_approle|auth_session|log_operation|log van hanh|ma log|log code|actionname|dang nhap chung|dang nhap rieng|trang dang nhap|shared sign-in|single sign-on|sso|own login|sign-in page)\\b",
+    "text": "[zemory] Rule_Keys_90_AppFamilyContract: an app of a family uses the family's ONE database (kept by the app-data repo; no database of its own, never DDL), the system-manager's ONE sign-in (the app reads that session and checks its own role; no sign-in page or session cookie of its own), its ONE admin screen for roles, and logs the six event groups with the app-data repo's codes. Roles sit on ONE fixed frame of four levels (1 viewer · 2 operator · 3 manager · 4 admin), each app takes the levels it needs; a person grants only a level below their own; a job title is an HR attribute, never a role. The system-manager holds only the gateway, sign-in, admin screen and links; each app serves its own pages and API."
   },
   "block": [
     {
@@ -16,6 +16,10 @@
     {
       "note": "a request this rule's keywords catch",
       "prompt": "thêm màn quản trị để cấp vai trong app"
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "phân quyền theo chức danh cho app rủi ro"
     }
   ],
   "pass": [
