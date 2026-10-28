@@ -10,6 +10,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { parsePorcelain } from "../update/local-changes.js";
+import { toLocalPath } from "../util/hostpath.js";
 
 export const AUTO_COMMIT_LINES = 300;
 
@@ -71,7 +72,9 @@ export function autoCommit(root: string, transcriptText: string, limit = AUTO_CO
   try {
     // the session may run in a subfolder; outside any git tree rev-parse throws ⇒ null below
     const top = canon(git(root, ["rev-parse", "--show-toplevel"]));
-    const rel = (f: string): string | null => {
+    const rel = (hostFile: string): string | null => {
+      // the transcript names host paths; in the container they sit under the mounts (identity on a native install)
+      const f = toLocalPath(hostFile);
       const r = relative(top, canon(isAbsolute(f) ? f : resolve(root, f))).replace(/\\/g, "/");
       return r && !r.startsWith("..") && !isAbsolute(r) ? r : null;
     };

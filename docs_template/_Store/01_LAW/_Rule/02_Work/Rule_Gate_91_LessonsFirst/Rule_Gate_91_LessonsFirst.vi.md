@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Rule_Gate_91_LessonsFirst — Sửa xong là khi bài học đã được ghi
@@ -40,5 +40,5 @@ Lỗi mà code mới không thể đem lại (một bản ghi sai một lần, s
 
 ## Links · Liên kết
 - Related · Liên quan: `Cons_Gate_17_LessonsLedger` — the ledger this law writes into · sổ mà luật này ghi vào
-- Implements · Thi hành: `Skill_Harness_SessionClose` — the changelog step asks for the lesson · bước changelog hỏi bài học
-- Implements · Thi hành: `Skill_Harness_SyncPath` — a fix found on the way gets its lesson before done · lỗi gặp trên đường phải có bài học trước khi xong
+- Related · Liên quan: `Skill_Harness_SessionClose` — the changelog step asks for the lesson · bước changelog hỏi bài học
+- Related · Liên quan: `Skill_Harness_SyncPath` — a fix found on the way gets its lesson before done · lỗi gặp trên đường phải có bài học trước khi xong

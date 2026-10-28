@@ -2033,12 +2033,18 @@ export function readChannelVersion(driveDir: string): ChannelVersion | null {
  * Cùng doctrine ADDITIVE của điều 11 — kênh chung chỉ được đi tới.
  *
  * Fail-open (điều 9): ghi hỏng thì thôi, KHÔNG được làm chết lượt sync.
+ *
+ * One exception goes down: a stamp THIS machine wrote, above the build it now runs. A machine only stamps the build it
+ * runs, so that gap means the version was renumbered (26/10: 5.9.1 became 4.8.3) or rolled back, and the stamp names a
+ * build no one can fetch. A Docker install has no .git, so `isPhantomStamp` never gets a git measure there and the
+ * phantom would win forever. Another machine that really runs the higher build stamps it again on its next sync.
  */
 export function publishChannelVersion(driveDir: string, version: string, host: string, commit?: string): ChannelVersion | null {
   try {
     if (!version) return null;
     const cur = readChannelVersion(driveDir);
-    if (cur && cmpSemver(version, cur.latest) <= 0) return cur;
+    const ownPhantom = cur !== null && cur.host === host && cmpSemver(version, cur.latest) < 0;
+    if (cur && !ownPhantom && cmpSemver(version, cur.latest) <= 0) return cur;
     const next: ChannelVersion = { latest: version, commit, at: new Date().toISOString(), host };
     writeFileSync(join(driveDir, VERSION_STAMP), JSON.stringify(next, null, 2) + "\n", "utf8");
     return next;

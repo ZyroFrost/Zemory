@@ -37,7 +37,7 @@ import { AUTO_COMMIT_LINES, autoCommit } from "../docs/auto-commit.js";
 import { promptMatches, SHELF } from "../docs/harness-names.js";
 import { findProjectRoot, harnessPathsAt, readMarker } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
-import { toLocalPath } from "../util/hostpath.js";
+import { toHostPath, toLocalPath } from "../util/hostpath.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
 
@@ -128,7 +128,8 @@ export function ruleReminders(payload: any): string {
     // CLAUDE_PROJECT_DIR; without it, the project root above cwd. In the container the daemon has no CLAUDE_PROJECT_DIR of
     // its own: the host relay sends it as `project_dir` (a session in a case folder was told to retitle after the case,
     // 2026-10-25). The host path keeps the repo's name; the harness is read through its container path.
-    const projectDir = String(payload?.project_dir || "") || process.env.CLAUDE_PROJECT_DIR || findProjectRoot(cwd) || cwd;
+    const found = findProjectRoot(toLocalPath(cwd));
+    const projectDir = String(payload?.project_dir || "") || process.env.CLAUDE_PROJECT_DIR || (found ? toHostPath(found) : "") || cwd;
     const repo = projectDir.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
     const problem = title ? titleProblem(title, repo, null) : null;
     if (problem && once("title")) {
@@ -144,7 +145,7 @@ export function ruleReminders(payload: any): string {
   // so a repo carries exactly the reminders of the skills and rules it has. File harness: the built-in four.
   let gates: Array<{ kind: string; re: string; text: string }> = BUILTIN_PROMPT_GATES;
   try {
-    const hp = cwd ? harnessPathsAt(cwd) : null;
+    const hp = cwd ? harnessPathsAt(toLocalPath(cwd)) : null;
     if (hp && isFolderHarness(hp.agent)) gates = promptGates(hp.skills, hp.agent);
   } catch {
     gates = BUILTIN_PROMPT_GATES; // fail-open (HP article 9): the built-in reminders
@@ -302,7 +303,7 @@ export function handleHook(event: HookEventName, payload: any): string {
       // summary drops. Rules, not memory — HP article 8 forbids pushing recall, not restating the repo's own rules.
       let core = "";
       try {
-        core = cwd ? coreForCompaction(harnessPathsAt(cwd).agent) : "";
+        core = cwd ? coreForCompaction(harnessPathsAt(toLocalPath(cwd)).agent) : "";
       } catch {
         core = ""; // fail-open (HP article 9)
       }
@@ -350,7 +351,10 @@ export function handleHook(event: HookEventName, payload: any): string {
             // giữa đường. Đợt "chấm than update" 21/08 lỡ dùng bản trần và gate không ai chạy
             // (nợ gate đầy đủ từ 15/08) nên nó trôi tới 22/08 mới lộ.
             writeFileAtomic(flag, new Date().toISOString());
-            const r = syncCheck(cwd);
+            // the repo is read where it sits HERE: in the container a host cwd (d:\…) is no path at all, and the marker
+            // search then climbed to the image's own /app marker - 14 "missing" files on a repo in sync (2026-10-28)
+            const here = toLocalPath(cwd);
+            const r = syncCheck(here);
             const notes: string[] = [];
             // Bản THÂN CÔNG CỤ cũ — nói TRƯỚC, vì `zemory sync` gap-fill từ template của
             // bản đang cài: áp chuẩn bằng một bản cũ là chép lại cái cũ.
@@ -362,7 +366,7 @@ export function handleHook(event: HookEventName, payload: any): string {
             }
             // A kit repo (folder harness) is measured against its set, not the old single files: the file-harness check
             // reported the same 21 "missing" files in every folder repo, synced or not.
-            const kb = r.connected ? kitBehind(cwd) : null;
+            const kb = r.connected ? kitBehind(here) : null;
             if (kb) {
               const parts = [
                 kb.missing ? `${kb.missing} phần chưa có` : "",
@@ -371,7 +375,7 @@ export function handleHook(event: HookEventName, payload: any): string {
                 kb.guardStale.length ? `guard lỗi thời (${kb.guardStale.join(" · ")})` : "",
               ].filter(Boolean);
               if (parts.length) notes.push(`[zemory] ⚠ Harness repo này sau bộ ${kb.kit} — ${parts.join(" · ")}. Chạy \`zemory sync\` khi tiện.`);
-            } else if (r.connected && !repoKit(cwd) && (r.missing.length > 0 || r.guardStale.length > 0)) {
+            } else if (r.connected && !repoKit(here) &&(r.missing.length > 0 || r.guardStale.length > 0)) {
               const parts = [
                 r.missing.length ? `${r.missing.length} file chuẩn mới chưa nhận` : "",
                 r.guardStale.length ? `guard lỗi thời (${r.guardStale.join(" · ")})` : "",
@@ -493,7 +497,7 @@ export function endOfTurnAutoCommit(payload: any, transcriptPath: string): strin
   try {
     const cwd = String(payload?.cwd ?? "");
     if (!cwd) return "";
-    const r = autoCommit(cwd, readFileSync(transcriptPath, "utf8"));
+    const r = autoCommit(toLocalPath(cwd), readFileSync(transcriptPath, "utf8"));
     if (!r || (!r.committed && !r.note.startsWith("commit refused"))) return "";
     return r.committed
       ? `[zemory] Auto-committed locally, not pushed: ${r.lines} uncommitted lines in ${r.files.length} file(s) of this session passed ${AUTO_COMMIT_LINES}. Undo with \`git reset --soft HEAD~1\`.`
@@ -507,8 +511,8 @@ export function endOfTurnAutoCommit(payload: any, transcriptPath: string): strin
  *  commands (marker `repoGates`) count as checks too. Fail-open: anything unexpected lets the turn end. */
 export function endOfTurnVerdict(payload: any): string {
   try {
-    const cwd = String(payload?.cwd ?? "");
-    const hp = cwd ? harnessPathsAt(cwd) : null;
+    const here = toLocalPath(String(payload?.cwd ?? ""));
+    const hp = here ? harnessPathsAt(here) : null;
     if (!hp || !isFolderHarness(hp.agent)) return "";
     const rules = listParts(hp.agent, SHELF.rules).filter((p) => !isRetired(p));
     // the evidence clause belongs to rule 1 (done means run, plan/28 §0q); a repo not yet re-assembled still has it in rule 11
@@ -516,7 +520,7 @@ export function endOfTurnVerdict(payload: any): string {
     // rule 27's vocabulary in the reply itself ("kho" alone: DW or HS) — every repo whose set carries rule 27
     const vocab = rules.some((p) => p.key === "Rule_27");
     if (!evidence && !vocab) return "";
-    const own = (readMarker(cwd)?.data as { repoGates?: unknown } | undefined)?.repoGates;
+    const own = (readMarker(here)?.data as { repoGates?: unknown } | undefined)?.repoGates;
     return stopDecision(payload, Array.isArray(own) ? own.filter((x): x is string => typeof x === "string") : [], { evidence, vocab });
   } catch {
     return "";
