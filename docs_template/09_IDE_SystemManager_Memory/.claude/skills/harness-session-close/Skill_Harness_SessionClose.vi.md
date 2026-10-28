@@ -1,5 +1,5 @@
 ---
-version: 22
+version: 23
 lang: vi
 ---
 
@@ -156,6 +156,11 @@ mục nháp, thư mục tạm tạo trên ổ dữ liệu, bản sao lưu chụp
 *Đo 28/10 trong một phiên: một thư mục tạm ở cấp workspace, một file compose override và hai bản sao lưu phiên nằm ngoài repo,
 thư mục nháp chạm trần hai lần, hai cờ đã dùng sót ở repo khác, một lượt cổng tự chạy lại ở nền, 44 chỗ sửa chưa commit ở 17 repo
 khác — phép quét ba mục cũ không thấy cái nào.*
+
+**Chạy `zemory tidy` trước.** Lệnh đo đủ 12 dòng dưới đây từ transcript của phiên và in số của từng dòng;
+`zemory tidy --apply` xoá phần chắc chắn an toàn — thư mục nháp của phiên, cờ duyệt của repo này, khoá cũ quá 15 phút, và rác
+chính phiên tạo trong repo (`_scratch_*` · `.tmp*` · `*.bak` · `*.orig` · `*.rej`). Các dòng còn lại tự xử lý theo bảng. Bảng
+cũng là đường làm tay khi không có `zemory`.
 
 **Biết thứ nào là của phiên:** dựa vào chính bản ghi của phiên, không đoán theo tên file. Liệt kê các đường phiên đã ghi hay tạo:
 transcript của phiên (`~/.claude/projects/<repo>/<session>.jsonl`: mọi Write · Edit · `New-Item` · `mkdir` · `Copy-Item` · đích

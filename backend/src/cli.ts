@@ -41,6 +41,8 @@ try {
     (await import("./commands/gates.js")).cmdImpact(args);
   } else if (cmd === "project") {
     await (await import("./commands/project.js")).cmdProject(args);
+  } else if (cmd === "tidy") {
+    (await import("./commands/tidy.js")).cmdTidy(args);
   } else {
     await runRest();
   }

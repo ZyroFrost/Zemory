@@ -55,8 +55,8 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 20 | `.claude/skills/harness-reconcile/Skill_Harness_Reconcile.vi.md` | 83 |
 | 21 | `.claude/skills/harness-repo-move/SKILL.md` | 85 |
 | 22 | `.claude/skills/harness-repo-move/Skill_Harness_RepoMove.vi.md` | 78 |
-| 23 | `.claude/skills/harness-session-close/SKILL.md` | 227 |
-| 24 | `.claude/skills/harness-session-close/Skill_Harness_SessionClose.vi.md` | 221 |
+| 23 | `.claude/skills/harness-session-close/SKILL.md` | 232 |
+| 24 | `.claude/skills/harness-session-close/Skill_Harness_SessionClose.vi.md` | 226 |
 | 25 | `.claude/skills/harness-structure/SKILL.md` | 123 |
 | 26 | `.claude/skills/harness-structure/Skill_Harness_Structure.vi.md` | 118 |
 | 27 | `.claude/skills/harness-structure/references/conventions.md` | 151 |
@@ -389,10 +389,10 @@ dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài
 | 354 | `docs/agent/03_SKILLS/Skill_Harness_RepoMove/Skill_Harness_RepoMove.md` | 85 |
 | 355 | `docs/agent/03_SKILLS/Skill_Harness_RepoMove/Skill_Harness_RepoMove.vi.md` | 78 |
 | 356 | `docs/agent/03_SKILLS/Skill_Harness_RepoMove/gate.json` | 24 |
-| 357 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Claude/harness-session-close/SKILL.md` | 227 |
-| 358 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Claude/harness-session-close/Skill_Harness_SessionClose.vi.md` | 221 |
-| 359 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.md` | 227 |
-| 360 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.vi.md` | 221 |
+| 357 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Claude/harness-session-close/SKILL.md` | 232 |
+| 358 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Claude/harness-session-close/Skill_Harness_SessionClose.vi.md` | 226 |
+| 359 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.md` | 232 |
+| 360 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.vi.md` | 226 |
 | 361 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/gate.json` | 20 |
 | 362 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/SKILL.md` | 123 |
 | 363 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/Skill_Harness_Structure.vi.md` | 118 |

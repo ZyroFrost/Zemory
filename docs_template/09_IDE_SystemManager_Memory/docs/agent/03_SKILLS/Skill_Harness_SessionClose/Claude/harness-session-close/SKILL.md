@@ -2,10 +2,10 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 22
+version: 23
 type: process
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
-from: _Store/03_SKILLS/Skill_Harness_SessionClose @v22 #0aa309706d4e
+from: _Store/03_SKILLS/Skill_Harness_SessionClose @v23 #17e5c2934d5c
 ---
 
 # session-close — closing a session / writing the ledgers
@@ -162,6 +162,11 @@ beyond the repo: scripts in its scratch folder, temp folders it made on the data
 flags, processes it started, edits it made in other repos. *Measured 28/10 in one session: a temp folder at the workspace level, a
 compose override and two session backups outside the repo, a scratch folder at its cap twice, two used flags left in another
 repo, a gate run retrying in the background, 44 uncommitted edits in 17 other repos — the old three-check sweep saw none of them.*
+
+**Run `zemory tidy` first.** It measures all 12 rows below from the session's transcript and prints a number for each;
+`zemory tidy --apply` removes what is safe by construction — the session's scratch folder, this repo's approval flags, locks
+older than 15 minutes, and litter the session itself made inside the repo (`_scratch_*` · `.tmp*` · `*.bak` · `*.orig` ·
+`*.rej`). Every other row is yours to act on as the table says. The table is also the manual way, when `zemory` is absent.
 
 **How to know what is the session's:** the session's own record, not a guess from a file name. List the paths the session wrote
 or created: its transcript (`~/.claude/projects/<repo>/<session>.jsonl`: every Write · Edit · `New-Item` · `mkdir` · `Copy-Item`

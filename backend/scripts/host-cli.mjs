@@ -191,6 +191,11 @@ export function isMoveApply(argv) {
   return argv[0] === "project" && argv[1] === "move" && argv.includes("--apply");
 }
 
+/** Commands that run on the host, never in the container: they read the host's own folders and need no Global Memory. */
+export function isHostCommand(argv) {
+  return argv[0] === "tidy";
+}
+
 /** The three docker calls of a move: stop the daemon's container, run the move in a one-off container (~/.claude writable,
  *  docker-compose.move.yml), start the container again. */
 export function moveCalls(env, argv, dir, platform = process.platform) {
@@ -252,6 +257,12 @@ function main() {
       "the command runs in the container's own folder, so a command that works on the current repo will not see it.\n");
   }
   if (isMoveApply(process.argv.slice(2))) runMove(env, process.argv.slice(2), dir);
+  // `tidy` reads the session's scratch folder (Windows TEMP) and its transcript; the container mounts neither writable and
+  // the TEMP folder not at all, and the command needs no Global Memory - so it runs here, on the clone's own build (plan/36)
+  if (isHostCommand(process.argv.slice(2))) {
+    const t = spawnSync(process.execPath, [join(COMPOSE_DIR, "dist", "cli.js"), ...process.argv.slice(2)], { stdio: "inherit", windowsHide: true });
+    process.exit(t.status ?? 1);
+  }
   const tty = Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const args = ["exec", "-i", ...(tty ? ["-t"] : []), ...(dir ? ["-w", dir] : []), container, "zemory", ...process.argv.slice(2)];
   const [bin, argv] = dockerCall(env, args);
