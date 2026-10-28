@@ -4,7 +4,8 @@
 // Order: legacy layout moved → marker (records the kit) → the starter files the assembled slots seed (gap-fill only, never
 // overwritten) → parts (plan, then write when `apply`) → the host plug → the skills block of 04_SKILLS/INDEX.md → the guard.
 // Reading is the default; nothing is written without `apply`.
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { CONFIG_FILE, findMarker, harnessPathsAt, readMarker } from "../core/config.js";
 import { DEFAULT_CONFIG } from "./adopt.js";
@@ -15,6 +16,7 @@ import {
   bodyOf,
   mainOf,
   readSource,
+  readKits,
   findKit,
   kitStructure,
   kitParts,
@@ -164,6 +166,88 @@ export function assembleSet(kit: Kit, storeDir = STORE_DIR): KitApplyResult | { 
   if (!("error" in r)) fixSlotLines(dir, true);
   if (!("error" in r)) writeFileSync(join(dir, BOOTSTRAP_FILE), setBootstrap(kit, storeDir));
   return r;
+}
+
+/**
+ * The sets beside the store whose folder is behind HS, measured as the gate measures it: a dry pass over the folder would
+ * add or update a part, or its bootstrap differs from what its parts give. A copy edited by hand ("current" with a reason)
+ * is no lag a rebuild fixes, so it is not counted here (the gate reports it).
+ */
+export function staleSets(storeDir = STORE_DIR): Kit[] {
+  return readKits(storeDir).filter((k) => {
+    const dir = setDir(k.name, storeDir);
+    const r = applyKit(dir, { kit: k, apply: false, storeDir });
+    if ("error" in r) return false;
+    if (r.steps.some((s) => s.verdict === "absent" || s.verdict === "clean" || s.verdict === "merged")) return true;
+    const b = join(dir, BOOTSTRAP_FILE);
+    return !existsSync(b) || readFileSync(b, "utf8") !== setBootstrap(k, storeDir);
+  });
+}
+
+/**
+ * What the folder holding HS and the sets looks like on disk: every file's path, size and change time. A full measure
+ * (`staleSets`) takes ~30 s over 9 sets, a walk ~1 s - so the full one runs only when this changed since the last clean one.
+ */
+export function storeFingerprint(storeDir = STORE_DIR): string {
+  const h = createHash("sha1");
+  const walk = (d: string): void => {
+    for (const e of readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if (e.name === ".harness-state") continue;
+      const p = join(d, e.name);
+      if (e.isDirectory()) walk(p);
+      else {
+        const s = statSync(p);
+        h.update(`${relative(dirname(storeDir), p).replace(/\\/g, "/")}|${s.size}|${s.mtimeMs}\n`);
+      }
+    }
+  };
+  walk(dirname(storeDir));
+  return h.digest("hex");
+}
+
+const fingerprintFile = (storeDir: string): string => join(dirname(storeDir), ".harness-state", "sets-current.json");
+/** The sets behind HS, skipping the full measure when nothing changed since the last time every set was current. */
+export function setsBehind(storeDir = STORE_DIR): Kit[] {
+  const fp = storeFingerprint(storeDir);
+  try {
+    if ((JSON.parse(readFileSync(fingerprintFile(storeDir), "utf8")) as { fingerprint?: string }).fingerprint === fp) return [];
+  } catch {
+    /* never measured here */
+  }
+  const behind = staleSets(storeDir);
+  if (!behind.length) markSetsCurrent(storeDir, fp);
+  return behind;
+}
+
+function markSetsCurrent(storeDir: string, fp = storeFingerprint(storeDir)): void {
+  try {
+    const f = fingerprintFile(storeDir);
+    if (!existsSync(dirname(f))) {
+      mkdirSync(dirname(f), { recursive: true });
+      writeFileSync(join(dirname(f), ".gitignore"), "*\n");
+    }
+    writeFileSync(f, JSON.stringify({ fingerprint: fp, at: new Date().toISOString() }) + "\n");
+  } catch {
+    /* only a shortcut: without it the next sync measures again */
+  }
+}
+
+/**
+ * Rebuild every set that is behind HS (plan/29 §14e ④): a repo that changed a part on HS gets its sets rebuilt by its own
+ * `zemory sync`, instead of a hand call to `assembleSet` that only the zemory session knew (v18/v19). Returns the rebuilt
+ * set names, and the ones that failed with why.
+ */
+export function rebuildStaleSets(storeDir = STORE_DIR): { rebuilt: string[]; failed: string[] } {
+  const rebuilt: string[] = [];
+  const failed: string[] = [];
+  for (const k of setsBehind(storeDir)) {
+    const r = assembleSet(k, storeDir);
+    if ("error" in r) failed.push(`${k.name}: ${r.error}`);
+    else rebuilt.push(k.name);
+  }
+  // the rebuild changed the files: what is on disk now is the current state (unless a set failed and is still behind)
+  if (rebuilt.length && !failed.length) markSetsCurrent(storeDir);
+  return { rebuilt, failed };
 }
 
 /** The set's own install guide, written beside its parts. */

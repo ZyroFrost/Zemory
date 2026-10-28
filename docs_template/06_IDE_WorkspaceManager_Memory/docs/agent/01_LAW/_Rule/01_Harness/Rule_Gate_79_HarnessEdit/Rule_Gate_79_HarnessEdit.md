@@ -1,17 +1,18 @@
 ---
 id: Rule_79
 name: harness-edit
-version: 6
+version: 7
 kind: action
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit @v6 #7f5790536a9a
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit @v7 #df5465edabe1
 ---
 # Rule_Gate_79_HarnessEdit — Changing HS needs the requester's approval; a law whose breach cannot be undone needs a machine check
 
 ## What
 HS (`docs_template/_Store`) and the harness files no other law covers (`docs/plan/`, `AGENTS.md`, `CLAUDE.md`) change only when
-the requester has approved that very change in the session. Inside a repo, the four harness folders follow
-`Rule_Gate_83_HarnessFromStore` instead: the repo never changes them.
+the requester has approved that very change in the session. This holds for the session of every repo, not the zemory one alone:
+a repo changes a shared part on HS itself (`Rule_Gate_83_HarnessFromStore` step 3a), and asks first. Inside a repo, the four
+harness folders follow `Rule_Gate_83_HarnessFromStore`: the repo never changes its copies.
 
 ## When
 - An agent is about to create, edit, delete or move anything in HS, in `docs/plan/`, or in `AGENTS.md` / `CLAUDE.md`.

@@ -57,8 +57,8 @@ function printKitSteps(r: KitApplyResult, apply: boolean): number {
 }
 
 /** `init --kit` and `sync --standard` on a kit repo: assemble, then (when writing) regenerate the guard. */
-function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: string }): void {
-  const ks = kitSync(root, { kitRef: opts.kitRef, apply: opts.apply });
+function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: string; sets?: boolean }): void {
+  const ks = kitSync(root, { kitRef: opts.kitRef, apply: opts.apply, sets: opts.sets });
   if ("error" in ks) {
     console.log(`${opts.label} — ✗ ${ks.error}`);
     process.exitCode = 1;
@@ -67,6 +67,8 @@ function runKit(root: string, opts: { kitRef?: string; apply: boolean; label: st
   const r = ks.assembly;
   console.log(`${opts.label}${opts.apply ? "" : " (DRY-RUN)"} — ${root} · kit ${r.kit.name}`);
   if (r.createdMarker) console.log("  + created .harness.json (kit recorded)");
+  if (ks.sets.behind.length) console.log(`  ✔ ${opts.apply ? "sets rebuilt from HS" : "sets behind HS, a sync would rebuild"}: ${ks.sets.behind.join(" · ")}${opts.apply ? " (commit them with the part in zemory)" : ""}`);
+  for (const f of ks.sets.failed) console.log(`  ✗ set not rebuilt: ${f}`);
   const moved = (r.retired ?? []).filter((x) => x.movedTo);
   const kept = (r.retired ?? []).filter((x) => !x.movedTo);
   // two reasons a copy leaves: the store retired the part, or the repo moved to a set on another structure
@@ -129,6 +131,7 @@ function runManaged(root: string, apply: boolean, label: string): void {
     console.log("");
     // one repo that fails is reported and the exit code says so; the other managed repos still get their pass
     try {
+      // the manager's own pass just brought the sets up to HS
       runKit(r.root, { apply, label: `${label} (managed by ${me})` });
     } catch (e) {
       console.log(`  ✗ ${r.name}: the pass stopped — ${e instanceof Error ? e.message : String(e)}`);
@@ -321,12 +324,12 @@ function cmdSyncRun(args: string[]): void {
   const extraFlags = args.filter((a) => a.startsWith("--") && a !== "--root" && a !== "--apply" && a !== "--self");
   if (!extraFlags.length && repoKit(root)) {
     const apply = ri < 0 || args.includes("--apply");
-    runKit(root, { apply, label: "zemory sync" });
+    runKit(root, { apply, label: "zemory sync", sets: true });
     if (!args.includes("--self")) runManaged(root, apply, "zemory sync");
     return;
   }
   if (args.includes("--standard") && repoKit(root)) {
-    runKit(root, { apply: args.includes("--apply"), label: "zemory sync --standard" });
+    runKit(root, { apply: args.includes("--apply"), label: "zemory sync --standard", sets: true });
     if (!args.includes("--self")) runManaged(root, args.includes("--apply"), "zemory sync --standard");
     return;
   }

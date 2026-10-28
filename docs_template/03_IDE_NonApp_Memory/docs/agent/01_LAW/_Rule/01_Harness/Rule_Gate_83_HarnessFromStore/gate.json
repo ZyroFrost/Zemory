@@ -201,6 +201,23 @@
       }
     },
     {
+      "note": "the lessons ledger grows: the first template's entry heading goes, the lessons come in as entries",
+      "files": {
+        "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md": "---\nframe: Cons_Gate_17_LessonsLedger\nstatus: template\n---\n# Lessons\n\n## Lessons\n\n## L-1 — <title>\n- Ngày: <YYYY-MM-DD>\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md",
+        "content": "---\nframe: Cons_Gate_17_LessonsLedger\nstatus: written\n---\n# Lessons\n\n## Lessons\n\n### L-001 — one lock per dim\n- Ngày: 2026-10-20\n\n### L-002 — retry wrapper\n- Ngày: 2026-10-21\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
       "note": "a skill of the repo's own written on the frame's sections",
       "files": {
         "docs/agent/03_SKILLS/Skill_Frame_Own/Skill_Frame_Own.md": "---\nid: Skill_Frame_Own\nframe: true\n---\n# frame\n\n## Used for · Dùng cho\n<x>\n\n## How · Cách làm\n<x>\n"

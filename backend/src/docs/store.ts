@@ -320,9 +320,11 @@ const NOT_CONTENT: readonly string[] = [...HOST_BUILD_DIRS, SEED_DIR];
 /**
  * A byte-compiled cache an interpreter leaves beside a script (`__pycache__/`, `*.pyc`): not content. Running a part's
  * script once in HS (20/10, pbi_gate.py) wrote one; it reddened the version check and was copied into 23 places.
+ * Same family: the backups `patch` leaves beside a file it changed (`*.orig`, `*.rej`), which spread into 6 places at v19
+ * (21/10, plan/29 §14e).
  */
 export function isBuildCache(name: string): boolean {
-  return name === "__pycache__" || /\.py[co]$/.test(name);
+  return name === "__pycache__" || /\.(py[co]|orig|rej)$/.test(name);
 }
 
 export function partFiles(dir: string): string[] {
