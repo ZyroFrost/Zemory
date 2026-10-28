@@ -2528,11 +2528,19 @@ export async function vectorCatchUp(opts: {
     // Đây KHÔNG phải nuốt lỗi — `unreadable` là hạng báo động nặng nhất mà người gọi phải in ra.
     const unreadable: { file: string; error: string }[] = [];
     for (const s of segsAll) {
-      try {
-        await mergeMemoryBundle({ bundlePath: s.path, dbPath: probe, keyFile: opts.keyFile });
-      } catch (e) {
-        unreadable.push({ file: basename(s.path), error: e instanceof Error ? e.message : String(e) });
+      // a read that fails once often passes the next time (29/10: ENOMEM on one 271 MB segment while a gate ran beside
+      // it, clean on the retry) - three tries before a segment counts as unreadable
+      let last: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await mergeMemoryBundle({ bundlePath: s.path, dbPath: probe, keyFile: opts.keyFile });
+          last = null;
+          break;
+        } catch (e) {
+          last = e;
+        }
       }
+      if (last) unreadable.push({ file: basename(s.path), error: last instanceof Error ? last.message : String(last) });
     }
 
     // ② So bằng khoá BỀN. `vec_chunks` là bảng ảo vec0 nên đọc qua bảng bóng `..._rowids`
@@ -2619,7 +2627,9 @@ export async function vectorCatchUp(opts: {
       src.close();
     }
 
-    if ((!ids.length && !msgIds.length) || opts.dryRun) {
+    // A store rebuilt without one of its segments makes every vector of that segment look missing: 29/10 such a run
+    // appended 71,617 vectors (320 MB) the channel already had. With an unreadable segment nothing is appended at all.
+    if ((!ids.length && !msgIds.length) || opts.dryRun || unreadable.length) {
       return { container, missing: ids.length, messagesMissing: msgIds.length, shipped: 0, messagesShipped: 0, bytes: 0, pushed: false, probeSessions, probeMessages, localSessions, localMessages, unreadable };
     }
 
