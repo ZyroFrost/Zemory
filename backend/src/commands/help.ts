@@ -24,6 +24,7 @@ function usageLines(): string[] {
       "  validate  check docs (.md), links, changelog retention, and supersede",
       "  conform   score how closely this repo follows the declared folder standard (--gate)",
       "  sweep     close leftover browser processes zemory started (--dry-run · --all · --json)",
+      "  tidy      what this session left behind, from its transcript - the 12 rows of session-close step 3b (--session <id> · --apply · --json)",
       "  paths     paths check: dead file paths in docs/config, judged only under declared roots (--gate = newly dead) · paths sweep · paths fix [--apply] (propose/repair unique-name targets)",
       "  selfupdate  pull + rebuild this zemory install; a local edit the update also changes is asked about (--keep-local · --take-new); --check only measures origin",
       "  reindex   rebuild the docs search index from .md (read-only; never writes .md)",
