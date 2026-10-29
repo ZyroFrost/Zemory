@@ -892,6 +892,8 @@ export interface DriveSyncResult {
     messages: number;
     /** Old delta files removed by a compaction (their rows live on in the baseline). */
     removed: number;
+    /** kind "none" for a reason other than "nothing new": what stopped the write (said, not swallowed). */
+    reason?: string;
   };
   merged: { file: string; sessionsAdded?: number; messagesAdded?: number; skipped?: boolean; error?: string;
     /** Bỏ qua bằng CHỮ KÝ ĐỌC TẠI CHỖ, KHÔNG chép khối ra ngoài (`plan/08 §8c` ①). Trưng ra để
@@ -2160,7 +2162,9 @@ async function pushAppend(o: {
     if (chunksNow.length !== chunks.length) {
       // Có khối lạ xuất hiện sau lúc mình liệt kê ⇒ DỪNG, để lượt sync sau merge chúng rồi ghi.
       // Thà bỏ một lượt còn hơn nuốt mất khối của máy khác (kho THẬT nằm ở từng máy — điều 16).
-      return { kind: "none", file: "", bytes: 0, messages: 0, removed: 0 };
+      // Said, not swallowed (29/10: a 1-hour `--compact` stopped here and printed "nothing new to push").
+      return { kind: "none", file: "", bytes: 0, messages: 0, removed: 0,
+        reason: `the shared store changed while this machine was exporting (${chunks.length} → ${chunksNow.length} block(s) in ${basename(active.path)}) — nothing written, run again` };
     }
     let removed = 0;
     let written = 0; // byte THẬT SỰ ghi thêm lượt này — xem chú thích ở `bytes` bên dưới

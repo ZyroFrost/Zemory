@@ -1186,7 +1186,9 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
       console.log(`  ↻ scanned this machine — +${r.scanned.newMessages} new message(s) captured before export`);
       if (r.push.kind === "none") {
-        console.log("  ↑ nothing new to push (delta empty).");
+        console.log(r.push.reason ? `  ⚠ nothing pushed: ${r.push.reason}.` : "  ↑ nothing new to push (delta empty).");
+        // a compaction asked for and not done is a failure, not a quiet "nothing new"
+        if (compact) process.exitCode = 1;
       } else {
         const tag =
           r.push.kind === "delta" ? "delta" : r.push.kind === "compact" ? "compacted baseline" : r.push.kind === "full" ? "full snapshot" : "baseline";
