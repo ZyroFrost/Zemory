@@ -69,6 +69,31 @@ export function shellTargets(command: string): string[] {
   return out.filter((t) => looksLikePath(t));
 }
 
+const SCRIPT = /\.(ps1|sh|bash|mjs|cjs|js|py|cmd|bat)$/i;
+
+/**
+ * The paths a script the session wrote creates when it runs: a folder made by a `mkdir` inside a .ps1 never appears in the
+ * transcript as a tool call (measured 2026-10-29: the gate runner's `.zemory-test-tmp`, seen by nobody). Shell scripts go
+ * through `shellTargets` once their literal variables (`$tmp = 'D:\x'` · `TMP=/x`) are put in; JS / Python through the
+ * literal first argument of the calls that create (`mkdirSync` · `writeFileSync` · `os.makedirs` · `Path(...).mkdir`),
+ * a constant set to a literal counting as that literal.
+ */
+export function scriptTargets(script: string, source: string): string[] {
+  const vars = new Map<string, string>();
+  for (const m of source.matchAll(/(?:^|[\s;(])\$?([A-Za-z_]\w*)\s*=\s*(["'])([^"'\n]+)\2/g)) vars.set(m[1].toLowerCase(), m[3]);
+  for (const m of source.matchAll(/\b(?:const|let|var)\s+([A-Za-z_]\w*)\s*=\s*(["'`])([^"'`\n$]+)\2/g)) vars.set(m[1].toLowerCase(), m[3]);
+  if (/\.(mjs|cjs|js|py)$/i.test(script)) {
+    const out: string[] = [];
+    for (const m of source.matchAll(/\b(?:mkdirSync|writeFileSync|makedirs|mkdtempSync)\(\s*(?:(["'`])([^"'`\n$]+)\1|([A-Za-z_]\w*)\s*[,)])/g)) {
+      const t = m[2] ?? vars.get((m[3] ?? "").toLowerCase());
+      if (t) out.push(t.replace(/\\\\/g, "\\"));
+    }
+    return out.filter((t) => looksLikePath(t));
+  }
+  const expanded = source.replace(/\$\{?(?:env:)?([A-Za-z_]\w*)\}?/g, (all, n: string) => vars.get(n.toLowerCase()) ?? all);
+  return shellTargets(expanded);
+}
+
 /** paths: what the session created or wrote whole · touched: every file it wrote or edited (finds the repos it was in) */
 export type SessionTrace = { paths: string[]; touched: string[]; background: string[]; cwds: string[] };
 
@@ -81,6 +106,7 @@ export function traceSession(jsonl: string): SessionTrace {
   const started = new Map<string, string>(); // tool_use id -> what it runs
   const taskOf = new Map<string, string>(); // tool_use id -> background task id
   const ended = new Set<string>();
+  const scripts = new Map<string, string>(); // a script the session wrote (resolved path) -> its last written content
   for (const raw of jsonl.split("\n")) {
     if (!raw.includes("tool_use") && !raw.includes("tool_result") && !raw.includes("task-id")) continue;
     for (const m of raw.matchAll(/<task-id>([\w-]+)<\/task-id>[\s\S]*?<status>(completed|failed|killed|stopped)<\/status>/g)) ended.add(m[1]);
@@ -102,8 +128,15 @@ export function traceSession(jsonl: string): SessionTrace {
       const name = String(c.name ?? "");
       if (/^(Write|Edit|MultiEdit|NotebookEdit)$/.test(name) && typeof input.file_path === "string") touched.add(resolve(cwd, input.file_path));
       if (/^(Write|NotebookEdit)$/.test(name) && typeof input.file_path === "string") paths.add(resolve(cwd, input.file_path));
+      if (name === "Write" && typeof input.file_path === "string" && typeof input.content === "string" && SCRIPT.test(input.file_path)) {
+        scripts.set(resolve(cwd, input.file_path), input.content);
+      }
       if (/^(Bash|PowerShell)$/.test(name) && typeof input.command === "string") {
-        for (const t of shellTargets(input.command)) paths.add(isAbsolute(t) ? resolve(t) : resolve(cwd, t));
+        const add = (t: string): void => { paths.add(isAbsolute(t) ? resolve(t) : resolve(cwd, t)); };
+        shellTargets(input.command).forEach(add);
+        // a script the session wrote, run by this command (named by its path or its file name)
+        const cmd = input.command.toLowerCase().replace(/\//g, "\\");
+        for (const [p, src] of scripts) if (cmd.includes(p.toLowerCase()) || cmd.includes(basename(p).toLowerCase())) scriptTargets(p, src).forEach(add);
         if (input.run_in_background === true && typeof c.id === "string") started.set(c.id, String(input.description ?? input.command).slice(0, 100));
       }
     }
