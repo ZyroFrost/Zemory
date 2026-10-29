@@ -28,7 +28,7 @@ output_url: null              # thư mục kết quả (task-vm-automation)
 1. `updated` đổi cùng lượt với việc, không đợi chốt phiên — trạng thái chỉ đổi khi có người nhớ sửa thì sổ báo "còn treo" việc đã xong.
 2. `evidence` phải tra được (phép đo, URL, `GM #id`, số trên DB). `status: closed` mà `evidence` rỗng = chưa đóng.
    Trạng thái chỉ có ba chữ: `open` (đang làm, kể cả đang chờ) · `closed` (đã xong, đã đóng) · `retired` (task định kỳ ngừng hẳn).
-   `done` là chữ cũ cùng nghĩa `closed` — gặp thì đổi thành `closed` (user 29/10: một chuẩn thôi).
+   `done` là chữ cũ cùng nghĩa `closed` — gặp thì đổi thành `closed` (một chữ duy nhất cho case đã xong).
 3. `cadence` dùng đúng bộ token của tên case ⇒ tên thư mục và khai báo so được với nhau. Lệch ⇒ báo, không tự chọn bên nào.
 4. Khối thắng văn xuôi: hai chỗ khác nhau thì khối là nguồn.
 5. `run_at: null` không được suy thành giờ nào; người đọc hiện "chưa có giờ cụ thể". Đoán giờ từ văn xuôi dẫn tới chạy lại một kỳ
