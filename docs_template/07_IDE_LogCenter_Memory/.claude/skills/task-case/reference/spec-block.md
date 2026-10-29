@@ -6,9 +6,9 @@
 
 ```yaml
 ---
-status: open                  # open · blocked · done · closed
+status: open                  # open · closed · retired (một chữ cho "đã xong": closed — không dùng done)
 updated: 2026-01-31           # ngày sửa khối này — đổi trong cùng lượt với việc
-evidence: "GM #123456"        # phép đo / URL / số trên DB chứng minh status — bắt buộc khi done|closed
+evidence: "GM #123456"        # phép đo / URL / số trên DB chứng minh status — bắt buộc khi closed
 cadence: Monthly              # đúng bộ nhịp của tên case (reference/naming.md §1)
 run_at: "monthly:3 07:00"     # giờ chạy cụ thể; null = chưa chốt giờ
 run_at_since: 2026-01-31      # ngày lịch trên bắt đầu có hiệu lực
@@ -26,7 +26,9 @@ output_url: null              # thư mục kết quả (task-vm-automation)
 ## Luật của khối
 
 1. `updated` đổi cùng lượt với việc, không đợi chốt phiên — trạng thái chỉ đổi khi có người nhớ sửa thì sổ báo "còn treo" việc đã xong.
-2. `evidence` phải tra được (phép đo, URL, `GM #id`, số trên DB). `status: done` mà `evidence` rỗng = chưa đóng.
+2. `evidence` phải tra được (phép đo, URL, `GM #id`, số trên DB). `status: closed` mà `evidence` rỗng = chưa đóng.
+   Trạng thái chỉ có ba chữ: `open` (đang làm, kể cả đang chờ) · `closed` (đã xong, đã đóng) · `retired` (task định kỳ ngừng hẳn).
+   `done` là chữ cũ cùng nghĩa `closed` — gặp thì đổi thành `closed` (user 29/10: một chuẩn thôi).
 3. `cadence` dùng đúng bộ token của tên case ⇒ tên thư mục và khai báo so được với nhau. Lệch ⇒ báo, không tự chọn bên nào.
 4. Khối thắng văn xuôi: hai chỗ khác nhau thì khối là nguồn.
 5. `run_at: null` không được suy thành giờ nào; người đọc hiện "chưa có giờ cụ thể". Đoán giờ từ văn xuôi dẫn tới chạy lại một kỳ

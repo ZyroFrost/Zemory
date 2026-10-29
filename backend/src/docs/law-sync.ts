@@ -3,6 +3,7 @@
 // copies a repo edited since they were assembled (conform `harness-edited-here`), and, before a store part is edited or
 // retired, every repo that carries it and in what state (`zemory impact`).
 import { existsSync } from "node:fs";
+import { BASIC_DROP } from "./basic-guard.js";
 import { isFolderHarness, frontMatter, leafOf, hashFiles, listParts, mainOf, parseFrom, partHash, readPartFiles, SHELVES, STORE_DIR, type Part } from "./store.js";
 
 /** The `from:` reference of a copy, and whether its content still equals what was assembled. */
@@ -43,7 +44,8 @@ export function findStorePart(ref: string, storeDir = STORE_DIR): Part | null {
 export function partImpact(ref: string, repos: Array<{ name: string; root: string; agent: string }>, storeDir = STORE_DIR): PartImpact {
   const part = findStorePart(ref, storeDir);
   if (!part) return { part: null, repos: [] };
-  const storeHash = partHash(part.dir, part.shelf, mainOf(part));
+  // a Basic repo carries the part without its Node hooks (plan/28 §0m) and its copy is stamped with that hash
+  const storeHashes = new Set([partHash(part.dir, part.shelf, mainOf(part)), partHash(part.dir, part.shelf, mainOf(part), BASIC_DROP)]);
   const out: PartImpact["repos"] = [];
   for (const r of repos) {
     if (!existsSync(r.agent) || !isFolderHarness(r.agent)) continue;
@@ -53,7 +55,7 @@ export function partImpact(ref: string, repos: Array<{ name: string; root: strin
     });
     if (!copy) { out.push({ name: r.name, root: r.root, state: "absent" }); continue; }
     const s = copyState(copy);
-    out.push({ name: r.name, root: r.root, folder: copy.folder, state: s.edited ? "edited" : s.from!.hash === storeHash ? "current" : "behind" });
+    out.push({ name: r.name, root: r.root, folder: copy.folder, state: s.edited ? "edited" : storeHashes.has(s.from!.hash) ? "current" : "behind" });
   }
   return { part, repos: out };
 }

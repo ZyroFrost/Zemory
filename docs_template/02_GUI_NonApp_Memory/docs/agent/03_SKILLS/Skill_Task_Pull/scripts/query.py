@@ -29,7 +29,14 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-from region_values import value as region_value  # noqa: E402
+try:
+    from region_values import value as region_value  # noqa: E402
+except ImportError:
+    # region_values.py comes with a department structure (its region manager holds the values); a repo without one has no
+    # region query app to ask, so say that instead of a traceback
+    sys.stderr.write("query.py: this repo has no scripts/region_values.py - the region query app serves department repos only;"
+                     " pull from the source directly (skill task-pull)\n")
+    sys.exit(2)
 
 ROOT = HERE.parent
 VAULT_DIR = ROOT / "data" / "secrets" / "vault"

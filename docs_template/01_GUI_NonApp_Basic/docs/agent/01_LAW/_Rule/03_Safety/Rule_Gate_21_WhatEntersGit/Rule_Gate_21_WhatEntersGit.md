@@ -5,7 +5,7 @@ name: what-enters-git
 version: 13
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit @v13 #232f9d91c5bd
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit @v13 #f45f65296035
 ---
 # Rule_Gate_21_WhatEntersGit — What never enters git
 

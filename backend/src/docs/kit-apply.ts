@@ -33,6 +33,7 @@ import {
   retireCopies,
   seedFiles,
   seedTextOf,
+  seedVariants,
   setDir,
   STORE_DIR,
   type AssemblyStep,
@@ -47,6 +48,7 @@ import { unwireHooks } from "./hook-wiring.js";
 import { writeIndexes } from "./harness-index.js";
 import { addMissingSections } from "./cons-read.js";
 import { fixSlotLines } from "./kit-sync.js";
+import { BASIC_DROP, basicHostCurrent, writeBasicHost } from "./basic-guard.js";
 
 export interface KitApplyResult {
   kit: Kit;
@@ -75,6 +77,8 @@ export interface KitApplyResult {
   hooksTakenOver: string[];
   /** AGENTS.md's router half was rewritten from the set's seed (refreshEntryRouter) */
   entryRefreshed?: boolean;
+  /** Basic tier: the host files of its gate written or due (.claude/hooks/guard.ps1 · .claude/settings.json) */
+  basicHost?: string[];
 }
 
 /** The kit a repo's marker names, or null (a repo still on the file harness). */
@@ -109,7 +113,8 @@ export function applyKit(
   }
 
   const hp = harnessPathsAt(root);
-  const target = { agentDir: hp.agent, skillsDir: hp.skills };
+  // a Basic set has no Node to run a rule's hook.cjs (plan/28 §0m): it carries the rule without it
+  const target = { agentDir: hp.agent, skillsDir: hp.skills, ...(found.tier === "Basic" ? { drop: BASIC_DROP } : {}) };
   // A repo still on the legacy shelf folders (02_RULES · 01_CONSTITUTION) moves to the current ones FIRST — before the
   // kit's own files (PURPOSE.md) and the parts are written — so no shelf ever ends up split across two folders.
   const renamedShelves = opts.apply ? renameLegacyShelves(target.agentDir) : [];
@@ -139,6 +144,8 @@ export function applyKit(
     plug.skipped.push(...own.skipped);
   }
   const hooksTakenOver = retireReplacedHooks(root, parts, opts.apply);
+  // the Basic gate (plan/28 §0m): native permissions + the PowerShell guard, in place of the Memory guard
+  const basicHost = kit.tier === "Basic" ? writeBasicHost(root, parts, opts.apply) : [];
   const entryRefreshed = refreshEntryRouter(root, seedTextOf("AGENTS.md", kit, parts, opts.projectName ?? basename(root), storeDir), opts.apply);
   if (opts.apply) followEntryRenames(root, skills, target, listParts(hp.agent, SHELF.skills).filter((p) => !p.from && /^Skill_Own_/.test(p.folder)));
   const retired = retireCopies(target, new Set(parts.map((p) => p.key)), hp.archive, opts.apply, storeDir);
@@ -146,7 +153,7 @@ export function applyKit(
   // copies have left; a hand-written one is archived whole the first time
   const index = writeIndexes(hp.agent, hp.skills, hp.archive, opts.projectName ?? basename(root), opts.apply);
   const skillsBlock: KitApplyResult["skillsBlock"] = index.written.length ? "written" : "current";
-  return { kit, createdMarker, ownAdded, steps, written, pathsFollowed, consAdded, skillsBlock, indexArchived: index.archived, renamedShelves, plug, retired, installed, hooksTakenOver, entryRefreshed };
+  return { kit, createdMarker, ownAdded, steps, written, pathsFollowed, consAdded, skillsBlock, indexArchived: index.archived, renamedShelves, plug, retired, installed, hooksTakenOver, entryRefreshed, basicHost };
 }
 
 /**
@@ -161,6 +168,9 @@ export function assembleSet(kit: Kit, storeDir = STORE_DIR): KitApplyResult | { 
   // A set is a template, not a repo with a history: what a pass retires or replaces in it is already kept in the store's
   // Archive, and an archive folder in the set would be copied into every new repo (and listed in its BOOTSTRAP).
   rmSync(join(dir, "docs", "archive"), { recursive: true, force: true });
+  // a tier-variant seed (AGENTS.Basic.md) is only ever the source of a file: an assembler that did not know variants (an
+  // older image, 29/10) copied it into the set as a file of its own
+  for (const rel of seedVariants(kitParts(kit, storeDir))) rmSync(join(dir, rel), { force: true });
   // a seed is written only when its file is absent, so a line a slot came to require later (slot 86: *.cmd / *.bat eol=crlf)
   // never reached the set's copy and every repo built from it started red (20/10) - the set completes them as sync does
   if (!("error" in r)) fixSlotLines(dir, true);
@@ -179,6 +189,8 @@ export function staleSets(storeDir = STORE_DIR): Kit[] {
     const r = applyKit(dir, { kit: k, apply: false, storeDir });
     if ("error" in r) return false;
     if (r.steps.some((s) => s.verdict === "absent" || s.verdict === "clean" || s.verdict === "merged")) return true;
+    if (k.tier === "Basic" && !basicHostCurrent(dir, kitParts(k, storeDir))) return true;
+    if (seedVariants(kitParts(k, storeDir)).some((rel) => existsSync(join(dir, rel)))) return true;
     const b = join(dir, BOOTSTRAP_FILE);
     return !existsSync(b) || readFileSync(b, "utf8") !== setBootstrap(k, storeDir);
   });
@@ -312,7 +324,8 @@ export function setBootstrap(kit: Kit, storeDir = STORE_DIR): string {
     ? bodyOf(readFileSync(mainPath(host.dir, mainOf(host)), "utf8")).split(/\r?\n/).filter((l) => !/^#\s/.test(l)).join("\n").trim()
     : "";
   const rules = parts.filter((p) => p.shelf === SHELF.rules);
-  const byGroup = (g: string): number => rules.filter((p) => p.folder.split("_")[1] === g).length;
+  // the group is the second word of the folder's OWN name (`03_Safety/Rule_Gate_10_…` → Gate), not of its code chapter
+  const byGroup = (g: string): number => rules.filter((p) => basename(p.folder).split("_")[1] === g).length;
   const articles = parts.filter((p) => p.shelf === SHELF.constitution).map((p) => p.folder);
   const skills = parts.filter((p) => p.shelf === SHELF.skills).map((p) => hostSkillOf(p));
   const raw = readSource(storeDir).raw;
@@ -332,6 +345,9 @@ export function setBootstrap(kit: Kit, storeDir = STORE_DIR): string {
         "Không cần cài zemory. Tải từng file trong bảng §4 từ",
         `\`${raw}/docs_template/${kit.name}/<đường>\` về đúng đường đó trong folder dự án; thay \`<PROJECT>\` bằng tên folder`,
         "dự án. Tải xong, đếm số dòng từng file: khớp bảng §4 thì cài xong, lệch thì tải lại file đó.",
+        "",
+        "Lưới chặn của bộ: `.claude/settings.json` (quyền gốc của host) và `.claude/hooks/guard.ps1` (Windows PowerShell 5.1, có sẵn",
+        "trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phiên để host nạp `.claude/settings.json`.",
       ];
   const files = kit.tier === "Basic" ? setFiles(dir) : [];
   return [

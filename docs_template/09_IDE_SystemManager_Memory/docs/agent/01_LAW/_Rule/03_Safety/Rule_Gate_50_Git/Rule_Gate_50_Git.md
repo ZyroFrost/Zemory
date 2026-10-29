@@ -2,10 +2,10 @@
 id: Rule_50
 aka: 02-50
 name: git
-version: 8
+version: 9
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_50_Git @v8 #0a86fb21f4d5
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_50_Git @v9 #7811683c4b40
 ---
 # Rule_Gate_50_Git — Commit freely, push on command, never break history
 
@@ -34,6 +34,7 @@ command. History is never rewritten or destroyed without asking first.
 
 ## Check
 - The guard blocks `git push` without a command and the history-breaking commands (flag `discard`).
+- A Basic set (no guard): the host's own permissions from `gate.json › native` — `git push` asks, a force-push is denied.
 - The end-of-turn hook commits the session's own files locally once their uncommitted lines pass 300, and says so in one line.
 
 ## Links · Liên kết

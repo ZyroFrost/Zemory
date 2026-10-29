@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 import { currentProjectRoot } from "../core/config.js";
 import { generateGuards, GUARD_MATCHER, guardCommand } from "../docs/guard-gen.js";
 import { handleHook, installCodexHooks, installHooks, uninstallHooks } from "../memory/capture-hook.js";
-import { judgeSendPurpose, judgeSendTarget } from "../memory/send-guard.js";
+import { judgeSendPurpose, judgeSendTarget, judgeSendUpward } from "../memory/send-guard.js";
 import { readStdin } from "./_shared.js";
 
 export async function cmdHook(args: string[]): Promise<void> {
@@ -94,7 +94,7 @@ export async function cmdHook(args: string[]): Promise<void> {
     } catch {
       // unreadable payload => nothing to judge, let it through (the host decides; this latch only narrows)
     }
-    const why = judgeSendTarget(payload.tool_input?.to) ??
+    const why = judgeSendTarget(payload.tool_input?.to) ?? judgeSendUpward(payload.tool_input ?? {}) ??
       judgeSendPurpose(payload.tool_input ?? {}, typeof payload.transcript_path === "string" ? payload.transcript_path : "");
     if (why) {
       // Both channels: without Git the host drops the exit code, the JSON decision still blocks (plan/28 §0m).

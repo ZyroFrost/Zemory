@@ -2,7 +2,7 @@
 id: Rule_10
 aka: 02-10
 name: destructive-ops
-version: 9
+version: 10
 kind: action
 code: 03_Safety
 ---
@@ -43,6 +43,8 @@ approval before doing it. Original inputs received from outside are only read, n
   target is read the way the shell reads it: a `cd` before it, quotes glued to a word, `$TEMP` / `$env:TEMP`, a variable set in
   the command, a `Get-ChildItem -Filter` piped into `Remove-Item $_`. A target that is not scratch on the same line still asks.
 - Original inputs: the marker key `protected` (globs, for example `data/*/01_raw`).
+- A Basic set (no guard): the host's own permissions from `gate.json › native` ask before `rm -r` · `Remove-Item` ·
+  `git reset --hard` · `git clean` · `git checkout --`; a delete hidden in a script is not seen there, the text decides.
 
 ## Links · Liên kết
 - Repo declares · Repo khai: `Cons_Gate_10_ReadOnlySources` — the repo declares its read-only sources · repo khai nguồn chỉ đọc

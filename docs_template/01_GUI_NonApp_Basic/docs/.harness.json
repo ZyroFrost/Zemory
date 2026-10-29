@@ -9,5 +9,21 @@
     "changes_keep": 180
   },
   "profile": "non-app",
-  "kit": "01_GUI_NonApp_Basic"
+  "kit": "01_GUI_NonApp_Basic",
+  "basic_native": [
+    "ask:Bash(git checkout -- :*)",
+    "ask:Bash(git clean:*)",
+    "ask:Bash(git push:*)",
+    "ask:Bash(git reset --hard:*)",
+    "ask:Bash(rm -r:*)",
+    "ask:Bash(rm -rf:*)",
+    "ask:PowerShell(Remove-Item:*)",
+    "ask:PowerShell(git clean:*)",
+    "ask:PowerShell(git push:*)",
+    "ask:PowerShell(git reset --hard:*)",
+    "deny:Bash(git push --force:*)",
+    "deny:Bash(git push -f:*)",
+    "deny:PowerShell(git push --force:*)",
+    "deny:PowerShell(git push -f:*)"
+  ]
 }

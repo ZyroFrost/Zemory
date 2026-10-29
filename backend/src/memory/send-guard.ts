@@ -458,6 +458,34 @@ export function judgeSendPurpose(
   );
 }
 
+// Rule_Gate_83 step 7: work goes down, not up. zemory is the top manager (it holds HS and the sync); a repo changes a part
+// of HS, its constitution, and runs its syncs itself — it never hands that to the zemory session. Keyword-exact, so a report
+// of a fault in zemory's code still reaches it.
+const HS_HOLDER = /^zemory$/i;
+const PART_NAME = /\b(?:Rule|Cons)_(?:Gate|Keys|Core)_\d+|\bSkill_[A-Z][A-Za-z]+|\bStruc_[A-Z][A-Za-z]+|\b[A-Z][A-Za-z]+_\d{3}_[A-Z][A-Za-z0-9]+|\bHS\b/;
+const CHANGE_WORD = /(?:^|[^\p{L}])(?:sửa|đổi|thêm|bỏ|gộp|cập nhật|edit|change|add|remove|merge|update)(?=$|[^\p{L}])/iu;
+const SYNC_ASKED = /(?:sync|ráp|assemble)\s+(?:giùm|hộ|giúp)|(?:nhờ|xin)\s+(?:zemory\s+)?(?:sync|ráp|assemble)/iu;
+
+/** null = let through; otherwise the reason to block. Only a message to the session of the repo holding HS is judged. */
+export function judgeSendUpward(input: { to?: unknown; message?: unknown }, peers: PeerSession[] = listPeers()): string | null {
+  const to = typeof input.to === "string" ? input.to.trim() : "";
+  const text = typeof input.message === "string" ? input.message : "";
+  if (!to || /^uds:/i.test(to) || !text.trim()) return null;
+  const name = to.replace(/\s*\[[0-9a-f]+\]$/i, "");
+  const target = peers.find((p) => p.name === name || p.title === name);
+  if (!target || !HS_HOLDER.test(target.repo)) return null;
+  const asksChange = PART_NAME.test(text) && CHANGE_WORD.test(text);
+  if (!asksChange && !SYNC_ASKED.test(text)) return null;
+  return (
+    `BLOCKED (send guard, Rule_Gate_83_HarnessFromStore step 7): this message asks the zemory session to ` +
+    `${asksChange ? "change a part of HS" : "run a sync"} for this repo. Work goes down, not up: zemory is the top manager, ` +
+    `and a repo changes HS, its constitution and runs its syncs itself.\n` +
+    `Do step 3a here: ask the requester with the change written out; approved ⇒ edit the part on HS (version +1), ` +
+    `\`zemory impact <part>\`, \`zemory sync\` here and in every repo the impact lists, commit the part with the rebuilt sets. ` +
+    `A fault in zemory's own code (a check that judges wrong, a command that breaks) may still be sent — name the file, not a part.`
+  );
+}
+
 /** null = let through; otherwise the reason to block. */
 export function judgeSendTarget(to: unknown, peers: PeerSession[] = listPeers()): string | null {
   const raw = typeof to === "string" ? to.trim() : "";

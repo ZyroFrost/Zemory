@@ -1,6 +1,9 @@
 {
   "gate": "guard",
   "partial": true,
+  "native": {
+    "ask": ["Bash(rm -rf:*)", "Bash(rm -r:*)", "Bash(git reset --hard:*)", "Bash(git clean:*)", "Bash(git checkout -- :*)", "PowerShell(Remove-Item:*)", "PowerShell(git reset --hard:*)", "PowerShell(git clean:*)"]
+  },
   "prompt": {
     "kind": "Rule_10",
     "re": "\\b(them (tinh nang|chuc nang|cot|nut|lenh|vao|1|cho)|bo sung|tinh nang|chuc nang|doi (lai|cach|thanh)|thay (the|bang)|bo cai cu|tra lai|mat tinh nang|giu (nguyen|lai))\\b",

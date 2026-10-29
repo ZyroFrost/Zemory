@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 # Rule_Gate_10_DestructiveOps — Destroying anything needs approval; original inputs are read-only
@@ -37,3 +37,5 @@ chỉ được đọc, không bao giờ bị sửa.
   dấu nháy dính vào chữ, `$TEMP` / `$env:TEMP`, biến gán trong cùng lệnh, `Get-ChildItem -Filter` nối sang `Remove-Item $_`. Một
   đích không phải nháp trên cùng dòng vẫn phải hỏi.
 - Đầu vào gốc: khoá `protected` của marker (glob, ví dụ `data/*/01_raw`).
+- Bộ Basic (không có guard): quyền gốc của host lấy từ `gate.json › native` hỏi trước `rm -r` · `Remove-Item` ·
+  `git reset --hard` · `git clean` · `git checkout --`; lệnh xoá giấu trong script thì không thấy, chữ của luật quyết.

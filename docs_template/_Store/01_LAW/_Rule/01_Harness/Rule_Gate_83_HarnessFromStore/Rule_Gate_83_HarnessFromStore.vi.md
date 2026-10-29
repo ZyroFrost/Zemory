@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 # Rule_Gate_83_HarnessFromStore — Repo dùng bản chép harness; thay đổi chung do chính repo cần nó sửa trên HS
@@ -34,6 +34,11 @@ chờ phiên zemory làm hộ. Repo điền vào chỗ trống mà khung để l
 5. Bãi bỏ một phần thì giữ số và đánh dấu bãi bỏ; sync đưa trạng thái đó xuống mọi repo.
 6. Sổ (`04_TODO.md`, `05_CHANGES.md`) là trí nhớ của repo, không phải harness: repo tự ghi, mục TODO mới theo
    `Rule_Gate_38_TodoDoor`.
+7. Chiều của việc: cấp quản lý làm được việc của các repo dưới nó; repo không đẩy việc harness của mình lên trên. zemory là cấp
+   quản lý cao nhất (giữ HS và bộ sync), nên:
+   a. phiên repo không bao giờ nhờ phiên zemory sửa một phần, sửa hiến pháp của repo, hay chạy sync hộ; repo tự làm bước 3a;
+   b. phiên zemory nhận một yêu cầu như vậy thì từ chối, và nêu đúng phần, file, dòng để repo yêu cầu tự sửa. Báo lỗi trong mã
+      của zemory (một phép kiểm phán sai, một lệnh hỏng) không thuộc loại này: zemory sửa mã của mình.
 
 ## Ví dụ
 - Tình huống: phiên của OPS tìm ra một bước hay hơn cho skill dựng báo cáo.
@@ -49,6 +54,11 @@ chờ phiên zemory làm hộ. Repo điền vào chỗ trống mà khung để l
   giữ nguyên; điều riêng của repo (`Cons_*_1NN`, không `from:`) qua khi có cờ một lần `.allow-docs-write` của người dùng. Ghi vào
   HS cũng cần cờ đó (`Rule_Gate_79_HarnessEdit`).
 - conform `harness-edited-here`: bản chép khác bản lúc ráp thì đỏ.
+- Send guard (`zemory hook send-guard`, trên `SendMessage`) chặn tin gửi tới phiên zemory nhờ sửa một phần hay nhờ sync: tên
+  phần (`Rule_` · `Cons_` · `Skill_` · `Struc_` · slot `Xxx_NNN_Tên` · `HS`) đi cùng chữ đổi (sửa · đổi · thêm · bỏ · gộp ·
+  cập nhật · edit · change · add · remove · merge · update), hoặc nhờ sync (sync giùm / hộ / giúp · nhờ sync). Bị chặn:
+  `Cần Zemory: sửa Skill_Task_Case…`. Được qua: `Cần Zemory: conform báo sai ở case-checks.ts`, tin trả lời theo địa chỉ
+  `uds:`, mọi tin phiên zemory gửi xuống.
 - `zemory impact <phần>` liệt kê mọi repo đang mang phần đó và trạng thái (`current` · `behind` · `edited` · `absent`); thoát 1
   khi còn repo sửa bản chép tại chỗ.
 - `zemory sync` ráp lại mọi thư mục bộ tụt sau HS trước khi ráp repo, và nói bộ nào; cổng "mọi thư mục bộ khớp HS" đỏ khi còn

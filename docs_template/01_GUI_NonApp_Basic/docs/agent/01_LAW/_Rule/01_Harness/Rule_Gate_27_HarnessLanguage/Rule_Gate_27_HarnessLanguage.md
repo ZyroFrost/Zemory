@@ -5,7 +5,7 @@ name: harness-language
 version: 22
 kind: judgment
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage @v22 #24815c6934f9
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage @v22 #67a8e2d625f7
 ---
 # Rule_Gate_27_HarnessLanguage — How harness docs are written, and the words they use
 

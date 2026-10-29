@@ -1,10 +1,10 @@
 ---
 id: Rule_83
 name: harness-from-store
-version: 10
+version: 11
 kind: action
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore @v10 #b492ade90445
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore @v11 #5aa6b8d25aaa
 ---
 # Rule_Gate_83_HarnessFromStore — A repo uses its copy of the harness; a shared change is made on HS by the repo that needs it
 
@@ -39,6 +39,13 @@ requester approves; it is never left for the zemory session to do. The repo fill
 5. Retiring a part keeps its number and marks it retired; sync carries that state to every repo.
 6. The ledgers (`04_TODO.md`, `05_CHANGES.md`) are the repo's memory, not harness: the repo writes them, under
    `Rule_Gate_38_TodoDoor` for new TODO items.
+7. The direction of work: a manager may do work for the repos under it; a repo does not hand its own harness work upward.
+   zemory is the top manager (it holds HS and the sync), so:
+   a. a repo session never asks the zemory session to change a part, a repo's constitution, or to run a sync for it; it does
+      step 3a itself;
+   b. the zemory session that receives such a request declines it and names the part, file and line the requesting repo
+      changes itself. A report of a fault in zemory's code (a check that judges wrong, a command that breaks) is not such a
+      request: zemory fixes its code.
 
 ## Example
 - Situation: the OPS session finds a better step for the skill that builds a report.
@@ -54,6 +61,11 @@ requester approves; it is never left for the zemory session to do. The repo fill
   sections stay as they are; an article of the repo's own (`Cons_*_1NN`, no `from:`) passes with the requester's one-use flag
   `.allow-docs-write`. A write into HS needs that flag too (`Rule_Gate_79_HarnessEdit`).
 - conform `harness-edited-here`: a copy that differs from what was assembled is red.
+- The send guard (`zemory hook send-guard`, on `SendMessage`) blocks a message to the zemory session that asks it to change a
+  part or to sync: a part name (`Rule_` · `Cons_` · `Skill_` · `Struc_` · a slot `Xxx_NNN_Name` · `HS`) together with a word of
+  change (sửa · đổi · thêm · bỏ · gộp · cập nhật · edit · change · add · remove · merge · update), or a sync asked of it (sync
+  giùm / hộ / giúp · nhờ sync). Blocked: `Cần Zemory: sửa Skill_Task_Case…`. Passed: `Cần Zemory: conform báo sai ở
+  case-checks.ts`, a reply by `uds:` address, every message the zemory session sends down.
 - `zemory impact <part>` lists every repo carrying the part and its state (`current` · `behind` · `edited` · `absent`); exit 1
   while a copy is edited in a repo.
 - `zemory sync` rebuilds every set folder behind HS before it assembles the repo, and says which; the gate's "every set folder

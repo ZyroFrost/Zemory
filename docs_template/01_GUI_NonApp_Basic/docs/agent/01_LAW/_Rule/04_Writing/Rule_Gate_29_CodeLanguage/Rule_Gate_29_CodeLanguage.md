@@ -5,7 +5,7 @@ name: code-language
 version: 12
 kind: judgment
 code: 04_Writing
-from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_29_CodeLanguage @v12 #7ae4989356c5
+from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_29_CodeLanguage @v12 #f326dd3968be
 ---
 # Rule_Gate_29_CodeLanguage — Code and names are written in English
 

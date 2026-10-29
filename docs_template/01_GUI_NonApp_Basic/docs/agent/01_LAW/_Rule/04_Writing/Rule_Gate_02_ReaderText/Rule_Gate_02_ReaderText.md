@@ -5,7 +5,7 @@ name: reader-text
 version: 11
 kind: action
 code: 04_Writing
-from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_02_ReaderText @v11 #136b4544c11d
+from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_02_ReaderText @v11 #323077bcf69c
 ---
 # Rule_Gate_02_ReaderText — Text for readers
 

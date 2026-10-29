@@ -5,7 +5,7 @@ name: todo-door
 version: 13
 kind: action
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_38_TodoDoor @v13 #aed92a87d715
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_38_TodoDoor @v13 #9c6bead7347f
 ---
 # Rule_Gate_38_TodoDoor — The TODO ledger: the way in and the way out
 

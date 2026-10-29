@@ -8,7 +8,7 @@
 // host path (plan/30 §3 a).
 
 import { handleHook, type HookEventName } from "./capture-hook.js";
-import { judgeSendPurpose, judgeSendTarget, listPeers } from "./send-guard.js";
+import { judgeSendPurpose, judgeSendTarget, judgeSendUpward, listPeers } from "./send-guard.js";
 import { mapHostPath, type PathPair } from "../util/hostpath.js";
 
 export { mapHostPath, parsePathMap, type PathPair } from "../util/hostpath.js";
@@ -40,7 +40,8 @@ export function relayHook(event: string, payload: Record<string, unknown>, map: 
     // sessions are probed here, as the stdin hook does
     const live = Array.isArray(p.live_pids) ? new Set((p.live_pids as unknown[]).map(Number)) : null;
     const peers = live ? listPeers((pid) => live.has(pid)) : listPeers();
-    const why = judgeSendTarget(input.to, peers) ?? judgeSendPurpose(input, typeof tp === "string" ? tp : "", peers);
+    const why = judgeSendTarget(input.to, peers) ?? judgeSendUpward(input, peers) ??
+      judgeSendPurpose(input, typeof tp === "string" ? tp : "", peers);
     if (!why) return { stdout: "", stderr: "", code: 0, known: true };
     return {
       stdout: JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: why } }),

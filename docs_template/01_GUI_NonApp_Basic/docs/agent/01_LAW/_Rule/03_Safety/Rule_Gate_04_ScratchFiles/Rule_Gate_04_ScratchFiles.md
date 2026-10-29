@@ -5,7 +5,7 @@ name: scratch-files
 version: 11
 kind: judgment
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_04_ScratchFiles @v11 #c77fce6c7e06
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_04_ScratchFiles @v11 #5d1ff5534fc9
 ---
 # Rule_Gate_04_ScratchFiles — A scratch file has a way out
 

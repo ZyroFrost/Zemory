@@ -1,1 +1,7 @@
-{"gate": "guard"}
+{
+  "gate": "guard",
+  "native": {
+    "ask": ["Bash(git push:*)", "PowerShell(git push:*)"],
+    "deny": ["Bash(git push --force:*)", "Bash(git push -f:*)", "PowerShell(git push --force:*)", "PowerShell(git push -f:*)"]
+  }
+}

@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # Root_001_Entry entry — cửa vào harness
@@ -10,6 +10,8 @@ lang: vi
   - `AGENTS.md` là một trong 4 vai trò bắt buộc của hệ APP (`backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`) và một trong 3 vai trò bắt buộc của hệ NON-APP (`docs/` · `AGENTS.md` · ≥1 deliverable).
   - Cửa vào giống hệt nhau ở hai hệ: cùng engine, agent điều hướng như nhau.
   - Hai file nằm ở gốc repo vì công cụ ép vị trí; không dời.
+  - Bộ Basic viết `AGENTS.md` từ `seed/AGENTS.Basic.md`: không có zemory thì không có gì chèn luật vào phiên, nên cửa vào ghi
+    rõ phải đọc gì trước lần ghi đầu, bộ có lưới chặn nào, và bước nào cần zemory.
 - Được chứa / không chứa:
   - `AGENTS.md`: mô tả app/sản phẩm + đường dẫn vào `docs/`.
   - `CLAUDE.md`: một dòng `@AGENTS.md`, không thêm nội dung khác.

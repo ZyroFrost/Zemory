@@ -5,7 +5,7 @@ name: eol-keep
 version: 11
 kind: content
 code: 04_Writing
-from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_24_EolKeep @v11 #3252005df14b
+from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_24_EolKeep @v11 #7ded6fd09e2e
 ---
 # Rule_Gate_24_EolKeep — Keep the line endings when editing a file
 

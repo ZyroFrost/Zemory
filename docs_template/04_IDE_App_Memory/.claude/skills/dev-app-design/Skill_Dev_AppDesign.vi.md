@@ -1,5 +1,5 @@
 ---
-version: 22
+version: 24
 lang: vi
 ---
 
@@ -221,12 +221,14 @@ dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_DesignChangeAppr
 sản phẩm thật sự có.** Mỗi vùng có một trang chủ quản; trang tổng quan giữ số tóm tắt và dẫn sang đó, không lặp lại cả danh
 sách app hay dòng nhật ký (§F6 trên một màn).
 · **Vị trí tách khỏi thao tác.** Đường dẫn ngắn (sản phẩm › trang, dấu mũi nhọn) nói đang ở đâu; khung đầu trang kề bên giữ
-  tiêu đề và bộ lọc, thao tác riêng của trang. Hẹp ⇒ xuống dòng (§F12).
+  tiêu đề và bộ lọc, thao tác riêng của trang. Hẹp ⇒ xuống dòng (§F12). Không tiêu đề trang hay mục nào lặp lại điều đường
+  dẫn và tab đang sáng đã nói (§F0) — tên đó chỉ giữ làm tên truy cập của danh sách.
 · **Thanh đầu gọn giữ MỘT dòng** ở mọi độ rộng: bộ lọc và thao tác phụ dời vào popover có nhãn (§F18); một ô tìm kiếm, luôn ở
-  cùng chỗ, tìm trong trang hiện tại; lời chào đứng cạnh nút tài khoản, nút này mở cài đặt tài khoản và đăng xuất.
-· **Thanh điều hướng dài:** các trang quản trị liên quan ⇒ một nhóm thu/mở khi thanh mở rộng; khi thanh thu lại là một icon nhóm
-  có nhãn, mở menu dùng được bằng bàn phím. Mỗi trang giữ đường dẫn riêng, trạng thái đang chọn và cảnh báo thay đổi chưa lưu.
-  Trên điện thoại menu nằm trong màn hình và thanh tab dưới (§M3) vẫn dùng được.
+  cùng chỗ, tìm trong trang hiện tại; tab trang đứng sau bộ lọc trên dòng đó khi đủ chỗ; lời chào đứng cạnh nút tài khoản, nút
+  này mở cài đặt tài khoản và đăng xuất.
+· **Thanh điều hướng dài:** các trang quản trị liên quan dùng chung tab trên thanh đầu ⇒ một mục quản trị có nhãn trên thanh
+  điều hướng mở chúng; không lặp các lựa chọn ấy trong flyout hay thanh mở rộng. Mỗi tab giữ đường dẫn riêng, trạng thái đang
+  chọn và cảnh báo thay đổi chưa lưu. Trên điện thoại thanh tab dưới (§M3) vẫn dùng được.
 · **Ma trận quản trị chung** (người × app, trên `system-manager`): một người = một hàng gọn; cột `system-manager` đứng đầu, rồi
   các app theo mã; phạm vi quản trị cấp dưới mở bằng nút nhỏ có nhãn cạnh vai, không thêm dòng trong hàng; tìm kiếm đứng trước
   bộ lọc trên thanh công cụ.
@@ -238,6 +240,19 @@ sách app hay dòng nhật ký (§F6 trên một màn).
 **Mọi popover và menu có nền đục ở mọi giao diện, kể cả giao diện kính** — chữ và control phía sau không được xuyên qua. Giữ
 bóng, phân lớp và hiệu ứng mở; kiểm cả sáng lẫn tối. Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
 
+### F19. Hai KIỂU XEM của một danh sách hiện CÙNG một nội dung
+**Lưới và danh sách, hay bảng và dòng thời gian, của cùng một tập bản ghi mang cùng các trường chính và cùng bộ lọc; mỗi lúc
+chỉ hiện một kiểu.** Một trường chỉ một kiểu có thì hoặc kiểu kia đang thiếu, hoặc kiểu này đang thừa — quyết đi, đừng để đó.
+· **Thẻ giữ đủ trường chính trên MỘT mặt:** danh tính (tên và tên đăng nhập), liên lạc, vai, trạng thái, lần hoạt động cuối.
+  Lật, hover hay mặt thứ hai chỉ để lặp lại hoặc giấu chúng là thừa (§F0); hiệu ứng lật để dành cho nội dung không có chỗ khác.
+· **Dòng thời gian** được ghép các cột của bảng vào từng dòng sự kiện; giữ thẳng hàng thời gian · người làm · thao tác · mức ·
+  chi tiết, và trên màn hẹp cuộn trong khung nhật ký, không bao giờ cuộn cả trang (§F12).
+· Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
+
+### F20. Hình được giao giữ nguyên MÀU
+**Logo hay ảnh được giao vẽ đúng màu của nó ở mọi giao diện** — filter, blend và opacity của giao diện không bao giờ đổi màu
+nó. Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
+
 ## BỘ KIỂM — luật đo được thì máy kiểm
 
 Luật viết trong skill không tự thi hành: một luật đã chốt vẫn bị phạm lại khi không có máy canh.
@@ -247,6 +262,9 @@ Luật viết trong skill không tự thi hành: một luật đã chốt vẫn 
 - Mã thoát: 0 xanh · 1 lỗi (in từng chỗ) · **3 chưa kiểm đủ** (lớp cần trình duyệt không chạy được) — không bao giờ tính là xanh.
 - Tệp hệ cũ đóng băng ⇒ cảnh báo kèm danh sách nợ, không im. Miễn trừ khai kèm lý do; miễn trừ không còn khớp gì ⇒ lỗi.
 - Thêm một luật đo được vào skill ⇒ thêm mã vào bộ kiểm cùng lượt. Luật chưa đo được bằng máy (F0 · F0b) là việc của người duyệt.
+- **Một lần dọn không được đổi hình vẽ** (CSS chết, khai báo bị đè, gộp luật) thì chứng minh bằng máy: ghi style đã tính của mọi
+  phần tử trên mọi trang và kiểu xem trước và sau, chỉ nhận khi các bản ghi giống nhau. Chạy bộ ghi hai lần trên trang chưa sửa
+  trước — chỗ nào lệch lúc đó (hiệu ứng đếm số, transition bị bắt giữa chừng) là nhiễu đã biết.
 
 ### Bộ kiểm bề mặt dùng chung — `scripts/ui_check.mjs`
 

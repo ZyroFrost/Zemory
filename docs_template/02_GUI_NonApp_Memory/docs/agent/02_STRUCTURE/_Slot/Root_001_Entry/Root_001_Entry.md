@@ -2,9 +2,9 @@
 id: Slot_1
 aka: 03-1
 name: entry
-version: 6
+version: 7
 path: AGENTS.md · CLAUDE.md
-from: _Store/02_STRUCTURE/_Slot/Root_001_Entry @v6 #5afce3cdd0ae
+from: _Store/02_STRUCTURE/_Slot/Root_001_Entry @v7 #bce04292ac4d
 ---
 # Root_001_Entry entry — the harness entry
 
@@ -14,6 +14,8 @@ from: _Store/02_STRUCTURE/_Slot/Root_001_Entry @v6 #5afce3cdd0ae
   - `AGENTS.md` is one of the 4 required roles of an APP repo (`backend/(code)` · `frontend/` · `docs/` · `AGENTS.md`) and one of the 3 required roles of a NON-APP repo (`docs/` · `AGENTS.md` · ≥1 deliverable).
   - The entry is identical in both kinds: the same engine, the agent navigates the same way.
   - Both files sit at the repo root because the tools force the place; never moved.
+  - A Basic set writes its `AGENTS.md` from `seed/AGENTS.Basic.md`: no zemory means no rule is put into the session for the
+    agent, so the entry says what to read before the first write, which gate the set has, and which steps need zemory.
 - May hold / may not hold:
   - `AGENTS.md`: a description of the app/product + the path into `docs/`.
   - `CLAUDE.md`: one line `@AGENTS.md`, nothing else.

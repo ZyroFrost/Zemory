@@ -5,7 +5,7 @@ name: one-home
 version: 11
 kind: judgment
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome @v11 #b4a8d9b70c12
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome @v11 #788f76c7e67f
 ---
 # Rule_Gate_35_OneHome — One thing, one home
 

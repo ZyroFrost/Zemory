@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # Rule_Gate_50_Git — Commit freely, push on command, never break history
@@ -29,4 +29,5 @@ bị viết lại hay phá khi chưa hỏi trước.
 
 ## Máy kiểm
 - Guard chặn `git push` chưa có lệnh và nhóm lệnh phá lịch sử (cờ `discard`).
+- Bộ Basic (không có guard): quyền gốc của host lấy từ `gate.json › native` — `git push` thì hỏi, force-push thì chặn.
 - Hook cuối lượt tự commit cục bộ các file của phiên khi số dòng chưa commit vượt 300, và báo một dòng.

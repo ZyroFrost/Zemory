@@ -5,7 +5,7 @@ name: no-broken-vietnamese
 version: 11
 kind: content
 code: 04_Writing
-from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_31_NoBrokenVietnamese @v11 #dcf02098c2b1
+from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_31_NoBrokenVietnamese @v11 #28089702afe8
 ---
 # Rule_Gate_31_NoBrokenVietnamese — No Vietnamese without diacritics, no broken encoding
 

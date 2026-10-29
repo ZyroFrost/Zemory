@@ -5,7 +5,7 @@ version: 9
 kind: action
 code: 01_Harness
 checked: [Rule_Gate_83_HarnessFromStore, Rule_Keys_80_SharedChangeImpact, Rule_Keys_62_DesignChangeApproval, Rule_Gate_86_LawLayersAgree]
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked @v9 #eb7107d396d6
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked @v9 #f9ae25f2fd4c
 ---
 # Rule_Gate_85_ProposeChecked — Search HS before proposing a new part; amend an existing part when it fits
 

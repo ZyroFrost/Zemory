@@ -403,8 +403,14 @@ function readPartFilesFresh(dir: string, main?: string): Map<string, string> {
   return m;
 }
 
-export function partHash(dir: string, shelf: Shelf, main = MAIN_FILE[shelf]): string {
-  return hashFiles(readPartFiles(dir, main), main);
+/** `drop`: the files a target does not carry (`AssemblyTarget.drop`), so the hash equals what a copy there was stamped with. */
+export function partHash(dir: string, shelf: Shelf, main = MAIN_FILE[shelf], drop?: RegExp): string {
+  return hashFiles(dropFiles(readPartFiles(dir, main), main, drop), main);
+}
+
+function dropFiles(files: Map<string, string>, main: string, drop?: RegExp): Map<string, string> {
+  if (drop) for (const f of [...files.keys()]) if (f !== main && drop.test(f)) files.delete(f);
+  return files;
 }
 
 // ── reading parts ────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -718,18 +724,38 @@ export function kitStructure(kit: Pick<Kit, "structure">, storeDir = STORE_DIR):
  * (`<STRUC_*>` from its STRUCTURE.md header, `<STRUC_KITS>` from the kits built on it) and the skills (`<SKILL_TRIGGERS>`,
  * one row per skill whose gate.json carries a `trigger`).
  */
+/**
+ * A seed may have a variant for one tier: `AGENTS.Basic.md` beside `AGENTS.md` is what a Basic set writes at `AGENTS.md`
+ * (a Basic repo has no zemory, so its entry says what to read first and which steps need zemory). The variant file itself is
+ * never written into a repo.
+ */
+const TIER_VARIANT = /\.(Basic|Memory)(\.[^./\\]+)$/;
+/** The tier-variant seeds the parts carry (`AGENTS.Basic.md`), repo-relative — never a file of an assembled folder. */
+export function seedVariants(parts: Part[]): string[] {
+  const out = new Set<string>();
+  for (const slot of parts.filter((p) => p.shelf === SHELF.structure && !isStructureFolder(p.folder))) {
+    const src = join(slot.dir, SEED_DIR);
+    if (existsSync(src)) for (const rel of seedList(src)) if (TIER_VARIANT.test(rel)) out.add(rel);
+  }
+  return [...out];
+}
+function seedSource(src: string, rel: string, tier: Kit["tier"]): string {
+  const variant = join(src, rel.replace(/(\.[^./\\]+)$/, `.${tier}$1`));
+  return existsSync(variant) ? variant : join(src, rel);
+}
+
 export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName: string, storeDir = STORE_DIR, agentDir?: string): string[] {
   const fill = seedFill(kit, parts, projectName, storeDir);
   const added: string[] = [];
   for (const slot of parts.filter((p) => p.shelf === SHELF.structure && !isStructureFolder(p.folder))) {
     const src = join(slot.dir, SEED_DIR);
     if (!existsSync(src)) continue;
-    for (const rel of seedList(src)) {
+    for (const rel of seedList(src).filter((r) => !TIER_VARIANT.test(r))) {
       const dst = join(repoRoot, rel);
       if (existsSync(dst)) continue;
       mkdirSync(dirname(dst), { recursive: true });
       const eol = "\n";
-      writeFileSync(dst, fill(readFileSync(join(src, rel), "utf8").replace(/\r\n/g, eol)));
+      writeFileSync(dst, fill(readFileSync(seedSource(src, rel, kit.tier), "utf8").replace(/\r\n/g, eol)));
       added.push(rel);
     }
   }
@@ -739,8 +765,8 @@ export function seedFiles(kit: Kit, parts: Part[], repoRoot: string, projectName
 /** The seed of a repo file as this set writes it (placeholders filled), or null when no slot of the set seeds it. */
 export function seedTextOf(rel: string, kit: Kit, parts: Part[], projectName: string, storeDir = STORE_DIR): string | null {
   for (const slot of parts.filter((p) => p.shelf === SHELF.structure && !isStructureFolder(p.folder))) {
-    const f = join(slot.dir, SEED_DIR, rel);
-    if (existsSync(f)) return seedFill(kit, parts, projectName, storeDir)(readFileSync(f, "utf8").replace(/\r\n/g, "\n"));
+    const src = join(slot.dir, SEED_DIR);
+    if (existsSync(join(src, rel))) return seedFill(kit, parts, projectName, storeDir)(readFileSync(seedSource(src, rel, kit.tier), "utf8").replace(/\r\n/g, "\n"));
   }
   return null;
 }
@@ -891,6 +917,12 @@ export interface AssemblyTarget {
   agentDir: string;
   /** Where the host loads skills (`.claude/skills`). */
   skillsDir: string;
+  /**
+   * Files of a part this target does not carry (relative to the part folder). A Basic set has no Node runtime to run a
+   * rule's `hook.cjs`, so it leaves them out (plan/28 §0m); the copy is judged against the part WITHOUT them, so a copy
+   * that never had them is current and one that still has them is cleaned.
+   */
+  drop?: RegExp;
 }
 
 /** Where a part's repo copy lives. Every shelf, skills included, under the harness folder: a skill's SOURCE is
@@ -1097,7 +1129,7 @@ export function planAssembly(parts: Part[], t: AssemblyTarget): AssemblyStep[] {
 
 function planOne(part: Part, t: AssemblyTarget, target = targetDir(t, part)): AssemblyStep {
   const main = mainOf(part);
-  const theirs = readPartFiles(part.dir, main);
+  const theirs = dropFiles(readPartFiles(part.dir, main), main, t.drop);
   const theirsHash = hashFiles(theirs, main);
   const stamped = (files: Map<string, string>, hash: string): Map<string, string> => {
     const out = new Map(files);
@@ -1443,7 +1475,9 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
         if (!p.folder.startsWith(SLOT_LAYER + "/")) wrong.push(`${where}: a slot lives in ${shelf}/${SLOT_LAYER}/, never on the shelf itself`);
         if (p.applies.length) wrong.push(`${where}: a slot belongs to no structure — drop applies: (a structure lists its slots in structure.json)`);
         const paths = String(p.meta.path ?? "").split(/\s*[·|]\s*/).map((x) => x.trim()).filter(Boolean);
-        for (const rel of seedList(join(p.dir, SEED_DIR))) {
+        for (const seed of seedList(join(p.dir, SEED_DIR))) {
+          // a tier variant (AGENTS.Basic.md) is written at its base name (AGENTS.md)
+          const rel = seed.replace(TIER_VARIANT, "$2");
           const ok = paths.some((x) => x === "." || rel === x || rel.startsWith(x.endsWith("/") ? x : x + "/"));
           if (!ok) wrong.push(`${where}: seed/${rel} is not under the slot's path (${paths.join(" · ")})`);
         }

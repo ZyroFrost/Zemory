@@ -5,7 +5,7 @@ name: repo-scope
 version: 9
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope @v9 #0dd78725baff
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope @v9 #9980117738a6
 ---
 # Rule_Gate_44_RepoScope — Write only inside the open project
 

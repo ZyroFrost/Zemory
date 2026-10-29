@@ -2,12 +2,12 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 22
+version: 24
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Dev_DbDesign, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_Dev_AppDesign @v22 #29ed968c21dc
+from: _Store/03_SKILLS/Skill_Dev_AppDesign @v24 #e3f0b21297b1
 ---
 
 # app-design — the APP design standard (FE + BE)
@@ -228,13 +228,14 @@ moved on your own; wanting to change it ⇒ present it for approval first (`Rule
 administration, only the groups the product really has.** Each area has one owning page; the overview keeps summary figures
 and links to it, never a whole app list or log feed again (§F6 on one screen).
 · **Location apart from actions.** A short breadcrumb (product › page, chevron separator) says where you are; the page header
-  beside it holds the title and the page's own filters and actions. Narrow ⇒ it wraps (§F12).
+  beside it holds the title and the page's own filters and actions. Narrow ⇒ it wraps (§F12). No page or section title repeats
+  what the breadcrumb and the lit tab already say (§F0) — keep that name only as the accessible name of the list.
 · **A compact header stays on ONE row** at every width: secondary filters and actions move into a labelled popover (§F18); one
-  search box, always in the same place, searching the current page; the greeting sits beside the account button, which carries
-  account settings and sign-out.
-· **A long rail:** related admin pages ⇒ a collapsible group in the expanded rail; in the collapsed rail one labelled group icon
-  opening a keyboard-reachable menu. Each page keeps its own URL, selected state and unsaved-change guard. On a phone the menu
-  stays inside the screen and the bottom tab bar (§M3) stays usable.
+  search box, always in the same place, searching the current page; page tabs follow the filter in that row when there is room;
+  the greeting sits beside the account button, which carries account settings and sign-out.
+· **A long rail:** related admin pages share the header tabs ⇒ one labelled admin entry on the rail opens them; the same choices
+  are not repeated in a flyout or an expanded rail. Each tab keeps its own URL, selected state and unsaved-change guard. On a
+  phone the bottom tab bar (§M3) stays usable.
 · **The shared admin matrix** (person × app, on the `system-manager`): one person = one compact row; the `system-manager` column
   first, then the apps by code; a lower admin scope opens from a small labelled button beside the role, never as extra lines in
   the row; search before filter in its toolbar.
@@ -247,6 +248,19 @@ and links to it, never a whole app list or log feed again (§F6 on one screen).
 not show through. Keep its shadow, layering and opening animation; check light and dark. Accepted by EYE, not yet by a checker
 code.
 
+### F19. Two VIEWS of one list show the SAME thing
+**Grid and list, or table and timeline, of the same records carry the same key fields and the same filters; one view shows at
+a time.** A field only one view shows is either missing from the other or excess in this one — decide, never leave it.
+· **A card holds its key fields on ONE face:** identity (name and sign-in id), contact, roles, state, last activity. A flip, a
+  hover or a second face that only repeats or hides them is excess (§F0); keep the flip effect for content that has no other place.
+· **A timeline** may fold the table's columns into each event row; keep time · actor · action · severity · detail aligned, and
+  on a narrow screen scroll inside the log frame, never the page (§F12).
+· Accepted by EYE, not yet by a checker code.
+
+### F20. Supplied artwork keeps its COLOURS
+**A supplied logo or picture is drawn in its own colours in every theme** — theme filters, blend modes and opacity never
+recolour it. Accepted by EYE, not yet by a checker code.
+
 ## THE CHECKER — rules that can be measured are checked by the machine
 
 Rules written in a skill do not enforce themselves: a settled rule still gets broken again when no machine watches it.
@@ -256,6 +270,9 @@ Rules written in a skill do not enforce themselves: a settled rule still gets br
 - Exit codes: 0 green · 1 errors (each place printed) · **3 not fully checked** (a layer needing a browser could not run) — never counted as green.
 - Frozen old-system files ⇒ a warning with the list of debts, never silent. Exemptions are declared with a reason; an exemption no longer matching anything ⇒ an error.
 - Adding a measurable rule to the skill ⇒ adding a code to the checker in the same round. Rules not yet machine-measurable (F0 · F0b) are the approver's work.
+- **A clean-up that must not change the drawing** (dead CSS, overridden declarations, merged rules) is proven by machine: record the
+  computed styles of every element on every page and view before and after, and accept only the same records. Run the recorder
+  twice on the unchanged page first — what differs then (a counting animation, a transition caught midway) is known noise.
 
 ### The shared surface check — `scripts/ui_check.mjs`
 
