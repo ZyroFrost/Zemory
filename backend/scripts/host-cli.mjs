@@ -106,13 +106,13 @@ export function ensureKeepAlive(env, o = {}) {
 /**
  * The engine inside the distro must run whatever an optional mount does. Measured 2026-10-28: after a reboot the Drive letter
  * was missing, its fstab line (no nofail) failed local-fs.target, systemd cancelled docker.service and zemory was down 1 h 26
- * min. The Drive letter has no fstab line any more (healDriveMount mounts it); at the keep-alive look a stopped engine is
- * started. Fail-open.
+ * min. At the keep-alive look: a drive line in /etc/fstab without nofail gets it, and a stopped engine is started. Fail-open.
  */
 export function ensureEngine(env, o = {}) {
   const platform = o.platform ?? process.platform;
   if (platform !== "win32" || !env.ZEMORY_WSL_DISTRO) return "skipped";
   const run = o.run ?? ((args) => spawnSync("wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, ...args], { encoding: "utf8", windowsHide: true, timeout: 120_000 }));
+  run(["-u", "root", "--exec", "sh", "-c", "sed -i -E 's#^([A-Z]: /mnt/[a-z] drvfs metadata,noatime) 0 0$#\\1,nofail 0 0#' /etc/fstab"]);
   const state = String(run(["-u", "root", "--exec", "systemctl", "is-active", "docker"]).stdout ?? "").trim();
   if (state === "active") return "running";
   run(["-u", "root", "--exec", "sh", "-c", "systemctl reset-failed; systemctl start docker"]);
@@ -146,22 +146,14 @@ export function healDriveMount(env, o = {}) {
     run(["--exec", "docker", "restart", container]);
     return "rebound";
   }
+  if (!/invalid argument/i.test(String(look.stderr ?? ""))) return "absent"; // not mounted, or the folder is gone: nothing to heal
   const letter = m[1].toLowerCase();
   const exists = o.letterExists ?? ((l) => existsSync(`${l.toUpperCase()}:\\`));
-  // The hook is the ONE thing that mounts the letter (user 29/10): no /etc/fstab line, so a mount the distro started without
-  // (the Drive app was not up yet) is made here too, instead of printing "Processing /etc/fstab with mount -a failed" on
-  // every wsl call until the next boot. The mount is spelled out in full: `mount /mnt/g` alone needs the fstab line.
-  const mount = `mkdir -p /mnt/${letter}; mount -t drvfs ${letter.toUpperCase()}: /mnt/${letter} -o metadata,noatime`;
-  const stale = /invalid argument/i.test(String(look.stderr ?? ""));
-  if (!stale) {
-    // mounted, and the Drive folder is simply not there: nothing to heal
-    if (run(["--exec", "mountpoint", "-q", `/mnt/${letter}`]).status === 0) return "absent";
-    if (!exists(letter)) return "absent";
-  } else if (!exists(letter)) return "absent";
-  run(["-u", "root", "--exec", "sh", "-c", stale ? `umount -l /mnt/${letter}; ${mount}` : mount]);
+  if (!exists(letter)) return "absent";
+  run(["-u", "root", "--exec", "sh", "-c", `umount -l /mnt/${letter}; mount /mnt/${letter}`]);
   if (run(["--exec", "stat", "-c", "%F", drive]).status !== 0) return "failed";
   run(["--exec", "docker", "restart", container]);
-  return stale ? "healed" : "mounted";
+  return "healed";
 }
 
 /** The file every installer writes the machine's choice to (backend/src/util/install-choice.ts reads the same one). */
