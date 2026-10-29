@@ -2,12 +2,12 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 21
+version: 22
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Dev_DbDesign, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_Dev_AppDesign @v21 #8170fd92ab7f
+from: _Store/03_SKILLS/Skill_Dev_AppDesign @v22 #29ed968c21dc
 ---
 
 # app-design — the APP design standard (FE + BE)
@@ -222,6 +222,30 @@ why it went.
 ### F16. TOTAL rows / panels sit BELOW the content
 By the spreadsheet standard: a table's total row, a group's total panel always stand after what they add up. A settled layout is not
 moved on your own; wanting to change it ⇒ present it for approval first (`Rule_Keys_62_DesignChangeApproval`).
+
+### F17. Navigation groups by TASK; each area has ONE owning page
+**The primary rail groups pages by what the person using the app comes to do — overview · opening an app · logs ·
+administration, only the groups the product really has.** Each area has one owning page; the overview keeps summary figures
+and links to it, never a whole app list or log feed again (§F6 on one screen).
+· **Location apart from actions.** A short breadcrumb (product › page, chevron separator) says where you are; the page header
+  beside it holds the title and the page's own filters and actions. Narrow ⇒ it wraps (§F12).
+· **A compact header stays on ONE row** at every width: secondary filters and actions move into a labelled popover (§F18); one
+  search box, always in the same place, searching the current page; the greeting sits beside the account button, which carries
+  account settings and sign-out.
+· **A long rail:** related admin pages ⇒ a collapsible group in the expanded rail; in the collapsed rail one labelled group icon
+  opening a keyboard-reachable menu. Each page keeps its own URL, selected state and unsaved-change guard. On a phone the menu
+  stays inside the screen and the bottom tab bar (§M3) stays usable.
+· **The shared admin matrix** (person × app, on the `system-manager`): one person = one compact row; the `system-manager` column
+  first, then the apps by code; a lower admin scope opens from a small labelled button beside the role, never as extra lines in
+  the row; search before filter in its toolbar.
+· **Reorganising a template keeps every interactive effect:** list the original's effects before moving anything, then check
+  each one on the page that now owns it (§F5).
+· Accepted by EYE, not yet by a checker code: U1 and U3 catch overflow and control height, not a header falling to two rows.
+
+### F18. Popovers and menus are OPAQUE
+**Every popover and menu has an opaque background in every theme, glass themes included** — text and controls behind it must
+not show through. Keep its shadow, layering and opening animation; check light and dark. Accepted by EYE, not yet by a checker
+code.
 
 ## THE CHECKER — rules that can be measured are checked by the machine
 

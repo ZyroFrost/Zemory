@@ -1,5 +1,5 @@
 ---
-version: 21
+version: 22
 lang: vi
 ---
 
@@ -215,6 +215,28 @@ vì sao mất.
 ### F16. Dòng / panel TỔNG nằm DƯỚI nội dung
 Theo chuẩn bảng tính: dòng tổng của bảng, panel tổng của một nhóm luôn đứng sau phần được cộng. Bố cục đã chốt thì không tự
 dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_DesignChangeApproval`).
+
+### F17. Điều hướng nhóm theo VIỆC; mỗi vùng MỘT trang chủ quản
+**Thanh điều hướng chính nhóm trang theo việc người dùng vào để làm — tổng quan · mở app · nhật ký · quản trị, chỉ những nhóm
+sản phẩm thật sự có.** Mỗi vùng có một trang chủ quản; trang tổng quan giữ số tóm tắt và dẫn sang đó, không lặp lại cả danh
+sách app hay dòng nhật ký (§F6 trên một màn).
+· **Vị trí tách khỏi thao tác.** Đường dẫn ngắn (sản phẩm › trang, dấu mũi nhọn) nói đang ở đâu; khung đầu trang kề bên giữ
+  tiêu đề và bộ lọc, thao tác riêng của trang. Hẹp ⇒ xuống dòng (§F12).
+· **Thanh đầu gọn giữ MỘT dòng** ở mọi độ rộng: bộ lọc và thao tác phụ dời vào popover có nhãn (§F18); một ô tìm kiếm, luôn ở
+  cùng chỗ, tìm trong trang hiện tại; lời chào đứng cạnh nút tài khoản, nút này mở cài đặt tài khoản và đăng xuất.
+· **Thanh điều hướng dài:** các trang quản trị liên quan ⇒ một nhóm thu/mở khi thanh mở rộng; khi thanh thu lại là một icon nhóm
+  có nhãn, mở menu dùng được bằng bàn phím. Mỗi trang giữ đường dẫn riêng, trạng thái đang chọn và cảnh báo thay đổi chưa lưu.
+  Trên điện thoại menu nằm trong màn hình và thanh tab dưới (§M3) vẫn dùng được.
+· **Ma trận quản trị chung** (người × app, trên `system-manager`): một người = một hàng gọn; cột `system-manager` đứng đầu, rồi
+  các app theo mã; phạm vi quản trị cấp dưới mở bằng nút nhỏ có nhãn cạnh vai, không thêm dòng trong hàng; tìm kiếm đứng trước
+  bộ lọc trên thanh công cụ.
+· **Sắp lại một mẫu thì giữ đủ mọi hiệu ứng tương tác:** liệt kê hiệu ứng của bản gốc trước khi dời, rồi kiểm từng cái trên
+  trang giờ làm chủ nó (§F5).
+· Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm: U1 và U3 bắt tràn và chiều cao control, không bắt thanh đầu rơi thành hai dòng.
+
+### F18. Popover và menu có nền ĐỤC
+**Mọi popover và menu có nền đục ở mọi giao diện, kể cả giao diện kính** — chữ và control phía sau không được xuyên qua. Giữ
+bóng, phân lớp và hiệu ứng mở; kiểm cả sáng lẫn tối. Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
 
 ## BỘ KIỂM — luật đo được thì máy kiểm
 
