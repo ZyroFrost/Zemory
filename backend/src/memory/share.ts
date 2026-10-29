@@ -9,7 +9,6 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync }
 import {
   appendFileSync,
   closeSync,
-  copyFileSync,
   createReadStream,
   createWriteStream,
   existsSync,
@@ -1169,6 +1168,27 @@ function appendChunk(containerPath: string, bundlePath: string): number {
   return len;
 }
 
+/** Copy a file with a read/write loop (8 MB blocks), creating or truncating the target; no kernel copy, no mode copy. */
+function copyByBlocks(src: string, dst: string): void {
+  const len = statSync(src).size;
+  const rfd = openSync(src, "r");
+  const wfd = openSync(dst, "w");
+  try {
+    const buf = Buffer.allocUnsafe(8 * 1024 * 1024);
+    let done = 0;
+    while (done < len) {
+      const got = readSync(rfd, buf, 0, Math.min(buf.length, len - done), done);
+      if (got <= 0) break;
+      writeSync(wfd, buf, 0, got);
+      done += got;
+    }
+    if (done !== len) throw new Error(`chép thiếu: ${done}/${len} byte`);
+  } finally {
+    closeSync(rfd);
+    closeSync(wfd);
+  }
+}
+
 /** Số lần thử nối trước khi chịu thua (`plan/08 §8c` ④ — vế "tối đa 3 lần", trước nay chưa build). */
 const APPEND_ATTEMPTS = 3;
 
@@ -2221,7 +2241,10 @@ async function pushAppend(o: {
       const bak = join(dir, MAIN_BAK);
       let movedToBak = false;
       try {
-        copyFileSync(fresh, staged);
+        // byte-for-byte through read/write, not copyFileSync: on the Drive letter mounted in WSL (drvfs) the kernel copy
+        // path is refused - EPERM, measured 30/10 on the first compaction that got this far - while appendChunk's
+        // read/write loop works on the same folder every round
+        copyByBlocks(fresh, staged);
         // ĐẾM LẠI TRÊN ĐÍCH, không tin bản local: đây là chỗ Drive chập (§8d) và cũng là phép
         // duy nhất chứng minh bản thay thế đọc được trước khi ta phá bản đang có.
         const stagedChunks = listChunksRetry(staged, "kiểm bản gộp vừa chép sang kênh");
