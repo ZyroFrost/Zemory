@@ -9,7 +9,7 @@
 // chạy 1 worker ⇒ đỉnh nhóm nặng ≤ một model. Danh sách là TƯỜNG MINH và có cổng canh
 // (`test-partition.test.mjs`): file nào import lớp embed/rerank mà không nằm trong HEAVY ⇒ đỏ,
 // để phân nhóm không âm thầm lệch khi ai thêm test mới.
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import os from "node:os";
@@ -31,7 +31,11 @@ try {
 // in %TEMP%, 33 GB). 61 test files call mkdtemp straight, many with no cleanup; rather than trust each, every child of this
 // run gets TEMP/TMP/TMPDIR pointed at `<tmp>/zemory-test/run-*`, removed when the run ends. A run killed halfway leaves its
 // folder behind, so each run first sweeps run folders older than SWEEP_AGE_MS (a parallel run is never that old).
-const TEMP_BASE = join(os.tmpdir(), "zemory-test");
+// The system TEMP in its LONG form: on a Windows profile with a long user name os.tmpdir() is an 8.3 short path
+// (`C:\Users\HUY~1.NGU\…`) and every test that writes a path and reads it back went red (measured 2026-10-29: 9 files; the long
+// form, 22/22 green). Not inside a repo: the code that finds "the project" walks up and met this repo itself (measured the same
+// day with TEMP in data/tmp: 31 of 61 paths-* cases red, and after GIT_CEILING_DIRECTORIES still 3 session-title / tidy cases).
+const TEMP_BASE = join(realpathSync.native(os.tmpdir()), "zemory-test");
 const SWEEP_AGE_MS = 6 * 60 * 60 * 1000;
 mkdirSync(TEMP_BASE, { recursive: true });
 for (const name of readdirSync(TEMP_BASE)) {

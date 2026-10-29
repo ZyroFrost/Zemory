@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Models_167_Models models — nơi chứa model chung duy nhất
@@ -21,6 +21,7 @@ Mỗi engine một thư mục, vì mỗi engine giữ model theo định dạng 
 | `ollama\` | model của Ollama (blobs và manifests) | biến môi trường `OLLAMA_MODELS=…\_Models\ollama` |
 | `huggingface\` | cache hub của Hugging Face | biến môi trường `HF_HUB_CACHE=…\_Models\huggingface` |
 | `comfyui\` | checkpoint, LoRA, VAE của ComfyUI | `extra_model_paths.yaml` của ComfyUI → `…\_Models\comfyui\` |
+| `transformersjs\` | cache của transformers.js (`<publisher>\<model>\onnx\…`: model nhúng và rerank của app Node) | thiết lập hoặc biến môi trường thư mục model của app; app có thư mục cố định (`<repo>\data\models\`) thì thay bằng junction trỏ về `…\_Models\transformersjs` |
 
 ## Các bước — thêm một engine
 
@@ -34,8 +35,8 @@ Mỗi engine một thư mục, vì mỗi engine giữ model theo định dạng 
 
 - Model chủ máy tải về cho các app AI không nằm ở bất kỳ chỗ nào khác trên máy: không trong `App\` hay `Data\` của app, không ở
   `C:`, không trong repo.
-- Model mà MỘT app tự tải và tự quản cho riêng nó, không app nào khác dùng (model nhúng có sẵn của một app), ở lại dữ liệu riêng
-  của app đó.
+- Model mà một app tự tải và tự quản (model nhúng có sẵn của nó) cũng nằm ở đây, dưới engine có định dạng của nó; thư mục model
+  của app thành junction trỏ về đây (bước 3), nên app giữ nguyên đường dẫn còn ổ chỉ giữ một bản.
 - Bản thân các app AI là phần mềm trong `Software\AI\<Ứng dụng>\` có đủ `Setup\` · `App\` · `Data\`; chỉ model của chúng vào đây.
 - Model nặng: đo chỗ trống của ổ trước khi tải. `_Models\` được đặt nguyên khối trên SSD nhanh rồi nối về (năm luật của
   `Struc_Disk_Data`).
@@ -43,7 +44,7 @@ Mỗi engine một thư mục, vì mỗi engine giữ model theo định dạng 
 ## Khuôn tên
 
 `_Models` viết đúng như vậy. Thư mục engine viết thường, đúng tên lệnh của engine: `lmstudio` · `ollama` · `huggingface` ·
-`comfyui`.
+`comfyui` · `transformersjs`.
 
 ## Đồng bộ
 
