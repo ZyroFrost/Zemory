@@ -86,7 +86,8 @@ export function specHeader(text: string): Record<string, string> {
 
 const CADENCES = ["Daily", "Weekly", "Monthly", "Quarterly", "Yearly", "Case", "OnDemand"];
 const PERIODIC = new Set(["Daily", "Weekly", "Monthly", "Quarterly", "Yearly"]);
-const STATUSES = new Set(["open", "done", "closed", "retired"]);
+// One word for a finished case: `closed` (user 29/10: one standard). `done` is the old word with the same meaning.
+const STATUSES = new Set(["open", "closed", "retired"]);
 
 /** The cadence a task name carries: `<DEPT>_<Cadence>_<Name>`, or null for a name off that pattern. */
 export function nameCadence(task: string): string | null {
@@ -101,6 +102,7 @@ export function caseHeaderFindings(root: string): string[] {
     const h = specHeader(readText(join(root, "tasks", t, "spec.md")) ?? "");
     const at = `tasks/${t}/spec.md`;
     if (!h.status) out.push(`${at}: no status: in the front block`);
+    else if (h.status === "done") out.push(`${at}: status: done (old word - write closed)`);
     else if (!STATUSES.has(h.status)) out.push(`${at}: status: ${h.status} (one of ${[...STATUSES].join(" · ")})`);
     const named = nameCadence(t);
     if (!h.cadence) out.push(`${at}: no cadence: in the front block`);

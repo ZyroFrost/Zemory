@@ -2,7 +2,7 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 13
+version: 14
 type: process
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ

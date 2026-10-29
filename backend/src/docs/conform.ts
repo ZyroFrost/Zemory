@@ -425,7 +425,7 @@ function conformRun(root: string): ConformReport {
   push("case-index", "blocking", "content/README.md does not match tasks/ (a case missing, a row with no case, a status the spec contradicts)",
     caseIndexFindings(root), "one row per tasks/<case>/, linked to its spec.md; the status cell says closed exactly when the spec's status: is done/closed");
   push("case-header", "blocking", "A spec.md front block lacks status/cadence, its cadence differs from the task name, or a periodic task has no direction",
-    caseHeaderFindings(root), "front block: status: open|done|closed|retired · cadence: as in <DEPT>_<Cadence>_<Name> · direction: in|out for Daily/Weekly/Monthly/Quarterly");
+    caseHeaderFindings(root), "front block: status: open|closed|retired (done → closed) · cadence: as in <DEPT>_<Cadence>_<Name> · direction: in|out for Daily/Weekly/Monthly/Quarterly");
   push("vm-task-local-data", "blocking", "A task on the VM keeps files on the work PC (01_raw / 03_output may hold only _SharePoint.url and reference/)",
     vmTaskDataFindings(root), "python scripts/move_outputs_to_vm.py (dry run) then --apply: results to SharePoint + VM, working data to the VM; the local copy goes once both are verified");
   push("vm-deploy-ignored", "blocking", "A file a VM task needs (vm_deploy.json files / needs) sits under a .stignore line - Syncthing never carries it to the VM",
