@@ -27,6 +27,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { hostname, tmpdir } from "node:os";
+import { Worker } from "node:worker_threads";
 import { basename, dirname, join, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -1068,7 +1069,8 @@ interface DriveLock {
 }
 
 /** Nhịp tim: chủ khoá chạm lại `at` mỗi 30 giây khi còn đang làm việc. */
-const LOCK_BEAT_MS = 30_000;
+// ZEMORY_LOCK_BEAT_MS: the test seam (same mould as ZEMORY_SEGMENT_MAX) - a test cannot wait 3 × 30 s for a missed beat
+const LOCK_BEAT_MS = Number(process.env.ZEMORY_LOCK_BEAT_MS) > 0 ? Number(process.env.ZEMORY_LOCK_BEAT_MS) : 30_000;
 /** Lỡ 3 nhịp mới coi là chết. Một nhịp lỡ vì máy bận KHÔNG phải là chết (cùng doctrine
  *  `02_RULES` §Bề mặt CHẾT THEO nền: phải trượt LIÊN TIẾP N nhịp mới kết luận). */
 const LOCK_BEAT_MISSES = 3;
@@ -1426,6 +1428,27 @@ function readDriveLock(path: string): DriveLock | null {
  * `onWait` để bề mặt gọi in ra *"đang chờ máy X"* — xếp hàng phải NHÌN THẤY, không thì người dùng
  * đọc thành treo (`02_RULES`: vỏ rỗng là kiểu hỏng tệ nhất vì nó không báo lỗi, nó nói dối).
  */
+/**
+ * Keep a lock file fresh every LOCK_BEAT_MS from a worker thread, whatever the main thread is doing. Returns the stop
+ * function. No worker (an environment without worker_threads) ⇒ the old in-loop timer, still better than none.
+ */
+function startLockBeat(path: string, claim: DriveLock): () => void {
+  const body = `const { workerData: d } = require("node:worker_threads"); const fs = require("node:fs");
+    setInterval(() => { try { fs.writeFileSync(d.path, JSON.stringify({ ...d.claim, at: new Date().toISOString() })); } catch {} }, d.every);`;
+  try {
+    const w = new Worker(body, { eval: true, workerData: { path, claim, every: LOCK_BEAT_MS } });
+    w.unref();
+    w.on("error", () => { /* a beat that cannot write is a missed beat, never a crash of the run */ });
+    return () => { void w.terminate(); };
+  } catch {
+    const t = setInterval(() => {
+      try { writeFileSync(path, JSON.stringify({ ...claim, at: new Date().toISOString() } satisfies DriveLock)); } catch { /* missed beat */ }
+    }, LOCK_BEAT_MS);
+    if (typeof t.unref === "function") t.unref();
+    return () => clearInterval(t);
+  }
+}
+
 async function acquireDriveLock(
   dir: string,
   host: string,
@@ -1455,16 +1478,12 @@ async function acquireDriveLock(
       // (Drive không có ghi nguyên tử) nhưng thu hẹp cửa sổ xuống một lượt đọc.
       const back = readDriveLock(path);
       if (back && back.host === host && back.pid === process.pid) {
-        const beat = setInterval(() => {
-          try {
-            writeFileSync(path, JSON.stringify({ ...claim, at: new Date().toISOString() } satisfies DriveLock));
-          } catch {
-            /* nhịp lỡ không được làm chết lượt đang chạy — bên kia còn 2 nhịp nữa mới kết luận */
-          }
-        }, LOCK_BEAT_MS);
-        if (typeof beat.unref === "function") beat.unref();
+        // The beat runs in a WORKER THREAD, not on this event loop: an export is long synchronous work (29/10: a
+        // `--compact` exporting the whole store for ~1 h) and a setInterval here never fired, so after 3 missed beats the
+        // daemon's own auto-sync read the lock as dead and appended 4 blocks under it - the compaction then had to stop.
+        const beat = startLockBeat(path, claim);
         return () => {
-          clearInterval(beat);
+          beat();
           rmSync(path, { force: true });
         };
       }
