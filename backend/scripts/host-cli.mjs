@@ -136,6 +136,22 @@ export function healDriveMount(env, o = {}) {
   if (platform !== "win32" || !env.ZEMORY_WSL_DISTRO || !m) return "skipped";
   const run = o.run ?? ((args) => spawnSync("wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, ...args], { encoding: "utf8", windowsHide: true, timeout: 60_000 }));
   const container = env.ZEMORY_CONTAINER || "zemory";
+  const letter = m[1].toLowerCase();
+  const exists = o.letterExists ?? ((l) => existsSync(`${l.toUpperCase()}:\\`));
+  // The hook is the ONE thing that mounts the letter (user 29/10): no /etc/fstab line, so a mount the distro started without
+  // (the Drive app was not up yet) is made here too, instead of printing "Processing /etc/fstab with mount -a failed" on
+  // every wsl call until the next boot. The mount is spelled out in full: `mount /mnt/g` alone needs the fstab line.
+  const mount = `mkdir -p /mnt/${letter}; mount -t drvfs ${letter.toUpperCase()}: /mnt/${letter} -o metadata,noatime`;
+  // Asked FIRST, before the folder: measured 30/10 after a WSL restart, the container's bind mount had created an empty
+  // `/mnt/g/My Drive/Global Memory` on the distro's own disk - the folder "existed", stat passed, and the heal said "ok"
+  // over a letter that was never mounted.
+  if (run(["--exec", "mountpoint", "-q", `/mnt/${letter}`]).status !== 0) {
+    if (!exists(letter)) return "absent";
+    run(["-u", "root", "--exec", "sh", "-c", mount]);
+    if (run(["--exec", "stat", "-c", "%F", drive]).status !== 0) return "failed";
+    run(["--exec", "docker", "restart", container]);
+    return "mounted";
+  }
   const look = run(["--exec", "stat", "-c", "%F", drive]);
   if (look.status === 0) {
     const first = (r) => (r.status === 0 ? String(r.stdout ?? "").trim() : null);
@@ -146,22 +162,13 @@ export function healDriveMount(env, o = {}) {
     run(["--exec", "docker", "restart", container]);
     return "rebound";
   }
-  const letter = m[1].toLowerCase();
-  const exists = o.letterExists ?? ((l) => existsSync(`${l.toUpperCase()}:\\`));
-  // The hook is the ONE thing that mounts the letter (user 29/10): no /etc/fstab line, so a mount the distro started without
-  // (the Drive app was not up yet) is made here too, instead of printing "Processing /etc/fstab with mount -a failed" on
-  // every wsl call until the next boot. The mount is spelled out in full: `mount /mnt/g` alone needs the fstab line.
-  const mount = `mkdir -p /mnt/${letter}; mount -t drvfs ${letter.toUpperCase()}: /mnt/${letter} -o metadata,noatime`;
-  const stale = /invalid argument/i.test(String(look.stderr ?? ""));
-  if (!stale) {
-    // mounted, and the Drive folder is simply not there: nothing to heal
-    if (run(["--exec", "mountpoint", "-q", `/mnt/${letter}`]).status === 0) return "absent";
-    if (!exists(letter)) return "absent";
-  } else if (!exists(letter)) return "absent";
-  run(["-u", "root", "--exec", "sh", "-c", stale ? `umount -l /mnt/${letter}; ${mount}` : mount]);
+  // mounted: the Drive folder is simply not there (not stale) ⇒ nothing to heal
+  if (!/invalid argument/i.test(String(look.stderr ?? ""))) return "absent";
+  if (!exists(letter)) return "absent";
+  run(["-u", "root", "--exec", "sh", "-c", `umount -l /mnt/${letter}; ${mount}`]);
   if (run(["--exec", "stat", "-c", "%F", drive]).status !== 0) return "failed";
   run(["--exec", "docker", "restart", container]);
-  return stale ? "healed" : "mounted";
+  return "healed";
 }
 
 /** The file every installer writes the machine's choice to (backend/src/util/install-choice.ts reads the same one). */
