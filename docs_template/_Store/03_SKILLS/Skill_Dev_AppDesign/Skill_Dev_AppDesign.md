@@ -2,7 +2,7 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 24
+version: 25
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Dev_DbDesign, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -259,6 +259,17 @@ a time.** A field only one view shows is either missing from the other or excess
 ### F20. Supplied artwork keeps its COLOURS
 **A supplied logo or picture is drawn in its own colours in every theme** — theme filters, blend modes and opacity never
 recolour it. Accepted by EYE, not yet by a checker code.
+
+### F21. The FRAME stays put; every table PINS its header row
+**While a page scrolls, the side rail and the page header stay where they are, and every table keeps its header row pinned
+at the top — on every page, every table kind (list · log · matrix · report).** Only the content moves.
+· **How:** the rail is fixed; the header is `position: sticky` at the top of the page column; a table's header cells are
+  `position: sticky` just under the header. A frame that clips a table to its rounded corners uses `overflow: clip`, never
+  `hidden`/`auto` — those make the frame a scroll box and the header row silently stops pinning.
+· **A table that scrolls inside its own frame** (a matrix with a height limit, a wide grid on a phone, §M5) pins its header row
+  to the frame's top edge instead. A list that turns into cards on a phone has no header row to pin.
+· Measure by machine, not by eye: scroll the page (and each table frame) past the first rows, then the rail, the header and
+  each header row stand where they stood (≤ 1 px). Plant a frame with `overflow: hidden` once — the check must go red.
 
 ## THE CHECKER — rules that can be measured are checked by the machine
 

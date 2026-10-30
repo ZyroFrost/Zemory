@@ -1,5 +1,5 @@
 ---
-version: 24
+version: 25
 lang: vi
 ---
 
@@ -252,6 +252,17 @@ chỉ hiện một kiểu.** Một trường chỉ một kiểu có thì hoặc 
 ### F20. Hình được giao giữ nguyên MÀU
 **Logo hay ảnh được giao vẽ đúng màu của nó ở mọi giao diện** — filter, blend và opacity của giao diện không bao giờ đổi màu
 nó. Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
+
+### F21. KHUNG đứng yên; mọi bảng GHIM dòng tiêu đề
+**Khi trang cuộn, thanh bên và khung đầu trang đứng yên, và mọi bảng giữ dòng tiêu đề ghim ở trên — ở mọi trang, mọi loại
+bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung di chuyển.
+· **Cách làm:** thanh bên cố định; khung đầu `position: sticky` ở đỉnh cột trang; ô tiêu đề của bảng `position: sticky` ngay dưới
+  khung đầu. Khung cắt bảng theo góc bo dùng `overflow: clip`, không bao giờ `hidden`/`auto` — hai giá trị đó biến khung thành
+  vùng cuộn và dòng tiêu đề lặng lẽ thôi ghim.
+· **Bảng cuộn trong khung riêng** (ma trận có giới hạn chiều cao, lưới rộng trên điện thoại, §M5) thì ghim dòng tiêu đề vào mép trên
+  của khung. Danh sách chuyển thành thẻ trên điện thoại không có dòng tiêu đề để ghim.
+· Đo bằng máy, không bằng mắt: cuộn trang (và từng khung bảng) qua những dòng đầu, rồi thanh bên, khung đầu và từng dòng tiêu đề
+  phải đứng đúng chỗ cũ (≤ 1 px). Cài một khung `overflow: hidden` một lần — phép kiểm phải đỏ.
 
 ## BỘ KIỂM — luật đo được thì máy kiểm
 
