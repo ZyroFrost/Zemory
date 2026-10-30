@@ -2,7 +2,7 @@
 id: Slot_136
 aka: 03-136
 name: principles
-version: 12
+version: 13
 kind: guide
 path: .
 ---
@@ -19,6 +19,17 @@ path: .
   - NON-APP: Power BI Project `.pbip` · `.Report/` · `.SemanticModel/`, dbt `models/`.
 - A DOUBLE purpose: a tidy structure + a navigation INDEX — an agent reading the standard points STRAIGHT at the folder to change, without grepping the whole repo (fast + saves tokens).
 - INDEX = a NAME DICTIONARY to LOOK UP, NOT a list of folders to create. A folder is created ONLY when there is a real concern/file; never a batch of empty folders to complete a set; no concern → no folder. A typical project shows only 4–10 slots (APP) / 3–8 slots (NON-APP).
+- A SLOT describes ONE path: what kind of file lives there · what it means · what it is for.
+  - The path is the key of the slot: two slots never declare the same path (the `slot-overlap` gate is red, with no way to
+    weigh it away). One path playing several roles under other names (`package.json` · `pyproject.toml`) is still one slot:
+    the names go into its `path:`.
+  - Assembling a slot = the repo uses that folder. A slot has no modes; a structure either carries it or not.
+  - A layer inside the path with rules of its own (enters git or not · who edits it · which structures carry it) is a CHILD slot
+    on its own path (`data/` ⇒ `data/secrets/`). A layer without rules of its own is described in the parent's `## Inside`
+    section: kind of file · the sub-folders allowed and how they are named · the child slots it points at.
+  - A slot speaks only about its own path: a file elsewhere belongs to the slot of that path (`.env` is `Root_093_Env`, not a
+    line of `Data_102_Secrets`).
+  - A guide slot (`kind: guide`, general principles) holds no path of another slot. A design rule is not a slot: it lives in a skill.
 - Source = INPUT = git tracked. Output = gitignored:
   - APP: output / runtime / secrets.
   - NON-APP: source = source definitions · measures · fill templates · deliverables · specs; output = REAL heavy files / PII / pulled in / rendered (`data/` · `exports/` · `.env`).

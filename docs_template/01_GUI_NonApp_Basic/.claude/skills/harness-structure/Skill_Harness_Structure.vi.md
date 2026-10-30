@@ -1,5 +1,5 @@
 ---
-version: 19
+version: 20
 lang: vi
 ---
 
@@ -94,7 +94,8 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 ## 4. Trước khi tạo hoặc dời bất cứ gì
 
 1. Tra bảng §3 → ra slot. Không có dòng nào khớp → **HỎI**, đừng đẻ tên mới.
-2. Đối chiếu [`references/conventions.md`](references/conventions.md) cho quy ước đặt tên và đánh số.
+2. Đối chiếu [`references/conventions.md`](references/conventions.md) cho quy ước đặt tên và đánh số. Tên trên HS theo bảng khuôn của
+   `Rule_Gate_92_NameGrammar`; không khuôn nào khớp ⇒ đề xuất tên theo khuôn gần nhất rồi hỏi, không tự đặt.
 3. **Dời file có sẵn = ĐỀ XUẤT, không tự làm.** In bảng `file/nhóm · đang ở · nên ở · vì sao`, chờ gật từng mục. Nắn cả thư mục → skill `reconcile`.
 4. Thêm slot mới vào chuẩn = **đổi chuẩn** → làm theo §5, trình duyệt trước.
 
@@ -105,14 +106,19 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
    khác: `package.json` · `pyproject.toml` · `requirements.txt` đều là file khai phụ thuộc). Tên slot không phải phép dò.
 3. Slot có sẵn nhận được ⇒ mở rộng `path:` của nó, hoặc thêm slot đó vào template cần nó. Không đẻ slot mới.
 4. Nội dung là chuẩn dùng chung (luật, quy trình, khung) ⇒ rã vào phần HS tương ứng, không giữ thành folder của repo.
-5. Chỉ khi thứ đó có **luật riêng** mà slot cũ không có (template nào được có · ai được sửa · có vào git không) ⇒ slot
-   mới: header `checked: [<slot đã cân>, …]`, thân bài có dòng `Khác <slot cũ>: <luật riêng>` cho từng slot nó chồng lên.
+5. CÙNG path không bao giờ là slot thứ hai: nới slot đang giữ path đó. Chỉ lớp NẰM TRONG folder của slot cũ mà có **luật riêng**
+   slot cũ không có (template nào được có · ai được sửa · có vào git không) ⇒ slot con trên path riêng: header
+   `checked: [<slot đã cân>, …]`, thân bài có dòng `Khác <slot cũ>: <luật riêng>` cho từng slot nó chồng lên.
+   Thân mọi slot có mục cố định `## Inside`: loại file · folder con được thêm và khuôn tên · các slot con nó trỏ tới
+   (`Root_136_Principles`).
 6. Template cấu trúc mới: dò các `Struc_*` cùng cách; template có sẵn nhận thêm slot hay `role` được ⇒ sửa template đó.
 7. Đề xuất đi qua `Rule_Gate_85_ProposeChecked` và `Rule_Gate_83_HarnessFromStore`.
 
 - Ví dụ ✗: slot `Root_142_Requirements` cho `requirements.txt` và `Content_141_WorkspaceStandard` cho thư mục bộ chuẩn chung.
 - Ví dụ ✓: thêm `requirements.txt` vào `path:` của `Root_059_PackageJson`; rã thư mục bộ chuẩn chung vào luật và skill trên HS.
-- Máy kiểm: gate đỏ khi slot mới chồng lên slot cũ mà thiếu `checked:` hoặc thiếu dòng `Khác`.
+- Máy kiểm: gate đỏ khi hai slot khai cùng một path (không giải trình nào gỡ được), và khi slot con mới chồng lên slot cũ mà
+  thiếu `checked:` hoặc thiếu dòng `Khác`.
 
 ## Implements · Thi hành luật
 - `Rule_Gate_85_ProposeChecked` — proposing a slot or a structure template · đề xuất slot hay template cấu trúc
+- `Rule_Gate_92_NameGrammar` — how to propose a name on HS · cách đề xuất tên trên HS

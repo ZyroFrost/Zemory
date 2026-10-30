@@ -2,10 +2,10 @@
 id: Skill_Harness_Structure
 aka: structure
 name: harness-structure
-version: 19
+version: 20
 type: process
 description: Folder standard and routing table for a non-app project (BI, report, data, docs-only, design) — decides where every file belongs. Use before creating, naming, moving, or tidying any file or folder, or when asked where something should go. Vietnamese triggers - "để ở đâu", "đặt file này vào đâu", "sắp xếp lại thư mục", "tạo thư mục", "dọn cho gọn", "file này thuộc chỗ nào".
-from: _Store/03_SKILLS/Skill_Harness_Structure @v19 #f897e7f074a6
+from: _Store/03_SKILLS/Skill_Harness_Structure @v20 #b315ac389759
 ---
 
 # Folder standard — the NON-APP system
@@ -99,7 +99,8 @@ Slot names are **lowercase**, several words joined by `_`. Existing file/vendor 
 ## 4. Before creating or moving anything
 
 1. Look up the §3 table → get the slot. No line matches → **ASK**, do not invent a new name.
-2. Compare with [`references/conventions.md`](references/conventions.md) for naming and numbering conventions.
+2. Compare with [`references/conventions.md`](references/conventions.md) for naming and numbering conventions. A name on HS follows
+   the pattern table of `Rule_Gate_92_NameGrammar`; no pattern fits ⇒ propose a name on the closest pattern and ask, never invent one.
 3. **Moving existing files = a PROPOSAL, not done alone.** Print the table `file/group · sits in · should be in · why`, wait for a nod on each item. Reshaping a whole folder → the `reconcile` skill.
 4. Adding a new slot to the standard = **changing the standard** → follow §5, present it for approval first.
 
@@ -110,14 +111,19 @@ Slot names are **lowercase**, several words joined by `_`. Existing file/vendor 
    name: `package.json` · `pyproject.toml` · `requirements.txt` are all dependency declaration files). A slot name is not the search.
 3. An existing slot can take it ⇒ widen its `path:`, or add that slot to the template needing it. Do not create a new slot.
 4. The content is a shared standard (laws, procedures, frames) ⇒ break it into the matching HS part, do not keep it as a folder of the repo.
-5. Only when the thing has **its own rule** the old slot lacks (which templates may have it · who may edit · whether it enters git) ⇒ a new
-   slot: header `checked: [<slot weighed>, …]`, the body has a line `Khác <old slot>: <own rule>` for each slot it overlaps.
+5. The SAME path is never a second slot: widen the slot that has it. Only a layer INSIDE an old slot's folder with **its own rule**
+   the old slot lacks (which templates may have it · who may edit · whether it enters git) ⇒ a child slot on its own path: header
+   `checked: [<slot weighed>, …]`, the body has a line `Khác <old slot>: <own rule>` for each slot it overlaps.
+   Every slot body carries a fixed `## Inside` section: kind of file · the sub-folders allowed and how they are named · the child
+   slots it points at (`Root_136_Principles`).
 6. A new structure template: search the `Struc_*` the same way; an existing template that can take another slot or `role` ⇒ edit that template.
 7. The proposal goes through `Rule_Gate_85_ProposeChecked` and `Rule_Gate_83_HarnessFromStore`.
 
 - Example ✗: slot `Root_142_Requirements` for `requirements.txt` and `Content_141_WorkspaceStandard` for the shared standard-set folder.
 - Example ✓: add `requirements.txt` to the `path:` of `Root_059_PackageJson`; break the shared standard-set folder into laws and skills on HS.
-- Machine check: the gate goes red when a new slot overlaps an old one without `checked:` or without the `Khác` line.
+- Machine check: the gate goes red when two slots declare the same path (no weighing lifts it), and when a new child slot
+  overlaps an old one without `checked:` or without the `Khác` line.
 
 ## Implements · Thi hành luật
 - `Rule_Gate_85_ProposeChecked` — proposing a slot or a structure template · đề xuất slot hay template cấu trúc
+- `Rule_Gate_92_NameGrammar` — how to propose a name on HS · cách đề xuất tên trên HS
