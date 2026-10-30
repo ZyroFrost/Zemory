@@ -10,14 +10,17 @@ code · every `INPUT_CHECK: OK|NONE|INVALID · <file> · <detail>` line (the inp
 of output. So "did it run, was its input there and valid, was it green, where is the result" is one query for every
 automated job, SQL Agent or not.
 
-Rules: the task's exit code is returned AS IS · a run-log failure never fails the task (it prints a warning) ·
-the run log goes to the database of the repo whose DATA the running repo uses: a `dept` repo logs to the DW (WAREHOUSE_CONN
-in the DW repo's .env), an `app` repo to the `app-data` repo (APPDATA_CONN in its .env), a data repo to its own database.
-A data repo whose key has another name points to it in its .env: RUNLOG_CONN_KEY=<KEY> (read before the default keys).
-That repo is found by: env RUNLOG_REPO · the marker's `uses.app-data` · `uses.data` · `owner` (work PC) · the repo itself · the
-region manager · the first sibling `_DB_*` repo whose .env holds one of the keys (the VM, where docs/ is not deployed and one data
-repo sits beside the task). Nothing secret lives here. Shipped by zemory: store part Skill_Task_VmAutomation (its installs);
-change the store part, never the repo copy.
+Rules: the task's exit code is returned AS IS · a run-log failure never fails the task (it prints a warning).
+Where the run log goes — one database, named `<MACHINE>/<DATABASE>` (the real names), the first that is set of:
+  · env RUNLOG_DB (a launcher may set it) ·
+  · the repo's `config/runlog.json` {"machine": …, "database": …} — a repo whose run log lives in its OWN database (a data repo
+    other than the region's warehouse) declares it there; the file is a setting, it travels with the task to the VM ·
+  · the machine vault's setting `_runlog_db` (in `sql\\configs\\connections.json` of that machine) — the region's warehouse,
+    where every other repo logs. It lives in the vault, not in the region values, because those do not reach the VM.
+The connection comes from the machine vault through scripts/vault_conn.py: `conn(machine, database, account)` with the account
+of the vault setting `_runlog_account` when the machine sets one (a work PC whose default account is a read-only agent that may
+not run the log procedure), else the account the machine's register names; there is no fallback to .env. Nothing secret lives here. Shipped by zemory: store part
+Skill_Task_VmAutomation (its installs); change the store part, never the repo copy.
 
 Which repo is acting (Rule_Keys_90 step 3): `repo_name()` = the folder name of the repo's root (`git rev-parse
 --show-toplevel`, else the folder holding docs/.harness.json), never a naming pattern. The launcher gets it as env
@@ -26,6 +29,7 @@ acting-repo column when it inserts into the family's database itself. Attributio
 """
 import argparse
 import datetime as dt
+import json
 import os
 import socket
 import subprocess
@@ -33,9 +37,8 @@ import sys
 import time
 from pathlib import Path
 
-
-CONN_KEYS = ("WAREHOUSE_CONN", "APPDATA_CONN")     # the DW (role workspace-manager) · the app-data repo (role app-data)
-POINTER_KEY = "RUNLOG_CONN_KEY"                    # a data repo names its own key in its .env: RUNLOG_CONN_KEY=<KEY>
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parent
 REPO_ENV = "ACTING_REPO"                            # the acting repo, handed to the launcher (Rule_Keys_90 step 3)
 REPO_MAX = 64
 
@@ -44,7 +47,7 @@ def repo_name(start=None):
     """Folder name of the repo's root: git toplevel, else the folder holding docs/.harness.json, else ''.
     Kept to [A-Za-z0-9._-] and at most 64 characters (what the apps and the log column accept)."""
     import re
-    here = Path(start or Path(__file__).resolve().parent)
+    here = Path(start or HERE)
     root = None
     try:
         out = subprocess.run(["git", "-C", str(here), "rev-parse", "--show-toplevel"],
@@ -62,71 +65,44 @@ def repo_name(start=None):
     return name if name and len(name) <= REPO_MAX and re.fullmatch(r"[A-Za-z0-9._-]+", name) else ""
 
 
-def keys_of(env):
-    """The keys to try in one .env: the one it names first, then the defaults."""
-    named = env.get(POINTER_KEY)
-    return ([named] if named else []) + [k for k in CONN_KEYS if k != named]
-
-
-def read_env(folder):
-    f = Path(folder) / ".env"
-    env = {}
+def run_log_target():
+    """'<MACHINE>/<DATABASE>' of this repo's run log, or '' (see the module text for the order)."""
+    if os.environ.get("RUNLOG_DB"):
+        return os.environ["RUNLOG_DB"].strip()
+    f = REPO / "config" / "runlog.json"
     if f.is_file():
-        for line in f.read_text(encoding="utf-8").splitlines():
-            if "=" in line and not line.lstrip().startswith("#"):
-                k, v = line.split("=", 1)
-                env[k.strip()] = v.strip().strip('"').strip("'")
-    return env
-
-
-def run_log_conn():
-    """(key, connection string, repo) of the database that holds this repo's run log, or None."""
-    repo = Path(__file__).resolve().parent.parent
-    cands = [Path(os.environ["RUNLOG_REPO"])] if os.environ.get("RUNLOG_REPO") else []
-    try:                                                # work PC: the marker names the repo whose data it uses
-        import json
-        m = json.loads((repo / "docs" / ".harness.json").read_text(encoding="utf-8-sig"))
-        uses = m.get("uses") if isinstance(m.get("uses"), dict) else {}
-        for name in (uses.get("app-data"), uses.get("data"), m.get("owner")):
-            if isinstance(name, str) and name:
-                cands.append(repo.parent / name)
-    except Exception:
-        pass
-    cands.append(repo)                                  # a data repo (DW, the app-data repo) logs to its own database
+        try:
+            d = json.loads(f.read_text(encoding="utf-8-sig"))
+            if d.get("machine") and d.get("database"):
+                return "%s/%s" % (d["machine"], d["database"])
+        except Exception as e:
+            print("[task_run] WARNING: config/runlog.json unreadable: %s" % e, flush=True)
     try:
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-        from region_values import manager_root
-        mgr = manager_root(str(Path(__file__).resolve().parent))
-        if mgr:
-            cands.append(Path(mgr))
+        sys.path.insert(0, str(HERE))
+        import vault_conn
+        return (vault_conn.setting("_runlog_db") or "").strip()
     except Exception:
-        pass
-    try:                                                # the VM: the one managing repo deployed beside this one
-        cands += sorted(p for p in repo.parent.iterdir() if p.is_dir() and p.name.startswith("_DB_"))
-    except Exception:
-        pass
-    for c in cands:
-        env = read_env(c)
-        for k in keys_of(env):
-            if env.get(k):
-                return k, env[k], c.name
-    return None
+        return ""
 
 
 def log_run(task, started, seconds, rc, message):
     try:
         import pyodbc
-        found = run_log_conn()
-        if not found:
-            print("[task_run] WARNING: no %s (or a key named by %s) found — run not logged" % (" / ".join(CONN_KEYS), POINTER_KEY), flush=True)
+        target = run_log_target()
+        if not target or "/" not in target:
+            print("[task_run] WARNING: no run-log database (RUNLOG_DB · config/runlog.json · vault setting _runlog_db) — run not logged",
+                  flush=True)
             return
-        key, conn, where = found
-        cn = pyodbc.connect(conn, timeout=30, autocommit=True)
+        sys.path.insert(0, str(HERE))
+        import vault_conn
+        machine, database = target.split("/", 1)
+        account = (vault_conn.setting("_runlog_account") or "").strip() or None
+        cn = pyodbc.connect(vault_conn.conn(machine, database, account), timeout=30, autocommit=True)
         cn.execute("EXEC dbo._LogTaskRun @TaskName=?, @StartedAt=?, @DurationSeconds=?, @ExitCode=?, @Message=?, @ServerName=?",
                    task, started.replace(microsecond=0), int(seconds), int(rc), message[:4000], socket.gethostname())
         cn.close()
-        print("[task_run] logged to Log_JobRun (%s of %s): %s exit %d (%ds)" % (key, where, task, rc, seconds), flush=True)
-    except Exception as e:                                    # never fail the task because the log could not be written
+        print("[task_run] logged to Log_JobRun (%s): %s exit %d (%ds)" % (target, task, rc, seconds), flush=True)
+    except BaseException as e:                                # never fail the task because the log could not be written
         print("[task_run] WARNING: run log not written: %s" % e, flush=True)
 
 

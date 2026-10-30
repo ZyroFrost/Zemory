@@ -1,12 +1,12 @@
 ---
 id: Skill_Task_VmAutomation
 name: task-vm-automation
-version: 12
+version: 13
 type: process
 aka: vm-automation
 description: Put a periodic task (Daily / Weekly / Monthly) on the VM to RUN BY ITSELF - the vm_deploy.json manifest, the schedule, the Log_JobRun run log, results to the region's SharePoint, the _SharePoint.url shortcut. Use whenever a task goes onto the VM, is automated or scheduled, or its VM run is checked. Vietnamese triggers - "đưa task lên VM", "tự động hoá task", "đặt lịch trên VM", "task chạy trên VM chưa".
-installs: [scripts/task_run.py, scripts/make_output_links.py, scripts/move_outputs_to_vm.py]
-from: _Store/03_SKILLS/Skill_Task_VmAutomation @v12 #18d005d593ba
+installs: [scripts/task_run.py, scripts/vault_conn.py, scripts/make_output_links.py, scripts/move_outputs_to_vm.py]
+from: _Store/03_SKILLS/Skill_Task_VmAutomation @v13 #e4335d447a19
 ---
 
 # task-vm-automation — putting a task on automatic runs on the VM
@@ -33,7 +33,7 @@ another task/itself to read back · no push to SharePoint "for show" · no copyi
 
 ## 🔴 Only the new system · never touch the old system
 
-A task's running code reads/writes only: DW tables · the region's SharePoint site (`sharepoint_site`) · `<vm_run_dir>\<Repo>\` · the DW's `.env` keys.
+A task's running code reads/writes only: DW tables · the region's SharePoint site (`sharepoint_site`) · `<vm_run_dir>\<Repo>\` · the connections and secrets of the machine vault.
 **Forbidden**: every item in `legacy_sources` (the old system's sources, sites, folders, keys) · source servers read directly (the DW's job) · apps running
 on the working machine. **Never touch the old system** (read/write/delete nothing there). Retiring something ⇒ remove it — only on the new system (the
 department repo + the VM schedule), what is on the old system stays as it is. A table missing ⇒ ask the DW to build it, never route around through the old system.
@@ -67,11 +67,19 @@ department repo + the VM schedule), what is on the old system stays as it is. A 
   The original figures are a submitter's file ⇒ declare `input_url` pointing at the source folder on SharePoint, **even when the task reads a DW table** loaded from that file
   (e.g. XYZ `ABC_Daily_StoreInventoryReport` reads `Fact_InventoryDaily`, the original figures = the restaurants' stock-count form). Figures from systems (POS · Fast · CRM)
   ⇒ no `input_url`, `01_raw` EMPTY. Both ⇒ list every source-file folder (` | `). `make_output_links.py` requires only `output_url`.
-- **The run log (`task_run.py`) goes into the DB of the repo holding the data the running repo uses:** a `dept` repo → the DW (`WAREHOUSE_CONN`), an
-  `app` repo → the `app-data` repo (`APPDATA_CONN`, declared in `uses.app-data` of the marker), a data repo → its own DB; one `task_run.py`
-  for every repo, no hand-copied variants. A data repo naming its key differently ⇒ declares in its `.env` `RUNLOG_CONN_KEY=<KEY NAME>`
-  (`task_run` reads that key before the default key; on the VM only `.env` travels, so it is declared here, not in the marker) — and both keys go into
-  the `.env` of `vm_deploy.json`.
+- **Connections and secrets come from the machine vault, never from `.env` (`Rule_Gate_21_WhatEntersGit` step 3a, slot
+  `ConfigVault_151`):** code asks `scripts/vault_conn.py` for `conn("<MACHINE>", "<DATABASE>")` (real names) and `secret(…)`; it
+  reads the address and the account THIS machine uses from the vault's shared register `sql\configs\connections.json` and the
+  login from `sql\credentials\logins.env` (`<MACHINE>_<DATABASE>_<ACCOUNT>_ID/_PASS`). No repo holds a connection string or a
+  variable of its own for one (`<SYSTEM>_CONN` goes). The work PC and the VM keep the same vault tree and key names; what differs is
+  the content (the work PC's register names the read-only agent account, the VM's the account tasks run with). A missing entry stops
+  with the missing key's name — no fallback to `.env`, no other account. A new server = one register entry + one login block in the
+  vault of each machine that uses it, no code. The VM's copy is carried over ssh (`scp`), never by a sync tool.
+- **The run log's database:** `task_run.py` writes `Log_JobRun` into `<MACHINE>/<DATABASE>` = env `RUNLOG_DB`, else the repo's
+  `config/runlog.json` (`{"machine", "database"}` — a data repo whose log lives in its own database), else the machine vault's
+  setting `_runlog_db` in `sql\configs\connections.json` (the region's warehouse; in the vault because the region values do not
+  reach the VM). The connection comes from the vault like any other, with the account of the vault setting `_runlog_account`
+  when the machine sets one (a work PC whose default is a read-only agent account that may not run the log procedure).
 - **The acting repo (`Rule_Keys_90` step 3):** `task_run.py` hands the launcher env `ACTING_REPO` = the folder name of the repo's root
   (`git rev-parse --show-toplevel`, else the folder holding `docs/.harness.json`; plain `[A-Za-z0-9._-]`, at most 64). A task that calls an
   app of the family sends it as header `X-Acting-Repo`; a task that inserts into the family's operation log itself fills the acting-repo

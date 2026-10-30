@@ -2,12 +2,12 @@
 id: Skill_Dev_AppDesign
 aka: app-design
 name: dev-app-design
-version: 24
+version: 26
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Dev_DbDesign, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_Dev_AppDesign @v24 #e3f0b21297b1
+from: _Store/03_SKILLS/Skill_Dev_AppDesign @v26 #ec1916853135
 ---
 
 # app-design — the APP design standard (FE + BE)
@@ -261,6 +261,17 @@ a time.** A field only one view shows is either missing from the other or excess
 **A supplied logo or picture is drawn in its own colours in every theme** — theme filters, blend modes and opacity never
 recolour it. Accepted by EYE, not yet by a checker code.
 
+### F21. The FRAME stays put; every table PINS its header row
+**While a page scrolls, the side rail and the page header stay where they are, and every table keeps its header row pinned
+at the top — on every page, every table kind (list · log · matrix · report).** Only the content moves.
+· **How:** the rail is fixed; the header is `position: sticky` at the top of the page column; a table's header cells are
+  `position: sticky` just under the header. A frame that clips a table to its rounded corners uses `overflow: clip`, never
+  `hidden`/`auto` — those make the frame a scroll box and the header row silently stops pinning.
+· **A table that scrolls inside its own frame** (a matrix with a height limit, a wide grid on a phone, §M5) pins its header row
+  to the frame's top edge instead. A list that turns into cards on a phone has no header row to pin.
+· Measure by machine, not by eye: scroll the page (and each table frame) past the first rows, then the rail, the header and
+  each header row stand where they stood (≤ 1 px). Plant a frame with `overflow: hidden` once — the check must go red.
+
 ## THE CHECKER — rules that can be measured are checked by the machine
 
 Rules written in a skill do not enforce themselves: a settled rule still gets broken again when no machine watches it.
@@ -286,7 +297,7 @@ to catch) and measures the layout:
 | U2 | F5 · F12 | an element sticks out of the window and is not inside a frame that scrolls or clips it on purpose |
 | U3 | F0c | controls on one row differ in height by more than 0.6 px |
 | U4 | F0 | dead space: a table fills less than `min_fill` (default 60 %) of its frame's width |
-| U5 | F5 · F13 | text overlaps text, or text overlaps a chart (≥ 60×30), in the page flow — a label placed on a chart on purpose (absolute) is not judged |
+| U5 | F5 · F13 | text overlaps text, or text overlaps a chart (≥ 60×30), in the page flow — measured on the part left on screen (rows clipped below the edge of a scrolling card are not judged); a label placed on a chart on purpose (absolute) is not judged |
 | U6 | — | a chart frame (`chart` · `bars` · `spark` · `donut` · `ring` · `graph`) has nothing drawn in it |
 | U7 | F14 | a scroll area without `scrollbar-gutter: stable` |
 | U8 | F4 ② | a control or link without a readable label |

@@ -113,12 +113,19 @@ const MEASURE = (ignore, o) => `(() => {
   // placed on purpose: the element, or a wrapper of it below the box both share, is absolute/fixed (a label in a ring's centre)
   const placed = (e, other) => { for (let p = e; p && p !== document.body && !p.contains(other); p = p.parentElement)
     if (/^(absolute|fixed)$/.test(getComputedStyle(p).position)) return true; return false; };
-  const leaves = all.filter(e => textLeaf(e) || drawing(e));  for (let i = 0; i < leaves.length; i++) for (let j = i + 1; j < leaves.length; j++) {
+  // onScreen: the part of an element left on screen once every frame that cuts its content has clipped it (rows still below the
+  // edge of a scrolling card are not on screen, so they cannot cover the pager under that card); null = nothing left
+  const onScreen = e => { const r = e.getBoundingClientRect(); let l = r.left, t = r.top, rt = r.right, b = r.bottom;
+    for (let p = e.parentElement; p && p !== document.body; p = p.parentElement) {
+      const s = getComputedStyle(p); if (s.overflowX === 'visible' && s.overflowY === 'visible') continue; const q = p.getBoundingClientRect();
+      l = Math.max(l, q.left); t = Math.max(t, q.top); rt = Math.min(rt, q.right); b = Math.min(b, q.bottom); }
+    return rt - l > 1 && b - t > 1 ? {left: l, top: t, right: rt, bottom: b, width: rt - l, height: b - t} : null; };
+  const leaves = all.filter(e => (textLeaf(e) || drawing(e)) && onScreen(e));  for (let i = 0; i < leaves.length; i++) for (let j = i + 1; j < leaves.length; j++) {
     const a = leaves[i], b = leaves[j]; if (a.contains(b) || b.contains(a)) continue;
     if (drawing(a) && drawing(b)) continue;
     if (placed(a, b) || placed(b, a)) continue;
     if (a.closest('button,label,select,a') && a.closest('button,label,select,a') === b.closest('button,label,select,a')) continue;
-    const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+    const ra = onScreen(a), rb = onScreen(b);
     const x = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), y = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
     if (x > 4 && y > 4 && x * y > 0.15 * Math.min(ra.width * ra.height, rb.width * rb.height)) add('U5', a, 'overlaps ' + name(b)); }
   // U6 - an empty chart: a chart frame with nothing drawn in it.

@@ -1,5 +1,5 @@
 ---
-version: 24
+version: 26
 lang: vi
 ---
 
@@ -253,6 +253,17 @@ chỉ hiện một kiểu.** Một trường chỉ một kiểu có thì hoặc 
 **Logo hay ảnh được giao vẽ đúng màu của nó ở mọi giao diện** — filter, blend và opacity của giao diện không bao giờ đổi màu
 nó. Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
 
+### F21. KHUNG đứng yên; mọi bảng GHIM dòng tiêu đề
+**Khi trang cuộn, thanh bên và khung đầu trang đứng yên, và mọi bảng giữ dòng tiêu đề ghim ở trên — ở mọi trang, mọi loại
+bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung di chuyển.
+· **Cách làm:** thanh bên cố định; khung đầu `position: sticky` ở đỉnh cột trang; ô tiêu đề của bảng `position: sticky` ngay dưới
+  khung đầu. Khung cắt bảng theo góc bo dùng `overflow: clip`, không bao giờ `hidden`/`auto` — hai giá trị đó biến khung thành
+  vùng cuộn và dòng tiêu đề lặng lẽ thôi ghim.
+· **Bảng cuộn trong khung riêng** (ma trận có giới hạn chiều cao, lưới rộng trên điện thoại, §M5) thì ghim dòng tiêu đề vào mép trên
+  của khung. Danh sách chuyển thành thẻ trên điện thoại không có dòng tiêu đề để ghim.
+· Đo bằng máy, không bằng mắt: cuộn trang (và từng khung bảng) qua những dòng đầu, rồi thanh bên, khung đầu và từng dòng tiêu đề
+  phải đứng đúng chỗ cũ (≤ 1 px). Cài một khung `overflow: hidden` một lần — phép kiểm phải đỏ.
+
 ## BỘ KIỂM — luật đo được thì máy kiểm
 
 Luật viết trong skill không tự thi hành: một luật đã chốt vẫn bị phạm lại khi không có máy canh.
@@ -278,7 +289,7 @@ ngang thanh cuộn là lỗi phải bắt) và đo bố cục:
 | U2 | F5 · F12 | một phần tử thò ra ngoài cửa sổ mà không nằm trong khung cố ý cuộn hay cắt nó |
 | U3 | F0c | control trên cùng một hàng lệch chiều cao quá 0,6 px |
 | U4 | F0 | khoảng trống chết: một bảng chiếm chưa tới `min_fill` (mặc định 60 %) bề ngang khung chứa nó |
-| U5 | F5 · F13 | chữ đè chữ, hoặc chữ đè lên biểu đồ (≥ 60×30) trong dòng chảy trang — nhãn cố ý đặt lên biểu đồ (absolute) không xét |
+| U5 | F5 · F13 | chữ đè chữ, hoặc chữ đè lên biểu đồ (≥ 60×30) trong dòng chảy trang — đo trên phần còn hiện trên màn hình (dòng bị cắt khuất dưới mép một thẻ cuộn không xét); nhãn cố ý đặt lên biểu đồ (absolute) không xét |
 | U6 | — | khung biểu đồ (`chart` · `bars` · `spark` · `donut` · `ring` · `graph`) không vẽ gì |
 | U7 | F14 | vùng cuộn thiếu `scrollbar-gutter: stable` |
 | U8 | F4 ② | control hoặc link không có nhãn đọc được |

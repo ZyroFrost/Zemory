@@ -1,7 +1,7 @@
 ---
 id: Slot_149
 name: program
-version: 5
+version: 6
 path: Software/<Nhóm>/[<Hãng>/]<Ứng dụng>/
 scope: layout
 ---
@@ -75,6 +75,19 @@ Software\Utility\7-Zip\
 - A package manager's global install folder is the `Data\` of its runtime: `npm config set prefix
   D:\Software\Dev\NodeJS\Data\npm-global`, so every CLI installed with `npm -g` lives there and that one folder is on `PATH`.
   A CLI installed by its own installer gets its own program folder (`Software\AI\Anthropic\ClaudeCode\`).
+- **Python, one program per version, shared by repos.** Each Python version the machine runs is one program folder named by its
+  full version: `Software\Dev\Python\3.12.10\{Setup, App}`. That installed copy IS the environment: libraries go into its
+  `App\Lib\site-packages`; no venv, no `Data\`. There is never a second environment for the same version, and the folder never
+  takes a group's, a department's or a purpose's name.
+  - A repo declares the ONE version it runs in `config/runtime.json` (`{"python": "3.12.10"}`); its launchers run
+    `<data root>\Software\Dev\Python\<version>\App\python.exe`, the data root being the parent of `_ConfigVault\` — never a bare
+    `python` from `PATH`, never the system drive.
+  - A repo that needs one more library installs it into the version it declares; a library already there is never upgraded
+    in place. A repo that needs another version installs that version as a new folder and changes its one line.
+  - The pinned library list of each version lives in HS beside the launchers (`Skill_Task_VmAutomation`), so a reinstalled
+    version is rebuilt with one command. A machine that runs tasks (VM) uses the same tree, so the same path.
+  - The alternative, kept as a choice: a repo that needs an environment of its own keeps `.venv/` in the repo
+    (`Venv_108_Venv`). A repo uses one of the two ways, never both.
 - A program's OUTPUT BUFFER — the folder it writes into before the owner sorts the result (a screen recorder's capture folder on a
   fast drive) — is that program's `Data\`, linked to the fast drive per the five laws of `Struc_Disk_Data`; a sorted item moves
   to its own place (a game clip ⇒ `Game\Media\`).
@@ -82,7 +95,8 @@ Software\Utility\7-Zip\
 ## Naming
 
 A program's name as its vendor writes it, without spaces: `PowerBI` · `VSCode` · `7-Zip` · `LMStudio`. A vendor name in
-PascalCase: `Microsoft` · `JetBrains`. The three sub-folders exactly `Setup` · `App` · `Data`.
+PascalCase: `Microsoft` · `JetBrains`. The three sub-folders exactly `Setup` · `App` · `Data`. One exception: a runtime kept
+one folder per version is named by its full version under the runtime's name (`Python\3.12.10\`).
 
 ## Sync
 

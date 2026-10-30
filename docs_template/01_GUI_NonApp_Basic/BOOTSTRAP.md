@@ -75,8 +75,8 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 37 | `.claude/skills/pbi-base/reference/naming.md` | 101 |
 | 38 | `.claude/skills/task-fill/SKILL.md` | 43 |
 | 39 | `.claude/skills/task-fill/Skill_Task_Fill.vi.md` | 37 |
-| 40 | `.claude/skills/task-pull/SKILL.md` | 54 |
-| 41 | `.claude/skills/task-pull/Skill_Task_Pull.vi.md` | 48 |
+| 40 | `.claude/skills/task-pull/SKILL.md` | 56 |
+| 41 | `.claude/skills/task-pull/Skill_Task_Pull.vi.md` | 50 |
 | 42 | `.claude/skills/task-upload/SKILL.md` | 35 |
 | 43 | `.claude/skills/task-upload/Skill_Task_Upload.vi.md` | 29 |
 | 44 | `.gitattributes` | 9 |
@@ -422,12 +422,12 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 384 | `docs/agent/03_SKILLS/Skill_Task_Fill/Skill_Task_Fill.md` | 43 |
 | 385 | `docs/agent/03_SKILLS/Skill_Task_Fill/Skill_Task_Fill.vi.md` | 37 |
 | 386 | `docs/agent/03_SKILLS/Skill_Task_Fill/gate.json` | 20 |
-| 387 | `docs/agent/03_SKILLS/Skill_Task_Pull/Claude/task-pull/SKILL.md` | 54 |
-| 388 | `docs/agent/03_SKILLS/Skill_Task_Pull/Claude/task-pull/Skill_Task_Pull.vi.md` | 48 |
-| 389 | `docs/agent/03_SKILLS/Skill_Task_Pull/Skill_Task_Pull.md` | 54 |
-| 390 | `docs/agent/03_SKILLS/Skill_Task_Pull/Skill_Task_Pull.vi.md` | 48 |
+| 387 | `docs/agent/03_SKILLS/Skill_Task_Pull/Claude/task-pull/SKILL.md` | 56 |
+| 388 | `docs/agent/03_SKILLS/Skill_Task_Pull/Claude/task-pull/Skill_Task_Pull.vi.md` | 50 |
+| 389 | `docs/agent/03_SKILLS/Skill_Task_Pull/Skill_Task_Pull.md` | 56 |
+| 390 | `docs/agent/03_SKILLS/Skill_Task_Pull/Skill_Task_Pull.vi.md` | 50 |
 | 391 | `docs/agent/03_SKILLS/Skill_Task_Pull/gate.json` | 20 |
-| 392 | `docs/agent/03_SKILLS/Skill_Task_Pull/scripts/query.py` | 100 |
+| 392 | `docs/agent/03_SKILLS/Skill_Task_Pull/scripts/query.py` | 108 |
 | 393 | `docs/agent/03_SKILLS/Skill_Task_Pull/scripts/vault.ps1` | 164 |
 | 394 | `docs/agent/03_SKILLS/Skill_Task_Upload/Claude/task-upload/SKILL.md` | 35 |
 | 395 | `docs/agent/03_SKILLS/Skill_Task_Upload/Claude/task-upload/Skill_Task_Upload.vi.md` | 29 |
@@ -441,6 +441,6 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 403 | `docs/plan/00_overview.md` | 5 |
 | 404 | `scripts/graph_mail.py` | 191 |
 | 405 | `scripts/pbi_engine_query.ps1` | 33 |
-| 406 | `scripts/query.py` | 100 |
+| 406 | `scripts/query.py` | 108 |
 | 407 | `scripts/smtp_mail.py` | 122 |
 | 408 | `scripts/vault.ps1` | 164 |

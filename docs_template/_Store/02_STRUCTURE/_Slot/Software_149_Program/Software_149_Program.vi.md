@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 # Software_149_Program program — một phần mềm
@@ -70,6 +70,19 @@ Software\Utility\7-Zip\
 - Thư mục cài toàn cục của trình quản lý gói là `Data\` của runtime đó: `npm config set prefix
   D:\Software\Dev\NodeJS\Data\npm-global`, để mọi CLI cài bằng `npm -g` nằm ở đó và chỉ thư mục đó nằm trên `PATH`. CLI cài
   bằng bộ cài riêng thì có thư mục phần mềm riêng (`Software\AI\Anthropic\ClaudeCode\`).
+- **Python: mỗi bản một thư mục phần mềm, các repo dùng chung.** Mỗi bản Python máy chạy là một thư mục phần mềm đặt theo số bản
+  đầy đủ: `Software\Dev\Python\3.12.10\{Setup, App}`. Bản đã cài đó CHÍNH LÀ môi trường: thư viện cài vào
+  `App\Lib\site-packages`; không venv, không `Data\`. Không bao giờ có môi trường thứ hai cho cùng một bản, và thư mục không mang
+  tên nhóm, phòng ban hay mục đích.
+  - Repo khai ĐÚNG MỘT bản nó chạy ở `config/runtime.json` (`{"python": "3.12.10"}`); launcher của repo chạy
+    `<gốc dữ liệu>\Software\Dev\Python\<bản>\App\python.exe`, gốc dữ liệu là thư mục cha của `_ConfigVault\` — không gọi
+    `python` trơn trên `PATH`, không dùng ổ hệ thống.
+  - Repo cần thêm thư viện thì cài vào bản nó khai; thư viện đã có thì không nâng bản tại chỗ. Repo cần bản Python khác thì cài
+    bản đó thành thư mục mới và sửa một dòng khai.
+  - Danh sách thư viện ghim của từng bản nằm ở HS cạnh launcher (`Skill_Task_VmAutomation`), nên cài lại một bản chỉ cần một
+    lệnh. Máy chạy task (VM) dùng cùng cây thư mục, nên cùng đường dẫn.
+  - Lựa chọn thay thế, vẫn giữ: repo cần môi trường riêng thì giữ `.venv/` trong repo (`Venv_108_Venv`). Một repo dùng một trong
+    hai đường, không dùng cả hai.
 - THƯ MỤC ĐỆM ĐẦU RA của một chương trình — chỗ nó ghi ra trước khi chủ máy xếp kết quả (thư mục ghi clip của phần mềm quay màn hình
   trên ổ nhanh) — là `Data\` của chính chương trình đó, nối sang ổ nhanh theo năm luật của `Struc_Disk_Data`; món đã xếp thì dời
   về chỗ của nó (clip game ⇒ `Game\Media\`).
@@ -77,7 +90,8 @@ Software\Utility\7-Zip\
 ## Khuôn tên
 
 Tên phần mềm viết như hãng viết, bỏ dấu cách: `PowerBI` · `VSCode` · `7-Zip` · `LMStudio`. Tên hãng PascalCase: `Microsoft` ·
-`JetBrains`. Ba thư mục con viết đúng hoa thường: `Setup` · `App` · `Data`.
+`JetBrains`. Ba thư mục con viết đúng hoa thường: `Setup` · `App` · `Data`. Một ngoại lệ: runtime giữ mỗi bản một thư mục thì
+thư mục đặt theo số bản đầy đủ, nằm dưới tên runtime (`Python\3.12.10\`).
 
 ## Đồng bộ
 

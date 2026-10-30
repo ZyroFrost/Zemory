@@ -74,7 +74,15 @@ def main(argv):
     acc = gate_account.load()
     if not acc:
         fail("the account in %s does not decrypt for this Windows user — ask the user for a new temporary password" % vault)
-    wq = WebQuery(acc["url"], acc["user"], acc["password"])
+    # the app's path is ONE region value (query_app_path), not the url saved with each account: an app renamed (/flow ->
+    # /reconcile, no redirect) is one edit in values.json, not one per department vault. The host stays the account's.
+    url = acc["url"]
+    app_path = region_value(str(ROOT), "query_app_path", "")
+    if app_path:
+        from urllib.parse import urlsplit
+        u = urlsplit(url)
+        url = "%s://%s/%s" % (u.scheme, u.netloc, app_path.strip("/"))
+    wq = WebQuery(url, acc["user"], acc["password"])
     if argv[:1] == ["--map"]:
         with wq.opener.open(wq.api_url("/api/map"), timeout=60) as r:
             print(json.dumps(json.loads(r.read() or b"{}"), ensure_ascii=False))
