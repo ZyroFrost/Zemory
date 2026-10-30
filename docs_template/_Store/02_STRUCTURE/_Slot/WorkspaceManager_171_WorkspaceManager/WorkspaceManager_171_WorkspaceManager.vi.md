@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # WorkspaceManager_171_WorkspaceManager workspace-manager — repo tổng quản của một tổ chức không có DW
@@ -8,8 +8,8 @@ lang: vi
 
 `Workspace\Company\<Tổ chức>\_WorkspaceManager\` là repo quản các repo của tổ chức khi tổ chức không chạy DW — không làm việc với
 database, không có app riêng, ví dụ một cụm repo tài liệu hay báo cáo. Nó đứng ngang cấp với `_DB_<Hệ>\` và được ráp cùng một khung,
-`Struc_Repo_WorkspaceManager`: là `owner` của các repo `Dept_<Mã>\`, giữ giá trị của cụm (`Data_140_WorkspaceValues`) và bộ mail chung
-(`Config_139_Mail`), và sửa chuẩn chung trên HS.
+`Struc_Repo_WorkspaceManager`: là `owner` của các repo `Dept_<Mã>\`, giữ giá trị của cụm (`Data_140_WorkspaceValues`) và sổ mail của cụm
+trong két của máy (`ConfigVault_151_ConfigVault` › `mail\configs\`), và sửa chuẩn chung trên HS.
 
 Khác Db_155_Db: repo DW `_DB_<Hệ>\` chỉ giữ vai tổng quản khi đi kèm một database (schema, tác vụ nạp); `_WorkspaceManager\` giữ vai tổng
 quản mà không có database, nên không cung cấp dịch vụ `data`.

@@ -1,7 +1,7 @@
 ---
 id: Slot_171
 name: workspace-manager
-version: 1
+version: 2
 path: _WorkspaceManager/
 scope: layout
 checked: [Db_155_Db, Project_159_Project, Profile_170_Profile]
@@ -13,7 +13,7 @@ checked: [Db_155_Db, Project_159_Project, Profile_170_Profile]
 `Workspace\Company\<Org>\_WorkspaceManager\` is the repo managing the organisation's repos when the organisation runs no data
 warehouse — no database work, no app of its own, for example a group of document or report repos. It sits at the same level as
 `_DB_<System>\` and is assembled with the same frame, `Struc_Repo_WorkspaceManager`: it is the `owner` of the `Dept_<Code>\` repos, keeps
-the group's values (`Data_140_WorkspaceValues`) and the shared mail set (`Config_139_Mail`), and changes the shared standard in HS.
+the group's values (`Data_140_WorkspaceValues`) and the group's mail book in the machine vault (`ConfigVault_151_ConfigVault` › `mail\configs\`), and changes the shared standard in HS.
 
 Khác Db_155_Db: the data warehouse repo `_DB_<System>\` holds the managing role only together with a database (schemas, loading tasks);
 `_WorkspaceManager\` holds the managing role without one, so it provides no `data` service.

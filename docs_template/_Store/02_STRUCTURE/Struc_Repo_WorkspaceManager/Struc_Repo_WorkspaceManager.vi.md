@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Struc_Repo_WorkspaceManager
@@ -11,7 +11,7 @@ cung cấp cho cả cụm. Template này khác nhau theo từng cụm của ngư
 
 - Quản: repo theo template `Struc_Repo_Dept` (khung, chuẩn báo cáo, bộ mẫu của phòng ban).
 - Cung cấp cho cả cụm: `data` (DW, kho dữ liệu) · `workspace-values` (giá trị của cụm, slot `Data_140_WorkspaceValues`) · `mail`
-  (bộ mail chung, slot `Config_139_Mail`).
+  (sổ mail của cụm trong két của máy, `ConfigVault_151_ConfigVault` › `mail\configs\`, sửa qua phiên của repo này).
 - Không thuộc quyền repo nào (cấp cao nhất của cụm).
 - Nằm ở `_DB_<Hệ>\` khi giữ DW (Db_155), không thì ở `_WorkspaceManager\` (WorkspaceManager_171) — khi đó cung cấp `workspace-values` và
   `mail`, không cung cấp `data`.

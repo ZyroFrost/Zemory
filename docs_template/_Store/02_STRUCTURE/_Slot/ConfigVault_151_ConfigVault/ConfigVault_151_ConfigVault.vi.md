@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 # ConfigVault_151_ConfigVault configvault — két chứa thiết lập và khoá công cụ của cả máy
@@ -25,7 +25,8 @@ _ConfigVault\
 │                      đó) — không bí mật, ngoài git vì có địa chỉ nội bộ
 ├── sql\credentials\   login SQL mà chương trình và agent dùng: MỘT logins.env, mỗi máy chủ một khối, mỗi login hai dòng
 ├── api\credentials\   bí mật của app · API · webhook: MỘT services.env
-├── mail\credentials\  tài khoản gửi mail: MỘT smtp.env
+├── mail\configs\      mailboxes.json · recipients.json — sổ mail của mọi repo (bên dưới), dữ liệu liên lạc, không bí mật
+├── mail\credentials\  mật khẩu các hộp thư gửi: MỘT smtp.env
 ├── windows\credentials\  tài khoản Windows của các máy (credential của bộ lập lịch hay dịch vụ chạy dưới tên nó): MỘT logins.env
 ├── tls\               chứng chỉ nhiều repo hay nhiều máy cùng dùng
 └── <công cụ>\         một hai tệp thì để thẳng; nhiều loại ⇒ configs\ · credentials\ · cache\
@@ -43,6 +44,15 @@ _ConfigVault\
   nhau ở nội dung (sổ của máy trạm ghi tài khoản agent chỉ đọc, sổ của máy chạy task ghi tài khoản task). Bảng trong README ghi
   mục nào chở lên máy nào; bản sao chở bằng ssh (`scp`), không qua công cụ đồng bộ. Đổi mật khẩu = đổi ở két chủ rồi chở lại lên
   các máy README ghi.
+- Sổ mail, `mail\configs\`, là nhà DUY NHẤT của mọi hộp thư và mọi người nhận của mọi repo — không repo nào giữ danh sách mail,
+  danh bạ hay mật khẩu hộp thư riêng. Hai file, đọc tại chỗ (dữ liệu liên lạc: ngoài git và ngoài đồng bộ, như phần còn lại
+  của két):
+  - `mailboxes.json` — các hộp thư gửi hoặc của một người (support · hộp thư đứng tên nhân viên): địa chỉ · người giữ · phòng ban ·
+    chức vụ · dùng để làm gì · tên khoá mật khẩu của nó trong `mail\credentials\smtp.env`.
+  - `recipients.json` — mọi nơi nhận mail: từng cửa hàng và từng người nhận của các task, mỗi dòng có địa chỉ · tên · phòng ban ·
+    chức vụ · mã cửa hàng nếu là cửa hàng · các nhóm nó thuộc.
+  - Task gọi hộp thư và nhóm theo khoá; không bao giờ chép địa chỉ hay mật khẩu vào repo. Thêm hoặc sửa hộp thư hay người nhận đi
+    qua phiên của repo giữ giá trị của cụm (tổng quản).
 - Một mục đăng nhập chỉ chứa bí mật; ai giữ, được làm gì, repo nào dùng thì ghi ở bảng của công cụ đó trong README.
 
 - `configs\` — thiết lập (đọc được, không bí mật) · `credentials\` — khoá, token, mật khẩu · `cache\` — thứ công cụ tự dựng lại, kể cả

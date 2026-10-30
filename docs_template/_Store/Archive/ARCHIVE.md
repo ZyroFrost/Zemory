@@ -87,3 +87,4 @@ Slot = mô tả MỘT path; luật thiết kế không phải slot. `Frontend_13
 | Linh kiện | Nội dung chuyển tới |
 |---|---|
 | Frontend_137_UiDictionary | cơ chế token · theme · bố cục · điều hướng · form · phản hồi · bốn trạng thái · biểu đồ · WCAG AA · không build · danh sách cấm: `Skill_App_Base` §F22 · màu · chữ · khoảng cách · chuyển động · độ sâu · icon: skill kiểu `Skill_App_Glass` · dialog · panel kéo: `Skill_App_Base` §F1 · §F2 |
+| Config_139_Mail | mọi hộp thư và người nhận của mọi repo: két của máy, `ConfigVault_151_ConfigVault` › `mail\configs\` `mailboxes.json` · `recipients.json`, mật khẩu `mail\credentials\smtp.env` (31/10: không repo nào giữ mail riêng) |

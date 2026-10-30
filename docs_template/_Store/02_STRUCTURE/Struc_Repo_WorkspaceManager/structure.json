@@ -1,7 +1,6 @@
 {
   "extends": "Struc_Repo_NonApp",
   "slots": [
-    "Config_139_Mail",
     "Data_140_WorkspaceValues"
   ],
   "role": {

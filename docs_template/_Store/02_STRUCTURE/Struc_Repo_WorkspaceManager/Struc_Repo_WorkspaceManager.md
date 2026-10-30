@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_WorkspaceManager
 name: repo-workspace-manager
-version: 7
+version: 8
 profile: non-app
 label: WORKSPACE-MANAGER
 intro: : repo tổng quản của một cụm — giữ dữ liệu dùng chung (DW, kho dữ liệu), giá trị của cụm, bộ mail chung; quyết khung và chuẩn của các repo phòng ban nó quản
@@ -20,7 +20,7 @@ provides to the whole group. This template differs from one owner's group to ano
 
 - Manages: repos following the template `Struc_Repo_Dept` (the frame, the report standard, the department set).
 - Provides to the whole group: `data` (the DW, the data warehouse) · `workspace-values` (the group's values, slot `Data_140_WorkspaceValues`) · `mail`
-  (the shared mail set, slot `Config_139_Mail`).
+  (the group's mail book in the machine vault, `ConfigVault_151_ConfigVault` › `mail\configs\`, kept through this repo's session).
 - Belongs to no repo (the top level of the group).
 - Sits at `_DB_<System>\` when it holds the data warehouse (Db_155), otherwise at `_WorkspaceManager\` (WorkspaceManager_171) — then it
   provides `workspace-values` and `mail`, not `data`.

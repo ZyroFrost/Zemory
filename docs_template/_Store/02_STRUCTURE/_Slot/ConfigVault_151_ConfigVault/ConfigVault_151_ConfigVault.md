@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 13
+version: 14
 path: _ConfigVault/<tool>/
 scope: layout
 ---
@@ -28,7 +28,8 @@ _ConfigVault\
 │                      account THIS machine uses for that database) — not secret, outside git because it holds internal addresses
 ├── sql\credentials\   SQL logins programs and agents use: ONE logins.env, a block per server, two lines per login
 ├── api\credentials\   app · API · webhook secrets: ONE services.env
-├── mail\credentials\  mail sending accounts: ONE smtp.env
+├── mail\configs\      mailboxes.json · recipients.json — the mail book of every repo (below), contact data, not secret
+├── mail\credentials\  the passwords of the sending mailboxes: ONE smtp.env
 ├── windows\credentials\  Windows accounts of the machines (a scheduler or service credential runs as them): ONE logins.env
 ├── tls\               certificates shared by several repos or machines
 └── <tool>\            one or two files straight; several kinds ⇒ configs\ · credentials\ · cache\
@@ -50,6 +51,15 @@ _ConfigVault\
   machine; the copy is carried over ssh (`scp`), never by a sync tool. A changed password is changed in the master and carried
   again to the machines the README names.
 - A login entry holds the secret only; who owns it, what it may do and which repos use it go in the README table of that tool.
+- The mail book, `mail\configs\`, is the ONE home of every mailbox and every recipient of every repo — no repo keeps a
+  mail list, an address book or a mailbox password of its own. Two files, read in place (contact data: outside git and sync,
+  like the rest of the vault):
+  - `mailboxes.json` — the mailboxes that send or belong to a person (support · a named staff mailbox): address · who holds it ·
+    department · job title · what it is used for · the key name of its password in `mail\credentials\smtp.env`.
+  - `recipients.json` — everyone mail is sent to: every store and every recipient of a task, each with address · name ·
+    department · job title · store id when it is a store · the groups it belongs to.
+  - A task names a mailbox and a group by key; it never copies an address or a password into the repo. Adding or changing a
+    mailbox or a recipient goes through the session of the repo that keeps the group's values (the workspace manager).
 
 - `configs\` — settings (readable, not secret) · `credentials\` — keys, tokens, passwords · `cache\` — what the tool rebuilds by
   itself, its logs included; deleting it loses nothing.

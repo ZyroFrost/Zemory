@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_Dept
 name: repo-dept
-version: 11
+version: 12
 profile: non-app
 label: DEPT
 intro: : repo của một phòng ban trong một vùng có tổng quản — việc theo case (kéo · xử lý · giao báo cáo), báo cáo BI, tác vụ chạy định kỳ trên máy chủ; không phát triển app
@@ -23,7 +23,7 @@ department repo. The slots live in `_Slot/` and belong to no kind.
   required. The relations and boundaries between the repos of a group: `Struc_Region_Workspace`.
 - The group's real values (servers · shared libraries · mailboxes · department codes) live in the manager (slot `Data_140_WorkspaceValues`).
   `scripts/region_values.py` (installed into the repo by this template) finds the manager through `owner` in the marker; tools and skills name only the KEY.
-- Mail: recipients, senders and sending keys live in the manager's shared mail set (slot `Config_139_Mail`); a department repo keeps no contact list.
+- Mail: recipients, senders and sending keys live in the machine vault's mail book (`ConfigVault_151_ConfigVault` › `mail\configs\`); a department repo keeps no contact list.
 - Git is a BACKUP ON THE MACHINE (`role.git: local`): commit often, no remote, no push. Other machines get the repo through
   zemory's backup and Syncthing, never through git. Never report "no remote yet / not pushed". Machine check: the guard blocks `git push` ·
   `git remote add` · `git remote set-url` (no flag); `conform` › `git-remote-on-backup-repo` reds when the repo has a remote.
