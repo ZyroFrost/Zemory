@@ -52,3 +52,4 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/harness-session-close/SKILL.md` |
 | sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác | `.claude/skills/harness-sync-path/SKILL.md` |
 | đổi tên repo · dời repo · chuyển thư mục repo sang chỗ khác · zemory project move | `.claude/skills/harness-repo-move/SKILL.md` |
+| kiểu glass · kính mờ · đổi màu theme · hiệu ứng · bóng đổ · blur | `.claude/skills/app-glass/SKILL.md` |

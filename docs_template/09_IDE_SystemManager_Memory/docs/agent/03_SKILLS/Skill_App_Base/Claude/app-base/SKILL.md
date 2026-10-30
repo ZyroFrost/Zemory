@@ -3,12 +3,12 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 27
+version: 28
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_App_Base @v27 #01bcdf471432
+from: _Store/03_SKILLS/Skill_App_Base @v28 #c30ccb472f2b
 ---
 
 # app-base — the APP design standard (FE + BE)
@@ -273,6 +273,24 @@ at the top — on every page, every table kind (list · log · matrix · report)
 · Measure by machine, not by eye: scroll the page (and each table frame) past the first rows, then the rail, the header and
   each header row stand where they stood (≤ 1 px). Plant a frame with `overflow: hidden` once — the check must go red.
 
+### F22. The base every kind stands on
+**The rules below hold whatever the surface looks like; how it LOOKS is a kind.** A repo declares its one kind in
+`frontend/config/ui.json` (`{"style": "Glass"}`) and follows that kind's skill (`Skill_App_Glass`) for colours, type, spacing,
+depth, motion and icons. The STACK (no-build CSS variables, a framework with a bundler) is structure, fixed per project.
+- **Tokens:** every colour and size is a CSS variable declared in one place (`frontend/styles/`); 0 literals in rules.
+- **Themes:** each theme is a complete token set; the chosen theme is saved like any UI setting (§F8).
+- **Layout:** the content fills the app frame (grid / responsive), no `vh` cap leaving a gap.
+- **Navigation:** the open tab is remembered across sessions (§F17 for grouping).
+- **Forms:** a wrong value is reported AT its field, inline, when it is entered — never only in a banner after submitting.
+- **Feedback:** loading shows a skeleton of the coming layout, never a jump when the data lands; toasts for results.
+- **Four states:** every list and panel has empty · loading · error · no-data, each with its own message.
+- **Charts:** follow the `dataviz` skill; this skill only points at it.
+- **Accessibility, WCAG AA:** contrast · visible focus · full keyboard use · ARIA names (§F4 ②) · touch targets (§M4).
+- **No build for a static UI:** an app serving static files splits its UI by concern (styles · scripts · state · API client) with
+  no bundler; a bundler only when the project's stack already has one.
+- **Banned:** colour literals · a dialog that jumps (§F2) · layout shift on load · low contrast · an icon-only control without a
+  label · a generic default look in place of the declared kind.
+
 ## THE CHECKER — rules that can be measured are checked by the machine
 
 Rules written in a skill do not enforce themselves: a settled rule still gets broken again when no machine watches it.
@@ -378,7 +396,7 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
 - **Layout:** a settled layout is invariant (`Rule_Keys_62_DesignChangeApproval`); every TOTAL row and panel sits BELOW the content,
   as in a spreadsheet.
 - **Interface words through i18n:** every string the person using the app sees goes through i18n, both dictionaries complete, switched by a setting; no hard-coded
-  strings; technical terms kept as they are. The UI dictionary: slot `Frontend_137_UiDictionary`.
+  strings; technical terms kept as they are. The base of every kind: §F22; the look: the declared kind's skill.
 - **Layer separation:** the interface only calls the server's API; business logic, queries, calls to outside services sit on the server. The interface sends a query
   name + parameters, never raw query text.
 - **An app of a family** (`Rule_Keys_90_AppFamilyContract`): data in the family's shared DB (kept by the `app-data` repo, the app has no DB of its own, no

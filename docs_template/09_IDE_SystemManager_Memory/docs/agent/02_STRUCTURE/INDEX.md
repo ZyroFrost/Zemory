@@ -120,7 +120,6 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Pycache_110_Pycache`](_Slot/Pycache_110_Pycache/Pycache_110_Pycache.md) | `__pycache__/` | cache bytecode Python |
 | [`Exports_135_Exports`](_Slot/Exports_135_Exports/Exports_135_Exports.md) | `exports/` | generated renders / published copies |
 | [`Root_136_Principles`](_Slot/Root_136_Principles/Root_136_Principles.md) | `.` | the general principles of the structure standard |
-| [`Frontend_137_UiDictionary`](_Slot/Frontend_137_UiDictionary/Frontend_137_UiDictionary.md) | `frontend/` | the UI/UX design slot dictionary |
 | [`Workspaces_169_Workspaces`](_Slot/Workspaces_169_Workspaces/Workspaces_169_Workspaces.md) | `workspaces/` | the output an app produces |
 
 | Host note · Ghi chú host | About · Về |

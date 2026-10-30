@@ -1,5 +1,5 @@
 ---
-version: 27
+version: 28
 lang: vi
 ---
 
@@ -264,6 +264,24 @@ bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung 
 · Đo bằng máy, không bằng mắt: cuộn trang (và từng khung bảng) qua những dòng đầu, rồi thanh bên, khung đầu và từng dòng tiêu đề
   phải đứng đúng chỗ cũ (≤ 1 px). Cài một khung `overflow: hidden` một lần — phép kiểm phải đỏ.
 
+### F22. Nền mọi kiểu đứng trên
+**Các luật dưới đây áp dù bề mặt trông thế nào; bề mặt TRÔNG ra sao là một kiểu.** Repo khai đúng một kiểu ở
+`frontend/config/ui.json` (`{"style": "Glass"}`) và theo skill của kiểu đó (`Skill_App_Glass`) cho màu, chữ, khoảng cách,
+độ sâu, chuyển động và icon. STACK (biến CSS không build, framework có bundler) là cấu trúc, cố định theo project.
+- **Token:** mọi màu và cỡ là biến CSS khai một chỗ (`frontend/styles/`); 0 giá trị viết thẳng trong luật CSS.
+- **Theme:** mỗi theme là một bộ token đủ; theme đã chọn được lưu như mọi thiết lập UI (§F8).
+- **Bố cục:** nội dung lấp đủ khung app (grid / responsive), không giới hạn `vh` để lại khoảng trống.
+- **Điều hướng:** tab đang mở được nhớ qua các phiên (§F17 cho cách xếp nhóm).
+- **Form:** giá trị sai báo NGAY TẠI ô, khi vừa nhập — không chỉ báo ở một dải thông báo sau khi gửi.
+- **Phản hồi:** lúc tải hiện khung xương của bố cục sắp tới, không nhảy khi dữ liệu về; toast cho kết quả.
+- **Bốn trạng thái:** mọi danh sách và panel có rỗng · đang tải · lỗi · không có dữ liệu, mỗi trạng thái một thông điệp.
+- **Biểu đồ:** theo skill `dataviz`; skill này chỉ trỏ tới.
+- **Trợ năng, WCAG AA:** tương phản · focus nhìn thấy · dùng được hoàn toàn bằng bàn phím · tên ARIA (§F4 ②) · vùng chạm (§M4).
+- **Không build cho UI tĩnh:** app phục vụ file tĩnh tách UI theo việc (style · script · state · client API) và không dùng
+  bundler; chỉ dùng bundler khi stack của project vốn có.
+- **Cấm:** màu viết thẳng · dialog nhảy (§F2) · bố cục xô khi tải · tương phản thấp · nút chỉ có icon mà không có nhãn · dáng
+  mặc định chung chung thay cho kiểu đã khai.
+
 ## BỘ KIỂM — luật đo được thì máy kiểm
 
 Luật viết trong skill không tự thi hành: một luật đã chốt vẫn bị phạm lại khi không có máy canh.
@@ -368,7 +386,7 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
 - **Bố cục:** bố cục đã chốt là bất biến (`Rule_Keys_62_DesignChangeApproval`); mọi dòng và panel TỔNG nằm DƯỚI nội dung,
   như bảng tính.
 - **Chữ giao diện qua i18n:** mọi chuỗi người dùng thấy đi qua i18n, đủ hai bộ từ điển, đổi bằng thiết lập; không chuỗi
-  hardcode; thuật ngữ kỹ thuật giữ nguyên. Từ điển UI: slot `Frontend_137_UiDictionary`.
+  hardcode; thuật ngữ kỹ thuật giữ nguyên. Nền mọi kiểu: §F22; dáng: skill của kiểu đã khai.
 - **Tách lớp:** giao diện chỉ gọi API của máy chủ; nghiệp vụ, truy vấn, gọi dịch vụ ngoài nằm ở máy chủ. Giao diện gửi tên
   truy vấn + tham số, không gửi câu truy vấn thô.
 - **App của một hệ** (`Rule_Keys_90_AppFamilyContract`): dữ liệu ở DB chung của hệ (repo `app-data` giữ, app không DB riêng, không

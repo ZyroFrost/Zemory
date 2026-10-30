@@ -58,6 +58,15 @@ export function slotOverlapFindings(storeDir = STORE_DIR, isNew?: (leaf: string)
   const head = isNew ? null : slotsInHead(storeDir);
   const fresh = (leaf: string): boolean => (isNew ? isNew(leaf) : head !== null && !head.has(leaf));
   const out: string[] = [];
+  // plan/37 §1: a path is the key of ONE slot. Two slots on the same path are red whatever their age and whatever they wrote
+  // in checked: — there is no weighing for this case, the second slot's text goes into the first.
+  const norm = (x: string): string => x.replace(/\/+$/, "");
+  for (let i = 0; i < slots.length; i++) {
+    for (let j = i + 1; j < slots.length; j++) {
+      const same = pathsOf(slots[i]).map(norm).filter((x) => x && x !== "." && pathsOf(slots[j]).map(norm).includes(x));
+      if (same.length) out.push(`${leafOf(slots[i].folder)} and ${leafOf(slots[j].folder)} declare the same path ${same[0]} — a path is the key of one slot: extend one, retire the other`);
+    }
+  }
   for (const a of slots) {
     const la = leafOf(a.folder);
     if (!fresh(la)) continue;
@@ -67,7 +76,7 @@ export function slotOverlapFindings(storeDir = STORE_DIR, isNew?: (leaf: string)
     for (const b of slots) {
       if (a === b || fresh(leafOf(b.folder))) continue;
       const how = overlap(a, b);
-      if (!how) continue;
+      if (!how || how.startsWith("the same path")) continue; // reported above, never weighed away
       const lb = leafOf(b.folder);
       const missing = [!checked.has(lb) ? "not in checked:" : "", !body.includes(lb) ? "its text never says how it differs from " + lb : ""].filter(Boolean);
       if (missing.length) out.push(`${la}: overlaps ${lb} (${how}) — ${missing.join("; ")}. Extend ${lb} instead, or say what rule of its own the new slot has`);

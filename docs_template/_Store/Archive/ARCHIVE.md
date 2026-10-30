@@ -79,3 +79,11 @@ Cấu trúc (`02_STRUCTURE/_Slot`): mục lục `INDEX.md` thành mục lục m�
 | Linh kiện | Nội dung chuyển tới |
 |---|---|
 | Docs_138_DataDictionary | định nghĩa: khung HP `Cons_Gate_12_SourceOfTruth` (mục Định nghĩa) · cách tính: skill riêng của repo `Skill_Own_<Tên>` |
+
+## Đợt chuẩn slot (plan/37 §1 · §4)
+
+Slot = mô tả MỘT path; luật thiết kế không phải slot. `Frontend_137_UiDictionary` khai trùng path `frontend/` với `Frontend_003_Frontend`.
+
+| Linh kiện | Nội dung chuyển tới |
+|---|---|
+| Frontend_137_UiDictionary | cơ chế token · theme · bố cục · điều hướng · form · phản hồi · bốn trạng thái · biểu đồ · WCAG AA · không build · danh sách cấm: `Skill_App_Base` §F22 · màu · chữ · khoảng cách · chuyển động · độ sâu · icon: skill kiểu `Skill_App_Glass` · dialog · panel kéo: `Skill_App_Base` §F1 · §F2 |
