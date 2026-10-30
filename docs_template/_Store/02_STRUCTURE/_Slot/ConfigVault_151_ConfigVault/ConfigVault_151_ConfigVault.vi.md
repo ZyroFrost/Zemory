@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 # ConfigVault_151_ConfigVault configvault — két chứa thiết lập và khoá công cụ của cả máy
@@ -26,6 +26,7 @@ _ConfigVault\
 ├── sql\credentials\   login SQL mà chương trình và agent dùng: MỘT logins.env, mỗi máy chủ một khối, mỗi login hai dòng
 ├── api\credentials\   bí mật của app · API · webhook: MỘT services.env
 ├── mail\credentials\  tài khoản gửi mail: MỘT smtp.env
+├── windows\credentials\  tài khoản Windows của các máy (credential của bộ lập lịch hay dịch vụ chạy dưới tên nó): MỘT logins.env
 ├── tls\               chứng chỉ nhiều repo hay nhiều máy cùng dùng
 └── <công cụ>\         một hai tệp thì để thẳng; nhiều loại ⇒ configs\ · credentials\ · cache\
 ```
@@ -70,7 +71,9 @@ _ConfigVault\
   - `TÀI-KHOẢN` — login, app hay hộp thư (`jane.doe` ⇒ `JANE-DOE` · `logcentral_reader` ⇒ `LOGCENTRAL-READER`).
   - `LOẠI` — `ID` (tên tài khoản, ghi sẵn) · `PASS` · `TOKEN` · `SECRET` · `TENANT`.
   Ví dụ: `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_ID` · `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_PASS` ·
-  `POS-DB02_POSDATA_JANE-DOE_PASS` · `M365_ACME-COM_SYNC-APP_SECRET`. Một login mở hai CSDL là hai khoá.
+  `POS-DB02_POSDATA_JANE-DOE_PASS` · `M365_ACME-COM_SYNC-APP_SECRET`. Một login mở hai CSDL là hai khoá. Tài khoản Windows
+  của một máy lấy `WINDOWS` làm phân khúc thứ hai: `DB-MAIN_WINDOWS_JANE-DOE_PASS`. Khoá hộp thư đọc từ địa chỉ:
+  `jane.doe@acme.vn` trên `smtp.office365.com` ⇒ `SMTP-OFFICE365_ACME-VN_JANE-DOE_PASS`.
 - Khoá két chỉ bộ đọc két đọc, không bao giờ thành biến môi trường, nên dấu `-` trong khoá an toàn. Tên viết đủ, không viết tắt
   (`DATA-WAREHOUSE`, không `DW`); tên do hệ thống đặt (CSDL, máy) giữ đúng như hệ thống viết.
 - Sổ `sql\configs\connections.json` đặt khoá mỗi mục là `<MÁY>/<CSDL>` (tên thật) với `address` · `driver` · `options` · `account`

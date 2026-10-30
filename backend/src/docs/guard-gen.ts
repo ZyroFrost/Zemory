@@ -311,6 +311,8 @@ function buildPolicy(root: string, hooksRel: string): Record<string, unknown> {
       todo: ".allow-todo",
       // 02-82: ONE mail send the person allowed in the session.
       mail: ".allow-mail",
+      // 02-93: ONE subagent or workflow with a large brief, after the person asked for it in the session.
+      agent: ".allow-agent",
     },
     flags_comment:
       "A flag = the user approving ONE job. The guard lets it through, then STAMPS `ZEMORY-USED <command fingerprint> <timestamp>` " +
@@ -1773,7 +1775,9 @@ process.exit(0);
  *
  * Kept HERE, next to the generator, so this list and the dispatch branch in guard.cjs cannot drift apart.
  */
-export const GUARD_MATCHER = "Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell";
+// Agent · Task (its older name) · Workflow: the calls that start a subagent (02-93) - without them in the matcher the host
+// never asks the guard, and a rule hook on them passes its examples while it never runs.
+export const GUARD_MATCHER = "Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell|Agent|Task|Workflow";
 
 /**
  * Tools of `GUARD_MATCHER` that the repo's `.claude/settings.json` does NOT route through `guard.cjs` — or `null` when the

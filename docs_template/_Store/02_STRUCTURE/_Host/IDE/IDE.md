@@ -1,7 +1,7 @@
 ---
 id: Host_IDE
 name: host-ide
-version: 4
+version: 5
 kind: host
 ---
 # IDE The IDE host — the agent inside a code editor
@@ -17,7 +17,7 @@ kind: host
 ## The machine gates (guard)
 
 - `zemory hook guard` generates the gates from the marker `.harness.json` (keys `protected` · `secretNames` · `allowedRoots` · `allowedSqlServers` · `repoGates` · `readFirst`): `policy.json` (the compiled laws) · `guard.cjs` (the `PreToolUse` hook, blocking before an action touches the disk or the network) · `precommit-guard.cjs` (blocks secrets from entering staging, commits made by a person included).
-- The guard is the standard, not an option: the command plugs the guard into `.claude/settings.json` › `PreToolUse` with a matcher covering `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell`, keeping every other hook of the repo. Pre-commit is plugged in when the repo has none; a repo with its own pre-commit ⇒ reported, the line calling the guard is added by hand.
+- The guard is the standard, not an option: the command plugs the guard into `.claude/settings.json` › `PreToolUse` with a matcher covering `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell|Agent|Task|Workflow`, keeping every other hook of the repo. Pre-commit is plugged in when the repo has none; a repo with its own pre-commit ⇒ reported, the line calling the guard is added by hand.
 - Each law with a hook carries `hook*.cjs` in its folder; the guard calls each file in turn.
 - Check: `zemory doctor` reds when the guard is not plugged in or the matcher misses a tool; `zemory gates --all` measures whether every repo really runs the guard · pre-commit.
 

@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # IDE Hệ IDE — agent trong trình soạn code
@@ -15,7 +15,7 @@ lang: vi
 ## Bộ chốt máy (guard)
 
 - `zemory hook guard` sinh bộ chốt từ marker `.harness.json` (khoá `protected` · `secretNames` · `allowedRoots` · `allowedSqlServers` · `repoGates` · `readFirst`): `policy.json` (luật đã dịch) · `guard.cjs` (hook `PreToolUse`, chặn trước khi hành động chạm đĩa hoặc mạng) · `precommit-guard.cjs` (chặn bí mật lọt vào staging, kể cả commit do người làm).
-- Guard là chuẩn, không phải tuỳ chọn: lệnh tự cắm guard vào `.claude/settings.json` › `PreToolUse` với matcher đủ `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell`, giữ nguyên mọi hook khác của repo. Pre-commit tự cắm khi repo chưa có; repo đã có pre-commit riêng ⇒ báo ra, thêm dòng gọi guard bằng tay.
+- Guard là chuẩn, không phải tuỳ chọn: lệnh tự cắm guard vào `.claude/settings.json` › `PreToolUse` với matcher đủ `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell|Agent|Task|Workflow`, giữ nguyên mọi hook khác của repo. Pre-commit tự cắm khi repo chưa có; repo đã có pre-commit riêng ⇒ báo ra, thêm dòng gọi guard bằng tay.
 - Mỗi luật có hook mang `hook*.cjs` trong folder luật; guard gọi lần lượt từng file.
 - Phép kiểm: `zemory doctor` đỏ khi guard chưa cắm hoặc matcher thiếu công cụ; `zemory gates --all` đo mọi repo có thật sự chạy guard · pre-commit.
 

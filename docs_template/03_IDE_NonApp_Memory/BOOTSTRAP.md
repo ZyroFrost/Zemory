@@ -16,7 +16,7 @@
 ## The machine gates (guard)
 
 - `zemory hook guard` generates the gates from the marker `.harness.json` (keys `protected` · `secretNames` · `allowedRoots` · `allowedSqlServers` · `repoGates` · `readFirst`): `policy.json` (the compiled laws) · `guard.cjs` (the `PreToolUse` hook, blocking before an action touches the disk or the network) · `precommit-guard.cjs` (blocks secrets from entering staging, commits made by a person included).
-- The guard is the standard, not an option: the command plugs the guard into `.claude/settings.json` › `PreToolUse` with a matcher covering `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell`, keeping every other hook of the repo. Pre-commit is plugged in when the repo has none; a repo with its own pre-commit ⇒ reported, the line calling the guard is added by hand.
+- The guard is the standard, not an option: the command plugs the guard into `.claude/settings.json` › `PreToolUse` with a matcher covering `Write|Edit|MultiEdit|NotebookEdit|Read|Bash|PowerShell|Agent|Task|Workflow`, keeping every other hook of the repo. Pre-commit is plugged in when the repo has none; a repo with its own pre-commit ⇒ reported, the line calling the guard is added by hand.
 - Each law with a hook carries `hook*.cjs` in its folder; the guard calls each file in turn.
 - Check: `zemory doctor` reds when the guard is not plugged in or the matcher misses a tool; `zemory gates --all` measures whether every repo really runs the guard · pre-commit.
 
@@ -65,7 +65,7 @@ zemory doctor
 
 ## 3. Module trong bộ
 
-- Luật chung: 35 (Gate 24 · Keys 11 · Core 0).
+- Luật chung: 36 (Gate 25 · Keys 11 · Core 0).
 - Khung hiến pháp (9): `01_Scope/Cons_Gate_09_Purpose` · `02_Data/Cons_Gate_10_ReadOnlySources` · `02_Data/Cons_Gate_11_WriteBoundary` · `02_Data/Cons_Gate_12_SourceOfTruth` · `03_System/Cons_Gate_13_Architecture` · `04_Security/Cons_Gate_14_Access` · `02_Data/Cons_Gate_15_DataLifecycle` · `03_System/Cons_Gate_16_Dependencies` · `03_System/Cons_Gate_17_LessonsLedger`. Mỗi khung có `Cons.md` mẫu: viết lại cho sản phẩm của dự án, hoặc ghi `status: n/a` kèm lý do.
 - Structure: `Struc_Repo_NonApp` · hệ: `_Host/IDE`.
 - Skill (20): `db-base` · `doc-read-office` · `doc-write-docx` · `doc-write-style` · `frame-own` · `harness-audit` · `harness-conform` · `harness-grill` · `harness-plan-trim` · `harness-reconcile` · `harness-repo-move` · `harness-reshape` · `harness-rule-gate` · `harness-session-close` · `harness-sync-path` · `pbi-base` · `task-case` · `task-fill` · `task-pull` · `task-upload`.

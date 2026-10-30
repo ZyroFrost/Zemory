@@ -26,7 +26,7 @@ Per file, in order — the local copy is removed ONLY when both copies are verif
   reference/ (01_raw/reference = templates of an INPUT, 03_output/reference = of the DELIVERABLE: the files a run is rebuilt
   against, written once): COPIED to the same path on the VM, never to SharePoint, verified by SHA-256 — and the local copy
   STAYS. The VM is the backup of the PC; both keep it (user HR 19/10).
-Needs: the VM's SSH alias (region value vm_ssh_alias) · SHAREPOINT_* keys in ..\\the region manager\\.env. Only tasks with tasks/<task>/vm_deploy.json.
+Needs: the VM's SSH alias (region value vm_ssh_alias) · the Entra app in the machine vault (region value m365_app = <SERVICE>/<RESOURCE>/<APP>). Only tasks with tasks/<task>/vm_deploy.json.
 Shipped by zemory: store part Skill_Task_VmAutomation (its installs). Change the store part, never the repo copy.
 """
 import hashlib
@@ -41,6 +41,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from region_values import manager_root, value as region_value  # noqa: E402
+import vault_conn  # noqa: E402
 HOST = region_value(str(Path.cwd()), "vm_ssh_alias", "")
 ROOT = Path.cwd()
 APPLY = "--apply" in sys.argv
@@ -52,23 +53,14 @@ REPO = ROOT.name
 sha = lambda b: hashlib.sha256(b).hexdigest().upper()
 
 
-# ---------- SharePoint (Graph, app keys of the warehouse repo) ----------
-def env_file(p):
-    out = {}
-    for line in p.read_text(encoding="utf-8").splitlines():
-        if "=" in line and not line.lstrip().startswith("#"):
-            k, v = line.split("=", 1)
-            out[k.strip()] = v.strip().strip('"').strip("'")
-    return out
-
-
+# ---------- SharePoint (Graph, the Entra app in the machine vault) ----------
 if not HOST or not manager_root(str(ROOT)):
     sys.exit("region not declared: no VM alias or region manager (region_values.py)")
 G = "https://graph.microsoft.com/v1.0"
-E = {} if REF_ONLY else env_file(Path(manager_root(str(ROOT))) / ".env")
+APP = region_value(str(ROOT), "m365_app", "").split("/")
 TOK = "" if REF_ONLY else json.loads(urllib.request.urlopen(urllib.request.Request(
-    "https://login.microsoftonline.com/%s/oauth2/v2.0/token" % E["SHAREPOINT_TENANT_ID"],
-    data=urllib.parse.urlencode({"client_id": E["SHAREPOINT_CLIENT_ID"], "client_secret": E["SHAREPOINT_CLIENT_SECRET"],
+    "https://login.microsoftonline.com/%s/oauth2/v2.0/token" % vault_conn.secret(*APP, "TENANT"),
+    data=urllib.parse.urlencode({"client_id": vault_conn.secret(*APP, "ID"), "client_secret": vault_conn.secret(*APP, "SECRET"),
                                  "scope": "https://graph.microsoft.com/.default", "grant_type": "client_credentials"}).encode()),
     timeout=60).read())["access_token"]
 

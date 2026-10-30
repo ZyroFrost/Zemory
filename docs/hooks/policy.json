@@ -192,6 +192,10 @@
     {
       "file": "02-85_propose-checked.cjs",
       "rule": "02-85"
+    },
+    {
+      "file": "02-93_subagent-small-only.cjs",
+      "rule": "02-93"
     }
   ],
   "rule_dirs": [],
@@ -233,7 +237,8 @@
     "outside": ".allow-outside",
     "translation": ".allow-translation",
     "todo": ".allow-todo",
-    "mail": ".allow-mail"
+    "mail": ".allow-mail",
+    "agent": ".allow-agent"
   },
   "flags_comment": "A flag = the user approving ONE job. The guard lets it through, then STAMPS `ZEMORY-USED <command fingerprint> <timestamp>` into the flag file itself — it is NOT deleted at once. Within 90 seconds THAT SAME command may be retried (a PreToolUse hook cannot know whether the command really ran; another host layer blocking it would cost the flag for nothing). Asking for a DIFFERENT job, or going past 90 seconds, REVOKES the flag and it must be requested again. An agent may only create a flag after the user has said so explicitly in the session."
 }

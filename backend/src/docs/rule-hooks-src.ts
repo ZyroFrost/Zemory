@@ -894,6 +894,33 @@ function check(payload, root, policy) {
   } catch { return null; }
 }`, true),
 
+  // 02-93 — a subagent takes only a small errand (Rule_Gate_93_SubagentSmallOnly): a call that starts a subagent or a
+  // workflow is blocked when its brief carries a large context — many files named, files to be read whole, or a long brief.
+  // Measured 30/10 on 211 real Agent calls: brief p50 2,776 chars and 4 files; the call that cost 442,066 tokens named 18
+  // files in 5,683 chars. The way through is the user's word in the session (one-use flag .allow-agent).
+  hook("02-93_subagent-small-only.cjs", String.raw`
+const SPAWN = new Set(["Agent", "Task", "Workflow"]);
+const FILE = /[\w./\\-]+\.(md|ts|tsx|js|mjs|cjs|py|ps1|sql|json|html|css|csv|xlsx|pbix|docx|pptx|yaml|yml|txt)\b/gi;
+const READ_ALL = /\b(read|re-?read|study|go through)\b.{0,30}\b(whole|entire|all|full|every|complete)\b|đọc.{0,20}(hết|toàn bộ|trọn|nguyên|tất cả)|doc.{0,20}(het|toan bo|tron|nguyen|tat ca)\b/i;
+const MAX_FILES = 5;
+const MAX_CHARS = 4000;
+function check(payload, root, policy) {
+  try {
+    if (!SPAWN.has(payload.tool_name || "")) return null;
+    const ti = payload.tool_input || {};
+    const brief = String(ti.prompt || ti.script || "") + "\n" + String(ti.description || "");
+    const files = new Set(brief.match(FILE) || []).size;
+    const why = [];
+    if (files >= MAX_FILES) why.push(files + " files named");
+    if (READ_ALL.test(brief)) why.push("files to be read whole");
+    if (brief.length >= MAX_CHARS) why.push(brief.length + " characters of brief");
+    if (!why.length) return null;
+    return { flag: "agent", subject: String(ti.description || payload.tool_name), msg: blocked(root, policy, "02-93",
+      "this hands a subagent a job with a large context (" + why.join(" · ") + "). The main session does it itself; a subagent " +
+      "takes only a small errand that needs no large context, and never re-reads what this session has already loaded.") };
+  } catch { return null; }
+}`),
+
   hook("02-82_mail-gate.cjs", String.raw`
 const SENDS = /smtplib|\bsend_message\s*\(|\bsendmail\s*\(|\/sendMail\b|Send-MailMessage|Send-MgUserMail|\bgit\s+send-email\b/i;
 const MAIL_SCRIPT = /(^|[\\\/\s"'])([\w.-]*mail[\w.-]*|[\w.-]*send[\w.-]*|[\w.-]*alert[\w.-]*)\.(py|ps1|cmd|bat)\b/i;

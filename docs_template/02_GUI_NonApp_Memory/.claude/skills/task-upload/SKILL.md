@@ -6,7 +6,7 @@ version: 11
 type: process
 installs: [scripts/smtp_mail.py, scripts/graph_mail.py]
 description: Publish a finished deliverable to its destination (BI workspace, Drive, SharePoint, shared folder). Use when the deliverable is complete and needs to go out, or when asked to publish, push, send, or upload the report. Vietnamese triggers - "đẩy lên", "publish", "up báo cáo", "đưa lên workspace", "gửi bản cuối", "đăng lên".
-from: _Store/03_SKILLS/Skill_Task_Upload @v11 #602215e18dfb
+from: _Store/03_SKILLS/Skill_Task_Upload @v11 #615fd778497a
 ---
 
 # upload — push / publish a deliverable to its destination

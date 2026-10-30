@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 11
+version: 12
 path: _ConfigVault/<tool>/
 scope: layout
 ---
@@ -29,6 +29,7 @@ _ConfigVault\
 ├── sql\credentials\   SQL logins programs and agents use: ONE logins.env, a block per server, two lines per login
 ├── api\credentials\   app · API · webhook secrets: ONE services.env
 ├── mail\credentials\  mail sending accounts: ONE smtp.env
+├── windows\credentials\  Windows accounts of the machines (a scheduler or service credential runs as them): ONE logins.env
 ├── tls\               certificates shared by several repos or machines
 └── <tool>\            one or two files straight; several kinds ⇒ configs\ · credentials\ · cache\
 ```
@@ -78,7 +79,9 @@ _ConfigVault\
   - `ACCOUNT` — the login, app or mailbox (`jane.doe` ⇒ `JANE-DOE` · `logcentral_reader` ⇒ `LOGCENTRAL-READER`).
   - `KIND` — `ID` (the account name, written in advance) · `PASS` · `TOKEN` · `SECRET` · `TENANT`.
   Examples: `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_ID` · `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_PASS` ·
-  `POS-DB02_POSDATA_JANE-DOE_PASS` · `M365_ACME-COM_SYNC-APP_SECRET`. A login that opens two databases is two keys.
+  `POS-DB02_POSDATA_JANE-DOE_PASS` · `M365_ACME-COM_SYNC-APP_SECRET`. A login that opens two databases is two keys. A Windows
+  account of a machine takes `WINDOWS` as its second segment: `DB-MAIN_WINDOWS_JANE-DOE_PASS`. A mailbox key is read from the
+  address: `jane.doe@acme.vn` on `smtp.office365.com` ⇒ `SMTP-OFFICE365_ACME-VN_JANE-DOE_PASS`.
 - A vault key is read by the vault reader only, never set as an environment variable, so the `-` in it is safe. Names are written
   whole, never abbreviated (`DATA-WAREHOUSE`, not `DW`); a name a system gives (a database, a host) is kept as that system writes it.
 - The register `sql\configs\connections.json` keys each entry `<MACHINE>/<DATABASE>` (the real names) with `address` · `driver` ·

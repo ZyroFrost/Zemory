@@ -7,8 +7,9 @@ Trade-off, stated plainly: this stores a MAILBOX PASSWORD in the vault, whereas 
 to one mailbox by policy. A mailbox password is that user's whole identity. Prefer Graph when consent is obtainable; use this
 when it is not.
 
-The password never touches the repo - it comes from the DPAPI vault (scripts/vault.ps1) and lives only in memory for the
-duration of the call.
+The password never touches the repo - it comes from the machine vault (vault_conn.py, key SMTP-<HOST>_<DOMAIN>_<MAILBOX>_PASS),
+or from the repo's DPAPI vault (scripts/vault.ps1) when the machine vault has no entry for this mailbox, and lives only in memory
+for the duration of the call.
 
 `--draft` has no SMTP equivalent: there is no mailbox folder to park a message in. Instead this writes a .eml file that opens in
 Outlook/OWA as a ready-to-send mail, so a person can still review before anything leaves.
@@ -57,6 +58,22 @@ def _read_secret(name: str) -> str:
     return proc.stdout.strip()
 
 
+def _mailbox_password(mailbox: str, host: str) -> str:
+    """The machine vault's entry for this mailbox (smtp.office365.com + a.b@acme.vn -> SMTP-OFFICE365_ACME-VN_A-B_PASS), else the DPAPI vault."""
+    try:
+        import sys
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import vault_conn
+        local, _, domain = mailbox.partition("@")
+        k = vault_conn.key("SMTP-" + host.split(".")[-2], domain, local, "PASS")
+        value = vault_conn.secrets().get(k)
+        if value:
+            return value
+    except ImportError:
+        pass
+    return _read_secret(KEY_PASSWORD)
+
+
 def _addresses(raw: str) -> list[str]:
     return [a.strip() for a in re.split(r"[;,]", raw or "") if a.strip() and "@" in a.strip()]
 
@@ -101,7 +118,7 @@ def save_eml(msg: EmailMessage, out_dir: Path, stem: str) -> Path:
 
 def send(msg: EmailMessage, mailbox: str, host: str = DEFAULT_HOST,
          port: int = DEFAULT_PORT) -> str:
-    password = _read_secret(KEY_PASSWORD)
+    password = _mailbox_password(mailbox, host)
     recipients = _addresses(msg["To"]) + _addresses(msg.get("Cc", ""))
     try:
         with smtplib.SMTP(host, port, timeout=120) as s:
