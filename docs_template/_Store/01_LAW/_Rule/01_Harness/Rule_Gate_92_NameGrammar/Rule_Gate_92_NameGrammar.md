@@ -1,7 +1,7 @@
 ---
 id: Rule_92
 name: name-grammar
-version: 1
+version: 2
 kind: action
 code: 01_Harness
 checked: [Rule_Gate_29_CodeLanguage, Rule_Gate_85_ProposeChecked, Root_136_Principles, Skill_Harness_Structure]

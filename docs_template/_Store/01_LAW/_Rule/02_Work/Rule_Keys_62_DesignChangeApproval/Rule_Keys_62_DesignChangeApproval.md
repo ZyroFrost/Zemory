@@ -2,7 +2,7 @@
 id: Rule_62
 aka: 02-62
 name: design-change-approval
-version: 16
+version: 17
 kind: judgment
 code: 02_Work
 ---
@@ -37,6 +37,7 @@ not move on its own. Fixing a technical fault needs no approval.
 
 ## Links · Liên kết
 - Implements · Thi hành: `Skill_App_Base` — the app design standard · chuẩn thiết kế app
+- Implements · Thi hành: `Skill_App_Glass` — the Glass kind, approved in the template before it is ported · kiểu Glass, duyệt trên template trước khi chép sang app
 - Implements · Thi hành: `Skill_PBI_Base` — the report design standard · chuẩn thiết kế báo cáo
 - Implements · Thi hành: `Skill_PBI_White` — the White design standard a report keeps once approved · chuẩn thiết kế White report giữ sau khi duyệt
 - Related · Liên quan: `Rule_Gate_63_SkillTrigger` — a design skill only suggests · skill thiết kế chỉ gợi ý

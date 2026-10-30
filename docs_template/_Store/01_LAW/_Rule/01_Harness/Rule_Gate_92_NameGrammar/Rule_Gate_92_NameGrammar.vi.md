@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Rule_Gate_92_NameGrammar — Every name on HS follows a declared pattern
@@ -50,7 +50,7 @@ Tên chưa có khuôn thì không tự đặt: người giao việc chốt khuô
 - ✗ Sai: tạo `Playbook_Sales_Onboard` rồi làm tiếp.
 - ✓ Đúng: dừng; đề xuất một skill họ `Task` đặt tên theo việc onboarding (khuôn gần nhất) hoặc một khuôn mới, chờ chốt.
 
-## Phép kiểm
+## Máy kiểm
 - Bài thử HS: mọi tên phần đọc được theo `harness-names.ts`; tên không đọc được ⇒ đỏ.
 - Bài thử HS: mọi folder và file trong phần khớp một dòng của bảng; tên không khớp ⇒ đỏ.
 - Bảng ở đây và `harness-names.ts` liệt kê cùng một bộ khuôn (một nguồn, hai lăng kính).
