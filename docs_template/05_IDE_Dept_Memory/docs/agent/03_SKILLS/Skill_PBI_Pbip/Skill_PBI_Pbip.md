@@ -1,24 +1,24 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 29
+version: 30
 type: process
 aka: pbip
 checked: [Rule_Gate_84_PbipOpenCheck, Skill_PBI_White, Rule_Keys_87_NoSilentBlankPage]
 description: Edit a Power BI .pbip/PBIR report by writing its JSON directly - pages, visuals, bookmarks, buttons, icons, the coordinate grid - without breaking the file; the model diagram standard and the static gate. Use whenever a .pbip report is built or changed, a tab or bookmark is added, an icon or the grid is fixed, or Desktop reports issues. Vietnamese triggers - "sửa report", "sửa pbix", "dựng dashboard", "thêm tab", "gắn bookmark", "đổi icon", "căn lưới", "mở Desktop kiểm".
 installs: [scripts/pbi_gate.py, scripts/fix_literal_type.py, scripts/add_filter_set.py, scripts/pbi_diagram.py, scripts/diagram_order.js, scripts/package.json, scripts/rename_reports.py]
-from: _Store/03_SKILLS/Skill_PBI_Pbip @v29 #b5b65a6fe858
+from: _Store/03_SKILLS/Skill_PBI_Pbip @v30 #915b67ae489e
 ---
 
 # Editing `.pbip` without breaking the file
 
 > This file says **HOW TO OPERATE**. The **DESIGN** rules (colour table · the 5 grid · icon colours · `visualLink`
-> in `visualContainerObjects` · slicers with the header off) are in `Skill_PBI_Base` `reference/design.md`,
+> in `visualContainerObjects` · slicers with the header off) are in `Skill_PBI_Base` `references/design.md`,
 > icons in the region's icon library (`icons_dir`). Touching the design → open that file first.
 
 ## 0. THE FOUR KINDS OF PBI FILE — different rules, do not mix them up
 
-The folder name declares the kind (`Skill_PBI_Base` `reference/naming.md`):
+The folder name declares the kind (`Skill_PBI_Base` `references/naming.md`):
 ```
 folder    <DEPT>_<no>_<FUNCTION>[-<Tier>]_<IP|DR>_<Kind>            ABC_02_STORE-REPORT-AM_DR_White · ABC_03_INCOME-STATEMENT-OM_IP_Red
 file      <DEPT>_<no>_<FUNCTION>[-<Tier>]_<Live|Scheduled>[_V<n>]    ABC_02_STORE-REPORT-AM_Live  (= the name on the Service, ASCII only)
@@ -37,7 +37,7 @@ no mould is RED. The `storage-mode` gate checks that `IP`/`DR` match the model's
 Renaming old folders to this mould: `python scripts/rename_reports.py` (a dry run, printing every move and every file to edit) then
 `--apply` (`git mv` per folder, editing every place naming the old name — including keys in `config/pbi-gate.json`). Close Desktop first.
 Renaming a FILE (adding `_V<n>`, changing the function) = renaming the item on the Service — both the Report and the Semantic model — BEFORE the next publish
-(`Skill_PBI_Base` `reference/naming.md` §3).
+(`Skill_PBI_Base` `references/naming.md` §3).
 > 🔄 The 19/10 folders replace the mould `<DEPT>_<no><IP|DR>_<Function>[<Tier>]_<Kind>` (`ABC_02DR_StoreReportAM_Mix`); the kind `Mix` →
 > `White`, `Main` → `Red`. Replacing the first version of 05/10 `<DEPT>-<no>-<FUNCTION>[-<Tier>]-<Live|Scheduled>` (separators reversed), the file mould of 04/10 `<DEPT>-<no>-<Function>[<Tier>]-<Live|Refresh>` and of 28/09 `<DEPT>-<no><IP|DR>-<Function>[<Tier>]`
 > (27/09: `<DEPT>-<no>-<Function>[<Tier>]-<Vietnamese name>`).
@@ -67,7 +67,7 @@ Kept byte for byte; it is **the only reference point** proving the `Classic` cop
 
 ### `Classic` — TWO LAYERS OF NAMES, the place most often mixed up
 - 🔴 **Inside the model by the NEW STANDARD:** table · column · measure · measure folder names — things only the builder sees.
-  Apply `Skill_PBI_Base` `reference/model.md` in full: one `#Measure` table, folders lettered by page (`A.` shared, 27/09), the `#/%/~` prefixes, separate `Parameter_*` tables.
+  Apply `Skill_PBI_Base` `references/model.md` in full: one `#Measure` table, folders lettered by page (`A.` shared, 27/09), the `#/%/~` prefixes, separate `Parameter_*` tables.
 - 🔴 **The words THE READER SEES follow THE OLD COPY:** row/column labels on visuals, titles, slicer labels — kept as the old wording,
   even when they look "off-standard". A conflict between the two layers ⇒ **THE UI WINS**.
   *A real case, the department repo 19/09: three rows `MCP = COL+COGs+SEMI` · `PROFIT = SALE - MCP` · `Thực hiện Ebitda` — the raw names
@@ -403,7 +403,7 @@ the body plain; each paragraph separated by an empty paragraph.
 
 ## 6. Reusable code snippets
 
-[`reference/snippets.md`](reference/snippets.md) — absolute coordinates · walking the group tree · building complete
+[`references/snippets.md`](references/snippets.md) — absolute coordinates · walking the group tree · building complete
 bookmarks · the clickable button mould · closing/opening Desktop · capturing with `PrintWindow` · reading an old `.pbix` with `zipfile`.
 
 ## Implements · Thi hành luật

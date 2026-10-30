@@ -2,10 +2,10 @@
 id: Rule_31
 aka: 02-31
 name: no-broken-vietnamese
-version: 11
+version: 12
 kind: content
 code: 04_Writing
-from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_31_NoBrokenVietnamese @v11 #dcf02098c2b1
+from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_31_NoBrokenVietnamese @v12 #4b8ea13d3b0c
 ---
 # Rule_Gate_31_NoBrokenVietnamese — No Vietnamese without diacritics, no broken encoding
 
@@ -32,7 +32,7 @@ diacritics, or write English.
   caught when it has at least one syllable that is surely Vietnamese (`khong` · `duoc` · `nguoi` …) or four function words (`va` ·
   `cua` · `cho` …), so a short phrase of words that are also English, or a proper name, can slip through.
 - Comments with diacritics in code are blocked by `Rule_Gate_29_CodeLanguage`.
-- Whole-repo scan (strings in code and other files included): `node .claude/skills/harness-audit/scripts/lang-scan.mjs .`. How to
+- Whole-repo scan (strings in code and other files included): `node .claude/skills/harness-audit/scripts/lang_scan.mjs .`. How to
   measure and the false-alarm traps: `.claude/skills/harness-audit/SKILL.md` faces 11 · 12.
 
 ## Links · Liên kết

@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_White
 name: pbi-white
-version: 17
+version: 18
 aka: pbi-mix
 replaces: [Skill_PBI_Mix]
 type: process
@@ -12,7 +12,7 @@ installs: [scripts/mix_palette.py, scripts/card_icons.py, scripts/matrix_fit.py]
 
 # The `White` kind — the OLD layout, the NEW identity frame, running on the DW
 
-> 🔴 **`White` (named `Mix` before 19/10) = the third value of the DESIGN KIND token (`Skill_PBI_Base` `reference/naming.md`).**
+> 🔴 **`White` (named `Mix` before 19/10) = the third value of the DESIGN KIND token (`Skill_PBI_Base` `references/naming.md`).**
 > Four clauses: **DW** + **header/colours by `Red`** + **layout & navigation by `Legacy`** + **the 5 grid
 > over the whole file**. The other three: `Legacy` untouched · `Classic` keeps the old design AS IS to measure figures ·
 > `Red` a completely new design. `White` is the only copy **mixing on purpose** ⇒ also the only copy with two
@@ -523,7 +523,7 @@ Original sample file, a card with `ColorId 6` shows `#13678A` = `dataColors[4]`;
 - 🔴 **The old `card` and `cardVisual` have DIFFERENT query schemas** — `queryState.Values` ↔ `queryState.Data`.
 - ⚠ **Do not lay a separate picture over an old `card`** to fake an icon: the picture is small, off, the label must be built with a separate shape
   because the old `card` draws *figure on top — label below*. Rejected by the owner twice.
-- 📌 The full JSON mould + icon size by card size: [`reference/measured.md`](reference/measured.md) §1.
+- 📌 The full JSON mould + icon size by card size: [`references/measured.md`](references/measured.md) §1.
 
 ### 4b. CARD DESIGN — simple, NO border
 
@@ -943,7 +943,7 @@ capture THE WHOLE PAGE** (`targetVisualNames: []` + `suppressData: true`) · **e
 see §5b. **No PNG hit area is needed**; the owner said plainly that tabs need no image, only text.
 
 **The content area** = `720 − 50 (header) − 5 − 30 (tab strip) − 5 − card row height`; a `90` card row ⇒ leaves
-**530**, a `5` gap between two blocks. The tab-counting formula: [`reference/measured.md`](reference/measured.md) §4.
+**530**, a `5` gap between two blocks. The tab-counting formula: [`references/measured.md`](references/measured.md) §4.
 
 ## 5b. 🔴 THREE ERRORS THAT BREAK THE FILE — all from INVENTED KEYS, Desktop refuses to open *(2026-09-23)*
 
@@ -1578,7 +1578,7 @@ of deleted pages (`10. Detail`) go back to `A. Calculation`. Reordering pages �
   a bookmark **that exists** (design.md §2.2).
   ⚠ Write files **keeping exactly the EOL on disk** (`Rule_Gate_24_EolKeep`) — Desktop writes PBIR as **CRLF**.
 
-📌 Figures + how to read the dialog when a title is empty: [`reference/measured.md`](reference/measured.md) §2–§3.
+📌 Figures + how to read the dialog when a title is empty: [`references/measured.md`](references/measured.md) §2–§3.
 
 ## 7. Acceptance
 

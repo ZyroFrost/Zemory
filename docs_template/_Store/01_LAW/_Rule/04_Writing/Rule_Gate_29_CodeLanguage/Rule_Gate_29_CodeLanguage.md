@@ -2,7 +2,7 @@
 id: Rule_29
 aka: 02-29
 name: code-language
-version: 13
+version: 14
 kind: judgment
 code: 04_Writing
 ---
@@ -32,7 +32,7 @@ names are ASCII English. Text rendered for readers and names given by another sy
 
 ## Check
 - A hook blocks a new comment line with Vietnamese, and a new file name or identifier that is not ASCII English.
-- Whole-repo scan: `node .claude/skills/harness-audit/scripts/lang-scan.mjs .`
+- Whole-repo scan: `node .claude/skills/harness-audit/scripts/lang_scan.mjs .`
 
 ## Links · Liên kết
 - Related · Liên quan: `Rule_Gate_31_NoBrokenVietnamese` — Vietnamese, when written, has its diacritics · tiếng Việt đã viết thì đủ dấu

@@ -1,5 +1,5 @@
 ---
-version: 15
+version: 16
 lang: vi
 ---
 
@@ -8,8 +8,8 @@ lang: vi
 > Chuẩn slot + luật 1-case-1-folder: slot `Tasks_115_Tasks` `tasks/` · `Tasks_117_Case` `tasks/<case>/` · `Data_131_Case` `data/<case>/` (+ định nghĩa ở khung HP `Cons_Gate_12_SourceOfTruth`). Hồn của mẫu: mỗi vấn đề là
 > một MẠCH VIỆC quay lại nhiều lần — mọi thứ của nó phải nằm MỘT chỗ, mở một folder ra hết.
 >
-> Repo phòng ban: tên case, nhịp, tên việc, tên file, tên bản giao ⇒ [`reference/naming.md`](reference/naming.md) · khối khai báo đầu
-> `spec.md` và đóng case ⇒ [`reference/spec-block.md`](reference/spec-block.md).
+> Repo phòng ban: tên case, nhịp, tên việc, tên file, tên bản giao ⇒ [`references/naming.md`](references/naming.md) · khối khai báo đầu
+> `spec.md` và đóng case ⇒ [`references/spec_block.md`](references/spec_block.md).
 
 ## Trước khi mở case mới — TRA ĐÃ CÓ CHƯA
 
@@ -50,11 +50,11 @@ NẰM, không nói nó thuộc VIỆC gì.**
 - Dời là cắt, không chép: bản gốc biến mất trong cùng lượt (case + `data/<case>/`), INDEX bên kia ghi đã dời, mọi tham chiếu
   đường cũ được nắn — hai bản cùng sống là trạng thái cấm. Ngoại lệ: file `.sql` hay script dùng chung thì CHÉP, để bên kia còn
   chạy.
-- Dời thì giữ nguyên tên. Đổi tên case thì khai tên cũ ở `spec.md` (`reference/naming.md` §3).
+- Dời thì giữ nguyên tên. Đổi tên case thì khai tên cũ ở `spec.md` (`references/naming.md` §3).
 
 ## ĐÓNG case
 
-Đồng bộ cả spec trong cùng lượt, không chỉ đổi dấu trạng thái: `reference/spec-block.md` §Đóng case.
+Đồng bộ cả spec trong cùng lượt, không chỉ đổi dấu trạng thái: `references/spec_block.md` §Đóng case.
 
 
 Đổi Trạng thái → `🟢 ĐÓNG <ngày>` + ghi **vì sao đóng** (đã vá / đã chốt không sửa /

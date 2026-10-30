@@ -1,15 +1,15 @@
 ---
 id: Skill_PBI_Legacy
 name: pbi-legacy
-version: 5
+version: 6
 type: process
 description: Handle the LEGACY copy of a Power BI report - the old system's original file, kept to READ and COMPARE, never edited: dissect a .pbix, convert it to .pbip on a copy, prove a rebuild by md5. Use whenever an old .pbix must be read for its design, measures or sources, or a rebuild must be compared with the original. Not for building a report (that is pbi-classic / pbi-white / pbi-red). Vietnamese triggers - "mổ file cũ", "đọc pbix hệ cũ", "chuyển pbix sang pbip", "so với bản gốc".
-from: _Store/03_SKILLS/Skill_PBI_Legacy @v5 #cdd953ad0aca
+from: _Store/03_SKILLS/Skill_PBI_Legacy @v6 #362980e52c0c
 ---
 
 # The `Legacy` kind — the old system's original file, READ ONLY
 
-> 🔴 **`Legacy` = old system + old design, the copy nobody has touched** (`Skill_PBI_Base` `reference/naming.md`).
+> 🔴 **`Legacy` = old system + old design, the copy nobody has touched** (`Skill_PBI_Base` `references/naming.md`).
 > It exists for exactly one reason: **it is the ONLY reference point** proving a `Classic`/`White` copy has not drifted in
 > design and has not drifted in numbers. Editing it loses the reference, and a lost reference cannot be got back.
 

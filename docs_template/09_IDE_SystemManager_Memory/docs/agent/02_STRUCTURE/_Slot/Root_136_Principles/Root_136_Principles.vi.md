@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 # Root_136_Principles principles — nguyên tắc chung của chuẩn cấu trúc
@@ -15,6 +15,16 @@ lang: vi
   - NON-APP: Power BI Project `.pbip` · `.Report/` · `.SemanticModel/`, dbt `models/`.
 - Mục đích KÉP: cấu trúc gọn + INDEX điều hướng — agent đọc chuẩn là trỏ THẲNG folder cần sửa, không grep cả repo (nhanh + tiết kiệm token).
 - INDEX = TỪ ĐIỂN TÊN để TRA, KHÔNG phải danh sách folder phải tạo. CHỈ tạo folder khi CÓ concern/file thật; tuyệt đối không tạo hàng loạt folder rỗng cho đủ bộ; thiếu concern → bỏ folder đó. Dự án điển hình chỉ hiện diện 4–10 slot (APP) / 3–8 slot (NON-APP).
+- Một SLOT mô tả MỘT path: ở đó có loại file gì · nghĩa là gì · để làm gì.
+  - Path là khoá của slot: hai slot không bao giờ khai cùng một path (cổng `slot-overlap` đỏ, không có đường giải trình). Một path
+    giữ nhiều vai dưới tên khác (`package.json` · `pyproject.toml`) vẫn là một slot: các tên vào `path:` của nó.
+  - Ráp một slot = repo dùng folder đó. Slot không có chế độ; cấu trúc hoặc mang nó hoặc không.
+  - Lớp bên trong path có luật riêng (vào git hay không · ai sửa · cấu trúc nào mang) là slot CON trên path riêng
+    (`data/` ⇒ `data/secrets/`). Lớp không có luật riêng được mô tả ở mục `## Inside` của slot cha: loại file · folder con được
+    thêm và khuôn tên · các slot con nó trỏ tới.
+  - Slot chỉ nói về path của chính nó: file ở path khác thuộc slot của path đó (`.env` là `Root_093_Env`, không phải một dòng của
+    `Data_102_Secrets`).
+  - Slot hướng dẫn (`kind: guide`, nguyên tắc chung) không giữ path của slot khác. Luật thiết kế không phải slot: nó sống trong skill.
 - Nguồn = ĐẦU VÀO = git tracked. Đầu ra = gitignore:
   - APP: output / runtime / secret.
   - NON-APP: nguồn = định nghĩa nguồn · measure · template điền · deliverable · spec; đầu ra = file THẬT nặng / PII / kéo về / render ra (`data/` · `exports/` · `.env`).

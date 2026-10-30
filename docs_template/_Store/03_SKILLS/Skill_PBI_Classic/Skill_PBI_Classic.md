@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Classic
 name: pbi-classic
-version: 7
+version: 8
 type: process
 description: Build the CLASSIC copy of a Power BI report - keep the OLD design exactly, move only the model onto the warehouse: map tables to Dim_*/Fact_*, port measures, rebind visuals, then MEASURE how far the numbers match the old one. Use whenever an old dashboard moves onto the warehouse, the old report serves as the warehouse's test, or the question is what the warehouse still lacks. Not for a new design. Vietnamese triggers - "bản classic", "tái tạo dashboard cũ", "đổi model sang DW", "so số với bản cũ", "kho còn thiếu gì".
 ---
@@ -13,7 +13,7 @@ description: Build the CLASSIC copy of a Power BI report - keep the OLD design e
 > artifact, living side by side without overwriting; mixing the two loses the only reference point for comparison.
 >
 > This file says **HOW TO BUILD THE CLASSIC COPY**. Operating on `.pbip` files (bookmarks · buttons · icons · the grid) is in the
-> **`pbi-pbip`** skill; the DESIGN rules are in `Skill_PBI_Base` `reference/design.md`.
+> **`pbi-pbip`** skill; the DESIGN rules are in `Skill_PBI_Base` `references/design.md`.
 > It differs from `pbi-pbip` in this: `pbi-pbip` edits a report that IS yours, this file **moves someone else's report
 > onto another data base without being allowed to change its shape**.
 
@@ -29,7 +29,7 @@ the report asks for things the DW cannot answer.
 ## 1. Things NOT to do
 
 - **Do NOT change the design.** Coordinates · font sizes · layout · page order stay as they are. Seeing something ugly ⇒ **REPORT** it
-  (`Skill_PBI_Base` `reference/design.md` §3.5). The standard's 5 grid and colour table **do not apply** to the replica.
+  (`Skill_PBI_Base` `references/design.md` §3.5). The standard's 5 grid and colour table **do not apply** to the replica.
 - **Do NOT invent figures.** Where the DW cannot answer yet, leave it **empty with a note**, never replaced by an estimate.
   *The old copy paid for exactly this: `[COGs_PnL] = TotalSale × 0.39` — an estimated ratio with a name that sounds
   real, and someone went looking for costs in it.*

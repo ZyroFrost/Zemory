@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 11
+version: 12
 type: process
 installs: [scripts/pbi_engine_query.ps1]
 aka: dev-pbi
@@ -42,9 +42,9 @@ shared standard of the four kinds is in the three files below; each kind's skill
 
 | Need | Open |
 |---|---|
-| folder and file names · report numbers · renaming · one report per folder · `.pbip` · dropping the old system | `reference/naming.md` |
-| `#Measure` · measure folders by page · measure names · `Parameter_*` · the DW's Kimball · the two name layers of `Classic` | `reference/model.md` |
-| colours · interactions · icons · slicers · the 5 grid · frames · the title band · building on an existing frame | `reference/design.md` |
+| folder and file names · report numbers · renaming · one report per folder · `.pbip` · dropping the old system | `references/naming.md` |
+| `#Measure` · measure folders by page · measure names · `Parameter_*` · the DW's Kimball · the two name layers of `Classic` | `references/model.md` |
+| colours · interactions · icons · slicers · the 5 grid · frames · the title band · building on an existing frame | `references/design.md` |
 
 The group's real values (colour codes, theme, icons, original template, DW server, old-system sources) live in the manager; the standard files only name the key
 in the group's values.

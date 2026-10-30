@@ -1,11 +1,11 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 
 # Bản `Red` — thiết kế MỚI trên DW, áp đủ chuẩn
 
-> 🔴 **`Red` = DW + thiết kế mới, bản chính thức** (`Skill_PBI_Base` `reference/naming.md`).
+> 🔴 **`Red` = DW + thiết kế mới, bản chính thức** (`Skill_PBI_Base` `references/naming.md`).
 > Khác ba loại kia ở đúng một điểm: **không có "bản cũ" nào để viện dẫn.** `Classic` và `White` đều
 > được phép giữ thứ trông không chuẩn vì bản cũ làm vậy; ở đây **không có ngoại lệ đó**.
 
@@ -17,10 +17,10 @@ chết đi lang thang **suốt một tháng** sau khi chúng bị thay.
 
 | Cần gì | Mở |
 |---|---|
-| Bảng màu · theme · icon · nút bấm được · slicer | `Skill_PBI_Base` `reference/design.md` §1–§2 |
-| Cấu trúc measure, thư mục theo trang, tiền tố `#/%/~`, bảng `Parameter_*` | `Skill_PBI_Base` `reference/model.md` |
-| Bộ số khoảng cách, lưới 5, khung trắng | `Skill_PBI_Base` `reference/design.md` §3 |
-| Khung UI có sẵn — chỉ thay dữ liệu | `Skill_PBI_Base` `reference/design.md` §3.5 |
+| Bảng màu · theme · icon · nút bấm được · slicer | `Skill_PBI_Base` `references/design.md` §1–§2 |
+| Cấu trúc measure, thư mục theo trang, tiền tố `#/%/~`, bảng `Parameter_*` | `Skill_PBI_Base` `references/model.md` |
+| Bộ số khoảng cách, lưới 5, khung trắng | `Skill_PBI_Base` `references/design.md` §3 |
+| Khung UI có sẵn — chỉ thay dữ liệu | `Skill_PBI_Base` `references/design.md` §3.5 |
 | Thao tác sửa `.pbip` mà không vỡ file | `.claude/skills/pbi-pbip/SKILL.md` |
 | Tài sản ảnh, theme | thư mục `assets/` của repo tổng quản vùng (`theme_file` · `icons_dir` trong giá trị vùng) |
 

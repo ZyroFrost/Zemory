@@ -7,7 +7,7 @@
 // A hook returns null (let through), a string (block), or { msg, flag, subject } (block unless the one-use flag
 // `.allow-<flag>` is granted — guard.cjs consumes it).
 //
-// The Vietnamese-without-diacritics judgement is the one `.claude/skills/harness-audit/scripts/lang-scan.mjs` was tuned with
+// The Vietnamese-without-diacritics judgement is the one `.claude/skills/harness-audit/scripts/lang_scan.mjs` was tuned with
 // (tier A syllables · tier B function words · English homographs · data stripped before judging); keep the two in step.
 //
 // Written with String.raw so backslashes are literal — DO NOT use backticks or dollar-brace inside the sources below.

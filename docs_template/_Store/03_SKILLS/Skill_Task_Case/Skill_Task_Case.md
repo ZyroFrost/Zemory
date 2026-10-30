@@ -2,7 +2,7 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 15
+version: 16
 type: process
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
@@ -16,8 +16,8 @@ description: >
 > The slot standard + the 1-case-1-folder rule: slot `Tasks_115_Tasks` `tasks/` · `Tasks_117_Case` `tasks/<case>/` · `Data_131_Case` `data/<case>/` (+ the definition in the HP frame `Cons_Gate_12_SourceOfTruth`). The soul of the pattern: every problem is
 > a LINE OF WORK returned to many times — everything of it must sit in ONE place, open one folder and it is all there.
 >
-> Department repos: case name, cadence, task name, file names, names of handed-out copies ⇒ [`reference/naming.md`](reference/naming.md) · the declaration block at the top of
-> `spec.md` and closing a case ⇒ [`reference/spec-block.md`](reference/spec-block.md).
+> Department repos: case name, cadence, task name, file names, names of handed-out copies ⇒ [`references/naming.md`](references/naming.md) · the declaration block at the top of
+> `spec.md` and closing a case ⇒ [`references/spec_block.md`](references/spec_block.md).
 
 ## Before opening a new case — CHECK WHETHER IT EXISTS
 
@@ -58,11 +58,11 @@ SITS, not which WORK it belongs to.**
 - Moving is cutting, not copying: the original disappears in the same turn (case + `data/<case>/`), the INDEX on the other side records the move, every reference
   to the old path is fixed — two live copies is a forbidden state. Exception: a shared `.sql` file or script is COPIED, so the other side still
   runs.
-- A move keeps the name. Renaming a case declares the old name in `spec.md` (`reference/naming.md` §3).
+- A move keeps the name. Renaming a case declares the old name in `spec.md` (`references/naming.md` §3).
 
 ## CLOSING a case
 
-Sync the whole spec in the same turn, not just flip the status mark: `reference/spec-block.md` §Closing a case.
+Sync the whole spec in the same turn, not just flip the status mark: `references/spec_block.md` §Closing a case.
 
 
 Change the Status → `🟢 CLOSED <date>` + write **why it was closed** (patched / decided not to fix /

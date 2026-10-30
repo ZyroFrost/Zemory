@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 
@@ -36,9 +36,9 @@ chung của bốn loại nằm ở ba file dưới; skill của từng loại ch
 
 | Cần gì | Mở |
 |---|---|
-| tên thư mục và file · số report · đổi tên · một report một thư mục · `.pbip` · bỏ hệ cũ | `reference/naming.md` |
-| `#Measure` · thư mục measure theo trang · tên measure · `Parameter_*` · Kimball của DW · hai tầng tên của `Classic` | `reference/model.md` |
-| màu · tương tác · icon · slicer · lưới 5 · khung · dải title · dựng trên khung có sẵn | `reference/design.md` |
+| tên thư mục và file · số report · đổi tên · một report một thư mục · `.pbip` · bỏ hệ cũ | `references/naming.md` |
+| `#Measure` · thư mục measure theo trang · tên measure · `Parameter_*` · Kimball của DW · hai tầng tên của `Classic` | `references/model.md` |
+| màu · tương tác · icon · slicer · lưới 5 · khung · dải title · dựng trên khung có sẵn | `references/design.md` |
 
 Giá trị thật của cụm (mã màu, theme, icon, khuôn gốc, máy chủ DW, nguồn hệ cũ) nằm ở tổng quản; file chuẩn chỉ nêu tên khoá
 trong giá trị cụm.

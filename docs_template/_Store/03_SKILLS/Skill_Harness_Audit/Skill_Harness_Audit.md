@@ -2,7 +2,7 @@
 id: Skill_Harness_Audit
 aka: audit
 name: harness-audit
-version: 19
+version: 20
 type: process
 description: Run a full review of the project across every dimension, verifying each finding against real files before reporting it. Use only when explicitly asked for a thorough audit, or before a major milestone such as a release or a large batch of changes. This is not a quick check. Vietnamese triggers - "audit toàn diện", "soi hết", "kiểm tra toàn bộ", "rà lại hết", "review tổng thể".
 ---
@@ -134,7 +134,7 @@ the CODE itself — file names · identifiers · comments.)*
 
 12. **THE LANGUAGE OF THE CODE** — **the NORM is in `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`** (a shared law of every app). Four checks,
    **how to measure + false-alarm traps + baseline figures in [`references/lang.md`](references/lang.md)**; the machine runs:
-   `node .claude/skills/harness-audit/scripts/lang-scan.mjs . [--all]` — it prints *how much was scanned* so a clean round
+   `node .claude/skills/harness-audit/scripts/lang_scan.mjs . [--all]` — it prints *how much was scanned* so a clean round
    is not read as "nothing inspected".
    · **Ⓐ file · folder names** ASCII English only · **Ⓑ identifiers** (variables · constants · functions · classes · types ·
      config keys) ASCII English only — **comments in English too** (`Rule_Gate_29_CodeLanguage`);
@@ -220,7 +220,7 @@ heaviest aspect, not a side one.)*
    wrote, not words you only pass by.
 
 11. **THE LANGUAGE OF THE CODE** — the NORM is in `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`. The machine runs `node
-   .claude/skills/harness-audit/scripts/lang-scan.mjs .`; it prints *how much was scanned* so a clean round is not read
+   .claude/skills/harness-audit/scripts/lang_scan.mjs .`; it prints *how much was scanned* so a clean round is not read
    as "nothing inspected". How to measure + detailed traps: [`references/lang.md`](references/lang.md).
    · **Ⓐ file · folder names** ASCII English only · **Ⓑ identifiers in scripts/pipelines** (variables · functions ·
      intermediate columns you name yourself · config keys) ASCII English only — **comments in English too**

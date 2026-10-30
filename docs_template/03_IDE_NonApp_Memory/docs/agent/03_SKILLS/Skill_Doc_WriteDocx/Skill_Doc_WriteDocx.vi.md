@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 
@@ -14,9 +14,9 @@ lang: vi
 đều KHÔNG thấy cấu trúc bị phá** — chữ trong ô bảng cũng là đoạn văn, nên bảng bị bẻ phẳng mà chữ vẫn
 y nguyên.
 
-Chi tiết thao tác: [`references/pagination-toc.md`](references/pagination-toc.md) (ngắt trang · mục lục).
+Chi tiết thao tác: [`references/pagination_toc.md`](references/pagination_toc.md) (ngắt trang · mục lục).
 **Trước khi sao vỏ đoạn/bảng, đụng field, hay viết chốt kiểm, đọc
-[`references/edit-traps.md`](references/edit-traps.md)** — 7 bẫy đã làm hỏng file thật.
+[`references/edit_traps.md`](references/edit_traps.md)** — 7 bẫy đã làm hỏng file thật.
 
 1. **KHÔNG mở file giao đi bằng editor khác rồi lưu lại.** Đo thật: một tài liệu **8 bảng**, mở bằng
    một editor desktop khác Word rồi Ctrl+S → **8 bảng thành 0**, mọi ô bị bẻ thành đoạn thường; kèm
@@ -86,7 +86,7 @@ Chi tiết thao tác: [`references/pagination-toc.md`](references/pagination-toc
     `pdfminer` đo `y0` thấp nhất của chữ **thân bài** (phải **loại vùng footer**, không thì trang nào
     cũng ra 0% trống). Quy trình: ép hết → bỏ break ở mục gây trống >1/3 → thêm ngược lại tối đa;
     **chỉ miễn trang bìa** — miễn cả trang cuối thì phép đo chọn nhầm bản xấu hơn (đo được: 12 trang, trang cuối đầy 97%,
-    thua 13 trang, trang cuối trống 76%; `references/edit-traps.md` §5). **Máy không có Word/ONLYOFFICE chạy được thì dùng WPS COM:**
+    thua 13 trang, trang cuối trống 76%; `references/edit_traps.md` §5). **Máy không có Word/ONLYOFFICE chạy được thì dùng WPS COM:**
     `KWPS.Application` → `Documents.Open(<path>, false, true)` (read-only) → `ComputeStatistics(2)` = SỐ
     TRANG, `(0)` = số từ, rồi `Close(0)`. Đo được: đây là đường DUY NHẤT còn chạy khi `x2t` thiếu
     `AllFonts.js` (lỗi JS, không ra PDF) **và** `Word.Application` ném COMException — đừng kết luận

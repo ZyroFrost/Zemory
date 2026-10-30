@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Red
 name: pbi-red
-version: 6
+version: 7
 aka: pbi-main
 replaces: [Skill_PBI_Main]
 type: process
@@ -10,7 +10,7 @@ description: Build the RED copy (named Main before 2026-10-19) of a Power BI rep
 
 # The `Red` kind — a NEW design on the DW, the full standard applied
 
-> 🔴 **`Red` = DW + a new design, the official copy** (`Skill_PBI_Base` `reference/naming.md`).
+> 🔴 **`Red` = DW + a new design, the official copy** (`Skill_PBI_Base` `references/naming.md`).
 > It differs from the other three in exactly one point: **there is no "old copy" to point to.** `Classic` and `White` are both
 > allowed to keep things that look off-standard because the old copy did it; here **there is no such exception**.
 
@@ -22,10 +22,10 @@ dead and wandered around **for a whole month** after they were replaced.
 
 | Need | Open |
 |---|---|
-| Colour table · theme · icons · clickable buttons · slicers | `Skill_PBI_Base` `reference/design.md` §1–§2 |
-| Measure structure, folders by page, the `#/%/~` prefixes, `Parameter_*` tables | `Skill_PBI_Base` `reference/model.md` |
-| The spacing numbers, the 5 grid, the white frame | `Skill_PBI_Base` `reference/design.md` §3 |
-| An existing UI frame — swap only the data | `Skill_PBI_Base` `reference/design.md` §3.5 |
+| Colour table · theme · icons · clickable buttons · slicers | `Skill_PBI_Base` `references/design.md` §1–§2 |
+| Measure structure, folders by page, the `#/%/~` prefixes, `Parameter_*` tables | `Skill_PBI_Base` `references/model.md` |
+| The spacing numbers, the 5 grid, the white frame | `Skill_PBI_Base` `references/design.md` §3 |
+| An existing UI frame — swap only the data | `Skill_PBI_Base` `references/design.md` §3.5 |
 | Editing a `.pbip` without breaking the file | `.claude/skills/pbi-pbip/SKILL.md` |
 | Image and theme assets | the `assets/` folder of the region's manager repo (`theme_file` · `icons_dir` in the region values) |
 

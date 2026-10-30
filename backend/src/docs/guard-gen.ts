@@ -53,7 +53,7 @@ export function stateDirOf(root: string): string {
   return isFolderHarness(agent) ? join(agent, "..", ".harness-state") : hooksDirOf(root);
 }
 
-/** The hook files of one rule folder (`hook.cjs`, and one more per rule it took in: `hook-names.cjs` …), sorted. */
+/** The hook files of one rule folder (`hook.cjs`, and one more per rule it took in: `hook_names.cjs` …), sorted. */
 export function ruleHookFiles(dir: string): string[] {
   try {
     return readdirSync(dir).filter((f) => /^hook[\w-]*\.cjs$/.test(f)).sort();
@@ -1648,7 +1648,7 @@ function main() {
     verdict(r, h.file);
   }
   // FOLDER HARNESS (plan/28 §0d): every rule folder that carries hooks, same contract as above. A rule that took in another
-  // rule (plan/28 §0q) carries one hook*.cjs per check (hook.cjs · hook-names.cjs …); each is called.
+  // rule (plan/28 §0q) carries one hook*.cjs per check (hook.cjs · hook_names.cjs …); each is called.
   for (const d of POLICY.rule_dirs || []) {
     let files = [];
     try { files = fs.readdirSync(path.join(ROOT, d)).filter((f) => /^hook[\\w-]*\\.cjs$/.test(f)).sort(); } catch { files = []; }

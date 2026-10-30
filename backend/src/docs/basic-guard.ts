@@ -12,7 +12,7 @@ import type { Part } from "./store.js";
 
 export const BASIC_GUARD_REL = ".claude/hooks/guard.ps1";
 export const BASIC_SETTINGS_REL = ".claude/settings.json";
-/** The files of a rule part a Basic set does not carry: the Node hooks (hook.cjs · hook-test.cjs · hook-names.cjs). */
+/** The files of a rule part a Basic set does not carry: the Node hooks (hook.cjs · hook_test.cjs · hook_names.cjs). */
 export const BASIC_DROP = /(^|\/)hook(-[a-z]+)?\.cjs$/;
 export const BASIC_MATCHER = "Write|Edit|MultiEdit|NotebookEdit";
 /**

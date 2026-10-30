@@ -1,17 +1,17 @@
 ---
-version: 29
+version: 30
 lang: vi
 ---
 
 # Sửa `.pbip` mà không làm vỡ file
 
 > File này nói **CÁCH THAO TÁC**. Luật **THIẾT KẾ** (bảng màu · lưới 5 · màu icon · `visualLink`
-> ở `visualContainerObjects` · slicer tắt header) ở `Skill_PBI_Base` `reference/design.md`,
+> ở `visualContainerObjects` · slicer tắt header) ở `Skill_PBI_Base` `references/design.md`,
 > icon ở thư viện icon của vùng (`icons_dir`). Đụng thiết kế → mở file kia trước.
 
 ## 0. BỐN LOẠI FILE PBI — luật khác nhau, đừng áp nhầm
 
-Tên thư mục khai loại (`Skill_PBI_Base` `reference/naming.md`):
+Tên thư mục khai loại (`Skill_PBI_Base` `references/naming.md`):
 ```
 thư mục   <PHÒNG>_<số>_<CHỨC-NĂNG>[-<Bậc>]_<IP|DR>_<Loại>            ABC_02_STORE-REPORT-AM_DR_White · ABC_03_INCOME-STATEMENT-OM_IP_Red
 file      <PHÒNG>_<số>_<CHỨC-NĂNG>[-<Bậc>]_<Live|Scheduled>[_V<n>]    ABC_02_STORE-REPORT-AM_Live  (= tên trên Service, chỉ ASCII)
@@ -30,7 +30,7 @@ khuôn nào là ĐỎ. Cổng `storage-mode` kiểm `IP`/`DR` khớp cách nạp
 Đổi tên thư mục cũ sang khuôn này: `python scripts/rename_reports.py` (chạy thử, in mọi lần dời và mọi file sẽ sửa) rồi
 `--apply` (`git mv` từng thư mục, sửa mọi chỗ nhắc tên cũ — kể cả khoá trong `config/pbi-gate.json`). Tắt Desktop trước.
 Đổi tên FILE (thêm `_V<n>`, đổi chức năng) = đổi tên item trên Service — cả Report lẫn Semantic model — TRƯỚC lần publish kế
-(`Skill_PBI_Base` `reference/naming.md` §3).
+(`Skill_PBI_Base` `references/naming.md` §3).
 > 🔄 Thư mục 19/10 thay khuôn `<PHÒNG>_<số><IP|DR>_<ChứcNăng>[<Bậc>]_<Loại>` (`ABC_02DR_StoreReportAM_Mix`); loại `Mix` →
 > `White`, `Main` → `Red`. Thay bản đầu 05/10 `<PHÒNG>-<số>-<CHỨC_NĂNG>[-<Bậc>]-<Live|Scheduled>` (viết ngược dấu ngăn), khuôn file 04/10 `<PHÒNG>-<số>-<ChứcNăng>[<Bậc>]-<Live|Refresh>` và 28/09 `<PHÒNG>-<số><IP|DR>-<ChứcNăng>[<Bậc>]`
 > (27/09: `<PHÒNG>-<số>-<ChứcNăng>[<Bậc>]-<Tên tiếng Việt>`).
@@ -60,7 +60,7 @@ Giữ nguyên byte; nó là **mốc duy nhất** chứng minh bản `Classic` kh
 
 ### `Classic` — HAI TẦNG TÊN, chỗ hay áp nhầm nhất
 - 🔴 **Trong model theo CHUẨN MỚI:** tên bảng · cột · measure · thư mục measure — thứ chỉ người dựng nhìn thấy.
-  Áp đủ `Skill_PBI_Base` `reference/model.md`: một bảng `#Measure`, thư mục mang chữ cái theo trang (`A.` dùng chung, 27/09), tiền tố `#/%/~`, bảng rời `Parameter_*`.
+  Áp đủ `Skill_PBI_Base` `references/model.md`: một bảng `#Measure`, thư mục mang chữ cái theo trang (`A.` dùng chung, 27/09), tiền tố `#/%/~`, bảng rời `Parameter_*`.
 - 🔴 **Chữ NGƯỜI ĐỌC THẤY theo BẢN CŨ:** nhãn dòng/cột trên visual, tiêu đề, nhãn slicer — giữ nguyên văn bản cũ,
   kể cả khi trông "không chuẩn". Xung đột giữa hai tầng ⇒ **UI THẮNG**.
   *Ca thật `repo phòng ban` 19/09: ba dòng `MCP = COL+COGs+SEMI` · `PROFIT = SALE - MCP` · `Thực hiện Ebitda` — tên thô
@@ -397,7 +397,7 @@ thân để thường; mỗi đoạn cách nhau một đoạn rỗng.
 
 ## 6. Đoạn mã dùng lại
 
-[`reference/snippets.md`](reference/snippets.md) — toạ độ tuyệt đối · duyệt cây nhóm · dựng bookmark
+[`references/snippets.md`](references/snippets.md) — toạ độ tuyệt đối · duyệt cây nhóm · dựng bookmark
 đầy đủ · khuôn nút bấm được · tắt/mở Desktop · chụp `PrintWindow` · đọc `.pbix` cũ bằng `zipfile`.
 
 ## Implements · Thi hành luật

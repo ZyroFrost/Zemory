@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 # Rule_Gate_31_NoBrokenVietnamese — No Vietnamese without diacritics, no broken encoding
@@ -27,5 +27,5 @@ Anh.
   nhất một âm tiết chắc chắn là tiếng Việt (`khong` · `duoc` · `nguoi` …) hoặc bốn hư từ (`va` · `cua` · `cho` …), nên cụm ngắn toàn
   từ trùng tiếng Anh hay tên riêng có thể lọt.
 - Comment có dấu trong mã do `Rule_Gate_29_CodeLanguage` chặn.
-- Soát cả repo (gồm chuỗi trong mã và file khác): `node .claude/skills/harness-audit/scripts/lang-scan.mjs .`. Cách đo và bẫy báo
+- Soát cả repo (gồm chuỗi trong mã và file khác): `node .claude/skills/harness-audit/scripts/lang_scan.mjs .`. Cách đo và bẫy báo
   oan: `.claude/skills/harness-audit/SKILL.md` mặt 11 · 12.

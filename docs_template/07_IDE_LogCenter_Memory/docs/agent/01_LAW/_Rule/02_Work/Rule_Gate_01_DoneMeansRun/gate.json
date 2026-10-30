@@ -1,7 +1,7 @@
 {
   "hook": [
     "hook.cjs",
-    "hook-test.cjs"
+    "hook_test.cjs"
   ],
   "match": {
     "tool": [

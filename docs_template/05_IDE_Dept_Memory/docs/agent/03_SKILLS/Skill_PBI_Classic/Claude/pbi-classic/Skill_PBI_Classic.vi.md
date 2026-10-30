@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 
@@ -10,7 +10,7 @@ lang: vi
 > KHÁC, sống song song và không đè nhau; lẫn hai cái là mất mốc so sánh duy nhất.
 >
 > File này nói **CÁCH DỰNG BẢN CLASSIC**. Thao tác file `.pbip` (bookmark · nút · icon · lưới) ở skill
-> **`pbi-pbip`**; luật THIẾT KẾ ở `Skill_PBI_Base` `reference/design.md`.
+> **`pbi-pbip`**; luật THIẾT KẾ ở `Skill_PBI_Base` `references/design.md`.
 > Khác `pbi-pbip` ở chỗ: `pbi-pbip` sửa một report ĐANG là của mình, file này **chuyển một report của người
 > khác sang nền dữ liệu khác mà không được đổi hình hài nó**.
 
@@ -26,7 +26,7 @@ report đòi mà DW không đáp được.
 ## 1. Ba điều KHÔNG làm
 
 - **KHÔNG đổi thiết kế.** Toạ độ · cỡ chữ · bố cục · thứ tự trang giữ nguyên. Thấy chỗ xấu thì **BÁO**
-  (`Skill_PBI_Base` `reference/design.md` §3.5). Lưới 5 và bảng màu của chuẩn **không áp** cho bản mô phỏng.
+  (`Skill_PBI_Base` `references/design.md` §3.5). Lưới 5 và bảng màu của chuẩn **không áp** cho bản mô phỏng.
 - **KHÔNG bịa số.** Chỗ DW chưa đáp được thì để **trống có ghi chú**, không thay bằng ước lượng.
   *Bản cũ đã trả giá đúng chỗ này: `[COGs_PnL] = TotalSale × 0.39` — một tỷ lệ ước mang cái tên nghe
   như thật, và có người đi tìm chi phí trong đó.*

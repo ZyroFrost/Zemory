@@ -1,11 +1,11 @@
 ---
-version: 17
+version: 18
 lang: vi
 ---
 
 # Bản `White` — bố cục CŨ, khung nhận diện MỚI, chạy trên DW
 
-> 🔴 **`White` (tên trước 19/10: `Mix`) = giá trị thứ ba của token LOẠI THIẾT KẾ (`Skill_PBI_Base` `reference/naming.md`).**
+> 🔴 **`White` (tên trước 19/10: `Mix`) = giá trị thứ ba của token LOẠI THIẾT KẾ (`Skill_PBI_Base` `references/naming.md`).**
 > Bốn vế: **DW** + **header/màu theo `Red`** + **bố cục & điều hướng theo `Legacy`** + **lưới 5
 > toàn file**. Ba loại kia: `Legacy` không đụng · `Classic` giữ NGUYÊN thiết kế cũ để đo số ·
 > `Red` thiết kế mới hoàn toàn. `White` là bản duy nhất **cố ý trộn** ⇒ cũng là bản duy nhất có hai
@@ -516,7 +516,7 @@ Original, thẻ `ColorId 6` hiện `#13678A` = `dataColors[4]`; theo bản cũ p
 - 🔴 **`card` cũ và `cardVisual` KHÁC schema truy vấn** — `queryState.Values` ↔ `queryState.Data`.
 - ⚠ **Đừng phủ ảnh rời lên `card` cũ** để giả làm icon: ảnh nhỏ, lệch, nhãn phải dựng bằng shape rời
   vì `card` cũ vẽ *số trên — nhãn dưới*. Đã bị người dùng bác hai lượt.
-- 📌 Khuôn JSON đầy đủ + cỡ icon theo cỡ card: [`reference/measured.md`](reference/measured.md) §1.
+- 📌 Khuôn JSON đầy đủ + cỡ icon theo cỡ card: [`references/measured.md`](references/measured.md) §1.
 
 ### 4b. THIẾT KẾ THẺ — đơn giản, KHÔNG viền
 
@@ -936,7 +936,7 @@ giữa** · **mỗi tab hai shape nhãn cộng một vạch đỏ**, đổi tab 
 xem §5b. **Không cần PNG hit-area**; người dùng đã nói thẳng *"tab ko cần image chỉ text"*.
 
 **Vùng nội dung** = `720 − 50 (header) − 5 − 30 (dải tab) − 5 − cao hàng card`; hàng card `90` ⇒ còn
-**530**, khe `5` giữa hai khối. Công thức đếm tab: [`reference/measured.md`](reference/measured.md) §4.
+**530**, khe `5` giữa hai khối. Công thức đếm tab: [`references/measured.md`](references/measured.md) §4.
 
 ## 5b. 🔴 BA LỖI LÀM VỠ FILE — đều do TỰ CHẾ KHOÁ, Desktop chặn mở *(2026-09-23)*
 
@@ -1571,7 +1571,7 @@ của trang đã xoá (`10. Detail`) về `A. Calculation`. Đổi thứ tự tr
   bookmark **có thật** (design.md §2.2).
   ⚠ Ghi file **giữ đúng EOL đang có trên đĩa** (`Rule_Gate_24_EolKeep`) — Desktop ghi PBIR là **CRLF**.
 
-📌 Số đo + cách đọc hộp thoại khi title rỗng: [`reference/measured.md`](reference/measured.md) §2–§3.
+📌 Số đo + cách đọc hộp thoại khi title rỗng: [`references/measured.md`](references/measured.md) §2–§3.
 
 ## 7. Nghiệm thu
 

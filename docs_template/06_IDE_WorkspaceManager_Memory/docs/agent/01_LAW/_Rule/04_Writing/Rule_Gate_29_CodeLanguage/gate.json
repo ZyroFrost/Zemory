@@ -276,7 +276,7 @@
   ],
   "hook": [
     "hook.cjs",
-    "hook-names.cjs"
+    "hook_names.cjs"
   ],
   "match": {
     "tool": [

@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 # Rule_Gate_29_CodeLanguage — Code and names are written in English
@@ -28,4 +28,4 @@ Anh. Chữ hiển thị cho người đọc và tên do hệ khác đặt thì k
 
 ## Máy kiểm
 - Hook chặn dòng comment mới có chữ Việt, và tên file hay định danh mới không phải ASCII tiếng Anh.
-- Soát cả repo: `node .claude/skills/harness-audit/scripts/lang-scan.mjs .`
+- Soát cả repo: `node .claude/skills/harness-audit/scripts/lang_scan.mjs .`

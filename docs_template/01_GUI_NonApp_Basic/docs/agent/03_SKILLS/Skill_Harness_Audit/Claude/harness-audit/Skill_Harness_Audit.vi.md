@@ -1,5 +1,5 @@
 ---
-version: 19
+version: 20
 lang: vi
 ---
 
@@ -130,7 +130,7 @@ chính MÃ — tên file · định danh · chú thích.)*
 
 12. **NGÔN NGỮ CỦA MÃ** — **NORM ở `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`** (luật chung mọi app). Bốn phép,
    **cách đo + bẫy báo oan + số nền ở [`references/lang.md`](references/lang.md)**; máy chạy:
-   `node .claude/skills/harness-audit/scripts/lang-scan.mjs . [--all]` — nó in *đã quét bao nhiêu* để một lượt
+   `node .claude/skills/harness-audit/scripts/lang_scan.mjs . [--all]` — nó in *đã quét bao nhiêu* để một lượt
    sạch không bị đọc thành "chưa soi gì".
    · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh** (biến · hằng · hàm · lớp · kiểu ·
      khoá config) chỉ ASCII tiếng Anh — **chú thích cũng tiếng Anh** (`Rule_Gate_29_CodeLanguage`);
@@ -216,7 +216,7 @@ nặng nhất, không phải mặt phụ.)*
    viết, đừng soi chữ mình chỉ đi ngang qua.
 
 11. **NGÔN NGỮ CỦA MÃ** — NORM ở `Rule_Gate_29_CodeLanguage` · `Rule_Gate_31_NoBrokenVietnamese`. Máy chạy `node
-   .claude/skills/harness-audit/scripts/lang-scan.mjs .`; nó in *đã quét bao nhiêu* để lượt sạch không bị đọc
+   .claude/skills/harness-audit/scripts/lang_scan.mjs .`; nó in *đã quét bao nhiêu* để lượt sạch không bị đọc
    thành "chưa soi gì". Cách đo + bẫy chi tiết: [`references/lang.md`](references/lang.md).
    · **Ⓐ tên file · thư mục** chỉ ASCII tiếng Anh · **Ⓑ định danh trong script/pipeline** (biến · hàm ·
      cột trung gian mình tự đặt · khoá config) chỉ ASCII tiếng Anh — **chú thích cũng tiếng Anh**

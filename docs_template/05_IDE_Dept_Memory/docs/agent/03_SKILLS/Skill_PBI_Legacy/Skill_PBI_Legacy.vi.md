@@ -1,11 +1,11 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 
 # Bản `Legacy` — file gốc hệ cũ, CHỈ ĐỌC
 
-> 🔴 **`Legacy` = hệ cũ + thiết kế cũ, bản chưa ai đụng** (`Skill_PBI_Base` `reference/naming.md`).
+> 🔴 **`Legacy` = hệ cũ + thiết kế cũ, bản chưa ai đụng** (`Skill_PBI_Base` `references/naming.md`).
 > Nó tồn tại vì đúng một lý do: **là mốc DUY NHẤT** chứng minh bản `Classic`/`White` không lệch thiết
 > kế và không lệch số. Sửa nó là mất mốc, và mất mốc thì không có cách nào lấy lại.
 

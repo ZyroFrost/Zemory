@@ -2,7 +2,7 @@
 id: Skill_Doc_WriteDocx
 aka: write-docx
 name: doc-write-docx
-version: 6
+version: 7
 type: process
 description: Edit or produce Word files (.docx) without silently destroying their structure - tables, pictures, table of contents, styles, page setup. Use when you must change wording inside an existing .docx, swap or add a picture, resize a picture, insert a section, or hand back a .docx deliverable. Do not use when you only need to READ a document - use read-office for that. Vietnamese triggers - "sửa file word", "ghi file word", "đổi chữ trong file word", "thay ảnh trong docx", "chèn ảnh vào file word", "xuất file word", "cập nhật tài liệu word".
 ---
@@ -18,9 +18,9 @@ pictures · table of contents · styles · page size) sits in the XML around the
 misses a broken structure** — the words in a table cell are paragraphs too, so a table can be flattened while the words stay
 exactly the same.
 
-Operating details: [`references/pagination-toc.md`](references/pagination-toc.md) (page breaks · table of contents).
+Operating details: [`references/pagination_toc.md`](references/pagination_toc.md) (page breaks · table of contents).
 **Before copying a paragraph/table shell, touching a field, or writing a check, read
-[`references/edit-traps.md`](references/edit-traps.md)** — 7 traps that broke real files.
+[`references/edit_traps.md`](references/edit_traps.md)** — 7 traps that broke real files.
 
 1. **Do NOT open a handed-out file in another editor and save it.** Measured for real: a document with **8 tables**, opened in
    a desktop editor other than Word and Ctrl+S → **8 tables became 0**, every cell flattened into a plain paragraph; plus
@@ -90,7 +90,7 @@ Operating details: [`references/pagination-toc.md`](references/pagination-toc.md
     `pdfminer` measures the lowest `y0` of the **body** text (the **footer area must be excluded**, or every page
     comes out 0% blank). Procedure: force all → drop the break on sections leaving more than 1/3 blank → add back as many as possible;
     **exempt only the cover page** — exempting the last page too makes the measurement pick the worse copy (measured: 12 pages, last page 97% full,
-    losing to 13 pages, last page 76% blank; `references/edit-traps.md` §5). **A machine where neither Word nor ONLYOFFICE runs uses WPS COM:**
+    losing to 13 pages, last page 76% blank; `references/edit_traps.md` §5). **A machine where neither Word nor ONLYOFFICE runs uses WPS COM:**
     `KWPS.Application` → `Documents.Open(<path>, false, true)` (read-only) → `ComputeStatistics(2)` = the PAGE
     COUNT, `(0)` = the word count, then `Close(0)`. Measured: this is the ONLY way still working when `x2t` lacks
     `AllFonts.js` (JS error, no PDF) **and** `Word.Application` throws a COMException — do not conclude
