@@ -1,5 +1,5 @@
 ---
-version: 25
+version: 26
 lang: vi
 ---
 
@@ -289,7 +289,7 @@ ngang thanh cuộn là lỗi phải bắt) và đo bố cục:
 | U2 | F5 · F12 | một phần tử thò ra ngoài cửa sổ mà không nằm trong khung cố ý cuộn hay cắt nó |
 | U3 | F0c | control trên cùng một hàng lệch chiều cao quá 0,6 px |
 | U4 | F0 | khoảng trống chết: một bảng chiếm chưa tới `min_fill` (mặc định 60 %) bề ngang khung chứa nó |
-| U5 | F5 · F13 | chữ đè chữ, hoặc chữ đè lên biểu đồ (≥ 60×30) trong dòng chảy trang — nhãn cố ý đặt lên biểu đồ (absolute) không xét |
+| U5 | F5 · F13 | chữ đè chữ, hoặc chữ đè lên biểu đồ (≥ 60×30) trong dòng chảy trang — đo trên phần còn hiện trên màn hình (dòng bị cắt khuất dưới mép một thẻ cuộn không xét); nhãn cố ý đặt lên biểu đồ (absolute) không xét |
 | U6 | — | khung biểu đồ (`chart` · `bars` · `spark` · `donut` · `ring` · `graph`) không vẽ gì |
 | U7 | F14 | vùng cuộn thiếu `scrollbar-gutter: stable` |
 | U8 | F4 ② | control hoặc link không có nhãn đọc được |
