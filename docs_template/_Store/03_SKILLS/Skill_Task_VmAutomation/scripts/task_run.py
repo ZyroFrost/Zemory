@@ -15,8 +15,8 @@ Where the run log goes — one database, named `<MACHINE>/<DATABASE>` (the real 
   · env RUNLOG_DB (a launcher may set it) ·
   · the repo's `config/runlog.json` {"machine": …, "database": …} — a repo whose run log lives in its OWN database (a data repo
     other than the region's warehouse) declares it there; the file is a setting, it travels with the task to the VM ·
-  · the region value `runlog_db` (scripts/region_values.py › the region manager's data/region/values.json) — the region's
-    warehouse, where every other repo logs.
+  · the machine vault's setting `_runlog_db` (in `sql\\configs\\connections.json` of that machine) — the region's warehouse,
+    where every other repo logs. It lives in the vault, not in the region values, because those do not reach the VM.
 The connection comes from the machine vault through scripts/vault_conn.py (`conn(machine, database)`, the account the machine's
 register names); there is no fallback to .env. Nothing secret lives here. Shipped by zemory: store part
 Skill_Task_VmAutomation (its installs); change the store part, never the repo copy.
@@ -78,8 +78,8 @@ def run_log_target():
             print("[task_run] WARNING: config/runlog.json unreadable: %s" % e, flush=True)
     try:
         sys.path.insert(0, str(HERE))
-        from region_values import value as region_value
-        return (region_value(str(REPO), "runlog_db", "") or "").strip()
+        import vault_conn
+        return (vault_conn.setting("_runlog_db") or "").strip()
     except Exception:
         return ""
 
@@ -89,7 +89,7 @@ def log_run(task, started, seconds, rc, message):
         import pyodbc
         target = run_log_target()
         if not target or "/" not in target:
-            print("[task_run] WARNING: no run-log database (RUNLOG_DB · config/runlog.json · region value runlog_db) — run not logged",
+            print("[task_run] WARNING: no run-log database (RUNLOG_DB · config/runlog.json · vault setting _runlog_db) — run not logged",
                   flush=True)
             return
         sys.path.insert(0, str(HERE))

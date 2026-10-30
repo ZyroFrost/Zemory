@@ -75,8 +75,9 @@ department repo + the VM schedule), what is on the old system stays as it is. A 
   with the missing key's name — no fallback to `.env`, no other account. A new server = one register entry + one login block in the
   vault of each machine that uses it, no code. The VM's copy is carried over ssh (`scp`), never by a sync tool.
 - **The run log's database:** `task_run.py` writes `Log_JobRun` into `<MACHINE>/<DATABASE>` = env `RUNLOG_DB`, else the repo's
-  `config/runlog.json` (`{"machine", "database"}` — a data repo whose log lives in its own database), else the region value
-  `runlog_db` (the region's warehouse). The connection comes from the vault like any other.
+  `config/runlog.json` (`{"machine", "database"}` — a data repo whose log lives in its own database), else the machine vault's
+  setting `_runlog_db` in `sql\configs\connections.json` (the region's warehouse; in the vault because the region values do not
+  reach the VM). The connection comes from the vault like any other.
 - **The acting repo (`Rule_Keys_90` step 3):** `task_run.py` hands the launcher env `ACTING_REPO` = the folder name of the repo's root
   (`git rev-parse --show-toplevel`, else the folder holding `docs/.harness.json`; plain `[A-Za-z0-9._-]`, at most 64). A task that calls an
   app of the family sends it as header `X-Acting-Repo`; a task that inserts into the family's operation log itself fills the acting-repo

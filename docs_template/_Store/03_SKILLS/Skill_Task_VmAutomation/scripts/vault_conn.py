@@ -12,7 +12,8 @@ account its tasks run with). No repo holds a connection string, a password or a 
     python scripts/vault_conn.py                              what this machine can build (names only, never a value)
 
 Vault layout:
-    sql\\configs\\connections.json    {"<MACHINE>/<DATABASE>": {"address", "driver"?, "options"?, "account"}}  — not secret
+    sql\\configs\\connections.json    {"<MACHINE>/<DATABASE>": {"address", "driver"?, "options"?, "account"}}  — not secret;
+                                    a key starting with "_" is a machine setting ("_runlog_db": "<MACHINE>/<DATABASE>")
     sql\\credentials\\logins.env      <MACHINE>_<DATABASE>_<ACCOUNT>_ID / _PASS
     api\\credentials\\services.env    <SERVICE>_<RESOURCE>_<ACCOUNT>_<KIND>
     mail\\credentials\\smtp.env       <MAIL HOST>_<RESOURCE>_<ACCOUNT>_ID / _PASS
@@ -85,6 +86,16 @@ def register():
     if not f or not f.is_file():
         return {}
     return {k: v for k, v in json.loads(f.read_text(encoding="utf-8-sig")).items() if not k.startswith("_")}
+
+
+def setting(name):
+    """A machine setting of the register (a key starting with '_', e.g. '_runlog_db'), or ''."""
+    d = vault_dir()
+    f = d / REGISTER if d else None
+    if not f or not f.is_file():
+        return ""
+    v = json.loads(f.read_text(encoding="utf-8-sig")).get(name, "")
+    return v if isinstance(v, str) else ""
 
 
 def _entry(machine, database, reg=None):

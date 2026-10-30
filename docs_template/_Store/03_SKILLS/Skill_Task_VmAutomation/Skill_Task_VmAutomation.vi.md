@@ -64,7 +64,8 @@ chỉ gỡ ở hệ mới (repo phòng + lịch VM), thứ ở hệ cũ để ng
   về `.env`, không dùng tài khoản khác. Máy chủ mới = một dòng sổ + một khối login trong két của mỗi máy dùng nó, không sửa code. Bản
   sao trên VM chở bằng ssh (`scp`), không qua công cụ đồng bộ.
 - **DB của nhật ký chạy:** `task_run.py` ghi `Log_JobRun` vào `<MÁY>/<DB>` = biến `RUNLOG_DB`, không có thì `config/runlog.json` của
-  repo (`{"machine", "database"}` — repo dữ liệu có log ở DB riêng của nó), không có nữa thì giá trị vùng `runlog_db` (DW của vùng).
+  repo (`{"machine", "database"}` — repo dữ liệu có log ở DB riêng của nó), không có nữa thì thiết lập `_runlog_db` của két máy trong
+  `sql\configs\connections.json` (DW của vùng; nằm trong két vì giá trị vùng không tới VM).
   Kết nối lấy từ két như mọi kết nối khác.
 - **Repo đang làm (`Rule_Keys_90` bước 3):** `task_run.py` đưa cho launcher biến môi trường `ACTING_REPO` = tên thư mục gốc của repo
   (`git rev-parse --show-toplevel`, không có thì thư mục chứa `docs/.harness.json`; chỉ `[A-Za-z0-9._-]`, tối đa 64). Task gọi một app
