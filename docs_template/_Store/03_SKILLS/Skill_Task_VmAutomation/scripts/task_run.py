@@ -17,8 +17,9 @@ Where the run log goes — one database, named `<MACHINE>/<DATABASE>` (the real 
     other than the region's warehouse) declares it there; the file is a setting, it travels with the task to the VM ·
   · the machine vault's setting `_runlog_db` (in `sql\\configs\\connections.json` of that machine) — the region's warehouse,
     where every other repo logs. It lives in the vault, not in the region values, because those do not reach the VM.
-The connection comes from the machine vault through scripts/vault_conn.py (`conn(machine, database)`, the account the machine's
-register names); there is no fallback to .env. Nothing secret lives here. Shipped by zemory: store part
+The connection comes from the machine vault through scripts/vault_conn.py: `conn(machine, database, account)` with the account
+of the vault setting `_runlog_account` when the machine sets one (a work PC whose default account is a read-only agent that may
+not run the log procedure), else the account the machine's register names; there is no fallback to .env. Nothing secret lives here. Shipped by zemory: store part
 Skill_Task_VmAutomation (its installs); change the store part, never the repo copy.
 
 Which repo is acting (Rule_Keys_90 step 3): `repo_name()` = the folder name of the repo's root (`git rev-parse
@@ -95,7 +96,8 @@ def log_run(task, started, seconds, rc, message):
         sys.path.insert(0, str(HERE))
         import vault_conn
         machine, database = target.split("/", 1)
-        cn = pyodbc.connect(vault_conn.conn(machine, database), timeout=30, autocommit=True)
+        account = (vault_conn.setting("_runlog_account") or "").strip() or None
+        cn = pyodbc.connect(vault_conn.conn(machine, database, account), timeout=30, autocommit=True)
         cn.execute("EXEC dbo._LogTaskRun @TaskName=?, @StartedAt=?, @DurationSeconds=?, @ExitCode=?, @Message=?, @ServerName=?",
                    task, started.replace(microsecond=0), int(seconds), int(rc), message[:4000], socket.gethostname())
         cn.close()

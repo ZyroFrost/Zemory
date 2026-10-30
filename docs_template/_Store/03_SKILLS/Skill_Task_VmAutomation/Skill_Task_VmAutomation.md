@@ -77,7 +77,8 @@ department repo + the VM schedule), what is on the old system stays as it is. A 
 - **The run log's database:** `task_run.py` writes `Log_JobRun` into `<MACHINE>/<DATABASE>` = env `RUNLOG_DB`, else the repo's
   `config/runlog.json` (`{"machine", "database"}` — a data repo whose log lives in its own database), else the machine vault's
   setting `_runlog_db` in `sql\configs\connections.json` (the region's warehouse; in the vault because the region values do not
-  reach the VM). The connection comes from the vault like any other.
+  reach the VM). The connection comes from the vault like any other, with the account of the vault setting `_runlog_account`
+  when the machine sets one (a work PC whose default is a read-only agent account that may not run the log procedure).
 - **The acting repo (`Rule_Keys_90` step 3):** `task_run.py` hands the launcher env `ACTING_REPO` = the folder name of the repo's root
   (`git rev-parse --show-toplevel`, else the folder holding `docs/.harness.json`; plain `[A-Za-z0-9._-]`, at most 64). A task that calls an
   app of the family sends it as header `X-Acting-Repo`; a task that inserts into the family's operation log itself fills the acting-repo
