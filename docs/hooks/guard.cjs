@@ -564,7 +564,7 @@ function checkBash(cmd) {
     const clash = versionClash();
     if (clash) {
       deny("BLOCKED (guard layer 1): `git push` carries code but package.json still says " + clash.version +
-        ", the same version as " + clash.upstream + " (" + clash.files + " code file(s) in the push) - bump the version first (Skill_Dev_Release: every push of code carries a NEW version; docs-only pushes are exempt). There is no flag for this.");
+        ", the same version as " + clash.upstream + " (" + clash.files + " code file(s) in the push) - bump the version first (Skill_App_Release: every push of code carries a NEW version; docs-only pushes are exempt). There is no flag for this.");
     }
     if (!consumeFlag("push", bare)) {
       deny("BLOCKED (guard layer 1): `git push` - push only when the user says so (Rule_Gate_50_Git)." +
@@ -1324,7 +1324,7 @@ function main() {
     verdict(r, h.file);
   }
   // FOLDER HARNESS (plan/28 §0d): every rule folder that carries hooks, same contract as above. A rule that took in another
-  // rule (plan/28 §0q) carries one hook*.cjs per check (hook.cjs · hook-names.cjs …); each is called.
+  // rule (plan/28 §0q) carries one hook*.cjs per check (hook.cjs · hook_names.cjs …); each is called.
   for (const d of POLICY.rule_dirs || []) {
     let files = [];
     try { files = fs.readdirSync(path.join(ROOT, d)).filter((f) => /^hook[\w-]*\.cjs$/.test(f)).sort(); } catch { files = []; }
