@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 # ConfigVault_151_ConfigVault configvault — két chứa thiết lập và khoá công cụ của cả máy
@@ -21,13 +21,27 @@ _ConfigVault\
 ├── README.md          sổ DUY NHẤT của két (xem dưới)
 ├── ssh\               config · khoá · known_hosts — để phẳng, vì ssh đọc một thư mục
 ├── git\  vpn\  zemory\
+├── sql\configs\       connections.json: sổ kết nối CHUNG của máy (máy · CSDL · địa chỉ · driver · tài khoản MÁY NÀY dùng cho CSDL
+│                      đó) — không bí mật, ngoài git vì có địa chỉ nội bộ
 ├── sql\credentials\   login SQL mà chương trình và agent dùng: MỘT logins.env, mỗi máy chủ một khối, mỗi login hai dòng
+├── api\credentials\   bí mật của app · API · webhook: MỘT services.env
+├── mail\credentials\  tài khoản gửi mail: MỘT smtp.env
+├── tls\               chứng chỉ nhiều repo hay nhiều máy cùng dùng
 └── <công cụ>\         một hai tệp thì để thẳng; nhiều loại ⇒ configs\ · credentials\ · cache\
 ```
 
-- Két là nhà DUY NHẤT của mọi thông tin đăng nhập vào một hệ thống mà chương trình hay agent dùng, mọi repo trên máy dùng chung
-  (`Rule_Gate_21_WhatEntersGit` bước 3a). Config của repo ghi tên login và máy (`logcentral_reader` trên `db-main`), không ghi
-  giá trị; script đọc lúc chạy và không in ra. Bí mật riêng của sản phẩm một repo vẫn ở `data/secrets/` của repo đó.
+- Luật đứng sau: thứ nhiều repo hay app cùng dùng có MỘT nhà chung và MỘT tên; chỉ thứ thuộc một repo mới ở lại repo đó. CODE dùng
+  chung có một nguồn ở HS và tới từng repo bằng `zemory sync`; DỮ LIỆU, THIẾT LẬP và BÍ MẬT dùng chung nằm ở đây, mọi repo đọc tại chỗ.
+- Két là nhà DUY NHẤT của mọi bí mật dạng env mà chương trình hay agent dùng — login SQL, bí mật app và API, tài khoản mail, chứng
+  chỉ dùng chung — và của sổ kết nối chung, cho mọi repo và app trên máy (`Rule_Gate_21_WhatEntersGit` bước 3a). Không repo, không
+  app nào giữ bản riêng, và không repo nào giữ chuỗi kết nối hay biến riêng cho nó (`<HỆ>_CONN` bỏ): code hỏi `scripts/vault_conn.py`
+  `conn(<máy>, <csdl>)`, bộ đọc dựng từ thư mục này, không in bí mật. Chỉ ở lại `data/secrets/` của repo: bí mật nghiệp vụ một phòng
+  dùng riêng (mật khẩu file của phòng đó) hoặc khoá chỉ sản phẩm của repo đó dùng. App giữ bản phía máy chủ ở dạng niêm (systemd
+  credential trên máy Linux) là giữ BẢN SAO: nguồn là két.
+- MỘT két chủ: máy trạm của người vận hành. Máy chạy tự động hoá giữ bản sao chỉ các mục nó cần, CÙNG cây và cùng tên khoá; khác
+  nhau ở nội dung (sổ của máy trạm ghi tài khoản agent chỉ đọc, sổ của máy chạy task ghi tài khoản task). Bảng trong README ghi
+  mục nào chở lên máy nào; bản sao chở bằng ssh (`scp`), không qua công cụ đồng bộ. Đổi mật khẩu = đổi ở két chủ rồi chở lại lên
+  các máy README ghi.
 - Một mục đăng nhập chỉ chứa bí mật; ai giữ, được làm gì, repo nào dùng thì ghi ở bảng của công cụ đó trong README.
 
 - `configs\` — thiết lập (đọc được, không bí mật) · `credentials\` — khoá, token, mật khẩu · `cache\` — thứ công cụ tự dựng lại, kể cả
@@ -48,10 +62,22 @@ _ConfigVault\
   `<phân hệ>_<vai>`: `svc_agent` trên máy chủ · `datawarehouse_agent` · `erp_agent` · `logcentral_reader`. Dấu chấm phải bọc trong
   mọi câu lệnh (`[ ]` trên SQL Server, `" "` trên PostgreSQL) và `adduser` của Debian/Ubuntu từ chối nó; gạch dưới chạy mọi nơi
   không phải bọc. Tên file dùng gạch dưới hoặc gạch ngang.
-- Login SQL nằm trong MỘT tệp `sql\credentials\logins.env`, không tách tệp theo máy chủ: mỗi MÁY CHỦ THẬT một khối `#`, trong đó
-  mỗi login hai dòng `<MÁY>_<TÊN>_ID=<login>` (ghi sẵn) và `<MÁY>_<TÊN>_PASS=`. `<MÁY>` là tên máy, `<TÊN>` là tên login, cả hai viết
-  hoa, dấu chấm và gạch ngang thành gạch dưới (`DB_MAIN_LOGCENTRAL_READER_ID=logcentral_reader` · `DB_MAIN_LOGCENTRAL_READER_PASS=`),
-  nên một tên login ở hai máy vẫn là hai khoá. Ngoài ra chỉ có chú thích `#`. Người dán mật khẩu vào sau dấu `=` của dòng `_PASS`.
+- MỘT khuôn cho mọi khoá trong két: `<MÁY>_<CSDL>_<TÀI-KHOẢN>_<LOẠI>`, viết hoa. Phân khúc nối bằng `_`; chữ trong cùng một phân khúc
+  nối bằng `-` (dấu chấm hay gạch dưới bên trong tên thành `-`), nên một khoá tách ngược ra được bốn câu trả lời:
+  - `MÁY` — tên máy THẬT, đo (`SELECT SERVERPROPERTY('MachineName')` · `hostname`), không nhớ; dịch vụ đám mây thì là tên dịch vụ
+    (`M365` · `SHOPAPI` · `SMTP-OFFICE365`).
+  - `CSDL` — tên cơ sở dữ liệu thật; dịch vụ không phải SQL thì là tài nguyên trong dịch vụ (tenant · shop · app).
+  - `TÀI-KHOẢN` — login, app hay hộp thư (`jane.doe` ⇒ `JANE-DOE` · `logcentral_reader` ⇒ `LOGCENTRAL-READER`).
+  - `LOẠI` — `ID` (tên tài khoản, ghi sẵn) · `PASS` · `TOKEN` · `SECRET` · `TENANT`.
+  Ví dụ: `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_ID` · `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_PASS` ·
+  `POS-DB02_POSDATA_JANE-DOE_PASS` · `M365_ACME-COM_SYNC-APP_SECRET`. Một login mở hai CSDL là hai khoá.
+- Khoá két chỉ bộ đọc két đọc, không bao giờ thành biến môi trường, nên dấu `-` trong khoá an toàn. Tên viết đủ, không viết tắt
+  (`DATA-WAREHOUSE`, không `DW`); tên do hệ thống đặt (CSDL, máy) giữ đúng như hệ thống viết.
+- Sổ `sql\configs\connections.json` đặt khoá mỗi mục là `<MÁY>/<CSDL>` (tên thật) với `address` · `driver` · `options` · `account`
+  (tài khoản máy này dùng mặc định cho CSDL đó).
+- Mỗi tệp có một khối `#` cho mỗi MÁY hay DỊCH VỤ THẬT (`# ===== <máy> (<địa chỉ>) — <engine> · <phục vụ gì> =====`), một dòng
+  `# <tài khoản> — <được làm gì>` trước mỗi tài khoản, rồi các dòng của nó. Ngoài ra chỉ có chú thích `#`. Người dán bí mật vào sau
+  dấu `=`.
 - Tài khoản agent trên máy chủ: MỘT tài khoản chung `svc_agent`, không đặt theo hãng; mỗi agent đăng nhập bằng khoá ssh riêng, chú
   thích khoá là tên agent, để log ssh của máy chủ biết agent nào vào; gỡ một agent = gỡ khoá của nó.
 

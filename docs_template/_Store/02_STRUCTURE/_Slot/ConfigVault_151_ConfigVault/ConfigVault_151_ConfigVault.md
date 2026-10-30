@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 9
+version: 10
 path: _ConfigVault/<tool>/
 scope: layout
 ---
@@ -24,14 +24,30 @@ _ConfigVault\
 ├── README.md          the ONE register of the vault (see below)
 ├── ssh\               config · keys · known_hosts — flat, as ssh reads one folder
 ├── git\  vpn\  zemory\
+├── sql\configs\       connections.json: the machine's SHARED connection register (server · database · address · driver · the
+│                      account THIS machine uses for that database) — not secret, outside git because it holds internal addresses
 ├── sql\credentials\   SQL logins programs and agents use: ONE logins.env, a block per server, two lines per login
+├── api\credentials\   app · API · webhook secrets: ONE services.env
+├── mail\credentials\  mail sending accounts: ONE smtp.env
+├── tls\               certificates shared by several repos or machines
 └── <tool>\            one or two files straight; several kinds ⇒ configs\ · credentials\ · cache\
 ```
 
-- The vault is the ONE home of every login to a system that a program or an agent uses, shared by all repos on the machine
-  (`Rule_Gate_21_WhatEntersGit` step 3a). A repo's config names the login and the server (`logcentral_reader` on `db-main`), never
-  the value; a script reads it at run time and never prints it. A secret of one repo's own product stays in that repo's
-  `data/secrets/`.
+- The rule behind it: what several repos or apps use has ONE shared home and ONE name; only what belongs to one repo stays in that
+  repo. Shared CODE has one source in HS and reaches each repo by `zemory sync`; shared DATA, SETTINGS and SECRETS live here and
+  every repo reads them in place.
+- The vault is the ONE home of every env-type secret that a program or an agent uses — SQL logins, app and API secrets, mail
+  accounts, shared certificates — and of the shared connection register, for all repos and apps on the machine
+  (`Rule_Gate_21_WhatEntersGit` step 3a). No repo and no app keeps its own copy, and no repo holds a connection string or a
+  variable of its own for one (`<SYSTEM>_CONN` goes): code asks `scripts/vault_conn.py` for `conn(<machine>, <database>)` and the
+  reader builds it from this folder, never printing the secret. What stays in a repo's `data/secrets/` is only a business secret
+  one department uses alone (the password of that department's workbook) or a key only that repo's own product uses. An app
+  that keeps its server-side copy sealed (systemd credentials on a Linux host) holds a COPY: the source is the vault.
+- ONE master vault: the operator's work PC. A machine that runs automation holds a copy of only the entries it needs, in the SAME
+  tree and with the same key names; what differs between machines is the content (a work PC's register names the read-only agent
+  account, the task machine's names the account its tasks run with). The README table says which entry is carried to which
+  machine; the copy is carried over ssh (`scp`), never by a sync tool. A changed password is changed in the master and carried
+  again to the machines the README names.
 - A login entry holds the secret only; who owns it, what it may do and which repos use it go in the README table of that tool.
 
 - `configs\` — settings (readable, not secret) · `credentials\` — keys, tokens, passwords · `cache\` — what the tool rebuilds by
@@ -53,11 +69,23 @@ _ConfigVault\
   `<subsystem>_<role>`: `svc_agent` on servers · `datawarehouse_agent` · `erp_agent` · `logcentral_reader`. A dot must be quoted in
   every statement (`[ ]` on SQL Server, `" "` on PostgreSQL) and `adduser` on Debian/Ubuntu refuses it; an underscore works
   everywhere unquoted. File names use underscores or hyphens.
-- SQL logins live in ONE file, `sql\credentials\logins.env`, never one file per server: a `#` block per REAL server, inside it
-  two lines per login, `<SERVER>_<NAME>_ID=<login>` (written in advance) and `<SERVER>_<NAME>_PASS=`. `<SERVER>` is the host name,
-  `<NAME>` the login, both in upper case with dots and hyphens as underscores (`DB_MAIN_LOGCENTRAL_READER_ID=logcentral_reader` ·
-  `DB_MAIN_LOGCENTRAL_READER_PASS=`), so one login name on two servers stays two keys. Nothing else but `#` comments. The
-  person pastes the password after `=` of the `_PASS` line.
+- ONE grammar for every key in the vault: `<MACHINE>_<DATABASE>_<ACCOUNT>_<KIND>`, upper case. Segments are joined by `_`; the
+  words inside one segment are joined by `-` (a dot or an underscore inside a name becomes `-`), so a key splits back into its four
+  answers:
+  - `MACHINE` — the REAL host name, measured (`SELECT SERVERPROPERTY('MachineName')` · `hostname`), never remembered; for a cloud
+    service, the service's name (`M365` · `SHOPAPI` · `SMTP-OFFICE365`).
+  - `DATABASE` — the real database name; for a service that is not SQL, the resource inside it (the tenant · the shop · the app).
+  - `ACCOUNT` — the login, app or mailbox (`jane.doe` ⇒ `JANE-DOE` · `logcentral_reader` ⇒ `LOGCENTRAL-READER`).
+  - `KIND` — `ID` (the account name, written in advance) · `PASS` · `TOKEN` · `SECRET` · `TENANT`.
+  Examples: `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_ID` · `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_PASS` ·
+  `POS-DB02_POSDATA_JANE-DOE_PASS` · `M365_ACME-COM_SYNC-APP_SECRET`. A login that opens two databases is two keys.
+- A vault key is read by the vault reader only, never set as an environment variable, so the `-` in it is safe. Names are written
+  whole, never abbreviated (`DATA-WAREHOUSE`, not `DW`); a name a system gives (a database, a host) is kept as that system writes it.
+- The register `sql\configs\connections.json` keys each entry `<MACHINE>/<DATABASE>` (the real names) with `address` · `driver` ·
+  `options` · `account` (the account this machine uses for that database by default).
+- Each file holds a `#` block per REAL machine or service (`# ===== <host> (<address>) — <engine> · <what it serves> =====`), a
+  `# <account> — <what it may do>` line before each account, and its lines. Nothing else but `#` comments. The person pastes the
+  secret after `=`.
 - Agent accounts on servers: ONE shared account `svc_agent`, never named after a vendor; each agent logs in with its own ssh key whose
   comment is the agent's name, so the server's ssh log tells which agent came in; removing an agent = removing its key.
 

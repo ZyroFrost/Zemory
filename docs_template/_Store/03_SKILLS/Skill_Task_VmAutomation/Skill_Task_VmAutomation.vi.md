@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 
@@ -26,7 +26,7 @@ CẦU và MỞ?"* (ra) — không chỉ ra được một người/phòng cụ t
 
 ## 🔴 Chỉ dùng hệ mới · không đụng hệ cũ
 
-Mã chạy của task chỉ đọc/ghi: bảng DW · site SharePoint của vùng (`sharepoint_site`) · `<vm_run_dir>\<Repo>\` · khoá `.env` của DW. **Cấm**: mọi mục ở
+Mã chạy của task chỉ đọc/ghi: bảng DW · site SharePoint của vùng (`sharepoint_site`) · `<vm_run_dir>\<Repo>\` · kết nối và bí mật của két máy. **Cấm**: mọi mục ở
 `legacy_sources` (nguồn, site, thư mục, khoá của hệ cũ) · server nguồn đọc thẳng (việc của DW) · app chạy trên máy làm việc. **Không đụng hệ cũ** (không đọc/ghi/xoá gì ở đó). Thôi dùng thì gỡ —
 chỉ gỡ ở hệ mới (repo phòng + lịch VM), thứ ở hệ cũ để nguyên. Thiếu bảng ⇒ nhắn DW dựng, không lách về hệ cũ.
 
@@ -56,11 +56,16 @@ chỉ gỡ ở hệ mới (repo phòng + lịch VM), thứ ở hệ cũ để ng
   Số gốc là file người nộp ⇒ khai `input_url` trỏ thư mục gốc trên SharePoint, **kể cả khi task đọc bảng DW** nạp từ file đó
   (vd XYZ `ABC_Daily_StoreInventoryReport` đọc `Fact_InventoryDaily`, số gốc = form kiểm kê nhà hàng). Số từ hệ thống (POS · Fast · CRM)
   ⇒ không `input_url`, `01_raw` TRỐNG. Cả hai ⇒ liệt kê đủ thư mục file gốc (` | `). `make_output_links.py` chỉ bắt buộc `output_url`.
-- **Nhật ký chạy (`task_run.py`) vào DB của repo giữ dữ liệu mà repo đang chạy dùng:** repo `dept` → DW (`WAREHOUSE_CONN`), repo
-  `app` → repo `app-data` (`APPDATA_CONN`, khai ở `uses.app-data` của marker), repo dữ liệu → DB của chính nó; một bản `task_run.py`
-  cho mọi repo, không chép tay biến thể. Repo dữ liệu đặt khoá tên khác ⇒ khai trong `.env` của nó `RUNLOG_CONN_KEY=<TÊN KHOÁ>`
-  (`task_run` đọc khoá đó trước khoá mặc định; trên VM chỉ `.env` đi theo nên khai ở đây, không ở marker) — và đưa cả hai khoá vào
-  `.env` của `vm_deploy.json`.
+- **Kết nối và bí mật lấy từ két máy, không bao giờ từ `.env` (`Rule_Gate_21_WhatEntersGit` bước 3a, slot `ConfigVault_151`):** code
+  gọi `scripts/vault_conn.py` `conn("<MÁY>", "<DB>")` (tên thật) và `secret(…)`; nó đọc địa chỉ và tài khoản MÁY NÀY dùng ở sổ kết
+  nối chung của két `sql\configs\connections.json`, login ở `sql\credentials\logins.env` (`<MÁY>_<DB>_<TÀI-KHOẢN>_ID/_PASS`). Không
+  repo nào giữ chuỗi kết nối hay biến riêng cho nó (`<HỆ>_CONN` bỏ). Máy trạm và VM cùng cây két, cùng tên khoá; khác ở NỘI DUNG
+  (sổ của máy trạm ghi tài khoản agent chỉ đọc, sổ của VM ghi tài khoản task chạy). Thiếu mục ⇒ dừng, báo tên khoá thiếu — không rơi
+  về `.env`, không dùng tài khoản khác. Máy chủ mới = một dòng sổ + một khối login trong két của mỗi máy dùng nó, không sửa code. Bản
+  sao trên VM chở bằng ssh (`scp`), không qua công cụ đồng bộ.
+- **DB của nhật ký chạy:** `task_run.py` ghi `Log_JobRun` vào `<MÁY>/<DB>` = biến `RUNLOG_DB`, không có thì `config/runlog.json` của
+  repo (`{"machine", "database"}` — repo dữ liệu có log ở DB riêng của nó), không có nữa thì giá trị vùng `runlog_db` (DW của vùng).
+  Kết nối lấy từ két như mọi kết nối khác.
 - **Repo đang làm (`Rule_Keys_90` bước 3):** `task_run.py` đưa cho launcher biến môi trường `ACTING_REPO` = tên thư mục gốc của repo
   (`git rev-parse --show-toplevel`, không có thì thư mục chứa `docs/.harness.json`; chỉ `[A-Za-z0-9._-]`, tối đa 64). Task gọi một app
   của hệ thì gửi tên đó làm header `X-Acting-Repo`; task tự ghi vào log vận hành của hệ thì điền tên đó vào cột repo làm việc. Chỉ để ghi
