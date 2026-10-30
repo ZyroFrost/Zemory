@@ -8,6 +8,9 @@ account its tasks run with). No repo holds a connection string, a password or a 
     conn("DB-MAIN", "ACME_WAREHOUSE", "jane.doe")             the same with an account named by the caller
     secret("M365", "ACME-COM", "DATA-SYNC", "SECRET")         one value of services.env / smtp.env / logins.env
     load_env()                                                the repo's .env SETTINGS (no secret lives there any more)
+    mailbox("support")                                        a sending mailbox of the mail book, with its password
+    group("dw_lane_alert")                                    {"to": [...], "cc": [...]} of a recipient group
+    stores()                                                  {store id: {"address", "name", "cc", "active", ...}}
 
     python scripts/vault_conn.py                              what this machine can build (names only, never a value)
 
@@ -17,6 +20,8 @@ Vault layout:
     sql\\credentials\\logins.env      <MACHINE>_<DATABASE>_<ACCOUNT>_ID / _PASS
     api\\credentials\\services.env    <SERVICE>_<RESOURCE>_<ACCOUNT>_<KIND>
     mail\\credentials\\smtp.env       <MAIL HOST>_<RESOURCE>_<ACCOUNT>_ID / _PASS
+    mail\\configs\\mailboxes.json     {"mailboxes": {<key>: {"address", "holder", "department", "job_title", "host", "port", "password_key"}}}
+    mail\\configs\\recipients.json    {"people": {<address>: {...}}, "stores": {<store id>: {...}}, "groups": {<name>: {"to", "cc"}}}
 Key grammar: segments joined by "_", the words inside one segment by "-" (a "." or "_" inside a name becomes "-"), upper case.
 Where the vault is: env CONFIGVAULT_DIR, else the first `<drive>:\\_ConfigVault` that exists (D, E, C), else `~/_ConfigVault`.
 A missing entry stops with the name of the missing key — never a fallback to .env, never another account, never the value.
@@ -129,6 +134,41 @@ def conn(machine, database, account=None):
     return "Driver={%s};Server=%s;Database=%s;UID=%s;PWD={%s};%s" % (
         spec.get("driver", DEFAULT_DRIVER), spec["address"], database, uid, pwd.replace("}", "}}"),
         spec.get("options", DEFAULT_OPTIONS))
+
+
+MAIL_BOOK = Path("mail") / "configs"
+
+
+def _book(name):
+    d = vault_dir()
+    f = d / MAIL_BOOK / name if d else None
+    if not f or not f.is_file():
+        raise VaultMissing("vault: missing %s (%s)" % (MAIL_BOOK / name, d or "this machine has no _ConfigVault"))
+    return json.loads(f.read_text(encoding="utf-8-sig"))
+
+
+def mailbox(key):
+    """A sending mailbox of the mail book by its key, with "password" read from smtp.env (never printed)."""
+    box = _book("mailboxes.json").get("mailboxes", {}).get(key)
+    if not box:
+        raise VaultMissing("vault: mailbox '%s' is not in %s" % (key, MAIL_BOOK / "mailboxes.json"))
+    pwd = secrets().get(box.get("password_key", ""))
+    if not pwd:
+        raise VaultMissing("vault: missing %s for mailbox '%s'" % (box.get("password_key"), key))
+    return dict(box, password=pwd)
+
+
+def group(name):
+    """{"to": [...], "cc": [...]} of a recipient group of the mail book."""
+    g = _book("recipients.json").get("groups", {}).get(name)
+    if not g:
+        raise VaultMissing("vault: group '%s' is not in %s" % (name, MAIL_BOOK / "recipients.json"))
+    return {"to": list(g.get("to") or []), "cc": list(g.get("cc") or [])}
+
+
+def stores():
+    """Every store of the mail book: {store id: {"address", "name", "cc", "active", ...}}."""
+    return _book("recipients.json").get("stores", {})
 
 
 def load_env(env=None, root=None):
