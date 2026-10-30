@@ -1,6 +1,6 @@
 # Packages pinned for Python 3.12.10 on every machine that runs tasks (plan/37 section 7), the operator work PC's
 # measured set. Install: <data root>\Software\Dev\Python\3.12.10\App\python.exe -m pip install -r python_3.12.10.txt
-﻿apsw>=3.53.4,<3.53.5
+apsw>=3.53.4,<3.53.5
 attrs==26.1.0
 beautifulsoup4==4.15.0
 certifi==2026.7.22

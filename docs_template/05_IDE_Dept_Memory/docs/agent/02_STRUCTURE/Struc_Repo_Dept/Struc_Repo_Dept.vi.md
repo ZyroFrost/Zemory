@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 # Struc_Repo_Dept
@@ -15,7 +15,7 @@ repo phòng ban. Slot nằm ở `_Slot/` và không mang hệ nào.
   buộc. Quan hệ và ranh giới giữa các repo của cụm: `Struc_Region_Workspace`.
 - Giá trị thật của cụm (máy chủ · thư viện chia sẻ · hộp thư · bộ mã phòng) nằm ở tổng quản (slot `Data_140_WorkspaceValues`).
   `scripts/region_values.py` (template này cài vào repo) tìm tổng quản theo `owner` trong marker; tool và skill chỉ nêu TÊN KHOÁ.
-- Mail: người nhận, người gửi và khoá gửi nằm ở bộ mail chung của tổng quản (slot `Config_139_Mail`); repo phòng không giữ danh bạ.
+- Mail: người nhận, người gửi và khoá gửi nằm ở sổ mail trong két của máy (`ConfigVault_151_ConfigVault` › `mail\configs\`); repo phòng không giữ danh bạ.
 - Git là BẢN SAO LƯU TẠI MÁY (`role.git: local`): commit thường xuyên, không có remote, không push. Máy khác nhận repo qua sao lưu
   của zemory và Syncthing, không qua git. Không bao giờ báo "chưa có remote / chưa push". Máy kiểm: guard chặn `git push` ·
   `git remote add` · `git remote set-url` (không cờ); `conform` › `git-remote-on-backup-repo` đỏ khi repo có remote.

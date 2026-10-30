@@ -249,8 +249,8 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 211 | `docs/agent/02_STRUCTURE/_Slot/Content_113_Content/Content_113_Content.vi.md` | 11 |
 | 212 | `docs/agent/02_STRUCTURE/_Slot/Data_094_Data/Data_094_Data.md` | 19 |
 | 213 | `docs/agent/02_STRUCTURE/_Slot/Data_094_Data/Data_094_Data.vi.md` | 15 |
-| 214 | `docs/agent/02_STRUCTURE/_Slot/Data_102_Secrets/Data_102_Secrets.md` | 20 |
-| 215 | `docs/agent/02_STRUCTURE/_Slot/Data_102_Secrets/Data_102_Secrets.vi.md` | 16 |
+| 214 | `docs/agent/02_STRUCTURE/_Slot/Data_102_Secrets/Data_102_Secrets.md` | 21 |
+| 215 | `docs/agent/02_STRUCTURE/_Slot/Data_102_Secrets/Data_102_Secrets.vi.md` | 17 |
 | 216 | `docs/agent/02_STRUCTURE/_Slot/Data_129_Extract/Data_129_Extract.md` | 12 |
 | 217 | `docs/agent/02_STRUCTURE/_Slot/Data_129_Extract/Data_129_Extract.vi.md` | 8 |
 | 218 | `docs/agent/02_STRUCTURE/_Slot/Data_130_Adhoc/Data_130_Adhoc.md` | 15 |

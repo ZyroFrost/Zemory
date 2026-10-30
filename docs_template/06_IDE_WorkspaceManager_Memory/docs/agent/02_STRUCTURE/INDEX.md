@@ -60,7 +60,6 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Data_134_03Output`](_Slot/Data_134_03Output/Data_134_03Output.md) | `data/<case>/03_output/` | what is handed over |
 | [`Exports_135_Exports`](_Slot/Exports_135_Exports/Exports_135_Exports.md) | `exports/` | generated renders / published copies |
 | [`Root_136_Principles`](_Slot/Root_136_Principles/Root_136_Principles.md) | `.` | the general principles of the structure standard |
-| [`Config_139_Mail`](_Slot/Config_139_Mail/Config_139_Mail.md) | `config/mail/` | the group's shared mail set: contacts, senders, sending keys |
 | [`Data_140_WorkspaceValues`](_Slot/Data_140_WorkspaceValues/Data_140_WorkspaceValues.md) | `data/region/` | the group's real values |
 | [`Root_141_Stignore`](_Slot/Root_141_Stignore/Root_141_Stignore.md) | `.stignore` | what Syncthing never carries to another machine |
 
