@@ -59,7 +59,7 @@ def _read_secret(name: str) -> str:
 
 
 def _mailbox_password(mailbox: str, host: str) -> str:
-    """The machine vault's entry for this mailbox (smtp.office365.com + a.b@acme.vn -> SMTP-OFFICE365_ACME-VN_A-B_PASS), else the DPAPI vault."""
+    """The machine vault's entry for this mailbox (smtp.office365.com + <mailbox> -> SMTP-OFFICE365_<DOMAIN>_<MAILBOX>_PASS), else the DPAPI vault."""
     try:
         import sys
         sys.path.insert(0, str(Path(__file__).resolve().parent))

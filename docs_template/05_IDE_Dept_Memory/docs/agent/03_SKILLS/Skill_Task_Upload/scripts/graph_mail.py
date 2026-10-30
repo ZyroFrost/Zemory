@@ -7,7 +7,8 @@ file or the wrong Cc; Graph removes the person from the loop.
 Requires the app registration to hold the APPLICATION permission `Mail.Send` WITH admin consent. Without it Graph answers 403
 and this module says exactly which step is missing rather than failing with a bare HTTP code.
 
-Secrets come from the DPAPI vault (scripts/vault.ps1), decrypted in memory per run and never logged.
+Secrets come from the machine vault (vault_conn.py; the app named by region value `m365_app` = <SERVICE>/<RESOURCE>/<APP>), or
+from the repo's DPAPI vault (scripts/vault.ps1) when the machine vault has no such app; held in memory per run, never logged.
 
 Installed by the HS skill task-upload: edit it on HS, not in a repo copy (the next `zemory sync` puts the HS version back).
 """
@@ -82,8 +83,26 @@ def _read_any(names: tuple[str, ...]) -> str:
     raise MailError(f"cannot read '{names[0]}' from the vault. Store it with: vault set {names[0]}")
 
 
+def _machine_vault_app() -> tuple[str, str, str] | None:
+    """(tenant, client, secret) of the region's Entra app from the machine vault, or None."""
+    try:
+        import sys
+        here = str(Path(__file__).resolve().parent)
+        sys.path.insert(0, here)
+        import vault_conn
+        from region_values import value as region_value
+        app = region_value(here, "m365_app", "").split("/")
+        if len(app) != 3:
+            return None
+        s = vault_conn.secrets()
+        got = tuple(s.get(vault_conn.key(*app, kind)) for kind in ("TENANT", "ID", "SECRET"))
+        return got if all(got) else None
+    except ImportError:
+        return None
+
+
 def get_token() -> str:
-    tenant, client, secret = (_read_any(k) for k in (KEY_TENANT, KEY_CLIENT, KEY_SECRET))
+    tenant, client, secret = _machine_vault_app() or tuple(_read_any(k) for k in (KEY_TENANT, KEY_CLIENT, KEY_SECRET))
     r = _requests().post(
         f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
         data={"client_id": client, "client_secret": secret,

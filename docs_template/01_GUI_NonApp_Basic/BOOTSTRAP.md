@@ -440,12 +440,12 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 402 | `docs/agent/03_SKILLS/Skill_Task_Upload/Skill_Task_Upload.md` | 35 |
 | 403 | `docs/agent/03_SKILLS/Skill_Task_Upload/Skill_Task_Upload.vi.md` | 29 |
 | 404 | `docs/agent/03_SKILLS/Skill_Task_Upload/gate.json` | 20 |
-| 405 | `docs/agent/03_SKILLS/Skill_Task_Upload/scripts/graph_mail.py` | 191 |
+| 405 | `docs/agent/03_SKILLS/Skill_Task_Upload/scripts/graph_mail.py` | 210 |
 | 406 | `docs/agent/03_SKILLS/Skill_Task_Upload/scripts/smtp_mail.py` | 139 |
 | 407 | `docs/agent/04_TODO.md` | 5 |
 | 408 | `docs/agent/05_CHANGES.md` | 3 |
 | 409 | `docs/plan/00_overview.md` | 5 |
-| 410 | `scripts/graph_mail.py` | 191 |
+| 410 | `scripts/graph_mail.py` | 210 |
 | 411 | `scripts/pbi_engine_query.ps1` | 33 |
 | 412 | `scripts/query.py` | 108 |
 | 413 | `scripts/smtp_mail.py` | 139 |

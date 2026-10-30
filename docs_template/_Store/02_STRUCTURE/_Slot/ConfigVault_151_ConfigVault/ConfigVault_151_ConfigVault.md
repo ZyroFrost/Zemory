@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 12
+version: 13
 path: _ConfigVault/<tool>/
 scope: layout
 ---
@@ -81,7 +81,7 @@ _ConfigVault\
   Examples: `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_ID` · `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_PASS` ·
   `POS-DB02_POSDATA_JANE-DOE_PASS` · `M365_ACME-COM_SYNC-APP_SECRET`. A login that opens two databases is two keys. A Windows
   account of a machine takes `WINDOWS` as its second segment: `DB-MAIN_WINDOWS_JANE-DOE_PASS`. A mailbox key is read from the
-  address: `jane.doe@acme.vn` on `smtp.office365.com` ⇒ `SMTP-OFFICE365_ACME-VN_JANE-DOE_PASS`.
+  address: the part before `@` is the account, the domain is the resource ⇒ `SMTP-OFFICE365_<DOMAIN>_<MAILBOX>_PASS`.
 - A vault key is read by the vault reader only, never set as an environment variable, so the `-` in it is safe. Names are written
   whole, never abbreviated (`DATA-WAREHOUSE`, not `DW`); a name a system gives (a database, a host) is kept as that system writes it.
 - The register `sql\configs\connections.json` keys each entry `<MACHINE>/<DATABASE>` (the real names) with `address` · `driver` ·

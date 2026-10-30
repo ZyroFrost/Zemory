@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 # ConfigVault_151_ConfigVault configvault — két chứa thiết lập và khoá công cụ của cả máy
@@ -73,7 +73,7 @@ _ConfigVault\
   Ví dụ: `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_ID` · `DB-MAIN_ACME-WAREHOUSE_LOGCENTRAL-READER_PASS` ·
   `POS-DB02_POSDATA_JANE-DOE_PASS` · `M365_ACME-COM_SYNC-APP_SECRET`. Một login mở hai CSDL là hai khoá. Tài khoản Windows
   của một máy lấy `WINDOWS` làm phân khúc thứ hai: `DB-MAIN_WINDOWS_JANE-DOE_PASS`. Khoá hộp thư đọc từ địa chỉ:
-  `jane.doe@acme.vn` trên `smtp.office365.com` ⇒ `SMTP-OFFICE365_ACME-VN_JANE-DOE_PASS`.
+  phần trước `@` là tài khoản, tên miền là tài nguyên ⇒ `SMTP-OFFICE365_<DOMAIN>_<MAILBOX>_PASS`.
 - Khoá két chỉ bộ đọc két đọc, không bao giờ thành biến môi trường, nên dấu `-` trong khoá an toàn. Tên viết đủ, không viết tắt
   (`DATA-WAREHOUSE`, không `DW`); tên do hệ thống đặt (CSDL, máy) giữ đúng như hệ thống viết.
 - Sổ `sql\configs\connections.json` đặt khoá mỗi mục là `<MÁY>/<CSDL>` (tên thật) với `address` · `driver` · `options` · `account`
