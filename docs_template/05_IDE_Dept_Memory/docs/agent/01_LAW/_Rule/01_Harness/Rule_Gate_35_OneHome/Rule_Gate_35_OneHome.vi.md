@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 # Rule_Gate_35_OneHome — One thing, one home

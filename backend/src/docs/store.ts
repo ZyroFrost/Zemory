@@ -676,6 +676,10 @@ export function kitCluster(kit: Pick<Kit, "structure">): string {
 export function readKits(storeDir = STORE_DIR): Kit[] {
   const base = dirname(storeDir);
   if (!existsSync(base)) return [];
+  // A skill the store renamed (`replaces:`) is still under its old folder in a set until the next assembly; the set carries
+  // the part that took it over, so the next assembly moves the copy instead of asking for a part the store no longer has.
+  const renamed = new Map<string, string>();
+  if (existsSync(storeDir)) for (const p of listParts(storeDir, SHELF.skills)) for (const k of replacesOf(p)) renamed.set(k, p.folder);
   const out: Kit[] = [];
   for (const e of readdirSync(base, { withFileTypes: true })) {
     if (!e.isDirectory()) continue;
@@ -699,7 +703,7 @@ export function readKits(storeDir = STORE_DIR): Kit[] {
       requires: [],
       constitution: listParts(agent, SHELF.constitution).map((p) => p.id),
       rules: listParts(agent, SHELF.rules).map((p) => p.id),
-      skills: listParts(agent, SHELF.skills).map((p) => p.folder),
+      skills: listParts(agent, SHELF.skills).map((p) => renamed.get(p.key) ?? p.folder),
       tools: [],
       ...(custom.length ? { slots: custom } : {}),
     });

@@ -1,5 +1,5 @@
 ---
-version: 15
+version: 16
 lang: vi
 ---
 # Rule_Keys_62_DesignChangeApproval — Changing the look of something others use: show it first
@@ -18,7 +18,7 @@ cần duyệt.
 2. Bố cục đã chốt không đổi: không tự dời vị trí hay thứ tự.
 3. Không cần trình: sửa lỗi kỹ thuật (lệch · tràn · hỏng) · điền số theo mẫu có sẵn.
 4. Hướng được giao còn hở chi tiết thiết kế ⇒ trình phương án cho phần hở. Gợi ý từ skill thiết kế thì trình, không tự áp.
-5. Quy ước cụ thể: `Skill_Dev_AppDesign` · `Skill_PBI_Base` (skill repo mang theo) · slot quy ước và từ điển tên UI.
+5. Quy ước cụ thể: `Skill_App_Base` · `Skill_PBI_Base` (skill repo mang theo) · slot quy ước và từ điển tên UI.
 
 ## Ví dụ
 - Tình huống: agent được giao cập nhật số tháng mới vào một dashboard bán hàng.

@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 # Rule_Gate_50_Git — Commit freely, push on command, never break history

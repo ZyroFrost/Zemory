@@ -81,7 +81,7 @@ export const SCOPE = ["Repo", "Region", "Disk"] as const;
 export type Scope = (typeof SCOPE)[number];
 
 /** Skill groups. A new group is added here first — a part name with an unknown component is a red gate. */
-export const SKILL_GROUP = ["Doc", "Harness", "Dev", "Task", "PBI"] as const;
+export const SKILL_GROUP = ["Doc", "Harness", "Task", "PBI", "App", "Db", "Frame", "Own"] as const;
 
 /** The hosts (plan/28 §0p E): the KIND of environment the agent runs in, never an app's name — a GUI app of its own, an IDE
  *  panel, a terminal. They live in the structure shelf's inner layer `_Host/`; a set carries exactly one. */

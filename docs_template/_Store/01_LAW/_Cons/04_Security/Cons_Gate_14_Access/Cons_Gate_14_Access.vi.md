@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 # Cons_Gate_14_Access — Access and security

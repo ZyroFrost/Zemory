@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 # Rule_Gate_63_SkillTrigger — Work that matches a skill opens the skill first

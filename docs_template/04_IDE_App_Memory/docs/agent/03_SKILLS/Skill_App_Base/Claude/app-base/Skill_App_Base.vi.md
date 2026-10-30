@@ -1,0 +1,413 @@
+---
+version: 27
+lang: vi
+---
+
+# app-base — chuẩn thiết kế APP (FE + BE)
+
+> **CHUẨN THIẾT KẾ, không phải điều khoản luật.** Nó mô tả app **nên được dựng thế nào**; trái chuẩn
+> thì sửa cho đúng chuẩn, không phải "cân nhắc". Phần này không nằm trong `01_LAW/_Rule`; `01_LAW/_Rule` chỉ
+> giữ một dòng trỏ sang skill này.
+
+Áp cho profile **APP**. Profile NON-APP không có bề mặt UI ⇒ chỉ đọc §BE.
+
+---
+
+## FE — bề mặt người dùng
+
+### F0. TỐI GIẢN LÀ LUẬT ƯU TIÊN — đọc TRƯỚC mọi luật FE khác
+
+**Mặc định của mọi phần tử trên bề mặt là KHÔNG CÓ NÓ.** Thứ gì muốn có mặt phải trả lời được:
+*người dùng làm gì với nó?* Không trả lời được ⇒ **bỏ**, không "để đó cho đủ".
+
+**Luật này đứng TRÊN các luật F khác.** Khi một luật F bảo *"phải có X"* mà X không ai dùng, F0
+thắng: đừng thêm X rồi viện dẫn luật. Các luật F còn lại nói *"nếu có thì phải đúng thế nào"* —
+chúng không phải một danh sách thứ phải dựng.
+
+**Năm thứ hay bị thêm thừa nhất:**
+
+| thứ thừa | vì sao nó thừa | ví dụ |
+|---|---|---|
+| **nhãn hạng dán lên TỪNG mục** của một danh sách | lặp cùng một thông tin N lần, làm rối đúng hàng người ta đang phải chọn | mỗi chip trong một hàng chip đeo thêm nhãn hạng của nó |
+| **chú giải (legend)** cho ký hiệu | chiếm một hàng tiêu đề vĩnh viễn để giải thích một thứ nhìn vài giây là quen | `★ = bắt buộc · opt = tạo khi có concern` trên tiêu đề một card |
+| **con số đếm** cạnh tiêu đề card | bản thân danh sách đã nói số lượng | `19 file` cạnh tên một danh sách |
+| **nhãn lặp lại thứ đang chọn** | chip/tab đang sáng đã nói rồi | lặp lại tên mục đang chọn cạnh tên file |
+| **badge "bắt buộc"/"mặc định"** không ai bấm được | nó là chữ trang trí, không phải điều khiển | cùng ví dụ legend ở trên |
+
+**Phép thử trước khi thêm bất cứ gì:** ① **gỡ** cái đang có được không · ② **gộp** vào chỗ đã có
+được không · ③ **không có nó thì người dùng làm hỏng việc gì**. Không trả lời được ③ ⇒ **KHÔNG THÊM**.
+*(Cùng khuôn ba câu hỏi của `Rule_Gate_38_TodoDoor` cửa vào — ở đó là chống phình SỔ, ở đây chống phình
+BỀ MẶT. Cùng một bệnh: bồi đắp cho chắc, rồi mọi người phải đọc mãi mãi.)*
+
+**Một thông tin xuất hiện ĐÚNG MỘT LẦN trên màn** (mở rộng của §F6, siết hơn): F6 cấm cùng một số
+sống ở hai MÀN; F0 cấm nó sống hai chỗ trong CÙNG một màn. Hạng của một mục nói ở dòng mô tả của mục
+đang chọn — không dán lên chip, không lặp cạnh tiêu đề.
+
+⚠ **Đây là chỗ agent sai đi sai lại**, nên nói thẳng: xu hướng tự nhiên khi dựng bề mặt là *thêm cho
+rõ*. Nó không làm rõ hơn — nó làm người dùng phải đọc nhiều hơn để tìm đúng thứ họ cần. **Thêm một
+phần tử là thêm một thứ mọi người phải bỏ qua, mãi mãi.**
+
+### F0b. MỘT CHỨC NĂNG — MỘT KHUNG, MỘT BỘ CSS
+
+**Cùng một chức năng thì mọi nơi phải cùng một hình hài: cùng khung, cùng bộ CSS, cùng vị trí nút,
+cùng nhãn.** Không có chuyện mỗi màn một kiểu.
+
+**Ví dụ lệch:** hai ô tìm kiếm cùng nằm trên một màn — tab này có nút chữ `Tìm ✦` (màu nhấn), tab kia
+có nút icon `↻` (viền). Người dùng đọc ra hai thứ khác nhau trong khi cả hai đều là *"gõ để tìm"*.
+
+- **Khác HÀNH VI không phải lý do để khác HÌNH HÀI.** Một ô chạy khi bấm, một ô chạy khi gõ —
+  đó là chi tiết bên dưới; bề mặt vẫn phải là cùng một khung. Muốn khác thì phải khác vì **người
+  dùng cần phân biệt**, không phải vì code tiện.
+- **Thứ KHÔNG cùng chức năng thì ĐỪNG nhét chung khung.** Một nút `↻` (quét lại dữ liệu từ đĩa) là
+  một hành động KHÁC hẳn tìm kiếm — nằm trong ô tìm chỉ vì chỗ đó trống. Tách ra.
+- **Cách làm: một lớp CSS dùng chung + một khuôn markup**, khai một lần. Thêm ô tìm thứ ba là dùng
+  lại khuôn đó, KHÔNG chép rồi sửa — chép là cách hai bản bắt đầu trôi lệch.
+- **Phép kiểm:** đếm số biến thể markup/CSS của cùng một chức năng. `> 1` là lệch, trừ khi nêu
+  được lý do người dùng cần phân biệt.
+
+### F0c. MỌI CONTROL TRÊN CÙNG MỘT HÀNG PHẢI BẰNG CHIỀU CAO
+
+**Nút · chip · select · ô tìm đứng chung một hàng thì cao bằng nhau — không có ngoại lệ.** Cái nào
+không nhỏ hơn được một mức nào đó thì **mọi cái còn lại lấy mức đó làm chuẩn**, không phải để nó
+thò ra.
+
+🔴 **Chốt bằng CHIỀU CAO, đừng chốt bằng padding + font.** Đây là chỗ ai cũng làm sai lần đầu:
+`<select>` là control của **hệ điều hành**, cùng `padding` và cùng `font-size` vẫn ra chiều cao khác
+`<div>`. Đo được khi đã cho cả ba dùng chung padding/font: chip **28,7px** · select **26,0px** — vẫn
+lệch. Cách duy nhất chắc chắn là khai thẳng `height` + `box-sizing:border-box` từ **một biến dùng
+chung**.
+
+- **Một biến, mọi control.** `--ctl-h` (và `--ctl-fs` · `--ctl-px` · `--ctl-r`) khai một chỗ; nút,
+  chip, select, ô tìm đều lấy từ đó. Sửa một chỗ là cả hàng theo — không có đường nào để chúng
+  trôi lệch lần nữa.
+- **Thêm một loại control mới thì nối nó vào danh sách đó**, đừng khai padding riêng.
+- **Đo bằng MÁY, và đo ĐÚNG VẬT.** `getBoundingClientRect().height` trên **chính phần tử khung**,
+  không phải `<input>` nằm trong nó — đo nhầm vật cho ra 18,7px và dẫn tới kết luận sai.
+  Phép kiểm: max − min trên mỗi hàng ≤ 0,6px.
+
+### F1. Panel kề nhau PHẢI kéo được
+**MỌI vùng có ≥2 panel kề nhau PHẢI có thanh kéo (resize handle) chỉnh được kích thước — KHÔNG có ngoại lệ.** Ràng buộc: **① Tự do THẬT** — seam phải điều khiển một biến layout THẬT (kéo là đổi), CẤM seam "trang trí" (cột `2fr`/`1fr` cứng = kéo không đổi gì = SAI). **② Bố cục 2D → kéo cả 2 chiều** (2 panel cạnh nhau = seam DỌC chỉnh bề ngang; 2 panel trên-dưới = seam NGANG chỉnh chiều cao; lưới 2×2 = có cả hai). Không được chỉ cho co 1 chiều. **③ MỘT engine dùng chung** — mọi seam đi qua CÙNG một cơ chế (1 hàm init + 1 kiểu handle + biến/clamp data-driven), KHÔNG mỗi chỗ một nhánh `if(type===…)` hardcode (đó là nguồn "vá chỗ này lủng chỗ kia"). Thêm seam mới = khai báo dữ liệu, KHÔNG chép logic. **④ Lưu + khôi phục** y nguyên qua phiên (server config, như dialog). **⑤ Dựng lại (double-click) về mặc định.** Ngưỡng min/max theo nội dung tối thiểu mỗi panel, KHÔNG số ma rải rác.
+
+**⑥ VẠCH NGĂN CHẠY HẾT CHIỀU CAO VÙNG — mặc định, không phải tuỳ chọn.** Hai panel gần như không bao giờ cao bằng nhau, nên vạch chỉ `align-self:stretch` sẽ dừng ở đáy panel NGẮN hơn và trông như kẻ hụt giữa trang. Vạch là **ranh giới của VÙNG**, không phải đường viền của panel — nó phải chạy trọn vùng bất kể hai bên dài ngắn ra sao.
+· Cách làm: ép hàng lưới bằng chiều cao lưới (`grid-template-rows:minmax(0,1fr)` trên lớp lưới kéo được), **giữ** `align-items:start` để panel vẫn cao theo nội dung — kéo dài vạch, không kéo dài panel.
+· **Đặt ở lớp DÙNG CHUNG, đừng vá từng màn**: cùng bài học với "phân mục phải có vạch ngăn" — vá riêng khung vừa bị chê thì lỗi quay lại ở khung kế tiếp.
+· Nghiệm thu bằng MẮT, không bằng cổng: cổng đọc được class nhưng không thấy vạch dài bao nhiêu.
+
+### F2. Dialog / modal
+CHỈ 3 size S/M/L, cả 3 CÙNG MỘT TỈ LỆ CHUẨN MÀN HÌNH **16:9** (khung landscape cân đối như màn, KHÔNG phải hộp dài-thòng đứng). **Mỗi size = một % của KHUNG APP theo CẢ HAI CHIỀU** (16:9), công thức `width: min(Pvw, calc(Pvh*16/9))` + `aspect-ratio:16/9` ⇒ đúng P% trên màn 16:9, nhỏ hơn (không tràn) trên màn lệch tỉ lệ: **S 40% · M 60% · L 90%** (Settings = L). 3 size = 3 SCALE cùng tỉ lệ; S không đủ → chọn M/L, **vẫn đúng 16:9, KHÔNG bóp méo**. **KHUNG KHÔNG BAO GIỜ NHẢY theo nội dung** (đổi tab Settings mà khung phình/co = SAI); tràn → cuộn TRONG dialog (`overflow:auto` ở thân, thân là grid/flex child phải `min-height:0` mới cuộn). KHÔNG cố-định-Nvh (đẻ hộp cao méo), KHÔNG random/đổi-động/reflow loạn. Trạng thái layout người dùng chỉnh (resize/vị-trí/size) phải LƯU + khôi phục y nguyên. Token/size ở `frontend/styles/`. **ESC LUÔN đóng dialog trên cùng** (mọi overlay/popup phải đăng ký 1 global keydown; ESC đóng MỘT lớp/lần theo thứ tự visually-topmost) + bấm nền (backdrop) cũng đóng — TRỪ dialog đang chạy tác vụ bất-khả-huỷ (vd sync đang chạy) thì chặn cả ESC lẫn backdrop cho tới khi xong.
+
+### F3. Bề mặt chết theo nền
+**Mọi bề mặt phụ thuộc một tiến trình nền (cửa sổ app · tab · panel · CLI chờ) PHẢI phát hiện nền chết và CHẾT THEO — hoặc báo lỗi THẤY ĐƯỢC. TUYỆT ĐỐI không để lại vỏ rỗng trông như đang sống.** Ca điển hình: tiến trình nền chết mà cửa sổ vẫn mở — mọi nút bấm gửi request vào chỗ trống, vòng xoay "đang sync…" quay MÃI, người dùng đọc thành "kẹt" và chờ hàng giờ trong khi KHÔNG có gì đang chạy. Vỏ rỗng là kiểu hỏng TỆ NHẤT — nó không báo lỗi, nó NÓI DỐI, và người dùng không có cách nào phân biệt với đang-chạy-thật. Cách làm: nhịp tim định kỳ tới nền; chịu lỗi có chủ đích (chỉ đếm SAU khi đã thấy nền sống ít nhất một lần, và phải trượt LIÊN TIẾP N nhịp mới kết luận — nền bận một nhịp ≠ nền chết); hết N nhịp thì đóng/ báo. Đối xứng với luật fail-open: lớp phụ hỏng thì rơi về lớp dưới **và nói ra**, không giả vờ vẫn chạy.
+
+### F4. Chữ người dùng đọc
+- **Văn KỸ THUẬT, không văn nói.** Nhãn là một câu ngắn nêu hành vi. Không kể lể, không nhấn giọng
+  bằng VIẾT HOA, không cảm thán.
+- **KHÔNG ghi chú nội bộ ra giao diện**: ngày đo, số hiệu phiên bản của một lần sửa, tên biến, lý do
+  kỹ thuật. *(Ví dụ lỗi: một nhãn ghi ngày đo và nơi đo của một phép thử.)*
+- **KHÔNG thuật ngữ nội bộ** ở chỗ người dùng phải quyết định (`WAL`, `.bak`, `watermark`) — trừ khi
+  chính người dùng cần nó để chọn.
+- **Trần ~120 ký tự** mỗi nhãn mô tả. Dài hơn nghĩa là đang giải thích, không phải đang gán nhãn.
+- **Song ngữ ĐỦ HAI ĐẦU**, kể cả chữ nằm thẳng trong markup (`title`/`placeholder`/text node).
+- **② Nhãn ĐỦ, máy đọc được.** Mọi phần tử tương tác (nút · ô nhập · select · link) phải có nhãn mà **công cụ đọc được**: nội dung chữ, hoặc `aria-label`/`title`/`placeholder`; ảnh có `alt`. Nút icon trơn không nhãn là **thiếu**, không phải "gọn".
+- **③ Song ngữ ĐỦ HAI ĐẦU.** Vế "0 chuỗi hardcode" áp cho **cả chữ nằm thẳng trong HTML/markup**, không riêng chuỗi trong code: text node và cả `title`/`placeholder`/hint phải có móc i18n tương ứng, mọi khoá phải tồn tại ở **cả hai** dict. Chữ một ngôn ngữ nằm trong markup mà thiếu móc = người dùng đổi ngôn ngữ xong **vẫn thấy tiếng cũ**, và không lỗi nào nổ.
+
+### F5. Dời một bề mặt là soát lại CẢ HAI ĐẦU
+Bề mặt luôn mang giả định về khung chứa nó. Dời sang khung khác mà không soát lại là lỗi lặp
+(đo được **bốn lần trong một phiên**):
+
+| giả định cũ | hỏng ra sao khi dời |
+|---|---|
+| `min-width:auto` của flex/grid | chuỗi dài đẩy panel **tràn ngang** |
+| con của flex co được | nội dung dài bị **bóp, chữ chồng nhau** |
+| `gap` do lưới cha lo | vào tab thì **dính liền một khối** |
+| `flex:1` trên nút (cột hẹp) | màn rộng thì nút **dài hết trang** |
+
+Và **bên CHO cũng phải dọn**: rút một cột khỏi lưới mà không sửa `grid-template-columns` thì còn
+một cột rỗng + một thanh kéo mồ côi. Phép kiểm: **số rãnh = 2 × (số thanh kéo) + 1**.
+
+### F6. Một nội dung MỘT NHÀ trên bề mặt
+Cùng một thiết lập không được có hai chỗ chỉnh; cùng một con số không được hiện ở hai màn. Hai bản
+sao luôn lệch nhau, và người dùng không biết bản nào đúng.
+
+### F7. UI phải KHỚP CODE — kiểm bằng graph, không bằng mắt
+Bề mặt gọi tới đâu thì chỗ đó phải có thật, và ngược lại: cạnh seam `api` của graph đối chiếu route FE gọi với route BE thật ⇒ ① FE gọi route không tồn tại = UI gãy · ② endpoint không ai gọi = bề mặt chết. Đây là phép KIỂM ĐƯỢC BẰNG MÁY, nên không có lý do để nó chỉ nằm trong đầu ai đó.
+
+### F8. Nơi ở của thiết lập UI
+default ship → `frontend/config/` (tracked); bản người dùng chỉnh lúc chạy → `data/settings/` (gitignore).
+
+### F9. Phân mục phải NHÌN RA — vạch ngăn + khoảng cách
+Nhiều mục xếp liền nhau chỉ bằng một dòng tiêu đề nhỏ thì đọc thành **một khối chữ**; người dùng
+không thấy được đây là mấy nhóm khác nhau. Mỗi mục phải có **vạch ngăn** và **khoảng thở**, cùng
+khuôn với hàng thiết lập sẵn có (mỗi hàng một vạch đáy).
+
+- Mục ĐẦU không kẻ vạch trên — nó sát tiêu đề panel, kẻ thêm là hai vạch dính nhau.
+- Đây là lỗi **lặp lại**: mỗi lần dựng một panel mới lại quên, trong khi panel cũ đã làm đúng.
+  Dựng panel mới thì COPY khuôn của panel đang chạy, đừng gõ lại từ đầu.
+- **Viết luật cho MỌI khung chứa mục, đừng bó vào một panel.** Vá riêng chỗ vừa bị chê thì lỗi
+  quay lại ở panel kế tiếp. Đo được: sau khi vá một panel, quét lại còn **4 khung khác** cũng có
+  ≥2 mục mà không vạch nào.
+
+### F10. Bấm một THẺ là CHỌN, không phải MỞ
+Mở ngay khi bấm thẻ làm người dùng đọc thành *"bị nhảy sang màn khác"* — họ chỉ định chọn, không
+định rời danh sách. Thẻ trong danh sách: bấm = đánh dấu đang chọn (phải NHÌN RA được); mở chi tiết
+đi qua **nút riêng** trên thẻ.
+
+⚠ Và khi có báo lỗi dạng *"bấm X bị nhảy sang Y"*, đo TRƯỚC xem có thật sự đổi màn không: có thể
+không hề có lệnh đổi màn nào, mà chỉ là khung chi tiết trông giống màn Y. Sửa cái TÊN khi gốc là
+HÀNH VI thì báo bao nhiêu lần cũng không hết.
+
+---
+
+### F11. Một kênh thị giác = MỘT hạng thông tin
+**Viền · nền · đậm nhạt là các KÊNH riêng; mỗi kênh chỉ một hạng làm chủ.** Hai trạng thái khác hạng cùng đòi một kênh thì **kẻ khai báo sau thắng, kẻ kia biến mất mà không cổng nào báo** — và nếu hai màu còn gần nhau (đo được: `--primary` #FFD166 vs `--warn` #FBBF24 cùng làm viền thẻ) thì ngay cả khi không đè nhau, mắt vẫn đọc ra CÙNG một nghĩa ⇒ người dùng đếm 6 thẻ "đã ghim" trong khi hệ chỉ ghim 2. Cách làm: **đếm xem có bao nhiêu trạng thái đang đòi cùng một kênh, rồi chia lại** — mỗi kênh đúng một chủ, cái thứ ba phải nói bằng badge chữ. Ví dụ chia kênh trên một thẻ: **ghim = VIỀN** (giữ nguyên kênh nó vốn có — đừng đổi thói quen đọc của người dùng), **đang chọn = NỀN**, **lệch chuẩn = badge chữ** (thôi đòi viền). ⚠ Khi sửa loại lỗi này, **đừng đẩy nạn nhân sang kênh khác rồi coi là xong**: dọn đúng trạng thái đang chen vào, giữ kênh cũ cho chủ cũ. Nghiệm thu bằng SỐ trên DOM thật (`getComputedStyle`), đừng tin ảnh chụp.
+· Cùng họ: **công tắc trạng thái phải LUÔN thấy được, hành động mới được ẩn theo hover**. Ẩn cả cụm nút bằng `opacity:0` ở container là bẫy — cha trong suốt thì con cũng vô hình, `opacity:1` trên con KHÔNG cứu được; phải ẩn theo từng nút.
+
+### F12. TUYỆT ĐỐI không có thanh cuộn NGANG
+**Hẹp lại thì nội dung XUỐNG DÒNG, không đẩy ngang.** Ba cái bẫy đo được, cả ba đều là "khai một nửa rồi trình duyệt tự điền nửa còn lại":
+· **`overflow-y:auto` một mình BẬT luôn cuộn ngang** — CSS ép chiều còn lại từ `visible` thành `auto`. Hễ có một khối con rộng quá là mọc thanh ngang mà không ai khai nó. Vùng cuộn phải viết **đủ hai chiều**: `overflow-y:auto;overflow-x:hidden`.
+· **`repeat(N,1fr)` là số cột CỨNG** — ô không co dưới nội dung tối thiểu ⇒ lưới rộng hơn khung. Dùng `repeat(auto-fit,minmax(<sàn>,1fr))`: đủ rộng thì vẫn N cột, hẹp thì tự bớt cột.
+· **Track `1fr` vẫn bị nội dung đẩy rộng** — `1fr` thực chất là `minmax(auto,1fr)` và `auto` đo theo min-content của ô. Ô lưới phải có `min-width:0` mới co được.
+· Ngoại lệ: khối **mã nguồn** (`pre.code`, `.fpre`) — bẻ dòng mã làm sai nghĩa, nên nó được giữ cuộn ngang · **lưới dữ liệu
+  trên điện thoại** (§M5) — cuộn ngang TRONG khung của lưới, cột định danh ghim trái; trang vẫn không bao giờ cuộn ngang.
+· Đo bằng máy, đừng nhìn ảnh: quét `scrollWidth - clientWidth > 0` trên MỌI màn × MỌI tab con ở vài khổ khung (1100 · 900). Phân biệt **`overflow:hidden` + ellipsis** (cắt chữ, KHÔNG sinh thanh cuộn — hợp lệ) với vùng thật sự cuộn được.
+
+### F13. Thẻ (card): NEO cố định, thứ liên quan ĐỨNG SÁT NHAU
+**Cụm nút neo góc phải trên — giữ nguyên vị trí dù khung co giãn; badge gom thành một cụm; thứ liên quan nhau đứng sát nhau.** Một thẻ có ba hạng nội dung, và mỗi hạng là MỘT HÀNG riêng, không trộn:
+| hàng | chứa gì | luật |
+|---|---|---|
+| 1 | danh tính (icon · tên) + **cụm nút hành động** | `flex-wrap:nowrap` — hàng này KHÔNG BAO GIỜ xuống dòng. Nút neo phải (`margin-left:auto`, `flex:0 0 auto`); thứ co lại là **tên** (`min-width:0` + ellipsis) |
+| 2 | **badge trạng thái** — gom hết vào một cụm, `gap` đều, `:empty{display:none}` | được phép wrap; rỗng thì biến mất, không để khoảng trắng ma |
+| 3 | số liệu phụ | — |
+· **Vì sao neo:** cho cả badge lẫn nút chung một hàng wrap thì khi thẻ co, nút bị badge đẩy xuống và rơi ra **giữa thẻ** — người dùng đọc là "hỏng", và đúng là hỏng: một nút điều khiển không có chỗ đứng cố định thì mỗi khổ màn hình lại nằm một nơi. Neo trước, co sau.
+· **Khoảng cách chỉ một nguồn:** cụm đã có `gap` thì đừng gắn thêm `margin-right` lên từng badge — hai nguồn cùng chỉnh một khoảng, cụm thôi đều nhau.
+· **Nút KHOÁ vĩnh viễn** (vd repo gốc của chính app) thì `disabled` + đổi `title` nói lý do, và **chặn ở BACKEND** nữa — nút disabled chỉ là lời nhắc, endpoint thì bề mặt nào cũng gọi được. Đừng làm mờ nút: mờ nghĩa là "tạm thời không dùng được", còn đây là vĩnh viễn theo thiết kế.
+
+### F14. Vùng cuộn phải TỰ CHỪA CHỖ cho thanh cuộn
+**Mọi vùng cuộn khai `scrollbar-gutter:stable`; mọi panel tự chừa một khoảng padding vừa đủ để thanh
+cuộn không đè lên chữ.** Thanh cuộn mọc ra ở mép phải và **ăn vào chữ** — con số cuối hàng bị cắt, và
+người đọc không biết là bị cắt.
+· **Vì sao `scrollbar-gutter` chứ không chỉ `padding`:** chừa chỗ bằng padding thì lúc CHƯA tràn dư
+  một khoảng trống, lúc tràn lại vẫn đúng — hai trạng thái hai kiểu. `stable` giữ chỗ SẴN, nên nội
+  dung **không nhảy ngang** đúng lúc nó dài thêm một dòng.
+· **Kèm một khoảng thở** (`padding-right`): chữ dừng sát mép thanh cuộn vẫn đọc ra là bị cắt.
+· **Đặt ở LỚP CHUNG**, liệt kê mọi vùng cuộn một lần. Vá riêng panel vừa bị chê thì panel kế tiếp
+  lại dính — cùng bài học với §F9 và §F1⑥.
+· Đo bằng máy: với mỗi vùng có `overflow-y:auto|scroll`, `getComputedStyle` phải trả
+  `scrollbar-gutter: stable`. Ảnh chụp headless **không đo được** việc này (`--hide-scrollbars`),
+  nên phải soi CSS đã tính, đừng tin mắt nhìn ảnh.
+
+### F15. ĐÓNG BĂNG khi tắt, đừng ẩn — và chừa đường bật lại
+**Một tính năng/kênh đang TẮT thì xám hẳn mọi panel của nó và không bấm được, KHÔNG phải biến mất.**
+Ẩn đi để lại một khoảng trống không giải thích: người dùng không biết ở đó vốn có gì, cũng không biết
+vì sao mất.
+· Công thức: `opacity` giảm **+ `filter:grayscale(1)` + `pointer-events:none`**. Phải xám HẲN —
+  chỉ giảm opacity thì biểu đồ màu vẫn đọc ra như đang sống.
+· ⚠ **Luôn chừa đường bật lại.** Xám cả ô cấu hình cần để bật là **tự khoá mình ngoài cửa** (ví dụ:
+  xám luôn ô nhập đường dẫn của một kênh thì tắt kênh xong không còn chỗ nào gõ đường dẫn).
+  Liệt kê rõ thứ được miễn, và có cổng canh đúng điểm đó.
+· ⚠ **Công tắc không được dùng chính CẤU HÌNH làm trạng thái.** Ví dụ lỗi: gạt tắt một kênh gọi
+  `/set-<kênh>?path=` — tức XOÁ đường dẫn khỏi config. Tắt một tính năng không bao giờ được làm mất
+  cấu hình của nó; tách một cờ `<feature>On` riêng.
+· Bề mặt vẽ từ **nhiều đường** (lúc nạp · lúc làm tươi) thì cờ bật/tắt phải có mặt ở **mọi** đường,
+  nếu không nó lúc ẩn lúc hiện tuỳ đường nào về sau. Và setter phải xoá cache của bảng điều khiển,
+  nếu không công tắc "gạt mà không đổi".
+
+### F16. Dòng / panel TỔNG nằm DƯỚI nội dung
+Theo chuẩn bảng tính: dòng tổng của bảng, panel tổng của một nhóm luôn đứng sau phần được cộng. Bố cục đã chốt thì không tự
+dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_DesignChangeApproval`).
+
+### F17. Điều hướng nhóm theo VIỆC; mỗi vùng MỘT trang chủ quản
+**Thanh điều hướng chính nhóm trang theo việc người dùng vào để làm — tổng quan · mở app · nhật ký · quản trị, chỉ những nhóm
+sản phẩm thật sự có.** Mỗi vùng có một trang chủ quản; trang tổng quan giữ số tóm tắt và dẫn sang đó, không lặp lại cả danh
+sách app hay dòng nhật ký (§F6 trên một màn).
+· **Vị trí tách khỏi thao tác.** Đường dẫn ngắn (sản phẩm › trang, dấu mũi nhọn) nói đang ở đâu; khung đầu trang kề bên giữ
+  tiêu đề và bộ lọc, thao tác riêng của trang. Hẹp ⇒ xuống dòng (§F12). Không tiêu đề trang hay mục nào lặp lại điều đường
+  dẫn và tab đang sáng đã nói (§F0) — tên đó chỉ giữ làm tên truy cập của danh sách.
+· **Thanh đầu gọn giữ MỘT dòng** ở mọi độ rộng: bộ lọc và thao tác phụ dời vào popover có nhãn (§F18); một ô tìm kiếm, luôn ở
+  cùng chỗ, tìm trong trang hiện tại; tab trang đứng sau bộ lọc trên dòng đó khi đủ chỗ; lời chào đứng cạnh nút tài khoản, nút
+  này mở cài đặt tài khoản và đăng xuất.
+· **Thanh điều hướng dài:** các trang quản trị liên quan dùng chung tab trên thanh đầu ⇒ một mục quản trị có nhãn trên thanh
+  điều hướng mở chúng; không lặp các lựa chọn ấy trong flyout hay thanh mở rộng. Mỗi tab giữ đường dẫn riêng, trạng thái đang
+  chọn và cảnh báo thay đổi chưa lưu. Trên điện thoại thanh tab dưới (§M3) vẫn dùng được.
+· **Ma trận quản trị chung** (người × app, trên `system-manager`): một người = một hàng gọn; cột `system-manager` đứng đầu, rồi
+  các app theo mã; phạm vi quản trị cấp dưới mở bằng nút nhỏ có nhãn cạnh vai, không thêm dòng trong hàng; tìm kiếm đứng trước
+  bộ lọc trên thanh công cụ.
+· **Sắp lại một mẫu thì giữ đủ mọi hiệu ứng tương tác:** liệt kê hiệu ứng của bản gốc trước khi dời, rồi kiểm từng cái trên
+  trang giờ làm chủ nó (§F5).
+· Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm: U1 và U3 bắt tràn và chiều cao control, không bắt thanh đầu rơi thành hai dòng.
+
+### F18. Popover và menu có nền ĐỤC
+**Mọi popover và menu có nền đục ở mọi giao diện, kể cả giao diện kính** — chữ và control phía sau không được xuyên qua. Giữ
+bóng, phân lớp và hiệu ứng mở; kiểm cả sáng lẫn tối. Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
+
+### F19. Hai KIỂU XEM của một danh sách hiện CÙNG một nội dung
+**Lưới và danh sách, hay bảng và dòng thời gian, của cùng một tập bản ghi mang cùng các trường chính và cùng bộ lọc; mỗi lúc
+chỉ hiện một kiểu.** Một trường chỉ một kiểu có thì hoặc kiểu kia đang thiếu, hoặc kiểu này đang thừa — quyết đi, đừng để đó.
+· **Thẻ giữ đủ trường chính trên MỘT mặt:** danh tính (tên và tên đăng nhập), liên lạc, vai, trạng thái, lần hoạt động cuối.
+  Lật, hover hay mặt thứ hai chỉ để lặp lại hoặc giấu chúng là thừa (§F0); hiệu ứng lật để dành cho nội dung không có chỗ khác.
+· **Dòng thời gian** được ghép các cột của bảng vào từng dòng sự kiện; giữ thẳng hàng thời gian · người làm · thao tác · mức ·
+  chi tiết, và trên màn hẹp cuộn trong khung nhật ký, không bao giờ cuộn cả trang (§F12).
+· Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
+
+### F20. Hình được giao giữ nguyên MÀU
+**Logo hay ảnh được giao vẽ đúng màu của nó ở mọi giao diện** — filter, blend và opacity của giao diện không bao giờ đổi màu
+nó. Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
+
+### F21. KHUNG đứng yên; mọi bảng GHIM dòng tiêu đề
+**Khi trang cuộn, thanh bên và khung đầu trang đứng yên, và mọi bảng giữ dòng tiêu đề ghim ở trên — ở mọi trang, mọi loại
+bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung di chuyển.
+· **Cách làm:** thanh bên cố định; khung đầu `position: sticky` ở đỉnh cột trang; ô tiêu đề của bảng `position: sticky` ngay dưới
+  khung đầu. Khung cắt bảng theo góc bo dùng `overflow: clip`, không bao giờ `hidden`/`auto` — hai giá trị đó biến khung thành
+  vùng cuộn và dòng tiêu đề lặng lẽ thôi ghim.
+· **Bảng cuộn trong khung riêng** (ma trận có giới hạn chiều cao, lưới rộng trên điện thoại, §M5) thì ghim dòng tiêu đề vào mép trên
+  của khung. Danh sách chuyển thành thẻ trên điện thoại không có dòng tiêu đề để ghim.
+· Đo bằng máy, không bằng mắt: cuộn trang (và từng khung bảng) qua những dòng đầu, rồi thanh bên, khung đầu và từng dòng tiêu đề
+  phải đứng đúng chỗ cũ (≤ 1 px). Cài một khung `overflow: hidden` một lần — phép kiểm phải đỏ.
+
+## BỘ KIỂM — luật đo được thì máy kiểm
+
+Luật viết trong skill không tự thi hành: một luật đã chốt vẫn bị phạm lại khi không có máy canh.
+- Mỗi luật đo được của skill này (F0c chiều cao control · F2 cỡ hộp thoại · F4 nhãn và độ dài nhãn · F7 route · M1–M6) ⇒
+  một mã trong script kiểm của repo; build hoặc gate gọi script đó. Lệnh chạy script là của repo, khai ở khoá `repoGates` của
+  `docs/.harness.json` (pre-commit chạy nó) — không ghi vào bản chép skill này (bản chép giữ y hệt HS, `Rule_Gate_83_HarnessFromStore`).
+- Mã thoát: 0 xanh · 1 lỗi (in từng chỗ) · **3 chưa kiểm đủ** (lớp cần trình duyệt không chạy được) — không bao giờ tính là xanh.
+- Tệp hệ cũ đóng băng ⇒ cảnh báo kèm danh sách nợ, không im. Miễn trừ khai kèm lý do; miễn trừ không còn khớp gì ⇒ lỗi.
+- Thêm một luật đo được vào skill ⇒ thêm mã vào bộ kiểm cùng lượt. Luật chưa đo được bằng máy (F0 · F0b) là việc của người duyệt.
+- **Một lần dọn không được đổi hình vẽ** (CSS chết, khai báo bị đè, gộp luật) thì chứng minh bằng máy: ghi style đã tính của mọi
+  phần tử trên mọi trang và kiểu xem trước và sau, chỉ nhận khi các bản ghi giống nhau. Chạy bộ ghi hai lần trên trang chưa sửa
+  trước — chỗ nào lệch lúc đó (hiệu ứng đếm số, transition bị bắt giữa chừng) là nhiễu đã biết.
+
+### Bộ kiểm bề mặt dùng chung — `scripts/ui_check.mjs`
+
+Skill này cài một phép kiểm bằng trình duyệt mà mọi app cùng chạy, để trang đã dựng được ĐO, không phán bằng mắt nhìn ảnh. Nó mở
+từng trang ở từng bề ngang trong Edge/Chrome (giao thức DevTools, headless, **có thanh cuộn thật** — `100vw` tràn đúng bằng bề
+ngang thanh cuộn là lỗi phải bắt) và đo bố cục:
+
+| mã | luật | đỏ khi |
+|---|---|---|
+| U1 | F12 · M1 | trang cuộn ngang, hoặc điện thoại nới khung bố cục để chứa thứ gì đó quá rộng |
+| U2 | F5 · F12 | một phần tử thò ra ngoài cửa sổ mà không nằm trong khung cố ý cuộn hay cắt nó |
+| U3 | F0c | control trên cùng một hàng lệch chiều cao quá 0,6 px |
+| U4 | F0 | khoảng trống chết: một bảng chiếm chưa tới `min_fill` (mặc định 60 %) bề ngang khung chứa nó |
+| U5 | F5 · F13 | chữ đè chữ, hoặc chữ đè lên biểu đồ (≥ 60×30) trong dòng chảy trang — đo trên phần còn hiện trên màn hình (dòng bị cắt khuất dưới mép một thẻ cuộn không xét); nhãn cố ý đặt lên biểu đồ (absolute) không xét |
+| U6 | — | khung biểu đồ (`chart` · `bars` · `spark` · `donut` · `ring` · `graph`) không vẽ gì |
+| U7 | F14 | vùng cuộn thiếu `scrollbar-gutter: stable` |
+| U8 | F4 ② | control hoặc link không có nhãn đọc được |
+| U9 | F4 ③ | chữ Việt bị mã hoá vỡ thành `?` (`Th?ng k?`, một dấu `?` đứng một mình thay cho `—`) |
+
+- **Cấu hình** `ui_check.json` ở gốc repo: `url` (máy chủ dev hoặc một bản mẫu `file:///`) · `pages` (mỗi trang `{name, hash}` hoặc
+  `{name, click: "<selector>"}`) · `widths` (mặc định 1920 · 1440 · 1100 · 900 · 390; ≤ 768 đo như điện thoại) · `settle_ms` (chờ
+  animation) · `ignore` (selector không bao giờ xét: nền trang trí, lớp phủ đang đóng) · `codes` (`{"U4": {"min_fill": 0.5}}`,
+  `{"U6": {"off": true}}` — tắt một mã là một miễn trừ: ghi lý do trong repo).
+- **Chạy** `node scripts/ui_check.mjs` (· `--page <tên>` · `--widths 1440,390` · `--config <tệp>`). Nối vào cổng của repo
+  (`repoGates`) cho mọi repo có giao diện; một thay đổi bề mặt chưa xong cho tới khi xanh ở mọi bề ngang.
+- **Tự kiểm** `node scripts/ui_check.mjs --self-test` dựng một trang phạm mỗi mã một lần và phải bắt đủ từng mã — chạy sau mỗi lần
+  sửa script.
+- Bề ngang điện thoại được giả lập thẳng qua DevTools (`Emulation.setDeviceMetricsOverride`), nên khung 390 là đúng 390 — không
+  cần `<iframe>`; trang mà vẫn báo khung rộng hơn 390 thì đó chính là lỗi U1 (M1).
+- Bản mẫu hay template cũng kiểm như vậy trước khi đưa duyệt: phép đo xanh là vòng soát đầu, mắt người là vòng thứ hai.
+
+## M — ĐIỆN THOẠI (app có bố cục điện thoại)
+
+Thêm một luật điện thoại theo thứ tự: ① người dùng duyệt một điểm thiết kế · ② viết thành một mã trong bộ kiểm · ③ chạy trên
+bản chưa sửa — phải đỏ (bản đã đạt thì phá mã cho đỏ) · ④ sửa giao diện tới khi xanh. Chỉ trang đã duyệt bố cục điện thoại
+mới vào danh sách kiểm điện thoại; đưa vào sớm là cổng đỏ trước khi có thiết kế.
+- **Bản máy tính không đổi.** Lớp điện thoại chỉ THÊM, áp dưới mốc chuyển.
+- **Mốc chuyển ≤ 768 px** (`@media (max-width:768px)`); hệ số co toàn trang không áp dưới mốc.
+- **M1 — vừa màn.** Ở 390 px trang không rộng hơn màn hình, không phần tử nào thò qua mép phải; bảng rộng cuộn TRONG khung
+  của nó. Bẫy: con flex mang `min-width:auto` = bề rộng hàng dài nhất ⇒ đẩy tràn dù hàng tự cuộn — khung chứa hàng cuộn phải
+  `min-width:0`. Điện thoại NỚI khung bố cục theo phần tràn ⇒ bề ngang báo về lớn hơn 390 chính là lỗi M1.
+- **M2 — không co.** Hệ số co toàn trang tắt dưới mốc.
+- **M3 — thanh tab ở ĐÁY**, mỗi tab một phần bằng nhau; máy tính giữ chỗ cũ.
+- **M4 — vùng chạm ≥ 44 px**: `--ctl-h:44px` dưới mốc (một biến, cùng §F0c).
+- **M5 — lưới dữ liệu** giữ dạng bảng, cuộn ngang trong khung, cột định danh (mã · tên) ghim trái, nền đục; rail phụ bên cạnh
+  không còn chỗ ⇒ ẩn trên điện thoại.
+- **M6 — hộp thoại** toàn màn hình dưới mốc (khung 16:9 của §F2 không vừa màn dọc).
+- **Đo đúng cỡ:** trình duyệt headless có bề rộng cửa sổ tối thiểu (Edge khoảng 500 px) ⇒ chụp hoặc đo "cửa sổ 390" là đo bố
+  cục rộng hơn rồi cắt. Bộ kiểm đặt trang trong `<iframe>` đúng 390 px và từ chối phán (mã 3) khi bề ngang nhận được khác 390.
+- Skill ngoài về UI/UX cho khuyến nghị khi thiết kế; thứ có hiệu lực là mục này.
+
+## BE — tiến trình & tài nguyên
+
+### B1. MỌI tiến trình của app gom về MỘT nhóm — không sót cái nào
+
+- App có thể sinh nhiều tiến trình (daemon, cửa sổ, job nền, helper của thư viện). Trên bảng tiến
+  trình của HĐH, **tất cả phải quy về một nhóm mang tên app** — không có tiến trình nào đứng lẻ với
+  tên của thư viện sinh ra nó.
+- **Phải có sổ liệt kê**: mỗi tiến trình app sinh ra được khai một dòng (tên hiện ra · ai phóng ·
+  sống bao lâu). Sinh thêm tiến trình mới mà không khai vào sổ = **thiếu sót**, kể cả khi nó chạy đúng.
+- Áp cho **cả tiến trình cũ lẫn mới** — helper dựng sẵn của dependency cũng phải đổi tên/gói lại.
+- *Ca điển hình: `tray_windows_release.exe` (helper Go của `systray2`) đứng lẻ suốt gần hai tháng,
+  trong khi tiến trình chính đã mang tên app ngay từ đầu. Đổi tên một nửa còn tệ hơn không đổi: người
+  đọc tưởng đã gom đủ.*
+
+### B2. Tiến trình nền không được mở cửa sổ console
+Mọi đường phóng (lối tắt · autostart · tự khởi động lại sau cập nhật · phóng từ UI) đều phải ẩn.
+Một cửa sổ đen là bề mặt kỹ thuật rò ra người dùng, và **đóng nhầm nó là giết tiến trình**.
+Giấu console thì **bắt buộc** phải có đường xem nhật ký trong app — nếu không là bịt luôn phép
+chẩn đoán *"vì sao không chạy"*.
+
+### B3. Một kẻ ghi cho mỗi kho dữ liệu; nhiều ĐÍCH thì mỗi đích một sổ
+Ghi vào hai kho dữ liệu khác nhau là hợp lệ. Thứ phải tách là **sổ theo dõi tiến độ**: dùng chung một khoá
+cho mọi đích thì đích nào ghi trước sẽ nuốt phần của đích sau, im lặng và vĩnh viễn.
+
+### B4. Hai kiểu version-up
+① TỰ ĐỘNG (app tự check+tải+apply) → `backend/src/update/` (phối `attic/`+`dist/`+`migrations/`). ② THỦ CÔNG (chốt bản X, up máy đích/VM) → git tag → `dist/` build → `backend/scripts/deploy.*` → backup bản đang chạy về `attic/` TRƯỚC khi đè → rollback nếu hỏng. Dùng hạ tầng có sẵn, KHÔNG concern mới.
+
+### B5. Deploy là việc HAI CHIỀU
+KHÔNG chỉ push 1 chiều. Máy đích có backup lần trước → verify khớp `attic/` local TRƯỚC khi đè (lệch = có sửa tay ngoài luồng, điều tra trước); deploy xong kéo bản-vừa-thay về `attic/` local. Cùng nguyên lý additive-merge của đồng bộ dữ liệu.
+
+### B6. Test — chạy app là phép thử chính
+KHÔNG bắt buộc — chạy chính app = phép kiểm thử; folder test chỉ cho lõi logic dễ sai ngầm (search/migration/privacy). FE: e2e/story co-locate hoặc `frontend/test`.
+
+### B7. Đánh số phiên bản
+git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `migrations`=schema · `05_CHANGES`=log. KHÔNG folder `versions/` chép tay. **Bump RELEASE-BASED: số version chỉ tăng khi RELEASE/deploy 1 bản, KHÔNG bump per-commit/per-feature; số chọn theo bảng của luật `Skill_App_Release` (semver M.m.p — minor=tính năng, patch=fix deploy); mọi việc giữa 2 release GOM vào version kế; nguồn số = `package.json`(Node)/`__version__`(Py) — 1 chỗ; release-notes = `05_CHANGES`.**
+
+## Quy ước nhận từ luật đã gộp
+
+- **Bố cục:** bố cục đã chốt là bất biến (`Rule_Keys_62_DesignChangeApproval`); mọi dòng và panel TỔNG nằm DƯỚI nội dung,
+  như bảng tính.
+- **Chữ giao diện qua i18n:** mọi chuỗi người dùng thấy đi qua i18n, đủ hai bộ từ điển, đổi bằng thiết lập; không chuỗi
+  hardcode; thuật ngữ kỹ thuật giữ nguyên. Từ điển UI: slot `Frontend_137_UiDictionary`.
+- **Tách lớp:** giao diện chỉ gọi API của máy chủ; nghiệp vụ, truy vấn, gọi dịch vụ ngoài nằm ở máy chủ. Giao diện gửi tên
+  truy vấn + tham số, không gửi câu truy vấn thô.
+- **App của một hệ** (`Rule_Keys_90_AppFamilyContract`): dữ liệu ở DB chung của hệ (repo `app-data` giữ, app không DB riêng, không
+  DDL) · vai cấp ở màn quản trị chung của `system-manager` (app không dựng màn quản trị) · log sáu nhóm sự kiện bằng mã trong bảng
+  hợp đồng của repo `app-data`.
+  - Kiểm phiên đăng nhập: nhớ kết quả kiểm một phiên trong bộ nhớ app tối đa 10 giây, bỏ ngay khi đăng xuất · thu hồi · khoá ·
+    đổi mật khẩu · đổi vai — kiểm mỗi request bằng câu SQL làm máy DB gánh vô ích. Thu hồi trên màn chung có hiệu lực ở app chậm
+    tối đa một chu kỳ nhớ đó.
+  - Nối DB có hạn chờ: một lượt nối treo bị bỏ lại sau 60 giây, tối đa vài lượt treo cùng lúc; một lượt nối treo không được chặn
+    đăng nhập của mọi người tới khi khởi động lại.
+  - **Đăng nhập chung** (luật 90 bước 4–5). Tên thật của hệ (cookie, mã app, đường đăng nhập, số giờ hết hạn) viết một lần trong hiến
+    pháp của repo `system-manager`; `Cons_Gate_14_Access` của app trỏ về đó và chỉ thêm phần riêng của nó.
+    · **Đọc, không cấp:** cookie phiên của `system-manager` tới được app vì app nằm cùng địa chỉ, dưới đường dẫn riêng. App đọc nó ở
+      backend, không bao giờ đặt hay xoá.
+    · **Câu kiểm phiên:** token tra trong bảng phiên của DB hệ với mã số app của `system-manager` (tra theo mã app một lần lúc mở kết
+      nối, không ghi cứng số), đủ hai mốc hết hạn của `system-manager` (tuyệt đối và trượt khi không dùng), join tài khoản, và vai lấy
+      từ bảng vai với mã số của CHÍNH app này. Lượt tra thật thì chạm giờ thấy cuối; app không bao giờ xoá phiên của `system-manager`
+      và không ghi log hết hạn của nó.
+    · **Trả lời:** không cookie · không có phiên sống · tài khoản bị khoá · còn mật khẩu tạm phải đổi ⇒ trang: chuyển về đăng nhập
+      chung kèm `next`; API: 401 mang địa chỉ đăng nhập. Phiên sống mà không có vai ở app này ⇒ 403 "không có quyền ở <app>" — không
+      đẩy về đăng nhập, kẻo thành vòng lặp. Phiên sống có vai ⇒ qua.
+    · **`next`** là đường đầy đủ tính từ gốc địa chỉ, gồm tiền tố riêng của app và query (`/<app>/jobs?id=3`); lệnh chuyển trỏ tới
+      trang đăng nhập chung ở gốc, không phải `/<app>/login` (lớp base-path không được gắn tiền tố vào). `system-manager` chỉ nhận
+      `next` bắt đầu bằng đúng một `/`.
+    · **Frontend:** nhận 401 ⇒ đi tới địa chỉ nó mang. Đăng xuất ⇒ gọi đăng xuất của `system-manager` bằng đường tuyệt đối, rồi về
+      trang đăng nhập của nó. Đổi mật khẩu và hồ sơ ⇒ link sang `system-manager`. Header của app có link về `system-manager`.
+    · **Bỏ đăng nhập riêng:** nhận cả cookie cũ lẫn cookie chung một thời gian, qua sáu phép kiểm dưới, rồi gỡ đường cũ.
+    · **Sáu phép kiểm sau cổng:** ① không cookie ⇒ chuyển đúng `next`, API 401 · ② đăng nhập ⇒ quay về đúng trang app · ③ không có
+      vai ⇒ 403, không vòng lặp · ④ bỏ vai trên màn quản trị chung ⇒ bị từ chối trong một chu kỳ nhớ phiên · ⑤ đăng xuất từ app ⇒
+      `system-manager` đòi đăng nhập lại · ⑥ khoá tài khoản ⇒ bị từ chối ở lượt tra kế.
+- **Bảo mật gác ở máy chủ, mặc định chặn:** thêm chức năng ghi mới ⇒ chặn mọi vai chưa khai cho phép; ẩn nút trên giao diện
+  không tính là bảo mật. Mọi endpoint trả dữ liệu đứng sau lớp đăng nhập.
+- **Câu truy vấn có tên trong mã chạy dạng chuỗi:** worker nạp bằng eval không import được thư viện câu ⇒ truyền câu có tên qua
+  `workerData` (`Rule_Gate_35_OneHome`).
+- **Thư mục tạm của test:** bộ chạy test gom thư mục tạm của mọi tiến trình con vào một thư mục cha của lượt chạy, xoá khi
+  xong và dọn các lượt bỏ dở; số thư mục trong thư mục tạm của hệ thống trước và sau một lượt chạy bằng nhau
+  (`Rule_Gate_04_ScratchFiles`).
+
+## Implements · Thi hành luật
+- `Cons_Gate_13_Architecture` — how the layers of an app are built · cách dựng các lớp của app
+- `Rule_Keys_62_DesignChangeApproval` — the design standard whose suggestions are shown first · chuẩn thiết kế mà gợi ý phải trình trước
+- `Rule_Keys_90_AppFamilyContract` — an app of a family: one database, one sign-in, one admin screen, the family's log codes · app của một hệ: một DB, một đăng nhập, một màn quản trị, mã log của hệ

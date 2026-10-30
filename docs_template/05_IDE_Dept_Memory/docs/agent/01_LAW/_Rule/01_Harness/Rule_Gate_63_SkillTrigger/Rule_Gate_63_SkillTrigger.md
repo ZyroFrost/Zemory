@@ -2,10 +2,10 @@
 id: Rule_63
 aka: 02-63
 name: skill-trigger
-version: 9
+version: 10
 kind: action
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger @v9 #d5c690c88345
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger @v10 #91411095a83c
 ---
 # Rule_Gate_63_SkillTrigger — Work that matches a skill opens the skill first
 
@@ -29,7 +29,7 @@ skill's type: every step of a `process` skill is due; a `design` skill only sugg
 
 ## Check
 - The read-first latch asks for the skill at the doors a machine can see (`gate.json › read` of the skill: writing under
-  `frontend/` ⇒ the app-design skill; running a mail script ⇒ the write-style skill).
+  `frontend/` ⇒ the app-base skill; running a mail script ⇒ the write-style skill).
 - The store reds a skill whose header has no `type:` or a value other than `process` / `design`.
 
 ## Links · Liên kết

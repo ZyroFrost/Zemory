@@ -2,10 +2,10 @@
 id: Rule_35
 aka: 02-35
 name: one-home
-version: 11
+version: 12
 kind: judgment
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome @v11 #788f76c7e67f
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome @v12 #6b27c9793560
 ---
 # Rule_Gate_35_OneHome — One thing, one home
 
@@ -44,4 +44,4 @@ calculation. Everything else points to it.
 ## Links · Liên kết
 - Related · Liên quan: `Cons_Gate_12_SourceOfTruth` — where the repo names its business terms · nơi repo định nghĩa tên nghiệp vụ
 - Related · Liên quan: `Rule_Gate_85_ProposeChecked` — searching before adding a part · dò trước khi thêm phần
-- Implements · Thi hành: `Skill_Dev_AssetsPull` — one source for shared logos, icons and colours, copied into each repo · một nguồn cho logo, icon, màu dùng chung, chép vào từng repo
+- Implements · Thi hành: `Skill_App_AssetsPull` — one source for shared logos, icons and colours, copied into each repo · một nguồn cho logo, icon, màu dùng chung, chép vào từng repo

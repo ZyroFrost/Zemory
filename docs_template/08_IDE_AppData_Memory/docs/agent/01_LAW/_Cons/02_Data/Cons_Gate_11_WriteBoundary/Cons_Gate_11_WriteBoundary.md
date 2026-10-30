@@ -1,11 +1,11 @@
 ---
 id: Cons_11
 name: write-boundary
-version: 4
+version: 5
 kind: content
 code: 02_Data
 frame: true
-from: _Store/01_LAW/_Cons/02_Data/Cons_Gate_11_WriteBoundary @v4 #d3db6bb0ddaf
+from: _Store/01_LAW/_Cons/02_Data/Cons_Gate_11_WriteBoundary @v5 #a70d1186abf8
 ---
 # Cons_Gate_11_WriteBoundary — The write boundary
 
@@ -32,5 +32,5 @@ Every repo states in the `Cons.md` of this frame where the product may write out
 - `conform` reds when `Cons.md` is missing, unwritten, or a template mark `<…>` is left.
 
 ## Links · Liên kết
-- Implements · Thi hành: `Skill_Dev_DbDesign` — how structure changes are written and run · cách viết và chạy thay đổi cấu trúc
+- Implements · Thi hành: `Skill_Db_Base` — how structure changes are written and run · cách viết và chạy thay đổi cấu trúc
 - Related · Liên quan: `Rule_Gate_44_RepoScope` — SQL that changes a server is leaving the project · SQL đổi máy chủ là ra ngoài dự án

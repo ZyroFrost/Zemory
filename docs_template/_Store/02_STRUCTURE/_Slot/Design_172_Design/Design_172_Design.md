@@ -1,7 +1,7 @@
 ---
 id: Slot_172
 name: design
-version: 1
+version: 2
 path: _Design/
 scope: layout
 checked: [Template_157_Template, Profile_170_Profile, Assets_127_Assets, Frontend_060_Assets]
@@ -43,7 +43,7 @@ _Design\
   of the repo at build or run time. The repo's own asset layout does not change: an app keeps `frontend/assets/<kind>/`
   (`Frontend_060_Assets`), a report keeps its tool's place (Power BI: `StaticResources`), a file of the repo's own that the
   source does not hold is left alone.
-- The copy is taken and checked by the skill `Skill_Dev_AssetsPull`: a file of `frontend/assets/<kind>/` with the same name as a
+- The copy is taken and checked by the skill `Skill_App_AssetsPull`: a file of `frontend/assets/<kind>/` with the same name as a
   file of `_Design\Assets\<Kind>\` is a copy (Logo → `logo/` · Icon → `icons/` · Background → `backgrounds/` · Image →
   `images/` · Font → `fonts/` · Color → `color/`); no list of copies is kept beside them.
 - A folder SYNCED by Syncthing, NOT a git repo: no `git init`, no push. One per organisation.
@@ -64,4 +64,4 @@ Asset kinds: `Logo` · `Icon` · `Background` · `Image` · `Font` · `Color`.
 ## Check
 
 - `zemory conform --layout <drive>\Workspace\Company\<Org>` accepts `_Design\` at the organisation level.
-- In a repo: `node scripts/assets_pull.mjs --check` (installed by `Skill_Dev_AssetsPull`) reds a copy that differs from the source.
+- In a repo: `node scripts/assets_pull.mjs --check` (installed by `Skill_App_AssetsPull`) reds a copy that differs from the source.

@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Design_172_Design design — giao diện dùng chung của tổ chức
@@ -39,7 +39,7 @@ _Design\
   đường dẫn nào trỏ ra ngoài repo lúc build hay lúc chạy. Cấu trúc tài nguyên của repo không đổi: app giữ `frontend/assets/<loại>/`
   (`Frontend_060_Assets`), báo cáo giữ chỗ của công cụ nó (Power BI: `StaticResources`), tệp riêng của repo mà nguồn không có thì
   không bị đụng.
-- Bản chép được lấy và kiểm bằng skill `Skill_Dev_AssetsPull`: một tệp trong `frontend/assets/<loại>/` trùng tên với một tệp trong
+- Bản chép được lấy và kiểm bằng skill `Skill_App_AssetsPull`: một tệp trong `frontend/assets/<loại>/` trùng tên với một tệp trong
   `_Design\Assets\<Loại>\` là bản chép (Logo → `logo/` · Icon → `icons/` · Background → `backgrounds/` · Image → `images/` ·
   Font → `fonts/` · Color → `color/`); không giữ danh sách bản chép nào bên cạnh.
 - Thư mục ĐỒNG BỘ bằng Syncthing, KHÔNG phải repo git: không `git init`, không push. Mỗi tổ chức một thư mục.
@@ -59,4 +59,4 @@ nguyên: `Logo` · `Icon` · `Background` · `Image` · `Font` · `Color`.
 ## Phép kiểm
 
 - `zemory conform --layout <ổ>\Workspace\Company\<Org>` nhận `_Design\` ở cấp tổ chức.
-- Trong repo: `node scripts/assets_pull.mjs --check` (do `Skill_Dev_AssetsPull` cài) đỏ khi một bản chép khác nguồn.
+- Trong repo: `node scripts/assets_pull.mjs --check` (do `Skill_App_AssetsPull` cài) đỏ khi một bản chép khác nguồn.

@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 # Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
@@ -11,7 +11,7 @@ vận hành do repo `app-data` giữ. `system-manager` chỉ giữ phần dùng 
 mỗi app tự phục vụ trang và API của chính nó.
 
 Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nhà nhưng không chỉ nhà nào giữa các repo của một hệ;
-`Skill_Dev_AppDesign` và `Skill_Dev_DbDesign` dạy cách làm, không đặt nghĩa vụ này; `Struc_Repo_SystemManager` và
+`Skill_App_Base` và `Skill_Db_Base` dạy cách làm, không đặt nghĩa vụ này; `Struc_Repo_SystemManager` và
 `Struc_Repo_AppData` khai vai nhưng không giao nghĩa vụ giữa các vai.
 
 ## Khi nào áp

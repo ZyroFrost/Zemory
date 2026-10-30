@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_SystemManager
 name: repo-system-manager
-version: 3
+version: 4
 profile: app
 label: SYSTEM-MANAGER
 intro: : repo quản một hệ nhiều app — quyết khung và chuẩn của các app và repo dữ liệu app nó quản
@@ -9,7 +9,7 @@ ask: ; repo điều phối nhiều app cùng một hệ là SYSTEM-MANAGER
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_App, Struc_Repo_WorkspaceManager]
-from: _Store/02_STRUCTURE/Struc_Repo_SystemManager @v3 #0d9318cd6b51
+from: _Store/02_STRUCTURE/Struc_Repo_SystemManager @v4 #5213b2efd283
 ---
 # Struc_Repo_SystemManager
 
@@ -41,4 +41,4 @@ the first repo is assembled from this template.
 - An app declares `owner` = this repo's name in its marker, and `uses` `gateway` and `sign-in` = this repo.
 - A path or a port behind the gateway, a role set that differs from the default, a new app ⇒ message this repo's session; an app never edits the table of
   apps or the proxy configuration (`Rule_Gate_44_RepoScope`).
-- How an app reads the shared session and answers a person without one: `Skill_Dev_AppDesign` › "An app of a family".
+- How an app reads the shared session and answers a person without one: `Skill_App_Base` › "An app of a family".

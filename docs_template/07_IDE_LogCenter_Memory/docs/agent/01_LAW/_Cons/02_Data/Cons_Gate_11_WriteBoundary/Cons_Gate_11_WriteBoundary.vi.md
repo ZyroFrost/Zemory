@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Cons_Gate_11_WriteBoundary — The write boundary

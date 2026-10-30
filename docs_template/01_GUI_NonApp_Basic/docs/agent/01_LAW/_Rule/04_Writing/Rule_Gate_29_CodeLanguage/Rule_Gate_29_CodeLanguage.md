@@ -2,10 +2,10 @@
 id: Rule_29
 aka: 02-29
 name: code-language
-version: 12
+version: 13
 kind: judgment
 code: 04_Writing
-from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_29_CodeLanguage @v12 #f326dd3968be
+from: _Store/01_LAW/_Rule/04_Writing/Rule_Gate_29_CodeLanguage @v13 #6e4a35a7ff6d
 ---
 # Rule_Gate_29_CodeLanguage — Code and names are written in English
 

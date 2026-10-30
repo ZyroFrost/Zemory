@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # Frontend_137_UiDictionary ui-dictionary — từ điển slot thiết kế UI/UX
@@ -34,4 +34,4 @@ lang: vi
   - `i18n` ★ — UI = English hoặc i18n đủ 2 dict, 0 chuỗi hardcode.
   - `no-build` ★ — app embed/tĩnh: tách file theo concern, 0 bundler; framework có build chỉ dùng khi STACK của project vốn có bundler.
   - `anti-patterns` ★ — checklist cấm: literal màu · dialog nhảy · layout dịch khi load · low-contrast · icon-only không label · generic default.
-- Được chứa / không chứa: chỉ tên slot thiết kế + ràng buộc; không chứa giá trị token thật (→ `frontend/styles`) và không chép đặc tả component của skill `app-design`.
+- Được chứa / không chứa: chỉ tên slot thiết kế + ràng buộc; không chứa giá trị token thật (→ `frontend/styles`) và không chép đặc tả component của skill `app-base`.

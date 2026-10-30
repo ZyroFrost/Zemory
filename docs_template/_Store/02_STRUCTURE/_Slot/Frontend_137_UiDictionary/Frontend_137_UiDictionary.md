@@ -2,7 +2,7 @@
 id: Slot_137
 aka: 03-137
 name: ui-dictionary
-version: 8
+version: 9
 kind: guide
 path: frontend/
 ---
@@ -38,4 +38,4 @@ path: frontend/
   - `i18n` ★ — UI = English or i18n with both dictionaries complete, 0 hardcoded strings.
   - `no-build` ★ — an embedded/static app: split files by concern, 0 bundlers; a framework with a build only when the project's STACK already has a bundler.
   - `anti-patterns` ★ — the banned checklist: colour literals · jumping dialogs · layout shift on load · low contrast · icon-only without a label · generic defaults.
-- May hold / may not hold: only the design slot names + constraints; no real token values (→ `frontend/styles`) and no copy of the component specification of the `app-design` skill.
+- May hold / may not hold: only the design slot names + constraints; no real token values (→ `frontend/styles`) and no copy of the component specification of the `app-base` skill.

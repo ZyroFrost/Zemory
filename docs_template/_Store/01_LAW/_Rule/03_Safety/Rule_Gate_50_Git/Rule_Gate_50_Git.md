@@ -2,7 +2,7 @@
 id: Rule_50
 aka: 02-50
 name: git
-version: 9
+version: 10
 kind: action
 code: 03_Safety
 ---
@@ -38,4 +38,4 @@ command. History is never rewritten or destroyed without asking first.
 
 ## Links · Liên kết
 - Related · Liên quan: `Rule_Gate_10_DestructiveOps` — discarding work is destroying · bỏ việc chưa commit là phá dữ liệu
-- Related · Liên quan: `Skill_Dev_Release` — version numbers and release · số phiên bản và phát hành
+- Related · Liên quan: `Skill_App_Release` — version numbers and release · số phiên bản và phát hành

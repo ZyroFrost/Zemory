@@ -1,11 +1,11 @@
 ---
 id: Cons_13
 name: architecture
-version: 4
+version: 5
 kind: content
 code: 03_System
 frame: true
-from: _Store/01_LAW/_Cons/03_System/Cons_Gate_13_Architecture @v4 #68387cc8b655
+from: _Store/01_LAW/_Cons/03_System/Cons_Gate_13_Architecture @v5 #dcd0fb7ab619
 ---
 # Cons_Gate_13_Architecture — Architecture
 
@@ -30,5 +30,5 @@ call may cross.
 - `conform` reds when `Cons.md` is missing, unwritten, or a template mark `<…>` is left.
 
 ## Links · Liên kết
-- Implements · Thi hành: `Skill_Dev_AppDesign` — how the layers of an app are built · cách dựng các lớp của app
+- Implements · Thi hành: `Skill_App_Base` — how the layers of an app are built · cách dựng các lớp của app
 - Related · Liên quan: `Rule_Gate_35_OneHome` — queries are called by name · truy vấn gọi theo tên

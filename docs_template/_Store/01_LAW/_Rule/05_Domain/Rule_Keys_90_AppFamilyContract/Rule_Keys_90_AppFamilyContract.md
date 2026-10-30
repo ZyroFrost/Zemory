@@ -1,10 +1,10 @@
 ---
 id: Rule_90
 name: app-family-contract
-version: 9
+version: 10
 kind: judgment
 code: 05_Domain
-checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_Dev_AppDesign, Skill_Dev_DbDesign, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData]
+checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_App_Base, Skill_Db_Base, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData]
 ---
 # Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
 
@@ -15,7 +15,7 @@ screen for roles, and the operation-log codes kept by the `app-data` repo. The `
 gateway, the sign-in, the admin screen and the links to the apps; every app serves its own pages and its own API.
 
 Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but names no home across the repos of a family;
-`Skill_Dev_AppDesign` and `Skill_Dev_DbDesign` teach how, not this duty; the structures `Struc_Repo_SystemManager` and
+`Skill_App_Base` and `Skill_Db_Base` teach how, not this duty; the structures `Struc_Repo_SystemManager` and
 `Struc_Repo_AppData` declare the roles but give them no duty toward each other.
 
 ## When
@@ -88,6 +88,6 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
   log shows this law; the rest is judgment.
 
 ## Links · Liên kết
-- Implements · Thi hành: `Skill_Dev_AppDesign` — how an app of a family is built · cách dựng một app của hệ
+- Implements · Thi hành: `Skill_App_Base` — how an app of a family is built · cách dựng một app của hệ
 - Repo declares · Repo khai: `Cons_Gate_11_WriteBoundary` — the app writes data only, never structure · app chỉ ghi dữ liệu, không ghi cấu trúc
 - Related · Liên quan: `Rule_Gate_35_OneHome` — one thing, one home · một thứ một nhà

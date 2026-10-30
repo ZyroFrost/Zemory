@@ -1,7 +1,7 @@
 ---
 id: Cons_14
 name: access
-version: 5
+version: 6
 kind: content
 code: 04_Security
 frame: true
@@ -38,6 +38,6 @@ contact · financial) is never stored or sent in clear text.
   commit.
 
 ## Links · Liên kết
-- Implements · Thi hành: `Skill_Dev_DbDesign` — how a column is encrypted, the library, key rotation · cách mã hoá cột, thư viện, xoay khoá
+- Implements · Thi hành: `Skill_Db_Base` — how a column is encrypted, the library, key rotation · cách mã hoá cột, thư viện, xoay khoá
 - Related · Liên quan: `Rule_Gate_21_WhatEntersGit` — where secret values live · giá trị bí mật nằm đâu
 - Related · Liên quan: `Cons_Gate_15_DataLifecycle` — how long personal data is kept · dữ liệu cá nhân giữ bao lâu

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ui_check.mjs - the machine check of the measurable surface rules of Skill_Dev_AppDesign (installed by Skill_Dev_AppDesign).
+// ui_check.mjs - the machine check of the measurable surface rules of Skill_App_Base (installed by Skill_App_Base).
 //
 // Opens every page of the app at every width in a real browser (Edge/Chrome through the DevTools protocol) and measures the
 // rendered page - never a screenshot by eye. Config: ui_check.json at the repo root (or --config <file>):
@@ -11,7 +11,7 @@
 //     "codes": { "U4": { "min_fill": 0.6 } }          // optional: per-code options; "off": true turns one off (say why in the repo)
 //   }
 // Exit: 0 green · 1 errors (each printed with page, width, element) · 3 not fully checked (no browser / a page did not load).
-// Codes (Skill_Dev_AppDesign › THE CHECKER):
+// Codes (Skill_App_Base › THE CHECKER):
 //   U1 page scrolls sideways / a phone widens the layout     U2 an element sticks out of the window (clipped)
 //   U3 controls on one row differ in height (> 0.6 px)       U4 dead space: a table or block fills too little of its frame
 //   U5 text overlaps text or a chart inside one card          U6 a chart frame is empty (nothing drawn)
@@ -38,7 +38,7 @@ let cfgPath = opt("--config") || "ui_check.json";
 if (SELF) { const d = mkdtempSync(path.join(tmpdir(), "_scratch_uicheck-self-")); writeFileSync(path.join(d, "f.html"), FAULTY);
   cfgPath = path.join(d, "c.json"); writeFileSync(cfgPath, JSON.stringify({ url: "file:///" + path.join(d, "f.html").replace(/\\/g, "/"),
     pages: [{ name: "faulty" }], widths: [1100], settle_ms: 100 })); process.on("exit", () => { try { rmSync(d, { recursive: true, force: true }); } catch {} }); }
-if (!existsSync(cfgPath)) { console.error(`[ui-check] no ${cfgPath} - see Skill_Dev_AppDesign › THE CHECKER`); process.exit(3); }
+if (!existsSync(cfgPath)) { console.error(`[ui-check] no ${cfgPath} - see Skill_App_Base › THE CHECKER`); process.exit(3); }
 const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
 const WIDTHS = (opt("--widths") || "").split(",").filter(Boolean).map(Number).length
   ? opt("--widths").split(",").map(Number) : (cfg.widths || [1920, 1440, 1100, 900, 390]);

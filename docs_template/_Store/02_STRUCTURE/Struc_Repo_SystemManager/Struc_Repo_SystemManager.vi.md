@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 # Struc_Repo_SystemManager
@@ -33,4 +33,4 @@ Chuẩn cấu trúc của repo quản một hệ app: mọi slot của `Struc_Re
 - App khai `owner` = tên repo này trong marker, và `uses` `gateway` và `sign-in` = repo này.
 - Cần một đường dẫn hay cổng sau gateway, một bộ vai khác mặc định, một app mới ⇒ nhắn phiên của repo này; app không sửa bảng app hay
   cấu hình proxy (`Rule_Gate_44_RepoScope`).
-- Cách app đọc phiên chung và trả lời người chưa có phiên: `Skill_Dev_AppDesign` › "An app of a family".
+- Cách app đọc phiên chung và trả lời người chưa có phiên: `Skill_App_Base` › "An app of a family".

@@ -888,7 +888,7 @@ function checkBash(cmd) {
     const clash = versionClash();
     if (clash) {
       deny("BLOCKED (guard layer 1): \`git push\` carries code but package.json still says " + clash.version +
-        ", the same version as " + clash.upstream + " (" + clash.files + " code file(s) in the push) - bump the version first (Skill_Dev_Release: every push of code carries a NEW version; docs-only pushes are exempt). There is no flag for this.");
+        ", the same version as " + clash.upstream + " (" + clash.files + " code file(s) in the push) - bump the version first (Skill_App_Release: every push of code carries a NEW version; docs-only pushes are exempt). There is no flag for this.");
     }
     if (!consumeFlag("push", bare)) {
       deny("BLOCKED (guard layer 1): \`git push\` - push only when the user says so (Rule_Gate_50_Git)." +

@@ -2,10 +2,10 @@
 id: Rule_50
 aka: 02-50
 name: git
-version: 9
+version: 10
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_50_Git @v9 #7811683c4b40
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_50_Git @v10 #607b1900ffe8
 ---
 # Rule_Gate_50_Git — Commit freely, push on command, never break history
 
@@ -39,4 +39,4 @@ command. History is never rewritten or destroyed without asking first.
 
 ## Links · Liên kết
 - Related · Liên quan: `Rule_Gate_10_DestructiveOps` — discarding work is destroying · bỏ việc chưa commit là phá dữ liệu
-- Related · Liên quan: `Skill_Dev_Release` — version numbers and release · số phiên bản và phát hành
+- Related · Liên quan: `Skill_App_Release` — version numbers and release · số phiên bản và phát hành

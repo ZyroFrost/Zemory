@@ -2,10 +2,10 @@
 id: Rule_62
 aka: 02-62
 name: design-change-approval
-version: 15
+version: 16
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval @v15 #2d9016998b27
+from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval @v16 #eb4479dcd7bb
 ---
 # Rule_Keys_62_DesignChangeApproval — Changing the look of something others use: show it first
 
@@ -24,7 +24,7 @@ not move on its own. Fixing a technical fault needs no approval.
 3. No need to show: fixing a technical fault (misaligned · overflowing · broken) · filling numbers into an existing template.
 4. The given direction leaves design details open ⇒ show options for the open part. A suggestion from a design skill is shown,
    never applied on its own.
-5. Concrete conventions: `Skill_Dev_AppDesign` · `Skill_PBI_Base` (the skills the repo carries) · the conventions slot
+5. Concrete conventions: `Skill_App_Base` · `Skill_PBI_Base` (the skills the repo carries) · the conventions slot
    and the UI name dictionary.
 
 ## Example
@@ -37,7 +37,7 @@ not move on its own. Fixing a technical fault needs no approval.
 - Keyword reminder: a request about UI, layout, colour, dialog, chart and the like shows this law; the rest is judgment.
 
 ## Links · Liên kết
-- Implements · Thi hành: `Skill_Dev_AppDesign` — the app design standard · chuẩn thiết kế app
+- Implements · Thi hành: `Skill_App_Base` — the app design standard · chuẩn thiết kế app
 - Implements · Thi hành: `Skill_PBI_Base` — the report design standard · chuẩn thiết kế báo cáo
 - Implements · Thi hành: `Skill_PBI_White` — the White design standard a report keeps once approved · chuẩn thiết kế White report giữ sau khi duyệt
 - Related · Liên quan: `Rule_Gate_63_SkillTrigger` — a design skill only suggests · skill thiết kế chỉ gợi ý

@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 # Rule_Gate_29_CodeLanguage — Code and names are written in English
