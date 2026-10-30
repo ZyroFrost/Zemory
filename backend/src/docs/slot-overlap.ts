@@ -58,6 +58,24 @@ export function slotOverlapFindings(storeDir = STORE_DIR, isNew?: (leaf: string)
   const head = isNew ? null : slotsInHead(storeDir);
   const fresh = (leaf: string): boolean => (isNew ? isNew(leaf) : head !== null && !head.has(leaf));
   const out: string[] = [];
+  // plan/37 §1: a slot speaks only about its own path. Every path written in its `## Inside` section lies under that path;
+  // a place elsewhere is named by its slot or skill, so a path there that leaves the slot is a file it claims but does not own.
+  // A path is judged when it starts where a slot's path starts (a repo-root path); a sub-path written relative to the slot
+  // (`Lib/site-packages/`) starts nowhere else and passes.
+  const heads = new Set(slots.flatMap((s) => pathsOf(s).map((x) => x.split("/")[0]).filter((x) => x && x !== ".")));
+  for (const s of slots) {
+    const f = mainPath(s.dir, mainOf(s));
+    const inside = existsSync(f) ? /^## Inside[^\n]*\n([\s\S]*?)(?=^## |(?![\s\S]))/m.exec(readFileSync(f, "utf8").replace(/\r\n/g, "\n"))?.[1] ?? "" : "";
+    if (!inside) continue;
+    const mine = pathsOf(s).map((x) => x.replace(/\/+$/, ""));
+    for (const [, tok] of inside.matchAll(/`([^`\s]*\/[^`\s]*)`/g)) {
+      if (tok.includes("\\") || /^[a-z]+:\/\//.test(tok) || !heads.has(tok.split("/")[0])) continue; // a relative sub-path · a URL
+      const p = tok.replace(/\/+$/, "");
+      if (!mine.some((m) => m === "." || p === m || p.startsWith(m + "/"))) {
+        out.push(`${leafOf(s.folder)}: ## Inside names ${tok}, outside its path (${mine.join(" · ")}) — name the slot or skill that owns it instead`);
+      }
+    }
+  }
   // plan/37 §1: a path is the key of ONE slot. Two slots on the same path are red whatever their age and whatever they wrote
   // in checked: — there is no weighing for this case, the second slot's text goes into the first.
   const norm = (x: string): string => x.replace(/\/+$/, "");

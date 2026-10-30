@@ -310,8 +310,8 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 272 | `docs/agent/02_STRUCTURE/_Slot/Root_086_Gitattributes/gate.json` | 1 |
 | 273 | `docs/agent/02_STRUCTURE/_Slot/Root_093_Env/Root_093_Env.md` | 14 |
 | 274 | `docs/agent/02_STRUCTURE/_Slot/Root_093_Env/Root_093_Env.vi.md` | 10 |
-| 275 | `docs/agent/02_STRUCTURE/_Slot/Root_136_Principles/Root_136_Principles.md` | 62 |
-| 276 | `docs/agent/02_STRUCTURE/_Slot/Root_136_Principles/Root_136_Principles.vi.md` | 56 |
+| 275 | `docs/agent/02_STRUCTURE/_Slot/Root_136_Principles/Root_136_Principles.md` | 63 |
+| 276 | `docs/agent/02_STRUCTURE/_Slot/Root_136_Principles/Root_136_Principles.vi.md` | 57 |
 | 277 | `docs/agent/02_STRUCTURE/_Slot/Root_141_Stignore/Root_141_Stignore.md` | 33 |
 | 278 | `docs/agent/02_STRUCTURE/_Slot/Root_141_Stignore/Root_141_Stignore.vi.md` | 28 |
 | 279 | `docs/agent/02_STRUCTURE/_Slot/Root_141_Stignore/gate.json` | 1 |

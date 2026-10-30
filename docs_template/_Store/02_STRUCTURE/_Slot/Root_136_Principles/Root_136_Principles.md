@@ -2,7 +2,7 @@
 id: Slot_136
 aka: 03-136
 name: principles
-version: 13
+version: 14
 kind: guide
 path: .
 ---
@@ -28,7 +28,8 @@ path: .
     on its own path (`data/` ⇒ `data/secrets/`). A layer without rules of its own is described in the parent's `## Inside`
     section: kind of file · the sub-folders allowed and how they are named · the child slots it points at.
   - A slot speaks only about its own path: a file elsewhere belongs to the slot of that path (`.env` is `Root_093_Env`, not a
-    line of `Data_102_Secrets`).
+    line of `Data_102_Secrets`). In `## Inside` a place outside the slot's path is named by its slot or skill
+    (`Data_102_Secrets` · `Skill_Task_VmAutomation`), never by a path — the `slot-overlap` gate reads every path written there.
   - A guide slot (`kind: guide`, general principles) holds no path of another slot. A design rule is not a slot: it lives in a skill.
 - Source = INPUT = git tracked. Output = gitignored:
   - APP: output / runtime / secrets.

@@ -1,5 +1,5 @@
 ---
-version: 28
+version: 29
 lang: vi
 ---
 
@@ -281,6 +281,15 @@ bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung 
   bundler; chỉ dùng bundler khi stack của project vốn có.
 - **Cấm:** màu viết thẳng · dialog nhảy (§F2) · bố cục xô khi tải · tương phản thấp · nút chỉ có icon mà không có nhãn · dáng
   mặc định chung chung thay cho kiểu đã khai.
+
+### F22. Kết quả một thao tác là TOAST, không bao giờ là một dòng trong trang
+**Mọi thao tác có báo lại (đã lưu · đã tạo · đã xoá · lỗi) hiện một toast: một panel nhỏ trượt vào ở mép phải, nói việc gì
+đã xảy ra và lúc nào (có giờ), rồi tự đi.** Không bao giờ chèn một dòng vào dòng chảy của trang - thông báo nằm trong trang
+đẩy nội dung xuống và bố cục nhảy.
+· Lỗi người dùng phải xử lý thì ở lại tới khi đóng; thành công thì đi sau vài giây. Nhiều toast thì xếp chồng.
+· Trang chỉ giữ điều mô tả chính trang (danh sách trống, thiếu quyền) - không giữ kết quả của một lần bấm.
+· Đo bằng máy: sau mỗi thao tác của bài kiểm trình duyệt, không phần tử thông báo nào (`role=status`/`alert`) nằm trong dòng
+  chảy trang; toast là `position: fixed` ở mép phải và mang giờ.
 
 ## BỘ KIỂM — luật đo được thì máy kiểm
 

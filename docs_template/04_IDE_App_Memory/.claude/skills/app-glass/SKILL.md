@@ -1,11 +1,12 @@
 ---
 id: Skill_App_Glass
 name: app-glass
-version: 1
+version: 2
 type: process
 checked: [Skill_App_Base, Skill_PBI_White, Design_172_Design]
+installs: [scripts/fx_check.mjs]
 description: The Glass kind of an app surface - translucent panels over a coloured wallpaper, light and dark, a switch to solid panels. Use when a repo declares {"style": "Glass"} in frontend/config/ui.json, or when building, porting or changing colours, fonts, spacing, shadows, blur, animations or icons of a Glass app. The rules every kind shares are in app-base. Vietnamese triggers - "kiểu glass", "kính mờ", "giao diện glass", "đổi màu theme", "hiệu ứng", "bóng đổ", "blur".
-from: _Store/03_SKILLS/Skill_App_Glass @v1 #1e1dd39fc7a1
+from: _Store/03_SKILLS/Skill_App_Glass @v2 #aac9a79f0bd6
 ---
 
 # app-glass — the Glass kind of an app surface
@@ -61,6 +62,11 @@ The template names each effect with an `FX:` marker; a port keeps the marker so 
 | tooltip · popover · toast | floating layers | a popover is OPAQUE (`app-base` F18); a toast never covers a control |
 | route · reveal · ripple · progress | page change · content entering · press feedback · load bar | short; never delays input |
 
+- **EVERY effect of the template is ported - none goes missing.** The table above names the shell effects only; the
+  template carries more (charts, lens, tilt, palette, timeline...), and each one comes over with its `FX:` marker on the
+  code that carries it. Not porting one is a decision: it is written in `frontend/config/ui.json` `fx_dropped` with the
+  reason and who approved it; nothing else counts. Effects that belong to a page are ported with that page, never left
+  for later without that entry.
 - **The solid switch:** a visible setting turns blur off (`html.solid`): panels take `--g-glass-strong` (dark: an opaque
   colour), no `backdrop-filter`. Low-power machines and remote desktops use it; it is saved like any UI setting (`app-base` F8).
 - **Reduced motion:** under `@media (prefers-reduced-motion: reduce)` every effect above that moves (drift · pill · route ·
@@ -72,6 +78,11 @@ The template names each effect with an `FX:` marker; a port keeps the marker so 
 
 ## 4. Check
 
+- `scripts/fx_check.mjs` (installed by this skill) lists every `FX:` marker of the template named in
+  `frontend/config/ui.json` (`{"style": "Glass", "template": "<path>"}`) and every marker in `frontend/src`: a template
+  effect the app does not carry and has not dropped with a reason is red (exit 1); a dropped entry without a reason, or for
+  an effect that is in fact ported, is red too. `--self-test` judges six built-in cases. A marker proves the port, not that
+  the effect runs: the repo's own browser test measures each effect running.
 - `scripts/ui_check.mjs` of `app-base` runs on every page at every width, in both themes and with the solid switch on.
 - Every `--g-` key used in a rule is declared at `:root` and again in `[data-theme="light"]` where the template declares it:
   compare the two key lists of the repo's kind file with the template's.

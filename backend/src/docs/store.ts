@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
 import { archiveDirOf } from "../core/config.js";
 import { relinkFrom } from "./relink.js";
-import { CONS_CHAPTERS, CONS_REPO_FILE, HOST_KIND, RULE_CODES, LEDGER, LEDGER_NAMES, LEGACY_LEDGER, LEGACY_SETS, LEGACY_SHELF, SHELF, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
+import { CONS_CHAPTERS, CONS_REPO_FILE, HOST_KIND, PART_FILE, PART_FIXED_FILES, PART_FOLDERS, PART_WORD, RULE_CODES, LEDGER, LEDGER_NAMES, LEGACY_LEDGER, LEGACY_SETS, LEGACY_SHELF, SHELF, TOOL_FORCED_NAMES, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
 import { viName } from "./vi-name-judge.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
@@ -1434,6 +1434,35 @@ const SHELF_CODE: Record<string, string[]> = {
  * its gate.json really does, a slot's area is the first segment of its path, the number is the number of its id. `legacy`
  * lists the parts still under a pre-dictionary name — the rename step drives that list to zero.
  */
+/** Rule_Gate_92: every folder and file inside one part follows the pattern table — the main file and its translation, the
+ *  fixed files, the folders of PART_FOLDERS, and lower case `_` names for the rest. `seed/` holds repo paths (named by the
+ *  repo's slots) and is not judged; names a tool writes itself are skipped. */
+function innerNameFindings(dir: string, mains: string[]): string[] {
+  const out: string[] = [];
+  const own = new Set<string>([...mains, ...mains.map((m) => m.replace(/\.md$/, ".vi.md")), ...PART_FIXED_FILES]);
+  const walk = (d: string, rel: string): void => {
+    let entries;
+    try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (TOOL_FORCED_NAMES.has(e.name)) continue;
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        if (!rel && e.name === "seed") continue;
+        if (!rel && !(PART_FOLDERS as readonly string[]).includes(e.name)) {
+          out.push(`${r}/ is not a folder a part may hold (${PART_FOLDERS.join(" · ")}) — Rule_Gate_92_NameGrammar`);
+          continue;
+        }
+        if (rel && !PART_WORD.test(e.name)) out.push(`${r}/: lower case, words joined by _ — Rule_Gate_92_NameGrammar`);
+        walk(join(d, e.name), r);
+      } else if (!(rel === "" && own.has(e.name)) && !PART_FILE.test(e.name)) {
+        out.push(`${r}: lower case, words joined by _ — Rule_Gate_92_NameGrammar`);
+      }
+    }
+  };
+  walk(dir, "");
+  return out;
+}
+
 export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legacy: string[] } {
   const wrong: string[] = [];
   const legacy: string[] = [];
@@ -1488,6 +1517,7 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
         const area = slotArea(String(p.meta.path ?? ""));
         if (area !== n.group) wrong.push(`${where}: area ${n.group} but path ${String(p.meta.path ?? "")} is in ${area}`);
       }
+      for (const bad of innerNameFindings(p.dir, [mainOf(p), `${leafOf(p.folder)}.md`])) wrong.push(`${where}: ${bad}`);
     }
   }
   // inside the law layers: the codes of law / the chapters and nothing else (a part still flat is named above)

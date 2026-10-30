@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 # Venv_108_Venv .venv — a repo's own Python environment
@@ -22,7 +22,7 @@ Một repo dùng một trong hai đường, không dùng cả hai: repo có `.ve
 - Thứ công cụ dựng ra (`python -m venv` · `uv venv`): `pyvenv.cfg` · `Scripts\` (Windows) hoặc `bin\` · `Lib\site-packages\`.
   Không ghi tay gì vào đây; dựng lại từ file khai thư viện của repo (`requirements.txt` · `pyproject.toml`), nên xoá đi không mất
   gì.
-- App có backend nằm ở `backend/` được đặt nó ở đó (`backend/.venv/`), cạnh file khai thư viện của backend.
+- App có backend mang file khai thư viện riêng thì đặt nó cạnh file đó (`backend/.venv/`).
 
 ## Luật
 

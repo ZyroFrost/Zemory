@@ -5,7 +5,7 @@
 **A project harness for building apps of any kind, plus a local, cross-session memory for the agents that build them.**
 
 Zemory gives every project a **folder harness assembled from one shared parts store**: laws a machine
-enforces, a constitution the repo writes for itself, a 138-slot structure standard that scaffolds *any*
+enforces, a constitution the repo writes for itself, a 168-slot structure standard that scaffolds *any*
 app (web, CLI, desktop, **and AI/LLM apps**, with first-class `ai/` · `agents/` · `tools/` · `evals/`
 slots), and skills an agent opens when a task calls for them. It also keeps one local memory that
 captures every coding-agent session, so you can recall anything across tools, projects and machines,
@@ -76,7 +76,7 @@ drift away from the code.
 Zemory is **two independent tools** you can use separately or together:
 
 - **A per-project harness (no database needed).** A folder harness built from one parts store: shared
-  laws, most of them held by a hook or a test; a constitution the repo writes for itself; a 138-slot
+  laws, most of them held by a hook or a test; a constitution the repo writes for itself; a 168-slot
   structure standard; skills; a TODO and a changelog. The structure standard covers the concerns of a
   modern app (API, store, jobs, auth, i18n, UI) including the slots for AI/LLM apps: `ai/` (model
   provider), `agents/` (agent loop and planning), `tools/` (LLM tool-calling), `evals/` (quality gates).
@@ -465,15 +465,47 @@ repo on its next sync, and a repo always knows which version of each part it car
 
 | shelf | holds | today |
 |---|---|---|
-| `01_LAW/_Rule` | shared working laws, in five chapters: `01_Harness` · `02_Work` · `03_Safety` · `04_Writing` · `05_Domain` | 38 (24 Gate · 14 Keys) |
-| `01_LAW/_Cons` | constitution frames a repo fills in, in four chapters: `01_Scope` · `02_Data` · `03_System` · `04_Security` | 8 |
+| `01_LAW/_Rule` | shared working laws, in five chapters: `01_Harness` · `02_Work` · `03_Safety` · `04_Writing` · `05_Domain` | 40 (26 Gate · 14 Keys) |
+| `01_LAW/_Cons` | constitution frames a repo fills in, in four chapters: `01_Scope` · `02_Data` · `03_System` · `04_Security` | 9 |
 | `02_STRUCTURE` | repo structures (`Struc_Repo_*`, plus `Struc_Region_Workspace`), slots (`_Slot/`, one per folder concern), hosts (`_Host/`: GUI · IDE · CLI) | 11 structures (repo, region, disk) · 168 slots · 3 hosts |
-| `03_SKILLS` | playbooks an agent opens on a trigger, with the scripts they install | 30 |
+| `03_SKILLS` | playbooks an agent opens on a trigger, with the scripts they install | 32 |
 | `04_TODO.md` · `05_CHANGES.md` | the frames of a repo's backlog and changelog, written once at init | — |
 
 Retired parts move to the store's `Archive/` with their history. A part carries its own gate where it
 has one (`gate.json`, a `hook.cjs`, block/pass examples a test replays), so a rule and the machine that
 holds it travel together.
+
+### Slots and names
+
+**A slot describes one path.** It says what kind of file lives at that path, what it means and what it
+is for (`Root_136_Principles`). The path is the slot's key:
+
+- Two slots never declare the same path. The `slot-overlap` gate goes red on a pair, old or new, and
+  no `checked:` line lifts it; the second slot's text goes into the first.
+- One path that plays several roles under other names (`package.json` · `pyproject.toml`) is still one
+  slot, with both names in its `path:`.
+- Assembling a slot means the repo uses that folder. A slot has no modes.
+- A layer inside the path that has rules of its own (enters git or not, who edits it) becomes a child
+  slot on its own path (`data/` and `data/secrets/`). A layer without rules of its own is described in
+  the parent's `## Inside` section. Every path written there must lie under the slot's own path; a place
+  elsewhere is named by its slot or skill, and the gate reads every path to keep it so.
+- A design rule is not a slot. It lives in a skill: `app-base` holds what every app surface follows,
+  and a kind skill (`app-glass`) holds one look. A repo declares its kind in `frontend/config/ui.json`.
+
+**Every name on HS follows a declared pattern** (`Rule_Gate_92_NameGrammar`). The pattern table covers
+shelves, layers, chapters, parts, sets, the `name:` field, and the folders and files inside a part:
+
+| thing | pattern |
+|---|---|
+| rule · constitution frame | `Rule_<Gate\|Keys\|Core>_NN_<Name>` · `Cons_<Gate\|Keys\|Core>_NN_<Name>` |
+| structure · slot | `Struc_<Repo\|Region\|Disk>_<Name>` · `<Area>_NNN_<Name>` (area = the first segment of the path) |
+| skill | `Skill_<Family>_<Name>`, the family being what the skill produces: `Doc` · `Harness` · `Task` · `PBI` · `App` · `Db` · `Frame` · `Own` |
+| folder inside a part | plural for many files of one kind (`scripts/` · `references/` · `tests/`), singular for one concept (`seed/`) |
+| other file inside a part | lower case ASCII English, words joined by `_` (`edit_traps.md` · `lang_scan.mjs`) |
+
+A name no pattern covers is not invented: the agent proposes one on the closest pattern and asks. The
+table lives in the rule, and the machine reads the same patterns from `backend/src/docs/harness-names.ts`;
+the HS test is red on a part, folder or file name that matches none of them.
 
 ### Languages: one English header, translations beside it
 

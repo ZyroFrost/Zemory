@@ -56,6 +56,18 @@ export const LEDGER_NAMES = {
 
 /** The file a constitution frame's repo copy is written in (plan/28 §0q): the repo's own text, never overwritten by sync. */
 export const CONS_REPO_FILE = "Cons.md";
+
+// ── names inside a part (Rule_Gate_92_NameGrammar) ──────────────────────────────────────────────────────────────────
+/** The folders a part may hold: plural for many things of one kind, singular for one concept (`seed/` = repo paths). A new
+ *  folder is fixed in the rule's table first, then added here in the same change. */
+export const PART_FOLDERS = ["scripts", "references", "tests", "seed"] as const;
+/** Files every part may hold by a fixed name, beside its main file and translation. */
+export const PART_FIXED_FILES = ["gate.json", "hook.cjs", CONS_REPO_FILE] as const;
+/** Any other file or folder inside a part: lower case ASCII, words joined by `_` (a file keeps its extension). */
+export const PART_FILE = /^[a-z0-9][a-z0-9_]*(\.[a-z0-9]+)+$/;
+export const PART_WORD = /^[a-z0-9][a-z0-9_]*$/;
+/** Names a tool writes by itself inside a part (never ours to rename). */
+export const TOOL_FORCED_NAMES = new Set(["__pycache__", "node_modules"]);
 /** Numbers from here up are the repo's own articles; the store never uses them. */
 export const OWN_ARTICLE_FROM = 101;
 

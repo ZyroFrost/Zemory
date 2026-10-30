@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 10
+version: 11
 path: _ConfigVault/<tool>/
 scope: layout
 ---
@@ -39,8 +39,8 @@ _ConfigVault\
 - The vault is the ONE home of every env-type secret that a program or an agent uses — SQL logins, app and API secrets, mail
   accounts, shared certificates — and of the shared connection register, for all repos and apps on the machine
   (`Rule_Gate_21_WhatEntersGit` step 3a). No repo and no app keeps its own copy, and no repo holds a connection string or a
-  variable of its own for one (`<SYSTEM>_CONN` goes): code asks `scripts/vault_conn.py` for `conn(<machine>, <database>)` and the
-  reader builds it from this folder, never printing the secret. What stays in a repo's `data/secrets/` is only a business secret
+  variable of its own for one (`<SYSTEM>_CONN` goes): code asks `vault_conn.py` (skill `Skill_Task_VmAutomation`) for `conn(<machine>, <database>)` and the
+  reader builds it from this folder, never printing the secret. What stays in a repo's own secrets (`Data_102_Secrets`) is only a business secret
   one department uses alone (the password of that department's workbook) or a key only that repo's own product uses. An app
   that keeps its server-side copy sealed (systemd credentials on a Linux host) holds a COPY: the source is the vault.
 - ONE master vault: the operator's work PC. A machine that runs automation holds a copy of only the entries it needs, in the SAME

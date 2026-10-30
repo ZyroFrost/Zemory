@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 
@@ -56,6 +56,10 @@ Template gắn mỗi hiệu ứng một dấu `FX:`; bản chép giữ dấu đ�
 | tooltip · popover · toast | các lớp nổi | popover ĐỤC (`app-base` F18); toast không che nút điều khiển |
 | route · reveal · ripple · progress | đổi trang · nội dung hiện vào · phản hồi khi bấm · thanh tải | ngắn; không làm chậm thao tác |
 
+- **Chuyển ĐỦ mọi hiệu ứng của mẫu - không cái nào được mất.** Bảng trên chỉ kể hiệu ứng của khung; mẫu còn nhiều hơn
+  (biểu đồ, thấu kính, nghiêng, bảng lệnh, dòng thời gian...), và mỗi cái chuyển sang kèm dấu `FX:` đặt trên chính đoạn mã
+  mang nó. Không chuyển một cái là một quyết định: ghi ở `frontend/config/ui.json` `fx_dropped` kèm lý do và ai duyệt; ngoài
+  ra không tính. Hiệu ứng thuộc một trang thì chuyển cùng trang đó, không để "làm sau" mà thiếu dòng khai ấy.
 - **Công tắc solid:** một thiết lập nhìn thấy được tắt blur (`html.solid`): panel lấy `--g-glass-strong` (tối: một màu đục), không
   `backdrop-filter`. Máy yếu và máy điều khiển từ xa dùng nó; lưu như mọi thiết lập UI (`app-base` F8).
 - **Giảm chuyển động:** dưới `@media (prefers-reduced-motion: reduce)` mọi hiệu ứng có chuyển động ở trên (trôi · pill · route ·
@@ -66,6 +70,11 @@ Template gắn mỗi hiệu ứng một dấu `FX:`; bản chép giữ dấu đ�
 
 ## 4. Phép kiểm
 
+- `scripts/fx_check.mjs` (skill này cài) kê mọi dấu `FX:` của mẫu ghi ở `frontend/config/ui.json`
+  (`{"style": "Glass", "template": "<đường>"}`) và mọi dấu trong `frontend/src`: hiệu ứng của mẫu mà app không mang và chưa
+  khai bỏ kèm lý do là đỏ (exit 1); dòng khai bỏ thiếu lý do, hoặc khai bỏ một hiệu ứng thật ra đã chuyển, cũng đỏ.
+  `--self-test` xét sáu ca dựng sẵn. Dấu chứng minh đã chuyển, không chứng minh hiệu ứng chạy: bài kiểm trình duyệt của repo đo
+  từng hiệu ứng đang chạy.
 - `scripts/ui_check.mjs` của `app-base` chạy trên mọi trang, mọi bề rộng, cả hai theme và khi bật công tắc solid.
 - Mọi khoá `--g-` dùng trong luật CSS đều được khai ở `:root` và khai lại ở `[data-theme="light"]` ở chỗ template có khai: so hai
   danh sách khoá của file kiểu trong repo với của template.

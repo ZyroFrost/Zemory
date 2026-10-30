@@ -2,8 +2,8 @@
 id: Slot_108
 aka: 03-108
 name: .venv
-version: 5
-path: .venv/
+version: 6
+path: .venv/ · backend/.venv/
 ---
 # Venv_108_Venv .venv — a repo's own Python environment
 
@@ -25,7 +25,7 @@ A repo uses one of the two ways, never both: a repo with `.venv/` declares no sh
 - What the tool builds (`python -m venv` · `uv venv`): `pyvenv.cfg` · `Scripts\` (Windows) or `bin\` · `Lib\site-packages\`.
   Nothing is written into it by hand; it is rebuilt from the repo's dependency file (`requirements.txt` · `pyproject.toml`), so
   deleting it loses nothing.
-- An app with its backend under `backend/` may keep it there (`backend/.venv/`), beside the backend's dependency file.
+- An app whose backend has its own dependency file keeps it beside that file (`backend/.venv/`).
 
 ## Rules
 

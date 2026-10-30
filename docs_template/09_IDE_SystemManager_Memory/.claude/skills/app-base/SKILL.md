@@ -3,12 +3,12 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 28
+version: 29
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_App_Base @v28 #c30ccb472f2b
+from: _Store/03_SKILLS/Skill_App_Base @v29 #4ddc92d7347d
 ---
 
 # app-base — the APP design standard (FE + BE)
@@ -290,6 +290,15 @@ depth, motion and icons. The STACK (no-build CSS variables, a framework with a b
   no bundler; a bundler only when the project's stack already has one.
 - **Banned:** colour literals · a dialog that jumps (§F2) · layout shift on load · low contrast · an icon-only control without a
   label · a generic default look in place of the declared kind.
+
+### F22. The result of an action is a TOAST, never a line in the page
+**Every action that reports back (saved · created · deleted · failed) shows a toast: a small panel that slides in at the
+right edge, says what happened and when (its time), and leaves by itself.** It never inserts a line into the page flow -
+a notice inside the page pushes the content down and the layout jumps.
+· An error the person must act on stays until closed; a success leaves after a few seconds. Several toasts stack.
+· The page keeps only what describes the page itself (an empty list, a missing right) - not the outcome of a click.
+· Measure by machine: after each action of the browser test, no notice element (`role=status`/`alert`) sits in the page
+  flow; the toast is `position: fixed` at the right edge and carries a time.
 
 ## THE CHECKER — rules that can be measured are checked by the machine
 

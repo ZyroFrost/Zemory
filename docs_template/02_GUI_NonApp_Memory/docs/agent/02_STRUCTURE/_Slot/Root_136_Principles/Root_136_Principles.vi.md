@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 # Root_136_Principles principles — nguyên tắc chung của chuẩn cấu trúc
@@ -23,7 +23,8 @@ lang: vi
     (`data/` ⇒ `data/secrets/`). Lớp không có luật riêng được mô tả ở mục `## Inside` của slot cha: loại file · folder con được
     thêm và khuôn tên · các slot con nó trỏ tới.
   - Slot chỉ nói về path của chính nó: file ở path khác thuộc slot của path đó (`.env` là `Root_093_Env`, không phải một dòng của
-    `Data_102_Secrets`).
+    `Data_102_Secrets`). Trong `## Inside`, chỗ nằm ngoài path của slot được gọi bằng tên slot hay skill
+    (`Data_102_Secrets` · `Skill_Task_VmAutomation`), không bằng path — cổng `slot-overlap` đọc mọi path viết ở đó.
   - Slot hướng dẫn (`kind: guide`, nguyên tắc chung) không giữ path của slot khác. Luật thiết kế không phải slot: nó sống trong skill.
 - Nguồn = ĐẦU VÀO = git tracked. Đầu ra = gitignore:
   - APP: output / runtime / secret.
