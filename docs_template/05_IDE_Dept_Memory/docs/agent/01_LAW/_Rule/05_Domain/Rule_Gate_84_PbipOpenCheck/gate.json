@@ -78,6 +78,23 @@
         "flags_dir": "docs/hooks",
         "flags": {}
       }
+    },
+    {
+      "note": "the open check fails without a file-breaking line (a crash, a missing interpreter)",
+      "files": {
+        "scripts/pbi_gate.py": "import sys\nprint(\"Traceback: something else went wrong\")\nsys.exit(1)\n",
+        "reports/R_Mix/R.pbip": "{}\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {
+        "command": "Start-Process \"reports/R_Mix/R.pbip\""
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
     }
   ]
 }

@@ -1,14 +1,14 @@
 ---
 id: Struc_Repo_Dept
 name: repo-dept
-version: 13
+version: 14
 profile: non-app
 label: DEPT
 intro: : repo của một phòng ban trong một vùng có tổng quản — việc theo case (kéo · xử lý · giao báo cáo), báo cáo BI, tác vụ chạy định kỳ trên máy chủ; không phát triển app
 ask: ; repo phòng ban nhận dữ liệu từ DW của tổng quản và giao báo cáo cho người nhận là DEPT
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
-installs: [scripts/region_values.py]
+installs: [scripts/region_values.py, bin/_python.cmd, config/runtime.json]
 ---
 # Struc_Repo_Dept
 
@@ -23,6 +23,11 @@ department repo. The slots live in `_Slot/` and belong to no kind.
   required. The relations and boundaries between the repos of a group: `Struc_Region_Workspace`.
 - The group's real values (servers · shared libraries · mailboxes · department codes) live in the manager (slot `Data_140_WorkspaceValues`).
   `scripts/region_values.py` (installed into the repo by this template) finds the manager through `owner` in the marker; tools and skills name only the KEY.
+- Python: `config/runtime.json` declares the version the repo runs (`{"python": "3.12.10"}`); `bin/_python.cmd` (both installed
+  by this template, byte-equal to the manager's copy) resolves `<data root>\Software\Dev\Python\<version>\App\python.exe` on the
+  drive holding `_ConfigVault` (slot `Software_149_Program`). Every launcher in `bin/` calls it — `call "%~dp0_python.cmd" || exit /b 3`
+  then `"%PY%"` — and never a bare `python` from PATH. A repo that needs another version changes the number in its own
+  `runtime.json`; sync keeps that edit and reports it.
 - Mail: recipients, senders and sending keys live in the machine vault's mail book (`ConfigVault_151_ConfigVault` › `mail\configs\`); a department repo keeps no contact list.
 - Git is a BACKUP ON THE MACHINE (`role.git: local`): commit often, no remote, no push. Other machines get the repo through
   zemory's backup and Syncthing, never through git. Never report "no remote yet / not pushed". Machine check: the guard blocks `git push` ·

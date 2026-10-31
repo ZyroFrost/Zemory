@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Rule_Gate_84_PbipOpenCheck — Open a .pbip only when nothing in it breaks the file
@@ -12,7 +12,8 @@ việc mở tới khi sửa xong.
 - Một lệnh mở file `.pbip` (`Start-Process` · `Invoke-Item` · `start` · `& "…"`).
 
 ## Phải làm gì
-1. Chạy `python scripts/pbi_gate.py <report> --open-check` trước khi mở.
+1. Chạy `scripts/pbi_gate.py <report> --open-check` trước khi mở, bằng Python mà repo khai trong `config/runtime.json`
+   (`<gốc dữ liệu>\Software\Dev\Python\<bản>\App\python.exe`, slot `Software_149_Program`) — không bao giờ dùng `python` trơn từ PATH.
 2. Có lỗi làm hỏng file ⇒ không mở; sửa hết rồi mở lại.
 3. Lỗi thiết kế và lỗi DW không chặn việc mở: chúng được in là cần kiểm, và cổng đầy đủ chạy lại khi file đã mở.
 4. `config/pbi-gate.json` › `strict_page` chọn trang kiểm nghiêm theo từng report.
@@ -23,6 +24,8 @@ việc mở tới khi sửa xong.
 - ✓ Đúng: lệnh mở bị chặn kèm danh sách lỗi; sửa measure trùng, chạy lại, rồi mở.
 
 ## Máy kiểm
-- Guard chạy `--open-check` cho mọi lệnh mở `.pbip` và chặn khi cổng thoát 1.
+- Guard chạy `--open-check` cho mọi lệnh mở `.pbip` và chặn khi cổng thoát 1 VÀ in ra dòng lỗi làm hỏng file (`  X …`). Guard chạy
+  Python được khai trước, rồi tới `py`, cuối cùng là PATH; một mã thoát không kèm dòng đó (không có trình chạy, mã 9009 của stub
+  Windows Store, lỗi sập) không bao giờ chặn.
 - Cổng không chạy được, quá 40 giây, hoặc không thấy lỗi làm hỏng file (thoát 0 · 2 · 3) ⇒ cho qua. Trần 40 giây giữ guard dưới
   thời hạn của host: guard bị cắt thì mọi chốt khác của lệnh đó cũng mất.

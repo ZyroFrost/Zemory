@@ -1436,19 +1436,24 @@ const SHELF_CODE: Record<string, string[]> = {
  */
 /** Rule_Gate_92: every folder and file inside one part follows the pattern table — the main file and its translation, the
  *  fixed files, the folders of PART_FOLDERS, and lower case `_` names for the rest. `seed/` holds repo paths (named by the
- *  repo's slots) and is not judged; names a tool writes itself are skipped. */
-function innerNameFindings(dir: string, mains: string[]): string[] {
+ *  repo's slots) and is not judged; names a tool writes itself are skipped. A file the part declares under `installs:`
+ *  carries the repo path it lands on (`bin/_python.cmd` · `config/runtime.json`), so it and its top folder are the repo's
+ *  names, not judged either. */
+function innerNameFindings(dir: string, mains: string[], installs: string[] = []): string[] {
   const out: string[] = [];
   const own = new Set<string>([...mains, ...mains.map((m) => m.replace(/\.md$/, ".vi.md")), ...PART_FIXED_FILES]);
+  const installed = new Set(installs.map((f) => f.replace(/\\/g, "/")));
+  const installTops = new Set([...installed].filter((f) => f.includes("/")).map((f) => f.split("/")[0]));
   const walk = (d: string, rel: string): void => {
     let entries;
     try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
     for (const e of entries) {
       if (TOOL_FORCED_NAMES.has(e.name)) continue;
       const r = rel ? `${rel}/${e.name}` : e.name;
+      if (installed.has(r)) continue;
       if (e.isDirectory()) {
         if (!rel && e.name === "seed") continue;
-        if (!rel && !(PART_FOLDERS as readonly string[]).includes(e.name)) {
+        if (!rel && !(PART_FOLDERS as readonly string[]).includes(e.name) && !installTops.has(e.name)) {
           out.push(`${r}/ is not a folder a part may hold (${PART_FOLDERS.join(" · ")}) — Rule_Gate_92_NameGrammar`);
           continue;
         }
@@ -1517,7 +1522,7 @@ export function partNameFindings(storeDir = STORE_DIR): { wrong: string[]; legac
         const area = slotArea(String(p.meta.path ?? ""));
         if (area !== n.group) wrong.push(`${where}: area ${n.group} but path ${String(p.meta.path ?? "")} is in ${area}`);
       }
-      for (const bad of innerNameFindings(p.dir, [mainOf(p), `${leafOf(p.folder)}.md`])) wrong.push(`${where}: ${bad}`);
+      for (const bad of innerNameFindings(p.dir, [mainOf(p), `${leafOf(p.folder)}.md`], installsOf(p))) wrong.push(`${where}: ${bad}`);
     }
   }
   // inside the law layers: the codes of law / the chapters and nothing else (a part still flat is named above)

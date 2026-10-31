@@ -129,13 +129,34 @@ function check(payload, root, policy) {
       for (const [k, v] of Object.entries(cfg.strict_page || {})) if (reportDir.replace(/\\/g, "/").toLowerCase().includes(k.toLowerCase())) strict = v;
     } catch { /* no settings: the light check */ }
     const args = [gate, reportDir, "--open-check", ...(strict ? ["--page", strict] : [])];
-    const r = spawnSync("python", args, { cwd: root, encoding: "utf8", timeout: OPEN_CAP_MS, windowsHide: true,
-      env: Object.assign({}, process.env, { PYTHONIOENCODING: "utf-8" }) });
-    // the gate cannot run, ran out of time, or found nothing that breaks the file: do not block
-    if (r.error || r.status === null || r.status === 0 || r.status === 2 || r.status === 3) return null;
+    // the Python the repo declares (config/runtime.json, slot Software_149_Program: <data root>\Software\Dev\Python\<version>\
+    // App\python.exe on the drive holding _ConfigVault, as bin/_python.cmd resolves it); then the py launcher; PATH last
+    const runners = [];
+    try {
+      const ver = JSON.parse(fs.readFileSync(path.join(root, "config", "runtime.json"), "utf8")).python;
+      for (const d of ["E", "D", "C"]) {
+        if (!ver || !fs.existsSync(d + ":\\_ConfigVault")) continue;
+        const exe = d + ":\\Software\\Dev\\Python\\" + ver + "\\App\\python.exe";
+        if (fs.existsSync(exe)) runners.push([exe, []]);
+        break;
+      }
+    } catch { /* no declaration: the launcher or PATH */ }
+    runners.push(["py", ["-3"]], ["python", []]);
+    let r = null;
+    for (const [exe, pre] of runners) {
+      r = spawnSync(exe, [...pre, ...args], { cwd: root, encoding: "utf8", timeout: OPEN_CAP_MS, windowsHide: true,
+        env: Object.assign({}, process.env, { PYTHONIOENCODING: "utf-8" }) });
+      // not found, or the Windows store stub that stands in for a missing python (9009): try the next one
+      if (!(r.error && r.error.code === "ENOENT") && r.status !== 9009) break;
+    }
+    // the gate cannot run, ran out of time, or found nothing that breaks the file: do not block. Only the gate's own
+    // finding lines block - an exit code alone (a missing interpreter, a crash) never does
+    if (!r || r.error || r.status === null || r.status === 0 || r.status === 2 || r.status === 3) return null;
+    const found = String(r.stdout || "").split("\n").filter((l) => /^\s+X /.test(l));
+    if (!found.length) return null;
     return blocked(root, policy, "02-84", "this opens " + path.basename(m[1]) + " while it is BROKEN (Desktop would refuse it or open it " +
-      "with issues). Fix these, then open again - python scripts/pbi_gate.py " + path.relative(root, reportDir) + " --open-check:\n\n" +
-      String(r.stdout || "").split("\n").filter((l) => /^\s+X /.test(l)).join("\n"));
+      "with issues). Fix these, then open again - scripts/pbi_gate.py " + path.relative(root, reportDir) + " --open-check:\n\n" +
+      found.join("\n"));
   } catch { return null; }
 }
 module.exports = { check };

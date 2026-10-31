@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 # Struc_Repo_Dept
@@ -15,6 +15,10 @@ repo phòng ban. Slot nằm ở `_Slot/` và không mang hệ nào.
   buộc. Quan hệ và ranh giới giữa các repo của cụm: `Struc_Region_Workspace`.
 - Giá trị thật của cụm (máy chủ · thư viện chia sẻ · hộp thư · bộ mã phòng) nằm ở tổng quản (slot `Data_140_WorkspaceValues`).
   `scripts/region_values.py` (template này cài vào repo) tìm tổng quản theo `owner` trong marker; tool và skill chỉ nêu TÊN KHOÁ.
+- Python: `config/runtime.json` khai bản repo chạy (`{"python": "3.12.10"}`); `bin/_python.cmd` (cả hai do template này cài,
+  giống từng byte bản của tổng quản) tìm `<gốc dữ liệu>\Software\Dev\Python\<bản>\App\python.exe` trên ổ chứa `_ConfigVault`
+  (slot `Software_149_Program`). Mọi launcher trong `bin/` gọi nó — `call "%~dp0_python.cmd" || exit /b 3` rồi `"%PY%"` — không
+  bao giờ gọi `python` trơn từ PATH. Repo cần bản khác thì sửa số trong `runtime.json` của chính nó; sync giữ chỗ sửa đó và báo ra.
 - Mail: người nhận, người gửi và khoá gửi nằm ở sổ mail trong két của máy (`ConfigVault_151_ConfigVault` › `mail\configs\`); repo phòng không giữ danh bạ.
 - Git là BẢN SAO LƯU TẠI MÁY (`role.git: local`): commit thường xuyên, không có remote, không push. Máy khác nhận repo qua sao lưu
   của zemory và Syncthing, không qua git. Không bao giờ báo "chưa có remote / chưa push". Máy kiểm: guard chặn `git push` ·

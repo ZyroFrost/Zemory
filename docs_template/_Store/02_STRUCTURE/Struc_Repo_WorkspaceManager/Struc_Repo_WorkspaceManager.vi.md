@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 # Struc_Repo_WorkspaceManager
@@ -29,6 +29,9 @@ cung cấp cho cả cụm. Template này khác nhau theo từng cụm của ngư
   - `zemory sync --self` chỉ ráp repo này. Repo có phiên agent đang làm dở ⇒ chờ phiên đó commit rồi mới sync.
 - Cài `scripts/region_values.py` như template phòng ban (bản chép từng byte của bản ở `Struc_Repo_Dept`, test giữ hai bản
   bằng nhau): tool của skill PBI và task VM đọc giá trị cụm qua nó; chạy trong chính repo này thì nó nhận repo này là tổng quản.
+- Cài `bin/_python.cmd` và `config/runtime.json` theo cùng cách (giống từng byte bản ở `Struc_Repo_Dept`): Python repo này chạy là bản
+  `runtime.json` khai, ở `<gốc dữ liệu>\Software\Dev\Python\<bản>\App\` (slot `Software_149_Program`); mọi launcher trong `bin/` gọi
+  helper đó, không bao giờ gọi `python` trơn từ PATH.
 
 ## Repo khác dùng dịch vụ thế nào
 

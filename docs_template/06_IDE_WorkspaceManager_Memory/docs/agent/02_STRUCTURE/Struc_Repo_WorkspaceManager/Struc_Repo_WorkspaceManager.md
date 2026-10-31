@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_WorkspaceManager
 name: repo-workspace-manager
-version: 9
+version: 10
 profile: non-app
 label: WORKSPACE-MANAGER
 intro: : repo tổng quản của một cụm — giữ dữ liệu dùng chung (DW, kho dữ liệu), giá trị của cụm, bộ mail chung; quyết khung và chuẩn của các repo phòng ban nó quản
@@ -9,8 +9,8 @@ ask: ; repo giữ kho dữ liệu và chuẩn chung mà các repo phòng ban đ�
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_NonApp]
-installs: [scripts/region_values.py]
-from: _Store/02_STRUCTURE/Struc_Repo_WorkspaceManager @v9 #5874ae271114
+installs: [scripts/region_values.py, bin/_python.cmd, config/runtime.json]
+from: _Store/02_STRUCTURE/Struc_Repo_WorkspaceManager @v10 #226e5a27f148
 ---
 # Struc_Repo_WorkspaceManager
 
@@ -39,6 +39,9 @@ provides to the whole group. This template differs from one owner's group to ano
   - `zemory sync --self` assembles only this repo. A repo with an agent session mid-work ⇒ wait for that session to commit before syncing.
 - Installs `scripts/region_values.py` like the department template (a byte-for-byte copy of the one in `Struc_Repo_Dept`, a test keeps the two copies
   equal): the tools of the PBI skills and the VM tasks read the group's values through it; run inside this repo, it takes this repo as the manager.
+- Installs `bin/_python.cmd` and `config/runtime.json` the same way (byte-for-byte the copies in `Struc_Repo_Dept`): the Python this repo
+  runs is the version `runtime.json` declares, under `<data root>\Software\Dev\Python\<version>\App\` (slot `Software_149_Program`); every
+  launcher in `bin/` calls the helper and never a bare `python` from PATH.
 
 ## How other repos use the services
 

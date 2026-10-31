@@ -112,6 +112,12 @@
   (`<tmp>/claude/<project>/<session>/scratchpad`) khi thư mục đó đã có 5 file; không có cờ vượt — xoá file đã dùng
   xong rồi tạo lại. `scratchTick` quét thư mục nháp mỗi 6 giờ, dọn phiên quá 7 ngày hoặc khi tổng vượt 2 GB (cũ nhất
   trước), không đụng phiên đang chạy hay thư mục vừa ghi trong 6 giờ, fail-open. <!-- gate: guard -->
+- `02-93` **Phiên chính tự làm; subagent chỉ nhận việc vặt nhỏ.** Subagent (Agent · agent chạy nền · workflow) chỉ cho việc tốn
+  ít token, không cần ngữ cảnh lớn; không bao giờ bắt subagent đọc lại thứ phiên chính đã nạp (template · chuẩn · spec · file
+  lớn). Trước khi gọi: việc này có cần đọc nhiều file, đọc trọn file, hay brief dài không? Có ⇒ tự làm. **Chốt máy:** hook
+  `02-93_subagent-small-only` chặn lời gọi `Agent` · `Task` · `Workflow` có brief nêu từ 5 file, bảo đọc trọn file, hoặc dài từ
+  4.000 ký tự; cờ một lần `.allow-agent` chỉ tạo khi user gọi đích danh subagent/workflow trong phiên. Luật chung:
+  `Rule_Gate_93_SubagentSmallOnly`. <!-- gate: guard -->
 - `02-5` **`.gitignore` là giấu, không phải dọn.** File nháp ghi ra thư mục nháp ngoài repo. Buộc phải ghi
   trong repo (công cụ ép đường dẫn · script cần cwd) ⇒ đặt tên `_scratch_*` và xoá trong cùng lượt (xoá đường
   `_scratch_*` không cần cờ, `02-10`). Thêm pattern vào `.gitignore` không tính là đã dọn: file vẫn nằm trên đĩa và vẫn lớn lên. <!-- gate: hook:precommit-guard -->
