@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 30
+version: 31
 type: process
 aka: pbip
 checked: [Rule_Gate_84_PbipOpenCheck, Skill_PBI_White, Rule_Keys_87_NoSilentBlankPage]

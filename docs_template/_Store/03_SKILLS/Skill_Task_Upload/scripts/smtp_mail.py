@@ -7,9 +7,8 @@ Trade-off, stated plainly: this stores a MAILBOX PASSWORD in the vault, whereas 
 to one mailbox by policy. A mailbox password is that user's whole identity. Prefer Graph when consent is obtainable; use this
 when it is not.
 
-The password never touches the repo - it comes from the machine vault (vault_conn.py, key SMTP-<HOST>_<DOMAIN>_<MAILBOX>_PASS),
-or from the repo's DPAPI vault (scripts/vault.ps1) when the machine vault has no entry for this mailbox, and lives only in memory
-for the duration of the call.
+The password never touches the repo - it comes from the machine vault (vault_conn.py, key SMTP-<HOST>_<DOMAIN>_<MAILBOX>_PASS)
+and lives only in memory for the duration of the call.
 
 `--draft` has no SMTP equivalent: there is no mailbox folder to park a message in. Instead this writes a .eml file that opens in
 Outlook/OWA as a ready-to-send mail, so a person can still review before anything leaves.
@@ -21,57 +20,31 @@ from __future__ import annotations
 import os
 import re
 import smtplib
-import subprocess
 from email.message import EmailMessage
 from email.utils import formataddr
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-VAULT_PS1 = REPO / "scripts" / "vault.ps1"
 
 DEFAULT_HOST = os.environ.get("SMTP_HOST", "smtp.office365.com")
 DEFAULT_PORT = int(os.environ.get("SMTP_PORT", "587"))
-KEY_PASSWORD = "SMTP_PASSWORD"          # vault set SMTP_PASSWORD
 
 
 class MailError(RuntimeError):
     """Anything that must stop the send. Written to be read by a person."""
 
 
-def _read_secret(name: str) -> str:
-    if not VAULT_PS1.exists():
-        raise MailError(f"vault script missing: {VAULT_PS1}")
-    script = (
-        f". '{VAULT_PS1}'; "
-        f"$s = Get-VaultSecret -Name '{name}'; "
-        "[Runtime.InteropServices.Marshal]::PtrToStringAuto("
-        "[Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"
-    )
-    proc = subprocess.run(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
-        capture_output=True, text=True)
-    if proc.returncode != 0 or not proc.stdout.strip():
-        raise MailError(
-            f"cannot read '{name}' from the vault.\n"
-            f"  Store it once (the agent never sees the value):  vault set {name}\n"
-            f"  It is the password of the mailbox in `from_mailbox`.")
-    return proc.stdout.strip()
-
-
 def _mailbox_password(mailbox: str, host: str) -> str:
-    """The machine vault's entry for this mailbox (smtp.office365.com + <mailbox> -> SMTP-OFFICE365_<DOMAIN>_<MAILBOX>_PASS), else the DPAPI vault."""
-    try:
-        import sys
-        sys.path.insert(0, str(Path(__file__).resolve().parent))
-        import vault_conn
-        local, _, domain = mailbox.partition("@")
-        k = vault_conn.key("SMTP-" + host.split(".")[-2], domain, local, "PASS")
-        value = vault_conn.secrets().get(k)
-        if value:
-            return value
-    except ImportError:
-        pass
-    return _read_secret(KEY_PASSWORD)
+    """The machine vault's entry for this mailbox (smtp.office365.com + <mailbox> -> SMTP-OFFICE365_<DOMAIN>_<MAILBOX>_PASS)."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import vault_conn
+    local, _, domain = mailbox.partition("@")
+    k = vault_conn.key("SMTP-" + host.split(".")[-2], domain, local, "PASS")
+    value = vault_conn.secrets().get(k)
+    if not value:
+        raise MailError(f"the machine vault has no {k} (mail\\credentials\\smtp.env, slot ConfigVault_151)")
+    return value
 
 
 def _addresses(raw: str) -> list[str]:
@@ -132,7 +105,7 @@ def send(msg: EmailMessage, mailbox: str, host: str = DEFAULT_HOST,
             f"    1. SMTP AUTH is disabled for this mailbox - the mail admin must enable\n"
             f"       client SMTP submission on it (it is off by default).\n"
             f"    2. The mailbox has MFA, so the real password cannot be used here.\n"
-            f"    3. The password in the vault is stale - re-run: vault set {KEY_PASSWORD}\n"
+            f"    3. The password in the machine vault is stale (mail\\credentials\\smtp.env)\n"
             f"  Raw: {exc}")
     except (smtplib.SMTPException, OSError) as exc:
         raise MailError(f"SMTP send failed via {host}:{port} - {exc}")
