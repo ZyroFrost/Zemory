@@ -31,7 +31,7 @@ const FAULTY = `<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta
 .frame{width:900px}.frame table{width:200px}.card{position:relative;width:300px}.chart{width:200px;height:80px}
 .scroll{height:60px;overflow-y:auto}.card p{margin:0;line-height:20px}.card p.over{margin-top:-14px}</style></head><body>
 <div class="wide">U1+U2</div><div class="row"><button>Lưu</button><select><option>a</option></select></div>
-<div class="frame"><table><tr><td>U4</td></tr></table></div>
+<div class="frame"><table><thead><tr><th>U10</th></tr></thead><tbody><tr><td>U4</td></tr></tbody></table></div>
 <div class="card"><p>Dòng một chữ dài</p><p class="over">Dòng hai đè lên</p></div>
 <div class="chart"></div><div class="scroll">${"x<br>".repeat(20)}</div><button></button><p>Th?ng k?</p></body></html>`;
 let cfgPath = opt("--config") || "ui_check.json";
@@ -101,6 +101,16 @@ const MEASURE = (ignore, o) => `(() => {
     const hs = line.map(x => x.h), d = Math.max(...hs) - Math.min(...hs);
     if (d > 0.6) add('U3', row, 'controls on one row: heights ' + hs.map(h => Math.round(h * 10) / 10).join(' / ')); }
   // U4 - dead space: a table, or the only block of a frame, filling too little of its frame's width.
+  // U10 - every visible table column has a labelled resize handle (app QA also tests a real drag and restore).
+  for (const table of all.filter(e => e.tagName === 'TABLE')) {
+    const head = table.tHead;
+    if (!head || !head.rows.length || getComputedStyle(head).display === 'none') continue;
+    for (const th of head.rows[0].cells) {
+      const handle = th.querySelector('[role="separator"][aria-orientation="vertical"]');
+      if (!handle || !vis(handle) || !(handle.getAttribute('aria-label') || handle.getAttribute('title')))
+        add('U10', th, 'table column has no visible, labelled resize handle');
+    }
+  }
   const minFill = O.U4?.min_fill ?? 0.6;
   for (const t of all.filter(e => e.tagName === 'TABLE')) { const f = t.parentElement; if (!f) continue;
     const fw = f.clientWidth - parseFloat(getComputedStyle(f).paddingLeft) - parseFloat(getComputedStyle(f).paddingRight);
@@ -180,7 +190,7 @@ const byCode = {};
 for (const f of findings) { (byCode[f.code] = byCode[f.code] || []).push(f); console.log(`  [${f.code}] ${f.page} @${f.width}  ${f.el}  ${f.msg}`); }
 const summary = Object.entries(byCode).map(([c, l]) => `${c}:${l.length}`).join(" ");
 if (SELF && code !== 3) {
-  const want = ["U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8", "U9"], missed = want.filter(c => !byCode[c]);
+  const want = ["U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8", "U9", "U10"], missed = want.filter(c => !byCode[c]);
   console.log(`\n[ui-check] self-test: ${missed.length ? "BROKEN - not caught: " + missed.join(" ") : "OK - every code caught on the faulty page"}`);
   process.exit(missed.length ? 1 : 0);
 }

@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Glass
 name: app-glass
-version: 2
+version: 4
 type: process
 checked: [Skill_App_Base, Skill_PBI_White, Design_172_Design]
 installs: [scripts/fx_check.mjs]
 description: The Glass kind of an app surface - translucent panels over a coloured wallpaper, light and dark, a switch to solid panels. Use when a repo declares {"style": "Glass"} in frontend/config/ui.json, or when building, porting or changing colours, fonts, spacing, shadows, blur, animations or icons of a Glass app. The rules every kind shares are in app-base. Vietnamese triggers - "kiểu glass", "kính mờ", "giao diện glass", "đổi màu theme", "hiệu ứng", "bóng đổ", "blur".
-from: _Store/03_SKILLS/Skill_App_Glass @v2 #aac9a79f0bd6
+from: _Store/03_SKILLS/Skill_App_Glass @v4 #1bd8a705ca0d
 ---
 
 # app-glass — the Glass kind of an app surface
@@ -69,12 +69,20 @@ The template names each effect with an `FX:` marker; a port keeps the marker so 
   for later without that entry.
 - **The solid switch:** a visible setting turns blur off (`html.solid`): panels take `--g-glass-strong` (dark: an opaque
   colour), no `backdrop-filter`. Low-power machines and remote desktops use it; it is saved like any UI setting (`app-base` F8).
+- **Blur strength is visible and real:** the slider changes the shared `--g-blur` token used by glass panels and by a
+  high-detail preview under the slider. A smooth wallpaper can hide the change, so the preview must make 0 and 40 px
+  visibly different. Gate: compare computed `backdrop-filter` on a panel and the preview before/after input and reload;
+  preserve the solid switch's zero-blur behavior.
 - **Reduced motion:** under `@media (prefers-reduced-motion: reduce)` every effect above that moves (drift · pill · route ·
   reveal · ripple · toast slide · tooltip lift) stops or becomes an instant change. One block per effect file covers all of them;
   an effect added later is added to that block in the same change.
 - **Supplied artwork** (logos, pictures) keeps its own colours over glass (`app-base` F20): no blend mode, no filter on it.
 - **Icons:** one icon set, one stroke width and one size scale across the app; an icon-only button still carries a label
   (`app-base` F4 ②).
+- **Effect selectors belong to one component.** An avatar ping uses `.ava.online::before/::after`, not a generic
+  `.online` selector: on SasinONE, that generic selector drew a green dot on an online app card over its Open button.
+  Keep the original animation, but scope its selector. The browser gate checks that non-avatar statuses have no such
+  pseudo-element and that the action remains fully within the card (`app-base` F23).
 
 ## 4. Check
 

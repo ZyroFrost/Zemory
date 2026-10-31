@@ -4355,26 +4355,16 @@ def _m_unescape(s):
 
 
 def dw_conn_string(report_dir):
-    """WAREHOUSE_CONN from the environment, else from the nearest .env upwards, else the region manager repo's .env."""
-    v = os.environ.get('WAREHOUSE_CONN')
-    if v:
-        return v
-    cands, d = [], os.path.abspath(report_dir)
-    while True:
-        cands.append(os.path.join(d, '.env'))
-        nd = os.path.dirname(d)
-        if nd == d:
-            break
-        d = nd
-    mgr = manager_root(os.path.abspath(__file__))
-    if mgr:
-        cands.append(os.path.join(mgr, '.env'))                         # the region manager's .env
-    for p in cands:
-        if os.path.exists(p):
-            for line in open(p, encoding='utf-8', errors='ignore'):
-                if line.strip().startswith('WAREHOUSE_CONN='):
-                    return line.split('=', 1)[1].strip()
-    return None
+    """The warehouse connection from the machine vault: region value warehouse_vault = <MACHINE>/<DATABASE>. None = not checkable."""
+    target = region_value(os.path.dirname(os.path.abspath(__file__)), 'warehouse_vault', '')
+    if '/' not in (target or ''):
+        return None
+    try:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import vault_conn
+        return vault_conn.conn(*target.split('/', 1))
+    except (ImportError, SystemExit):
+        return None
 
 
 def _kind(report_dir):
@@ -4722,7 +4712,7 @@ def check_dw(report_dir, fail):
         return
     cs = dw_conn_string(report_dir)
     if not cs:
-        LAYER_NOTES.append(('dw', 'NOT CHECKED', 'no WAREHOUSE_CONN (env, a .env upwards, or the region manager/.env)'))
+        LAYER_NOTES.append(('dw', 'NOT CHECKED', 'no warehouse connection (region value warehouse_vault + the machine vault)'))
         return
     try:
         import pyodbc

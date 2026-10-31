@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 
@@ -29,12 +29,11 @@ lang: vi
   đưa SQL cho người dùng chạy tay, không xin mật khẩu (mật khẩu nằm ở két). Mã chạy của task trên máy chủ đọc DW qua két máy
   (`vault_conn.conn(…)`, skill `Skill_Task_VmAutomation`), không qua công cụ dò.
 - Cách gọi — một công cụ, không tự viết client khác: `python scripts\query.py <db_id> "<SELECT …>"` (mỗi dòng kết quả một
-  JSON) · `--map` (danh sách `db_id` = `<máy chủ>.<CSDL>`) · `--check` (đăng nhập + `SELECT 1`). Công cụ đọc client, python
-  và tên file két từ giá trị vùng (`query_client_dir` · `query_python` · `query_vault_file`); tài khoản là của CHÍNH repo, ở
-  `data/secrets/vault/<query_vault_file>` (một phòng một tài khoản: nhật ký của app ghi đúng phòng dò). Không dùng két của repo
-  khác, không chép mật khẩu ra chữ. Két chưa có hoặc không giải được ⇒ báo người dùng cấp mật khẩu tạm.
-  ĐƯỜNG của app là một giá trị vùng (`query_app_path`), không lấy url lưu kèm từng tài khoản: công cụ giữ máy của tài khoản và lấy
-  đường từ đó, nên app đổi tên không chuyển hướng chỉ sửa một chỗ trong giá trị vùng, không sửa két từng phòng.
+  JSON) · `--map` (danh sách `db_id` = `<máy chủ>.<CSDL>`) · `--check` (đăng nhập + `SELECT 1`). Công cụ chỉ cần thư viện chuẩn, đọc
+  địa chỉ, đường của app và phân khúc két từ giá trị vùng (`query_origin` · `query_app_path` · `query_vault`); tài khoản là của CHÍNH repo,
+  `ai.<phòng>` trong két máy (một phòng một tài khoản: nhật ký của app ghi đúng phòng dò, mỗi yêu cầu nêu tên repo ở `X-Acting-Repo`). Không dùng
+  tài khoản của repo khác, không chép mật khẩu ra chữ. Két chưa có mục đó ⇒ báo người dùng cấp mật khẩu tạm. App đổi tên không chuyển hướng
+  chỉ sửa một chỗ trong giá trị vùng.
 - Truyền câu SQL qua công cụ hoặc script Python, không ghép chuỗi qua shell (dấu `'` bị nuốt). Lỗi mạng (bắt tay quá hạn) là
   đường mạng tới máy chủ của app (LAN văn phòng hoặc VPN), không phải lỗi app.
 - Một câu `SELECT` / `WITH`, không `;`, không từ khoá ghi. Nguồn ngoài DW đọc kèm `WITH (NOLOCK)`.

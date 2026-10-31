@@ -2,7 +2,7 @@
 id: Skill_Task_Pull
 aka: pull
 name: task-pull
-version: 13
+version: 14
 type: process
 installs: [scripts/query.py, scripts/vault.ps1]
 description: Fetch fresh data from a source (SQL, VM, web, API) into the project so a deliverable can be built. Use when the deliverable needs newer numbers, when a scheduled task starts, or when asked to refresh, download, or retrieve source data. Vietnamese triggers - "kéo dữ liệu", "lấy số mới", "tải data về", "cập nhật nguồn", "pull dữ liệu", "làm mới số liệu".
@@ -34,12 +34,11 @@ description: Fetch fresh data from a source (SQL, VM, web, API) into the project
   never hands SQL to a person to run by hand, never asks for a password (the password is in the vault). A task's run code on the server reads the warehouse through the
   machine vault (`vault_conn.conn(…)`, skill `Skill_Task_VmAutomation`), not through the exploring tool.
 - How to call it — one tool, never another client written on your own: `python scripts\query.py <db_id> "<SELECT …>"` (each result row one
-  JSON) · `--map` (the list of `db_id` = `<server>.<DB>`) · `--check` (sign in + `SELECT 1`). The tool reads the client, the python
-  and the vault file name from the region's values (`query_client_dir` · `query_python` · `query_vault_file`); the account belongs to THIS repo, in
-  `data/secrets/vault/<query_vault_file>` (one department, one account: the app's log records the right department exploring). Never use another repo's
-  vault, never copy a password out as text. No vault yet, or it cannot be decrypted ⇒ ask the requester for a temporary password.
-  The app's PATH is one region value (`query_app_path`), not the url saved with each account: the tool keeps the account's host and
-  takes the path from there, so an app renamed without a redirect is one edit in the region values, not one per department vault.
+  JSON) · `--map` (the list of `db_id` = `<server>.<DB>`) · `--check` (sign in + `SELECT 1`). The tool needs the standard library only and reads the
+  address, the app's path and the vault segments from the region's values (`query_origin` · `query_app_path` · `query_vault`); the account belongs to
+  THIS repo, `ai.<department>` in the machine vault (one department, one account: the app's log records the right department exploring, and every
+  request names the repo in `X-Acting-Repo`). Never use another repo's account, never copy a password out as text. No entry in the vault ⇒ ask the
+  requester for a temporary password. An app renamed without a redirect is one edit in the region values.
 - Pass the SQL statement through the tool or a Python script, never join strings through the shell (the `'` is swallowed). A network error (handshake timed out) is
   the network path to the app's server (office LAN or VPN), not an app error.
 - One `SELECT` / `WITH` statement, no `;`, no writing keywords. Sources outside the warehouse are read with `WITH (NOLOCK)`.
