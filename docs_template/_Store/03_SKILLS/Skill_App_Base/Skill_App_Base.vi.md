@@ -1,5 +1,5 @@
 ---
-version: 32
+version: 33
 lang: vi
 ---
 
@@ -249,7 +249,11 @@ chỉ hiện một kiểu.** Một trường chỉ một kiểu có thì hoặc 
   Lật, hover hay mặt thứ hai chỉ để lặp lại hoặc giấu chúng là thừa (§F0); hiệu ứng lật để dành cho nội dung không có chỗ khác.
 · **Dòng thời gian** được ghép các cột của bảng vào từng dòng sự kiện; giữ thẳng hàng thời gian · người làm · thao tác · mức ·
   chi tiết, và trên màn hẹp cuộn trong khung nhật ký, không bao giờ cuộn cả trang (§F12).
-· Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
+· **Chữ trạng thái/mức độ dùng cùng kiểu chữ của hàng.** Luật badge không được thu nhỏ riêng một giá trị như "Thông tin"
+  so với chữ cùng hàng. Cổng kiểm cả kiểu Bảng và Dòng thời gian ở máy tính và điện thoại bằng cách so font family, cỡ
+  chữ và độ đậm đã tính của từng nhãn mức độ với hàng; phép thử đỏ đổi một nhãn thành 9 px và cổng phải bắt được.
+  Màu vẫn là kênh trạng thái riêng (§F11).
+· Các chi tiết đồng nhất nội dung khác vẫn nghiệm thu bằng MẮT; kiểu chữ của hàng có cổng kiểm ở trên.
 
 ### F20. Hình được giao giữ nguyên MÀU
 **Logo hay ảnh được giao vẽ đúng màu của nó ở mọi giao diện** — filter, blend và opacity của giao diện không bao giờ đổi màu
