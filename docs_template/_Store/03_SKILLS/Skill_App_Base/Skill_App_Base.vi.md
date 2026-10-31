@@ -1,5 +1,5 @@
 ---
-version: 29
+version: 31
 lang: vi
 ---
 
@@ -220,15 +220,15 @@ dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_DesignChangeAppr
 **Thanh điều hướng chính nhóm trang theo việc người dùng vào để làm — tổng quan · mở app · nhật ký · quản trị, chỉ những nhóm
 sản phẩm thật sự có.** Mỗi vùng có một trang chủ quản; trang tổng quan giữ số tóm tắt và dẫn sang đó, không lặp lại cả danh
 sách app hay dòng nhật ký (§F6 trên một màn).
-· **Vị trí tách khỏi thao tác.** Đường dẫn ngắn (sản phẩm › trang, dấu mũi nhọn) nói đang ở đâu; khung đầu trang kề bên giữ
-  tiêu đề và bộ lọc, thao tác riêng của trang. Hẹp ⇒ xuống dòng (§F12). Không tiêu đề trang hay mục nào lặp lại điều đường
-  dẫn và tab đang sáng đã nói (§F0) — tên đó chỉ giữ làm tên truy cập của danh sách.
+· **Sản phẩm và trang là hai tầng riêng.** Giữ nhãn sản phẩm trong khung nhỏ riêng ở đầu thanh chung. Đặt trang hiện tại
+  thành tab nhỏ đang chọn trên thanh công cụ của trang, cạnh các tab cùng nhóm. Không lặp đường dẫn gồm cả sản phẩm và trang
+  trong thanh công cụ. Tên trang vẫn là tiêu đề truy cập được dù tab đang chọn là tên duy nhất nhìn thấy (§F0).
 · **Thanh đầu gọn giữ MỘT dòng** ở mọi độ rộng: bộ lọc và thao tác phụ dời vào popover có nhãn (§F18); một ô tìm kiếm, luôn ở
-  cùng chỗ, tìm trong trang hiện tại; tab trang đứng sau bộ lọc trên dòng đó khi đủ chỗ; lời chào đứng cạnh nút tài khoản, nút
-  này mở cài đặt tài khoản và đăng xuất.
-· **Thanh điều hướng dài:** các trang quản trị liên quan dùng chung tab trên thanh đầu ⇒ một mục quản trị có nhãn trên thanh
-  điều hướng mở chúng; không lặp các lựa chọn ấy trong flyout hay thanh mở rộng. Mỗi tab giữ đường dẫn riêng, trạng thái đang
-  chọn và cảnh báo thay đổi chưa lưu. Trên điện thoại thanh tab dưới (§M3) vẫn dùng được.
+  cùng chỗ, tìm trong trang hiện tại; lời chào và thao tác tài khoản nằm trên thanh chung. Các nút cùng cụm có khoảng cách
+  đều và nhìn thấy rõ, kể cả trợ giúp, cài đặt và tài khoản.
+· **Thanh điều hướng dài:** các trang quản trị liên quan dùng tab nhỏ làm điều hướng phụ cho mục Quản trị chính. Mỗi tab giữ
+  đường dẫn riêng, trạng thái đang chọn và cảnh báo thay đổi chưa lưu. Trên điện thoại thanh tab dưới (§M3) vẫn dùng được.
+  Nút nhanh sáng/tối và hiệu ứng kính, nếu có, nằm ở chân thanh bên trên máy tính và có nhãn ở cả hai độ rộng của thanh.
 · **Ma trận quản trị chung** (người × app, trên `system-manager`): một người = một hàng gọn; cột `system-manager` đứng đầu, rồi
   các app theo mã; phạm vi quản trị cấp dưới mở bằng nút nhỏ có nhãn cạnh vai, không thêm dòng trong hàng; tìm kiếm đứng trước
   bộ lọc trên thanh công cụ.
@@ -290,6 +290,13 @@ bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung 
 · Trang chỉ giữ điều mô tả chính trang (danh sách trống, thiếu quyền) - không giữ kết quả của một lần bấm.
 · Đo bằng máy: sau mỗi thao tác của bài kiểm trình duyệt, không phần tử thông báo nào (`role=status`/`alert`) nằm trong dòng
   chảy trang; toast là `position: fixed` ở mép phải và mang giờ.
+
+### F23. Khung trang chung, công cụ dùng được và kích thước thẻ
+**Mọi trang trong cùng một khung app dùng chung panel trên và thanh công cụ của trang.** Với khung có Tìm kiếm và Lọc trên thanh này, cả hai xuất hiện ở mọi trang, cùng thứ tự (Tìm kiếm rồi Lọc) và cùng chiều cao control. Mỗi nút phải tác động lên nội dung thật: ví dụ tìm các dòng ứng dụng, lọc theo trạng thái hoặc khoảng ngày. Không thêm control trang trí chỉ để lấp khung (F0). Tab và thao tác chính giữ đúng vị trí đã định trên thanh công cụ (F17).
+
+**Các thẻ cùng danh mục có cùng chiều cao và cùng đường chân của nút, kể cả thẻ chưa có web.** Dòng giải thích riêng theo trạng thái phải nằm trong cùng ô nội dung, không làm riêng thẻ cuối cao hơn. Nút Mở và dấu trạng thái không được chồng nhau. Giới hạn selector hiệu ứng vào đúng thành phần sở hữu: `.online::after` dành cho avatar đã vẽ thêm chấm lên trạng thái ứng dụng online, đè lên nút Mở của SasinONE ngày 31/10/2026. Hiệu ứng đó phải dùng `.ava.online`. Đo mọi thẻ ở màn hình máy tính và điện thoại bằng hình chữ nhật bao; pseudo-element trên trạng thái không phải avatar phải là `none`.
+
+**Cổng chống tái phát:** duyệt mọi trang có route và kiểm panel chung, Tìm kiếm và Lọc hiện đủ, đúng thứ tự và chiều cao. Với danh mục thẻ, độ lệch chiều cao lớn nhất ≤ 1 px, nút chân nằm trong thẻ, và hiệu ứng trạng thái chỉ áp lên đúng thành phần. Lỗi bố cục đo được mà người dùng phải nhắc lại thì thêm cổng kiểm, không chỉ ghi thêm lời (mẫu nghiệm thu PBI White).
 
 ## BỘ KIỂM — luật đo được thì máy kiểm
 

@@ -3,7 +3,7 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 29
+version: 31
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -227,15 +227,16 @@ moved on your own; wanting to change it ⇒ present it for approval first (`Rule
 **The primary rail groups pages by what the person using the app comes to do — overview · opening an app · logs ·
 administration, only the groups the product really has.** Each area has one owning page; the overview keeps summary figures
 and links to it, never a whole app list or log feed again (§F6 on one screen).
-· **Location apart from actions.** A short breadcrumb (product › page, chevron separator) says where you are; the page header
-  beside it holds the title and the page's own filters and actions. Narrow ⇒ it wraps (§F12). No page or section title repeats
-  what the breadcrumb and the lit tab already say (§F0) — keep that name only as the accessible name of the list.
+· **Product and page are separate levels.** Keep the product label in its own small frame at the start of the shared header.
+  Put the current page in a smaller active tab in the page toolbar, alongside its sibling tabs. Do not repeat a breadcrumb
+  containing both product and page inside that toolbar. Keep the page name as an accessible heading even when the active tab
+  is its only visible title (§F0).
 · **A compact header stays on ONE row** at every width: secondary filters and actions move into a labelled popover (§F18); one
-  search box, always in the same place, searching the current page; page tabs follow the filter in that row when there is room;
-  the greeting sits beside the account button, which carries account settings and sign-out.
-· **A long rail:** related admin pages share the header tabs ⇒ one labelled admin entry on the rail opens them; the same choices
-  are not repeated in a flyout or an expanded rail. Each tab keeps its own URL, selected state and unsaved-change guard. On a
-  phone the bottom tab bar (§M3) stays usable.
+  search box, always in the same place, searching the current page; the greeting and account actions stay in the shared header.
+  Buttons in one action cluster have a consistent visible gap, including help, settings and account.
+· **A long rail:** related admin pages use smaller page tabs as secondary navigation to the main admin entry. Each tab keeps
+  its own URL, selected state and unsaved-change guard. On a phone the bottom tab bar (§M3) stays usable. Quick theme and
+  glass controls, when present, sit at the foot of the desktop rail and remain labelled in both its widths.
 · **The shared admin matrix** (person × app, on the `system-manager`): one person = one compact row; the `system-manager` column
   first, then the apps by code; a lower admin scope opens from a small labelled button beside the role, never as extra lines in
   the row; search before filter in its toolbar.
@@ -298,6 +299,13 @@ a notice inside the page pushes the content down and the layout jumps.
 · The page keeps only what describes the page itself (an empty list, a missing right) - not the outcome of a click.
 · Measure by machine: after each action of the browser test, no notice element (`role=status`/`alert`) sits in the page
   flow; the toast is `position: fixed` at the right edge and carries a time.
+
+### F23. Shared page frame, useful tools, and card geometry
+**Every page in a shared app shell uses the same top panel and the same page toolbar.** In a shell whose page toolbar has Search and Filter, both controls appear on every page in the same order (Search, then Filter), at the shared control height. Each must act on real page content: for example, searching app rows and filtering by status or date range. Do not add a decorative control merely to fill the frame (F0). The page's tabs and main action remain in their established toolbar slots (F17).
+
+**Cards in one catalog keep the same height and footer baseline, including a planned or unavailable item.** A state-specific explanatory line must fit within the same content slot, not make only the last card taller. The Open action and its state indicator must never overlap. Scope effect selectors to the component that owns them: a generic `.online::after` intended as an avatar ping also paints a dot on an online app status, which appeared over SasinONE's Open button on 31/10/2026. Use `.ava.online` for that effect. Check every card at desktop and phone widths with bounding rectangles, and check the pseudo-element on non-avatar statuses is `none`.
+
+**Regression gate:** enumerate every routed page and assert the shared panels, visible Search and Filter, their order and equal height. For card catalogs assert max card height minus min card height ≤ 1 px, footer buttons remain within their cards, and state effects are scoped to the intended element. A user repeating a measurable layout complaint means adding this gate, not only another note (the PBI White acceptance pattern).
 
 ## THE CHECKER — rules that can be measured are checked by the machine
 

@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Glass
 name: app-glass
-version: 2
+version: 3
 type: process
 checked: [Skill_App_Base, Skill_PBI_White, Design_172_Design]
 installs: [scripts/fx_check.mjs]
@@ -74,6 +74,10 @@ The template names each effect with an `FX:` marker; a port keeps the marker so 
 - **Supplied artwork** (logos, pictures) keeps its own colours over glass (`app-base` F20): no blend mode, no filter on it.
 - **Icons:** one icon set, one stroke width and one size scale across the app; an icon-only button still carries a label
   (`app-base` F4 ②).
+- **Effect selectors belong to one component.** An avatar ping uses `.ava.online::before/::after`, not a generic
+  `.online` selector: on SasinONE, that generic selector drew a green dot on an online app card over its Open button.
+  Keep the original animation, but scope its selector. The browser gate checks that non-avatar statuses have no such
+  pseudo-element and that the action remains fully within the card (`app-base` F23).
 
 ## 4. Check
 
