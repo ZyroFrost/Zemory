@@ -3,7 +3,7 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 35
+version: 36
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -316,7 +316,7 @@ a notice inside the page pushes the content down and the layout jumps.
 
 **Cards in one catalog keep the same height and footer baseline, including a planned or unavailable item.** A state-specific explanatory line must fit within the same content slot, not make only the last card taller. The Open action and its state indicator must never overlap. Scope effect selectors to the component that owns them: a generic `.online::after` intended as an avatar ping also paints a dot on an online app status, which appeared over SasinONE's Open button on 31/10/2026. Use `.ava.online` for that effect. Check every card at desktop and phone widths with bounding rectangles, and check the pseudo-element on non-avatar statuses is `none`.
 
-**Regression gate:** enumerate every routed page and assert the shared panels, visible Search and Filter, their order and equal height. For card catalogs assert max card height minus min card height ≤ 1 px, footer buttons remain within their cards, and state effects are scoped to the intended element. A user repeating a measurable layout complaint means adding this gate, not only another note (the PBI White acceptance pattern).
+**Regression gate:** enumerate every routed page and assert the shared panels, visible Search and Filter, their order and equal height. For card catalogs assert max card height minus min card height ≤ 1 px, footer buttons remain within their cards, and state effects are scoped to the intended element. A person repeating a measurable layout complaint means adding this gate, not only another note (the PBI White acceptance pattern).
 
 **Search is a query, not a painted input.** Its accessible name describes the current data set, and typing must change the
 results. For an operations log, one general query matches actor, action, app, address and detail before the result limit;

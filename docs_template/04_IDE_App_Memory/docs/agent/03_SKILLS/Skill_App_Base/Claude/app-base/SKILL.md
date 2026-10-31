@@ -3,12 +3,12 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 29
+version: 36
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_App_Base @v29 #4ddc92d7347d
+from: _Store/03_SKILLS/Skill_App_Base @v36 #4b4652aeb3ac
 ---
 
 # app-base — the APP design standard (FE + BE)
@@ -101,7 +101,11 @@ variable**.
 · **Put it in the SHARED layer, do not patch each screen**: the same lesson as "sections must have dividers" — patching only the frame just criticised brings the bug back in the next frame.
 · Accepted by EYE, not by a gate: a gate reads the class but does not see how long the divider is.
 
+### F1b. Every data-table column is draggable
+Every table rendered as columns must expose a resize handle on every header, including the last column, using one shared mechanism. Dragging a handle must change that column's measured width; a decorative handle fails. Set a content-aware minimum, keep the table inside a horizontally scrolling frame when the total width grows, and do not widen the page. Save widths per person and per table; restore after reload; double-click a handle to reset. Keyboard-accessible handles must have a readable label. A phone layout rendered as cards has no visible columns to resize. The app gate must enumerate all visible tables and verify the handles, a real drag, restore, and reset.
+
 ### F2. Dialogs / modals
+This rule is shared by every app. An app must use one dialog component with an explicit S, M or L choice at each call site; the rendered frame and ESC/backdrop behavior are checked at every size used.
 ONLY 3 sizes S/M/L, all 3 the SAME STANDARD SCREEN RATIO **16:9** (a balanced landscape frame like the screen, NOT a tall dangling box). **Each size = a % of the APP FRAME in BOTH directions** (16:9), the formula `width: min(Pvw, calc(Pvh*16/9))` + `aspect-ratio:16/9` ⇒ exactly P% on a 16:9 screen, smaller (never overflowing) on screens of other ratios: **S 40% · M 60% · L 90%** (Settings = L). 3 sizes = 3 SCALES of the same ratio; S not enough → choose M/L, **still exactly 16:9, NEVER distorted**. **THE FRAME NEVER JUMPS with the content** (switching a Settings tab and the frame swells/shrinks = WRONG); overflow → scroll INSIDE the dialog (`overflow:auto` on the body, the body being a grid/flex child needs `min-height:0` to scroll). NO fixed-Nvh (produces distorted tall boxes), NO random/dynamic resizing/chaotic reflow. Layout state the person using the app adjusts (resize/position/size) must be SAVED + restored exactly. Tokens/sizes in `frontend/styles/`. **ESC ALWAYS closes the top dialog** (every overlay/popup registers 1 global keydown; ESC closes ONE layer per press in visually-topmost order) + clicking the backdrop also closes — EXCEPT a dialog running an uncancellable task (e.g. a sync in progress), which blocks both ESC and the backdrop until done.
 
 ### F3. A surface dies with its background
@@ -228,15 +232,17 @@ moved on your own; wanting to change it ⇒ present it for approval first (`Rule
 **The primary rail groups pages by what the person using the app comes to do — overview · opening an app · logs ·
 administration, only the groups the product really has.** Each area has one owning page; the overview keeps summary figures
 and links to it, never a whole app list or log feed again (§F6 on one screen).
-· **Location apart from actions.** A short breadcrumb (product › page, chevron separator) says where you are; the page header
-  beside it holds the title and the page's own filters and actions. Narrow ⇒ it wraps (§F12). No page or section title repeats
-  what the breadcrumb and the lit tab already say (§F0) — keep that name only as the accessible name of the list.
+· **Product and page are separate levels.** Keep the product label in its own small frame at the start of the shared header.
+  A group with multiple pages shows `product > group > current page` and sibling tabs in the page toolbar. A group with
+  one page shows only `product > current page` and no duplicate page tab. Do not repeat the breadcrumb inside the toolbar.
+  Keep the page name as an accessible heading even when the toolbar has no visible title (§F0). Gate: enumerate routes,
+  compare breadcrumb depth with sibling count, and reject a duplicate tab on a single-page route.
 · **A compact header stays on ONE row** at every width: secondary filters and actions move into a labelled popover (§F18); one
-  search box, always in the same place, searching the current page; page tabs follow the filter in that row when there is room;
-  the greeting sits beside the account button, which carries account settings and sign-out.
-· **A long rail:** related admin pages share the header tabs ⇒ one labelled admin entry on the rail opens them; the same choices
-  are not repeated in a flyout or an expanded rail. Each tab keeps its own URL, selected state and unsaved-change guard. On a
-  phone the bottom tab bar (§M3) stays usable.
+  search box, always in the same place, searching the current page; the greeting and account actions stay in the shared header.
+  Buttons in one action cluster have a consistent visible gap, including help, settings and account.
+· **A long rail:** related admin pages use smaller page tabs as secondary navigation to the main admin entry. Each tab keeps
+  its own URL, selected state and unsaved-change guard. On a phone the bottom tab bar (§M3) stays usable. Quick theme and
+  glass controls, when present, sit at the foot of the desktop rail and remain labelled in both its widths.
 · **The shared admin matrix** (person × app, on the `system-manager`): one person = one compact row; the `system-manager` column
   first, then the apps by code; a lower admin scope opens from a small labelled button beside the role, never as extra lines in
   the row; search before filter in its toolbar.
@@ -256,7 +262,13 @@ a time.** A field only one view shows is either missing from the other or excess
   hover or a second face that only repeats or hides them is excess (§F0); keep the flip effect for content that has no other place.
 · **A timeline** may fold the table's columns into each event row; keep time · actor · action · severity · detail aligned, and
   on a narrow screen scroll inside the log frame, never the page (§F12).
-· Accepted by EYE, not yet by a checker code.
+· **The whole status/severity column uses the row's typography and surface.** A badge rule must not shrink
+  "Information" or paint a dark rectangle behind it. In both table and timeline views, compare computed font family,
+  size and weight with the row, require transparent label backgrounds, and give informational text the row's normal
+  text colour; warning/error hues remain their status channel (§F11). Gate every width. Negative probes set one
+  label to 9 px and another to black background; both must turn the gate red. The font-only gate missed the real
+  SasinONE log defect on 31/10/2026, so a visual complaint about a whole column requires testing its entire surface.
+· The other content-parity details are accepted by EYE; severity typography and surface have the gate above.
 
 ### F20. Supplied artwork keeps its COLOURS
 **A supplied logo or picture is drawn in its own colours in every theme** — theme filters, blend modes and opacity never
@@ -300,6 +312,24 @@ a notice inside the page pushes the content down and the layout jumps.
 · Measure by machine: after each action of the browser test, no notice element (`role=status`/`alert`) sits in the page
   flow; the toast is `position: fixed` at the right edge and carries a time.
 
+### F23. Shared page frame, useful tools, and card geometry
+**Every page in a shared app shell uses the same top panel and the same page toolbar.** In a shell whose page toolbar has Search and Filter, both controls appear on every page in the same order (Search, then Filter), at the shared control height. Each must act on real page content: for example, searching app rows and filtering by status or date range. Do not add a decorative control merely to fill the frame (F0). The page's tabs and main action remain in their established toolbar slots (F17).
+
+**Cards in one catalog keep the same height and footer baseline, including a planned or unavailable item.** A state-specific explanatory line must fit within the same content slot, not make only the last card taller. The Open action and its state indicator must never overlap. Scope effect selectors to the component that owns them: a generic `.online::after` intended as an avatar ping also paints a dot on an online app status, which appeared over SasinONE's Open button on 31/10/2026. Use `.ava.online` for that effect. Check every card at desktop and phone widths with bounding rectangles, and check the pseudo-element on non-avatar statuses is `none`.
+
+**Regression gate:** enumerate every routed page and assert the shared panels, visible Search and Filter, their order and equal height. For card catalogs assert max card height minus min card height ≤ 1 px, footer buttons remain within their cards, and state effects are scoped to the intended element. A person repeating a measurable layout complaint means adding this gate, not only another note (the PBI White acceptance pattern).
+
+**Search is a query, not a painted input.** Its accessible name describes the current data set, and typing must change the
+results. For an operations log, one general query matches actor, action, app, address and detail before the result limit;
+date/app/severity filters remain separate. Gate with a query found only in detail and one found only in action, then clear
+it and restore the full result set. A username-only placeholder on a general log search is misleading.
+
+**Settings rows align label and primary control on the same centre line.** Optional hints and previews live below the
+control and do not push its label down or up. Gate using rendered rectangles across segment, switch, swatch, range and
+number rows at desktop and phone widths; centre-line difference <= 2 px. A blur slider must change the actual panel
+`backdrop-filter` and a visible preview using the same token; verify both computed styles before and after input and after
+reload. A decorative slider with an unchanged panel or preview fails.
+
 ## THE CHECKER — rules that can be measured are checked by the machine
 
 Rules written in a skill do not enforce themselves: a settled rule still gets broken again when no machine watches it.
@@ -330,6 +360,7 @@ to catch) and measures the layout:
 | U7 | F14 | a scroll area without `scrollbar-gutter: stable` |
 | U8 | F4 ② | a control or link without a readable label |
 | U9 | F4 ③ | Vietnamese broken into `?` by an encoding (`Th?ng k?`, a `?` shown alone instead of `—`) |
+| U10 | F1b | a visible table header lacks a visible, labelled column-resize handle; app QA also drags, reloads, and resets a column |
 
 - **Config** `ui_check.json` at the repo root: `url` (the dev server or a `file:///` mock-up) · `pages` (each `{name, hash}` or
   `{name, click: "<selector>"}`) · `widths` (default 1920 · 1440 · 1100 · 900 · 390; ≤ 768 is measured as a phone) · `settle_ms` (wait

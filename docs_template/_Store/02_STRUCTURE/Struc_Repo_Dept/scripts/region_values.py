@@ -6,8 +6,8 @@ The workspace manager is the repo that holds the shared warehouse and the worksp
   2. the repo's own marker: docs/.harness.json names "owner": "<folder>" - that folder, looked for up to three levels above
      the repo and two levels below each of those (Struc_Region_Workspace)
   3. the repo the start sits in, when it IS the manager: it holds data/region/values.json, or (a server copy that carries
-     no data/region) its own .env holds WAREHOUSE_CONN and its marker names no owner
-  4. a sibling repo whose .env holds WAREHOUSE_CONN, the current repo excepted (a server layout without the owner folder)
+     no data/region) scripts/vm_deploy.ps1, the region's deploy tool only the manager keeps, and its marker names no owner
+  4. a sibling repo holding that deploy tool, the current repo excepted (a server layout without the owner folder)
 Real values live in <manager>/data/region/values.json (git does not track data/): warehouse_server · theme_file ·
 icons_dir · vm_ssh_alias. Nothing company-specific lives in the tools.
 """
@@ -73,12 +73,8 @@ def _owner(start):
     return _find_repo(name, root) if isinstance(name, str) and name else None
 
 
-def _env_has_conn(folder):
-    f = os.path.join(folder, '.env')
-    try:
-        return any(l.strip().startswith('WAREHOUSE_CONN=') for l in open(f, encoding='utf-8', errors='ignore'))
-    except OSError:
-        return False
+def _holds_deploy(folder):
+    return os.path.isfile(os.path.join(folder, 'scripts', 'vm_deploy.ps1'))
 
 
 def _marker_owner(folder):
@@ -94,7 +90,7 @@ def _self_manager(start):
     while True:
         if os.path.isfile(os.path.join(cur, 'data', 'region', 'values.json')):
             return cur
-        if _env_has_conn(cur) and not _marker_owner(cur):
+        if _holds_deploy(cur) and not _marker_owner(cur):
             return cur
         up = os.path.dirname(cur)
         if up == cur:
@@ -110,7 +106,7 @@ def manager_root(start):
     m = _owner(start) or _self_manager(start)
     if m:
         return m
-    # no owner found: a sibling of the repo the start sits in, holding the warehouse connection
+    # no owner found: a sibling of the repo the start sits in, holding the region's deploy tool
     cur = start
     while True:
         parent = os.path.dirname(cur)
@@ -122,7 +118,7 @@ def manager_root(start):
             names = []
         for n in names:
             p = os.path.join(parent, n)
-            if os.path.normcase(p) != os.path.normcase(cur) and os.path.isdir(p) and _env_has_conn(p):
+            if os.path.normcase(p) != os.path.normcase(cur) and os.path.isdir(p) and _holds_deploy(p):
                 return p
         cur = parent
 

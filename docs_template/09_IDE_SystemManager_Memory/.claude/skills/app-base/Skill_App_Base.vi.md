@@ -1,5 +1,5 @@
 ---
-version: 29
+version: 36
 lang: vi
 ---
 
@@ -93,7 +93,11 @@ chung**.
 · **Đặt ở lớp DÙNG CHUNG, đừng vá từng màn**: cùng bài học với "phân mục phải có vạch ngăn" — vá riêng khung vừa bị chê thì lỗi quay lại ở khung kế tiếp.
 · Nghiệm thu bằng MẮT, không bằng cổng: cổng đọc được class nhưng không thấy vạch dài bao nhiêu.
 
+### F1b. Mọi cột bảng dữ liệu đều kéo chỉnh được
+Mọi bảng đang hiển thị theo cột phải có tay nắm kéo ở từng ô tiêu đề, kể cả cột cuối, dùng chung một cơ chế. Kéo phải đổi bề rộng đo được của chính cột đó; tay nắm chỉ để trang trí là sai. Đặt bề rộng tối thiểu theo nội dung, cho bảng cuộn ngang trong khung khi tổng bề rộng tăng, không nới rộng trang. Lưu bề rộng theo người dùng và từng bảng; tải lại phải khôi phục; nhấp đúp tay nắm để đặt lại. Tay nắm dùng được bằng bàn phím và có nhãn đọc được. Bố cục điện thoại chuyển thành thẻ thì không còn cột hiển thị để kéo. Cổng kiểm của app phải liệt kê mọi bảng đang thấy và kiểm tay nắm, kéo thật, khôi phục và đặt lại.
+
 ### F2. Dialog / modal
+Quy tắc này áp dụng chung cho mọi app. Mỗi app dùng một component dialog và chỉ định rõ S, M hoặc L tại từng nơi gọi; cổng kiểm đo khung thực tế và hành vi ESC/backdrop ở mọi cỡ đã dùng.
 CHỈ 3 size S/M/L, cả 3 CÙNG MỘT TỈ LỆ CHUẨN MÀN HÌNH **16:9** (khung landscape cân đối như màn, KHÔNG phải hộp dài-thòng đứng). **Mỗi size = một % của KHUNG APP theo CẢ HAI CHIỀU** (16:9), công thức `width: min(Pvw, calc(Pvh*16/9))` + `aspect-ratio:16/9` ⇒ đúng P% trên màn 16:9, nhỏ hơn (không tràn) trên màn lệch tỉ lệ: **S 40% · M 60% · L 90%** (Settings = L). 3 size = 3 SCALE cùng tỉ lệ; S không đủ → chọn M/L, **vẫn đúng 16:9, KHÔNG bóp méo**. **KHUNG KHÔNG BAO GIỜ NHẢY theo nội dung** (đổi tab Settings mà khung phình/co = SAI); tràn → cuộn TRONG dialog (`overflow:auto` ở thân, thân là grid/flex child phải `min-height:0` mới cuộn). KHÔNG cố-định-Nvh (đẻ hộp cao méo), KHÔNG random/đổi-động/reflow loạn. Trạng thái layout người dùng chỉnh (resize/vị-trí/size) phải LƯU + khôi phục y nguyên. Token/size ở `frontend/styles/`. **ESC LUÔN đóng dialog trên cùng** (mọi overlay/popup phải đăng ký 1 global keydown; ESC đóng MỘT lớp/lần theo thứ tự visually-topmost) + bấm nền (backdrop) cũng đóng — TRỪ dialog đang chạy tác vụ bất-khả-huỷ (vd sync đang chạy) thì chặn cả ESC lẫn backdrop cho tới khi xong.
 
 ### F3. Bề mặt chết theo nền
@@ -220,15 +224,17 @@ dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_DesignChangeAppr
 **Thanh điều hướng chính nhóm trang theo việc người dùng vào để làm — tổng quan · mở app · nhật ký · quản trị, chỉ những nhóm
 sản phẩm thật sự có.** Mỗi vùng có một trang chủ quản; trang tổng quan giữ số tóm tắt và dẫn sang đó, không lặp lại cả danh
 sách app hay dòng nhật ký (§F6 trên một màn).
-· **Vị trí tách khỏi thao tác.** Đường dẫn ngắn (sản phẩm › trang, dấu mũi nhọn) nói đang ở đâu; khung đầu trang kề bên giữ
-  tiêu đề và bộ lọc, thao tác riêng của trang. Hẹp ⇒ xuống dòng (§F12). Không tiêu đề trang hay mục nào lặp lại điều đường
-  dẫn và tab đang sáng đã nói (§F0) — tên đó chỉ giữ làm tên truy cập của danh sách.
+· **Sản phẩm và trang là hai tầng riêng.** Giữ nhãn sản phẩm trong khung nhỏ riêng ở đầu thanh chung. Nhóm có nhiều trang
+  hiển thị `sản phẩm > nhóm > trang` và các tab cùng nhóm trên thanh công cụ. Nhóm chỉ có một trang hiển thị
+  `sản phẩm > trang`, không lặp lại trang thành tab. Không lặp breadcrumb trong thanh công cụ. Tên trang vẫn là tiêu đề
+  truy cập được kể cả khi thanh công cụ không có tiêu đề nhìn thấy (§F0). Cổng kiểm duyệt từng route, đối chiếu số tầng
+  breadcrumb với số trang cùng nhóm và bắt tab trùng của trang đơn.
 · **Thanh đầu gọn giữ MỘT dòng** ở mọi độ rộng: bộ lọc và thao tác phụ dời vào popover có nhãn (§F18); một ô tìm kiếm, luôn ở
-  cùng chỗ, tìm trong trang hiện tại; tab trang đứng sau bộ lọc trên dòng đó khi đủ chỗ; lời chào đứng cạnh nút tài khoản, nút
-  này mở cài đặt tài khoản và đăng xuất.
-· **Thanh điều hướng dài:** các trang quản trị liên quan dùng chung tab trên thanh đầu ⇒ một mục quản trị có nhãn trên thanh
-  điều hướng mở chúng; không lặp các lựa chọn ấy trong flyout hay thanh mở rộng. Mỗi tab giữ đường dẫn riêng, trạng thái đang
-  chọn và cảnh báo thay đổi chưa lưu. Trên điện thoại thanh tab dưới (§M3) vẫn dùng được.
+  cùng chỗ, tìm trong trang hiện tại; lời chào và thao tác tài khoản nằm trên thanh chung. Các nút cùng cụm có khoảng cách
+  đều và nhìn thấy rõ, kể cả trợ giúp, cài đặt và tài khoản.
+· **Thanh điều hướng dài:** các trang quản trị liên quan dùng tab nhỏ làm điều hướng phụ cho mục Quản trị chính. Mỗi tab giữ
+  đường dẫn riêng, trạng thái đang chọn và cảnh báo thay đổi chưa lưu. Trên điện thoại thanh tab dưới (§M3) vẫn dùng được.
+  Nút nhanh sáng/tối và hiệu ứng kính, nếu có, nằm ở chân thanh bên trên máy tính và có nhãn ở cả hai độ rộng của thanh.
 · **Ma trận quản trị chung** (người × app, trên `system-manager`): một người = một hàng gọn; cột `system-manager` đứng đầu, rồi
   các app theo mã; phạm vi quản trị cấp dưới mở bằng nút nhỏ có nhãn cạnh vai, không thêm dòng trong hàng; tìm kiếm đứng trước
   bộ lọc trên thanh công cụ.
@@ -247,7 +253,13 @@ chỉ hiện một kiểu.** Một trường chỉ một kiểu có thì hoặc 
   Lật, hover hay mặt thứ hai chỉ để lặp lại hoặc giấu chúng là thừa (§F0); hiệu ứng lật để dành cho nội dung không có chỗ khác.
 · **Dòng thời gian** được ghép các cột của bảng vào từng dòng sự kiện; giữ thẳng hàng thời gian · người làm · thao tác · mức ·
   chi tiết, và trên màn hẹp cuộn trong khung nhật ký, không bao giờ cuộn cả trang (§F12).
-· Nghiệm thu bằng MẮT, chưa có mã trong bộ kiểm.
+· **Toàn cột trạng thái/mức độ dùng cùng kiểu chữ và bề mặt của hàng.** Luật badge không được thu nhỏ "Thông tin"
+  hoặc tô một ô nền đen phía sau. Ở cả Bảng và Dòng thời gian, so font family, cỡ, độ đậm đã tính với hàng; nền nhãn
+  phải trong suốt, chữ thông tin dùng màu chữ thường của hàng; màu cảnh báo/lỗi giữ kênh trạng thái riêng (§F11).
+  Cổng kiểm mọi độ rộng; phép thử đỏ đổi một nhãn thành 9 px và tô nền đen cho một nhãn, cả hai đều phải bị bắt.
+  Cổng chỉ đo font đã bỏ sót lỗi thật của nhật ký SasinONE ngày 31/10/2026, nên khi người dùng báo cả cột lỗi thì
+  phải kiểm toàn bộ bề mặt của cột.
+· Các chi tiết đồng nhất nội dung khác vẫn nghiệm thu bằng MẮT; kiểu chữ và bề mặt cột mức độ có cổng kiểm ở trên.
 
 ### F20. Hình được giao giữ nguyên MÀU
 **Logo hay ảnh được giao vẽ đúng màu của nó ở mọi giao diện** — filter, blend và opacity của giao diện không bao giờ đổi màu
@@ -291,6 +303,17 @@ bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung 
 · Đo bằng máy: sau mỗi thao tác của bài kiểm trình duyệt, không phần tử thông báo nào (`role=status`/`alert`) nằm trong dòng
   chảy trang; toast là `position: fixed` ở mép phải và mang giờ.
 
+### F23. Khung trang chung, công cụ dùng được và kích thước thẻ
+**Mọi trang trong cùng một khung app dùng chung panel trên và thanh công cụ của trang.** Với khung có Tìm kiếm và Lọc trên thanh này, cả hai xuất hiện ở mọi trang, cùng thứ tự (Tìm kiếm rồi Lọc) và cùng chiều cao control. Mỗi nút phải tác động lên nội dung thật: ví dụ tìm các dòng ứng dụng, lọc theo trạng thái hoặc khoảng ngày. Không thêm control trang trí chỉ để lấp khung (F0). Tab và thao tác chính giữ đúng vị trí đã định trên thanh công cụ (F17).
+
+**Các thẻ cùng danh mục có cùng chiều cao và cùng đường chân của nút, kể cả thẻ chưa có web.** Dòng giải thích riêng theo trạng thái phải nằm trong cùng ô nội dung, không làm riêng thẻ cuối cao hơn. Nút Mở và dấu trạng thái không được chồng nhau. Giới hạn selector hiệu ứng vào đúng thành phần sở hữu: `.online::after` dành cho avatar đã vẽ thêm chấm lên trạng thái ứng dụng online, đè lên nút Mở của SasinONE ngày 31/10/2026. Hiệu ứng đó phải dùng `.ava.online`. Đo mọi thẻ ở màn hình máy tính và điện thoại bằng hình chữ nhật bao; pseudo-element trên trạng thái không phải avatar phải là `none`.
+
+**Cổng chống tái phát:** duyệt mọi trang có route và kiểm panel chung, Tìm kiếm và Lọc hiện đủ, đúng thứ tự và chiều cao. Với danh mục thẻ, độ lệch chiều cao lớn nhất ≤ 1 px, nút chân nằm trong thẻ, và hiệu ứng trạng thái chỉ áp lên đúng thành phần. Lỗi bố cục đo được mà người dùng phải nhắc lại thì thêm cổng kiểm, không chỉ ghi thêm lời (mẫu nghiệm thu PBI White).
+
+**Tìm kiếm là truy vấn thật, không phải ô chỉ để nhìn.** Nhãn truy cập phải mô tả đúng tập dữ liệu của trang; gõ vào phải đổi kết quả. Nhật ký dùng một truy vấn chung khớp người làm, thao tác, app, địa chỉ và chi tiết trước khi giới hạn số dòng; lọc ngày/app/mức độ vẫn riêng. Cổng kiểm dùng một từ chỉ có trong chi tiết, một từ chỉ có trong thao tác, rồi xoá để trả lại toàn bộ kết quả. Ô tìm nhật ký chung không được mang nhãn chỉ tìm tên đăng nhập.
+
+**Hàng Cài đặt căn giữa nhãn với control chính ở hai cột.** Chú thích và vùng xem trước nằm dưới control, không đẩy nhãn lệch. Cổng kiểm đo tâm hình chữ nhật của nhãn và segment, switch, swatch, range, ô số ở cả máy tính và điện thoại; độ lệch ≤ 2 px. Thanh độ mờ phải đổi `backdrop-filter` thật của panel và vùng xem trước dùng cùng token; kiểm computed style trước/sau khi kéo và sau tải lại. Thanh trượt chỉ đổi số nhưng không đổi kính là lỗi.
+
 ## BỘ KIỂM — luật đo được thì máy kiểm
 
 Luật viết trong skill không tự thi hành: một luật đã chốt vẫn bị phạm lại khi không có máy canh.
@@ -321,6 +344,7 @@ ngang thanh cuộn là lỗi phải bắt) và đo bố cục:
 | U7 | F14 | vùng cuộn thiếu `scrollbar-gutter: stable` |
 | U8 | F4 ② | control hoặc link không có nhãn đọc được |
 | U9 | F4 ③ | chữ Việt bị mã hoá vỡ thành `?` (`Th?ng k?`, một dấu `?` đứng một mình thay cho `—`) |
+| U10 | F1b | tiêu đề cột bảng đang hiển thị thiếu tay nắm kéo có nhãn; QA của app còn kéo, tải lại và đặt lại một cột |
 
 - **Cấu hình** `ui_check.json` ở gốc repo: `url` (máy chủ dev hoặc một bản mẫu `file:///`) · `pages` (mỗi trang `{name, hash}` hoặc
   `{name, click: "<selector>"}`) · `widths` (mặc định 1920 · 1440 · 1100 · 900 · 390; ≤ 768 đo như điện thoại) · `settle_ms` (chờ
