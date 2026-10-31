@@ -3,7 +3,7 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 34
+version: 35
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -100,7 +100,11 @@ variable**.
 · **Put it in the SHARED layer, do not patch each screen**: the same lesson as "sections must have dividers" — patching only the frame just criticised brings the bug back in the next frame.
 · Accepted by EYE, not by a gate: a gate reads the class but does not see how long the divider is.
 
+### F1b. Every data-table column is draggable
+Every table rendered as columns must expose a resize handle on every header, including the last column, using one shared mechanism. Dragging a handle must change that column's measured width; a decorative handle fails. Set a content-aware minimum, keep the table inside a horizontally scrolling frame when the total width grows, and do not widen the page. Save widths per person and per table; restore after reload; double-click a handle to reset. Keyboard-accessible handles must have a readable label. A phone layout rendered as cards has no visible columns to resize. The app gate must enumerate all visible tables and verify the handles, a real drag, restore, and reset.
+
 ### F2. Dialogs / modals
+This rule is shared by every app. An app must use one dialog component with an explicit S, M or L choice at each call site; the rendered frame and ESC/backdrop behavior are checked at every size used.
 ONLY 3 sizes S/M/L, all 3 the SAME STANDARD SCREEN RATIO **16:9** (a balanced landscape frame like the screen, NOT a tall dangling box). **Each size = a % of the APP FRAME in BOTH directions** (16:9), the formula `width: min(Pvw, calc(Pvh*16/9))` + `aspect-ratio:16/9` ⇒ exactly P% on a 16:9 screen, smaller (never overflowing) on screens of other ratios: **S 40% · M 60% · L 90%** (Settings = L). 3 sizes = 3 SCALES of the same ratio; S not enough → choose M/L, **still exactly 16:9, NEVER distorted**. **THE FRAME NEVER JUMPS with the content** (switching a Settings tab and the frame swells/shrinks = WRONG); overflow → scroll INSIDE the dialog (`overflow:auto` on the body, the body being a grid/flex child needs `min-height:0` to scroll). NO fixed-Nvh (produces distorted tall boxes), NO random/dynamic resizing/chaotic reflow. Layout state the person using the app adjusts (resize/position/size) must be SAVED + restored exactly. Tokens/sizes in `frontend/styles/`. **ESC ALWAYS closes the top dialog** (every overlay/popup registers 1 global keydown; ESC closes ONE layer per press in visually-topmost order) + clicking the backdrop also closes — EXCEPT a dialog running an uncancellable task (e.g. a sync in progress), which blocks both ESC and the backdrop until done.
 
 ### F3. A surface dies with its background
@@ -355,6 +359,7 @@ to catch) and measures the layout:
 | U7 | F14 | a scroll area without `scrollbar-gutter: stable` |
 | U8 | F4 ② | a control or link without a readable label |
 | U9 | F4 ③ | Vietnamese broken into `?` by an encoding (`Th?ng k?`, a `?` shown alone instead of `—`) |
+| U10 | F1b | a visible table header lacks a visible, labelled column-resize handle; app QA also drags, reloads, and resets a column |
 
 - **Config** `ui_check.json` at the repo root: `url` (the dev server or a `file:///` mock-up) · `pages` (each `{name, hash}` or
   `{name, click: "<selector>"}`) · `widths` (default 1920 · 1440 · 1100 · 900 · 390; ≤ 768 is measured as a phone) · `settle_ms` (wait

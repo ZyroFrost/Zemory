@@ -1,5 +1,5 @@
 ---
-version: 34
+version: 35
 lang: vi
 ---
 
@@ -93,7 +93,11 @@ chung**.
 · **Đặt ở lớp DÙNG CHUNG, đừng vá từng màn**: cùng bài học với "phân mục phải có vạch ngăn" — vá riêng khung vừa bị chê thì lỗi quay lại ở khung kế tiếp.
 · Nghiệm thu bằng MẮT, không bằng cổng: cổng đọc được class nhưng không thấy vạch dài bao nhiêu.
 
+### F1b. Mọi cột bảng dữ liệu đều kéo chỉnh được
+Mọi bảng đang hiển thị theo cột phải có tay nắm kéo ở từng ô tiêu đề, kể cả cột cuối, dùng chung một cơ chế. Kéo phải đổi bề rộng đo được của chính cột đó; tay nắm chỉ để trang trí là sai. Đặt bề rộng tối thiểu theo nội dung, cho bảng cuộn ngang trong khung khi tổng bề rộng tăng, không nới rộng trang. Lưu bề rộng theo người dùng và từng bảng; tải lại phải khôi phục; nhấp đúp tay nắm để đặt lại. Tay nắm dùng được bằng bàn phím và có nhãn đọc được. Bố cục điện thoại chuyển thành thẻ thì không còn cột hiển thị để kéo. Cổng kiểm của app phải liệt kê mọi bảng đang thấy và kiểm tay nắm, kéo thật, khôi phục và đặt lại.
+
 ### F2. Dialog / modal
+Quy tắc này áp dụng chung cho mọi app. Mỗi app dùng một component dialog và chỉ định rõ S, M hoặc L tại từng nơi gọi; cổng kiểm đo khung thực tế và hành vi ESC/backdrop ở mọi cỡ đã dùng.
 CHỈ 3 size S/M/L, cả 3 CÙNG MỘT TỈ LỆ CHUẨN MÀN HÌNH **16:9** (khung landscape cân đối như màn, KHÔNG phải hộp dài-thòng đứng). **Mỗi size = một % của KHUNG APP theo CẢ HAI CHIỀU** (16:9), công thức `width: min(Pvw, calc(Pvh*16/9))` + `aspect-ratio:16/9` ⇒ đúng P% trên màn 16:9, nhỏ hơn (không tràn) trên màn lệch tỉ lệ: **S 40% · M 60% · L 90%** (Settings = L). 3 size = 3 SCALE cùng tỉ lệ; S không đủ → chọn M/L, **vẫn đúng 16:9, KHÔNG bóp méo**. **KHUNG KHÔNG BAO GIỜ NHẢY theo nội dung** (đổi tab Settings mà khung phình/co = SAI); tràn → cuộn TRONG dialog (`overflow:auto` ở thân, thân là grid/flex child phải `min-height:0` mới cuộn). KHÔNG cố-định-Nvh (đẻ hộp cao méo), KHÔNG random/đổi-động/reflow loạn. Trạng thái layout người dùng chỉnh (resize/vị-trí/size) phải LƯU + khôi phục y nguyên. Token/size ở `frontend/styles/`. **ESC LUÔN đóng dialog trên cùng** (mọi overlay/popup phải đăng ký 1 global keydown; ESC đóng MỘT lớp/lần theo thứ tự visually-topmost) + bấm nền (backdrop) cũng đóng — TRỪ dialog đang chạy tác vụ bất-khả-huỷ (vd sync đang chạy) thì chặn cả ESC lẫn backdrop cho tới khi xong.
 
 ### F3. Bề mặt chết theo nền
@@ -340,6 +344,7 @@ ngang thanh cuộn là lỗi phải bắt) và đo bố cục:
 | U7 | F14 | vùng cuộn thiếu `scrollbar-gutter: stable` |
 | U8 | F4 ② | control hoặc link không có nhãn đọc được |
 | U9 | F4 ③ | chữ Việt bị mã hoá vỡ thành `?` (`Th?ng k?`, một dấu `?` đứng một mình thay cho `—`) |
+| U10 | F1b | tiêu đề cột bảng đang hiển thị thiếu tay nắm kéo có nhãn; QA của app còn kéo, tải lại và đặt lại một cột |
 
 - **Cấu hình** `ui_check.json` ở gốc repo: `url` (máy chủ dev hoặc một bản mẫu `file:///`) · `pages` (mỗi trang `{name, hash}` hoặc
   `{name, click: "<selector>"}`) · `widths` (mặc định 1920 · 1440 · 1100 · 900 · 390; ≤ 768 đo như điện thoại) · `settle_ms` (chờ
