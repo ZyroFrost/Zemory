@@ -1,5 +1,5 @@
 ---
-version: 33
+version: 34
 lang: vi
 ---
 
@@ -249,11 +249,13 @@ chỉ hiện một kiểu.** Một trường chỉ một kiểu có thì hoặc 
   Lật, hover hay mặt thứ hai chỉ để lặp lại hoặc giấu chúng là thừa (§F0); hiệu ứng lật để dành cho nội dung không có chỗ khác.
 · **Dòng thời gian** được ghép các cột của bảng vào từng dòng sự kiện; giữ thẳng hàng thời gian · người làm · thao tác · mức ·
   chi tiết, và trên màn hẹp cuộn trong khung nhật ký, không bao giờ cuộn cả trang (§F12).
-· **Chữ trạng thái/mức độ dùng cùng kiểu chữ của hàng.** Luật badge không được thu nhỏ riêng một giá trị như "Thông tin"
-  so với chữ cùng hàng. Cổng kiểm cả kiểu Bảng và Dòng thời gian ở máy tính và điện thoại bằng cách so font family, cỡ
-  chữ và độ đậm đã tính của từng nhãn mức độ với hàng; phép thử đỏ đổi một nhãn thành 9 px và cổng phải bắt được.
-  Màu vẫn là kênh trạng thái riêng (§F11).
-· Các chi tiết đồng nhất nội dung khác vẫn nghiệm thu bằng MẮT; kiểu chữ của hàng có cổng kiểm ở trên.
+· **Toàn cột trạng thái/mức độ dùng cùng kiểu chữ và bề mặt của hàng.** Luật badge không được thu nhỏ "Thông tin"
+  hoặc tô một ô nền đen phía sau. Ở cả Bảng và Dòng thời gian, so font family, cỡ, độ đậm đã tính với hàng; nền nhãn
+  phải trong suốt, chữ thông tin dùng màu chữ thường của hàng; màu cảnh báo/lỗi giữ kênh trạng thái riêng (§F11).
+  Cổng kiểm mọi độ rộng; phép thử đỏ đổi một nhãn thành 9 px và tô nền đen cho một nhãn, cả hai đều phải bị bắt.
+  Cổng chỉ đo font đã bỏ sót lỗi thật của nhật ký SasinONE ngày 31/10/2026, nên khi người dùng báo cả cột lỗi thì
+  phải kiểm toàn bộ bề mặt của cột.
+· Các chi tiết đồng nhất nội dung khác vẫn nghiệm thu bằng MẮT; kiểu chữ và bề mặt cột mức độ có cổng kiểm ở trên.
 
 ### F20. Hình được giao giữ nguyên MÀU
 **Logo hay ảnh được giao vẽ đúng màu của nó ở mọi giao diện** — filter, blend và opacity của giao diện không bao giờ đổi màu

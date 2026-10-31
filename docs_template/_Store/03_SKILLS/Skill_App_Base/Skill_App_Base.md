@@ -3,7 +3,7 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 33
+version: 34
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -257,11 +257,13 @@ a time.** A field only one view shows is either missing from the other or excess
   hover or a second face that only repeats or hides them is excess (§F0); keep the flip effect for content that has no other place.
 · **A timeline** may fold the table's columns into each event row; keep time · actor · action · severity · detail aligned, and
   on a narrow screen scroll inside the log frame, never the page (§F12).
-· **Status/severity text uses the row's typography.** A badge rule must not shrink one value such as "Information" below
-  its neighbouring row text. Gate both table and timeline views at desktop and phone widths by comparing computed font
-  family, size and weight of each severity label with its row; a negative probe changes one label to 9 px and must turn
-  the gate red. Keep colour as the separate status channel (§F11).
-· The other content-parity details are accepted by EYE; row typography has the gate above.
+· **The whole status/severity column uses the row's typography and surface.** A badge rule must not shrink
+  "Information" or paint a dark rectangle behind it. In both table and timeline views, compare computed font family,
+  size and weight with the row, require transparent label backgrounds, and give informational text the row's normal
+  text colour; warning/error hues remain their status channel (§F11). Gate every width. Negative probes set one
+  label to 9 px and another to black background; both must turn the gate red. The font-only gate missed the real
+  SasinONE log defect on 31/10/2026, so a visual complaint about a whole column requires testing its entire surface.
+· The other content-parity details are accepted by EYE; severity typography and surface have the gate above.
 
 ### F20. Supplied artwork keeps its COLOURS
 **A supplied logo or picture is drawn in its own colours in every theme** — theme filters, blend modes and opacity never
