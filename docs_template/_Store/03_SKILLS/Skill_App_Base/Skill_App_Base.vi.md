@@ -1,5 +1,5 @@
 ---
-version: 31
+version: 32
 lang: vi
 ---
 
@@ -220,9 +220,11 @@ dời; muốn đổi ⇒ trình duyệt trước (`Rule_Keys_62_DesignChangeAppr
 **Thanh điều hướng chính nhóm trang theo việc người dùng vào để làm — tổng quan · mở app · nhật ký · quản trị, chỉ những nhóm
 sản phẩm thật sự có.** Mỗi vùng có một trang chủ quản; trang tổng quan giữ số tóm tắt và dẫn sang đó, không lặp lại cả danh
 sách app hay dòng nhật ký (§F6 trên một màn).
-· **Sản phẩm và trang là hai tầng riêng.** Giữ nhãn sản phẩm trong khung nhỏ riêng ở đầu thanh chung. Đặt trang hiện tại
-  thành tab nhỏ đang chọn trên thanh công cụ của trang, cạnh các tab cùng nhóm. Không lặp đường dẫn gồm cả sản phẩm và trang
-  trong thanh công cụ. Tên trang vẫn là tiêu đề truy cập được dù tab đang chọn là tên duy nhất nhìn thấy (§F0).
+· **Sản phẩm và trang là hai tầng riêng.** Giữ nhãn sản phẩm trong khung nhỏ riêng ở đầu thanh chung. Nhóm có nhiều trang
+  hiển thị `sản phẩm > nhóm > trang` và các tab cùng nhóm trên thanh công cụ. Nhóm chỉ có một trang hiển thị
+  `sản phẩm > trang`, không lặp lại trang thành tab. Không lặp breadcrumb trong thanh công cụ. Tên trang vẫn là tiêu đề
+  truy cập được kể cả khi thanh công cụ không có tiêu đề nhìn thấy (§F0). Cổng kiểm duyệt từng route, đối chiếu số tầng
+  breadcrumb với số trang cùng nhóm và bắt tab trùng của trang đơn.
 · **Thanh đầu gọn giữ MỘT dòng** ở mọi độ rộng: bộ lọc và thao tác phụ dời vào popover có nhãn (§F18); một ô tìm kiếm, luôn ở
   cùng chỗ, tìm trong trang hiện tại; lời chào và thao tác tài khoản nằm trên thanh chung. Các nút cùng cụm có khoảng cách
   đều và nhìn thấy rõ, kể cả trợ giúp, cài đặt và tài khoản.
@@ -297,6 +299,10 @@ bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung 
 **Các thẻ cùng danh mục có cùng chiều cao và cùng đường chân của nút, kể cả thẻ chưa có web.** Dòng giải thích riêng theo trạng thái phải nằm trong cùng ô nội dung, không làm riêng thẻ cuối cao hơn. Nút Mở và dấu trạng thái không được chồng nhau. Giới hạn selector hiệu ứng vào đúng thành phần sở hữu: `.online::after` dành cho avatar đã vẽ thêm chấm lên trạng thái ứng dụng online, đè lên nút Mở của SasinONE ngày 31/10/2026. Hiệu ứng đó phải dùng `.ava.online`. Đo mọi thẻ ở màn hình máy tính và điện thoại bằng hình chữ nhật bao; pseudo-element trên trạng thái không phải avatar phải là `none`.
 
 **Cổng chống tái phát:** duyệt mọi trang có route và kiểm panel chung, Tìm kiếm và Lọc hiện đủ, đúng thứ tự và chiều cao. Với danh mục thẻ, độ lệch chiều cao lớn nhất ≤ 1 px, nút chân nằm trong thẻ, và hiệu ứng trạng thái chỉ áp lên đúng thành phần. Lỗi bố cục đo được mà người dùng phải nhắc lại thì thêm cổng kiểm, không chỉ ghi thêm lời (mẫu nghiệm thu PBI White).
+
+**Tìm kiếm là truy vấn thật, không phải ô chỉ để nhìn.** Nhãn truy cập phải mô tả đúng tập dữ liệu của trang; gõ vào phải đổi kết quả. Nhật ký dùng một truy vấn chung khớp người làm, thao tác, app, địa chỉ và chi tiết trước khi giới hạn số dòng; lọc ngày/app/mức độ vẫn riêng. Cổng kiểm dùng một từ chỉ có trong chi tiết, một từ chỉ có trong thao tác, rồi xoá để trả lại toàn bộ kết quả. Ô tìm nhật ký chung không được mang nhãn chỉ tìm tên đăng nhập.
+
+**Hàng Cài đặt căn giữa nhãn với control chính ở hai cột.** Chú thích và vùng xem trước nằm dưới control, không đẩy nhãn lệch. Cổng kiểm đo tâm hình chữ nhật của nhãn và segment, switch, swatch, range, ô số ở cả máy tính và điện thoại; độ lệch ≤ 2 px. Thanh độ mờ phải đổi `backdrop-filter` thật của panel và vùng xem trước dùng cùng token; kiểm computed style trước/sau khi kéo và sau tải lại. Thanh trượt chỉ đổi số nhưng không đổi kính là lỗi.
 
 ## BỘ KIỂM — luật đo được thì máy kiểm
 

@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 
@@ -62,6 +62,10 @@ Template gắn mỗi hiệu ứng một dấu `FX:`; bản chép giữ dấu đ�
   ra không tính. Hiệu ứng thuộc một trang thì chuyển cùng trang đó, không để "làm sau" mà thiếu dòng khai ấy.
 - **Công tắc solid:** một thiết lập nhìn thấy được tắt blur (`html.solid`): panel lấy `--g-glass-strong` (tối: một màu đục), không
   `backdrop-filter`. Máy yếu và máy điều khiển từ xa dùng nó; lưu như mọi thiết lập UI (`app-base` F8).
+- **Độ mờ phải thấy được và có tác dụng thật:** thanh trượt đổi token `--g-blur` chung cho các panel kính và vùng xem
+  trước có chi tiết nhỏ bên dưới. Hình nền quá mịn có thể che mất thay đổi; vùng xem trước phải phân biệt rõ 0 với 40 px.
+  Cổng kiểm so computed `backdrop-filter` của panel và vùng xem trước trước/sau khi kéo và sau tải lại; giữ hành vi
+  không blur của công tắc solid.
 - **Giảm chuyển động:** dưới `@media (prefers-reduced-motion: reduce)` mọi hiệu ứng có chuyển động ở trên (trôi · pill · route ·
   reveal · ripple · toast trượt · tooltip nhấc) dừng hoặc đổi tức thì. Mỗi file hiệu ứng một khối phủ hết; hiệu ứng thêm sau được
   thêm vào khối đó trong cùng lượt sửa.

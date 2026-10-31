@@ -3,7 +3,7 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 31
+version: 32
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -228,9 +228,10 @@ moved on your own; wanting to change it ⇒ present it for approval first (`Rule
 administration, only the groups the product really has.** Each area has one owning page; the overview keeps summary figures
 and links to it, never a whole app list or log feed again (§F6 on one screen).
 · **Product and page are separate levels.** Keep the product label in its own small frame at the start of the shared header.
-  Put the current page in a smaller active tab in the page toolbar, alongside its sibling tabs. Do not repeat a breadcrumb
-  containing both product and page inside that toolbar. Keep the page name as an accessible heading even when the active tab
-  is its only visible title (§F0).
+  A group with multiple pages shows `product > group > current page` and sibling tabs in the page toolbar. A group with
+  one page shows only `product > current page` and no duplicate page tab. Do not repeat the breadcrumb inside the toolbar.
+  Keep the page name as an accessible heading even when the toolbar has no visible title (§F0). Gate: enumerate routes,
+  compare breadcrumb depth with sibling count, and reject a duplicate tab on a single-page route.
 · **A compact header stays on ONE row** at every width: secondary filters and actions move into a labelled popover (§F18); one
   search box, always in the same place, searching the current page; the greeting and account actions stay in the shared header.
   Buttons in one action cluster have a consistent visible gap, including help, settings and account.
@@ -306,6 +307,17 @@ a notice inside the page pushes the content down and the layout jumps.
 **Cards in one catalog keep the same height and footer baseline, including a planned or unavailable item.** A state-specific explanatory line must fit within the same content slot, not make only the last card taller. The Open action and its state indicator must never overlap. Scope effect selectors to the component that owns them: a generic `.online::after` intended as an avatar ping also paints a dot on an online app status, which appeared over SasinONE's Open button on 31/10/2026. Use `.ava.online` for that effect. Check every card at desktop and phone widths with bounding rectangles, and check the pseudo-element on non-avatar statuses is `none`.
 
 **Regression gate:** enumerate every routed page and assert the shared panels, visible Search and Filter, their order and equal height. For card catalogs assert max card height minus min card height ≤ 1 px, footer buttons remain within their cards, and state effects are scoped to the intended element. A user repeating a measurable layout complaint means adding this gate, not only another note (the PBI White acceptance pattern).
+
+**Search is a query, not a painted input.** Its accessible name describes the current data set, and typing must change the
+results. For an operations log, one general query matches actor, action, app, address and detail before the result limit;
+date/app/severity filters remain separate. Gate with a query found only in detail and one found only in action, then clear
+it and restore the full result set. A username-only placeholder on a general log search is misleading.
+
+**Settings rows align label and primary control on the same centre line.** Optional hints and previews live below the
+control and do not push its label down or up. Gate using rendered rectangles across segment, switch, swatch, range and
+number rows at desktop and phone widths; centre-line difference <= 2 px. A blur slider must change the actual panel
+`backdrop-filter` and a visible preview using the same token; verify both computed styles before and after input and after
+reload. A decorative slider with an unchanged panel or preview fails.
 
 ## THE CHECKER — rules that can be measured are checked by the machine
 

@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Glass
 name: app-glass
-version: 3
+version: 4
 type: process
 checked: [Skill_App_Base, Skill_PBI_White, Design_172_Design]
 installs: [scripts/fx_check.mjs]
@@ -68,6 +68,10 @@ The template names each effect with an `FX:` marker; a port keeps the marker so 
   for later without that entry.
 - **The solid switch:** a visible setting turns blur off (`html.solid`): panels take `--g-glass-strong` (dark: an opaque
   colour), no `backdrop-filter`. Low-power machines and remote desktops use it; it is saved like any UI setting (`app-base` F8).
+- **Blur strength is visible and real:** the slider changes the shared `--g-blur` token used by glass panels and by a
+  high-detail preview under the slider. A smooth wallpaper can hide the change, so the preview must make 0 and 40 px
+  visibly different. Gate: compare computed `backdrop-filter` on a panel and the preview before/after input and reload;
+  preserve the solid switch's zero-blur behavior.
 - **Reduced motion:** under `@media (prefers-reduced-motion: reduce)` every effect above that moves (drift · pill · route ·
   reveal · ripple · toast slide · tooltip lift) stops or becomes an instant change. One block per effect file covers all of them;
   an effect added later is added to that block in the same change.
