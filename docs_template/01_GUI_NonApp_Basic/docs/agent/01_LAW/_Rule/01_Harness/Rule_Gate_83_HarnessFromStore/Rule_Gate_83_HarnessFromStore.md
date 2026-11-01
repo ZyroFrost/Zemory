@@ -1,10 +1,11 @@
 ---
 id: Rule_83
 name: harness-from-store
-version: 11
+version: 12
+checked: [Rule_Gate_79_HarnessEdit, Rule_Gate_85_ProposeChecked, Rule_Gate_61_HookSafetyNet, Rule_Gate_91_LessonsFirst]
 kind: action
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore @v11 #5aa6b8d25aaa
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore @v12 #6f603a3e5ea0
 ---
 # Rule_Gate_83_HarnessFromStore — A repo uses its copy of the harness; a shared change is made on HS by the repo that needs it
 
@@ -22,7 +23,10 @@ requester approves; it is never left for the zemory session to do. The repo fill
 ## Do
 1. Daily work reads the repo's own copy of the harness; HS is read when a change is to be made.
 2. Fill what a frame leaves blank, in the repo: the `Cons.md` of a constitution frame, a repo skill built on the skill frame
-   (`Skill_Own_<Name>`), the values of the marker keys. Never add, remove or rename a section of a frame.
+   (`Skill_Own_<Name>`), the values of the marker keys. Never add, remove or rename a section of a frame. Every change to a
+   `Cons.md` — a ban, a loosening, a lesson in the ledger — is written out to the requester with the requester's own sentence it
+   comes from, and made only once they approve it in the session (one-use flag `.allow-docs-write`); an agent never writes a
+   law of its own making into the constitution.
 3. Need a change? Find the part on HS first (`Rule_Gate_85_ProposeChecked`), then:
    a. the part is wrong or missing for every repo that uses it ⇒ ask the requester (one question with the change written out,
       `Rule_Gate_79_HarnessEdit`). Approved ⇒ this repo's session, not the zemory session:
@@ -57,8 +61,8 @@ requester approves; it is never left for the zemory session to do. The repo fill
   department sessions, and commits the skill with the rebuilt sets in zemory.
 
 ## Check
-- The repo's guard blocks every Write / Edit under the four harness folders, no flag; a fill of a frame passes when the frame's
-  sections stay as they are; an article of the repo's own (`Cons_*_1NN`, no `from:`) passes with the requester's one-use flag
+- The repo's guard blocks every Write / Edit under the four harness folders, no flag; a fill of a frame keeps the frame's
+  sections as they are and passes only with the requester's one-use flag `.allow-docs-write`; an article of the repo's own (`Cons_*_1NN`, no `from:`) passes with the requester's one-use flag
   `.allow-docs-write`. A write into HS needs that flag too (`Rule_Gate_79_HarnessEdit`).
 - conform `harness-edited-here`: a copy that differs from what was assembled is red.
 - The send guard (`zemory hook send-guard`, on `SendMessage`) blocks a message to the zemory session that asks it to change a

@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 # Rule_Gate_10_DestructiveOps — Destroying anything needs approval; original inputs are read-only

@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 # IDE Hệ IDE — agent trong trình soạn code
@@ -21,7 +21,7 @@ lang: vi
 
 ## Cờ dùng một lần
 
-- Cờ `.allow-*` (trong `docs/.harness-state/`) cho qua đúng một việc đã được duyệt; agent chỉ tạo cờ sau khi được cho phép rõ trong phiên (`Rule_Keys_61_HookSafetyNet`).
+- Cờ `.allow-*` (trong `docs/.harness-state/`) cho qua đúng một việc đã được duyệt; agent chỉ tạo cờ sau khi được cho phép rõ trong phiên (`Rule_Gate_61_HookSafetyNet`).
 - Guard cho qua rồi đóng dấu `ZEMORY-USED <vân tay lệnh> <thời điểm>` vào chính file cờ, không xoá ngay: trong 90 giây đúng lệnh đó được thử lại; xin việc khác hoặc quá hạn ⇒ cờ bị thu hồi. Nhóm bí mật không có cờ.
 
 ## Đường cấm ghi (`protected`)

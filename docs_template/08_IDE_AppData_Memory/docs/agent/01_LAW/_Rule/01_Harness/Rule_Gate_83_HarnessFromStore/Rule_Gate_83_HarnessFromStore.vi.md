@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 # Rule_Gate_83_HarnessFromStore — Repo dùng bản chép harness; thay đổi chung do chính repo cần nó sửa trên HS
@@ -18,7 +18,9 @@ chờ phiên zemory làm hộ. Repo điền vào chỗ trống mà khung để l
 ## Phải làm gì
 1. Việc hằng ngày đọc bản harness của chính repo; đọc HS khi sắp sửa một thay đổi.
 2. Điền chỗ khung để trống, ngay trong repo: `Cons.md` của khung hiến pháp, skill riêng dựng trên khung skill
-   (`Skill_Own_<Tên>`), giá trị các khoá của marker. Không bao giờ thêm, bớt hay đổi tên mục của khung.
+   (`Skill_Own_<Tên>`), giá trị các khoá của marker. Không bao giờ thêm, bớt hay đổi tên mục của khung. Mọi thay đổi trên một
+   `Cons.md` — một điều cấm, một chỗ nới, một bài học vào sổ — đều viết ra cho người dùng kèm câu gốc của người dùng mà nó dựa
+   vào, và chỉ ghi khi người dùng duyệt trong phiên (cờ một lần `.allow-docs-write`); agent không bao giờ tự đặt luật vào hiến pháp.
 3. Cần thay đổi? Dò phần đó trên HS trước (`Rule_Gate_85_ProposeChecked`), rồi:
    a. phần đó sai hoặc thiếu với mọi repo đang dùng nó ⇒ hỏi người dùng (một câu, kèm nội dung sửa viết sẵn,
       `Rule_Gate_79_HarnessEdit`). Được duyệt ⇒ phiên của chính repo này, không phải phiên zemory:
@@ -50,8 +52,8 @@ chờ phiên zemory làm hộ. Repo điền vào chỗ trống mà khung để l
   vừa ráp lại trong zemory.
 
 ## Máy kiểm
-- Guard của repo chặn mọi Write / Edit dưới bốn thư mục harness, không có cờ vượt; lần điền khung được qua khi các mục của khung
-  giữ nguyên; điều riêng của repo (`Cons_*_1NN`, không `from:`) qua khi có cờ một lần `.allow-docs-write` của người dùng. Ghi vào
+- Guard của repo chặn mọi Write / Edit dưới bốn thư mục harness, không có cờ vượt; lần điền khung phải giữ nguyên các mục của
+  khung và chỉ qua khi có cờ một lần `.allow-docs-write` của người dùng; điều riêng của repo (`Cons_*_1NN`, không `from:`) qua khi có cờ một lần `.allow-docs-write` của người dùng. Ghi vào
   HS cũng cần cờ đó (`Rule_Gate_79_HarnessEdit`).
 - conform `harness-edited-here`: bản chép khác bản lúc ráp thì đỏ.
 - Send guard (`zemory hook send-guard`, trên `SendMessage`) chặn tin gửi tới phiên zemory nhờ sửa một phần hay nhờ sync: tên

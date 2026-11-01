@@ -1,7 +1,7 @@
 ---
 id: Rule_82
 name: mail-gate
-version: 8
+version: 9
 kind: action
 code: 03_Safety
 ---
@@ -40,4 +40,4 @@ this mail to this person.
 
 ## Links · Liên kết
 - Related · Liên quan: `Skill_Doc_WriteStyle` — how a mail is written when it is sent · cách viết mail khi được gửi
-- Related · Liên quan: `Rule_Keys_61_HookSafetyNet` — one flag, one approved action · một cờ, một việc đã duyệt
+- Related · Liên quan: `Rule_Gate_61_HookSafetyNet` — one flag, one approved action · một cờ, một việc đã duyệt

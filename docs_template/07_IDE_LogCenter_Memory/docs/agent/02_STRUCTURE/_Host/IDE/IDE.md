@@ -1,9 +1,9 @@
 ---
 id: Host_IDE
 name: host-ide
-version: 5
+version: 6
 kind: host
-from: _Store/02_STRUCTURE/_Host/IDE @v5 #ed9edd452e08
+from: _Store/02_STRUCTURE/_Host/IDE @v6 #14fd608fb359
 ---
 # IDE The IDE host — the agent inside a code editor
 
@@ -24,7 +24,7 @@ from: _Store/02_STRUCTURE/_Host/IDE @v5 #ed9edd452e08
 
 ## One-use flags
 
-- A `.allow-*` flag (in `docs/.harness-state/`) lets exactly one approved action through; the agent creates a flag only after clear approval in the session (`Rule_Keys_61_HookSafetyNet`).
+- A `.allow-*` flag (in `docs/.harness-state/`) lets exactly one approved action through; the agent creates a flag only after clear approval in the session (`Rule_Gate_61_HookSafetyNet`).
 - The guard lets it through, then stamps `ZEMORY-USED <command fingerprint> <time>` into the flag file itself, without deleting it at once: for 90 seconds exactly that command may be tried again; asking for another action or running out of time ⇒ the flag is revoked. The secrets group has no flag.
 
 ## Write-protected paths (`protected`)

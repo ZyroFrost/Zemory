@@ -1,7 +1,7 @@
 ---
 id: Rule_79
 name: harness-edit
-version: 7
+version: 8
 kind: action
 code: 01_Harness
 ---
@@ -38,4 +38,4 @@ harness folders follow `Rule_Gate_83_HarnessFromStore`: the repo never changes i
 ## Links · Liên kết
 - Implements · Thi hành: `Skill_Harness_RuleGate` — choosing and building a machine check · chọn và dựng chốt máy
 - Related · Liên quan: `Rule_Gate_83_HarnessFromStore` — the repo side of the harness · phía repo của harness
-- Related · Liên quan: `Rule_Keys_61_HookSafetyNet` — a flag allows one approved change only · một cờ chỉ cho qua đúng một việc đã duyệt
+- Related · Liên quan: `Rule_Gate_61_HookSafetyNet` — a flag allows one approved change only · một cờ chỉ cho qua đúng một việc đã duyệt

@@ -18,7 +18,7 @@ cấu trúc · quy trình nằm trong `docs/agent/`, mỗi luật và mỗi slot
      quy, `Remove-Item`, `git reset --hard`, `git clean` hỏi;
    - `.claude/hooks/guard.ps1` (Windows PowerShell 5.1): ghi file ra ngoài project ⇒ host hỏi người dùng
      (`Rule_Gate_44_RepoScope`) · ghi giá trị bí mật vào file code git theo dõi ⇒ chặn (`Rule_Gate_21_WhatEntersGit`).
-   - Lưới chỉ đỡ hụt, chữ của luật mới quyết (`Rule_Keys_61_HookSafetyNet`). Dòng quyền là của repo: thêm · bớt · đổi
+   - Lưới chỉ đỡ hụt, chữ của luật mới quyết (`Rule_Gate_61_HookSafetyNet`). Dòng quyền là của repo: thêm · bớt · đổi
      `ask` ↔ `deny` được. Sửa `.claude/settings.json` xong ⇒ mở lại phiên để host nạp lại.
 3. **Lệnh `zemory` trong luật và skill** (`conform` · `validate` · `memory search` · `changelog search` · `plan search` ·
    `tidy` · `sync` …) chỉ chạy ở tầng Memory. Ở tầng Basic, bước cần lệnh đó ⇒ bỏ qua và ghi rõ trong câu trả lời đã bỏ bước

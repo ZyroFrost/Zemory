@@ -2,10 +2,10 @@
 id: Rule_73
 aka: 02-73
 name: gate-every-rule
-version: 4
+version: 5
 kind: action
 code: 01_Harness
-checked: [Skill_Harness_RuleGate, Rule_Keys_61_HookSafetyNet, Rule_Gate_86_LawLayersAgree, Rule_Gate_85_ProposeChecked]
+checked: [Skill_Harness_RuleGate, Rule_Gate_61_HookSafetyNet, Rule_Gate_86_LawLayersAgree, Rule_Gate_85_ProposeChecked]
 ---
 # Rule_Gate_73_GateEveryRule — Every law and every slot has a machine check; the text alone is the last layer
 
@@ -43,5 +43,5 @@ the only layer: an agent forgets text, a hook it cannot forget.
 
 ## Links · Liên kết
 - Implements · Thi hành: `Skill_Harness_RuleGate` — how to classify a law and build its check · cách phân loại luật và dựng chốt
-- Related · Liên quan: `Rule_Keys_61_HookSafetyNet` — a hook catches, the text decides · hook đỡ, chữ quyết
+- Related · Liên quan: `Rule_Gate_61_HookSafetyNet` — a hook catches, the text decides · hook đỡ, chữ quyết
 - Related · Liên quan: `Rule_Gate_86_LawLayersAgree` — the layers stay linked · các tầng luật nối với nhau

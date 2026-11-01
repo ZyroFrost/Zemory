@@ -45,7 +45,7 @@ try {
   $rel = $abs.Substring($rc.Length + 1) -replace '\\', '/'
   $S = ConvertFrom-Json '{"patterns":[{"kind":"password","re":"(?<![A-Za-z])(?:pass(?:word)?|pwd|secret|token|api[_-]?key|client[_-]?secret)(?![A-Za-z])[\"'']?\\s*[:=]\\s*[\"'']([^\"''\\s$<>{}%]{6,})[\"'']","flags":"i"},{"kind":"connection string","re":"(?:^|[;\"''])\\s*(?:Password|Pwd)\\s*=\\s*([^;\"''\\s$<>{}%()]{4,})\\s*(?:;|$)","flags":"i"},{"kind":"private key","re":"-----BEGIN [A-Z ]*PRIVATE KEY-----","flags":""},{"kind":"cloud access key","re":"\\bAKIA[0-9A-Z]{16}\\b","flags":""}],"placeholder":"^(?:changeme|change_me|password|secret|x{3,}|\\*+|your[_-].*|example.*|dummy.*|fake.*|placeholder.*|<.*>)$","name":"^(?:[A-Z][A-Z0-9_]{2,}|[.#][a-z]+(?:-[a-z0-9]+)+|[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+)$","env":"environ|getenv|process\\.env|\\$\\{|%[A-Z_]+%|GetEnvironmentVariable|_env\\b","skipPath":"(^|/)(vendors?|third[_-]?party|external|node_modules)/|(^|/)wwwroot/.*/lib/|\\.min\\.js$"}'
   $code = '\.(py|js|jsx|ts|tsx|mjs|cjs|json|ya?ml|toml|ini|cfg|conf|ps1|sh|bat|cmd|sql|xml|config|cs|java|go|php|rb)$'
-  $notTracked = '(^|/)\.env(\.[^/]*)?$|(^|/)data/secrets/|(^|/)gate\.json$'
+  $notTracked = '(^|/)\.env(\.[^/]*)?$|(^|/)gate\.json$'
   $test = '(^|/)(test|tests|__tests__)/|\.test\.[cm]?[jt]sx?$|_test\.(py|go)$|(^|/)test_[^/]+\.py$'
   if ($rel -notmatch $code -or $rel -match $notTracked -or $rel -match $S.skipPath) { exit 0 }
 
@@ -91,7 +91,7 @@ try {
   if ($hits.Count -eq 0) { exit 0 }
   $list = (@($hits) | Select-Object -First 4) -join ' | '
   if ($rel -match $test) {
-    Say 'ask' ('Rule_Gate_21_WhatEntersGit: a credential-shaped value in the test file ' + $rel + ': ' + $list + '. A fake value is fine here; a real one goes to .env or data/secrets/ and the test reads the environment variable.')
+    Say 'ask' ('Rule_Gate_21_WhatEntersGit: a credential-shaped value in the test file ' + $rel + ': ' + $list + '. A fake value is fine here; a real one goes to .env and the test reads the environment variable.')
   }
-  Say 'deny' ('Rule_Gate_21_WhatEntersGit: a secret value written into ' + $rel + ', a file git tracks: ' + $list + '. A login to a system goes to the machine vault; a secret of this repo''s own product goes to data/secrets/ or .env. The file names where the value is read from (an environment variable or the vault entry), never the value.')
+  Say 'deny' ('Rule_Gate_21_WhatEntersGit: a secret value written into ' + $rel + ', a file git tracks: ' + $list + '. A login to a system goes to the organisation vault (Workspace/Company/<Org>/_ConfigVault/<tool>/); a text secret of this repo alone goes to .env; a secret file goes to _ConfigVault/certs/<repo>/. The file names where the value is read from (an environment variable or the vault entry), never the value.')
 } catch { exit 0 }

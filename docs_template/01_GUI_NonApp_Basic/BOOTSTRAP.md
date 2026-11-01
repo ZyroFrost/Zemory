@@ -27,7 +27,7 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 
 ## 3. Module trong bộ
 
-- Luật chung: 36 (Gate 25 · Keys 11 · Core 0).
+- Luật chung: 36 (Gate 26 · Keys 10 · Core 0).
 - Khung hiến pháp (9): `01_Scope/Cons_Gate_09_Purpose` · `02_Data/Cons_Gate_10_ReadOnlySources` · `02_Data/Cons_Gate_11_WriteBoundary` · `02_Data/Cons_Gate_12_SourceOfTruth` · `03_System/Cons_Gate_13_Architecture` · `04_Security/Cons_Gate_14_Access` · `02_Data/Cons_Gate_15_DataLifecycle` · `03_System/Cons_Gate_16_Dependencies` · `03_System/Cons_Gate_17_LessonsLedger`. Mỗi khung có `Cons.md` mẫu: viết lại cho sản phẩm của dự án, hoặc ghi `status: n/a` kèm lý do.
 - Structure: `Struc_Repo_NonApp` · hệ: `_Host/GUI`.
 - Skill (17): `doc-read-office` · `doc-write-docx` · `doc-write-style` · `frame-own` · `harness-audit` · `harness-conform` · `harness-grill` · `harness-plan-trim` · `harness-reconcile` · `harness-repo-move` · `harness-session-close` · `harness-structure` · `harness-sync-path` · `pbi-base` · `task-fill` · `task-pull` · `task-upload`.
@@ -137,30 +137,30 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 99 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_59_ReadFirst/Rule_Gate_59_ReadFirst.md` | 40 |
 | 100 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_59_ReadFirst/Rule_Gate_59_ReadFirst.vi.md` | 29 |
 | 101 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_59_ReadFirst/gate.json` | 1 |
-| 102 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger/Rule_Gate_63_SkillTrigger.md` | 37 |
-| 103 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger/Rule_Gate_63_SkillTrigger.vi.md` | 28 |
-| 104 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger/gate.json` | 21 |
-| 105 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_73_GateEveryRule/Rule_Gate_73_GateEveryRule.md` | 48 |
-| 106 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_73_GateEveryRule/Rule_Gate_73_GateEveryRule.vi.md` | 36 |
-| 107 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_73_GateEveryRule/gate.json` | 20 |
-| 108 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/Rule_Gate_79_HarnessEdit.md` | 42 |
-| 109 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/Rule_Gate_79_HarnessEdit.vi.md` | 32 |
-| 110 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/gate.json` | 1 |
-| 111 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.md` | 80 |
-| 112 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.vi.md` | 67 |
-| 113 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/gate.json` | 238 |
-| 114 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/Rule_Gate_85_ProposeChecked.md` | 68 |
-| 115 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/Rule_Gate_85_ProposeChecked.vi.md` | 55 |
-| 116 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/gate.json` | 210 |
-| 117 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree/Rule_Gate_86_LawLayersAgree.md` | 45 |
-| 118 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree/Rule_Gate_86_LawLayersAgree.vi.md` | 32 |
-| 119 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree/gate.json` | 21 |
-| 120 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_92_NameGrammar/Rule_Gate_92_NameGrammar.md` | 67 |
-| 121 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_92_NameGrammar/Rule_Gate_92_NameGrammar.vi.md` | 62 |
-| 122 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_92_NameGrammar/gate.json` | 21 |
-| 123 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Keys_61_HookSafetyNet/Rule_Keys_61_HookSafetyNet.md` | 37 |
-| 124 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Keys_61_HookSafetyNet/Rule_Keys_61_HookSafetyNet.vi.md` | 28 |
-| 125 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Keys_61_HookSafetyNet/gate.json` | 19 |
+| 102 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet/Rule_Gate_61_HookSafetyNet.md` | 50 |
+| 103 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet/Rule_Gate_61_HookSafetyNet.vi.md` | 35 |
+| 104 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet/gate.json` | 89 |
+| 105 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger/Rule_Gate_63_SkillTrigger.md` | 37 |
+| 106 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger/Rule_Gate_63_SkillTrigger.vi.md` | 28 |
+| 107 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger/gate.json` | 21 |
+| 108 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_73_GateEveryRule/Rule_Gate_73_GateEveryRule.md` | 48 |
+| 109 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_73_GateEveryRule/Rule_Gate_73_GateEveryRule.vi.md` | 36 |
+| 110 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_73_GateEveryRule/gate.json` | 20 |
+| 111 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/Rule_Gate_79_HarnessEdit.md` | 42 |
+| 112 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/Rule_Gate_79_HarnessEdit.vi.md` | 32 |
+| 113 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/gate.json` | 1 |
+| 114 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.md` | 84 |
+| 115 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.vi.md` | 69 |
+| 116 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/gate.json` | 238 |
+| 117 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/Rule_Gate_85_ProposeChecked.md` | 68 |
+| 118 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/Rule_Gate_85_ProposeChecked.vi.md` | 55 |
+| 119 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/gate.json` | 210 |
+| 120 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree/Rule_Gate_86_LawLayersAgree.md` | 45 |
+| 121 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree/Rule_Gate_86_LawLayersAgree.vi.md` | 32 |
+| 122 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree/gate.json` | 21 |
+| 123 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_92_NameGrammar/Rule_Gate_92_NameGrammar.md` | 67 |
+| 124 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_92_NameGrammar/Rule_Gate_92_NameGrammar.vi.md` | 62 |
+| 125 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_92_NameGrammar/gate.json` | 21 |
 | 126 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_01_DoneMeansRun/Rule_Gate_01_DoneMeansRun.md` | 46 |
 | 127 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_01_DoneMeansRun/Rule_Gate_01_DoneMeansRun.vi.md` | 30 |
 | 128 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_01_DoneMeansRun/gate.json` | 91 |

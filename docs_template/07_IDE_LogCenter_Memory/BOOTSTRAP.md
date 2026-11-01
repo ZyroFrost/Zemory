@@ -22,7 +22,7 @@
 
 ## One-use flags
 
-- A `.allow-*` flag (in `docs/.harness-state/`) lets exactly one approved action through; the agent creates a flag only after clear approval in the session (`Rule_Keys_61_HookSafetyNet`).
+- A `.allow-*` flag (in `docs/.harness-state/`) lets exactly one approved action through; the agent creates a flag only after clear approval in the session (`Rule_Gate_61_HookSafetyNet`).
 - The guard lets it through, then stamps `ZEMORY-USED <command fingerprint> <time>` into the flag file itself, without deleting it at once: for 90 seconds exactly that command may be tried again; asking for another action or running out of time ⇒ the flag is revoked. The secrets group has no flag.
 
 ## Write-protected paths (`protected`)
@@ -65,7 +65,7 @@ zemory doctor
 
 ## 3. Module trong bộ
 
-- Luật chung: 36 (Gate 25 · Keys 11 · Core 0).
+- Luật chung: 36 (Gate 26 · Keys 10 · Core 0).
 - Khung hiến pháp (9): `01_Scope/Cons_Gate_09_Purpose` · `02_Data/Cons_Gate_10_ReadOnlySources` · `02_Data/Cons_Gate_11_WriteBoundary` · `02_Data/Cons_Gate_12_SourceOfTruth` · `03_System/Cons_Gate_13_Architecture` · `04_Security/Cons_Gate_14_Access` · `02_Data/Cons_Gate_15_DataLifecycle` · `03_System/Cons_Gate_16_Dependencies` · `03_System/Cons_Gate_17_LessonsLedger`. Mỗi khung có `Cons.md` mẫu: viết lại cho sản phẩm của dự án, hoặc ghi `status: n/a` kèm lý do.
 - Structure: `Struc_Repo_LogCenter` · hệ: `_Host/IDE`.
 - Skill (20): `db-base` · `doc-read-office` · `doc-write-docx` · `doc-write-style` · `frame-own` · `harness-audit` · `harness-conform` · `harness-grill` · `harness-plan-trim` · `harness-reconcile` · `harness-repo-move` · `harness-reshape` · `harness-rule-gate` · `harness-session-close` · `harness-sync-path` · `pbi-base` · `task-case` · `task-fill` · `task-pull` · `task-upload`.

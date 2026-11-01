@@ -33,7 +33,7 @@ export function basicGuardSource(): string {
     "# decision on stdout; 'deny' also exits 2 (the fallback channel).",
     "#   Rule_Gate_44_RepoScope      a file written outside the open project            => ask (the person decides in the app)",
     "#   Rule_Gate_21_WhatEntersGit  a secret value written into a code file git tracks => deny (in a test file: ask)",
-    "# Anything it cannot read lets the call through: the text of the rules still holds (Rule_Keys_61_HookSafetyNet).",
+    "# Anything it cannot read lets the call through: the text of the rules still holds (Rule_Gate_61_HookSafetyNet).",
     "$ErrorActionPreference = 'Stop'",
     "try { [Console]::InputEncoding = [Text.Encoding]::UTF8; [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}",
     "try { $p = [Console]::In.ReadToEnd() | ConvertFrom-Json } catch { exit 0 }",

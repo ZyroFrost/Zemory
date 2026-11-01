@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Rule_Gate_73_GateEveryRule — Mọi luật và mọi slot có chốt máy; chữ chỉ là tầng cuối

@@ -2,10 +2,10 @@
 id: Rule_10
 aka: 02-10
 name: destructive-ops
-version: 10
+version: 11
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps @v10 #0f16f263c92e
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps @v11 #f98bee1db480
 ---
 # Rule_Gate_10_DestructiveOps — Destroying anything needs approval; original inputs are read-only
 
@@ -49,4 +49,4 @@ approval before doing it. Original inputs received from outside are only read, n
 
 ## Links · Liên kết
 - Repo declares · Repo khai: `Cons_Gate_10_ReadOnlySources` — the repo declares its read-only sources · repo khai nguồn chỉ đọc
-- Related · Liên quan: `Rule_Keys_61_HookSafetyNet` — a flag lets one approved action through · cờ cho qua đúng một việc đã duyệt
+- Related · Liên quan: `Rule_Gate_61_HookSafetyNet` — a flag lets one approved action through · cờ cho qua đúng một việc đã duyệt

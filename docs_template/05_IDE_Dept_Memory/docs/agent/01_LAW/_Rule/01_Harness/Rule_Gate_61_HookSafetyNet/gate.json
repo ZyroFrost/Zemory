@@ -1,0 +1,89 @@
+{
+  "hook": "hook.cjs",
+  "prompt": {
+    "kind": "Rule_61",
+    "re": "\\b(bi chan|hook|\\.allow|vuot|vuot quyen|tu y|lach|ne hook|guard|chan lai)\\b",
+    "text": "[zemory] Rule_Gate_61_HookSafetyNet: A block is answered by the user: stop and ask, no other way round it, no .allow flag without explicit approval in this session."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "sao bị chặn hook vậy"
+    },
+    {
+      "note": "the requester's sentence that made this a gate (a department repo, 2026-11-01)",
+      "prompt": "khi chặn thì ép buộc phải hỏi lại user ko được tự ý, ko được vượt quyền nếu bị chặn"
+    },
+    {
+      "note": "the mail gate blocked a send; the agent tries another command before the user answered",
+      "files": {
+        ".transcript.jsonl": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"gửi đi\"}]}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"is_error\":true,\"content\":\"PreToolUse:Bash hook error: BLOCKED (guard layer 1): Rule_Gate_82_MailGate - this command can SEND MAIL - script send_fabi.py sends mail\"}]}}\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python _scratch_render.py"
+      }
+    },
+    {
+      "note": "an outside write was blocked; the agent makes the flag itself",
+      "files": {
+        ".transcript.jsonl": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"làm đi\"}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"is_error\":true,\"content\":[{\"type\":\"text\",\"text\":\"PreToolUse:Write hook error: BLOCKED (guard layer 1): writing `D:/x/y.md` - that is OUTSIDE the project\"}]}]}}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/.harness-state/.allow-outside",
+        "content": ""
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "thêm cột"
+    },
+    {
+      "note": "the user answered after the block",
+      "files": {
+        ".transcript.jsonl": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"is_error\":true,\"content\":\"PreToolUse:Bash hook error: BLOCKED (guard layer 1): Rule_Gate_82_MailGate - this command can SEND MAIL\"}]}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"ok gửi\"}]}}\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python send_fabi.py --send"
+      }
+    },
+    {
+      "note": "a block that asks no permission: read the file first",
+      "files": {
+        ".transcript.jsonl": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"sửa file\"}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"is_error\":true,\"content\":\"PreToolUse:Edit hook error: BLOCKED (guard layer 1): NOT READ IN FULL - this repo requires reading these files\"}]}}\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "a.md",
+        "old_string": "a",
+        "new_string": "b"
+      }
+    },
+    {
+      "note": "a block on how code is written: rewrite it, no permission needed",
+      "files": {
+        ".transcript.jsonl": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"sửa code\"}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"is_error\":true,\"content\":\"PreToolUse:Edit hook error: BLOCKED (guard layer 1): Rule_Gate_29_CodeLanguage - a comment in x.py is not English\"}]}}\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "x.py",
+        "old_string": "a",
+        "new_string": "b"
+      }
+    },
+    {
+      "note": "reading stays open while the agent waits for the answer",
+      "files": {
+        ".transcript.jsonl": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"gửi đi\"}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"is_error\":true,\"content\":\"PreToolUse:Bash hook error: BLOCKED (guard layer 1): Rule_Gate_82_MailGate - this command can SEND MAIL\"}]}}\n"
+      },
+      "tool_name": "Read",
+      "tool_input": {
+        "file_path": "a.md"
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # Rule_Gate_44_RepoScope — Write only inside the open project

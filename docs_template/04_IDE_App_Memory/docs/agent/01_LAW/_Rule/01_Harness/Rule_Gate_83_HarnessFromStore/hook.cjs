@@ -147,7 +147,12 @@ function check(payload, root, policy) {
       "frame on HS by this repo's session, once the user approves (Rule_Gate_83_HarnessFromStore step 3a).";
     if (CONS.test(e.rel) && e.exists) {
       const diff = shapeDiff(heads(fs.readFileSync(abs, "utf8")), heads(afterText(payload, abs, true)));
-      return diff ? blocked(root, policy, "02-83", e.rel + " fills a constitution frame, and this change alters its sections:" + diff + how) : null;
+      if (diff) return blocked(root, policy, "02-83", e.rel + " fills a constitution frame, and this change alters its sections:" + diff + how);
+      // the content of a frame is the user's to approve, every time: an agent once wrote a ban the user never gave into its own
+      // constitution, then obeyed it as the user's word (a department repo, 2026-10-29 → 2026-11-01)
+      return { flag: "docs_write", subject: e.rel, msg: blocked(root, policy, "02-83", e.rel + " is this repo's constitution: " +
+        "every change to it - a new ban, a loosened one, a lesson in the ledger - is written out to the user and approved in " +
+        "this session before it is made. Show the user the exact lines; quote the user's own sentence it comes from.") };
     }
     const own = OWN.exec(e.rel);
     if (own) {

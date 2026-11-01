@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Rule_Gate_79_HarnessEdit — Changing HS needs the requester's approval; a law whose breach cannot be undone needs a machine check
