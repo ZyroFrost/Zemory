@@ -115,8 +115,8 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 77 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_16_Dependencies/Cons_Gate_16_Dependencies.vi.md` | 27 |
 | 78 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_16_Dependencies/gate.json` | 3 |
 | 79 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md` | 17 |
-| 80 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons_Gate_17_LessonsLedger.md` | 68 |
-| 81 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons_Gate_17_LessonsLedger.vi.md` | 52 |
+| 80 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons_Gate_17_LessonsLedger.md` | 70 |
+| 81 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons_Gate_17_LessonsLedger.vi.md` | 53 |
 | 82 | `docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/gate.json` | 3 |
 | 83 | `docs/agent/01_LAW/_Cons/04_Security/Cons_Gate_14_Access/Cons.md` | 23 |
 | 84 | `docs/agent/01_LAW/_Cons/04_Security/Cons_Gate_14_Access/Cons_Gate_14_Access.md` | 44 |
@@ -167,9 +167,9 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 129 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_89_MessageOnlyWithWork/Rule_Gate_89_MessageOnlyWithWork.md` | 45 |
 | 130 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_89_MessageOnlyWithWork/Rule_Gate_89_MessageOnlyWithWork.vi.md` | 33 |
 | 131 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_89_MessageOnlyWithWork/gate.json` | 1 |
-| 132 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_91_LessonsFirst/Rule_Gate_91_LessonsFirst.md` | 55 |
-| 133 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_91_LessonsFirst/Rule_Gate_91_LessonsFirst.vi.md` | 46 |
-| 134 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_91_LessonsFirst/gate.json` | 166 |
+| 132 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_91_LessonsFirst/Rule_Gate_91_LessonsFirst.md` | 58 |
+| 133 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_91_LessonsFirst/Rule_Gate_91_LessonsFirst.vi.md` | 49 |
+| 134 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_91_LessonsFirst/gate.json` | 202 |
 | 135 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_93_SubagentSmallOnly/Rule_Gate_93_SubagentSmallOnly.md` | 47 |
 | 136 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_93_SubagentSmallOnly/Rule_Gate_93_SubagentSmallOnly.vi.md` | 33 |
 | 137 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_93_SubagentSmallOnly/gate.json` | 76 |

@@ -906,9 +906,52 @@ function hasLedger(root) {
   }
   return false;
 }
+// A lesson is a branch of the constitution: it is worth something only when a machine blocks the fault it names (the user,
+// 2026-11-01: lessons were written and never read). Each new or changed entry of the ledger names, on its Kiểm line, a check
+// that blocks - static (a pattern the repo's gate runs) or runtime (a test that fails) - and a file of that check that exists.
+const LESSONS = /(^|\/)docs\/agent\/01_LAW\/_Cons\/(?:[^\/]+\/)?Cons_Gate_17_LessonsLedger\/Cons\.md$/;
+const CHECK_FILE = /[\w.\/\\-]+\.(?:py|ps1|psm1|sql|mjs|cjs|js|ts|tsx|cmd|bat|sh|json)\b/g;
+function ledgerAfter(payload, abs, exists) {
+  const ti = payload.tool_input || {};
+  if (payload.tool_name === "Write") return String(ti.content || "");
+  let t = exists ? fs.readFileSync(abs, "utf8") : "";
+  const edits = payload.tool_name === "MultiEdit" ? ti.edits || [] : [ti];
+  for (const x of edits) t = x.replace_all ? t.split(String(x.old_string || "")).join(String(x.new_string || "")) : t.replace(String(x.old_string || ""), String(x.new_string || ""));
+  return t;
+}
+function entries(text) {
+  const out = new Map();
+  const parts = String(text).replace(/\r\n/g, "\n").split(/^(?=###? L-?\d+\b)/m);
+  for (const p of parts) {
+    const id = /^###? (L-?\d+)\b/.exec(p);
+    if (id) out.set(id[1], p.trim());
+  }
+  return out;
+}
+function lessonFaults(payload, root, e) {
+  const abs = path.isAbsolute(e.abs) ? e.abs : path.join(root, e.abs);
+  const before = entries(e.exists ? fs.readFileSync(abs, "utf8") : "");
+  const faults = [];
+  for (const [id, body] of entries(ledgerAfter(payload, abs, e.exists))) {
+    if (before.get(id) === body || /^\s*- Thay bằng:/m.test(body)) continue;
+    const k = /^\s*- Kiểm:\s*(\w[\w-]*)\s*:\s*(.+)$/m.exec(body);
+    if (!k) { faults.push(id + ": no line \"- Kiểm: <static|runtime>: <check>\""); continue; }
+    if (k[1] !== "static" && k[1] !== "runtime") { faults.push(id + ": Kiểm is \"" + k[1] + "\" - only static or runtime blocks the fault"); continue; }
+    const files = (k[2].match(CHECK_FILE) || []).filter((f) => fs.existsSync(path.join(root, f.replace(/\\/g, "/"))));
+    if (!files.length) faults.push(id + ": Kiểm names no check file that exists in the repo (" + k[2].trim().slice(0, 80) + ")");
+  }
+  return faults;
+}
 function check(payload, root, policy) {
   try {
     const e = edit(payload, root);
+    if (e && LESSONS.test(e.rel)) {
+      const faults = lessonFaults(payload, root, e);
+      if (!faults.length) return null;
+      return blocked(root, policy, "02-91", "a lesson in " + e.rel + " has no machine check that blocks its fault:\n  " + faults.join("\n  ") +
+        "\nA lesson is written together with its check: build the gate pattern (static) or the test (runtime) first, run it red " +
+        "on the fault, then name it - \"- Kiểm: runtime: tasks/<case>/pipeline/test_x.py::test_name\". A reminder for a reader is not a lesson.");
+    }
     if (!e || !LEDGER.test(e.rel) || !hasLedger(root)) return null;
     const text = e.newLines.join("\n");
     if (!/^\s*##\s+\[/m.test(text)) return null; // only a new entry is judged, not a later touch of an old one
@@ -1001,8 +1044,18 @@ function launcherSends(cmd, root) {
   }
   return "";
 }
+// Inline code (node -e / -p, python -c) is a program held in a quoted argument, not a command line: a file name in it is
+// data (Dept_FIN 2026-11-01: a node -e script holding the sample command "python send.py" was blocked). Only a real mail
+// API call inside it counts; the quoted body is dropped before the rest is judged.
+const INLINE_CODE = /(\b(?:node|python3?|py)(?:\.exe)?(?:\s+-[\w-]+)*?\s+-[epc]\s+)("(?:\\.|[^"\\])*"|'(?:[^']|'')*')/gi;
 function why(raw, root) {
-  const cmd = runnable(raw);
+  let inlineSends = false;
+  const outside = raw.replace(INLINE_CODE, (m, pre, body) => {
+    if (SENDS.test(body)) inlineSends = true;
+    return pre + '""';
+  });
+  if (inlineSends) return "the command itself calls a mail API";
+  const cmd = runnable(outside);
   if (!cmd.trim()) return "";
   if (SENDS.test(cmd)) return "the command itself calls a mail API";
   if (MAIL_SCRIPT.test(cmd)) return "it runs a mail / send / alert script";

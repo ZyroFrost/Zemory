@@ -11,7 +11,7 @@ status: template
 - Sự cố đã đo: <điều đã xảy ra, có số>
 - Kiểu sai: <vì sao sai>
 - Luật cho code mới: <điều kiện → hành vi>
-- Kiểm: <static | static-todo | runtime | judgment>: <mẫu dò · tên test · từ khoá>
+- Kiểm: <static | runtime>: <file kiểm có thật trong repo> — <mẫu dò · tên test>
 - Đã sửa ở: <tệp · commit>
 - Vùng: <vùng · vùng — không bắt buộc, không dùng thì xoá dòng>
 - Tham số: <{"khoá": "giá trị"} — không bắt buộc, không dùng thì xoá dòng>

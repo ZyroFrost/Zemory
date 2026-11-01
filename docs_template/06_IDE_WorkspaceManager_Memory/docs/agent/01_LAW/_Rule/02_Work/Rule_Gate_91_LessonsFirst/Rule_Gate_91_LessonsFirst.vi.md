@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 # Rule_Gate_91_LessonsFirst — Sửa xong là khi bài học đã được ghi
@@ -21,8 +21,9 @@ Lỗi mà code mới không thể đem lại (một bản ghi sai một lần, s
 ## Phải làm gì
 1. Hỏi: code mới, tác vụ mới hay dữ liệu mới có làm lỗi này lặp lại được không? Có ⇒ cần một bài học.
 2. Thêm `L-<số>` vào sổ ngay trong lượt sửa: sự cố có số · kiểu sai · luật cho code mới · cách kiểm · nơi đã sửa.
-3. Gắn phép kiểm mạnh nhất làm được: mẫu `static` chạy trong cổng của repo · test `runtime` · từ khoá `judgment`. Chỉ bài học loại
-   `judgment` mới dựa riêng vào người đọc.
+3. Gắn phép kiểm CHẶN được lỗi: mẫu `static` chạy trong cổng của repo, hoặc test `runtime` đỏ khi lỗi xảy ra. Dựng nó và thấy nó
+   đỏ trên lỗi trước khi ghi bài học; dòng `Kiểm` nêu file của phép kiểm. Bài học không có máy kiểm chỉ là ghi chú không ai đọc:
+   không có bài học loại `judgment`.
 4. Mục changelog của lần sửa nêu `L-<số>`, hoặc có dòng `không có bài học: <lý do>`.
 5. Trước khi viết code mới trong một vùng, đọc các bài học của vùng đó trong sổ.
 
@@ -38,6 +39,8 @@ Lỗi mà code mới không thể đem lại (một bản ghi sai một lần, s
   (`sửa lỗi` · `fix` · `bug` · `sự cố` · `incident` · `regression` · `hồi quy`), hoặc một dòng viết dạng *lỗi ⇒ việc đã làm* (một từ
   báo lỗi như `lỗi` · `hỏng` · `lệch` · `thiếu` · `trễ` · `hở` · `timeout`, kèm mũi tên `⇒`). Nêu bài học là có `L-<số>` (`L-7` ·
   `L-007`, hoặc `L007` của sổ đánh số trước khi có khung), hoặc dòng `không có bài học:` / `no lesson:`.
+- Guard chặn một mục sổ mới hoặc bị sửa mà `Kiểm` không phải `static` hay `runtime`, hoặc không nêu file kiểm nào có thật trong repo
+  (mục cũ để nguyên thì qua).
 - `conform` (khung `Cons_Gate_17_LessonsLedger`) đỏ khi sổ thiếu, chưa viết, hoặc còn là bản mẫu.
 
 ## Links · Liên kết

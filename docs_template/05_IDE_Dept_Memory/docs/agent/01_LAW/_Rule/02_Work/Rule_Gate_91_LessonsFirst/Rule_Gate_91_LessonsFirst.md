@@ -2,11 +2,11 @@
 id: Rule_91
 aka: 02-91
 name: lessons-first
-version: 3
+version: 4
 kind: action
 code: 02_Work
 checked: [Rule_Gate_01_DoneMeansRun, Rule_Keys_11_VerifyClaims, Rule_Gate_34_DocsFollowChange]
-from: _Store/01_LAW/_Rule/02_Work/Rule_Gate_91_LessonsFirst @v3 #cf9590ec079d
+from: _Store/01_LAW/_Rule/02_Work/Rule_Gate_91_LessonsFirst @v4 #318a63ad596f
 ---
 # Rule_Gate_91_LessonsFirst — A fix is done when its lesson is written
 
@@ -29,8 +29,9 @@ says why.
 1. Ask: can new code, a new job or new data make this fault again? Yes ⇒ it needs a lesson.
 2. Add `L-<n>` to the ledger in the same turn as the fix: incident with numbers · kind of mistake · rule for new code · check ·
    where it was fixed.
-3. Give it the strongest check that works: a `static` pattern run in the repo's gate · a `runtime` test · `judgment` keywords.
-   Only a `judgment` lesson rests on a reader alone.
+3. Give it a check that BLOCKS the fault: a `static` pattern run in the repo's gate, or a `runtime` test that fails on it. Build it
+   and see it go red on the fault before the lesson is written; the `Kiểm` line names its file. A lesson nobody's machine checks is
+   only a note nobody reads: there is no `judgment` lesson.
 4. The changelog entry of the fix names `L-<n>`, or carries the line `không có bài học: <lý do>` (`no lesson: <reason>`).
 5. Before writing new code in an area, read the ledger's lessons for that area.
 
@@ -47,6 +48,8 @@ says why.
   what was done* (a fault word such as `lỗi` · `hỏng` · `lệch` · `thiếu` · `trễ` · `hở` · `timeout`, and the arrow `⇒`). A lesson
   is named by `L-<n>` (`L-7` · `L-007`, or `L007` of a ledger numbered before the frame), or by the line `không có bài học:` /
   `no lesson:`.
+- The guard blocks a new or changed ledger entry whose `Kiểm` is not `static` or `runtime`, or names no check file that exists in
+  the repo (old entries left as they are pass).
 - `conform` (frame `Cons_Gate_17_LessonsLedger`) reds a missing, unwritten or template ledger.
 
 ## Links · Liên kết

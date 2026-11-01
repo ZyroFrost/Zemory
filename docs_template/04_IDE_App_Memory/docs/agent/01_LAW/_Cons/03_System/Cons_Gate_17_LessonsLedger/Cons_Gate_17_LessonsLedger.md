@@ -1,13 +1,13 @@
 ---
 id: Cons_17
 name: lessons-ledger
-version: 3
+version: 4
 kind: content
 code: 03_System
 frame: true
 core: false
 checked: [Cons_Gate_13_Architecture, Rule_Gate_01_DoneMeansRun, Rule_Keys_11_VerifyClaims, Rule_Gate_83_HarnessFromStore]
-from: _Store/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger @v3 #751f516ade0d
+from: _Store/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger @v4 #eb640a550e2a
 ---
 # Cons_Gate_17_LessonsLedger — The repo's ledger of lessons
 
@@ -17,7 +17,7 @@ fixed once comes back when new code or a new job is written the old way; only a 
 
 ## What
 Every repo keeps, in the `Cons.md` of this frame, the lessons its own fixed faults taught: one entry `L-<n>` per lesson, each a
-rule new code and operations follow, with the way a machine or a reader checks it. The ledger belongs to the repo and grows with
+rule new code and operations follow, with the machine check that blocks it. The ledger belongs to the repo and grows with
 it; it is read before new code is written in the area a lesson covers. It has one fixed grammar, so a repo's gate script can read
 it without guessing.
 
@@ -41,9 +41,10 @@ whose `Vùng` names that area are read (`Rule_Gate_91_LessonsFirst` step 5); the
    - optional, after them: `Vùng` — the areas of code the lesson covers, separated by ` · `, read before new code is written
      there · `Tham số` — one JSON object on one line that a static check reads (a list of exempt names, a key to require).
    A line in another form is not read by the machine; a key is never renamed.
-3. The `Kiểm` line is `<kind>: <what>`, the strongest kind that works: `static` — a pattern that finds the fault in code, run in
-   the repo's gate before deploy · `static-todo` — a static check planned and not built yet (a debt the gate lists) ·
-   `runtime` — a test that fails on it · `judgment` — the keywords that remind a reader. Name the pattern, the test or the words.
+3. The `Kiểm` line is `<kind>: <file> — <what>`, and the kind blocks: `static` — a pattern that finds the fault in code, run in
+   the repo's gate before deploy · `runtime` — a test that fails on it. The file of the check exists in the repo and goes red on
+   the fault before the lesson is written. A lesson is a branch of the constitution: without a check that blocks, it is not
+   written (no `judgment`, no `static-todo`).
 4. A lesson replaced by a better one stays, with the line `- Thay bằng: L-<m>`; an entry is never deleted.
 5. A repo with no lesson yet keeps the frame with the line `No lesson yet.` under `## Lessons`.
 6. The values are written in the language of the repo's ledgers; the keys stay as written above.
@@ -52,13 +53,14 @@ whose `Vùng` names that area are read (`Rule_Gate_91_LessonsFirst` step 5); the
 - Situation: a retry for transient errors was patched in two places; a third place, the source scan, deadlocked the nightly job.
 - ✗ Wrong: fix the third place and write "fixed retry in the source scan" in the changelog; next week a fourth place breaks the
   same way.
-- ✓ Right: under `## Lessons`, `### L-007 — every call to a source goes through the retry wrapper`, with `- Kiểm: static: a
-  direct source call outside the wrapper` and `- Vùng: sources · nightly`; the gate reds on the pattern, and the changelog entry
+- ✓ Right: under `## Lessons`, `### L-007 — every call to a source goes through the retry wrapper`, with `- Kiểm: static: scripts/gate.py —
+  a direct source call outside the wrapper` and `- Vùng: sources · nightly`; the gate reds on the pattern, and the changelog entry
   of the fix names `L-007`.
 
 ## Check
 - `conform` reds when `Cons.md` is missing, unwritten, or a template mark `<…>` is left.
-- `Rule_Gate_91_LessonsFirst` blocks a new changelog entry about a fix that names no lesson.
+- `Rule_Gate_91_LessonsFirst` blocks a new changelog entry about a fix that names no lesson, and a new or changed entry whose
+  `Kiểm` is not `static` / `runtime` or names no check file that exists in the repo.
 - The guard of `Rule_Gate_83_HarnessFromStore` lets entries `### L-<n>` (and the old `## L-<n>` of the first template) be added
   and removed; any other change to the `##` sections is blocked.
 

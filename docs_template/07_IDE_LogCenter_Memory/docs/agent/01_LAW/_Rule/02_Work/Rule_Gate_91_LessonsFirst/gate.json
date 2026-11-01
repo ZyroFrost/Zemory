@@ -51,6 +51,24 @@
     {
       "note": "a request this rule's keywords catch",
       "prompt": "sửa lỗi xong rồi"
+    },
+    {
+      "note": "a lesson whose check only reminds a reader (judgment): no machine blocks the fault",
+      "files": {
+        "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md": "---\nframe: Cons_Gate_17_LessonsLedger\nstatus: written\n---\n# Sổ kinh nghiệm\n\n## Lessons\n\nNo lesson yet.\n",
+        "tasks/nq/pipeline/test_nq.py": "def test_excluded(): pass\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md",
+        "old_string": "## Lessons\n\nNo lesson yet.",
+        "new_string": "## Lessons\n\n### L-1 — điều đã chốt khi đối chiếu vào chính file gửi\n- Ngày: 2026-11-01\n- Sự cố đã đo: file gửi còn 3 nhà đã chốt bỏ\n- Kiểu sai: chốt chỉ nằm trong lời giải thích\n- Luật cho code mới: chốt ⇒ sửa câu SQL của file giao\n- Kiểm: judgment: \"đối chiếu\" · \"trừ ra\"\n- Đã sửa ở: nq_monthly.sql"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
     }
   ],
   "pass": [
@@ -156,6 +174,24 @@
     {
       "note": "an unrelated request",
       "prompt": "chạy lại bộ test"
+    },
+    {
+      "note": "a lesson whose check is a test that exists in the repo",
+      "files": {
+        "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md": "---\nframe: Cons_Gate_17_LessonsLedger\nstatus: written\n---\n# Sổ kinh nghiệm\n\n## Lessons\n\nNo lesson yet.\n",
+        "tasks/nq/pipeline/test_nq.py": "def test_excluded(): pass\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "docs/agent/01_LAW/_Cons/03_System/Cons_Gate_17_LessonsLedger/Cons.md",
+        "old_string": "## Lessons\n\nNo lesson yet.",
+        "new_string": "## Lessons\n\n### L-1 — điều đã chốt khi đối chiếu vào chính file gửi\n- Ngày: 2026-11-01\n- Sự cố đã đo: file gửi còn 3 nhà đã chốt bỏ\n- Kiểu sai: chốt chỉ nằm trong lời giải thích\n- Luật cho code mới: chốt ⇒ sửa câu SQL của file giao\n- Kiểm: runtime: tasks/nq/pipeline/test_nq.py — test_excluded\n- Đã sửa ở: nq_monthly.sql"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
     }
   ],
   "prompt": {
