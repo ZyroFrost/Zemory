@@ -1,5 +1,5 @@
 ---
-version: 14
+version: 15
 lang: vi
 ---
 # ConfigVault_151_ConfigVault configvault — két chứa thiết lập và khoá công cụ của cả máy
@@ -29,6 +29,7 @@ _ConfigVault\
 ├── mail\credentials\  mật khẩu các hộp thư gửi: MỘT smtp.env
 ├── windows\credentials\  tài khoản Windows của các máy (credential của bộ lập lịch hay dịch vụ chạy dưới tên nó): MỘT logins.env
 ├── tls\               chứng chỉ nhiều repo hay nhiều máy cùng dùng
+├── certs\<repo>\      bí mật dạng FILE của riêng một repo (chứng chỉ · khoá .pvk / .pem · file token)
 └── <công cụ>\         một hai tệp thì để thẳng; nhiều loại ⇒ configs\ · credentials\ · cache\
 ```
 
@@ -37,7 +38,7 @@ _ConfigVault\
 - Két là nhà DUY NHẤT của mọi bí mật dạng env mà chương trình hay agent dùng — login SQL, bí mật app và API, tài khoản mail, chứng
   chỉ dùng chung — và của sổ kết nối chung, cho mọi repo và app trên máy (`Rule_Gate_21_WhatEntersGit` bước 3a). Không repo, không
   app nào giữ bản riêng, và không repo nào giữ chuỗi kết nối hay biến riêng cho nó (`<HỆ>_CONN` bỏ): code hỏi `vault_conn.py` (skill `Skill_Task_VmAutomation`)
-  `conn(<máy>, <csdl>)`, bộ đọc dựng từ thư mục này, không in bí mật. Chỉ ở lại phần bí mật riêng của repo (`Data_102_Secrets`): bí mật nghiệp vụ một phòng
+  `conn(<máy>, <csdl>)`, bộ đọc dựng từ thư mục này, không in bí mật. Ở lại repo chỉ có `.env` (`Root_093_Env`, chỗ riêng DUY NHẤT; file bí mật riêng ⇒ `certs\<repo>\`): bí mật nghiệp vụ một phòng
   dùng riêng (mật khẩu file của phòng đó) hoặc khoá chỉ sản phẩm của repo đó dùng. App giữ bản phía máy chủ ở dạng niêm (systemd
   credential trên máy Linux) là giữ BẢN SAO: nguồn là két.
 - MỘT két chủ: máy trạm của người vận hành. Máy chạy tự động hoá giữ bản sao chỉ các mục nó cần, CÙNG cây và cùng tên khoá; khác

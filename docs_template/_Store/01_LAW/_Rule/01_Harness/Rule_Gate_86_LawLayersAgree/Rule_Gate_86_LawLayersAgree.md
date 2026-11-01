@@ -30,7 +30,7 @@ others it is tied to.
 - Situation: the law on secrets says values never enter git; a department's skill says "keep the password in `config.json` for the
   scheduled job".
 - ✗ Wrong: follow the skill because it is more specific; the password goes into git.
-- ✓ Right: the law wins; the skill is fixed to read the value from `data/secrets/`, and the fix goes through HS.
+- ✓ Right: the law wins; the skill is fixed to read the value from the vault, and the fix goes through HS.
 
 ## Check
 - `conform` and the HS test: every name in `## Links` and `## Implements` is a living part, and both directions match.

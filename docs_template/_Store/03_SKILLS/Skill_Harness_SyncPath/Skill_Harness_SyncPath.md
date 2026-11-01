@@ -90,7 +90,7 @@ nobody knowing — while the sync command reported "exported" successfully every
 A skill is words, and words get forgotten — what BLOCKS drift is **code** (`Rule_Gate_79_HarnessEdit`: a law that cannot be undone must have a machine check). A repo must have
 gates for at least two things, and **run them instead of remembering**:
 
-- a gate blocking **data/secrets leaking into git** — with a NEGATIVE case: one exception opening a way for a data package is enough to break it;
+- a gate blocking **secrets (`.env`, vault files) leaking into git** — with a NEGATIVE case: one exception opening a way for a data package is enough to break it;
 - a gate watching that **every entry point of the sync path finds the key the same way**.
 
 Adding a new storage/index layer **without** being able to add a gate watching its channel ⇒ write it straight into

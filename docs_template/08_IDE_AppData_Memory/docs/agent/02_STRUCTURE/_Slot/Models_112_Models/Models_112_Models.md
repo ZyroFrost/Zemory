@@ -5,7 +5,7 @@ name: models
 version: 5
 path: models/
 checked: [Models_142_Database, Scripts_128_Scripts, Data_101_Models]
-from: _Store/02_STRUCTURE/_Slot/Models_112_Models @v5 #06469457fa37
+from: _Store/02_STRUCTURE/_Slot/Models_112_Models @v5 #3b09c4df7396
 ---
 # Models_112_Models models — deliverable data: the model layer, or the build chain of one database
 
@@ -29,7 +29,7 @@ the kind of project.
 ## May not hold
 
 The script that RUNS the chain, or sets up the machine the database lives on (→ `scripts/`) · run logs (→ `data/`) · secrets
-(→ `.env`, `data/secrets/`) · data · AI model weights (→ `Data_101_Models`).
+(→ `.env`, the machine vault) · data · AI model weights (→ `Data_101_Models`).
 
 ## Naming
 

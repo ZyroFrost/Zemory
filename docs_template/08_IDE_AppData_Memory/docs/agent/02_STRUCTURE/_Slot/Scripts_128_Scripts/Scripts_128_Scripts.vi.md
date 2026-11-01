@@ -19,7 +19,7 @@ lang: vi
   (máy chủ cơ sở dữ liệu, ổ dữ liệu, một dịch vụ), hoặc chạy chuỗi `models/`. Luật:
   - kiểm trước khi đổi: mỗi bước nhìn trạng thái hiện tại trước, nên chạy lần hai thì bỏ qua phần đã xong;
   - lỗi phải lộ: bước đầu tiên hỏng là dừng cả lượt với mã thoát khác 0;
-  - không bí mật, không địa chỉ nội bộ trong file: truyền vào lúc chạy, hoặc đọc từ `.env` / `data/secrets/`;
+  - không bí mật, không địa chỉ nội bộ trong file: truyền vào lúc chạy, hoặc đọc từ `.env` hay két của máy;
   - đầu file ghi cách chạy (chạy ở đâu, bằng tài khoản nào).
 - Mọi động tác tự động phải lần lại được (task / lượt chạy → `05_CHANGES` / `04_TODO`).
 - **Mã dùng chung của các case trong repo**: module mà pipeline của nhiều case cùng import (gửi mail, đọc két) cũng nằm ở đây, một

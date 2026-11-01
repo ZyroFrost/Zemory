@@ -4,7 +4,7 @@ aka: 03-141
 name: .stignore
 version: 3
 path: .stignore
-checked: [Root_085_Gitignore, Data_102_Secrets, Data_095_State]
+checked: [Root_085_Gitignore, Data_095_State]
 ---
 # Root_141_Stignore .stignore — what Syncthing never carries to another machine
 
@@ -18,7 +18,7 @@ checked: [Root_085_Gitignore, Data_102_Secrets, Data_095_State]
   1. **Never carried**, even inside a carried folder — written by hand, required:
      - `docs/.harness-state` — each machine's own guard state (one-use flags, read traces): carried to the other machine, a flag made here would open
        writes there.
-     - `data` · `exports` · `.vault` · `*.local.*` — run data, exports, the vault, per-machine config (`Data_102_Secrets`).
+     - `data` · `exports` · `.vault` · `*.local.*` — run data, exports, the vault, per-machine config (`Root_093_Env`).
      - things generated in place: `__pycache__` · `.venv` · `node_modules` · `.stversions` (marked `(?d)` so Syncthing may delete them when cleaning).
   2. **The allow list — MACHINE-WRITTEN, never edited by hand**: the `zemory:stignore-allow` block at the end of the file, rewritten by `zemory sync` on every
      run from every `tasks/*/vm_deploy.json` · `pipelines/*/vm_deploy.json` (the entries `files` · `needs` · `secrets` · `wrapper` · `check`,

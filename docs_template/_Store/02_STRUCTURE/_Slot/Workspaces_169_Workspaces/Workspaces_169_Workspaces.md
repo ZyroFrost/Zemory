@@ -29,7 +29,7 @@ Real example: `workspaces/my-channel/2025-10-20 Song Title/` · `workspaces/_tra
 - AI-made items follow the same order as any item (`Struc_Disk_Data`, "Made by AI"); to keep them apart here, add the optional
   sub-folder `AI\` inside a unit's folder (images the app renders stay in the app's `workspaces/`, never in `Media\`).
 - Gitignored: the output is data, not code. Large: it may live on a second drive and be linked back (Struc_Disk_Data).
-- Secrets the app needs are not here ⇒ `.env` or `data/secrets/`.
+- Secrets the app needs are not here ⇒ `.env` (a secret file ⇒ the machine vault).
 
 ## Not here ⇒ goes to — the line with `data/` (Data_094)
 

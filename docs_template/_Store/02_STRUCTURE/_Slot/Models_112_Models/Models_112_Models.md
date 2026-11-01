@@ -28,7 +28,7 @@ the kind of project.
 ## May not hold
 
 The script that RUNS the chain, or sets up the machine the database lives on (→ `scripts/`) · run logs (→ `data/`) · secrets
-(→ `.env`, `data/secrets/`) · data · AI model weights (→ `Data_101_Models`).
+(→ `.env`, the machine vault) · data · AI model weights (→ `Data_101_Models`).
 
 ## Naming
 

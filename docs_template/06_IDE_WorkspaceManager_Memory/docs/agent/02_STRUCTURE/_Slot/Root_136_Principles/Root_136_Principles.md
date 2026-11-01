@@ -5,7 +5,7 @@ name: principles
 version: 14
 kind: guide
 path: .
-from: _Store/02_STRUCTURE/_Slot/Root_136_Principles @v14 #6570dfd14322
+from: _Store/02_STRUCTURE/_Slot/Root_136_Principles @v14 #86a2faa107b1
 ---
 # Root_136_Principles principles — the general principles of the structure standard
 
@@ -26,11 +26,11 @@ from: _Store/02_STRUCTURE/_Slot/Root_136_Principles @v14 #6570dfd14322
     the names go into its `path:`.
   - Assembling a slot = the repo uses that folder. A slot has no modes; a structure either carries it or not.
   - A layer inside the path with rules of its own (enters git or not · who edits it · which structures carry it) is a CHILD slot
-    on its own path (`data/` ⇒ `data/secrets/`). A layer without rules of its own is described in the parent's `## Inside`
+    on its own path (`data/` ⇒ `data/state/`). A layer without rules of its own is described in the parent's `## Inside`
     section: kind of file · the sub-folders allowed and how they are named · the child slots it points at.
   - A slot speaks only about its own path: a file elsewhere belongs to the slot of that path (`.env` is `Root_093_Env`, not a
-    line of `Data_102_Secrets`). In `## Inside` a place outside the slot's path is named by its slot or skill
-    (`Data_102_Secrets` · `Skill_Task_VmAutomation`), never by a path — the `slot-overlap` gate reads every path written there.
+    line of `Data_094_Data`). In `## Inside` a place outside the slot's path is named by its slot or skill
+    (`Data_095_State` · `Skill_Task_VmAutomation`), never by a path — the `slot-overlap` gate reads every path written there.
   - A guide slot (`kind: guide`, general principles) holds no path of another slot. A design rule is not a slot: it lives in a skill.
 - Source = INPUT = git tracked. Output = gitignored:
   - APP: output / runtime / secrets.

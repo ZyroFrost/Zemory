@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # Cons_Gate_14_Access — Access and security
@@ -15,8 +15,8 @@ trên máy. Dữ liệu cá nhân của người dùng (định danh · liên l�
 
 ## Phải làm gì
 1. Điền các mục của `Cons.md`: người dùng · gác ở · bí mật (tên) · dữ liệu cá nhân · phạm vi mạng.
-2. Bí mật: mỗi bí mật một dòng: TÊN (`Name`), mẫu tên file chứa nó (`File`, ví dụ `*.sec`), công dụng; giá trị nằm ở
-   `data/secrets/` (`Rule_Gate_21_WhatEntersGit`).
+2. Bí mật: mỗi bí mật một dòng: TÊN (`Name`), file chứa nó (`File`: `.env`, hoặc một file trong
+   `_ConfigVault/certs/<repo>/`), công dụng (`Rule_Gate_21_WhatEntersGit`).
 3. Dữ liệu cá nhân: trường nào · mã hoá bằng gì · khoá ở đâu. Không giữ ⇒ ghi `không có` kèm lý do.
 4. Không có người dùng và bí mật nào ⇒ `status: n/a` kèm lý do.
 

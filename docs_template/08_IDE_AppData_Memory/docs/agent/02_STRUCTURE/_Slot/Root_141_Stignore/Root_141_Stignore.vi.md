@@ -14,7 +14,7 @@ lang: vi
   1. **Không bao giờ chở**, kể cả bên trong thư mục được chở — viết tay, bắt buộc có:
      - `docs/.harness-state` — trạng thái guard riêng từng máy (cờ một lần, vết đọc): chở sang máy kia thì cờ tạo ở máy này mở
        quyền ghi ở máy kia.
-     - `data` · `exports` · `.vault` · `*.local.*` — dữ liệu chạy, bản xuất, két, cấu hình theo máy (`Data_102_Secrets`).
+     - `data` · `exports` · `.vault` · `*.local.*` — dữ liệu chạy, bản xuất, két, cấu hình theo máy (`Root_093_Env`).
      - thứ sinh tại chỗ: `__pycache__` · `.venv` · `node_modules` · `.stversions` (đánh dấu `(?d)` để Syncthing xoá được khi dọn).
   2. **Danh sách cho phép — MÁY SINH, không sửa tay**: khối `zemory:stignore-allow` cuối file do `zemory sync` viết lại mỗi
      lượt từ mọi `tasks/*/vm_deploy.json` · `pipelines/*/vm_deploy.json` (mục `files` · `needs` · `secrets` · `wrapper` · `check`,

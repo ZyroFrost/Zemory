@@ -100,7 +100,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Vscode_090_Vscode`](_Slot/Vscode_090_Vscode/Vscode_090_Vscode.md) | `.vscode/` | editor config |
 | [`Idea_091_Idea`](_Slot/Idea_091_Idea/Idea_091_Idea.md) | `.idea/` | editor config |
 | [`Serena_092_Serena`](_Slot/Serena_092_Serena/Serena_092_Serena.md) | `.serena/` | agent config |
-| [`Root_093_Env`](_Slot/Root_093_Env/Root_093_Env.md) | `.env` | the real runtime secrets |
+| [`Root_093_Env`](_Slot/Root_093_Env/Root_093_Env.md) | `.env` | the repo's ONE private home of secrets |
 | [`Data_094_Data`](_Slot/Data_094_Data/Data_094_Data.md) | `data/` | runtime / real files per machine |
 | [`Data_095_State`](_Slot/Data_095_State/Data_095_State.md) | `data/state/` | runtime state |
 | [`Data_096_Cache`](_Slot/Data_096_Cache/Data_096_Cache.md) | `data/cache/` | file cache runtime |
@@ -109,7 +109,6 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Data_099_Tmp`](_Slot/Data_099_Tmp/Data_099_Tmp.md) | `data/tmp/` | temporary files |
 | [`Data_100_Snapshots`](_Slot/Data_100_Snapshots/Data_100_Snapshots.md) | `data/snapshots/` | data snapshots |
 | [`Data_101_Models`](_Slot/Data_101_Models/Data_101_Models.md) | `data/models/` | model weight |
-| [`Data_102_Secrets`](_Slot/Data_102_Secrets/Data_102_Secrets.md) | `data/secrets/` | the secrets of the repo's own product: keys · tokens · the encrypted vault |
 | [`Data_103_Uploads`](_Slot/Data_103_Uploads/Data_103_Uploads.md) | `data/uploads/` | bytes of uploaded files |
 | [`Generated_104_Generated`](_Slot/Generated_104_Generated/Generated_104_Generated.md) | `generated/` | generated code |
 | [`Dist_105_Dist`](_Slot/Dist_105_Dist/Dist_105_Dist.md) | `dist/` | build output |

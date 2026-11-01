@@ -5,7 +5,7 @@ name: scripts
 version: 8
 path: scripts/
 checked: [Models_112_Models, Models_142_Database, Tasks_118_Pipeline]
-from: _Store/02_STRUCTURE/_Slot/Scripts_128_Scripts @v8 #e528eb64d15a
+from: _Store/02_STRUCTURE/_Slot/Scripts_128_Scripts @v8 #f11fbd827400
 ---
 # Scripts_128_Scripts scripts — automation: pull / fill / upload, and setting up the repo's own machine
 
@@ -25,7 +25,7 @@ from: _Store/02_STRUCTURE/_Slot/Scripts_128_Scripts @v8 #e528eb64d15a
   repo runs on (a database server, a data disk, a service), or that run the `models/` chain. Rules:
   - check before changing: every step looks at the current state first, so a second run skips what is done;
   - fail loud: the first failing step stops the run with a non-zero exit;
-  - no secret and no internal address inside the file: passed at run time, or read from `.env` / `data/secrets/`;
+  - no secret and no internal address inside the file: passed at run time, or read from `.env` or the machine vault;
   - the file says how to run it (where, as whom) in its header.
 - Every automatic move can be traced (task / run → `05_CHANGES` / `04_TODO`).
 - **Shared code of the repo's cases**: a module the pipelines of several cases import (a mail transport, a vault reader) lives

@@ -6,6 +6,6 @@ lang: vi
 
 - Vai trò:
   - MÃ HOÁ + KEY: derive / encrypt / decrypt, credential vault — CODE ở đây.
-  - Mã hoá là concern riêng: key + encrypt/decrypt → `vault/` · at-rest DB (SQLCipher) → `store/` · key/salt/bundle → `data/secrets/` · bundle in-transit → `vault/`.
+  - Mã hoá là concern riêng: key + encrypt/decrypt → `vault/` · at-rest DB (SQLCipher) → `store/` · key/salt/bundle → `_ConfigVault/certs/<repo>/` · bundle in-transit → `vault/`.
   - Credential/secret dạng code ở đây; secret runtime thật ở `.env`.
-- Được chứa / không chứa: Không chứa: FILE key/bundle (→ `data/secrets/`).
+- Được chứa / không chứa: Không chứa: FILE key/bundle (→ `_ConfigVault/certs/<repo>/`).

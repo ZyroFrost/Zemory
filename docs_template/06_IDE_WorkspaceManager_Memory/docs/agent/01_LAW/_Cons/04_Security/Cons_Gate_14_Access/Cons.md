@@ -14,7 +14,7 @@ status: template
 
 | Name | File | Dùng để làm gì |
 |---|---|---|
-| <TÊN_BIẾN> | <mẫu tên file chứa nó, ví dụ *.sec> | <dùng để làm gì> |
+| <TÊN_BIẾN> | <file chứa nó: .env, hoặc file trong _ConfigVault/certs/<repo>/> | <dùng để làm gì> |
 
 ## Dữ liệu cá nhân
 <trường> — mã hoá <thuật toán> — khoá ở <đâu> | không có — <lý do>

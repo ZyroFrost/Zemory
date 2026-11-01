@@ -146,7 +146,7 @@ function check(payload, root, policy) {
         "\nA fake value is fine here; a real one goes to .env or the secret slot and the test reads the environment variable." + ONCE);
     }
     return blocked(root, policy, "02-21", "a secret value written into " + e.rel + ", a file git tracks:\n  " + hits.slice(0, 4).join("\n  ") +
-      "\nA login to a system goes to the machine vault (_ConfigVault/<tool>/credentials/); a secret of this repo's own product goes to data/secrets/ or .env." +
+      "\nA login to a system goes to the machine vault (_ConfigVault/<tool>/credentials/); a text secret of this repo alone goes to .env; a secret file goes to _ConfigVault/certs/<repo>/." +
       "\nThe file names where the value is read from (an environment variable, or the vault entry), never the value.");
   } catch { return null; }
 }

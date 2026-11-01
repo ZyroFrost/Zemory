@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 14
+version: 15
 path: _ConfigVault/<tool>/
 scope: layout
 ---
@@ -32,6 +32,7 @@ _ConfigVault\
 ├── mail\credentials\  the passwords of the sending mailboxes: ONE smtp.env
 ├── windows\credentials\  Windows accounts of the machines (a scheduler or service credential runs as them): ONE logins.env
 ├── tls\               certificates shared by several repos or machines
+├── certs\<repo>\      secrets that are FILES and belong to one repo (certificate · .pvk / .pem key · token file)
 └── <tool>\            one or two files straight; several kinds ⇒ configs\ · credentials\ · cache\
 ```
 
@@ -42,8 +43,9 @@ _ConfigVault\
   accounts, shared certificates — and of the shared connection register, for all repos and apps on the machine
   (`Rule_Gate_21_WhatEntersGit` step 3a). No repo and no app keeps its own copy, and no repo holds a connection string or a
   variable of its own for one (`<SYSTEM>_CONN` goes): code asks `vault_conn.py` (skill `Skill_Task_VmAutomation`) for `conn(<machine>, <database>)` and the
-  reader builds it from this folder, never printing the secret. What stays in a repo's own secrets (`Data_102_Secrets`) is only a business secret
-  one department uses alone (the password of that department's workbook) or a key only that repo's own product uses. An app
+  reader builds it from this folder, never printing the secret. What stays in a repo is only its `.env` (`Root_093_Env`, the repo's ONE private home): a text
+  business secret one department uses alone (the password of that department's workbook) or a key only that repo's own product
+  uses. A secret FILE of one repo lives in `certs\<repo>\` here, never in the repo. An app
   that keeps its server-side copy sealed (systemd credentials on a Linux host) holds a COPY: the source is the vault.
 - ONE master vault: the operator's work PC. A machine that runs automation holds a copy of only the entries it needs, in the SAME
   tree and with the same key names; what differs between machines is the content (a work PC's register names the read-only agent

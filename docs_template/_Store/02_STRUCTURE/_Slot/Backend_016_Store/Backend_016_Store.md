@@ -10,7 +10,7 @@ path: backend/src/store/
 - Role:
   - DATA ACCESS: the driver + schema for the DATABASE (remote / local / cloud).
   - Connecting a DB = `store/` + a profile in `config/` + the secret in `.env`/`vault/`.
-  - DB encryption at rest (SQLCipher) is applied here; keys + encrypt/decrypt in `vault/`, key/salt/bundle files in `data/secrets/`. An app with sensitive data (chat/PII/logs) SHOULD encrypt at rest; one that does not writes down that it accepts plaintext, so an audit sees it.
+  - DB encryption at rest (SQLCipher) is applied here; keys + encrypt/decrypt in `vault/`, key/salt/bundle files in the machine vault (`_ConfigVault/certs/<repo>/`). An app with sensitive data (chat/PII/logs) SHOULD encrypt at rest; one that does not writes down that it accepts plaintext, so an audit sees it.
   - Durable storage for other concerns: upload metadata · role data (account→role) · the audit table · agent memory · one place that EXECUTES what an LLM tool calls.
 - May hold / may not hold:
   - Holds: drivers, schema, `queries.*`.

@@ -5,7 +5,7 @@ name: harness-sync-path
 version: 16
 type: process
 description: Declare and PROVE how every new artifact reaches a second machine - code, data layer, derived index, secret, model, config. Run before calling any build "done", when adding a new storage or index layer, when handing a repo to another PC, or when something works on one machine but not the other. Vietnamese triggers - "đồng bộ 2 máy", "máy thứ hai", "bàn giao máy mới", "pull về máy kia", "kẹt giữa 2 máy", "sync đa máy", "máy kia chạy được chưa".
-from: _Store/03_SKILLS/Skill_Harness_SyncPath @v16 #a550871cd84e
+from: _Store/03_SKILLS/Skill_Harness_SyncPath @v16 #b350f111a92f
 ---
 
 # sync-path — everything produced must have a PATH to another machine, and it must be MEASURED
@@ -91,7 +91,7 @@ nobody knowing — while the sync command reported "exported" successfully every
 A skill is words, and words get forgotten — what BLOCKS drift is **code** (`Rule_Gate_79_HarnessEdit`: a law that cannot be undone must have a machine check). A repo must have
 gates for at least two things, and **run them instead of remembering**:
 
-- a gate blocking **data/secrets leaking into git** — with a NEGATIVE case: one exception opening a way for a data package is enough to break it;
+- a gate blocking **secrets (`.env`, vault files) leaking into git** — with a NEGATIVE case: one exception opening a way for a data package is enough to break it;
 - a gate watching that **every entry point of the sync path finds the key the same way**.
 
 Adding a new storage/index layer **without** being able to add a gate watching its channel ⇒ write it straight into

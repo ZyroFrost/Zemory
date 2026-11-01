@@ -26,7 +26,7 @@ Ví dụ thật: `workspaces/my-channel/2025-10-20 Song Title/` · `workspaces/_
 - Món do AI sinh theo cùng thứ tự như mọi món (`Struc_Disk_Data`, "Do AI sinh"); muốn tách riêng ở đây thì thêm cấp con tuỳ chọn
   `AI\` bên trong thư mục của một đơn vị (ảnh app render ở lại `workspaces/` của app, không sang `Media\`).
 - Gitignore: đầu ra là dữ liệu, không phải code. Nặng: được đặt ở ổ thứ hai rồi nối về (Struc_Disk_Data).
-- Bí mật app cần không nằm ở đây ⇒ `.env` hoặc `data/secrets/`.
+- Bí mật app cần không nằm ở đây ⇒ `.env` (file bí mật ⇒ két của máy).
 
 ## Không thuộc đây ⇒ đi đâu — ranh giới với `data/` (Data_094)
 

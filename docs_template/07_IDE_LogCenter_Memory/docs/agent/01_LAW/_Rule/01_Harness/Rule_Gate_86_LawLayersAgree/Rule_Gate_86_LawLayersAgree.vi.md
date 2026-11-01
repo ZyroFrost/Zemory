@@ -24,7 +24,7 @@ dạy cách thi hành. Tầng dưới không bao giờ nói ngược tầng trê
 - Tình huống: luật về bí mật nói giá trị không bao giờ vào git; skill của một phòng ghi "để mật khẩu trong `config.json` cho job
   định kỳ".
 - ✗ Sai: làm theo skill vì nó cụ thể hơn; mật khẩu lọt vào git.
-- ✓ Đúng: luật thắng; skill được sửa để đọc giá trị từ `data/secrets/`, và việc sửa đi qua HS.
+- ✓ Đúng: luật thắng; skill được sửa để đọc giá trị từ két, và việc sửa đi qua HS.
 
 ## Máy kiểm
 - `conform` và test của HS: mọi tên trong `## Links` và `## Implements` là phần còn sống, và hai chiều khớp nhau.

@@ -5,7 +5,7 @@ version: 3
 kind: action
 code: 01_Harness
 checked: [Rule_Gate_35_OneHome, Rule_Gate_83_HarnessFromStore, Rule_Keys_80_SharedChangeImpact]
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree @v3 #c0ffe5b49c02
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_86_LawLayersAgree @v3 #e82884c75124
 ---
 # Rule_Gate_86_LawLayersAgree — The layers of law never contradict each other, and stay linked
 
@@ -31,7 +31,7 @@ others it is tied to.
 - Situation: the law on secrets says values never enter git; a department's skill says "keep the password in `config.json` for the
   scheduled job".
 - ✗ Wrong: follow the skill because it is more specific; the password goes into git.
-- ✓ Right: the law wins; the skill is fixed to read the value from `data/secrets/`, and the fix goes through HS.
+- ✓ Right: the law wins; the skill is fixed to read the value from the vault, and the fix goes through HS.
 
 ## Check
 - `conform` and the HS test: every name in `## Links` and `## Implements` is a living part, and both directions match.

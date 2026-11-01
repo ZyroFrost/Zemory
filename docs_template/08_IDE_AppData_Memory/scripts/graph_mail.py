@@ -7,8 +7,8 @@ file or the wrong Cc; Graph removes the person from the loop.
 Requires the app registration to hold the APPLICATION permission `Mail.Send` WITH admin consent. Without it Graph answers 403
 and this module says exactly which step is missing rather than failing with a bare HTTP code.
 
-Secrets come from the machine vault (vault_conn.py; the app named by region value `m365_app` = <SERVICE>/<RESOURCE>/<APP>), or
-from the repo's DPAPI vault (scripts/vault.ps1) when the machine vault has no such app; held in memory per run, never logged.
+Secrets come from the machine vault only (vault_conn.py; the app named by region value `m365_app` = <SERVICE>/<RESOURCE>/<APP>);
+held in memory per run, never logged. A repo keeps no copy of them (plan/32: no repo vault, no data/secrets/).
 
 Installed by the HS skill task-upload: edit it on HS, not in a repo copy (the next `zemory sync` puts the HS version back).
 """
@@ -18,7 +18,6 @@ import base64
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
 
 
@@ -39,13 +38,7 @@ def _requests():
 
 
 REPO = Path(__file__).resolve().parents[1]
-VAULT_PS1 = REPO / "scripts" / "vault.ps1"
 GRAPH = "https://graph.microsoft.com/v1.0"
-
-# Vault keys of the app registration: the generic name first, then the name repos stored before this script moved to HS.
-KEY_TENANT = ("GRAPH_TENANT_ID", "TENANT_ID_SS_SP")
-KEY_CLIENT = ("GRAPH_CLIENT_ID", "CLIENT_ID_SS_SP")
-KEY_SECRET = ("GRAPH_CLIENT_SECRET", "CLIENT_SECRET_SS_SP")
 
 SEND_ROLE = "Mail.Send"
 
@@ -55,32 +48,6 @@ MAX_INLINE_BYTES = 3 * 1024 * 1024
 
 class MailError(RuntimeError):
     """Anything that must stop the send. The message is meant to be read by a person."""
-
-
-def _read_secret(name: str) -> str | None:
-    if not VAULT_PS1.exists():
-        raise MailError(f"vault script missing: {VAULT_PS1}")
-    script = (
-        f". '{VAULT_PS1}'; "
-        f"$s = Get-VaultSecret -Name '{name}'; "
-        "[Runtime.InteropServices.Marshal]::PtrToStringAuto("
-        "[Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))"
-    )
-    proc = subprocess.run(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
-        capture_output=True, text=True)
-    if proc.returncode != 0 or not proc.stdout.strip():
-        return None
-    return proc.stdout.strip()
-
-
-def _read_any(names: tuple[str, ...]) -> str:
-    for name in names:
-        value = _read_secret(name)
-        if value:
-            return value
-    # stderr may echo the key NAME, never its value
-    raise MailError(f"cannot read '{names[0]}' from the vault. Store it with: vault set {names[0]}")
 
 
 def _machine_vault_app() -> tuple[str, str, str] | None:
@@ -102,7 +69,11 @@ def _machine_vault_app() -> tuple[str, str, str] | None:
 
 
 def get_token() -> str:
-    tenant, client, secret = _machine_vault_app() or tuple(_read_any(k) for k in (KEY_TENANT, KEY_CLIENT, KEY_SECRET))
+    app = _machine_vault_app()
+    if not app:
+        raise MailError("the Entra app is not in this machine's vault: region value `m365_app` names <SERVICE>/<RESOURCE>/<APP>, "
+                        "and api\\credentials\\services.env must hold its _TENANT / _ID / _SECRET")
+    tenant, client, secret = app
     r = _requests().post(
         f"https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
         data={"client_id": client, "client_secret": secret,

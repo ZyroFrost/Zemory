@@ -7,7 +7,9 @@ account its tasks run with). No repo holds a connection string, a password or a 
     conn("DB-MAIN", "ACME_WAREHOUSE")                         ODBC string, the account this machine uses for that database
     conn("DB-MAIN", "ACME_WAREHOUSE", "jane.doe")             the same with an account named by the caller
     secret("M365", "ACME-COM", "DATA-SYNC", "SECRET")         one value of services.env / smtp.env / logins.env
-    load_env()                                                the repo's .env SETTINGS (no secret lives there any more)
+    private("FA_REPORT_PW")                                    a secret of this repo alone, from the repo's .env (its ONE private home)
+    cert("BackupCert.pvk")                                     path of a secret FILE of this repo: _ConfigVault\\certs\\<repo>\\<name>
+    load_env()                                                the repo's .env settings into the environment
     mailbox("support")                                        a sending mailbox of the mail book, with its password
     group("dw_lane_alert")                                    {"to": [...], "cc": [...]} of a recipient group
     stores()                                                  {store id: {"address", "name", "cc", "active", ...}}
@@ -171,8 +173,26 @@ def stores():
     return _book("recipients.json").get("stores", {})
 
 
+def private(name, root=None):
+    """A secret of this repo alone from the repo's .env (Root_093_Env: the ONE private home of a repo; plan/32, user 01/11).
+    The environment wins when it sets the name. Missing ⇒ stops with the name, never the value."""
+    v = os.environ.get(name) or _read_env(Path(root or REPO) / ".env").get(name, "").strip('"').strip("'")
+    if not v:
+        raise VaultMissing("private: missing %s in %s" % (name, Path(root or REPO) / ".env"))
+    return v
+
+
+def cert(name, repo=None):
+    """Path of a secret FILE of one repo in the machine vault: <vault>\\certs\\<repo>\\<name> (repo = this repo's folder name)."""
+    d = vault_dir()
+    f = d / "certs" / (repo or REPO.name) / name if d else None
+    if not f or not f.is_file():
+        raise VaultMissing("vault: missing certs\\%s\\%s (%s)" % (repo or REPO.name, name, d or "this machine has no _ConfigVault"))
+    return f
+
+
 def load_env(env=None, root=None):
-    """The repo's .env settings into env (default os.environ) without overriding what is set. Secrets are not read from here."""
+    """The repo's .env into env (default os.environ) without overriding what is set."""
     env = os.environ if env is None else env
     for k, v in _read_env(Path(root or REPO) / ".env").items():
         env.setdefault(k, v.strip('"').strip("'"))

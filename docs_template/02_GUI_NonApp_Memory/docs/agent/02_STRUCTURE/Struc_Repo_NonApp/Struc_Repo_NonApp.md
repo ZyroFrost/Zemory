@@ -8,7 +8,7 @@ intro: : sản phẩm / tài sản — agent đọc · dò · kéo · điền ·
 ask: ; mở một `.pbix` ra dò, đổ số vào template là NON-APP
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
-from: _Store/02_STRUCTURE/Struc_Repo_NonApp @v9 #1b308a17a7db
+from: _Store/02_STRUCTURE/Struc_Repo_NonApp @v9 #a7c5d30b73d5
 ---
 # Struc_Repo_NonApp
 

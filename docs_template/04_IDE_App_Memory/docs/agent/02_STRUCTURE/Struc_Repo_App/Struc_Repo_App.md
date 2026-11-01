@@ -7,7 +7,7 @@ label: APP
 intro: (có code chạy: UI · server · CLI)
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · thêm slot · `conform` báo lệch
-from: _Store/02_STRUCTURE/Struc_Repo_App @v8 #5947412e0a54
+from: _Store/02_STRUCTURE/Struc_Repo_App @v8 #65a78685259b
 ---
 # Struc_Repo_App
 

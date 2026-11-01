@@ -2,11 +2,11 @@
 id: Skill_Task_Pull
 aka: pull
 name: task-pull
-version: 14
+version: 15
 type: process
-installs: [scripts/query.py, scripts/vault.ps1]
+installs: [scripts/query.py]
 description: Fetch fresh data from a source (SQL, VM, web, API) into the project so a deliverable can be built. Use when the deliverable needs newer numbers, when a scheduled task starts, or when asked to refresh, download, or retrieve source data. Vietnamese triggers - "kéo dữ liệu", "lấy số mới", "tải data về", "cập nhật nguồn", "pull dữ liệu", "làm mới số liệu".
-from: _Store/03_SKILLS/Skill_Task_Pull @v14 #3c44ec38b64a
+from: _Store/03_SKILLS/Skill_Task_Pull @v15 #e260ed3f17d7
 ---
 
 # pull — pulling data from a source

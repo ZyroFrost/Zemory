@@ -1,11 +1,11 @@
 ---
 id: Cons_14
 name: access
-version: 6
+version: 7
 kind: content
 code: 04_Security
 frame: true
-from: _Store/01_LAW/_Cons/04_Security/Cons_Gate_14_Access @v6 #4553ef1f69aa
+from: _Store/01_LAW/_Cons/04_Security/Cons_Gate_14_Access @v7 #86239b64cd94
 ---
 # Cons_Gate_14_Access — Access and security
 
@@ -21,8 +21,8 @@ contact · financial) is never stored or sent in clear text.
 
 ## Do
 1. Fill the sections of `Cons.md`: who uses it · guarded at · secrets (names) · personal data · network scope.
-2. Secrets: one row per secret: its NAME (`Name`), the file-name pattern it lives in (`File`, for example `*.sec`), its use;
-   the value lives in `data/secrets/` (`Rule_Gate_21_WhatEntersGit`).
+2. Secrets: one row per secret: its NAME (`Name`), the file it lives in (`File`: `.env`, or a file under
+   `_ConfigVault/certs/<repo>/`), its use (`Rule_Gate_21_WhatEntersGit`).
 3. Personal data: which fields · encrypted with what · where the key lives. Keeps none ⇒ write `none` with the reason.
 4. Nobody signs in and no secrets ⇒ `status: n/a` with the reason.
 
