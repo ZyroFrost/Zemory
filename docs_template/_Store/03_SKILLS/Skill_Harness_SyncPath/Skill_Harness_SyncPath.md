@@ -2,7 +2,7 @@
 id: Skill_Harness_SyncPath
 aka: sync-path
 name: harness-sync-path
-version: 16
+version: 17
 type: process
 description: Declare and PROVE how every new artifact reaches a second machine - code, data layer, derived index, secret, model, config. Run before calling any build "done", when adding a new storage or index layer, when handing a repo to another PC, or when something works on one machine but not the other. Vietnamese triggers - "đồng bộ 2 máy", "máy thứ hai", "bàn giao máy mới", "pull về máy kia", "kẹt giữa 2 máy", "sync đa máy", "máy kia chạy được chưa".
 ---
@@ -42,8 +42,10 @@ Before treating something as done:
    **is thrown away silently**.
 3. **Does the target machine run at once?** List everything it needs; ONE missing is a shortfall. For a repo with a data
    store, at least: **code · data+index · key · model**.
-4. **A fault fixed on the way: is its lesson written?** A fault whose cause is how code is written or run gets `L-<n>` in the
-   ledger `Cons_Gate_17_LessonsLedger` before done (`Rule_Gate_91_LessonsFirst`).
+4. **A fault fixed on the way: is it blocked?** A fault whose cause is how code is written or run gets a check in the repo's
+   gate (a static pattern or a test that fails on it) before done; a rule new code must follow becomes an article of the
+   repo's own constitution (`Cons_Core_1NN_<Name>`) naming that check, written once it is approved in the session (one-use
+   flag `.allow-docs-write`).
 
 ## 3. MEASURE — a closed loop, never trust "a file means usable"
 

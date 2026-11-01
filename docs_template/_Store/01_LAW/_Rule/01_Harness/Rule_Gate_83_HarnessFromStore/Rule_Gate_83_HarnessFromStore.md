@@ -1,8 +1,8 @@
 ---
 id: Rule_83
 name: harness-from-store
-version: 12
-checked: [Rule_Gate_79_HarnessEdit, Rule_Gate_85_ProposeChecked, Rule_Gate_61_HookSafetyNet, Rule_Gate_91_LessonsFirst]
+version: 13
+checked: [Rule_Gate_79_HarnessEdit, Rule_Gate_85_ProposeChecked, Rule_Gate_61_HookSafetyNet]
 kind: action
 code: 01_Harness
 ---

@@ -1,11 +1,11 @@
 ---
 id: Rule_83
 name: harness-from-store
-version: 12
-checked: [Rule_Gate_79_HarnessEdit, Rule_Gate_85_ProposeChecked, Rule_Gate_61_HookSafetyNet, Rule_Gate_91_LessonsFirst]
+version: 13
+checked: [Rule_Gate_79_HarnessEdit, Rule_Gate_85_ProposeChecked, Rule_Gate_61_HookSafetyNet]
 kind: action
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore @v12 #6f603a3e5ea0
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore @v13 #413aab8f9213
 ---
 # Rule_Gate_83_HarnessFromStore — A repo uses its copy of the harness; a shared change is made on HS by the repo that needs it
 

@@ -1,5 +1,5 @@
 ---
-version: 16
+version: 17
 lang: vi
 ---
 
@@ -38,8 +38,9 @@ Trước khi coi một thứ là xong:
    còn lại **bị vứt trong im lặng**.
 3. **Máy đích chạy được ngay chưa?** Liệt kê đủ thứ nó cần; thiếu MỘT là hụt. Với repo có
    kho dữ liệu, tối thiểu: **mã · dữ liệu+chỉ mục · chìa · model**.
-4. **Lỗi sửa trên đường đã có bài học chưa?** Lỗi có gốc ở cách viết code hay vận hành phải có `L-<số>` trong sổ
-   `Cons_Gate_17_LessonsLedger` trước khi gọi là xong (`Rule_Gate_91_LessonsFirst`).
+4. **Lỗi sửa trên đường đã bị chặn chưa?** Lỗi có gốc ở cách viết code hay vận hành phải có phép kiểm trong cổng của repo
+   (mẫu dò tĩnh hoặc test đỏ khi lỗi quay lại) trước khi gọi là xong; quy tắc mà code mới phải theo thì thành một điều
+   hiến pháp riêng của repo (`Cons_Core_1NN_<Tên>`) nêu phép kiểm đó, ghi khi người dùng duyệt.
 
 ## 3. ĐO — vòng khép kín, không tin "file có nghĩa là dùng được"
 

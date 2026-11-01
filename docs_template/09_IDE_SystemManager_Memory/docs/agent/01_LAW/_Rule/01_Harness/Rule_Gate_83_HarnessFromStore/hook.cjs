@@ -118,7 +118,7 @@ const OWN = /(^|\/)docs\/agent\/03_SKILLS\/(Skill_Own_[A-Za-z0-9]+)\/(.+)$/;
 // an article of the repo's own constitution: numbered from 101, inside the constitution shelf (any chapter)
 const OWN_ART = /(^|\/)docs\/agent\/01_LAW\/_Cons\/(?:[^\/]+\/)?Cons_(?:Gate|Keys|Core)_(\d{3})_[A-Za-z0-9]+\/[^\/]+$/;
 const FROM = /^from:/m;
-// the frame's sections: its "##" headings. An entry of a growing list is no section - the lessons ledger (Cons_Gate_17)
+// the frame's sections: its "##" headings. An entry of a growing list is no section - a list kept as ### entries
 // writes "### L-<n>", and its first template wrote "## L-<n>", which a repo must be able to replace
 const ENTRY = /^## L-?\d+\b/;
 function heads(t) { return (String(t).replace(/\r\n/g, "\n").match(/^## .*$/gm) || []).map((s) => s.trim()).filter((h) => !ENTRY.test(h)); }

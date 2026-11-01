@@ -622,7 +622,7 @@ const OWN = /(^|\/)docs\/agent\/03_SKILLS\/(Skill_Own_[A-Za-z0-9]+)\/(.+)$/;
 // an article of the repo's own constitution: numbered from 101, inside the constitution shelf (any chapter)
 const OWN_ART = /(^|\/)docs\/agent\/01_LAW\/_Cons\/(?:[^\/]+\/)?Cons_(?:Gate|Keys|Core)_(\d{3})_[A-Za-z0-9]+\/[^\/]+$/;
 const FROM = /^from:/m;
-// the frame's sections: its "##" headings. An entry of a growing list is no section - the lessons ledger (Cons_Gate_17)
+// the frame's sections: its "##" headings. An entry of a growing list is no section - a list kept as ### entries
 // writes "### L-<n>", and its first template wrote "## L-<n>", which a repo must be able to replace
 const ENTRY = /^## L-?\d+\b/;
 function heads(t) { return (String(t).replace(/\r\n/g, "\n").match(/^## .*$/gm) || []).map((s) => s.trim()).filter((h) => !ENTRY.test(h)); }
@@ -885,82 +885,6 @@ function check(payload, root, policy) {
   } catch { return null; }
 }`, true),
 
-  // 02-91 — a fix is done when its lesson is written (Rule_Gate_91_LessonsFirst): in a repo that carries the lessons ledger
-  // (frame Cons_Gate_17_LessonsLedger), a NEW changelog entry that reports a fix names a lesson L-<n> or says why there is
-  // none. A repo without the frame is not judged. The way through is the lesson or the reason line; there is no flag.
-  hook("02-91_lessons-first.cjs", String.raw`
-const FIX = /(sửa lỗi|sua loi|\bfix(?:ed|es)?\b|\bbug\b|sự cố|su co|\bincident\b|\bregression\b|hồi quy|hoi quy)/i;
-// a fix written as "fault ⇒ what was done" (DW pilot 28/10: "Làn POS hở 16 phút ⇒ khoá theo từng dim" named no fix word):
-// one line holding a fault word and the arrow
-const FAULT = /(?:^|[^\p{L}])(?:lỗi|hỏng|gãy|chết|mất|lệch|thiếu|sót|trễ|đỏ|hở|kẹt|treo|tụt|thừa|sai|deadlock|timeout|Msg\s*\d{3,5})(?![\p{L}])/iu;
-const faultArrow = (text) => text.split("\n").some((l) => l.includes("⇒") && FAULT.test(l));
-// L-<n>, padded or not (L-7 · L-007); a ledger kept before the frame numbered L<nnn> (DW: L001…L010, cited in commits)
-const MARK = /\bL-?\d+\b|không có bài học\s*:|khong co bai hoc\s*:|không bài học\s*:|no lesson\s*:/i;
-const LEDGER = /(^|\/)(0[56]_CHANGES|CHANGELOG)\.md$/i;
-function hasLedger(root) {
-  const base = path.join(root, "docs", "agent", "01_LAW", "_Cons");
-  let codes = [];
-  try { codes = fs.readdirSync(base); } catch { return false; }
-  for (const c of codes) {
-    try { if (fs.readdirSync(path.join(base, c)).some((d) => /_LessonsLedger$/.test(d))) return true; } catch { /* not a folder */ }
-  }
-  return false;
-}
-// A lesson is a branch of the constitution: it is worth something only when a machine blocks the fault it names (the user,
-// 2026-11-01: lessons were written and never read). Each new or changed entry of the ledger names, on its Kiểm line, a check
-// that blocks - static (a pattern the repo's gate runs) or runtime (a test that fails) - and a file of that check that exists.
-const LESSONS = /(^|\/)docs\/agent\/01_LAW\/_Cons\/(?:[^\/]+\/)?Cons_Gate_17_LessonsLedger\/Cons\.md$/;
-const CHECK_FILE = /[\w.\/\\-]+\.(?:py|ps1|psm1|sql|mjs|cjs|js|ts|tsx|cmd|bat|sh|json)\b/g;
-function ledgerAfter(payload, abs, exists) {
-  const ti = payload.tool_input || {};
-  if (payload.tool_name === "Write") return String(ti.content || "");
-  let t = exists ? fs.readFileSync(abs, "utf8") : "";
-  const edits = payload.tool_name === "MultiEdit" ? ti.edits || [] : [ti];
-  for (const x of edits) t = x.replace_all ? t.split(String(x.old_string || "")).join(String(x.new_string || "")) : t.replace(String(x.old_string || ""), String(x.new_string || ""));
-  return t;
-}
-function entries(text) {
-  const out = new Map();
-  const parts = String(text).replace(/\r\n/g, "\n").split(/^(?=###? L-?\d+\b)/m);
-  for (const p of parts) {
-    const id = /^###? (L-?\d+)\b/.exec(p);
-    if (id) out.set(id[1], p.trim());
-  }
-  return out;
-}
-function lessonFaults(payload, root, e) {
-  const abs = path.isAbsolute(e.abs) ? e.abs : path.join(root, e.abs);
-  const before = entries(e.exists ? fs.readFileSync(abs, "utf8") : "");
-  const faults = [];
-  for (const [id, body] of entries(ledgerAfter(payload, abs, e.exists))) {
-    if (before.get(id) === body || /^\s*- Thay bằng:/m.test(body)) continue;
-    const k = /^\s*- Kiểm:\s*(\w[\w-]*)\s*:\s*(.+)$/m.exec(body);
-    if (!k) { faults.push(id + ": no line \"- Kiểm: <static|runtime>: <check>\""); continue; }
-    if (k[1] !== "static" && k[1] !== "runtime") { faults.push(id + ": Kiểm is \"" + k[1] + "\" - only static or runtime blocks the fault"); continue; }
-    const files = (k[2].match(CHECK_FILE) || []).filter((f) => fs.existsSync(path.join(root, f.replace(/\\/g, "/"))));
-    if (!files.length) faults.push(id + ": Kiểm names no check file that exists in the repo (" + k[2].trim().slice(0, 80) + ")");
-  }
-  return faults;
-}
-function check(payload, root, policy) {
-  try {
-    const e = edit(payload, root);
-    if (e && LESSONS.test(e.rel)) {
-      const faults = lessonFaults(payload, root, e);
-      if (!faults.length) return null;
-      return blocked(root, policy, "02-91", "a lesson in " + e.rel + " has no machine check that blocks its fault:\n  " + faults.join("\n  ") +
-        "\nA lesson is written together with its check: build the gate pattern (static) or the test (runtime) first, run it red " +
-        "on the fault, then name it - \"- Kiểm: runtime: tasks/<case>/pipeline/test_x.py::test_name\". A reminder for a reader is not a lesson.");
-    }
-    if (!e || !LEDGER.test(e.rel) || !hasLedger(root)) return null;
-    const text = e.newLines.join("\n");
-    if (!/^\s*##\s+\[/m.test(text)) return null; // only a new entry is judged, not a later touch of an old one
-    if (!(FIX.test(text) || faultArrow(text)) || MARK.test(text)) return null;
-    return blocked(root, policy, "02-91", "a new changelog entry in " + e.rel + " reports a fix but names no lesson: add L-<n> to the " +
-      "lessons ledger (Cons_Gate_17_LessonsLedger) and name it in the entry, or write \"không có bài học: <lý do>\" when new code " +
-      "cannot bring the fault back (a one-off data fault, an outside outage).");
-  } catch { return null; }
-}`, true),
 
   // 02-93 — a subagent takes only a small errand (Rule_Gate_93_SubagentSmallOnly): a call that starts a subagent or a
   // workflow is blocked when its brief carries a large context — many files named, files to be read whole, or a long brief.
