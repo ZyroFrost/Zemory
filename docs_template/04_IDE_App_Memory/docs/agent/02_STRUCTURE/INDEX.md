@@ -114,7 +114,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Dist_105_Dist`](_Slot/Dist_105_Dist/Dist_105_Dist.md) | `dist/` | build output |
 | [`Build_106_Build`](_Slot/Build_106_Build/Build_106_Build.md) | `build/` | output build |
 | [`Coverage_107_Coverage`](_Slot/Coverage_107_Coverage/Coverage_107_Coverage.md) | `coverage/` | output coverage |
-| [`Venv_108_Venv`](_Slot/Venv_108_Venv/Venv_108_Venv.md) | `.venv/` · `backend/.venv/` | a repo's own Python environment |
+| [`Venv_108_Venv`](_Slot/Venv_108_Venv/Venv_108_Venv.md) | `.venv/` · `backend/.venv/` | reserve Python environment of a repo cut off from the system |
 | [`NodeModules_109_NodeModules`](_Slot/NodeModules_109_NodeModules/NodeModules_109_NodeModules.md) | `node_modules/` | deps Node |
 | [`Pycache_110_Pycache`](_Slot/Pycache_110_Pycache/Pycache_110_Pycache.md) | `__pycache__/` | cache bytecode Python |
 | [`Exports_135_Exports`](_Slot/Exports_135_Exports/Exports_135_Exports.md) | `exports/` | generated renders / published copies |

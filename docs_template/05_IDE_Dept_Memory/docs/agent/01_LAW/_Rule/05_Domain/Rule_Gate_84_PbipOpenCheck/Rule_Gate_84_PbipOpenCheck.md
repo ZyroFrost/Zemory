@@ -1,10 +1,10 @@
 ---
 id: Rule_84
 name: pbip-open-check
-version: 5
+version: 6
 kind: action
 code: 05_Domain
-from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_84_PbipOpenCheck @v5 #22c26f43ab88
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_84_PbipOpenCheck @v6 #a70ca6eba140
 ---
 # Rule_Gate_84_PbipOpenCheck — Open a .pbip only when nothing in it breaks the file
 
@@ -30,8 +30,8 @@ Before a `.pbip` file is opened, its open check runs. Errors that break the file
 
 ## Check
 - The guard runs `--open-check` for every command that opens a `.pbip` and blocks when the gate exits 1 AND prints its
-  file-breaking lines (`  X …`). It runs the declared Python first, then the `py` launcher, then PATH; an exit code with no such
-  line (no interpreter, the Windows store stub's 9009, a crash) never blocks.
+  file-breaking lines (`  X …`). It runs only the declared Python (never `py`, never PATH); a repo with no `config/runtime.json`
+  is not checked, and an exit code with no such line (no interpreter, a crash) never blocks.
 - The gate cannot run, takes over 40 seconds, or finds no file-breaking error (exit 0 · 2 · 3) ⇒ pass. The 40-second cap keeps the
   guard under the host's time limit: a guard that is cut off loses every other check of that command too.
 

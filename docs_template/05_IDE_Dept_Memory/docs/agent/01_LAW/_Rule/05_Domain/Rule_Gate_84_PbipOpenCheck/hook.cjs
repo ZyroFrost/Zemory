@@ -130,7 +130,7 @@ function check(payload, root, policy) {
     } catch { /* no settings: the light check */ }
     const args = [gate, reportDir, "--open-check", ...(strict ? ["--page", strict] : [])];
     // the Python the repo declares (config/runtime.json, slot Software_149_Program: <data root>\Software\Dev\Python\<version>\
-    // App\python.exe on the drive holding _ConfigVault, as bin/_python.cmd resolves it); then the py launcher; PATH last
+    // App\python.exe on the drive holding _ConfigVault, as bin/_python.cmd resolves it) - never py, never a bare python from PATH
     const runners = [];
     try {
       const ver = JSON.parse(fs.readFileSync(path.join(root, "config", "runtime.json"), "utf8")).python;
@@ -140,8 +140,7 @@ function check(payload, root, policy) {
         if (fs.existsSync(exe)) runners.push([exe, []]);
         break;
       }
-    } catch { /* no declaration: the launcher or PATH */ }
-    runners.push(["py", ["-3"]], ["python", []]);
+    } catch { /* no declaration: nothing to run */ }
     let r = null;
     for (const [exe, pre] of runners) {
       r = spawnSync(exe, [...pre, ...args], { cwd: root, encoding: "utf8", timeout: OPEN_CAP_MS, windowsHide: true,

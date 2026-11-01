@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # Software_149_Program program — một phần mềm
@@ -70,19 +70,30 @@ Software\Utility\7-Zip\
 - Thư mục cài toàn cục của trình quản lý gói là `Data\` của runtime đó: `npm config set prefix
   D:\Software\Dev\NodeJS\Data\npm-global`, để mọi CLI cài bằng `npm -g` nằm ở đó và chỉ thư mục đó nằm trên `PATH`. CLI cài
   bằng bộ cài riêng thì có thư mục phần mềm riêng (`Software\AI\Anthropic\ClaudeCode\`).
-- **Python: mỗi bản một thư mục phần mềm, các repo dùng chung.** Mỗi bản Python máy chạy là một thư mục phần mềm đặt theo số bản
-  đầy đủ: `Software\Dev\Python\3.12.10\{Setup, App}`. Bản đã cài đó CHÍNH LÀ môi trường: thư viện cài vào
-  `App\Lib\site-packages`; không venv, không `Data\`. Không bao giờ có môi trường thứ hai cho cùng một bản, và thư mục không mang
-  tên nhóm, phòng ban hay mục đích.
-  - Repo khai ĐÚNG MỘT bản nó chạy ở `config/runtime.json` (`{"python": "3.12.10"}`); launcher của repo chạy
-    `<gốc dữ liệu>\Software\Dev\Python\<bản>\App\python.exe`, gốc dữ liệu là thư mục cha của `_ConfigVault\` — không gọi
-    `python` trơn trên `PATH`, không dùng ổ hệ thống.
-  - Repo cần thêm thư viện thì cài vào bản nó khai; thư viện đã có thì không nâng bản tại chỗ. Repo cần bản Python khác thì cài
-    bản đó thành thư mục mới và sửa một dòng khai.
-  - Danh sách thư viện ghim của từng bản nằm ở HS cạnh launcher (`Skill_Task_VmAutomation`), nên cài lại một bản chỉ cần một
-    lệnh. Máy chạy task (VM) dùng cùng cây thư mục, nên cùng đường dẫn.
-  - Lựa chọn thay thế, vẫn giữ: repo cần môi trường riêng thì giữ `.venv/` trong repo (`Venv_108_Venv`). Một repo dùng một trong
-    hai đường, không dùng cả hai.
+- **Python: MỘT chỗ chung, mỗi bản một thư mục, MỌI repo dùng.** Python theo cùng một luật với mọi thứ dùng chung: thứ mọi repo
+  dùng thì nằm ở một chỗ chung, thứ của riêng một repo thì nằm trong repo đó, còn bản mà repo sẽ cần nếu bị tách khỏi chỗ chung là
+  một slot dự phòng, không dùng khi repo còn chạy trong hệ thống.
+  - **Ở đâu.** Mỗi bản Python máy chạy là một thư mục phần mềm đặt theo số bản đủ ba đoạn:
+    `<gốc dữ liệu>\Software\Dev\Python\3.12.10\{Setup, App}`. Bản đã cài đó CHÍNH LÀ môi trường: thư viện cài vào
+    `App\Lib\site-packages`. Không venv bên trong, không `Data\`, không bao giờ có môi trường thứ hai cho cùng một bản, và thư mục
+    không mang tên nhóm, phòng ban, app hay mục đích. Trên Linux cùng cây đó nằm dưới `/opt`:
+    `/opt/Software/Dev/Python/3.12.10/App/bin/python3`.
+  - **Ai dùng.** Mọi repo: repo phòng, kho dữ liệu, repo quản lý workspace VÀ app (kể cả backend của app). Repo khai ĐÚNG MỘT bản
+    nó chạy ở `config/runtime.json` (`{"python": "3.12.10"}`); launcher gọi `bin\_python.cmd`, script này chạy
+    `<gốc dữ liệu>\Software\Dev\Python\<bản>\App\python.exe`, gốc dữ liệu là ổ chứa `_ConfigVault\`. Không gọi `python` trơn
+    trên `PATH`, không `py`, không ổ hệ thống, không `.venv\Scripts\python.exe`.
+  - **Một bản = một bộ thư viện ghim, mỗi thư viện một phiên bản.** Danh sách ghim của từng bản Python nằm ở HS
+    (`Skill_Task_VmAutomation/references/python_<bản>.txt`); cài một bản = cài Python vào `App\`, rồi
+    `python -m pip install -r python_<bản>.txt`. Repo cần thêm thư viện thì thêm vào danh sách đó và cài vào bản nó khai. Thư viện
+    đã có trong danh sách thì không bao giờ nâng hay hạ phiên bản vì một repo.
+  - **Hai repo không dùng chung được một phiên bản thư viện.** Cài một bản Python MỚI thành một thư mục MỚI nằm cạnh
+    (`Software\Dev\Python\3.12.11\{Setup, App}`) với danh sách ghim riêng; repo cần phiên bản thư viện kia đổi đúng một dòng ở
+    `config/runtime.json`. Không bao giờ tạo thư mục con hay venv dưới một bản đã có, không bao giờ để hai phiên bản của một thư
+    viện trong một thư mục bản.
+  - **Slot dự phòng `.venv/` (`Venv_108_Venv`).** CHỈ repo bị tách khỏi hệ thống mới dùng — repo chạy ở nơi không có cây dùng
+    chung (repo nhóm người khác clone về chạy, app giao sang máy không có `Software\`). Repo trong hệ thống không bao giờ có
+    `.venv/`, kể cả khi có nó thì tiện hơn. Hiện không repo nào được quản lý chạy tách lẻ.
+  - Máy chạy task (VM) dùng cùng cây thư mục, nên cùng đường dẫn (`E:\Software\Dev\Python\3.12.10\App\`).
 - THƯ MỤC ĐỆM ĐẦU RA của một chương trình — chỗ nó ghi ra trước khi chủ máy xếp kết quả (thư mục ghi clip của phần mềm quay màn hình
   trên ổ nhanh) — là `Data\` của chính chương trình đó, nối sang ổ nhanh theo năm luật của `Struc_Disk_Data`; món đã xếp thì dời
   về chỗ của nó (clip game ⇒ `Game\Media\`).

@@ -75,7 +75,7 @@ export function basicGuardSource(): string {
     "  $rel = $abs.Substring($rc.Length + 1) -replace '\\\\', '/'",
     `  $S = ConvertFrom-Json '${secrets.replace(/'/g, "''")}'`,
     "  $code = '\\.(py|js|jsx|ts|tsx|mjs|cjs|json|ya?ml|toml|ini|cfg|conf|ps1|sh|bat|cmd|sql|xml|config|cs|java|go|php|rb)$'",
-    "  $notTracked = '(^|/)\\.env(\\.[^/]*)?$|(^|/)data/secrets/|(^|/)gate\\.json$'",
+    "  $notTracked = '(^|/)\\.env(\\.[^/]*)?$|(^|/)gate\\.json$'",
     "  $test = '(^|/)(test|tests|__tests__)/|\\.test\\.[cm]?[jt]sx?$|_test\\.(py|go)$|(^|/)test_[^/]+\\.py$'",
     "  if ($rel -notmatch $code -or $rel -match $notTracked -or $rel -match $S.skipPath) { exit 0 }",
     "",
@@ -123,7 +123,7 @@ export function basicGuardSource(): string {
     "  if ($rel -match $test) {",
     "    Say 'ask' ('Rule_Gate_21_WhatEntersGit: a credential-shaped value in the test file ' + $rel + ': ' + $list + '. A fake value is fine here; a real one goes to .env and the test reads the environment variable.')",
     "  }",
-    "  Say 'deny' ('Rule_Gate_21_WhatEntersGit: a secret value written into ' + $rel + ', a file git tracks: ' + $list + '. A login to a system goes to the machine vault; a text secret of this repo alone goes to .env; a secret file goes to _ConfigVault/certs/<repo>/. The file names where the value is read from (an environment variable or the vault entry), never the value.')",
+    "  Say 'deny' ('Rule_Gate_21_WhatEntersGit: a secret value written into ' + $rel + ', a file git tracks: ' + $list + '. A login to a system goes to the organisation vault (Workspace/Company/<Org>/_ConfigVault/<tool>/); a text secret of this repo alone goes to .env; a secret file goes to _ConfigVault/certs/<repo>/. The file names where the value is read from (an environment variable or the vault entry), never the value.')",
     "} catch { exit 0 }",
     "",
     // LF: the set's .gitattributes stores *.ps1 as LF, so a fresh checkout must equal what the assembly writes

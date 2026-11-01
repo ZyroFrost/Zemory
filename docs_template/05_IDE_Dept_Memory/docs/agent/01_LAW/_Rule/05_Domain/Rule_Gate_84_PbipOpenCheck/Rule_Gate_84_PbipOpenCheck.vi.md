@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 # Rule_Gate_84_PbipOpenCheck — Open a .pbip only when nothing in it breaks the file
@@ -24,8 +24,8 @@ việc mở tới khi sửa xong.
 - ✓ Đúng: lệnh mở bị chặn kèm danh sách lỗi; sửa measure trùng, chạy lại, rồi mở.
 
 ## Máy kiểm
-- Guard chạy `--open-check` cho mọi lệnh mở `.pbip` và chặn khi cổng thoát 1 VÀ in ra dòng lỗi làm hỏng file (`  X …`). Guard chạy
-  Python được khai trước, rồi tới `py`, cuối cùng là PATH; một mã thoát không kèm dòng đó (không có trình chạy, mã 9009 của stub
-  Windows Store, lỗi sập) không bao giờ chặn.
+- Guard chạy `--open-check` cho mọi lệnh mở `.pbip` và chặn khi cổng thoát 1 VÀ in ra dòng lỗi làm hỏng file (`  X …`). Guard chỉ chạy
+  Python được khai (không bao giờ `py`, không bao giờ PATH); repo không có `config/runtime.json` thì không được kiểm, và một mã thoát
+  không kèm dòng đó (không có trình chạy, lỗi sập) không bao giờ chặn.
 - Cổng không chạy được, quá 40 giây, hoặc không thấy lỗi làm hỏng file (thoát 0 · 2 · 3) ⇒ cho qua. Trần 40 giây giữ guard dưới
   thời hạn của host: guard bị cắt thì mọi chốt khác của lệnh đó cũng mất.

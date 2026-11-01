@@ -2,10 +2,10 @@
 id: Rule_21
 aka: 02-21
 name: what-enters-git
-version: 14
+version: 15
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit @v14 #173b61c77e31
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit @v15 #103c818c1dfe
 ---
 # Rule_Gate_21_WhatEntersGit — What never enters git
 

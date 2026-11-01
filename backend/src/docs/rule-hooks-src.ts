@@ -554,8 +554,8 @@ function check(payload, root, policy) {
   // fake logins are normal there, and a machine cannot tell fake from real.
   hook("02-21_secret-value.cjs", "const SECRET_DEFAULT = " + JSON.stringify(SECRET_VALUES) + ";\n" + String.raw`
 const CODE = /\.(py|js|jsx|ts|tsx|mjs|cjs|json|ya?ml|toml|ini|cfg|conf|ps1|sh|bat|cmd|sql|xml|config|cs|java|go|php|rb)$/i;
-// .env and the secret slot are git-ignored by the standard; a gate.json holds block/pass examples - test data on purpose
-const NOT_TRACKED = /(^|\/)\.env(\.[^/]*)?$|(^|\/)data\/secrets\/|(^|\/)gate\.json$/i;
+// .env is git-ignored by the standard; a gate.json holds block/pass examples - test data on purpose
+const NOT_TRACKED = /(^|\/)\.env(\.[^/]*)?$|(^|\/)gate\.json$/i;
 const TEST = /(^|\/)(test|tests|__tests__)\/|\.test\.[cm]?[jt]sx?$|_test\.(py|go)$|(^|\/)test_[^/]+\.py$/i;
 function secretHits(lines, S) {
   const env = new RegExp(S.env, "i"), ph = new RegExp(S.placeholder, "i"), nm = new RegExp(S.name || "(?!)"), out = [];
@@ -583,10 +583,10 @@ function check(payload, root, policy) {
     if (TEST.test(e.rel)) {
       if (!remindOnce(payload, root, policy, "02-21:" + e.rel)) return null;
       return blocked(root, policy, "02-21", "a credential-shaped value in the test file " + e.rel + ":\n  " + hits.slice(0, 4).join("\n  ") +
-        "\nA fake value is fine here; a real one goes to .env or the secret slot and the test reads the environment variable." + ONCE);
+        "\nA fake value is fine here; a real one goes to .env and the test reads the environment variable." + ONCE);
     }
     return blocked(root, policy, "02-21", "a secret value written into " + e.rel + ", a file git tracks:\n  " + hits.slice(0, 4).join("\n  ") +
-      "\nA login to a system goes to the machine vault (_ConfigVault/<tool>/credentials/); a text secret of this repo alone goes to .env; a secret file goes to _ConfigVault/certs/<repo>/." +
+      "\nA login to a system goes to the organisation vault (Workspace/Company/<Org>/_ConfigVault/<tool>/; on a machine owned by one organisation, <data root>/_ConfigVault/<tool>/); a text secret of this repo alone goes to .env; a secret file goes to _ConfigVault/certs/<repo>/." +
       "\nThe file names where the value is read from (an environment variable, or the vault entry), never the value.");
   } catch { return null; }
 }`),
@@ -851,7 +851,7 @@ function check(payload, root, policy) {
     } catch { /* no settings: the light check */ }
     const args = [gate, reportDir, "--open-check", ...(strict ? ["--page", strict] : [])];
     // the Python the repo declares (config/runtime.json, slot Software_149_Program: <data root>\Software\Dev\Python\<version>\
-    // App\python.exe on the drive holding _ConfigVault, as bin/_python.cmd resolves it); then the py launcher; PATH last
+    // App\python.exe on the drive holding _ConfigVault, as bin/_python.cmd resolves it) - never py, never a bare python from PATH
     const runners = [];
     try {
       const ver = JSON.parse(fs.readFileSync(path.join(root, "config", "runtime.json"), "utf8")).python;
@@ -861,8 +861,7 @@ function check(payload, root, policy) {
         if (fs.existsSync(exe)) runners.push([exe, []]);
         break;
       }
-    } catch { /* no declaration: the launcher or PATH */ }
-    runners.push(["py", ["-3"]], ["python", []]);
+    } catch { /* no declaration: nothing to run */ }
     let r = null;
     for (const [exe, pre] of runners) {
       r = spawnSync(exe, [...pre, ...args], { cwd: root, encoding: "utf8", timeout: OPEN_CAP_MS, windowsHide: true,

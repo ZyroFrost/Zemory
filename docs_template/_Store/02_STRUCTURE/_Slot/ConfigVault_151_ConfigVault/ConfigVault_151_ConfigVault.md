@@ -1,7 +1,7 @@
 ---
 id: Slot_151
 name: configvault
-version: 16
+version: 17
 path: _ConfigVault/<tool>/ · Workspace/Company/<Org>/_ConfigVault/<tool>/
 scope: layout
 ---
@@ -20,11 +20,11 @@ The fact that splits it from `Documents\`: WHO READS IT. A program or an agent r
 ## Two levels
 
 The block law of `Struc_Disk_Data` picks the BLOCK first: a secret of one organisation belongs to that organisation's block, a tool
-setting of the machine or its user belongs to the machine. So the vault has two levels with the SAME tree inside, plus the repo:
+setting of the machine or its owner belongs to the machine. So the vault has two levels with the SAME tree inside, plus the repo:
 
 | Level | Where | Holds |
 |---|---|---|
-| machine | `<data root>\_ConfigVault\` | the machine's and its user's own tools: `zemory\` · `git\` (personal identity) · tool caches · the root `ssh\config` (with one `Include` per organisation) · `known_hosts` · personal ssh keys |
+| machine | `<data root>\_ConfigVault\` | the machine's and its owner's own tools: `zemory\` · `git\` (personal identity) · tool caches · the root `ssh\config` (with one `Include` per organisation) · `known_hosts` · personal ssh keys |
 | organisation | `Workspace\Company\<Org>\_ConfigVault\` | every secret the organisation's repos and apps share: `sql\` · `api\` · `mail\` · `windows\` · `tls\` · `certs\<repo>\` · `vpn\` · `ssh\` (keys + `config` of the organisation's hosts) |
 | repo | `.env` at the repo root (`Root_093_Env`) | a text secret of that repo alone |
 

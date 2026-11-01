@@ -1712,7 +1712,7 @@ if (SV && Array.isArray(SV.patterns)) {
     const m = /^\\+\\+\\+ b\\/(.+)$/.exec(l);
     if (m) { file = m[1]; continue; }
     if (!l.startsWith("+") || l.startsWith("+++") || !file || !CODE.test(file) || TEST.test(file)) continue;
-    if (/(^|\\/)\\.env(\\.[^\\/]*)?$|(^|\\/)data\\/secrets\\/|(^|\\/)gate\\.json$/i.test(file) || env.test(l)) continue;
+    if (/(^|\\/)\\.env(\\.[^\\/]*)?$|(^|\\/)gate\\.json$/i.test(file) || env.test(l)) continue;
     if (SV.skipPath && new RegExp(SV.skipPath, "i").test(file)) continue;
     for (const p of SV.patterns) {
       const v = new RegExp(p.re, p.flags).exec(l);

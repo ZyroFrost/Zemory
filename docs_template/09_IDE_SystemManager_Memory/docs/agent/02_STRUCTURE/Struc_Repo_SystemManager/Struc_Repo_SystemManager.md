@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_SystemManager
 name: repo-system-manager
-version: 4
+version: 5
 profile: app
 label: SYSTEM-MANAGER
 intro: : repo quản một hệ nhiều app — quyết khung và chuẩn của các app và repo dữ liệu app nó quản
@@ -9,7 +9,8 @@ ask: ; repo điều phối nhiều app cùng một hệ là SYSTEM-MANAGER
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_App, Struc_Repo_WorkspaceManager]
-from: _Store/02_STRUCTURE/Struc_Repo_SystemManager @v4 #5213b2efd283
+installs: [bin/_python.cmd, config/runtime.json]
+from: _Store/02_STRUCTURE/Struc_Repo_SystemManager @v5 #2fafcc0a1828
 ---
 # Struc_Repo_SystemManager
 
@@ -42,3 +43,13 @@ the first repo is assembled from this template.
 - A path or a port behind the gateway, a role set that differs from the default, a new app ⇒ message this repo's session; an app never edits the table of
   apps or the proxy configuration (`Rule_Gate_44_RepoScope`).
 - How an app reads the shared session and answers a person without one: `Skill_App_Base` › "An app of a family".
+
+## Python
+
+- `config/runtime.json` declares the ONE Python version the repo runs (`{"python": "3.12.10"}`); `bin/_python.cmd` resolves
+  `<data root>\Software\Dev\Python\<version>\App\python.exe` on the drive holding `_ConfigVault` (slot `Software_149_Program`).
+  Both are installed by this template, byte-equal to the copy every other repo template installs.
+- Every launcher and script runs Python through it — `call "%~dp0_python.cmd" || exit /b 3` then `"%PY%"`, or
+  `bin\_python.cmd scripts\x.py` — never a bare `python` from PATH, never `py`, never `.venv\Scripts\python.exe`.
+- `.venv/` (slot `Venv_108_Venv`) is the reserve of a repo cut off from the system, never used by a repo that runs inside it.
+- A repo that needs another version changes the number in its own `runtime.json`; sync keeps that edit and reports it.

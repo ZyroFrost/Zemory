@@ -1,5 +1,5 @@
 ---
-version: 14
+version: 15
 lang: vi
 ---
 # Rule_Gate_21_WhatEntersGit — What never enters git

@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 11
+version: 12
 scope: disk
 ---
 # Struc_Disk_Data
@@ -86,7 +86,7 @@ Ask the questions in this order; the item goes to the first one that is true.
 | 2 | a copy whose original still exists elsewhere | `Backup\` (Backup_165) |
 | 3 | the owner has confirmed the item is almost never used any more, and this is the only copy (packed to save space is not this step; finished learning goes to step 10) | `Archive\` (Archive_166) |
 | 4 | an AI model file | `_Models\` (Models_167) |
-| 5 | settings or keys a PROGRAM or an AGENT reads by itself, of the machine or its user (one organisation's ⇒ its block, step 7) | `_ConfigVault\<tool>\` (ConfigVault_151) |
+| 5 | settings or keys a PROGRAM or an AGENT reads by itself, of the machine or its owner (one organisation's ⇒ its block, step 7) | `_ConfigVault\<tool>\` (ConfigVault_151) |
 | 6 | a program — installer, installed copy, its own data — games, launchers and game tools included, and a program's output buffer | `Software\` (Software_147) |
 | 7 | code or a repo, or anything that belongs to ONE organisation — its work and its papers | `Workspace\` (Workspace_143) |
 | 8 | a game save, a screen capture or clip of a game, a collected game clip, a game guide | `Game\` (Game_164) |

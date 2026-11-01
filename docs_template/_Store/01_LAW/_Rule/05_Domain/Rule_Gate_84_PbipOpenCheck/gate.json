@@ -14,7 +14,8 @@
       "note": "opening a report whose open check finds a file breaker",
       "files": {
         "scripts/pbi_gate.py": "import sys\nprint(\"  X measure 'Sales' declared twice in Model.tmdl - Desktop will not open the file\")\nsys.exit(1)\n",
-        "reports/R_Mix/R.pbip": "{}\n"
+        "reports/R_Mix/R.pbip": "{}\n",
+        "config/runtime.json": "{\"python\": \"3.12.10\"}\n"
       },
       "tool_name": "PowerShell",
       "tool_input": {
@@ -83,6 +84,23 @@
       "note": "the open check fails without a file-breaking line (a crash, a missing interpreter)",
       "files": {
         "scripts/pbi_gate.py": "import sys\nprint(\"Traceback: something else went wrong\")\nsys.exit(1)\n",
+        "reports/R_Mix/R.pbip": "{}\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {
+        "command": "Start-Process \"reports/R_Mix/R.pbip\""
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "the repo declares no Python (no config/runtime.json): the check cannot run, the open goes through",
+      "files": {
+        "scripts/pbi_gate.py": "import sys\nprint(\"  X measure 'Sales' declared twice in Model.tmdl - Desktop will not open the file\")\nsys.exit(1)\n",
         "reports/R_Mix/R.pbip": "{}\n"
       },
       "tool_name": "PowerShell",

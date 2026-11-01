@@ -1,7 +1,7 @@
 ---
 id: Slot_149
 name: program
-version: 6
+version: 7
 path: Software/<Nhóm>/[<Hãng>/]<Ứng dụng>/
 scope: layout
 ---
@@ -75,19 +75,30 @@ Software\Utility\7-Zip\
 - A package manager's global install folder is the `Data\` of its runtime: `npm config set prefix
   D:\Software\Dev\NodeJS\Data\npm-global`, so every CLI installed with `npm -g` lives there and that one folder is on `PATH`.
   A CLI installed by its own installer gets its own program folder (`Software\AI\Anthropic\ClaudeCode\`).
-- **Python, one program per version, shared by repos.** Each Python version the machine runs is one program folder named by its
-  full version: `Software\Dev\Python\3.12.10\{Setup, App}`. That installed copy IS the environment: libraries go into its
-  `App\Lib\site-packages`; no venv, no `Data\`. There is never a second environment for the same version, and the folder never
-  takes a group's, a department's or a purpose's name.
-  - A repo declares the ONE version it runs in `config/runtime.json` (`{"python": "3.12.10"}`); its launchers run
-    `<data root>\Software\Dev\Python\<version>\App\python.exe`, the data root being the parent of `_ConfigVault\` — never a bare
-    `python` from `PATH`, never the system drive.
-  - A repo that needs one more library installs it into the version it declares; a library already there is never upgraded
-    in place. A repo that needs another version installs that version as a new folder and changes its one line.
-  - The pinned library list of each version lives in HS beside the launchers (`Skill_Task_VmAutomation`), so a reinstalled
-    version is rebuilt with one command. A machine that runs tasks (VM) uses the same tree, so the same path.
-  - The alternative, kept as a choice: a repo that needs an environment of its own keeps `.venv/` in the repo
-    (`Venv_108_Venv`). A repo uses one of the two ways, never both.
+- **Python: ONE shared place, one folder per version, used by EVERY repo.** Python follows the same law as every other shared
+  thing: what all repos use lives in one shared place, what belongs to one repo alone lives in that repo, and the copy a repo
+  would need if it were cut off from the shared place is a reserve slot, not used while the repo runs inside the system.
+  - **Where.** Each Python version the machine runs is one program folder named by its full three-part version:
+    `<data root>\Software\Dev\Python\3.12.10\{Setup, App}`. That installed copy IS the environment: libraries go into its
+    `App\Lib\site-packages`. No venv inside it, no `Data\`, never a second environment for the same version, and the folder
+    never takes a group's, a department's, an app's or a purpose's name. On Linux the same tree sits under `/opt`:
+    `/opt/Software/Dev/Python/3.12.10/App/bin/python3`.
+  - **Who uses it.** Every repo: department repos, the data warehouse, workspace managers AND apps (an app's backend
+    included). A repo declares the ONE version it runs in `config/runtime.json` (`{"python": "3.12.10"}`); its launchers call
+    `bin\_python.cmd`, which runs `<data root>\Software\Dev\Python\<version>\App\python.exe`, the data root being the drive that
+    holds `_ConfigVault\`. Never a bare `python` from `PATH`, never `py`, never the system drive, never `.venv\Scripts\python.exe`.
+  - **One version = one pinned library set, one version of each library.** The pinned list of each Python version lives in HS
+    (`Skill_Task_VmAutomation/references/python_<version>.txt`); installing a version = installing Python into `App\`, then
+    `python -m pip install -r python_<version>.txt`. A repo that needs one more library adds it to that list and installs it into
+    the version it declares. A library already in the list is never upgraded or downgraded for one repo.
+  - **Two repos that cannot share a library version.** Install a NEW Python version as a NEW sibling folder
+    (`Software\Dev\Python\3.12.11\{Setup, App}`) with its own pinned list, and the repo that needs the other library version
+    changes its one line in `config/runtime.json`. Never a sub-folder or a venv under an existing version, never two library
+    versions inside one version folder.
+  - **The reserve slot `.venv/` (`Venv_108_Venv`).** Used ONLY by a repo cut off from the system — it runs where the shared
+    tree does not exist (a team repo cloned by other people, an app handed to a machine without `Software\`). A repo inside the
+    system never has `.venv/`, even when one would be convenient. Today no managed repo runs cut off.
+  - A machine that runs tasks (VM) uses the same tree, so the same path (`E:\Software\Dev\Python\3.12.10\App\`).
 - A program's OUTPUT BUFFER — the folder it writes into before the owner sorts the result (a screen recorder's capture folder on a
   fast drive) — is that program's `Data\`, linked to the fast drive per the five laws of `Struc_Disk_Data`; a sorted item moves
   to its own place (a game clip ⇒ `Game\Media\`).

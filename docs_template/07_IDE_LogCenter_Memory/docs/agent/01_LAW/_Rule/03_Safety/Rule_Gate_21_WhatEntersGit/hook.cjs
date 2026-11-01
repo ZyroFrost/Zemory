@@ -114,8 +114,8 @@ const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 const SECRET_DEFAULT = {"patterns":[{"kind":"password","re":"(?<![A-Za-z])(?:pass(?:word)?|pwd|secret|token|api[_-]?key|client[_-]?secret)(?![A-Za-z])[\"']?\\s*[:=]\\s*[\"']([^\"'\\s$<>{}%]{6,})[\"']","flags":"i"},{"kind":"connection string","re":"(?:^|[;\"'])\\s*(?:Password|Pwd)\\s*=\\s*([^;\"'\\s$<>{}%()]{4,})\\s*(?:;|$)","flags":"i"},{"kind":"private key","re":"-----BEGIN [A-Z ]*PRIVATE KEY-----","flags":""},{"kind":"cloud access key","re":"\\bAKIA[0-9A-Z]{16}\\b","flags":""}],"placeholder":"^(?:changeme|change_me|password|secret|x{3,}|\\*+|your[_-].*|example.*|dummy.*|fake.*|placeholder.*|<.*>)$","name":"^(?:[A-Z][A-Z0-9_]{2,}|[.#][a-z]+(?:-[a-z0-9]+)+|[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+)$","env":"environ|getenv|process\\.env|\\$\\{|%[A-Z_]+%|GetEnvironmentVariable|_env\\b","skipPath":"(^|/)(vendors?|third[_-]?party|external|node_modules)/|(^|/)wwwroot/.*/lib/|\\.min\\.js$"};
 
 const CODE = /\.(py|js|jsx|ts|tsx|mjs|cjs|json|ya?ml|toml|ini|cfg|conf|ps1|sh|bat|cmd|sql|xml|config|cs|java|go|php|rb)$/i;
-// .env and the secret slot are git-ignored by the standard; a gate.json holds block/pass examples - test data on purpose
-const NOT_TRACKED = /(^|\/)\.env(\.[^/]*)?$|(^|\/)data\/secrets\/|(^|\/)gate\.json$/i;
+// .env is git-ignored by the standard; a gate.json holds block/pass examples - test data on purpose
+const NOT_TRACKED = /(^|\/)\.env(\.[^/]*)?$|(^|\/)gate\.json$/i;
 const TEST = /(^|\/)(test|tests|__tests__)\/|\.test\.[cm]?[jt]sx?$|_test\.(py|go)$|(^|\/)test_[^/]+\.py$/i;
 function secretHits(lines, S) {
   const env = new RegExp(S.env, "i"), ph = new RegExp(S.placeholder, "i"), nm = new RegExp(S.name || "(?!)"), out = [];
@@ -143,10 +143,10 @@ function check(payload, root, policy) {
     if (TEST.test(e.rel)) {
       if (!remindOnce(payload, root, policy, "02-21:" + e.rel)) return null;
       return blocked(root, policy, "02-21", "a credential-shaped value in the test file " + e.rel + ":\n  " + hits.slice(0, 4).join("\n  ") +
-        "\nA fake value is fine here; a real one goes to .env or the secret slot and the test reads the environment variable." + ONCE);
+        "\nA fake value is fine here; a real one goes to .env and the test reads the environment variable." + ONCE);
     }
     return blocked(root, policy, "02-21", "a secret value written into " + e.rel + ", a file git tracks:\n  " + hits.slice(0, 4).join("\n  ") +
-      "\nA login to a system goes to the machine vault (_ConfigVault/<tool>/credentials/); a text secret of this repo alone goes to .env; a secret file goes to _ConfigVault/certs/<repo>/." +
+      "\nA login to a system goes to the organisation vault (Workspace/Company/<Org>/_ConfigVault/<tool>/; on a machine owned by one organisation, <data root>/_ConfigVault/<tool>/); a text secret of this repo alone goes to .env; a secret file goes to _ConfigVault/certs/<repo>/." +
       "\nThe file names where the value is read from (an environment variable, or the vault entry), never the value.");
   } catch { return null; }
 }

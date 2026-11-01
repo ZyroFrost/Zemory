@@ -2,7 +2,7 @@
 id: Rule_21
 aka: 02-21
 name: what-enters-git
-version: 14
+version: 15
 kind: action
 code: 03_Safety
 ---

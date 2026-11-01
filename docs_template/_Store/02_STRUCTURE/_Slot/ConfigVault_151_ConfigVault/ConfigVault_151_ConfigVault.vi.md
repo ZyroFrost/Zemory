@@ -1,5 +1,5 @@
 ---
-version: 16
+version: 17
 lang: vi
 ---
 # ConfigVault_151_ConfigVault configvault — két chứa thiết lập và khoá công cụ của cả máy
