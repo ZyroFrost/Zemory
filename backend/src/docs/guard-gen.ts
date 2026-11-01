@@ -1724,7 +1724,7 @@ if (SV && Array.isArray(SV.patterns)) {
     }
   }
   if (hits.length) {
-    process.stderr.write("BLOCKED (pre-commit): rule 02-21 - a secret value in staging; put it in .env or data/secrets/ and name the environment variable in the file:\\n  " +
+    process.stderr.write("BLOCKED (pre-commit): rule 02-21 - a secret value in staging; put a text secret of this repo in .env (a secret file in _ConfigVault/certs/<repo>/) and name the environment variable in the file:\\n  " +
       [...new Set(hits)].join("\\n  ") + "\\n");
     process.exit(1);
   }

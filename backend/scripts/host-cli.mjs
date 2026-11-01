@@ -8,7 +8,7 @@
 //   .env beside docker-compose.yml (written by the installer) names the workspace: HOST_WORKSPACE_NATIVE (Windows,
 //   D:\Workspace) or HOST_WORKSPACE (Linux); ZEMORY_CONTAINER overrides the container name (default zemory).
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -90,7 +90,7 @@ export function ensureKeepAlive(env, o = {}) {
     /* fail-open: the command itself still runs */
   }
   try {
-    healDriveMount(env, o);
+    healDriveMount(env, { log: healLogTo(dirname(stamp)), ...o });
   } catch {
     /* fail-open: the command itself still runs */
   }
@@ -128,6 +128,9 @@ export function ensureEngine(env, o = {}) {
  * A healthy mount can still be invisible to the container: a container started while the letter was missing keeps an empty
  * bind mount (measured 2026-10-28, fixed by a hand `docker compose restart`). The folder has files in WSL and none in the
  * running container ⇒ the container is restarted ("rebound").
+ * The hooks of every session on the machine run this, so a restart must never cut a command another session runs in the
+ * container (measured 2026-11-01: restarts at 02:32 and 03:05 killed a running `zemory sync`, and nothing said why). A
+ * `zemory` command running there ⇒ the restart waits for the next look ("deferred"); every restart or wait is logged.
  */
 export function healDriveMount(env, o = {}) {
   const platform = o.platform ?? process.platform;
@@ -135,7 +138,20 @@ export function healDriveMount(env, o = {}) {
   const m = drive.match(/^\/mnt\/([a-z])(\/|$)/i);
   if (platform !== "win32" || !env.ZEMORY_WSL_DISTRO || !m) return "skipped";
   const run = o.run ?? ((args) => spawnSync("wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, ...args], { encoding: "utf8", windowsHide: true, timeout: 60_000 }));
+  const log = o.log ?? (() => {});
   const container = env.ZEMORY_CONTAINER || "zemory";
+  // restart unless a host command (`docker exec … zemory <args>`, seen as `node /usr/local/bin/zemory`) is running inside
+  const restart = (done, why) => {
+    const r = run(["--exec", "docker", "exec", container, "sh", "-c", "ps -eo args | grep -c '^node /usr/local/bin/zemory '"]);
+    const busy = Number.parseInt(String(r.stdout ?? "").trim(), 10) || 0;
+    if (busy > 0) {
+      log(`deferred (${why}): ${busy} zemory command(s) running in the container`);
+      return "deferred";
+    }
+    run(["--exec", "docker", "restart", container]);
+    log(`${done}: container restarted (${why})`);
+    return done;
+  };
   const look = run(["--exec", "stat", "-c", "%F", drive]);
   if (look.status === 0) {
     const first = (r) => (r.status === 0 ? String(r.stdout ?? "").trim() : null);
@@ -143,17 +159,31 @@ export function healDriveMount(env, o = {}) {
     if (!inWsl) return "ok"; // nothing to see, or the look failed: no evidence the container is blind
     const inContainer = first(run(["--exec", "docker", "exec", container, "sh", "-c", "ls -A /host/drive | head -1"]));
     if (inContainer !== "") return "ok"; // it sees files, or it is not running (the engine look owns that)
-    run(["--exec", "docker", "restart", container]);
-    return "rebound";
+    return restart("rebound", "the container sees no file of a healthy Drive mount");
   }
   if (!/invalid argument/i.test(String(look.stderr ?? ""))) return "absent"; // not mounted, or the folder is gone: nothing to heal
   const letter = m[1].toLowerCase();
   const exists = o.letterExists ?? ((l) => existsSync(`${l.toUpperCase()}:\\`));
   if (!exists(letter)) return "absent";
   run(["-u", "root", "--exec", "sh", "-c", `umount -l /mnt/${letter}; mount /mnt/${letter}`]);
-  if (run(["--exec", "stat", "-c", "%F", drive]).status !== 0) return "failed";
-  run(["--exec", "docker", "restart", container]);
-  return "healed";
+  if (run(["--exec", "stat", "-c", "%F", drive]).status !== 0) {
+    log(`failed: /mnt/${letter} still unreadable after mounting it again`);
+    return "failed";
+  }
+  // a deferred restart is not lost: the mount is healthy now, the next look finds the container blind and restarts it then
+  return restart("healed", `/mnt/${letter} was stale and is mounted again`);
+}
+
+/** The heal's log: one dated line per restart, wait or failure, in `<dir>/heal.log`. Fail-open. */
+export function healLogTo(dir) {
+  return (line) => {
+    try {
+      mkdirSync(dir, { recursive: true });
+      appendFileSync(join(dir, "heal.log"), `${new Date().toISOString()} ${line}\n`);
+    } catch {
+      /* a log that cannot be written never stops the heal */
+    }
+  };
 }
 
 /** The file every installer writes the machine's choice to (backend/src/util/install-choice.ts reads the same one). */
@@ -239,7 +269,7 @@ function main() {
   const env = { ...readEnv(join(COMPOSE_DIR, ".env")), ...process.env };
   // internal: the hooks start this in the background (host-hook.mjs healDriveSoon) - heal a stale Drive mount, nothing else
   if (process.argv[2] === "--heal-drive") {
-    try { healDriveMount(env); } catch { /* fail-open */ }
+    try { healDriveMount(env, { log: healLogTo(join(COMPOSE_DIR, "data")) }); } catch { /* fail-open */ }
     process.exit(0);
   }
   // one install per machine: the choice the installers recorded decides which command answers

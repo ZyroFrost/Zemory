@@ -121,9 +121,9 @@ export function basicGuardSource(): string {
     "  if ($hits.Count -eq 0) { exit 0 }",
     "  $list = (@($hits) | Select-Object -First 4) -join ' | '",
     "  if ($rel -match $test) {",
-    "    Say 'ask' ('Rule_Gate_21_WhatEntersGit: a credential-shaped value in the test file ' + $rel + ': ' + $list + '. A fake value is fine here; a real one goes to .env or data/secrets/ and the test reads the environment variable.')",
+    "    Say 'ask' ('Rule_Gate_21_WhatEntersGit: a credential-shaped value in the test file ' + $rel + ': ' + $list + '. A fake value is fine here; a real one goes to .env and the test reads the environment variable.')",
     "  }",
-    "  Say 'deny' ('Rule_Gate_21_WhatEntersGit: a secret value written into ' + $rel + ', a file git tracks: ' + $list + '. A login to a system goes to the machine vault; a secret of this repo''s own product goes to data/secrets/ or .env. The file names where the value is read from (an environment variable or the vault entry), never the value.')",
+    "  Say 'deny' ('Rule_Gate_21_WhatEntersGit: a secret value written into ' + $rel + ', a file git tracks: ' + $list + '. A login to a system goes to the machine vault; a text secret of this repo alone goes to .env; a secret file goes to _ConfigVault/certs/<repo>/. The file names where the value is read from (an environment variable or the vault entry), never the value.')",
     "} catch { exit 0 }",
     "",
     // LF: the set's .gitattributes stores *.ps1 as LF, so a fresh checkout must equal what the assembly writes

@@ -245,28 +245,28 @@ export function buildStandardGraph(root: string, files: { id: string; slot?: str
   // ── slot + routing: bảng "## 4. Routing" trong 03_STRUCTURE.
   //    Mỗi hàng `| concern | …`backend/src/api/`… |` ⇒ node concern + cạnh routing → slot.
   const struct = read(root, join(AGENT,"03_STRUCTURE.md"));
-  // §4 định tuyến vào HAI thứ khác hạng, và phải phân biệt:
-  //   · SLOT (§3) — vai trò BÊN TRONG một tầng: `backend/src/api/` → `api`. Có trong từ điển.
-  //   · TẦNG / thư mục đã khai (§2, §3 dải ①②③) — `attic/` `data/` `external/` `frontend/`,
-  //     hoặc thư mục con của tầng như `data/logs/` `data/secrets/`. KHÔNG có trong từ điển.
-  // Bản trước lấy mù đoạn cuối đường dẫn nên gọi TẤT CẢ là "slot" ⇒ đẻ 13 node `slot:*` sai
-  // hạng (`attic` `data` `dist` `external` `frontend` `logs` `secrets`…). Lộ ra khi thử thêm
-  // một check conform "routing tới slot ngoài từ điển": nó báo oan đúng 13 mục đó, tức lỗi
-  // nằm ở phép phân loại này chứ không phải ở repo. Trộn tầng với slot làm hỏng taxonomy —
-  // và `slot_unused` bị thổi phồng bởi những cái chưa bao giờ là slot.
+  // §4 routes to TWO things of different rank, kept apart:
+  //   · SLOT (§3) - a role INSIDE a layer: `backend/src/api/` → `api`. In the dictionary.
+  //   · LAYER / declared folder (§2, §3 bands ①②③) - `attic/` `data/` `external/` `frontend/`,
+  //     or a child folder of a layer such as `data/logs/` `data/state/`. NOT in the dictionary.
+  // The earlier build took the last path segment blindly and called EVERYTHING a "slot" ⇒ 13
+  // `slot:*` nodes of the wrong rank (`attic` `data` `dist` `external` `frontend` `logs` `secrets`…).
+  // It showed when a conform check "routing to a slot outside the dictionary" was tried: it
+  // flagged exactly those 13, so the fault was this classification, not the repo. Mixing layers
+  // with slots breaks the taxonomy and inflates `slot_unused` with things that never were slots.
   const routeTarget = (path: string): { id: string; label: string; slot: string | null } | null => {
     const parts = path.split("/").filter(Boolean);
-    // Đích có thể trỏ thẳng vào MỘT FILE (`config/servers.yaml`, `backend/src/store/queries.*`).
-    // Vị trí thật là THƯ MỤC CHỨA nó — bỏ đoạn cuối nếu đó là tên file, nếu không sẽ đẻ ra
-    // node "config/servers.yaml/" (một file gắn dấu / thành thư mục ma).
+    // A target may name ONE FILE (`config/servers.yaml`, `backend/src/store/queries.*`).
+    // Its real place is the folder HOLDING it - drop the last segment when it is a file name,
+    // or a node "config/servers.yaml/" appears (a file with a / becomes a ghost folder).
     if (parts.length > 1 && /\.[a-z0-9*]+$/i.test(parts[parts.length - 1])) parts.pop();
     const last = parts[parts.length - 1];
     if (!last) return null;
-    // CHO PHÉP CHỮ SỐ: `i18n` là slot có thật trong từ điển, mà `[a-z_]+` lại loại nó ra ⇒
-    // một slot thật bị xếp nhầm thành tầng (bắt được ngay lần đo đầu sau khi sửa).
+    // DIGITS ALLOWED: `i18n` is a real slot of the dictionary and `[a-z_]+` left it out ⇒ a real
+    // slot was filed as a layer (caught on the first measure after the fix).
     if (/^[a-z0-9_]+$/.test(last) && slotDict.has(last)) return { id: `slot:${last}`, label: last + "/", slot: last };
-    // Không phải slot ⇒ là tầng/thư mục đã khai. Giữ NGUYÊN đường dẫn làm định danh để không
-    // mất thông tin (`data/logs/` khác `data/secrets/`), bỏ phần placeholder `<...>`.
+    // Not a slot ⇒ a layer / declared folder. The WHOLE path stays the id so nothing is lost
+    // (`data/logs/` differs from `data/state/`); placeholder parts `<...>` are dropped.
     const clean = parts.filter((p) => !p.includes("<")).join("/");
     if (!clean || !/^[a-z0-9_/.-]+$/i.test(clean)) return null;
     return { id: `layer:${clean}`, label: clean + "/", slot: null };
