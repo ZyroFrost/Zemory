@@ -166,8 +166,18 @@ function launcherSends(cmd, root) {
   }
   return "";
 }
+// Inline code (node -e / -p, python -c) is a program held in a quoted argument, not a command line: a file name in it is
+// data (a department repo 2026-11-01: a node -e script holding the sample command "python send.py" was blocked). Only a real mail
+// API call inside it counts; the quoted body is dropped before the rest is judged.
+const INLINE_CODE = /(\b(?:node|python3?|py)(?:\.exe)?(?:\s+-[\w-]+)*?\s+-[epc]\s+)("(?:\\.|[^"\\])*"|'(?:[^']|'')*')/gi;
 function why(raw, root) {
-  const cmd = runnable(raw);
+  let inlineSends = false;
+  const outside = raw.replace(INLINE_CODE, (m, pre, body) => {
+    if (SENDS.test(body)) inlineSends = true;
+    return pre + '""';
+  });
+  if (inlineSends) return "the command itself calls a mail API";
+  const cmd = runnable(outside);
   if (!cmd.trim()) return "";
   if (SENDS.test(cmd)) return "the command itself calls a mail API";
   if (MAIL_SCRIPT.test(cmd)) return "it runs a mail / send / alert script";

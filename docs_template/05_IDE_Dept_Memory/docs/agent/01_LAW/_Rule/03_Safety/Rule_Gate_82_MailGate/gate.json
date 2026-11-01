@@ -75,6 +75,22 @@
           "mail": ".allow-mail"
         }
       }
+    },
+    {
+      "note": "an inline python -c that calls a mail API",
+      "files": {},
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python -c \"import smtplib; smtplib.SMTP('smtp.example.com').sendmail('a@example.com', ['b@example.com'], 'x')\""
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "mail": ".allow-mail"
+        }
+      }
     }
   ],
   "pass": [
@@ -102,6 +118,22 @@
       "tool_name": "Bash",
       "tool_input": {
         "command": "bin\\run_task.cmd test"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "mail": ".allow-mail"
+        }
+      }
+    },
+    {
+      "note": "an inline node -e script whose DATA names a send script runs nothing that sends",
+      "files": {},
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "node -e 'const cases = [{ tool_input: { command: \"python send.py\" } }]; console.log(cases.length)'"
       },
       "policy": {
         "rules_file": "docs/agent/01_LAW/_Rule",
