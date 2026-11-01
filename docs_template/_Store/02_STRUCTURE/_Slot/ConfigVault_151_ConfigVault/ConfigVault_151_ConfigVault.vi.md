@@ -1,5 +1,5 @@
 ---
-version: 15
+version: 16
 lang: vi
 ---
 # ConfigVault_151_ConfigVault configvault — két chứa thiết lập và khoá công cụ của cả máy
@@ -14,12 +14,34 @@ ngoài sao lưu đám mây.
 Sự thật tách nó với `Documents\`: AI ĐỌC. Chương trình hoặc agent tự đọc ⇒ ở đây. Người mở ra đọc (danh sách mật khẩu web, cụm từ ví)
 ⇒ `Documents\Profile\Secret\`.
 
+## Hai cấp
+
+Luật khối của `Struc_Disk_Data` chọn KHỐI trước: bí mật của một tổ chức thuộc khối tổ chức đó, thiết lập công cụ của máy hay chủ máy thuộc
+máy. Vì vậy két có hai cấp, CÙNG một cây bên trong, cộng với cấp repo:
+
+| Cấp | Chỗ | Chứa |
+|---|---|---|
+| máy | `<gốc dữ liệu>\_ConfigVault\` | công cụ của chính máy và chủ máy: `zemory\` · `git\` (danh tính cá nhân) · cache công cụ · `ssh\config` gốc (mỗi tổ chức một dòng `Include`) · `known_hosts` · khoá ssh cá nhân |
+| tổ chức | `Workspace\Company\<Tổ chức>\_ConfigVault\` | mọi bí mật các repo và app của tổ chức dùng chung: `sql\` · `api\` · `mail\` · `windows\` · `tls\` · `certs\<repo>\` · `vpn\` · `ssh\` (khoá + `config` các máy của tổ chức) |
+| repo | `.env` ở gốc repo (`Root_093_Env`) | bí mật dạng chữ của riêng repo đó |
+
+- Máy chỉ thuộc MỘT tổ chức (máy chủ, VM của tổ chức đó) có một két ở gốc dữ liệu (`E:\_ConfigVault` · Linux `~/data/_ConfigVault`): ở đó
+  khối máy CHÍNH là khối tổ chức.
+- Tên luôn là `_ConfigVault`; đường dẫn nói là của ai (như `_Profile` trong khối tổ chức). Không bao giờ `_ConfigVault_<Tổ chức>`.
+- Tìm két, một luật cho mọi máy: `CONFIGVAULT_DIR` nếu đặt, không thì `_ConfigVault` gần nhất có bí mật (`sql\` · `api\` · `mail\`) đi NGƯỢC
+  từ repo lên, không thì gốc dữ liệu Linux. Két máy không có thư mục bí mật nên bị bỏ qua; nó ở lại gốc ổ vì launcher Python suy ra gốc
+  dữ liệu từ nó.
+- Bản thân `Workspace\Company\<Tổ chức>\` không bao giờ là thư mục đồng bộ (chỉ từng repo bên trong được là): két tổ chức không bao giờ đi
+  qua công cụ đồng bộ, git hay thư mục cloud; sang máy khác bằng `scp`.
+- Mỗi két có README riêng: README két máy ghi công cụ của máy, README két tổ chức ghi login, app, hộp thư, máy và mục nào chở tới máy nào.
+
 ## Bên trong
 
 ```
 _ConfigVault\
 ├── README.md          sổ DUY NHẤT của két (xem dưới)
-├── ssh\               config · khoá · known_hosts — để phẳng, vì ssh đọc một thư mục
+├── ssh\               cấp máy: config gốc (Include theo tổ chức) · known_hosts · khoá cá nhân;
+│                      cấp tổ chức: khoá + config các máy của tổ chức đó
 ├── git\  vpn\  zemory\
 ├── sql\configs\       connections.json: sổ kết nối CHUNG của máy (máy · CSDL · địa chỉ · driver · tài khoản MÁY NÀY dùng cho CSDL
 │                      đó) — không bí mật, ngoài git vì có địa chỉ nội bộ
@@ -58,8 +80,8 @@ _ConfigVault\
 
 - `configs\` — thiết lập (đọc được, không bí mật) · `credentials\` — khoá, token, mật khẩu · `cache\` — thứ công cụ tự dựng lại, kể cả
   log của nó; xoá đi không mất gì.
-- `ssh\` để phẳng: ssh đọc `config`, các khoá và `known_hosts` từ một thư mục. Vì vậy khoá ssh ở lại đây kể cả khi nó mở máy chủ
-  của MỘT tổ chức — ngoại lệ duy nhất của luật khối trong `Struc_Disk_Data`; README ghi khoá nào thuộc tổ chức nào.
+- `ssh\`: cấp máy giữ `config` gốc mà ssh đọc và `known_hosts`; máy và khoá của mỗi tổ chức nằm trong két tổ chức đó, kéo vào bằng
+  một dòng `Include <két tổ chức>/ssh/config` (`IdentityFile` đọc khoá ở đâu cũng được). Người gọi chỉ dùng alias.
 - `location.json` của zemory được đọc ở `%USERPROFILE%\.zemory\location.json`; thư mục đó được là junction trỏ vào
   `_ConfigVault\zemory\`. File chỉ trỏ tới thư mục Global Memory và không chứa bí mật.
 

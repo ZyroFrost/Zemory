@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 10
+version: 11
 scope: disk
 ---
 # Struc_Disk_Data
@@ -54,14 +54,16 @@ passwords moved to a personal folder are found by nobody working for that organi
 | prompts two apps of one field share | two repos of `Apps\` | `Workspace\Personal\Apps\_Prompt\` |
 | model files every AI app reads | the whole machine | `_Models\` at the data root |
 | the output a channel app produces | that app | `workspaces/` inside the app's repo (Workspaces_169) |
-| a contract, a review, a password of one company's systems | that company | `Workspace\Company\<Org>\_Profile\` (Profile_170) |
+| a contract, a review, a password of one company's systems a PERSON reads | that company | `Workspace\Company\<Org>\_Profile\` (Profile_170) |
+| a login, key or certificate of one company's systems a PROGRAM reads | that company | `Workspace\Company\<Org>\_ConfigVault\` (ConfigVault_151) |
 | a script several cases of one repo run | that repo | `scripts/` at the repo root (Scripts_128) |
 | the same script several repos run | several repos | a script of an HS skill, installed into each repo by `zemory sync` |
 
 Order of the laws: the block law picks the BLOCK, the nature law (law 2) picks the place INSIDE the block. Inside a repo the repo
 root is the common level and its fixed folders (`scripts/` · `queries/` · `config/` · `data/`) are the shared places: no `_` is
-added inside a repo. One exception, because a tool forces it: ssh reads every key from one folder, so ssh keys stay in
-`_ConfigVault\ssh\` whichever organisation's servers they open (its README names the owner of each key).
+added inside a repo. Secrets follow the same law: an organisation's secrets sit in `Workspace\Company\<Org>\_ConfigVault\`, the
+machine's own tool settings in `<data root>\_ConfigVault\` (`ConfigVault_151_ConfigVault`, two levels); ssh keys of an organisation's
+servers too, pulled in by an `Include` line of the root ssh config.
 
 ### Made by AI — a property, not a place
 
@@ -84,7 +86,7 @@ Ask the questions in this order; the item goes to the first one that is true.
 | 2 | a copy whose original still exists elsewhere | `Backup\` (Backup_165) |
 | 3 | the owner has confirmed the item is almost never used any more, and this is the only copy (packed to save space is not this step; finished learning goes to step 10) | `Archive\` (Archive_166) |
 | 4 | an AI model file | `_Models\` (Models_167) |
-| 5 | settings or keys a PROGRAM or an AGENT reads by itself | `_ConfigVault\<tool>\` (ConfigVault_151) |
+| 5 | settings or keys a PROGRAM or an AGENT reads by itself, of the machine or its user (one organisation's ⇒ its block, step 7) | `_ConfigVault\<tool>\` (ConfigVault_151) |
 | 6 | a program — installer, installed copy, its own data — games, launchers and game tools included, and a program's output buffer | `Software\` (Software_147) |
 | 7 | code or a repo, or anything that belongs to ONE organisation — its work and its papers | `Workspace\` (Workspace_143) |
 | 8 | a game save, a screen capture or clip of a game, a collected game clip, a game guide | `Game\` (Game_164) |
@@ -107,7 +109,8 @@ Worked examples:
 | a clip of a game session, sorted | 8 | `Game\Media\<Game>\` |
 | a library cloned from the web to learn from | 7 | `Workspace\External\<repo>\` (Study links to it) |
 | the password list of the owner's web accounts | 13 | `Documents\Profile\Secret\` |
-| an SSH key | 5 | `_ConfigVault\ssh\` |
+| an SSH key of the owner | 5 | `_ConfigVault\ssh\` |
+| an SSH key of one company's servers | 7 | `Workspace\Company\<Org>\_ConfigVault\ssh\` |
 | a contract with the owner's employer | 7 | `Workspace\Company\<Org>\_Profile\` |
 | design files made for a past employer | 7 | `Workspace\Company\<Org>\<work folder>\` |
 
@@ -119,7 +122,7 @@ place a game save or a downloaded course. Sorting always uses the chain above.
 ```
 <data root>\
 ├── Downloads\        not sorted yet — the raw layer everything passes through (Downloads_168)
-├── _ConfigVault\     shared store of the machine: settings and keys programs read (ConfigVault_151)
+├── _ConfigVault\     the machine's own settings and keys programs read; an organisation's ⇒ its own _ConfigVault (ConfigVault_151)
 ├── _Models\          shared store of the machine: AI model files (Models_167)
 │  ① made by the owner
 ├── Workspace\        code, repos, work for organisations (Workspace_143) → Struc_Region_Workspace

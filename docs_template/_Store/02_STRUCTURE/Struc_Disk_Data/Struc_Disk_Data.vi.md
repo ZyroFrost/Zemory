@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 # Struc_Disk_Data
@@ -50,14 +50,15 @@ tổ chức đó tìm thấy.
 | prompt hai app cùng mảng dùng chung | hai repo của `Apps\` | `Workspace\Personal\Apps\_Prompt\` |
 | file model mọi app AI đọc | cả máy | `_Models\` ở gốc dữ liệu |
 | đầu ra của một app làm kênh | app đó | `workspaces/` trong repo của app (Workspaces_169) |
-| hợp đồng, đánh giá, mật khẩu hệ thống của một công ty | công ty đó | `Workspace\Company\<Tổ chức>\_Profile\` (Profile_170) |
+| hợp đồng, đánh giá, mật khẩu hệ thống của một công ty mà NGƯỜI đọc | công ty đó | `Workspace\Company\<Tổ chức>\_Profile\` (Profile_170) |
+| login, khoá, chứng chỉ hệ thống của một công ty mà CHƯƠNG TRÌNH đọc | công ty đó | `Workspace\Company\<Tổ chức>\_ConfigVault\` (ConfigVault_151) |
 | script nhiều case của một repo cùng chạy | repo đó | `scripts/` ở gốc repo (Scripts_128) |
 | cùng một script nhiều repo chạy | nhiều repo | script của một skill trên HS, `zemory sync` cài vào từng repo |
 
 Thứ tự áp: luật khối chọn KHỐI, luật bản chất (luật 2) chọn chỗ TRONG khối. Trong một repo, gốc repo là cấp chung và các thư mục cố
-định của nó (`scripts/` · `queries/` · `config/` · `data/`) là chỗ dùng chung: không thêm `_` bên trong repo. Một ngoại lệ, vì công cụ
-ép: ssh đọc mọi khoá từ một thư mục, nên khoá ssh ở lại `_ConfigVault\ssh\` dù mở máy chủ của tổ chức nào (README của két ghi khoá
-nào thuộc tổ chức nào).
+định của nó (`scripts/` · `queries/` · `config/` · `data/`) là chỗ dùng chung: không thêm `_` bên trong repo. Bí mật theo cùng luật: bí mật
+của một tổ chức nằm ở `Workspace\Company\<Tổ chức>\_ConfigVault\`, thiết lập công cụ của chính máy ở `<gốc dữ liệu>\_ConfigVault\`
+(`ConfigVault_151_ConfigVault`, hai cấp); khoá ssh tới máy chủ của tổ chức cũng vậy, kéo vào bằng một dòng `Include` của ssh config gốc.
 
 ### Do AI sinh — tính chất, không phải nơi chốn
 
@@ -79,7 +80,7 @@ Hỏi theo đúng thứ tự này; món vào bước đầu tiên đúng.
 | 2 | bản sao, bản gốc còn ở nơi khác | `Backup\` (Backup_165) |
 | 3 | chủ máy đã xác nhận món này gần như không dùng nữa, và đây là bản duy nhất (nén cho đỡ tốn chỗ không phải bước này; kiến thức học xong đi bước 10) | `Archive\` (Archive_166) |
 | 4 | file model AI | `_Models\` (Models_167) |
-| 5 | cấu hình hoặc khoá mà CHƯƠNG TRÌNH hay AGENT tự đọc | `_ConfigVault\<công cụ>\` (ConfigVault_151) |
+| 5 | cấu hình hoặc khoá mà CHƯƠNG TRÌNH hay AGENT tự đọc, của máy hay chủ máy (của một tổ chức ⇒ khối tổ chức, bước 7) | `_ConfigVault\<công cụ>\` (ConfigVault_151) |
 | 6 | chương trình — bộ cài, bản cài, dữ liệu riêng — kể cả game, launcher, công cụ game, và thư mục đệm đầu ra của chương trình | `Software\` (Software_147) |
 | 7 | code hoặc repo, hoặc bất cứ thứ gì thuộc về MỘT tổ chức — việc và giấy tờ của nó | `Workspace\` (Workspace_143) |
 | 8 | file lưu game, ảnh/clip quay màn hình game, clip game sưu tầm, hướng dẫn chơi | `Game\` (Game_164) |
@@ -102,7 +103,8 @@ Ví dụ giải:
 | clip một lượt chơi game, đã xếp | 8 | `Game\Media\<Game>\` |
 | thư viện clone từ mạng về để học | 7 | `Workspace\External\<repo>\` (Study trỏ qua) |
 | danh sách mật khẩu tài khoản web của chủ máy | 13 | `Documents\Profile\Secret\` |
-| khoá SSH | 5 | `_ConfigVault\ssh\` |
+| khoá SSH của chủ máy | 5 | `_ConfigVault\ssh\` |
+| khoá SSH tới máy chủ của một công ty | 7 | `Workspace\Company\<Tổ chức>\_ConfigVault\ssh\` |
 | hợp đồng với công ty chủ máy làm việc | 7 | `Workspace\Company\<Tổ chức>\_Profile\` |
 | file thiết kế làm cho một công ty cũ | 7 | `Workspace\Company\<Tổ chức>\<thư mục công việc>\` |
 
@@ -114,7 +116,7 @@ game hay khoá học tải về. Xếp luôn dùng chuỗi câu hỏi ở trên.
 ```
 <gốc dữ liệu>\
 ├── Downloads\        chưa xếp — tầng thô mọi thứ đi qua (Downloads_168)
-├── _ConfigVault\     nơi chứa dùng chung của máy: cấu hình và khoá chương trình đọc (ConfigVault_151)
+├── _ConfigVault\     cấu hình và khoá của chính máy mà chương trình đọc; của một tổ chức ⇒ _ConfigVault của tổ chức (ConfigVault_151)
 ├── _Models\          nơi chứa dùng chung của máy: file model AI (Models_167)
 │  ① chủ máy tự làm
 ├── Workspace\        code, repo, việc cho tổ chức (Workspace_143) → Struc_Region_Workspace

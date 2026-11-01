@@ -25,7 +25,10 @@ Vault layout:
     mail\\configs\\mailboxes.json     {"mailboxes": {<key>: {"address", "holder", "department", "job_title", "host", "port", "password_key"}}}
     mail\\configs\\recipients.json    {"people": {<address>: {...}}, "stores": {<store id>: {...}}, "groups": {<name>: {"to", "cc"}}}
 Key grammar: segments joined by "_", the words inside one segment by "-" (a "." or "_" inside a name becomes "-"), upper case.
-Where the vault is: env CONFIGVAULT_DIR, else the first `<drive>:\\_ConfigVault` that exists (D, E, C), else `~/_ConfigVault`.
+Where the vault is (slot ConfigVault_151, two levels): env CONFIGVAULT_DIR, else the nearest `_ConfigVault` walking UP from this repo
+that holds secrets (`sql\\` / `api\\` / `mail\\`) - the ORGANISATION vault `Workspace\\Company\\<Org>\\_ConfigVault` on a work PC shared by
+several organisations, `<drive>:\\_ConfigVault` on a machine owned by one organisation - else `~/data/_ConfigVault` · `~/_ConfigVault`
+(Linux). The machine vault at the drive root keeps only the machine's own tools (no secrets folder) and is skipped.
 A missing entry stops with the name of the missing key — never a fallback to .env, never another account, never the value.
 Shipped by zemory: store part Skill_Task_VmAutomation (its installs). Change the store part, never the repo copy.
 """
@@ -47,13 +50,24 @@ class VaultMissing(SystemExit):
     """An entry the caller needs is not in this machine's vault (the message names the key, never a value)."""
 
 
+SECRET_DIRS = ("sql", "api", "mail")
+
+
+def _holds_secrets(p):
+    return p.is_dir() and any((p / s).is_dir() for s in SECRET_DIRS)
+
+
 def vault_dir():
-    """The machine vault folder, or None."""
+    """The vault this repo reads (organisation level), or None. See the module text: CONFIGVAULT_DIR, else the nearest
+    `_ConfigVault` holding secrets walking up from the repo, else the Linux data root."""
     if os.environ.get("CONFIGVAULT_DIR"):
         p = Path(os.environ["CONFIGVAULT_DIR"])
         return p if p.is_dir() else None
-    cands = [Path("%s:\\_ConfigVault" % d) for d in "DEC"] + [Path.home() / "_ConfigVault"]
-    return next((p for p in cands if p.is_dir()), None)
+    for parent in (REPO, *REPO.parents):
+        c = parent / "_ConfigVault"
+        if _holds_secrets(c):
+            return c
+    return next((c for c in (Path.home() / "data" / "_ConfigVault", Path.home() / "_ConfigVault") if _holds_secrets(c)), None)
 
 
 def segment(name):

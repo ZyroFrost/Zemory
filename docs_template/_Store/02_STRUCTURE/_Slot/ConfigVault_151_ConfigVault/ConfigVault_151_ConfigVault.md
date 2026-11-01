@@ -1,8 +1,8 @@
 ---
 id: Slot_151
 name: configvault
-version: 15
-path: _ConfigVault/<tool>/
+version: 16
+path: _ConfigVault/<tool>/ · Workspace/Company/<Org>/_ConfigVault/<tool>/
 scope: layout
 ---
 # ConfigVault_151_ConfigVault configvault — the machine's vault of tool settings and keys
@@ -17,12 +17,35 @@ secret out of git, sync and cloud backup.
 The fact that splits it from `Documents\`: WHO READS IT. A program or an agent reads it by itself ⇒ here. A person opens and reads it
 (a list of web passwords, a wallet phrase) ⇒ `Documents\Profile\Secret\`.
 
+## Two levels
+
+The block law of `Struc_Disk_Data` picks the BLOCK first: a secret of one organisation belongs to that organisation's block, a tool
+setting of the machine or its user belongs to the machine. So the vault has two levels with the SAME tree inside, plus the repo:
+
+| Level | Where | Holds |
+|---|---|---|
+| machine | `<data root>\_ConfigVault\` | the machine's and its user's own tools: `zemory\` · `git\` (personal identity) · tool caches · the root `ssh\config` (with one `Include` per organisation) · `known_hosts` · personal ssh keys |
+| organisation | `Workspace\Company\<Org>\_ConfigVault\` | every secret the organisation's repos and apps share: `sql\` · `api\` · `mail\` · `windows\` · `tls\` · `certs\<repo>\` · `vpn\` · `ssh\` (keys + `config` of the organisation's hosts) |
+| repo | `.env` at the repo root (`Root_093_Env`) | a text secret of that repo alone |
+
+- A machine owned by ONE organisation (its servers, its VM) has one vault at its data root (`E:\_ConfigVault` · Linux `~/data/_ConfigVault`):
+  there the machine block IS the organisation block.
+- The name is always `_ConfigVault`; the path says whose it is (as `_Profile` inside an organisation). Never `_ConfigVault_<Org>`.
+- Finding the vault, one rule for every machine: `CONFIGVAULT_DIR` if set, else the nearest `_ConfigVault` holding secrets (`sql\` ·
+  `api\` · `mail\`) walking UP from the repo, else the Linux data root. The machine vault holds no secrets folder and is skipped; it stays
+  at the drive root because the Python launcher finds the data root from it.
+- `Workspace\Company\<Org>\` itself is never a synced folder (only each repo inside it may be): the organisation vault is never carried by a
+  sync tool, git or a cloud folder; it reaches another machine by `scp`.
+- Each vault has its own README: the machine README lists the machine tools, the organisation README lists the logins, apps,
+  mailboxes, machines and which entry is carried to which machine.
+
 ## Inside
 
 ```
 _ConfigVault\
 ├── README.md          the ONE register of the vault (see below)
-├── ssh\               config · keys · known_hosts — flat, as ssh reads one folder
+├── ssh\               machine level: root config (Include per organisation) · known_hosts · personal keys;
+│                      organisation level: the keys + config of that organisation's hosts
 ├── git\  vpn\  zemory\
 ├── sql\configs\       connections.json: the machine's SHARED connection register (server · database · address · driver · the
 │                      account THIS machine uses for that database) — not secret, outside git because it holds internal addresses
@@ -65,9 +88,9 @@ _ConfigVault\
 
 - `configs\` — settings (readable, not secret) · `credentials\` — keys, tokens, passwords · `cache\` — what the tool rebuilds by
   itself, its logs included; deleting it loses nothing.
-- `ssh\` stays flat: ssh reads `config`, the keys and `known_hosts` from one folder. That is why ssh keys stay here even when
-  they open the servers of ONE organisation — the one exception to the block law of `Struc_Disk_Data`; the README names the
-  organisation of each key.
+- `ssh\`: the machine level keeps the root `config` that ssh reads and `known_hosts`; each organisation's hosts and keys sit in that
+  organisation's vault and are pulled in by one `Include <org vault>/ssh/config` line (`IdentityFile` reads a key anywhere). Callers
+  use the alias only.
 - zemory's `location.json` is read at `%USERPROFILE%\.zemory\location.json`; that folder may be a junction into
   `_ConfigVault\zemory\`. The file only points at the Global Memory folder and holds no secret.
 
