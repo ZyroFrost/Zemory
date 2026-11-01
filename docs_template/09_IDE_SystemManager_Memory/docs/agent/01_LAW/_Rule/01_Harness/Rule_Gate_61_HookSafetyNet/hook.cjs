@@ -49,36 +49,55 @@ function isRequesterTurn(o) {
   return c.some((p) => p && p.type === "text") && !c.some((p) => p && p.type === "tool_result");
 }
 
-// The latest permission block since the requester last wrote, or "" - read from the end of the transcript, a growing tail.
+// Which gate a block came from: its flag when it names one, else the law it cites, else its opening words.
+function gateKey(what) {
+  const flag = /\.allow-[\w-]+/.exec(what);
+  if (flag) return flag[0];
+  const law = /\b(?:Rule|Cons)_(?:Gate|Keys|Core)_\d+/.exec(what);
+  return law ? law[0] : what.slice(0, 60);
+}
+
+// The permission blocks of a transcript line, as { key, what }; the latch's own blocks are not counted again.
+function blocksOf(o) {
+  const out = [];
+  const parts = o && o.type === "user" && o.message && Array.isArray(o.message.content) ? o.message.content : [];
+  for (const p of parts) {
+    if (!p || p.type !== "tool_result" || !p.is_error) continue;
+    const t = resultText(p.content);
+    const m = BLOCK.exec(t);
+    if (!m) continue;
+    const what = m[1].trim();
+    if (ONCE.test(t) || /^Rule_Gate_61_/.test(what) || FIXABLE.some((re) => re.test(what))) continue;
+    out.push({ key: gateKey(what), what: what.slice(0, 200) });
+  }
+  return out;
+}
+
+// The latest permission block since the requester last wrote, or "". The latch holds once per gate: a gate whose block the
+// requester already answered earlier in the session does not stop the agent again (the requester, 2026-11-01: the rule is
+// applied once). Its flag is still made per command, before the command.
 function pendingBlock(file) {
   const size = fs.statSync(file).size;
-  const fd = fs.openSync(file, "r");
-  try {
-    for (let want = 256 * 1024; ; want *= 4) {
-      const n = Math.min(size, want);
-      const buf = Buffer.alloc(n);
-      fs.readSync(fd, buf, 0, n, size - n);
-      const lines = buf.toString("utf8").split("\n");
-      if (n < size) lines.shift(); // the first line may be cut
-      for (let i = lines.length - 1; i >= 0; i--) {
-        if (!lines[i].trim()) continue;
-        let o;
-        try { o = JSON.parse(lines[i]); } catch { continue; }
-        if (isRequesterTurn(o)) return "";
-        const parts = o && o.type === "user" && o.message && Array.isArray(o.message.content) ? o.message.content : [];
-        for (const p of parts) {
-          if (!p || p.type !== "tool_result" || !p.is_error) continue;
-          const t = resultText(p.content);
-          const m = BLOCK.exec(t);
-          if (!m || ONCE.test(t) || FIXABLE.some((re) => re.test(m[1].trim()))) continue;
-          return m[1].trim().slice(0, 200);
-        }
-      }
-      if (n >= size || want > 64 * 1024 * 1024) return ""; // no requester line found: nothing to hold on to
+  if (size > 128 * 1024 * 1024) return "";
+  const lines = fs.readFileSync(file, "utf8").split("\n");
+  let open = null, answered = false;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    // only two kinds of line matter; skip the rest without parsing
+    if (!line.includes("BLOCKED (guard layer 1)") && !line.includes("\"type\":\"user\"")) continue;
+    let o;
+    try { o = JSON.parse(line); } catch { continue; }
+    if (isRequesterTurn(o)) {
+      if (!open || !open.length) return "";
+      answered = true;
+      continue;
     }
-  } finally {
-    fs.closeSync(fd);
+    const found = blocksOf(o);
+    if (!answered) { open = (open || []).concat(found); continue; }
+    for (const b of found) open = open.filter((x) => x.key !== b.key);
+    if (!open.length) return "";
   }
+  return open && open.length ? open[0].what : "";
 }
 
 function check(payload, root) {

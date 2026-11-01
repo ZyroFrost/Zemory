@@ -2,7 +2,7 @@
 id: Rule_61
 aka: 02-61
 name: hook-safety-net
-version: 9
+version: 10
 checked: [Rule_Gate_82_MailGate, Rule_Gate_10_DestructiveOps, Rule_Gate_44_RepoScope, Rule_Gate_79_HarnessEdit, Rule_Gate_73_GateEveryRule]
 kind: action
 code: 01_Harness
@@ -24,7 +24,9 @@ hook that blocks is not a puzzle to get around: a block that asks for permission
 3. A flag `.allow-*` lets exactly one approved action through: create it only after the requester clearly approved in this session,
    and never reuse it for anything else. Secrets have no flag.
 4. Already approved before acting ⇒ create the flag BEFORE the action. A block met first is a block: it is answered by the
-   requester, even when an approval was given earlier.
+   requester, even when an approval was given earlier. The stop holds once per gate: once the requester has answered a gate
+   in the session, a later block of the same gate (the same flag) is cleared by making its flag for that command, not by
+   asking again.
 5. Blocks that ask no permission are cleared by doing the work right, not by asking: read the file first, a one-time reminder
    (retry the same call), and the laws on how a thing is written or finished (`Rule_Gate_01` · `02` · `04` · `24` · `27` · `29` ·
    `31` · `35` · `84` · `85` · `91` · `92`).

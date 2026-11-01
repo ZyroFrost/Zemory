@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 # Rule_Gate_61_HookSafetyNet — A hook is a safety net, not the one who decides; a block is answered by the requester
@@ -19,7 +19,8 @@ Chữ của luật là tầng quyết định; hook chỉ đỡ những gì lọ
 3. Một cờ `.allow-*` cho qua đúng một việc đã duyệt: chỉ tạo sau khi người dùng cho phép rõ trong phiên này, và không dùng lại cho
    việc khác. Nhóm bí mật không có cờ.
 4. Đã được duyệt trước khi làm ⇒ tạo cờ TRƯỚC thao tác. Đã đâm vào chặn rồi thì là bị chặn: phải để người dùng trả lời, kể cả khi
-   trước đó đã có lời duyệt.
+   trước đó đã có lời duyệt. Dừng chỉ áp một lần cho mỗi cổng: người dùng đã trả lời một cổng trong phiên thì lần chặn sau của
+   cùng cổng đó (cùng cờ) gỡ bằng cách tạo cờ cho đúng lệnh đó, không hỏi lại.
 5. Lần chặn không đòi quyền thì gỡ bằng cách làm đúng, không cần hỏi: đọc file trước, lời nhắc một lần (gọi lại đúng lệnh đó), và
    các luật về cách viết hay cách làm xong (`Rule_Gate_01` · `02` · `04` · `24` · `27` · `29` · `31` · `35` · `84` · `85` · `91` · `92`).
 

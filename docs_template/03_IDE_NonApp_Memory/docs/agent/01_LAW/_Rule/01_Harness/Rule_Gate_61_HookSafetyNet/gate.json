@@ -34,6 +34,16 @@
         "file_path": "docs/.harness-state/.allow-outside",
         "content": ""
       }
+    },
+    {
+      "note": "a gate the user has not answered yet blocks for the first time, after another gate was answered",
+      "files": {
+        ".transcript.jsonl": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"sync đi\"}]}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"is_error\":true,\"content\":\"PreToolUse:Bash hook error: BLOCKED (guard layer 1): writing docs/plan - the harness docs (Rule_Gate_79_HarnessEdit)\\nDid the user approve it? -> create the flag `docs/.harness-state/.allow-docs-write`\"}]}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"làm đi\"}]}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"is_error\":true,\"content\":\"PreToolUse:Bash hook error: BLOCKED (guard layer 1): Rule_Gate_82_MailGate - this command can SEND MAIL\\nHas the user agreed? -> create the flag `docs/.harness-state/.allow-mail`\"}]}}\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "python report.py"
+      }
     }
   ],
   "pass": [
@@ -83,6 +93,16 @@
       "tool_name": "Read",
       "tool_input": {
         "file_path": "a.md"
+      }
+    },
+    {
+      "note": "the same gate blocks again after the user already answered it once in the session: the latch holds once per gate",
+      "files": {
+        ".transcript.jsonl": "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"sync đi\"}]}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"is_error\":true,\"content\":\"PreToolUse:Bash hook error: BLOCKED (guard layer 1): writing docs/plan - the harness docs (Rule_Gate_79_HarnessEdit)\\nDid the user approve it? -> create the flag `docs/.harness-state/.allow-docs-write`\"}]}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"làm đi\"}]}}\n{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"tool_result\",\"is_error\":true,\"content\":\"PreToolUse:Bash hook error: BLOCKED (guard layer 1): writing docs/plan - the harness docs (Rule_Gate_79_HarnessEdit)\\nDid the user approve it? -> create the flag `docs/.harness-state/.allow-docs-write`\"}]}}\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "touch docs/.harness-state/.allow-docs-write"
       }
     }
   ]
