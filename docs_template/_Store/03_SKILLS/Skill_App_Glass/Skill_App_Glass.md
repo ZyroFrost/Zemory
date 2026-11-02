@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Glass
 name: app-glass
-version: 4
+version: 5
 type: process
 checked: [Skill_App_Base, Skill_PBI_White, Design_172_Design]
 installs: [scripts/fx_check.mjs]
@@ -95,6 +95,31 @@ The template names each effect with an `FX:` marker; a port keeps the marker so 
   compare the two key lists of the repo's kind file with the template's.
 - `prefers-reduced-motion`: open the app with the system setting on; nothing drifts, slides or springs. Accepted by EYE, not yet
   by a checker code.
+
+## 5. Surfaces every Glass app shares
+
+Settled on SasinONE (user 01-02/11); the next kind is built on the same rules.
+
+- **One search.** The header search (palette) is the only search box; a page carries no search of its own. On a page that
+  filters its list, the palette offers "Filter this page by <text>" first; the filter shows as the chip "<text> x" in the page
+  toolbar, and x clears it.
+- **The page toolbar, one order on every page:** chip · Add · filters · view switch. Filters and the view switch are anchored
+  at the right edge because every page has them; the Add button ("+ <label>", primary, one per page) comes before them only on
+  pages that add. A page with one view still carries the view switch, turned off, so it never moves.
+- **List or cards.** Every list page has the list and the card (grid) view; the choice is the person's, saved per page.
+- **Settings is where an admin types configuration.** The Settings dialog has a Configuration tab apart from Appearance (and
+  Layout); app-wide values and shared registries (servers, intervals) live there, not on an Administration page. A screen
+  ported from an older app keeps the layout and every button of the old one (connections: list + form, Test connection ·
+  Save · Delete · Close).
+- **Glass fields in every dialog:** translucent box (`--g-glass`), soft edge (`--g-edge-soft`), the template's radius, the
+  accent ring on focus. A floating label never sits on text: a select always has its label raised, and a hint goes into the
+  label, never into a placeholder.
+- **Glass controls, never browser ones:** a yes/no is the Glass switch (FX: switch), never a checkbox; the chosen item of a
+  list sits on the FX pill; state colours come from `--g-good` · `--g-warn` · `--g-danger`.
+- **One Save keeps everything typed** in a dialog; nothing typed is dropped without a word.
+- **Delete in a shared registry turns the row off:** it asks first, naming who uses the row, and the row can be turned on again.
+- Check: the repo's browser test fails a page search box, a toolbar out of order, a checkbox or a non-glass field in a dialog,
+  a label over text, and a typed value lost by Save.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved in the template before it is ported · kiểu được duyệt trên template trước khi chép sang app
