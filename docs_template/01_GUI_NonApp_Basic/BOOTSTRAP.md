@@ -184,7 +184,7 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 146 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_22_FailLoud/Rule_Keys_22_FailLoud.md` | 34 |
 | 147 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_22_FailLoud/Rule_Keys_22_FailLoud.vi.md` | 25 |
 | 148 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_22_FailLoud/gate.json` | 19 |
-| 149 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval/Rule_Keys_62_DesignChangeApproval.md` | 44 |
+| 149 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval/Rule_Keys_62_DesignChangeApproval.md` | 45 |
 | 150 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval/Rule_Keys_62_DesignChangeApproval.vi.md` | 29 |
 | 151 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval/gate.json` | 20 |
 | 152 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_67_InterruptQueue/Rule_Keys_67_InterruptQueue.md` | 35 |

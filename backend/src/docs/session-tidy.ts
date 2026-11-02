@@ -7,6 +7,7 @@ import { existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { encodeProjectDir } from "../memory/adapters/claudemem.js";
+import { projectCeilings } from "../core/config.js";
 
 export type TidyRow = { n: number; what: string; items: string[]; removed: string[]; note?: string };
 export type TidyReport = { session: string | null; transcript: string | null; rows: TidyRow[] };
@@ -149,10 +150,12 @@ export function traceSession(jsonl: string): SessionTrace {
 /** The git root above a path, or null. */
 function gitRoot(p: string): string | null {
   let d = existsSync(p) && statSync(p).isDirectory() ? p : dirname(p);
+  // the same ceiling the project climb keeps (core/config projectCeilings): a test's temp folder sits inside this repo
+  const ceilings = projectCeilings();
   for (let i = 0; i < 30; i++) {
     if (existsSync(join(d, ".git"))) return d;
     const up = dirname(d);
-    if (up === d) return null;
+    if (up === d || ceilings.has(up.toLowerCase())) return null;
     d = up;
   }
   return null;

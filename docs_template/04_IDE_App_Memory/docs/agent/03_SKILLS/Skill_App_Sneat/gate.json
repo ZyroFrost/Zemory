@@ -1,0 +1,20 @@
+{
+  "trigger": "kiểu sneat · khung sneat · mẫu sneat · template sneat · menu theo app · trang chủ launcher",
+  "prompt": {
+    "kind": "app-sneat",
+    "re": "\\b(sneat|kieu sneat|khung sneat|mau sneat|template sneat|menu theo app|launcher|chuyen app|thanh tren chung)\\b",
+    "text": "[zemory] Sneat surface: follow skill app-sneat - the kit's own markup, the Glass look, one shared top bar + the open app's menu + a launcher home, one fact per card line, glass menus for selects."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "sửa menu trong template sneat"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa câu SQL"
+    }
+  ]
+}

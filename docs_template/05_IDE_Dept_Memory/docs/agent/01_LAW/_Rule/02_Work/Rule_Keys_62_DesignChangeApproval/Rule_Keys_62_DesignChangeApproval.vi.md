@@ -1,5 +1,5 @@
 ---
-version: 17
+version: 18
 lang: vi
 ---
 # Rule_Keys_62_DesignChangeApproval — Changing the look of something others use: show it first

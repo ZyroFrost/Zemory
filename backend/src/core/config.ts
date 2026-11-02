@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripBom } from "../util/read-text.js";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
@@ -187,6 +187,7 @@ export function projectKey(path: string): string {
  *  bất kể marker nằm ở bậc nào của thang N5. */
 export function findProjectRoot(start: string = process.cwd()): string | null {
   let dir = normalizeRoot(start);
+  const ceilings = projectCeilings();
   while (true) {
     if (findMarker(dir)) return dir;
     // STOP at a repo boundary: a folder with `.git` and no harness marker is the root of a repo not yet
@@ -198,9 +199,18 @@ export function findProjectRoot(start: string = process.cwd()): string | null {
     // event loop (the app opened blank and slow).
     if (existsSync(join(dir, ".git"))) return null;
     const parent = dirname(dir);
-    if (parent === dir) return null;
+    if (parent === dir || ceilings.has(parent.toLowerCase())) return null;
     dir = parent;
   }
+}
+
+/**
+ * Folders the climb never enters, like git's GIT_CEILING_DIRECTORIES: `ZEMORY_PROJECT_CEILING`, a path-delimiter list. The
+ * test runner sets it to its run folder inside this repo (slot Data_099_Tmp, user 02/11) - without it a fixture project in
+ * `data/tmp/…` climbed into this repo and took its marker (measured 2026-10-29: 31 of 61 paths-* cases red).
+ */
+export function projectCeilings(): Set<string> {
+  return new Set((process.env.ZEMORY_PROJECT_CEILING ?? "").split(delimiter).filter(Boolean).map((p) => normalizeRoot(p).toLowerCase()));
 }
 
 /** The project root for the current directory, falling back to the directory itself

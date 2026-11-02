@@ -361,6 +361,9 @@ export interface ReRedactMemoryOptions {
   force?: boolean;
   skipBackup?: boolean;
   backupPath?: string;
+  /** Exact strings to redact besides the patterns: a secret that leaked in a shape no pattern knows (02/11: a bare
+   *  password printed beside its account name). Never printed; counted under `literal`. */
+  literals?: string[];
 }
 
 export interface ReRedactMemoryResult {
@@ -375,14 +378,22 @@ export interface ReRedactMemoryResult {
   bySource: Record<string, number>;
 }
 
-function diffRedactions<T extends { id: string | number; value: string | null }>(rows: T[]): (T & { redacted: string })[] {
+/** The patterns, then every literal replaced by the same marker the patterns write. */
+function redactWith(literals: string[]): (text: string) => string {
+  const lits = literals.filter((l) => l.length >= 6);
+  return (text) => lits.reduce((t, l) => t.split(l).join("[REDACTED]"), redact(text));
+}
+
+function diffRedactions<T extends { id: string | number; value: string | null }>(rows: T[], red: (t: string) => string = redact): (T & { redacted: string })[] {
   return rows
-    .map((row) => ({ ...row, redacted: redact(row.value ?? "") }))
+    .map((row) => ({ ...row, redacted: red(row.value ?? "") }))
     .filter((row) => row.redacted !== (row.value ?? ""));
 }
 
 export async function reRedactMemory(opts: ReRedactMemoryOptions = {}): Promise<ReRedactMemoryResult> {
   const dbPath = opts.dbPath ?? currentMemoryDb();
+  const literals = opts.literals ?? [];
+  const red = redactWith(literals);
   const db = openMemory(dbPath);
   try {
     const messages = db.prepare(Q.redactScanMessages).all() as { id: number; value: string; source: string | null }[];
@@ -405,11 +416,11 @@ export async function reRedactMemory(opts: ReRedactMemoryOptions = {}): Promise<
     const changedDigests = digestRows
       .map((row) => ({
         id: row.id,
-        tasks: redact(row.tasks ?? ""),
-        decisions: redact(row.decisions ?? ""),
-        errors: redact(row.errors ?? ""),
-        outcome: redact(row.outcome ?? ""),
-        digest_text: redact(row.digest_text ?? ""),
+        tasks: red(row.tasks ?? ""),
+        decisions: red(row.decisions ?? ""),
+        errors: red(row.errors ?? ""),
+        outcome: red(row.outcome ?? ""),
+        digest_text: red(row.digest_text ?? ""),
         orig: row,
       }))
       .filter(
@@ -420,17 +431,18 @@ export async function reRedactMemory(opts: ReRedactMemoryOptions = {}): Promise<
           r.outcome !== (r.orig.outcome ?? "") ||
           r.digest_text !== (r.orig.digest_text ?? ""),
       );
-    const changedMessages = diffRedactions(messages);
+    const changedMessages = diffRedactions(messages, red);
     // per pattern and per source, so two machines can compare their dry runs number for number
     const byPattern: Record<string, number> = {};
     const bySource: Record<string, number> = {};
     for (const row of changedMessages) {
       for (const name of redactHits(row.value)) byPattern[name] = (byPattern[name] ?? 0) + 1;
+      if (literals.some((l) => l.length >= 6 && row.value.includes(l))) byPattern.literal = (byPattern.literal ?? 0) + 1;
       const src = row.source ?? "unknown";
       bySource[src] = (bySource[src] ?? 0) + 1;
     }
-    const changedCommands = diffRedactions(commands);
-    const changedIndex = diffRedactions(indexRows);
+    const changedCommands = diffRedactions(commands, red);
+    const changedIndex = diffRedactions(indexRows, red);
     const dryRun = !opts.force;
     if (dryRun || (!changedMessages.length && !changedCommands.length && !changedIndex.length && !changedDigests.length)) {
       return {

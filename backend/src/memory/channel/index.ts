@@ -10,7 +10,7 @@ import { hostname } from "node:os";
 import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import Database from "better-sqlite3";
 import { currentMemoryDb, currentMemoryDir } from "../db.js";
-import { getDriveDir, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
+import { getDriveDir, getDriveOn, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, sameDeviceId, type ChannelIdentity } from "./identity.js";
 import { serveChannel, type ChannelServer, type SessionOptions, type SyncOutcome } from "./peer.js";
 import { startDiscovery, stripMappedV4, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
@@ -123,6 +123,9 @@ export interface ChannelStatus {
   enabled: boolean;
   /** Đích GHI hiện hành — đúng MỘT (HP điều 11). */
   transport: "drive" | "p2p";
+  /** Where the channel REALLY writes now: the chosen transport, or "none" when it is Drive and the Drive channel is off
+   *  (05_TODO: `channel status` said "writes to: drive" with Drive switched off - the setting, not the fact). */
+  writesTo: "drive" | "p2p" | "none";
   deviceId: string;
   port: number;
   peers: string[];
@@ -153,6 +156,7 @@ export function channelStatus(machineDir = currentMemoryDir()): ChannelStatus {
   return {
     enabled: getP2pEnabled(),
     transport: getSyncTransport(),
+    writesTo: getSyncTransport() === "drive" && !getDriveOn() ? "none" : getSyncTransport(),
     deviceId: channelIdentity(machineDir).deviceId,
     port: getP2pPort(),
     peers: getP2pPeers(),

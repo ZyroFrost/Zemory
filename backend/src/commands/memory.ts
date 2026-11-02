@@ -787,7 +787,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     }
     if (action === "status") {
       const st = channelStatus();
-      console.log(`zemory memory channel — ${st.enabled ? "ON" : "OFF"} · writes to: ${st.transport}`);
+      console.log(`zemory memory channel — ${st.enabled ? "ON" : "OFF"} · writes to: ${st.writesTo === "none" ? "nowhere (the Drive channel is off)" : st.writesTo}`);
       console.log(`  Fingerprint : ${st.deviceId}`);
       console.log(`  listen port : ${st.port}`);
       console.log(`  connected   : ${st.peers.length > 0 ? st.peers.join(", ") : "(no machine yet)"}`);
@@ -1438,11 +1438,21 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     return;
   }
   if (sub === "redact") {
+    // --literal-file: exact strings to redact besides the patterns, one per line ('#' lines skipped); the file is read here
+    // so the secret never sits on a command line, and it is never printed
+    const lf = flagValue(args, "--literal-file");
+    const literals = lf ? readFileSync(lf, "utf8").split(/\r?\n/).map((l) => l.trim()).filter((l) => l && !l.startsWith("#")) : [];
+    if (lf && !literals.length) {
+      console.log(`zemory memory redact: ${lf} holds no literal to redact`);
+      process.exitCode = 1;
+      return;
+    }
     const r = await reRedactMemory({
       dbPath: flagValue(args, "--db"),
       force: args.includes("--force"),
       skipBackup: args.includes("--no-backup"),
       backupPath: flagValue(args, "--backup"),
+      literals,
     });
     console.log(
       `zemory memory redact — ${r.dryRun ? "dry-run" : "updated"} ` +
