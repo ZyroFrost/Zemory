@@ -200,7 +200,10 @@ export function tidySession(o: TidyOptions): TidyReport {
     if (!trackedIn.has(r)) trackedIn.set(r, new Set(git(r, "ls-files").split("\n").filter(Boolean).map((f) => low(join(r, f)))));
     return trackedIn.get(r)!.has(low(p));
   };
-  const made = trace.paths.filter((p) => existsSync(p) && !tracked(p));
+  // a drive root or a folder holding the repo is where the session worked, never something it made (02/11: `D:\` was
+  // counted in row ③ because a command named it)
+  const container = (p: string): boolean => { const r = resolve(p); return dirname(r) === r || under(repo, r); };
+  const made = trace.paths.filter((p) => existsSync(p) && !container(p) && !tracked(p));
   const scratch = session ? join(o.tempDir ?? tmpdir(), "claude", encodeProjectDir(repo), session, "scratchpad") : null;
   const now = o.now ?? Date.now();
   const rm = (p: string): boolean => { try { rmSync(p, { recursive: true, force: true }); return !existsSync(p); } catch { return false; } };
