@@ -856,15 +856,16 @@ function check(payload, root, policy) {
     } catch { /* no settings: the light check */ }
     const args = [gate, reportDir, "--open-check", ...(strict ? ["--page", strict] : [])];
     // the Python the repo declares (config/runtime.json, slot Software_149_Program: <data root>\Software\Dev\Python\<version>\
-    // App\python.exe on the drive holding _ConfigVault, as bin/_python.cmd resolves it) - never py, never a bare python from PATH
+    // App\python.exe on the drive holding _ConfigVault, as bin/_python.cmd resolves it) - never py, never a bare python from PATH.
+    // The drive holding the repo comes first: a backup drive can carry a full copy of the tree (_ConfigVault and Software\).
     const runners = [];
     try {
       const ver = JSON.parse(fs.readFileSync(path.join(root, "config", "runtime.json"), "utf8")).python;
-      for (const d of ["E", "D", "C"]) {
+      const own = path.parse(path.resolve(root)).root.charAt(0).toUpperCase();
+      for (const d of [own, ...["E", "D", "C"].filter((x) => x !== own)]) {
         if (!ver || !fs.existsSync(d + ":\\_ConfigVault")) continue;
         const exe = d + ":\\Software\\Dev\\Python\\" + ver + "\\App\\python.exe";
-        if (fs.existsSync(exe)) runners.push([exe, []]);
-        break;
+        if (fs.existsSync(exe)) { runners.push([exe, []]); break; }
       }
     } catch { /* no declaration: nothing to run */ }
     let r = null;

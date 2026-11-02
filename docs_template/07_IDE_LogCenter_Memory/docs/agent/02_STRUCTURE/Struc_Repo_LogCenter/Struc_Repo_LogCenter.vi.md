@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 5
 lang: vi
 ---
 # Struc_Repo_LogCenter

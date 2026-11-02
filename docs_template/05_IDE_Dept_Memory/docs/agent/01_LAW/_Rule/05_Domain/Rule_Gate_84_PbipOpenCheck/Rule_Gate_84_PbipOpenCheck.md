@@ -1,10 +1,10 @@
 ---
 id: Rule_84
 name: pbip-open-check
-version: 6
+version: 8
 kind: action
 code: 05_Domain
-from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_84_PbipOpenCheck @v6 #a70ca6eba140
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_84_PbipOpenCheck @v8 #5eb2d20e2fe4
 ---
 # Rule_Gate_84_PbipOpenCheck — Open a .pbip only when nothing in it breaks the file
 

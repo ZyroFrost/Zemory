@@ -18,10 +18,10 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { archiveDirOf, harnessPathsAt, readMarker } from "../core/config.js";
-import { buildCodeGraph } from "../memory/graph/graph.js";
+import { sourceNodes } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
-import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots } from "./store.js";
+import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots, withReadOnlyPass } from "./store.js";
 import { CORE_REINJECT_CAP } from "./rule-core.js";
 import { wiredHooks } from "./hook-wiring.js";
 import { precommitState } from "./guard-gen.js";
@@ -122,14 +122,18 @@ export function foreignLayout(root: string): ForeignLayout | null {
 }
 
 export function conform(root: string): ConformReport {
-  return withTextCache(() => conformRun(root));
+  // conform writes nothing, so HS is read once per run too: findKit/listParts reread it per region repo and per check, and
+  // through a Docker mount that was most of the run (profiled 2026-11-02 on DW: 66 s listParts + 36 s readKits of 104 s).
+  return withTextCache(() => withReadOnlyPass(() => conformRun(root)));
 }
 
 function conformRun(root: string): ConformReport {
-  const g = buildCodeGraph(root);
+  // Paths and slots only: conform never reads the import/symbol layer, and opening every source file is what made it
+  // ~8x slower through a Docker mount (plan/30 §3f, 2026-11-02).
+  const files = sourceNodes(root);
   const std = buildStandardGraph(
     root,
-    g.nodes.map((n) => ({ id: n.id, slot: n.slot })),
+    files.map((n) => ({ id: n.id, slot: n.slot })),
   );
   const slotNames = new Set(Object.keys(SLOT_ROLES));
   const items: ConformItem[] = [];
@@ -199,7 +203,7 @@ function conformRun(root: string): ConformReport {
   const fh = foreignLayout(root);
   if (fh) {
     const declared = new Set([...Object.values(fh.slots), ...fh.extra].map(normDir));
-    const tops = [...new Set(g.nodes.filter((n) => n.dir).map((n) => n.dir.split("/")[0]))].filter((d) => d && !exempt(d)).sort();
+    const tops = [...new Set(files.filter((n) => n.dir).map((n) => n.dir.split("/")[0]))].filter((d) => d && !exempt(d)).sort();
     // ADAPT v2 · N7 — GÁNH KHAI BÁO KHÔNG ĐƯỢC ĐÈ LÊN REPO.
     //
     // Bản trước bắt khai MỌI thư mục cấp 1 và chặn (blocking) nếu thiếu. Đo trên repo thật:
@@ -220,7 +224,7 @@ function conformRun(root: string): ConformReport {
       d.startsWith(".") || IGNORED_TOPS.has(d) || fh.ignore.some((i) => normDir(i) === normDir(d));
     // "Chứa code" = code-graph đã index ít nhất một file NGUỒN trong đó. Thư mục chỉ có `.md`
     // (vd `notes/`) không phải drift cấu trúc ⇒ không đáng chặn ai.
-    const hasCode = new Set(g.nodes.filter((n) => n.dir).map((n) => n.dir.split("/")[0]));
+    const hasCode = new Set(files.filter((n) => n.dir).map((n) => n.dir.split("/")[0]));
     const undeclared = tops.filter((d) => !declared.has(normDir(d)) && !ignored(d));
     push(
       "foreign-undeclared-dir",
@@ -260,7 +264,7 @@ function conformRun(root: string): ConformReport {
     const declared = declaredSlots(root);
     const offDirs = [
       ...new Set(
-        g.nodes
+        files
           .filter((n) => !n.slot && n.dir && !n.noImportLayer && !exempt(n.dir) && !extraDirOk(n.dir, root, declared))
           .map((n) => n.dir),
       ),
@@ -687,7 +691,7 @@ function conformRun(root: string): ConformReport {
   const isVendored = (rel: string): boolean =>
     /(^|\/)(vendor|third_party|node_modules|external)\//.test(rel) || /\.min\.(js|css)$/.test(rel);
   const ctrlHits: string[] = [];
-  for (const rel of [...new Set([...g.nodes.map((n) => n.id), ...mdFiles])]) {
+  for (const rel of [...new Set([...files.map((n) => n.id), ...mdFiles])]) {
     if (isVendored(rel)) continue;
     const txt = read(root, rel);
     if (!txt) continue;
@@ -706,7 +710,7 @@ function conformRun(root: string): ConformReport {
     root,
     items,
     stats: {
-      files: g.nodes.length,
+      files: files.length,
       slotsUsed: std.stats.slots,
       slotsDeclared: std.stats.slots + std.stats.slotsUnused,
       // The standard graph reads 01_CONSTITUTION.md only; a folder harness keeps one folder per article (frames + own).

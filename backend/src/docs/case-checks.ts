@@ -312,27 +312,41 @@ export function sharedSlotFindings(root: string): string[] {
   const shared = SHARED_SLOTS.flatMap((s) => files(join(root, s)).filter((f) => f !== "README.md").map((f) => `${s}/${f}`));
   if (!shared.length) return [];
   // who mentions each shared file: the case owning the reader (tasks/<case>/** · bin/<case>.cmd), or "repo" for any other reader
-  const readers = [
+  const caseReaders = [
     ...tasks.flatMap((t) => textFilesUnder(root, `tasks/${t}`).map((f) => ({ f, owner: t }))),
     ...files(join(root, "bin")).map((f) => ({ f: `bin/${f}`, owner: tasks.find((t) => f.startsWith(t + ".")) ?? "repo" })),
-    ...["scripts", "reports", "pipelines"].flatMap((s) => textFilesUnder(root, s).map((f) => ({ f, owner: "repo" }))),
-    ...SHARED_SLOTS.flatMap((s) => textFilesUnder(root, s).map((f) => ({ f, owner: "repo" }))),
   ];
-  const texts = new Map(readers.map((r) => [r.f, readText(join(root, r.f)) ?? ""]));
-  const out: string[] = [];
+  const caseTexts = new Map(caseReaders.map((r) => [r.f, readText(join(root, r.f)) ?? ""]));
+  const named = new Map<string, string>();
+  // a shared file is reported only when exactly ONE case reads it; the repo-wide readers (scripts · reports · pipelines · the
+  // shared slots) can only add a second owner. So they are read only for the names one case alone reads so far, and only
+  // until each of those has a second reader: a department's reports/ is thousands of report files (one department: 10,964
+  // files, 93 MB, read in full on every sync - measured 2026-11-02), and the answer is the same.
+  const single = new Map<string, { s: string; only: string }>();
   for (const s of shared) {
     const name = basename(s);
     const stem = name.slice(0, name.length - extname(name).length);
-    const named = tasks.find((t) => stem === t || stem.startsWith(t + "_") || stem.startsWith(t + "."));
-    if (named) {
-      out.push(`${s}: named after ${named} — move it into tasks/${named}/`);
+    const after = tasks.find((t) => stem === t || stem.startsWith(t + "_") || stem.startsWith(t + "."));
+    if (after) {
+      named.set(s, `${s}: named after ${after} — move it into tasks/${after}/`);
       continue;
     }
-    const owners = new Set(readers.filter((r) => r.f !== s && texts.get(r.f)!.includes(name)).map((r) => r.owner));
-    if (owners.size === 1) {
-      const only = [...owners][0];
-      if (only !== "repo") out.push(`${s}: read by ${only} only — move it into tasks/${only}/`);
+    const owners = new Set(caseReaders.filter((r) => r.f !== s && caseTexts.get(r.f)!.includes(name)).map((r) => r.owner));
+    if (owners.size === 1 && !owners.has("repo")) single.set(s, { s, only: [...owners][0] });
+  }
+  if (single.size) {
+    const repoReaders = [...["scripts", "reports", "pipelines"], ...SHARED_SLOTS].flatMap((d) => textFilesUnder(root, d));
+    for (const f of repoReaders) {
+      if (!single.size) break;
+      const text = readText(join(root, f)) ?? "";
+      for (const [s] of single) if (f !== s && text.includes(basename(s))) single.delete(s);
     }
+  }
+  const out: string[] = [];
+  for (const s of shared) {
+    const hit = single.get(s);
+    if (named.has(s)) out.push(named.get(s)!);
+    else if (hit) out.push(`${s}: read by ${hit.only} only — move it into tasks/${hit.only}/`);
   }
   return out;
 }

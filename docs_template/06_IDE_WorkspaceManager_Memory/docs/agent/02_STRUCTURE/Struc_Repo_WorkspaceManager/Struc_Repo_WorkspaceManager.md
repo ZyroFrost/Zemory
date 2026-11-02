@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_WorkspaceManager
 name: repo-workspace-manager
-version: 10
+version: 12
 profile: non-app
 label: WORKSPACE-MANAGER
 intro: : repo tổng quản của một cụm — giữ dữ liệu dùng chung (DW, kho dữ liệu), giá trị của cụm, bộ mail chung; quyết khung và chuẩn của các repo phòng ban nó quản
@@ -10,7 +10,7 @@ index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_NonApp]
 installs: [scripts/region_values.py, bin/_python.cmd, config/runtime.json]
-from: _Store/02_STRUCTURE/Struc_Repo_WorkspaceManager @v10 #226e5a27f148
+from: _Store/02_STRUCTURE/Struc_Repo_WorkspaceManager @v12 #297d48a11453
 ---
 # Struc_Repo_WorkspaceManager
 

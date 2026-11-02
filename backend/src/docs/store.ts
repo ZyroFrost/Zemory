@@ -359,22 +359,43 @@ export function hashFiles(files: Map<string, string>, main: string): string {
 // of every set; `listParts` re-reads the store per check): measured 2026-10-21, 181 s of a 369 s sync of 9 repos went to
 // parts read again. A sync writes only into repos, never under `docs_template/`, so inside `withStoreReadCache` every part
 // read below that folder is read once. Anything else — the repo copies a sync writes — is always read fresh.
-let storeCache: { base: string; parts: Map<string, Part | null>; files: Map<string, Map<string, string>> } | null = null;
+let storeCache: { base: string; parts: Map<string, Part | null>; files: Map<string, Map<string, string>>; kits: Map<string, Kit[]> } | null = null;
 
-const underBase = (dir: string): boolean => {
+const inStore = (dir: string): boolean => {
   if (!storeCache) return false;
   const d = resolve(dir).toLowerCase();
   return d === storeCache.base || d.startsWith(storeCache.base + sep);
 };
+// Inside a read-only pass (`withReadOnlyPass`: conform writes nothing) the repo copies are cached too: its checks read the
+// same repo parts again and again (profiled 2026-11-02: listParts 11.7 s of a 49 s region sync). Dropped when the pass ends,
+// because the sync around it writes into the repo next.
+let readOnlyPasses = 0;
+const underBase = (dir: string): boolean => Boolean(storeCache) && (readOnlyPasses > 0 || inStore(dir));
 
 export function withStoreReadCache<T>(fn: () => T, base = dirname(STORE_DIR)): T {
   if (storeCache) return fn();
-  storeCache = { base: resolve(base).toLowerCase(), parts: new Map(), files: new Map() };
+  storeCache = { base: resolve(base).toLowerCase(), parts: new Map(), files: new Map(), kits: new Map() };
   try {
     return fn();
   } finally {
     storeCache = null;
   }
+}
+
+/** Run `fn`, which writes nothing, with every part read cached (store and repo copies); repo copies are forgotten after. */
+export function withReadOnlyPass<T>(fn: () => T): T {
+  return withStoreReadCache(() => {
+    readOnlyPasses++;
+    try {
+      return fn();
+    } finally {
+      readOnlyPasses--;
+      if (readOnlyPasses === 0 && storeCache) {
+        for (const k of [...storeCache.parts.keys()]) if (!inStore(k.split("|")[0])) storeCache.parts.delete(k);
+        for (const k of [...storeCache.files.keys()]) if (!inStore(k.split("|")[0])) storeCache.files.delete(k);
+      }
+    }
+  });
 }
 
 /** A part's files, minus the ones its header lists as `generated:` (written by a zemory command in the repo copy — the
@@ -674,6 +695,17 @@ export function kitCluster(kit: Pick<Kit, "structure">): string {
  * carries — the rules, articles and skills on its harness shelves and its one outer structure.
  */
 export function readKits(storeDir = STORE_DIR): Kit[] {
+  // the sets are folders under docs_template: inside withStoreReadCache they are walked once (a copy of the list each call)
+  if (storeCache && underBase(storeDir)) {
+    const key = resolve(storeDir);
+    let hit = storeCache.kits.get(key);
+    if (!hit) storeCache.kits.set(key, (hit = readKitsFresh(storeDir)));
+    return [...hit];
+  }
+  return readKitsFresh(storeDir);
+}
+
+function readKitsFresh(storeDir: string): Kit[] {
   const base = dirname(storeDir);
   if (!existsSync(base)) return [];
   // A skill the store renamed (`replaces:`) is still under its old folder in a set until the next assembly; the set carries

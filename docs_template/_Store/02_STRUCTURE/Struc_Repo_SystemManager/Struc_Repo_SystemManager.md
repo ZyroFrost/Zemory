@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_SystemManager
 name: repo-system-manager
-version: 5
+version: 7
 profile: app
 label: SYSTEM-MANAGER
 intro: : repo quản một hệ nhiều app — quyết khung và chuẩn của các app và repo dữ liệu app nó quản

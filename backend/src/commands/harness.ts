@@ -35,6 +35,7 @@ import { applyKit, repoKit, type KitApplyResult } from "../docs/kit-apply.js";
 import { migrateToKit } from "../docs/kit-migrate.js";
 import { kitSync, managedRepos, writeOwner } from "../docs/kit-sync.js";
 import { withStoreReadCache } from "../docs/store.js";
+import { regionRepos } from "../docs/region-links.js";
 
 /** One line per assembled part: what was (or would be) done. */
 function printKitSteps(r: KitApplyResult, apply: boolean): number {
@@ -139,6 +140,45 @@ function runManaged(root: string, apply: boolean, label: string): void {
     }
   }
   if (ambiguous.length) console.log(`\n  ! names no owner and more than one repo manages its role — not synced, its conform asks it to name one: ${ambiguous.join(" · ")}`);
+}
+
+/**
+ * `zemory sync --all`: every repo of the region once. A manager's pass already goes on to the repos it manages, so the
+ * managers run first and every repo they cover is skipped after; the repos no one manages get their own pass. Run one by
+ * one, the region synced each department twice (measured 2026-11-02: 19 repos 258 s by hand, 50 s managers only).
+ * Writes into other repos, so it is a dry run (the plan) without `--apply`.
+ */
+function syncRegion(root: string, apply: boolean): void {
+  const t0 = Date.now();
+  const repos = regionRepos(root).filter((r) => repoKit(r));
+  const covered = new Set<string>();
+  const managers: string[] = [];
+  for (const r of repos) {
+    const m = managedRepos(r).repos;
+    if (!m.length) continue;
+    managers.push(r);
+    for (const x of m) covered.add(resolve(x.root).toLowerCase());
+  }
+  const alone = repos.filter((r) => !managers.includes(r) && !covered.has(resolve(r).toLowerCase()));
+  console.log(`zemory sync --all${apply ? "" : " (DRY-RUN)"} — ${repos.length} repo(s) in the region`);
+  for (const m of managers) console.log(`  manager ${basename(m)} → itself + ${managedRepos(m).repos.map((x) => x.name).join(" · ")}`);
+  if (alone.length) console.log(`  on their own: ${alone.map((r) => basename(r)).join(" · ")}`);
+  if (!apply) {
+    console.log("  — add `--apply` to sync them");
+    return;
+  }
+  // the sets are measured and rebuilt once, by the first pass; every later pass reads them as they are
+  [...managers, ...alone].forEach((r, i) => {
+    console.log(`\n── ${basename(r)} ──`);
+    try {
+      runKit(r, { apply: true, label: "zemory sync --all", sets: i === 0 });
+      if (managers.includes(r)) runManaged(r, true, "zemory sync --all");
+    } catch (e) {
+      console.log(`  ✗ ${basename(r)}: the pass stopped — ${e instanceof Error ? e.message : String(e)}`);
+      process.exitCode = 1;
+    }
+  });
+  console.log(`\nzemory sync --all — ${repos.length} repo(s) in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 }
 
 export function cmdInit(args: string[]): void {
@@ -321,6 +361,10 @@ function cmdSyncRun(args: string[]): void {
   // A kit repo: plain `zemory sync` IS the update from the store (user 2026-10-19: "khi cần t chỉ gọi sync") — assemble,
   // guard, and the off-standard block in the TODO ledger. `--standard` stays the dry run that shows what a pass would do.
   // Writing into ANOTHER repo (`--root`) still needs `--apply`.
+  if (args.includes("--all")) {
+    syncRegion(root, args.includes("--apply"));
+    return;
+  }
   const extraFlags = args.filter((a) => a.startsWith("--") && a !== "--root" && a !== "--apply" && a !== "--self");
   if (!extraFlags.length && repoKit(root)) {
     const apply = ri < 0 || args.includes("--apply");

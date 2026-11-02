@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 6
 lang: vi
 ---
 
@@ -89,6 +89,28 @@ Template gắn mỗi hiệu ứng một dấu `FX:`; bản chép giữ dấu đ�
   danh sách khoá của file kiểu trong repo với của template.
 - `prefers-reduced-motion`: mở app khi bật thiết lập đó của hệ thống; không gì trôi, trượt hay nảy. Duyệt bằng MẮT, chưa có mã máy
   kiểm.
+
+## 5. Bề mặt chung của mọi app Glass
+
+Kiểu kế tiếp dựng trên cùng các luật này.
+
+- **Một ô tìm kiếm.** Ô tìm ở đầu trang (bảng lệnh) là ô tìm duy nhất; trang không có ô tìm riêng. Trên trang lọc danh sách,
+  bảng lệnh đưa "Lọc trang này theo <chữ>" lên đầu; bộ lọc hiện thành chip "<chữ> x" ở thanh công cụ của trang, bấm x để bỏ.
+- **Thanh công cụ của trang, một thứ tự cho mọi trang:** chip · Thêm · bộ lọc · chọn kiểu xem. Bộ lọc và chọn kiểu xem neo ở mép
+  phải vì trang nào cũng có; nút Thêm ("+ <nhãn>", nút chính, mỗi trang một nút) đứng trước chúng, chỉ ở trang có thêm. Trang chỉ
+  có một kiểu xem vẫn mang nút chọn kiểu xem, để tắt, để nó không xê dịch.
+- **Danh sách hoặc thẻ.** Mọi trang danh sách có kiểu danh sách và kiểu thẻ (lưới); người dùng tự chọn, lưu theo từng trang.
+- **Cài đặt là nơi admin nhập cấu hình.** Hộp Cài đặt có tab Cấu hình tách khỏi Giao diện (và Bố cục); giá trị toàn app và sổ dùng
+  chung (máy chủ, nhịp) nằm ở đó, không thành trang Quản trị. Màn chuyển từ app cũ giữ bố cục và đủ mọi nút của bản cũ (kết nối:
+  danh sách + form, Kiểm tra kết nối · Lưu · Xoá · Đóng).
+- **Ô nhập kính trong mọi hộp thoại:** ô trong mờ (`--g-glass`), viền mềm (`--g-edge-soft`), bo góc theo template, quầng màu nhấn khi
+  bấm vào. Nhãn nổi không bao giờ đè lên chữ: ô chọn luôn để nhãn nổi lên, gợi ý đưa vào nhãn, không vào chữ mờ (placeholder).
+- **Điều khiển Glass, không dùng của trình duyệt:** có/không là công tắc Glass (FX: switch), không dùng ô tick; mục đang chọn của
+  danh sách nằm trên vệt sáng FX pill; màu trạng thái lấy từ `--g-good` · `--g-warn` · `--g-danger`.
+- **Một nút Lưu giữ mọi thứ đã gõ** trong hộp thoại; không thứ gì đã gõ bị bỏ mà không báo.
+- **Xoá trong sổ dùng chung là tắt dòng:** hỏi lại trước, nêu ai đang dùng dòng đó, và bật lại được.
+- Phép kiểm: bài kiểm trình duyệt của repo báo đỏ khi trang có ô tìm riêng, thanh công cụ sai thứ tự, hộp thoại có ô tick hoặc ô
+  nhập không phải kính, nhãn đè lên chữ, và chữ đã gõ bị Lưu bỏ mất.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved in the template before it is ported · kiểu được duyệt trên template trước khi chép sang app

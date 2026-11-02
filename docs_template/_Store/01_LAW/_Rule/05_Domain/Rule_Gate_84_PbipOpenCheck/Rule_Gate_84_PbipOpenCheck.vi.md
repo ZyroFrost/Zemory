@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 8
 lang: vi
 ---
 # Rule_Gate_84_PbipOpenCheck — Open a .pbip only when nothing in it breaks the file

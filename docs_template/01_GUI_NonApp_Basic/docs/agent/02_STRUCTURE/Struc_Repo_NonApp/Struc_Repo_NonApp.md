@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_NonApp
 name: repo-nonapp
-version: 10
+version: 12
 profile: non-app
 label: NON-APP
 intro: : sản phẩm / tài sản — agent đọc · dò · kéo · điền · xuất FILE (BI/report · data · docs-only · design), không phát triển app; không có luật UI
@@ -9,7 +9,7 @@ ask: ; mở một `.pbix` ra dò, đổ số vào template là NON-APP
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 installs: [bin/_python.cmd, config/runtime.json]
-from: _Store/02_STRUCTURE/Struc_Repo_NonApp @v10 #763f7675bd7d
+from: _Store/02_STRUCTURE/Struc_Repo_NonApp @v12 #fc31767d1731
 ---
 # Struc_Repo_NonApp
 

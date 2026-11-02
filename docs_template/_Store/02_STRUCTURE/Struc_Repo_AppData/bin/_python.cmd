@@ -1,7 +1,9 @@
 @echo off
 rem _python.cmd -- sets PY / PYW to the Python this repo declares in config\runtime.json, under the data root (the drive that
 rem holds _ConfigVault): <root>\Software\Dev\Python\<version>\App\python.exe (slot Software_149_Program -- never a bare python
-rem from PATH, never the system drive). Every launcher in bin\ calls it: call "%~dp0_python.cmd" || exit /b 3
+rem from PATH, never the system drive). The drive holding this repo comes first: a backup drive can carry a full copy of
+rem the tree (_ConfigVault and Software\ both), so no scan order can tell it from the real one. Then the first drive with
+rem _ConfigVault AND that Python; when none has it, the first _ConfigVault drive is named in the error. Every launcher in bin\ calls it: call "%~dp0_python.cmd" || exit /b 3
 rem With arguments it also runs them: bin\_python.cmd scripts\x.py  (repo gates in docs\.harness.json use this form).
 set "PY="
 set "PYW="
@@ -10,6 +12,8 @@ set "_ROOT="
 set "_RT=%~dp0..\config\runtime.json"
 if not exist "%_RT%" (echo !! MISSING config\runtime.json & exit /b 3)
 for /f "usebackq tokens=2 delims=: " %%v in (`findstr /c:"python" "%_RT%"`) do set "_VER=%%~v"
+if exist "%~d0\_ConfigVault" if exist "%~d0\Software\Dev\Python\%_VER%\App\python.exe" set "_ROOT=%~d0"
+for %%d in (E D C) do if not defined _ROOT if exist "%%d:\_ConfigVault" if exist "%%d:\Software\Dev\Python\%_VER%\App\python.exe" set "_ROOT=%%d:"
 for %%d in (E D C) do if not defined _ROOT if exist "%%d:\_ConfigVault" set "_ROOT=%%d:"
 if not defined _ROOT (echo !! no _ConfigVault on drive E, D or C & exit /b 3)
 set "PY=%_ROOT%\Software\Dev\Python\%_VER%\App\python.exe"

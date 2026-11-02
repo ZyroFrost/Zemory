@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # Struc_Region_Company
@@ -22,13 +22,14 @@ theo vai, và các thư mục công việc không phải repo. Quan hệ giữa 
 | việc cũ giữ chỉ đọc | `_Legacy\<Nguồn>\` (Legacy_158) |
 | app nội bộ hoặc app của bên cung cấp | `_Project\<Nhóm>\<repo>\` (Project_159) |
 | giấy tờ của chủ máy với tổ chức này: hợp đồng, đánh giá, bàn giao, hồ sơ công ty, mật khẩu hệ thống của nó | `_Profile\` (Profile_170) |
+| mọi bí mật và kết nối mà repo, app của tổ chức tự đọc: login SQL, bí mật API và mail, file bí mật của một repo (`certs\<repo>\`), khoá ssh tới máy của tổ chức | `_ConfigVault\` (ConfigVault_151, cấp tổ chức) |
 | mọi thư mục CÔNG VIỆC khác không phải repo: thiết kế, bản vẽ, file của một dự án cũ | `<Việc>\`, đặt theo tên việc (không `_`, không `Dept_`) |
 
 ```
 Workspace\Company\Acme\
 ├── Dept_FIN\  Dept_LOG\
 ├── _DB_Warehouse\  _DB_Log\         (hoặc _WorkspaceManager\ khi không có DW)
-├── _Glossary\  _Design\PBI_Template\  _Design\Assets\  _Legacy\OldServer\
+├── _Glossary\  _Design\PBI_Template\  _Design\Assets\  _Legacy\OldServer\  _ConfigVault\
 ├── _Project\ERP\_Hub\  _Project\ERP\AcmeFlow\
 └── Designs\  Drawings\                 thư mục công việc, không phải repo
 ```

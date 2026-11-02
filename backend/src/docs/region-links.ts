@@ -54,6 +54,22 @@ export function repoRole(root: string, storeDir = STORE_DIR): TemplateRole | nul
 
 const isRepo = (d: string): boolean => existsSync(join(d, "docs", ".harness.json")) || existsSync(join(d, ".git"));
 
+/** Services an organisation provides from a shared synced folder, not a repo: the kind → the folder's fixed name. */
+const SHARED_FOLDER: Record<string, string> = { design: "_Design", glossary: "_Glossary" };
+
+/** The organisation folder `name` (a non-repo folder) in one of the four folders above `root`, or null. */
+function sharedFolderAbove(root: string, name: string): string | null {
+  let up = dirname(resolve(root));
+  for (let i = 0; i < 4; i++) {
+    const p = join(up, name);
+    if (existsSync(p) && !isRepo(p)) return p;
+    const next = dirname(up);
+    if (next === up) break;
+    up = next;
+  }
+  return null;
+}
+
 /** A repo of the workspace by folder name: up to three levels above `from`, and up to two levels below each of those. */
 export function findRegionRepo(name: string, from: string): string | null {
   let up = dirname(from);
@@ -144,6 +160,13 @@ export function regionLinkFindings(root: string, storeDir = STORE_DIR): { wrong:
   }
   for (const [kind, target] of Object.entries(uses)) {
     if (typeof target !== "string" || !target) { wrong.push(`uses.${kind}: one repo name`); continue; }
+    // design and glossary come from the organisation's shared synced folders (_Design · _Glossary, slots Design_172 ·
+    // Glossary_156 of Struc_Region_Company), which are no repos; Struc_Region_Workspace names them in its marker example
+    if (SHARED_FOLDER[kind] !== undefined) {
+      if (target !== SHARED_FOLDER[kind]) wrong.push(`uses.${kind} "${target}": the ${kind} provider is the organisation folder ${SHARED_FOLDER[kind]}`);
+      else if (!sharedFolderAbove(root, target)) wrong.push(`uses.${kind} "${target}" is no folder of this organisation`);
+      continue;
+    }
     const at = findRegionRepo(target, root);
     if (!at) { wrong.push(`uses.${kind} "${target}" is no repo of this workspace`); continue; }
     const theirs = repoRole(at, storeDir);

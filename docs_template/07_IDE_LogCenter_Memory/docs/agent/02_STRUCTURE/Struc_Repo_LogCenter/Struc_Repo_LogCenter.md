@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_LogCenter
 name: repo-log-center
-version: 3
+version: 5
 profile: non-app
 label: LOG-CENTER
 intro: : repo giữ nhật ký chạy dùng chung của cả cụm — khuôn log, nơi ghi, cách tra
@@ -10,7 +10,7 @@ index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_NonApp]
 installs: [bin/_python.cmd, config/runtime.json]
-from: _Store/02_STRUCTURE/Struc_Repo_LogCenter @v3 #c2a5504759a5
+from: _Store/02_STRUCTURE/Struc_Repo_LogCenter @v5 #adc41a57d763
 ---
 # Struc_Repo_LogCenter
 

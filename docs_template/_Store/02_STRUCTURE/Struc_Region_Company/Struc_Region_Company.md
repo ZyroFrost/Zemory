@@ -1,7 +1,7 @@
 ---
 id: Struc_Region_Company
 name: region-company
-version: 6
+version: 7
 scope: region
 ---
 # Struc_Region_Company
@@ -24,13 +24,14 @@ follow `Struc_Region_Workspace`.
 | old work kept read only | `_Legacy\<Source>\` (Legacy_158) |
 | an internal app or a vendor's app | `_Project\<Group>\<repo>\` (Project_159) |
 | the owner's papers with this organisation: contract, review, handover, company profile, passwords of its systems | `_Profile\` (Profile_170) |
+| every secret and connection the organisation's repos and apps read by themselves: SQL logins, API and mail secrets, a repo's secret files (`certs\<repo>\`), the ssh keys of its hosts | `_ConfigVault\` (ConfigVault_151, organisation level) |
 | any other WORK folder that is not a repo: designs, drawings, an old project's files | `<Work>\`, named after the work (no `_`, no `Dept_`) |
 
 ```
 Workspace\Company\Acme\
 ├── Dept_FIN\  Dept_LOG\
 ├── _DB_Warehouse\  _DB_Log\         (or _WorkspaceManager\ when there is no data warehouse)
-├── _Glossary\  _Design\PBI_Template\  _Design\Assets\  _Legacy\OldServer\
+├── _Glossary\  _Design\PBI_Template\  _Design\Assets\  _Legacy\OldServer\  _ConfigVault\
 ├── _Project\ERP\_Hub\  _Project\ERP\AcmeFlow\
 └── Designs\  Drawings\                 work folders, not repos
 ```

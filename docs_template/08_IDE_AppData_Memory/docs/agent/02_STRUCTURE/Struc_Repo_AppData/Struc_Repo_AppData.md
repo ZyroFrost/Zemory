@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_AppData
 name: repo-app-data
-version: 5
+version: 7
 profile: non-app
 label: APP-DATA
 intro: : repo giữ cơ sở dữ liệu dùng chung của các app trong một hệ — mô hình, script đổi cấu trúc; không chứa app
@@ -10,7 +10,7 @@ index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_NonApp]
 installs: [bin/_python.cmd, config/runtime.json]
-from: _Store/02_STRUCTURE/Struc_Repo_AppData @v5 #407548cf2f11
+from: _Store/02_STRUCTURE/Struc_Repo_AppData @v7 #c35ac831822d
 ---
 # Struc_Repo_AppData
 

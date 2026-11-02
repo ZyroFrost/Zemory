@@ -8,7 +8,8 @@
     "Legacy_158_Legacy",
     "Project_159_Project",
     "Profile_170_Profile",
-    "WorkspaceManager_171_WorkspaceManager"
+    "WorkspaceManager_171_WorkspaceManager",
+    "ConfigVault_151_ConfigVault"
   ],
   "relations": [
     "owner",

@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Glass
 name: app-glass
-version: 5
+version: 6
 type: process
 checked: [Skill_App_Base, Skill_PBI_White, Design_172_Design]
 installs: [scripts/fx_check.mjs]
@@ -98,7 +98,7 @@ The template names each effect with an `FX:` marker; a port keeps the marker so 
 
 ## 5. Surfaces every Glass app shares
 
-Settled on SasinONE (user 01-02/11); the next kind is built on the same rules.
+The next kind is built on the same rules.
 
 - **One search.** The header search (palette) is the only search box; a page carries no search of its own. On a page that
   filters its list, the palette offers "Filter this page by <text>" first; the filter shows as the chip "<text> x" in the page

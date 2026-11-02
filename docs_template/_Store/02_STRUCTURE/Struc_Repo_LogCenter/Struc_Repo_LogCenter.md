@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_LogCenter
 name: repo-log-center
-version: 3
+version: 5
 profile: non-app
 label: LOG-CENTER
 intro: : repo giữ nhật ký chạy dùng chung của cả cụm — khuôn log, nơi ghi, cách tra

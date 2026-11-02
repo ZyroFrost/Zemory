@@ -302,6 +302,35 @@ function resolveImport(fromAbs: string, spec: string, fileSet: Set<string>, absR
   return null;
 }
 
+/** A source file as seen from its path alone: what `conform` needs, without reading the file. */
+export interface SourceNode {
+  id: string;
+  dir: string;
+  slot?: string;
+  noImportLayer?: true;
+}
+
+/** Placement of one file id (folder, slot, extra-language flag) - the ONE rule both builders below use. */
+function placeOf(id: string, slotDict: Set<string>, declaredHere: Set<string>): SourceNode {
+  const dir = dirname(id) === "." ? "" : dirname(id);
+  const slot = slotOfDir(dir || basename(dir || id), slotDict, declaredHere);
+  return { id, dir, slot, ...(EXTRA_LANG_EXT[extname(id)] ? { noImportLayer: true as const } : {}) };
+}
+
+/**
+ * The project's source files with their slots, from a directory walk only - no file is opened. `conform` reads nothing
+ * else from the code graph, and through a Docker mount of a Windows drive opening every source file is the cost that
+ * dominates (measured 2026-11-02 on the DW repo: conform 9.4 s native, 78-403 s in the container; plan/30 §3f).
+ */
+export function sourceNodes(root: string): SourceNode[] {
+  if (!existsSync(root)) return [];
+  const absFiles: string[] = [];
+  collectFiles(root, root, absFiles, 0);
+  const slotDict = slotDictFor(root);
+  const declaredHere = declaredSlots(root);
+  return absFiles.map((abs) => placeOf(relative(root, abs).replace(/\\/g, "/"), slotDict, declaredHere));
+}
+
 /** Build the code graph for a project root. */
 export function buildCodeGraph(root: string): CodeGraph {
   const empty: CodeGraph = { root, nodes: [], edges: [], orphans: [], stats: { files: 0, edges: 0, slots: 0, bytes: 0 } };
@@ -342,22 +371,19 @@ export function buildCodeGraph(root: string): CodeGraph {
     // Ngôn ngữ mở rộng: regex import/symbol của js/py KHÔNG hiểu cú pháp họ — chạy lên chỉ
     // đẻ rác. Node vẫn vào graph (đếm được, AST enrich lấp symbol nếu grammar nạp được),
     // cạnh import để trống + cờ noImportLayer cho fitness biết đường mà không phạt oan.
-    const extraLang = EXTRA_LANG_EXT[extname(id)];
-    const { imports, symbols } = extraLang ? { imports: [] as RawImport[], symbols: [] as string[] } : parseFile(text, isPy);
-    const dir = dirname(id) === "." ? "" : dirname(id);
-    const folderName = basename(dir || id);
-    const slot = slotOfDir(dir || folderName, slotDict, declaredHere);
+    const place = placeOf(id, slotDict, declaredHere);
+    const { imports, symbols } = place.noImportLayer ? { imports: [] as RawImport[], symbols: [] as string[] } : parseFile(text, isPy);
     nodes.push({
       id,
       label: basename(id),
-      dir,
-      slot,
+      dir: place.dir,
+      slot: place.slot,
       loc: text.split("\n").length,
       bytes: text.length,
       symbols: symbols.slice(0, 40),
       fanIn: 0,
       fanOut: 0,
-      ...(extraLang ? { noImportLayer: true as const } : {}),
+      ...(place.noImportLayer ? { noImportLayer: true as const } : {}),
     });
     for (const imp of imports) {
       const to = imp.py ? resolvePy(imp.spec, id, pyIndex) : resolveImport(abs, imp.spec, idSet, root);

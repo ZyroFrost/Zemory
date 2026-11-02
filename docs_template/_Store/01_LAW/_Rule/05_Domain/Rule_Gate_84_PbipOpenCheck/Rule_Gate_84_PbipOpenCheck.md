@@ -1,7 +1,7 @@
 ---
 id: Rule_84
 name: pbip-open-check
-version: 6
+version: 8
 kind: action
 code: 05_Domain
 ---

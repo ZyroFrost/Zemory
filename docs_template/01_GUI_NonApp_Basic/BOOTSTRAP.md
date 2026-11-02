@@ -83,7 +83,7 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 45 | `.stignore` | 25 |
 | 46 | `AGENTS.md` | 62 |
 | 47 | `CLAUDE.md` | 1 |
-| 48 | `bin/_python.cmd` | 20 |
+| 48 | `bin/_python.cmd` | 24 |
 | 49 | `config/runtime.json` | 3 |
 | 50 | `docs/.harness.json` | 29 |
 | 51 | `docs/agent/01_LAW/_Cons/01_Scope/Cons_Gate_09_Purpose/Cons.md` | 14 |
@@ -226,7 +226,7 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 188 | `docs/agent/02_STRUCTURE/INDEX.md` | 66 |
 | 189 | `docs/agent/02_STRUCTURE/Struc_Repo_NonApp/Struc_Repo_NonApp.md` | 28 |
 | 190 | `docs/agent/02_STRUCTURE/Struc_Repo_NonApp/Struc_Repo_NonApp.vi.md` | 18 |
-| 191 | `docs/agent/02_STRUCTURE/Struc_Repo_NonApp/bin/_python.cmd` | 20 |
+| 191 | `docs/agent/02_STRUCTURE/Struc_Repo_NonApp/bin/_python.cmd` | 24 |
 | 192 | `docs/agent/02_STRUCTURE/Struc_Repo_NonApp/config/runtime.json` | 3 |
 | 193 | `docs/agent/02_STRUCTURE/Struc_Repo_NonApp/structure.json` | 61 |
 | 194 | `docs/agent/02_STRUCTURE/_Host/GUI/GUI.md` | 19 |

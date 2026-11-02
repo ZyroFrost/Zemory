@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_SystemManager
 name: repo-system-manager
-version: 5
+version: 7
 profile: app
 label: SYSTEM-MANAGER
 intro: : repo quản một hệ nhiều app — quyết khung và chuẩn của các app và repo dữ liệu app nó quản
@@ -10,7 +10,7 @@ index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · hỏi "thứ này để đâu" · `conform` báo lệch
 checked: [Struc_Region_Workspace, Struc_Repo_Dept, Struc_Repo_App, Struc_Repo_WorkspaceManager]
 installs: [bin/_python.cmd, config/runtime.json]
-from: _Store/02_STRUCTURE/Struc_Repo_SystemManager @v5 #2fafcc0a1828
+from: _Store/02_STRUCTURE/Struc_Repo_SystemManager @v7 #086fe598f8b5
 ---
 # Struc_Repo_SystemManager
 

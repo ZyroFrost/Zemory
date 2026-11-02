@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 
@@ -92,7 +92,7 @@ Template gắn mỗi hiệu ứng một dấu `FX:`; bản chép giữ dấu đ�
 
 ## 5. Bề mặt chung của mọi app Glass
 
-Chốt trên SasinONE (user 01-02/11); kiểu kế tiếp dựng trên cùng các luật này.
+Kiểu kế tiếp dựng trên cùng các luật này.
 
 - **Một ô tìm kiếm.** Ô tìm ở đầu trang (bảng lệnh) là ô tìm duy nhất; trang không có ô tìm riêng. Trên trang lọc danh sách,
   bảng lệnh đưa "Lọc trang này theo <chữ>" lên đầu; bộ lọc hiện thành chip "<chữ> x" ở thanh công cụ của trang, bấm x để bỏ.

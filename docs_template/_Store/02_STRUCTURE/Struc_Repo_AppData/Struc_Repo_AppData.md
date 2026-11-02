@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_AppData
 name: repo-app-data
-version: 5
+version: 7
 profile: non-app
 label: APP-DATA
 intro: : repo giữ cơ sở dữ liệu dùng chung của các app trong một hệ — mô hình, script đổi cấu trúc; không chứa app
