@@ -154,6 +154,19 @@ export function healDriveMount(env, o = {}) {
   };
   const look = run(["--exec", "stat", "-c", "%F", drive]);
   if (look.status === 0) {
+    // a stat that passes does not prove a mount: the container's bind mount creates the folder on the distro disk when the
+    // letter missed the boot, so an empty directory stands where the Drive should be (05_TODO, measured 2026-10-30)
+    const letter = m[1].toLowerCase();
+    if (run(["--exec", "mountpoint", "-q", `/mnt/${letter}`]).status !== 0) {
+      const exists = o.letterExists ?? ((l) => existsSync(`${l.toUpperCase()}:\\`));
+      if (!exists(letter)) return "absent";
+      run(["-u", "root", "--exec", "sh", "-c", `mount /mnt/${letter}`]);
+      if (run(["--exec", "mountpoint", "-q", `/mnt/${letter}`]).status !== 0) {
+        log(`failed: /mnt/${letter} is a plain folder and mounting ${letter.toUpperCase()}: there did not take`);
+        return "failed";
+      }
+      return restart("mounted", `/mnt/${letter} was a plain folder, not the ${letter.toUpperCase()}: mount`);
+    }
     const first = (r) => (r.status === 0 ? String(r.stdout ?? "").trim() : null);
     const inWsl = first(run(["--exec", "sh", "-c", 'ls -A "$1" | head -1', "sh", drive]));
     if (!inWsl) return "ok"; // nothing to see, or the look failed: no evidence the container is blind
