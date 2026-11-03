@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 
@@ -73,6 +73,8 @@ từng app.
   dùng · không đang dùng · đã khoá · chờ đổi mật khẩu); trực tuyến nói người đó có đang online không (có phiên vừa thấy trong vài
   phút). Là người đang đăng nhập không bao giờ là một trạng thái. Phép kiểm: danh sách có đủ hai cột và không trạng thái nào là
   "Bạn".
+- **Chữ hiện tên, không hiện mã:** câu ghép từ mã của server (mã app, mã vai) hiện tên app và nhãn vai. Phép kiểm: không câu
+  thông báo nào chứa mã vai.
 - **Bảng theo `tables-basic`:** một người là avatar + tên trên tên tài khoản; thao tác là menu ba chấm; ô chữ dài giữ một dòng, cắt
   bằng dấu "…", toàn bộ chữ nằm trong tooltip; dòng không bao giờ xuống hàng. Phép kiểm: mọi dòng cao bằng nhau; ô bị cắt có
   `title` chứa toàn bộ chữ.

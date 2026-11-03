@@ -188,6 +188,40 @@ export const RULES = [
       return !theme || getComputedStyle(document.documentElement).colorScheme === theme ? true : 'html color-scheme does not follow the theme';
     })()`,
   },
+  {
+    id: 'list-rows',
+    rule: 'a list that scrolls (a dropdown, a dialog list) never squeezes its rows: every row keeps its height, none overlaps the next',
+    check: `(() => {
+      for (const l of document.querySelectorAll('.list-group, .notif-scroll')) {
+        if (!l.getClientRects().length || l.scrollHeight <= l.clientHeight + 1) continue;
+        const rows = [...l.children].filter(r => r.getClientRects().length);
+        const bad = rows.find((r, i) => r.scrollHeight > r.clientHeight + 1 || (i > 0 && r.getBoundingClientRect().top < rows[i - 1].getBoundingClientRect().bottom - 1));
+        if (bad) return 'a squeezed or overlapping row: ' + bad.textContent.trim().slice(0, 40);
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'folded-centre',
+    rule: 'the folded menu sets the badge and every icon on the rail centre line',
+    check: `(() => {
+      const html = document.documentElement;
+      if (!html.classList.contains('layout-menu-collapsed') || html.classList.contains('layout-menu-hover') || innerWidth < 1200) return true;
+      const m = document.getElementById('layout-menu').getBoundingClientRect(), c = (m.left + m.right) / 2;
+      const bad = [document.querySelector('#layout-menu .app-brand-logo'), ...document.querySelectorAll('#layout-menu .menu-icon')]
+        .find(e => e && Math.abs((e.getBoundingClientRect().left + e.getBoundingClientRect().right) / 2 - c) > 2);
+      return bad ? 'off the rail centre: ' + (bad.className || bad.tagName) : true;
+    })()`,
+  },
+  {
+    id: 'real-actions',
+    rule: 'no fake button: a button-styled link never points at the page already open',
+    check: `(() => {
+      const fake = [...document.querySelectorAll('a.btn[href], a.list-group-item[href]')].find(a => a.getClientRects().length &&
+        !a.closest('#layout-menu') && new URL(a.href, location.href).pathname === location.pathname && !a.getAttribute('href').startsWith('#'));
+      return fake ? 'a button to the page already open: ' + fake.textContent.trim().slice(0, 30) : true;
+    })()`,
+  },
 ];
 
 /** Rules on an open dialog. */

@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 
@@ -70,6 +70,12 @@ lang: vi
   nào của kiểu cũ còn sót sau khi port. Công tắc luôn cách chữ một khoảng. [kit-controls] [switch-gap]
 - **Trang đăng nhập giữ dáng riêng nhưng dùng font và cỡ chữ đọc được của app:** font token, nhãn và ô nhập 16 px (ô dưới 16 px
   làm điện thoại tự phóng to trang khi chạm vào), chữ ghi chú từ 14 px.
+- **Danh sách cuộn không bao giờ ép co các dòng** (dropdown, danh sách trong hộp thoại): dòng của một cột flex có giới hạn chiều
+  cao giữ nguyên chiều cao (`flex-shrink: 0`), không dòng nào đè dòng sau; danh sách chừa rãnh cho thanh cuộn. [list-rows]
+- **Menu thu gọn canh giữa:** huy hiệu và mọi icon nằm trên đường giữa của rail; chữ thương hiệu không chừa chỗ phía sau.
+  [folded-centre]
+- **Không có nút giả:** nút nào cũng làm được việc - một liên kết dáng nút không bao giờ trỏ về trang đang mở; mục nào sẽ trỏ
+  như vậy (thông báo về trang chủ) thì nhận đúng việc nó muốn (mở app đó, lật thẻ đó) hoặc không có nút. [real-actions]
 - **Mọi bảng dữ liệu giữ chức năng kéo đổi độ rộng cột:** mỗi ô tiêu đề có tay kéo `col-resize` nhìn thấy được ở kiểu xem danh
   sách; độ rộng là cài đặt của người đó. Port thì mang theo cả CSS của tay kéo. [resize]
 - **Mọi biểu đồ hiện đủ số,** như một báo cáo: số trên mỗi cột, nhãn số trên đường (mọi điểm khi đủ chỗ, không thì điểm cao nhất,

@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 5
+version: 6
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -78,6 +78,13 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   of a former kind survives a port. A switch keeps a gap to its label. [kit-controls] [switch-gap]
 - **The sign-in page keeps its own look but the app's font and reading size:** the token font, labels and fields 16 px (a
   field under 16 px makes a phone zoom the page on focus), notes 14 px or more.
+- **A scrolling list never squeezes its rows** (a dropdown, a dialog list): the rows of a height-limited flex column keep
+  their height (`flex-shrink: 0`), none overlaps the next; the list keeps a scrollbar gutter. [list-rows]
+- **The folded menu is centred:** the badge and every icon on the rail's centre line; the brand word leaves no room behind.
+  [folded-centre]
+- **No fake button:** every button does something - a link styled as a button never points at the page already open; an
+  item that would (a notification about the home page) gets the action it means (open that app, turn that card) or none.
+  [real-actions]
 - **Every data table keeps column resize:** a visible `col-resize` handle per header cell in list view; the widths are a UI
   setting of the person. A port carries the handles' CSS too. [resize]
 - **Every chart shows its numbers,** as a report does: a value on each bar, data labels on a line (every point when they fit,
