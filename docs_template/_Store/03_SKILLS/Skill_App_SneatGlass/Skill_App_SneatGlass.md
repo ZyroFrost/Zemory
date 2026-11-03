@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 7
+version: 8
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -48,8 +48,10 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   link (`aria-current="page"`); a crumb that would open the page on screen is plain text. [crumbs]
 - **The greeting stands at the right,** after the search and just before the buttons (language · theme · glass · apps ·
   bell · account). [crumbs]
-- **Under the family name in the menu brand,** a small line names the area on screen: the app in an app of the family
-  (Dashboard), the group or page in the hub (Administration · Overview); it follows the page. [brand-area]
+- **The menu brand reads SasinONE with ONE in the shared Sasin red,** in both themes. [brand-one-red]
+- **Under SasinONE,** the small line names only the app currently open: Dashboard in Dashboard, Hub in SasinONE.
+  It stays fixed while moving between that app's pages; the breadcrumb names the current page. [brand-area]
+- **A menu group label clears its short divider line** by at least 8 px while the menu is open. [menu-header-gap]
 
 ## 3. Dialogs — exactly S / M / L (`app-base` F2 in this kind)
 

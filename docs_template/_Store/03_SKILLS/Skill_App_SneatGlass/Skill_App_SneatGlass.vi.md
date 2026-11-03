@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 
@@ -40,8 +40,10 @@ lang: vi
   (Quản trị) - rồi tới trang. Mọi nấc trừ nấc cuối đều bấm về trang của nó; nấc cuối là trang đang mở, không phải liên kết
   (`aria-current="page"`); nấc nào sẽ mở đúng trang đang hiện thì chỉ là chữ. [crumbs]
 - **Lời chào đứng bên phải,** sau ô tìm và ngay trước dãy nút (ngôn ngữ · theme · kính · app · chuông · tài khoản). [crumbs]
-- **Dưới tên hệ trong khối thương hiệu của menu,** một dòng nhỏ ghi vùng đang hiện: tên app ở một app của hệ (Dashboard), nhóm
-  hoặc trang ở hub (Quản trị · Tổng quan); dòng này đổi theo trang. [brand-area]
+- **Tên hệ trên menu là SasinONE với ONE màu đỏ Sasin dùng chung,** trong cả hai theme. [brand-one-red]
+- **Dưới SasinONE,** dòng nhỏ chỉ ghi tên app đang mở: Dashboard ở Dashboard, Trung tâm ở SasinONE.
+  Dòng này giữ nguyên khi chuyển trang trong app; đường dẫn trên thanh trên ghi tên trang. [brand-area]
+- **Chữ phân nhóm trong menu mở cách vạch ngang ngắn ít nhất 8 px.** [menu-header-gap]
 
 ## 3. Hộp thoại — đúng S / M / L (`app-base` F2 trong kiểu này)
 

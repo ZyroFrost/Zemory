@@ -257,12 +257,45 @@ export const RULES = [
   },
   {
     id: 'brand-area',
-    rule: 'under the family name in the menu brand, a small line names the area on screen (the app, or the group of the page)',
+    rule: 'under SasinONE, the small line names the open app and stays the same on every page of that app',
     check: `(() => {
-      const text = document.querySelector('#layout-menu .app-brand-text');
+      const menu = document.querySelector('#layout-menu'), text = menu?.querySelector('.app-brand-text');
       if (!text || !text.getClientRects().length) return true;
       const area = text.querySelector('.app-brand-area');
-      return area && area.textContent.trim() ? true : 'the brand has no area line under the family name';
+      const name = menu.dataset.appName?.trim();
+      return area && name && area.textContent.trim() === name ? true : 'the brand area must equal the fixed app name';
+    })()`,
+  },
+  {
+    id: 'brand-one-red',
+    rule: 'the ONE part of SasinONE is red in the menu brand, matching the shared Sasin colour token',
+    check: `(() => {
+      const brand = document.querySelector('#layout-menu .app-brand-name');
+      if (!brand || !brand.getClientRects().length) return true;
+      const one = brand.querySelector('.text-primary');
+      if (!one || one.textContent.trim() !== 'ONE' || brand.textContent.trim() !== 'SasinONE') return 'the menu brand does not split Sasin and ONE';
+      const probe = document.createElement('span');
+      probe.style.color = 'var(--g-sasin)'; document.body.append(probe);
+      const want = getComputedStyle(probe).color, got = getComputedStyle(one).color;
+      probe.remove();
+      const rgb = want.match(/\\d+/g)?.map(Number) || [];
+      return got === want && rgb[0] > rgb[1] * 2 && rgb[0] > rgb[2] * 2
+        ? true : 'ONE is not the shared red Sasin colour';
+    })()`,
+  },
+  {
+    id: 'menu-header-gap',
+    rule: 'a group label in the open menu has at least 8 px between the short divider line and the first letter',
+    check: `(() => {
+      for (const header of document.querySelectorAll('#layout-menu .menu-header')) {
+        const label = header.querySelector('.menu-header-text');
+        if (!label?.getClientRects().length || getComputedStyle(label).opacity === '0') continue;
+        const line = getComputedStyle(header, '::before');
+        if (line.content === 'none' || line.display === 'none') continue;
+        const end = header.getBoundingClientRect().left + (parseFloat(line.left) || 0) + (parseFloat(line.width) || 0);
+        if (label.getBoundingClientRect().left - end < 8) return 'group label touches the divider line';
+      }
+      return true;
     })()`,
   },
 ];
