@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 6
+version: 7
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -33,12 +33,23 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 
 ## 2. The frame stays put (`app-base` F21 in this kind)
 
-- From a tablet up the window never scrolls: the top bar stays where it is and only the area under it scrolls, so nothing slides
-  up behind the bar. [frame]
+- From a tablet up the window never scrolls. A page of several cards scrolls the page column under the glass top bar: the
+  bar stays where it is, lies over what passes under it, and nothing shows above it - cards slide under the bar, never get
+  cut at its lower edge. [frame]
 - A page whose content is one page card fills that area and scrolls INSIDE the card: the card's toolbar (row 2) and its table's
   header row stay pinned, as in the Glass shell. A frame inside the card body is never a scroll box of its own unless it pins
   something itself (a matrix whose first column pins sideways). [frame]
 - On a phone the window scrolls and the top bar is sticky.
+
+## 2b. The top bar and the brand — the same in every app of the family
+
+- **The bar starts with the crumbs:** the family first (SasinONE, the hub's home), then the app - or, in the hub, the group of
+  the page (Administration) - then the page. Every crumb but the last goes back to its page; the last is the page on screen, no
+  link (`aria-current="page"`); a crumb that would open the page on screen is plain text. [crumbs]
+- **The greeting stands at the right,** after the search and just before the buttons (language · theme · glass · apps ·
+  bell · account). [crumbs]
+- **Under the family name in the menu brand,** a small line names the area on screen: the app in an app of the family
+  (Dashboard), the group or page in the hub (Administration · Overview); it follows the page. [brand-area]
 
 ## 3. Dialogs — exactly S / M / L (`app-base` F2 in this kind)
 
@@ -96,6 +107,15 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   theme), so the forced dark mode of a phone browser leaves the person's theme alone. [color-scheme]
 - **The kit's icons:** ship only the icons the code names (a generated subset of the kit's icon CSS, checked by the build), not the
   whole set.
+- **Every figure card shows a percentage:** the change against the period before - WoW / MoM / QoQ by the range chosen, red
+  when it falls - or the share the figure holds (people who signed in of the open person accounts, the top app's share of
+  sign-ins); one second line may hold one more fact (agents apart from people). [kpi-pct]
+- **The pointer effects can be turned off:** Settings › Appearance switches the light spot, sheen, tilt and ripple off for the
+  person (UI setting `fx`, kept with their other UI settings; `html.fx-off`); the glass panels stay.
+- **A new build is announced:** the app reads the server's version with its health probe; a version other than the one the
+  tab loaded shows a banner with a reload button (unsaved changes asked about first), so no one keeps working on an old bundle.
+- **An account list shows the account kind** (person · agent) as its own column with its own filter, and the account editor
+  sets it; figures about people count people only.
 
 ## 6. Check
 

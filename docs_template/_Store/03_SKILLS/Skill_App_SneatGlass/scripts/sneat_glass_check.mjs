@@ -46,13 +46,20 @@ export const RULES = [
   },
   {
     id: 'frame',
-    rule: 'from a tablet up the window does not scroll: only the area under the top bar does, a page card scrolls inside with its toolbar and header row pinned',
+    rule: 'from a tablet up the window does not scroll: the page column scrolls under the glass top bar (nothing above it), a page card scrolls inside with its toolbar and header row pinned',
     check: `(() => {
       if (innerWidth < 768) return true;
       const page = document.scrollingElement;
       if (page.scrollHeight > innerHeight + 1) return 'the window scrolls (' + page.scrollHeight + ' > ' + innerHeight + ')';
-      const bar = document.querySelector('#layout-navbar'), area = document.querySelector('.content-wrapper');
-      if (bar && area && area.getBoundingClientRect().top < bar.getBoundingClientRect().bottom - 1) return 'content can scroll above the top bar';
+      const bar = document.querySelector('#layout-navbar'), col = document.querySelector('.layout-page');
+      if (bar && col) {
+        // The column starts where the bar starts (no gap above it) and the bar lies over what scrolls under it.
+        const b = bar.getBoundingClientRect();
+        if (Math.abs(col.getBoundingClientRect().top - b.top) > 1) return 'the page column does not start at the top bar: content shows above it';
+        const top = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+        if (!top || !top.closest('#layout-navbar')) return 'the top bar does not lie over the content';
+        if (!document.querySelector('.page-card.fill') && !/auto|scroll/.test(getComputedStyle(col).overflowY)) return 'a page of several cards: the page column is not the scroll box (cards are cut at the bar instead of passing under it)';
+      }
       for (const body of document.querySelectorAll('.page-card.fill > .page-card-body')) {
         // The body scrolls, or one frame inside it does (a matrix whose first column pins sideways).
         const scrolls = e => /auto|scroll/.test(getComputedStyle(e).overflowY);
@@ -220,6 +227,42 @@ export const RULES = [
       const fake = [...document.querySelectorAll('a.btn[href], a.list-group-item[href]')].find(a => a.getClientRects().length &&
         !a.closest('#layout-menu') && new URL(a.href, location.href).pathname === location.pathname && !a.getAttribute('href').startsWith('#'));
       return fake ? 'a button to the page already open: ' + fake.textContent.trim().slice(0, 30) : true;
+    })()`,
+  },
+  {
+    id: 'kpi-pct',
+    rule: 'every figure card shows a percentage: the change against the period before (WoW / MoM / QoQ) or the share it holds',
+    check: `(() => {
+      const bare = [...document.querySelectorAll('.kpi-card')].find(c => c.getClientRects().length && !c.textContent.includes('%'));
+      return bare ? 'a figure card with no percentage: ' + bare.textContent.trim().slice(0, 30) : true;
+    })()`,
+  },
+  {
+    id: 'crumbs',
+    rule: 'the top bar starts with the crumbs - the family (SasinONE) first, then the app or group, then the page; every crumb but the last goes back to its page, the last is the page on screen and no link',
+    check: `(() => {
+      if (innerWidth < 768) return true;
+      const items = [...document.querySelectorAll('#layout-navbar .breadcrumb .breadcrumb-item')];
+      if (items.length < 2) return 'no crumbs in the top bar';
+      const last = items.at(-1);
+      if (last.querySelector('a') || last.getAttribute('aria-current') !== 'page') return 'the last crumb is not the page on screen (a link, or no aria-current)';
+      if (location.pathname !== '/' && !items[0].querySelector('a')) return 'the first crumb (the family) does not go back to it';
+      const self = items.slice(0, -1).find(i => { const a = i.querySelector('a'); return a && new URL(a.href, location.href).pathname === location.pathname; });
+      if (self) return 'a crumb links to the page already open: ' + self.textContent.trim();
+      const hello = document.querySelector('.navbar-hello'), search = document.querySelector('.navbar-search');
+      if (hello && search && hello.getClientRects().length && hello.getBoundingClientRect().left < search.getBoundingClientRect().right - 1)
+        return 'the greeting stands left of the search: it belongs at the right, before the buttons';
+      return true;
+    })()`,
+  },
+  {
+    id: 'brand-area',
+    rule: 'under the family name in the menu brand, a small line names the area on screen (the app, or the group of the page)',
+    check: `(() => {
+      const text = document.querySelector('#layout-menu .app-brand-text');
+      if (!text || !text.getClientRects().length) return true;
+      const area = text.querySelector('.app-brand-area');
+      return area && area.textContent.trim() ? true : 'the brand has no area line under the family name';
     })()`,
   },
 ];

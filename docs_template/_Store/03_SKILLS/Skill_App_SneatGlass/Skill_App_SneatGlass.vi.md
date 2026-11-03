@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 
@@ -26,12 +26,22 @@ lang: vi
 
 ## 2. Khung đứng yên (`app-base` F21 trong kiểu này)
 
-- Từ khổ máy tính bảng trở lên, cửa sổ không bao giờ cuộn: thanh trên đứng yên, chỉ vùng dưới nó cuộn, nên không có gì trượt lên
-  sau thanh trên. [frame]
+- Từ khổ máy tính bảng trở lên, cửa sổ không bao giờ cuộn. Trang có nhiều thẻ thì cột trang cuộn dưới thanh trên bằng kính:
+  thanh đứng yên, nằm đè lên thứ trượt bên dưới, phía trên thanh không hiện gì - các thẻ trượt xuống dưới thanh, không bao giờ bị
+  cắt ở mép dưới của thanh. [frame]
 - Trang có nội dung là một thẻ trang thì thẻ lấp đầy vùng đó và cuộn BÊN TRONG thẻ: thanh công cụ của thẻ (hàng 2) và hàng tiêu
   đề bảng luôn ghim, như khung Glass. Khung con trong thân thẻ không làm ô cuộn riêng, trừ khi chính nó ghim thứ gì (ma trận ghim
   cột đầu theo chiều ngang). [frame]
 - Trên điện thoại, cửa sổ cuộn và thanh trên dính (sticky).
+
+## 2b. Thanh trên và thương hiệu — giống nhau ở mọi app của hệ
+
+- **Thanh mở đầu bằng đường dẫn:** tên hệ trước (SasinONE, trang chủ của hub), rồi tới app - hoặc, trong hub, nhóm của trang
+  (Quản trị) - rồi tới trang. Mọi nấc trừ nấc cuối đều bấm về trang của nó; nấc cuối là trang đang mở, không phải liên kết
+  (`aria-current="page"`); nấc nào sẽ mở đúng trang đang hiện thì chỉ là chữ. [crumbs]
+- **Lời chào đứng bên phải,** sau ô tìm và ngay trước dãy nút (ngôn ngữ · theme · kính · app · chuông · tài khoản). [crumbs]
+- **Dưới tên hệ trong khối thương hiệu của menu,** một dòng nhỏ ghi vùng đang hiện: tên app ở một app của hệ (Dashboard), nhóm
+  hoặc trang ở hub (Quản trị · Tổng quan); dòng này đổi theo trang. [brand-area]
 
 ## 3. Hộp thoại — đúng S / M / L (`app-base` F2 trong kiểu này)
 
@@ -86,6 +96,15 @@ lang: vi
 - **Trang khai colour scheme của nó** (`<meta name="color-scheme" content="light dark">`, `html { color-scheme }` = theme), để
   chế độ tối ép buộc của trình duyệt điện thoại không đè lên theme của người dùng. [color-scheme]
 - **Icon của bộ:** chỉ gửi những icon code gọi tới (một bản con sinh ra từ CSS icon của bộ, build tự kiểm), không gửi cả bộ.
+- **Mọi thẻ số liệu hiện một tỉ lệ %:** mức đổi so với kỳ trước - WoW / MoM / QoQ theo khoảng thời gian đang chọn, màu đỏ khi
+  giảm - hoặc tỉ trọng con số đó chiếm (số người đã đăng nhập trên số tài khoản người đang mở, phần đăng nhập của app dẫn đầu);
+  thêm được một dòng thứ hai cho một ý nữa (agent tách riêng khỏi người). [kpi-pct]
+- **Tắt được hiệu ứng theo chuột:** Cài đặt › Giao diện tắt đốm sáng, ánh lướt, nghiêng và gợn cho người đó (cài đặt giao diện
+  `fx`, lưu cùng các cài đặt giao diện khác; `html.fx-off`); các tấm kính vẫn giữ.
+- **Báo khi có bản build mới:** app đọc phiên bản của server qua lần dò health; phiên bản khác với bản mà tab đã nạp thì hiện
+  thanh báo kèm nút tải lại (có thay đổi chưa lưu thì hỏi trước), để không ai làm việc tiếp trên bản cũ.
+- **Danh sách tài khoản hiện loại tài khoản** (người · agent) thành một cột riêng có bộ lọc riêng, hộp sửa tài khoản đặt được
+  loại; số liệu về người chỉ đếm người.
 
 ## 6. Kiểm
 
