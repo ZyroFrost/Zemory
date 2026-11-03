@@ -1,24 +1,22 @@
 ---
 id: Skill_App_Sneat
 name: app-sneat
-version: 1
+version: 2
 type: process
 checked: [Skill_App_Glass, Skill_App_Base, Design_172_Design]
-description: The Sneat kind of an app surface - the Sneat admin layout (menu, navbar, cards, tables, dialogs) wearing the Glass look, inside one shell shared by every app of a family. Use when a repo declares {"style": "Sneat"} in frontend/config/ui.json, or when building, porting or fixing a Sneat surface, its template, its shell or its menus. Vietnamese triggers - "kiểu sneat", "khung sneat", "mẫu sneat", "template sneat", "menu theo app", "trang chủ launcher".
+description: The Sneat kind of an app surface - the layout of the Sneat admin kit as the kit has it (menu, navbar, cards, tables, dialogs), inside one shell shared by every app of a family. Use when a repo declares {"style": "Sneat"} or {"style": "SneatGlass"} in frontend/config/ui.json, or when building, porting or fixing a Sneat surface, its template, its shell or its menus. The Sneat layout with the Glass look is app-sneat-glass. Vietnamese triggers - "kiểu sneat", "khung sneat", "mẫu sneat", "template sneat", "menu theo app", "trang chủ launcher".
 ---
 
 # app-sneat — the Sneat kind of an app surface
 
-> A KIND skill beside `app-glass`: `app-base` holds what every app follows; this skill holds what makes a surface Sneat. The
-> layout is Sneat's; the look (the `--g-` tokens, the glass panels and every `FX:` effect) is the Glass kind's, taken from the
-> approved Glass template, never copied here. Each rule below came from a correction of the requester and carries its check.
+> A KIND skill: `app-base` holds what every app follows; this skill holds the layout of the Sneat kit as the kit has it. A kind
+> built on it adds its own look and rules (`app-sneat-glass`: the Sneat layout with the Glass look). Each rule below came from a
+> correction of the requester and carries its check.
 
 ## 0. Choosing the kind
 
-- A repo declares `{"style": "Sneat"}` in `frontend/config/ui.json`. The Glass look is part of the kind: a Sneat surface without
-  the glass tokens and effects is not finished.
-- A rule of this skill that contradicts `app-glass` wins on a Sneat surface (the page filter box of §3); the Glass rules it does
-  not repeat still hold for the look.
+- A repo declares `{"style": "Sneat"}` (the kit's own look) or `{"style": "SneatGlass"}` (this layout with the Glass look,
+  skill `app-sneat-glass`) in `frontend/config/ui.json`. Every rule here holds for both.
 
 ## 1. The source of the kind
 
@@ -63,14 +61,17 @@ app's pages.
 - **The header search** is a dialog laid out like Sneat Pro's: a flat input with `[esc]` and the close button in the search row; empty,
   it shows up to four suggestion groups of up to four items in two columns (pages · administration · commands · apps); typing turns it
   into results grouped by kind, arrows and Enter move and run. Never one long flat list. Check: empty search = ≤ 4 groups × ≤ 4 items.
-- **A long list carries its own small filter box** beside the filter button in its card header (people, logs, sessions, runs): the
-  header search jumps, this box filters the rows as one types. Short pages have none. Check: typing in the box hides the rows that do
-  not match.
+- **A page's own filter box** sits beside the filter button in its card header: the header search jumps, the box filters the rows as
+  one types. Check: typing in the box hides the rows that do not match. (`app-sneat-glass` §1: every page card carries the box,
+  the filter button and the view switch, one design.)
 
 ## 4. Content
 
-- **A card or a cell holds one fact per line.** A list of things is never pushed into a card line or a table cell: show the count
-  ("2 dashboards") as a link that opens the table of those things. Check: no card line or cell holds more than one badge or name.
+- **A card is short information; a card line or a table cell holds ONE fact** (user, twice: "only a count goes on a card"). Any
+  information that is a list - the roles of a person, the boards of a department, the members of a group - is never listed on a
+  card or in a cell, in any view (table rows that become cards included): show its COUNT ("4 apps", "2 dashboards") as a link that
+  opens the table of those things. A card that grows tall with a list breaks the grid. Check: no card line or cell holds a list
+  (a separator such as " · ", or more than one badge or name).
 - **Tables follow `tables-basic`:** a person is avatar + name over the username; actions are the dots menu; a long text cell stays on one
   line, cut with an ellipsis, the whole text in its tooltip; rows never wrap. Check: every row has the same height; a clipped cell's
   `title` holds the whole text.
@@ -79,16 +80,14 @@ app's pages.
 
 ## 5. Controls
 
-- **A select opens a glass menu,** never the browser's own list: it springs in, is opaque, marks the chosen item, and keeps the
-  keyboard (arrows, Enter, Escape). Choosing fires `change`. Check: a click on a select opens the glass menu and no native picker.
-- **Effect elements carry no browser decoration:** a sliding pill made of a list item has `list-style: none`; a toast's close button
-  sits in its header row; the search's close button sits in the search row. Check: the pill computes `list-style-type: none`; the close
-  buttons lie inside their boxes.
+- The kit's own controls (Bootstrap form controls, dropdowns, modals, pill tabs) built on its markup; a kind on top may replace
+  their look (`app-sneat-glass` §5: the glass select menu), never their markup.
 
 ## 6. Check
 
-- The repo's browser test opens every page of the working copy at 1440 and 390 in both themes: no JS error, no sideways scroll, and
-  the checks named above. A rule added to this skill adds its check to that test in the same change.
+- The repo's browser test opens every page at 1440 and 390 in both themes: no JS error, no sideways scroll, and the checks named
+  above. A rule added to this skill adds its check to that test in the same change. A `SneatGlass` repo runs them through
+  `scripts/sneat_glass_check.mjs` (`app-sneat-glass` §6).
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved on its template before it is ported · kiểu được duyệt trên template trước khi chép sang app

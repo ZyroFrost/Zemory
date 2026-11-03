@@ -3,7 +3,7 @@
   "prompt": {
     "kind": "app-sneat",
     "re": "\\b(sneat|kieu sneat|khung sneat|mau sneat|template sneat|menu theo app|launcher|chuyen app|thanh tren chung)\\b",
-    "text": "[zemory] Sneat surface: follow skill app-sneat - the kit's own markup, the Glass look, one shared top bar + the open app's menu + a launcher home, one fact per card line, glass menus for selects."
+    "text": "[zemory] Sneat surface: follow skill app-sneat - the kit's own markup, one shared top bar + the open app's menu + a launcher home, a card or cell holds one fact (a list shows as a count that opens its table); with the Glass look also app-sneat-glass."
   },
   "block": [
     {
