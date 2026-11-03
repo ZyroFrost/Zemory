@@ -67,7 +67,7 @@ app's pages.
 
 ## 4. Content
 
-- **A card is short information; a card line or a table cell holds ONE fact** (user, twice: "only a count goes on a card"). Any
+- **A card is short information; a card line or a table cell holds ONE fact**. Any
   information that is a list - the roles of a person, the boards of a department, the members of a group - is never listed on a
   card or in a cell, in any view (table rows that become cards included): show its COUNT ("4 apps", "2 dashboards") as a link that
   opens the table of those things. A card that grows tall with a list breaks the grid. Check: no card line or cell holds a list

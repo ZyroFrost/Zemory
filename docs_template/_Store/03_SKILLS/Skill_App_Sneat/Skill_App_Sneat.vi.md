@@ -60,9 +60,8 @@ từng app.
 
 ## 4. Nội dung
 
-- **Thẻ là thông tin ngắn; một dòng thẻ hay một ô bảng chỉ chứa MỘT thông tin** (người dùng dặn hai lần: "chỉ được đếm số lên
-  card"). Mọi thông tin dạng danh sách - vai của một người, Dashboard của một phòng, thành viên của một nhóm - không bao giờ liệt kê
-  trên thẻ hay trong ô, ở mọi kiểu xem (kể cả dòng bảng biến thành thẻ): hiện SỐ ĐẾM ("4 app", "2 Dashboard") thành liên kết mở bảng
+- **Thẻ là thông tin ngắn; một dòng thẻ hay một ô bảng chỉ chứa MỘT thông tin**. Mọi thông tin dạng danh sách - vai của
+  một người, Dashboard của một phòng, thành viên của một nhóm - không bao giờ liệt kê trên thẻ hay trong ô, ở mọi kiểu xem (kể cả dòng bảng biến thành thẻ): hiện SỐ ĐẾM ("4 app", "2 Dashboard") thành liên kết mở bảng
   các thứ đó. Thẻ dài ra vì một danh sách làm vỡ lưới. Phép kiểm: không dòng thẻ hay ô nào chứa một danh sách (dấu phân cách như
   " · ", hoặc quá một nhãn hay một tên).
 - **Bảng theo `tables-basic`:** một người là avatar + tên trên tên tài khoản; thao tác là menu ba chấm; ô chữ dài giữ một dòng, cắt
