@@ -1,5 +1,5 @@
 ---
-version: 20
+version: 21
 lang: vi
 ---
 
@@ -37,8 +37,8 @@ chỉ gỡ ở hệ mới (repo phòng + lịch VM), thứ ở hệ cũ để ng
 
 | | `direction: in` | `direction: out` |
 |---|---|---|
-| Làm gì | văn bản phòng soạn → chuẩn hoá → `DataInput` → DW nạp | đọc DW → giao file/mail |
-| Đọc từ | file người nộp (SharePoint `DataInput/<PHÒNG>/<Việc>/`) | **bảng DW** (ưu tiên bảng gom/view dựng sẵn, vd `Agg_SaleDaily`) — không nguồn hệ cũ (`IPOS_Stage`, Fast…), không app nội bộ, không tự cộng lại số DW đã gom; thiếu bảng/cột ⇒ đặt DW dựng |
+| Làm gì | văn bản phòng soạn → chuẩn hoá → `DataInput/<PHÒNG>/Processed/` → DW nạp | đọc DW → giao file/mail |
+| Đọc từ | file người nộp (SharePoint `DataInput/<PHÒNG>/Raw/<Việc>/`) | **bảng DW** (ưu tiên bảng gom/view dựng sẵn, vd `Agg_SaleDaily`) — không nguồn hệ cũ (`IPOS_Stage`, Fast…), không app nội bộ, không tự cộng lại số DW đã gom; thiếu bảng/cột ⇒ đặt DW dựng |
 | Khai | `input_url` | `output_url` (`DataReport/<PHÒNG>/<Việc>/`) · không `input_url` nếu số gốc toàn từ hệ thống |
 | Cổng | **`INPUT_CHECK`** trước mọi chặng ghi (§1 mục 6) | **`OUTPUT_CHECK`** trước khi giao (§1 mục 7) |
 | File tham chiếu | `data/<Task>/01_raw/reference/` | `data/<Task>/03_output/reference/` |
@@ -79,6 +79,14 @@ chỉ gỡ ở hệ mới (repo phòng + lịch VM), thứ ở hệ cũ để ng
 - **Task chỉ GỬI LẠI file phòng khác làm** (MỘT BÁO CÁO MỘT NƠI LÀM — vd XYZ gửi mail đúng file GC do ABC làm): `output_url` = thư mục `DataReport/<PHÒNG LÀM FILE>/…` (nơi file thật nằm, không phải thư mục của mình) · `delivers_to: mail` · task KHÔNG tạo bản thứ hai, KHÔNG đẩy gì vào thư mục phòng khác. `move_outputs_to_vm.py` tự nhận ca này (`delivers_to: mail` hoặc `output_url` ngoài thư mục phòng mình) ⇒ `03_output` sót chỉ lên VM, không SharePoint.
 - 🔴 **Đầu vào chỉ nộp ở SharePoint `DataInput`** — KHÔNG thả file vào `01_raw` (máy hay VM) rồi mong task đọc. `01_raw` không phải
   nguồn: lịch sử "lượt nào đọc số nào" = lịch sử phiên bản của file trên SharePoint.
+- **Hai lớp của `DataInput`:** mỗi thư mục `<PHÒNG>/` chỉ chứa `_Template/` (khuôn, tuỳ chọn) · `Raw/<nguồn>/` · `Processed/` —
+  không file nào nằm thẳng ở `<PHÒNG>/`.
+  - `Raw/<nguồn>/` = văn bản gốc người nộp, hoặc bản chép nguyên từ nguồn (vd `Raw/Turnover`). DW không bao giờ nạp lớp này.
+  - `Processed/` = file đã chuẩn hoá cho DW nạp, và chỉ lớp này được nạp: `<PHÒNG>_<TaskName>[_<StoreName2>].xlsx`, dòng 1 = tên cột
+    DW. Form nhập liệu có cột do DW thiết kế cũng nằm ở đây (vd `Processed/InventoryCount/`).
+  - Task `direction: in` đọc `Raw/<nguồn>/`, ghi ra `Processed/`. `DataReport/<PHÒNG>/<Việc>/` giữ nguyên.
+  - Dời file giữa các thư mục = move trong cùng thư viện (giữ item id ⇒ link `Doc.aspx?sourcedoc=` và quyền riêng của file không
+    đổi), không xoá rồi tạo lại.
 
 ## 0. Hình dung trước khi làm
 
@@ -92,7 +100,7 @@ máy làm việc  ──Syncthing──▶  VM  <vm_work_dir>\<Repo>\      CHỞ
 
 | Thứ | Nằm ở | Ai xem |
 |---|---|---|
-| File người dùng nộp vào (đầu vào) | SharePoint `DataLake/DataInput/<PHÒNG>/…` | task đọc thẳng |
+| File người dùng nộp vào (đầu vào) | SharePoint `DataLake/DataInput/<PHÒNG>/…` — bản gốc ở `Raw/<nguồn>/`, file chuẩn hoá và form ở `Processed/` | task đọc thẳng |
 | Kết quả cuối (deliverable) | SharePoint (`sharepoint_site` trong giá trị vùng)`/<PHÒNG>/…` — task tự đẩy (PUT ghi đè, giữ phiên bản) | người nhận mở ở đó |
 | Dữ liệu làm việc của task (log · trạng thái · bản chép kết quả) | VM `<vm_run_dir>\<Repo>\data\<Task>\…` | sao lưu VM; tra khi cần |
 | `data\<Task>\01_raw` · `03_output` trên máy làm việc | **ĐÚNG 1 file mỗi thư mục: `_SharePoint.url`** (cộng `reference/` nếu có — VM giữ bản sao) — `01_raw` trỏ `DataInput`, `03_output` trỏ `DataReport`; `02_processing` trống. Cổng: `zemory conform` › `vm-task-local-data` | bấm shortcut ra nguồn / kết quả thật |

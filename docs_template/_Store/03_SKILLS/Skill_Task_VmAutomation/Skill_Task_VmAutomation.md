@@ -1,7 +1,7 @@
 ---
 id: Skill_Task_VmAutomation
 name: task-vm-automation
-version: 20
+version: 21
 type: process
 aka: vm-automation
 description: Put a periodic task (Daily / Weekly / Monthly) on the VM to RUN BY ITSELF - the vm_deploy.json manifest, the schedule, the Log_JobRun run log, results to the region's SharePoint, the _SharePoint.url shortcut. Use whenever a task goes onto the VM, is automated or scheduled, or its VM run is checked. Vietnamese triggers - "đưa task lên VM", "tự động hoá task", "đặt lịch trên VM", "task chạy trên VM chưa".
@@ -44,8 +44,8 @@ department repo + the VM schedule), what is on the old system stays as it is. A 
 
 | | `direction: in` | `direction: out` |
 |---|---|---|
-| What it does | a document the department writes → normalised → `DataInput` → the DW loads it | reads the DW → hands out a file/mail |
-| Reads from | the submitter's file (SharePoint `DataInput/<DEPT>/<Work>/`) | **DW tables** (prefer prebuilt aggregate tables/views, e.g. `Agg_SaleDaily`) — no old-system source (`IPOS_Stage`, Fast…), no internal app, never re-adding figures the DW already aggregated; a table/column missing ⇒ order it from the DW |
+| What it does | a document the department writes → normalised → `DataInput/<DEPT>/Processed/` → the DW loads it | reads the DW → hands out a file/mail |
+| Reads from | the submitter's file (SharePoint `DataInput/<DEPT>/Raw/<Work>/`) | **DW tables** (prefer prebuilt aggregate tables/views, e.g. `Agg_SaleDaily`) — no old-system source (`IPOS_Stage`, Fast…), no internal app, never re-adding figures the DW already aggregated; a table/column missing ⇒ order it from the DW |
 | Declares | `input_url` | `output_url` (`DataReport/<DEPT>/<Work>/`) · no `input_url` when the original figures all come from systems |
 | Gate | **`INPUT_CHECK`** before every writing stage (§1 item 6) | **`OUTPUT_CHECK`** before handing out (§1 item 7) |
 | Reference files | `data/<Task>/01_raw/reference/` | `data/<Task>/03_output/reference/` |
@@ -97,6 +97,15 @@ department repo + the VM schedule), what is on the old system stays as it is. A 
   only goes to the VM, not SharePoint.
 - 🔴 **Inputs are submitted only at SharePoint `DataInput`** — NEVER drop a file into `01_raw` (machine or VM) and hope the task reads it. `01_raw` is not a
   source: the history of "which run read which figures" = the version history of the file on SharePoint.
+- **The two layers of `DataInput`:** each `<DEPT>/` folder holds only `_Template/` (moulds, optional) · `Raw/<source>/` · `Processed/` —
+  no file sits straight in `<DEPT>/`.
+  - `Raw/<source>/` = the original document as a person hands it in, or a copy taken as is from the source (e.g. `Raw/Turnover`).
+    The DW never loads this layer.
+  - `Processed/` = the normalised files the DW loads, and only these: `<DEPT>_<TaskName>[_<StoreName2>].xlsx`, row 1 = the DW column
+    names. Data-entry forms whose columns the DW designed sit here too (e.g. `Processed/InventoryCount/`).
+  - A `direction: in` task reads `Raw/<source>/` and writes `Processed/`. `DataReport/<DEPT>/<Work>/` does not change.
+  - Moving a file between folders = a move inside the same library (keeps the item id ⇒ the `Doc.aspx?sourcedoc=` link and the
+    file's own grants stay), never delete-and-recreate.
 
 ## 0. Picture it before doing it
 
@@ -110,7 +119,7 @@ working machine  ──Syncthing──▶  VM  <vm_work_dir>\<Repo>\      CARRIE
 
 | Thing | Sits in | Who looks |
 |---|---|---|
-| Files submitted (input) | SharePoint `DataLake/DataInput/<DEPT>/…` | the task reads them directly |
+| Files submitted (input) | SharePoint `DataLake/DataInput/<DEPT>/…` — originals in `Raw/<source>/`, normalised files and forms in `Processed/` | the task reads them directly |
 | The final result (deliverable) | SharePoint (`sharepoint_site` in the region values)`/<DEPT>/…` — the task pushes it itself (PUT overwrite, versions kept) | the recipient opens it there |
 | The task's working data (logs · state · copies of results) | VM `<vm_run_dir>\<Repo>\data\<Task>\…` | VM backup; looked up when needed |
 | `data\<Task>\01_raw` · `03_output` on the working machine | **EXACTLY 1 file per folder: `_SharePoint.url`** (plus `reference/` when any — the VM keeps a copy) — `01_raw` points to `DataInput`, `03_output` to `DataReport`; `02_processing` empty. Gate: `zemory conform` › `vm-task-local-data` | click the shortcut to reach the real source / result |
