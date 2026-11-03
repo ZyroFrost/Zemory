@@ -40,6 +40,9 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const PORT = Number(process.env.ZEMORY_UI_PORT || 4444);
+// How long one question to the daemon may take. A test widens it: under a loaded gate (measured 2026-11-03: two workers and
+// an embed in the container) a stub answering at once still missed 1.5 s, and "no daemon" was read instead of "idle Docker".
+const ASK_MS = Number(process.env.ZEMORY_PREFLIGHT_ASK_MS) || 1500;
 
 async function ask(path) {
   // AbortController + an UNREF'd timer, not AbortSignal.timeout(): the latter leaves a live
@@ -47,7 +50,7 @@ async function ask(path) {
   // ("Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)", exit 127) — which would have made
   // the very check that guards the gate the thing that breaks it.
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), 1500);
+  const timer = setTimeout(() => ac.abort(), ASK_MS);
   timer.unref?.();
   try {
     const res = await fetch(`http://127.0.0.1:${PORT}${path}`, { signal: ac.signal });
