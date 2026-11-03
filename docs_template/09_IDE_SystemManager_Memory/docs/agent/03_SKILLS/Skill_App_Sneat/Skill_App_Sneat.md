@@ -5,7 +5,7 @@ version: 1
 type: process
 checked: [Skill_App_Glass, Skill_App_Base, Design_172_Design]
 description: The Sneat kind of an app surface - the Sneat admin layout (menu, navbar, cards, tables, dialogs) wearing the Glass look, inside one shell shared by every app of a family. Use when a repo declares {"style": "Sneat"} in frontend/config/ui.json, or when building, porting or fixing a Sneat surface, its template, its shell or its menus. Vietnamese triggers - "kiểu sneat", "khung sneat", "mẫu sneat", "template sneat", "menu theo app", "trang chủ launcher".
-from: _Store/03_SKILLS/Skill_App_Sneat @v1 #5fdb06914438
+from: _Store/03_SKILLS/Skill_App_Sneat @v1 #8ed96157ba16
 ---
 
 # app-sneat — the Sneat kind of an app surface
