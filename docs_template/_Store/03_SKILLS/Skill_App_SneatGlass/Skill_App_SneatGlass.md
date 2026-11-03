@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 4
+version: 5
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -82,6 +82,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   setting of the person. A port carries the handles' CSS too. [resize]
 - **Every chart shows its numbers,** as a report does: a value on each bar, data labels on a line (every point when they fit,
   else the highest, the lowest and the last), the share of each donut part beside its value. [chart-labels]
+- **A touch screen changes the theme at once:** the theme-reveal circle (a view transition) runs only for a fine pointer;
+  on a coarse pointer the page repaints directly, since phone browsers can keep the old snapshot on screen while the
+  setting is saved. The phone's browser bar (`theme-color`) follows the theme.
 - **The page declares its colour scheme** (`<meta name="color-scheme" content="light dark">`, `html { color-scheme }` = the
   theme), so the forced dark mode of a phone browser leaves the person's theme alone. [color-scheme]
 - **The kit's icons:** ship only the icons the code names (a generated subset of the kit's icon CSS, checked by the build), not the

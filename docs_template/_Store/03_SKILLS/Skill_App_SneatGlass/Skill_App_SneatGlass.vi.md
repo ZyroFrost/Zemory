@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 
@@ -74,6 +74,9 @@ lang: vi
   sách; độ rộng là cài đặt của người đó. Port thì mang theo cả CSS của tay kéo. [resize]
 - **Mọi biểu đồ hiện đủ số,** như một báo cáo: số trên mỗi cột, nhãn số trên đường (mọi điểm khi đủ chỗ, không thì điểm cao nhất,
   thấp nhất và điểm cuối), tỉ lệ của từng phần donut cạnh giá trị. [chart-labels]
+- **Màn hình cảm ứng đổi theme ngay:** vòng tròn mở theme (view transition) chỉ chạy với chuột; với ngón tay, trang vẽ lại
+  thẳng, vì trình duyệt điện thoại có thể giữ ảnh chụp cũ trên màn hình trong khi cài đặt đã lưu. Thanh trình duyệt điện thoại
+  (`theme-color`) đổi theo theme.
 - **Trang khai colour scheme của nó** (`<meta name="color-scheme" content="light dark">`, `html { color-scheme }` = theme), để
   chế độ tối ép buộc của trình duyệt điện thoại không đè lên theme của người dùng. [color-scheme]
 - **Icon của bộ:** chỉ gửi những icon code gọi tới (một bản con sinh ra từ CSS icon của bộ, build tự kiểm), không gửi cả bộ.
