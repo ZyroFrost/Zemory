@@ -1,20 +1,18 @@
 ---
-version: 1
+version: 3
 lang: vi
 ---
 
 # app-sneat — kiểu Sneat của bề mặt app
 
-> Skill KIỂU, đứng cạnh `app-glass`: `app-base` giữ những gì mọi app phải theo; skill này giữ thứ làm nên bề mặt Sneat. Bố cục là
-> của Sneat; dáng (token `--g-`, bảng kính và mọi hiệu ứng `FX:`) là của kiểu Glass, lấy từ template Glass đã duyệt, không chép vào
-> đây. Mỗi luật dưới đây đến từ một lần người yêu cầu sửa và mang phép kiểm của nó.
+> Skill KIỂU: `app-base` giữ những gì mọi app phải theo; skill này giữ bố cục của bộ Sneat đúng như bộ có. Một kiểu dựng trên nó
+> thêm dáng và luật riêng (`app-sneat-glass`: bố cục Sneat mặc dáng Glass). Mỗi luật dưới đây đến từ một lần người yêu cầu sửa và
+> mang phép kiểm của nó.
 
 ## 0. Chọn kiểu
 
-- Repo khai `{"style": "Sneat"}` ở `frontend/config/ui.json`. Dáng Glass là một phần của kiểu: bề mặt Sneat thiếu token kính và
-  hiệu ứng là chưa xong.
-- Luật của skill này trái với `app-glass` thì luật này thắng trên bề mặt Sneat (ô lọc của trang ở §3); các luật Glass không nhắc
-  lại ở đây vẫn giữ cho phần dáng.
+- Repo khai `{"style": "Sneat"}` (dáng riêng của bộ) hoặc `{"style": "SneatGlass"}` (bố cục này mặc dáng Glass, skill
+  `app-sneat-glass`) ở `frontend/config/ui.json`. Mọi luật ở đây giữ cho cả hai.
 
 ## 1. Nguồn của kiểu
 
@@ -57,13 +55,21 @@ từng app.
 - **Ô tìm ở thanh trên** là hộp thoại bố cục như Sneat Pro: ô nhập phẳng, `[esc]` và nút đóng nằm trong hàng tìm; khi trống, hiện tối
   đa bốn nhóm gợi ý, mỗi nhóm tối đa bốn mục, chia hai cột (trang · quản trị · lệnh · app); gõ vào thì thành kết quả nhóm theo loại,
   mũi tên và Enter để chọn và chạy. Không bao giờ là một danh sách phẳng dài. Phép kiểm: ô trống = ≤ 4 nhóm × ≤ 4 mục.
-- **Danh sách dài có ô lọc nhỏ của riêng nó** cạnh nút bộ lọc ở đầu thẻ (người dùng, nhật ký, phiên, lần chạy): ô tìm ở thanh trên để
-  nhảy, ô này lọc dòng ngay khi gõ. Trang ngắn không có. Phép kiểm: gõ vào ô thì các dòng không khớp ẩn đi.
+- **Ô lọc của trang** nằm cạnh nút bộ lọc ở đầu thẻ: ô tìm ở thanh trên để nhảy, ô này lọc dòng ngay khi gõ. Phép kiểm: gõ vào ô thì
+  các dòng không khớp ẩn đi. (`app-sneat-glass` §1: mọi thẻ trang mang ô lọc, nút bộ lọc và nút kiểu xem, một kiểu dáng.)
 
 ## 4. Nội dung
 
-- **Một thẻ hay một ô chỉ chứa một thông tin mỗi dòng.** Không nhồi một danh sách vào một dòng thẻ hay một ô bảng: hiện số đếm
-  ("2 Dashboard") thành liên kết mở bảng các thứ đó. Phép kiểm: không dòng thẻ hay ô nào chứa quá một nhãn hay một tên.
+- **Thẻ là thông tin ngắn; một dòng thẻ hay một ô bảng chỉ chứa MỘT thông tin**. Mọi thông tin dạng danh sách - vai của
+  một người, Dashboard của một phòng, thành viên của một nhóm - không bao giờ liệt kê trên thẻ hay trong ô, ở mọi kiểu xem (kể cả dòng bảng biến thành thẻ): hiện SỐ ĐẾM ("4 app", "2 Dashboard") thành liên kết mở bảng
+  các thứ đó. Thẻ dài ra vì một danh sách làm vỡ lưới. Phép kiểm: không dòng thẻ hay ô nào chứa một danh sách (dấu phân cách như
+  " · ", hoặc quá một nhãn hay một tên).
+- **System-manager đứng đầu mọi danh sách app** (nút chuyển app, ma trận quyền, danh sách vai, bộ lọc app, các app dùng một máy
+  chủ), dù server trả về theo thứ tự nào. Phép kiểm: cột app đầu tiên và dòng vai đầu tiên là system-manager.
+- **Trạng thái tài khoản và việc đang trực tuyến là hai thông tin ở hai cột:** trạng thái nói tài khoản còn dùng hay không (đang
+  dùng · không đang dùng · đã khoá · chờ đổi mật khẩu); trực tuyến nói người đó có đang online không (có phiên vừa thấy trong vài
+  phút). Là người đang đăng nhập không bao giờ là một trạng thái. Phép kiểm: danh sách có đủ hai cột và không trạng thái nào là
+  "Bạn".
 - **Bảng theo `tables-basic`:** một người là avatar + tên trên tên tài khoản; thao tác là menu ba chấm; ô chữ dài giữ một dòng, cắt
   bằng dấu "…", toàn bộ chữ nằm trong tooltip; dòng không bao giờ xuống hàng. Phép kiểm: mọi dòng cao bằng nhau; ô bị cắt có
   `title` chứa toàn bộ chữ.
@@ -72,16 +78,14 @@ từng app.
 
 ## 5. Điều khiển
 
-- **Ô chọn mở menu kính,** không bao giờ mở danh sách của trình duyệt: menu bật ra, đặc, đánh dấu mục đang chọn, giữ được bàn phím
-  (mũi tên, Enter, Escape). Chọn xong thì phát `change`. Phép kiểm: bấm vào ô chọn mở menu kính, không mở bộ chọn gốc.
-- **Phần tử hiệu ứng không mang trang trí của trình duyệt:** pill trượt làm từ mục danh sách có `list-style: none`; nút đóng của toast
-  nằm trong hàng đầu của nó; nút đóng của ô tìm nằm trong hàng tìm. Phép kiểm: pill tính ra `list-style-type: none`; các nút đóng nằm
-  trong hộp của chúng.
+- Điều khiển của chính bộ (form control Bootstrap, dropdown, modal, tab pill) dựng trên markup của bộ; một kiểu đứng trên nó có thể
+  thay dáng (`app-sneat-glass` §5: menu kính cho ô chọn), không bao giờ thay markup.
 
 ## 6. Kiểm
 
-- Bài kiểm trình duyệt của repo mở mọi trang của bản làm việc ở 1440 và 390, cả hai theme: không lỗi JS, không cuộn ngang, cùng các
-  phép kiểm nêu trên. Thêm một luật vào skill này thì thêm phép kiểm của nó vào bài kiểm đó trong cùng một lần sửa.
+- Bài kiểm trình duyệt của repo mở mọi trang ở 1440 và 390, cả hai theme: không lỗi JS, không cuộn ngang, cùng các phép kiểm nêu
+  trên. Thêm một luật vào skill này thì thêm phép kiểm của nó vào bài kiểm đó trong cùng một lần sửa. Repo `SneatGlass` chạy
+  chúng qua `scripts/sneat_glass_check.mjs` (`app-sneat-glass` §6).
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved on its template before it is ported · kiểu được duyệt trên template trước khi chép sang app
