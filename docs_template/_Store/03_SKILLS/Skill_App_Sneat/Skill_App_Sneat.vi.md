@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 
@@ -46,6 +46,9 @@ từng app.
   khi gập ≈ 84 px, khi rê = bề rộng lúc mở.
 - **Trang chủ = launcher:** lưới các app của người đó kèm sức khoẻ, và những việc cần họ chú ý. Trang ứng dụng cũ trở thành trang
   này; nút "Mở" dẫn vào app. Phép kiểm: mục đầu tiên của menu system-manager là trang chủ.
+- **Icon trang là huy hiệu chuẩn:** icon trên tab, dấu trang và icon màn hình chính của điện thoại là huy hiệu vuông của tổ
+  chức (bản sao từ thiết kế dùng chung), khai trong head của trang - không bao giờ bỏ trống, kẻo trình duyệt giữ icon của app
+  từng chạy ở địa chỉ đó. Phép kiểm: `link[rel=icon]` và `link[rel=apple-touch-icon]` trỏ tới huy hiệu.
 - **Bộ không có trang đăng nhập:** mọi app đăng nhập qua trang của system-manager. Phép kiểm: bộ không có file login.
 - **Không có nút nào chưa có chức năng; mỗi điều khiển một chỗ** (Cài đặt nằm trong menu tài khoản, không lặp ở thanh hay menu trái).
   Phép kiểm: mọi nút và liên kết của thanh trên và menu có xử lý hoặc đích.

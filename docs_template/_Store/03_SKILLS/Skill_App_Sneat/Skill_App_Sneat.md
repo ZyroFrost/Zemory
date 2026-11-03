@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Sneat
 name: app-sneat
-version: 3
+version: 4
 type: process
 checked: [Skill_App_Glass, Skill_App_Base, Design_172_Design]
 description: The Sneat kind of an app surface - the layout of the Sneat admin kit as the kit has it (menu, navbar, cards, tables, dialogs), inside one shell shared by every app of a family. Use when a repo declares {"style": "Sneat"} or {"style": "SneatGlass"} in frontend/config/ui.json, or when building, porting or fixing a Sneat surface, its template, its shell or its menus. The Sneat layout with the Glass look is app-sneat-glass. Vietnamese triggers - "kiểu sneat", "khung sneat", "mẫu sneat", "template sneat", "menu theo app", "trang chủ launcher".
@@ -52,6 +52,9 @@ app's pages.
   button shows a visible chevron; folded width ≈ 84 px, hover width = open width.
 - **Home = the launcher:** the grid of the person's apps with their health, and what needs their attention. The former apps page
   becomes it; an "Open" button leads into the app. Check: the first menu item of the system-manager is the home page.
+- **The page icon is the standard badge:** the tab icon, the bookmark and the phone home-screen icon are the organisation's
+  square badge (a copy of the shared design), linked in the page head - never left out, or a browser keeps the icon of an app
+  that ran on the address before. Check: `link[rel=icon]` and `link[rel=apple-touch-icon]` point at the badge.
 - **No sign-in page in the kit:** every app signs in through the system-manager's page. Check: no login file in the kit.
 - **No button without a working function; every control has one home** (Settings lives in the account menu, not also in the bar or
   the rail). Check: every button and link of the bar and the menu has a handler or a target.

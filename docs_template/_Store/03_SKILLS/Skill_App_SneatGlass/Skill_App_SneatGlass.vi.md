@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 
@@ -68,6 +68,8 @@ lang: vi
   thoại là `form-label` · `form-check-label`, form dựng trên lưới của bộ (`row g-*` · `col-*`), font token ở mọi nơi - cả chữ trong svg và các con số - và
   font đó phải được NẠP thật: app tự gửi kèm file font (font chỉ được gọi tên sẽ rơi về font hệ thống mà không ai thấy); không lớp
   nào của kiểu cũ còn sót sau khi port. Công tắc luôn cách chữ một khoảng. [kit-controls] [switch-gap]
+- **Trang đăng nhập giữ dáng riêng nhưng dùng font và cỡ chữ đọc được của app:** font token, nhãn và ô nhập 16 px (ô dưới 16 px
+  làm điện thoại tự phóng to trang khi chạm vào), chữ ghi chú từ 14 px.
 - **Mọi bảng dữ liệu giữ chức năng kéo đổi độ rộng cột:** mỗi ô tiêu đề có tay kéo `col-resize` nhìn thấy được ở kiểu xem danh
   sách; độ rộng là cài đặt của người đó. Port thì mang theo cả CSS của tay kéo. [resize]
 - **Mọi biểu đồ hiện đủ số,** như một báo cáo: số trên mỗi cột, nhãn số trên đường (mọi điểm khi đủ chỗ, không thì điểm cao nhất,
