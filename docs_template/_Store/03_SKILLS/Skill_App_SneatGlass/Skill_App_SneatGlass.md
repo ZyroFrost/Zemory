@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 1
+version: 2
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -64,6 +64,22 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   with `backdrop-filter` becomes the box a fixed menu is placed in.
 - **Every effect of the Glass template** keeps its `FX:` marker in the code (`app-glass`); the cards of a page rise in one after
   another when it shows (FX: reveal).
+- **Scrollbars are the Glass template's** on every scroll box (12 px, a soft rounded track, the accent gradient thumb inset by
+  a transparent border), never the browser's default; no rule sets `scrollbar-color` or `scrollbar-width` (Chromium then drops
+  the template's parts). [scrollbar]
+- **Pinned cells are glass:** with glass on, a pinned header row or pinned column is translucent and blurred, never an opaque
+  band; it turns solid only with the glass switch off. [see-through]
+- **The glass switch sits in the top bar** beside light / dark, lit while glass is on (the Glass rail's switch, moved into the
+  bar). [bar-switches]
+- **Only the kit's controls, one font:** every control is `form-control` · `form-select` · `form-check-input`, every dialog label
+  `form-label` · `form-check-label`, forms on the kit's grid (`row g-*` · `col-*`), the token font everywhere; no class of a
+  former kind survives a port. A switch keeps a gap to its label. [kit-controls] [switch-gap]
+- **Every data table keeps column resize:** a visible `col-resize` handle per header cell in list view; the widths are a UI
+  setting of the person. A port carries the handles' CSS too. [resize]
+- **Every chart shows its numbers,** as a report does: a value on each bar, data labels on a line (every point when they fit,
+  else the highest, the lowest and the last), the share of each donut part beside its value. [chart-labels]
+- **The page declares its colour scheme** (`<meta name="color-scheme" content="light dark">`, `html { color-scheme }` = the
+  theme), so the forced dark mode of a phone browser leaves the person's theme alone. [color-scheme]
 - **The kit's icons:** ship only the icons the code names (a generated subset of the kit's icon CSS, checked by the build), not the
   whole set.
 
@@ -71,7 +87,8 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 
 - The repo's browser test imports `scripts/sneat_glass_check.mjs` and evaluates every `RULES` entry on every page, and every
   `DIALOG_RULES` entry on every dialog it opens, at a desktop and a phone width, once the opening transitions have settled. A rule
-  added here adds its entry there in the same change; each new entry is proven red by breaking what it guards.
+  added here adds its entry there in the same change; each new entry is proven red by breaking what it guards - with code
+  that still builds: the test rebuilds before it runs, so a failed build never leaves it checking an old bundle.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved on its template before it is ported · kiểu được duyệt trên template trước khi chép sang app

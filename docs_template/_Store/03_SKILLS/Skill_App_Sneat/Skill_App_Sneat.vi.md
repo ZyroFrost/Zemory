@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 
@@ -64,6 +64,12 @@ từng app.
   một người, Dashboard của một phòng, thành viên của một nhóm - không bao giờ liệt kê trên thẻ hay trong ô, ở mọi kiểu xem (kể cả dòng bảng biến thành thẻ): hiện SỐ ĐẾM ("4 app", "2 Dashboard") thành liên kết mở bảng
   các thứ đó. Thẻ dài ra vì một danh sách làm vỡ lưới. Phép kiểm: không dòng thẻ hay ô nào chứa một danh sách (dấu phân cách như
   " · ", hoặc quá một nhãn hay một tên).
+- **System-manager đứng đầu mọi danh sách app** (nút chuyển app, ma trận quyền, danh sách vai, bộ lọc app, các app dùng một máy
+  chủ), dù server trả về theo thứ tự nào. Phép kiểm: cột app đầu tiên và dòng vai đầu tiên là system-manager.
+- **Trạng thái tài khoản và việc đang trực tuyến là hai thông tin ở hai cột:** trạng thái nói tài khoản còn dùng hay không (đang
+  dùng · không đang dùng · đã khoá · chờ đổi mật khẩu); trực tuyến nói người đó có đang online không (có phiên vừa thấy trong vài
+  phút). Là người đang đăng nhập không bao giờ là một trạng thái. Phép kiểm: danh sách có đủ hai cột và không trạng thái nào là
+  "Bạn".
 - **Bảng theo `tables-basic`:** một người là avatar + tên trên tên tài khoản; thao tác là menu ba chấm; ô chữ dài giữ một dòng, cắt
   bằng dấu "…", toàn bộ chữ nằm trong tooltip; dòng không bao giờ xuống hàng. Phép kiểm: mọi dòng cao bằng nhau; ô bị cắt có
   `title` chứa toàn bộ chữ.

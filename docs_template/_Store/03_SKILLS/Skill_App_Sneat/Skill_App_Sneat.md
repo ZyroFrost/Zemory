@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Sneat
 name: app-sneat
-version: 2
+version: 3
 type: process
 checked: [Skill_App_Glass, Skill_App_Base, Design_172_Design]
 description: The Sneat kind of an app surface - the layout of the Sneat admin kit as the kit has it (menu, navbar, cards, tables, dialogs), inside one shell shared by every app of a family. Use when a repo declares {"style": "Sneat"} or {"style": "SneatGlass"} in frontend/config/ui.json, or when building, porting or fixing a Sneat surface, its template, its shell or its menus. The Sneat layout with the Glass look is app-sneat-glass. Vietnamese triggers - "kiểu sneat", "khung sneat", "mẫu sneat", "template sneat", "menu theo app", "trang chủ launcher".
@@ -72,6 +72,11 @@ app's pages.
   card or in a cell, in any view (table rows that become cards included): show its COUNT ("4 apps", "2 dashboards") as a link that
   opens the table of those things. A card that grows tall with a list breaks the grid. Check: no card line or cell holds a list
   (a separator such as " · ", or more than one badge or name).
+- **The system-manager leads every list of apps** (the switcher, the access matrix, role lists, app filters, the apps a server
+  serves), whatever order the server returns. Check: the first app column and the first role row name the system-manager.
+- **An account's state and a person's presence are two facts in two columns:** the state says whether the account is in use
+  (in use · not in use · locked · waiting for a password); presence says whether they are on line now (a session seen in the
+  last minutes). Being the signed-in person is never a state. Check: the list has both columns and no state reads "you".
 - **Tables follow `tables-basic`:** a person is avatar + name over the username; actions are the dots menu; a long text cell stays on one
   line, cut with an ellipsis, the whole text in its tooltip; rows never wrap. Check: every row has the same height; a clipped cell's
   `title` holds the whole text.
