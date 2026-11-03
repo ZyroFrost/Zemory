@@ -106,7 +106,7 @@ export const RULES = [
   },
   {
     id: 'kit-controls',
-    rule: 'every control and dialog label comes from the kit (form-control · form-select · form-check-input · form-label), one font everywhere, no class of a former kind',
+    rule: 'every control and dialog label comes from the kit (form-control · form-select · form-check-input · form-label), one font everywhere (svg text and numbers too), the token font really loaded, no class of a former kind',
     check: `(() => {
       const shown = e => e.getClientRects().length > 0 && getComputedStyle(e).visibility !== 'hidden';
       const field = [...document.querySelectorAll('input, select, textarea')].filter(shown).find(e => !(e.type === 'hidden' ||
@@ -115,8 +115,12 @@ export const RULES = [
       const label = [...document.querySelectorAll('.modal-body label')].filter(shown).find(l => !l.matches('.form-label, .form-check-label, .btn, .page-search, .form-check'));
       if (label) return 'a dialog label off the kit: ' + label.textContent.trim().slice(0, 30);
       const font = getComputedStyle(document.body).fontFamily;
-      const other = [...document.querySelectorAll('h1, h2, h3, h4, h5, h6, label, input, select, button, td, th, p')].filter(shown).find(e => getComputedStyle(e).fontFamily !== font);
-      return other ? 'another font on ' + other.tagName : true;
+      const other = [...document.querySelectorAll('h1, h2, h3, h4, h5, h6, label, input, select, button, td, th, p, b, small, span, svg text')]
+        .filter(e => shown(e) && e.textContent.trim()).find(e => getComputedStyle(e).fontFamily !== font);
+      if (other) return 'another font on ' + other.tagName;
+      // The token font is LOADED, not only named: a named font the machine lacks falls back to the system font unseen.
+      const family = font.split(',')[0].trim().replace(/["']/g, '');
+      return [...document.fonts].some(f => f.family.replace(/["']/g, '') === family && f.status === 'loaded') ? true : 'the token font ' + family + ' is not loaded';
     })()`,
   },
   {
@@ -132,13 +136,13 @@ export const RULES = [
   },
   {
     id: 'see-through',
-    rule: 'with glass on, a pinned header row or column is glass (translucent, blurred), never an opaque band',
+    rule: 'with glass on, a pinned header row or column is as clear as the cells beside it (alpha 0.25 at most) and blurred, in both themes - never a band',
     check: `(() => {
       if (document.documentElement.classList.contains('solid')) return true;
       const alpha = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return 1; const v = m[1].split(/[ ,/]+/).filter(Boolean); return v.length > 3 ? parseFloat(v[3]) : 1; };
       const band = [...document.querySelectorAll('th, td')].filter(e => e.getClientRects().length && getComputedStyle(e).position === 'sticky')
-        .find(e => alpha(getComputedStyle(e).backgroundColor) > .9);
-      return band ? 'an opaque pinned cell: ' + band.textContent.trim().slice(0, 30) : true;
+        .find(e => alpha(getComputedStyle(e).backgroundColor) > .25 || !getComputedStyle(e).backdropFilter.includes('blur'));
+      return band ? 'a pinned cell that is not glass: ' + band.textContent.trim().slice(0, 30) : true;
     })()`,
   },
   {

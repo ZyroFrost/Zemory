@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 
@@ -60,13 +60,14 @@ lang: vi
 - **Thanh cuộn là của template Glass** ở mọi ô cuộn (12 px, rãnh tròn mờ, tay cầm gradient màu nhấn lùi vào bằng viền trong
   suốt), không bao giờ để mặc định của trình duyệt; không luật nào đặt `scrollbar-color` hay `scrollbar-width` (Chromium sẽ bỏ
   phần của template). [scrollbar]
-- **Ô ghim cũng là kính:** khi bật kính, hàng tiêu đề hay cột được ghim trong mờ, không bao giờ là dải đặc; chỉ đặc khi tắt kính.
-  [see-through]
+- **Ô ghim cũng là kính:** khi bật kính, hàng tiêu đề hay cột được ghim trong như các ô bên cạnh (nhiều nhất một phần mười màu
+  nền) và có làm mờ, ở CẢ HAI theme - một dải chỉ hiện ở theme sáng vẫn là dải; chỉ đặc khi tắt kính. [see-through]
 - **Nút bật/tắt kính nằm trên thanh trên** cạnh nút sáng/tối, sáng khi kính đang bật (nút của rail Glass, dời vào thanh).
   [bar-switches]
 - **Chỉ điều khiển của bộ, một font:** mọi điều khiển là `form-control` · `form-select` · `form-check-input`, mọi nhãn trong hộp
-  thoại là `form-label` · `form-check-label`, form dựng trên lưới của bộ (`row g-*` · `col-*`), font token ở mọi nơi; không lớp nào
-  của kiểu cũ còn sót sau khi port. Công tắc luôn cách chữ một khoảng. [kit-controls] [switch-gap]
+  thoại là `form-label` · `form-check-label`, form dựng trên lưới của bộ (`row g-*` · `col-*`), font token ở mọi nơi - cả chữ trong svg và các con số - và
+  font đó phải được NẠP thật: app tự gửi kèm file font (font chỉ được gọi tên sẽ rơi về font hệ thống mà không ai thấy); không lớp
+  nào của kiểu cũ còn sót sau khi port. Công tắc luôn cách chữ một khoảng. [kit-controls] [switch-gap]
 - **Mọi bảng dữ liệu giữ chức năng kéo đổi độ rộng cột:** mỗi ô tiêu đề có tay kéo `col-resize` nhìn thấy được ở kiểu xem danh
   sách; độ rộng là cài đặt của người đó. Port thì mang theo cả CSS của tay kéo. [resize]
 - **Mọi biểu đồ hiện đủ số,** như một báo cáo: số trên mỗi cột, nhãn số trên đường (mọi điểm khi đủ chỗ, không thì điểm cao nhất,
@@ -78,7 +79,7 @@ lang: vi
 ## 6. Kiểm
 
 - Bài kiểm trình duyệt của repo nhập `scripts/sneat_glass_check.mjs`, chạy mọi mục `RULES` trên mọi trang và mọi mục
-  `DIALOG_RULES` trên mọi hộp thoại nó mở, ở một khổ máy tính và một khổ điện thoại, sau khi hiệu ứng mở đã xong. Thêm luật vào
+  `DIALOG_RULES` trên mọi hộp thoại nó mở, ở một khổ máy tính và một khổ điện thoại và ở cả hai theme, sau khi hiệu ứng mở đã xong. Thêm luật vào
   đây thì thêm mục tương ứng trong cùng một lần sửa; mỗi mục mới phải được chứng minh đỏ bằng cách làm hỏng thứ nó canh - với
   code vẫn build được: bài kiểm build lại trước khi chạy, để một lần build hỏng không bao giờ khiến nó kiểm một bản cũ.
 
