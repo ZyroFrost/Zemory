@@ -18,7 +18,7 @@ import { gatherStatus } from "../status.js";
 import { validate } from "../docs/validate.js";
 import { formatTodoVerify, verifyTodo } from "../docs/todo-verify.js";
 import { conform } from "../docs/conform.js";
-import { applyFix, monitorPaths, monitorSummary, pathsFixProposals, pathsSummary } from "../docs/paths.js";
+import { applyFix, monitorPaths, monitorSummary, pathsCheck, pathsFixProposals, pathsSummary } from "../docs/paths.js";
 import { listKnownProjects } from "../projects.js";
 import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
@@ -848,7 +848,7 @@ export function cmdPaths(args: string[]): void {
   if (args[0] === "sweep") return cmdPathsSweep(args.slice(1));
   if (args[0] === "fix") return cmdPathsFix(args.slice(1));
   if (args[0] !== "check") {
-    console.log("usage: zemory paths check [--gate|--strict] [--json] [--root <dir>] [--reset-baseline]\n       zemory paths sweep [--root <dir>]... [--json]\n       zemory paths fix [--root <dir>] [--all] [--apply] [--json]   (default: dry-run, newly dead only)");
+    console.log("usage: zemory paths check [--gate|--strict] [--json] [--root <dir>] [--reset-baseline] [--code]\n       zemory paths sweep [--root <dir>]... [--json]\n       zemory paths fix [--root <dir>] [--all] [--apply] [--json]   (default: dry-run, newly dead only)");
     process.exitCode = 1;
     return;
   }
@@ -857,6 +857,23 @@ export function cmdPaths(args: string[]): void {
   if (!root) {
     console.log("zemory paths check: not connected — run `zemory init` first (or pass --root <dir>).");
     process.exitCode = 1;
+    return;
+  }
+  // Phase 2 (plan/21 §4.1): strings in source code. Advisory until its filters are proven clean - a report only: no
+  // monitor baseline (the phase-1 baseline must not shift), no exit code.
+  if (args.includes("--code")) {
+    const code = pathsCheck(loadContext(root), { code: true });
+    if (args.includes("--json")) {
+      console.log(JSON.stringify(code, null, 2));
+      return;
+    }
+    console.log(`zemory paths check --code — dead paths in code strings, advisory (${root})`);
+    console.log(`  ${pathsSummary(code)}`);
+    for (const h of code.dead.slice(0, 60)) console.log(`      ${h.file}:${h.line}  ${h.text}`);
+    if (code.dead.length > 60) console.log(`      … +${code.dead.length - 60}`);
+    const byReason = new Map<string, number>();
+    for (const h of code.unresolved) byReason.set(h.reason ?? "?", (byReason.get(h.reason ?? "?") ?? 0) + 1);
+    if (byReason.size) console.log(`  · unresolved (${code.unresolved.length}): ${[...byReason.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(" · ")}`);
     return;
   }
   const rep = monitorPaths(loadContext(root), { resetBaseline: args.includes("--reset-baseline") });

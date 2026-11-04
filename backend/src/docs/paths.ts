@@ -68,6 +68,8 @@ export type UnresolvedReason =
   | "regex"
   /** named only to say NOT to use it (`KHÔNG tách \`docs/dictionary.md\``) */
   | "negated"
+  /** code: the string is searched for or replaced in a text (`.split("docs/agent/archive/")`) — a pattern, not a place */
+  | "text-match"
   /** a string only a rule's test cases hold (`gate.json` › block · pass · partial) — an input made up for the case */
   | "test-case"
   | "io-error";
@@ -89,6 +91,98 @@ export interface PathsReport {
 
 /** Phase 1 file set: docs + config/runbook. Code strings are phase 2 (plan/21 §4.1). */
 export const PHASE1_EXT = /\.(md|json|jsonc|ya?ml|toml|ini|ps1|sh|vbs|cmd|bat)$/i;
+/** Phase 2 file set (`--code`): strings in source code (plan/21 §4.1). */
+export const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py|sql)$/i;
+/** Test sources and fixtures feed made-up inputs (`d:\x` · `C:\bench`), never pointers (plan/21 §0 ③): not judged. */
+export const CODE_FIXTURE = /(^|\/)(test|tests|__tests__|fixtures?|spec)\/|\.(test|spec)\.[cm]?[jt]sx?$|(^|\/)test_[^/]*\.py$|_test\.py$/i;
+/**
+ * A path written inside a code string, read as the language reads it: `\\` is one backslash. A lone backslash before an
+ * escape letter (`"d:\new"` is d, colon, newline, "ew") is no path at all ⇒ null. SQL has no escapes and is taken as written.
+ */
+/**
+ * A relative module specifier the source file names as it will be after the build: `./core/config.js` is written beside
+ * `config.ts`, an extensionless `./x` is `x.ts` or `x/index.ts`. Measured 2026-11-04 on this repo: 829 of the first 889
+ * "dead" in code were such imports. True when the source behind the specifier is on disk.
+ */
+export function moduleSourceExists(spec: string, fromFile: string): boolean {
+  const sourcesOf = (base: string): string[] => {
+    const stem = base.replace(/\.(m|c)?js$/i, "");
+    if (/\.(m|c)?js$/i.test(base)) return [".ts", ".tsx", ".mts", ".cts"].map((e) => stem + e);
+    if (/\.[A-Za-z0-9]{1,5}$/.test(base)) return [];
+    return [".ts", ".tsx", ".js", ".mjs", ".cjs", ".json"].flatMap((e) => [base + e, join(base, "index" + e)]);
+  };
+  if (/^\.{1,2}[\\/]/.test(spec)) return sourcesOf(resolve(dirname(fromFile), spec)).some((p) => existsSync(p));
+  // a built module named from the build root (`jobs/diskprobe.js` for a worker spawned from dist/): its source sits under one
+  // of the folders above the file that names it
+  if (!/^[\w.-]+([\\/][\w.-]+)*\.(m|c)?js$/i.test(spec)) return false;
+  for (let d = dirname(fromFile), i = 0; i < 6; i++, d = dirname(d)) {
+    if (sourcesOf(join(d, spec)).some((p) => existsSync(p))) return true;
+    if (dirname(d) === d) break;
+  }
+  return false;
+}
+
+/**
+ * A relative path resolved from where the BUILT file will sit (`new URL("../../backend/test/x.json", import.meta.url)` in
+ * `backend/src/evals/` runs from `dist/evals/`): tried from each folder above the source file. Only on a line that resolves
+ * against the module's own place (`import.meta.url` · `__dirname`).
+ */
+export function builtRelativeExists(spec: string, fromFile: string, line: string): boolean {
+  if (!/^\.{1,2}[\\/]/.test(spec) || !/import\.meta\.url|__dirname/.test(line)) return false;
+  for (let d = dirname(dirname(fromFile)), i = 0; i < 5; i++, d = dirname(d)) {
+    if (existsSync(resolve(d, spec))) return true;
+    if (dirname(d) === d) break;
+  }
+  return false;
+}
+
+/** The 0-based lines of a Python file that belong to a triple-quoted string standing as a statement (a docstring). */
+export function pyDocstringLines(lines: string[]): Set<number> {
+  const out = new Set<number>();
+  let open: string | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (open) {
+      out.add(i);
+      if (t.includes(open)) open = null;
+      continue;
+    }
+    const m = /^[rRbBuU]{0,2}("""|''')/.exec(t);
+    if (!m) continue;
+    out.add(i);
+    const rest = t.slice(m[0].length);
+    if (!rest.includes(m[1])) open = m[1];
+  }
+  return out;
+}
+
+/** Is the string an argument of a text search, split or replace on this line (`.split("docs/agent/archive/")` and the
+ *  replacement in `.join("docs/archive/")`)? */
+export function isTextMatchArg(line: string, text: string): boolean {
+  const esc = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const quoted = new RegExp(`["'\`]${esc}["'\`]`);
+  for (const m of line.matchAll(/\.(split|join|replace|replaceAll|includes|startsWith|endsWith|indexOf|lastIndexOf)\(([^)]*)\)/g)) {
+    if (quoted.test(m[2])) return true;
+  }
+  return false;
+}
+
+/** The code of one source line with its comment cut off (`//` · `#` · `--`), or "" for a comment line. A pointer in prose is
+ *  phase 1's job; phase 2 judges the strings the program runs with (plan/21 §4.1). */
+export function codeOfLine(line: string, lang: "js" | "py" | "sql"): string {
+  const t = line.trim();
+  if (lang === "js" && (/^(\/\/|\/\*|\*)/.test(t))) return "";
+  if (lang === "py" && t.startsWith("#")) return "";
+  if (lang === "sql" && (t.startsWith("--") || t.startsWith("/*") || t.startsWith("*"))) return "";
+  const cut = lang === "js" ? /\s\/\/\s.*$/ : lang === "py" ? /\s#\s.*$/ : /\s--\s.*$/;
+  return line.replace(cut, "");
+}
+
+export function codeLiteral(s: string, sql = false): string | null {
+  if (sql) return s;
+  if (/\\[nrt0abfv'"]/.test(s.replace(/\\\\/g, ""))) return null;
+  return s.replace(/\\\\/g, "\\");
+}
 const BIN_EXT = /\.(png|jpe?g|gif|ico|webp|svg|pdf|zip|7z|rar|exe|dll|db|enc|onnx|wasm|woff2?|ttf|mp4|mp3)$/i;
 export const DEFAULT_EXCLUDE = ["data/", "dist/", "attic/", "external/", "node_modules/", ".venv/", ".git/"];
 const DEFAULT_MAX_KB = 512;
@@ -560,7 +654,7 @@ export function yamlItemCwds(lines: string[], fileDir: string): (string | undefi
 }
 
 // ── main ──────────────────────────────────────────────────────────────────────
-export function pathsCheck(ctx: Context): PathsReport {
+export function pathsCheck(ctx: Context, opts: { code?: boolean } = {}): PathsReport {
   const root = resolve(ctx.projectRoot);
   const cfg = ctx.config.pathCheck ?? {};
   const declared = (cfg.roots && cfg.roots.length ? cfg.roots : [root]).map((r) => (isAbsolute(r) ? resolve(r) : resolve(root, r)));
@@ -617,7 +711,8 @@ export function pathsCheck(ctx: Context): PathsReport {
   for (const abs of sorted) {
     const rel = posix(relative(root, abs));
     if (excluded(rel, exclude)) continue;
-    if (!PHASE1_EXT.test(abs) || BIN_EXT.test(abs) || LOCKFILE.test(rel) || PBI_ARTEFACT.test(rel)) continue;
+    const wanted = opts.code ? CODE_EXT.test(abs) && !CODE_FIXTURE.test(rel) : PHASE1_EXT.test(abs);
+    if (!wanted || BIN_EXT.test(abs) || LOCKFILE.test(rel) || PBI_ARTEFACT.test(rel)) continue;
     let st;
     try {
       st = statSync(abs);
@@ -639,16 +734,49 @@ export function pathsCheck(ctx: Context): PathsReport {
     // + folders the REPO declares as a standard written for other repos (`pathCheck.dictionary`) — declared, never guessed.
     const dictionary = isDictionaryFile(rel) || dictDirs.some((d) => rel === d || rel.startsWith(d + "/"));
     // Markdown link targets under docs/ are validate.ts §1's job already — do not report them twice.
-    const linkTargets = !(/\.md$/i.test(abs) && /(^|\/)docs\//.test("/" + rel));
+    const linkTargets = !opts.code && !(/\.md$/i.test(abs) && /(^|\/)docs\//.test("/" + rel));
+    const sql = /\.sql$/i.test(abs);
+    // a Python docstring is prose like a comment (SasinONE, 2026-11-04: three "dead" were `"""… copied from SasinFlow \`x\`"""`)
+    const prose = opts.code && /\.py$/i.test(abs) ? pyDocstringLines(text.split("\n")) : null;
     const lines = text.split("\n");
     const cwdOf = /\.ya?ml$/i.test(abs) ? yamlItemCwds(lines, dirname(abs)) : /\.md$/i.test(abs) ? markdownSiblingSections(lines, root) : [];
     for (let i = 0; i < lines.length; i++) {
       const jobCwd = cwdOf[i] ?? null;
-      const cands = extractCandidates(lines[i], { linkTargets });
+      if (prose?.has(i)) continue;
+      const src = opts.code ? codeOfLine(lines[i], sql ? "sql" : /\.py$/i.test(abs) ? "py" : "js") : lines[i];
+      if (!src) continue;
+      const cands = extractCandidates(src, { linkTargets });
       if (!cands.length) continue;
       report.scanned.strings += cands.length;
-      for (const c of cands) {
-        const hit: PathHit = { file: rel, line: i + 1, text: c.text };
+      for (const raw of cands) {
+        const hit: PathHit = { file: rel, line: i + 1, text: raw.text };
+        let c = raw;
+        if (opts.code) {
+          const lit = codeLiteral(raw.text, sql);
+          if (lit === null) {
+            report.unresolved.push({ ...hit, reason: "escape" });
+            continue;
+          }
+          // a format slot (`%s` · `%d` · `{0}`) is filled at run time - the string is a pattern, not a place
+          if (/%[sdif]|\{\d*\}/.test(lit)) {
+            report.unresolved.push({ ...hit, reason: "placeholder" });
+            continue;
+          }
+          if (moduleSourceExists(lit, abs) || builtRelativeExists(lit, abs, src)) {
+            alive.add(hitKey(hit));
+            continue;
+          }
+          // an escaped dot is a regex (`auth\\.mistral\\.ai`); a string searched for or replaced is a pattern, not a place
+          if (/\\\./.test(lit)) {
+            report.unresolved.push({ ...hit, reason: "regex" });
+            continue;
+          }
+          if (isTextMatchArg(src, raw.text)) {
+            report.unresolved.push({ ...hit, reason: "text-match" });
+            continue;
+          }
+          c = { ...raw, text: lit };
+        }
         if (caseOnly?.(c.text)) {
           report.unresolved.push({ ...hit, reason: "test-case" });
           continue;
