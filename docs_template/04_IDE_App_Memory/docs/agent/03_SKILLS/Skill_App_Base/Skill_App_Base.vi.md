@@ -1,5 +1,5 @@
 ---
-version: 37
+version: 38
 lang: vi
 ---
 
@@ -441,15 +441,22 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
     · **Trả lời:** không cookie · không có phiên sống · tài khoản bị khoá · còn mật khẩu tạm phải đổi ⇒ trang: chuyển về đăng nhập
       chung kèm `next`; API: 401 mang địa chỉ đăng nhập. Phiên sống mà không có vai ở app này ⇒ 403 "không có quyền ở <app>" — không
       đẩy về đăng nhập, kẻo thành vòng lặp. Phiên sống có vai ⇒ qua.
+    · **Không kiểm được ≠ chưa đăng nhập:** có cookie phiên nhưng không kiểm được (DB hệ không trả lời, kết nối treo hoặc chưa mở, lượt
+      tra ném lỗi) ⇒ không bao giờ chuyển về đăng nhập — `system-manager` thấy phiên còn sống và đẩy trình duyệt ngược lại. Trang: 503
+      kèm thông báo song ngữ tự tải lại (`Retry-After`). API: 503 kèm cờ máy đọc được (`auth_unavailable`), không mang địa chỉ đăng
+      nhập; frontend hiện dải thông báo và ở lại trang tới khi một request đi qua. Vẫn fail-closed: không gì qua khi chưa kiểm. Log
+      một dòng lúc bắt đầu kiểm không được (kèm lỗi) và một dòng lúc hồi lại (bao lâu, bao nhiêu request bị từ chối), không ghi mỗi
+      request; phần chẩn đoán của app hiện trạng thái hiện tại.
     · **`next`** là đường đầy đủ tính từ gốc địa chỉ, gồm tiền tố riêng của app và query (`/<app>/jobs?id=3`); lệnh chuyển trỏ tới
       trang đăng nhập chung ở gốc, không phải `/<app>/login` (lớp base-path không được gắn tiền tố vào). `system-manager` chỉ nhận
       `next` bắt đầu bằng đúng một `/`.
     · **Frontend:** nhận 401 ⇒ đi tới địa chỉ nó mang. Đăng xuất ⇒ gọi đăng xuất của `system-manager` bằng đường tuyệt đối, rồi về
       trang đăng nhập của nó. Đổi mật khẩu và hồ sơ ⇒ link sang `system-manager`. Header của app có link về `system-manager`.
-    · **Bỏ đăng nhập riêng:** nhận cả cookie cũ lẫn cookie chung một thời gian, qua sáu phép kiểm dưới, rồi gỡ đường cũ.
-    · **Sáu phép kiểm sau cổng:** ① không cookie ⇒ chuyển đúng `next`, API 401 · ② đăng nhập ⇒ quay về đúng trang app · ③ không có
+    · **Bỏ đăng nhập riêng:** nhận cả cookie cũ lẫn cookie chung một thời gian, qua bảy phép kiểm dưới, rồi gỡ đường cũ.
+    · **Bảy phép kiểm sau cổng:** ① không cookie ⇒ chuyển đúng `next`, API 401 · ② đăng nhập ⇒ quay về đúng trang app · ③ không có
       vai ⇒ 403, không vòng lặp · ④ bỏ vai trên màn quản trị chung ⇒ bị từ chối trong một chu kỳ nhớ phiên · ⑤ đăng xuất từ app ⇒
-      `system-manager` đòi đăng nhập lại · ⑥ khoá tài khoản ⇒ bị từ chối ở lượt tra kế.
+      `system-manager` đòi đăng nhập lại · ⑥ khoá tài khoản ⇒ bị từ chối ở lượt tra kế · ⑦ lượt tra phiên lỗi (cho kho phiên ném lỗi
+      trong phép kiểm của app) ⇒ trang 503 có thông báo, API 503 kèm cờ, không chuyển trang; lượt tra kế chạy được thì đi qua.
 - **Bảo mật gác ở máy chủ, mặc định chặn:** thêm chức năng ghi mới ⇒ chặn mọi vai chưa khai cho phép; ẩn nút trên giao diện
   không tính là bảo mật. Mọi endpoint trả dữ liệu đứng sau lớp đăng nhập.
 - **Câu truy vấn có tên trong mã chạy dạng chuỗi:** worker nạp bằng eval không import được thư viện câu ⇒ truyền câu có tên qua

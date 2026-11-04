@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 # Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
@@ -48,6 +48,10 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
    backend của chính nó, kiểm vai của chính nó ở đó, và chuyển người chưa có phiên sống về trang đăng nhập của `system-manager` kèm
    địa chỉ để quay lại. App không có trang đăng nhập, không cookie phiên riêng, không màn đổi mật khẩu; đăng xuất và đổi mật khẩu đi
    qua `system-manager`.
+   Phiên mà app KHÔNG KIỂM ĐƯỢC (DB của hệ không trả lời, kết nối treo hoặc chưa mở) không phải "chưa đăng nhập": app vẫn chặn truy
+   cập, báo cho người dùng biết máy chủ tài khoản đang không trả lời, tự thử lại, và ghi log lúc bắt đầu kiểm không được và lúc hồi
+   lại. App không bao giờ vì thế mà chuyển người dùng về trang đăng nhập — `system-manager` thấy phiên còn sống và đẩy ngược lại, thành
+   vòng lặp không rõ lý do.
 5. `system-manager` chỉ giữ phần dùng chung: cổng (một địa chỉ, mỗi app một đường dẫn), đăng nhập, màn quản trị và đường dẫn tới các
    app. Mỗi app tự phục vụ frontend và backend của nó dưới đường dẫn của nó; `system-manager` không bao giờ chứa trang hay API nghiệp
    vụ của app, và các app không gọi nhau qua nó. Thứ hai app dùng chung là DB của hệ.
@@ -61,6 +65,11 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
 - ✗ Sai: giữ trang đăng nhập và cookie riêng, hoặc nhờ `system-manager` phục vụ hộ trang và API của app.
 - ✓ Đúng: app bỏ trang đăng nhập, đọc phiên của `system-manager` và kiểm vai của mình ở backend, chuyển người chưa có phiên về trang
   đăng nhập chung kèm địa chỉ quay lại, và vẫn tự phục vụ trang của nó dưới đường dẫn của nó.
+- Tình huống: DB của hệ treo hai phút trong lúc mọi người đang làm việc trong một app sau cổng.
+- ✗ Sai: coi mọi lần tra phiên lỗi là "không có phiên" và chuyển về trang đăng nhập chung; `system-manager` thấy phiên còn sống và
+  trả người dùng về app, app lại chuyển đi — người dùng thấy app cứ bật về cổng, và log không nói vì sao.
+- ✓ Đúng: cookie không kiểm được nhận trang 503 song ngữ tự tải lại, API trả 503 kèm một cờ để frontend hiện dải thông báo, và log có
+  một dòng lúc kiểm không được, một dòng lúc hồi lại.
 - Tình huống: một app chỉ dành cho nhóm IT bỏ vai chỉ-xem, giữ hai vai.
 - ✗ Sai: sửa danh sách vai ghi trong code của app và bản chép ghi trong code của `system-manager`; hai bản trôi lệch, màn quản trị
   vẫn cho chọn vai mà app nay từ chối.

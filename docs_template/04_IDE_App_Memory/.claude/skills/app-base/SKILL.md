@@ -3,12 +3,12 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 37
+version: 38
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_App_Base @v37 #b9364bc8f9ea
+from: _Store/03_SKILLS/Skill_App_Base @v38 #4192b65e0ca9
 ---
 
 # app-base — the APP design standard (FE + BE)
@@ -457,14 +457,21 @@ git=source(tag/branch) · `dist`+Releases=build · `data/snapshots`=data · `mig
     · **The answer:** no cookie · no live session · account locked · temporary password still to change ⇒ page: redirect to the shared sign-in with `next`;
       API: 401 that carries the sign-in address. Live session, no role in this app ⇒ 403 "no access to <app>" — never back to sign-in, or it loops.
       Live session with a role ⇒ through.
+    · **Cannot check ≠ signed out:** a session cookie came but the check could not run (the family DB does not answer, the connection is hung or not
+      open, the lookup throws) ⇒ never the redirect to sign-in — the `system-manager` finds the session alive and sends the browser straight back.
+      Page: 503 with a notice in both languages that reloads itself (`Retry-After`). API: 503 with a machine-readable flag (`auth_unavailable`) and no
+      sign-in address; the frontend shows a banner and stays on the page until a request goes through. Still fail-closed: nothing passes unchecked.
+      Log one line when checks start failing (with the error) and one when they come back (how long, how many requests refused), never one per
+      request; the app's diagnostics show the current state.
     · **`next`** is the full path from the root of the address, the app's own prefix and query included (`/<app>/jobs?id=3`); the redirect points at the
       shared sign-in at the root, not at `/<app>/login` (a base-path layer must not prefix it). The `system-manager` accepts only `next` that starts with one `/`.
     · **Frontend:** a 401 ⇒ go to the address it carries. Sign out ⇒ call the `system-manager`'s sign-out by its absolute path, then go to its sign-in.
       Change of password and profile ⇒ a link to the `system-manager`. The app's header links back to the `system-manager`.
-    · **Moving off an own sign-in:** accept the old cookie and the shared one for a while, pass the six checks below, then remove the old path.
-    · **Six checks behind the gateway:** ① no cookie ⇒ redirect with the right `next`, API 401 · ② sign in ⇒ back on the same app page · ③ no role ⇒ 403, no
+    · **Moving off an own sign-in:** accept the old cookie and the shared one for a while, pass the seven checks below, then remove the old path.
+    · **Seven checks behind the gateway:** ① no cookie ⇒ redirect with the right `next`, API 401 · ② sign in ⇒ back on the same app page · ③ no role ⇒ 403, no
       loop · ④ role removed on the shared admin screen ⇒ refused within one session-memory period · ⑤ sign out from the app ⇒ the `system-manager` asks to sign
-      in again · ⑥ account locked ⇒ refused at the next lookup.
+      in again · ⑥ account locked ⇒ refused at the next lookup · ⑦ the session lookup fails (make the store raise in the app's gate) ⇒ page 503 notice, API 503
+      with the flag, no redirect; the next working lookup goes through.
 - **Security guarded on the server, blocked by default:** a new write function ⇒ blocks every role not declared as allowed; hiding a button in the interface
   does not count as security. Every endpoint returning data stands behind the login layer.
 - **Named queries in code run as strings:** a worker loaded with eval cannot import the query library ⇒ pass named queries through
