@@ -1,5 +1,5 @@
 ---
-version: 17
+version: 18
 lang: vi
 ---
 
@@ -117,9 +117,18 @@ lang: vi
   (người, địa chỉ, phòng ban, trưởng phòng) tìm bằng ô tìm kiếm, không bao giờ liệt kê trong bộ lọc. Ô lọc đang đặt được đánh
   dấu (`.filter-field.on`); nút lọc đếm số ô lọc đang đặt và bộ lọc có nút Xoá lọc đúng khi có ô đang đặt. Danh sách của ô lọc
   treo ở `<body>` ngay dưới ô, như mọi menu nằm trên thẻ kính. [filter-set] [filter-count]
-- **Người dùng chọn kiểu bộ lọc:** Cài đặt › Bố cục gom bộ lọc sau nút lọc (popover) hoặc trải ở khúc giữa của dòng duy nhất
-  trên thanh của trang - đường dẫn bên trái, nút bên phải, nhãn cạnh ô; chỉ khúc giữa đó cuộn ngang và thanh giữ nguyên chiều
-  cao (cài đặt giao diện `filters`: `popover` | `bar`; điện thoại luôn dùng popover). [filter-row]
+- **Người dùng chọn kiểu bộ lọc:** Cài đặt › Bố cục gom bộ lọc sau nút lọc (popover) hoặc trải trên dòng duy nhất của thanh
+  trang, trước nhóm nút (sau đường dẫn khi thanh có đường dẫn). Khi trải, mỗi bộ lọc là một ô mang luôn nhãn ("Vai: Tất cả");
+  các ô chia đều dòng và cùng co lại, không ô nào bị cuộn khuất hay bị cắt, chữ bị rút gọn kết thúc bằng "…" và rê chuột hiện
+  đủ tên; nhóm nút nhường chỗ (nút thêm chỉ còn "+", Xoá lọc chỉ còn icon và số). Cài đặt giao diện `filters`: `popover` |
+  `bar`; điện thoại luôn dùng popover. [filter-row]
+- **Giao diện là của người dùng trên cả hệ:** các cài đặt giao diện định hình bề mặt chung - theme, ngôn ngữ, định dạng ngày,
+  kính và độ mờ, hiệu ứng và ánh sáng theo con trỏ, kiểu bộ lọc, độ rộng nội dung và menu - lưu một chỗ, là cài đặt của người
+  đó ở system-manager trong DB của hệ, và mọi app của hệ đọc và ghi đúng chỗ đó, nên chọn ở một app là có ở mọi app.
+- **Mọi điều khiển tự xưng tên khi rê chuột:** điều khiển không có chữ của riêng nó (nút icon, công tắc, avatar) mang tên
+  (`data-tip`, không có thì `aria-label` hoặc `title`); trỏ chuột vào hay tới bằng bàn phím thì tên hiện trong một chú thích
+  duy nhất ở `<body>`, ngay dưới điều khiển và trong cửa sổ - chú thích vẽ trong điều khiển sẽ bị điều khiển cắt mất. Chữ bị
+  rút gọn cũng hiện đủ theo cách đó. [control-name]
 - **Menu của thanh trên mở trọn:** không phần nào của thanh cắt phần tràn khi menu của nó mở được (ngôn ngữ, chuyển app,
   chuông, tài khoản); thanh có thể thu gọn thì chỉ cắt lúc đang thu.
 - **Báo khi có bản build mới:** app đọc phiên bản của server qua lần dò health; phiên bản khác với bản mà tab đã nạp thì hiện
