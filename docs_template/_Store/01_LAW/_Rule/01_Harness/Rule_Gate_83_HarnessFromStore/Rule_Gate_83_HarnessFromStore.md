@@ -1,8 +1,8 @@
 ---
 id: Rule_83
 name: harness-from-store
-version: 13
-checked: [Rule_Gate_79_HarnessEdit, Rule_Gate_85_ProposeChecked, Rule_Gate_61_HookSafetyNet]
+version: 14
+checked: [Rule_Gate_79_HarnessEdit, Rule_Gate_85_ProposeChecked, Rule_Gate_61_HookSafetyNet, Rule_Gate_50_Git]
 kind: action
 code: 01_Harness
 ---
@@ -31,10 +31,15 @@ requester approves; it is never left for the zemory session to do. The repo fill
       `Rule_Gate_79_HarnessEdit`). Approved ⇒ this repo's session, not the zemory session:
       1. edits the part on HS (`docs_template/_Store` in the zemory clone) and raises its `version`;
       2. runs `zemory impact <part>` to list every repo that carries it;
-      3. runs `zemory sync` in this repo: it rebuilds every set folder that fell behind HS, then brings this repo up;
-      4. runs `zemory sync` in every other repo the impact listed, and messages the sessions open in them
-         (`Rule_Gate_89_MessageOnlyWithWork`);
-      5. commits the part together with the set folders the sync rebuilt, in the zemory repo.
+      3. commits the part in the zemory repo, naming only its own paths (`git commit --only <paths>`): several sessions write HS
+         at once, and sync holds back every set that carries a part not yet committed — it neither rebuilds the set nor writes
+         a repo that uses it, and names the paths it waits on;
+      4. runs `zemory sync` in this repo: it rebuilds every set folder that fell behind HS, then brings this repo up; commits
+         the set folders it rebuilt, naming only those paths;
+      5. runs `zemory sync` in every other repo the impact listed, and messages the sessions open in them
+         (`Rule_Gate_89_MessageOnlyWithWork`).
+      A sync that says a set "waits on uncommitted HS paths" of another session ⇒ that session commits; the paths are never
+      committed, reverted or assembled by a session that did not write them.
    b. only this repo needs it different ⇒ a part of its own: an article of its own constitution goes in
       `01_LAW/_Cons/Cons_<Gate|Keys|Core>_1NN_<Name>/` (numbered from 101, no `from:` line); the repo writes it once the requester
       approves the article in the session (one-use flag `.allow-docs-write`). A copy of a shared part is never edited here.
