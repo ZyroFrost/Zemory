@@ -1,5 +1,5 @@
 ---
-version: 14
+version: 15
 lang: vi
 ---
 
@@ -116,15 +116,17 @@ lang: vi
 - **Danh sách tài khoản hiện loại tài khoản** (người · agent) thành một cột riêng có bộ lọc riêng, hộp sửa tài khoản đặt được
   loại; số liệu về người chỉ đếm người.
 
-- **Bốn thẻ số liệu Insights phải khác nhau:** thẻ tài khoản chia dòng chính làm hai nửa User và Agent, mỗi nửa hiện số
-  lượng, và ở dòng phần trăm ngay dưới là tỷ trọng trong tổng tài khoản hoạt động của hai loại (hai tỷ trọng cộng lại bằng 100%);
-  thẻ thứ tư hiện số app có sử dụng, tỷ lệ trên app đang bật và tổng app đang bật, không lặp lại so sánh lượt đăng nhập.
-  Panel trang riêng được neo, breadcrumb nằm trái còn tìm app và lọc kỳ nằm phải trên cùng một hàng desktop. [insights-kpis] [crumbs]
+- **Bốn thẻ số liệu Insights phải khác nhau:** thẻ tài khoản chia dòng chính làm hai nửa, tài khoản người và tài khoản agent,
+  mỗi nửa hiện số lượng, và ở dòng phần trăm ngay dưới là tỷ trọng trong tổng tài khoản hoạt động của hai loại (hai tỷ trọng
+  cộng lại bằng 100%); thẻ thứ tư hiện số app có sử dụng, tỷ lệ trên app đang bật và tổng app đang bật, không lặp lại so sánh
+  lượt đăng nhập. Panel trang riêng được neo, breadcrumb nằm trái còn tìm app và lọc kỳ nằm phải trên cùng một hàng desktop.
+  [insights-kpis] [crumbs]
 - **Mỗi thẻ Insights có bốn vai chữ theo thứ tự cố định:** title của card, nội dung chính, tỷ lệ %, nội dung phụ. Nội dung
   chính lớn hơn title; tỷ lệ đậm hơn và khác màu nội dung phụ. Trong card tài khoản, mỗi con số dùng vai nội dung chính còn
-  nhãn User/Agent bên cạnh dùng vai nội dung phụ, để một nửa thẻ không tràn khi thẻ hẹp. [kpi-type]
-- **Các thẻ số liệu cùng một hàng giữ các dòng thẳng nhau** (user 04/11): dòng chính, dòng phần trăm và dòng phụ bắt đầu ở cùng
-  độ cao trong mọi thẻ của hàng, không dòng nào rộng hơn thẻ của nó. [kpi-align]
+  nhãn loại tài khoản bên cạnh dùng vai nội dung phụ, để một nửa thẻ không tràn khi thẻ hẹp. [kpi-type]
+- **Các thẻ số liệu cùng một hàng giữ các dòng thẳng nhau:** dòng chính, dòng phần trăm và dòng phụ bắt đầu ở cùng độ cao trong
+  mọi thẻ của hàng, đo theo bố cục (thẻ đang nổi lên hay đang nghiêng theo con trỏ không tính), không dòng nào rộng hơn thẻ
+  của nó. [kpi-align]
 
 ## 6. Kiểm
 

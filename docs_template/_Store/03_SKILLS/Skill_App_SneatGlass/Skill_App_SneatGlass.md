@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 14
+version: 15
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -119,17 +119,18 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - **Every figure card shows a percentage:** the change against the period before - WoW / MoM / QoQ by the range chosen, red
   when it falls - or the share the figure holds (people who signed in of the open person accounts, the top app's share of
   sign-ins); one second line may hold one more fact (agents apart from people). [kpi-pct]
-- **The four Insights figures are distinct:** the account figure splits its main line into two halves, User and Agent, each
-  with its count and, on the percentage line under it, its share of their combined active total (the two shares add to 100%);
-  the fourth figure reports apps used, its share of enabled apps and the enabled-app total, never repeats
+- **The four Insights figures are distinct:** the account figure splits its main line into two halves, person accounts and
+  agent accounts, each with its count and, on the percentage line under it, its share of their combined active total (the two
+  shares add to 100%); the fourth figure reports apps used, its share of enabled apps and the enabled-app total, never repeats
   the sign-in comparison. Its separate pinned page panel keeps crumbs on the left and app search plus period filter on the
   right, on the same desktop row. [insights-kpis] [crumbs]
 - **Every Insights figure has four typography roles in this order:** card title, main content, percentage, secondary content.
   Main content is larger than the title; percentage is stronger and differently coloured than secondary content. In the
-  account figure each count is main content and its User/Agent label beside it takes the secondary role, so a half never
+  account figure each count is main content and the account-kind label beside it takes the secondary role, so a half never
   outgrows a narrow card. [kpi-type]
-- **Figure cards on one row keep their lines level** (user 04/11): main line, percentage line and secondary line start at the
-  same height in every card of the row, and no line is wider than its card. [kpi-align]
+- **Figure cards on one row keep their lines level:** main line, percentage line and secondary line start at the same height
+  in every card of the row, measured on the layout (a card rising in or leaning under the pointer does not count), and no
+  line is wider than its card. [kpi-align]
 - **The pointer effects can be turned off:** Settings › Appearance switches the light spot, sheen, tilt and ripple off for the
   person (UI setting `fx`, kept with their other UI settings; `html.fx-off`); the glass panels stay.
 - **A new build is announced:** the app reads the server's version with its health probe; a version other than the one the

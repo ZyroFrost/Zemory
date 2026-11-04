@@ -306,13 +306,21 @@ export const RULES = [
       if (!row) return true;
       const cards = [...row.querySelectorAll('.kpi-card')].filter(card => card.getClientRects().length);
       const top = node => node ? Math.round(node.getBoundingClientRect().top) : NaN;
+      // Layout positions, not painted ones: a card rising in (reveal) or leaning under the pointer (tilt) is transformed, which
+      // moves its painted lines but not its layout. Rows group by the card's grid cell; a line is measured from its card.
+      const inCard = (node, card) => {
+        if (!node) return NaN;
+        let y = 0;
+        for (let n = node; n && n !== card && card.contains(n); n = n.offsetParent) y += n.offsetTop;
+        return y;
+      };
       const rows = new Map();
-      for (const card of cards) { const y = top(card); rows.set(y, [...(rows.get(y) || []), card]); }
+      for (const card of cards) { const y = top(card.parentElement); rows.set(y, [...(rows.get(y) || []), card]); }
       for (const group of rows.values()) {
         if (group.length < 2) continue;
         for (const role of ['.kpi-main', '.kpi-percentage', '.kpi-secondary']) {
           // the secondary line is the card's last one (an account half's label also wears the secondary role)
-          const tops = group.map(card => top(role === '.kpi-secondary' ? [...card.querySelectorAll(role)].pop() : card.querySelector(role)));
+          const tops = group.map(card => inCard(role === '.kpi-secondary' ? [...card.querySelectorAll(role)].pop() : card.querySelector(role), card));
           if (tops.some(Number.isNaN)) return 'a figure card has no ' + role.slice(1) + ' line';
           if (Math.max(...tops) - Math.min(...tops) > 2) return 'the ' + role.slice(1) + ' lines of the figure cards on one row are not level (tops ' + tops.join(' / ') + ')';
         }
