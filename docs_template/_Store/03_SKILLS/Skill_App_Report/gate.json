@@ -1,0 +1,24 @@
+{
+  "trigger": "trang báo cáo · bảng dashboard · dựng lại pbi · chuẩn pbi white cho app · card kpi · bảng ma trận · bố cục chart · bảng giải thích",
+  "prompt": {
+    "kind": "app-report",
+    "re": "\\b(trang bao cao|bang dashboard|dung lai (bao cao |report )?pbi|tai tao (lai )?(bao cao |report )?pbi|pbi white|card kpi|bang ma tran|bo cuc (cac )?chart|bang giai thich|glossary)\\b",
+    "text": "[zemory] Report page: follow skill app-report - every % names its period/base, declares up/down/share, two colours only (pp for a ratio card); card rows of 4+ cards only; one table style, no table for little information, nothing scrolls sideways; same-kind visuals in one even row, no chart >30% empty, Top N shows N, no negative bars; tab labels <= 10 chars, no dept code / Report in names; a glossary per page; parity with the report it replaces; the repo's browser test runs scripts/report_layout_check.mjs."
+  },
+  "block": [
+    {
+      "note": "rebuilding a Power BI report as an app page",
+      "prompt": "dựng lại pbi IC report thành trang trong app"
+    },
+    {
+      "note": "a report page's card row",
+      "prompt": "sửa card kpi của trang báo cáo cho đúng chuẩn"
+    }
+  ],
+  "pass": [
+    {
+      "note": "the sign-in page, not a report page",
+      "prompt": "chỉnh cỡ chữ trang đăng nhập"
+    }
+  ]
+}
