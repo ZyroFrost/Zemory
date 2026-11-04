@@ -11,6 +11,7 @@ import { rerank } from "./rerank.js";
 import { blendRecency, recencyEnabled } from "./recency.js";
 import { getHybridSetting, getRerankSetting, getScopeExclude, type ScopeLane } from "../config/settings.js";
 import { projectKey } from "../core/config.js";
+import { toHostPath } from "../util/hostpath.js";
 import { isExcluded } from "./scope.js";
 import { Q } from "./store/queries.js";
 
@@ -151,6 +152,12 @@ function roleMatches(role: string, content: string, want: string): boolean {
 
 // MỘT bản so-path cho cả hệ (F4, 2026-08-02) — bản cũ ở đây không cắt gạch cuối.
 const norm = projectKey;
+
+/** The project as `sessions.project_root` stores it (the host spelling), for the SQL filter of the FTS streams: in the
+ *  container the command names the repo by its mount path, which matches no row. Undefined when the scope is all. */
+function sqlScope(opts: SearchOptions): string | undefined {
+  return !opts.all && opts.project ? toHostPath(opts.project) : undefined;
+}
 
 /** Tokenize + sanitize a user query for safe FTS5 MATCH (quote each term). */
 function ftsTerms(query: string): string[] {
@@ -821,7 +828,7 @@ export function search(query: string, opts: SearchOptions = {}): SearchHit[] {
   if (!terms.length) return [];
   const db = openMemory(opts.dbPath ?? currentMemoryDb());
   try {
-    const scopedProject = !opts.all ? opts.project : undefined;
+    const scopedProject = sqlScope(opts);
     const ranked = rrf(ftsStreams(db, terms, scopedProject));
     if (!ranked.length) return [];
     const ordered = rankWithRecency(db, demoteToolOutput(db, ranked, opts), opts);
@@ -898,7 +905,7 @@ async function fusedSearch(query: string, opts: SearchOptions, useVector: boolea
   if (!terms.length && !vec.length) return { hits: [] };
   const db = openMemory(opts.dbPath ?? currentMemoryDb());
   try {
-    const scopedProject = !opts.all ? opts.project : undefined;
+    const scopedProject = sqlScope(opts);
     const streams = terms.length ? ftsStreams(db, terms, scopedProject) : [];
     if (vec.length) streams.push({ ranks: vec, w: W_VEC });
     let ranked = rrf(streams);

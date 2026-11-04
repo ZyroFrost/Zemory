@@ -191,8 +191,19 @@ export function canonProjectRoot<T extends string | null | undefined>(v: T): T {
  * `graph-memory.ts::norm` — và chúng ĐÃ LỆCH NHAU: hai bản `norm` không cắt gạch cuối, bản
  * graph đổi ngược `\`→`/`. Hệ quả đo được: `D:\X\` khớp qua `key()` nhưng TRƯỢT qua `norm()`
  * của recall — cùng một thư mục, hai câu trả lời. Một sự thật thì phải có một hàm.
+ *
+ * In the container (ZEMORY_PATH_MAP set) the key is the HOST spelling: the store keeps `D:\Workspace\…` while a command
+ * run here names the repo `/host/workspace/…` (measured 2026-11-04: `memory search` scoped to this project found 0 hits
+ * that `--all` found in the same project). A drive-letter path is never `resolve`d on Linux (it would be read as a
+ * relative name); it compares case-insensitively like on Windows.
  */
 export function projectKey(path: string): string {
+  if (process.env.ZEMORY_PATH_MAP) {
+    const direct = toHostPath(path);
+    const host = /^[A-Za-z]:/.test(direct) ? direct : toHostPath(realOf(resolve(path)));
+    const key = host.replace(/\//g, "\\").replace(/[\\/]+$/, "");
+    return /^[A-Za-z]:/.test(key) || process.platform === "win32" ? key.toLowerCase() : key;
+  }
   const abs = realOf(resolve(path)).replace(/\//g, "\\").replace(/[\\/]+$/, "");
   return process.platform === "win32" ? abs.toLowerCase() : abs;
 }

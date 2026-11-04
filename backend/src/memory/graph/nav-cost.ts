@@ -18,6 +18,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { toHostPath } from "../../util/hostpath.js";
 import { type CodeGraph, buildCodeGraph } from "./graph.js";
 import { DEFAULT_SEARCH_LIMIT, SNIPPET_MAX_CHARS } from "../search.js";
 import { currentMemoryDb, openMemory } from "../db.js";
@@ -99,7 +100,7 @@ function priorContext(root: string, dbPath?: string): { chars: number; sessions:
              FROM messages m JOIN sessions s ON s.id = m.session_id
             WHERE lower(replace(s.project_root, '\\', '/')) = lower(replace(?, '\\', '/'))`,
         )
-        .get(root) as { chars: number; sessions: number } | undefined;
+        .get(toHostPath(root)) as { chars: number; sessions: number } | undefined; // the store keeps the host spelling
       return { chars: Number(row?.chars ?? 0), sessions: Number(row?.sessions ?? 0) };
     } finally {
       db.close();

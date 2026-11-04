@@ -7,6 +7,7 @@
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
 import { blendRecency, recencyEnabled } from "./recency.js";
+import { projectKey } from "../core/config.js";
 
 export interface Anchored {
   text: string;
@@ -340,8 +341,10 @@ export function searchDigests(
       .map((t) => t.replace(/["()*:^]/g, ""))
       .filter(Boolean);
     if (!terms.length) return [];
-    const filtered = opts.project
-      ? (hits: DigestHit[]) => hits.filter((h) => h.meta.project_root === opts.project)
+    // Compared through projectKey: in the container the command names the repo by its mount path, the digest by the host's.
+    const want = opts.project ? projectKey(opts.project) : null;
+    const filtered = want
+      ? (hits: DigestHit[]) => hits.filter((h) => !!h.meta.project_root && projectKey(h.meta.project_root) === want)
       : (hits: DigestHit[]) => hits;
     const word = filtered(run("session_digest_fts", terms.map((t) => `"${t}"`).join(" ")));
     const hits = word.length ? word : filtered(run("session_digest_fts_tri", `"${terms.join(" ")}"`));
