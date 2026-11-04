@@ -300,16 +300,18 @@ export const RULES = [
   },
   {
     id: 'filter-set',
-    rule: 'a page card whose filter button is on offers a set of labelled filters as report slicers: at least three, among them a multi-pick list',
+    rule: 'a page card whose filter button is on offers labelled filters for fields of few values only: a pick list holds 10 values at most - the main records of the page are found with the search box, never listed in a filter',
     check: `(() => {
       const button = document.querySelector('.page-toolbar #filter-toggle');
       if (!button || button.disabled) return true;
       const box = document.querySelector('#filter-pop, #filter-row');
       if (!box) return 'the filter button opens no filter set';
       const fields = [...box.querySelectorAll('.filter-field')];
-      if (fields.length < 3) return 'only ' + fields.length + ' filters - a page offers at least three';
-      if (!box.querySelector('.slicer')) return 'no multi-pick slicer among the filters';
-      return fields.some(f => !f.querySelector('.filter-label')?.textContent.trim()) ? 'a filter without its label' : true;
+      if (!fields.length) return 'the filter set is empty';
+      if (fields.some(f => !f.querySelector('.filter-label')?.textContent.trim())) return 'a filter without its label';
+      const long = [...box.querySelectorAll('.slicer')].find(s => Number(s.dataset.options) > 10)
+        || [...box.querySelectorAll('select')].find(s => s.options.length > 11);
+      return long ? 'a pick list of ' + (long.dataset?.options || long.options.length - 1) + ' values - a field of many values is searched, not listed' : true;
     })()`,
   },
   {
@@ -328,13 +330,19 @@ export const RULES = [
   },
   {
     id: 'filter-row',
-    rule: 'laid out in a row (the filter layout setting), every filter stands on one line of the page bar, its label beside its control',
+    rule: 'laid out in a row (the filter layout setting), the filters take the middle of the page bar - crumbs left, tools right - on its one line, label beside control; only that middle scrolls sideways and the bar keeps its height',
     check: `(() => {
       const row = document.querySelector('#filter-row');
       if (!row || !row.getClientRects().length) return true;
-      const mid = f => { const r = f.getBoundingClientRect(); return Math.round(r.top + r.height / 2); };
-      const mids = [...row.querySelectorAll('.filter-field')].map(mid);
-      return !mids.length || Math.max(...mids) - Math.min(...mids) <= 2 ? true : 'the filters of the row fall onto more than one line';
+      const bar = row.closest('.page-toolbar');
+      if (!bar || !row.previousElementSibling?.matches('.card-lead') || !row.nextElementSibling?.matches('.card-tools'))
+        return 'the filter row is not the middle of the page bar';
+      const mid = e => { const r = e.getBoundingClientRect(); return Math.round(r.top + r.height / 2); };
+      // the row's own box may hang its slim sideways bar below the line; the crumbs, the filters and the tools are what must align
+      const mids = [row.previousElementSibling, row.nextElementSibling, ...row.querySelectorAll('.filter-field')].map(mid);
+      if (Math.max(...mids) - Math.min(...mids) > 2) return 'the page bar falls onto more than one line';
+      const s = getComputedStyle(bar), inner = bar.clientHeight - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom);
+      return inner <= 44 ? true : 'the page bar line grew to ' + Math.round(inner) + ' px';
     })()`,
   },
   {

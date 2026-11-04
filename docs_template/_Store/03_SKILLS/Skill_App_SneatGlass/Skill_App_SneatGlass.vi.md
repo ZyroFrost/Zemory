@@ -1,5 +1,5 @@
 ---
-version: 16
+version: 17
 lang: vi
 ---
 
@@ -112,12 +112,14 @@ lang: vi
 - **Tắt được hiệu ứng theo chuột:** Cài đặt › Giao diện tắt đốm sáng, ánh lướt, nghiêng và gợn cho người đó (cài đặt giao diện
   `fx`, lưu cùng các cài đặt giao diện khác; `html.fx-off`); các tấm kính vẫn giữ. Đốm sáng theo con trỏ còn có công tắc
   riêng (cài đặt giao diện `spot`, `html.spot-off`): tắt nó thì thẻ vẫn nghiêng.
-- **Bộ lọc là slicer kiểu báo cáo:** bộ lọc của thẻ trang có ít nhất ba ô lọc có nhãn, trong đó có danh sách chọn nhiều (có ô
-  tìm khi dài, chọn tất cả, bỏ chọn); cột ngày có khoảng ngày (từ - đến), danh sách cố định có ô chọn một. Ô lọc đang đặt được
-  đánh dấu (`.filter-field.on`); nút lọc đếm số ô lọc đang đặt và bộ lọc có nút Xoá lọc đúng khi có ô đang đặt. Danh sách của
-  ô lọc treo ở `<body>` ngay dưới ô, như mọi menu nằm trên thẻ kính. [filter-set] [filter-count]
-- **Người dùng chọn kiểu bộ lọc:** Cài đặt › Bố cục gom bộ lọc sau nút lọc (popover) hoặc trải hết thành một dãy trên thanh của
-  trang, nhãn cạnh ô, cuộn ngang khi nhiều hơn chỗ (cài đặt giao diện `filters`: `popover` | `bar`). [filter-row]
+- **Bộ lọc là slicer kiểu báo cáo, chỉ cho trường ít giá trị:** danh sách chọn (chọn nhiều có chọn tất cả và bỏ chọn, hoặc chọn
+  một) có tối đa 10 giá trị - trạng thái, loại, app, vai, mức; cột ngày có khoảng ngày (từ - đến). Dữ liệu chính của trang
+  (người, địa chỉ, phòng ban, trưởng phòng) tìm bằng ô tìm kiếm, không bao giờ liệt kê trong bộ lọc. Ô lọc đang đặt được đánh
+  dấu (`.filter-field.on`); nút lọc đếm số ô lọc đang đặt và bộ lọc có nút Xoá lọc đúng khi có ô đang đặt. Danh sách của ô lọc
+  treo ở `<body>` ngay dưới ô, như mọi menu nằm trên thẻ kính. [filter-set] [filter-count]
+- **Người dùng chọn kiểu bộ lọc:** Cài đặt › Bố cục gom bộ lọc sau nút lọc (popover) hoặc trải ở khúc giữa của dòng duy nhất
+  trên thanh của trang - đường dẫn bên trái, nút bên phải, nhãn cạnh ô; chỉ khúc giữa đó cuộn ngang và thanh giữ nguyên chiều
+  cao (cài đặt giao diện `filters`: `popover` | `bar`; điện thoại luôn dùng popover). [filter-row]
 - **Menu của thanh trên mở trọn:** không phần nào của thanh cắt phần tràn khi menu của nó mở được (ngôn ngữ, chuyển app,
   chuông, tài khoản); thanh có thể thu gọn thì chỉ cắt lúc đang thu.
 - **Báo khi có bản build mới:** app đọc phiên bản của server qua lần dò health; phiên bản khác với bản mà tab đã nạp thì hiện
