@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 20
+version: 21
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v20 #85abb1282d6d
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v21 #35b31f948e27
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -130,7 +130,8 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v20 #85abb1282d6d
   as its longest line. Widths are measured on the layout (`offsetWidth`), never the painted page (a page rising in is scaled);
   a drag starts from the width drawn now and is followed on the window until the button is up (a handle drawn anew mid-drag
   must not end it); the handles carry no listeners of their own - one listener on the document takes every handle and each
-  table keeps its widths on itself (a handle left from an earlier install, its listeners removed, never started a drag);
+  table keeps its widths on itself (a handle left from an earlier install, its listeners removed, never started a drag), and a press is taken by where
+  it is - within 8 px of the right edge of a header cell - not by its target (another element may hold the pointer);
   header cells drawn anew get their handles back. A port carries the handles' CSS too. [resize] (The drag
   itself is a probe of the browser test, §6.)
 - **Every chart shows its numbers,** as a report does: a value on each bar, data labels on a line (every point when they fit,

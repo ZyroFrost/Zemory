@@ -1,5 +1,5 @@
 ---
-version: 20
+version: 21
 lang: vi
 ---
 
@@ -118,7 +118,8 @@ lang: vi
   dài nhất của nó. Độ rộng đo trên bố cục (`offsetWidth`), không bao giờ trên trang đang vẽ (trang đang hiện lên bị thu phóng);
   cú kéo bắt đầu từ độ rộng đang vẽ và được theo dõi trên cả cửa sổ cho tới khi nhả chuột (tay kéo bị vẽ lại giữa chừng không
   được làm dừng cú kéo); tay kéo không mang trình nghe riêng - một trình nghe trên document nhận mọi tay kéo và mỗi
-  bảng tự giữ độ rộng của nó (tay kéo còn lại từ lần gắn trước, đã mất trình nghe, không bao giờ bắt đầu được cú kéo); ô
+  bảng tự giữ độ rộng của nó (tay kéo còn lại từ lần gắn trước, đã mất trình nghe, không bao giờ bắt đầu được cú kéo), và cú bấm được nhận theo vị
+  trí - trong 8 px sát mép phải của ô tiêu đề - không theo target của sự kiện (phần tử khác có thể đang giữ con trỏ); ô
   tiêu đề bị vẽ lại được gắn lại tay kéo. Lần chép mang theo cả CSS của tay kéo. [resize] (Bản thân cú
   kéo là phép đo của bài kiểm trình duyệt, §6.)
 - **Mọi biểu đồ hiện số của nó,** như báo cáo: giá trị trên từng cột, nhãn số trên đường (mọi điểm khi đủ chỗ, không thì điểm cao
