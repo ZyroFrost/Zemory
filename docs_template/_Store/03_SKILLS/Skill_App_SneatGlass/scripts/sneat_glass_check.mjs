@@ -239,20 +239,20 @@ export const RULES = [
   },
   {
     id: 'insights-kpis',
-    rule: 'an Insights overview has four distinct figures: the account figure has separate User and Agent count/share rows, and the fourth figure reports apps in use instead of repeating sign-ins',
+    rule: 'an Insights overview has four distinct figures: the account figure splits its main line into a User half and an Agent half, each with its count and share, and the fourth figure reports apps in use instead of repeating sign-ins',
     check: `(() => {
       const row = document.querySelector('#kpi-row');
       if (!row) return true;
       const cards = [...row.querySelectorAll(':scope > [data-kpi]')].filter(c => c.getClientRects().length);
       if (cards.length !== 4) return 'the Insights overview does not have exactly four figure cards';
-      const accounts = row.querySelector('[data-kpi="activeUsers"]'), lines = [...(accounts?.querySelectorAll('.kpi-kind-lines > div') || [])];
-      if (lines.length !== 2) return 'the account figure does not have separate User and Agent rows';
-      const labels = lines.map(line => line.querySelector('span')?.textContent.trim() || '');
+      const accounts = row.querySelector('[data-kpi="activeUsers"]'), lines = [...(accounts?.querySelectorAll('.kpi-kind-split > [data-kind]') || [])];
+      if (lines.length !== 2) return 'the account figure does not split into a User half and an Agent half';
+      const labels = lines.map(line => line.querySelector('.kpi-main span')?.textContent.trim() || '');
       if (!/(user|người)/i.test(labels[0]) || !/agent/i.test(labels[1]) || new Set(labels).size !== 2)
-        return 'the two account rows are not User and Agent';
-      if (lines.some(line => !/\\d/.test(line.querySelector('b')?.textContent || '') || !/%/.test(line.querySelector('small')?.textContent || '')))
-        return 'a User or Agent row has no count and percentage';
-      const shares = lines.map(line => Number.parseFloat((line.querySelector('small')?.textContent || '').replace(',', '.')));
+        return 'the two account halves are not User and Agent';
+      if (lines.some(line => !/\\d/.test(line.querySelector('.kpi-main b')?.textContent || '') || !/%/.test(line.querySelector('.kpi-percentage')?.textContent || '')))
+        return 'a User or Agent half has no count and percentage';
+      const shares = lines.map(line => Number.parseFloat((line.querySelector('.kpi-percentage')?.textContent || '').replace(',', '.')));
       if (shares.some(Number.isNaN) || Math.abs(shares[0] + shares[1] - 100) > .2)
         return 'the User and Agent percentages are not shares of the same active-account total';
       const apps = row.querySelector('[data-kpi="previous"]'), title = apps?.querySelector('p')?.textContent || '';
@@ -266,7 +266,7 @@ export const RULES = [
   },
   {
     id: 'kpi-type',
-    rule: 'every Insights figure uses four fixed typography roles: title, main content, percentage and secondary content; labels and values inside the account rows are both main content',
+    rule: 'every Insights figure uses four fixed typography roles: title, main content, percentage and secondary content; the count of each account half is main content and its label takes the secondary typography, so a half never outgrows its card',
     check: `(() => {
       const row = document.querySelector('#kpi-row');
       if (!row) return true;
@@ -284,10 +284,41 @@ export const RULES = [
         if (num(p.fontWeight) <= num(s.fontWeight) || p.color === s.color)
           return 'percentage and secondary content are not visually distinct';
       }
-      const accountMain = [...row.querySelectorAll('[data-kpi="activeUsers"] .kpi-kind-lines .kpi-main')];
-      if (accountMain.length !== 4) return 'the User and Agent labels and values are not all main content';
-      const signatures = new Set(accountMain.map(node => { const s = getComputedStyle(node); return s.fontFamily + '|' + s.fontSize + '|' + s.fontWeight; }));
-      return signatures.size === 1 ? true : 'the User and Agent labels and values do not share the main-content typography';
+      const accountMain = [...row.querySelectorAll('[data-kpi="activeUsers"] .kpi-kind-split .kpi-main')];
+      if (accountMain.length !== 2) return 'the User and Agent halves do not each have one main line';
+      const sign = node => { const s = getComputedStyle(node); return s.fontFamily + '|' + s.fontSize + '|' + s.fontWeight; };
+      const total = row.querySelector('[data-kpi="activeUsers"] .kpi-extra');
+      if (!total) return 'the account figure has no secondary line under its halves';
+      for (const node of accountMain) {
+        const count = node.querySelector('b'), label = node.querySelector('span');
+        if (!count || !label) return 'an account half has no count or no label on its main line';
+        if (sign(count) !== sign(node)) return 'an account count is not in the main-content typography';
+        if (sign(label) !== sign(total)) return 'an account label is not in the secondary typography';
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'kpi-align',
+    rule: 'figure cards on one row keep their lines level: the main line, the percentage line and the secondary line start at the same height in every card, and no part of a card is cut',
+    check: `(() => {
+      const row = document.querySelector('#kpi-row');
+      if (!row) return true;
+      const cards = [...row.querySelectorAll('.kpi-card')].filter(card => card.getClientRects().length);
+      const top = node => node ? Math.round(node.getBoundingClientRect().top) : NaN;
+      const rows = new Map();
+      for (const card of cards) { const y = top(card); rows.set(y, [...(rows.get(y) || []), card]); }
+      for (const group of rows.values()) {
+        if (group.length < 2) continue;
+        for (const role of ['.kpi-main', '.kpi-percentage', '.kpi-secondary']) {
+          // the secondary line is the card's last one (an account half's label also wears the secondary role)
+          const tops = group.map(card => top(role === '.kpi-secondary' ? [...card.querySelectorAll(role)].pop() : card.querySelector(role)));
+          if (tops.some(Number.isNaN)) return 'a figure card has no ' + role.slice(1) + ' line';
+          if (Math.max(...tops) - Math.min(...tops) > 2) return 'the ' + role.slice(1) + ' lines of the figure cards on one row are not level (tops ' + tops.join(' / ') + ')';
+        }
+      }
+      const cut = [...row.querySelectorAll('.kpi-card .card-body, .kpi-card .kpi-main')].find(node => node.scrollWidth > node.clientWidth + 1);
+      return cut ? 'a figure line is wider than its card: ' + cut.textContent.trim().slice(0, 30) : true;
     })()`,
   },
   {
