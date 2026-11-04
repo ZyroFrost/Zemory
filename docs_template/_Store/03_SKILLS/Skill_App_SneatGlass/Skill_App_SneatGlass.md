@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 10
+version: 11
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -115,6 +115,13 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - **Every figure card shows a percentage:** the change against the period before - WoW / MoM / QoQ by the range chosen, red
   when it falls - or the share the figure holds (people who signed in of the open person accounts, the top app's share of
   sign-ins); one second line may hold one more fact (agents apart from people). [kpi-pct]
+- **The four Insights figures are distinct:** the account figure has two rows, User and Agent, and each row shows its count
+  and its share of their combined active total (the two shares add to 100%); the fourth figure reports apps used, its share of enabled apps and the enabled-app total, never repeats
+  the sign-in comparison. Its separate pinned page panel keeps crumbs on the left and app search plus period filter on the
+  right, on the same desktop row. [insights-kpis] [crumbs]
+- **Every Insights figure has four typography roles in this order:** card title, main content, percentage, secondary content.
+  Main content is larger than the title; percentage is stronger and differently coloured than secondary content. In the
+  account figure, both the User/Agent labels and their numbers use the main-content role. [kpi-type]
 - **The pointer effects can be turned off:** Settings › Appearance switches the light spot, sheen, tilt and ripple off for the
   person (UI setting `fx`, kept with their other UI settings; `html.fx-off`); the glass panels stay.
 - **A new build is announced:** the app reads the server's version with its health probe; a version other than the one the

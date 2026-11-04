@@ -238,6 +238,59 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'insights-kpis',
+    rule: 'an Insights overview has four distinct figures: the account figure has separate User and Agent count/share rows, and the fourth figure reports apps in use instead of repeating sign-ins',
+    check: `(() => {
+      const row = document.querySelector('#kpi-row');
+      if (!row) return true;
+      const cards = [...row.querySelectorAll(':scope > [data-kpi]')].filter(c => c.getClientRects().length);
+      if (cards.length !== 4) return 'the Insights overview does not have exactly four figure cards';
+      const accounts = row.querySelector('[data-kpi="activeUsers"]'), lines = [...(accounts?.querySelectorAll('.kpi-kind-lines > div') || [])];
+      if (lines.length !== 2) return 'the account figure does not have separate User and Agent rows';
+      const labels = lines.map(line => line.querySelector('span')?.textContent.trim() || '');
+      if (!/(user|người)/i.test(labels[0]) || !/agent/i.test(labels[1]) || new Set(labels).size !== 2)
+        return 'the two account rows are not User and Agent';
+      if (lines.some(line => !/\\d/.test(line.querySelector('b')?.textContent || '') || !/%/.test(line.querySelector('small')?.textContent || '')))
+        return 'a User or Agent row has no count and percentage';
+      const shares = lines.map(line => Number.parseFloat((line.querySelector('small')?.textContent || '').replace(',', '.')));
+      if (shares.some(Number.isNaN) || Math.abs(shares[0] + shares[1] - 100) > .2)
+        return 'the User and Agent percentages are not shares of the same active-account total';
+      const apps = row.querySelector('[data-kpi="previous"]'), title = apps?.querySelector('p')?.textContent || '';
+      const folded = (title + ' ' + (apps?.textContent || '')).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      if (!apps || !/(app|ung dung)/.test(folded)) return 'the fourth figure is not apps in use';
+      if (/(so voi ky truoc|previous period)/.test(folded)) return 'the fourth figure still repeats the sign-in comparison';
+      if (!/\\d/.test(apps.querySelector('h4.big')?.textContent || '') || !/%/.test(apps.querySelector('.kpi-delta')?.textContent || '') || !apps.querySelector('.kpi-extra'))
+        return 'the apps-in-use figure has no count, share and enabled-app total';
+      return true;
+    })()`,
+  },
+  {
+    id: 'kpi-type',
+    rule: 'every Insights figure uses four fixed typography roles: title, main content, percentage and secondary content; labels and values inside the account rows are both main content',
+    check: `(() => {
+      const row = document.querySelector('#kpi-row');
+      if (!row) return true;
+      const cards = [...row.querySelectorAll('.kpi-card')].filter(card => card.getClientRects().length);
+      const num = value => Number.parseFloat(value) || 0;
+      for (const card of cards) {
+        const title = card.querySelector('.kpi-title'), main = card.querySelector('.kpi-main');
+        const percentage = card.querySelector('.kpi-percentage'), secondary = card.querySelector('.kpi-secondary');
+        if (!title || !main || !percentage || !secondary) return 'a figure card is missing a title, main, percentage or secondary typography role';
+        const t = getComputedStyle(title), m = getComputedStyle(main), p = getComputedStyle(percentage), s = getComputedStyle(secondary);
+        if (t.fontFamily !== m.fontFamily || t.fontFamily !== p.fontFamily || t.fontFamily !== s.fontFamily)
+          return 'the four figure typography roles do not use one font family';
+        if (num(m.fontSize) <= num(t.fontSize) || num(p.fontSize) > num(t.fontSize) || num(s.fontSize) > num(t.fontSize))
+          return 'the figure typography size hierarchy is title < main and percentage/secondary <= title';
+        if (num(p.fontWeight) <= num(s.fontWeight) || p.color === s.color)
+          return 'percentage and secondary content are not visually distinct';
+      }
+      const accountMain = [...row.querySelectorAll('[data-kpi="activeUsers"] .kpi-kind-lines .kpi-main')];
+      if (accountMain.length !== 4) return 'the User and Agent labels and values are not all main content';
+      const signatures = new Set(accountMain.map(node => { const s = getComputedStyle(node); return s.fontFamily + '|' + s.fontSize + '|' + s.fontWeight; }));
+      return signatures.size === 1 ? true : 'the User and Agent labels and values do not share the main-content typography';
+    })()`,
+  },
+  {
     id: 'crumbs',
     rule: 'the greeting starts the top bar with readable width; the crumbs start the page panel below it and end at the current page',
     check: `(() => {
@@ -252,7 +305,11 @@ export const RULES = [
           return 'the crumbs and page tools are not on the same line';
       }
       const overview = toolbar.closest('.insights-page-toolbar');
-      if (overview && innerWidth >= 768 && getComputedStyle(overview).position !== 'sticky') return 'the overview header panel is not pinned while its cards scroll';
+      if (overview) {
+        if (!tools.querySelector('input[type="search"]')) return 'the overview panel has no app search beside its crumbs';
+        if (!tools.querySelector('#insight-range, .page-filter button')) return 'the overview panel has no period filter beside its crumbs';
+        if (innerWidth >= 768 && getComputedStyle(overview).position !== 'sticky') return 'the overview header panel is not pinned while its cards scroll';
+      }
       const items = [...panelCrumbs.querySelectorAll('.breadcrumb-item')];
       if (items.length < 2) return 'the page panel has fewer than two crumbs';
       const last = items.at(-1);

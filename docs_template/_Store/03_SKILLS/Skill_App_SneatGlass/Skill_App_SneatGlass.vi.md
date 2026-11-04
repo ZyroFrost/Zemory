@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 
@@ -111,6 +111,14 @@ lang: vi
   thanh báo kèm nút tải lại (có thay đổi chưa lưu thì hỏi trước), để không ai làm việc tiếp trên bản cũ.
 - **Danh sách tài khoản hiện loại tài khoản** (người · agent) thành một cột riêng có bộ lọc riêng, hộp sửa tài khoản đặt được
   loại; số liệu về người chỉ đếm người.
+
+- **Bốn thẻ số liệu Insights phải khác nhau:** thẻ tài khoản có hai dòng User và Agent, mỗi dòng hiện số lượng và tỷ trọng
+  trong tổng tài khoản hoạt động của hai loại (hai tỷ trọng cộng lại bằng 100%);
+  thẻ thứ tư hiện số app có sử dụng, tỷ lệ trên app đang bật và tổng app đang bật, không lặp lại so sánh lượt đăng nhập.
+  Panel trang riêng được neo, breadcrumb nằm trái còn tìm app và lọc kỳ nằm phải trên cùng một hàng desktop. [insights-kpis] [crumbs]
+- **Mỗi thẻ Insights có bốn vai chữ theo thứ tự cố định:** title của card, nội dung chính, tỷ lệ %, nội dung phụ. Nội dung
+  chính lớn hơn title; tỷ lệ đậm hơn và khác màu nội dung phụ. Trong card tài khoản, cả nhãn User/Agent lẫn con số đều dùng
+  vai nội dung chính. [kpi-type]
 
 ## 6. Kiểm
 
