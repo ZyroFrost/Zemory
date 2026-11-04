@@ -19,14 +19,19 @@ export const RULES = [
     check: `(() => {
       const cards = [...document.querySelectorAll('.page-card')];
       for (const card of cards) {
-        const bar = card.querySelector(':scope > .page-toolbar');
+        // the card's toolbar stands in the top bar's second row (the page bar), or at the head of the card
+        const bar = document.querySelector('#layout-navbar #page-bar > .page-toolbar') || card.querySelector(':scope > .page-toolbar');
         const box = bar && bar.querySelector('.page-search .form-control'), filter = bar && bar.querySelector('.page-filter > .btn');
         const views = bar ? [...bar.querySelectorAll('.view-switch > .btn')] : [];
         if (!box || !filter || views.length < 2) return 'a page card lacks ' + [!box && 'the filter box', !filter && 'the filter button', views.length < 2 && 'the view switch'].filter(Boolean).join(', ');
         const look = e => { const c = getComputedStyle(e); return [Math.round(e.getBoundingClientRect().height), c.borderTopLeftRadius, c.backgroundColor].join(' '); };
         const fill = e => look(e).replace(/ [^ ]+px /, ' ');
         const plain = views.find(b => !b.classList.contains('active')) || views[0];
-        if (look(box) !== look(filter) || fill(filter) !== fill(plain)) return 'the toolbar mixes designs: ' + [look(box), look(filter), look(plain)].join(' | ');
+        // the filter button is lit while its filters show (it is the switch that opens them): then only its shape is compared
+        const lit = filter.getAttribute('aria-expanded') === 'true';
+        const shape = e => look(e).split(' ').slice(0, 2).join(' ');
+        if ((lit ? shape(box) !== shape(filter) : look(box) !== look(filter)) || (!lit && fill(filter) !== fill(plain)))
+          return 'the toolbar mixes designs: ' + [look(box), look(filter), look(plain)].join(' | ');
         const icon = box.parentElement.querySelector('i, svg');
         if (icon && parseFloat(getComputedStyle(box).paddingInlineStart) < icon.getBoundingClientRect().width + 8) return 'the filter box text runs under its icon';
         const active = views.find(b => b.classList.contains('active'));
@@ -142,14 +147,13 @@ export const RULES = [
     })()`,
   },
   {
-    id: 'see-through',
-    rule: 'with glass on, a pinned header row or column is as clear as the cells beside it (alpha 0.25 at most) and blurred, in both themes - never a band',
+    id: 'pin-cover',
+    rule: 'a pinned header row or column covers what scrolls under it - the rows end at its lower edge, never read through its titles: its background is the card solid glass colour (alpha 0.95 at least), in both themes',
     check: `(() => {
-      if (document.documentElement.classList.contains('solid')) return true;
       const alpha = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return 1; const v = m[1].split(/[ ,/]+/).filter(Boolean); return v.length > 3 ? parseFloat(v[3]) : 1; };
-      const band = [...document.querySelectorAll('th, td')].filter(e => e.getClientRects().length && getComputedStyle(e).position === 'sticky')
-        .find(e => alpha(getComputedStyle(e).backgroundColor) > .25 || !getComputedStyle(e).backdropFilter.includes('blur'));
-      return band ? 'a pinned cell that is not glass: ' + band.textContent.trim().slice(0, 30) : true;
+      const clear = [...document.querySelectorAll('th, td')].filter(e => e.getClientRects().length && getComputedStyle(e).position === 'sticky')
+        .find(e => alpha(getComputedStyle(e).backgroundColor) < .95);
+      return clear ? 'a pinned cell lets the rows read through it: ' + clear.textContent.trim().slice(0, 30) : true;
     })()`,
   },
   {
@@ -309,13 +313,64 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'bar-anchor',
+    rule: 'the page bar anchors its tools (search, filter button, view switch) at its right end; whatever else the bar holds is laid out from its left, and folding or opening the filters never moves the tools',
+    check: `(() => {
+      for (const bar of document.querySelectorAll('.page-toolbar')) {
+        const tools = bar.querySelector(':scope > .card-tools');
+        if (!tools || !bar.getClientRects().length) continue;
+        const s = getComputedStyle(bar), right = bar.getBoundingClientRect().right - parseFloat(s.paddingRight);
+        if (Math.abs(tools.getBoundingClientRect().right - right) > 2) return 'the page tools do not stand at the right end of the bar';
+        const lead = bar.querySelector(':scope > .card-lead');
+        if (lead && lead.getBoundingClientRect().left - (bar.getBoundingClientRect().left + parseFloat(s.paddingLeft)) > 2)
+          return 'what leads the bar does not start at its left';
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'dot-whole',
+    rule: 'an online avatar shows its status dot whole: no box around the avatar clips the dot that sits on its edge',
+    check: `(() => {
+      for (const avatar of document.querySelectorAll('.avatar.avatar-online')) {
+        if (!avatar.getClientRects().length) continue;
+        const a = avatar.getBoundingClientRect(), need = {l: a.left - 3, t: a.top - 3, r: a.right + 3, b: a.bottom + 3};
+        for (let box = avatar.parentElement; box && box !== document.body; box = box.parentElement) {
+          if (getComputedStyle(box).overflow === 'visible') continue;
+          const r = box.getBoundingClientRect();
+          if (need.l < r.left || need.t < r.top || need.r > r.right || need.b > r.bottom)
+            return 'an online dot is clipped by ' + (box.id ? '#' + box.id : box.className.toString().split(' ')[0]);
+          break;   // the first box that clips and holds the avatar with its dot is the one that counts
+        }
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'kit-icons',
+    rule: 'every icon of the shell - top bar, menu, command palette, page bar, menus - comes from the kit icon set; no emoji or typed sign stands in for an icon',
+    check: `(() => {
+      const zones = document.querySelectorAll('#layout-navbar, #layout-menu, #palette, .page-toolbar, .dropdown-menu.show, .modal-header');
+      const emoji = /\\p{Extended_Pictographic}/u;
+      for (const zone of zones) {
+        const walk = document.createTreeWalker(zone, NodeFilter.SHOW_TEXT);
+        for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+          if (emoji.test(n.nodeValue) && n.parentElement?.getClientRects().length) return 'an emoji stands in for an icon: "' + n.nodeValue.trim().slice(0, 20) + '"';
+        }
+      }
+      const blank = [...document.querySelectorAll('#palette .pal-icon, #layout-menu .menu-icon')].find(i => i.getClientRects().length
+        && !getComputedStyle(i).getPropertyValue('--svg').includes('svg') && !getComputedStyle(i, '::before').content.replace(/none|normal|"/g, ''));
+      return blank ? 'an icon slot shows no kit icon' : true;
+    })()`,
+  },
+  {
     id: 'filter-set',
     rule: 'a page card whose filter button is on offers labelled filters for fields of few values only: a pick list holds 10 values at most - the main records of the page are found with the search box, never listed in a filter',
     check: `(() => {
       const button = document.querySelector('.page-toolbar #filter-toggle');
       if (!button || button.disabled) return true;
       const box = document.querySelector('#filter-pop, #filter-row');
-      if (!box) return 'the filter button opens no filter set';
+      if (!box) return button.getAttribute('aria-expanded') === 'true' ? 'the filter button is open but shows no filter set' : true;   // folded away
       const fields = [...box.querySelectorAll('.filter-field')];
       if (!fields.length) return 'the filter set is empty';
       if (fields.some(f => !f.querySelector('.filter-label')?.textContent.trim())) return 'a filter without its label';
@@ -356,6 +411,11 @@ export const RULES = [
       const box = row.getBoundingClientRect();
       if (fields.some(f => { const r = f.getBoundingClientRect(); return r.left < box.left - 1 || r.right > box.right + 1 || r.width < 40; }))
         return 'a filter is pushed out of the row or squeezed under 40 px';
+      // anchored right: a filter never grows past its standard width (12rem), the last one stands against the tools
+      const most = parseFloat(getComputedStyle(document.documentElement).fontSize) * 12 + 2;
+      if (fields.some(f => f.getBoundingClientRect().width > most)) return 'a filter stretches past its standard width (12rem)';
+      const end = Math.max(...[...row.children].map(c => c.getBoundingClientRect().right));
+      if (fields.length && box.right - end > 2) return 'the filters do not stand against the tools at the right';
       const s = getComputedStyle(bar), inner = bar.clientHeight - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom);
       return inner <= 44 ? true : 'the page bar line grew to ' + Math.round(inner) + ' px';
     })()`,
@@ -393,43 +453,48 @@ export const RULES = [
   },
   {
     id: 'crumbs',
-    rule: 'the greeting starts the top bar with readable width; the crumbs start the page panel below it and end at the current page',
+    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs at its start, the search at its centre, the day and time before the actions; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs end at the current page',
     check: `(() => {
-      const panelCrumbs = document.querySelector('.page-toolbar .page-crumbs');
-      if (!panelCrumbs) return 'no crumbs at the start of the page panel';
-      if (document.querySelector('#layout-navbar .breadcrumb')) return 'the crumbs still occupy the top bar';
-      const toolbar = panelCrumbs.closest('.page-toolbar'), tools = toolbar.querySelector(':scope > .card-tools');
-      if (!tools) return 'the page header panel has no search and filter toolbar beside the crumbs';
+      const head = document.querySelector('#layout-navbar');
+      if (!head) return 'no top bar';
+      const row1 = head.querySelector(':scope > .nav-row1'), row2 = head.querySelector(':scope > #page-bar');
+      if (!row1 || !row2) return 'the top bar is not one head of two rows (row 1 and the page bar)';
+      if (document.querySelector('.page-toolbar .page-crumbs')) return 'the crumbs still sit in the page bar - they start row 1';
+      if ([...row1.querySelectorAll('.navbar-hello, #greeting')].some(e => !e.closest('#account-menu')))
+        return 'the greeting still takes row 1 - it belongs in the account menu';
+      if (!document.querySelector('#account-menu .account-greeting')) return 'the account menu does not greet the person';
+      const crumbs = row1.querySelector('.page-crumbs');
       if (innerWidth >= 768) {
-        const c = panelCrumbs.getBoundingClientRect(), x = tools.getBoundingClientRect();
-        if (Math.abs((c.top + c.bottom) / 2 - (x.top + x.bottom) / 2) > Math.max(c.height, x.height) / 2)
-          return 'the crumbs and page tools are not on the same line';
+        if (!crumbs || !crumbs.getClientRects().length) return 'no crumbs at the start of row 1';
+        const search = row1.querySelector('.navbar-search'), actions = row1.querySelector('.navbar-actions');
+        const c = crumbs.getBoundingClientRect(), s = search.getBoundingClientRect(), a = actions.getBoundingClientRect();
+        if (c.right > s.left + 1 || s.right > a.left + 1) return 'row 1 is not crumbs · search · actions in that order';
+        const r = row1.getBoundingClientRect();
+        if (innerWidth >= 1200 && Math.abs((s.left + s.right) / 2 - (r.left + r.right) / 2) > 12) return 'the search is not at the centre of row 1';
+        if (innerWidth >= 1200) {
+          const day = row1.querySelector('#today');
+          if (!day || !day.getClientRects().length) return 'no day and time in row 1';
+          const d = day.getBoundingClientRect();
+          if (d.right > a.left + 1 || d.left < s.right - 1) return 'the day and time do not stand between the search and the actions (they overlap one)';
+        }
       }
-      const overview = toolbar.closest('.insights-page-toolbar');
-      if (overview) {
-        if (!tools.querySelector('input[type="search"]')) return 'the overview panel has no app search beside its crumbs';
-        if (!tools.querySelector('#insight-range, .page-filter button')) return 'the overview panel has no period filter beside its crumbs';
-        if (innerWidth >= 768 && getComputedStyle(overview).position !== 'sticky') return 'the overview header panel is not pinned while its cards scroll';
+      const tools = row2.querySelector(':scope > .page-toolbar > .card-tools');
+      if (document.querySelector('.page-card, .insights-page') && !tools) return 'the page bar (row 2) holds no page tools';
+      if (document.querySelector('.insights-page')) {
+        if (!tools.querySelector('input[type="search"]')) return 'the overview page bar has no app search';
+        if (!row2.querySelector('#insight-range, #insight-days')) return 'the overview page bar has no period filter';
       }
-      const items = [...panelCrumbs.querySelectorAll('.breadcrumb-item')];
-      if (items.length < 2) return 'the page panel has fewer than two crumbs';
+      if (!crumbs) return true;
+      const items = [...crumbs.querySelectorAll('.breadcrumb-item')];
+      if (items.length < 2) return 'fewer than two crumbs';
       const last = items.at(-1);
       if (last.querySelector('a') || last.getAttribute('aria-current') !== 'page') return 'the last crumb is not the page on screen (a link, or no aria-current)';
-      const repeated = [...toolbar.querySelectorAll('.card-title, h1, h2, h3, h4, h5, h6')]
+      const repeated = [...row2.querySelectorAll('.card-title, h1, h2, h3, h4, h5, h6')]
         .find(title => title.textContent.trim() === last.textContent.trim());
-      if (repeated) return 'the page name is repeated as a title below the final crumb';
+      if (repeated) return 'the page name is repeated as a title in the page bar';
       if (location.pathname !== '/' && !items[0].querySelector('a')) return 'the first crumb (the family) does not go back to it';
-      const self = items.slice(0, -1).find(i => { const a = i.querySelector('a'); return a && new URL(a.href, location.href).pathname === location.pathname; });
-      if (self) return 'a crumb links to the page already open: ' + self.textContent.trim();
-      const hello = document.querySelector('.navbar-hello'), search = document.querySelector('.navbar-search');
-      if (innerWidth >= 1200 && (!hello || !hello.getClientRects().length)) return 'no greeting at the start of the top bar';
-      if (hello && search && hello.getClientRects().length) {
-        const h = hello.getBoundingClientRect(), s = search.getBoundingClientRect();
-        if (h.right > s.left + 1) return 'the greeting does not stand before the search';
-        if (h.width < 160) return 'the greeting is squeezed too narrow to read';
-        if (hello.scrollWidth > hello.clientWidth + 1) return 'the greeting is clipped';
-      }
-      return true;
+      const self = items.slice(0, -1).find(i => { const x = i.querySelector('a'); return x && new URL(x.href, location.href).pathname === location.pathname; });
+      return self ? 'a crumb links to the page already open: ' + self.textContent.trim() : true;
     })()`,
   },
   {
