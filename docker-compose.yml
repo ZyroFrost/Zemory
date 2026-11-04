@@ -39,6 +39,9 @@ services:
       # the Drive sync folder (config keeps the host's path) is the third pair; unset on a machine with no Drive channel
       # the clone's pair comes first: when the clone sits inside the workspace, the longer prefix must win
       ZEMORY_SELF: /host/zemory
+      # sync and conform read the committed HS from git onto the container's disk, not file by file over the mount
+      # (plan/30 §3f ⑥: one walk of HS over 9p took 25-105 s, a sync of one unchanged repo 978 s)
+      ZEMORY_HS_FROM_GIT: "1"
       ZEMORY_PATH_MAP: "${ZEMORY_SELF_NATIVE:-}=>/host/zemory;${HOST_HOME_NATIVE:-${HOST_HOME}}/.claude=>/home/node/.claude;${HOST_HOME_NATIVE:-${HOST_HOME}}/.codex=>/home/node/.codex;${HOST_WORKSPACE_NATIVE:-${HOST_WORKSPACE}}=>/host/workspace;${HOST_DRIVE_NATIVE:-}=>/host/drive;${HOST_DATA_ROOT_NATIVE:-}=>/host/data"
     volumes:
       # everything zemory keeps lives here, in one place on the Linux disk (plan/30 §3k): the GM, the model, the machine's data

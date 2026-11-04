@@ -8,6 +8,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { withLock } from "./sync-lock.js";
+import { realStateDir } from "./hs-snapshot.js";
 import { SHELF } from "./harness-names.js";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { conform, type ConformItem } from "./conform.js";
@@ -100,7 +101,8 @@ export interface KitSyncResult {
 }
 
 /** The lock a writing sync of the set folders holds (beside them, never committed). */
-export const setsLockFile = (storeDir = STORE_DIR): string => join(dirname(storeDir), ".harness-state", "assemble.lock");
+// read from a snapshot, the lock still sits in the clone: two syncs, each with its own work copy, write the same sets
+export const setsLockFile = (storeDir = STORE_DIR): string => join(realStateDir() ?? join(dirname(storeDir), ".harness-state"), "assemble.lock");
 /** The lock a writing sync of one repo holds. */
 export const repoLockFile = (root: string): string => join(harnessPathsAt(root).agent, "..", ".harness-state", "sync.lock");
 

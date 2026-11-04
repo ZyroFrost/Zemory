@@ -5,6 +5,7 @@
 // overwritten) → parts (plan, then write when `apply`) → the host plug → the skills block of 04_SKILLS/INDEX.md → the guard.
 // Reading is the default; nothing is written without `apply`.
 import { execFileSync } from "node:child_process";
+import { hsSnapshot, writeBackSet } from "./hs-snapshot.js";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
@@ -221,6 +222,21 @@ export function storeFingerprint(storeDir = STORE_DIR): string {
 const fingerprintFile = (storeDir: string): string => join(dirname(storeDir), ".harness-state", "sets-current.json");
 /** The sets behind HS, skipping the full measure when nothing changed since the last time every set was current. */
 export function setsBehind(storeDir = STORE_DIR): Kit[] {
+  // a snapshot is one committed tree and never changes: once its sets measured current, that holds for every later process
+  const snap = hsSnapshot();
+  const snapMark = snap ? join(snap.pristine, ".sets-current") : null;
+  if (snapMark && existsSync(snapMark)) return [];
+  if (snapMark) {
+    const behind = staleSets(storeDir);
+    if (!behind.length) {
+      try {
+        writeFileSync(snapMark, new Date().toISOString() + "\n");
+      } catch {
+        /* only a shortcut */
+      }
+    }
+    return behind;
+  }
   const fp = storeFingerprint(storeDir);
   try {
     if ((JSON.parse(readFileSync(fingerprintFile(storeDir), "utf8")) as { fingerprint?: string }).fingerprint === fp) return [];
@@ -289,6 +305,9 @@ export function privateNameHits(storeDir = STORE_DIR): { ran: boolean; hits: str
  */
 let wipCache: { storeDir: string; at: number; paths: string[] | null } | null = null;
 export function uncommittedHs(storeDir = STORE_DIR, fresh = false): string[] | null {
+  // a snapshot of the committed HS has nothing uncommitted by construction; git status there would compare it against the
+  // clone's own index (its `.git` file points there) - never run it
+  if (hsSnapshot()) return [];
   if (!fresh && wipCache && wipCache.storeDir === storeDir && Date.now() - wipCache.at < 30_000) return wipCache.paths;
   const base = dirname(storeDir);
   let paths: string[] | null = null;
@@ -351,8 +370,16 @@ export function rebuildStaleSets(storeDir = STORE_DIR): { rebuilt: string[]; fai
       continue;
     }
     const r = assembleSet(k, storeDir);
-    if ("error" in r) failed.push(`${k.name}: ${r.error}`);
-    else rebuilt.push(k.name);
+    if ("error" in r) {
+      failed.push(`${k.name}: ${r.error}`);
+      continue;
+    }
+    rebuilt.push(k.name);
+    // read from a snapshot: the set was rebuilt in the work copy; the clone gets the files that changed
+    if (hsSnapshot()) {
+      const wb = writeBackSet(k.name);
+      if (wb.kept.length) failed.push(`${k.name}: ${wb.kept.length} file(s) in the clone changed and not committed, kept as they are: ${wb.kept.slice(0, 3).join(" · ")}${wb.kept.length > 3 ? " …" : ""}`);
+    }
   }
   // the rebuild changed the files: what is on disk now is the current state (unless a set failed and is still behind)
   if (rebuilt.length && !failed.length) markSetsCurrent(storeDir);

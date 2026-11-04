@@ -21,6 +21,9 @@ const [cmd, ...args] = process.argv.slice(2);
 // Các lệnh khác giữ nguyên đường cũ bên dưới (đổi hết sang động là refactor rộng hơn việc
 // đang làm, và không lệnh nào khác chạy mỗi tin).
 try {
+  // The container reads the committed HS from git for the commands that walk it (plan/30 §3f ⑥); before any module that
+  // loads the store. Native: does nothing.
+  if (cmd === "sync" || cmd === "conform") (await import("./docs/hs-snapshot.js")).useHsSnapshot();
   // `<command> --help` is REFUSED here, once, for every command: usage + exit 1, nothing runs. Commands have no `--help` of
   // their own and most ignore unknown flags, so `zemory init --help` ran a real init (reported from Dept_CTL 2026-10-09).
   // Same contract the heavy-write commands already had (2026-08-22: `memory embed --help` started an hours-long job):
