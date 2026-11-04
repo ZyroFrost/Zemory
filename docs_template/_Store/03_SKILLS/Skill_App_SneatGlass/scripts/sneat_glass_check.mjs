@@ -406,7 +406,7 @@ export const RULES = [
   },
   {
     id: 'radius-kit',
-    rule: 'corners are rounded lightly, as the Sneat kit has them (user 04/11): cards, fields, buttons, menus .375rem, dialogs and large frames .5rem - never more, except a shape that is round on purpose (a pill or a circle: its radius reaches half its height)',
+    rule: 'corners are rounded lightly, as the Sneat kit has them: cards, fields, buttons, menus .375rem, dialogs and large frames .5rem - never more, except a shape that is round on purpose (a pill or a circle: its radius reaches half its height)',
     check: `(() => {
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize), most = .5 * rem + .5;
       const sel = '.card, .btn, .form-control, .form-select, .dropdown-menu, .modal-content, .layout-navbar, .page-search .form-control, .alert, .list-group, .nav-pills .nav-link';
@@ -607,7 +607,7 @@ export const RULES = [
   },
   {
     id: 'crumbs',
-    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs at its start, the search at its centre, the day and time before the actions; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs are family / app / [group] / page (a small app: SasinONE / its name / its page; the hub: SasinONE / Hub / ...), every layer before the current page a link to that layer home, only the current page plain text',
+    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs at its start, the search at its centre, the day and time before the actions; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs are family / app / [group] / page (a small app: <family> / its name / its page; the hub: <family> / Hub / ...), every layer before the current page a link to that layer home, only the current page plain text',
     check: `(() => {
       const head = document.querySelector('#layout-navbar');
       if (!head) return 'no top bar';
@@ -639,7 +639,7 @@ export const RULES = [
         if (!row2.querySelector('#insight-range, #insight-days')) return 'the overview page bar has no period filter';
       }
       if (!crumbs) return true;
-      // family / app / [group] / page (user 04/11): a small app is SasinONE / its name / its page, the hub SasinONE / Hub / ...
+      // family / app / [group] / page: a small app is <family> / its name / its page, the hub <family> / Hub / ...
       const items = [...crumbs.querySelectorAll('.breadcrumb-item')].filter(i => !i.hidden);
       if (items.length < 3) return 'fewer than three crumbs - family / app / page: the app layer is missing';
       const area = document.querySelector('#brand-area');
