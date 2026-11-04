@@ -127,6 +127,20 @@ export function normalizeRoot(path: string): string {
   return process.platform === "win32" ? abs.replace(/^([a-z]):/, (_m, drive: string) => `${drive.toUpperCase()}:`) : abs;
 }
 
+/** The key the docs and changelog index stores a project under: the real place of the folder, spelled as the host names
+ *  it (plan/30 §3e). Natively this is `normalizeRoot`; in the container `/host/workspace/…` becomes `D:\Workspace\…`, so
+ *  the container reads and writes the rows the host wrote (measured 2026-11-04: `plan search` in the container asked
+ *  with the mount path and found nothing in an index of 23 docs). Accepts a host or a local path. */
+export function indexKey(root: string): string {
+  return toHostPath(normalizeRoot(toLocalPath(root)));
+}
+
+/** A repo-relative path as the index stores it under `key`: with the separator of the host that owns the key, so the
+ *  same file is one row whichever side indexed it. */
+export function indexRel(key: string, rel: string): string {
+  return /^[A-Za-z]:/.test(key) ? rel.replace(/\//g, "\\") : rel.replace(/\\/g, "/");
+}
+
 const realCache = new Map<string, string>();
 /**
  * The real place of a path that exists: junctions and symlinks resolved (Struc_Disk_Data law 5 — one repo reached through a

@@ -4,7 +4,7 @@
 // directly; `import` (reindex) reseeds the search index from it.
 
 import { readFileSync } from "node:fs";
-import { normalizeRoot } from "../core/config.js";
+import { indexKey } from "../core/config.js";
 import { currentMemoryDb, openMemory } from "../memory/db.js";
 
 const FENCE = /^[ \t]*(```|~~~)/;
@@ -98,7 +98,7 @@ export function importChangelog(
   dbPath = currentMemoryDb(),
   opts: { replace?: boolean; archived?: boolean } = {},
 ): number {
-  projectRoot = normalizeRoot(projectRoot); // canonical index key — see normalizeRoot
+  projectRoot = indexKey(projectRoot); // canonical index key — see indexKey
   const entries = parseChangelog(readFileSync(absPath, "utf8"));
   const db = openMemory(dbPath);
   const flag = opts.archived ? 1 : 0;
@@ -216,7 +216,7 @@ export function listEntries(projectRoot: string, dbPath = currentMemoryDb()): Ch
       .prepare(
         "SELECT id, date, title, archived, supersedes_id FROM changelog WHERE project_root=? ORDER BY date DESC, id DESC",
       )
-      .all(projectRoot) as ChRow[];
+      .all(indexKey(projectRoot)) as ChRow[];
   } finally {
     db.close();
   }
@@ -238,7 +238,7 @@ export function searchChangelog(query: string, opts: { project?: string; limit?:
            ${opts.project ? "WHERE c.project_root=@proj AND" : "WHERE"} changelog_fts MATCH @m
            ORDER BY bm25(changelog_fts, 5.0, 1.0) LIMIT @lim`,
         )
-        .all({ proj: opts.project, m: match, lim: opts.limit ?? 10 })
+        .all({ proj: opts.project ? indexKey(opts.project) : undefined, m: match, lim: opts.limit ?? 10 })
         .map((r: any) => {
           // A hit that a LATER entry reversed must say so. Without this the reader gets a
           // dead ruling worded as confidently as a live one — the exact failure measured
