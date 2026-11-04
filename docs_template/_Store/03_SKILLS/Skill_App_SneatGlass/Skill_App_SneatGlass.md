@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 9
+version: 10
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -47,7 +47,10 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   buttons (language · theme · glass · apps · bell · account) stay at the right. [crumbs]
 - **The crumbs start the page panel's first line, below the top bar:** the family first (SasinONE, the hub's home), then the app
   - or, in the hub, the group of the page (Administration) - then the page. Every crumb but the last goes back to its page; the
-  last is the page on screen, no link (`aria-current="page"`); a crumb that would open the page on screen is plain text. [crumbs]
+  last is the page on screen, no link (`aria-current="page"`); a crumb that would open the page on screen is plain text. Because
+  that last crumb already names the page, the panel does not repeat the same name as a title below. This second horizontal band
+  below the app bar keeps the crumbs at the left and the page toolbar (actions · search · filters · view controls) on the SAME
+  line at the right; on a multi-card overview it is its own panel and stays pinned while the cards scroll. [crumbs]
 - **The menu brand reads SasinONE with ONE in the shared Sasin red,** in both themes. [brand-one-red]
 - **Under SasinONE,** the small line names only the app currently open: Dashboard in Dashboard, Hub in SasinONE.
   It stays fixed while moving between that app's pages; the breadcrumb in the page panel names the current page. [brand-area]

@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 
@@ -40,7 +40,10 @@ lang: vi
   theme · kính · app · chuông · tài khoản) nằm bên phải. [crumbs]
 - **Đường dẫn mở đầu dòng thứ nhất của panel trang, nằm dưới thanh trên:** tên hệ trước (SasinONE, trang chủ của hub), rồi tới
   app - hoặc, trong hub, nhóm của trang (Quản trị) - rồi tới trang. Mọi nấc trừ nấc cuối đều bấm về trang của nó; nấc cuối là
-  trang đang mở, không phải liên kết (`aria-current="page"`); nấc nào sẽ mở đúng trang đang hiện thì chỉ là chữ. [crumbs]
+  trang đang mở, không phải liên kết (`aria-current="page"`); nấc nào sẽ mở đúng trang đang hiện thì chỉ là chữ. Nấc cuối đã là
+  tên trang nên panel không lặp lại cùng tên đó thành một title bên dưới. Dải ngang thứ hai dưới thanh app giữ đường dẫn bên trái
+  và thanh công cụ trang (thao tác · tìm kiếm · bộ lọc · kiểu xem) CÙNG HÀNG bên phải; ở trang tổng quan nhiều thẻ, nó là một
+  panel riêng và phải neo lại khi các thẻ cuộn. [crumbs]
 - **Tên hệ trên menu là SasinONE với ONE màu đỏ Sasin dùng chung,** trong cả hai theme. [brand-one-red]
 - **Dưới SasinONE,** dòng nhỏ chỉ ghi tên app đang mở: Dashboard ở Dashboard, Trung tâm ở SasinONE.
   Dòng này giữ nguyên khi chuyển trang trong app; đường dẫn trong panel trang ghi tên trang. [brand-area]

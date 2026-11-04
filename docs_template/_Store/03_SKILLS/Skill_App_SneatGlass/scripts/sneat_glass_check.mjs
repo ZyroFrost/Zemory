@@ -244,10 +244,22 @@ export const RULES = [
       const panelCrumbs = document.querySelector('.page-toolbar .page-crumbs');
       if (!panelCrumbs) return 'no crumbs at the start of the page panel';
       if (document.querySelector('#layout-navbar .breadcrumb')) return 'the crumbs still occupy the top bar';
+      const toolbar = panelCrumbs.closest('.page-toolbar'), tools = toolbar.querySelector(':scope > .card-tools');
+      if (!tools) return 'the page header panel has no search and filter toolbar beside the crumbs';
+      if (innerWidth >= 768) {
+        const c = panelCrumbs.getBoundingClientRect(), x = tools.getBoundingClientRect();
+        if (Math.abs((c.top + c.bottom) / 2 - (x.top + x.bottom) / 2) > Math.max(c.height, x.height) / 2)
+          return 'the crumbs and page tools are not on the same line';
+      }
+      const overview = toolbar.closest('.insights-page-toolbar');
+      if (overview && innerWidth >= 768 && getComputedStyle(overview).position !== 'sticky') return 'the overview header panel is not pinned while its cards scroll';
       const items = [...panelCrumbs.querySelectorAll('.breadcrumb-item')];
       if (items.length < 2) return 'the page panel has fewer than two crumbs';
       const last = items.at(-1);
       if (last.querySelector('a') || last.getAttribute('aria-current') !== 'page') return 'the last crumb is not the page on screen (a link, or no aria-current)';
+      const repeated = [...toolbar.querySelectorAll('.card-title, h1, h2, h3, h4, h5, h6')]
+        .find(title => title.textContent.trim() === last.textContent.trim());
+      if (repeated) return 'the page name is repeated as a title below the final crumb';
       if (location.pathname !== '/' && !items[0].querySelector('a')) return 'the first crumb (the family) does not go back to it';
       const self = items.slice(0, -1).find(i => { const a = i.querySelector('a'); return a && new URL(a.href, location.href).pathname === location.pathname; });
       if (self) return 'a crumb links to the page already open: ' + self.textContent.trim();
