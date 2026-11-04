@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 17
+version: 18
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -141,8 +141,18 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   while one is set. A filter's list hangs on `<body>` under its control, like every menu over a glass card. [filter-set]
   [filter-count]
 - **The person chooses the filter layout:** Settings › Layout folds the filters behind the filter button (a popover) or lays
-  them out in the middle of the page bar's one line - crumbs left, tools right, label beside control; only that middle scrolls
-  sideways and the bar keeps its height (UI setting `filters`: `popover` | `bar`; a phone keeps the popover). [filter-row]
+  them out on the page bar's one line before the tools (after the crumbs when the bar carries them). In a row each filter is
+  one control carrying its label ("Role: All"); the filters share the line equally and shrink together, none scrolls away or
+  is cut off, a shortened text ends in "…" and its whole name shows on hover; the tools give the line room (the add button is
+  its "+", Clear filters its icon and count). UI setting `filters`: `popover` | `bar`; a phone keeps the popover. [filter-row]
+- **The look is the person's across the family:** the UI settings that shape the shared surface - theme, language, date
+  format, glass and blur, the pointer effects and light, the filter layout, content width and menu - are kept once, as the
+  person's settings of the system-manager in the family database, and every app of the family reads and writes them there,
+  so a choice made in one app holds in all of them.
+- **Every control names itself on hover:** a control that shows no text of its own (an icon button, a switch, an avatar)
+  carries its name (`data-tip`, else `aria-label` or `title`); pointing at it or reaching it with the keyboard shows that name
+  in one tip on `<body>`, under the control and inside the window - a tip drawn inside the control is clipped by it. A
+  shortened text shows its whole text the same way. [control-name]
 - **The top bar's menus open whole:** no part of the bar clips its overflow while its menus can open (language, app switcher,
   bell, account); a bar that folds away clips only while folded.
 - **A new build is announced:** the app reads the server's version with its health probe; a version other than the one the

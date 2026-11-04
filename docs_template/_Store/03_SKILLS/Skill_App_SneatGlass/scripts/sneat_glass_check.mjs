@@ -299,6 +299,16 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'control-name',
+    rule: 'every control that shows no text of its own (an icon button, a switch, an icon link) carries its name - data-tip, aria-label or title - and that name is what pointing at it shows',
+    check: `(() => {
+      const bare = [...document.querySelectorAll('button, a[href], [role="switch"], [role="button"]')].filter(el => el.getClientRects().length &&
+        !el.closest('dialog:not([open]), [hidden], .dropdown-menu:not(.show)') && !(el.textContent || '').trim() &&
+        !(el.getAttribute('data-tip') || el.getAttribute('aria-label') || el.getAttribute('title') || '').trim());
+      return bare.length ? bare.length + ' icon control(s) without a name: ' + bare.slice(0, 3).map(el => el.id || el.className).join(' · ') : true;
+    })()`,
+  },
+  {
     id: 'filter-set',
     rule: 'a page card whose filter button is on offers labelled filters for fields of few values only: a pick list holds 10 values at most - the main records of the page are found with the search box, never listed in a filter',
     check: `(() => {
@@ -335,12 +345,17 @@ export const RULES = [
       const row = document.querySelector('#filter-row');
       if (!row || !row.getClientRects().length) return true;
       const bar = row.closest('.page-toolbar');
-      if (!bar || !row.previousElementSibling?.matches('.card-lead') || !row.nextElementSibling?.matches('.card-tools'))
-        return 'the filter row is not the middle of the page bar';
+      const lead = row.previousElementSibling;
+      if (!bar || !row.nextElementSibling?.matches('.card-tools') || (lead && !lead.matches('.card-lead')))
+        return 'the filter row does not stand between the crumbs (when the bar has them) and the tools';
       const mid = e => { const r = e.getBoundingClientRect(); return Math.round(r.top + r.height / 2); };
-      // the row's own box may hang its slim sideways bar below the line; the crumbs, the filters and the tools are what must align
-      const mids = [row.previousElementSibling, row.nextElementSibling, ...row.querySelectorAll('.filter-field')].map(mid);
+      const fields = [...row.querySelectorAll('.filter-field')];
+      const mids = [...(lead ? [lead] : []), row.nextElementSibling, ...fields].map(mid);
       if (Math.max(...mids) - Math.min(...mids) > 2) return 'the page bar falls onto more than one line';
+      // every filter whole inside the row: the filters share the room, none is pushed out or cut off
+      const box = row.getBoundingClientRect();
+      if (fields.some(f => { const r = f.getBoundingClientRect(); return r.left < box.left - 1 || r.right > box.right + 1 || r.width < 40; }))
+        return 'a filter is pushed out of the row or squeezed under 40 px';
       const s = getComputedStyle(bar), inner = bar.clientHeight - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom);
       return inner <= 44 ? true : 'the page bar line grew to ' + Math.round(inner) + ' px';
     })()`,
