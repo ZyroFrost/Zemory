@@ -1,0 +1,24 @@
+{
+  "trigger": "sneat glass · kiểu sneat-glass · thanh lọc · bộ lọc trang · neo khung · cỡ hộp thoại · bố cục rộng · bố cục gọn",
+  "prompt": {
+    "kind": "app-sneat-glass",
+    "re": "\\b(sneat.?glass|thanh loc|bo loc trang|o loc|neo khung|neo hang|co hop thoai|hop thoai (nhay|s m l)|bo cuc (rong|gon)|nut (list|grid))\\b",
+    "text": "[zemory] Sneat-Glass surface: follow skill app-sneat-glass - one page toolbar of one design (filter box · filter button · view switch, the chosen view lit), the frame stays put (only the area under the top bar scrolls, a page card scrolls inside with its toolbar and header row pinned), dialogs exactly S/M/L at 16:9, a count instead of a list in a cell; the repo's browser test runs scripts/sneat_glass_check.mjs."
+  },
+  "block": [
+    {
+      "note": "a request about the page toolbar",
+      "prompt": "sửa thanh lọc của trang người dùng"
+    },
+    {
+      "note": "a request about the frame",
+      "prompt": "neo khung khi cuộn bảng"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa câu SQL"
+    }
+  ]
+}

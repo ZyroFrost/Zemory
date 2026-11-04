@@ -2,10 +2,10 @@
 id: Rule_62
 aka: 02-62
 name: design-change-approval
-version: 19
+version: 20
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval @v19 #573bc96323e4
+from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_62_DesignChangeApproval @v20 #7aa870c799d7
 ---
 # Rule_Keys_62_DesignChangeApproval — Changing the look of something others use: show it first
 
@@ -41,6 +41,8 @@ not move on its own. Fixing a technical fault needs no approval.
 - Implements · Thi hành: `Skill_App_Glass` — the Glass kind, approved in the template before it is ported · kiểu Glass, duyệt trên template trước khi chép sang app
 - Implements · Thi hành: `Skill_App_Sneat` — the Sneat kind, approved in the template before it is ported · kiểu Sneat, duyệt trên template trước khi chép sang app
 - Implements · Thi hành: `Skill_App_SneatGlass` — the Sneat layout with the Glass look, approved in the template before it is ported · bố cục Sneat mặc dáng Glass, duyệt trên template trước khi chép sang app
+- Implements · Thi hành: `Skill_App_CrossFilter` — how the visuals of a report page filter each other · cách các visual của một trang báo cáo lọc lẫn nhau
+- Implements · Thi hành: `Skill_App_Report` — the report pages of an app · các trang báo cáo của một app
 - Implements · Thi hành: `Skill_PBI_Base` — the report design standard · chuẩn thiết kế báo cáo
 - Implements · Thi hành: `Skill_PBI_White` — the White design standard a report keeps once approved · chuẩn thiết kế White report giữ sau khi duyệt
 - Related · Liên quan: `Rule_Gate_63_SkillTrigger` — a design skill only suggests · skill thiết kế chỉ gợi ý
