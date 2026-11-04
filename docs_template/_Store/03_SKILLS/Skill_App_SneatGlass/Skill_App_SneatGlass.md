@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 18
+version: 19
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -36,21 +36,26 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - From a tablet up the window never scrolls. A page of several cards scrolls the page column under the glass top bar: the
   bar stays where it is, lies over what passes under it, and nothing shows above it - cards slide under the bar, never get
   cut at its lower edge. [frame]
-- A page whose content is one page card fills that area and scrolls INSIDE the card: the card's toolbar (row 2) and its table's
-  header row stay pinned, as in the Glass shell. A frame inside the card body is never a scroll box of its own unless it pins
-  something itself (a matrix whose first column pins sideways). [frame]
+- A page whose content is one page card fills that area and scrolls INSIDE the card: the page bar (row 2 of the top bar) and
+  its table's header row stay pinned, as in the Glass shell. A frame inside the card body is never a scroll box of its own
+  unless it pins something itself (a matrix whose first column pins sideways). [frame]
 - On a phone the window scrolls and the top bar is sticky.
 
-## 2b. The top bar and the brand — the same in every app of the family
+## 2b. The top bar — one glass head of two rows, the same in every app of the family
 
-- **The greeting starts the top bar,** over today's date, with enough width to read it; the search stays in the centre and the
-  buttons (language · theme · glass · apps · bell · account) stay at the right. [crumbs]
-- **The crumbs start the page panel's first line, below the top bar:** the family first (its name, the hub's home), then the app
-  - or, in the hub, the group of the page (Administration) - then the page. Every crumb but the last goes back to its page; the
-  last is the page on screen, no link (`aria-current="page"`); a crumb that would open the page on screen is plain text. Because
-  that last crumb already names the page, the panel does not repeat the same name as a title below. This second horizontal band
-  below the app bar keeps the crumbs at the left and the page toolbar (actions · search · filters · view controls) on the SAME
-  line at the right; on a multi-card overview it is its own panel and stays pinned while the cards scroll. [crumbs]
+- **One glass block, two rows, no gap:** row 1 (56 px) is the family's bar, row 2 (44 px) the page's bar, a hairline between
+  them; scrolling down folds row 1 away so only the page bar stays on top, scrolling up or reaching the top brings it back. A
+  page with no bar of its own shows row 1 only. [crumbs] [frame]
+- **Row 1, in three columns:** the crumbs at its start; the one search at its very centre; at its end the day, date and time
+  (the short form on a narrow screen, never over the search) then the buttons (language · theme · glass · apps · bell ·
+  account). The crumbs: the family first (its name, the hub's home), then the app - or, in the hub, the group of the page
+  (Administration) - then the page. Every crumb but the last goes back to its page; the last is the page on screen, no link
+  (`aria-current="page"`); a crumb that would open the page on screen is plain text; no title repeats the last crumb. A phone
+  drops the crumbs from row 1. [crumbs]
+- **The greeting is the account menu's heading** ("Good afternoon, <name>"): the name shows once, the line under it adds the
+  sign-in name only when it differs, then the role. It never takes room in row 1. [crumbs]
+- **Row 2 is the page bar:** the page's filters (when shown) and its tools - search, filter button, view switch, the page's
+  main action - the tools anchored at its right end. [bar-anchor]
 - **The menu brand shows the app's name with its accent part (`.text-primary`, the end of the name) in the shared brand
   colour token `--g-brand`,** in both themes; the app defines the token. [brand-one-red]
 - **Under the family name,** the small line names only the app currently open (`data-app-name` of the menu): the dashboard
@@ -85,9 +90,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - **Scrollbars are the Glass template's** on every scroll box (12 px, a soft rounded track, the accent gradient thumb inset by
   a transparent border), never the browser's default; no rule sets `scrollbar-color` or `scrollbar-width` (Chromium then drops
   the template's parts). [scrollbar]
-- **Pinned cells are glass:** with glass on, a pinned header row or pinned column is as clear as the cells beside it (a
-  tenth of the page colour at most) and blurred, in BOTH themes - a band that only shows in the light theme is still a band;
-  it turns solid only with the glass switch off. [see-through]
+- **Pinned cells cover what scrolls under them:** a pinned header row or pinned column takes the card's solid glass colour in
+  both themes, so the rows end at its lower edge and never read through its titles - a sticky cell's backdrop blur does not
+  take inside a scroll box, so a clear one let the rows show through. [pin-cover]
 - **The glass switch sits in the top bar** beside light / dark, lit while glass is on (the Glass rail's switch, moved into the
   bar). [bar-switches]
 - **Only the kit's controls, one font:** every control is `form-control` · `form-select` · `form-check-input`, every dialog label
@@ -140,11 +145,19 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   that is set is marked (`.filter-field.on`); the filter button counts the filters set and the set offers Clear filters exactly
   while one is set. A filter's list hangs on `<body>` under its control, like every menu over a glass card. [filter-set]
   [filter-count]
-- **The person chooses the filter layout:** Settings › Layout folds the filters behind the filter button (a popover) or lays
-  them out on the page bar's one line before the tools (after the crumbs when the bar carries them). In a row each filter is
-  one control carrying its label ("Role: All"); the filters share the line equally and shrink together, none scrolls away or
-  is cut off, a shortened text ends in "…" and its whole name shows on hover; the tools give the line room (the add button is
-  its "+", Clear filters its icon and count). UI setting `filters`: `popover` | `bar`; a phone keeps the popover. [filter-row]
+- **The filter button opens and folds the filters:** on a desktop it lays the page's filters out on the page bar's one line and
+  folds them away again - the filters fly in one after another from the tools (FX: reveal), the button lit while they show; the
+  choice is the person's UI setting `filters` (`bar` | `popover`, also in Settings › Layout) and holds in every app. A phone has
+  no room for the row: there the button opens the popover. [filter-row]
+- **The filters anchor right:** they stand against the tools, each one control carrying its label ("Role: All") at its
+  standard width (12rem) at most; a short line makes them shrink together (the text ending in "…", the whole name on hover),
+  none scrolls away or is cut off, and a few filters leave the left of the bar empty - never stretched across it. Folding or
+  opening them never moves the tools. [filter-row] [bar-anchor]
+- **The status dot is whole:** an online avatar's dot sits on its edge, and no box around it - a button or a menu row that
+  clips for its ripple - cuts it. [dot-whole]
+- **The kit's icons only:** every icon of the shell - top bar, menu, command palette, page bar, menus - comes from the kit's
+  icon set (`bx-…`), the page's icon the same in the menu and the palette; no emoji or typed sign stands in for one.
+  [kit-icons]
 - **The look is the person's across the family:** the UI settings that shape the shared surface - theme, language, date
   format, glass and blur, the pointer effects and light, the filter layout, content width and menu - are kept once, as the
   person's settings of the system-manager in the family database, and every app of the family reads and writes them there,
@@ -166,6 +179,24 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   `DIALOG_RULES` entry on every dialog it opens, at a desktop and a phone width and in both themes, once the opening transitions have settled. A rule
   added here adds its entry there in the same change; each new entry is proven red by breaking what it guards - with code
   that still builds: the test rebuilds before it runs, so a failed build never leaves it checking an old bundle.
+
+## 7. Taking the kind into an app of the family
+
+The system-manager's frontend is the living reference; the frozen first trial is the design repo's Sneat template copy. An app
+moving onto this kind, in this order:
+1. Declare `{"style": "SneatGlass"}` in `frontend/config/ui.json`; `zemory sync` brings this skill, `app-sneat`, `app-glass`
+   and `scripts/sneat_glass_check.mjs`.
+2. Take the shell as the reference builds it: the menu (only the app's own pages; the brand line names the app), the head of
+   two rows (§2b) with the family's top bar unchanged, the page bar slot in row 2 that each page fills, the one tip on
+   `<body>` (§5), the toasts, the dialogs (§3), the kit's icon subset and the token font shipped with the app.
+3. Read and write the person's UI settings where the family keeps them (§5: the system-manager's settings in the family
+   database), so theme, glass, filters and the rest follow the person from app to app; keep only the app's own keys under its
+   own app id.
+4. Build every list page as a page card: its bar in row 2 (search, filter button, view switch, main action), its filters as
+   slicers for fields of few values (§5), its table pinned under the head.
+5. Run the check: the app's browser test imports `RULES` and `DIALOG_RULES` and evaluates them on every page and dialog at a
+   desktop and a phone width in both themes (§6); green on every page before the app's first release in the kind.
+6. Tell the system-manager when the app is live on its path, so the family's app table and gateway route it.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved on its template before it is ported · kiểu được duyệt trên template trước khi chép sang app
