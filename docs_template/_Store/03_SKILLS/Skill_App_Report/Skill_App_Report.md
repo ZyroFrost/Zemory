@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 1
+version: 2
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -108,7 +108,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 
 | Attribute | On | Meaning |
 |---|---|---|
-| `data-rp-page` (`data-rp-dept`) | the page root | a report page (its department code, for [rp-page-name]) |
+| `data-rp-page` (`data-rp-dept`) | the page root | a report page (its department code, for [rp-page-name]); required on every page with data points, the scope of [rp-marked] (icons under 40 px are not visuals) |
 | `data-rp-visual` = `chart` · `donut` · `table` · `cards` | each visual | what the block is; every `.card` holding svg / a table / data points carries it [rp-marked] |
 | `data-rp-title` | the visual's title | [rp-title] [rp-glossary] |
 | `data-rp-fields` | a visual | its field set: same kind + same fields ⇒ one row [rp-same-row] |

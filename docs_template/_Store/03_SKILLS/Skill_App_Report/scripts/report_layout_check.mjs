@@ -32,10 +32,12 @@ const PERIOD = String.raw`(MoM|WoW|QoQ|YoY|DoD|LMTD|LM|LY|LW|pp|vs\.?|of|so vớ
 export const RULES = [
   rule('rp-marked', 'every visual of a report page declares data-rp-visual (chart · table · donut · cards) so the rules can read it', `
     if (!document.querySelector('[data-cf-dim], [data-rp-visual]')) return true;
-    const scope = document.querySelector('[data-rp-page]') || document.querySelector('main') || document.body;
+    const scope = document.querySelector('[data-rp-page]');
+    if (!scope) return 'a report page without data-rp-page on its root';
     for (const card of scope.querySelectorAll('.card')) {
       if (card.closest('[data-rp-visual]') || card.querySelector('[data-rp-visual]') || !card.getClientRects().length) continue;
-      if (card.querySelector('svg, table, [data-cf-dim]')) return 'a visual without data-rp-visual: ' + txt(card).slice(0, 40);
+      const drawing = [...card.querySelectorAll('svg')].some(s => box(s).width >= 40 && box(s).height >= 40);
+      if (drawing || card.querySelector('table, [data-cf-dim]')) return 'a visual without data-rp-visual: ' + txt(card).slice(0, 40);
     }
     return true;`),
 
@@ -281,7 +283,7 @@ export const SELF_TEST = {
     `<div style="min-width:900px;display:flex;align-items:flex-end;height:100px;padding-bottom:20px"><i data-rp-mark data-rp-item style="height:40px;width:20px;background:rgb(61, 126, 191)"></i>` +
     `<i data-rp-mark data-rp-compare style="height:30px;width:20px;background:rgb(255, 0, 0)"></i><span data-rp-label style="background:#fff">12%</span></div></div></div></div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-dims="1" style="width:400px"><h6 data-rp-title>Một dòng</h6><table><thead><tr><th style="font-weight:400;background:none">a</th></tr></thead>` +
-    `<tbody><tr><td style="border-left:1px solid #000">1</td></tr></tbody></table></div><div class="card" style="width:200px"><svg width="10" height="10"></svg></div></div>` +
+    `<tbody><tr><td style="border-left:1px solid #000">1</td></tr></tbody></table></div><div class="card" style="width:200px"><svg width="60" height="60"></svg></div></div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="width:403px"><h6 data-rp-title>Dài</h6><div class="wrap" style="max-height:60px">` +
     `<table><thead><tr><th>a</th></tr></thead><tbody>${Array.from({length: 20}, (_, i) => `<tr><td>${i}</td></tr>`).join('')}</tbody></table></div></div>` +
     `<div class="card" data-rp-visual="table" data-rp-detail style="width:400px"><h6>x</h6><table><thead><tr><th>b</th></tr></thead><tbody>${rowsOf(4).replace(/<tr>/g, '<tr style="background:#fff">')}` +

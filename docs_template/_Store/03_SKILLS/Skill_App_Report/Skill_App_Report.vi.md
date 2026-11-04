@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 
@@ -88,7 +88,7 @@ lang: vi
 
 | Thuộc tính | Gắn vào | Nghĩa |
 |---|---|---|
-| `data-rp-page` (`data-rp-dept`) | gốc trang | một trang báo cáo (mã phòng, cho [rp-page-name]) |
+| `data-rp-page` (`data-rp-dept`) | gốc trang | một trang báo cáo (mã phòng, cho [rp-page-name]); bắt buộc trên mọi trang có điểm dữ liệu, là phạm vi của [rp-marked] (icon dưới 40 px không tính là visual) |
 | `data-rp-visual` = `chart` · `donut` · `table` · `cards` | mỗi visual | loại khối; mọi `.card` chứa svg / bảng / điểm dữ liệu phải có [rp-marked] |
 | `data-rp-title` | tiêu đề visual | [rp-title] [rp-glossary] |
 | `data-rp-fields` | một visual | bộ trường: cùng loại + cùng trường ⇒ một hàng [rp-same-row] |
