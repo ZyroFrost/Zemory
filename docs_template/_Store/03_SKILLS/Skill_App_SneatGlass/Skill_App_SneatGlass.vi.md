@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 
@@ -85,7 +85,9 @@ lang: vi
   font đó phải được NẠP thật: app tự gửi kèm file font (font chỉ được gọi tên sẽ rơi về font hệ thống mà không ai thấy); không lớp
   nào của kiểu cũ còn sót sau khi port. Công tắc luôn cách chữ một khoảng. [kit-controls] [switch-gap]
 - **Trang đăng nhập giữ dáng riêng nhưng dùng font và cỡ chữ đọc được của app:** font token, nhãn và ô nhập 16 px (ô dưới 16 px
-  làm điện thoại tự phóng to trang khi chạm vào), chữ ghi chú từ 14 px.
+  làm điện thoại tự phóng to trang khi chạm vào), chữ ghi chú từ 14 px. Cỡ chữ đo như trên màn: trang vẽ trên một khung cố định
+  rồi phóng cho vừa màn thì mọi cỡ là mức sàn trên màn (cỡ × 1/zoom, không bao giờ nhỏ hơn cỡ đã viết); phép kiểm nhân cỡ chữ
+  với `currentCSSZoom`.
 - **Danh sách cuộn không bao giờ ép co các dòng** (dropdown, danh sách trong hộp thoại): dòng của một cột flex có giới hạn chiều
   cao giữ nguyên chiều cao (`flex-shrink: 0`), không dòng nào đè dòng sau; danh sách chừa rãnh cho thanh cuộn. [list-rows]
 - **Menu thu gọn canh giữa:** huy hiệu và mọi icon nằm trên đường giữa của rail; chữ thương hiệu không chừa chỗ phía sau.

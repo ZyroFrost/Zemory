@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 11
+version: 12
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -93,7 +93,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   that font really LOADED: the app ships the font file itself (a font only named falls back to the system font unseen); no class
   of a former kind survives a port. A switch keeps a gap to its label. [kit-controls] [switch-gap]
 - **The sign-in page keeps its own look but the app's font and reading size:** the token font, labels and fields 16 px (a
-  field under 16 px makes a phone zoom the page on focus), notes 14 px or more.
+  field under 16 px makes a phone zoom the page on focus), notes 14 px or more. Sizes are measured as shown: a page drawn on a
+  fixed canvas and zoomed to fit sets every size as a floor on screen (size × 1/zoom, never below the written size); the check
+  multiplies the font size by `currentCSSZoom`.
 - **A scrolling list never squeezes its rows** (a dropdown, a dialog list): the rows of a height-limited flex column keep
   their height (`flex-shrink: 0`), none overlaps the next; the list keeps a scrollbar gutter. [list-rows]
 - **The folded menu is centred:** the badge and every icon on the rail's centre line; the brand word leaves no room behind.
