@@ -1,7 +1,7 @@
 ---
 id: Skill_App_CrossFilter
 name: app-cross-filter
-version: 1
+version: 2
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_PBI_Base]
 installs: [scripts/crossfilter_check.mjs]
