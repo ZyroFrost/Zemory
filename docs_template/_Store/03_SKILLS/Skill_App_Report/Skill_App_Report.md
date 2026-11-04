@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 2
+version: 3
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -56,7 +56,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **A table is not for little information:** one row ⇒ a card with several values; one dimension with six values or fewer
   (and no column field) ⇒ a chart, measures of other units in its tooltip. A detail table (one row per record) is exempt.
   [rp-table-few]
-- **Nothing scrolls sideways inside its frame.** A table spread over periods shows only the latest ones (the window follows
+- **Nothing scrolls sideways inside its frame, and no table spills out of its panel** (column widths are measured at first draw, so headers may wrap; a phone scrolls a data grid inside its frame, app-base M5). A table spread over periods shows only the latest ones (the window follows
   the page filter); columns are as wide as their longest figure, all fitting the frame; figures that still do not fit switch
   to millions with one decimal. Scrolling down is normal. [rp-no-side-scroll]
 - **A table that scrolls down a lot** (1.5 times its frame) is the only block of its view (its own tab). [rp-scroll-alone]
@@ -69,7 +69,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **A chart is as wide as its number of groups** (about 60 px a group); short charts stand side by side; a chart with little
   in it (one series, a few points, a donut of a few slices) is small - at most half the view - and a donut sits in one row,
   never stretched into a column. A long chart (28 groups or more) takes the full width and never scrolls by itself.
-- **No chart leaves more than 30 % of its width empty** once full of data; a view leaves no hole. Short of content ⇒ propose
+- **No column chart leaves more than 30 % of its width empty** once full of data (its columns span 70 % of the plot; a ranked bar list is exempt); a view leaves no hole. Short of content ⇒ propose
   more blocks to the owner, never inflate a chart. [rp-fill]
 - **Top / Bottom N shows exactly N** (ties broken), as vertical columns. [rp-topn]
 - **No column of an amount points below its axis:** draw the loss as a positive figure, the sign kept in its label. A % may

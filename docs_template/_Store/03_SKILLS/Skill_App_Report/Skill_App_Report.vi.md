@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 
@@ -43,7 +43,7 @@ lang: vi
   heat map (màu theo cường độ) được giữ. Tên cột là chữ người đọc, không để tên field (`chi_tieu`, `StoreName2`). [rp-table-style]
 - **Bảng không dùng cho ít thông tin:** một dòng ⇒ card nhiều giá trị; một chiều ≤ 6 giá trị (không có trường cột) ⇒ chart,
   chỉ số khác đơn vị để trong tooltip. Bảng chi tiết (mỗi dòng một bản ghi) được miễn. [rp-table-few]
-- **Không gì cuộn ngang trong khung.** Bảng trải theo kỳ chỉ hiện các kỳ gần nhất (cửa sổ đi theo bộ lọc trang); cột rộng
+- **Không gì cuộn ngang trong khung, không bảng nào tràn ra ngoài panel** (bề rộng cột đo lúc vẽ lần đầu, nên header được xuống dòng; điện thoại cho bảng dữ liệu cuộn ngang trong khung, app-base M5). Bảng trải theo kỳ chỉ hiện các kỳ gần nhất (cửa sổ đi theo bộ lọc trang); cột rộng
   vừa số dài nhất, tổng vừa khung; vẫn không vừa thì đổi sang triệu một chữ số lẻ. Cuộn dọc là bình thường. [rp-no-side-scroll]
 - **Bảng cuộn dọc nhiều** (1,5 lần khung) là khối duy nhất của màn (tab riêng). [rp-scroll-alone]
 
@@ -54,7 +54,7 @@ lang: vi
 - **Chart rộng theo số nhóm** (khoảng 60 px một nhóm); chart ngắn đặt cạnh nhau; chart ít thông tin (một chuỗi, ít điểm, donut
   vài lát) thì nhỏ — tối đa nửa màn — và donut nằm trong một hàng, không kéo thành cột. Chart dài (≥ 28 nhóm) dùng cả chiều
   rộng và không tự cuộn.
-- **Không chart nào trống quá 30 % chiều rộng** khi đã đủ dữ liệu; màn không có lỗ. Thiếu nội dung ⇒ đề xuất thêm khối với
+- **Không chart cột nào trống quá 30 % chiều rộng** khi đã đủ dữ liệu (cột trải ít nhất 70 % vùng vẽ; danh sách thanh xếp hạng được miễn); màn không có lỗ. Thiếu nội dung ⇒ đề xuất thêm khối với
   chủ report, không phóng to chart. [rp-fill]
 - **Top / Bottom N hiện đúng N** (phá hoà), dạng cột đứng. [rp-topn]
 - **Cột của một số tiền không chúc xuống dưới trục:** vẽ số lỗ là số dương, dấu giữ ở nhãn. % được âm. [rp-no-negative-bars]

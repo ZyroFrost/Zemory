@@ -100,6 +100,7 @@ export const RULES = [
     const seen = new Map();
     for (const c of vis().filter(v => ['chart', 'donut'].includes(v.dataset.rpVisual))) {
       const mark = c.querySelector('[data-rp-mark]:not([data-rp-compare])');
+      if (!mark && c.querySelector('[data-rp-empty]')) continue;   // an empty state: nothing to colour
       if (!mark) return 'a chart without data-rp-mark: ' + name(c);
       if (c.dataset.rpVisual === 'chart') {
         const col = paint(mark);
@@ -145,7 +146,13 @@ export const RULES = [
       if (dims === 1 && cap <= 6) return 'a table of ' + cap + ' groups (use a chart): ' + name(v);
     }
     return true;`),
-  rule('rp-no-side-scroll', 'no table or chart scrolls sideways inside its frame (show the latest periods, fit the columns, switch to millions)', `
+  rule('rp-no-side-scroll', 'no table or chart scrolls sideways inside its frame (show the latest periods, fit the columns, switch to millions); a phone scrolls a data grid inside its frame (app-base M5)', `
+    if (innerWidth < 768) return true;
+    for (const v of vis()) {
+      // A table may also spill out of its panel without a scroll box: as wrong as scrolling.
+      const t = v.querySelector('table'), body = v.querySelector('[data-rp-body]') || v;
+      if (t && box(t).width > body.clientWidth + 1) return 'a table wider than its panel: ' + name(v);
+    }
     for (const v of vis()) for (const f of [v, ...v.querySelectorAll('*')]) {
       if (/(auto|scroll)/.test(getComputedStyle(f).overflowX) && f.scrollWidth > f.clientWidth + 1) return 'scrolls sideways: ' + name(v);
     }
@@ -200,8 +207,8 @@ export const RULES = [
     }
     for (const b of rows.values()) if (Math.max(...b) - Math.min(...b) > 3) return 'the column bottoms of one row differ by ' + (Math.max(...b) - Math.min(...b)).toFixed(0) + ' px';
     return true;`),
-  rule('rp-fill', 'no chart leaves more than 30 % of its width empty once full of data (marks span at least 70 % of the plot)', `
-    for (const v of vis().filter(v => v.dataset.rpVisual === 'chart')) {
+  rule('rp-fill', 'no column chart leaves more than 30 % of its width empty once full of data (its columns span at least 70 % of the plot)', `
+    for (const v of vis().filter(v => v.dataset.rpVisual === 'chart' && v.dataset.rpAxis === 'column')) {
       const body = v.querySelector('[data-rp-body]') || v;
       const marks = [...body.querySelectorAll('[data-rp-mark]')].filter(m => m.getClientRects().length);
       if (marks.length < 2) continue;
@@ -246,7 +253,8 @@ export const RULES = [
     const multi = terms.find(e => (txt(e).match(/(^|[\\s·;])[^\\s:=·;]{1,40}\\s*[:=]\\s/g) || []).length > 1);
     if (multi) return 'two definitions on one glossary line: ' + txt(multi).slice(0, 40);
     const known = new Set(terms.map(e => e.dataset.rpTerm)), common = new Set((g.dataset.rpCommon || '').split(',').filter(Boolean));
-    const shown = [...document.querySelectorAll('[data-rp-title], [data-rp-visual] th, .kpi-title, [role=tab]')].map(txt).join(' ');
+    // textContent, not innerText: a header shown in capitals by CSS is still the word written (TỔNG is not T + NG).
+    const shown = [...document.querySelectorAll('[data-rp-title], [data-rp-visual] th, .kpi-title, [role=tab]')].map(e => (e.textContent || '').trim()).join(' ');
     for (const w of new Set(shown.match(/\\b[A-Z][A-Z0-9]+\\b/g) || [])) if (!known.has(w) && !common.has(w)) return 'an abbreviation the glossary does not spell out: ' + w;
     return true;`),
 ];
