@@ -4,8 +4,9 @@
 // Order: legacy layout moved → marker (records the kit) → the starter files the assembled slots seed (gap-fill only, never
 // overwritten) → parts (plan, then write when `apply`) → the host plug → the skills block of 04_SKILLS/INDEX.md → the guard.
 // Reading is the default; nothing is written without `apply`.
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { CONFIG_FILE, findMarker, harnessPathsAt, readMarker } from "../core/config.js";
 import { DEFAULT_CONFIG } from "./adopt.js";
@@ -278,12 +279,77 @@ export function privateNameHits(storeDir = STORE_DIR): { ran: boolean; hits: str
   return { ran: true, hits };
 }
 
+/**
+ * The paths under the folder of HS and the sets that git reports changed and not committed (absolute, OS separators), or
+ * null when that folder is not in a git work tree (a fixture store, an install without the clone): nothing to compare.
+ * Several sessions write HS at once (plan/29 §14e): an edit not yet committed is its owner's work in progress, and a sync
+ * that assembles it carries it into every repo before its owner is done (measured 2026-11-03: a design skill reached
+ * 20 repos that way, and the gate of the release was red on edits nobody had finished). Kept for 30 s per store, so a
+ * region sync asks git once, not once per repo; `fresh` asks again (the rebuild of the sets, which opens every sync).
+ */
+let wipCache: { storeDir: string; at: number; paths: string[] | null } | null = null;
+export function uncommittedHs(storeDir = STORE_DIR, fresh = false): string[] | null {
+  if (!fresh && wipCache && wipCache.storeDir === storeDir && Date.now() - wipCache.at < 30_000) return wipCache.paths;
+  const base = dirname(storeDir);
+  let paths: string[] | null = null;
+  try {
+    const top = execFileSync("git", ["rev-parse", "--show-toplevel"], { cwd: base, encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const out = execFileSync("git", ["status", "--porcelain", "--", "."], { cwd: base, encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"] });
+    paths = out
+      .split(/\r?\n/)
+      .filter((l) => l.length > 3)
+      .map((l) => l.slice(3).replace(/^.* -> /, "").replace(/^"|"$/g, "").replace(/\/$/, ""))
+      .map((rel) => join(top, ...rel.split("/")));
+  } catch {
+    paths = null;
+  }
+  wipCache = { storeDir, at: Date.now(), paths };
+  return paths;
+}
+
+/** The uncommitted paths (`uncommittedHs`) that belong to a set: inside its folder or inside a part it carries. */
+export function wipOfKit(kit: Kit, dirty: string[] | null, storeDir = STORE_DIR): string[] {
+  if (!dirty?.length) return [];
+  // git names the long real path; a part's dir keeps the spelling it was found by (an 8.3 short TEMP, a junction)
+  const real = (p: string): string => {
+    try {
+      return realpathSync.native(p);
+    } catch {
+      return p;
+    }
+  };
+  const key = (p: string): string => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const roots = [setDir(kit.name, storeDir), ...kitParts(kit, storeDir).map((p) => p.dir)].map((p) => key(real(p)));
+  return dirty.filter((d) => {
+    const k = key(d);
+    return roots.some((r) => k === r || k.startsWith(r + "/"));
+  });
+}
+
+/** One line naming what a set waits on, with the paths shown from the store's folder. */
+export function wipNote(kit: Kit, wip: string[], storeDir = STORE_DIR): string {
+  let base = dirname(storeDir);
+  try {
+    base = realpathSync.native(base);
+  } catch {
+    /* shown from the path as given */
+  }
+  const shown = wip.slice(0, 3).map((p) => relative(base, p).replace(/\\/g, "/"));
+  return `${kit.name} waits on ${wip.length} uncommitted HS path(s): ${shown.join(" · ")}${wip.length > 3 ? " …" : ""} - their owner commits them, then sync`;
+}
+
 export function rebuildStaleSets(storeDir = STORE_DIR): { rebuilt: string[]; failed: string[] } {
   const rebuilt: string[] = [];
   const failed: string[] = [];
   const leak = privateNameHits(storeDir).hits;
   if (leak.length) return { rebuilt, failed: [`HS carries a private name on ${leak.length} line(s) - nothing rebuilt; first: ${leak[0]}`] };
+  const dirty = uncommittedHs(storeDir, true);
   for (const k of setsBehind(storeDir)) {
+    const wip = wipOfKit(k, dirty, storeDir);
+    if (wip.length) {
+      failed.push(wipNote(k, wip, storeDir));
+      continue;
+    }
     const r = assembleSet(k, storeDir);
     if ("error" in r) failed.push(`${k.name}: ${r.error}`);
     else rebuilt.push(k.name);

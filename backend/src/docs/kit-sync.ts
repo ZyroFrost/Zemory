@@ -12,11 +12,11 @@ import { SHELF } from "./harness-names.js";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { conform, type ConformItem } from "./conform.js";
 import { generateGuards, guardDrift } from "./guard-gen.js";
-import { applyKit, rebuildStaleSets, repoKit, setsBehind, type KitApplyResult } from "./kit-apply.js";
+import { applyKit, rebuildStaleSets, repoKit, setsBehind, uncommittedHs, wipNote, wipOfKit, type KitApplyResult } from "./kit-apply.js";
 import { normalizeOwnConstitution, pruneMarkerProtected, repointLinks } from "./kit-migrate.js";
 import { regionRepos, repoRole } from "./region-links.js";
 import { rewriteInPlace, STIGNORE_ALLOW_START, writeStignoreAllow, type StignoreAllowResult } from "./stignore-gen.js";
-import { SLOT_LAYER, STORE_DIR } from "./store.js";
+import { findKit, SLOT_LAYER, STORE_DIR } from "./store.js";
 
 /**
  * How far a kit repo is behind HS, measured as `zemory sync --check` measures it (a dry assembly + a stale guard): the one
@@ -118,8 +118,12 @@ export function kitSync(root: string, opts: { kitRef?: string; apply: boolean; s
     if ("error" in r) return { error: r.error };
     sets = { behind: r.rebuilt, failed: r.failed };
   } else sets = { behind: setsBehind().map((k) => k.name), failed: [] };
-  // §14e ③: two syncs of one repo (a manager's and the repo's own) never write it at the same time
   if (!opts.apply) return syncRepo(root, opts, sets);
+  // a set carrying a part someone has not committed yet is not passed on: the repo gets it once its owner commits
+  const kit = opts.kitRef ? findKit(opts.kitRef) : repoKit(root);
+  const wip = kit ? wipOfKit(kit, uncommittedHs()) : [];
+  if (kit && wip.length) return { error: `nothing written to ${basename(resolve(root))} - ${wipNote(kit, wip)}` };
+  // §14e ③: two syncs of one repo (a manager's and the repo's own) never write it at the same time
   return withLock(repoLockFile(root), `sync ${basename(resolve(root))}`, () => syncRepo(root, opts, sets), opts.lockWaitMs);
 }
 
