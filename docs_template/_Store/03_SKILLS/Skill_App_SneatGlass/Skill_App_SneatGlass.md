@@ -1,11 +1,11 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 13
+version: 14
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
-description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass), as SasinONE runs it - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
+description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -45,14 +45,16 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 
 - **The greeting starts the top bar,** over today's date, with enough width to read it; the search stays in the centre and the
   buttons (language · theme · glass · apps · bell · account) stay at the right. [crumbs]
-- **The crumbs start the page panel's first line, below the top bar:** the family first (SasinONE, the hub's home), then the app
+- **The crumbs start the page panel's first line, below the top bar:** the family first (its name, the hub's home), then the app
   - or, in the hub, the group of the page (Administration) - then the page. Every crumb but the last goes back to its page; the
   last is the page on screen, no link (`aria-current="page"`); a crumb that would open the page on screen is plain text. Because
   that last crumb already names the page, the panel does not repeat the same name as a title below. This second horizontal band
   below the app bar keeps the crumbs at the left and the page toolbar (actions · search · filters · view controls) on the SAME
   line at the right; on a multi-card overview it is its own panel and stays pinned while the cards scroll. [crumbs]
-- **The menu brand reads SasinONE with ONE in the shared Sasin red,** in both themes. [brand-one-red]
-- **Under SasinONE,** the small line names only the app currently open: Dashboard in Dashboard, Hub in SasinONE.
+- **The menu brand shows the app's name with its accent part (`.text-primary`, the end of the name) in the shared brand
+  colour token `--g-brand`,** in both themes; the app defines the token. [brand-one-red]
+- **Under the family name,** the small line names only the app currently open (`data-app-name` of the menu): the dashboard
+  app's name in the dashboard app, the hub's own name in the hub.
   It stays fixed while moving between that app's pages; the breadcrumb in the page panel names the current page. [brand-area]
 - **A menu group label clears its short divider line** by at least 8 px while the menu is open. [menu-header-gap]
 

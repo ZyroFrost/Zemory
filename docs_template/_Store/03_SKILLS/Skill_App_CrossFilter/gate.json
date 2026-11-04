@@ -1,0 +1,24 @@
+{
+  "trigger": "lọc chéo · bấm chart lọc · chart lọc lẫn nhau · liên kết chart · filter như PBI · cross filter",
+  "prompt": {
+    "kind": "app-cross-filter",
+    "re": "\\b(loc cheo|cross.?filter|chart loc|bam (vao )?(chart|cot|bieu do) (de )?loc|lien ket (cac )?chart|filter (nhu|giong) pbi|loc lan nhau)\\b",
+    "text": "[zemory] Report page: follow skill app-cross-filter - one selection per page; a click picks one point (Ctrl adds), every OTHER visual, table and KPI follows by the fields it carries, the clicked visual only dims, chips + clear button, Escape clears; points carry data-cf-dim / data-cf-value / aria-pressed; the repo's browser test runs scripts/crossfilter_check.mjs."
+  },
+  "block": [
+    {
+      "note": "a request for cross-filtering",
+      "prompt": "các chart cần bấm vào và lọc chéo lẫn nhau như PBI"
+    },
+    {
+      "note": "a request about a chart filtering the others",
+      "prompt": "bấm vào cột giờ thì các chart khác lọc theo"
+    }
+  ],
+  "pass": [
+    {
+      "note": "a page filter, not cross-filtering",
+      "prompt": "thêm ô chọn kỳ vào bộ lọc trang"
+    }
+  ]
+}

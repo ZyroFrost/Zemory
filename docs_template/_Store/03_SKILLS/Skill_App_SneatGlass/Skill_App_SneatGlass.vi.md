@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 
@@ -38,14 +38,16 @@ lang: vi
 
 - **Lời chào mở đầu thanh trên,** ngày nằm dưới lời chào và vùng này phải đủ rộng để đọc; ô tìm nằm giữa, dãy nút (ngôn ngữ ·
   theme · kính · app · chuông · tài khoản) nằm bên phải. [crumbs]
-- **Đường dẫn mở đầu dòng thứ nhất của panel trang, nằm dưới thanh trên:** tên hệ trước (SasinONE, trang chủ của hub), rồi tới
+- **Đường dẫn mở đầu dòng thứ nhất của panel trang, nằm dưới thanh trên:** tên hệ trước (tên họ app, trang chủ của hub), rồi tới
   app - hoặc, trong hub, nhóm của trang (Quản trị) - rồi tới trang. Mọi nấc trừ nấc cuối đều bấm về trang của nó; nấc cuối là
   trang đang mở, không phải liên kết (`aria-current="page"`); nấc nào sẽ mở đúng trang đang hiện thì chỉ là chữ. Nấc cuối đã là
   tên trang nên panel không lặp lại cùng tên đó thành một title bên dưới. Dải ngang thứ hai dưới thanh app giữ đường dẫn bên trái
   và thanh công cụ trang (thao tác · tìm kiếm · bộ lọc · kiểu xem) CÙNG HÀNG bên phải; ở trang tổng quan nhiều thẻ, nó là một
   panel riêng và phải neo lại khi các thẻ cuộn. [crumbs]
-- **Tên hệ trên menu là SasinONE với ONE màu đỏ Sasin dùng chung,** trong cả hai theme. [brand-one-red]
-- **Dưới SasinONE,** dòng nhỏ chỉ ghi tên app đang mở: Dashboard ở Dashboard, Trung tâm ở SasinONE.
+- **Tên hệ trên menu hiện tên app, phần nhấn (`.text-primary`, đoạn cuối của tên) mang màu thương hiệu dùng chung
+  `--g-brand`,** trong cả hai theme; app tự khai biến đó. [brand-one-red]
+- **Dưới tên họ app,** dòng nhỏ chỉ ghi tên app đang mở (`data-app-name` của menu): tên app dashboard khi ở app dashboard,
+  tên riêng của hub khi ở hub.
   Dòng này giữ nguyên khi chuyển trang trong app; đường dẫn trong panel trang ghi tên trang. [brand-area]
 - **Chữ phân nhóm trong menu mở cách vạch ngang ngắn ít nhất 8 px.** [menu-header-gap]
 

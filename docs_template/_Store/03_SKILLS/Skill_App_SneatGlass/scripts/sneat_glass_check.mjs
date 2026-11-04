@@ -364,7 +364,7 @@ export const RULES = [
   },
   {
     id: 'brand-area',
-    rule: 'under SasinONE, the small line names the open app and stays the same on every page of that app',
+    rule: 'under the family name, the small line names the open app and stays the same on every page of that app',
     check: `(() => {
       const menu = document.querySelector('#layout-menu'), text = menu?.querySelector('.app-brand-text');
       if (!text || !text.getClientRects().length) return true;
@@ -375,19 +375,19 @@ export const RULES = [
   },
   {
     id: 'brand-one-red',
-    rule: 'the ONE part of SasinONE is red in the menu brand, matching the shared Sasin colour token',
+    rule: 'the accent part that ends the app name in the menu brand has the shared brand colour token --g-brand',
     check: `(() => {
       const brand = document.querySelector('#layout-menu .app-brand-name');
       if (!brand || !brand.getClientRects().length) return true;
-      const one = brand.querySelector('.text-primary');
-      if (!one || one.textContent.trim() !== 'ONE' || brand.textContent.trim() !== 'SasinONE') return 'the menu brand does not split Sasin and ONE';
+      const accent = brand.querySelector('.text-primary');
+      const name = brand.textContent.trim(), part = accent ? accent.textContent.trim() : '';
+      if (!part || name === part || !name.endsWith(part)) return 'the menu brand has no accent part ending the app name';
+      if (!getComputedStyle(document.documentElement).getPropertyValue('--g-brand').trim()) return 'the brand colour token --g-brand is not defined';
       const probe = document.createElement('span');
-      probe.style.color = 'var(--g-sasin)'; document.body.append(probe);
-      const want = getComputedStyle(probe).color, got = getComputedStyle(one).color;
+      probe.style.color = 'var(--g-brand)'; document.body.append(probe);
+      const want = getComputedStyle(probe).color, got = getComputedStyle(accent).color;
       probe.remove();
-      const rgb = want.match(/\\d+/g)?.map(Number) || [];
-      return got === want && rgb[0] > rgb[1] * 2 && rgb[0] > rgb[2] * 2
-        ? true : 'ONE is not the shared red Sasin colour';
+      return got === want ? true : 'the accent part of the app name is not the brand colour --g-brand';
     })()`,
   },
   {
