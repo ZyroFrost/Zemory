@@ -1,7 +1,7 @@
 ---
 id: Rule_90
 name: app-family-contract
-version: 10
+version: 11
 kind: judgment
 code: 05_Domain
 checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_App_Base, Skill_Db_Base, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -54,6 +54,10 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
    from the family's database on its own backend, checks its own role there, and sends a person without a live session to the
    `system-manager`'s sign-in with the address to come back to. An app has no sign-in page, no session cookie of its own and no
    password screen; signing out and changing a password go through the `system-manager`.
+   A session the app cannot CHECK (the family's database does not answer, its connection is hung or not open) is not "signed
+   out": the app keeps refusing access, tells the person the account server is not answering, retries by itself, and logs when
+   checks start failing and when they come back. It never sends the person to the sign-in for it — the `system-manager` sees a
+   live session and sends them straight back, a loop with no reason shown.
 5. The `system-manager` holds only the shared parts: the gateway (one address, one path per app), the sign-in, the admin screen
    and the links to the apps. Every app serves its own frontend and its own backend under its own path; the `system-manager` never
    hosts an app's pages or business API, and apps never call each other through it. What two apps share is the family's database.
@@ -67,6 +71,12 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
 - ✗ Wrong: keep its sign-in page and cookie, or ask the `system-manager` to serve the app's pages and API for it.
 - ✓ Right: the app drops its sign-in page, reads the `system-manager`'s session and checks its own role on its backend, sends a
   person with no session to the shared sign-in with the address to return to, and keeps serving its own pages under its own path.
+- Situation: the family's database hangs for two minutes while people work in an app behind the gateway.
+- ✗ Wrong: treat every failed session lookup as "no session" and redirect to the shared sign-in; the `system-manager` finds the
+  session alive and returns the person to the app, which redirects again — people see the app bounce to the portal, and nothing
+  in the log says why.
+- ✓ Right: a cookie that could not be checked gets a 503 page in both languages that reloads itself, the API answers 503 with a
+  flag the frontend shows as a banner, and the log holds one line when checks failed and one when they came back.
 - Situation: an app used only by the IT team drops its read-only role and keeps two roles.
 - ✗ Wrong: change the role list written in the app's code and the copy written in the `system-manager`'s code; the two drift, and
   the admin screen still offers a role the app now refuses.
