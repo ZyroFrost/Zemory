@@ -3,7 +3,7 @@
   "prompt": {
     "kind": "app-sneat-glass",
     "re": "\\b(sneat.?glass|thanh loc|bo loc trang|o loc|neo khung|neo hang|co hop thoai|hop thoai (nhay|s m l)|bo cuc (rong|gon)|nut (list|grid))\\b",
-    "text": "[zemory] Sneat-Glass surface: follow skill app-sneat-glass - one page toolbar of one design (filter box · filter button · view switch, the chosen view lit), the frame stays put (only the area under the top bar scrolls, a page card scrolls inside with its toolbar and header row pinned), dialogs exactly S/M/L at 16:9, a count instead of a list in a cell; the repo's browser test runs scripts/sneat_glass_check.mjs."
+    "text": "[zemory] Sneat-Glass surface: follow skill app-sneat-glass - the page bar in two groups (page tools from the left; pinned filters · filter button · filter box · view switch side by side at the right), the filter popover with pins, fitting the window, its filters a draft until Apply, crumbs family / app / page with every earlier layer a link, the pinned header clear glass with the rows cut under it, columns that narrow and widen, names never codes, dates in the person's format, corners as the kit; the repo's browser test runs scripts/sneat_glass_check.mjs and the probes of §6."
   },
   "block": [
     {

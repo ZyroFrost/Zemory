@@ -1,5 +1,5 @@
 ---
-version: 38
+version: 39
 lang: vi
 ---
 
@@ -304,7 +304,7 @@ bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung 
   chảy trang; toast là `position: fixed` ở mép phải và mang giờ.
 
 ### F23. Khung trang chung, công cụ dùng được và kích thước thẻ
-**Mọi trang trong cùng một khung app dùng chung panel trên và thanh công cụ của trang.** Với khung có Tìm kiếm và Lọc trên thanh này, cả hai xuất hiện ở mọi trang, cùng thứ tự (Tìm kiếm rồi Lọc) và cùng chiều cao control. Mỗi nút phải tác động lên nội dung thật: ví dụ tìm các dòng ứng dụng, lọc theo trạng thái hoặc khoảng ngày. Không thêm control trang trí chỉ để lấp khung (F0). Tab và thao tác chính giữ đúng vị trí đã định trên thanh công cụ (F17).
+**Mọi trang trong cùng một khung app dùng chung panel trên và thanh công cụ của trang.** Với khung có Tìm kiếm và Lọc trên thanh này, cả hai xuất hiện ở mọi trang, cùng thứ tự (Lọc rồi Tìm kiếm - nút lọc đứng sát ô tìm) và cùng chiều cao control. Mỗi nút phải tác động lên nội dung thật: ví dụ tìm các dòng ứng dụng, lọc theo trạng thái hoặc khoảng ngày. Không thêm control trang trí chỉ để lấp khung (F0). Tab và thao tác chính giữ đúng vị trí đã định trên thanh công cụ (F17).
 
 **Các thẻ cùng danh mục có cùng chiều cao và cùng đường chân của nút, kể cả thẻ chưa có web.** Dòng giải thích riêng theo trạng thái phải nằm trong cùng ô nội dung, không làm riêng thẻ cuối cao hơn. Nút Mở và dấu trạng thái không được chồng nhau. Giới hạn selector hiệu ứng vào đúng thành phần sở hữu: `.online::after` dành cho avatar đã vẽ thêm chấm lên trạng thái ứng dụng online, đè lên nút Mở của một app hub ngày 31/10/2026. Hiệu ứng đó phải dùng `.ava.online`. Đo mọi thẻ ở màn hình máy tính và điện thoại bằng hình chữ nhật bao; pseudo-element trên trạng thái không phải avatar phải là `none`.
 

@@ -1,5 +1,5 @@
 ---
-version: 19
+version: 20
 lang: vi
 ---
 
@@ -7,22 +7,29 @@ lang: vi
 
 > Skill KIỂU ghép từ hai skill: `app-sneat` giữ bố cục của bộ Sneat đúng như bộ có; `app-glass` giữ dáng; skill này giữ những gì
 > riêng chỗ ghép cần. Mỗi luật đến từ một lần người yêu cầu sửa và có phép kiểm máy trong `scripts/sneat_glass_check.mjs` (tên
-> trong ngoặc vuông); bài kiểm trình duyệt của repo chạy nó trên mọi trang.
+> trong ngoặc vuông); bài kiểm trình duyệt của repo chạy nó trên mọi trang. Luật nào trang không tự chứng minh được qua DOM thì
+> là một phép đo của bài kiểm trình duyệt, liệt kê ở §6.
 
 ## 0. Chọn kiểu
 
 - Repo khai `{"style": "SneatGlass"}` ở `frontend/config/ui.json`; theo `app-sneat` cho bố cục, `app-glass` cho dáng, và skill
   này ở chỗ ba cái gặp nhau. Trên bề mặt kiểu này, luật ở đây thắng hai skill kia.
 
-## 1. Thanh công cụ của trang — một kiểu, luôn đủ ba
+## 1. Thanh trang — hai cụm không bao giờ chạm nhau
 
-- **Mọi thẻ trang mang cùng một thanh công cụ** ở đầu thẻ, bên phải: ô lọc nhỏ (lọc dòng ngay khi gõ; ô tìm ở thanh trên để
-  nhảy), nút bộ lọc (bảng bật ra chứa các bộ lọc), nút chọn kiểu xem (danh sách · thẻ, hoặc các kiểu riêng của trang). Trang chỉ
-  có một kiểu xem vẫn hiện nút, ở trạng thái tắt; trang chưa có bộ lọc vẫn hiện nút bộ lọc, ở trạng thái tắt. [toolbar]
-- **Một kiểu dáng:** ba thứ cùng chiều cao, cùng bo góc, cùng nền kính và viền; nút kiểu xem là một nhóm; không bao giờ để nút
-  kiểu Sneat cạnh ô kiểu Glass. [toolbar]
-- **Kiểu xem đang chọn sáng màu nhấn**, nút bộ lọc cũng sáng khi bảng của nó đang mở. [toolbar]
-- **Ô lọc giữ chỗ cho icon** khi đang gõ: Sneat thu lề trong của ô đang focus để bù viền dày, nên bề mặt ghim lề đầu. [toolbar]
+- **Mọi thẻ trang mang một thanh, một kiểu dáng**, ở hàng 2 của thanh trên (§2b), chia hai cụm:
+  - **nút riêng của trang** xếp từ TRÁI: thứ trang hiện cạnh tên (ai đang trực tuyến), thao tác chính (nút thêm);
+  - **cụm tìm** đứng ở mép PHẢI, luôn liền nhau theo thứ tự: các bộ lọc đã ghim lên thanh (§5), nút lọc, ô lọc, nút kiểu
+    xem (danh sách · thẻ, hoặc các kiểu riêng của trang). [bar-anchor]
+- Cụm tìm lấy phần còn lại của dòng; các bộ lọc ghim co lại (cắt bằng "…") trước khi chạm tới cụm trái; hai cụm không bao giờ
+  đè nhau; ghim bộ lọc không làm cụm trái xê dịch. [bar-anchor] [filter-row]
+- Trang chỉ có một kiểu xem vẫn hiện nút kiểu xem, ở trạng thái tắt; trang chưa có bộ lọc vẫn hiện nút lọc, ở trạng thái tắt.
+  [toolbar]
+- **Một kiểu dáng:** ô lọc, nút lọc và nút kiểu xem cùng chiều cao, cùng bo góc, cùng nền kính và viền; nút kiểu xem là một
+  nhóm; không bao giờ để nút kiểu Sneat cạnh ô kiểu Glass. Kiểu xem đang chọn sáng màu nhấn, nút lọc cũng sáng khi popover của
+  nó đang mở. [toolbar]
+- **Ô lọc giữ nguyên bề rộng khi được focus** - focus chỉ làm sáng viền, không giãn ô (ô giãn ra thì tràn khỏi panel) - và giữ
+  chỗ cho icon (Sneat thu lề trong của ô đang focus; bề mặt ghim lề đầu). [search-steady] [toolbar]
 
 ## 2. Khung đứng yên (`app-base` F21 trong kiểu này)
 
@@ -40,149 +47,189 @@ lang: vi
   hàng là một vạch mảnh; cuộn xuống thì hàng 1 thu lại, chỉ còn thanh trang dính trên cùng; cuộn lên hay về đầu trang thì hàng 1
   hiện lại. Trang không có thanh riêng thì chỉ có hàng 1. [crumbs] [frame]
 - **Hàng 1 chia ba cột:** đường dẫn ở đầu; ô tìm duy nhất ở chính giữa; ở cuối là thứ, ngày và giờ (dạng ngắn khi màn hẹp,
-  không bao giờ đè lên ô tìm) rồi dãy nút (ngôn ngữ · theme · kính · app · chuông · tài khoản). Đường dẫn: tên hệ trước (trang chủ
-  của hub), rồi tới app - hoặc, trong hub, nhóm của trang (Quản trị) - rồi tới trang. Mọi nấc trừ nấc cuối đều bấm về trang của
-  nó; nấc cuối là trang đang mở, không phải liên kết (`aria-current="page"`); nấc nào sẽ mở đúng trang đang hiện thì chỉ là chữ;
-  không title nào lặp lại nấc cuối. Điện thoại bỏ đường dẫn khỏi hàng 1. [crumbs]
-- **Lời chào là tiêu đề của menu tài khoản** ("Chào buổi chiều, <tên>"): tên hiện đúng một lần, dòng dưới chỉ thêm tên đăng nhập
-  khi nó khác tên, rồi tới vai. Lời chào không bao giờ chiếm chỗ ở hàng 1. [crumbs]
-- **Hàng 2 là thanh trang:** bộ lọc của trang (khi đang hiện) và nhóm nút - ô tìm, nút lọc, nút kiểu xem, thao tác chính - nhóm
-  nút neo ở mép phải. [bar-anchor]
-- **Tên hệ trên menu hiện tên app, phần nhấn (`.text-primary`, đoạn cuối của tên) mang màu thương hiệu dùng chung
-  `--g-brand`,** trong cả hai theme; app tự khai biến đó. [brand-one-red]
-- **Dưới tên họ app,** dòng nhỏ chỉ ghi tên app đang mở (`data-app-name` của menu): tên app dashboard khi ở app dashboard,
-  tên riêng của hub khi ở hub.
-  Dòng này giữ nguyên khi chuyển trang trong app; đường dẫn trong panel trang ghi tên trang. [brand-area]
-- **Chữ phân nhóm trong menu mở cách vạch ngang ngắn ít nhất 8 px.** [menu-header-gap]
+  không bao giờ đè lên ô tìm) rồi dãy nút (ngôn ngữ · theme · kính · app · chuông · tài khoản). Điện thoại bỏ đường dẫn khỏi
+  hàng 1. [crumbs]
+- **Đường dẫn là hệ / app / [nhóm] / trang:** app nhỏ là `<hệ> / <app> / <trang>`; bản thân system-manager cũng là một app, là
+  hub (`<hệ> / Hub / Quản trị / Người dùng`). Nấc thứ hai là app được ghi dưới tên hệ trong menu. Mọi lớp trước trang hiện tại
+  đều là liên kết về trang đầu của lớp đó (trang đầu của hệ và của hub là trang chọn app, của một nhóm là trang đầu của nhóm) -
+  kể cả khi trang đầu đó chính là trang đang mở; chỉ trang hiện tại là chữ thường (`aria-current="page"`); không title nào lặp
+  lại nấc cuối. [crumbs]
+- **Menu tài khoản theo bộ mẫu:** tiêu đề của nó là lời chào trên MỘT dòng ("Chào buổi tối, <tên>"), dưới là vai; rồi Hồ sơ của
+  tôi, Cài đặt, Đăng xuất. Lời chào không bao giờ chiếm chỗ ở hàng 1. [crumbs]
+- **Tên app ở menu có phần nhấn (`.text-primary`, cuối tên) mang token màu thương hiệu chung `--g-brand`,** ở cả hai theme; app
+  tự định nghĩa token. [brand-one-red]
+- **Dưới tên hệ,** dòng nhỏ chỉ ghi app đang mở (`data-app-name` của menu): tên app dashboard trong app dashboard, tên riêng của
+  hub trong hub. Dòng này giữ nguyên khi đi giữa các trang của app đó; đường dẫn ghi trang hiện tại. [brand-area]
+- **Nhãn nhóm của menu cách vạch ngăn ngắn** ít nhất 8 px khi menu mở. [menu-header-gap]
 
 ## 3. Hộp thoại — đúng S / M / L (`app-base` F2 trong kiểu này)
 
-- Hộp thoại là một `<dialog>` chứa `modal-content` của bộ, lớp cỡ `sz-s` · `sz-m` · `sz-l`: `width: min(P vw, P vh × 16/9)` và
-  `aspect-ratio: 16 / 9`, P = 40 / 60 / 90. Không `min-width`, không `max-height` làm méo; thân cuộn bên trong; đổi tab không bao
-  giờ làm khung dời chỗ hay đổi cỡ. Trên điện thoại thì đầy màn hình. [dialog-size]
+- Hộp thoại là một `<dialog>` chứa `modal-content` của bộ mẫu, lớp cỡ `sz-s` · `sz-m` · `sz-l`: `width: min(P vw, P vh × 16/9)` và
+  `aspect-ratio: 16 / 9`, P = 40 / 60 / 90. Không `min-width`, không `max-height` làm méo khung; thân cuộn bên trong; đổi tab không
+  làm khung dời hay đổi cỡ. Toàn màn trên điện thoại. [dialog-size]
 
-## 4. Cài đặt bố cục (bộ chỉnh của Sneat)
+## 4. Cài đặt bố cục (bộ tuỳ chỉnh của bộ mẫu)
 
-- Cài đặt › Bố cục, cho mọi người, lưu thành cài đặt giao diện của người đó: **độ rộng nội dung** rộng (mặc định: nội dung lấp
-  đầy khung, `app-base` F22) hoặc gọn (bề rộng container của bộ); **menu** mở rộng hoặc thu gọn (nút tròn trên menu lưu cùng một
-  cài đặt đó). [wide]
+- Cài đặt › Bố cục, cho mọi người, lưu thành cài đặt giao diện của họ: **bề rộng nội dung** rộng (mặc định: nội dung lấp khung,
+  `app-base` F22) hoặc gọn (bề rộng container của bộ mẫu); **menu** mở hoặc thu (nút tròn trên menu lưu cùng cài đặt). [wide]
 
-## 5. Điều khiển và hiệu ứng
+## 5. Control và hiệu ứng
 
-- **Ô chọn mở menu kính,** không bao giờ mở danh sách của trình duyệt: bật ra, đặc, đánh dấu mục đang chọn, giữ bàn phím (mũi tên,
-  Enter, Escape) và phát `change`. Trong một hộp thoại đang mở, menu nằm trong hộp thoại (lớp trên cùng).
-- **Không tô ô vuông khi rê chuột từng ô:** ở kiểu xem thẻ, một thẻ là một bảng; `table-hover` của bộ tô từng ô nên phải tắt ở
-  đó. [card-hover]
-- **Phần tử hiệu ứng không mang trang trí của trình duyệt:** pill làm từ mục danh sách có `list-style: none`; nút đóng nằm trong
-  hàng mà nó đóng.
-- **Menu nổi trên thẻ kính** (menu ba chấm của dòng, menu của ô chọn) đặt trên `<body>` (hoặc hộp thoại đang mở): thẻ có
-  `backdrop-filter` trở thành hộp mà menu `fixed` bị đặt vào.
-- **Mọi hiệu ứng của template Glass** giữ dấu `FX:` trong code (`app-glass`); các thẻ của trang lần lượt nổi lên khi trang hiện
+- **Góc bo nhẹ, như bộ mẫu:** thẻ, ô nhập, nút và menu `.375rem`, hộp thoại và khung lớn `.5rem`, không bao giờ hơn - trừ hình
+  cố ý tròn (viên thuốc, hình tròn: bán kính tới nửa chiều cao). [radius-kit]
+- **Ô chọn mở menu kính,** không bao giờ là danh sách của trình duyệt: bật ra có lò xo, nền đặc, đánh dấu mục đang chọn, giữ bàn
+  phím (mũi tên, Enter, Escape) và bắn `change`. Trong hộp thoại đang mở, menu vào cùng lớp với hộp thoại (top layer).
+- **Không có ô vuông khi rê từng ô:** ở dạng thẻ, một thẻ là một panel; `table-hover` của bộ mẫu tô từng ô nên bị tắt ở đó.
+  [card-hover]
+- **Phần tử hiệu ứng không mang trang trí của trình duyệt:** viên thuốc làm từ mục danh sách có `list-style: none`; nút đóng nằm
+  trong hàng nó đóng.
+- **Menu nổi trên thẻ kính** (menu ba chấm của hàng, menu của ô chọn, danh sách của bộ lọc) đặt trên `<body>` (hoặc hộp thoại đang
+  mở): thẻ có `backdrop-filter` trở thành khung chứa của menu fixed.
+- **Mọi hiệu ứng của template Glass** giữ dấu `FX:` trong code (`app-glass`); các thẻ của trang lần lượt hiện lên khi trang mở
   (FX: reveal).
-- **Thanh cuộn là của template Glass** ở mọi ô cuộn (12 px, rãnh tròn mờ, tay cầm gradient màu nhấn lùi vào bằng viền trong
-  suốt), không bao giờ để mặc định của trình duyệt; không luật nào đặt `scrollbar-color` hay `scrollbar-width` (Chromium sẽ bỏ
-  phần của template). [scrollbar]
-- **Ô ghim che kín thứ cuộn bên dưới:** hàng tiêu đề hay cột được ghim dùng màu kính đặc của thẻ ở cả hai theme, nên dữ liệu dừng
-  ở mép dưới của nó, không bao giờ hiện xuyên qua chữ tiêu đề - làm mờ nền của ô dính không có tác dụng trong ô cuộn, nên ô trong
-  suốt đã để dữ liệu hiện xuyên qua. [pin-cover]
-- **Nút bật/tắt kính nằm trên thanh trên** cạnh nút sáng/tối, sáng khi kính đang bật (nút của rail Glass, dời vào thanh).
+- **Thanh cuộn là của template Glass** ở mọi ô cuộn (12 px, rãnh bo mềm, con trượt chuyển màu nhấn lùi vào bằng viền trong
+  suốt), không bao giờ là mặc định của trình duyệt; không luật nào đặt `scrollbar-color` hay `scrollbar-width` (Chromium khi đó
+  bỏ các phần của template). [scrollbar]
+- **Hàng tiêu đề hay cột ghim là kính của thẻ, trong suốt:** khi bật kính nó không tự tô gì - không màu nền, không lớp làm mờ
+  (lớp nằm trong thẻ kính chỉ làm mờ màu trắng của thẻ: thành dải trắng; vả lại ô bảng không mang được `backdrop-filter`). Thay
+  vào đó các dòng cuộn dưới hàng tiêu đề ghim bị CẮT ở mép dưới của nó: thân bảng được cắt theo độ cuộn
+  (`clip-path: inset(var(--st) 0 0 0)`, `--st` lấy từ `scrollTop` của ô cuộn), nên không gì hiện xuyên qua chữ tiêu đề. Khi tắt
+  kính, ô ghim mang nền đặc. [pin-cover]
+- **Thanh cuộn dọc bắt đầu dưới hàng tiêu đề ghim:** ô cuộn mang chiều cao hàng tiêu đề (`--th`) làm lề trên của rãnh thanh
+  cuộn, nên cả con trượt lẫn các dòng đều không lên tới cạnh chữ tiêu đề. (Phép đo của bài kiểm trình duyệt, §6.)
+- **Công tắc kính nằm trên thanh trên** cạnh sáng / tối, sáng khi kính đang bật (công tắc của rail Glass, chuyển lên thanh).
   [bar-switches]
-- **Chỉ điều khiển của bộ, một font:** mọi điều khiển là `form-control` · `form-select` · `form-check-input`, mọi nhãn trong hộp
-  thoại là `form-label` · `form-check-label`, form dựng trên lưới của bộ (`row g-*` · `col-*`), font token ở mọi nơi - cả chữ trong svg và các con số - và
-  font đó phải được NẠP thật: app tự gửi kèm file font (font chỉ được gọi tên sẽ rơi về font hệ thống mà không ai thấy); không lớp
-  nào của kiểu cũ còn sót sau khi port. Công tắc luôn cách chữ một khoảng. [kit-controls] [switch-gap]
-- **Trang đăng nhập giữ dáng riêng nhưng dùng font và cỡ chữ đọc được của app:** font token, nhãn và ô nhập 16 px (ô dưới 16 px
-  làm điện thoại tự phóng to trang khi chạm vào), chữ ghi chú từ 14 px. Cỡ chữ đo như trên màn: trang vẽ trên một khung cố định
-  rồi phóng cho vừa màn thì mọi cỡ là mức sàn trên màn (cỡ × 1/zoom, không bao giờ nhỏ hơn cỡ đã viết); phép kiểm nhân cỡ chữ
-  với `currentCSSZoom`.
-- **Danh sách cuộn không bao giờ ép co các dòng** (dropdown, danh sách trong hộp thoại): dòng của một cột flex có giới hạn chiều
-  cao giữ nguyên chiều cao (`flex-shrink: 0`), không dòng nào đè dòng sau; danh sách chừa rãnh cho thanh cuộn. [list-rows]
-- **Menu thu gọn canh giữa:** huy hiệu và mọi icon nằm trên đường giữa của rail; chữ thương hiệu không chừa chỗ phía sau.
+- **Chỉ control của bộ mẫu, một phông:** mọi control là `form-control` · `form-select` · `form-check-input`, mọi nhãn trong hộp thoại
+  là `form-label` · `form-check-label`, form trên lưới của bộ mẫu (`row g-*` · `col-*`), phông token ở mọi nơi - cả chữ và số trong
+  svg - và phông đó thật sự ĐÃ TẢI: app tự mang file phông (phông chỉ được gọi tên sẽ lặng lẽ rơi về phông hệ thống); không lớp
+  nào của kiểu cũ sống sót qua lần chép. Công tắc giữ khoảng cách với nhãn. [kit-controls] [switch-gap]
+- **Trang đăng nhập giữ dáng riêng nhưng theo phông và cỡ đọc của app:** phông token, nhãn và ô nhập 16 px (ô dưới 16 px làm điện
+  thoại phóng to trang khi focus), ghi chú từ 14 px. Cỡ được đo như khi hiện: trang vẽ trên khung cố định rồi phóng cho vừa thì
+  mọi cỡ là mức sàn trên màn (cỡ × 1/zoom, không dưới cỡ đã viết); phép kiểm nhân cỡ chữ với `currentCSSZoom`.
+- **Danh sách cuộn không bóp dòng** (menu thả, danh sách trong hộp thoại): các dòng của cột flex bị giới hạn chiều cao giữ chiều
+  cao của chúng (`flex-shrink: 0`), không dòng nào đè dòng sau; danh sách giữ rãnh thanh cuộn. [list-rows]
+- **Menu thu gọn nằm giữa:** huy hiệu và mọi icon trên đường giữa của rail; chữ thương hiệu không để lại khoảng trống.
   [folded-centre]
-- **Không có nút giả:** nút nào cũng làm được việc - một liên kết dáng nút không bao giờ trỏ về trang đang mở; mục nào sẽ trỏ
-  như vậy (thông báo về trang chủ) thì nhận đúng việc nó muốn (mở app đó, lật thẻ đó) hoặc không có nút. [real-actions]
-- **Mọi bảng dữ liệu giữ chức năng kéo đổi độ rộng cột:** mỗi ô tiêu đề có tay kéo `col-resize` nhìn thấy được ở kiểu xem danh
-  sách; độ rộng là cài đặt của người đó. Port thì mang theo cả CSS của tay kéo. [resize]
-- **Mọi biểu đồ hiện đủ số,** như một báo cáo: số trên mỗi cột, nhãn số trên đường (mọi điểm khi đủ chỗ, không thì điểm cao nhất,
-  thấp nhất và điểm cuối), tỉ lệ của từng phần donut cạnh giá trị. [chart-labels]
-- **Màn hình cảm ứng đổi theme ngay:** vòng tròn mở theme (view transition) chỉ chạy với chuột; với ngón tay, trang vẽ lại
-  thẳng, vì trình duyệt điện thoại có thể giữ ảnh chụp cũ trên màn hình trong khi cài đặt đã lưu. Thanh trình duyệt điện thoại
-  (`theme-color`) đổi theo theme.
-- **Trang khai colour scheme của nó** (`<meta name="color-scheme" content="light dark">`, `html { color-scheme }` = theme), để
-  chế độ tối ép buộc của trình duyệt điện thoại không đè lên theme của người dùng. [color-scheme]
-- **Icon của bộ:** chỉ gửi những icon code gọi tới (một bản con sinh ra từ CSS icon của bộ, build tự kiểm), không gửi cả bộ.
-- **Mọi thẻ số liệu hiện một tỉ lệ %:** mức đổi so với kỳ trước - WoW / MoM / QoQ theo khoảng thời gian đang chọn, màu đỏ khi
-  giảm - hoặc tỉ trọng con số đó chiếm (số người đã đăng nhập trên số tài khoản người đang mở, phần đăng nhập của app dẫn đầu);
-  thêm được một dòng thứ hai cho một ý nữa (agent tách riêng khỏi người). [kpi-pct]
-- **Tắt được hiệu ứng theo chuột:** Cài đặt › Giao diện tắt đốm sáng, ánh lướt, nghiêng và gợn cho người đó (cài đặt giao diện
-  `fx`, lưu cùng các cài đặt giao diện khác; `html.fx-off`); các tấm kính vẫn giữ. Đốm sáng theo con trỏ còn có công tắc
-  riêng (cài đặt giao diện `spot`, `html.spot-off`): tắt nó thì thẻ vẫn nghiêng.
-- **Bộ lọc là slicer kiểu báo cáo, chỉ cho trường ít giá trị:** danh sách chọn (chọn nhiều có chọn tất cả và bỏ chọn, hoặc chọn
-  một) có tối đa 10 giá trị - trạng thái, loại, app, vai, mức; cột ngày có khoảng ngày (từ - đến). Dữ liệu chính của trang
-  (người, địa chỉ, phòng ban, trưởng phòng) tìm bằng ô tìm kiếm, không bao giờ liệt kê trong bộ lọc. Ô lọc đang đặt được đánh
-  dấu (`.filter-field.on`); nút lọc đếm số ô lọc đang đặt và bộ lọc có nút Xoá lọc đúng khi có ô đang đặt. Danh sách của ô lọc
-  treo ở `<body>` ngay dưới ô, như mọi menu nằm trên thẻ kính. [filter-set] [filter-count]
-- **Nút lọc bung và thu bộ lọc:** trên máy tính, bấm nút lọc thì bộ lọc của trang trải ra trên dòng duy nhất của thanh trang,
-  bấm lần nữa thì thu lại - các ô lọc lần lượt bay vào từ phía nhóm nút (FX: reveal), nút sáng khi bộ lọc đang hiện; lựa chọn này
-  là cài đặt giao diện `filters` của người dùng (`bar` | `popover`, cũng có trong Cài đặt › Bố cục) và áp ở mọi app. Điện thoại
-  không đủ chỗ cho dãy bộ lọc: ở đó nút mở popover. [filter-row]
-- **Bộ lọc neo bên phải:** các ô đứng sát nhóm nút, mỗi ô là một ô mang luôn nhãn ("Vai: Tất cả") và rộng tối đa bằng độ rộng chuẩn
-  (12rem); dòng ngắn thì các ô cùng co lại (chữ kết thúc bằng "…", rê chuột hiện đủ tên), không ô nào bị cuộn khuất hay bị cắt, ít
-  ô thì để trống bên trái thanh - không bao giờ giãn ra hết thanh. Bung hay thu bộ lọc không bao giờ làm nhóm nút dời chỗ.
-  [filter-row] [bar-anchor]
-- **Chấm trạng thái tròn đủ:** chấm online nằm trên mép avatar, không khung nào bao quanh (nút hay dòng menu cắt phần tràn để làm
-  gợn sóng) được cắt nó. [dot-whole]
-- **Chỉ dùng icon của bộ kit:** mọi icon của khung - thanh trên, menu, bảng lệnh, thanh trang, các menu - lấy từ bộ icon của kit
-  (`bx-…`), icon của một trang ở menu và ở bảng lệnh là một; không emoji hay ký tự gõ tay nào đứng thay icon. [kit-icons]
-- **Giao diện là của người dùng trên cả hệ:** các cài đặt giao diện định hình bề mặt chung - theme, ngôn ngữ, định dạng ngày,
-  kính và độ mờ, hiệu ứng và ánh sáng theo con trỏ, kiểu bộ lọc, độ rộng nội dung và menu - lưu một chỗ, là cài đặt của người
-  đó ở system-manager trong DB của hệ, và mọi app của hệ đọc và ghi đúng chỗ đó, nên chọn ở một app là có ở mọi app.
-- **Mọi điều khiển tự xưng tên khi rê chuột:** điều khiển không có chữ của riêng nó (nút icon, công tắc, avatar) mang tên
-  (`data-tip`, không có thì `aria-label` hoặc `title`); trỏ chuột vào hay tới bằng bàn phím thì tên hiện trong một chú thích
-  duy nhất ở `<body>`, ngay dưới điều khiển và trong cửa sổ - chú thích vẽ trong điều khiển sẽ bị điều khiển cắt mất. Chữ bị
-  rút gọn cũng hiện đủ theo cách đó. [control-name]
-- **Menu của thanh trên mở trọn:** không phần nào của thanh cắt phần tràn khi menu của nó mở được (ngôn ngữ, chuyển app,
-  chuông, tài khoản); thanh có thể thu gọn thì chỉ cắt lúc đang thu.
-- **Báo khi có bản build mới:** app đọc phiên bản của server qua lần dò health; phiên bản khác với bản mà tab đã nạp thì hiện
-  thanh báo kèm nút tải lại (có thay đổi chưa lưu thì hỏi trước), để không ai làm việc tiếp trên bản cũ.
-- **Danh sách tài khoản hiện loại tài khoản** (người · agent) thành một cột riêng có bộ lọc riêng, hộp sửa tài khoản đặt được
-  loại; số liệu về người chỉ đếm người.
-
-- **Bốn thẻ số liệu Insights phải khác nhau:** thẻ tài khoản chia dòng chính làm hai nửa, tài khoản người và tài khoản agent,
-  mỗi nửa hiện số lượng, và ở dòng phần trăm ngay dưới là tỷ trọng trong tổng tài khoản hoạt động của hai loại (hai tỷ trọng
-  cộng lại bằng 100%); thẻ thứ tư hiện số app có sử dụng, tỷ lệ trên app đang bật và tổng app đang bật, không lặp lại so sánh
-  lượt đăng nhập. Panel trang riêng được neo, breadcrumb nằm trái còn tìm app và lọc kỳ nằm phải trên cùng một hàng desktop.
-  [insights-kpis] [crumbs]
-- **Mỗi thẻ Insights có bốn vai chữ theo thứ tự cố định:** title của card, nội dung chính, tỷ lệ %, nội dung phụ. Nội dung
-  chính lớn hơn title; tỷ lệ đậm hơn và khác màu nội dung phụ. Trong card tài khoản, mỗi con số dùng vai nội dung chính còn
-  nhãn loại tài khoản bên cạnh dùng vai nội dung phụ, để một nửa thẻ không tràn khi thẻ hẹp. [kpi-type]
-- **Các thẻ số liệu cùng một hàng giữ các dòng thẳng nhau:** dòng chính, dòng phần trăm và dòng phụ bắt đầu ở cùng độ cao trong
-  mọi thẻ của hàng, đo theo bố cục (thẻ đang nổi lên hay đang nghiêng theo con trỏ không tính), không dòng nào rộng hơn thẻ
-  của nó. [kpi-align]
+- **Không có nút giả:** mọi nút đều làm một việc - liên kết mang dáng nút không bao giờ trỏ về trang đang mở; mục nào sẽ làm vậy
+  (thông báo về trang chủ) thì nhận đúng thao tác nó muốn nói (mở app đó, lật thẻ đó) hoặc không có thao tác. [real-actions]
+- **Mọi bảng dữ liệu giữ việc đổi độ rộng cột,** cả hai chiều: mỗi ô tiêu đề có tay kéo `col-resize` nhìn thấy được ở dạng danh
+  sách; độ rộng là cài đặt giao diện của người dùng. Bảng đổi được độ rộng dàn theo độ rộng đã đặt (`table-layout: fixed`, chữ
+  dài hơn cột kết thúc bằng "…"), nên cột thu nhỏ được như khi kéo rộng, tới 48 px - kiểu dàn tự động giữ cột rộng bằng dòng chữ
+  dài nhất của nó. Độ rộng đo trên bố cục (`offsetWidth`), không bao giờ trên trang đang vẽ (trang đang hiện lên bị thu phóng);
+  cú kéo bắt đầu từ độ rộng đang vẽ và được theo dõi trên cả cửa sổ cho tới khi nhả chuột (tay kéo bị vẽ lại giữa chừng không
+  được làm dừng cú kéo); tay kéo không mang trình nghe riêng - một trình nghe trên document nhận mọi tay kéo và mỗi
+  bảng tự giữ độ rộng của nó (tay kéo còn lại từ lần gắn trước, đã mất trình nghe, không bao giờ bắt đầu được cú kéo); ô
+  tiêu đề bị vẽ lại được gắn lại tay kéo. Lần chép mang theo cả CSS của tay kéo. [resize] (Bản thân cú
+  kéo là phép đo của bài kiểm trình duyệt, §6.)
+- **Mọi biểu đồ hiện số của nó,** như báo cáo: giá trị trên từng cột, nhãn số trên đường (mọi điểm khi đủ chỗ, không thì điểm cao
+  nhất, thấp nhất và cuối), tỉ phần của từng phần bánh cạnh giá trị. [chart-labels]
+- **Màn cảm ứng đổi theme ngay:** vòng tròn hiện theme mới (view transition) chỉ chạy với con trỏ tinh; với con trỏ thô trang vẽ
+  lại thẳng, vì trình duyệt điện thoại có thể giữ ảnh cũ trên màn trong lúc lưu cài đặt. Thanh trình duyệt của điện thoại
+  (`theme-color`) theo theme.
+- **Trang khai bảng màu của nó** (`<meta name="color-scheme" content="light dark">`, `html { color-scheme }` = theme), để chế độ tối
+  ép buộc của trình duyệt điện thoại không đụng tới theme của người dùng. [color-scheme]
+- **Icon của bộ mẫu:** chỉ mang các icon code có gọi tên (một tập con sinh ra từ CSS icon của bộ mẫu, bản build kiểm), không mang
+  cả bộ. Mọi icon của khung - thanh trên, menu, bảng lệnh, thanh trang, các menu - lấy từ bộ icon của bộ mẫu (`bx-…`), icon của
+  trang giống nhau ở menu và bảng lệnh; không emoji hay ký tự gõ nào thay cho icon. [kit-icons]
+- **Mọi thẻ số liệu có một phần trăm:** mức đổi so với kỳ trước - WoW / MoM / QoQ theo khoảng đã chọn, đỏ khi giảm - hoặc tỉ phần
+  con số chiếm (người đã đăng nhập trên số tài khoản người đang mở, tỉ phần lượt đăng nhập của app đứng đầu); một dòng phụ có thể
+  thêm một thông tin (agent tách khỏi người). [kpi-pct]
+- **Bốn số liệu Thống kê khác nhau:** số liệu tài khoản chia dòng chính làm hai nửa, tài khoản người và tài khoản agent, mỗi nửa
+  có số đếm và, ở dòng phần trăm bên dưới, tỉ phần của nó trên tổng hoạt động của cả hai (hai tỉ phần cộng lại 100%); số liệu thứ
+  tư báo số app đã dùng, tỉ phần trên số app đang bật và tổng số app đang bật, không lặp lại phép so lượt đăng nhập.
+  [insights-kpis]
+- **Mỗi số liệu Thống kê có bốn vai chữ theo thứ tự:** tên thẻ, nội dung chính, phần trăm, nội dung phụ. Nội dung chính lớn hơn
+  tên thẻ; phần trăm đậm hơn và khác màu với nội dung phụ. Ở số liệu tài khoản, mỗi số đếm là nội dung chính và nhãn loại tài
+  khoản bên cạnh mang vai phụ, nên một nửa không bao giờ lớn quá thẻ hẹp. [kpi-type]
+- **Các thẻ số liệu cùng hàng giữ dòng ngang nhau:** dòng chính, dòng phần trăm và dòng phụ bắt đầu cùng độ cao ở mọi thẻ của
+  hàng, đo trên bố cục (thẻ đang hiện lên hay đang nghiêng theo con trỏ không tính), và không dòng nào rộng hơn thẻ. [kpi-align]
+- **Hiệu ứng con trỏ tắt được:** Cài đặt › Giao diện tắt đốm sáng, ánh lướt, nghiêng và gợn sóng cho người dùng (cài đặt giao
+  diện `fx`, lưu cùng các cài đặt khác; `html.fx-off`); các panel kính vẫn giữ. Đốm sáng dưới con trỏ còn có công tắc riêng (cài
+  đặt `spot`, `html.spot-off`): tắt nó thì các thẻ vẫn nghiêng.
+- **Bộ lọc là slicer của báo cáo, chỉ cho trường ít giá trị:** danh sách chọn (chọn nhiều có chọn tất cả và bỏ chọn, hoặc chọn
+  một) tối đa 10 giá trị - trạng thái, loại, app, vai, mức, hành động; cột ngày dùng khoảng ngày (từ - đến). Bản ghi chính của
+  trang (người, địa chỉ, phòng ban, đầu mối) tìm bằng ô tìm, không bao giờ liệt kê trong bộ lọc. Bộ lọc đang đặt được đánh dấu
+  (`.filter-field.on`, theo giá trị ĐÃ ÁP DỤNG). Danh sách của bộ lọc treo trên `<body>` dưới control của nó, như mọi menu trên
+  thẻ kính. [filter-set]
+- **Nút lọc luôn mở popover;** người dùng ghim từng bộ lọc lên thanh hoặc để nó trong popover. Đầu popover là danh sách ghim (mỗi
+  bộ lọc một ô tick, Ghim tất cả, Bỏ ghim), rồi mọi bộ lọc chưa ghim; popover giữ một bề rộng cố định (22rem) dù ghim gì. Ghim
+  là cài đặt giao diện `filter_pins` của người dùng (một map JSON đường dẫn trang → id bộ lọc), nên giữ ở mọi app; trang chưa có
+  ghim riêng theo cài đặt `filters` (`bar` ghim tất cả, `popover` không ghim). Điện thoại giữ mọi bộ lọc trong popover. Bộ lọc
+  được ghim hay bỏ ghim BAY từ chỗ cũ tới chỗ mới (FX: flip: chỗ xuất phát ghi lại trước khi ghim, giữ tới khi nó đã dời - hàng
+  ghim xuất hiện một lần vẽ sau lần ghim đầu). Bộ lọc ghim đứng sát nút lọc trên một dòng của thanh, mỗi cái là một control mang
+  nhãn của nó ("Vai: Tất cả"), tối đa bề rộng chuẩn (12rem), co lại cùng nhau, không bị đẩy ra ngoài, không bao giờ thành dòng
+  thứ hai. [filter-row] [bar-anchor]
+- **Popover vừa cửa sổ và lọc khi bấm Áp dụng:** nó không bao giờ tràn khỏi màn hình - danh sách ghim và bộ lọc cuộn bên trong
+  (thân có thanh cuộn riêng, chiều cao tính từ chỗ nó mở ra), và chân popover luôn hiện ở đáy với Xoá lọc cạnh Áp dụng. Bộ lọc đổi
+  trong popover là BẢN NHÁP (`.filter-field.pending`): các dòng không đổi cho tới khi Áp dụng chạy mọi bản nháp cùng lúc (số bản
+  nháp hiện trên nút: "Áp dụng (2)"); đóng popover thì bỏ bản nháp. Bộ lọc ghim trên thanh lọc ngay. [filter-pop] [filter-count]
+- **Số đếm bộ lọc và nút X:** nút lọc đếm các bộ lọc đang đặt (đã áp dụng, không tính bản nháp); khi có bộ lọc đang đặt, thanh
+  hiện nút X để xoá chúng, cạnh nút lọc - dù bộ lọc đang ghim hay nằm cả trong popover. [filter-count]
+- **Mọi bộ lọc cắt ở nơi dòng bị giới hạn:** danh sách server gửi về có giới hạn dòng (N dòng mới nhất của nhật ký) thì lọc bằng
+  câu truy vấn của server, TRƯỚC giới hạn - mỗi bộ lọc (khoảng thời gian, app, mức, loại tài khoản, hành động, khoảng ngày, chữ)
+  đi vào câu truy vấn; lọc trên trình duyệt trong các dòng mới nhất thì bộ lọc ngày cũ hay giá trị hiếm không ra gì.
+- **Mọi ngày theo định dạng ngày của người dùng:** ngày mà bề mặt hiện hay nhận (một ô, một bộ lọc, một lịch) theo cài đặt chung
+  `date_format` (`vn` dd/mm/yyyy, `us` mm/dd/yyyy) và ngôn ngữ của app - ô ngày và lịch riêng của app (tuần bắt đầu từ thứ Hai),
+  không bao giờ là ô ngày của trình duyệt, vốn theo locale của trình duyệt. [date-format]
+- **Người dùng đọc tên, không đọc mã:** danh sách chọn, bộ lọc, nhãn hay tên hành động hiện tên của giá trị lấy từ từ điển, không
+  bao giờ hiện mã lưu (`data_query`, `login_ok`); mã ngoài danh sách đọc là "Hành động khác". Mã hành động là danh sách đóng của
+  hệ (hợp đồng app của DB hệ): app giữ danh sách đó, mỗi mã có tên ở mọi ngôn ngữ, và một phép kiểm tĩnh đối chiếu danh sách với
+  hợp đồng khi hợp đồng có trên máy. [no-raw-code]
+- **Chấm trạng thái nguyên vẹn:** chấm của avatar trực tuyến nằm trên mép nó, và không khung nào bao quanh - nút hay dòng menu cắt
+  tràn vì hiệu ứng gợn sóng - cắt mất chấm. [dot-whole]
+- **Giao diện là của người dùng trên cả hệ:** các cài đặt giao diện tạo nên bề mặt chung - theme, ngôn ngữ, định dạng ngày, kính
+  và độ mờ, hiệu ứng con trỏ và đốm sáng, kiểu bộ lọc và ghim, bề rộng nội dung và menu - lưu một lần, là cài đặt của người dùng
+  ở system-manager trong DB của hệ, và mọi app của hệ đọc và ghi ở đó, nên chọn ở một app là đúng ở mọi app.
+- **Mọi control tự xưng tên khi trỏ vào:** control không có chữ riêng (nút icon, công tắc, avatar) mang tên của nó (`data-tip`,
+  không thì `aria-label` hay `title`); trỏ vào hay tới nó bằng bàn phím thì tên đó hiện trong một chú thích duy nhất trên `<body>`,
+  dưới control và trong cửa sổ - chú thích vẽ bên trong control bị nó cắt. Chữ bị rút gọn hiện chữ đầy đủ cùng cách. [control-name]
+- **Menu của thanh trên mở nguyên vẹn:** không phần nào của thanh cắt tràn khi menu của nó có thể mở (ngôn ngữ, chuyển app, chuông,
+  tài khoản); thanh thu lại chỉ cắt khi đang thu.
+- **Bản build mới được báo:** app đọc phiên bản của server qua phép đo health; phiên bản khác với bản tab đã tải thì hiện băng
+  thông báo có nút tải lại (hỏi trước nếu có thay đổi chưa lưu), để không ai làm tiếp trên bản cũ.
+- **Danh sách tài khoản hiện loại tài khoản** (người · agent) thành cột riêng với bộ lọc riêng, và trình sửa tài khoản đặt nó;
+  phiên đăng nhập và nhật ký cũng lọc theo nó; số liệu về người chỉ đếm người. Hồ sơ là trang của một người: không hiện loại
+  tài khoản.
+- **Trang của người dùng, theo bộ mẫu:** Hồ sơ của tôi (trang user-profile của bộ mẫu: thẻ đầu có ảnh nền, avatar nhô lên ảnh
+  nền và tách khỏi tên, tên và các thông tin nằm dưới ảnh nền, nút sửa trên một dòng; thẻ Giới thiệu và dòng thời gian hoạt động
+  cao bằng nhau, app ghi bằng tên, không bằng mã) và Cài đặt hồ sơ (trang account-settings của bộ mẫu: tab Tài khoản và Bảo mật;
+  người dùng sửa họ tên và email, tên đăng nhập là của quản trị viên; đổi mật khẩu). Ảnh đại diện và ảnh nền là file giữ ngoài
+  code, DB của hệ chỉ giữ thông tin trỏ tới chúng.
 
 ## 6. Kiểm
 
-- Bài kiểm trình duyệt của repo nhập `scripts/sneat_glass_check.mjs`, chạy mọi mục `RULES` trên mọi trang và mọi mục
-  `DIALOG_RULES` trên mọi hộp thoại nó mở, ở một khổ máy tính và một khổ điện thoại và ở cả hai theme, sau khi hiệu ứng mở đã xong. Thêm luật vào
-  đây thì thêm mục tương ứng trong cùng một lần sửa; mỗi mục mới phải được chứng minh đỏ bằng cách làm hỏng thứ nó canh - với
-  code vẫn build được: bài kiểm build lại trước khi chạy, để một lần build hỏng không bao giờ khiến nó kiểm một bản cũ.
+- Bài kiểm trình duyệt của repo import `scripts/sneat_glass_check.mjs` và chạy mọi mục `RULES` trên mọi trang, mọi mục
+  `DIALOG_RULES` trên mọi hộp thoại nó mở, ở một khổ máy tính và một khổ điện thoại, cả hai theme, sau khi các hiệu ứng mở đã
+  dừng, với giả lập focus bật (tab chạy nền không khớp `:focus`). Luật thêm ở đây thì thêm mục của nó ở đó trong cùng thay đổi;
+  mỗi mục mới được chứng minh đỏ bằng cách làm hỏng thứ nó canh - với code vẫn build được: bài kiểm build lại trước khi chạy, nên
+  build hỏng không bao giờ để nó kiểm một bundle cũ.
+- Thứ DOM không chứng minh được là phép đo của bài kiểm trình duyệt, mỗi phép được chứng minh đỏ cùng cách:
+  - **thanh cuộn dưới tiêu đề:** chụp dải ở mép phải ô cuộn (`Page.captureScreenshot`) khi ô ở đầu, đọc màu con trượt ngay dưới
+    tiêu đề, và không điểm ảnh nào của cột thanh cuộn cạnh tiêu đề được mang màu đó (đảo overflow của ô trước, để luật vừa đổi
+    hiện ra);
+  - **kéo cột:** con trỏ thật (`Input.dispatchMouseEvent`) kéo một tay kéo rộng thêm 80 px và hẹp đi 200 px trên vài bảng, và cột
+    được kiểm THEO ĐỘ RỘNG VẼ RA (bề rộng `th`) so với độ rộng đã đặt; ô tiêu đề bị vẽ lại phải có lại tay kéo và kéo được;
+  - **đường bay khi ghim:** ghi lại `Element.animate` - bộ lọc vừa ghim xuất phát bên dưới chỗ của nó trên thanh, bộ lọc vừa bỏ ghim
+    xuất phát bên trên chỗ của nó trong popover;
+  - **bản nháp:** hai lựa chọn trong popover giữ nguyên các dòng và số đếm cho tới khi bấm Áp dụng, lúc đó cả hai cùng chạy.
 
 ## 7. Đưa kiểu này vào một app của hệ
 
-Frontend của system-manager là mẫu sống; bản thử đầu tiên đã đóng băng nằm ở bản chép template Sneat trong repo thiết kế. Một app
-chuyển sang kiểu này làm theo thứ tự:
+Frontend của system-manager là mẫu sống; bản thử đầu tiên đã đóng băng là bản chép template Sneat ở repo thiết kế. Một app chuyển
+sang kiểu này, theo thứ tự:
 1. Khai `{"style": "SneatGlass"}` ở `frontend/config/ui.json`; `zemory sync` mang về skill này, `app-sneat`, `app-glass` và
    `scripts/sneat_glass_check.mjs`.
-2. Dựng khung đúng như mẫu: menu (chỉ trang của app mình; dòng dưới thương hiệu ghi tên app), khối thanh trên hai hàng (§2b) với
-   thanh chung của hệ giữ nguyên, khe thanh trang ở hàng 2 để mỗi trang tự điền, chú thích duy nhất ở `<body>` (§5), toast, hộp
-   thoại (§3), bộ icon rút gọn của kit và font token gửi kèm app.
-3. Đọc và ghi cài đặt giao diện của người dùng ở đúng chỗ hệ giữ (§5: cài đặt của người đó ở system-manager trong DB của hệ), để
-   theme, kính, bộ lọc… theo người dùng từ app này sang app khác; chỉ khoá riêng của app mới để dưới app id của app.
-4. Mọi trang danh sách dựng bằng thẻ trang: thanh của nó ở hàng 2 (ô tìm, nút lọc, nút kiểu xem, thao tác chính), bộ lọc là slicer
-   cho trường ít giá trị (§5), bảng ghim dưới khối thanh trên.
-5. Chạy phép kiểm: bài kiểm trình duyệt của app nhập `RULES` và `DIALOG_RULES` rồi chạy trên mọi trang và hộp thoại, ở một khổ
-   máy tính và một khổ điện thoại, cả hai theme (§6); xanh ở mọi trang trước bản phát hành đầu tiên theo kiểu này.
-6. Báo cho system-manager khi app đã chạy trên đường dẫn của nó, để bảng app và cổng điều hướng của hệ nối tới.
+2. Lấy khung như mẫu dựng: menu (chỉ các trang của app; dòng thương hiệu ghi tên app), đầu trang hai hàng (§2b) với thanh trên
+   chung của hệ giữ nguyên, chỗ thanh trang ở hàng 2 để mỗi trang lấp vào (§1), chú thích duy nhất trên `<body>` (§5), các toast,
+   các hộp thoại (§3), tập icon con của bộ mẫu và phông token đi kèm app.
+3. Đọc và ghi cài đặt giao diện của người dùng ở nơi hệ giữ (§5: cài đặt của system-manager trong DB của hệ), để theme, kính, bộ
+   lọc, ghim và các thứ khác theo người dùng từ app này sang app khác; chỉ giữ các khoá riêng của app dưới app id của nó.
+4. Dựng mọi trang danh sách thành thẻ trang: thanh của nó ở hàng 2 (§1), bộ lọc là slicer cho trường ít giá trị cùng ghim, popover
+   và bản nháp của nó (§5), cắt bởi server ở nơi dòng bị giới hạn, bảng ghim dưới đầu trang và cắt dòng ở đó.
+5. Chạy phép kiểm: bài kiểm trình duyệt của app import `RULES` và `DIALOG_RULES`, chạy chúng trên mọi trang và hộp thoại ở một khổ
+   máy tính và một khổ điện thoại, cả hai theme, và chạy các phép đo của §6; xanh trên mọi trang trước lần phát hành đầu của app
+   trong kiểu này.
+6. Báo system-manager khi app đã chạy trên đường dẫn của nó, để bảng app và cổng điều hướng của hệ dẫn tới nó.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved on its template before it is ported · kiểu được duyệt trên template trước khi chép sang app

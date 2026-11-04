@@ -1,36 +1,43 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 19
+version: 20
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v19 #8c2272d79c86
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v20 #85abb1282d6d
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
 
 > A KIND skill made of two: `app-sneat` holds the layout of the Sneat kit as the kit has it; `app-glass` holds the look; this
 > skill holds what the mix needs of its own. Each rule came from a correction of the requester and has its machine check in
-> `scripts/sneat_glass_check.mjs` (named in brackets), which the repo's browser test runs on every page.
+> `scripts/sneat_glass_check.mjs` (named in brackets), which the repo's browser test runs on every page; a rule a page cannot
+> show by its DOM alone is a probe of the browser test, named in §6.
 
 ## 0. Choosing the kind
 
 - A repo declares `{"style": "SneatGlass"}` in `frontend/config/ui.json`; it follows `app-sneat` for the layout and `app-glass`
   for the look, and this skill where the three meet. A rule here beats the other two on such a surface.
 
-## 1. The page toolbar — one design, always all three
+## 1. The page bar — two groups that never meet
 
-- **Every page card carries the same toolbar** in its header, right side: the small filter box (filters the rows as one types;
-  the header search jumps), the filter button (its popover holds the filters), the view switch (list · grid, or the page's own
-  views). A page with one view still shows the switch, turned off; a page with no filter yet still shows the button, turned off.
+- **Every page card carries one bar of one design** in row 2 of the top bar (§2b), in two groups:
+  - the **page's own tools** stand from the LEFT: what the page shows beside its name (who is online), its main action (the
+    add button);
+  - the **seek group** stands at the RIGHT end, always side by side in this order: the filters pinned on the bar (§5), the
+    filter button, the filter box, the view switch (list · grid, or the page's own views). [bar-anchor]
+- The seek group takes the rest of the line and its pinned filters shrink (ending in "…") before it would reach the left
+  group; the two never overlap; pinning a filter never moves the left group. [bar-anchor] [filter-row]
+- A page with one view still shows the switch, turned off; a page with no filter yet still shows the filter button, turned off.
   [toolbar]
-- **One design:** the three have the same height, corner radius, glass fill and edge; the view switch is one group; never a Sneat
-  button beside a Glass box. [toolbar]
-- **The chosen view is lit** in the accent, and so is the filter button while its popover is open. [toolbar]
-- **The box keeps room for its icon** when focused: Sneat narrows a focused field's padding for its thicker border, so the
-  surface pins the start padding. [toolbar]
+- **One design:** box, filter button and view switch have the same height, corner radius, glass fill and edge; the view
+  switch is one group; never a Sneat button beside a Glass box. The chosen view is lit in the accent, and so is the filter
+  button while its popover is open. [toolbar]
+- **The filter box keeps its width on focus** - the focus lights its border, never grows it (a box that grows runs out of its
+  panel) - and keeps room for its icon (Sneat narrows a focused field's padding; the surface pins the start padding).
+  [search-steady] [toolbar]
 
 ## 2. The frame stays put (`app-base` F21 in this kind)
 
@@ -49,19 +56,19 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v19 #8c2272d79c86
   page with no bar of its own shows row 1 only. [crumbs] [frame]
 - **Row 1, in three columns:** the crumbs at its start; the one search at its very centre; at its end the day, date and time
   (the short form on a narrow screen, never over the search) then the buttons (language · theme · glass · apps · bell ·
-  account). The crumbs: the family first (its name, the hub's home), then the app - or, in the hub, the group of the page
-  (Administration) - then the page. Every crumb but the last goes back to its page; the last is the page on screen, no link
-  (`aria-current="page"`); a crumb that would open the page on screen is plain text; no title repeats the last crumb. A phone
-  drops the crumbs from row 1. [crumbs]
-- **The greeting is the account menu's heading** ("Good afternoon, <name>"): the name shows once, the line under it adds the
-  sign-in name only when it differs, then the role. It never takes room in row 1. [crumbs]
-- **Row 2 is the page bar:** the page's filters (when shown) and its tools - search, filter button, view switch, the page's
-  main action - the tools anchored at its right end. [bar-anchor]
+  account). A phone drops the crumbs from row 1. [crumbs]
+- **The crumbs are family / app / [group] / page:** a small app is `<family> / <app> / <page>`; the system-manager is
+  itself an app, the hub (`<family> / Hub / Administration / Users`). The second crumb is the app named under the family name
+  in the menu. Every layer before the current page is a link to that layer's home (the family's and the hub's home is the
+  launcher, a group's its first page) - even when that home is the page on screen; only the current page is plain text
+  (`aria-current="page"`); no title repeats the last crumb. [crumbs]
+- **The account menu is the kit's:** its heading is the greeting on ONE line ("Good evening, <name>") with the role under it;
+  then My profile, Settings, Sign out. The greeting never takes room in row 1. [crumbs]
 - **The menu brand shows the app's name with its accent part (`.text-primary`, the end of the name) in the shared brand
   colour token `--g-brand`,** in both themes; the app defines the token. [brand-one-red]
 - **Under the family name,** the small line names only the app currently open (`data-app-name` of the menu): the dashboard
-  app's name in the dashboard app, the hub's own name in the hub.
-  It stays fixed while moving between that app's pages; the breadcrumb in the page panel names the current page. [brand-area]
+  app's name in the dashboard app, the hub's own name in the hub. It stays fixed while moving between that app's pages; the
+  crumbs name the current page. [brand-area]
 - **A menu group label clears its short divider line** by at least 8 px while the menu is open. [menu-header-gap]
 
 ## 3. Dialogs — exactly S / M / L (`app-base` F2 in this kind)
@@ -78,22 +85,28 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v19 #8c2272d79c86
 
 ## 5. Controls and effects
 
+- **Corners are rounded lightly, as the kit has them:** cards, fields, buttons and menus `.375rem`, dialogs and large frames
+  `.5rem`, never more - except a shape round on purpose (a pill, a circle: its radius reaches half its height). [radius-kit]
 - **A select opens a glass menu,** never the browser's own list: it springs in, is opaque, marks the chosen item, keeps the
   keyboard (arrows, Enter, Escape) and fires `change`. Inside an open dialog the menu joins the dialog (the top layer).
 - **No per-cell hover squares:** in card view a card is one panel; the kit's `table-hover` paints each cell and is turned off
   there. [card-hover]
 - **Effect elements carry no browser decoration:** a pill made of a list item has `list-style: none`; close buttons sit inside the
   row they close.
-- **A floating menu over a glass card** (a row's dots menu, a select's menu) is placed on `<body>` (or the open dialog): a card
-  with `backdrop-filter` becomes the box a fixed menu is placed in.
+- **A floating menu over a glass card** (a row's dots menu, a select's menu, a filter's list) is placed on `<body>` (or the open
+  dialog): a card with `backdrop-filter` becomes the box a fixed menu is placed in.
 - **Every effect of the Glass template** keeps its `FX:` marker in the code (`app-glass`); the cards of a page rise in one after
   another when it shows (FX: reveal).
 - **Scrollbars are the Glass template's** on every scroll box (12 px, a soft rounded track, the accent gradient thumb inset by
   a transparent border), never the browser's default; no rule sets `scrollbar-color` or `scrollbar-width` (Chromium then drops
   the template's parts). [scrollbar]
-- **Pinned cells cover what scrolls under them:** a pinned header row or pinned column takes the card's solid glass colour in
-  both themes, so the rows end at its lower edge and never read through its titles - a sticky cell's backdrop blur does not
-  take inside a scroll box, so a clear one let the rows show through. [pin-cover]
+- **A pinned header row or column is the card's glass, clear through:** with glass on it paints nothing of its own - no fill,
+  no blur layer (a layer inside a glass card only blurs the card's white: a white band; a table cell cannot carry a
+  `backdrop-filter` anyway). The rows that scroll under a pinned header are CUT at its lower edge instead: the table body is
+  clipped from the scroll offset (`clip-path: inset(var(--st) 0 0 0)`, `--st` set from the scroll box's `scrollTop`), so
+  nothing reads through its titles. With glass off a pinned cell carries the solid fill. [pin-cover]
+- **The vertical scrollbar starts under the pinned header:** the scroll box carries the header's height (`--th`) as its
+  scrollbar track's top margin, so neither the thumb nor the rows reach up beside the titles. (Probe of the browser test, §6.)
 - **The glass switch sits in the top bar** beside light / dark, lit while glass is on (the Glass rail's switch, moved into the
   bar). [bar-switches]
 - **Only the kit's controls, one font:** every control is `form-control` · `form-select` · `form-check-input`, every dialog label
@@ -111,8 +124,15 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v19 #8c2272d79c86
 - **No fake button:** every button does something - a link styled as a button never points at the page already open; an
   item that would (a notification about the home page) gets the action it means (open that app, turn that card) or none.
   [real-actions]
-- **Every data table keeps column resize:** a visible `col-resize` handle per header cell in list view; the widths are a UI
-  setting of the person. A port carries the handles' CSS too. [resize]
+- **Every data table keeps column resize,** both ways: a visible `col-resize` handle per header cell in list view; the widths
+  are a UI setting of the person. A resizable table lays out by its set widths (`table-layout: fixed`, text longer than its
+  column ending in "…"), so a column narrows as well as it widens, down to 48 px - the automatic layout keeps a column as wide
+  as its longest line. Widths are measured on the layout (`offsetWidth`), never the painted page (a page rising in is scaled);
+  a drag starts from the width drawn now and is followed on the window until the button is up (a handle drawn anew mid-drag
+  must not end it); the handles carry no listeners of their own - one listener on the document takes every handle and each
+  table keeps its widths on itself (a handle left from an earlier install, its listeners removed, never started a drag);
+  header cells drawn anew get their handles back. A port carries the handles' CSS too. [resize] (The drag
+  itself is a probe of the browser test, §6.)
 - **Every chart shows its numbers,** as a report does: a value on each bar, data labels on a line (every point when they fit,
   else the highest, the lowest and the last), the share of each donut part beside its value. [chart-labels]
 - **A touch screen changes the theme at once:** the theme-reveal circle (a view transition) runs only for a fine pointer;
@@ -121,15 +141,15 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v19 #8c2272d79c86
 - **The page declares its colour scheme** (`<meta name="color-scheme" content="light dark">`, `html { color-scheme }` = the
   theme), so the forced dark mode of a phone browser leaves the person's theme alone. [color-scheme]
 - **The kit's icons:** ship only the icons the code names (a generated subset of the kit's icon CSS, checked by the build), not the
-  whole set.
+  whole set. Every icon of the shell - top bar, menu, command palette, page bar, menus - comes from the kit's icon set
+  (`bx-…`), the page's icon the same in the menu and the palette; no emoji or typed sign stands in for one. [kit-icons]
 - **Every figure card shows a percentage:** the change against the period before - WoW / MoM / QoQ by the range chosen, red
   when it falls - or the share the figure holds (people who signed in of the open person accounts, the top app's share of
   sign-ins); one second line may hold one more fact (agents apart from people). [kpi-pct]
 - **The four Insights figures are distinct:** the account figure splits its main line into two halves, person accounts and
   agent accounts, each with its count and, on the percentage line under it, its share of their combined active total (the two
   shares add to 100%); the fourth figure reports apps used, its share of enabled apps and the enabled-app total, never repeats
-  the sign-in comparison. Its separate pinned page panel keeps crumbs on the left and app search plus period filter on the
-  right, on the same desktop row. [insights-kpis] [crumbs]
+  the sign-in comparison. [insights-kpis]
 - **Every Insights figure has four typography roles in this order:** card title, main content, percentage, secondary content.
   Main content is larger than the title; percentage is stronger and differently coloured than secondary content. In the
   account figure each count is main content and the account-kind label beside it takes the secondary role, so a half never
@@ -141,28 +161,41 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v19 #8c2272d79c86
   person (UI setting `fx`, kept with their other UI settings; `html.fx-off`); the glass panels stay. The light spot under the
   pointer also has a switch of its own (UI setting `spot`, `html.spot-off`): off, the cards still lean.
 - **Filters are report slicers, for fields of few values only:** a pick list (multi-pick with select all and clear, or a single
-  pick) holds 10 values at most - status, kind, app, role, level; a column of dates gets a date range (from - to). The main
-  records of a page (people, addresses, departments, heads) are found with the search box, never listed in a filter. A filter
-  that is set is marked (`.filter-field.on`); the filter button counts the filters set and the set offers Clear filters exactly
-  while one is set. A filter's list hangs on `<body>` under its control, like every menu over a glass card. [filter-set]
-  [filter-count]
-- **The filter button opens and folds the filters:** on a desktop it lays the page's filters out on the page bar's one line and
-  folds them away again - the filters fly in one after another from the tools (FX: reveal), the button lit while they show; the
-  choice is the person's UI setting `filters` (`bar` | `popover`, also in Settings › Layout) and holds in every app. A phone has
-  no room for the row: there the button opens the popover. [filter-row]
-- **The filters anchor right:** they stand against the tools, each one control carrying its label ("Role: All") at its
-  standard width (12rem) at most; a short line makes them shrink together (the text ending in "…", the whole name on hover),
-  none scrolls away or is cut off, and a few filters leave the left of the bar empty - never stretched across it. Folding or
-  opening them never moves the tools. [filter-row] [bar-anchor]
+  pick) holds 10 values at most - status, kind, app, role, level, action; a column of dates gets a date range (from - to). The
+  main records of a page (people, addresses, departments, heads) are found with the search box, never listed in a filter. A
+  filter that is set is marked (`.filter-field.on`, its APPLIED value). A filter's list hangs on `<body>` under its control,
+  like every menu over a glass card. [filter-set]
+- **The filter button always opens its popover;** the person pins each filter on the bar or keeps it there. The popover
+  heads with the pins (a tick per filter, Pin all, Unpin all), then every filter not pinned; it keeps one fixed width
+  (22rem) whatever is pinned. The pins are the person's UI setting `filter_pins` (a JSON map page path → filter ids), so they
+  hold in every app; a page with no pins of its own follows the UI setting `filters` (`bar` pins all, `popover` none). A
+  phone keeps every filter in the popover. A pinned or unpinned filter FLIES from where it stood to its new place (FX: flip:
+  its start noted before the pin, kept until it has moved - the bar's row comes one render after the first pin). Pinned
+  filters stand against the filter button on the bar's one line, each one control carrying its label ("Role: All") at its
+  standard width (12rem) at most, shrinking together, never pushed out, never a second line. [filter-row] [bar-anchor]
+- **The popover fits the window and runs on Apply:** it never runs off the screen - its pins and filters scroll inside it
+  (a body with its own scrollbar, its height set from where it opens), and its foot stays in sight at its bottom with Clear
+  filters beside Apply. A filter changed in the popover is a DRAFT (`.filter-field.pending`): the rows do not move until
+  Apply runs every draft at once (its count on the button: "Apply (2)"); closing the popover drops the draft. A pinned filter
+  on the bar filters at once. [filter-pop] [filter-count]
+- **The filter count and the X:** the filter button counts the filters that are set (applied, not drafts); while one is set
+  the bar shows the X that clears them, beside the filter button - with filters pinned or all in the popover. [filter-count]
+- **Every filter is cut where the rows are limited:** a list the server sends with a row limit (the newest N rows of a log)
+  is filtered by the server's query, BEFORE the limit - each filter (period, app, level, account kind, actions, day range,
+  text) goes to the query; cut in the browser over the newest rows, a filter of earlier days or a rare value finds nothing.
+- **Every date follows the person's date format:** a date the surface shows or takes (a cell, a filter, a calendar) follows
+  the family setting `date_format` (`vn` dd/mm/yyyy, `us` mm/dd/yyyy) and the app's language - the app's own date field and
+  calendar (week from Monday), never the browser's date input, which follows the browser's locale. [date-format]
+- **A person reads names, never codes:** a pick list, a filter, a badge or an action name shows the name of a value from the
+  dictionaries, never its stored code (`data_query`, `login_ok`); a code outside the list reads as "Other action". The action
+  codes are the family's closed list (the app contract of the family database): the app keeps that list with a name for each code in every
+  language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code]
 - **The status dot is whole:** an online avatar's dot sits on its edge, and no box around it - a button or a menu row that
   clips for its ripple - cuts it. [dot-whole]
-- **The kit's icons only:** every icon of the shell - top bar, menu, command palette, page bar, menus - comes from the kit's
-  icon set (`bx-…`), the page's icon the same in the menu and the palette; no emoji or typed sign stands in for one.
-  [kit-icons]
 - **The look is the person's across the family:** the UI settings that shape the shared surface - theme, language, date
-  format, glass and blur, the pointer effects and light, the filter layout, content width and menu - are kept once, as the
-  person's settings of the system-manager in the family database, and every app of the family reads and writes them there,
-  so a choice made in one app holds in all of them.
+  format, glass and blur, the pointer effects and light, the filter layout and pins, content width and menu - are kept once,
+  as the person's settings of the system-manager in the family database, and every app of the family reads and writes them
+  there, so a choice made in one app holds in all of them.
 - **Every control names itself on hover:** a control that shows no text of its own (an icon button, a switch, an avatar)
   carries its name (`data-tip`, else `aria-label` or `title`); pointing at it or reaching it with the keyboard shows that name
   in one tip on `<body>`, under the control and inside the window - a tip drawn inside the control is clipped by it. A
@@ -172,14 +205,32 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v19 #8c2272d79c86
 - **A new build is announced:** the app reads the server's version with its health probe; a version other than the one the
   tab loaded shows a banner with a reload button (unsaved changes asked about first), so no one keeps working on an old bundle.
 - **An account list shows the account kind** (person · agent) as its own column with its own filter, and the account editor
-  sets it; figures about people count people only.
+  sets it; the sessions and the log filter by it too; figures about people count people only. A profile is a person's page:
+  it shows no account kind.
+- **The person's pages, after the kit:** My profile (the kit's user-profile page: a header card with a banner, the avatar
+  rising into it and apart from the name, the name and its facts under the banner, an edit button on one line; an About card
+  and an activity timeline at the same height, the apps named, never their codes) and Profile settings (the kit's
+  account-settings page: tabs Account and Security; the person edits name and email, the sign-in name is the admin's; the
+  password change). The avatar and banner pictures are files kept outside the code, the family database holding only what
+  points to them.
 
 ## 6. Check
 
 - The repo's browser test imports `scripts/sneat_glass_check.mjs` and evaluates every `RULES` entry on every page, and every
-  `DIALOG_RULES` entry on every dialog it opens, at a desktop and a phone width and in both themes, once the opening transitions have settled. A rule
-  added here adds its entry there in the same change; each new entry is proven red by breaking what it guards - with code
-  that still builds: the test rebuilds before it runs, so a failed build never leaves it checking an old bundle.
+  `DIALOG_RULES` entry on every dialog it opens, at a desktop and a phone width and in both themes, once the opening transitions
+  have settled, with focus emulation on (a background tab matches no `:focus`). A rule added here adds its entry there in the
+  same change; each new entry is proven red by breaking what it guards - with code that still builds: the test rebuilds before
+  it runs, so a failed build never leaves it checking an old bundle.
+- What the DOM cannot show is a probe of the browser test, each proven red the same way:
+  - **the scrollbar under the header:** the strip at the box's right edge is captured (`Page.captureScreenshot`) with the box at
+    its top, the thumb's colour read just under the header, and no pixel of the scrollbar column beside the header may carry it
+    (the box's overflow toggled first, so a changed rule shows);
+  - **the column drag:** a real pointer (`Input.dispatchMouseEvent`) drags a handle 80 px wider and 200 px narrower on several
+    tables, and the column is checked AS DRAWN (`th` width) against the width asked for; header cells drawn anew must get their
+    handles back and drag;
+  - **the flight of a pin:** `Element.animate` is recorded - a pinned filter starts below its place on the bar, an unpinned one
+    above its place in the popover;
+  - **the draft:** two picks in the popover leave the rows and the count unchanged until Apply, which runs both.
 
 ## 7. Taking the kind into an app of the family
 
@@ -188,15 +239,16 @@ moving onto this kind, in this order:
 1. Declare `{"style": "SneatGlass"}` in `frontend/config/ui.json`; `zemory sync` brings this skill, `app-sneat`, `app-glass`
    and `scripts/sneat_glass_check.mjs`.
 2. Take the shell as the reference builds it: the menu (only the app's own pages; the brand line names the app), the head of
-   two rows (§2b) with the family's top bar unchanged, the page bar slot in row 2 that each page fills, the one tip on
+   two rows (§2b) with the family's top bar unchanged, the page bar slot in row 2 that each page fills (§1), the one tip on
    `<body>` (§5), the toasts, the dialogs (§3), the kit's icon subset and the token font shipped with the app.
 3. Read and write the person's UI settings where the family keeps them (§5: the system-manager's settings in the family
-   database), so theme, glass, filters and the rest follow the person from app to app; keep only the app's own keys under its
-   own app id.
-4. Build every list page as a page card: its bar in row 2 (search, filter button, view switch, main action), its filters as
-   slicers for fields of few values (§5), its table pinned under the head.
+   database), so theme, glass, filters, pins and the rest follow the person from app to app; keep only the app's own keys under
+   its own app id.
+4. Build every list page as a page card: its bar in row 2 (§1), its filters as slicers for fields of few values with the pins,
+   the popover and its draft (§5), cut by the server where the rows are limited, its table pinned under the head, cut there.
 5. Run the check: the app's browser test imports `RULES` and `DIALOG_RULES` and evaluates them on every page and dialog at a
-   desktop and a phone width in both themes (§6); green on every page before the app's first release in the kind.
+   desktop and a phone width in both themes, and runs the probes of §6; green on every page before the app's first release
+   in the kind.
 6. Tell the system-manager when the app is live on its path, so the family's app table and gateway route it.
 
 ## Implements · Thi hành luật

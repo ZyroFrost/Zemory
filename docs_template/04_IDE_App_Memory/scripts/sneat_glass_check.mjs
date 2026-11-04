@@ -148,12 +148,32 @@ export const RULES = [
   },
   {
     id: 'pin-cover',
-    rule: 'a pinned header row or column covers what scrolls under it - the rows end at its lower edge, never read through its titles: its background is the card solid glass colour (alpha 0.95 at least), in both themes',
+    rule: 'a pinned header row or column is the card glass, clear through: with glass on it paints nothing of its own - no fill, no blur layer (a layer inside a glass card only blurs the card white: a white band) - and the rows that scroll under a pinned header are cut at its lower edge (the table body clipped from the scroll offset), so nothing reads through its titles; with glass off (solid) a pinned cell carries the solid fill',
     check: `(() => {
-      const alpha = c => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return 1; const v = m[1].split(/[ ,/]+/).filter(Boolean); return v.length > 3 ? parseFloat(v[3]) : 1; };
-      const clear = [...document.querySelectorAll('th, td')].filter(e => e.getClientRects().length && getComputedStyle(e).position === 'sticky')
-        .find(e => alpha(getComputedStyle(e).backgroundColor) < .95);
-      return clear ? 'a pinned cell lets the rows read through it: ' + clear.textContent.trim().slice(0, 30) : true;
+      const alpha = c => { const m = c.match(/rgba?\\(([^)]+)\\)/); if (!m) return 1; const v = m[1].split(/[ ,/]+/).filter(Boolean); return v.length > 3 ? parseFloat(v[3]) : 1; };
+      const name = e => e.textContent.trim().slice(0, 30);
+      const pinned = [...document.querySelectorAll('th, td')].filter(e => e.getClientRects().length && getComputedStyle(e).position === 'sticky');
+      if (document.documentElement.classList.contains('solid')) {
+        const clear = pinned.find(e => alpha(getComputedStyle(e).backgroundColor) < .95);
+        return clear ? 'with glass off a pinned cell is not solid: ' + name(clear) : true;
+      }
+      for (const e of pinned) {
+        const c = getComputedStyle(e), layer = getComputedStyle(e, '::before');
+        if (alpha(c.backgroundColor) > .05) return 'a pinned cell paints a band over the card glass: ' + name(e);
+        if ((c.backdropFilter || 'none') !== 'none' || (layer.content !== 'none' && ((layer.backdropFilter || 'none') !== 'none' || alpha(layer.backgroundColor) > .05)))
+          return 'a pinned cell carries a blur layer of its own (it blurs the card white - a white band): ' + name(e);
+      }
+      // the rows under a pinned header are cut at its lower edge
+      for (const head of new Set(pinned.filter(e => e.closest('thead')).map(e => e.closest('table')))) {
+        const body = head.tBodies[0], th = head.tHead;
+        if (!body || !body.rows.length) continue;
+        const clip = getComputedStyle(body).clipPath;
+        const m = /^inset\\(([\\d.]+)px/.exec(clip || '');
+        if (!m) return 'the rows that scroll under a pinned header are not cut at its edge (no clip on the table body): ' + name(th.rows[0].cells[0]);
+        const under = th.getBoundingClientRect().bottom - body.getBoundingClientRect().top;
+        if (under > 1 && parseFloat(m[1]) < under - 2) return 'the rows read through the pinned header: cut ' + Math.round(parseFloat(m[1])) + ' px of ' + Math.round(under) + ' px under it';
+      }
+      return true;
     })()`,
   },
   {
@@ -168,13 +188,33 @@ export const RULES = [
   },
   {
     id: 'resize',
-    rule: 'every data table in list view lets each column be resized (a visible col-resize handle per header cell; widths are a setting of the person)',
+    rule: 'every data table in list view lets each column be resized both ways (a visible col-resize handle per header cell; widths are a setting of the person): a resizable table lays out by its set widths (table-layout fixed), so a column narrows as well as it widens, and each column is drawn at the width set for it',
     check: `(() => {
       if (innerWidth <= 768) return true;
       for (const t of document.querySelectorAll('.page-card:not(.view-grid) table[data-resize-id]')) {
         const bad = [...t.querySelectorAll('thead th')].find(h => { const g = h.querySelector('.column-resize-handle');
           return !g || g.getBoundingClientRect().width < 8 || getComputedStyle(g).cursor !== 'col-resize'; });
         if (bad) return 'a column without its resize handle: ' + bad.textContent.trim();
+        if (!t.dataset.resizeReady) continue;
+        if (getComputedStyle(t).tableLayout !== 'fixed') return 'a resizable table lays out automatically - a column then never narrows past its text';
+        const cols = [...t.querySelectorAll(':scope > colgroup > col')], heads = [...t.querySelectorAll('thead tr:first-child > th')];
+        const off = heads.find((h, i) => cols[i] && cols[i].style.width && Math.abs(h.offsetWidth - parseFloat(cols[i].style.width)) > 2);
+        if (off) return 'a column is not drawn at the width set for it: ' + off.textContent.trim();
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'scroll-under-head',
+    rule: 'a scroll box with a pinned header row carries the header height as --th, the top margin of its scrollbar track, so the vertical scrollbar starts under the header (the pixels are the browser test probe)',
+    check: `(() => {
+      for (const box of document.querySelectorAll('.page-card-body, .matrix-frame')) {
+        const head = box.querySelector(':scope thead');
+        if (!head || !box.getClientRects().length || box.scrollHeight <= box.clientHeight + 4) continue;
+        const cell = head.querySelector('th');
+        if (!cell || getComputedStyle(cell).position !== 'sticky') continue;
+        const th = parseFloat(getComputedStyle(box).getPropertyValue('--th')) || 0;
+        if (Math.abs(th - head.offsetHeight) > 2) return 'the scroll box does not carry its header height (--th ' + th + ', header ' + head.offsetHeight + ') - its scrollbar runs up beside the titles';
       }
       return true;
     })()`,
@@ -313,17 +353,110 @@ export const RULES = [
     })()`,
   },
   {
-    id: 'bar-anchor',
-    rule: 'the page bar anchors its tools (search, filter button, view switch) at its right end; whatever else the bar holds is laid out from its left, and folding or opening the filters never moves the tools',
+    id: 'date-format',
+    rule: 'every date the surface shows or takes follows the person date format of the family settings (dd/mm/yyyy or mm/dd/yyyy) and the app language - never the browser own date input, which follows the browser locale',
     check: `(() => {
+      const native = [...document.querySelectorAll('input[type="date"], input[type="datetime-local"], input[type="month"]')].find(e => e.getClientRects().length || e.closest('.filter-pop, .slicer-menu'));
+      if (native) return 'a browser date input (it shows the browser locale, not the person date format): ' + (native.id || native.getAttribute('aria-label'));
+      const bad = [...document.querySelectorAll('.date-field input')].find(e => e.value && !/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(e.value));
+      return bad ? 'a date field not in the day/month/year shape: ' + bad.value : true;
+    })()`,
+  },
+  {
+    id: 'bar-anchor',
+    rule: 'the page bar holds two groups that never meet: the seek group - pinned filters, filter button, filter box, view switch, always side by side in that order - stands at its right end; the page own tools (its main action, what it shows beside its name) stand from its left, after the crumbs when the bar has them; pinning filters never moves the left group, and the filters shrink before they reach it',
+    check: `(() => {
+      const shown = e => e && e.getClientRects().length > 0;
       for (const bar of document.querySelectorAll('.page-toolbar')) {
         const tools = bar.querySelector(':scope > .card-tools');
-        if (!tools || !bar.getClientRects().length) continue;
-        const s = getComputedStyle(bar), right = bar.getBoundingClientRect().right - parseFloat(s.paddingRight);
-        if (Math.abs(tools.getBoundingClientRect().right - right) > 2) return 'the page tools do not stand at the right end of the bar';
-        const lead = bar.querySelector(':scope > .card-lead');
-        if (lead && lead.getBoundingClientRect().left - (bar.getBoundingClientRect().left + parseFloat(s.paddingLeft)) > 2)
-          return 'what leads the bar does not start at its left';
+        if (!tools || !shown(bar)) continue;
+        const s = getComputedStyle(bar), b = bar.getBoundingClientRect();
+        const left = b.left + parseFloat(s.paddingLeft), right = b.right - parseFloat(s.paddingRight);
+        const filter = tools.querySelector(':scope > .page-filter'), box = tools.querySelector(':scope > .page-search');
+        if (!filter || !box) return 'the seek group lacks ' + (filter ? 'the filter box' : 'the filter button');
+        // side by side, in order: [pinned filters] [filter button] [filter box] [view switch], the last ending the bar
+        const views = tools.querySelector(':scope > .page-views');
+        if (!views && bar.querySelector('.page-views, .view-switch')) return 'the view switch stands outside the seek group - it ends the bar at the right';
+        if (filter.nextElementSibling !== box || box.nextElementSibling !== views) return 'the seek group is not [filters] filter button · filter box · view switch, side by side in that order';
+        if (views && views.nextElementSibling) return 'something stands after the view switch at the right end';
+        const row = tools.querySelector(':scope > #filter-row');
+        if (row && row.nextElementSibling !== filter) return 'the pinned filters do not stand against the filter button';
+        const f = filter.getBoundingClientRect(), x = box.getBoundingClientRect(), end = (views || box).getBoundingClientRect();
+        if (x.left - f.right > 12) return 'a gap of ' + Math.round(x.left - f.right) + ' px parts the filter button from the filter box';
+        if (views && end.left - x.right > 12) return 'a gap of ' + Math.round(end.left - x.right) + ' px parts the filter box from the view switch';
+        if (Math.abs(end.right - right) > 2) return 'the seek group does not end at the right end of the bar';
+        // nothing of the page's own tools inside the seek group
+        const stray = tools.querySelector('.page-actions, .add-btn');
+        if (stray) return 'a page tool (' + (stray.id || stray.className.split(' ')[0]) + ') stands in the seek group - it belongs at the left';
+        const lead = bar.querySelector(':scope > .card-lead'), start = bar.querySelector(':scope > .card-start');
+        if (shown(lead) && lead.getBoundingClientRect().left - left > 2) return 'what leads the bar does not start at its left';
+        if (shown(start)) {
+          const from = shown(lead) ? lead.getBoundingClientRect().right : left;
+          if (start.getBoundingClientRect().left - from > 20) return 'the page tools do not stand from the left of the bar';
+          // the two groups never meet: on one line (a phone wraps them onto two), the first thing shown in the seek group
+          // starts after the page tools end
+          const p = start.getBoundingClientRect(), t = tools.getBoundingClientRect();
+          const first = Math.min(...[...tools.querySelectorAll(':scope > *, :scope > #filter-row > *')].filter(shown).map(e => e.getBoundingClientRect().left));
+          if (t.top < p.bottom - 2 && first < p.right + 4) return 'the seek group runs into the page tools at the left';
+        }
+        if (bar.querySelector(':scope > .page-actions, :scope > .page-views')) return 'a page tool stands loose on the bar, outside the left group';
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'radius-kit',
+    rule: 'corners are rounded lightly, as the Sneat kit has them: cards, fields, buttons, menus .375rem, dialogs and large frames .5rem - never more, except a shape that is round on purpose (a pill or a circle: its radius reaches half its height)',
+    check: `(() => {
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize), most = .5 * rem + .5;
+      const sel = '.card, .btn, .form-control, .form-select, .dropdown-menu, .modal-content, .layout-navbar, .page-search .form-control, .alert, .list-group, .nav-pills .nav-link';
+      for (const e of document.querySelectorAll(sel)) {
+        if (!e.getClientRects().length) continue;
+        const c = getComputedStyle(e), r = Math.max(...['TopLeft', 'TopRight', 'BottomLeft', 'BottomRight'].map(k => parseFloat(c['border' + k + 'Radius']) || 0));
+        const b = e.getBoundingClientRect();
+        if (r > most && r < Math.min(b.width, b.height) / 2 - 1)
+          return 'a corner rounded past the kit (' + Math.round(r) + ' px, the kit at most ' + Math.round(most) + '): ' + (e.id ? '#' + e.id : e.className.toString().split(' ').slice(0, 2).join('.'));
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'no-raw-code',
+    rule: 'a person reads names, never codes: a pick list, a filter, a badge or an action name shows the name of a value (from the dictionaries), never its stored code (data_query, login_ok) - a code outside the list reads as "other"',
+    check: `(() => {
+      const code = /^[a-z]+(_[a-z]+)+$/;
+      const spots = '.slicer-item .form-check-label, .filter-field select option, .filter-row .slicer-btn, .badge, .log-action > b, td[data-label] > .badge, .g-select-menu .dropdown-item';
+      const raw = [...document.querySelectorAll(spots)].find(e => code.test((e.textContent || '').replace(/^[^:]*:\\s*/, '').trim()));
+      if (raw) return 'a stored code shows where a person reads a name: ' + raw.textContent.trim();
+      // the action column of a log table
+      for (const t of document.querySelectorAll('table')) {
+        const at = [...t.querySelectorAll('thead th')].findIndex(h => /^(hành động|action)$/i.test(h.textContent.trim()));
+        if (at < 0) continue;
+        const cell = [...t.querySelectorAll('tbody tr')].map(r => r.cells[at]).find(c => c && code.test(c.textContent.trim()));
+        if (cell) return 'a stored action code shows in the log: ' + cell.textContent.trim();
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'search-steady',
+    rule: 'a filter box keeps its width when it takes the focus - the focus lights its border, never grows it (growing pushed it out of its panel) - and stays whole inside its bar',
+    check: `(() => {
+      for (const box of document.querySelectorAll('.page-toolbar .page-search .form-control')) {
+        if (!box.getClientRects().length || box.disabled) continue;
+        const moves = getComputedStyle(box).transitionProperty.split(',').map(s => s.trim());
+        if (moves.includes('width') || moves.includes('all') || moves.includes('max-width') || moves.includes('flex-basis'))
+          return 'the filter box animates its width (' + moves.join(', ') + ') - focus lights the border only';
+        const before = box.getBoundingClientRect().width, had = document.activeElement, rest = getComputedStyle(box).borderColor;
+        box.style.setProperty('transition', 'none', 'important');   // the focus look itself, not the first frame of its fade
+        box.focus();
+        const after = box.getBoundingClientRect(), c = getComputedStyle(box);
+        const bar = box.closest('.page-toolbar'), s = getComputedStyle(bar), b = bar.getBoundingClientRect();
+        const lit = c.boxShadow !== 'none' || c.outlineStyle !== 'none' || c.borderColor !== rest;
+        box.blur(); box.style.removeProperty('transition'); if (had && had !== document.body) had.focus?.();
+        if (Math.abs(after.width - before) > 1) return 'the filter box grows on focus: ' + Math.round(before) + ' -> ' + Math.round(after.width) + ' px';
+        if (after.right > b.right - parseFloat(s.paddingRight) + 1) return 'the filter box runs out of its bar';
+        if (!lit) return 'the focused filter box does not light its border';
       }
       return true;
     })()`,
@@ -381,30 +514,51 @@ export const RULES = [
   },
   {
     id: 'filter-count',
-    rule: 'the filter button counts the filters that are set, and Clear filters shows exactly while one is set',
+    rule: 'the filter button counts the filters that are set (applied, not a draft), and the X that clears them stands on the page bar beside it exactly while one is set - whether the filters are pinned on the bar or all in the popover; in the popover Clear filters stands beside Apply in its foot',
     check: `(() => {
-      const button = document.querySelector('.page-toolbar #filter-toggle');
-      const box = document.querySelector('#filter-pop, #filter-row');
-      if (!button || !box) return true;
-      const set = box.querySelectorAll('.filter-field.on').length;
+      const bar = document.querySelector('.page-toolbar');
+      const button = bar && bar.querySelector('#filter-toggle');
+      if (!button || button.disabled) return true;
+      const set = document.querySelectorAll('#filter-pop .filter-field.on, #filter-row .filter-field.on').length;
       const shown = Number(button.querySelector('.filter-count')?.textContent || 0);
       if (set !== shown) return 'the filter button says ' + shown + ' but ' + set + ' filters are set';
-      return Boolean(box.querySelector('#filter-clear')) === set > 0 ? true
-        : 'Clear filters ' + (set ? 'is missing while filters are set' : 'shows with no filter set');
+      const x = bar.querySelector('#filter-clear');
+      if (Boolean(x && x.getClientRects().length) !== set > 0) return 'the X on the bar ' + (set ? 'is missing while filters are set' : 'shows with no filter set');
+      const pop = document.getElementById('filter-pop'), foot = pop && pop.querySelector('.filter-pop-foot');
+      if (pop && !pop.hidden && set && !(foot && foot.querySelector('#filter-clear-pop') && foot.querySelector('#filter-apply')))
+        return 'Clear filters does not stand beside Apply in the popover foot';
+      return true;
+    })()`,
+  },
+  {
+    id: 'filter-pop',
+    rule: 'the open filter popover fits the window - it never runs off the screen: its filters scroll inside it, and its foot (Clear filters beside Apply) stays in sight at its bottom; a filter changed in the popover is a draft - the rows change on Apply, all at once',
+    check: `(() => {
+      for (const pop of document.querySelectorAll('.filter-pop')) {
+        if (pop.hidden || !pop.getClientRects().length) continue;
+        const r = pop.getBoundingClientRect();
+        if (r.bottom > innerHeight + 1) return 'the filter popover runs ' + Math.round(r.bottom - innerHeight) + ' px off the window';
+        const body = pop.querySelector(':scope > .filter-pop-body'), foot = pop.querySelector(':scope > .filter-pop-foot');
+        if (!body || !foot) return 'the filter popover has no scrolling body and foot';
+        if (!/(auto|scroll)/.test(getComputedStyle(body).overflowY)) return 'the popover body does not scroll';
+        if (pop.lastElementChild !== foot || foot.getBoundingClientRect().bottom > r.bottom + 1) return 'the popover foot is not in sight at its bottom';
+        if (!foot.querySelector('#filter-apply')) return 'the popover foot has no Apply';
+      }
+      return true;
     })()`,
   },
   {
     id: 'filter-row',
-    rule: 'laid out in a row (the filter layout setting), the filters take the middle of the page bar - crumbs left, tools right - on its one line, label beside control; only that middle scrolls sideways and the bar keeps its height',
+    rule: 'the filters pinned on the page bar stand in the seek group against the filter button, on the bar one line, label beside control; each takes its standard width (12rem) at most and they shrink together, never pushed out, never a second line, and the bar keeps its height',
     check: `(() => {
       const row = document.querySelector('#filter-row');
       if (!row || !row.getClientRects().length) return true;
       const bar = row.closest('.page-toolbar');
-      const lead = row.previousElementSibling;
-      if (!bar || !row.nextElementSibling?.matches('.card-tools') || (lead && !lead.matches('.card-lead')))
-        return 'the filter row does not stand between the crumbs (when the bar has them) and the tools';
+      if (!bar || !row.parentElement.matches('.card-tools') || !row.nextElementSibling?.matches('.page-filter'))
+        return 'the pinned filters do not stand in the seek group against the filter button';
       const mid = e => { const r = e.getBoundingClientRect(); return Math.round(r.top + r.height / 2); };
       const fields = [...row.querySelectorAll('.filter-field')];
+      const lead = [...bar.querySelectorAll(':scope > .card-lead, :scope > .card-start')].find(e => e.getClientRects().length);
       const mids = [...(lead ? [lead] : []), row.nextElementSibling, ...fields].map(mid);
       if (Math.max(...mids) - Math.min(...mids) > 2) return 'the page bar falls onto more than one line';
       // every filter whole inside the row: the filters share the room, none is pushed out or cut off
@@ -453,7 +607,7 @@ export const RULES = [
   },
   {
     id: 'crumbs',
-    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs at its start, the search at its centre, the day and time before the actions; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs end at the current page',
+    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs at its start, the search at its centre, the day and time before the actions; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs are family / app / [group] / page (a small app: <family> / its name / its page; the hub: <family> / Hub / ...), every layer before the current page a link to that layer home, only the current page plain text',
     check: `(() => {
       const head = document.querySelector('#layout-navbar');
       if (!head) return 'no top bar';
@@ -485,16 +639,20 @@ export const RULES = [
         if (!row2.querySelector('#insight-range, #insight-days')) return 'the overview page bar has no period filter';
       }
       if (!crumbs) return true;
-      const items = [...crumbs.querySelectorAll('.breadcrumb-item')];
-      if (items.length < 2) return 'fewer than two crumbs';
+      // family / app / [group] / page: a small app is <family> / its name / its page, the hub <family> / Hub / ...
+      const items = [...crumbs.querySelectorAll('.breadcrumb-item')].filter(i => !i.hidden);
+      if (items.length < 3) return 'fewer than three crumbs - family / app / page: the app layer is missing';
+      const area = document.querySelector('#brand-area');
+      if (area && items[1].textContent.trim() !== area.textContent.trim())
+        return 'the second crumb is not the open app (' + area.textContent.trim() + '): ' + items[1].textContent.trim();
       const last = items.at(-1);
       if (last.querySelector('a') || last.getAttribute('aria-current') !== 'page') return 'the last crumb is not the page on screen (a link, or no aria-current)';
       const repeated = [...row2.querySelectorAll('.card-title, h1, h2, h3, h4, h5, h6')]
         .find(title => title.textContent.trim() === last.textContent.trim());
       if (repeated) return 'the page name is repeated as a title in the page bar';
-      if (location.pathname !== '/' && !items[0].querySelector('a')) return 'the first crumb (the family) does not go back to it';
-      const self = items.slice(0, -1).find(i => { const x = i.querySelector('a'); return x && new URL(x.href, location.href).pathname === location.pathname; });
-      return self ? 'a crumb links to the page already open: ' + self.textContent.trim() : true;
+      // every layer before the current one links to that layer's home - even when that home is the page on screen
+      const plain = items.slice(0, -1).find(i => !i.querySelector('a[href]'));
+      return plain ? 'an earlier layer is plain text - every layer before the page links to its home: ' + plain.textContent.trim() : true;
     })()`,
   },
   {
