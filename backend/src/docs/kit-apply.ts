@@ -310,7 +310,7 @@ export function uncommittedHs(storeDir = STORE_DIR, fresh = false): string[] | n
   if (hsSnapshot()) return [];
   if (!fresh && wipCache && wipCache.storeDir === storeDir && Date.now() - wipCache.at < 30_000) return wipCache.paths;
   const base = dirname(storeDir);
-  let paths: string[] | null = null;
+  let paths: string[] | null;
   try {
     const top = execFileSync("git", ["rev-parse", "--show-toplevel"], { cwd: base, encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"] }).trim();
     const out = execFileSync("git", ["status", "--porcelain", "--", "."], { cwd: base, encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"] });

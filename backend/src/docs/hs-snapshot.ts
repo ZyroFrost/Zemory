@@ -53,7 +53,7 @@ function cacheRoot(): string {
 
 /** Old trees beyond the newest few, and work copies a killed process left: removed. */
 function prune(cache: string, keep: string): void {
-  let names: string[] = [];
+  let names: string[];
   try {
     names = readdirSync(cache);
   } catch {
