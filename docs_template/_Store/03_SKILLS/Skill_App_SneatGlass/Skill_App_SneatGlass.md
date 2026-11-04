@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 8
+version: 9
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -43,14 +43,14 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 
 ## 2b. The top bar and the brand — the same in every app of the family
 
-- **The bar starts with the crumbs:** the family first (SasinONE, the hub's home), then the app - or, in the hub, the group of
-  the page (Administration) - then the page. Every crumb but the last goes back to its page; the last is the page on screen, no
-  link (`aria-current="page"`); a crumb that would open the page on screen is plain text. [crumbs]
-- **The greeting stands at the right,** after the search and just before the buttons (language · theme · glass · apps ·
-  bell · account). [crumbs]
+- **The greeting starts the top bar,** over today's date, with enough width to read it; the search stays in the centre and the
+  buttons (language · theme · glass · apps · bell · account) stay at the right. [crumbs]
+- **The crumbs start the page panel's first line, below the top bar:** the family first (SasinONE, the hub's home), then the app
+  - or, in the hub, the group of the page (Administration) - then the page. Every crumb but the last goes back to its page; the
+  last is the page on screen, no link (`aria-current="page"`); a crumb that would open the page on screen is plain text. [crumbs]
 - **The menu brand reads SasinONE with ONE in the shared Sasin red,** in both themes. [brand-one-red]
 - **Under SasinONE,** the small line names only the app currently open: Dashboard in Dashboard, Hub in SasinONE.
-  It stays fixed while moving between that app's pages; the breadcrumb names the current page. [brand-area]
+  It stays fixed while moving between that app's pages; the breadcrumb in the page panel names the current page. [brand-area]
 - **A menu group label clears its short divider line** by at least 8 px while the menu is open. [menu-header-gap]
 
 ## 3. Dialogs — exactly S / M / L (`app-base` F2 in this kind)

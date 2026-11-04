@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 
@@ -36,13 +36,14 @@ lang: vi
 
 ## 2b. Thanh trên và thương hiệu — giống nhau ở mọi app của hệ
 
-- **Thanh mở đầu bằng đường dẫn:** tên hệ trước (SasinONE, trang chủ của hub), rồi tới app - hoặc, trong hub, nhóm của trang
-  (Quản trị) - rồi tới trang. Mọi nấc trừ nấc cuối đều bấm về trang của nó; nấc cuối là trang đang mở, không phải liên kết
-  (`aria-current="page"`); nấc nào sẽ mở đúng trang đang hiện thì chỉ là chữ. [crumbs]
-- **Lời chào đứng bên phải,** sau ô tìm và ngay trước dãy nút (ngôn ngữ · theme · kính · app · chuông · tài khoản). [crumbs]
+- **Lời chào mở đầu thanh trên,** ngày nằm dưới lời chào và vùng này phải đủ rộng để đọc; ô tìm nằm giữa, dãy nút (ngôn ngữ ·
+  theme · kính · app · chuông · tài khoản) nằm bên phải. [crumbs]
+- **Đường dẫn mở đầu dòng thứ nhất của panel trang, nằm dưới thanh trên:** tên hệ trước (SasinONE, trang chủ của hub), rồi tới
+  app - hoặc, trong hub, nhóm của trang (Quản trị) - rồi tới trang. Mọi nấc trừ nấc cuối đều bấm về trang của nó; nấc cuối là
+  trang đang mở, không phải liên kết (`aria-current="page"`); nấc nào sẽ mở đúng trang đang hiện thì chỉ là chữ. [crumbs]
 - **Tên hệ trên menu là SasinONE với ONE màu đỏ Sasin dùng chung,** trong cả hai theme. [brand-one-red]
 - **Dưới SasinONE,** dòng nhỏ chỉ ghi tên app đang mở: Dashboard ở Dashboard, Trung tâm ở SasinONE.
-  Dòng này giữ nguyên khi chuyển trang trong app; đường dẫn trên thanh trên ghi tên trang. [brand-area]
+  Dòng này giữ nguyên khi chuyển trang trong app; đường dẫn trong panel trang ghi tên trang. [brand-area]
 - **Chữ phân nhóm trong menu mở cách vạch ngang ngắn ít nhất 8 px.** [menu-header-gap]
 
 ## 3. Hộp thoại — đúng S / M / L (`app-base` F2 trong kiểu này)

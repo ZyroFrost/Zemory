@@ -239,19 +239,26 @@ export const RULES = [
   },
   {
     id: 'crumbs',
-    rule: 'the top bar starts with the crumbs - the family (SasinONE) first, then the app or group, then the page; every crumb but the last goes back to its page, the last is the page on screen and no link',
+    rule: 'the greeting starts the top bar with readable width; the crumbs start the page panel below it and end at the current page',
     check: `(() => {
-      if (innerWidth < 768) return true;
-      const items = [...document.querySelectorAll('#layout-navbar .breadcrumb .breadcrumb-item')];
-      if (items.length < 2) return 'no crumbs in the top bar';
+      const panelCrumbs = document.querySelector('.page-toolbar .page-crumbs');
+      if (!panelCrumbs) return 'no crumbs at the start of the page panel';
+      if (document.querySelector('#layout-navbar .breadcrumb')) return 'the crumbs still occupy the top bar';
+      const items = [...panelCrumbs.querySelectorAll('.breadcrumb-item')];
+      if (items.length < 2) return 'the page panel has fewer than two crumbs';
       const last = items.at(-1);
       if (last.querySelector('a') || last.getAttribute('aria-current') !== 'page') return 'the last crumb is not the page on screen (a link, or no aria-current)';
       if (location.pathname !== '/' && !items[0].querySelector('a')) return 'the first crumb (the family) does not go back to it';
       const self = items.slice(0, -1).find(i => { const a = i.querySelector('a'); return a && new URL(a.href, location.href).pathname === location.pathname; });
       if (self) return 'a crumb links to the page already open: ' + self.textContent.trim();
       const hello = document.querySelector('.navbar-hello'), search = document.querySelector('.navbar-search');
-      if (hello && search && hello.getClientRects().length && hello.getBoundingClientRect().left < search.getBoundingClientRect().right - 1)
-        return 'the greeting stands left of the search: it belongs at the right, before the buttons';
+      if (innerWidth >= 1200 && (!hello || !hello.getClientRects().length)) return 'no greeting at the start of the top bar';
+      if (hello && search && hello.getClientRects().length) {
+        const h = hello.getBoundingClientRect(), s = search.getBoundingClientRect();
+        if (h.right > s.left + 1) return 'the greeting does not stand before the search';
+        if (h.width < 160) return 'the greeting is squeezed too narrow to read';
+        if (hello.scrollWidth > hello.clientWidth + 1) return 'the greeting is clipped';
+      }
       return true;
     })()`,
   },
