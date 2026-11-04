@@ -129,7 +129,8 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   as its longest line. Widths are measured on the layout (`offsetWidth`), never the painted page (a page rising in is scaled);
   a drag starts from the width drawn now and is followed on the window until the button is up (a handle drawn anew mid-drag
   must not end it); the handles carry no listeners of their own - one listener on the document takes every handle and each
-  table keeps its widths on itself (a handle left from an earlier install, its listeners removed, never started a drag);
+  table keeps its widths on itself (a handle left from an earlier install, its listeners removed, never started a drag), and a press is taken by where
+  it is - within 8 px of the right edge of a header cell - not by its target (another element may hold the pointer);
   header cells drawn anew get their handles back. A port carries the handles' CSS too. [resize] (The drag
   itself is a probe of the browser test, §6.)
 - **Every chart shows its numbers,** as a report does: a value on each bar, data labels on a line (every point when they fit,
