@@ -736,7 +736,7 @@ export function pathsCheck(ctx: Context, opts: { code?: boolean } = {}): PathsRe
     // Markdown link targets under docs/ are validate.ts §1's job already — do not report them twice.
     const linkTargets = !opts.code && !(/\.md$/i.test(abs) && /(^|\/)docs\//.test("/" + rel));
     const sql = /\.sql$/i.test(abs);
-    // a Python docstring is prose like a comment (SasinONE, 2026-11-04: three "dead" were `"""… copied from SasinFlow \`x\`"""`)
+    // a Python docstring is prose like a comment (an app repo, 2026-11-04: three "dead" were `"""… copied from <other app> \`x\`"""`)
     const prose = opts.code && /\.py$/i.test(abs) ? pyDocstringLines(text.split("\n")) : null;
     const lines = text.split("\n");
     const cwdOf = /\.ya?ml$/i.test(abs) ? yamlItemCwds(lines, dirname(abs)) : /\.md$/i.test(abs) ? markdownSiblingSections(lines, root) : [];

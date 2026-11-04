@@ -200,7 +200,7 @@ export const projectDirName = (p: string): string => p.replace(/[\\/]+$/, "").re
  * title read as wrong. `roots` = the known repo folders; a project folder no root matches falls back to `cwd`.
  */
 /** The last folder of a path written by any machine. `basename` splits on the running system's separator only: in the
- *  container a Windows cwd came back whole, and `peers --check` asked for `D:\…\_SasinONE_<Model>_<d-m-yyyy>` (28/10). */
+ *  container a Windows cwd came back whole, and `peers --check` asked for `D:\…\<Repo>_<Model>_<d-m-yyyy>` (28/10). */
 export function folderName(p: string): string {
   return p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
 }
