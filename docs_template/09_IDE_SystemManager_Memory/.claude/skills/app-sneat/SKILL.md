@@ -1,11 +1,11 @@
 ---
 id: Skill_App_Sneat
 name: app-sneat
-version: 3
+version: 5
 type: process
 checked: [Skill_App_Glass, Skill_App_Base, Design_172_Design]
 description: The Sneat kind of an app surface - the layout of the Sneat admin kit as the kit has it (menu, navbar, cards, tables, dialogs), inside one shell shared by every app of a family. Use when a repo declares {"style": "Sneat"} or {"style": "SneatGlass"} in frontend/config/ui.json, or when building, porting or fixing a Sneat surface, its template, its shell or its menus. The Sneat layout with the Glass look is app-sneat-glass. Vietnamese triggers - "kiểu sneat", "khung sneat", "mẫu sneat", "template sneat", "menu theo app", "trang chủ launcher".
-from: _Store/03_SKILLS/Skill_App_Sneat @v3 #d92b80326817
+from: _Store/03_SKILLS/Skill_App_Sneat @v5 #df9e07c7ec19
 ---
 
 # app-sneat — the Sneat kind of an app surface
@@ -53,6 +53,9 @@ app's pages.
   button shows a visible chevron; folded width ≈ 84 px, hover width = open width.
 - **Home = the launcher:** the grid of the person's apps with their health, and what needs their attention. The former apps page
   becomes it; an "Open" button leads into the app. Check: the first menu item of the system-manager is the home page.
+- **The page icon is the standard badge:** the tab icon, the bookmark and the phone home-screen icon are the organisation's
+  square badge (a copy of the shared design), linked in the page head - never left out, or a browser keeps the icon of an app
+  that ran on the address before. Check: `link[rel=icon]` and `link[rel=apple-touch-icon]` point at the badge.
 - **No sign-in page in the kit:** every app signs in through the system-manager's page. Check: no login file in the kit.
 - **No button without a working function; every control has one home** (Settings lives in the account menu, not also in the bar or
   the rail). Check: every button and link of the bar and the menu has a handler or a target.
@@ -78,6 +81,8 @@ app's pages.
 - **An account's state and a person's presence are two facts in two columns:** the state says whether the account is in use
   (in use · not in use · locked · waiting for a password); presence says whether they are on line now (a session seen in the
   last minutes). Being the signed-in person is never a state. Check: the list has both columns and no state reads "you".
+- **Words read names, not codes:** a message built from server codes (an app code, a role code) shows the app's name and the
+  role's label. Check: no notification text holds a role code.
 - **Tables follow `tables-basic`:** a person is avatar + name over the username; actions are the dots menu; a long text cell stays on one
   line, cut with an ellipsis, the whole text in its tooltip; rows never wrap. Check: every row has the same height; a clipped cell's
   `title` holds the whole text.

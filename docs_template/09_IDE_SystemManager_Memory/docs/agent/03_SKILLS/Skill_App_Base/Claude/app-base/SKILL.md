@@ -3,12 +3,12 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 36
+version: 37
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_App_Base @v36 #4b4652aeb3ac
+from: _Store/03_SKILLS/Skill_App_Base @v37 #b9364bc8f9ea
 ---
 
 # app-base — the APP design standard (FE + BE)
@@ -267,7 +267,7 @@ a time.** A field only one view shows is either missing from the other or excess
   size and weight with the row, require transparent label backgrounds, and give informational text the row's normal
   text colour; warning/error hues remain their status channel (§F11). Gate every width. Negative probes set one
   label to 9 px and another to black background; both must turn the gate red. The font-only gate missed the real
-  SasinONE log defect on 31/10/2026, so a visual complaint about a whole column requires testing its entire surface.
+  log defect of a hub app on 31/10/2026, so a visual complaint about a whole column requires testing its entire surface.
 · The other content-parity details are accepted by EYE; severity typography and surface have the gate above.
 
 ### F20. Supplied artwork keeps its COLOURS
@@ -315,7 +315,7 @@ a notice inside the page pushes the content down and the layout jumps.
 ### F23. Shared page frame, useful tools, and card geometry
 **Every page in a shared app shell uses the same top panel and the same page toolbar.** In a shell whose page toolbar has Search and Filter, both controls appear on every page in the same order (Search, then Filter), at the shared control height. Each must act on real page content: for example, searching app rows and filtering by status or date range. Do not add a decorative control merely to fill the frame (F0). The page's tabs and main action remain in their established toolbar slots (F17).
 
-**Cards in one catalog keep the same height and footer baseline, including a planned or unavailable item.** A state-specific explanatory line must fit within the same content slot, not make only the last card taller. The Open action and its state indicator must never overlap. Scope effect selectors to the component that owns them: a generic `.online::after` intended as an avatar ping also paints a dot on an online app status, which appeared over SasinONE's Open button on 31/10/2026. Use `.ava.online` for that effect. Check every card at desktop and phone widths with bounding rectangles, and check the pseudo-element on non-avatar statuses is `none`.
+**Cards in one catalog keep the same height and footer baseline, including a planned or unavailable item.** A state-specific explanatory line must fit within the same content slot, not make only the last card taller. The Open action and its state indicator must never overlap. Scope effect selectors to the component that owns them: a generic `.online::after` intended as an avatar ping also paints a dot on an online app status, which appeared over the Open button of a hub app on 31/10/2026. Use `.ava.online` for that effect. Check every card at desktop and phone widths with bounding rectangles, and check the pseudo-element on non-avatar statuses is `none`.
 
 **Regression gate:** enumerate every routed page and assert the shared panels, visible Search and Filter, their order and equal height. For card catalogs assert max card height minus min card height ≤ 1 px, footer buttons remain within their cards, and state effects are scoped to the intended element. A person repeating a measurable layout complaint means adding this gate, not only another note (the PBI White acceptance pattern).
 

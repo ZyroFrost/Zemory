@@ -1,5 +1,5 @@
 ---
-version: 36
+version: 37
 lang: vi
 ---
 
@@ -257,7 +257,7 @@ chỉ hiện một kiểu.** Một trường chỉ một kiểu có thì hoặc 
   hoặc tô một ô nền đen phía sau. Ở cả Bảng và Dòng thời gian, so font family, cỡ, độ đậm đã tính với hàng; nền nhãn
   phải trong suốt, chữ thông tin dùng màu chữ thường của hàng; màu cảnh báo/lỗi giữ kênh trạng thái riêng (§F11).
   Cổng kiểm mọi độ rộng; phép thử đỏ đổi một nhãn thành 9 px và tô nền đen cho một nhãn, cả hai đều phải bị bắt.
-  Cổng chỉ đo font đã bỏ sót lỗi thật của nhật ký SasinONE ngày 31/10/2026, nên khi người dùng báo cả cột lỗi thì
+  Cổng chỉ đo font đã bỏ sót lỗi thật của nhật ký một app hub ngày 31/10/2026, nên khi người dùng báo cả cột lỗi thì
   phải kiểm toàn bộ bề mặt của cột.
 · Các chi tiết đồng nhất nội dung khác vẫn nghiệm thu bằng MẮT; kiểu chữ và bề mặt cột mức độ có cổng kiểm ở trên.
 
@@ -306,7 +306,7 @@ bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung 
 ### F23. Khung trang chung, công cụ dùng được và kích thước thẻ
 **Mọi trang trong cùng một khung app dùng chung panel trên và thanh công cụ của trang.** Với khung có Tìm kiếm và Lọc trên thanh này, cả hai xuất hiện ở mọi trang, cùng thứ tự (Tìm kiếm rồi Lọc) và cùng chiều cao control. Mỗi nút phải tác động lên nội dung thật: ví dụ tìm các dòng ứng dụng, lọc theo trạng thái hoặc khoảng ngày. Không thêm control trang trí chỉ để lấp khung (F0). Tab và thao tác chính giữ đúng vị trí đã định trên thanh công cụ (F17).
 
-**Các thẻ cùng danh mục có cùng chiều cao và cùng đường chân của nút, kể cả thẻ chưa có web.** Dòng giải thích riêng theo trạng thái phải nằm trong cùng ô nội dung, không làm riêng thẻ cuối cao hơn. Nút Mở và dấu trạng thái không được chồng nhau. Giới hạn selector hiệu ứng vào đúng thành phần sở hữu: `.online::after` dành cho avatar đã vẽ thêm chấm lên trạng thái ứng dụng online, đè lên nút Mở của SasinONE ngày 31/10/2026. Hiệu ứng đó phải dùng `.ava.online`. Đo mọi thẻ ở màn hình máy tính và điện thoại bằng hình chữ nhật bao; pseudo-element trên trạng thái không phải avatar phải là `none`.
+**Các thẻ cùng danh mục có cùng chiều cao và cùng đường chân của nút, kể cả thẻ chưa có web.** Dòng giải thích riêng theo trạng thái phải nằm trong cùng ô nội dung, không làm riêng thẻ cuối cao hơn. Nút Mở và dấu trạng thái không được chồng nhau. Giới hạn selector hiệu ứng vào đúng thành phần sở hữu: `.online::after` dành cho avatar đã vẽ thêm chấm lên trạng thái ứng dụng online, đè lên nút Mở của một app hub ngày 31/10/2026. Hiệu ứng đó phải dùng `.ava.online`. Đo mọi thẻ ở màn hình máy tính và điện thoại bằng hình chữ nhật bao; pseudo-element trên trạng thái không phải avatar phải là `none`.
 
 **Cổng chống tái phát:** duyệt mọi trang có route và kiểm panel chung, Tìm kiếm và Lọc hiện đủ, đúng thứ tự và chiều cao. Với danh mục thẻ, độ lệch chiều cao lớn nhất ≤ 1 px, nút chân nằm trong thẻ, và hiệu ứng trạng thái chỉ áp lên đúng thành phần. Lỗi bố cục đo được mà người dùng phải nhắc lại thì thêm cổng kiểm, không chỉ ghi thêm lời (mẫu nghiệm thu PBI White).
 

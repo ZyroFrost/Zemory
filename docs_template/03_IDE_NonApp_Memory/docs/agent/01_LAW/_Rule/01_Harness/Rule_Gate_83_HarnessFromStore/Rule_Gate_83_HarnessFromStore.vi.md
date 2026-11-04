@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 # Rule_Gate_83_HarnessFromStore — Repo dùng bản chép harness; thay đổi chung do chính repo cần nó sửa trên HS
@@ -26,9 +26,14 @@ chờ phiên zemory làm hộ. Repo điền vào chỗ trống mà khung để l
       `Rule_Gate_79_HarnessEdit`). Được duyệt ⇒ phiên của chính repo này, không phải phiên zemory:
       1. sửa phần đó trên HS (`docs_template/_Store` trong bản clone zemory) và tăng `version`;
       2. chạy `zemory impact <phần>` để liệt kê mọi repo đang mang nó;
-      3. chạy `zemory sync` ở repo này: lệnh ráp lại mọi thư mục bộ đã tụt sau HS, rồi đưa repo này lên;
-      4. chạy `zemory sync` ở từng repo khác mà impact liệt kê, và nhắn các phiên đang mở ở đó (`Rule_Gate_89_MessageOnlyWithWork`);
-      5. commit phần đó cùng các thư mục bộ mà sync vừa ráp lại, trong repo zemory.
+      3. commit phần đó trong repo zemory, chỉ nêu đúng đường của mình (`git commit --only <đường>`): nhiều phiên cùng ghi HS, và
+         sync giữ lại mọi bộ mang một phần chưa commit — không ráp lại bộ đó, không ghi vào repo dùng bộ đó, và nêu các đường
+         nó đang chờ;
+      4. chạy `zemory sync` ở repo này: lệnh ráp lại mọi thư mục bộ đã tụt sau HS, rồi đưa repo này lên; commit các thư mục bộ
+         vừa ráp lại, chỉ nêu đúng các đường đó;
+      5. chạy `zemory sync` ở từng repo khác mà impact liệt kê, và nhắn các phiên đang mở ở đó (`Rule_Gate_89_MessageOnlyWithWork`).
+      Sync báo một bộ "đang chờ đường HS chưa commit" của phiên khác ⇒ phiên đó commit; phiên không viết ra các đường đó thì
+      không bao giờ commit, trả về hay ráp chúng.
    b. chỉ repo này cần khác ⇒ một phần riêng: điều hiến pháp riêng nằm ở `01_LAW/_Cons/Cons_<Gate|Keys|Core>_1NN_<Tên>/`
       (số từ 101, không có dòng `from:`); repo tự ghi sau khi người dùng duyệt điều đó trong phiên (cờ một lần `.allow-docs-write`).
       Bản chép của phần chung không bao giờ sửa ở đây.

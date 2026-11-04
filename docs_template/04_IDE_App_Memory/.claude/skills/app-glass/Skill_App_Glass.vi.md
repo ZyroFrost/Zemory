@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 
@@ -73,7 +73,7 @@ Template gắn mỗi hiệu ứng một dấu `FX:`; bản chép giữ dấu đ�
 - **Icon:** một bộ icon, một độ dày nét và một thang cỡ cho cả app; nút chỉ có icon vẫn mang nhãn (`app-base` F4 ②).
 
 - **Selector hiệu ứng chỉ thuộc một thành phần.** Chấm nhấp nháy của avatar dùng `.ava.online::before/::after`,
-  không dùng selector `.online` chung: ở SasinONE selector chung vẽ chấm xanh của trạng thái ứng dụng lên nút Mở.
+  không dùng selector `.online` chung: ở một app hub selector chung vẽ chấm xanh của trạng thái ứng dụng lên nút Mở.
   Giữ nguyên hoạt ảnh gốc nhưng giới hạn selector. Cổng trình duyệt kiểm trạng thái không phải avatar không có
   pseudo-element đó và nút thao tác nằm trọn trong thẻ (`app-base` F23).
 

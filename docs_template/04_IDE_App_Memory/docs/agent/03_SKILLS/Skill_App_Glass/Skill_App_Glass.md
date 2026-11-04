@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Glass
 name: app-glass
-version: 6
+version: 7
 type: process
 checked: [Skill_App_Base, Skill_PBI_White, Design_172_Design]
 installs: [scripts/fx_check.mjs]
 description: The Glass kind of an app surface - translucent panels over a coloured wallpaper, light and dark, a switch to solid panels. Use when a repo declares {"style": "Glass"} in frontend/config/ui.json, or when building, porting or changing colours, fonts, spacing, shadows, blur, animations or icons of a Glass app. The rules every kind shares are in app-base. Vietnamese triggers - "kiểu glass", "kính mờ", "giao diện glass", "đổi màu theme", "hiệu ứng", "bóng đổ", "blur".
-from: _Store/03_SKILLS/Skill_App_Glass @v6 #ab47205d18f1
+from: _Store/03_SKILLS/Skill_App_Glass @v7 #4078e4880c40
 ---
 
 # app-glass — the Glass kind of an app surface
@@ -80,7 +80,7 @@ The template names each effect with an `FX:` marker; a port keeps the marker so 
 - **Icons:** one icon set, one stroke width and one size scale across the app; an icon-only button still carries a label
   (`app-base` F4 ②).
 - **Effect selectors belong to one component.** An avatar ping uses `.ava.online::before/::after`, not a generic
-  `.online` selector: on SasinONE, that generic selector drew a green dot on an online app card over its Open button.
+  `.online` selector: on a hub app, that generic selector drew a green dot on an online app card over its Open button.
   Keep the original animation, but scope its selector. The browser gate checks that non-avatar statuses have no such
   pseudo-element and that the action remains fully within the card (`app-base` F23).
 

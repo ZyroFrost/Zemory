@@ -145,8 +145,8 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 107 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/Rule_Gate_79_HarnessEdit.md` | 42 |
 | 108 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/Rule_Gate_79_HarnessEdit.vi.md` | 32 |
 | 109 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_79_HarnessEdit/gate.json` | 1 |
-| 110 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.md` | 84 |
-| 111 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.vi.md` | 69 |
+| 110 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.md` | 89 |
+| 111 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/Rule_Gate_83_HarnessFromStore.vi.md` | 74 |
 | 112 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore/gate.json` | 221 |
 | 113 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/Rule_Gate_85_ProposeChecked.md` | 68 |
 | 114 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked/Rule_Gate_85_ProposeChecked.vi.md` | 55 |
