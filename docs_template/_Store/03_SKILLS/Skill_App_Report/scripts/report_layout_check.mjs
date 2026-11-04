@@ -151,7 +151,8 @@ export const RULES = [
     for (const v of vis()) {
       // A table may also spill out of its panel without a scroll box: as wrong as scrolling.
       const t = v.querySelector('table'), body = v.querySelector('[data-rp-body]') || v;
-      if (t && box(t).width > body.clientWidth + 1) return 'a table wider than its panel: ' + name(v);
+      // Column widths are whole pixels (the column resize rounds each), so a sum may pass by half a pixel a column.
+      if (t && box(t).width > body.clientWidth + Math.max(1, t.querySelectorAll('thead th').length / 2)) return 'a table wider than its panel: ' + name(v);
     }
     for (const v of vis()) for (const f of [v, ...v.querySelectorAll('*')]) {
       if (/(auto|scroll)/.test(getComputedStyle(f).overflowX) && f.scrollWidth > f.clientWidth + 1) return 'scrolls sideways: ' + name(v);

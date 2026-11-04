@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 3
+version: 4
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
