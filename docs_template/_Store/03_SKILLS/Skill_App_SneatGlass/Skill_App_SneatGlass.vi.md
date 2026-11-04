@@ -1,5 +1,5 @@
 ---
-version: 15
+version: 16
 lang: vi
 ---
 
@@ -110,7 +110,16 @@ lang: vi
   giảm - hoặc tỉ trọng con số đó chiếm (số người đã đăng nhập trên số tài khoản người đang mở, phần đăng nhập của app dẫn đầu);
   thêm được một dòng thứ hai cho một ý nữa (agent tách riêng khỏi người). [kpi-pct]
 - **Tắt được hiệu ứng theo chuột:** Cài đặt › Giao diện tắt đốm sáng, ánh lướt, nghiêng và gợn cho người đó (cài đặt giao diện
-  `fx`, lưu cùng các cài đặt giao diện khác; `html.fx-off`); các tấm kính vẫn giữ.
+  `fx`, lưu cùng các cài đặt giao diện khác; `html.fx-off`); các tấm kính vẫn giữ. Đốm sáng theo con trỏ còn có công tắc
+  riêng (cài đặt giao diện `spot`, `html.spot-off`): tắt nó thì thẻ vẫn nghiêng.
+- **Bộ lọc là slicer kiểu báo cáo:** bộ lọc của thẻ trang có ít nhất ba ô lọc có nhãn, trong đó có danh sách chọn nhiều (có ô
+  tìm khi dài, chọn tất cả, bỏ chọn); cột ngày có khoảng ngày (từ - đến), danh sách cố định có ô chọn một. Ô lọc đang đặt được
+  đánh dấu (`.filter-field.on`); nút lọc đếm số ô lọc đang đặt và bộ lọc có nút Xoá lọc đúng khi có ô đang đặt. Danh sách của
+  ô lọc treo ở `<body>` ngay dưới ô, như mọi menu nằm trên thẻ kính. [filter-set] [filter-count]
+- **Người dùng chọn kiểu bộ lọc:** Cài đặt › Bố cục gom bộ lọc sau nút lọc (popover) hoặc trải hết thành một dãy trên thanh của
+  trang, nhãn cạnh ô, cuộn ngang khi nhiều hơn chỗ (cài đặt giao diện `filters`: `popover` | `bar`). [filter-row]
+- **Menu của thanh trên mở trọn:** không phần nào của thanh cắt phần tràn khi menu của nó mở được (ngôn ngữ, chuyển app,
+  chuông, tài khoản); thanh có thể thu gọn thì chỉ cắt lúc đang thu.
 - **Báo khi có bản build mới:** app đọc phiên bản của server qua lần dò health; phiên bản khác với bản mà tab đã nạp thì hiện
   thanh báo kèm nút tải lại (có thay đổi chưa lưu thì hỏi trước), để không ai làm việc tiếp trên bản cũ.
 - **Danh sách tài khoản hiện loại tài khoản** (người · agent) thành một cột riêng có bộ lọc riêng, hộp sửa tài khoản đặt được

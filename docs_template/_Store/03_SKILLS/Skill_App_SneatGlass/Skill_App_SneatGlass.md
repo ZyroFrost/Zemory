@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 15
+version: 16
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
@@ -132,7 +132,18 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   in every card of the row, measured on the layout (a card rising in or leaning under the pointer does not count), and no
   line is wider than its card. [kpi-align]
 - **The pointer effects can be turned off:** Settings › Appearance switches the light spot, sheen, tilt and ripple off for the
-  person (UI setting `fx`, kept with their other UI settings; `html.fx-off`); the glass panels stay.
+  person (UI setting `fx`, kept with their other UI settings; `html.fx-off`); the glass panels stay. The light spot under the
+  pointer also has a switch of its own (UI setting `spot`, `html.spot-off`): off, the cards still lean.
+- **Filters are report slicers:** a page card's filter set holds at least three labelled filters, among them a multi-pick list
+  (its own search when long, select all, clear); a column of dates gets a date range (from - to) and a fixed list a single
+  pick. A filter that is set is marked (`.filter-field.on`); the filter button counts the filters set and the set offers Clear
+  filters exactly while one is set. A filter's list hangs on `<body>` under its control, like every menu over a glass card.
+  [filter-set] [filter-count]
+- **The person chooses the filter layout:** Settings › Layout folds the filters behind the filter button (a popover) or lays
+  them all out in one row on the page bar, label beside control, scrolling sideways when there are more than fit (UI setting
+  `filters`: `popover` | `bar`). [filter-row]
+- **The top bar's menus open whole:** no part of the bar clips its overflow while its menus can open (language, app switcher,
+  bell, account); a bar that folds away clips only while folded.
 - **A new build is announced:** the app reads the server's version with its health probe; a version other than the one the
   tab loaded shows a banner with a reload button (unsaved changes asked about first), so no one keeps working on an old bundle.
 - **An account list shows the account kind** (person · agent) as its own column with its own filter, and the account editor

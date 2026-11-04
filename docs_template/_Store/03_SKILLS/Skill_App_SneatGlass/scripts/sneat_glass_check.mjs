@@ -299,6 +299,45 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'filter-set',
+    rule: 'a page card whose filter button is on offers a set of labelled filters as report slicers: at least three, among them a multi-pick list',
+    check: `(() => {
+      const button = document.querySelector('.page-toolbar #filter-toggle');
+      if (!button || button.disabled) return true;
+      const box = document.querySelector('#filter-pop, #filter-row');
+      if (!box) return 'the filter button opens no filter set';
+      const fields = [...box.querySelectorAll('.filter-field')];
+      if (fields.length < 3) return 'only ' + fields.length + ' filters - a page offers at least three';
+      if (!box.querySelector('.slicer')) return 'no multi-pick slicer among the filters';
+      return fields.some(f => !f.querySelector('.filter-label')?.textContent.trim()) ? 'a filter without its label' : true;
+    })()`,
+  },
+  {
+    id: 'filter-count',
+    rule: 'the filter button counts the filters that are set, and Clear filters shows exactly while one is set',
+    check: `(() => {
+      const button = document.querySelector('.page-toolbar #filter-toggle');
+      const box = document.querySelector('#filter-pop, #filter-row');
+      if (!button || !box) return true;
+      const set = box.querySelectorAll('.filter-field.on').length;
+      const shown = Number(button.querySelector('.filter-count')?.textContent || 0);
+      if (set !== shown) return 'the filter button says ' + shown + ' but ' + set + ' filters are set';
+      return Boolean(box.querySelector('#filter-clear')) === set > 0 ? true
+        : 'Clear filters ' + (set ? 'is missing while filters are set' : 'shows with no filter set');
+    })()`,
+  },
+  {
+    id: 'filter-row',
+    rule: 'laid out in a row (the filter layout setting), every filter stands on one line of the page bar, its label beside its control',
+    check: `(() => {
+      const row = document.querySelector('#filter-row');
+      if (!row || !row.getClientRects().length) return true;
+      const mid = f => { const r = f.getBoundingClientRect(); return Math.round(r.top + r.height / 2); };
+      const mids = [...row.querySelectorAll('.filter-field')].map(mid);
+      return !mids.length || Math.max(...mids) - Math.min(...mids) <= 2 ? true : 'the filters of the row fall onto more than one line';
+    })()`,
+  },
+  {
     id: 'kpi-align',
     rule: 'figure cards on one row keep their lines level: the main line, the percentage line and the secondary line start at the same height in every card, and no part of a card is cut',
     check: `(() => {
