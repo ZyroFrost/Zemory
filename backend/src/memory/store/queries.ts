@@ -23,6 +23,9 @@ export const Q = {
   ownMinMessageAbove:
     "SELECT m.id AS m FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id > ? AND (s.host = ? OR s.host IS NULL OR s.host = 'unknown') ORDER BY m.id ASC LIMIT 1",
   countSessionMessages: "SELECT COUNT(*) c FROM messages WHERE session_id = ?",
+  // what people typed to their agents (no tool output, no web chat): the source of the prompt-gates training corpus (plan/38 §4 ①)
+  trainingUserMessages:
+    "SELECT m.id, m.session_id AS session, m.uuid, m.content AS text, m.timestamp AS ts, s.project_root AS project FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.role = 'user' AND m.tool_name IS NULL AND s.origin = 'local' ORDER BY m.id",
   sessionAliasOf: "SELECT session_id AS id FROM session_alias WHERE alias_id = ?",
   // every session with its message count, ordered so two machines hash the same list the same way (`memory hosts --sets`)
   sessionSetRows: "SELECT source, id, message_count AS n FROM sessions ORDER BY source, id",

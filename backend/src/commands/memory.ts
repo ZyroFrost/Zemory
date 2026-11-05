@@ -1557,6 +1557,23 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     return;
   }
   if (sub === "bench") {
+    // `--prompts --train`: the prompt-gates model (plan/38 §4). Step 01 only so far: pull what people typed from the GM
+    // into data/training/prompt-gates/01_raw/; label, train and export come next, each stopping where a person must review
+    if (args.includes("--prompts")) {
+      if (!args.includes("--train")) {
+        console.log("zemory memory bench --prompts: nothing to measure yet - no reviewed labels (run `zemory memory bench --prompts --train` to pull the examples).");
+        process.exitCode = 1;
+        return;
+      }
+      const { pull, writePull } = await import("../training/prompt-gates/01_pull.js");
+      const perRaw = flagValue(args, "--per-project");
+      const r = pull({ perProject: perRaw ? Number(perRaw) : undefined });
+      const w = writePull(r.rows);
+      console.log(`zemory memory bench --prompts --train — step 01 pull: ${r.read} user message(s) · ${r.spoken} spoken · ${r.unique} unique · ${r.kept} kept from ${r.projects} project(s)`);
+      console.log(`  ${w.path}  (hash ${w.hash})`);
+      console.log("  next: step 02 drafts the labels for review (not built yet)");
+      return;
+    }
     // `--recall`: cổng ĐO TRÊN KHO THẬT (corpus có nhãn, mồi nhiễu gần chủ đề). Khác hẳn
     // bench mặc định bên dưới — bench đó chạy corpus 8 tài liệu rời chủ đề, đủ để gác hybrid
     // nhưng KHÔNG đủ để phán về rerank (pool rerank 40 > cả corpus). Xem evals/recallbench.ts.
