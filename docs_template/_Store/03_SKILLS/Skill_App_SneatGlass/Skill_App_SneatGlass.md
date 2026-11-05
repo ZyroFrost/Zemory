@@ -1,9 +1,9 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 23
+version: 24
 type: process
-checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
+checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
 ---
@@ -239,24 +239,33 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   - **the draft:** two picks in the popover leave the rows and the count unchanged until Apply, which runs both;
   - **the press:** each text button of a dialog pressed with the real pointer keeps its size while held.
 
-## 7. Taking the kind into an app of the family
+## 7. Who builds what in a family
 
-The system-manager's frontend is the living reference; the frozen first trial is the design repo's Sneat template copy. An app
-moving onto this kind, in this order:
-1. Declare `{"style": "SneatGlass"}` in `frontend/config/ui.json`; `zemory sync` brings this skill, `app-sneat`, `app-glass`
-   and `scripts/sneat_glass_check.mjs`.
-2. Take the shell as the reference builds it: the menu (only the app's own pages; the brand line names the app), the head of
-   two rows (§2b) with the family's top bar unchanged, the page bar slot in row 2 that each page fills (§1), the one tip on
-   `<body>` (§5), the toasts, the dialogs (§3), the kit's icon subset and the token font shipped with the app.
-3. Read and write the person's UI settings where the family keeps them (§5: the system-manager's settings in the family
-   database), so theme, glass, filters, pins and the rest follow the person from app to app; keep only the app's own keys under
-   its own app id.
-4. Build every list page as a page card: its bar in row 2 (§1), its filters as slicers for fields of few values with the pins,
-   the popover and its draft (§5), cut by the server where the rows are limited, its table pinned under the head, cut there.
-5. Run the check: the app's browser test imports `RULES` and `DIALOG_RULES` and evaluates them on every page and dialog at a
-   desktop and a phone width in both themes, and runs the probes of §6; green on every page before the app's first release
-   in the kind.
-6. Tell the system-manager when the app is live on its path, so the family's app table and gateway route it.
+In a family the frame is ONE package kept by the system-manager (`frontend/shell/`, `Frontend_173_Shell`) and published by number
+(`Rule_Keys_90_AppFamilyContract` Do 6). The rules of this skill hold on every page of every app; who builds each part:
+
+| Part (section) | Built by |
+|---|---|
+| the head of two rows (§2b), the menu, the crumbs, the account menu, the brand line | the frame (`Skill_App_Shell`) |
+| the page bar and its seek group (§1), the filter popover, pins, draft and clear (§5), the filter box, the view switch | the frame; the page hands its filters, tools and views |
+| the frame that stays put, the page card that fills it, the pinned header, column resize, the scrollbar under the header (§2, §5) | the frame; the page renders a plain table |
+| dialogs S / M / L (§3), toasts, the one tip (§5), Settings and the layout settings (§4) | the frame; the page gives a dialog its content |
+| the content of a page: its cards, rows, cells, charts, names, dates, its own pinned rows | the app (`Skill_App_ShellUse`) |
+
+An app moving onto this kind, in this order:
+1. Declare `{"style": "SneatGlass"}` in `frontend/config/ui.json`; `zemory sync` brings this skill, `app-sneat`, `app-glass`,
+   `app-shell-use` and `scripts/sneat_glass_check.mjs`.
+2. Pin a published build of the frame and mount it with the app's config (`Skill_App_ShellUse` §2–3); remove every part of the
+   app's own frame - an app never builds a part the table above gives the frame.
+3. Build every list page as page content (`Skill_App_ShellUse` §4): its filters declared, values taken on Apply, cut by the server
+   where the rows are limited; its tools and views handed to the page bar.
+4. Run the check: the app's browser test imports `RULES` and `DIALOG_RULES` and evaluates them on every page and dialog WITH the
+   frame mounted, at a desktop and a phone width in both themes, and runs the probes of §6; green on every page before the app's
+   first release in the kind.
+5. Tell the system-manager when the app is live on its path, so the family's app table and gateway route it.
+
+A repo outside any family builds the frame itself by §1–§5, with the system-manager's frontend as the living reference.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved on its template before it is ported · kiểu được duyệt trên template trước khi chép sang app
+- `Rule_Keys_90_AppFamilyContract` — in a family, the frame of this kind is built once by the system-manager · trong một hệ, khung của kiểu này do repo quản hệ dựng một lần
