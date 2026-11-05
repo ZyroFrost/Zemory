@@ -118,6 +118,11 @@
   `02-93_subagent-small-only` chặn lời gọi `Agent` · `Task` · `Workflow` có brief nêu từ 5 file, bảo đọc trọn file, hoặc dài từ
   4.000 ký tự; cờ một lần `.allow-agent` chỉ tạo khi user gọi đích danh subagent/workflow trong phiên. Luật chung:
   `Rule_Gate_93_SubagentSmallOnly`. <!-- gate: guard -->
+- `02-94` **Không ghi gì vào memory của agent; bài học vào harness.** Bài học · luật · sở thích ⇒ luật HS kèm chốt máy, skill,
+  slot, hoặc docs của repo (hiến pháp · `05_TODO` · `06_CHANGES` · `docs/plan`); không bao giờ vào
+  `~/.claude/projects/<p>/memory/`. **Chốt máy:** hook cấp máy `memory-guard` (`zemory hook install`) chặn tool ghi file và
+  lệnh shell có đích ghi là thư mục memory; đọc và xoá thì qua; không có cờ vượt. `zemory hook install` đặt
+  `autoMemoryEnabled: false`. Luật chung: `Rule_Gate_94_NoAgentMemory` · `plan/39`. <!-- gate: hook:memory-guard -->
 - `02-5` **`.gitignore` là giấu, không phải dọn.** File nháp ghi ra thư mục nháp ngoài repo. Buộc phải ghi
   trong repo (công cụ ép đường dẫn · script cần cwd) ⇒ đặt tên `_scratch_*` và xoá trong cùng lượt (xoá đường
   `_scratch_*` không cần cờ, `02-10`). Thêm pattern vào `.gitignore` không tính là đã dọn: file vẫn nằm trên đĩa và vẫn lớn lên. <!-- gate: hook:precommit-guard -->
