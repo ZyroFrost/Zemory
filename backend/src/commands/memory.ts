@@ -1565,6 +1565,16 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
+      // step 02: draft labels on the newest pull (reads no GM: the pull and HS only)
+      if (args.includes("--label")) {
+        const { label } = await import("../training/prompt-gates/02_label.js");
+        const r = await label({ onProgress: (d, t) => console.log(`  … ${d}/${t}`) });
+        console.log(`zemory memory bench --prompts --train --label — step 02 draft: ${r.messages} message(s) + ${r.confirmed} confirmed case(s) · ${r.doors} door(s) · profile ${r.profile}`);
+        console.log(`  regex ${r.withRegex} · kNN ${r.withKnn} · draft (either) ${r.withDraft} · ${Math.round(r.ms / 1000)} s`);
+        console.log(`  ${r.draftFile}`);
+        console.log(`  review: ${r.reviewFile}`);
+        return;
+      }
       // isolated until the user approves the measurements (plan/38 header): it reads a SNAPSHOT of the GM, never the live one
       const snap = flagValue(args, "--db");
       if (!snap) {
