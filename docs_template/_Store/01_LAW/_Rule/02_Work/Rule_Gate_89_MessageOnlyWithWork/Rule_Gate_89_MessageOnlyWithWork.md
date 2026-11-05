@@ -1,7 +1,7 @@
 ---
 id: Rule_89
 name: message-only-with-work
-version: 2
+version: 3
 kind: action
 code: 02_Work
 checked: [Rule_Keys_07_ScopeOnly, Rule_Keys_06_HandoffInline]
@@ -24,6 +24,9 @@ the recipient has no part in is not sent.
 3. The news concerns the recipient only indirectly (another repo's work, this session's progress, a state it cannot act
    on) ⇒ do not send it; report it in this session.
 4. Several repos are involved ⇒ message each one only about its own part.
+5. Work shared by two repos under one plan: at each hand-over point (the part the other waits on is done · committed ·
+   released) send one or two lines with the hash at once; the sessions split the work between themselves and do not ask the
+   person who does what.
 
 ## Example
 - Situation: HS fails a test because of a part one department wrote; two other departments are waiting for their own

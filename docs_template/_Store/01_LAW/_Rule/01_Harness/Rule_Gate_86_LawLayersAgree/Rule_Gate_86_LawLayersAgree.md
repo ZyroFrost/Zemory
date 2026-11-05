@@ -1,7 +1,7 @@
 ---
 id: Rule_86
 name: law-layers-agree
-version: 3
+version: 4
 kind: action
 code: 01_Harness
 checked: [Rule_Gate_35_OneHome, Rule_Gate_83_HarnessFromStore, Rule_Keys_80_SharedChangeImpact]
@@ -25,6 +25,9 @@ others it is tied to.
 3. Links are written in the body: a law or frame ends with `## Links · Liên kết` (`Implements` · `Repo declares` · `Related`); a
    skill names the laws it carries out in `## Implements`. Both directions agree.
 4. Changing one layer ⇒ check every layer linked to it (`zemory impact <part>` lists them).
+5. Filling a frame (a constitution, a repo's own text) ⇒ every factual sentence is checked against the skills and the standard
+   in force before it is written; old text carried over is checked the same way. A machine name, a path or a host comes from a
+   measurement, never from another repo's fill.
 
 ## Example
 - Situation: the law on secrets says values never enter git; a department's skill says "keep the password in `config.json` for the

@@ -2,7 +2,7 @@
 id: Rule_3
 aka: 02-3
 name: show-steps
-version: 8
+version: 9
 kind: judgment
 code: 02_Work
 ---
@@ -21,6 +21,8 @@ each claim, a gap from the expected number reported at once.
 2. Each claim carries the measurement it rests on.
 3. A number different from what was expected ⇒ report it now, not in the final summary.
 4. A long background run ⇒ say what is being waited for.
+5. Another person or session waits on this work ⇒ deliver the part that unblocks them first (build, publish), and finish the
+   rest after; order the work by what blocks whom, not by the neat order of a procedure.
 
 ## Example
 - Situation: the agent runs a long chain: pull data, rebuild a table, push the new version.

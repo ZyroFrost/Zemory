@@ -2,7 +2,7 @@
 id: Rule_50
 aka: 02-50
 name: git
-version: 10
+version: 11
 kind: action
 code: 03_Safety
 ---
@@ -25,6 +25,10 @@ command. History is never rewritten or destroyed without asking first.
    machine: a rebuild is enough.
 4. Without asking first ⇒ no force-push · no rewriting pushed history · no deleting remote tags or branches · no `reset --hard` or
    `clean` over uncommitted work.
+5. In another repo, commit only the paths this session wrote (`git commit --only <paths>`); what that repo's own session is
+   editing stays for it.
+6. One batch of work = one version number, pushed once when the batch is checked; a fix in the middle of a batch is not a
+   release of its own.
 
 ## Example
 - Situation: the agent fixed a total in a report, the tests are green, the requester says write the ledger and commit.

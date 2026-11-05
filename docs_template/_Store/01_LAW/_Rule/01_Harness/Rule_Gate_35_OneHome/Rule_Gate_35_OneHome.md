@@ -2,7 +2,7 @@
 id: Rule_35
 aka: 02-35
 name: one-home
-version: 12
+version: 13
 kind: judgment
 code: 01_Harness
 ---
@@ -30,6 +30,9 @@ calculation. Everything else points to it.
    a new way of calculating ⇒ its own screen.
 7. Queries (SQL · DAX · M): each has a name, sits in the repo's query set (a structure slot) and is called by name, never written
    inline. A repo with old inline queries only lowers their count.
+8. No register or manifest that repeats what folder names already say: the folder is the one source.
+9. A task with several possible ways keeps ONE way that works everywhere; the others are removed fully — code, words in both
+   dictionaries, tests, and data they wrote outside. A way that runs on its own and asks nobody to choose is not a second way.
 
 ## Example
 - Situation: a reconciliation app has an "Invoice details" screen; a view of invoices by hour is needed.

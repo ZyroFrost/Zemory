@@ -1,7 +1,7 @@
 ---
 id: Rule_94
 name: no-agent-memory
-version: 1
+version: 2
 kind: action
 code: 01_Harness
 checked: [Rule_Gate_83_HarnessFromStore, Rule_Gate_73_GateEveryRule, Rule_Gate_10_DestructiveOps]
@@ -27,8 +27,8 @@ machine check: a law in HS with its hook, a skill, a slot, or the repo's own doc
 2. A law of HS already covers it ⇒ change that law (its version goes up); never write a second copy.
 3. Write it there by the harness's own way (`Rule_Gate_83_HarnessFromStore` for HS, the docs by hand), and tell the person
    where it was written.
-4. Turn the host's own memory feature off where the host allows it (Claude Code: `autoMemoryEnabled: false` in the user
-   settings, written by `zemory hook install`).
+4. Turn the host's own memory feature off where the host allows it (Claude Code: `autoMemoryEnabled: false` in the
+   machine-wide settings `~/.claude/settings.json`, written by `zemory hook install`).
 
 ## Example
 - Situation: the person says "never pass an inline shell line through PowerShell into WSL".

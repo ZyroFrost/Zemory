@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 # Rule_Keys_07_ScopeOnly — Do exactly the work given
@@ -17,6 +17,14 @@ xuất kèm câu trả lời cho ba câu hỏi.
 2. Muốn thêm thứ không ai yêu cầu ⇒ hỏi một câu kèm đề xuất. Trước khi đề xuất, trả lời đủ ba câu: gỡ bớt được gì thay vào · gộp
    vào cái có sẵn được không · không có nó thì hỏng gì, đo được không. Không trả lời được câu cuối ⇒ không đề xuất.
 3. Luật này không áp cho: việc được giao · sửa thứ đang hỏng · nghĩa vụ mà luật khác bắt buộc.
+4. Không bao giờ tự thêm ràng buộc, chốt chặn hay lời từ chối mà người dùng không đặt vào thứ người dùng điều khiển; lựa chọn có
+   vẻ rủi ro thì nói một lần, người dùng quyết. Trước khi viết "không dùng được X vì Y", đọc đoạn mã quyết định Y.
+5. Yêu cầu có độ rộng rõ ("hết", "toàn bộ X", "mọi repo") ⇒ làm đúng độ rộng đó; muốn thu hẹp thì đề xuất kèm số đo, không tự
+   cắt.
+6. "Không liên quan, bỏ đi" ⇒ cắt ngay trong lượt và dọn sạch: mã, khoá ở cả hai từ điển, neo test, chữ còn hứa hẹn về nó. Giải
+   thích cơ chế, đổi nhãn hay đề xuất thứ thay thế không phải câu trả lời.
+7. Xác minh · audit · "đóng case được chưa" ⇒ đo, báo, dừng. Lỗi tìm ra lúc đo thì báo kèm số đo và mức nghiêm trọng; chỉ sửa khi
+   người dùng bảo.
 
 ## Ví dụ
 - Tình huống: người dùng nhờ sửa chính tả một tiêu đề cột trong báo cáo.

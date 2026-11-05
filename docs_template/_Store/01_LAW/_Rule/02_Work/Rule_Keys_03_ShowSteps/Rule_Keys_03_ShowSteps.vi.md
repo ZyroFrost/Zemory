@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # Rule_Keys_03_ShowSteps — Show each step; never run silently
@@ -17,6 +17,8 @@ Trong việc dài hay nhiều bước, agent giữ cho người dùng theo dõi 
 2. Mỗi khẳng định kèm phép đo nó dựa vào.
 3. Số đo lệch dự đoán ⇒ báo ngay, không dồn về tổng kết.
 4. Việc chạy nền lâu ⇒ nói đang chờ gì.
+5. Có người hoặc phiên khác đang chờ việc này ⇒ giao phần mở khoá cho họ trước (build, phát hành), phần còn lại làm sau; xếp
+   thứ tự theo ai đang bị chặn, không theo thứ tự quy trình cho đẹp.
 
 ## Ví dụ
 - Tình huống: agent chạy một chuỗi dài: kéo dữ liệu, dựng lại bảng, đẩy bản mới.

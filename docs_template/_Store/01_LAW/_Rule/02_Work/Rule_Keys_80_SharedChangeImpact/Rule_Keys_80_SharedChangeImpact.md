@@ -1,7 +1,7 @@
 ---
 id: Rule_80
 name: shared-change-impact
-version: 6
+version: 7
 kind: judgment
 code: 02_Work
 ---
@@ -21,6 +21,10 @@ of them. Fixing one place that uses a source and leaving the others is a fault.
    the work is not done, even if the written branch is right.
 3. Several places use one file: one fix of the file is enough, but each dataset / model still needs its own refresh.
 4. The list cannot be completed ⇒ say which part could not be traced, before the change.
+5. After fixing a broken mechanism, read every caller of the same layer and ask whether it has the same failing condition;
+   stopping at the place that just burned leaves the same defect on the path beside it.
+6. Rewriting a surface ⇒ re-point its tests in the same change. For each test ask what makes it red; a test that cannot go red
+   is rewritten with a fixture that forces it.
 
 ## Example
 - Situation: one source table feeds three reports; the agent is asked to change how one column is calculated for report A.

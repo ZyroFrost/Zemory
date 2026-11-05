@@ -2,7 +2,7 @@
 id: Rule_11
 aka: 02-11
 name: verify-claims
-version: 10
+version: 11
 kind: judgment
 code: 02_Work
 ---
@@ -38,6 +38,13 @@ unverified, never filled in by guessing.
    and names the column and row; a sentence that does not trace to a line of that output is not written.
 
 How to measure, false-alarm traps: `.claude/skills/harness-audit/SKILL.md`. The ledger measure (with the CLI): `zemory todo verify`.
+8. A sentence that bans something on a technical claim carries its measurement, or says "not measured" and how to measure it;
+   a bare claim is read later as a decided law.
+9. Before attributing a process (a console, a git, a child) to another program, read its parent process.
+10. Diagnosing, or asking a design question ⇒ search the shared memory first and cite what was settled. Nothing found ⇒ search
+   the repos in use for a similar case before designing a new one.
+11. Find the root by measuring; never patch a guessed symptom. A named system to learn from is studied whole before any of its
+   pieces is dropped, and a piece is dropped only for being unneeded.
 
 ## Example
 - Situation: the agent checks the customer table and reports "120 duplicate customers, propose deleting".

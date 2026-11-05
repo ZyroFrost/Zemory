@@ -2,7 +2,7 @@
 id: Rule_8
 aka: 02-8
 name: clarify-first
-version: 11
+version: 12
 kind: judgment
 code: 02_Work
 ---
@@ -27,6 +27,13 @@ The agent triggers this itself, without being called, when it sees:
 4. Never pick the broadest reading on your own. Work starts once it is clear enough; the final decision is the approval in the
    session.
 5. Call it by hand with the word "grill" in the request. Process: `.claude/skills/harness-grill/SKILL.md`.
+6. An approved draft stands: do exactly that draft. An older sentence that seems to disagree does not reopen it; ask one
+   question only when the draft contradicts a measured fact.
+7. A question or a discussion is never a decision. A plan records it as an open analysis until the person says yes.
+8. A large removal with fuzzy edges ⇒ a KEEP / REMOVE table, approved before anything is cut. "Wait" is a hard stop to
+   clarify again, not a nudge to go on.
+9. Before asking a design question, search the plans and the shared memory with the question's own words. Two settled points
+   that seem to collide almost always speak of different things: read both closely before asking.
 
 ## Example
 - Situation: the requester writes briefly "remove the docs sync part".

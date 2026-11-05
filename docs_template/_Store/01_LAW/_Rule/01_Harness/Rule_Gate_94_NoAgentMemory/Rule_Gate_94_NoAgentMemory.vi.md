@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Rule_Gate_94_NoAgentMemory — Không ghi gì vào memory của agent; bài học vào harness
@@ -23,7 +23,7 @@ hoặc docs của chính repo.
 2. Đã có luật HS phủ ⇒ sửa luật đó (tăng `version`); không bao giờ viết bản thứ hai.
 3. Ghi vào đó theo đúng đường của harness (`Rule_Gate_83_HarnessFromStore` cho HS, docs thì sửa tay), rồi báo người dùng đã
    ghi ở đâu.
-4. Tắt tính năng memory của host khi host cho tắt (Claude Code: `autoMemoryEnabled: false` trong settings cấp user, do
+4. Tắt tính năng memory của host khi host cho tắt (Claude Code: `autoMemoryEnabled: false` trong settings toàn máy `~/.claude/settings.json`, do
    `zemory hook install` ghi).
 
 ## Ví dụ

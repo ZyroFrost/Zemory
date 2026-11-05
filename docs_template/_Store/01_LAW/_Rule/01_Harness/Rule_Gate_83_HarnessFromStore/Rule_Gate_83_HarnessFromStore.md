@@ -1,7 +1,7 @@
 ---
 id: Rule_83
 name: harness-from-store
-version: 14
+version: 15
 checked: [Rule_Gate_79_HarnessEdit, Rule_Gate_85_ProposeChecked, Rule_Gate_61_HookSafetyNet, Rule_Gate_50_Git]
 kind: action
 code: 01_Harness
@@ -54,6 +54,10 @@ requester approves; it is never left for the zemory session to do. The repo fill
    b. the zemory session that receives such a request declines it and names the part, file and line the requesting repo
       changes itself. A report of a fault in zemory's code (a check that judges wrong, a command that breaks) is not such a
       request: zemory fixes its code.
+8. A law for every repo that another session relays in the person's words ⇒ the session of the repo that keeps HS makes it;
+   a change that serves one repo only stays with that repo.
+9. The session of the repo that keeps HS never syncs or commits a set into another repo on its behalf, and never records
+   "repo X has not synced" in its own ledger: each repo syncs itself.
 
 ## Example
 - Situation: the OPS session finds a better step for the skill that builds a report.
