@@ -12,7 +12,7 @@ import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
 import { bodyOf, folderCoreFiles, frontMatter, isFolderHarness, isRetired, listParts, shelfDir, type Part } from "./store.js";
 import { SHELF, legacyIdOf } from "./harness-names.js";
 import { selfRepoRoot } from "../projects.js";
-import { ledgerFile } from "../core/config.js";
+import { ledgerFile, readMarker } from "../core/config.js";
 import { NO_GATE_END, NO_GATE_START } from "./no-gate.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
 import { RULE_HOOKS } from "./rule-hooks-src.js";
@@ -387,6 +387,14 @@ export function forcedChars(agentDir: string): number {
 /** The rule core as text for re-injection after a context compaction; "" when the repo has no core. Capped. */
 /** Characters of the core put back after a compaction; past it the text is cut, so conform names what to trim. */
 export const CORE_REINJECT_CAP = 22000;
+
+/** The put-back cap of one repo: `coreReinjectCap` in its marker (a whole number of characters, at least 1000), else
+ *  CORE_REINJECT_CAP. Laws keep being added, so one fixed cap for every repo cuts the laws of the repo that has most. */
+export function coreReinjectCap(projectRoot: string | null | undefined): number {
+  if (!projectRoot) return CORE_REINJECT_CAP;
+  const v = readMarker(projectRoot)?.data?.coreReinjectCap;
+  return typeof v === "number" && Number.isInteger(v) && v >= 1000 ? v : CORE_REINJECT_CAP;
+}
 
 export function coreForCompaction(agentDir: string, cap = CORE_REINJECT_CAP): string {
   if (isFolderHarness(agentDir)) {

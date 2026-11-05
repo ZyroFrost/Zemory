@@ -22,7 +22,7 @@ import { sourceNodes } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
 import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots, withReadOnlyPass } from "./store.js";
-import { CORE_REINJECT_CAP } from "./rule-core.js";
+import { coreReinjectCap } from "./rule-core.js";
 import { wiredHooks } from "./hook-wiring.js";
 import { precommitState } from "./guard-gen.js";
 import { editedHarnessCopies } from "./law-sync.js";
@@ -378,9 +378,10 @@ function conformRun(root: string): ConformReport {
   if (folder) {
     const sized = folderCoreFiles(hp.agent).map((f) => ({ f, n: bodyOf(readFileSync(f, "utf8")).trim().length }));
     const total = sized.reduce((s, x) => s + x.n, 0);
-    push("core-size", "advisory", `Laws without a hook come to ${total} characters, over the ${CORE_REINJECT_CAP} put back after a compaction`,
-      total > CORE_REINJECT_CAP ? sized.sort((a, b) => b.n - a.n).map((x) => `${relative(root, x.f).replace(/\\/g, "/")} (${x.n})`) : [],
-      "give a law a hook (it leaves the forced list) or trim it; an own article that repeats a common rule goes");
+    const cap = coreReinjectCap(root);
+    push("core-size", "advisory", `Laws without a hook come to ${total} characters, over the ${cap} put back after a compaction`,
+      total > cap ? sized.sort((a, b) => b.n - a.n).map((x) => `${relative(root, x.f).replace(/\\/g, "/")} (${x.n})`) : [],
+      "give a law a hook (it leaves the forced list) or trim it; an own article that repeats a common rule goes; or raise coreReinjectCap in docs/.harness.json");
   }
 
   // ②bis — Folder harness: every slot carries its own check in gate.json › conform (files that must exist, text a file

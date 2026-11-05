@@ -30,7 +30,7 @@ import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
 import { kitBehind } from "../docs/kit-sync.js";
 import { repoKit } from "../docs/kit-apply.js";
-import { coreForCompaction } from "../docs/rule-core.js";
+import { coreForCompaction, coreReinjectCap } from "../docs/rule-core.js";
 import { isFolderHarness, isRetired, listParts, promptGates } from "../docs/store.js";
 import { stopDecision } from "../docs/turn-evidence.js";
 import { AUTO_COMMIT_LINES, autoCommit } from "../docs/auto-commit.js";
@@ -303,7 +303,8 @@ export function handleHook(event: HookEventName, payload: any): string {
       // summary drops. Rules, not memory — HP article 8 forbids pushing recall, not restating the repo's own rules.
       let core = "";
       try {
-        core = cwd ? coreForCompaction(harnessPathsAt(toLocalPath(cwd)).agent) : "";
+        const here = cwd ? toLocalPath(cwd) : "";
+        core = here ? coreForCompaction(harnessPathsAt(here).agent, coreReinjectCap(findProjectRoot(here) ?? here)) : "";
       } catch {
         core = ""; // fail-open (HP article 9)
       }
