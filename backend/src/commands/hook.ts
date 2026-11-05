@@ -106,9 +106,28 @@ export async function cmdHook(args: string[]): Promise<void> {
     }
     return;
   }
+  if (sub === "memory-guard") {
+    // PreToolUse on every writing tool (Rule_Gate_94, plan/39 §3): no write into the agent's own memory folder
+    let payload: unknown = {};
+    try {
+      payload = JSON.parse((await readStdin()).replace(new RegExp("^" + String.fromCharCode(0xfeff)), "") || "{}");
+    } catch {
+      // unreadable payload => let it through (fail-open)
+    }
+    const { memoryGuard } = await import("../memory/memory-guard.js");
+    const why = memoryGuard(payload);
+    if (why) {
+      process.stdout.write(
+        JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: why } }),
+      );
+      process.stderr.write(why + "\n");
+      process.exitCode = 2;
+    }
+    return;
+  }
   const EVENTS = ["session-start", "stop", "session-end", "prompt", "pre-compact"];
   if (!EVENTS.includes(sub ?? "")) {
-    console.log(`usage: zemory hook <${EVENTS.join("|")}|install|uninstall|guard|send-guard>`);
+    console.log(`usage: zemory hook <${EVENTS.join("|")}|install|uninstall|guard|send-guard|memory-guard>`);
     return;
   }
   const raw = await readStdin();

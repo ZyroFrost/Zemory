@@ -3,7 +3,8 @@
 // forwards the payload it was handed to the daemon in the container and replays the answer: stdout, stderr, exit code.
 // Node built-ins only, so a lone runtime binary runs it - no npm, no native module on the host.
 //
-//   node host-hook.mjs <event>          event: stop · prompt · pre-compact · session-start · session-end · send-guard
+//   node host-hook.mjs <event>          event: stop · prompt · pre-compact · session-start · session-end · send-guard ·
+//                                       memory-guard (judged here on the host, not relayed)
 //   node host-hook.mjs install | uninstall   write (or remove) these hooks in ~/.claude/settings.json
 //   ZEMORY_PORT (default 4444)          the port compose publishes on 127.0.0.1
 //
@@ -14,7 +15,7 @@ import { spawn } from "node:child_process";
 import http from "node:http";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const event = String(process.argv[2] || "");
 
@@ -59,6 +60,9 @@ export const HOOKS = [
   { event: "PreCompact", arg: "pre-compact" },
   { event: "SessionStart", arg: "session-start" },
   { event: "PreToolUse", arg: "send-guard", matcher: "SendMessage" },
+  // no write into the agent's own memory folder (Rule_Gate_94, plan/39 §3) - judged HERE, on the host, never relayed: the
+  // daemon down must not open the door (same matcher as the native install, memory/memory-guard.ts MEMORY_GUARD_MATCHER)
+  { event: "PreToolUse", arg: "memory-guard", matcher: "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell" },
 ];
 const NATIVE = new Set(HOOKS.map((h) => `zemory hook ${h.arg}`));
 
@@ -88,7 +92,28 @@ export function withHostHooks(doc, add, cmdFor = hookCommand) {
   }
   if (Object.keys(hooks).length) out.hooks = hooks;
   else delete out.hooks;
+  // Claude Code's own auto memory off (plan/39 §4, code.claude.com/docs/en/memory.md); uninstalling leaves it off
+  if (add) out.autoMemoryEnabled = false;
   return out;
+}
+
+/** The memory guard, run on the host with the clone's own build (dist/memory/memory-guard.js): exit 2 + the reason to
+ *  block, nothing to let through. Any failure (no build, a bad payload) lets the call through (fail-open). */
+async function memoryGuardHere() {
+  let raw = "";
+  process.stdin.setEncoding("utf8");
+  for await (const c of process.stdin) raw += c;
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const mod = await import(pathToFileURL(join(here, "..", "..", "dist", "memory", "memory-guard.js")).href);
+    const why = mod.memoryGuard(JSON.parse(raw.replace(BOM, "") || "{}"));
+    if (!why) return;
+    process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: why } }));
+    process.stderr.write(why + "\n");
+    process.exitCode = 2;
+  } catch {
+    /* fail-open */
+  }
 }
 
 function manage(add) {
@@ -229,5 +254,6 @@ function relay() {
 // imported by a test: run nothing
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (event === "install" || event === "uninstall") manage(event === "install");
+  else if (event === "memory-guard") memoryGuardHere();
   else relay();
 }

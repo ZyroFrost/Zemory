@@ -37,6 +37,7 @@ import { AUTO_COMMIT_LINES, autoCommit } from "../docs/auto-commit.js";
 import { promptMatches, SHELF } from "../docs/harness-names.js";
 import { findProjectRoot, harnessPathsAt, readMarker } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
+import { MEMORY_GUARD_MATCHER } from "./memory-guard.js";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
@@ -555,7 +556,22 @@ const ZEMORY_HOOKS: { event: string; command: string; matcher?: string }[] = [
   { event: "SessionStart", command: "zemory hook session-start" },
   // PreToolUse on SendMessage — the cross-session messaging latch (user ruling 2026-10-07, see send-guard.ts).
   { event: "PreToolUse", command: "zemory hook send-guard", matcher: "SendMessage" },
+  // PreToolUse on every writing tool — no write into the agent's own memory folder (Rule_Gate_94, plan/39 §3)
+  { event: "PreToolUse", command: "zemory hook memory-guard", matcher: MEMORY_GUARD_MATCHER },
 ];
+
+/** Claude Code's own auto memory off (plan/39 §4, code.claude.com/docs/en/memory.md): the system prompt then stops asking
+ *  the agent to write there, and MEMORY.md is no longer loaded. Pure: the settings object in, the same object out. */
+export function withAutoMemoryOff<T extends Record<string, unknown>>(doc: T): T {
+  if (doc.autoMemoryEnabled !== false) (doc as Record<string, unknown>).autoMemoryEnabled = false;
+  return doc;
+}
+function autoMemoryOff(settingsPath: string): void {
+  const document = readJsonObject(settingsPath);
+  if (document.autoMemoryEnabled === false) return;
+  mkdirSync(dirname(settingsPath), { recursive: true });
+  writeJsonAtomic(settingsPath, withAutoMemoryOff(document));
+}
 
 export interface InstallResult {
   path: string;
@@ -661,6 +677,7 @@ export function installHooks(settingsPath: string = CLAUDE_SETTINGS): InstallRes
     added.push(...result.added);
     present.push(...result.present);
   }
+  autoMemoryOff(settingsPath);
   return { path: settingsPath, added, present };
 }
 
