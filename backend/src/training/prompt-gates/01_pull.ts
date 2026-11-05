@@ -20,11 +20,40 @@ export function trainingDir(): string {
   return join(self, "data", "training", MODEL);
 }
 
-/** Text that arrives in the user role but is not a person speaking: host events, harness injections, pasted tool JSON. */
+/** Blocks a host wraps around what a person typed (the IDE's open file and selection, a reminder, Codex's environment,
+ *  an attached image's marker): removed, the person's own words after them are kept. */
+const WRAPPERS: RegExp[] = [
+  /<ide_opened_file>[\s\S]*?<\/ide_opened_file>/gi,
+  /<ide_selection>[\s\S]*?<\/ide_selection>/gi,
+  /<system-reminder>[\s\S]*?<\/system-reminder>/gi,
+  /<environment_context>[\s\S]*?<\/environment_context>/gi,
+  /\[image:[^\]]*\]/gi,
+  /<image>[\s\S]*?<\/image>/gi,
+  /\[input_image\]/gi,
+  /<pasted_content[^>]*>[\s\S]*?<\/pasted_content[^>]*>/gi,
+];
+
+/** Codex sends the IDE context first and the person's words after this heading. */
+const CODEX_REQUEST = /##\s*My request for Codex:/i;
+
+/** What a person typed, with the host's wrappers removed. */
+export function clean(text: string | null | undefined): string {
+  let s = String(text ?? "");
+  const at = s.search(CODEX_REQUEST);
+  if (at >= 0) s = s.slice(at).replace(CODEX_REQUEST, " ");
+  for (const re of WRAPPERS) s = s.replace(re, " ");
+  return s.replace(/\s+/g, " ").trim();
+}
+
+/** Text that arrives in the user role but is not a person speaking: host events, harness injections, tool output. */
 const NOT_SPOKEN: RegExp[] = [
+  /^\s*\[tool_result\]/i,
+  /<local-command-caveat>/i,
+  /^\s*Stop hook feedback/i,
+  /^\s*\[Cross-session/i,
+  /^\s*# (Context from my IDE setup|Files mentioned by the user)/i,
   /<task-notification>/i,
   /\[SYSTEM NOTIFICATION/i,
-  /^\s*<system-reminder>/i,
   /<command-(name|message|args)>/i,
   /<local-command-(stdout|stderr)>/i,
   /<cross-session-message/i,
@@ -39,10 +68,13 @@ const NOT_SPOKEN: RegExp[] = [
 export const MIN_CHARS = 4;
 export const MAX_CHARS = 800;
 
+/** Judged on the raw text (a tool result or a caveat is dropped whole), measured on the cleaned one. */
 export function spoken(text: string | null | undefined): boolean {
-  const s = String(text ?? "").trim();
-  if (s.length < MIN_CHARS || s.length > MAX_CHARS) return false;
-  return !NOT_SPOKEN.some((re) => re.test(s));
+  const raw = String(text ?? "");
+  // a Codex message opens with its IDE context; the request heading marks the person's words inside it
+  if (!CODEX_REQUEST.test(raw) && NOT_SPOKEN.some((re) => re.test(raw))) return false;
+  const s = clean(raw);
+  return s.length >= MIN_CHARS && s.length <= MAX_CHARS;
 }
 
 /** The key two copies of one message share: case, spacing and punctuation runs do not make a new example. */
@@ -82,10 +114,11 @@ export function pull(opts: { perProject?: number; dbPath?: string } = {}): PullR
   const seen = new Set<string>();
   const unique: PulledMessage[] = [];
   for (const m of said) {
-    const k = normalise(m.text);
+    const text = clean(m.text);
+    const k = normalise(text);
     if (seen.has(k)) continue;
     seen.add(k);
-    unique.push({ ...m, project: m.project || "(none)", text: m.text.trim() });
+    unique.push({ ...m, project: m.project || "(none)", text });
   }
   const byProject = new Map<string, PulledMessage[]>();
   for (const m of unique) {
