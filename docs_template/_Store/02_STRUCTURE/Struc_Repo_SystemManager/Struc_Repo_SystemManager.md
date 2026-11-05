@@ -1,7 +1,7 @@
 ---
 id: Struc_Repo_SystemManager
 name: repo-system-manager
-version: 7
+version: 8
 profile: app
 label: SYSTEM-MANAGER
 intro: : repo quản một hệ nhiều app — quyết khung và chuẩn của các app và repo dữ liệu app nó quản
@@ -13,8 +13,8 @@ installs: [bin/_python.cmd, config/runtime.json]
 ---
 # Struc_Repo_SystemManager
 
-The structure standard of a repo that manages an app system: every slot of `Struc_Repo_App` (declares `extends`). The role's own slots are measured when
-the first repo is assembled from this template.
+The structure standard of a repo that manages an app system: every slot of `Struc_Repo_App` (declares `extends`), plus the role's own
+slot `Frontend_173_Shell` (`frontend/shell/`).
 
 ## Role
 
@@ -27,6 +27,9 @@ the first repo is assembled from this template.
     never edited by hand on the machine.
   - `sign-in` — the one sign-in page and the one session of the system, the admin screen for accounts, roles per app, sessions and the
     operation log of every app.
+- **The frame every app wears lives here** (`Frontend_173_Shell`): one package of the top bar, menu, page bar, filters, tables, dialogs
+  and toasts, published as numbered builds through the gateway; each app pins a number and hands the frame its own parts, never builds
+  a frame of its own.
 - **The system's real values are written once here** (`_Store/README.md` §8.3): the session cookie's name, the app codes, the sign-in path, the session expiry
   hours, the port range — in this repo's constitution (an article from 101) and its table of apps. Each app's `Cons_Gate_14_Access` points here and adds only
   what is its own.
