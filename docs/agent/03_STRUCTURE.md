@@ -73,6 +73,8 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   │  │                          THỰC THI delegate slot sẵn có (search/·integrations/·store/). KHÁC scripts/(dev)·util/·plugins/(bên-thứ-3)
 │   │  ├── evals/          [opt]  ĐO CHẤT LƯỢNG model/agent/RAG trên corpus CÓ NHÃN (recall@k · LLM-judge · golden set) + gate.
 │   │  │                          KHÁC test/ (pass/fail tất định)
+│   │  ├── training/       [opt]  HUẤN LUYỆN model CỦA MÌNH: <model>/01_pull · 02_label · 03_train · 04_export. Dữ liệu + kết quả →
+│   │  │                          data/training/. KHÁC evals/ (chỉ đo) · pipelines/ (ETL tất định) · ai/ (gọi model lúc chạy)
 │   │  ├── search/         [opt]  INDEX & retrieval (FTS/vector/Elastic): build index + query/rank/rerank
 │   │  ├── pipelines/      [opt]  ETL / ingest / batch NHIỀU-BƯỚC (đường ống dữ liệu) — KHÁC jobs (lịch) & events (phản ứng)
 │   │  ├── jobs/           [opt]  job nền / cron / queue / scheduled task
@@ -164,7 +166,8 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 ├── .env              [opt]  secret runtime THẬT (pass/token/DATABASE_URL)
 ├── data/             [opt]  RUNTIME sống theo máy/user — Ở LẠI MÁY, không đi đâu. ▼ [opt], tạo khi phình:
 │   ├── state/ cache/ settings/ logs/ tmp/ snapshots/ models/ secrets/   [opt]  trạng thái/cache/setting-user/log/tạm/snapshot-data/model-weight/key
-│   └── uploads/      [opt]    bytes file người dùng upload (blob runtime) — metadata thì ở store/
+│   ├── uploads/      [opt]    bytes file người dùng upload (blob runtime) — metadata thì ở store/
+│   └── training/     [opt]    dữ liệu + kết quả huấn luyện: <model>/01_raw (nhãn ĐÃ DUYỆT, protected) · 02_processing · 03_output/run-<t>/
 ├── global-memory/    [opt]  GỐC KHO đi xuyên máy (app có bộ nhớ dùng chung): kho + kênh + files/
 │                        ⤷ KHÁC data/ ở ĐÚNG MỘT điểm: nó ĐƯỢC PHÉP sang máy khác. Bí mật
 │                          (key · secrets/ · profile đăng nhập) TUYỆT ĐỐI không nằm đây
@@ -194,6 +197,7 @@ Tra cứu nhanh — **có gì / cần làm → mở THẲNG slot** (1 tên chu�
 | **định nghĩa tool cho LLM gọi** (tool-calling / MCP) | khai báo+binding → `backend/src/tools/` · **thực thi → `search/` · `integrations/` · `store/`** |
 | **bộ nhớ agent** (hội thoại / scratchpad / checkpoint) | chính sách nhớ-quên-tóm-tắt → `agents/` · lưu bền → `store/` · blob runtime → `data/state/` |
 | **đo chất lượng RAG/agent** (recall@k · LLM-judge) | `backend/src/evals/` (KHÁC `backend/test/`) |
+| **huấn luyện model của mình** (ngưỡng · trọng số · bộ phân loại) | code → `backend/src/training/<model>/` · dữ liệu có nhãn + kết quả từng lượt → `data/training/<model>/` · kết quả được bật → nơi app đọc, qua bước `04_export` |
 | **search / index** (FTS/vector/Elastic) | `backend/src/search/` |
 | **ETL / ingest / pipeline nhiều bước** | `backend/src/pipelines/` (KHÁC `jobs/`=lịch, `events/`=phản ứng) |
 | business logic | `backend/src/services/` |
@@ -277,6 +281,7 @@ tools/ ≠ scripts/    tools/ = tool cho LLM gọi (schema+binding; thực thi d
 Agent memory         KHÔNG slot riêng: chính sách (nhớ gì/tóm tắt/trim) → agents/ · persistence → store/ · runtime → data/state/ — cùng pattern notifications//storage//authz
 agents/ ≠ docs/agent agents/ = code agent CỦA APP · docs/agent/ = harness docs cho coding-agent đọc — 2 thứ khác hẳn nhau
 Evals vs test        evals/ = đo chất lượng XÁC SUẤT trên corpus có nhãn + gate (vd zemory `memory bench`: hybrid recall@3 ≥ FTS) · test/ = pass/fail tất định
+Training             code train → backend/src/training/<model>/ (bước đánh số) · dữ liệu + kết quả → data/training/<model>/ (01_raw · 02_processing · 03_output). Train mã hoá bằng ĐÚNG đường mã app chạy; kết quả xuất kèm profile + băm bộ nhãn. Gọi evals/ để chấm, không tự đo
 core/ (kernel)       COMPOSITION ROOT: DI/registry/router/runtime/lifecycle nối module. KHÔNG chứa business-logic (chống "core = nơi dồn tạp nham")
 Luật khi VIẾT        đã dời sang `02_RULES §Luật khi VIẾT` (SQL · secret · share/ · setting UI · panel resize · dialog · test · version · deploy).
 Mã hóa / Encryption  concern RIÊNG: key+encrypt/decrypt → vault/ · at-rest DB (SQLCipher) apply ở store/ · key/salt/bundle → data/secrets/ · in-transit bundle → vault/. App có DATA NHẠY CẢM (chat/PII/log) → NÊN mã hóa at-rest; nếu KHÔNG làm phải ghi rõ "chấp nhận plaintext" (để audit thấy, không bỏ sót)
@@ -303,7 +308,7 @@ data/ chia con       phình → state/ cache/ settings/ models/ snapshots/ secre
 frontend/config      CHỈ default layout/theme/profile — KHÔNG API-URL/endpoint/secret (mấy cái đó đi qua env)
 Tên co theo stack    Python backend/<pkg>/ vs Node backend/src/ — chỉ TẦNG co theo ngôn ngữ, KHÔNG tự đổi tên concern
 Monorepo             nhiều app → apps/<app>/ + packages/<lib>/ (+ packages/contracts nếu đa client), mỗi cái theo cây chuẩn
-Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · ML/notebook · game engine · browser-extension → convention riêng, KHÔNG ép
+Ngoài phạm vi        lib/SDK thuần · mobile native (Gradle/Xcode) · notebook ML thử nghiệm · game engine · browser-extension → convention riêng, KHÔNG ép. Train model GẮN với app thì TRONG phạm vi (training/)
 ```
 
 ## 6. Phạm vi áp dụng
