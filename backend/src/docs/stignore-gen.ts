@@ -80,8 +80,15 @@ const isEnvFile = (p: string): boolean => /(^|\/)\.env(\.[^/]*)?$/.test(p);
 /** The top entry (`tasks` · `.env`) a repo path travels under. */
 const topOf = (path: string): string => path.split("/")[0];
 
-/** Own manifests and siblings' `../<this repo>/…` needs, as [paths that travel, secret paths], relative to this repo. */
-function namedPaths(root: string): { travel: string[]; secret: string[]; homes: string[] } {
+interface NamedPaths {
+  travel: string[];
+  secret: string[];
+  homes: string[];
+}
+
+/** Own manifests and siblings' `../<this repo>/…` needs, as [paths that travel, secret paths], relative to this repo.
+ *  Reads every sibling folder (a repo under TEMP: 6,695 of them, 2026-11-05), so a caller computes it once and passes it on. */
+function namedPaths(root: string): NamedPaths {
   const travel: string[] = [];
   const secret: string[] = [];
   const homes: string[] = [];
@@ -115,8 +122,8 @@ function namedPaths(root: string): { travel: string[]; secret: string[]; homes: 
  * The entries a repo must carry, sorted: its own manifest homes and the tops of the paths its manifests name, plus the tops of
  * `../<this repo>/…` paths that sibling repos' manifests need from it. A secret never opens an entry of its own.
  */
-export function stignoreAllowEntries(root: string): string[] {
-  const { travel, secret, homes } = namedPaths(root);
+export function stignoreAllowEntries(root: string, named: NamedPaths = namedPaths(root)): string[] {
+  const { travel, secret, homes } = named;
   const secrets = new Set(secret);
   const keep = new Set<string>(homes);
   for (const p of travel) if (!secrets.has(p)) keep.add(topOf(p));
@@ -131,10 +138,10 @@ export function stignoreAllowEntries(root: string): string[] {
  * The deny lines above the allow list (Syncthing takes the FIRST match): `.env` and `.env.*` at any depth, and every secret a
  * manifest names below an allowed folder (`/config/tls/private.key` while `config` travels). Sorted, no duplicates.
  */
-export function stignoreSecretDenies(root: string): string[] {
-  const allowed = new Set(stignoreAllowEntries(root));
+export function stignoreSecretDenies(root: string, named: NamedPaths = namedPaths(root)): string[] {
+  const allowed = new Set(stignoreAllowEntries(root, named));
   const deny = new Set<string>();
-  for (const s of namedPaths(root).secret) if (!isEnvFile(s) && s !== topOf(s) && allowed.has(topOf(s))) deny.add(`/${s}`);
+  for (const s of named.secret) if (!isEnvFile(s) && s !== topOf(s) && allowed.has(topOf(s))) deny.add(`/${s}`);
   return [".env", ".env.*", ...[...deny].sort((a, b) => a.localeCompare(b))];
 }
 
@@ -175,14 +182,15 @@ export function rewriteInPlace(p: string, text: string): void {
 export function writeStignoreAllow(root: string, apply: boolean): StignoreAllowResult {
   const p = join(root, ".stignore");
   if (!existsSync(p)) return { state: "none", entries: [] };
-  const entries = stignoreAllowEntries(root);
+  const named = namedPaths(root);
+  const entries = stignoreAllowEntries(root, named);
   const text = readFileSync(p, "utf8");
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.split(/\r?\n/);
   const s = lines.findIndex((l) => l.startsWith(STIGNORE_ALLOW_START));
   const e = s >= 0 ? lines.findIndex((l, i) => i > s && l.startsWith(STIGNORE_ALLOW_END)) : -1;
   const head = (s >= 0 && e > s ? [...lines.slice(0, s), ...lines.slice(e + 1)] : lines).join("\n").replace(/\s+$/, "");
-  const next = `${head}\n\n${stignoreAllowBlock(entries, stignoreSecretDenies(root))}\n`.replace(/\n/g, eol);
+  const next = `${head}\n\n${stignoreAllowBlock(entries, stignoreSecretDenies(root, named))}\n`.replace(/\n/g, eol);
   if (next === text) return { state: "unchanged", entries };
   if (apply) rewriteInPlace(p, next);
   return { state: "written", entries };
