@@ -439,6 +439,27 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'view-real',
+    rule: 'the view switch does what it says: with the list view chosen the page card shows rows (a table body or a list), with the grid view it shows cards - a switch that changes nothing is a fake button',
+    check: `(() => {
+      const shown = e => e.getClientRects().length > 0;
+      for (const bar of document.querySelectorAll('.page-toolbar')) {
+        const buttons = [...bar.querySelectorAll('.view-switch > .btn')];
+        const on = buttons.find(b => b.classList.contains('active'));
+        if (!on || buttons.some(b => b.disabled)) continue;
+        const key = (on.id || '').replace(/^view-/, '');
+        if (key !== 'list' && key !== 'grid') continue;
+        const card = document.querySelector('.page-card'), body = card && card.querySelector(':scope > .page-card-body');
+        if (!body) continue;
+        const rows = [...body.querySelectorAll('tbody tr, [role=listitem]')].filter(shown).length;
+        const cards = [...body.querySelectorAll('.card')].filter(shown).length;
+        if (key === 'list' && !rows && cards) return 'the list view is chosen but the page shows cards, not rows';
+        if (key === 'grid' && !card.classList.contains('view-grid') && !cards && rows) return 'the grid view is chosen but the page shows rows, not cards';
+      }
+      return true;
+    })()`,
+  },
+  {
     id: 'search-steady',
     rule: 'a filter box keeps its width when it takes the focus - the focus lights its border, never grows it (growing pushed it out of its panel) - and stays whole inside its bar',
     check: `(() => {

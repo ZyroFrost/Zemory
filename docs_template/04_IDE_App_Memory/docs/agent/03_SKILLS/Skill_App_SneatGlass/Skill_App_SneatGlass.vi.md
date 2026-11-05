@@ -1,5 +1,5 @@
 ---
-version: 21
+version: 22
 lang: vi
 ---
 
@@ -24,7 +24,9 @@ lang: vi
 - Cụm tìm lấy phần còn lại của dòng; các bộ lọc ghim co lại (cắt bằng "…") trước khi chạm tới cụm trái; hai cụm không bao giờ
   đè nhau; ghim bộ lọc không làm cụm trái xê dịch. [bar-anchor] [filter-row]
 - Trang chỉ có một kiểu xem vẫn hiện nút kiểu xem, ở trạng thái tắt; trang chưa có bộ lọc vẫn hiện nút lọc, ở trạng thái tắt.
-  [toolbar]
+  [toolbar] Nút đang bật thì làm đúng việc nó nói: dạng danh sách hiện dòng (một bảng, sắp được theo tiêu đề cột khi có ích -
+  trạng thái, độ trễ), dạng thẻ hiện thẻ; trang toàn thẻ (trang chọn app) có dạng danh sách thật, không bao giờ để nút bấm mà
+  không đổi gì. [view-real]
 - **Một kiểu dáng:** ô lọc, nút lọc và nút kiểu xem cùng chiều cao, cùng bo góc, cùng nền kính và viền; nút kiểu xem là một
   nhóm; không bao giờ để nút kiểu Sneat cạnh ô kiểu Glass. Kiểu xem đang chọn sáng màu nhấn, nút lọc cũng sáng khi popover của
   nó đang mở. [toolbar]

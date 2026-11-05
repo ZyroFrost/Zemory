@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 21
+version: 22
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v21 #35b31f948e27
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v22 #45e1a76d02cf
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -31,7 +31,9 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v21 #35b31f948e27
 - The seek group takes the rest of the line and its pinned filters shrink (ending in "…") before it would reach the left
   group; the two never overlap; pinning a filter never moves the left group. [bar-anchor] [filter-row]
 - A page with one view still shows the switch, turned off; a page with no filter yet still shows the filter button, turned off.
-  [toolbar]
+  [toolbar] A switch that is on does what it says: the list view shows rows (a table, sortable by its headers where it helps -
+  status, latency), the grid view cards; a page of cards (a launcher) gets a real list view, never a switch that changes
+  nothing. [view-real]
 - **One design:** box, filter button and view switch have the same height, corner radius, glass fill and edge; the view
   switch is one group; never a Sneat button beside a Glass box. The chosen view is lit in the accent, and so is the filter
   button while its popover is open. [toolbar]
