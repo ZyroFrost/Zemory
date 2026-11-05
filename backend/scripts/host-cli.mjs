@@ -236,7 +236,16 @@ export function isMoveApply(argv) {
 
 /** Commands that run on the host, never in the container: they read the host's own folders and need no Global Memory. */
 export function isHostCommand(argv) {
-  return argv[0] === "tidy";
+  // `setup mcp` writes the agents' own config files (%APPDATA%, the MSIX package folder, ~/.cursor...): inside the
+  // container none of them exist, so it listed every agent as not installed and wrote nowhere
+  return argv[0] === "tidy" || (argv[0] === "setup" && argv[1] === "mcp");
+}
+
+/** Environment of a command run on the host: `ZEMORY_MCP_ENTRY` names this shim, so `setup mcp` writes a launch line
+ *  that runs it (node + this file + `mcp`, forwarded into the container) rather than the clone's dist, which has no
+ *  Global Memory on a Docker machine. */
+export function hostCommandEnv(env = process.env) {
+  return { ...env, ZEMORY_MCP_ENTRY: fileURLToPath(import.meta.url) };
 }
 
 /** The three docker calls of a move: stop the daemon's container, run the move in a one-off container (~/.claude writable,
@@ -308,7 +317,7 @@ function main() {
   // `tidy` reads the session's scratch folder (Windows TEMP) and its transcript; the container mounts neither writable and
   // the TEMP folder not at all, and the command needs no Global Memory - so it runs here, on the clone's own build (plan/36)
   if (isHostCommand(process.argv.slice(2))) {
-    const t = spawnSync(process.execPath, [join(COMPOSE_DIR, "dist", "cli.js"), ...process.argv.slice(2)], { stdio: "inherit", windowsHide: true });
+    const t = spawnSync(process.execPath, [join(COMPOSE_DIR, "dist", "cli.js"), ...process.argv.slice(2)], { stdio: "inherit", windowsHide: true, env: hostCommandEnv() });
     process.exit(t.status ?? 1);
   }
   const tty = Boolean(process.stdin.isTTY && process.stdout.isTTY);

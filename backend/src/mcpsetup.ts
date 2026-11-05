@@ -14,7 +14,7 @@
 //     agent chưa cài mà tự dựng cây thư mục của nó là rác trên máy user.
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { homedir, platform } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 
 export interface AgentTarget {
   id: string;
@@ -222,8 +222,42 @@ export const UNSUPPORTED: { id: string; why: string }[] = [
   { id: "pi", why: "nối bằng plugin package, không qua file cấu hình MCP" },
 ];
 
-/** Khối server zemory được khai vào file cấu hình của agent. */
+/** Portable launch line: the one a repo file (`.mcp.json`) carries to every machine. */
 const SERVER_ENTRY = { command: "zemory", args: ["mcp"] };
+
+export interface ServerEntry {
+  command: string;
+  args: string[];
+}
+
+/** The launch line written for one target.
+ *
+ *  A per-machine config gets absolute paths: node itself plus the script that answers `mcp`. A bare `zemory` is a
+ *  `zemory.cmd` shim on Windows (npm global and the Docker host shim alike), and a GUI app that spawns it without a shell
+ *  cannot run a `.cmd` (Claude Desktop: "Server disconnected", 2026-11-05). On a Docker machine the host shim sets
+ *  `ZEMORY_MCP_ENTRY` to itself, so the line runs the shim, which forwards `mcp` into the container. A project file
+ *  stays portable: it travels with the repo to machines where those paths do not exist. */
+export function serverEntry(
+  scope: "project" | "user",
+  env: NodeJS.ProcessEnv = process.env,
+  execPath: string = process.execPath,
+  script: string | undefined = process.argv[1],
+): ServerEntry {
+  const entry = env.ZEMORY_MCP_ENTRY || script;
+  if (scope === "project" || !entry) return { ...SERVER_ENTRY, args: [...SERVER_ENTRY.args] };
+  return { command: execPath, args: [resolve(entry), "mcp"] };
+}
+
+/** An entry that names a file no longer on disk (the program, or the script it runs): the agent cannot start it.
+ *  Only absolute paths are checked; a bare command name is resolved by the agent's PATH and cannot be judged here. */
+export function entryBroken(entry: unknown, exists: (p: string) => boolean = existsSync): boolean {
+  if (!entry || typeof entry !== "object") return false;
+  const e = entry as { command?: unknown; args?: unknown };
+  const paths = [e.command, ...(Array.isArray(e.args) ? e.args : [])].filter(
+    (p): p is string => typeof p === "string" && isAbsolute(p) && (p === e.command || /\.(c|m)?js$/i.test(p)),
+  );
+  return paths.some((p) => !exists(p));
+}
 
 export interface MergeResult {
   next: Record<string, unknown>;
@@ -240,11 +274,15 @@ export function mergeServerConfig(
   key: string,
   name = "zemory",
   force = false,
+  entry: ServerEntry = SERVER_ENTRY,
+  exists: (p: string) => boolean = existsSync,
 ): MergeResult {
   const servers = { ...((existing[key] as Record<string, unknown>) ?? {}) };
   const had = Object.prototype.hasOwnProperty.call(servers, name);
-  if (had && !force) return { next: existing, changed: false, reason: "already" };
-  servers[name] = { ...SERVER_ENTRY };
+  // a declared entry is the user's to keep, unless it points at a file that is gone: then it cannot start, and
+  // keeping it only keeps the agent's "Server disconnected" (the old install path, 2026-11-05)
+  if (had && !force && !entryBroken(servers[name], exists)) return { next: existing, changed: false, reason: "already" };
+  servers[name] = { ...entry, args: [...entry.args] };
   return { next: { ...existing, [key]: servers }, changed: true, reason: had ? "replaced" : "added" };
 }
 
@@ -277,7 +315,7 @@ export function wireAgent(target: AgentTarget, force = false): WriteReport {
       return { target, wrote: false, reason: "bad-json" };
     }
   }
-  const merged = mergeServerConfig(current, target.key, "zemory", force);
+  const merged = mergeServerConfig(current, target.key, "zemory", force, serverEntry(target.scope));
   if (!merged.changed) return { target, wrote: false, reason: merged.reason };
   let backup: string | undefined;
   if (fileExists) {
@@ -407,12 +445,13 @@ export function inspectProtocol(
 }
 
 /** Trạng thái hiện tại của một đích: đã khai zemory chưa. */
-export function inspectAgent(target: AgentTarget): "wired" | "present-not-wired" | "no-file" | "bad-json" {
+export function inspectAgent(target: AgentTarget): "wired" | "stale" | "present-not-wired" | "no-file" | "bad-json" {
   if (!target.path || !existsSync(target.path)) return "no-file";
   try {
     const parsed = JSON.parse(readFileSync(target.path, "utf8")) as Record<string, unknown>;
     const servers = (parsed?.[target.key] as Record<string, unknown>) ?? {};
-    return Object.prototype.hasOwnProperty.call(servers, "zemory") ? "wired" : "present-not-wired";
+    if (!Object.prototype.hasOwnProperty.call(servers, "zemory")) return "present-not-wired";
+    return entryBroken(servers.zemory) ? "stale" : "wired";
   } catch {
     return "bad-json";
   }

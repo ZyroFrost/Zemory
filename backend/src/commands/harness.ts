@@ -20,7 +20,7 @@ import { formatTodoVerify, verifyTodo } from "../docs/todo-verify.js";
 import { conform } from "../docs/conform.js";
 import { applyFix, monitorPaths, monitorSummary, pathsCheck, pathsFixProposals, pathsSummary } from "../docs/paths.js";
 import { listKnownProjects } from "../projects.js";
-import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, wireAgent, writeProtocol } from "../mcpsetup.js";
+import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, serverEntry, wireAgent, writeProtocol } from "../mcpsetup.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 import { GUARD_MATCHER, generateGuards, guardDrift, guardMatcherGaps, hooksDirOf } from "../docs/guard-gen.js";
@@ -1185,7 +1185,7 @@ function cmdSetupMcp(args: string[]): void {
     console.log("zemory setup mcp — wire zemory into MCP-speaking agents (LIST only; name an agent to write)");
     for (const t of targets) {
       const state = inspectAgent(t);
-      const mark = state === "wired" ? "✓ wired" : state === "present-not-wired" ? "○ file present, not wired" : state === "bad-json" ? "⚠ broken JSON file" : t.path ? "· no file yet" : "· not installed";
+      const mark = state === "wired" ? "✓ wired" : state === "stale" ? "⚠ wired, file missing" : state === "present-not-wired" ? "○ file present, not wired" : state === "bad-json" ? "⚠ broken JSON file" : t.path ? "· no file yet" : "· not installed";
       const memo: Record<string, string> = {
         installed: "✓ protocol installed",
         stale: "○ protocol outdated",
@@ -1234,6 +1234,8 @@ function cmdSetupMcp(args: string[]): void {
   if (r.wrote) {
     console.log(`zemory setup mcp — ${r.reason === "replaced" ? "overwrote" : "wired"} zemory into ${target.label}`);
     console.log(`  server:   ${target.path}`);
+    const e = serverEntry(target.scope);
+    console.log(`  launch:   ${[e.command, ...e.args].join(" ")}`);
     if (r.backup) console.log(`  backup:   ${r.backup}`);
   } else {
     console.log(`zemory setup mcp — server NOT written: ${why[r.reason] ?? r.reason}`);
