@@ -1,5 +1,5 @@
 ---
-version: 22
+version: 23
 lang: vi
 ---
 
@@ -84,7 +84,9 @@ lang: vi
 - **Không có ô vuông khi rê từng ô:** ở dạng thẻ, một thẻ là một panel; `table-hover` của bộ mẫu tô từng ô nên bị tắt ở đó.
   [card-hover]
 - **Phần tử hiệu ứng không mang trang trí của trình duyệt:** viên thuốc làm từ mục danh sách có `list-style: none`; nút đóng nằm
-  trong hàng nó đóng.
+  trong hàng nó đóng. Phần tử mà một hiệu ứng chèn vào control (vòng gợn sóng) được CSS của chính kiểu này đặt ra ngoài luồng -
+  mỗi control một hiệu ứng, không bao giờ để sót hiệu ứng của kiểu cũ mà CSS đã mất (vòng khi đó nằm trong luồng và làm to mọi
+  nút bị bấm). Bài kiểm trình duyệt bấm từng nút của hộp thoại bằng con trỏ thật và đo nó khi đang giữ (§6).
 - **Menu nổi trên thẻ kính** (menu ba chấm của hàng, menu của ô chọn, danh sách của bộ lọc) đặt trên `<body>` (hoặc hộp thoại đang
   mở): thẻ có `backdrop-filter` trở thành khung chứa của menu fixed.
 - **Mọi hiệu ứng của template Glass** giữ dấu `FX:` trong code (`app-glass`); các thẻ của trang lần lượt hiện lên khi trang mở
@@ -96,7 +98,8 @@ lang: vi
   (lớp nằm trong thẻ kính chỉ làm mờ màu trắng của thẻ: thành dải trắng; vả lại ô bảng không mang được `backdrop-filter`). Thay
   vào đó các dòng cuộn dưới hàng tiêu đề ghim bị CẮT ở mép dưới của nó: thân bảng được cắt theo độ cuộn
   (`clip-path: inset(var(--st) 0 0 0)`, `--st` lấy từ `scrollTop` của ô cuộn), nên không gì hiện xuyên qua chữ tiêu đề. Khi tắt
-  kính, ô ghim mang nền đặc. [pin-cover]
+  kính, ô ghim mang nền đặc. Cột ĐẦU ghim được cắt cùng cách theo chiều ngang: mỗi ô khác cắt phần nằm dưới cột đó
+  (`clip-path: inset(0 0 0 max(0px, --sl + --fw - --x))` theo độ cuộn ngang của ô cuộn, bề rộng cột và vị trí trái của ô). [pin-cover]
 - **Thanh cuộn dọc bắt đầu dưới hàng tiêu đề ghim:** ô cuộn mang chiều cao hàng tiêu đề (`--th`) làm lề trên của rãnh thanh
   cuộn, nên cả con trượt lẫn các dòng đều không lên tới cạnh chữ tiêu đề. (Phép đo của bài kiểm trình duyệt, §6.)
 - **Công tắc kính nằm trên thanh trên** cạnh sáng / tối, sáng khi kính đang bật (công tắc của rail Glass, chuyển lên thanh).
@@ -214,7 +217,8 @@ lang: vi
     được kiểm THEO ĐỘ RỘNG VẼ RA (bề rộng `th`) so với độ rộng đã đặt; ô tiêu đề bị vẽ lại phải có lại tay kéo và kéo được;
   - **đường bay khi ghim:** ghi lại `Element.animate` - bộ lọc vừa ghim xuất phát bên dưới chỗ của nó trên thanh, bộ lọc vừa bỏ ghim
     xuất phát bên trên chỗ của nó trong popover;
-  - **bản nháp:** hai lựa chọn trong popover giữ nguyên các dòng và số đếm cho tới khi bấm Áp dụng, lúc đó cả hai cùng chạy.
+  - **bản nháp:** hai lựa chọn trong popover giữ nguyên các dòng và số đếm cho tới khi bấm Áp dụng, lúc đó cả hai cùng chạy;
+  - **cú bấm:** mỗi nút có chữ của hộp thoại, khi bấm bằng con trỏ thật và đang giữ, vẫn giữ cỡ của nó.
 
 ## 7. Đưa kiểu này vào một app của hệ
 

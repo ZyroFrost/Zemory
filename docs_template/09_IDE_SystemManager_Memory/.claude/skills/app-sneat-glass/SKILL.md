@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 22
+version: 23
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v22 #45e1a76d02cf
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v23 #622252a13d75
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -94,7 +94,9 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v22 #45e1a76d02cf
 - **No per-cell hover squares:** in card view a card is one panel; the kit's `table-hover` paints each cell and is turned off
   there. [card-hover]
 - **Effect elements carry no browser decoration:** a pill made of a list item has `list-style: none`; close buttons sit inside the
-  row they close.
+  row they close. An element an effect puts into a control (a ripple ring) is placed out of the flow by the kind's own CSS -
+  one effect per control, never a former kind's effect whose CSS is gone (its ring then sat in the flow and grew every button
+  it was pressed in). The browser test presses each dialog button with the real pointer and measures it while held (§6).
 - **A floating menu over a glass card** (a row's dots menu, a select's menu, a filter's list) is placed on `<body>` (or the open
   dialog): a card with `backdrop-filter` becomes the box a fixed menu is placed in.
 - **Every effect of the Glass template** keeps its `FX:` marker in the code (`app-glass`); the cards of a page rise in one after
@@ -106,7 +108,9 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v22 #45e1a76d02cf
   no blur layer (a layer inside a glass card only blurs the card's white: a white band; a table cell cannot carry a
   `backdrop-filter` anyway). The rows that scroll under a pinned header are CUT at its lower edge instead: the table body is
   clipped from the scroll offset (`clip-path: inset(var(--st) 0 0 0)`, `--st` set from the scroll box's `scrollTop`), so
-  nothing reads through its titles. With glass off a pinned cell carries the solid fill. [pin-cover]
+  nothing reads through its titles. A pinned FIRST COLUMN is cut the same way sideways: each other cell clips what lies under
+  the column (`clip-path: inset(0 0 0 max(0px, --sl + --fw - --x))` from the box's sideways offset, the column's width and the
+  cell's left). With glass off a pinned cell carries the solid fill. [pin-cover]
 - **The vertical scrollbar starts under the pinned header:** the scroll box carries the header's height (`--th`) as its
   scrollbar track's top margin, so neither the thumb nor the rows reach up beside the titles. (Probe of the browser test, §6.)
 - **The glass switch sits in the top bar** beside light / dark, lit while glass is on (the Glass rail's switch, moved into the
@@ -233,7 +237,8 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v22 #45e1a76d02cf
     handles back and drag;
   - **the flight of a pin:** `Element.animate` is recorded - a pinned filter starts below its place on the bar, an unpinned one
     above its place in the popover;
-  - **the draft:** two picks in the popover leave the rows and the count unchanged until Apply, which runs both.
+  - **the draft:** two picks in the popover leave the rows and the count unchanged until Apply, which runs both;
+  - **the press:** each text button of a dialog pressed with the real pointer keeps its size while held.
 
 ## 7. Taking the kind into an app of the family
 
