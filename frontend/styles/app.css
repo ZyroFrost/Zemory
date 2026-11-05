@@ -544,7 +544,12 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .pg-right{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;overflow-x:hidden}
 .pg-top{display:none;gap:12px;flex:0 0 auto;margin-bottom:2px;max-height:40%;overflow-y:auto;overflow-x:hidden}
 .pg-top>#gPanel{width:100%}
-.graph-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:0 0 auto;margin-bottom:2px}
+/* one row, always: filters and the how-to live in popovers; what has to give way is the counts line (ellipsis, never a scrollbar) */
+.graph-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:nowrap;flex:0 0 auto;margin-bottom:2px;min-width:0}
+.graph-toolbar>*{flex:0 0 auto}
+.graph-toolbar>#gStats,.graph-toolbar>#gCrumb{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gpop{width:440px;max-width:90vw;max-height:60vh;overflow-y:auto;overflow-x:hidden}
+.gpop .glegend{padding:0}
 .tnode{display:block}
 .trow{display:flex;align-items:center;gap:6px;padding:2px 4px;border-radius:6px;cursor:pointer}
 .trow:hover{background:var(--surface-3)}
@@ -786,7 +791,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .zbadge.scope-dim{color:var(--text-faint)}
 .zbadge.scope-stale{color:var(--warn)}
 
-/* Popover chú giải dấu trạng thái (nút ? cạnh tiêu đề panel Nguồn — user 2026-08-29). */
+/* Popover: one frame for every popover of the app (a button with data-zpop="<id>" opens #<id>.zpop; chrome.js wires it). */
 .card-h{position:relative}
 .zpop-wrap{position:relative;display:inline-flex;margin-left:6px}
 .zhelp{width:18px;height:18px;border-radius:50%;border:1px solid var(--border);background:none;color:var(--text-dim);font-size:11px;font-weight:700;line-height:1;cursor:pointer;padding:0}

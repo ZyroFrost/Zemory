@@ -239,15 +239,7 @@
   }
   document.addEventListener('click',function(e){if(e.target&&e.target.id==='mAddSrc')openAddSource();});
 
-  // Popover chú giải dấu (nút ? cạnh tiêu đề panel). Bấm ? mở/đóng; bấm ra ngoài hoặc ESC đóng.
-  function legendSet(on){var p=zid('srcLegend'),b=zid('srcLegendBtn');if(!p||!b)return;p.hidden=!on;b.setAttribute('aria-expanded',on?'true':'false');}
-  document.addEventListener('click',function(e){
-    var b=e.target.closest?e.target.closest('#srcLegendBtn'):null;
-    if(b){legendSet(zid('srcLegend').hidden);return;}
-    var inside=e.target.closest?e.target.closest('#srcLegend'):null;
-    if(!inside)legendSet(false);
-  });
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'){var p=zid('srcLegend');if(p&&!p.hidden){legendSet(false);e.stopPropagation();}}},true);
+  // the legend popover (? beside the panel title) opens through the app's one popover mechanism (chrome.js, data-zpop)
 
   // Nhóm đang thu gọn: {laneKey:1}. Nhớ qua phiên; sai khuôn thì coi như không thu gì.
   var FOLD={};try{FOLD=JSON.parse(localStorage.getItem('zemory.scopeFold')||'{}')||{};}catch(x){FOLD={};}

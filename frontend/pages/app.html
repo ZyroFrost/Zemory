@@ -240,20 +240,25 @@
               </select>
               <label style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-dim);cursor:pointer"><input type="checkbox" id="gOrphans"> <span data-i18n="graph.orphans">Chỉ orphan</span></label>
               <label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim)"><span data-i18n="graph.spacing">Giãn cách</span><input type="range" id="gSpacing" min="0.6" max="2.6" step="0.2" value="1" data-i18n-aria="graph.spacing" aria-label="Giãn cách" style="width:80px;accent-color:var(--primary)"><span id="gSpacingVal" class="mono" style="font-size:11px;color:var(--text-faint);min-width:24px">1.0×</span></label>
-              <!-- Lọc theo HẠNG CẠNH. `imports` = khai báo (tất định) · `calls` = suy luận
-                   (name-match, có confidence) — nhãn phải RÕ, cạnh suy luận không được
-                   giả dạng khai báo (HP điều 13). Dựng động trong gRenderEdgeFilter(). -->
-              <span id="gEdgeFilter" class="gfilter"></span>
+              <!-- one row: the node-type chips and the edge-kind boxes (inferred edges labelled as such, HP article 13) sit
+                   in the Filter popover; the how-to sits behind ? -->
+              <span class="zpop-wrap"><button type="button" class="btn sm" data-zpop="gFilterPop" aria-expanded="false"><span data-i18n="graph.filter">Lọc</span> ▾</button>
+                <div class="zpop gpop" id="gFilterPop" role="dialog" data-i18n-aria="graph.filter" aria-label="Lọc" hidden>
+                  <div class="zpop-s" data-i18n="graph.fNodes">Loại node</div>
+                  <div id="gLegend" class="glegend"></div>
+                  <div class="zpop-s" data-i18n="graph.fEdges">Loại cạnh</div>
+                  <div id="gEdgeFilter" class="gfilter"></div>
+                </div></span>
               <button class="btn sm" id="gRebuild">↻ <span data-i18n="graph.relayout">Tự xếp lại</span></button>
-              <span class="muted" style="font-size:11px" data-i18n="graph.hint2">Kéo node · Shift+kéo nền = bôi chọn nhiều · Ctrl+bấm = thêm/bớt · kéo 1 node đã chọn = kéo cả nhóm · lăn = zoom · kéo nền = di chuyển · Ctrl+Z hoàn tác · bấm đúp node = mở cấp dưới · bấm đúp nền = 1:1</span>
+              <span class="zpop-wrap"><button type="button" class="btn sm" data-zpop="gHelpPop" aria-expanded="false" data-i18n-title="graph.help" title="Cách thao tác">?</button>
+                <div class="zpop gpop" id="gHelpPop" role="dialog" data-i18n-aria="graph.help" aria-label="Cách thao tác" hidden>
+                  <div data-i18n="graph.hint2">Kéo node · Shift+kéo nền = bôi chọn nhiều · Ctrl+bấm = thêm/bớt · kéo 1 node đã chọn = kéo cả nhóm · lăn = zoom · kéo nền = di chuyển · Ctrl+Z hoàn tác · bấm đúp node = mở cấp dưới · bấm đúp nền = 1:1</div>
+                </div></span>
               <span style="flex:1"></span>
               <button class="btn sm" id="gTreeToggle" data-i18n-title="graph.collapseTree" title="Thu gọn cây folder">◀</button>
               <button class="btn sm" id="gPanelToggle" data-i18n-title="graph.collapsePanel" title="Thu gọn bảng thông tin">▶</button>
               <button class="btn sm" id="gPanelPos" data-i18n-title="graph.panelPos" title="Đổi vị trí bảng: phải ⇄ trên">⬒</button>
             </div>
-            <!-- Legend slot: mỗi slot 1 chip có SỐ ĐẾM, bấm để ẩn/hiện nhóm đó.
-                 Trước đây graph tô màu theo slot mà không có chú giải ⇒ nhìn màu đoán mò. -->
-            <div id="gLegend" class="glegend"></div>
             <div id="gPanelTop" class="pg-top"></div>
             <div class="grid grow rzgrid" id="pgGrid" style="grid-template-columns:var(--pgtree,240px) 8px minmax(0,1fr) 8px var(--pgright,300px)">
               <div class="card pg-tree" id="pgTree"><div class="muted" style="font-size:11.5px" data-i18n="graph.treeLoading">Cấu trúc folder…</div></div>
@@ -345,7 +350,7 @@
         <div class="grid grow rzgrid" style="grid-template-columns:var(--mem1,1.1fr) 8px 1fr">
           <!-- Col 1: Sources (scope) — thuộc nhóm sync, KHÔNG phải số liệu -->
           <div class="card"><div class="card-h"><div class="t" data-i18n="mem.sources">Sources — bao gồm / loại trừ</div>
-            <span class="zpop-wrap"><button type="button" class="zhelp" id="srcLegendBtn" data-i18n-title="src.legendBtn" title="Chú giải các dấu trạng thái" aria-expanded="false">?</button>
+            <span class="zpop-wrap"><button type="button" class="zhelp" id="srcLegendBtn" data-zpop="srcLegend" data-i18n-title="src.legendBtn" title="Chú giải các dấu trạng thái" aria-expanded="false">?</button>
               <div class="zpop" id="srcLegend" role="dialog" aria-label="legend" hidden>
                 <div class="zpop-t" data-i18n="src.legendT">Dấu trạng thái</div>
                 <div class="zpop-s" data-i18n="src.legendWeb">Web</div>
