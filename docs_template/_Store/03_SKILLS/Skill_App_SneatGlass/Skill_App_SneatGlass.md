@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 26
+version: 27
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -54,17 +54,27 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 
 - **One glass block, two rows, no gap:** row 1 (56 px) is the family's bar, row 2 (44 px) the page's bar, a hairline between
   them; scrolling down folds row 1 away so only the page bar stays on top, scrolling up or reaching the top brings it back. A
-  page with no bar of its own shows row 1 only. [crumbs] [frame]
-- **Row 1, in three columns:** the crumbs at its start; the one search at its very centre; at its end the day, date and time
-  (the short form on a narrow screen, never over the search) then the buttons (language · theme · glass · apps · bell ·
-  account). A phone drops the crumbs from row 1. [crumbs]
+  page with no bar of its own shows row 1 only. [crumbs] [frame] The head grows with its two rows - never the kit's fixed
+  `block-size: 4rem` that the page bar spills out of - and the page starts below it, nothing of the page under the bar.
+  [head-whole]
+- **Row 1 gives its room to the crumbs:** the crumbs from its start, then the one search right beside the buttons at its end,
+  and the buttons are only apps · bell · account. No day and time. A phone drops the crumbs from row 1. [crumbs] The family,
+  the app and the page on screen always read whole; only the layers between them shrink to "…" and show their whole name on
+  hover. [crumbs-whole]
 - **The crumbs are family / app / [group] / page:** a small app is `<family> / <app> / <page>`; the system-manager is
   itself an app, the hub (`<family> / Hub / Administration / Users`). The second crumb is the app named under the family name
   in the menu. Every layer before the current page is a link to that layer's home (the family's and the hub's home is the
   launcher, a group's its first page) - even when that home is the page on screen; only the current page is plain text
   (`aria-current="page"`); no title repeats the last crumb. [crumbs]
 - **The account menu is the kit's:** its heading is the greeting on ONE line ("Good evening, <name>") with the role under it;
-  then My profile, Settings, Sign out. The greeting never takes room in row 1. [crumbs]
+  then My profile, Settings, the quick settings - language (VI · EN), light / dark, the glass switch - and Sign out. The
+  greeting never takes room in row 1. [crumbs] [bar-switches]
+- **The version of the open app stands at the foot of the menu** (`v<M.m.p>`, read from the app's health), hidden while the
+  menu is folded; never in row 1.
+- **A page bar carries no tab to a page of the menu:** the pages of an app are found in the menu; the page bar's left group is
+  the page's tools (its main action, a switch, the cross-filter chips). [tabs-in-menu]
+- **A name a person reads carries no record code before it:** the menu, the crumbs and the card titles say the name
+  ("Internal Control Report"), never the code first ("IC_02 …") - the code is an identifier. [no-code-prefix]
 - **The menu brand shows the app's name with its accent part (`.text-primary`, the end of the name) in the shared brand
   colour token `--g-brand`,** in both themes; the app defines the token. [brand-one-red]
 - **Under the family name,** the small line names only the app currently open (`data-app-name` of the menu): the dashboard
@@ -116,8 +126,10 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   cell's left). With glass off a pinned cell carries the solid fill. [pin-cover]
 - **The vertical scrollbar starts under the pinned header:** the scroll box carries the header's height (`--th`) as its
   scrollbar track's top margin, so neither the thumb nor the rows reach up beside the titles. (Probe of the browser test, §6.)
-- **The glass switch sits in the top bar** beside light / dark, lit while glass is on (the Glass rail's switch, moved into the
-  bar). [bar-switches]
+- **The glass switch sits in the account menu** beside light / dark, on while glass is on. [bar-switches]
+- **What a page card holds keeps the kit inset:** the first inner card (a panel, a figure card, a tile) starts at least 1rem
+  inside the page card body - below its top edge and within its sides - never flush; a plain table may run edge to edge.
+  [card-inset]
 - **Only the kit's controls, one font:** every control is `form-control` · `form-select` · `form-check-input`, every dialog label
   `form-label` · `form-check-label`, forms on the kit's grid (`row g-*` · `col-*`), the token font everywhere - svg text and numbers too - and
   that font really LOADED: the app ships the font file itself (a font only named falls back to the system font unseen); no class
@@ -174,7 +186,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   pick) holds 10 values at most - status, kind, app, role, level, action; a column of dates gets a date range (from - to). The
   main records of a page (people, addresses, departments, heads) are found with the search box, never listed in a filter. A
   filter that is set is marked (`.filter-field.on`, its APPLIED value). A filter's list hangs on `<body>` under its control,
-  like every menu over a glass card. [filter-set]
+  like every menu over a glass card. [filter-set] An ordered time axis (the months of a year, quarters) is no list of records:
+  it keeps all its values and is declared so (`data-filter-kind="period"`); a period the page always holds (from - to, never
+  empty) is never marked set (`.on`) and is never cleared by Clear.
 - **The filter button always opens its popover;** the person pins each filter on the bar or keeps it there. The popover
   heads with the pins (a tick per filter, Pin all, Unpin all), then every filter not pinned; it keeps one fixed width
   (22rem) whatever is pinned. The pins are the person's UI setting `filter_pins` (a JSON map page path → filter ids), so they
@@ -190,6 +204,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   on the bar filters at once. [filter-pop] [filter-count]
 - **The filter count and the X:** the filter button counts the filters that are set (applied, not drafts); while one is set
   the bar shows the X that clears them, beside the filter button - with filters pinned or all in the popover. [filter-count]
+  A value the page always holds (the period of a report: a from and a to date that are never empty) is never counted as a set
+  filter and Clear leaves it: a page just opened, nothing applied, shows no count and no X; pressing the X sets the count to 0,
+  takes the X away and changes what the page shows - an X that changes nothing is a fake button (the probes of §6).
 - **Every filter is cut where the rows are limited:** a list the server sends with a row limit (the newest N rows of a log)
   is filtered by the server's query, BEFORE the limit - each filter (period, app, level, account kind, actions, day range,
   text) goes to the query; cut in the browser over the newest rows, a filter of earlier days or a rare value finds nothing.
@@ -243,7 +260,10 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   - **the flight of a pin:** `Element.animate` is recorded - a pinned filter starts below its place on the bar, an unpinned one
     above its place in the popover;
   - **the draft:** two picks in the popover leave the rows and the count unchanged until Apply, which runs both;
-  - **the press:** each text button of a dialog pressed with the real pointer keeps its size while held.
+  - **the press:** each text button of a dialog pressed with the real pointer keeps its size while held;
+  - **the clean open:** each page opened in a profile with nothing applied shows no filter count and no X (a period the page
+    always holds is not a filter); where the X shows after a filter is set, pressing it brings the count to 0, takes the X
+    away and changes the rows shown.
 
 ## 7. Who builds what in a family
 
