@@ -1,11 +1,11 @@
 ---
 id: Skill_Harness_RuleGate
 name: harness-rule-gate
-version: 8
+version: 9
 type: process
 checked: [Skill_Frame_Own, Skill_Harness_Conform, Rule_Gate_01_DoneMeansRun, Rule_Gate_86_LawLayersAgree]
 description: Write a new rule, constitution frame or skill for a harness, place it in the right home, and build its machine gate with positive and negative cases. Use once adding or changing a rule, a constitution frame or a gate has been approved. Vietnamese triggers - "thêm luật", "viết luật", "dựng cổng", "chốt máy cho luật", "xếp nhà luật".
-from: _Store/03_SKILLS/Skill_Harness_RuleGate @v8 #b61a9f89f44b
+from: _Store/03_SKILLS/Skill_Harness_RuleGate @v9 #a36fc40fc614
 ---
 
 # harness-rule-gate — writing a law and building its machine check
@@ -20,6 +20,10 @@ from: _Store/03_SKILLS/Skill_Harness_RuleGate @v8 #b61a9f89f44b
 - A sentence that is a way to do one kind of work ⇒ a skill. A sentence about where a file goes ⇒ a slot (proposing a slot or a new template: `Skill_Harness_Structure`
   §5). A sentence about a tool mechanism per host ⇒ `_Host`.
 - Two pieces saying the same thing ⇒ merge into the existing one; never a new piece.
+- Any work on a set of laws (adding examples, rewording, pushing a standard) starts with a table that gives every law its home:
+  common (true in every repo) · a group law (`applies`) or a suggested constitution article · a skill (how to do a kind of work)
+  · the structure with its `conform` check · merged or dropped. Present the table, then rearrange; never polish a law that sits
+  in the wrong home.
 
 ## 2. Classify by the question: when it is broken, what does the machine see?
 

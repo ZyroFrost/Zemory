@@ -2,10 +2,10 @@
 id: Rule_34
 aka: 02-34
 name: docs-follow-change
-version: 7
+version: 8
 kind: judgment
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_34_DocsFollowChange @v7 #e648b4e697e2
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_34_DocsFollowChange @v8 #eb2b5e9155ea
 ---
 # Rule_Gate_34_DocsFollowChange — Docs change in the same change as the thing they describe
 
@@ -23,6 +23,8 @@ missing, because people trust it.
 3. The repo's harness copy is not the repo's doc to edit: a change to a law, slot or skill goes through
    `Rule_Gate_83_HarnessFromStore`.
 4. End of session: go through the list in `Skill_Harness_SessionClose`.
+5. A point settled or rejected in a turn is written into the plan it belongs to in that same turn; a rejected direction is
+   kept as "rejected — do not propose again" with its reason.
 
 ## Example
 - Situation: a report app has a "Guide" page listing the kinds of alerts; the agent just removed one kind in the code.

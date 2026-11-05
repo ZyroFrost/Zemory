@@ -1,5 +1,5 @@
 ---
-version: 20
+version: 21
 lang: vi
 ---
 
@@ -118,6 +118,9 @@ Tên slot viết **thường**, nhiều từ nối bằng `_`. Tên file/vendor 
 - Ví dụ ✓: thêm `requirements.txt` vào `path:` của `Root_059_PackageJson`; rã thư mục bộ chuẩn chung vào luật và skill trên HS.
 - Máy kiểm: gate đỏ khi hai slot khai cùng một path (không giải trình nào gỡ được), và khi slot con mới chồng lên slot cũ mà
   thiếu `checked:` hoặc thiếu dòng `Khác`.
+8. Thiết kế cấu trúc của chuẩn là việc của agent: soát chỗ hở, thiết kế trọn lời giải, in cả cây kèm chú thích từng dòng để duyệt, ghi
+   khi được duyệt. Không hỏi câu nhiều lựa chọn; chỉ một câu hỏi ở chỗ thật sự còn rẽ nhánh. Chuẩn là từ điển tên để tra, không bao giờ
+   là danh sách thư mục phải tạo: không thư mục rỗng.
 
 ## Implements · Thi hành luật
 - `Rule_Gate_85_ProposeChecked` — proposing a slot or a structure template · đề xuất slot hay template cấu trúc

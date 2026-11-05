@@ -2,10 +2,10 @@
 id: Rule_7
 aka: 02-7
 name: scope-only
-version: 9
+version: 10
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_07_ScopeOnly @v9 #f5682f197cf0
+from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_07_ScopeOnly @v10 #dd1eb78e8fe4
 ---
 # Rule_Keys_07_ScopeOnly — Do exactly the work given
 
@@ -24,6 +24,14 @@ for needs a proposal that answers three questions.
    instead · can it join something that exists · what breaks without it, and can that be measured. No answer to the last ⇒ do
    not propose.
 3. Not covered by this law: the work given · fixing something broken · a duty another law requires.
+4. Never add a constraint, a guard or a refusal the person did not set to something the person drives; a choice that looks
+   risky is said once, the person decides. Before writing "X cannot be used because Y", read the code that decides Y.
+5. A request with a clear width ("all", "the whole X", "every repo") is done at that width; narrowing it is proposed with a
+   measurement, never done silently.
+6. "Not related, remove it" ⇒ cut it in that turn and clean fully: the code, the keys of both dictionaries, the test anchors,
+   any text still promising it. Explaining the mechanism, renaming it or proposing a replacement is not the answer.
+7. Verify · audit · "can this case be closed" ⇒ measure, report, stop. A defect found while measuring is reported with its
+   measurement and severity; it is fixed only when the person says so.
 
 ## Example
 - Situation: the requester asks to fix a typo in one column title of a report.

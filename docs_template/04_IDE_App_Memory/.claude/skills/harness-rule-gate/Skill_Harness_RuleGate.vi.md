@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 
@@ -15,6 +15,9 @@ lang: vi
 - Câu là cách làm một loại việc ⇒ skill. Câu là chỗ đặt file ⇒ slot (đề xuất slot hay template mới: `Skill_Harness_Structure`
   §5). Câu là cơ chế công cụ theo hệ ⇒ `_Host`.
 - Hai món nói cùng một điều ⇒ gộp vào món có sẵn; không đẻ món mới.
+- Mọi việc đụng tới một tập luật (thêm ví dụ, sửa chữ, đẩy chuẩn) bắt đầu bằng một bảng xếp nhà cho từng luật: luật chung (đúng ở
+  mọi repo) · luật nhóm (`applies`) hoặc điều hiến pháp gợi ý · skill (cách làm một loại việc) · cấu trúc kèm cổng `conform` · gộp
+  hoặc bỏ. Trình bảng rồi mới sắp lại; không trau chuốt một luật đang nằm sai nhà.
 
 ## 2. Phân loại theo câu hỏi: lúc vi phạm, máy thấy gì?
 

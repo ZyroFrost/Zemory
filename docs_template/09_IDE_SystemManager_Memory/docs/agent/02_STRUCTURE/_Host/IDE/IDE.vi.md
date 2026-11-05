@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # IDE Hệ IDE — agent trong trình soạn code
@@ -50,3 +50,17 @@ lang: vi
 - Tiêu đề phiên theo khuôn `<Repo>_<Model>_<d-m-yyyy>` (`<Repo>` = tên folder repo, đúng hoa thường; ngày không đệm số 0); có chủ đề ⇒ chèn trước ngày; phiên thứ hai trong ngày ⇒ thêm `_<số>` sau ngày. Người dùng đặt tiêu đề; agent thấy tiêu đề phiên của chính mình lệch khuôn thì nhắc một lần, không tự đổi. `zemory peers --all --check` chấm mọi phiên; `--fix` in kế hoạch, `--apply` chỉ chạy khi được yêu cầu.
 - Nhắn agent ở phiên hoặc repo khác: chỉ nhắn phiên đang chạy có tiêu đề chuẩn; repo nhiều phiên ⇒ phiên có ngày mới nhất. Tiêu đề không phải địa chỉ gửi: trước mỗi lần gửi chạy `zemory peers` rồi gửi tới địa chỉ có ★; không có ★ ⇒ không gửi, báo phiên đích cần đặt tiêu đề. Trả lời tin đến ⇒ dùng đúng địa chỉ `from` của tin.
 - Phép kiểm: hook toàn máy `zemory hook send-guard` chặn gửi tới phiên không có ★.
+- Một phiên có hai tên: tên nhắn tin (thứ `SendMessage` gửi tới, chỉ `/rename` đổi được) và tiêu đề người dùng đặt trong danh sách
+  phiên (dòng `custom-title` cuối cùng trong transcript của phiên). Nhắn phiên mà bảng phiên đánh dấu; trả lời thì gửi về đúng địa
+  chỉ `from` của tin đã nhận.
+
+## Bẫy của chính công cụ agent dùng
+- Dòng shell có `$(...)` hay dấu backtick gửi từ PowerShell qua `wsl` / `docker exec` / `sh -c` bị từng tầng phân tích lại; thứ
+  tới được `sh` không phải thứ đã gõ, và một `$(find …)` bị méo sẽ chạy dữ liệu như mã. Mọi thứ hơn một lệnh trơn ⇒ ghi ra file
+  script rồi chạy `sh <file>`.
+- Bản vá nhiều dòng (regex có `\r\n`, template literal, backtick) ghi ra file script bằng công cụ ghi file rồi chạy `node <file>`,
+  không bao giờ nhét thẳng qua `node -e` hay heredoc, vì chúng nuốt một tầng dấu gạch ngược.
+- Heredoc nối thêm vào file không bao giờ đứng sau `&&`: lệnh trước hỏng thì heredoc bị bỏ qua mà không báo gì. Thêm test xong
+  thì đếm số ca đã chạy so với số mong đợi.
+- Ký tự thoát gõ vào công cụ sửa file có thể thành ký tự thật (`\0` thành byte NUL). File nguồn bị đọc thành nhị phân ⇒ tìm byte
+  điều khiển trong đó trước khi gọi là báo oan.

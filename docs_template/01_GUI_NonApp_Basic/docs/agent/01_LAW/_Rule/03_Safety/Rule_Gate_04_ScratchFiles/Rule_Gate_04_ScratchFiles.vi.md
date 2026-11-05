@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 # Rule_Gate_04_ScratchFiles — A scratch file has a way out
@@ -22,6 +22,7 @@ Thứ tạo ra để làm việc mà không giao đi (script dò · dữ liệu 
 5. Thêm pattern vào `.gitignore` không tính là đã dọn: file vẫn nằm trên đĩa và vẫn lớn lên.
 6. Mã tạo thư mục tạm đặt tên `_scratch_<tên>-` và tự xoá ở `finally` / `after`, kể cả khi lỗi hay bị huỷ. Bộ chạy test gom thư mục tạm của mọi tiến trình con
    vào một thư mục cha của lượt chạy và xoá khi xong.
+7. File nháp của chính phiên thì xoá không cần hỏi, bằng đường tuyệt đối.
 
 ## Ví dụ
 - Tình huống: một phiên thử nghiệm mô hình: tải mô hình về, chụp ảnh màn hình, xuất vài bảng số đo để so.

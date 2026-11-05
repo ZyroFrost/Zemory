@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 
@@ -70,6 +70,9 @@ mỗi mục bằng một câu tổng kết mini.
 **§10 NÓI CÓ SỐ, CÓ TÊN, CÓ NGÀY.** Khẳng định đáng giá phải đi kèm dữ kiện kiểm được — "nhanh
 hơn 40% trên bộ đo X" thay cho "cải thiện hiệu năng đáng kể". Không có số thì hạ giọng khẳng định
 xuống đúng mức mình biết.
+- **Lối nhân cách hoá của docs harness.** Docs kỹ thuật của harness tả máy như vật sống (*chết câm · chết lặng · chết theo · im
+  lặng · nói dối · vỏ rỗng · âm thầm · bốc hơi · ăn mất · đá nhau*). Văn bản cho người đọc không dùng các cụm đó: nói thẳng điều
+  xảy ra ("dừng giữa chừng mà không báo"). Soát bản nháp theo danh sách này trước khi giao.
 
 ## Mail báo cáo — bố cục cố định
 

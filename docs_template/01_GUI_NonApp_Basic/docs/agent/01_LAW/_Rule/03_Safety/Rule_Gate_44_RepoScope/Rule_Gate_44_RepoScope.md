@@ -2,10 +2,10 @@
 id: Rule_44
 aka: 02-44
 name: repo-scope
-version: 10
+version: 11
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope @v10 #77c12c154cd0
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope @v11 #8d07c95f3cbb
 ---
 # Rule_Gate_44_RepoScope — Write only inside the open project
 
@@ -29,6 +29,9 @@ to them is forbidden unless the requester approved it in this session.
    (`Rule_Gate_83_HarnessFromStore`).
 6. Leaving the project also covers: writing to an absolute path outside the repo · SQL that makes the server write files or change
    its settings · a command that creates · deletes · changes on another machine. Read-only commands pass.
+7. Work across repos that the person assigned is the permission: state the plan once (what · which repos · reversible or
+   not), then do it without asking again at each step; commit only the paths this session wrote.
+8. Before calling a repo clean, run `git status` without hiding its error output: exit code 128 means it is not a repository.
 
 ## Example
 - Situation: working in one repo, the agent sees the repo next door has its ledgers off-standard.

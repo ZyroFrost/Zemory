@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Rule_Gate_34_DocsFollowChange — Docs change in the same change as the thing they describe
@@ -17,6 +17,8 @@ tin nó.
 2. Sửa thẳng file `.md`, đúng file, đúng vai; chỉ mục tìm kiếm (nếu có) dựng lại từ file, không ghi ngược vào file.
 3. Bản harness chép về repo không phải tài liệu repo được sửa: đổi luật, slot hay skill đi theo `Rule_Gate_83_HarnessFromStore`.
 4. Cuối phiên: đi qua bảng soát trong `Skill_Harness_SessionClose`.
+5. Một điểm vừa chốt hoặc vừa bác trong lượt được ghi vào plan liên quan ngay trong lượt đó; hướng bị bác giữ lại thành "đã bác —
+   đừng đề xuất lại" kèm lý do.
 
 ## Ví dụ
 - Tình huống: app báo cáo có trang "Hướng dẫn" liệt kê các loại cảnh báo; agent vừa gỡ một loại trong mã.

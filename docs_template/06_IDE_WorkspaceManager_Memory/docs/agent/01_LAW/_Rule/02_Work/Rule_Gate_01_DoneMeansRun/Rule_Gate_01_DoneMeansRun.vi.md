@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 # Rule_Gate_01_DoneMeansRun — "Done" means it really ran
@@ -19,6 +19,10 @@ Chỉ báo "xong" khi đủ ba điều:
 
 Thiếu một điều ⇒ việc còn dở, kể cả khi cổng xanh. Cách phá mã: `.claude/skills/harness-audit/SKILL.md`. Đường sang máy thứ hai:
 `.claude/skills/harness-sync-path/SKILL.md`.
+4. Mã thoát của một cổng đọc từ chính file log của nó (`> gate.log 2>&1; echo EXIT=$?`), không bao giờ qua ống nối, vì ống trả mã
+   thoát của lệnh cuối trong ống.
+5. Ba loại lỗi không cổng nào bắt: đua giữa trạng thái đã ghi và một lời gọi mạng đang chờ · một làn hỏng mà không báo gì · một vòng
+   đời không tự phục hồi. Việc chạm mạng hoặc chạy nền chỉ xong khi app thật đã chạy và log của nó đã được đọc.
 
 ## Ví dụ
 - Tình huống: agent viết công thức đối chiếu để canh tổng doanh thu báo cáo khớp với DW.

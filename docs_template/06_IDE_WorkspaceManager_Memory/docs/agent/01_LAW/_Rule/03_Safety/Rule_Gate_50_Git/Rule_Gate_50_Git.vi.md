@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 # Rule_Gate_50_Git — Commit freely, push on command, never break history
@@ -21,6 +21,8 @@ bị viết lại hay phá khi chưa hỏi trước.
    lại là đủ.
 4. Chưa hỏi trước ⇒ không force-push · không viết lại lịch sử đã push · không xoá tag hay nhánh trên remote · không `reset --hard`
    hay `clean` lên việc chưa commit.
+5. Ở repo khác, chỉ commit đúng đường phiên này đã ghi (`git commit --only <đường>`); phần phiên của repo đó đang sửa để cho nó.
+6. Một đợt việc = một số version, push một lần khi đợt đã kiểm xong; bản vá giữa đợt không phải một lần phát hành riêng.
 
 ## Ví dụ
 - Tình huống: agent sửa xong một lỗi tính tổng trong báo cáo, test xanh, người dùng bảo ghi sổ rồi commit.

@@ -2,10 +2,10 @@
 id: Rule_4
 aka: 02-4
 name: scratch-files
-version: 11
+version: 12
 kind: judgment
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_04_ScratchFiles @v11 #5d1ff5534fc9
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_04_ScratchFiles @v12 #454aadc5f045
 ---
 # Rule_Gate_04_ScratchFiles — A scratch file has a way out
 
@@ -29,6 +29,7 @@ deleted once used. A session keeps at most 5 scratch files at a time.
 5. Adding a pattern to `.gitignore` is not cleaning: the file is still on disk and still grows.
 6. Code that creates a temporary folder names it `_scratch_<name>-` and deletes it in `finally` / `after`, also on error or cancel. The test runner gathers the
    temporary folders of every child process under one parent folder per run and deletes it at the end.
+7. The session's own scratch files are deleted without asking, by absolute path.
 
 ## Example
 - Situation: a session tries out a model: downloads it, takes screenshots, exports a few measurement tables to compare.

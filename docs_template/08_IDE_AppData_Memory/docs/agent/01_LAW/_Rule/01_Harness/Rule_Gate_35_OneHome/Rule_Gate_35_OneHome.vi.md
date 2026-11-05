@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 # Rule_Gate_35_OneHome — One thing, one home
@@ -25,6 +25,9 @@ tên cho một cách tính. Mọi chỗ khác trỏ về đó.
    màn riêng.
 7. Truy vấn (SQL · DAX · M): mỗi câu có tên, nằm trong bộ câu truy vấn của repo (một slot cấu trúc), gọi theo tên, không viết tại
    chỗ. Repo có câu viết tại chỗ từ trước thì chỉ được giảm số đó.
+8. Không dựng sổ hay manifest lặp lại điều tên thư mục đã nói: thư mục là nguồn duy nhất.
+9. Một việc có nhiều cách làm thì giữ MỘT cách chạy được ở mọi hoàn cảnh; các cách còn lại gỡ hẳn — mã, chữ ở cả hai từ điển, test,
+   và dữ liệu chúng đã ghi ra ngoài. Cơ chế tự chạy và không bắt ai chọn không tính là cách thứ hai.
 
 ## Ví dụ
 - Tình huống: app đối soát có màn "Chi tiết hóa đơn"; cần thêm màn xem hóa đơn theo giờ.

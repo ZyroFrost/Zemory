@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 # Rule_Gate_89_MessageOnlyWithWork — A message to another repo's session carries work for it, or answers it
@@ -19,6 +19,8 @@ không gửi.
 3. Tin chỉ liên quan gián tiếp tới bên nhận (việc của repo khác, tiến độ của phiên này, một trạng thái nó không làm gì
    được) ⇒ không gửi; báo trong phiên này.
 4. Nhiều repo cùng dính ⇒ mỗi repo chỉ được nhắn về đúng phần của nó.
+5. Việc chung của hai repo theo một plan: ở mỗi mốc bàn giao (xong phần bên kia đang chờ · đã commit · đã phát hành) nhắn ngay một
+   hai dòng kèm hash; các phiên tự chia việc với nhau, không hỏi người dùng ai làm.
 
 ## Ví dụ
 - Tình huống: HS đỏ test vì một phần do một phòng viết; hai phòng khác đang chờ phần của mình được sync.

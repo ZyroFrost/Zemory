@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 # Rule_Gate_44_RepoScope — Write only inside the open project
@@ -24,6 +24,9 @@ trong phiên này.
    (`Rule_Gate_83_HarnessFromStore`).
 6. Ra ngoài dự án còn gồm: ghi ra đường tuyệt đối ngoài repo · SQL bắt máy chủ ghi file hay đổi cấu hình máy chủ · lệnh tạo · xoá
    · đổi chạy trên máy khác. Lệnh chỉ đọc cho qua.
+7. Việc chéo repo do chính người dùng giao là lời cho phép: báo kế hoạch một lần (làm gì · repo nào · đảo được không), rồi làm, không
+   hỏi lại từng bước; chỉ commit đúng đường phiên này đã ghi.
+8. Trước khi kết luận một repo sạch, chạy `git status` không giấu đầu ra lỗi: mã thoát 128 nghĩa là không phải repo.
 
 ## Ví dụ
 - Tình huống: đang làm ở một repo, agent thấy repo bên cạnh có sổ sách lệch chuẩn.

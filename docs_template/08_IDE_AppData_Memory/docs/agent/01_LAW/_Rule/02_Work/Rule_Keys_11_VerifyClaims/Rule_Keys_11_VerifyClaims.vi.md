@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 # Rule_Keys_11_VerifyClaims — Not verified is not a fact
@@ -33,6 +33,13 @@ bề mặt thật · tra tài liệu ngoài. Thứ không truy được thì nó
    dòng của kết quả đó thì không viết.
 
 Cách đo, bẫy báo oan: `.claude/skills/harness-audit/SKILL.md`. Máy đo sổ (khi có CLI): `zemory todo verify`.
+8. Một câu cấm dựa trên khẳng định kỹ thuật phải kèm số đo, hoặc ghi "chưa đo" và cách đo; câu khẳng định trần về sau bị đọc như
+   luật đã chốt.
+9. Trước khi gán một tiến trình (cửa sổ console, git, tiến trình con) cho chương trình khác, đọc tiến trình cha của nó.
+10. Chẩn đoán, hoặc hỏi một câu thiết kế ⇒ tra bộ nhớ chung trước và dẫn lại điều đã chốt. Không ra ⇒ tìm ca tương tự trong các repo
+   đang chạy trước khi thiết kế cái mới.
+11. Tìm gốc bằng phép đo; không vá một triệu chứng đoán ra. Hệ được chỉ tên để học thì nghiên cứu trọn trước khi bỏ mảnh nào, và chỉ
+   bỏ một mảnh vì nó thừa.
 
 ## Ví dụ
 - Tình huống: agent soát bảng khách hàng và báo "có 120 khách trùng, đề nghị xoá".

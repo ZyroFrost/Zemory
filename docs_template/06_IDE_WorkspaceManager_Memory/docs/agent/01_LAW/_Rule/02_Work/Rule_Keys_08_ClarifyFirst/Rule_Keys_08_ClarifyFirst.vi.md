@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 # Rule_Keys_08_ClarifyFirst — Unclear ⇒ make it clear; unreasonable ⇒ push back before doing it
@@ -22,6 +22,13 @@ Agent tự kích, không chờ lời gọi, khi thấy:
    bác thì không đề xuất lại.
 4. Không tự chọn cách hiểu rộng nhất. Đủ rõ mới làm; quyết định cuối là phê duyệt trong phiên.
 5. Gọi tay bằng chữ "grill" trong lời yêu cầu. Quy trình: `.claude/skills/harness-grill/SKILL.md`.
+6. Bản nháp đã được duyệt là chốt: làm đúng bản đó. Một câu cũ có vẻ ngược lại không mở lại nó; chỉ hỏi một câu khi bản nháp mâu
+   thuẫn với dữ kiện đo được.
+7. Một câu hỏi hay một lượt bàn không bao giờ là quyết định. Plan ghi nó là phân tích còn mở cho tới khi người dùng đồng ý.
+8. Gỡ bỏ lớn mà ranh giới mờ ⇒ lập bảng GIỮ / BỎ và được duyệt trước khi cắt bất cứ thứ gì. "Khoan" là lệnh dừng để làm rõ lại,
+   không phải lời nhắc đi tiếp.
+9. Trước khi hỏi một câu thiết kế, tra plan và bộ nhớ chung bằng chính từ khoá của câu hỏi. Hai điểm đã chốt có vẻ đụng nhau gần
+   như luôn nói về hai thứ khác nhau: đọc kỹ cả hai trước khi hỏi.
 
 ## Ví dụ
 - Tình huống: người dùng nhắn ngắn "gỡ phần đồng bộ tài liệu đi".

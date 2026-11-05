@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 # Rule_Gate_86_LawLayersAgree — The layers of law never contradict each other, and stay linked
@@ -19,6 +19,8 @@ dạy cách thi hành. Tầng dưới không bao giờ nói ngược tầng trê
 3. Liên kết viết trong thân: luật hay khung kết thúc bằng `## Links · Liên kết` (`Implements` · `Repo declares` · `Related`); skill
    nêu các luật nó thi hành ở `## Implements`. Hai chiều khớp nhau.
 4. Sửa một tầng ⇒ soát mọi tầng nối với nó (`zemory impact <phần>` liệt kê).
+5. Điền một khung (hiến pháp, chữ riêng của repo) ⇒ mỗi câu khẳng định được đối chiếu với skill và chuẩn đang áp trước khi ghi; chữ
+   cũ chép sang cũng đối chiếu như vậy. Tên máy, đường dẫn hay máy chủ lấy từ phép đo, không bao giờ chép từ phần điền của repo khác.
 
 ## Ví dụ
 - Tình huống: luật về bí mật nói giá trị không bao giờ vào git; skill của một phòng ghi "để mật khẩu trong `config.json` cho job

@@ -1,5 +1,5 @@
 ---
-version: 22
+version: 23
 lang: vi
 ---
 # Rule_Gate_27_HarnessLanguage — Cách viết docs harness, và chữ dùng trong đó
@@ -43,6 +43,11 @@ agent đọc, và là nguồn sự thật. Bản dịch cho từng ngôn ngữ n
 | `workspace-manager` · `dept` | vai của repo tổng quản một cụm và của các repo phòng ban nó quản (`role.name` trong structure của chúng) |
 | bộ câu truy vấn · thư viện icon · bảng thuật ngữ | các câu truy vấn có tên · icon của vùng · bảng thuật ngữ nghiệp vụ của vùng |
 | tồn kho · nhập kho · kho hàng | hàng hoá trong kho hàng thật — từ nghiệp vụ, không phải DW |
+8. Một slot hay một luật trong HS nói bằng câu đầy đủ: để làm gì · cái gì bắt buộc (nói rõ là bắt buộc) và cái gì tuỳ chọn · từng
+   bước · một ví dụ thật với đường dẫn thật · ngoại lệ và cách xử lý · máy kiểm bằng gì. Agent ở máy khác làm theo được mà không
+   cần hỏi.
+9. Tên ngắn HS (harness store) và DW (data warehouse) dùng ở mọi chỗ agent viết: câu trả lời, plan, sổ, commit message, tin gửi
+   phiên khác.
 
 ## Ví dụ
 - Tình huống: thêm một luật mới sau một sự cố mất dữ liệu.

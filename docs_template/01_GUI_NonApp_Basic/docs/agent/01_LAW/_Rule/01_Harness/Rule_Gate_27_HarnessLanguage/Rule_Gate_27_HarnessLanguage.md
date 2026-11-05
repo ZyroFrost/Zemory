@@ -2,10 +2,10 @@
 id: Rule_27
 aka: 02-27
 name: harness-language
-version: 22
+version: 23
 kind: judgment
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage @v22 #67a8e2d625f7
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage @v23 #2b8952cc59b8
 ---
 # Rule_Gate_27_HarnessLanguage — How harness docs are written, and the words they use
 
@@ -48,6 +48,11 @@ fixed word for each thing, and never quote a person or date a decision.
 | `workspace-manager` · `dept` | the roles of a workspace's managing repo and of the department repos it manages (`role.name` of their structures) |
 | query set · icon library · glossary | named queries · the region's icons · the region's business glossary |
 | stock ("tồn kho" · "nhập kho" · "kho hàng") | goods in a stockroom — business words, not the DW |
+8. A slot or a law in HS states, in full sentences: what it is for · what is mandatory (said as such) and what is optional ·
+   the steps · a real example with a real path · the exceptions and how they are handled · the machine check. An agent on
+   another machine follows it without asking.
+9. The short names HS (the harness store) and DW (the data warehouse) are used everywhere the agent writes: replies, plans,
+   ledgers, commit messages, messages to other sessions.
 
 ## Example
 - Situation: a new law is added after a data-loss incident.

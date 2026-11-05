@@ -2,10 +2,10 @@
 id: Rule_1
 aka: 02-1
 name: done-means-run
-version: 13
+version: 14
 kind: action
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Gate_01_DoneMeansRun @v13 #a6956b3a51f7
+from: _Store/01_LAW/_Rule/02_Work/Rule_Gate_01_DoneMeansRun @v14 #82a1332ed491
 ---
 # Rule_Gate_01_DoneMeansRun — "Done" means it really ran
 
@@ -27,6 +27,11 @@ Say "done" only when all three hold:
 
 One missing ⇒ the work is unfinished, even with a green gate. How to break code: `.claude/skills/harness-audit/SKILL.md`. The
 path to a second machine: `.claude/skills/harness-sync-path/SKILL.md`.
+4. A gate's exit code is read from its own log file (`> gate.log 2>&1; echo EXIT=$?`), never through a pipe, which returns the
+   exit code of the last command in it.
+5. Three kinds of defect no gate catches: a race between recorded state and a network call in flight · a lane that fails
+   without a word · a lifecycle that never recovers. Work that touches the network or runs in the background is done only
+   after the real app has run and its log has been read.
 
 ## Example
 - Situation: the agent writes a reconciliation formula to check that the report's revenue total matches the DW.

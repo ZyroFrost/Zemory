@@ -1,9 +1,9 @@
 ---
 id: Host_IDE
 name: host-ide
-version: 6
+version: 7
 kind: host
-from: _Store/02_STRUCTURE/_Host/IDE @v6 #14fd608fb359
+from: _Store/02_STRUCTURE/_Host/IDE @v7 #3f31334c960c
 ---
 # IDE The IDE host — the agent inside a code editor
 
@@ -53,3 +53,17 @@ from: _Store/02_STRUCTURE/_Host/IDE @v6 #14fd608fb359
 - Session titles follow `<Repo>_<Model>_<d-m-yyyy>` (`<Repo>` = the repo folder name, exact case; the date without leading zeros); a topic ⇒ inserted before the date; a second session the same day ⇒ `_<n>` after the date. The owner sets the title; an agent that sees its own session title off the pattern reminds once, never renames it itself. `zemory peers --all --check` scores every session; `--fix` prints a plan, `--apply` runs only when asked.
 - Messaging an agent in another session or repo: only a running session with a standard title; a repo with several sessions ⇒ the one with the newest date. A title is not an address: before every send run `zemory peers`, then send to the address marked ★; no ★ ⇒ do not send, report that the target session needs a title. Replying to a message ⇒ use exactly the message's `from` address.
 - Check: the machine-wide hook `zemory hook send-guard` blocks sending to a session without ★.
+- A session has two names: the messaging name (what `SendMessage` addresses, changed only by `/rename`) and the title the
+  person sets in the session list (the last `custom-title` line of the session's transcript). Message the session the
+  sessions table marks; reply to the `from` address of the message received.
+
+## Traps of the agent's own tools
+- A shell line with `$(...)` or backticks sent from PowerShell through `wsl` / `docker exec` / `sh -c` is re-parsed by each
+  layer; what reaches `sh` is not what was typed, and a mangled `$(find …)` runs data as code. Anything beyond a plain
+  command goes into a script file that is run as `sh <file>`.
+- A multi-line patch (a regex with `\r\n`, a template literal, backticks) is written to a script file with the file tool and
+  run as `node <file>`, never passed inline through `node -e` or a heredoc, which eat one level of backslashes.
+- A heredoc that appends to a file never follows `&&`: when the command before fails, the heredoc is skipped without a word.
+  After adding tests, count the cases that ran against the number expected.
+- An escape typed into the edit tool can land as the real character (`\0` became a NUL byte). When a source file reads as
+  binary, search it for control bytes before calling it a false alarm.

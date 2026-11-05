@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 
@@ -13,6 +13,9 @@ lang: vi
 - Repo đang có phiên agent mở ⇒ người dùng tắt phiên đó trước. Ghi vào repo đang có phiên khác làm việc là xung đột thật.
 - Xác định bộ đích (`<NN>_<host>_<cấu trúc>_<tầng>`): cấu trúc theo loại repo (App · NonApp · Dept…), không theo thói quen.
 - Repo có thay đổi chưa commit ⇒ ghi lại danh sách; đợt nắn không đụng các file đó.
+- Áp chuẩn gồm cả thứ không ai liệt kê: mọi luật được đụng tới mà chỉ có chữ, không có chốt máy, được dựng chốt trong cùng đợt (ca
+  phải chặn và phải qua, có đột biến), và mọi thứ nằm sai slot trong repo (bí mật ngoài slot bí mật, mật khẩu trần trong config được
+  git theo dõi, file ngoài slot của nó) vào danh sách dời và được dời. Báo những gì đã tìm và đã làm; không đẩy lại thành câu hỏi.
 
 ## 1. Đo phần riêng của repo — theo DÒNG, so với mọi phiên bản nguồn
 

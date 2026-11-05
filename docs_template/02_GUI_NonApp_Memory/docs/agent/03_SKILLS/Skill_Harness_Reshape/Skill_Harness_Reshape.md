@@ -1,10 +1,10 @@
 ---
 id: Skill_Harness_Reshape
 name: harness-reshape
-version: 5
+version: 6
 type: process
 description: Move a repo onto a standard set from the store - measure what the repo has of its own, bring it up to the store first, assemble in two phases, remove the copies that hold nothing of their own, and accept with measurements and a real run. Use whenever a repo moves to the folder harness, changes set, or takes a large store update. Vietnamese triggers - "nắn repo", "áp chuẩn", "áp bộ", "chuyển sang bộ", "reshape", "đưa repo về chuẩn".
-from: _Store/03_SKILLS/Skill_Harness_Reshape @v5 #63aa98f926cd
+from: _Store/03_SKILLS/Skill_Harness_Reshape @v6 #23180a762f6a
 ---
 
 # harness-reshape — bringing a repo onto a standard set
@@ -17,6 +17,10 @@ from: _Store/03_SKILLS/Skill_Harness_Reshape @v5 #63aa98f926cd
 - The repo has an agent session open ⇒ the owner closes that session first. Writing into a repo another session is working in is a real conflict.
 - Settle the target set (`<NN>_<host>_<structure>_<tier>`): the structure by the kind of repo (App · NonApp · Dept…), not by habit.
 - The repo has uncommitted changes ⇒ write the list down; the reshape does not touch those files.
+- The reshape includes what nobody listed: every law touched that has words but no machine check gets its check in the same
+  batch (cases that must block and must pass, a mutation), and everything off its slot in the repo (a secret outside the
+  secret slot, a literal password in a tracked config, a file outside its slot) goes on the relocation list and is moved.
+  Report what was found and done; do not hand it back as questions.
 
 ## 1. Measure the repo's own part — by LINE, against every version of the source
 

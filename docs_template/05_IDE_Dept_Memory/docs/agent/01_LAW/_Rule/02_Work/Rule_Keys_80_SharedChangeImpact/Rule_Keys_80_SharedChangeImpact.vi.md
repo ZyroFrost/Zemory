@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 # Rule_Keys_80_SharedChangeImpact — Changing something shared: name and handle every place that uses it
@@ -18,6 +18,10 @@ mà bỏ các nơi khác cùng nguồn là lỗi.
    vừa ghi đúng.
 3. Nhiều nơi dùng chung một file: sửa file một lần là đủ, nhưng mỗi dataset / model vẫn phải làm mới riêng.
 4. Không liệt kê được đủ ⇒ nói rõ phần nào chưa dò được, trước khi sửa.
+5. Vá xong một cơ chế hỏng ⇒ đọc mọi chỗ gọi cùng lớp đó và hỏi chỗ đó có cùng điều kiện hỏng không; dừng ở chỗ vừa cháy là để lại
+   đúng lỗi đó ở đường bên cạnh.
+6. Viết lại một bề mặt ⇒ đổi neo test trong cùng thay đổi. Với mỗi test hỏi cái gì làm nó đỏ; test không đỏ được thì viết lại kèm
+   dữ liệu mẫu buộc nó đỏ.
 
 ## Ví dụ
 - Tình huống: một bảng nguồn nuôi ba báo cáo; agent được giao đổi cách tính một cột cho báo cáo A.

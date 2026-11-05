@@ -2,10 +2,10 @@
 id: Skill_Harness_Structure
 aka: structure
 name: harness-structure
-version: 20
+version: 21
 type: process
 description: Folder standard and routing table for a non-app project (BI, report, data, docs-only, design) — decides where every file belongs. Use before creating, naming, moving, or tidying any file or folder, or when asked where something should go. Vietnamese triggers - "để ở đâu", "đặt file này vào đâu", "sắp xếp lại thư mục", "tạo thư mục", "dọn cho gọn", "file này thuộc chỗ nào".
-from: _Store/03_SKILLS/Skill_Harness_Structure @v20 #b315ac389759
+from: _Store/03_SKILLS/Skill_Harness_Structure @v21 #0dfcf5ecbaa0
 ---
 
 # Folder standard — the NON-APP system
@@ -123,6 +123,9 @@ Slot names are **lowercase**, several words joined by `_`. Existing file/vendor 
 - Example ✓: add `requirements.txt` to the `path:` of `Root_059_PackageJson`; break the shared standard-set folder into laws and skills on HS.
 - Machine check: the gate goes red when two slots declare the same path (no weighing lifts it), and when a new child slot
   overlaps an old one without `checked:` or without the `Khác` line.
+8. Designing the standard's structure is the agent's work: audit the gap, design the whole answer, print the full tree with a
+   note on every line for approval, write it once approved. No questions with several choices; one question only where a real
+   fork remains. The standard is a dictionary of names to look up, never a list of folders to create: no empty folder.
 
 ## Implements · Thi hành luật
 - `Rule_Gate_85_ProposeChecked` — proposing a slot or a structure template · đề xuất slot hay template cấu trúc

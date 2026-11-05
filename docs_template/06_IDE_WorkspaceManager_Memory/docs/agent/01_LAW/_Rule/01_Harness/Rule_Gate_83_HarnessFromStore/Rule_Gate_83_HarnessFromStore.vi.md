@@ -1,5 +1,5 @@
 ---
-version: 14
+version: 15
 lang: vi
 ---
 # Rule_Gate_83_HarnessFromStore — Repo dùng bản chép harness; thay đổi chung do chính repo cần nó sửa trên HS
@@ -46,6 +46,10 @@ chờ phiên zemory làm hộ. Repo điền vào chỗ trống mà khung để l
    a. phiên repo không bao giờ nhờ phiên zemory sửa một phần, sửa hiến pháp của repo, hay chạy sync hộ; repo tự làm bước 3a;
    b. phiên zemory nhận một yêu cầu như vậy thì từ chối, và nêu đúng phần, file, dòng để repo yêu cầu tự sửa. Báo lỗi trong mã
       của zemory (một phép kiểm phán sai, một lệnh hỏng) không thuộc loại này: zemory sửa mã của mình.
+8. Luật cho mọi repo do phiên khác chuyển lời người dùng ⇒ phiên của repo giữ HS làm; thay đổi chỉ phục vụ một repo thì repo đó tự
+   làm.
+9. Phiên của repo giữ HS không bao giờ sync hay commit một bộ vào repo khác thay cho nó, và không ghi "repo X chưa sync" vào sổ của
+   mình: mỗi repo tự sync.
 
 ## Ví dụ
 - Tình huống: phiên của OPS tìm ra một bước hay hơn cho skill dựng báo cáo.
