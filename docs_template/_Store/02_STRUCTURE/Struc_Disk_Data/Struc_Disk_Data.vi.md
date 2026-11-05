@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 # Struc_Disk_Data
@@ -229,6 +229,9 @@ Ai thêm một slot, sửa một slot hay dựng một cây mới thì làm đ�
 - `_` ở gốc chỉ đánh dấu hai nơi chứa dùng chung.
 - `Downloads\` là chỗ duy nhất cho đồ chưa xếp; không thư mục nào khác giữ hộp chờ.
 - Đo chỗ trống của ổ trước mỗi việc ghi lớn (cài đặt, dựng image, chép dữ liệu) và sau khi làm xong.
+- Việc ghi chỉ ra ổ dữ liệu; không ghi, không dời, không để tạm thứ gì sang ổ hệ thống hay ổ nào khác, kể cả thư mục tạm. Ổ dữ liệu
+  không bao giờ được để tràn: đo chỗ trống trước và sau mỗi việc ghi lớn (dựng image, chạy nhúng, sao lưu, dựng lại); giải phóng chỗ
+  ngay trên ổ dữ liệu (prune, nén, xoá thứ do chính phiên tạo); xoá dữ liệu của chủ máy thì hỏi trước.
 
 ## Phép kiểm
 

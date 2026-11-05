@@ -3,7 +3,7 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 39
+version: 40
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -328,6 +328,19 @@ control and do not push its label down or up. Gate using rendered rectangles acr
 number rows at desktop and phone widths; centre-line difference <= 2 px. A blur slider must change the actual panel
 `backdrop-filter` and a visible preview using the same token; verify both computed styles before and after input and after
 reload. A decorative slider with an unchanged panel or preview fails.
+
+### F20. A progress surface covers EVERY layer
+A surface that shows a background process (sync · job · pipeline) folds every layer into one signal the person sees: a run
+that failed · a run cut short · running (with minutes and step) · stuck past its ceiling · an outside layer (a cloud drive,
+the operating system) not answering · the background itself silent. A failure in any layer shows, even when it is not the
+app's own code. "Running" is never reported as done: done means the numbers arrived (nothing pending, the mark moved), and
+"100%" is a claim, never a rounding.
+
+### F21. Before chasing a UI report, check the build being served
+A report about the interface is first checked against the version the running app serves (its `/ping` or about line)
+compared with the source. Different ⇒ the person is looking at an old build: rebuild, restart, then ask whether the defect
+is still there. A batch of fixes ends with ONE restart of the app, announced with how long it is down; one restart per fix
+makes the app flicker in front of the person.
 
 ## THE CHECKER — rules that can be measured are checked by the machine
 

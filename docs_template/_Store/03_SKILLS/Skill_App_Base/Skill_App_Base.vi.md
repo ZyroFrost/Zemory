@@ -1,5 +1,5 @@
 ---
-version: 39
+version: 40
 lang: vi
 ---
 
@@ -313,6 +313,17 @@ bảng (danh sách · nhật ký · ma trận · báo cáo).** Chỉ nội dung 
 **Tìm kiếm là truy vấn thật, không phải ô chỉ để nhìn.** Nhãn truy cập phải mô tả đúng tập dữ liệu của trang; gõ vào phải đổi kết quả. Nhật ký dùng một truy vấn chung khớp người làm, thao tác, app, địa chỉ và chi tiết trước khi giới hạn số dòng; lọc ngày/app/mức độ vẫn riêng. Cổng kiểm dùng một từ chỉ có trong chi tiết, một từ chỉ có trong thao tác, rồi xoá để trả lại toàn bộ kết quả. Ô tìm nhật ký chung không được mang nhãn chỉ tìm tên đăng nhập.
 
 **Hàng Cài đặt căn giữa nhãn với control chính ở hai cột.** Chú thích và vùng xem trước nằm dưới control, không đẩy nhãn lệch. Cổng kiểm đo tâm hình chữ nhật của nhãn và segment, switch, swatch, range, ô số ở cả máy tính và điện thoại; độ lệch ≤ 2 px. Thanh độ mờ phải đổi `backdrop-filter` thật của panel và vùng xem trước dùng cùng token; kiểm computed style trước/sau khi kéo và sau tải lại. Thanh trượt chỉ đổi số nhưng không đổi kính là lỗi.
+
+### F20. Bề mặt tiến trình phủ MỌI tầng
+Bề mặt hiện một tiến trình nền (sync · job · pipeline) gộp mọi tầng thành một tín hiệu người dùng thấy được: lượt hỏng · lượt bị
+cắt · đang chạy (kèm số phút và bước) · kẹt quá trần · tầng ngoài (ổ đám mây, hệ điều hành) không trả lời · chính tiến trình nền im
+lặng. Hỏng ở tầng nào cũng phải hiện, kể cả khi không phải mã của app. "Đang chạy" không bao giờ được báo như đã xong: xong là khi
+số đã về đủ (không còn gì chờ, mốc đã nhích), và "100%" là một khẳng định, không phải phép làm tròn.
+
+### F21. Trước khi truy một báo lỗi giao diện, kiểm bản đang được phục vụ
+Báo lỗi giao diện trước hết được đối chiếu phiên bản app đang chạy phục vụ (`/ping` hoặc dòng giới thiệu) với mã nguồn. Lệch ⇒
+người dùng đang xem bản cũ: build, khởi động lại, rồi hỏi lỗi còn không. Một loạt bản vá kết thúc bằng MỘT lần khởi động lại app,
+báo trước app tắt bao lâu; mỗi bản vá một lần khởi động lại làm app nhấp nháy trước mặt người dùng.
 
 ## BỘ KIỂM — luật đo được thì máy kiểm
 

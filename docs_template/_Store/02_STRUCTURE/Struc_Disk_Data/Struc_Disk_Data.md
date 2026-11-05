@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 12
+version: 13
 scope: disk
 ---
 # Struc_Disk_Data
@@ -239,6 +239,10 @@ Whoever adds a slot, changes a slot or builds a new tree does these steps, in or
 - `_` at the root marks only the two shared stores.
 - `Downloads\` is the only place for unsorted items; no other folder keeps an inbox.
 - Measure the drive's free space before every large write (installing, building an image, copying data) and after it.
+- Work writes only to the data drive; nothing is written, moved or parked on the system drive or any other drive, temporary
+  folders included. The data drive is never let fill: measure its free space before and after every large write (an image
+  build, an embedding run, a backup, a rebuild); free space on the data drive itself (prune, compact, remove what the session
+  made); deleting the owner's data is asked first.
 
 ## Check
 
