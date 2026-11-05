@@ -173,6 +173,17 @@ export const RULES = [
         const under = th.getBoundingClientRect().bottom - body.getBoundingClientRect().top;
         if (under > 1 && parseFloat(m[1]) < under - 2) return 'the rows read through the pinned header: cut ' + Math.round(parseFloat(m[1])) + ' px of ' + Math.round(under) + ' px under it';
       }
+      // a pinned first column: a cell scrolled under it sideways is cut at its right edge
+      const leftCut = cell => { const m = /^inset\\(([\\d.]+)px(?: ([\\d.]+)px)?(?: ([\\d.]+)px)?(?: ([\\d.]+)px)?\\)/.exec(getComputedStyle(cell).clipPath || '');
+        return m ? parseFloat(m[4] ?? m[2] ?? m[1]) : 0; };
+      for (const pin of pinned.filter(e => !e.closest('thead') && getComputedStyle(e).left !== 'auto')) {
+        const p = pin.getBoundingClientRect();
+        for (const cell of [...pin.parentElement.children].filter(c => c !== pin)) {
+          const r = cell.getBoundingClientRect(), under = Math.min(r.right, p.right) - r.left;
+          if (r.left < p.right - 1 && under > 1 && leftCut(cell) < under - 2)
+            return 'a cell scrolled under the pinned column reads through it (cut ' + Math.round(leftCut(cell)) + ' px of ' + Math.round(under) + '): ' + name(pin);
+        }
+      }
       return true;
     })()`,
   },
