@@ -1565,9 +1565,16 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         process.exitCode = 1;
         return;
       }
+      // isolated until the user approves the measurements (plan/38 header): it reads a SNAPSHOT of the GM, never the live one
+      const snap = flagValue(args, "--db");
+      if (!snap) {
+        console.log("zemory memory bench --prompts --train: --db <snapshot of the GM> is required - the training never reads the live GM.");
+        process.exitCode = 1;
+        return;
+      }
       const { pull, writePull } = await import("../training/prompt-gates/01_pull.js");
       const perRaw = flagValue(args, "--per-project");
-      const r = pull({ perProject: perRaw ? Number(perRaw) : undefined });
+      const r = pull({ perProject: perRaw ? Number(perRaw) : undefined, dbPath: snap });
       const w = writePull(r.rows);
       console.log(`zemory memory bench --prompts --train — step 01 pull: ${r.read} user message(s) · ${r.spoken} spoken · ${r.unique} unique · ${r.kept} kept from ${r.projects} project(s)`);
       console.log(`  ${w.path}  (hash ${w.hash})`);
