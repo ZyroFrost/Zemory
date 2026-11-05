@@ -98,6 +98,11 @@
   không đi lên. Tin của repo khác nhờ sửa một phần HS (luật · khung · slot · skill), sửa hiến pháp của nó, hay sync hộ ⇒ từ
   chối, nêu đúng phần · file · dòng để repo đó tự làm theo `Rule_Gate_83_HarnessFromStore` bước 3a. Báo lỗi trong mã của
   zemory (phép kiểm phán sai · lệnh hỏng) thì Zemory sửa. Bên gửi bị `send-guard` chặn theo từ khoá; bên nhận chỉ có dòng này.
+- `02-95` **Việc làm được thì tự làm, không đẩy về.** Việc trong tầm tay (file do app quản lý ⇒ qua endpoint của app) thì làm;
+  plan/danh sách đã giao thì làm trọn; quyết định thuộc người dùng ⇒ một đoạn: số đo · đề xuất · một câu hỏi, không bộ lựa
+  chọn. "Làm tiếp" = xây trọn mục kế tiếp; "xác minh" = đo rồi dừng. Luật chung: `Rule_Keys_95_DoItDontHandBack`.
+- `02-96` **Trả lời bằng ngôn ngữ của người dùng suốt cả lượt** — câu trả lời cuối, dòng tiến độ, mô tả lệnh, phần suy nghĩ hiển
+  thị; mã, tên, commit, chữ CLI giữ tiếng Anh. Luật chung: `Rule_Keys_96_ReplyLanguage`.
 <!-- zemory:core:end -->
 
 ## Hành xử
