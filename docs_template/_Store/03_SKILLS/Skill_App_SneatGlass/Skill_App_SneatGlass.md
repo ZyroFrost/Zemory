@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 25
+version: 26
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -71,6 +71,10 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   app's name in the dashboard app, the hub's own name in the hub. It stays fixed while moving between that app's pages; the
   crumbs name the current page. [brand-area]
 - **A menu group label clears its short divider line** by at least 8 px while the menu is open. [menu-header-gap]
+- **A group of the menu is a layer of the crumbs, never a heading in the page:** a department or an area the menu groups pages
+  under is one layer of the crumbs (`<family> / <app> / <group> / ... / <page>` - several group layers when the menu nests them),
+  its own page lists what it holds, and every page under it shows it in its crumbs. A page card never repeats a group's name as
+  a heading over its content; an inner card's own title is its own name. [group-in-crumbs]
 
 ## 3. Dialogs — exactly S / M / L (`app-base` F2 in this kind)
 
@@ -198,6 +202,8 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code]
 - **The status dot is whole:** an online avatar's dot sits on its edge, and no box around it - a button or a menu row that
   clips for its ripple - cuts it. [dot-whole]
+- **An avatar keeps its square:** in any row - a page, the top bar, the menu, a dropdown - a kit avatar stands `flex-shrink-0`
+  beside text that may be long, and the text block shrinks and ends in "…"; a long name never squeezes the avatar. [avatar-square]
 - **The look is the person's across the family:** the UI settings that shape the shared surface - theme, language, date
   format, glass and blur, the pointer effects and light, the filter layout and pins, content width and menu - are kept once,
   as the person's settings of the system-manager in the family database, and every app of the family reads and writes them
