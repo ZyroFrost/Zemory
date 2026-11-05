@@ -11,20 +11,31 @@ import { fileURLToPath } from "node:url";
 /** A path inside an agent memory folder, any spelling: C:\Users\x\.claude\projects\p\memory\a.md · ~/.claude/projects/p/memory */
 export const MEMORY_PATH = /[\\/]\.claude[\\/]+projects[\\/]+[^\\/"'\s]+[\\/]+memory(?:[\\/]|["'\s]|$)/i;
 
-/** A shell command that writes (redirect · copy/move · write cmdlets · in-place edit · an interpreter writing a file). */
-const SHELL_WRITE = new RegExp(
-  [
-    String.raw`(^|[^<>&|2])>{1,2}(?!&)`,
-    String.raw`\btee\b`,
-    String.raw`\b(cp|mv|install|rsync|touch|dd)\b`,
-    String.raw`\bsed\s+-i\b`,
-    String.raw`\b(Set-Content|Add-Content|Out-File|New-Item|Copy-Item|Move-Item|Rename-Item)\b`,
-    String.raw`\b(sc|ac|ni|cpi|mi|copy|move|ren)\s`,
-    String.raw`writeFile|appendFile|createWriteStream|WriteAllText|AppendAllText`,
-    String.raw`open\([^)]*['"][wa]\+?['"]`,
-  ].join("|"),
-  "i",
-);
+/** A memory folder path inside a shell command (no anchors: it sits in the middle of a line). */
+const M = String.raw`[^\s"'|;&]*[\\/]\.claude[\\/]+projects[\\/]+[^\\/"'\s]+[\\/]+memory\b[^\s"'|;&]*`;
+/** A shell command whose write TARGETS a memory folder. Reading memory and writing elsewhere passes: the move into HS reads
+ *  the files and writes its tables outside (measured 2026-11-05: a first version that blocked any write in a command naming
+ *  a memory path blocked `… > /dev/null`). Judged per segment of the command (split at | ; && || and new lines). */
+const SHELL_WRITE_TO_MEMORY: RegExp[] = [
+  new RegExp(String.raw`>{1,2}\s*["']?${M}`, "i"),
+  new RegExp(String.raw`\btee\b(\s+-\w+)*\s+["']?${M}`, "i"),
+  new RegExp(String.raw`\b(touch|sed\s+-i\S*)\b.*${M}`, "i"),
+  // copy / move: the memory folder is the LAST argument (the destination)
+  new RegExp(String.raw`\b(cp|mv|install|rsync|copy|move|cpi|mi|Copy-Item|Move-Item)\b.*\s["']?${M}["']?\s*$`, "i"),
+  new RegExp(String.raw`-Destination\s+["']?${M}`, "i"),
+  new RegExp(String.raw`\b(Set-Content|Add-Content|Out-File|New-Item|Rename-Item|sc|ac|ni)\b.*${M}`, "i"),
+  new RegExp(String.raw`(writeFile\w*|appendFile\w*|createWriteStream|WriteAllText|AppendAllText)\s*\(\s*["'\x60]${M}`, "i"),
+  new RegExp(String.raw`open\(\s*["']${M}["']\s*,\s*["'][wax]`, "i"),
+];
+
+/** The memory path a shell command writes to, or null. */
+function shellWriteTarget(cmd: string): string | null {
+  for (const seg of cmd.split(/\|\||&&|[|;\n]/)) {
+    if (!MEMORY_PATH.test(seg)) continue;
+    if (SHELL_WRITE_TO_MEMORY.some((re) => re.test(seg))) return MEMORY_PATH.exec(seg)?.[0].trim() ?? seg.trim();
+  }
+  return null;
+}
 
 const FILE_TOOLS = new Set(["Write", "Edit", "MultiEdit", "NotebookEdit"]);
 const SHELL_TOOLS = new Set(["Bash", "PowerShell"]);
@@ -41,9 +52,7 @@ export function memoryWrite(payload: unknown): string | null {
     return MEMORY_PATH.test(f) ? f : null;
   }
   if (SHELL_TOOLS.has(tool)) {
-    const cmd = String(ti.command ?? "");
-    const m = MEMORY_PATH.exec(cmd);
-    return m && SHELL_WRITE.test(cmd) ? m[0].trim() : null;
+    return shellWriteTarget(String(ti.command ?? ""));
   }
   return null;
 }
