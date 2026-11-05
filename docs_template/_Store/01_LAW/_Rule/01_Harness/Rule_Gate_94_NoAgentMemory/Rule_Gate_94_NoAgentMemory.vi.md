@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 # Rule_Gate_94_NoAgentMemory — Không ghi gì vào memory của agent; bài học vào harness
@@ -25,6 +25,11 @@ hoặc docs của chính repo.
    ghi ở đâu.
 4. Tắt tính năng memory của host khi host cho tắt (Claude Code: `autoMemoryEnabled: false` trong settings toàn máy `~/.claude/settings.json`, do
    `zemory hook install` ghi).
+5. Thư mục memory của chính project còn tồn tại (`~/.claude/projects/<project>/memory/`) ⇒ chuyển nó, một lần: chép sang
+   `data/snapshots/agent-memory-<ngày>/` · đọc trọn từng file · xếp từng bài học theo bước 1 vào một bảng (file · nhà · thêm / gộp vào
+   món nào / bỏ · lý do) · trình bảng cho người dùng · ghi phần được duyệt (HS theo `Rule_Gate_83_HarnessFromStore`, docs của repo
+   bằng tay) · xoá thư mục (`Rule_Gate_10_DestructiveOps`). Câu nói nguyên văn của người dùng không vào HS; nó vào dữ liệu train của
+   cửa nhắc khi có.
 
 ## Ví dụ
 - Tình huống: người dùng nói "không bao giờ truyền một dòng shell inline qua PowerShell vào WSL".

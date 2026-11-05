@@ -1,7 +1,7 @@
 ---
 id: Rule_94
 name: no-agent-memory
-version: 2
+version: 3
 kind: action
 code: 01_Harness
 checked: [Rule_Gate_83_HarnessFromStore, Rule_Gate_73_GateEveryRule, Rule_Gate_10_DestructiveOps]
@@ -29,6 +29,11 @@ machine check: a law in HS with its hook, a skill, a slot, or the repo's own doc
    where it was written.
 4. Turn the host's own memory feature off where the host allows it (Claude Code: `autoMemoryEnabled: false` in the
    machine-wide settings `~/.claude/settings.json`, written by `zemory hook install`).
+5. The memory folder of the session's own project still exists (`~/.claude/projects/<project>/memory/`) ⇒ move it, once:
+   copy it to `data/snapshots/agent-memory-<date>/` · read every file in full · sort each lesson by step 1 into a table
+   (file · home · add / merge into a part / drop · reason) · show the table to the person · write what was approved (HS by
+   `Rule_Gate_83_HarnessFromStore`, the repo's docs by hand) · delete the folder (`Rule_Gate_10_DestructiveOps`). A sentence the
+   person said stays out of HS; it goes to the training data of the reminder doors when one exists.
 
 ## Example
 - Situation: the person says "never pass an inline shell line through PowerShell into WSL".
