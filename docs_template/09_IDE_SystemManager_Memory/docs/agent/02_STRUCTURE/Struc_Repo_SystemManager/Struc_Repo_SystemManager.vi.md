@@ -1,11 +1,11 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Struc_Repo_SystemManager
 
-Chuẩn cấu trúc của repo quản một hệ app: mọi slot của `Struc_Repo_App` (khai `extends`). Slot riêng của vai đo khi ráp repo
-đầu tiên theo template này.
+Chuẩn cấu trúc của repo quản một hệ app: mọi slot của `Struc_Repo_App` (khai `extends`), thêm slot riêng của vai
+`Frontend_173_Shell` (`frontend/shell/`).
 
 ## Vai
 
@@ -19,6 +19,8 @@ Chuẩn cấu trúc của repo quản một hệ app: mọi slot của `Struc_Re
     trên máy.
   - `sign-in` — trang đăng nhập duy nhất và phiên duy nhất của hệ, màn quản trị tài khoản, vai theo từng app, phiên và log vận hành
     của mọi app.
+- **Khung mọi app cùng mang nằm ở đây** (`Frontend_173_Shell`): một gói gồm thanh trên, menu, thanh trang, bộ lọc, bảng, hộp thoại
+  và toast, phát thành các bản có số qua gateway; mỗi app ghim một số và đưa cho khung phần riêng của mình, không tự dựng khung.
 - **Giá trị thật của hệ viết một lần ở đây** (`_Store/README.md` §8.3): tên cookie phiên, mã các app, đường đăng nhập, số giờ hết hạn
   phiên, dải cổng — trong hiến pháp của repo này (điều riêng từ 101) và bảng app. `Cons_Gate_14_Access` của mỗi app trỏ về đây và chỉ
   thêm phần riêng của nó.

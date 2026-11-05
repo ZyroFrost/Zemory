@@ -1,13 +1,14 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 # Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
 
 ## Luật là gì
-Các app cùng một hệ (repo vai `app`, do một `system-manager` quản, dùng một repo `app-data`) dùng chung bốn thứ và không tự làm bản
-riêng: một DB giao dịch của cả hệ, một đăng nhập của `system-manager`, một màn quản trị của `system-manager` để cấp vai, và bộ mã log
-vận hành do repo `app-data` giữ. `system-manager` chỉ giữ phần dùng chung — cổng, đăng nhập, màn quản trị và đường dẫn tới các app;
+Các app cùng một hệ (repo vai `app`, do một `system-manager` quản, dùng một repo `app-data`) dùng chung năm thứ và không tự làm bản
+riêng: một DB giao dịch của cả hệ, một đăng nhập của `system-manager`, một màn quản trị của `system-manager` để cấp vai, bộ mã log
+vận hành do repo `app-data` giữ, và khung giao diện do `system-manager` giữ. `system-manager` chỉ giữ phần dùng chung — khung, cổng,
+đăng nhập, màn quản trị và đường dẫn tới các app;
 mỗi app tự phục vụ trang và API của chính nó.
 
 Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nhà nhưng không chỉ nhà nào giữa các repo của một hệ;
@@ -55,6 +56,11 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
 5. `system-manager` chỉ giữ phần dùng chung: cổng (một địa chỉ, mỗi app một đường dẫn), đăng nhập, màn quản trị và đường dẫn tới các
    app. Mỗi app tự phục vụ frontend và backend của nó dưới đường dẫn của nó; `system-manager` không bao giờ chứa trang hay API nghiệp
    vụ của app, và các app không gọi nhau qua nó. Thứ hai app dùng chung là DB của hệ.
+6. Khung giao diện dùng chung: thanh trên, menu, thanh trang với bộ lọc, cách bảng chạy (dòng tiêu đề ghim, kéo cột), hộp thoại,
+   toast và cài đặt của người dùng là MỘT gói do `system-manager` giữ (`frontend/shell/`, `Frontend_173_Shell`) và phát thành các
+   bản có số. Mọi app mang bản có số nó ghim và chỉ dựng nội dung trang của nó; không bao giờ vẽ hay vá một phần của khung — lỗi của
+   khung do `system-manager` sửa và phát, thứ app cần thì thêm vào khung. Cách làm: `Skill_App_Shell` (`system-manager`) và
+   `Skill_App_ShellUse` (mỗi app).
 
 ## Ví dụ
 - Tình huống: một app báo cáo mới cần vai cho người xem và muốn ghi ai mở bảng nào.
@@ -85,7 +91,13 @@ Vì sao thành luật riêng: `Rule_Gate_35_OneHome` đòi mỗi thứ một nh�
   `Dept_<tên>`, gãy ngay ở repo đầu tiên đặt tên khác.
 - ✓ Đúng: agent dùng tài khoản của người dùng và gửi `X-Acting-Repo: Dept_ABC` (thư mục gốc repo của nó); dòng log ghi người
   `jane.doe` · repo `Dept_ABC` · `push_apply`, và vai của người quyết định việc nào được làm.
+- Tình huống: trong một app báo cáo của hệ, popover bộ lọc tràn khỏi cửa sổ, còn trang của `system-manager` thì không.
+- ✗ Sai: sửa chiều cao popover trong bản khung chép riêng của app báo cáo; app sau lại chép khung và mang lỗi trở lại, hai bản chép
+  lệch nhau.
+- ✓ Đúng: app báo cáo gửi trang, độ rộng và theme cho `system-manager`; lỗi được dựng lại trên trang của nó, sửa trong
+  `frontend/shell/`, phát thành khung `1.0.1`; app báo cáo dời số ghim từ `1.0.0` lên `1.0.1` và chạy phép kiểm trình duyệt của nó.
 
 ## Máy kiểm
-- Nhắc theo từ khoá: lời yêu cầu về DB riêng của app, đăng nhập riêng hay chung, màn quản trị, vai hay log vận hành thì hiện luật
-  này; phần còn lại là phán đoán.
+- Nhắc theo từ khoá: lời yêu cầu về DB riêng của app, đăng nhập riêng hay chung, màn quản trị, vai, log vận hành hay khung dùng chung
+  thì hiện luật này; phần còn lại là phán đoán.
+- `zemory conform` chỉ nhận `frontend/shell/` ở repo ráp từ `Struc_Repo_SystemManager`.

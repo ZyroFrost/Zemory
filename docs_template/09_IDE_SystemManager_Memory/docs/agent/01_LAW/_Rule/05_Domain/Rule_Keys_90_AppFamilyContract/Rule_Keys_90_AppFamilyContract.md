@@ -1,18 +1,19 @@
 ---
 id: Rule_90
 name: app-family-contract
-version: 11
+version: 12
 kind: judgment
 code: 05_Domain
-checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_App_Base, Skill_Db_Base, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData]
-from: _Store/01_LAW/_Rule/05_Domain/Rule_Keys_90_AppFamilyContract @v11 #e43e27522189
+checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_App_Base, Skill_Db_Base, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData, Skill_App_SneatGlass, Frontend_173_Shell]
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Keys_90_AppFamilyContract @v12 #0d3cad7c6f5b
 ---
 # Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
 
 ## What
-Apps that belong to one family (repos with role `app`, managed by a `system-manager`, using an `app-data` repo) share four
+Apps that belong to one family (repos with role `app`, managed by a `system-manager`, using an `app-data` repo) share five
 things and never build their own copy: the family's one transactional database, the `system-manager`'s one sign-in, its one admin
-screen for roles, and the operation-log codes kept by the `app-data` repo. The `system-manager` holds only what is shared — the
+screen for roles, the operation-log codes kept by the `app-data` repo, and the frame of the surface kept by the `system-manager`.
+The `system-manager` holds only what is shared — the frame,
 gateway, the sign-in, the admin screen and the links to the apps; every app serves its own pages and its own API.
 
 Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but names no home across the repos of a family;
@@ -62,6 +63,12 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
 5. The `system-manager` holds only the shared parts: the gateway (one address, one path per app), the sign-in, the admin screen
    and the links to the apps. Every app serves its own frontend and its own backend under its own path; the `system-manager` never
    hosts an app's pages or business API, and apps never call each other through it. What two apps share is the family's database.
+6. The frame of the surface is shared: the top bar, the menu, the page bar with its filters, the table behaviour (pinned header,
+   column resize), the dialogs, the toasts and the person's settings are ONE package kept by the `system-manager`
+   (`frontend/shell/`, `Frontend_173_Shell`) and published as numbered builds. Every app wears the build whose number it pins and
+   builds only the content of its pages; it never draws or patches a part of the frame — a fault of the frame is fixed and published
+   by the `system-manager`, a part the app needs is added to the frame. How: `Skill_App_Shell` (the `system-manager`) and
+   `Skill_App_ShellUse` (each app).
 
 ## Example
 - Situation: a new reporting app needs its viewers' roles and wants to record who opened which board.
@@ -93,12 +100,22 @@ Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but nam
   such as `Dept_<name>`, which breaks on the first repo named another way.
 - ✓ Right: the agent uses the person's account and sends `X-Acting-Repo: Dept_ABC` (its repo's root folder); the row reads
   person `jane.doe` · repo `Dept_ABC` · `push_apply`, and the person's role decides what was allowed.
+- Situation: in a reporting app of the family the filter popover runs off the window, while the `system-manager`'s pages are fine.
+- ✗ Wrong: fix the popover's height in the reporting app's own copy of the frame; the next app copies the frame again and brings
+  the fault back, and the two copies drift.
+- ✓ Right: the reporting app reports the page, width and theme to the `system-manager`; the fault is reproduced on its pages,
+  fixed in `frontend/shell/`, published as frame `1.0.1`; the reporting app moves its pin from `1.0.0` to `1.0.1` and runs its
+  browser test.
 
 ## Check
-- Keyword reminder: a request about an app's own database, its own or the shared sign-in, an admin screen, roles or the operation
-  log shows this law; the rest is judgment.
+- Keyword reminder: a request about an app's own database, its own or the shared sign-in, an admin screen, roles, the operation
+  log or the shared frame shows this law; the rest is judgment.
+- `zemory conform` accepts `frontend/shell/` only in a repo assembled from `Struc_Repo_SystemManager`.
 
 ## Links · Liên kết
 - Implements · Thi hành: `Skill_App_Base` — how an app of a family is built · cách dựng một app của hệ
+- Implements · Thi hành: `Skill_App_Shell` — the system-manager keeps and publishes the frame · repo quản hệ giữ và phát khung
+- Implements · Thi hành: `Skill_App_ShellUse` — an app wears the frame at the number it pins · app mang khung ở bản nó ghim
+- Implements · Thi hành: `Skill_App_SneatGlass` — which part of the kind the frame builds, which the app · phần nào của kiểu do khung dựng, phần nào do app
 - Repo declares · Repo khai: `Cons_Gate_11_WriteBoundary` — the app writes data only, never structure · app chỉ ghi dữ liệu, không ghi cấu trúc
 - Related · Liên quan: `Rule_Gate_35_OneHome` — one thing, one home · một thứ một nhà

@@ -120,6 +120,8 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Exports_135_Exports`](_Slot/Exports_135_Exports/Exports_135_Exports.md) | `exports/` | generated renders / published copies |
 | [`Root_136_Principles`](_Slot/Root_136_Principles/Root_136_Principles.md) | `.` | the general principles of the structure standard |
 | [`Workspaces_169_Workspaces`](_Slot/Workspaces_169_Workspaces/Workspaces_169_Workspaces.md) | `workspaces/` | the output an app produces |
+| [`Backend_174_Training`](_Slot/Backend_174_Training/Backend_174_Training.md) | `backend/src/training/` | the code that trains the repo's own models |
+| [`Data_175_Training`](_Slot/Data_175_Training/Data_175_Training.md) | `data/training/` | the data and results of training a model |
 
 | Host note · Ghi chú host | About · Về |
 |---|---|

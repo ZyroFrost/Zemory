@@ -1,6 +1,8 @@
 {
   "extends": "Struc_Repo_App",
-  "slots": [],
+  "slots": [
+    "Frontend_173_Shell"
+  ],
   "role": {
     "name": "system-manager",
     "manages": [

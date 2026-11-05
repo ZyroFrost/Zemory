@@ -2,9 +2,9 @@
 id: Slot_3
 aka: 03-3
 name: frontend
-version: 7
+version: 8
 path: frontend/
-from: _Store/02_STRUCTURE/_Slot/Frontend_003_Frontend @v7 #bd1d013f0874
+from: _Store/02_STRUCTURE/_Slot/Frontend_003_Frontend @v8 #397a53f4a3c6
 ---
 # Frontend_003_Frontend frontend — the interface people use
 
@@ -15,4 +15,4 @@ from: _Store/02_STRUCTURE/_Slot/Frontend_003_Frontend @v7 #bd1d013f0874
   - No-build UI (static): the app serves its UI as static files (FastAPI StaticFiles · express.static · nginx), no bundler (webpack/vite): one big HTML file MUST be splittable into files by concern (`styles/*.css` · logic as several `<script src>` · state · api client) — modular without a build. The safe order: `<script src>` keeping the global scope first → remove inline `onclick=` → move to ES modules last (module scope loses global functions ⇒ handlers break). Not an embedded UI (single binary): there splitting is forbidden; here splitting is right.
   - The single-language UI exception (server-side rendering): no `frontend/`, this role lives in the backend — see `backend/`.
   - A NON-APP repo has no `frontend/`; 0 UI rules.
-- May hold / may not hold: Holds: `assets/` · `components/` · `styles/` · `pages/` · `layouts/` · `state/` · `hooks/` · `client/` · `locales/` · `config/` · `util/` · `types/` · `public/`.
+- May hold / may not hold: Holds: `assets/` · `components/` · `styles/` · `pages/` · `layouts/` · `state/` · `hooks/` · `client/` · `locales/` · `config/` · `util/` · `types/` · `public/` · `shell/` (only a system-manager repo: the frame every app of its system wears, `Frontend_173_Shell`).

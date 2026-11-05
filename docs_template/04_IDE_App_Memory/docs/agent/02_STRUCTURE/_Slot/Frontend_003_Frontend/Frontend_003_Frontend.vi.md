@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Frontend_003_Frontend frontend — giao diện người dùng
@@ -11,4 +11,4 @@ lang: vi
   - UI no-build (static): app phục vụ UI bằng static files (FastAPI StaticFiles · express.static · nginx), không bundler (webpack/vite): một file HTML lớn PHẢI tách được thành nhiều file theo concern (`styles/*.css` · logic thành nhiều `<script src>` · state · api-client) — modular hoá không cần build. Thứ tự an toàn: `<script src>` giữ global scope trước → gỡ inline `onclick=` → nâng ES module sau (module scope mất global function ⇒ handler vỡ). Khác UI embed (single-bin): ở đó cấm tách; ở đây tách là đúng.
   - Ngoại lệ UI một ngôn ngữ (render server-side): không có `frontend/`, vai trò này nằm trong backend — xem `backend/`.
   - Hệ NON-APP không có `frontend/`; 0 luật UI.
-- Được chứa / không chứa: Chứa: `assets/` · `components/` · `styles/` · `pages/` · `layouts/` · `state/` · `hooks/` · `client/` · `locales/` · `config/` · `util/` · `types/` · `public/`.
+- Được chứa / không chứa: Chứa: `assets/` · `components/` · `styles/` · `pages/` · `layouts/` · `state/` · `hooks/` · `client/` · `locales/` · `config/` · `util/` · `types/` · `public/` · `shell/` (chỉ repo quản hệ: khung mọi app của hệ cùng mang, `Frontend_173_Shell`).

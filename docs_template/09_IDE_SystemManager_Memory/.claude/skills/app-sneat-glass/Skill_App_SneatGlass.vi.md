@@ -1,5 +1,5 @@
 ---
-version: 23
+version: 24
 lang: vi
 ---
 
@@ -220,23 +220,33 @@ lang: vi
   - **bản nháp:** hai lựa chọn trong popover giữ nguyên các dòng và số đếm cho tới khi bấm Áp dụng, lúc đó cả hai cùng chạy;
   - **cú bấm:** mỗi nút có chữ của hộp thoại, khi bấm bằng con trỏ thật và đang giữ, vẫn giữ cỡ của nó.
 
-## 7. Đưa kiểu này vào một app của hệ
+## 7. Ai dựng phần nào trong một hệ
 
-Frontend của system-manager là mẫu sống; bản thử đầu tiên đã đóng băng là bản chép template Sneat ở repo thiết kế. Một app chuyển
-sang kiểu này, theo thứ tự:
-1. Khai `{"style": "SneatGlass"}` ở `frontend/config/ui.json`; `zemory sync` mang về skill này, `app-sneat`, `app-glass` và
-   `scripts/sneat_glass_check.mjs`.
-2. Lấy khung như mẫu dựng: menu (chỉ các trang của app; dòng thương hiệu ghi tên app), đầu trang hai hàng (§2b) với thanh trên
-   chung của hệ giữ nguyên, chỗ thanh trang ở hàng 2 để mỗi trang lấp vào (§1), chú thích duy nhất trên `<body>` (§5), các toast,
-   các hộp thoại (§3), tập icon con của bộ mẫu và phông token đi kèm app.
-3. Đọc và ghi cài đặt giao diện của người dùng ở nơi hệ giữ (§5: cài đặt của system-manager trong DB của hệ), để theme, kính, bộ
-   lọc, ghim và các thứ khác theo người dùng từ app này sang app khác; chỉ giữ các khoá riêng của app dưới app id của nó.
-4. Dựng mọi trang danh sách thành thẻ trang: thanh của nó ở hàng 2 (§1), bộ lọc là slicer cho trường ít giá trị cùng ghim, popover
-   và bản nháp của nó (§5), cắt bởi server ở nơi dòng bị giới hạn, bảng ghim dưới đầu trang và cắt dòng ở đó.
-5. Chạy phép kiểm: bài kiểm trình duyệt của app import `RULES` và `DIALOG_RULES`, chạy chúng trên mọi trang và hộp thoại ở một khổ
-   máy tính và một khổ điện thoại, cả hai theme, và chạy các phép đo của §6; xanh trên mọi trang trước lần phát hành đầu của app
-   trong kiểu này.
-6. Báo system-manager khi app đã chạy trên đường dẫn của nó, để bảng app và cổng điều hướng của hệ dẫn tới nó.
+Trong một hệ, khung là MỘT gói do system-manager giữ (`frontend/shell/`, `Frontend_173_Shell`) và phát theo số
+(`Rule_Keys_90_AppFamilyContract` bước 6). Luật của skill này áp trên mọi trang của mọi app; ai dựng từng phần:
+
+| Phần (mục) | Ai dựng |
+|---|---|
+| đầu trang hai hàng (§2b), menu, đường dẫn, menu tài khoản, dòng thương hiệu | khung (`Skill_App_Shell`) |
+| thanh trang và cụm tìm của nó (§1), popover bộ lọc, ghim, bản nháp và xoá lọc (§5), ô lọc, nút góc nhìn | khung; trang đưa bộ lọc, công cụ và góc nhìn của nó |
+| khung đứng yên, thẻ trang phủ kín khung, dòng tiêu đề ghim, kéo cột, thanh cuộn dưới tiêu đề (§2, §5) | khung; trang chỉ vẽ một bảng thường |
+| hộp thoại S / M / L (§3), toast, chú thích duy nhất (§5), Cài đặt và cài đặt bố cục (§4) | khung; trang đưa nội dung cho hộp thoại |
+| nội dung một trang: thẻ, dòng, ô, biểu đồ, tên, ngày, dòng ghim riêng của nó | app (`Skill_App_ShellUse`) |
+
+Một app chuyển sang kiểu này, theo thứ tự:
+1. Khai `{"style": "SneatGlass"}` ở `frontend/config/ui.json`; `zemory sync` mang về skill này, `app-sneat`, `app-glass`,
+   `app-shell-use` và `scripts/sneat_glass_check.mjs`.
+2. Ghim một bản khung đã phát và gắn nó với config của app (`Skill_App_ShellUse` §2–3); gỡ mọi phần khung riêng của app - app không
+   bao giờ dựng một phần mà bảng trên giao cho khung.
+3. Dựng mọi trang danh sách thành nội dung trang (`Skill_App_ShellUse` §4): bộ lọc khai báo, giá trị nhận khi Áp dụng, cắt bởi
+   server ở nơi dòng bị giới hạn; công cụ và góc nhìn đưa cho thanh trang.
+4. Chạy phép kiểm: bài kiểm trình duyệt của app import `RULES` và `DIALOG_RULES`, chạy chúng trên mọi trang và hộp thoại CÓ gắn khung,
+   ở một khổ máy tính và một khổ điện thoại, cả hai theme, và chạy các phép đo của §6; xanh trên mọi trang trước lần phát hành đầu
+   của app trong kiểu này.
+5. Báo system-manager khi app đã chạy trên đường dẫn của nó, để bảng app và cổng điều hướng của hệ dẫn tới nó.
+
+Repo không thuộc hệ nào tự dựng khung theo §1–§5, lấy frontend của system-manager làm mẫu sống.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved on its template before it is ported · kiểu được duyệt trên template trước khi chép sang app
+- `Rule_Keys_90_AppFamilyContract` — in a family, the frame of this kind is built once by the system-manager · trong một hệ, khung của kiểu này do repo quản hệ dựng một lần
