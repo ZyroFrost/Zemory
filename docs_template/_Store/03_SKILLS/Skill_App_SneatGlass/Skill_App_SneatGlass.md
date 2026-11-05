@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 24
+version: 25
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -257,7 +257,8 @@ An app moving onto this kind, in this order:
    `app-shell-use` and `scripts/sneat_glass_check.mjs`.
 2. Pin a published build of the frame and mount it with the app's config (`Skill_App_ShellUse` §2–3); remove every part of the
    app's own frame - an app never builds a part the table above gives the frame.
-3. Build every list page as page content (`Skill_App_ShellUse` §4): its filters declared, values taken on Apply, cut by the server
+3. Build every list page as page content (`Skill_App_ShellUse` §4): its filters declared, each value taken when it takes effect
+   (on Apply in the popover, at once on the bar), cut by the server
    where the rows are limited; its tools and views handed to the page bar.
 4. Run the check: the app's browser test imports `RULES` and `DIALOG_RULES` and evaluates them on every page and dialog WITH the
    frame mounted, at a desktop and a phone width in both themes, and runs the probes of §6; green on every page before the app's

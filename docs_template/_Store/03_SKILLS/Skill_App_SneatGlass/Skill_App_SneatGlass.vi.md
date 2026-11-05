@@ -1,5 +1,5 @@
 ---
-version: 24
+version: 25
 lang: vi
 ---
 
@@ -238,7 +238,8 @@ Một app chuyển sang kiểu này, theo thứ tự:
    `app-shell-use` và `scripts/sneat_glass_check.mjs`.
 2. Ghim một bản khung đã phát và gắn nó với config của app (`Skill_App_ShellUse` §2–3); gỡ mọi phần khung riêng của app - app không
    bao giờ dựng một phần mà bảng trên giao cho khung.
-3. Dựng mọi trang danh sách thành nội dung trang (`Skill_App_ShellUse` §4): bộ lọc khai báo, giá trị nhận khi Áp dụng, cắt bởi
+3. Dựng mọi trang danh sách thành nội dung trang (`Skill_App_ShellUse` §4): bộ lọc khai báo, mỗi giá trị nhận khi nó có hiệu lực
+   (khi Áp dụng trong popover, ngay lập tức trên thanh), cắt bởi
    server ở nơi dòng bị giới hạn; công cụ và góc nhìn đưa cho thanh trang.
 4. Chạy phép kiểm: bài kiểm trình duyệt của app import `RULES` và `DIALOG_RULES`, chạy chúng trên mọi trang và hộp thoại CÓ gắn khung,
    ở một khổ máy tính và một khổ điện thoại, cả hai theme, và chạy các phép đo của §6; xanh trên mọi trang trước lần phát hành đầu
