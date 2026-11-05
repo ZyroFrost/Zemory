@@ -1,5 +1,5 @@
 ---
-version: 26
+version: 27
 lang: vi
 ---
 
@@ -47,17 +47,25 @@ lang: vi
 
 - **Một khối kính, hai hàng, không khe hở:** hàng 1 (56 px) là thanh chung của hệ, hàng 2 (44 px) là thanh của trang, giữa hai
   hàng là một vạch mảnh; cuộn xuống thì hàng 1 thu lại, chỉ còn thanh trang dính trên cùng; cuộn lên hay về đầu trang thì hàng 1
-  hiện lại. Trang không có thanh riêng thì chỉ có hàng 1. [crumbs] [frame]
-- **Hàng 1 chia ba cột:** đường dẫn ở đầu; ô tìm duy nhất ở chính giữa; ở cuối là thứ, ngày và giờ (dạng ngắn khi màn hẹp,
-  không bao giờ đè lên ô tìm) rồi dãy nút (ngôn ngữ · theme · kính · app · chuông · tài khoản). Điện thoại bỏ đường dẫn khỏi
-  hàng 1. [crumbs]
+  hiện lại. Trang không có thanh riêng thì chỉ có hàng 1. [crumbs] [frame] Đầu trang lớn theo hai hàng của nó - không bao giờ giữ
+  `block-size: 4rem` cố định của bộ mẫu để thanh trang tràn ra ngoài - và trang bắt đầu dưới nó, không phần nào của trang nằm dưới
+  thanh. [head-whole]
+- **Hàng 1 nhường chỗ cho đường dẫn:** đường dẫn từ đầu hàng, rồi ô tìm duy nhất đứng sát dãy nút ở cuối, và dãy nút chỉ còn app ·
+  chuông · tài khoản. Không có ngày giờ. Điện thoại bỏ đường dẫn khỏi hàng 1. [crumbs] Lớp hệ, lớp app và trang đang xem luôn đọc
+  đủ; chỉ các lớp ở giữa co lại thành "…" và hiện đủ tên khi rê chuột. [crumbs-whole]
 - **Đường dẫn là hệ / app / [nhóm] / trang:** app nhỏ là `<hệ> / <app> / <trang>`; bản thân system-manager cũng là một app, là
   hub (`<hệ> / Hub / Quản trị / Người dùng`). Nấc thứ hai là app được ghi dưới tên hệ trong menu. Mọi lớp trước trang hiện tại
   đều là liên kết về trang đầu của lớp đó (trang đầu của hệ và của hub là trang chọn app, của một nhóm là trang đầu của nhóm) -
   kể cả khi trang đầu đó chính là trang đang mở; chỉ trang hiện tại là chữ thường (`aria-current="page"`); không title nào lặp
   lại nấc cuối. [crumbs]
 - **Menu tài khoản theo bộ mẫu:** tiêu đề của nó là lời chào trên MỘT dòng ("Chào buổi tối, <tên>"), dưới là vai; rồi Hồ sơ của
-  tôi, Cài đặt, Đăng xuất. Lời chào không bao giờ chiếm chỗ ở hàng 1. [crumbs]
+  tôi, Cài đặt, các cài đặt nhanh - ngôn ngữ (VI · EN), sáng / tối, công tắc kính - rồi Đăng xuất. Lời chào không bao giờ chiếm chỗ
+  ở hàng 1. [crumbs] [bar-switches]
+- **Số phiên bản của app đang mở nằm ở chân menu** (`v<M.m.p>`, đọc từ health của app), ẩn khi menu thu gọn; không bao giờ ở hàng 1.
+- **Thanh trang không có tab tới một trang của menu:** các trang của app tìm trong menu; cụm trái của thanh trang là công cụ của trang
+  (thao tác chính, một công tắc, các chip lọc chéo). [tabs-in-menu]
+- **Tên người dùng đọc không mang mã bản ghi phía trước:** menu, đường dẫn và tiêu đề thẻ ghi tên ("Internal Control Report"), không
+  bao giờ ghi mã trước ("IC_02 …") - mã là định danh. [no-code-prefix]
 - **Tên app ở menu có phần nhấn (`.text-primary`, cuối tên) mang token màu thương hiệu chung `--g-brand`,** ở cả hai theme; app
   tự định nghĩa token. [brand-one-red]
 - **Dưới tên hệ,** dòng nhỏ chỉ ghi app đang mở (`data-app-name` của menu): tên app dashboard trong app dashboard, tên riêng của
@@ -106,8 +114,10 @@ lang: vi
   (`clip-path: inset(0 0 0 max(0px, --sl + --fw - --x))` theo độ cuộn ngang của ô cuộn, bề rộng cột và vị trí trái của ô). [pin-cover]
 - **Thanh cuộn dọc bắt đầu dưới hàng tiêu đề ghim:** ô cuộn mang chiều cao hàng tiêu đề (`--th`) làm lề trên của rãnh thanh
   cuộn, nên cả con trượt lẫn các dòng đều không lên tới cạnh chữ tiêu đề. (Phép đo của bài kiểm trình duyệt, §6.)
-- **Công tắc kính nằm trên thanh trên** cạnh sáng / tối, sáng khi kính đang bật (công tắc của rail Glass, chuyển lên thanh).
-  [bar-switches]
+- **Công tắc kính nằm trong menu tài khoản** cạnh sáng / tối, bật khi kính đang bật. [bar-switches]
+- **Những gì thẻ trang chứa giữ lề của bộ mẫu:** thẻ con đầu tiên (một panel, một thẻ số liệu, một ô) bắt đầu cách ít nhất 1rem bên
+  trong thân thẻ trang - dưới mép trên và trong hai mép bên - không bao giờ dính sát; một bảng thường được chạy mép tới mép.
+  [card-inset]
 - **Chỉ control của bộ mẫu, một phông:** mọi control là `form-control` · `form-select` · `form-check-input`, mọi nhãn trong hộp thoại
   là `form-label` · `form-check-label`, form trên lưới của bộ mẫu (`row g-*` · `col-*`), phông token ở mọi nơi - cả chữ và số trong
   svg - và phông đó thật sự ĐÃ TẢI: app tự mang file phông (phông chỉ được gọi tên sẽ lặng lẽ rơi về phông hệ thống); không lớp
@@ -160,7 +170,9 @@ lang: vi
   một) tối đa 10 giá trị - trạng thái, loại, app, vai, mức, hành động; cột ngày dùng khoảng ngày (từ - đến). Bản ghi chính của
   trang (người, địa chỉ, phòng ban, đầu mối) tìm bằng ô tìm, không bao giờ liệt kê trong bộ lọc. Bộ lọc đang đặt được đánh dấu
   (`.filter-field.on`, theo giá trị ĐÃ ÁP DỤNG). Danh sách của bộ lọc treo trên `<body>` dưới control của nó, như mọi menu trên
-  thẻ kính. [filter-set]
+  thẻ kính. [filter-set] Một trục thời gian có thứ tự (các tháng trong năm, các quý) không phải danh sách bản ghi: nó giữ đủ mọi giá
+  trị và được khai như vậy (`data-filter-kind="period"`); một kỳ trang luôn có (từ - đến, không bao giờ trống) không bao giờ được đánh
+  dấu đã đặt (`.on`) và không bao giờ bị Xoá lọc xoá.
 - **Nút lọc luôn mở popover;** người dùng ghim từng bộ lọc lên thanh hoặc để nó trong popover. Đầu popover là danh sách ghim (mỗi
   bộ lọc một ô tick, Ghim tất cả, Bỏ ghim), rồi mọi bộ lọc chưa ghim; popover giữ một bề rộng cố định (22rem) dù ghim gì. Ghim
   là cài đặt giao diện `filter_pins` của người dùng (một map JSON đường dẫn trang → id bộ lọc), nên giữ ở mọi app; trang chưa có
@@ -175,6 +187,9 @@ lang: vi
   nháp hiện trên nút: "Áp dụng (2)"); đóng popover thì bỏ bản nháp. Bộ lọc ghim trên thanh lọc ngay. [filter-pop] [filter-count]
 - **Số đếm bộ lọc và nút X:** nút lọc đếm các bộ lọc đang đặt (đã áp dụng, không tính bản nháp); khi có bộ lọc đang đặt, thanh
   hiện nút X để xoá chúng, cạnh nút lọc - dù bộ lọc đang ghim hay nằm cả trong popover. [filter-count]
+  Một giá trị trang luôn có (kỳ của báo cáo: ngày từ và ngày đến không bao giờ trống) không bao giờ được đếm là bộ lọc đã đặt và Xoá
+  lọc giữ nguyên nó: trang vừa mở, chưa áp gì, không có số đếm và không có nút X; bấm X thì số về 0, X mất và thứ trang hiện thay đổi -
+  một nút X không đổi gì là nút giả (các bộ đo ở §6).
 - **Mọi bộ lọc cắt ở nơi dòng bị giới hạn:** danh sách server gửi về có giới hạn dòng (N dòng mới nhất của nhật ký) thì lọc bằng
   câu truy vấn của server, TRƯỚC giới hạn - mỗi bộ lọc (khoảng thời gian, app, mức, loại tài khoản, hành động, khoảng ngày, chữ)
   đi vào câu truy vấn; lọc trên trình duyệt trong các dòng mới nhất thì bộ lọc ngày cũ hay giá trị hiếm không ra gì.
@@ -224,7 +239,9 @@ lang: vi
   - **đường bay khi ghim:** ghi lại `Element.animate` - bộ lọc vừa ghim xuất phát bên dưới chỗ của nó trên thanh, bộ lọc vừa bỏ ghim
     xuất phát bên trên chỗ của nó trong popover;
   - **bản nháp:** hai lựa chọn trong popover giữ nguyên các dòng và số đếm cho tới khi bấm Áp dụng, lúc đó cả hai cùng chạy;
-  - **cú bấm:** mỗi nút có chữ của hộp thoại, khi bấm bằng con trỏ thật và đang giữ, vẫn giữ cỡ của nó.
+  - **cú bấm:** mỗi nút có chữ của hộp thoại, khi bấm bằng con trỏ thật và đang giữ, vẫn giữ cỡ của nó;
+  - **lần mở sạch:** mỗi trang mở trong hồ sơ chưa áp gì không có số đếm bộ lọc và không có nút X (kỳ trang luôn có không phải bộ
+    lọc); nơi nút X hiện sau khi đặt một bộ lọc, bấm nó thì số về 0, X mất và các dòng đang hiện thay đổi.
 
 ## 7. Ai dựng phần nào trong một hệ
 

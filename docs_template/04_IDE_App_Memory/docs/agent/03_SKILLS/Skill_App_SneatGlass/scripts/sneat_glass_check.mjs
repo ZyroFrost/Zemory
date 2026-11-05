@@ -189,12 +189,17 @@ export const RULES = [
   },
   {
     id: 'bar-switches',
-    rule: 'the top bar carries the glass switch beside light / dark, lit while glass is on',
+    rule: 'the account menu of the top bar carries the quick settings - language, light / dark and the glass switch (on while glass is on); row 1 keeps only the apps and the bell beside the account',
     check: `(() => {
-      const g = document.querySelector('#layout-navbar [role=switch]#glass-toggle, #layout-navbar #glass-toggle');
-      if (!g) return 'no glass switch in the top bar';
+      const menu = document.querySelector('#layout-navbar #account-menu');
+      if (!menu) return 'no account menu in the top bar';
+      const g = menu.querySelector('[role=switch]#glass-toggle');
+      if (!g || !menu.querySelector('#theme-toggle') || !menu.querySelector('[data-lang]')) return 'the account menu lacks language, light / dark or the glass switch';
+      const row1 = document.querySelector('#layout-navbar > .nav-row1');
+      const outside = row1 && [...row1.querySelectorAll('#theme-toggle, #glass-toggle, [data-lang], #today, .navbar-today')].find(e => !e.closest('#account-menu'));
+      if (outside) return 'a quick setting or the day and time still stands in row 1: ' + (outside.id || outside.className);
       const on = !document.documentElement.classList.contains('solid');
-      return g.classList.contains('active') === on ? true : 'the glass switch is not lit as glass is ' + (on ? 'on' : 'off');
+      return (g.getAttribute('aria-checked') === 'true') === on ? true : 'the glass switch is not on as glass is ' + (on ? 'on' : 'off');
     })()`,
   },
   {
@@ -530,7 +535,7 @@ export const RULES = [
   },
   {
     id: 'filter-set',
-    rule: 'a page card whose filter button is on offers labelled filters for fields of few values only: a pick list holds 10 values at most - the main records of the page are found with the search box, never listed in a filter',
+    rule: 'a page card whose filter button is on offers labelled filters for fields of few values only: a pick list holds 10 values at most - the main records of the page are found with the search box, never listed in a filter; an ordered time axis (months, quarters - data-filter-kind="period") is no list of records and keeps all its values',
     check: `(() => {
       const button = document.querySelector('.page-toolbar #filter-toggle');
       if (!button || button.disabled) return true;
@@ -539,8 +544,9 @@ export const RULES = [
       const fields = [...box.querySelectorAll('.filter-field')];
       if (!fields.length) return 'the filter set is empty';
       if (fields.some(f => !f.querySelector('.filter-label')?.textContent.trim())) return 'a filter without its label';
-      const long = [...box.querySelectorAll('.slicer')].find(s => Number(s.dataset.options) > 10)
-        || [...box.querySelectorAll('select')].find(s => s.options.length > 11);
+      const period = e => Boolean(e.closest('[data-filter-kind="period"]'));
+      const long = [...box.querySelectorAll('.slicer')].find(s => !period(s) && Number(s.dataset.options) > 10)
+        || [...box.querySelectorAll('select')].find(s => !period(s) && s.options.length > 11);
       return long ? 'a pick list of ' + (long.dataset?.options || long.options.length - 1) + ' values - a field of many values is searched, not listed' : true;
     })()`,
   },
@@ -639,7 +645,7 @@ export const RULES = [
   },
   {
     id: 'crumbs',
-    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs at its start, the search at its centre, the day and time before the actions; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs are family / app / [group] / page (a small app: <family> / its name / its page; the hub: <family> / Hub / ...), every layer before the current page a link to that layer home, only the current page plain text',
+    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs taking its room from the start, then the search right beside the actions at its end, no day and time; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs are family / app / [group] / page (a small app: <family> / its name / its page; the hub: <family> / Hub / ...), every layer before the current page a link to that layer home, only the current page plain text',
     check: `(() => {
       const head = document.querySelector('#layout-navbar');
       if (!head) return 'no top bar';
@@ -655,14 +661,8 @@ export const RULES = [
         const search = row1.querySelector('.navbar-search'), actions = row1.querySelector('.navbar-actions');
         const c = crumbs.getBoundingClientRect(), s = search.getBoundingClientRect(), a = actions.getBoundingClientRect();
         if (c.right > s.left + 1 || s.right > a.left + 1) return 'row 1 is not crumbs · search · actions in that order';
-        const r = row1.getBoundingClientRect();
-        if (innerWidth >= 1200 && Math.abs((s.left + s.right) / 2 - (r.left + r.right) / 2) > 12) return 'the search is not at the centre of row 1';
-        if (innerWidth >= 1200) {
-          const day = row1.querySelector('#today');
-          if (!day || !day.getClientRects().length) return 'no day and time in row 1';
-          const d = day.getBoundingClientRect();
-          if (d.right > a.left + 1 || d.left < s.right - 1) return 'the day and time do not stand between the search and the actions (they overlap one)';
-        }
+        if (a.left - s.right > 24) return 'the search does not stand beside the actions (' + Math.round(a.left - s.right) + ' px between)';
+        if (row1.querySelector('#today, .navbar-today')) return 'the day and time still stand in row 1';
       }
       const tools = row2.querySelector(':scope > .page-toolbar > .card-tools');
       if (document.querySelector('.page-card, .insights-page') && !tools) return 'the page bar (row 2) holds no page tools';
@@ -750,6 +750,76 @@ export const RULES = [
       if (!group) return true;
       const crumbs = [...document.querySelectorAll('#layout-navbar .breadcrumb-item')].map(i => norm(i.textContent));
       return crumbs.includes(name(group)) ? true : 'the crumbs lack the page group: ' + (group.getAttribute('title') || group.textContent).trim();
+    })()`,
+  },
+  {
+    id: 'crumbs-whole',
+    rule: 'the crumbs read whole where it matters: the family, the app and the page on screen are never cut to "..."; when row 1 is short only the layers between them shrink (and show their whole name on hover)',
+    check: `(() => {
+      const items = [...document.querySelectorAll('#layout-navbar .breadcrumb-item')].filter(i => i.getClientRects().length);
+      if (items.length < 2) return true;
+      // Cut = its own text overflows it, or it runs past the crumbs' own frame (the row clips it without an ellipsis).
+      const frame = items[0].closest('.breadcrumb, .page-crumbs')?.getBoundingClientRect();
+      const out = e => { const r = e.getBoundingClientRect(); return frame && (r.right > frame.right + 1 || r.left < frame.left - 1); };
+      const cut = e => out(e) || [e, ...e.querySelectorAll('*')].some(x => x.scrollWidth > x.clientWidth + 1 && /ellipsis|clip|hidden/.test(getComputedStyle(x).textOverflow + ' ' + getComputedStyle(x).overflow));
+      const hit = [items[0], items[1], items.at(-1)].find(cut);
+      return hit ? 'a crumb that must read whole is cut: ' + hit.textContent.trim() : true;
+    })()`,
+  },
+  {
+    id: 'card-inset',
+    rule: 'what a page card holds keeps the kit inset from the card edges: the first inner card (a panel, a figure card, a tile) starts at least 1rem inside the page card body - below its top edge and within its sides - never flush against the card (a plain table may run edge to edge, as the kit has it)',
+    check: `(() => {
+      const body = document.querySelector('.page-card > .page-card-body');
+      if (!body || !body.getClientRects().length || body.scrollTop > 0) return true;
+      const first = [...body.querySelectorAll('.card')].find(e => e.getClientRects().length && !e.classList.contains('page-card'));
+      if (!first) return true;
+      const b = body.getBoundingClientRect(), r = first.getBoundingClientRect();
+      const need = parseFloat(getComputedStyle(document.documentElement).fontSize) - 1;
+      const gaps = {top: r.top - b.top, left: r.left - b.left, right: b.right - r.right};
+      for (const [side, gap] of Object.entries(gaps)) if (gap < need) return 'the page content sits ' + Math.round(gap) + ' px from the card ' + side + ' edge (want 1rem at least)';
+      return true;
+    })()`,
+  },
+  {
+    id: 'tabs-in-menu',
+    rule: 'the pages of an app are found in the menu, never as tabs on the page bar: the page bar holds no link to a page the menu lists (its left group is the page tools - its main action, a switch, the cross-filter chips)',
+    check: `(() => {
+      const path = a => { try { let p = new URL(a.getAttribute('href'), location.href).pathname; while (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1); return p; } catch { return ''; } };
+      const menu = new Set([...document.querySelectorAll('#layout-menu a[href]')].map(path).filter(p => p && p !== '/'));
+      const tab = [...document.querySelectorAll('#page-bar a[href]')].find(a => a.getClientRects().length && menu.has(path(a)));
+      return tab ? 'a page of the menu stands as a tab on the page bar: ' + tab.textContent.trim() : true;
+    })()`,
+  },
+  {
+    id: 'no-code-prefix',
+    rule: 'a name a person reads carries no record code before it: the menu, the crumbs and the card titles say "Internal Control Report", never "IC_02 Internal Control Report" - the code is an identifier, the menu already places the thing',
+    check: `(() => {
+      const code = /^[A-Z]{2,6}_\\d{1,3}\\b/;
+      const names = [...document.querySelectorAll('#layout-menu .menu-link, #layout-navbar .breadcrumb-item, #page h1, #page h2, #page h3, #page h4, #page h5, #page h6')];
+      const hit = names.find(e => e.getClientRects().length && code.test((e.textContent || '').trim()));
+      return hit ? 'a name carries its code: ' + hit.textContent.trim().slice(0, 60) : true;
+    })()`,
+  },
+  {
+    id: 'head-whole',
+    rule: 'the glass head holds both its rows whole: row 1 and the page bar (row 2) end inside the head - it grows with them, never a fixed height they spill out of - and the page starts below the head, nothing of it under the bar',
+    check: `(() => {
+      const head = document.querySelector('#layout-navbar');
+      if (!head || !head.getClientRects().length) return true;
+      const h = head.getBoundingClientRect();
+      const name = e => e.id ? '#' + e.id : '.' + [...e.classList].join('.');
+      for (const row of head.querySelectorAll(':scope > .nav-row1, :scope > #page-bar, :scope > #page-bar > *')) {
+        if (!row.getClientRects().length) continue;
+        const r = row.getBoundingClientRect();
+        if (r.height && (r.bottom > h.bottom + 1 || r.top < h.top - 1)) return name(row) + ' spills out of the head by ' + Math.round(Math.max(r.bottom - h.bottom, h.top - r.top)) + ' px';
+      }
+      const page = document.querySelector('.content-wrapper .page-card, .content-wrapper .card');
+      if (innerWidth >= 768 && page && page.getClientRects().length) {
+        const p = page.getBoundingClientRect(), wrap = page.closest('.content-wrapper');
+        if (!wrap || wrap.scrollTop < 1) { if (p.top < h.bottom - 1) return 'the page starts under the head (' + Math.round(h.bottom - p.top) + ' px behind it)'; }
+      }
+      return true;
     })()`,
   },
   {
