@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Shell
 name: app-shell
-version: 1
+version: 2
 type: process
 checked: [Skill_App_SneatGlass, Skill_App_Base, Skill_App_Release, Rule_Keys_90_AppFamilyContract, Frontend_173_Shell]
 description: Build, change and publish the frame every app of a system wears - the one copy of the top bar, menu, page bar, filters, tables, dialogs and toasts kept in the system-manager repo (frontend/shell/) and published as numbered builds the apps pin. Use in a system-manager repo when the frame is changed, a part moves between the frame and an app, an app reports a fault of the frame, or a build of the frame is published. Vietnamese triggers - "khung chung", "khung chuẩn", "gói khung", "phát khung", "bản khung", "sửa khung".
@@ -41,12 +41,16 @@ description: Build, change and publish the frame every app of a system wears - t
 ## 3. The contract an app hands the frame
 
 - The app mounts the frame's root with one config object; the frame never reads the app any other way. Its keys:
-  `area` (the app's name under the brand) · `nav` (the groups and pages this person may open, each with the kit's icon class) ·
+  `area` (the app's name under the brand, the app's own key) · `home` (the start of every path the app owns; a link outside it
+  loads that page) · `nav` (the groups and pages this person may open, each with the kit's icon class) ·
   `title` · `crumbs` · `page` (the page at a path) · `redirect` (a page this person may not open) · `load` (the app's own data the
   frame needs: read when signed in, again on a timer and on focus) · `health` (the app's own health path for the banners) ·
   `login` (only the system manager: its sign-in page; every other app leaves it out and is sent to the shared sign-in with the
   address to come back to) · the app's additions to the search (commands, records, the dialog a record opens) and to Settings
   (cards under Layout, tabs of its own with their footer button).
+- The crumbs: the frame draws the system and the app (to `/` and to `home`), the same in every app; `crumbs` of the config gives
+  only the layers after them. An app's API: the frame gives a client per base (`createClient({base, timeoutMs})`) answering 401,
+  503 "cannot check the session" and errors the same way as the frame's own client.
 - Words: the frame ships its own dictionary; an app adds its own once at start, an app key wins over a frame key, and a key
   found in no dictionary shows as written (a label read from the database). The frame's translate is typed by the keys the app
   hands it.
@@ -59,7 +63,10 @@ description: Build, change and publish the frame every app of a system wears - t
 1. The frame has its own number (`M.m.p`), apart from the system manager's app number: a new key, element or event = the middle
    number; a fix = the last; removing or renaming something an app uses = the first.
 2. A build is served through the gateway at a path carrying its number (`/shared/shell/<number>/`) and kept for good: a deploy
-   never removes a published number, so an app pinned to it never breaks. There is no "latest" path.
+   never removes a published number, so an app pinned to it never breaks. There is no "latest" path. On the server the numbers
+   sit outside the code tree a deploy replaces; a number the drop carries is added once, never replaced.
+   A number holds: the element build with the framework inside (for an app without it) and its stylesheet · the component build
+   with the framework outside, packed as a package an app installs by its URL · the contract notes of the number.
 3. Before publishing: the system manager's own browser test is green on every page with the build it is about to publish; a
    blank page that loads only the build shows the whole frame (the kind's checks run on it); the contract notes of the number
    list what changed for apps.

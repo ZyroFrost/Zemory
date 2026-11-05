@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 
@@ -30,13 +30,17 @@ lang: vi
 
 - App dùng framework của khung import gốc khung và các phần từ MỘT cửa của khung; app không có framework hay bước build nạp module và
   stylesheet của bản build bằng thẻ thường và dùng các thẻ của khung. Cả hai nhận cùng các khoá.
-- Config (`Skill_App_Shell` §3): `area` · `nav` · `title` · `crumbs` · `page` · `redirect` · `load` (dữ liệu riêng của app mà khung
-  cần - menu dựng từ danh sách của app, vai của người này trong app; 403 ở đó là "không có vai trong app này", do trang của app hiện,
-  không bao giờ chuyển về đăng nhập) · `health` (đường health riêng của app, trả `{"version": "<M.m.p>"}` không cần phiên) · lệnh và
-  bản ghi của app cho ô tìm · thẻ và tab của app cho Cài đặt. Không có `login`: người chưa có phiên được chuyển tới trang đăng nhập
-  chung và quay lại đúng trang.
-- Nhãn: một khoá trong từ điển của app (thêm một lần lúc nạp) hoặc chữ đọc nguyên từ cơ sở dữ liệu; không bao giờ chép khoá của khung
-  vào từ điển của app.
+- Config (`Skill_App_Shell` §3): `area` (khoá riêng của app cho tên nó) · `home` (đầu mọi đường app sở hữu, `/<app>/`) · `nav` ·
+  `title` · `crumbs` (chỉ các lớp SAU hệ và app - hai lớp đó khung tự vẽ) · `page` · `redirect` · `load` (dữ liệu riêng của app mà
+  khung cần - menu dựng từ danh sách của app, vai của người này trong app; 403 ở đó là "không có vai trong app này", do trang của app
+  hiện, không bao giờ chuyển về đăng nhập) · `health` (đường health riêng của app, trả `{"version": "<M.m.p>"}` không cần phiên) ·
+  lệnh và bản ghi của app cho ô tìm · thẻ và tab của app cho Cài đặt. Không có `login`: người chưa có phiên được chuyển tới trang đăng
+  nhập chung và quay lại đúng trang.
+- API của app gọi qua client khung tạo cho nó (`createClient` với đường gốc của app và thời gian câu trả lời chậm nhất cần): 401 về
+  đăng nhập, 503 "không kiểm được phiên" hiện dải mất kết nối; app không tự xử 401.
+- Nhãn: một khoá trong từ điển của app (thêm một lần lúc nạp) hoặc chữ đọc nguyên từ cơ sở dữ liệu. App không bao giờ chép khoá của
+  khung vào từ điển của nó và không bao giờ đặt lại một khoá của khung: khoá của app thắng, nên một khoá `brandName` của app sẽ đổi tên
+  cả hệ.
 
 ## 4. Vùng trang — trang dựng gì
 
@@ -44,8 +48,10 @@ lang: vi
   bên trong, ghim dòng tiêu đề và cho kéo cột - trang chỉ vẽ một bảng thường với class của kiểu là có đủ. Một dòng riêng của trang cần
   luôn trong tầm nhìn (dòng tổng) do trang tự ghim.
 - Bộ lọc: trang khai các bộ lọc nó có (chọn một · chọn nhiều · ngày · khoảng ngày · số · custom - ô trang tự vẽ, cho kiểu khung chưa
-  có); trang chỉ nhận giá trị khi người dùng bấm Áp dụng, rồi gọi API của nó. Trang báo có bao nhiêu bộ lọc đang đặt và cách xoá hết;
-  một giá trị trang luôn có (kỳ) không bao giờ được đếm. Ô lọc lọc các dòng đang hiện; trang đưa chữ đó vào dữ liệu nó hiện.
+  có). Bộ lọc trong popover là bản nháp tới khi người dùng bấm Áp dụng; bộ lọc ghim trên thanh lọc ngay; trang nhận mỗi giá trị khi nó
+  có hiệu lực, rồi gọi API của nó. Trang báo có bao nhiêu bộ lọc đang đặt và cách xoá hết; một giá trị trang luôn có (kỳ) không bao giờ
+  được đếm. Ô lọc: khung đưa cho trang mỗi lần chữ đổi và không tự lọc trang; trang lọc thứ nó hiện - tại chỗ, hoặc gọi API của nó
+  (chờ người dùng gõ xong là việc của trang).
 - Công cụ của trang đứng bên trái thanh trang (thao tác chính, một công tắc như luồng trực tiếp); các góc nhìn của nó (hai cách trở lên
   để xem cùng các bản ghi) vào nút chuyển góc nhìn bên phải, mỗi góc nhìn thật sự đổi thứ được hiện.
 - Hộp thoại và toast: trang xin khung một hộp thoại cỡ S, M hay L và đưa nội dung; kết quả thao tác là toast qua khung. Không bao giờ

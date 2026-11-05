@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 
@@ -35,11 +35,15 @@ lang: vi
 ## 3. Hợp đồng app đưa cho khung
 
 - App gắn gốc của khung với một đối tượng config; khung không đọc app bằng cách nào khác. Các khoá:
-  `area` (tên app dưới brand) · `nav` (nhóm và trang người này mở được, mỗi trang kèm class icon của kit) · `title` · `crumbs` ·
+  `area` (tên app dưới brand, khoá riêng của app) · `home` (đầu mọi đường app sở hữu; một liên kết ra ngoài nó thì tải trang đó)
+  · `nav` (nhóm và trang người này mở được, mỗi trang kèm class icon của kit) · `title` · `crumbs` ·
   `page` (trang ở một đường) · `redirect` (trang người này không được mở) · `load` (dữ liệu riêng của app mà khung cần: đọc khi đã
   đăng nhập, đọc lại theo nhịp và khi tab được focus) · `health` (đường health riêng của app cho các dải báo) · `login` (chỉ repo quản
   hệ: trang đăng nhập của nó; mọi app khác bỏ trống và được chuyển tới trang đăng nhập chung kèm địa chỉ quay về) · phần app thêm vào
   ô tìm (lệnh, bản ghi, hộp thoại một bản ghi mở ra) và vào Cài đặt (thẻ dưới Bố cục, tab riêng kèm nút ở chân).
+- Đường dẫn: khung tự vẽ lớp hệ và lớp app (về `/` và về `home`), giống nhau ở mọi app; `crumbs` của config chỉ đưa các lớp sau đó.
+  API của app: khung cấp một client cho mỗi đường gốc (`createClient({base, timeoutMs})`), trả lời 401, 503 "không kiểm được phiên"
+  và lỗi theo cùng cách với client của chính khung.
 - Chữ: khung mang từ điển riêng; app thêm từ điển của nó một lần lúc nạp, khoá của app thắng khoá của khung, và khoá không có trong
   từ điển nào thì hiện nguyên chuỗi (nhãn đọc từ cơ sở dữ liệu). Hàm dịch của khung kiểm theo kiểu khoá app đưa vào.
 - Mock cho phép kiểm trình duyệt do app đăng ký dưới cờ build mock của nó; bản build production của mọi app không mang mock.
@@ -51,7 +55,10 @@ lang: vi
 1. Khung có số riêng (`M.m.p`), tách khỏi số app của repo quản hệ: thêm khoá, thẻ hay sự kiện = số giữa; sửa lỗi = số cuối; bỏ hay
    đổi tên thứ app đang dùng = số đầu.
 2. Một bản build được phục vụ qua gateway ở đường mang số của nó (`/shared/shell/<number>/`) và giữ mãi: deploy không bao giờ xoá một
-   số đã phát, nên app ghim số đó không bao giờ vỡ. Không có đường "latest".
+   số đã phát, nên app ghim số đó không bao giờ vỡ. Không có đường "latest". Trên server, các số nằm ngoài cây code mà deploy thay
+   nguyên; một số trong bản mang lên được thêm một lần, không bao giờ bị thay.
+   Một số gồm: bản thẻ có framework bên trong (cho app không dùng framework đó) cùng stylesheet · bản component để framework bên ngoài,
+   đóng thành gói app cài bằng URL của nó · ghi chú hợp đồng của số đó.
 3. Trước khi phát: phép kiểm trình duyệt của repo quản hệ xanh trên mọi trang với đúng bản sắp phát; một trang trống chỉ nạp bản
    build hiện đủ khung (phép kiểm của kiểu chạy trên nó); ghi chú hợp đồng của số đó liệt kê cái gì đổi với app.
 4. Sau khi phát: nhắn phiên của mọi app trong hệ (`role.manages`) số mới và việc app phải làm để lên số đó; ghi vào sổ của repo quản

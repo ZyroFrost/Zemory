@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 24
+version: 26
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v24 #81116796d5e0
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v26 #9363d5e6f3a3
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -72,6 +72,10 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v24 #81116796d5e0
   app's name in the dashboard app, the hub's own name in the hub. It stays fixed while moving between that app's pages; the
   crumbs name the current page. [brand-area]
 - **A menu group label clears its short divider line** by at least 8 px while the menu is open. [menu-header-gap]
+- **A group of the menu is a layer of the crumbs, never a heading in the page:** a department or an area the menu groups pages
+  under is one layer of the crumbs (`<family> / <app> / <group> / ... / <page>` - several group layers when the menu nests them),
+  its own page lists what it holds, and every page under it shows it in its crumbs. A page card never repeats a group's name as
+  a heading over its content; an inner card's own title is its own name. [group-in-crumbs]
 
 ## 3. Dialogs — exactly S / M / L (`app-base` F2 in this kind)
 
@@ -199,6 +203,8 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v24 #81116796d5e0
   language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code]
 - **The status dot is whole:** an online avatar's dot sits on its edge, and no box around it - a button or a menu row that
   clips for its ripple - cuts it. [dot-whole]
+- **An avatar keeps its square:** in any row - a page, the top bar, the menu, a dropdown - a kit avatar stands `flex-shrink-0`
+  beside text that may be long, and the text block shrinks and ends in "…"; a long name never squeezes the avatar. [avatar-square]
 - **The look is the person's across the family:** the UI settings that shape the shared surface - theme, language, date
   format, glass and blur, the pointer effects and light, the filter layout and pins, content width and menu - are kept once,
   as the person's settings of the system-manager in the family database, and every app of the family reads and writes them
@@ -258,7 +264,8 @@ An app moving onto this kind, in this order:
    `app-shell-use` and `scripts/sneat_glass_check.mjs`.
 2. Pin a published build of the frame and mount it with the app's config (`Skill_App_ShellUse` §2–3); remove every part of the
    app's own frame - an app never builds a part the table above gives the frame.
-3. Build every list page as page content (`Skill_App_ShellUse` §4): its filters declared, values taken on Apply, cut by the server
+3. Build every list page as page content (`Skill_App_ShellUse` §4): its filters declared, each value taken when it takes effect
+   (on Apply in the popover, at once on the bar), cut by the server
    where the rows are limited; its tools and views handed to the page bar.
 4. Run the check: the app's browser test imports `RULES` and `DIALOG_RULES` and evaluates them on every page and dialog WITH the
    frame mounted, at a desktop and a phone width in both themes, and runs the probes of §6; green on every page before the app's

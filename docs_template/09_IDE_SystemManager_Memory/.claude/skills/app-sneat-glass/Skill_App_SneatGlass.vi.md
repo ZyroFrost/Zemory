@@ -1,5 +1,5 @@
 ---
-version: 24
+version: 26
 lang: vi
 ---
 
@@ -63,6 +63,10 @@ lang: vi
 - **Dưới tên hệ,** dòng nhỏ chỉ ghi app đang mở (`data-app-name` của menu): tên app dashboard trong app dashboard, tên riêng của
   hub trong hub. Dòng này giữ nguyên khi đi giữa các trang của app đó; đường dẫn ghi trang hiện tại. [brand-area]
 - **Nhãn nhóm của menu cách vạch ngăn ngắn** ít nhất 8 px khi menu mở. [menu-header-gap]
+- **Một nhóm của menu là một lớp của đường dẫn, không bao giờ là tiêu đề trong trang:** phòng ban hay khu vực mà menu gom trang vào là
+  một lớp của đường dẫn (`<family> / <app> / <group> / ... / <page>` - nhiều lớp nhóm khi menu lồng nhiều tầng), trang riêng của nhóm
+  liệt kê những gì nó chứa, và mọi trang thuộc nhóm hiện nhóm đó trong đường dẫn. Thẻ trang không bao giờ lặp tên nhóm thành tiêu đề
+  trên nội dung; tiêu đề của một thẻ con là tên riêng của thẻ đó. [group-in-crumbs]
 
 ## 3. Hộp thoại — đúng S / M / L (`app-base` F2 trong kiểu này)
 
@@ -183,6 +187,8 @@ lang: vi
   hợp đồng khi hợp đồng có trên máy. [no-raw-code]
 - **Chấm trạng thái nguyên vẹn:** chấm của avatar trực tuyến nằm trên mép nó, và không khung nào bao quanh - nút hay dòng menu cắt
   tràn vì hiệu ứng gợn sóng - cắt mất chấm. [dot-whole]
+- **Avatar giữ đúng hình vuông:** trong mọi hàng - trang, thanh trên, menu, menu thả xuống - avatar của bộ mẫu đứng `flex-shrink-0`
+  cạnh chữ có thể dài, khối chữ co lại và kết bằng "…"; một tên dài không bao giờ ép bẹp avatar. [avatar-square]
 - **Giao diện là của người dùng trên cả hệ:** các cài đặt giao diện tạo nên bề mặt chung - theme, ngôn ngữ, định dạng ngày, kính
   và độ mờ, hiệu ứng con trỏ và đốm sáng, kiểu bộ lọc và ghim, bề rộng nội dung và menu - lưu một lần, là cài đặt của người dùng
   ở system-manager trong DB của hệ, và mọi app của hệ đọc và ghi ở đó, nên chọn ở một app là đúng ở mọi app.
@@ -238,7 +244,8 @@ Một app chuyển sang kiểu này, theo thứ tự:
    `app-shell-use` và `scripts/sneat_glass_check.mjs`.
 2. Ghim một bản khung đã phát và gắn nó với config của app (`Skill_App_ShellUse` §2–3); gỡ mọi phần khung riêng của app - app không
    bao giờ dựng một phần mà bảng trên giao cho khung.
-3. Dựng mọi trang danh sách thành nội dung trang (`Skill_App_ShellUse` §4): bộ lọc khai báo, giá trị nhận khi Áp dụng, cắt bởi
+3. Dựng mọi trang danh sách thành nội dung trang (`Skill_App_ShellUse` §4): bộ lọc khai báo, mỗi giá trị nhận khi nó có hiệu lực
+   (khi Áp dụng trong popover, ngay lập tức trên thanh), cắt bởi
    server ở nơi dòng bị giới hạn; công cụ và góc nhìn đưa cho thanh trang.
 4. Chạy phép kiểm: bài kiểm trình duyệt của app import `RULES` và `DIALOG_RULES`, chạy chúng trên mọi trang và hộp thoại CÓ gắn khung,
    ở một khổ máy tính và một khổ điện thoại, cả hai theme, và chạy các phép đo của §6; xanh trên mọi trang trước lần phát hành đầu

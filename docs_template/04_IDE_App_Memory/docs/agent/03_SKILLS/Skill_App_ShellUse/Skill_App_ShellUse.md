@@ -1,7 +1,7 @@
 ---
 id: Skill_App_ShellUse
 name: app-shell-use
-version: 1
+version: 2
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_App_Shell, Rule_Keys_90_AppFamilyContract, Frontend_173_Shell]
 description: Wear the system's frame in an app of the system - pin a published build, hand it the app's config, build only page content, and ask the system manager for anything of the frame. Use in an app of a system (role app, owner a system-manager) when its surface is built or changed, when it moves onto the frame or to a newer build, or when something of the frame looks wrong. Vietnamese triggers - "gắn khung", "dùng khung chung", "lên bản khung", "ghim khung", "vùng trang", "lỗi khung".
@@ -36,13 +36,18 @@ description: Wear the system's frame in an app of the system - pin a published b
 
 - An app on the frame's framework imports the frame's root and its parts from the frame's ONE entry; an app without a framework
   or a build step loads the build's module and stylesheet with plain tags and uses the frame's elements. Both take the same keys.
-- The config (`Skill_App_Shell` §3): `area` · `nav` · `title` · `crumbs` · `page` · `redirect` · `load` (the app's own data the
-  frame needs - a menu built from the app's list, the person's role in the app; a 403 there is "no role in this app", shown by the
-  app's page, never a redirect to sign-in) · `health` (the app's own health path, answering `{"version": "<M.m.p>"}` with no
-  session) · the app's commands and records for the search · the app's cards and tabs for Settings. No `login`: a person without a
-  session is sent to the shared sign-in and comes back to the same page.
-- Labels: a dictionary key of the app (added once at start) or text read from the database as it is; never a key of the frame
-  copied into the app's dictionary.
+- The config (`Skill_App_Shell` §3): `area` (the app's own key for its name) · `home` (the start of every path the app owns,
+  `/<app>/`) · `nav` · `title` · `crumbs` (only the layers AFTER the system and the app - the frame draws those two) · `page` ·
+  `redirect` · `load` (the app's own data the frame needs - a menu built from the app's list, the person's role in the app; a 403
+  there is "no role in this app", shown by the app's page, never a redirect to sign-in) · `health` (the app's own health path,
+  answering `{"version": "<M.m.p>"}` with no session) · the app's commands and records for the search · the app's cards and tabs
+  for Settings. No `login`: a person without a session is sent to the shared sign-in and comes back to the same page.
+- The app's API is called through the frame's client for it (`createClient` with the app's base and the time its slowest answer
+  needs): a 401 goes back to sign-in, a 503 "cannot check the session" shows the lost-server banner; the app keeps no 401 handling
+  of its own.
+- Labels: a dictionary key of the app (added once at start) or text read from the database as it is. The app never copies a key
+  of the frame into its dictionary and never redefines one: an app key wins, so an app key `brandName` would rename the whole
+  system.
 
 ## 4. The page area — what a page builds
 
@@ -50,9 +55,11 @@ description: Wear the system's frame in an app of the system - pin a published b
   card fills the frame, scrolls inside, pins its header row and resizes its columns - the page renders a plain table with the
   kind's classes and gets all of that. A row of the page's own that must stay in sight (a totals row) is pinned by the page.
 - Filters: the page declares the filters it offers (pick · several · date · date range · number · custom - a control the page
-  draws itself, for a mix the frame has no kind for); it receives their values only when the person presses Apply, then asks its
-  own API. The page reports how many filters are set and how to clear them; a value the page always holds (the period) is never
-  counted. The filter box filters the rows on screen; the page gives its text to the data it shows.
+  draws itself, for a mix the frame has no kind for). A filter in the popover is a draft until the person presses Apply; a filter
+  pinned on the bar filters at once; the page receives each value when it takes effect, then asks its own API. The page reports
+  how many filters are set and how to clear them; a value the page always holds (the period) is never counted. The filter box:
+  the frame hands the page every change of its text and never filters the page itself; the page filters what it shows - on
+  screen, or by asking its API (waiting for the typing to pause is the page's).
 - The page's tools stand at the left of the page bar (its main action, a switch such as a live feed); its views (two or more ways
   to show the same records) go to the view switch at the right, each view really changing what is shown.
 - Dialogs and toasts: the page asks the frame for a dialog of size S, M or L and gives its content; results of actions are

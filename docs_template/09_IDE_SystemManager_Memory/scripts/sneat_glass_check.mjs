@@ -730,6 +730,43 @@ export const RULES = [
       return true;
     })()`,
   },
+  {
+    id: 'group-in-crumbs',
+    rule: 'a group of the menu (a department, an area) is a layer of the crumbs - family / app / [group...] / page, one layer per group - never a heading inside a page card; a page that belongs to a group shows the group in its crumbs',
+    check: `(() => {
+      const norm = s => (s || '').normalize('NFC').replace(/\\s+/g, ' ').trim().toLowerCase();
+      const name = a => norm(a.getAttribute('title') || a.textContent);
+      // A group is a folding entry (a.menu-toggle) or a header of the flat menu (.menu-header) with pages under it.
+      const groups = [...document.querySelectorAll('#layout-menu a.menu-toggle'), ...document.querySelectorAll('#layout-menu .menu-header')].map(name).filter(Boolean);
+      for (const h of document.querySelectorAll('#page h1, #page h2, #page h3, #page h4, #page h5, #page h6')) {
+        const card = h.closest('.card');
+        if (card && !card.classList.contains('page-card')) continue;   // the title of an inner card is that card's own name
+        if (h.getClientRects().length && groups.includes(norm(h.textContent))) return 'a menu group stands as a heading in the page: ' + h.textContent.trim();
+      }
+      const active = document.querySelector('#layout-menu .menu-item.active');
+      if (!active) return true;
+      let group = active.closest('.menu-sub')?.closest('.menu-item')?.querySelector(':scope > a.menu-toggle') || null;
+      if (!group) for (let e = active.previousElementSibling; e; e = e.previousElementSibling) if (e.classList.contains('menu-header')) { group = e; break; }
+      if (!group) return true;
+      const crumbs = [...document.querySelectorAll('#layout-navbar .breadcrumb-item')].map(i => norm(i.textContent));
+      return crumbs.includes(name(group)) ? true : 'the crumbs lack the page group: ' + (group.getAttribute('title') || group.textContent).trim();
+    })()`,
+  },
+  {
+    id: 'avatar-square',
+    rule: 'a kit avatar keeps its square in any row (page, top bar, menu, dropdown): flex-shrink-0 beside text that may be long; the text block shrinks and ends in "..."',
+    check: `(() => {
+      for (const a of document.querySelectorAll('.avatar')) {
+        if (!a.getClientRects().length || getComputedStyle(a).visibility === 'hidden') continue;
+        // Layout sizes, not the drawn box: an effect that scales a card (rise-in, tilt) or a page zoomed to fit draws a smaller
+        // square; what breaks the kit is a square lost - a flex row narrowing the avatar under a long name.
+        const w = a.offsetWidth, h = a.offsetHeight;
+        if (!w || !h) continue;
+        if (Math.abs(w - h) > 1) return 'an avatar is squeezed: ' + w + 'x' + h + ' (a square of ' + h + ')';
+      }
+      return true;
+    })()`,
+  },
 ];
 
 /** Rules on an open dialog. */
