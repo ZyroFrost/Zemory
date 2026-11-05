@@ -1,0 +1,24 @@
+{
+  "trigger": "khung chung · khung chuẩn · gói khung · phát khung · bản khung · sửa khung",
+  "prompt": {
+    "kind": "app-shell",
+    "re": "\\b(khung (chung|chuan)|goi khung|phat (ban )?khung|ban khung|sua khung|shared (shell|frame)|shell package|publish (the )?(shell|frame))\\b",
+    "text": "[zemory] The system's frame: follow skill app-shell - one copy in frontend/shell/ behind ONE entry (the app never reaches inside, the frame never imports the app, the build's boundary check reds a crossing); the app hands one config (area · nav · title · crumbs · page · redirect · load · health · search and Settings additions); its own number, published at /shared/shell/<number>/ and kept for good, no latest; a fault an app reports is fixed here and published, never patched in the app."
+  },
+  "block": [
+    {
+      "note": "a request to change the shared frame",
+      "prompt": "sửa khung chung cho thanh lọc"
+    },
+    {
+      "note": "a request to publish a build of the frame",
+      "prompt": "phát bản khung mới cho các app"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa câu SQL của báo cáo"
+    }
+  ]
+}

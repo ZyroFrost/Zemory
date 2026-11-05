@@ -57,3 +57,4 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | kiểu sneat · khung sneat · mẫu sneat · template sneat · menu theo app · trang chủ launcher | `.claude/skills/app-sneat/SKILL.md` |
 | lọc chéo · bấm chart lọc · chart lọc lẫn nhau · liên kết chart · filter như PBI · cross filter | `.claude/skills/app-cross-filter/SKILL.md` |
 | sneat glass · kiểu sneat-glass · thanh lọc · bộ lọc trang · neo khung · cỡ hộp thoại · bố cục rộng · bố cục gọn | `.claude/skills/app-sneat-glass/SKILL.md` |
+| khung chung · khung chuẩn · gói khung · phát khung · bản khung · sửa khung | `.claude/skills/app-shell/SKILL.md` |

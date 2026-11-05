@@ -1,0 +1,24 @@
+{
+  "trigger": "gắn khung · dùng khung chung · lên bản khung · ghim khung · vùng trang · lỗi khung",
+  "prompt": {
+    "kind": "app-shell-use",
+    "re": "\\b(gan khung|dung khung chung|len ban khung|ghim (ban )?khung|vung trang|loi khung|mount the (shell|frame)|pin the (shell|frame)|page area)\\b",
+    "text": "[zemory] An app of the system: follow skill app-shell-use - wear the frame at the number pinned in frontend/config/shell.json (from /shared/shell/<number>/, never a latest); hand it the config (area · nav · title · crumbs · page · redirect · load · health; no login of its own); build only page content (filters declared, values on Apply, dialogs and toasts through the frame); never draw or patch a top bar, menu, page bar, filter popover, column resize, dialog frame or toast - a fault of the frame goes to the system manager."
+  },
+  "block": [
+    {
+      "note": "a request about mounting the frame",
+      "prompt": "gắn khung chung vào dashboard"
+    },
+    {
+      "note": "a frame fault seen in an app",
+      "prompt": "lỗi khung ở trang đối soát"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "thêm cột doanh thu vào bảng"
+    }
+  ]
+}
