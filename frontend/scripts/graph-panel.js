@@ -73,11 +73,11 @@
     if(e.target.id==='gTreeToggle'){gTreeOpen=!gTreeOpen;try{localStorage.setItem('zemory.g.tree',gTreeOpen?'1':'0');}catch(x){}gApplyLayout();return;}
     if(e.target.id==='gPanelToggle'){gPanelOpen=!gPanelOpen;try{localStorage.setItem('zemory.g.panel',gPanelOpen?'1':'0');}catch(x){}gApplyLayout();return;}
     if(e.target.id==='gPanelPos'){gPanelPos=(gPanelPos==='top')?'right':'top';try{localStorage.setItem('zemory.g.pos',gPanelPos);}catch(x){}gApplyLayout();return;}
-    if(e.target.id==='gFullscreen'){var area=zid('gArea');if(!area)return;
+    if(e.target.id==='gFullscreen'){var area=zid('gCanvasWrap');if(!area)return;
       if(document.fullscreenElement)document.exitFullscreen();else if(area.requestFullscreen)area.requestFullscreen().catch(function(){});return;}
   });
   // entering or leaving full screen (the button, Esc, F11) resizes the canvas: redraw it at the new size
-  document.addEventListener('fullscreenchange',function(){var b=zid('gFullscreen'),on=document.fullscreenElement===zid('gArea');
+  document.addEventListener('fullscreenchange',function(){var b=zid('gFullscreen'),on=document.fullscreenElement===zid('gCanvasWrap');
     if(b){b.setAttribute('data-i18n-title',on?'graph.fullscreenExit':'graph.fullscreen');b.title=t(on?'graph.fullscreenExit':'graph.fullscreen');}
     requestAnimationFrame(function(){if(gData&&typeof paintProjGraph==='function')paintProjGraph(gData);});});
   function loadProjGraph(root,force){var box=zid('gcanvas');if(!box)return;

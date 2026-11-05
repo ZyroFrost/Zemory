@@ -36,7 +36,7 @@
   // ---- paint graph ----
   // ── Four levels (plan/13 §0c): workspace → repo → slot (+ its code). `gData` always holds the repo payload; the level
   //    decides which part of it is drawn. Level 1 comes from /workspace-graph.
-  var gLevel='repo',gLevelSlot='',gWs=null;
+  var gLevel='repo',gLevelSlot='',gLevelFile='',gWs=null;
   var G_STD_ID=/^(set|structure|slot|rule|cons|skill|gate|hook|doc|plan|hp|concern|layer):/;
   function gWithDegree(nodes,edges){var d={};edges.forEach(function(e){(d[e.from]=d[e.from]||{i:0,o:0}).o++;(d[e.to]=d[e.to]||{i:0,o:0}).i++;});
     return nodes.map(function(n){var x=d[n.id]||{i:0,o:0};var c={};for(var k in n)c[k]=n[k];c.fanIn=x.i;c.fanOut=x.o;return c;});}
@@ -45,6 +45,11 @@
       var we=gWs.edges.map(function(e){return {from:e.from,to:e.to,kind:e.kind,rel:'declared',label:e.label};});
       return {nodes:gWithDegree(gWs.nodes.map(function(n){return {id:n.id,label:n.label,type:n.type,dir:n.dir,src:n.root,root:n.root,loc:0};}),we),edges:we};}
     var all=(data&&data.nodes)||[],keep={};
+    // level 4: the local graph of one file - the file and every code file it touches or is touched by, every edge kind
+    if(gLevel==='file'){keep[gLevelFile]=1;
+      ((data&&data.edges)||[]).forEach(function(e){if(e.from===gLevelFile&&!G_STD_ID.test(e.to))keep[e.to]=1;if(e.to===gLevelFile&&!G_STD_ID.test(e.from))keep[e.from]=1;});
+      var fe=((data&&data.edges)||[]).filter(function(e){return keep[e.from]&&keep[e.to]&&(e.from===gLevelFile||e.to===gLevelFile);});
+      return {nodes:gWithDegree(all.filter(function(n){return keep[n.id];}),fe),edges:fe};}
     all.forEach(function(n){var std=G_STD_ID.test(n.id);
       if(gLevel==='slot'?(n.id==='slot:'+gLevelSlot||(!std&&n.slot===gLevelSlot)):std)keep[n.id]=1;});
     var edges=((data&&data.edges)||[]).filter(function(e){return keep[e.from]&&keep[e.to];});
@@ -53,15 +58,22 @@
     if(gWs&&gWs.nodes.length)parts.push(gLevel==='workspace'?'<b>'+stdEsc(t('graph.lvWorkspace'))+'</b>':'<a data-glevel="workspace">'+stdEsc(t('graph.lvWorkspace'))+'</a>');
     if(gLevel!=='workspace'){var nm=(zid('projName')&&zid('projName').textContent)||'';
       parts.push(gLevel==='repo'?'<b>'+stdEsc(nm)+'</b>':'<a data-glevel="repo">'+stdEsc(nm)+'</a>');
-      if(gLevel==='slot')parts.push('<b>'+stdEsc(gLevelSlot)+'</b>');}
+      if(gLevel==='slot')parts.push('<b>'+stdEsc(gLevelSlot)+'</b>');
+      if(gLevel==='file'){if(gLevelSlot)parts.push('<a data-glevel="slot" data-slot="'+stdEsc(gLevelSlot)+'">'+stdEsc(gLevelSlot)+'</a>');
+        parts.push('<b>'+stdEsc(gLevelFile.split('/').pop())+'</b>');}}
     el.innerHTML=parts.join(' › ');}
-  function gSetLevel(level,slot){gLevel=level;gLevelSlot=slot||'';gSelIds=[];if(gData)paintProjGraph(gData);}
+  function gSetLevel(level,slot,file){gLevel=level;if(level!=='file')gLevelSlot=slot||'';gLevelFile=file||'';gSelIds=[];if(gData)paintProjGraph(gData);
+    if(level==='file'&&gState&&gNodeById(gLevelFile)){gSelIds=[gLevelFile];gPaintSel();}}
+  /** Double-click a node = open the level below it: a repo of the workspace → that repo · a slot → its files · a code
+   *  file → its local graph. A rule, hook, skill or other standard node has none: it shows its source in the tree. */
+  function gOpenNode(id){var nd=gNodeById(id);if(!nd)return;
+    if(gLevel==='workspace'){if(!nd.root)return;var nm=zid('projName');if(nm)nm.textContent=nd.label||'';gLevel='repo';
+      showProjDetail(/^(app|system-manager)$/.test(nd.type||'')?'app':'non-app',nd.root);return;}
+    if(/^slot:/.test(id)){gSetLevel('slot',id.slice(5));return;}
+    if(!G_STD_ID.test(id)){if(gLevel==='file'&&id===gLevelFile)return;if(gLevel==='repo')gLevelSlot=nd.slot||'';gSetLevel('file',gLevelSlot,id);return;}
+    if(nd.src)gRevealTreeFile(nd.src);}
   function gLoadWorkspace(root){gWs=null;zGet('/workspace-graph?root='+encodeURIComponent(root)).then(function(d){gWs=d&&d.nodes?d:null;gRenderCrumb();}).catch(function(){gWs=null;});}
-  document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('#gCrumb [data-glevel]');if(a){gSetLevel(a.dataset.glevel);return;}
-    var o=e.target.closest&&e.target.closest('[data-gopen]');if(!o)return;
-    if(o.dataset.gopen==='slot')gSetLevel('slot',o.dataset.slot);
-    else if(o.dataset.gopen==='repo'){var nm=zid('projName');if(nm)nm.textContent=o.dataset.name||'';gLevel='repo';
-      showProjDetail(/^(app|system-manager)$/.test(o.dataset.type||'')?'app':'non-app',o.dataset.root);}});
+  document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('#gCrumb [data-glevel]');if(a)gSetLevel(a.dataset.glevel,a.dataset.slot);});
   function paintProjGraph(data){var box=zid('gcanvas');if(!box)return;gData=data;var view=gLevelView(data);var nodes=view.nodes,edges=view.edges;gState={nodes:nodes,edges:edges};gRenderCrumb();
     // the counts line describes what is drawn: the level's nodes and edges, the repo's fitness and build time
     var sd={nodes:nodes,edges:edges,stats:data.stats,orphans:data.orphans,builtAt:data.builtAt,fitness:data.fitness};
@@ -211,9 +223,11 @@
     if(gState&&gState.pos&&gState.pos[id]){gState.pos[id].x=x;gState.pos[id].y=y;}}
   (function(){var box=zid('gcanvas');if(!box)return;
     box.addEventListener('wheel',function(ev){var svg=box.querySelector('svg');if(!svg||!gview)return;ev.preventDefault();var m=gMap(svg,ev.clientX,ev.clientY),k=ev.deltaY>0?1.2:1/1.2,w=Math.min(gview.W*4,Math.max(gview.W/10,gview.w*k)),h=w*gview.H/gview.W;gview.x=m.x-(m.x-gview.x)*(w/gview.w);gview.y=m.y-(m.y-gview.y)*(h/gview.h);gview.w=w;gview.h=h;gApply();},{passive:false});
-    var pan=null,ndrag=null,marq=null;
+    var pan=null,ndrag=null,marq=null,lastNode=null;
     box.addEventListener('pointerdown',function(ev){var svg=box.querySelector('svg');if(!svg||!gview)return;
       var node=ev.target.closest&&ev.target.closest('.gnode');
+      // pointer capture retargets the dblclick to the canvas, so the node a double-click means is the one pressed here
+      lastNode=node?{id:node.dataset.id,t:Date.now()}:null;
       var sc=gMap(svg,ev.clientX,ev.clientY).s;
       if(node){var id=node.dataset.id,p=gState&&gState.pos&&gState.pos[id];if(!p)return;
         // Kéo một node ĐANG nằm trong lựa chọn nhiều ⇒ kéo CẢ NHÓM; ngoài ra kéo một mình.
@@ -261,10 +275,14 @@
       else if(pan&&pan.moved){gSuppressClick=true;}
       pan=null;ndrag=null;marq=null;};
     box.addEventListener('pointerup',endPan);box.addEventListener('pointercancel',endPan);
-    box.addEventListener('dblclick',function(ev){if(ev.target.closest&&ev.target.closest('.gnode'))return;if(!gview)return;gview.x=0;gview.y=0;gview.w=gview.W;gview.h=gview.H;gApply();});
+    box.addEventListener('dblclick',function(ev){
+      var onNode=(ev.target.closest&&ev.target.closest('.gnode'))||(lastNode&&Date.now()-lastNode.t<800?lastNode:null);
+      if(onNode){var nid=onNode.dataset?onNode.dataset.id:onNode.id;lastNode=null;gOpenNode(nid);return;}
+      if(!gview)return;gview.x=0;gview.y=0;gview.w=gview.W;gview.h=gview.H;gApply();});
   })();
   document.addEventListener('keydown',function(ev){if(!(ev.ctrlKey||ev.metaKey))return;var k=(ev.key||'').toLowerCase(),undo=k==='z'&&!ev.shiftKey,redo=k==='y'||(k==='z'&&ev.shiftKey);if(!undo&&!redo)return;
-    if(!document.querySelector('.screen[data-s="projects"].on')||!document.querySelector('#projDetail .sub[data-pt="graph"].on'))return;
+    // the graph is the project detail's only sub-view (#gArea); the old tab attribute data-pt="graph" is gone, so undo never ran
+    if(!document.querySelector('.screen[data-s="projects"].on')||!document.querySelector('#projDetail #gArea.on'))return;
     if(!gState||!gState.pos)return;var tag=(ev.target&&ev.target.tagName||'').toLowerCase();if(tag==='input'||tag==='textarea')return;
     // Mỗi bước undo là CẢ nhóm vừa kéo (kéo 5 node = 1 lần Ctrl+Z, không phải 5 lần).
     if(undo&&gUndo.length){ev.preventDefault();var c=gUndo.pop();c.moves.forEach(function(m){gMoveNode(m.id,m.from.x,m.from.y);});gRedo.push(c);}
@@ -367,11 +385,6 @@
     var g=ev.target.closest?ev.target.closest('[data-goto-node]'):null;if(!g)return;
     if(gState)gSelectNode(g.dataset.gotoNode,false);
   });
-  // the way down one level: a repo of the workspace opens that repo, a slot of the repo opens its files
-  function gOpenLevelHtml(nd){
-    var attrs=gLevel==='workspace'&&nd.root?'data-gopen="repo" data-root="'+stdEsc(nd.root)+'" data-name="'+stdEsc(nd.label)+'" data-type="'+stdEsc(nd.type||'')+'"'
-      :gLevel==='repo'&&/^slot:/.test(nd.id)?'data-gopen="slot" data-slot="'+stdEsc(nd.id.slice(5))+'"':'';
-    return attrs?'<div style="margin:8px 0"><button class="btn sm" '+attrs+'>'+stdEsc(t('graph.openLevel'))+'</button></div>':'';}
   function gRenderInspect(){
     var ins=zid('gInspect');if(!ins)return;
     if(gSelIds.length===1){
@@ -384,7 +397,6 @@
         +'<div class="row"><span class="nm">Fan-in</span><b>'+nd.fanIn+'</b></div><div class="row"><span class="nm">Fan-out</span><b>'+nd.fanOut+'</b></div>'+(nd.loc?'<div class="row"><span class="nm">'+t('graph.lines')+'</span><b>'+zN(nd.loc)+'</b></div>':'')
         +(nd.touchedBy?'<div class="row"><span class="nm">'+t('graph.touchedBy')+'</span><b>'+zN(nd.touchedBy)+'</b></div>':'')
         +'<div class="row" style="border:0"><span class="nm">'+(nd.loc?'File':'ID')+'</span><span class="muted" style="font-size:10.5px;word-break:break-all">'+stdEsc(nd.id)+'</span></div>'+syms
-        +gOpenLevelHtml(nd)
         +gDeadListHtml(nd)
         +gEdgeListHtml(nd.id);
       return;
