@@ -41,6 +41,8 @@ export const SLOT_ROLES: Record<string, string> = {
   agents: "agent loop: planning/reasoning/state-machine",
   tools: "tool definitions for an LLM to call (schema + binding)",
   evals: "quality measurement on a labelled corpus + gate",
+  // one name, two homes (HS Backend_174_Training · Data_175_Training): the code under src/, its data and run results under data/
+  training: "training the repo's own models: pipeline code (src/) · labelled data + run results (data/)",
   search: "index & retrieval (FTS/vector/Elastic)",
   pipelines: "multi-step ETL / ingest / batch",
   jobs: "background jobs / cron / queue",
