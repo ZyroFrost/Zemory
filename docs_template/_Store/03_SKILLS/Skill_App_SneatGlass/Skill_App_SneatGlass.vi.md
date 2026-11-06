@@ -1,5 +1,5 @@
 ---
-version: 33
+version: 34
 lang: vi
 ---
 
@@ -248,7 +248,9 @@ lang: vi
 - **Thanh đầu trang chỉ có crumb và các nút** - không có dòng ngày rời bên cạnh; kỳ mà trang đang giữ do bộ lọc của nó nói (user
   06/11). [bar-no-extra-text]
 - **Mọi dòng của bảng đã cuộn tới đều được vẽ** - chỉ các dòng nằm dưới đầu bảng ghim của chính nó, hoặc sau dòng chân ghim ở đáy (dòng TỔNG, v32), được miễn (user 06/11: một bảng
-  giữa trang mất mấy dòng đầu). Phép đo động: `PROBES` của script kiểm, chạy có chờ trên mọi trang có bảng. [rows-painted] Các dòng trôi xuống dưới đầu bảng ghim bị cắt tại đó, trong mọi khung cuộn (v32). [head-clear] Các
+  giữa trang mất mấy dòng đầu). Phép đo động: `PROBES` của script kiểm, chạy có chờ trên mọi trang có bảng; đo bên trong khung cuộn riêng của bảng, không tính thanh cuộn, và
+  trả lại mọi khung đã cuộn (v34, Reconcile 06/11: lưới trong khung con bị tính là chưa vẽ, một khung bị lệch đẩy avatar ra
+  ngoài). [rows-painted] Các dòng trôi xuống dưới đầu bảng ghim bị cắt tại đó, trong mọi khung cuộn (v32). [head-clear] Các
   dòng trôi ra sau dòng chân ghim ở đáy bị cắt tại mép trên của nó, và thanh cuộn dọc của khung chạy giữa đầu bảng ghim và chân
   ghim (v33, phép đo động). [foot-clear]
 
