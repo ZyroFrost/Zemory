@@ -8,20 +8,37 @@
 // engine's own retry-with-backoff stays as the last line of defence.
 
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { currentMemoryDb, currentMemoryDir } from "../memory/db.js";
 
 const HOLD_MS = 5 * 60_000; // a CLI hold self-expires after 5 min
 
 let holdUntil = 0;
 
-/** Called by the daemon when a CLI announces a write. */
-export function acquireCliWrite(): void {
-  holdUntil = Date.now() + HOLD_MS;
+/** Two db paths name the same file (absolute, and case-insensitive on Windows). */
+export function sameStore(a: string, b: string): boolean {
+  const norm = (p: string): string => {
+    const r = resolve(p);
+    return process.platform === "win32" ? r.toLowerCase() : r;
+  };
+  return norm(a) === norm(b);
 }
 
-/** Called by the daemon when the CLI finishes (or gives up). */
-export function releaseCliWrite(): void {
+/**
+ * Called by the daemon when a CLI announces a write. `db` = the store the CLI writes; a store other than the daemon's
+ * own (a parallel store reached through `GLOBAL_MEMORY_DB`, plan/19) does not touch this daemon's scheduler, so the
+ * gate is not held — otherwise a re-embed of a copy lasting tens of hours would stall the live store's scheduler for
+ * as long. No `db` (a CLI older than this check) ⇒ held, as before. Returns whether the gate is now held.
+ */
+export function acquireCliWrite(db?: string): boolean {
+  if (db && !sameStore(db, currentMemoryDb())) return false;
+  holdUntil = Date.now() + HOLD_MS;
+  return true;
+}
+
+/** Called by the daemon when the CLI finishes (or gives up). A release for another store never frees this one. */
+export function releaseCliWrite(db?: string): void {
+  if (db && !sameStore(db, currentMemoryDb())) return;
   holdUntil = 0;
 }
 

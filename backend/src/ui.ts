@@ -2591,11 +2591,12 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // collide on SQLite (plan 14 §C write gate). Auto-expires; see writegate.ts.
       // `busy` tells the CLI a daemon child (embed/sync) is ALREADY writing, so
       // it can wait instead of colliding (the gate was one-directional before).
-      acquireCliWrite();
-      return json(res, { ok: true, held: true, busy: daemonJobBusy() !== null });
+      // `?db=` names the store the CLI writes; another store ⇒ not held (writegate.ts `acquireCliWrite`).
+      const held = acquireCliWrite(u.searchParams.get("db") ?? undefined);
+      return json(res, { ok: true, held, busy: held && daemonJobBusy() !== null });
     }
     if (req.method === "POST" && p === "/gate-release") {
-      releaseCliWrite();
+      releaseCliWrite(u.searchParams.get("db") ?? undefined);
       return json(res, { ok: true, held: false });
     }
     // /init-fresh đã gỡ 2026-07-27 (audit F2): 0 người gọi ở cả FE lẫn CLI, mà nó là

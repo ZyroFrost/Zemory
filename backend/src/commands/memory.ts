@@ -361,22 +361,30 @@ export async function cmdMemory(args: string[]): Promise<void> {
     }
     port = await daemonPort();
     if (port) {
-      const acquire = async (): Promise<{ busy?: boolean }> => {
-        const r = await fetch(`http://127.0.0.1:${port}/gate-acquire`, { method: "POST", signal: AbortSignal.timeout(400) });
-        return (await r.json()) as { busy?: boolean };
+      // Name the store this run writes: the daemon holds its scheduler only for its OWN store, so a run on a parallel
+      // store (`GLOBAL_MEMORY_DB`, plan/19) never stalls the live one. An older daemon ignores it and holds, as before.
+      const gateQuery = `?db=${encodeURIComponent(currentMemoryDb())}`;
+      const acquire = async (): Promise<{ held?: boolean; busy?: boolean }> => {
+        const r = await fetch(`http://127.0.0.1:${port}/gate-acquire${gateQuery}`, { method: "POST", signal: AbortSignal.timeout(400) });
+        return (await r.json()) as { held?: boolean; busy?: boolean };
       };
       try {
         for (let i = 0; i < 24; i++) {
           const g = await acquire();
+          if (g.held === false) {
+            console.log("  the daemon serves another store — its scheduler is not paused for this run.");
+            break;
+          }
           gated = true;
           if (!g.busy) break;
           if (i === 0) console.log("  daemon background job is writing the memory — waiting for it to yield…");
           await new Promise((r) => setTimeout(r, 5000));
         }
-        // Nhịp tim gia hạn CẢ HAI: cờ 5 phút của daemon và khoá file 15 phút.
+        // The heartbeat renews both holds: the daemon's 5-minute flag (only while it holds the gate for this store)
+        // and the 15-minute file lock.
         heartbeat = setInterval(() => {
           if (locked) acquireCliWriteLock(sub);
-          void acquire().catch(() => {});
+          if (gated) void acquire().catch(() => {});
         }, 120_000);
         heartbeat.unref?.();
       } catch {
@@ -391,7 +399,10 @@ export async function cmdMemory(args: string[]): Promise<void> {
     if (locked) releaseCliWriteLock();
     if (gated && port) {
       try {
-        await fetch(`http://127.0.0.1:${port}/gate-release`, { method: "POST", signal: AbortSignal.timeout(400) });
+        await fetch(`http://127.0.0.1:${port}/gate-release?db=${encodeURIComponent(currentMemoryDb())}`, {
+          method: "POST",
+          signal: AbortSignal.timeout(400),
+        });
       } catch {
         /* release is best-effort; the hold auto-expires anyway */
       }
