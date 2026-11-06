@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 31
+version: 32
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v31 #a797573d5b9e
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v32 #90c9c240499e
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -268,9 +268,9 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v31 #a797573d5b9e
   report cross-filters on stand on the page's one filter; a plain pick list still holds 10 values at most. [filter-set]
 - **The top bar holds its crumbs and its controls only** - no loose line of dates beside them; a period the page holds is said by
   its filter (user 06/11). [bar-no-extra-text]
-- **Every row of a table scrolled into view is drawn** - only the rows under its own pinned header are cut (user 06/11: a table
+- **Every row of a table scrolled into view is drawn** - only the rows under its own pinned header, or behind its footer pinned at the bottom (a TOTAL row, v32), are left out (user 06/11: a table
   mid-page lost its first rows). A probe: `PROBES` of the check script, evaluated awaited on every page with a table.
-  [rows-painted]
+  [rows-painted] The rows passing under a pinned header are cut there, in any scrolling frame (v32). [head-clear]
 
 ## 6. Check
 
