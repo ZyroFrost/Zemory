@@ -1,5 +1,5 @@
 ---
-version: 35
+version: 36
 lang: vi
 ---
 
@@ -208,6 +208,12 @@ lang: vi
 - **Tab đang chọn là một ô có nền, như Sneat:** hàng tab (`.nav-pills`, tablist) hiện tab đang chọn bằng nền của chính nó
   hoặc ô trượt bên dưới - không để chữ trơn nằm lẻ trên trang (v35, user 07/11: "cấu trúc skill sneat ko có nút nào nằm lẻ
   như chữ tài khoản với mk"). Khung chung tự tô nền cho hàng `.nav-pills` không có ô trượt riêng. [tab-pill]
+- **Trang nào cũng có panel hàng 2** - thanh riêng của trang (`page-toolbar`) dưới thanh đầu: hàng 2 của khung gọn
+  (`#page-bar`), hoặc card đầu tiên của trang ở khung cổ điển. Trang không phải một page card thì lấp hàng 2 bằng
+  `PageToolbar({start, tools})` của khung - tab hoặc hành động chính từ trái, công cụ tìm lọc từ phải; không bao giờ để
+  trống hàng 2 (v36, user 07/11: "bộ khung chuẩn là panel hàng 2… mất toàn bộ panel hàng 2 mà ko hề nhận ra"). [page-bar]
+- **Hàng tab không nằm trơ trong trang:** nó ở thanh trang (hàng 2), trong một card hoặc trong hộp thoại (v36, user 07/11:
+  tab của cài đặt hồ sơ nằm trơ dưới thanh). [tabs-in-panel]
 - **Avatar giữ đúng hình vuông:** trong mọi hàng - trang, thanh trên, menu, menu thả xuống - avatar của bộ mẫu đứng `flex-shrink-0`
   cạnh chữ có thể dài, khối chữ co lại và kết bằng "…"; một tên dài không bao giờ ép bẹp avatar. [avatar-square]
 - **Giao diện là của người dùng trên cả hệ:** các cài đặt giao diện tạo nên bề mặt chung - theme, ngôn ngữ, định dạng ngày, kính

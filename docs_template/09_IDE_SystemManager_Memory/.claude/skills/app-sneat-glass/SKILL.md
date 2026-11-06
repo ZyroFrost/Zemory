@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 35
+version: 36
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v35 #8cbedcf11b98
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v36 #c6fc3e63b83e
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -227,6 +227,12 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v35 #8cbedcf11b98
 - **A chosen tab is a filled pill, as in Sneat:** a row of tabs (`.nav-pills`, a tablist) shows its chosen tab with its own fill
   or the sliding pill under it - never bare words standing loose on the page (v35, user 07/11: "cấu trúc skill sneat ko có nút
   nào nằm lẻ như chữ tài khoản với mk"). The family frame fills a `.nav-pills` row with no pill of its own. [tab-pill]
+- **Every page has its row-2 panel** - the page's own bar (`page-toolbar`) under the top bar: row 2 of the compact frame
+  (`#page-bar`), or the page's first card in the classic frame. A page that is not one page card fills it with the frame's
+  `PageToolbar({start, tools})` - its tabs or its main action from the left, its seek tools from the right; row 2 is never
+  left empty (v36, user 07/11: "bộ khung chuẩn là panel hàng 2… mất toàn bộ panel hàng 2 mà ko hề nhận ra"). [page-bar]
+- **A row of tabs never stands loose in the page:** it is in the page bar (row 2), in a card or in a dialog (v36, user 07/11:
+  the profile settings tabs stood loose under the bar). [tabs-in-panel]
 - **An avatar keeps its square:** in any row - a page, the top bar, the menu, a dropdown - a kit avatar stands `flex-shrink-0`
   beside text that may be long, and the text block shrinks and ends in "…"; a long name never squeezes the avatar. [avatar-square]
 - **The look is the person's across the family:** the UI settings that shape the shared surface - theme, language, date

@@ -546,6 +546,30 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'page-bar',
+    rule: 'every page has its row-2 panel - the page\'s own bar (page-toolbar) under the top bar: in the compact frame row 2 (#page-bar) holds it, in the classic frame it stands as the page\'s first card; a page that is not a page card fills it too (PageToolbar), never leaving row 2 empty (v36, user 07/11: "bộ khung chuẩn là panel hàng 2… mất toàn bộ panel hàng 2 mà ko hề nhận ra")',
+    check: `(() => {
+      if (!document.getElementById('page') || !document.getElementById('layout-navbar')) return true;
+      const slot = document.getElementById('page-bar');
+      const bar = slot ? slot.querySelector('.page-toolbar') : document.querySelector('#page .page-toolbar');
+      if (!bar || !bar.getClientRects().length) return slot ? 'row 2 of the frame is empty: the page puts no bar in #page-bar' : 'the page has no bar of its own (page-toolbar) at its head';
+      if (bar.getBoundingClientRect().height < 24) return 'the page bar is drawn ' + Math.round(bar.getBoundingClientRect().height) + ' px high';
+      return true;
+    })()`,
+  },
+  {
+    id: 'tabs-in-panel',
+    rule: 'a row of tabs never stands loose in the page: it is in row 2 of the frame (the page bar), in a card or in a dialog (v36, user 07/11: the profile settings tabs stood loose under the bar)',
+    check: `(() => {
+      for (const row of document.querySelectorAll('#page .nav-pills, #page [role=tablist], #page-bar .nav-pills, #page-bar [role=tablist]')) {
+        if (!row.getClientRects().length) continue;
+        if (row.closest('#page-bar, .page-toolbar, .card, dialog, .modal')) continue;
+        return 'a row of tabs stands loose in the page, not in the page bar nor a card: ' + row.textContent.trim().replace(/\\s+/g, ' ').slice(0, 40);
+      }
+      return true;
+    })()`,
+  },
+  {
     id: 'tab-pill',
     rule: 'a row of tabs (nav-pills, a tablist) shows its chosen tab as Sneat does: a filled pill - its own fill or the sliding pill under it - never bare words standing loose on the page (v35, user 07/11: "cấu trúc skill sneat ko có nút nào nằm lẻ như chữ tài khoản với mk")',
     check: `(() => {
