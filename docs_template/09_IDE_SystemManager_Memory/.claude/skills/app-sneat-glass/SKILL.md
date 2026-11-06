@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 29
+version: 30
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v29 #253d48bfc8c3
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v30 #1895efcada4c
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -257,6 +257,12 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v29 #253d48bfc8c3
 - **An accordion inside a page card is flat** - no fill, no radius, no gap, a line between items - and **its chevron reads**
   (3:1 against the card at least). [accordion-flat] [chevron-visible]
 - **Nothing of the head runs past its left or right edge** (a tool of the page bar at 390 px). [head-whole]
+
+- **A dialog, a menu and a popover are opaque** in every theme, glass on or off - the page never reads through them (user
+  06/11, `app-base` F18 with its machine check). [surface-opaque]
+- **An empty place and a wait wear the one template** (user 06/11): centred where they stand - an empty place a round icon, a
+  title and a hint (the frame's `Empty`, `sasinShell.empty`); a wait the kit's large spinner, its words for screen readers only
+  (`Loading`, `sasinShell.loading`). Never a lone line of text such as "no matching rows" or "loading". [state-template]
 
 ## 6. Check
 

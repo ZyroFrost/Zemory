@@ -986,6 +986,53 @@ export const RULES = [
       return true;
     })()`,
   },
+  // (v30, user 06/11: "hiệu ứng kính không được áp dụng với dialog box" - app-base F18, now with its machine check)
+  {
+    id: 'surface-opaque',
+    rule: 'a dialog, a menu and a popover are opaque in every theme, glass on or off: the page behind never reads through them (their shadow, radius and opening stay)',
+    check: `(() => {
+      const alpha = c => { const m = c.match(/rgba?\\(([^)]+)\\)/); if (!m) return c === 'transparent' ? 0 : 1; const p = m[1].split(/[ ,/]+/).filter(Boolean); return p.length > 3 ? parseFloat(p[3]) : 1; };
+      const shown = e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden' && parseFloat(getComputedStyle(e).opacity) > 0.5;
+      const surfaces = [...document.querySelectorAll('dialog[open] .modal-content, .modal.show .modal-content, .dropdown-menu.show, .popover.show, .slicer-menu, .date-menu, .filter-pop:not([hidden])')].filter(shown);
+      for (const s of surfaces) {
+        const a = alpha(getComputedStyle(s).backgroundColor);
+        if (a < 0.98) return 'a ' + (s.closest('dialog, .modal') ? 'dialog' : 'menu or popover') + ' lets the page read through it (background alpha ' + a.toFixed(2) + '): ' + (s.id || s.className).toString().slice(0, 50);
+      }
+      return true;
+    })()`,
+  },
+  // (v30, user 06/11: "mọi chỗ thông báo phải có template nằm ngay ngắn và theo chuẩn thiết kế"; "loading không được để chữ,
+  // nó phải là spinner lớn ở giữa")
+  {
+    id: 'state-template',
+    rule: 'an empty place and a wait wear the one template: centred where they stand - an empty place a round icon, a title and a hint, a wait the kit\'s large spinner (its words for screen readers only); never a lone line of text such as "no matching rows" or "loading"',
+    check: `(() => {
+      const shown = e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
+      const roots = [...document.querySelectorAll('#page, dialog[open]')];
+      for (const box of roots.flatMap(r => [...r.querySelectorAll('[data-empty], .empty-state, [data-loading]')]).filter(shown)) {
+        const c = getComputedStyle(box), r = box.getBoundingClientRect(), p = (box.parentElement || box).getBoundingClientRect();
+        if (Math.abs((r.left + r.right) / 2 - (p.left + p.right) / 2) > p.width * .1 || c.textAlign !== 'center') return 'a state not centred where it stands: ' + (box.textContent || '').trim().slice(0, 40);
+        if (box.matches('[data-loading]')) {
+          const s = box.querySelector('.spinner-border, .spinner-grow');
+          if (!s || s.getBoundingClientRect().width < 40) return 'a wait without the large spinner';
+          const said = [...box.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim()).length || [...box.children].some(e => !e.matches('.visually-hidden, .spinner-border, .spinner-grow') && (e.textContent || '').trim());
+          if (said) return 'a wait shows words: ' + box.textContent.trim().slice(0, 40);
+        } else {
+          // the icon's round mark (its glyph is the rule kit-icons' to check)
+          const i = box.querySelector('.state-icon, .avatar, i, svg, img');
+          if (!i || i.getBoundingClientRect().width < 24) return 'an empty place without its icon: ' + (box.textContent || '').trim().slice(0, 40);
+        }
+      }
+      const lone = /^(không có|chưa có|không tìm thấy|đang tải|no (data|match|matching|rows|results|records)|nothing (yet|to show|found)|loading)(?=\\s|$|[.,:;!…])/i;
+      const skip = '[data-empty], .empty-state, [data-loading], .dropdown-menu, .slicer-menu, .filter-pop, select, option, button, .btn, .visually-hidden, [role=tooltip], label, .form-text, .set-hint';
+      for (const e of roots.flatMap(r => [...r.querySelectorAll('p, span, div, td, li, small, h5, h6')])) {
+        if (e.children.length || !shown(e) || e.closest(skip)) continue;
+        const text = (e.textContent || '').trim();
+        if (text.length < 80 && lone.test(text)) return 'a lone line of text instead of the template: ' + text.slice(0, 50);
+      }
+      return true;
+    })()`,
+  },
 ];
 
 /** Rules on an open dialog. */

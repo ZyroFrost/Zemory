@@ -1,5 +1,5 @@
 ---
-version: 29
+version: 30
 lang: vi
 ---
 
@@ -235,6 +235,12 @@ lang: vi
 - **Accordion trong thẻ trang thì phẳng** - không nền, không bo góc, không khe, giữa các mục có vạch kẻ - và **mũi tên của nó
   đọc được** (tương phản tối thiểu 3:1 với thẻ). [accordion-flat] [chevron-visible]
 - **Không gì của thanh đầu trang lòi ra mép trái hay phải** (một nút của thanh trang ở 390 px). [head-whole]
+
+- **Hộp thoại, menu và popover có nền đục** ở mọi giao diện, kính bật hay tắt - trang phía sau không bao giờ đọc xuyên qua
+  (user 06/11, `app-base` F18 kèm phép kiểm máy). [surface-opaque]
+- **Chỗ trống và chỗ chờ dùng một mẫu chung** (user 06/11): nằm giữa nơi chúng đứng - chỗ trống có icon tròn, tiêu đề và gợi ý
+  (`Empty` của khung, `sasinShell.empty`); chỗ chờ là spinner lớn của bộ mẫu, chữ chỉ cho trình đọc màn hình (`Loading`,
+  `sasinShell.loading`). Không bao giờ để một dòng chữ trơ như "không có dòng khớp" hay "đang tải". [state-template]
 
 ## 6. Kiểm
 
