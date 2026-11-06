@@ -1,5 +1,5 @@
 ---
-version: 34
+version: 35
 lang: vi
 ---
 
@@ -203,6 +203,11 @@ lang: vi
 - **Chấm trạng thái nguyên vẹn:** chấm của avatar trực tuyến nằm trên mép nó, và không khung nào bao quanh - nút hay dòng menu cắt
   tràn vì hiệu ứng gợn sóng - cắt mất chấm. Con số trên một nút (số tin chưa đọc của chuông, `.badge-notifications` hoặc `data-count-badge`)
   cũng nằm trọn, lòi ra ngoài nút như vậy (v33, user 06/11: con số bị cắt trong nút tròn của chuông). [dot-whole]
+- **Ảnh đại diện nằm trong khung bọc nó:** khung không được nhỏ hơn ảnh - khung cố định 100 px bọc ảnh hồ sơ 120 px, ảnh
+  tràn qua khoảng cách, dính vào tên (v35, user 07/11). Chồng ảnh (cố ý chồng lên nhau) được miễn. [box-holds]
+- **Tab đang chọn là một ô có nền, như Sneat:** hàng tab (`.nav-pills`, tablist) hiện tab đang chọn bằng nền của chính nó
+  hoặc ô trượt bên dưới - không để chữ trơn nằm lẻ trên trang (v35, user 07/11: "cấu trúc skill sneat ko có nút nào nằm lẻ
+  như chữ tài khoản với mk"). Khung chung tự tô nền cho hàng `.nav-pills` không có ô trượt riêng. [tab-pill]
 - **Avatar giữ đúng hình vuông:** trong mọi hàng - trang, thanh trên, menu, menu thả xuống - avatar của bộ mẫu đứng `flex-shrink-0`
   cạnh chữ có thể dài, khối chữ co lại và kết bằng "…"; một tên dài không bao giờ ép bẹp avatar. [avatar-square]
 - **Giao diện là của người dùng trên cả hệ:** các cài đặt giao diện tạo nên bề mặt chung - theme, ngôn ngữ, định dạng ngày, kính
