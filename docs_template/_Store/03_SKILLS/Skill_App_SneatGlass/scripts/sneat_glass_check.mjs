@@ -1104,6 +1104,28 @@ export const PROBES = [
       return errors.length ? errors.join('; ') : true;
     })()`,
   },
+  {
+    id: 'head-clear',
+    rule: 'the rows that scroll under a pinned header are cut at its lower edge - in the page body, in a panel and in a table\'s own scrolling frame (v32, Dashboard: the cut measured by the thead box, which scrolls with the body, stayed 0 and rows read through the clear header)',
+    check: `(async () => {
+      const wait = () => new Promise(r => setTimeout(r, 150)), out = [];
+      for (const table of document.querySelectorAll('#page table')) {
+        const th = table.tHead?.querySelector('th'), body = table.tBodies[0];
+        if (!th || !body || !table.getClientRects().length || getComputedStyle(th).position !== 'sticky') continue;
+        let box = table.parentElement;
+        while (box && !(/(auto|scroll)/.test(getComputedStyle(box).overflowY) && box.scrollHeight > box.clientHeight + 1)) box = box.parentElement;
+        if (!box) continue;
+        const saved = box.scrollTop;
+        box.scrollTop = Math.max(0, table.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop) + 200;
+        box.dispatchEvent(new Event('scroll')); await wait();
+        const under = th.getBoundingClientRect().bottom - body.getBoundingClientRect().top;
+        const m = /inset\\((-?[\\d.]+)px/.exec(getComputedStyle(body).clipPath || ''), cut = m ? parseFloat(m[1]) : 0;
+        if (under > 2 && cut < under - 2) out.push((table.dataset.resizeId || table.id || 'a table') + ': ' + Math.round(under) + ' px of rows under its head, cut ' + Math.round(cut) + ' px');
+        box.scrollTop = saved; box.dispatchEvent(new Event('scroll')); await wait();
+      }
+      return out.length ? out.join('; ') : true;
+    })()`,
+  },
 ];
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop()) && process.argv.includes('--list')) {
   for (const r of [...RULES, ...DIALOG_RULES]) console.log(`${r.id.padEnd(12)} ${r.rule}`);

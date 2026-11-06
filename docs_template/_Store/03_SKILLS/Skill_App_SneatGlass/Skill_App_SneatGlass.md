@@ -269,7 +269,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   its filter (user 06/11). [bar-no-extra-text]
 - **Every row of a table scrolled into view is drawn** - only the rows under its own pinned header, or behind its footer pinned at the bottom (a TOTAL row, v32), are left out (user 06/11: a table
   mid-page lost its first rows). A probe: `PROBES` of the check script, evaluated awaited on every page with a table.
-  [rows-painted]
+  [rows-painted] The rows passing under a pinned header are cut there, in any scrolling frame (v32). [head-clear]
 
 ## 6. Check
 

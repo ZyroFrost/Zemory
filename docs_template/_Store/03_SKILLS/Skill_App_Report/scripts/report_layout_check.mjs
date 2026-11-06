@@ -126,7 +126,9 @@ export const RULES = [
       const th = t.querySelector('thead th'); if (!th) return 'a table without a header row: ' + name(v);
       const hs = getComputedStyle(th);
       if (Number(hs.fontWeight) < 600) return 'a table header not bold: ' + name(v);
-      if (clear(hs.backgroundColor) && hs.backgroundImage === 'none') return 'a table header without its fill: ' + name(v);
+      // (v8) a header pinned on glass is the card glass itself, clear through (app-sneat-glass pin-cover): no fill asked there
+      const onGlass = hs.position === 'sticky' && !document.documentElement.classList.contains('solid');
+      if (!onGlass && clear(hs.backgroundColor) && hs.backgroundImage === 'none') return 'a table header without its fill: ' + name(v);
       const rows = [...t.querySelectorAll('tbody tr')].filter(r => r.getClientRects().length && !r.hasAttribute('data-rp-total'));
       const look = r => { const a = getComputedStyle(r), b = getComputedStyle(r.cells[0] || r); return a.backgroundColor + b.backgroundColor + b.backgroundImage + b.boxShadow; };
       if (rows.length >= 3 && look(rows[0]) === look(rows[1])) return 'table rows do not alternate: ' + name(v);
@@ -174,7 +176,8 @@ export const RULES = [
     return true;`),
 
   // E. Layout (§5)
-  rule('rp-same-row', 'visuals of the same kind and fields sit in one row, with the same height and an even split of the width', `
+  rule('rp-same-row', 'visuals of the same kind and fields sit in one row, with the same height and an even split of the width (a phone stacks them)', `
+    if (innerWidth < 768) return true;   // (v8) a phone stacks the visuals of a row
     const groups = new Map();
     for (const v of vis()) { if (!v.dataset.rpFields) continue; const k = v.dataset.rpVisual + '|' + v.dataset.rpFields; groups.set(k, [...(groups.get(k) || []), v]); }
     for (const [k, list] of groups) {
@@ -273,7 +276,9 @@ export const RULES = [
 
   // I. Tooltips (§3, user 05/11: "mọi chỗ khi trỏ vào đều phải ra thông tin nhỏ… giống pbi")
   rule('rp-tooltip', 'every data mark a person can point at outside a table (a bar, a stacked part, a dot, a slice) names what it stands for with its value, through the frame\'s tooltip (data-tip), never the browser\'s plain title', `
-    const marks = [...document.querySelectorAll('[data-rp-page] [data-rp-mark], [data-rp-page] [data-cf-value]')].filter(m => m.getClientRects().length && !m.closest('table'));
+    // (v8) the data marks, and a point that shows no words of its own; an axis tick or a key entry names itself on screen
+    const marks = [...document.querySelectorAll('[data-rp-page] [data-rp-mark], [data-rp-page] [data-cf-value]')].filter(m => m.getClientRects().length && !m.closest('table')
+      && (m.matches('[data-rp-mark]') || !(m.innerText || '').trim()));
     const bad = marks.find(m => !/\\d/.test(m.getAttribute('data-tip') || ''));
     return bad ? 'a data mark without its tooltip: ' + (bad.getAttribute('title') || bad.getAttribute('data-cf-value') || bad.className || bad.tagName).toString().slice(0, 50) : true;`),
 

@@ -247,7 +247,7 @@ lang: vi
 - **Thanh đầu trang chỉ có crumb và các nút** - không có dòng ngày rời bên cạnh; kỳ mà trang đang giữ do bộ lọc của nó nói (user
   06/11). [bar-no-extra-text]
 - **Mọi dòng của bảng đã cuộn tới đều được vẽ** - chỉ các dòng nằm dưới đầu bảng ghim của chính nó, hoặc sau dòng chân ghim ở đáy (dòng TỔNG, v32), được miễn (user 06/11: một bảng
-  giữa trang mất mấy dòng đầu). Phép đo động: `PROBES` của script kiểm, chạy có chờ trên mọi trang có bảng. [rows-painted]
+  giữa trang mất mấy dòng đầu). Phép đo động: `PROBES` của script kiểm, chạy có chờ trên mọi trang có bảng. [rows-painted] Các dòng trôi xuống dưới đầu bảng ghim bị cắt tại đó, trong mọi khung cuộn (v32). [head-clear]
 
 ## 6. Kiểm
 
