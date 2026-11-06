@@ -1,7 +1,7 @@
 ---
 id: Skill_App_CrossFilter
 name: app-cross-filter
-version: 2
+version: 3
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_PBI_Base]
 installs: [scripts/crossfilter_check.mjs]
@@ -21,7 +21,9 @@ description: Cross-filtering between the visuals of one report page, as Power BI
 - **A click on a data point picks only that point**, replacing the whole selection; a click on the only picked point clears it.
 - **Ctrl / Cmd / Shift + click adds or removes** the point and keeps what other visuals picked.
 - **Enter or Space** on a focused point does the same as a click; every point is reachable by Tab. [cf-points]
-- **Escape** (when no dialog or popover is open) and a **clear button** remove the whole selection. [cf-interaction]
+- **Escape** (when no dialog or popover is open) and the page filter's **Clear** remove the whole selection. [cf-interaction]
+- **Every part of a visual is a point** (v3, user 06/11), as in Power BI: a stacked part, a line dot, a bar, a column, a slice,
+  a key entry, a table row. A visual of measures side by side (`data-rp-free`) has no field and is left out. [cf-every-mark]
 
 ## 2. What follows a selection
 
@@ -31,15 +33,18 @@ description: Cross-filtering between the visuals of one report page, as Power BI
   [cf-interaction]
 - **KPI tiles and tables follow** the selection. A KPI the client cannot recompute (its rows are not sent) shows the server's
   value for the picked member when exactly one is picked (a per-member measure), else the page total - never a wrong sum of rates.
-- **The picked values show as chips** beside the page name, one per field, each with its own remove button, then the clear
-  button. [cf-interaction]
+- **The picked values show on the page's ONE filter** (v3, user 06/11: "bấm ở dưới là dùng chính bộ lọc ở trên, không phải thêm
+  bộ lọc khác"): the filter of that field on the page bar holds them and the filter button counts them; setting that filter
+  filters the visuals the same way. No second row of chips. [filter-one] [cf-interaction]
 
 ## 3. The markup contract
 
 - A data point carries `data-cf-dim` (the field) · `data-cf-value` (the value) · `aria-pressed` (picked) · `role="button"` ·
   `tabindex="0"` · a readable name (`title` or `aria-label`). A dimmed point carries the class `cf-dim`, a picked one `cf-picked`.
   [cf-points]
-- The chips sit in `#cf-chips`; the clear button is `#cf-clear`.
+- Each field a visual filters on is a filter of the page bar: `data-filter-id` = the field (a point on two fields says
+  `data-cf-dim="month|grade"` and `data-cf-value="T3|A"`); the filter button `#filter-toggle` counts them in `.filter-count`.
+  [filter-one]
 - A report page has data points in at least two visuals; one visual alone has nothing to filter. [cf-visuals]
 
 ## 4. Building it
@@ -54,7 +59,9 @@ description: Cross-filtering between the visuals of one report page, as Power BI
 
 - The repo's browser test imports `scripts/crossfilter_check.mjs`, evaluates every `RULES` entry on every report page, then runs
   `INTERACTION` (awaited) once per page: it clicks a point and expects the point lit, its siblings dimmed, the chips shown and
-  at least one OTHER visual or KPI changed; a second click clears; Escape clears. It runs `SELF_TEST` first: the good page must
+  at least one OTHER visual or KPI changed, the field's page filter present and counted; a second click clears; Escape clears.
+  Then `EVERY_CLICK` (awaited): in each visual a click on a point changes another visual and a second click brings the page
+  back - a point that filters nothing is no point. It runs `SELF_TEST` first: the good page must
   pass and the faulty page must fail every rule, so the check is proven red.
 - The repo's unit tests cover `pick` and `filterRows`, each new case proven red by breaking the function it guards.
 

@@ -158,12 +158,18 @@ export const RULES = [
       if (/(auto|scroll)/.test(getComputedStyle(f).overflowX) && f.scrollWidth > f.clientWidth + 1) return 'scrolls sideways: ' + name(v);
     }
     return true;`),
-  rule('rp-scroll-alone', 'a table that scrolls down a lot (1.5 times its frame) is the only block of its view', `
-    const all = vis();
-    for (const v of all.filter(v => v.dataset.rpVisual === 'table')) {
-      const f = [v, ...v.querySelectorAll('*')].find(e => /(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.clientHeight > 0);
-      if (!f || f.scrollHeight < 1.5 * f.clientHeight) continue;
-      if (all.some(o => o !== v && !o.contains(v) && !v.contains(o) && o.dataset.rpVisual !== 'cards')) return 'a long table shares its view: ' + name(v);
+  // (v7, user 06/11: "mỗi dashboard dạng list nên có giới hạn bao nhiêu dòng, rồi phần còn lại cho scrollbar tự động trong
+  // chính dashboard đó, chứ không có dài cả đống ra") - replaces rp-scroll-alone: a long table stays on the page with the others
+  rule('rp-table-rows-cap', 'a table of a report page shows ten rows at most and scrolls the rest inside its own frame - never a page-long list, and it stays on the page beside the other visuals', `
+    for (const table of document.querySelectorAll('[data-rp-page] table')) {
+      const rows = [...(table.tBodies[0]?.rows || [])].filter(r => r.getClientRects().length);
+      if (rows.length <= 10) continue;
+      let frame = table.parentElement;
+      while (frame && !frame.matches('[data-rp-page]') && !/(auto|scroll)/.test(getComputedStyle(frame).overflowY)) frame = frame.parentElement;
+      const what = name(table.closest('[data-rp-visual]') || table);
+      if (!frame || frame.matches('[data-rp-page]')) return what + ': ' + rows.length + ' rows and no scroll of its own';
+      const row = rows[0].getBoundingClientRect().height || 40, head = table.tHead ? table.tHead.getBoundingClientRect().height : 0;
+      if (frame.clientHeight > head + row * 11 + 2) return what + ': shows ' + Math.round((frame.clientHeight - head) / row) + ' rows, the cap is 10';
     }
     return true;`),
 
@@ -270,6 +276,23 @@ export const RULES = [
     const marks = [...document.querySelectorAll('[data-rp-page] [data-rp-mark], [data-rp-page] [data-cf-value]')].filter(m => m.getClientRects().length && !m.closest('table'));
     const bad = marks.find(m => !/\\d/.test(m.getAttribute('data-tip') || ''));
     return bad ? 'a data mark without its tooltip: ' + (bad.getAttribute('title') || bad.getAttribute('data-cf-value') || bad.className || bad.tagName).toString().slice(0, 50) : true;`),
+
+  // J. The report cards of a catalog page (§9, user 06/11)
+  rule('rp-card-pages-even', 'a report card on a catalog page lists its pages in two even columns, so a long list never stretches it past its neighbour', `
+    for (const list of document.querySelectorAll('[data-rp-card] [data-rp-card-pages], .board-card .board-tabs')) {
+      if (!list.getClientRects().length || list.children.length < 2) continue;
+      const cols = getComputedStyle(list).gridTemplateColumns.split(' ').filter(c => c && c !== 'none');
+      if (cols.length !== 2) return 'the pages of a report card in ' + cols.length + ' column(s), two wanted';
+    }
+    return true;`),
+  rule('rp-card-status', 'a built report card turns, by a button at its top right, to the state of its numbers: normal, a period with no numbers yet, a read that failed (with the last good read), not read yet; the time of the update, the period, how long it read, how often it refreshes', `
+    for (const card of document.querySelectorAll('[data-rp-card][data-built], .board-card[data-built]')) {
+      const button = card.querySelector('[data-rp-card-flip], [data-board-flip]'), back = card.querySelector('[data-rp-card-status], [data-board-status]');
+      if (!button || !back) return 'a built report card with no state of its numbers behind it';
+      const c = card.getBoundingClientRect(), b = button.getBoundingClientRect();
+      if (b.top - c.top > 40 || c.right - b.right > 40) return 'the button that turns a report card is not at its top right';
+    }
+    return true;`),
 ];
 
 const SHELL = body => `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -294,7 +317,9 @@ export const SELF_TEST = {
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Chi tiết</h6><table><thead><tr><th>Nhà</th><th>Số</th></tr></thead>` +
     `<tbody>${rowsOf(8)}<tr data-rp-total style="font-weight:700"><td>Tổng</td><td>9</td></tr></tbody></table></div></div>` +
     `<nav><a role="tab">Tổng quan</a><a role="tab">Huỷ món</a></nav>` +
-    `<div data-rp-glossary hidden><p data-rp-term="TC">TC (Transaction Count): số hoá đơn</p></div>`),
+    `<div data-rp-glossary hidden><p data-rp-term="TC">TC (Transaction Count): số hoá đơn</p></div>` +
+    `<div data-rp-card data-built style="position:relative;width:300px"><button data-rp-card-flip style="position:absolute;top:4px;right:4px">i</button>` +
+    `<ul data-rp-card-pages style="display:grid;grid-template-columns:1fr 1fr;margin-top:30px"><li>A</li><li>B</li><li>C</li></ul><div data-rp-card-status hidden>ok</div></div>`),
   faulty: SHELL(`<div class="row" data-rp-visual="cards">${card('Doanh thu cả tháng gồm tất cả các kênh bán hàng của nhà hàng', '1.200', '+5,2%', 'up', '').replace('flex:1', 'flex:0 0 150px;min-width:0')}` +
     `${card('Tỷ lệ', '40%', '+3,0% MoM', 'up', 'text-danger')}<svg width="5" height="5"></svg></div>` +
     `<div class="row"><div class="card" data-rp-visual="chart" data-rp-axis="column" data-rp-fields="hour" style="width:500px"><h6 data-rp-title>Theo giờ</h6>` +
@@ -310,7 +335,9 @@ export const SELF_TEST = {
     `<div class="card" data-rp-visual="table" data-rp-detail style="width:400px"><h6>x</h6><table><thead><tr><th>b</th></tr></thead><tbody>${rowsOf(4).replace(/<tr>/g, '<tr style="background:#fff">')}` +
     `<tr data-rp-total><td>Tổng</td><td>1</td></tr></tbody></table></div></div>` +
     `<nav><a role="tab">Báo cáo huỷ món IC</a></nav><div data-rp-glossary hidden><p data-rp-term="X">X: một · Y: hai</p></div>` +
-    `<div class="view-switch"><button class="btn" id="view-list">L</button><button class="btn" id="view-grid">G</button></div>`),
+    `<div class="view-switch"><button class="btn" id="view-list">L</button><button class="btn" id="view-grid">G</button></div>` +
+    `<div class="row"><div data-rp-visual="table" style="flex:1"><table><thead><tr><th>Long</th></tr></thead><tbody>${Array.from({length: 12}, (_, i) => `<tr><td>${i}</td></tr>`).join('')}</tbody></table></div></div>` +
+    `<div data-rp-card data-built style="width:300px"><ul data-rp-card-pages style="display:grid;grid-template-columns:1fr"><li>A</li><li>B</li></ul></div>`),
 };
 
 if (process.argv.includes('--list')) for (const r of RULES) console.log(r.id.padEnd(22) + r.rule);

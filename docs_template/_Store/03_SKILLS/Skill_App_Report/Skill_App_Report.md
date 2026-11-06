@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 6
+version: 7
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -62,7 +62,9 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **Nothing scrolls sideways inside its frame, and no table spills out of its panel** (column widths are measured at first draw, so headers may wrap; a phone scrolls a data grid inside its frame, app-base M5). A table spread over periods shows only the latest ones (the window follows
   the page filter); columns are as wide as their longest figure, all fitting the frame; figures that still do not fit switch
   to millions with one decimal. Scrolling down is normal. [rp-no-side-scroll]
-- **A table that scrolls down a lot** (1.5 times its frame) is the only block of its view (its own tab). [rp-scroll-alone]
+- **A table shows ten rows at most** and scrolls the rest inside its own frame, staying on the page beside the other visuals
+  (v7, user 06/11: "có giới hạn bao nhiêu dòng, rồi phần còn lại cho scrollbar tự động trong chính dashboard đó").
+  [rp-table-rows-cap]
 
 ## 5. Layout
 
@@ -109,6 +111,12 @@ description: The report pages of an app - what a page of figures, charts and tab
   part by part; a planned difference (a part the report left blank) is declared with the reason.
 - What the owner adjusted in the report stays as the owner left it; a settled layout moves only with approval
   (`Rule_Keys_62_DesignChangeApproval`).
+
+- **A report card on a catalog page** lists its pages in two even columns (`data-rp-card-pages`) and, once built, turns by a
+  button at its top right (`data-rp-card-flip`) to the state of its numbers (`data-rp-card-status`): normal, a period with no
+  numbers yet, a read that failed with the last good read, not read yet; the time of the update, the period, how long it read,
+  how often it refreshes. Only the content turns; the card's glass stands still (v7, user 06/11). [rp-card-pages-even]
+  [rp-card-status]
 
 ## 9. The markup contract
 

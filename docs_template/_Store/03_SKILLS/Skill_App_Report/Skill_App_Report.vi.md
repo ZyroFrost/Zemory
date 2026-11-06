@@ -1,5 +1,5 @@
 ---
-version: 6
+version: 7
 lang: vi
 ---
 
@@ -49,7 +49,8 @@ lang: vi
   chỉ số khác đơn vị để trong tooltip. Bảng chi tiết (mỗi dòng một bản ghi) được miễn. [rp-table-few]
 - **Không gì cuộn ngang trong khung, không bảng nào tràn ra ngoài panel** (bề rộng cột đo lúc vẽ lần đầu, nên header được xuống dòng; điện thoại cho bảng dữ liệu cuộn ngang trong khung, app-base M5). Bảng trải theo kỳ chỉ hiện các kỳ gần nhất (cửa sổ đi theo bộ lọc trang); cột rộng
   vừa số dài nhất, tổng vừa khung; vẫn không vừa thì đổi sang triệu một chữ số lẻ. Cuộn dọc là bình thường. [rp-no-side-scroll]
-- **Bảng cuộn dọc nhiều** (1,5 lần khung) là khối duy nhất của màn (tab riêng). [rp-scroll-alone]
+- **Bảng hiện tối đa mười dòng**, phần còn lại cuộn trong khung của chính nó, và vẫn nằm chung trang với các hình khác (v7, user
+  06/11: "có giới hạn bao nhiêu dòng, rồi phần còn lại cho scrollbar tự động trong chính dashboard đó"). [rp-table-rows-cap]
 
 ## 5. Bố cục
 
@@ -89,6 +90,11 @@ lang: vi
   (một phần report để trống) khai kèm lý do.
 - Những gì chủ report đã chỉnh giữ nguyên như chủ để lại; bố cục đã chốt chỉ đổi khi được duyệt
   (`Rule_Keys_62_DesignChangeApproval`).
+
+- **Thẻ report ở trang danh mục** xếp các trang của nó thành hai cột đều (`data-rp-card-pages`) và, khi đã dựng, lật được bằng một
+  nút ở góc phải trên (`data-rp-card-flip`) sang trạng thái số liệu (`data-rp-card-status`): bình thường, kỳ chưa có số, đọc
+  lỗi kèm lần đọc tốt gần nhất, chưa đọc; giờ cập nhật, kỳ, thời gian đọc, chu kỳ tự làm mới. Chỉ phần nội dung lật, nền kính của
+  thẻ đứng yên (v7, user 06/11). [rp-card-pages-even] [rp-card-status]
 
 ## 9. Hợp đồng markup
 
