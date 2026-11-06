@@ -1071,7 +1071,7 @@ export const DIALOG_RULES = [
 export const PROBES = [
   {
     id: 'rows-painted',
-    rule: 'every row of a table scrolled into view is drawn: a point in the middle of each row in view hits that row - rows under the table\'s own pinned header are cut on purpose (pin-cover), nothing else (user 06/11: a table mid-page lost its first rows)',
+    rule: 'every row of a table scrolled into view is drawn: a point in the middle of each row in view hits that row - rows under the table\'s own pinned header or behind its footer pinned at the bottom are left out, nothing else (user 06/11: a table mid-page lost its first rows)',
     check: `(async () => {
       const wait = () => new Promise(r => setTimeout(r, 120));
       const scroller = document.querySelector('.page-card-body');
@@ -1085,7 +1085,10 @@ export const PROBES = [
         const frame = table.parentElement && /(auto|scroll)/.test(getComputedStyle(table.parentElement).overflowY) ? table.parentElement.getBoundingClientRect() : null;
         const top = Math.max(document.querySelector('#layout-navbar')?.getBoundingClientRect().bottom || 0, head ? head.bottom : 0,
           scroller.getBoundingClientRect().top, frame ? frame.top : 0);
-        const bottom = Math.min(innerHeight, scroller.getBoundingClientRect().bottom, frame ? frame.bottom : innerHeight);
+        // (v32) a footer pinned at the bottom (a TOTAL row, sticky) covers the rows under it on purpose, as the pinned head does
+        const footCell = table.tFoot && table.tFoot.querySelector('td, th');
+        const foot = footCell && getComputedStyle(footCell).position === 'sticky' ? footCell.getBoundingClientRect().top : Infinity;   // the pinned cell, drawn where it sticks
+        const bottom = Math.min(innerHeight, scroller.getBoundingClientRect().bottom, frame ? frame.bottom : innerHeight, foot);
         let bad = 0, checked = 0;
         for (const row of table.tBodies[0].rows) {
           const r = row.getBoundingClientRect();

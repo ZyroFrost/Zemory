@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 31
+version: 32
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -267,7 +267,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   report cross-filters on stand on the page's one filter; a plain pick list still holds 10 values at most. [filter-set]
 - **The top bar holds its crumbs and its controls only** - no loose line of dates beside them; a period the page holds is said by
   its filter (user 06/11). [bar-no-extra-text]
-- **Every row of a table scrolled into view is drawn** - only the rows under its own pinned header are cut (user 06/11: a table
+- **Every row of a table scrolled into view is drawn** - only the rows under its own pinned header, or behind its footer pinned at the bottom (a TOTAL row, v32), are left out (user 06/11: a table
   mid-page lost its first rows). A probe: `PROBES` of the check script, evaluated awaited on every page with a table.
   [rows-painted]
 
