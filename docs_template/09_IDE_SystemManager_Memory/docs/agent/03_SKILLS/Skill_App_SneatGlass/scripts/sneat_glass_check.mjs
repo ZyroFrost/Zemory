@@ -559,24 +559,37 @@ export const RULES = [
   },
   {
     id: 'bar-aligned',
-    rule: 'the controls of one row of the page bar stand on one line: every button, field, pick list, tab and search box side by side share their vertical centre (within 3 px) - an app\'s own CSS that pushes one down (a margin, a padding of an old card rule) shows (v37, Reconcile 07/11: an old .card button rule pushed the bar\'s buttons 16 px down and the bar read green)',
+    rule: 'the controls of one row stand on one line: every button, field, pick list, tab and search box side by side in one row - the page bar, a card or panel head, any row of the page, a dialog - share their vertical centre (within 3 px); an app\'s own CSS that pushes one down (a margin, a padding of an old card rule) shows (v37, Reconcile 07/11: an old .card button rule pushed buttons 16 px down and the check read green; v38: every row, not the page bar only - the fault sat in a panel head inside the page)',
     check: `(() => {
       const SEL = '.btn, button, .form-control, .form-select, select, input:not([type=hidden]):not([type=checkbox]):not([type=radio]), .nav-link, .page-search';
-      for (const bar of document.querySelectorAll('#page-bar .page-toolbar, #page .page-toolbar')) {
-        if (!bar.getClientRects().length) continue;
-        const items = [...bar.querySelectorAll(SEL)].filter(e => e.getClientRects().length && e.getBoundingClientRect().height > 8
-          && !e.closest('.dropdown-menu, .filter-pop, [hidden]') && !(e.parentElement && e.parentElement.closest(SEL)));
-        const boxes = items.map(e => ({e, r: e.getBoundingClientRect()}));
-        for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
-          const a = boxes[i].r, b = boxes[j].r;
-          const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-          if (overlap < Math.min(a.height, b.height) * .3) continue;   // not the same row
-          const off = Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2);
-          if (off > 3) {
-            const name = x => x.id ? '#' + x.id : (x.getAttribute('aria-label') || x.textContent.trim() || x.className.toString().split(' ')[0]).slice(0, 24);
-            return 'two controls of one bar row stand ' + Math.round(off) + ' px apart in height: ' + name(boxes[i].e) + ' / ' + name(boxes[j].e);
-          }
-        }
+      const name = x => x.id ? '#' + x.id : (x.getAttribute('aria-label') || x.textContent.trim() || x.className.toString().split(' ')[0]).slice(0, 24);
+      // the row of a control: its nearest flex box laid out as a row, widened to the outermost row it sits in - a head holds a
+      // group of fields and a group of buttons, each its own flex box; they still form one row
+      const flexRow = p => { const s = getComputedStyle(p); return /flex/.test(s.display) && /^row/.test(s.flexDirection); };
+      const STOP = '#page, #page-bar, dialog, .modal-content, body';
+      const rowOf = e => {
+        let p = e.parentElement;
+        while (p && !p.matches(STOP) && !/flex/.test(getComputedStyle(p).display)) p = p.parentElement;
+        if (!p || p.matches(STOP) || !flexRow(p)) return null;
+        while (p.parentElement && !p.parentElement.matches(STOP) && flexRow(p.parentElement)) p = p.parentElement;
+        return p;
+      };
+      const rows = new Map();
+      for (const e of document.querySelectorAll('#page-bar ' + SEL.split(', ').join(', #page-bar ') + ', #page ' + SEL.split(', ').join(', #page ') + ', dialog[open] ' + SEL.split(', ').join(', dialog[open] '))) {
+        if (!e.getClientRects().length || e.getBoundingClientRect().height <= 8) continue;
+        if (e.closest('.dropdown-menu, .filter-pop, [hidden], table') || (e.parentElement && e.parentElement.closest(SEL))) continue;
+        const row = rowOf(e);
+        if (!row) continue;
+        if (!rows.has(row)) rows.set(row, []);
+        rows.get(row).push({e, r: e.getBoundingClientRect()});
+      }
+      for (const boxes of rows.values()) for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i].r, b = boxes[j].r;
+        if (Math.abs(a.height - b.height) > 8) continue;   // a tall field beside a button may stand at the top on purpose
+        const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        if (overlap < Math.min(a.height, b.height) * .3) continue;   // wrapped to the next line: not the same row
+        const off = Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2);
+        if (off > 3) return 'two controls of one row stand ' + Math.round(off) + ' px apart in height: ' + name(boxes[i].e) + ' / ' + name(boxes[j].e);
       }
       return true;
     })()`,

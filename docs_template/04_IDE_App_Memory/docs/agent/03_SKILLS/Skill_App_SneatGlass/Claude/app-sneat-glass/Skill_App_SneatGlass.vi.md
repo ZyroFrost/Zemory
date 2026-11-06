@@ -1,5 +1,5 @@
 ---
-version: 37
+version: 38
 lang: vi
 ---
 
@@ -214,8 +214,10 @@ lang: vi
   trống hàng 2 (v36, user 07/11: "bộ khung chuẩn là panel hàng 2… mất toàn bộ panel hàng 2 mà ko hề nhận ra"). [page-bar]
 - **Hàng tab không nằm trơ trong trang:** nó ở thanh trang (hàng 2), trong một card hoặc trong hộp thoại (v36, user 07/11:
   tab của cài đặt hồ sơ nằm trơ dưới thanh). [tabs-in-panel]
-- **Các ô trong một hàng của thanh trang thẳng một đường:** mọi nút, ô nhập, ô chọn, tab và ô tìm đứng cạnh nhau trên thanh
-  trang có chung tâm dọc (lệch tối đa 3 px). CSS cũ của app (luật `.card button` của thẻ đăng nhập cũ, nặng hơn `.btn`)
+- **Các ô trong một hàng thẳng một đường:** mọi nút, ô nhập, ô chọn, tab và ô tìm đứng cạnh nhau trong một hàng - thanh
+  trang, đầu card hay panel, mọi hàng trong trang, hộp thoại - có chung tâm dọc (lệch tối đa 3 px); một hàng là hàng flex
+  ngoài cùng chứa chúng, nên nhóm ô nhập và nhóm nút trong cùng một đầu panel vẫn là một hàng (v38, Reconcile 07/11: lỗi nằm ở
+  đầu một panel trong trang, ngoài thanh trang). CSS cũ của app (luật `.card button` của thẻ đăng nhập cũ, nặng hơn `.btn`)
   không được đẩy một ô xuống - để CSS đó trong một `@layer` thấp hơn (v37, Reconcile 07/11: các nút của thanh thấp 16 px mà
   kiểm vẫn xanh). [bar-aligned]
 - **Avatar giữ đúng hình vuông:** trong mọi hàng - trang, thanh trên, menu, menu thả xuống - avatar của bộ mẫu đứng `flex-shrink-0`
