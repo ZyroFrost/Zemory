@@ -258,6 +258,12 @@ export const RULES = [
     const shown = [...document.querySelectorAll('[data-rp-title], [data-rp-visual] th, .kpi-title, [role=tab]')].map(e => (e.textContent || '').trim()).join(' ');
     for (const w of new Set(shown.match(/\\b[A-Z][A-Z0-9]+\\b/g) || [])) if (!known.has(w) && !common.has(w)) return 'an abbreviation the glossary does not spell out: ' + w;
     return true;`),
+
+  // H. One view (§8, user 06/11: "dashboard hầu như dùng được tính năng grid list đâu, bỏ hẳn đi")
+  rule('rp-no-view-switch', 'a report page shows no list / grid switch: a report has one view, and a switch only takes room on the bar', `
+    if (!document.querySelector('[data-rp-page]') || !vis().length) return true;
+    const sw = [...document.querySelectorAll('#view-list, #view-grid, .view-switch > .btn')].filter(e => e.getClientRects().length && !e.disabled);
+    return sw.length ? 'a report page with a list / grid switch: ' + sw.map(e => e.id || e.className).join(', ') : true;`),
 ];
 
 const SHELL = body => `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -297,7 +303,8 @@ export const SELF_TEST = {
     `<table><thead><tr><th>a</th></tr></thead><tbody>${Array.from({length: 20}, (_, i) => `<tr><td>${i}</td></tr>`).join('')}</tbody></table></div></div>` +
     `<div class="card" data-rp-visual="table" data-rp-detail style="width:400px"><h6>x</h6><table><thead><tr><th>b</th></tr></thead><tbody>${rowsOf(4).replace(/<tr>/g, '<tr style="background:#fff">')}` +
     `<tr data-rp-total><td>Tổng</td><td>1</td></tr></tbody></table></div></div>` +
-    `<nav><a role="tab">Báo cáo huỷ món IC</a></nav><div data-rp-glossary hidden><p data-rp-term="X">X: một · Y: hai</p></div>`),
+    `<nav><a role="tab">Báo cáo huỷ món IC</a></nav><div data-rp-glossary hidden><p data-rp-term="X">X: một · Y: hai</p></div>` +
+    `<div class="view-switch"><button class="btn" id="view-list">L</button><button class="btn" id="view-grid">G</button></div>`),
 };
 
 if (process.argv.includes('--list')) for (const r of RULES) console.log(r.id.padEnd(22) + r.rule);

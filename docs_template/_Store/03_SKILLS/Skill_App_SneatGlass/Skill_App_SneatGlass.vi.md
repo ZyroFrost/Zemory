@@ -1,5 +1,5 @@
 ---
-version: 27
+version: 28
 lang: vi
 ---
 
@@ -23,7 +23,7 @@ lang: vi
     xem (danh sách · thẻ, hoặc các kiểu riêng của trang). [bar-anchor]
 - Cụm tìm lấy phần còn lại của dòng; các bộ lọc ghim co lại (cắt bằng "…") trước khi chạm tới cụm trái; hai cụm không bao giờ
   đè nhau; ghim bộ lọc không làm cụm trái xê dịch. [bar-anchor] [filter-row]
-- Trang chỉ có một kiểu xem vẫn hiện nút kiểu xem, ở trạng thái tắt; trang chưa có bộ lọc vẫn hiện nút lọc, ở trạng thái tắt.
+- Trang chỉ có một kiểu xem (mọi trang báo cáo) không hiện nút kiểu xem (user 06/11: nút mờ chỉ chiếm chỗ trên thanh); nút kiểu xem, khi có, có từ hai kiểu trở lên. Trang chưa có bộ lọc vẫn hiện nút lọc, ở trạng thái tắt.
   [toolbar] Nút đang bật thì làm đúng việc nó nói: dạng danh sách hiện dòng (một bảng, sắp được theo tiêu đề cột khi có ích -
   trạng thái, độ trễ), dạng thẻ hiện thẻ; trang toàn thẻ (trang chọn app) có dạng danh sách thật, không bao giờ để nút bấm mà
   không đổi gì. [view-real]

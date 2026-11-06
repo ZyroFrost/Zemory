@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 27
+version: 28
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -29,7 +29,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
     filter button, the filter box, the view switch (list · grid, or the page's own views). [bar-anchor]
 - The seek group takes the rest of the line and its pinned filters shrink (ending in "…") before it would reach the left
   group; the two never overlap; pinning a filter never moves the left group. [bar-anchor] [filter-row]
-- A page with one view still shows the switch, turned off; a page with no filter yet still shows the filter button, turned off.
+- A page with one view (every report) shows no switch at all (user 06/11: a faded switch only took room on the bar); a switch, when shown, has two views or more. A page with no filter yet still shows the filter button, turned off.
   [toolbar] A switch that is on does what it says: the list view shows rows (a table, sortable by its headers where it helps -
   status, latency), the grid view cards; a page of cards (a launcher) gets a real list view, never a switch that changes
   nothing. [view-real]

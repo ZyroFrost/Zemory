@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 4
+version: 5
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -93,6 +93,9 @@ description: The report pages of an app - what a page of figures, charts and tab
   Count): số hoá đơn`), looked up in the company's terms, then the old system's dictionary, then the DW docs, then the
   measure itself - never invented. One definition per line. Explanations of a figure live there, not in a frame on the page.
   [rp-glossary]
+- **A report page has one view: no list / grid switch** on its bar (user 06/11) - a report is read one way, and a switch
+  only takes room. The page declares it (iews={false} on the family's frame), and the frame then draws no switch.
+  [rp-no-view-switch]
 
 ## 8. Rebuilding a report
 

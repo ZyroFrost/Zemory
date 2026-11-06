@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 
@@ -74,6 +74,8 @@ lang: vi
   cột và trục, tiêu đề card. Chữ viết tắt ghi kèm nguyên văn một lần (`TC (Transaction Count): số hoá đơn`), tra theo thứ tự
   thuật ngữ của công ty → từ điển hệ cũ → tài liệu DW → chính measure — không tự đặt. Mỗi định nghĩa một dòng. Lời giải thích
   một con số nằm ở đây, không nằm trong khung trên trang. [rp-glossary]
+- **Trang báo cáo chỉ có một kiểu xem: không có nút danh sách / thẻ** trên thanh (user 06/11) - báo cáo đọc một cách, nút
+  chỉ chiếm chỗ. Trang khai điều đó (iews={false} trên khung chung của hệ), khung khi đó không vẽ nút. [rp-no-view-switch]
 
 ## 8. Dựng lại một report
 

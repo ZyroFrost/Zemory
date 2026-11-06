@@ -15,7 +15,7 @@
 export const RULES = [
   {
     id: 'toolbar',
-    rule: 'every page card carries one toolbar of one design: filter box · filter button · view switch (same height, radius, fill), the chosen view lit, the box text clear of its icon',
+    rule: 'every page card carries one toolbar of one design: filter box · filter button · view switch (same height, radius, fill), the chosen view lit, the box text clear of its icon; a page of one view only (every report) shows no switch at all (user 06/11)',
     check: `(() => {
       const cards = [...document.querySelectorAll('.page-card')];
       for (const card of cards) {
@@ -23,10 +23,11 @@ export const RULES = [
         const bar = document.querySelector('#layout-navbar #page-bar > .page-toolbar') || card.querySelector(':scope > .page-toolbar');
         const box = bar && bar.querySelector('.page-search .form-control'), filter = bar && bar.querySelector('.page-filter > .btn');
         const views = bar ? [...bar.querySelectorAll('.view-switch > .btn')] : [];
-        if (!box || !filter || views.length < 2) return 'a page card lacks ' + [!box && 'the filter box', !filter && 'the filter button', views.length < 2 && 'the view switch'].filter(Boolean).join(', ');
+        // no switch = a page of one view (user 06/11: a faded switch only took room); a switch has two views or more
+        if (!box || !filter || views.length === 1) return 'a page card lacks ' + [!box && 'the filter box', !filter && 'the filter button', views.length === 1 && 'a second view in its switch'].filter(Boolean).join(', ');
         const look = e => { const c = getComputedStyle(e); return [Math.round(e.getBoundingClientRect().height), c.borderTopLeftRadius, c.backgroundColor].join(' '); };
         const fill = e => look(e).replace(/ [^ ]+px /, ' ');
-        const plain = views.find(b => !b.classList.contains('active')) || views[0];
+        const plain = views.find(b => !b.classList.contains('active')) || views[0] || filter;
         // the filter button is lit while its filters show (it is the switch that opens them): then only its shape is compared
         const lit = filter.getAttribute('aria-expanded') === 'true';
         const shape = e => look(e).split(' ').slice(0, 2).join(' ');
@@ -35,7 +36,7 @@ export const RULES = [
         const icon = box.parentElement.querySelector('i, svg');
         if (icon && parseFloat(getComputedStyle(box).paddingInlineStart) < icon.getBoundingClientRect().width + 8) return 'the filter box text runs under its icon';
         const active = views.find(b => b.classList.contains('active'));
-        if (!views.some(b => b.disabled) && (!active || getComputedStyle(active).backgroundColor === getComputedStyle(plain).backgroundColor)) return 'the chosen view is not lit';
+        if (views.length && !views.some(b => b.disabled) && (!active || getComputedStyle(active).backgroundColor === getComputedStyle(plain).backgroundColor)) return 'the chosen view is not lit';
       }
       return true;
     })()`,
