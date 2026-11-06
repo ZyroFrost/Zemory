@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 37
+version: 38
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -232,8 +232,10 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   left empty (v36, user 07/11: "bộ khung chuẩn là panel hàng 2… mất toàn bộ panel hàng 2 mà ko hề nhận ra"). [page-bar]
 - **A row of tabs never stands loose in the page:** it is in the page bar (row 2), in a card or in a dialog (v36, user 07/11:
   the profile settings tabs stood loose under the bar). [tabs-in-panel]
-- **The controls of one bar row stand on one line:** every button, field, pick list, tab and search box side by side in the
-  page bar shares its vertical centre (within 3 px). An app's own old CSS (a `.card button` rule of a former sign-in card,
+- **The controls of one row stand on one line:** every button, field, pick list, tab and search box side by side in one row -
+  the page bar, a card or panel head, any row of the page, a dialog - shares its vertical centre (within 3 px); a row is the
+  outermost flex row the controls sit in, so a group of fields and a group of buttons in one head are one row (v38, Reconcile
+  07/11: the fault sat in a panel head inside the page, outside the bar). An app's own old CSS (a `.card button` rule of a former sign-in card,
   heavier than `.btn`) must not push one down - keep such CSS in a lower `@layer` (v37, Reconcile 07/11: the bar's buttons
   stood 16 px low and the check read green). [bar-aligned]
 - **An avatar keeps its square:** in any row - a page, the top bar, the menu, a dropdown - a kit avatar stands `flex-shrink-0`
