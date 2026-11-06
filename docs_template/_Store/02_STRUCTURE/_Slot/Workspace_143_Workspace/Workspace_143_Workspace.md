@@ -1,7 +1,7 @@
 ---
 id: Slot_143
 name: workspace
-version: 4
+version: 5
 path: Workspace/
 scope: layout
 ---
@@ -19,13 +19,13 @@ the drive is off-standard and moves here.
 |---|---|---|
 | 1 | work done for an organisation (an employer past or present, a client of freelance work) — repos and non-repo work folders | `Company\<Org>\` (Company_144) |
 | 2 | code written by someone else — always, even when it was cloned to learn from (a fork with commits of the owner is the owner's code: step 3) | `External\<repo>\` (External_146) |
-| 3 | everything else: the owner's own code | `Personal\<Kind>\…` (Personal_145) |
+| 3 | everything else: the owner's own repos — code, or the files of a NON-APP repo | `Personal\<Kind>\…` (Personal_145) |
 
 ```
 Workspace\
 ├── Company\<Org>\…       work for an organisation (Company_144) — inside, the frame Struc_Region_Company
 ├── External\<repo>\      code of others, read only (External_146)
-└── Personal\<Kind>\…     the owner's own code: StudyProjects · Games · Apps (Personal_145)
+└── Personal\<Kind>\…     the owner's own repos: StudyProjects · Games · Reports · Apps (Personal_145)
 ```
 
 ## Rules

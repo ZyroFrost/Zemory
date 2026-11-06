@@ -1,17 +1,17 @@
 ---
 id: Slot_145
 name: personal
-version: 6
+version: 7
 path: Personal/<PersonalKind>/
-values: [StudyProjects, Games, Apps]
+values: [StudyProjects, Games, Reports, Apps]
 scope: layout
 ---
-# Personal_145_Personal personal — the owner's own code, by kind
+# Personal_145_Personal personal — the owner's own repos, by kind
 
 ## Role
 
-`Workspace\Personal\` holds the code the owner OWNS (step 3 of `Workspace_143`). Every repo sits under ONE kind folder, so a look
-at `Personal\` tells an exercise from a product.
+`Workspace\Personal\` holds the repos the owner OWNS (step 3 of `Workspace_143`). Every repo sits under ONE kind folder, so a look
+at `Personal\` tells an exercise from a product, and a set of files from code that runs.
 
 ## The question of this level — the first true answer wins
 
@@ -19,17 +19,24 @@ at `Personal\` tells an exercise from a product.
 |---|---|---|---|
 | 1 | it was made for a subject the owner studies or studied: a folder `Study\X` exists, or — no learning material kept — the subject folder holds `_README.md` naming the course | `StudyProjects\` | mirrors `Study\`: `School\<School>\<Subject>\<repo>\` · `Self\<Field>\<repo>\`; a project kept packed is `<name>.tar.gz` · `.zip` · `.7z` in the same place |
 | 2 | a game the owner develops | `Games\` | `<repo>\` |
-| 3 | everything else | `Apps\` | `[<Project>\]<repo>\` — a project level when one project has two repos or more |
+| 3 | a NON-APP repo: no running code the owner develops; the work is files that are read, filled or exported — a report, data, documents, a design, research notes (`zemory init --non-app`, `Struc_Repo_NonApp`) | `Reports\` | `<repo>\` |
+| 4 | everything else: code that runs (UI · server · CLI) | `Apps\` | `[<Project>\]<repo>\` — a project level when one project has two repos or more |
 
 Real examples: `Workspace\Personal\StudyProjects\School\OpenUniversity\Databases\finance-tracker\` (and
-`Study\School\OpenUniversity\Databases\` exists) · `Workspace\Personal\Games\PixelRunner\` · `Workspace\Personal\Apps\BudgetTracker\`.
+`Study\School\OpenUniversity\Databases\` exists) · `Workspace\Personal\Games\PixelRunner\` · `Workspace\Personal\Reports\report_thuong\`
+(an internship report: the brief `.txt`, a sample `.jpg`, `report_final.html` and its `.pdf`) · `Workspace\Personal\Apps\BudgetTracker\`.
 
 ## Rules
 
-- Exactly three kinds, the level is required: no repo or folder straight under `Personal\`, no fourth kind.
+- Exactly four kinds, the level is required: no repo or folder straight under `Personal\`, no fifth kind.
 - `StudyProjects\X` needs `Study\X`, or — when no learning material is kept — a `_README.md` in `StudyProjects\X` naming the
-  school and the course. Neither ⇒ the repo is not a study project ⇒ step 2 or 3. An empty `Study\X` is never created to pass
-  the check (`Struc_Disk_Data` §Rules: a folder exists only when it holds something).
+  school and the course. Neither ⇒ the repo is not a study project ⇒ step 2, 3 or 4. An empty `Study\X` is never created to pass
+  the check (`Struc_Disk_Data` §Rules: a folder exists only when it holds something). A report made for a course is a study
+  project: step 1 wins over step 3.
+- `Reports\` is decided by the repo's profile, not by its name or its content: a NON-APP repo (`docs/.harness.json` profile
+  `non-app`, or no running code) goes to `Reports\` whether it holds a report, data, documents or research notes; a repo with
+  running code goes to `Apps\` even when it produces reports. A NON-APP repo that gains running code it develops ⇒
+  `zemory project move` to `Apps\`.
 - A study project may be kept PACKED to save space (`<name>.tar.gz` · `.zip` · `.7z`, `.git\` included): it is still the same
   project and stays in its own place, beside the repos of the same subject. Packing is not archiving (Archive_166).
 - A folder shared by several repos of one kind sits beside them with a `_` name: `Apps\_Prompt\` holds the prompts two apps of
@@ -48,6 +55,6 @@ watched ⇒ `Study\`.
 
 ## Check
 
-`zemory conform --layout <drive>\Workspace` reds (`unknown-value`) any folder straight under `Personal\` that is not one of the three
+`zemory conform --layout <drive>\Workspace` reds (`unknown-value`) any folder straight under `Personal\` that is not one of the four
 kinds. From the drive root it also reds (`study-unmatched`) a `StudyProjects\School\<School>\<Subject>\` or `Self\<Field>\` with
 neither a matching folder under `Study\` nor a `_README.md` of its own.

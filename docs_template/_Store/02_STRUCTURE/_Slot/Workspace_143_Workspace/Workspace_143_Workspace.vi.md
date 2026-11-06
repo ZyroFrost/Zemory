@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Workspace_143_Workspace workspace — code, repo và việc cho tổ chức
@@ -16,13 +16,13 @@ phải dời vào đây.
 |---|---|---|
 | 1 | việc làm cho một tổ chức (công ty đã hoặc đang làm, khách của việc freelance) — cả repo lẫn thư mục công việc không phải repo | `Company\<Tổ chức>\` (Company_144) |
 | 2 | code do người khác viết — luôn luôn, kể cả clone về để học (bản fork có commit của chủ máy là code của chủ máy: bước 3) | `External\<repo>\` (External_146) |
-| 3 | còn lại: code của chính chủ máy | `Personal\<Loại>\…` (Personal_145) |
+| 3 | còn lại: repo của chính chủ máy — code, hoặc bộ file của một repo NON-APP | `Personal\<Loại>\…` (Personal_145) |
 
 ```
 Workspace\
 ├── Company\<Tổ chức>\…   việc cho một tổ chức (Company_144) — bên trong theo khung Struc_Region_Company
 ├── External\<repo>\      code của người khác, chỉ đọc (External_146)
-└── Personal\<Loại>\…     code của chính chủ máy: StudyProjects · Games · Apps (Personal_145)
+└── Personal\<Loại>\…     repo của chính chủ máy: StudyProjects · Games · Reports · Apps (Personal_145)
 ```
 
 ## Luật

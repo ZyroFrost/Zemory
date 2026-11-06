@@ -27,7 +27,7 @@ trúc đó từ HS, không cần xem máy khác, không học từ dữ liệu m
 │   │   ├── _Design/                  khuôn báo cáo + tài nguyên giao diện chung (đồng bộ)
 │   │   ├── _Legacy/<Nguồn>/          việc cũ, chỉ đọc
 │   │   └── _Project/<Nhóm>/<repo>/   ứng dụng nội bộ · của bên cung cấp → bộ App
-│   ├── Personal/<Loại>/…             code của chủ máy: StudyProjects · Games · Apps
+│   ├── Personal/<Loại>/…             repo của chủ máy: StudyProjects · Games · Reports · Apps
 │   └── External/<repo>/              clone của bên ngoài, chỉ đọc, không ráp HS
 ├── Software/<Nhóm>/[<Hãng>/]<Ứng dụng>/{App,Data,Setup}
 │                                     15 nhóm: AI · Dev · Game · Office · System · Utility · Drivers · Fonts …
