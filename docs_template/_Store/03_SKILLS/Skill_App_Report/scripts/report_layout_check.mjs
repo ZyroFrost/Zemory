@@ -298,6 +298,37 @@ export const RULES = [
       if (b.top - c.top > 40 || c.right - b.right > 40) return 'the button that turns a report card is not at its top right';
     }
     return true;`),
+
+  // K. The person's number format (v9, user 06/11: "setting 1 lần sẽ cho hiện ở cái báo cáo dashboard hết, chỉ lấy của table")
+  rule('rp-num-format', 'every number of a report table shows in the person\'s number format (Settings > Numbers, on <html data-num-format>): its cell says what it is (data-rp-num = money | count | pct) and its value (data-rp-raw), and shows exactly the format of that value - a negative in red carries text-danger; a number with no data-rp-num is outside the person\'s format', `
+    let f = {money_unit: 'auto', money_dp: 1, money_round: 1, count_dp: 0, sep: 'dot', pct_dp: 1, neg: 'minus'};
+    try { f = {...f, ...JSON.parse(document.documentElement.dataset.numFormat || '{}')}; } catch {}
+    const words = document.documentElement.lang === 'en' ? {k: 'K', m: 'M', bn: 'B'} : {k: ' N', m: ' tr', bn: ' tỷ'};
+    const fmt = (raw, kind) => {
+      const negative = raw < 0, abs = Math.abs(raw); let value = abs, dp = 0, suffix = '';
+      if (kind === 'pct') { value = abs * 100; dp = f.pct_dp; suffix = '%'; }
+      else if (kind === 'count') dp = f.count_dp;
+      else { const unit = f.money_unit === 'auto' ? (abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
+        if (unit === 'vnd') { value = Math.round(abs / f.money_round) * f.money_round; dp = 0; }
+        else { value = abs / (unit === 'k' ? 1e3 : unit === 'm' ? 1e6 : 1e9); dp = f.money_dp; suffix = words[unit]; } }
+      const fixed = value.toFixed(dp), [int, frac] = fixed.split('.');
+      const group = f.sep === 'comma' ? ',' : f.sep === 'space' ? ' ' : '.', point = f.sep === 'comma' ? '.' : ',';
+      const body = int.replace(/\\B(?=(\\d{3})+(?!\\d))/g, group) + (frac ? point + frac : '') + suffix;
+      const neg = negative && Number(fixed) !== 0;
+      return {text: neg ? (f.neg === 'paren' ? '(' + body + ')' : '-' + body) : body, neg};
+    };
+    const looks = /^[-(]?\\d[\\d.,\\s]*(%|K|M|B| N| tr| tỷ)?\\)?$/;
+    for (const cell of document.querySelectorAll('[data-rp-page] [data-rp-visual="table"] td')) {
+      if (!cell.getClientRects().length) continue;
+      const shown = (cell.textContent || '').replace(/\\s+/g, ' ').trim();
+      if (!cell.dataset.rpNum) { if (looks.test(shown)) return 'a number outside the format of the person (no data-rp-num): ' + shown; continue; }
+      const raw = Number(cell.dataset.rpRaw);
+      if (!Number.isFinite(raw)) return 'a number cell without its value (data-rp-raw): ' + shown;
+      const want = fmt(raw, cell.dataset.rpNum);
+      if (shown !== want.text) return 'a number not in the format of the person: ' + shown + ' (want ' + want.text + ')';
+      if (want.neg && f.neg === 'red' && !cell.closest('.text-danger') && !cell.querySelector('.text-danger')) return 'a negative not in red: ' + shown;
+    }
+    return true;`),
 ];
 
 const SHELL = body => `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -312,7 +343,7 @@ const card = (title, main, pct, kind, cls) => `<div class="card kpi-card" style=
 const bars = (n, colour, extra = '') => Array.from({length: n}, (_, i) => `<i data-rp-mark data-rp-item data-tip="${i}h: ${20 + i * 8}" style="height:${20 + i * 8}px;background:${colour}"></i>`).join('') + extra;
 const chart = (title, colour, n, fields) => `<div class="card" data-rp-visual="chart" data-rp-axis="column" data-rp-fields="${fields}" style="flex:1">` +
   `<h6 data-rp-title>${title}</h6><div class="bars" data-rp-body>${bars(n, colour)}</div></div>`;
-const rowsOf = n => Array.from({length: n}, (_, i) => `<tr><td>N${i}</td><td>${i}</td></tr>`).join('');
+const rowsOf = n => Array.from({length: n}, (_, i) => `<tr><td>N${i}</td><td data-rp-num="count" data-rp-raw="${i}">${i}</td></tr>`).join('');
 
 export const SELF_TEST = {
   good: SHELL(`<div class="row" data-rp-visual="cards">${card('Doanh thu', '1.200', '+5,2% MoM', 'up', 'text-success')}` +
@@ -320,7 +351,7 @@ export const SELF_TEST = {
     `${card('Tỷ trọng', '40%', '+2,0 pp MoM', 'up', 'text-success')}</div>` +
     `<div class="row">${chart('Theo giờ', 'rgb(61, 126, 191)', 12, 'hour')}${chart('Theo ngày', 'rgb(46, 156, 122)', 12, 'day')}</div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Chi tiết</h6><table><thead><tr><th>Nhà</th><th>Số</th></tr></thead>` +
-    `<tbody>${rowsOf(8)}<tr data-rp-total style="font-weight:700"><td>Tổng</td><td>9</td></tr></tbody></table></div></div>` +
+    `<tbody>${rowsOf(8)}<tr data-rp-total style="font-weight:700"><td>Tổng</td><td data-rp-num="money" data-rp-raw="1234567890">1,2 tỷ</td></tr></tbody></table></div></div>` +
     `<nav><a role="tab">Tổng quan</a><a role="tab">Huỷ món</a></nav>` +
     `<div data-rp-glossary hidden><p data-rp-term="TC">TC (Transaction Count): số hoá đơn</p></div>` +
     `<div data-rp-card data-built style="position:relative;width:300px"><button data-rp-card-flip style="position:absolute;top:4px;right:4px">i</button>` +

@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 32
+version: 33
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -218,7 +218,8 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   codes are the family's closed list (the app contract of the family database): the app keeps that list with a name for each code in every
   language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code]
 - **The status dot is whole:** an online avatar's dot sits on its edge, and no box around it - a button or a menu row that
-  clips for its ripple - cuts it. [dot-whole]
+  clips for its ripple - cuts it. A count on a button (the bell's unread, `.badge-notifications` or `data-count-badge`) stands
+  whole out of it the same way (v33, user 06/11: the count was cut inside the bell's round button). [dot-whole]
 - **An avatar keeps its square:** in any row - a page, the top bar, the menu, a dropdown - a kit avatar stands `flex-shrink-0`
   beside text that may be long, and the text block shrinks and ends in "…"; a long name never squeezes the avatar. [avatar-square]
 - **The look is the person's across the family:** the UI settings that shape the shared surface - theme, language, date
@@ -269,7 +270,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   its filter (user 06/11). [bar-no-extra-text]
 - **Every row of a table scrolled into view is drawn** - only the rows under its own pinned header, or behind its footer pinned at the bottom (a TOTAL row, v32), are left out (user 06/11: a table
   mid-page lost its first rows). A probe: `PROBES` of the check script, evaluated awaited on every page with a table.
-  [rows-painted] The rows passing under a pinned header are cut there, in any scrolling frame (v32). [head-clear]
+  [rows-painted] The rows passing under a pinned header are cut there, in any scrolling frame (v32). [head-clear] The rows
+  passing behind a footer pinned at the bottom are cut at its upper edge, and the box's vertical scrollbar runs between the
+  pinned header and the pinned footer (v33, a probe). [foot-clear]
 
 ## 6. Check
 

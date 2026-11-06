@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 8
+version: 9
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -49,7 +49,8 @@ description: The report pages of an app - what a page of figures, charts and tab
   [chart-labels]). [rp-label]
 
 - **Every data mark tells what it stands for when pointed at** (a bar, a stacked part, a dot, a slice), with its value, as
-  Power BI does (user 05/11) - through the frame's tooltip (`data-tip`, several lines with `\n`), never the browser's plain`n  `title`. [rp-tooltip]
+  Power BI does (user 05/11) - through the frame's tooltip (`data-tip`, several lines with `\n`), never the browser's plain
+  `title`. [rp-tooltip]
 
 ## 4. Tables
 
@@ -62,6 +63,11 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **Nothing scrolls sideways inside its frame, and no table spills out of its panel** (column widths are measured at first draw, so headers may wrap; a phone scrolls a data grid inside its frame, app-base M5). A table spread over periods shows only the latest ones (the window follows
   the page filter); columns are as wide as their longest figure, all fitting the frame; figures that still do not fit switch
   to millions with one decimal. Scrolling down is normal. [rp-no-side-scroll]
+- **The numbers of a table follow the person's number format** (v9, user 06/11: "setting 1 lần sẽ cho hiện ở cái báo cáo
+  dashboard hết… chỉ lấy của table"): Settings > Numbers of the family frame (unit, decimals, rounding, separator, negatives),
+  kept on `<html data-num-format>`. Each number cell says what it is (`data-rp-num` = `money` · `count` · `pct`) and its value
+  (`data-rp-raw`), and shows exactly that format (the frame's `fmtNum`); a negative in red carries `text-danger`. Charts and
+  KPI cards keep their own form. [rp-num-format]
 - **A table shows ten rows at most** and scrolls the rest inside its own frame, staying on the page beside the other visuals
   (v7, user 06/11: "có giới hạn bao nhiêu dòng, rồi phần còn lại cho scrollbar tự động trong chính dashboard đó").
   [rp-table-rows-cap]
@@ -99,7 +105,7 @@ description: The report pages of an app - what a page of figures, charts and tab
   measure itself - never invented. One definition per line. Explanations of a figure live there, not in a frame on the page.
   [rp-glossary]
 - **A report page has one view: no list / grid switch** on its bar (user 06/11) - a report is read one way, and a switch
-  only takes room. The page declares it (iews={false} on the family's frame), and the frame then draws no switch.
+  only takes room. The page declares it (`views={false}` on the family's frame), and the frame then draws no switch.
   [rp-no-view-switch]
 
 ## 8. Rebuilding a report
@@ -133,6 +139,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 | `data-rp-pct` = `up` · `down` · `share` | each % (card line, label, cell) | [rp-pct-*] |
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | a table · its total row | [rp-table-few] [rp-table-style] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | the glossary · each line | [rp-glossary] |
+| `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | a number cell of a table · its raw value | [rp-num-format] |
 
 Cards use the four typography roles of `app-sneat-glass` (`kpi-title` · `kpi-main` · `kpi-percentage` · `kpi-secondary`).
 

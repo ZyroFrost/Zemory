@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 
@@ -49,6 +49,10 @@ lang: vi
   chỉ số khác đơn vị để trong tooltip. Bảng chi tiết (mỗi dòng một bản ghi) được miễn. [rp-table-few]
 - **Không gì cuộn ngang trong khung, không bảng nào tràn ra ngoài panel** (bề rộng cột đo lúc vẽ lần đầu, nên header được xuống dòng; điện thoại cho bảng dữ liệu cuộn ngang trong khung, app-base M5). Bảng trải theo kỳ chỉ hiện các kỳ gần nhất (cửa sổ đi theo bộ lọc trang); cột rộng
   vừa số dài nhất, tổng vừa khung; vẫn không vừa thì đổi sang triệu một chữ số lẻ. Cuộn dọc là bình thường. [rp-no-side-scroll]
+- **Số trong bảng theo định dạng số của từng người** (v9, user 06/11: "setting 1 lần sẽ cho hiện ở cái báo cáo dashboard
+  hết… chỉ lấy của table"): Cài đặt > Số của khung chung (đơn vị, số lẻ, làm tròn, dấu phân cách, số âm), lưu trên
+  `<html data-num-format>`. Ô số nói nó là gì (`data-rp-num` = `money` · `count` · `pct`) và giá trị gốc (`data-rp-raw`), và
+  hiện đúng định dạng đó (`fmtNum` của khung); số âm tô đỏ mang `text-danger`. Chart và card KPI giữ cách hiện riêng. [rp-num-format]
 - **Bảng hiện tối đa mười dòng**, phần còn lại cuộn trong khung của chính nó, và vẫn nằm chung trang với các hình khác (v7, user
   06/11: "có giới hạn bao nhiêu dòng, rồi phần còn lại cho scrollbar tự động trong chính dashboard đó"). [rp-table-rows-cap]
 
@@ -80,7 +84,7 @@ lang: vi
   thuật ngữ của công ty → từ điển hệ cũ → tài liệu DW → chính measure — không tự đặt. Mỗi định nghĩa một dòng. Lời giải thích
   một con số nằm ở đây, không nằm trong khung trên trang. [rp-glossary]
 - **Trang báo cáo chỉ có một kiểu xem: không có nút danh sách / thẻ** trên thanh (user 06/11) - báo cáo đọc một cách, nút
-  chỉ chiếm chỗ. Trang khai điều đó (iews={false} trên khung chung của hệ), khung khi đó không vẽ nút. [rp-no-view-switch]
+  chỉ chiếm chỗ. Trang khai điều đó (`views={false}` trên khung chung của hệ), khung khi đó không vẽ nút. [rp-no-view-switch]
 
 ## 8. Dựng lại một report
 
@@ -111,6 +115,7 @@ lang: vi
 | `data-rp-pct` = `up` · `down` · `share` | mỗi % (dòng card, nhãn, ô) | [rp-pct-*] |
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | bảng · dòng tổng | [rp-table-few] [rp-table-style] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | bảng giải thích · mỗi dòng | [rp-glossary] |
+| `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | ô số của bảng · giá trị gốc | [rp-num-format] |
 
 Card dùng bốn vai chữ của `app-sneat-glass` (`kpi-title` · `kpi-main` · `kpi-percentage` · `kpi-secondary`).
 
