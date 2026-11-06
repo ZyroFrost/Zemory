@@ -1,5 +1,5 @@
 ---
-version: 28
+version: 29
 lang: vi
 ---
 
@@ -222,6 +222,19 @@ lang: vi
   cao bằng nhau, app ghi bằng tên, không bằng mã) và Cài đặt hồ sơ (trang account-settings của bộ mẫu: tab Tài khoản và Bảo mật;
   người dùng sửa họ tên và email, tên đăng nhập là của quản trị viên; đổi mật khẩu). Ảnh đại diện và ảnh nền là file giữ ngoài
   code, DB của hệ chỉ giữ thông tin trỏ tới chúng.
+
+## 5b. Menu, bảng, accordion (v29, user 06/11 - nâng lên từ một app của hệ)
+
+- **Menu tự cuộn bên trong** khi các dòng cao hơn cửa sổ; brand và nút thu gọn đứng yên. [menu-scroll] **Dòng có dòng con
+  thì gập/mở** bằng mũi tên (`menu-toggle` mang `aria-expanded`), nhánh chứa trang đang xem thì mở. [menu-fold] **Mọi tên nằm
+  gọn trong menu** - tên dài cắt bằng "…" và hiện đủ khi trỏ vào; nút tròn thu gọn ở mép không mang tên. [menu-fits] **Các
+  trang của một nhóm mang icon khác nhau**, mỗi icon chọn theo thứ trang đó hiện. [menu-icons-distinct]
+- **Mọi bảng dữ liệu kéo giãn cột được và sắp xếp được:** bảng có dòng tiêu đề và dòng dữ liệu thì có tay kéo cột và sắp theo
+  tiêu đề (`aria-sort`), dù tên gì; hộp trợ giúp phím tắt được miễn, bảng hay cột trang khai `data-sort="off"` cũng vậy.
+  [table-resize-every] [table-sort]
+- **Accordion trong thẻ trang thì phẳng** - không nền, không bo góc, không khe, giữa các mục có vạch kẻ - và **mũi tên của nó
+  đọc được** (tương phản tối thiểu 3:1 với thẻ). [accordion-flat] [chevron-visible]
+- **Không gì của thanh đầu trang lòi ra mép trái hay phải** (một nút của thanh trang ở 390 px). [head-whole]
 
 ## 6. Kiểm
 

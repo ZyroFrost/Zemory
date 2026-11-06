@@ -804,7 +804,7 @@ export const RULES = [
   },
   {
     id: 'head-whole',
-    rule: 'the glass head holds both its rows whole: row 1 and the page bar (row 2) end inside the head - it grows with them, never a fixed height they spill out of - and the page starts below the head, nothing of it under the bar',
+    rule: 'the glass head holds both its rows whole: row 1 and the page bar (row 2) end inside the head - it grows with them, never a fixed height they spill out of - nothing of it runs past its left or right edge, and the page starts below the head, nothing of it under the bar',
     check: `(() => {
       const head = document.querySelector('#layout-navbar');
       if (!head || !head.getClientRects().length) return true;
@@ -814,6 +814,11 @@ export const RULES = [
         if (!row.getClientRects().length) continue;
         const r = row.getBoundingClientRect();
         if (r.height && (r.bottom > h.bottom + 1 || r.top < h.top - 1)) return name(row) + ' spills out of the head by ' + Math.round(Math.max(r.bottom - h.bottom, h.top - r.top)) + ' px';
+      }
+      // (v29) and sideways: nothing of the head runs past its left or right edge (an app at 390 px: the filter button stood out)
+      for (const e of head.querySelectorAll('*')) {
+        const c = getComputedStyle(e); if (!e.getClientRects().length || c.visibility !== 'visible' || c.display === 'none') continue;
+        const r = e.getBoundingClientRect(); if (r.width && (r.left < h.left - 1 || r.right > h.right + 1)) return name(e) + ' ' + Math.round(r.left) + '..' + Math.round(r.right) + ' runs past the head ' + Math.round(h.left) + '..' + Math.round(h.right);
       }
       const page = document.querySelector('.content-wrapper .page-card, .content-wrapper .card');
       if (innerWidth >= 768 && page && page.getClientRects().length) {
@@ -834,6 +839,149 @@ export const RULES = [
         const w = a.offsetWidth, h = a.offsetHeight;
         if (!w || !h) continue;
         if (Math.abs(w - h) > 1) return 'an avatar is squeezed: ' + w + 'x' + h + ' (a square of ' + h + ')';
+      }
+      return true;
+    })()`,
+  },
+  // (v29, user 06/11) raised from an app of the family, each proven red / green there and in the system manager's checks
+  {
+    id: 'accordion-flat',
+    rule: 'page card accordion rows are transparent, square, contiguous and separated',
+    check: `(() => {
+      for (const a of document.querySelectorAll('.page-card .accordion')) {
+        const items = [...a.querySelectorAll(':scope > .accordion-item')];
+        for (const [i, item] of items.entries()) {
+          const c = getComputedStyle(item);
+          const bg = c.backgroundColor.match(/rgba?\\(([^)]+)\\)/), parts = bg && bg[1].split(/[ ,/]+/).filter(Boolean);
+          if (c.backgroundColor !== 'transparent' && (!parts || parts.length < 4 || parseFloat(parts[3]) !== 0)) return 'row background: ' + c.backgroundColor;
+          if ([c.borderTopLeftRadius, c.borderTopRightRadius, c.borderBottomLeftRadius, c.borderBottomRightRadius].some(v => parseFloat(v))) return 'row rounded';
+          if ([c.marginTop, c.marginRight, c.marginBottom, c.marginLeft].some(v => parseFloat(v))) return 'row margin';
+          if (i < items.length - 1 && (!parseFloat(c.borderBottomWidth) || c.borderBottomStyle === 'none')) return 'row lacks separator';
+        }
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'chevron-visible',
+    rule: 'visible accordion chevrons contrast with the card background by at least 3:1',
+    check: `(() => {
+      const parse = s => { const m = s.match(/rgba?\\(([^)]+)\\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return p.length >= 3 && p.every(Number.isFinite) ? [p[0], p[1], p[2], p.length > 3 ? p[3] : 1] : null; };
+      const lum = c => c.slice(0, 3).map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+      const contrast = (a, b) => (Math.max(lum(a), lum(b)) + .05) / (Math.min(lum(a), lum(b)) + .05);
+      for (const button of document.querySelectorAll('.accordion-button')) {
+        const c = getComputedStyle(button); if (!button.getClientRects().length || c.visibility !== 'visible') continue;
+        const pseudo = getComputedStyle(button, '::after'); let arrow = parse(pseudo.backgroundColor);
+        if (!arrow || !arrow[3]) {
+          let image = pseudo.backgroundImage; try { image = decodeURIComponent(image); } catch {}
+          const fill = image.match(/fill=["']([^"']+)["']/i);
+          if (fill) { const hex = fill[1].match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i); if (hex) { const h = hex[1].length === 3 ? [...hex[1]].map(x => x + x).join('') : hex[1]; arrow = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)).concat(1); } else arrow = parse(fill[1]); }
+        }
+        let bg = null;
+        for (let e = button.closest('.page-card') || button.parentElement; e; e = e.parentElement) { const v = parse(getComputedStyle(e).backgroundColor); if (v && v[3] >= .99) { bg = v; break; } }
+        if (!bg) { const probe = document.createElement('span'); probe.style.color = 'var(--g-bg)'; button.appendChild(probe); bg = parse(getComputedStyle(probe).color); probe.remove(); }
+        const text = parse(c.color);
+        if (!arrow || !arrow[3]) return 'cannot measure chevron color';
+        if (bg && contrast(arrow, bg) < 3) return 'chevron contrast ' + contrast(arrow, bg).toFixed(2) + ':1';
+        if (!bg && (!text || Math.abs(lum(arrow) - lum(text)) > .1)) return 'chevron differs from text brightness';
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'menu-fits',
+    rule: 'every name in the menu stays inside the menu: a group label, a section header or a page name never runs past the menu edge over the page - a long name ends in "..." (and shows whole on hover), and a name is the name alone, no description joined to it',
+    check: `(() => {
+      const menu = document.querySelector('#layout-menu');
+      if (!menu || !menu.getClientRects().length) return true;
+      const m = menu.getBoundingClientRect();
+      for (const e of menu.querySelectorAll('.menu-link, .menu-header, .menu-header-text, .menu-link > div')) {
+        // a name is text: the kit's round collapse button sits on the menu edge on purpose (app-sneat) and holds none
+        if (!e.getClientRects().length || !e.textContent.trim() || e.closest('.layout-menu-toggle, #collapse-btn')) continue;
+        const r = e.getBoundingClientRect();
+        const spills = r.right > m.right + 1 || (e.scrollWidth > e.clientWidth + 1 && getComputedStyle(e).textOverflow !== 'ellipsis' && getComputedStyle(e).overflow === 'visible');
+        if (spills) return 'a menu name runs past the menu: ' + e.textContent.trim().slice(0, 60);
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'menu-icons-distinct',
+    rule: 'each page of the menu wears its own icon, chosen for what the page shows: no two pages of one group share an icon, and the group does not reuse one icon for all its pages',
+    check: `(() => {
+      const icon = a => { const i = a.querySelector('i, svg'); return i ? [...i.classList].filter(c => /^bx[sl]?-/.test(c) && !/^bx-(xs|sm|md|lg)$/.test(c)).sort().join(' ') || i.outerHTML.slice(0, 80) : ''; };
+      const groups = [...document.querySelectorAll('#layout-menu .menu-sub')];
+      for (const g of groups) {
+        const links = [...g.querySelectorAll(':scope > .menu-item > .menu-link')];
+        const seen = new Map();
+        for (const a of links) {
+          const k = icon(a);
+          if (!k) continue;
+          if (seen.has(k)) return 'two pages of one menu group share the icon ' + k + ': ' + seen.get(k) + ' / ' + a.textContent.trim();
+          seen.set(k, a.textContent.trim());
+        }
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'table-resize-every',
+    rule: 'every data table of a page - a list, a report table, a matrix, a detail table - lets each column be resized: a table with a header row and at least one row of data carries the resize handles, whatever it is called (a help dialog of keys is exempt)',
+    check: `(() => {
+      if (innerWidth <= 768) return true;
+      for (const t of document.querySelectorAll('#page table')) {
+        if (!t.getClientRects().length || t.closest('dialog, .modal') || !t.querySelector('thead th') || !t.querySelector('tbody tr td')) continue;
+        const heads = [...t.querySelectorAll('thead tr:first-child > th')];
+        const bad = heads.find(h => !h.querySelector('.column-resize-handle'));
+        if (bad) return 'a data table column has no resize handle: ' + (bad.textContent.trim() || '(empty)') + (t.dataset.resizeId ? '' : ' - the table is not given to the shell (no data-resize-id)');
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'table-sort',
+    rule: 'every header of a data table sorts its rows, as the former SasinFlow tables: a press sorts by that column ascending, a second press descending, the header shows the order (aria-sort ascending | descending, none until pressed) and its arrow; numbers sort as numbers, dates as dates, Vietnamese text by its collation',
+    check: `(() => {
+      if (innerWidth <= 768) return true;
+      for (const t of document.querySelectorAll('#page table')) {
+        // a table the page declares unsortable (data-sort="off", the frame's contract) is left out, as a header so marked
+        if (!t.getClientRects().length || t.closest('dialog, .modal') || t.dataset.sort === 'off' || t.querySelectorAll('tbody tr').length < 2) continue;
+        const bad = [...t.querySelectorAll('thead tr:first-child > th')].find(h => h.textContent.trim() && h.dataset.sort !== 'off' && !h.hasAttribute('aria-sort'));
+        if (bad) return 'a table header does not sort: ' + bad.textContent.trim();
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'menu-scroll',
+    rule: 'the menu scrolls inside itself when its items are taller than the window: the list scrolls with the Glass scrollbar, the brand and the collapse button stay; no item is cut off out of reach',
+    check: `(() => {
+      const menu = document.querySelector('#layout-menu');
+      if (!menu || !menu.getClientRects().length) return true;
+      const inner = menu.querySelector('.menu-inner') || menu;
+      const items = [...inner.querySelectorAll('.menu-item')].filter(i => i.getClientRects().length);
+      const last = items.at(-1);
+      if (!last) return true;
+      const m = menu.getBoundingClientRect(), r = last.getBoundingClientRect();
+      if (r.bottom <= Math.min(m.bottom, innerHeight) + 1) return true;
+      const box = [inner, ...inner.querySelectorAll('*')].find(e => /(auto|scroll)/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1);
+      return box ? true : 'the menu is taller than the window and does not scroll: ' + last.textContent.trim().slice(0, 40) + ' is out of reach';
+    })()`,
+  },
+  {
+    id: 'menu-fold',
+    rule: 'every menu item with sub-items folds and unfolds by its chevron (a toggle with aria-expanded), the branch of the page on screen open, the others folded - as the Sneat kit menu',
+    check: `(() => {
+      const menu = document.querySelector('#layout-menu');
+      if (!menu || !menu.getClientRects().length) return true;
+      for (const item of menu.querySelectorAll('.menu-item')) {
+        const sub = item.querySelector(':scope > .menu-sub');
+        if (!sub) continue;
+        const toggle = item.querySelector(':scope > .menu-link');
+        const name = (toggle?.textContent || '').trim().slice(0, 40);
+        if (!toggle || !toggle.classList.contains('menu-toggle') || !toggle.hasAttribute('aria-expanded')) return 'a menu item with sub-items does not fold: ' + name;
+        const holds = Boolean(item.querySelector('.menu-item.active'));
+        if (holds && toggle.getAttribute('aria-expanded') !== 'true') return 'the branch of the page on screen is folded: ' + name;
       }
       return true;
     })()`,

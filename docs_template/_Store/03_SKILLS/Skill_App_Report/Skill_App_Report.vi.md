@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 
@@ -36,6 +36,10 @@ lang: vi
 - **Chart nào cũng đánh dấu chuỗi và lấy màu theo thứ tự màu theme,** nối tiếp trong một màn; **hai chart cùng màn không
   trùng màu chính.** Chuỗi so sánh (LY · LM · LMTD · chỉ tiêu) là các bậc xám. [rp-chart-colour]
 - **Nhãn số không có khung nền; mọi nhãn % in đậm.** Chart nào cũng hiện số (`app-sneat-glass` [chart-labels]). [rp-label]
+
+- **Mỗi điểm dữ liệu khi trỏ vào đều cho biết nó là gì** (một cột, một đoạn cột chồng, một chấm, một lát), kèm giá trị,
+  như Power BI (user 05/11) - qua tooltip của khung (`data-tip`, nhiều dòng bằng `\n`), không dùng `title` của trình duyệt.
+  [rp-tooltip]
 
 ## 4. Bảng
 

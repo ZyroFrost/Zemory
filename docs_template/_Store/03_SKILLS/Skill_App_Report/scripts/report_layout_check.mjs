@@ -264,6 +264,12 @@ export const RULES = [
     if (!document.querySelector('[data-rp-page]') || !vis().length) return true;
     const sw = [...document.querySelectorAll('#view-list, #view-grid, .view-switch > .btn')].filter(e => e.getClientRects().length && !e.disabled);
     return sw.length ? 'a report page with a list / grid switch: ' + sw.map(e => e.id || e.className).join(', ') : true;`),
+
+  // I. Tooltips (§3, user 05/11: "mọi chỗ khi trỏ vào đều phải ra thông tin nhỏ… giống pbi")
+  rule('rp-tooltip', 'every data mark a person can point at outside a table (a bar, a stacked part, a dot, a slice) names what it stands for with its value, through the frame\'s tooltip (data-tip), never the browser\'s plain title', `
+    const marks = [...document.querySelectorAll('[data-rp-page] [data-rp-mark], [data-rp-page] [data-cf-value]')].filter(m => m.getClientRects().length && !m.closest('table'));
+    const bad = marks.find(m => !/\\d/.test(m.getAttribute('data-tip') || ''));
+    return bad ? 'a data mark without its tooltip: ' + (bad.getAttribute('title') || bad.getAttribute('data-cf-value') || bad.className || bad.tagName).toString().slice(0, 50) : true;`),
 ];
 
 const SHELL = body => `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -275,7 +281,7 @@ const SHELL = body => `<!doctype html><html><head><meta charset="utf-8"><style>
 </style></head><body><div data-rp-page data-rp-dept="IC">${body}</div></body></html>`;
 const card = (title, main, pct, kind, cls) => `<div class="card kpi-card" style="flex:1"><p class="kpi-title">${title}</p><div class="kpi-main">${main}</div>` +
   `<small class="kpi-percentage ${cls}"${kind ? ` data-rp-pct="${kind}"` : ''}>${pct}</small></div>`;
-const bars = (n, colour, extra = '') => Array.from({length: n}, (_, i) => `<i data-rp-mark data-rp-item style="height:${20 + i * 8}px;background:${colour}"></i>`).join('') + extra;
+const bars = (n, colour, extra = '') => Array.from({length: n}, (_, i) => `<i data-rp-mark data-rp-item data-tip="${i}h: ${20 + i * 8}" style="height:${20 + i * 8}px;background:${colour}"></i>`).join('') + extra;
 const chart = (title, colour, n, fields) => `<div class="card" data-rp-visual="chart" data-rp-axis="column" data-rp-fields="${fields}" style="flex:1">` +
   `<h6 data-rp-title>${title}</h6><div class="bars" data-rp-body>${bars(n, colour)}</div></div>`;
 const rowsOf = n => Array.from({length: n}, (_, i) => `<tr><td>N${i}</td><td>${i}</td></tr>`).join('');

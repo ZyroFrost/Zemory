@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 5
+version: 6
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -47,6 +47,9 @@ description: The report pages of an app - what a page of figures, charts and tab
   [rp-chart-colour]
 - **Data labels have no box behind them; every % label is bold.** Every chart shows its numbers (`app-sneat-glass`
   [chart-labels]). [rp-label]
+
+- **Every data mark tells what it stands for when pointed at** (a bar, a stacked part, a dot, a slice), with its value, as
+  Power BI does (user 05/11) - through the frame's tooltip (`data-tip`, several lines with `\n`), never the browser's plain`n  `title`. [rp-tooltip]
 
 ## 4. Tables
 

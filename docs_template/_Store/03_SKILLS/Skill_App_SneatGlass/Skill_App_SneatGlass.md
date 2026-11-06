@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 28
+version: 29
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -242,6 +242,20 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   account-settings page: tabs Account and Security; the person edits name and email, the sign-in name is the admin's; the
   password change). The avatar and banner pictures are files kept outside the code, the family database holding only what
   points to them.
+
+## 5b. Menus, tables, accordions (v29, user 06/11 - raised from an app of the family)
+
+- **The menu scrolls inside itself** when its rows are taller than the window; the brand and the collapse button stay.
+  [menu-scroll] **Rows with sub-rows fold** by their chevron (`menu-toggle` with `aria-expanded`), the branch of the page on
+  screen open. [menu-fold] **Every name stays inside the menu** - a long one ends in "…" and shows whole on hover; the round
+  collapse button on the edge holds no name. [menu-fits] **The pages of one group wear different icons**, each chosen for
+  what the page shows. [menu-icons-distinct]
+- **Every data table resizes and sorts:** a table with a header row and rows of data carries the resize handles and sorts by
+  its headers (`aria-sort`), whatever it is called; a help dialog of keys is exempt, and so is a table or header the page
+  marks `data-sort="off"`. [table-resize-every] [table-sort]
+- **An accordion inside a page card is flat** - no fill, no radius, no gap, a line between items - and **its chevron reads**
+  (3:1 against the card at least). [accordion-flat] [chevron-visible]
+- **Nothing of the head runs past its left or right edge** (a tool of the page bar at 390 px). [head-whole]
 
 ## 6. Check
 
