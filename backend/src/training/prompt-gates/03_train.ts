@@ -1,6 +1,6 @@
 // Step 03 of the prompt-gates model (plan/38 §4 ②③, HS slot Backend_174_Training): train and compare, per door, three
 // ways of deciding "this message should fire the door": the door's regex (the baseline the hook runs today), a kNN over the
-// door's labelled messages, and a logistic regression over the same vectors (the linear-classifier family of an SVM). Each
+// door's labelled messages, a logistic regression over the same vectors, and a linear SVM over the centred vectors. Each
 // is measured by stratified k-fold cross-validation on the reviewed labels; thresholds are picked on the training folds
 // only. Nothing here touches the hook or HS: the report decides, the person approves, step 04 exports.
 
@@ -74,6 +74,60 @@ export function fitLogistic(xs: number[][], ys: (0 | 1)[], opts: { iters?: numbe
 }
 export const logistic = (w: number[], x: number[]): number => 1 / (1 + Math.exp(-(dot(w.slice(0, x.length), x) + w[x.length])));
 
+/** A linear SVM and the centring it was trained with: the scores of new vectors go through the same centring. */
+export interface SvmModel {
+  w: number[];
+  b: number;
+  mean: number[];
+}
+
+/**
+ * Subtract the training mean, then scale back to unit length. Any two sentences already sit near cosine 0.7 under
+ * EmbeddingGemma (plan/38 §6), so the raw vectors share one large direction that a linear model cannot separate on;
+ * removing it leaves the part that differs between messages.
+ */
+export function centre(x: number[], mean: number[]): number[] {
+  const c = x.map((v, i) => v - mean[i]);
+  const n = Math.sqrt(dot(c, c)) || 1;
+  return c.map((v) => v / n);
+}
+
+/**
+ * Linear SVM: class-weighted hinge loss with L2, full-batch subgradient descent (deterministic, a step of rate/√t), on
+ * centred vectors. The weights make a door with few positives still learn instead of settling on "never fire".
+ */
+export function fitSvm(xs: number[][], ys: (0 | 1)[], opts: { iters?: number; rate?: number; lambda?: number } = {}): SvmModel {
+  const d = xs[0]?.length ?? 0;
+  const mean = new Array(d).fill(0);
+  for (const x of xs) for (let j = 0; j < d; j++) mean[j] += x[j] / xs.length;
+  const cx = xs.map((x) => centre(x, mean));
+  const iters = opts.iters ?? 500, rate = opts.rate ?? 1, lambda = opts.lambda ?? 0.01;
+  const pos = ys.filter((y) => y).length || 1, neg = ys.length - pos || 1;
+  const cw = (y: number): number => (y ? ys.length / (2 * pos) : ys.length / (2 * neg));
+  const w = new Array(d).fill(0);
+  let b = 0;
+  for (let t = 1; t <= iters; t++) {
+    const g = w.map((v) => lambda * v);
+    let gb = 0;
+    cx.forEach((x, i) => {
+      const y = ys[i] ? 1 : -1;
+      if (y * (dot(w, x) + b) < 1) {
+        const k = (cw(ys[i]) * y) / cx.length;
+        for (let j = 0; j < d; j++) g[j] -= k * x[j];
+        gb -= k;
+      }
+    });
+    const step = rate / Math.sqrt(t);
+    for (let j = 0; j < d; j++) w[j] -= step * g[j];
+    b -= step * gb;
+  }
+  return { w, b, mean };
+}
+export const svmScore = (m: SvmModel, x: number[]): number => dot(m.w, centre(x, m.mean)) + m.b;
+
+/** The regex as a pre-filter: the model decides only the messages the regex fired on; the rest are never reminded. */
+export const behindRegex = (model: boolean[], regex: boolean[]): boolean[] => model.map((p, i) => p && regex[i]);
+
 /** The threshold over `scores` that gives the best F1 against `gold` (ties: the higher threshold, fewer reminders). */
 export function bestThreshold(scores: number[], gold: (0 | 1)[]): number {
   const cands = [...new Set(scores)].sort((a, b) => a - b);
@@ -103,7 +157,13 @@ export interface DoorReport {
   regex: Score;
   knn: Score;
   logistic: Score;
-  best: "regex" | "knn" | "logistic";
+  svm: Score;
+  best: "regex" | "knn" | "logistic" | "svm";
+  /**
+   * The same models behind the regex as a pre-filter: a message reaches the model only when the regex fired, so what the
+   * regex misses is never reminded. Compared with the plain columns it shows what the filter costs and what it saves.
+   */
+  cascade: { knn: Score; logistic: Score; svm: Score };
 }
 
 export interface TrainReport {
@@ -149,6 +209,7 @@ export async function train(opts: { dir?: string; k?: number } = {}): Promise<Tr
     const f = folds(gold, k);
     const knnPred = new Array(data.length).fill(false);
     const lrPred = new Array(data.length).fill(false);
+    const svmPred = new Array(data.length).fill(false);
     for (let fold = 0; fold < k; fold++) {
       const tr = data.map((_, i) => i).filter((i) => f[i] !== fold);
       const te = data.map((_, i) => i).filter((i) => f[i] === fold);
@@ -162,9 +223,27 @@ export async function train(opts: { dir?: string; k?: number } = {}): Promise<Tr
       const w = fitLogistic(tr.map((i) => X[i]), tr.map((i) => gold[i]));
       const tl = bestThreshold(tr.map((i) => logistic(w, X[i])), tr.map((i) => gold[i]));
       for (const i of te) lrPred[i] = logistic(w, X[i]) >= tl;
+      // the SVM decides at its own margin (score ≥ 0): its hinge loss already placed the boundary, a threshold re-picked on
+      // the training fold it fits almost perfectly would only move it towards "never fire"
+      const m = fitSvm(tr.map((i) => X[i]), tr.map((i) => gold[i]));
+      for (const i of te) svmPred[i] = svmScore(m, X[i]) >= 0;
     }
-    const r: DoorReport = { door, n: data.length, positives: gold.filter((g) => g).length, regex: score(rx, gold), knn: score(knnPred, gold), logistic: score(lrPred, gold), best: "regex" };
-    r.best = (["regex", "knn", "logistic"] as const).reduce((a, b) => (r[b].f1 > r[a].f1 ? b : a));
+    const r: DoorReport = {
+      door,
+      n: data.length,
+      positives: gold.filter((g) => g).length,
+      regex: score(rx, gold),
+      knn: score(knnPred, gold),
+      logistic: score(lrPred, gold),
+      svm: score(svmPred, gold),
+      best: "regex",
+      cascade: {
+        knn: score(behindRegex(knnPred, rx), gold),
+        logistic: score(behindRegex(lrPred, rx), gold),
+        svm: score(behindRegex(svmPred, rx), gold),
+      },
+    };
+    r.best = (["regex", "knn", "logistic", "svm"] as const).reduce((a, b) => (r[b].f1 > r[a].f1 ? b : a));
     reports.push(r);
   }
   const out = join(dir, "03_output", `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
