@@ -536,7 +536,7 @@ export const RULES = [
   },
   {
     id: 'filter-set',
-    rule: 'a page card whose filter button is on offers labelled filters for fields of few values only: a pick list holds 10 values at most - the main records of the page are found with the search box, never listed in a filter; an ordered time axis (months, quarters - data-filter-kind="period") is no list of records and keeps all its values',
+    rule: 'a page card whose filter button is on offers labelled filters: a plain pick list holds 10 values at most; a field of many values (the stores of a report, its dishes, its staff) is a slicer with its find box (data-searchable, v31, user 06/11: cross-filtering needs those fields on the one filter of the page) - the main records of the page are still found with the search box; an ordered time axis (months, quarters - data-filter-kind="period") keeps all its values',
     check: `(() => {
       const button = document.querySelector('.page-toolbar #filter-toggle');
       if (!button || button.disabled) return true;
@@ -546,7 +546,7 @@ export const RULES = [
       if (!fields.length) return 'the filter set is empty';
       if (fields.some(f => !f.querySelector('.filter-label')?.textContent.trim())) return 'a filter without its label';
       const period = e => Boolean(e.closest('[data-filter-kind="period"]'));
-      const long = [...box.querySelectorAll('.slicer')].find(s => !period(s) && Number(s.dataset.options) > 10)
+      const long = [...box.querySelectorAll('.slicer:not([data-searchable])')].find(s => !period(s) && Number(s.dataset.options) > 10)
         || [...box.querySelectorAll('select')].find(s => !period(s) && s.options.length > 11);
       return long ? 'a pick list of ' + (long.dataset?.options || long.options.length - 1) + ' values - a field of many values is searched, not listed' : true;
     })()`,
@@ -1033,6 +1033,19 @@ export const RULES = [
       return true;
     })()`,
   },
+  // (v31, user 06/11: "filter có sẵn rồi, tự nhiên hiện text ngày chi nữa? không hiện mấy thông tin thừa này")
+  {
+    id: 'bar-no-extra-text',
+    rule: 'the top bar holds its crumbs and its controls only: no loose line of dates or words beside them - a period the page holds is said by its filter, not repeated as text',
+    check: `(() => {
+      const bar = document.querySelector('#layout-navbar');
+      if (!bar) return true;
+      const loose = [...bar.querySelectorAll('span, small, p, div')].filter(e => e.children.length === 0 && e.getClientRects().length
+        && getComputedStyle(e).visibility !== 'hidden' && /\\d{1,2}\\/\\d{1,2}\\/\\d{4}/.test(e.textContent || '')
+        && !e.closest('button, .btn, .filter-field, .page-filter, .slicer, .dropdown-menu, [role=dialog], .breadcrumb, .visually-hidden'));
+      return loose.length ? 'a loose text in the top bar: ' + loose[0].textContent.trim().slice(0, 40) : true;
+    })()`,
+  },
 ];
 
 /** Rules on an open dialog. */
@@ -1054,6 +1067,41 @@ export const DIALOG_RULES = [
   },
 ];
 
+/** (v31) Probes: async browser expressions (evaluate with awaitPromise) that move the page and measure it, then put it back. */
+export const PROBES = [
+  {
+    id: 'rows-painted',
+    rule: 'every row of a table scrolled into view is drawn: a point in the middle of each row in view hits that row - rows under the table\'s own pinned header are cut on purpose (pin-cover), nothing else (user 06/11: a table mid-page lost its first rows)',
+    check: `(async () => {
+      const wait = () => new Promise(r => setTimeout(r, 120));
+      const scroller = document.querySelector('.page-card-body');
+      if (!scroller) return true;
+      const saved = scroller.scrollTop, errors = [];
+      for (const table of document.querySelectorAll('#page table')) {
+        if (!table.getClientRects().length || !table.tBodies.length || table.closest('dialog')) continue;
+        table.scrollIntoView({block: 'start'}); await wait();
+        scroller.scrollTop += 180; await wait();
+        const head = table.querySelector('thead th')?.getBoundingClientRect();
+        const frame = table.parentElement && /(auto|scroll)/.test(getComputedStyle(table.parentElement).overflowY) ? table.parentElement.getBoundingClientRect() : null;
+        const top = Math.max(document.querySelector('#layout-navbar')?.getBoundingClientRect().bottom || 0, head ? head.bottom : 0,
+          scroller.getBoundingClientRect().top, frame ? frame.top : 0);
+        const bottom = Math.min(innerHeight, scroller.getBoundingClientRect().bottom, frame ? frame.bottom : innerHeight);
+        let bad = 0, checked = 0;
+        for (const row of table.tBodies[0].rows) {
+          const r = row.getBoundingClientRect();
+          const left = Math.max(r.left, frame ? frame.left : 0), right = Math.min(r.right, frame ? frame.right : innerWidth, innerWidth);
+          const x = (left + Math.min(right, left + 120)) / 2, y = (r.top + r.bottom) / 2;
+          if (y < top + 2 || y >= bottom - 2 || right - left < 4) continue;
+          checked++;
+          if (document.elementFromPoint(x, y)?.closest('tr') !== row) bad++;
+        }
+        if (bad) errors.push((table.dataset.resizeId || table.id || 'a table') + ': ' + bad + '/' + checked + ' rows in view not drawn');
+      }
+      scroller.scrollTop = saved; await wait();
+      return errors.length ? errors.join('; ') : true;
+    })()`,
+  },
+];
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop()) && process.argv.includes('--list')) {
   for (const r of [...RULES, ...DIALOG_RULES]) console.log(`${r.id.padEnd(12)} ${r.rule}`);
 }

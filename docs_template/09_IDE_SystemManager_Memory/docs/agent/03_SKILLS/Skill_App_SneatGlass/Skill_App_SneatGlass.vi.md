@@ -1,5 +1,5 @@
 ---
-version: 30
+version: 31
 lang: vi
 ---
 
@@ -241,6 +241,13 @@ lang: vi
 - **Chỗ trống và chỗ chờ dùng một mẫu chung** (user 06/11): nằm giữa nơi chúng đứng - chỗ trống có icon tròn, tiêu đề và gợi ý
   (`Empty` của khung, `sasinShell.empty`); chỗ chờ là spinner lớn của bộ mẫu, chữ chỉ cho trình đọc màn hình (`Loading`,
   `sasinShell.loading`). Không bao giờ để một dòng chữ trơ như "không có dòng khớp" hay "đang tải". [state-template]
+
+- **Trường nhiều giá trị là slicer có ô tìm** (`data-searchable`; v31, user 06/11): nhà hàng, món, nhân viên mà báo cáo lọc chéo
+  nằm trên bộ lọc duy nhất của trang; ô chọn thường vẫn tối đa 10 giá trị. [filter-set]
+- **Thanh đầu trang chỉ có crumb và các nút** - không có dòng ngày rời bên cạnh; kỳ mà trang đang giữ do bộ lọc của nó nói (user
+  06/11). [bar-no-extra-text]
+- **Mọi dòng của bảng đã cuộn tới đều được vẽ** - chỉ các dòng nằm dưới đầu bảng ghim của chính nó bị cắt (user 06/11: một bảng
+  giữa trang mất mấy dòng đầu). Phép đo động: `PROBES` của script kiểm, chạy có chờ trên mọi trang có bảng. [rows-painted]
 
 ## 6. Kiểm
 
