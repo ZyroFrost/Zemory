@@ -558,6 +558,30 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'bar-aligned',
+    rule: 'the controls of one row of the page bar stand on one line: every button, field, pick list, tab and search box side by side share their vertical centre (within 3 px) - an app\'s own CSS that pushes one down (a margin, a padding of an old card rule) shows (v37, Reconcile 07/11: an old .card button rule pushed the bar\'s buttons 16 px down and the bar read green)',
+    check: `(() => {
+      const SEL = '.btn, button, .form-control, .form-select, select, input:not([type=hidden]):not([type=checkbox]):not([type=radio]), .nav-link, .page-search';
+      for (const bar of document.querySelectorAll('#page-bar .page-toolbar, #page .page-toolbar')) {
+        if (!bar.getClientRects().length) continue;
+        const items = [...bar.querySelectorAll(SEL)].filter(e => e.getClientRects().length && e.getBoundingClientRect().height > 8
+          && !e.closest('.dropdown-menu, .filter-pop, [hidden]') && !(e.parentElement && e.parentElement.closest(SEL)));
+        const boxes = items.map(e => ({e, r: e.getBoundingClientRect()}));
+        for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i].r, b = boxes[j].r;
+          const overlap = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+          if (overlap < Math.min(a.height, b.height) * .3) continue;   // not the same row
+          const off = Math.abs((a.top + a.bottom) / 2 - (b.top + b.bottom) / 2);
+          if (off > 3) {
+            const name = x => x.id ? '#' + x.id : (x.getAttribute('aria-label') || x.textContent.trim() || x.className.toString().split(' ')[0]).slice(0, 24);
+            return 'two controls of one bar row stand ' + Math.round(off) + ' px apart in height: ' + name(boxes[i].e) + ' / ' + name(boxes[j].e);
+          }
+        }
+      }
+      return true;
+    })()`,
+  },
+  {
     id: 'tabs-in-panel',
     rule: 'a row of tabs never stands loose in the page: it is in row 2 of the frame (the page bar), in a card or in a dialog (v36, user 07/11: the profile settings tabs stood loose under the bar)',
     check: `(() => {
