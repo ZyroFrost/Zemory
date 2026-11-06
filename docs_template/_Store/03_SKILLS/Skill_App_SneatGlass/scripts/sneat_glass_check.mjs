@@ -530,6 +530,40 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'box-holds',
+    rule: 'an avatar stands inside the box that holds it: no box sized smaller than its avatar lets the avatar run over into the name or the text beside it (v35, user 07/11: a 100 px box held a 120 px profile avatar, which ran over the gap into the name); an avatar stack, whose avatars overlap on purpose, is left out',
+    check: `(() => {
+      for (const avatar of document.querySelectorAll('.avatar')) {
+        if (!avatar.getClientRects().length || avatar.closest('.avatar-stack, .avatar-group')) continue;
+        const box = avatar.parentElement;
+        if (!box || box === document.body) continue;
+        const a = avatar.getBoundingClientRect(), b = box.getBoundingClientRect();
+        if (a.width < 2 || b.width < 2) continue;
+        if (a.right > b.right + 1 || a.bottom > b.bottom + 1 || a.left < b.left - 1)
+          return 'an avatar runs out of the box that holds it by ' + Math.round(Math.max(a.right - b.right, a.bottom - b.bottom, b.left - a.left)) + ' px: ' + (box.id ? '#' + box.id : box.className.toString().split(' ').slice(0, 2).join('.'));
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'tab-pill',
+    rule: 'a row of tabs (nav-pills, a tablist) shows its chosen tab as Sneat does: a filled pill - its own fill or the sliding pill under it - never bare words standing loose on the page (v35, user 07/11: "cấu trúc skill sneat ko có nút nào nằm lẻ như chữ tài khoản với mk")',
+    check: `(() => {
+      const alpha = c => { const m = c.match(/rgba?\\(([^)]+)\\)/); if (!m) return 0; const v = m[1].split(/[ ,/]+/).filter(Boolean); return v.length > 3 ? parseFloat(v[3]) : 1; };
+      const filled = e => { const s = getComputedStyle(e); return alpha(s.backgroundColor) > .04 || (s.backgroundImage || 'none') !== 'none'; };
+      for (const row of document.querySelectorAll('.nav-pills, [role=tablist]')) {
+        if (!row.getClientRects().length) continue;
+        const tab = row.querySelector('.nav-link.active, [role=tab][aria-selected=true]');
+        if (!tab || !tab.getClientRects().length) continue;
+        if (filled(tab)) continue;
+        const t = tab.getBoundingClientRect(), cx = (t.left + t.right) / 2, cy = (t.top + t.bottom) / 2;
+        const pill = [...row.querySelectorAll('.g-pill')].find(p => { const r = p.getBoundingClientRect(); return filled(p) && r.left <= cx && cx <= r.right && r.top <= cy && cy <= r.bottom; });
+        if (!pill) return 'a chosen tab stands as bare words, no pill under it: ' + tab.textContent.trim().slice(0, 30);
+      }
+      return true;
+    })()`,
+  },
+  {
     id: 'kit-icons',
     rule: 'every icon of the shell - top bar, menu, command palette, page bar, menus - comes from the kit icon set; no emoji or typed sign stands in for an icon',
     check: `(() => {

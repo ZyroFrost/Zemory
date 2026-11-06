@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 34
+version: 35
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -220,6 +220,12 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - **The status dot is whole:** an online avatar's dot sits on its edge, and no box around it - a button or a menu row that
   clips for its ripple - cuts it. A count on a button (the bell's unread, `.badge-notifications` or `data-count-badge`) stands
   whole out of it the same way (v33, user 06/11: the count was cut inside the bell's round button). [dot-whole]
+- **An avatar stands inside the box that holds it:** a box never smaller than its avatar - a fixed 100 px box held a 120 px
+  profile avatar, which ran over the gap into the name (v35, user 07/11). An avatar stack, overlapping on purpose, is left out.
+  [box-holds]
+- **A chosen tab is a filled pill, as in Sneat:** a row of tabs (`.nav-pills`, a tablist) shows its chosen tab with its own fill
+  or the sliding pill under it - never bare words standing loose on the page (v35, user 07/11: "cấu trúc skill sneat ko có nút
+  nào nằm lẻ như chữ tài khoản với mk"). The family frame fills a `.nav-pills` row with no pill of its own. [tab-pill]
 - **An avatar keeps its square:** in any row - a page, the top bar, the menu, a dropdown - a kit avatar stands `flex-shrink-0`
   beside text that may be long, and the text block shrinks and ends in "…"; a long name never squeezes the avatar. [avatar-square]
 - **The look is the person's across the family:** the UI settings that shape the shared surface - theme, language, date
