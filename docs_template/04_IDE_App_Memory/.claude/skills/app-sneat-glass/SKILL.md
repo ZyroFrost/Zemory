@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 27
+version: 29
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v27 #c61321fede8d
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v29 #253d48bfc8c3
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -30,7 +30,7 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v27 #c61321fede8d
     filter button, the filter box, the view switch (list · grid, or the page's own views). [bar-anchor]
 - The seek group takes the rest of the line and its pinned filters shrink (ending in "…") before it would reach the left
   group; the two never overlap; pinning a filter never moves the left group. [bar-anchor] [filter-row]
-- A page with one view still shows the switch, turned off; a page with no filter yet still shows the filter button, turned off.
+- A page with one view (every report) shows no switch at all (user 06/11: a faded switch only took room on the bar); a switch, when shown, has two views or more. A page with no filter yet still shows the filter button, turned off.
   [toolbar] A switch that is on does what it says: the list view shows rows (a table, sortable by its headers where it helps -
   status, latency), the grid view cards; a page of cards (a launcher) gets a real list view, never a switch that changes
   nothing. [view-real]
@@ -243,6 +243,20 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v27 #c61321fede8d
   account-settings page: tabs Account and Security; the person edits name and email, the sign-in name is the admin's; the
   password change). The avatar and banner pictures are files kept outside the code, the family database holding only what
   points to them.
+
+## 5b. Menus, tables, accordions (v29, user 06/11 - raised from an app of the family)
+
+- **The menu scrolls inside itself** when its rows are taller than the window; the brand and the collapse button stay.
+  [menu-scroll] **Rows with sub-rows fold** by their chevron (`menu-toggle` with `aria-expanded`), the branch of the page on
+  screen open. [menu-fold] **Every name stays inside the menu** - a long one ends in "…" and shows whole on hover; the round
+  collapse button on the edge holds no name. [menu-fits] **The pages of one group wear different icons**, each chosen for
+  what the page shows. [menu-icons-distinct]
+- **Every data table resizes and sorts:** a table with a header row and rows of data carries the resize handles and sorts by
+  its headers (`aria-sort`), whatever it is called; a help dialog of keys is exempt, and so is a table or header the page
+  marks `data-sort="off"`. [table-resize-every] [table-sort]
+- **An accordion inside a page card is flat** - no fill, no radius, no gap, a line between items - and **its chevron reads**
+  (3:1 against the card at least). [accordion-flat] [chevron-visible]
+- **Nothing of the head runs past its left or right edge** (a tool of the page bar at 390 px). [head-whole]
 
 ## 6. Check
 
