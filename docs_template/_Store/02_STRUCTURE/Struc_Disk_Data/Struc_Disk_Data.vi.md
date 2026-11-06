@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 # Struc_Disk_Data
@@ -155,16 +155,22 @@ Các slot ở trên giống nhau trên mọi máy; chỉ gốc thay đổi. Gố
 
 ## Một cây logic, nhiều nơi lưu — gợi ý, không bắt buộc
 
-Cây là MỘT cây logic, máy có bao nhiêu ổ cũng vậy. Mỗi khối dữ liệu nằm thật ở đúng một nơi lưu; mọi nơi khác cần nó chỉ có một
-điểm nối. Chủ máy có một ổ thì không cần phần này, và được nối bất kỳ thư mục nào sang bất kỳ ổ nào.
+Cây là MỘT cây logic, máy có bao nhiêu ổ cũng vậy, và MỌI nơi lưu đều có đủ cả cây. Mỗi khối dữ liệu nằm thật ở đúng một nơi; ở
+mọi nơi khác, cũng khối đó là một điểm nối trỏ tới chỗ nó thật. Vào ổ nào cũng thấy cùng một cây; dời một khối từ ổ này sang ổ khác
+không đổi đường dẫn nào của cây. Chủ máy có một ổ thì không cần phần này, và được nối bất kỳ thư mục nào sang bất kỳ ổ nào.
 
-Năm luật, khi cây chia ra nhiều nơi lưu:
+Bảy luật, khi cây chia ra nhiều nơi lưu:
 1. Mỗi thư mục thuộc đúng một trong ba loại: thật ở nơi này · thật ở nơi khác (ở đây chỉ là điểm nối) · tách nhỏ (các thư mục con
    nằm thật ở những nơi khác nhau).
-2. Không nối một khối khi có thư mục con của nó nằm nơi khác; tách nhỏ khối đó rồi nối từng con.
-3. Thư mục tách nhỏ không chứa file lẻ; chỉ có một `_README.md` ở gốc của nó, mỗi nơi lưu một bản, ghi phần nào nằm ở đâu.
-4. Công cụ quét cây đi qua mọi nơi lưu nhưng bỏ qua mọi điểm nối, để mỗi file chỉ được thấy một lần.
-5. Global Memory giải đường dẫn về vị trí thật trước khi ghi.
+2. Mọi nơi lưu có đủ mọi khối cấp trên cùng: thật, điểm nối, hoặc tách nhỏ. Một nơi chỉ có các khối thật ở nó là SAI, không phải
+   gọn hơn.
+3. Nối khối lớn nhất còn nằm nguyên ở một nơi. Không nối một khối khi có thư mục con của nó nằm nơi khác; tách nhỏ khối đó rồi nối
+   từng con.
+4. Nối thư mục, không nối từng file. Một repo là một khối: nằm thật nguyên cục ở một nơi, các nơi khác nối vào cả repo; `data\` của
+   repo không bao giờ tách riêng sang ổ khác.
+5. Thư mục tách nhỏ không chứa file lẻ; chỉ có một `_README.md` ở gốc của nó, mỗi nơi lưu một bản, ghi phần nào nằm ở đâu.
+6. Công cụ quét cây đi qua mọi nơi lưu nhưng bỏ qua mọi điểm nối, để mỗi file chỉ được thấy một lần.
+7. Global Memory giải đường dẫn về vị trí thật trước khi ghi.
 
 | nơi lưu | cách nối |
 |---|---|
@@ -173,25 +179,32 @@ Năm luật, khi cây chia ra nhiều nơi lưu:
 | NAS | symlink tới đường mạng (`mklink /D`); junction không trỏ được tới thư mục chia sẻ trên mạng |
 | ổ đám mây | mount vào một điểm cố định; database đang chạy KHÔNG BAO GIỜ nằm ở phía đám mây; làm gốc cây thì xem §Gốc cây |
 
-Ví dụ — ổ dữ liệu chính `D:` và một SSD nhanh `H:` giữ model, save game và ổ ảo của WSL:
+Ví dụ — ổ dữ liệu chính `D:` và một SSD nhanh `H:` giữ model, một trình giả lập và ổ ảo của WSL. Hai ổ cho thấy cùng một cây; chỉ
+khác chiều mũi tên:
 
 ```
-D:\                                        H:\
-├── _Models\  ──────── junction ─────────► ├── _Models\         (thật ở đây)
-├── Game\  ─────────── junction ─────────► ├── Game\            (thật ở đây)
-├── Software\  (tách nhỏ)                  └── Software\  (tách nhỏ)
-│   ├── _README.md                             ├── _README.md
-│   ├── Dev\ …          (thật ở D:)            └── System\Microsoft\WSL\  (tách nhỏ)
-│   └── System\Microsoft\WSL\  (tách nhỏ)          ├── _README.md
-│       ├── _README.md                             └── Data\        (thật ở đây: Ubuntu\ext4.vhdx)
-│       ├── Setup\  App\  (thật ở D:)
-│       └── Data\  ──── junction ──────────► H:\Software\System\Microsoft\WSL\Data\
-└── Workspace\ …        (thật ở D:)
+D:\                                                H:\
+├── _Models\  ──────► H:\_Models\                  ├── _Models\                (thật ở đây)
+├── Archive\                  (thật ở đây)         ├── Archive\  ──────► D:\Archive\
+├── Game\  (tách nhỏ)                              ├── Game\  (tách nhỏ)
+│   ├── _README.md                                 │   ├── _README.md
+│   ├── LDPlayer\  ───► H:\Game\LDPlayer\          │   ├── LDPlayer\           (thật ở đây)
+│   └── <game khác>\          (thật ở đây)         │   └── <game khác>\  ────► D:\Game\<game khác>\
+├── Software\  (tách nhỏ)                          ├── Software\  (tách nhỏ)
+│   ├── _README.md                                 │   ├── _README.md
+│   ├── Dev\                  (thật ở đây)         │   ├── Dev\  ──────► D:\Software\Dev\
+│   └── System\Microsoft\WSL\  (tách nhỏ)          │   └── System\Microsoft\WSL\  (tách nhỏ)
+│       ├── _README.md                             │       ├── _README.md
+│       ├── Setup\  App\      (thật ở đây)         │       ├── Setup\  App\  ───► D:\…\WSL\Setup\ · App\
+│       └── Data\  ───► H:\…\WSL\Data\             │       └── Data\           (thật ở đây: Ubuntu\ext4.vhdx)
+└── Workspace\                (thật ở đây)         └── Workspace\  ────► D:\Workspace\
 ```
 
-Mỗi thư mục tách nhỏ có một `_README.md` ở cả hai ổ (luật 3); phép kiểm coi đó là file duy nhất một thư mục tách nhỏ được chứa. Vai thường gặp của các ổ: ổ dữ liệu chính giữ cả cây · ổ dữ liệu thứ hai giữ các khối dời
-khỏi ổ chính (media lớn, archive) · SSD nhanh giữ thứ cần tốc độ (game, model, ổ ảo) và có bản sao lưu ở nơi khác · ổ hệ thống không
-thuộc cây; thư mục đám mây hoặc là gốc cây (§Gốc cây) hoặc không thuộc cây.
+Mỗi thư mục tách nhỏ có một `_README.md` ở cả hai ổ (luật 5 của mục này); phép kiểm coi đó là file duy nhất một thư mục tách nhỏ
+được chứa. Vai thường gặp của các ổ: ổ dữ liệu chính là nhà của mọi khối và giữ thật mọi khối trừ khi có lý do dời đi · ổ dữ liệu
+thứ hai giữ các khối dời khỏi ổ chính (media lớn, archive) · SSD nhanh giữ TẠM một khối cần tốc độ (game đang chơi, model đang dùng,
+ổ ảo, một job dài) và có bản sao lưu ở nơi khác; khối hết cần tốc độ thì dời về ổ chính, cây không đổi · ổ hệ thống không thuộc
+cây; thư mục đám mây hoặc là gốc cây (§Gốc cây) hoặc không thuộc cây.
 
 ## Ổ hệ thống
 

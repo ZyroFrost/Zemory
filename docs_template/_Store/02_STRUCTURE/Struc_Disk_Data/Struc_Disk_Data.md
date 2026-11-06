@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 13
+version: 14
 scope: disk
 ---
 # Struc_Disk_Data
@@ -162,17 +162,23 @@ on a drive (`E:\Data\`) · a OneDrive folder (`%OneDrive%\`), when the owner kee
 
 ## One logical tree, many storage places — suggested, not required
 
-The tree is ONE logical tree, whatever number of drives a machine has. Each block of data lives for real in exactly one storage
-place; every other place that needs it holds only a link point. An owner with one drive needs none of this, and may link any
-folder to any drive.
+The tree is ONE logical tree, whatever number of drives a machine has, and EVERY storage place holds the whole of it. Each block
+of data lives for real in exactly one place; on every other place the same block is a link point to where it is real. Entering
+any drive shows the same tree; moving a block from one drive to another changes no path of the tree. An owner with one drive needs
+none of this, and may link any folder to any drive.
 
-Five laws, when the tree is split over several places:
+Seven laws, when the tree is split over several places:
 1. Each folder is exactly one of three kinds: real on this place · real on another place (a link point here) · split (its
    children are real in different places).
-2. Never link a block when some child of it lives somewhere else; split that block and link each child.
-3. A split folder holds no loose file; only a `_README.md` at its root, one copy in each place, saying what lives where.
-4. A tool that scans the tree walks every storage place but skips every link point, so each file is seen once.
-5. Global Memory resolves a path to its real place before it writes.
+2. Every place holds every top-level block: real, a link point, or split. A place that holds only the blocks real on it is
+   wrong, not smaller.
+3. Link the largest block that lives whole in one place. Never link a block when some child of it lives somewhere else; split
+   that block and link each child.
+4. Link folders, never single files. A repo is one block: real whole on one place, linked whole from the others; its `data\`
+   never goes to another drive on its own.
+5. A split folder holds no loose file; only a `_README.md` at its root, one copy in each place, saying what lives where.
+6. A tool that scans the tree walks every storage place but skips every link point, so each file is seen once.
+7. Global Memory resolves a path to its real place before it writes.
 
 | storage place | link |
 |---|---|
@@ -181,26 +187,33 @@ Five laws, when the tree is split over several places:
 | NAS | a symlink to the network path (`mklink /D`); a junction cannot point at a network share |
 | cloud drive | mounted at one fixed point; a live database is NEVER on the cloud side; as the tree root itself, see §The tree root |
 
-Example — a main data drive `D:` and a fast SSD `H:` holding the models, the game saves and WSL's virtual disk:
+Example — a main data drive `D:` and a fast SSD `H:` holding the models, one emulator and WSL's virtual disk. Both drives show
+the same tree; only the arrows differ:
 
 ```
-D:\                                        H:\
-├── _Models\  ──────── junction ─────────► ├── _Models\         (real here)
-├── Game\  ─────────── junction ─────────► ├── Game\            (real here)
-├── Software\  (split)                     └── Software\  (split)
-│   ├── _README.md                             ├── _README.md
-│   ├── Dev\ …          (real on D:)           └── System\Microsoft\WSL\  (split)
-│   └── System\Microsoft\WSL\  (split)             ├── _README.md
-│       ├── _README.md                             └── Data\        (real here: Ubuntu\ext4.vhdx)
-│       ├── Setup\  App\  (real on D:)
-│       └── Data\  ──── junction ──────────► H:\Software\System\Microsoft\WSL\Data\
-└── Workspace\ …        (real on D:)
+D:\                                                H:\
+├── _Models\  ──────► H:\_Models\                  ├── _Models\                (real here)
+├── Archive\                  (real here)          ├── Archive\  ──────► D:\Archive\
+├── Game\  (split)                                 ├── Game\  (split)
+│   ├── _README.md                                 │   ├── _README.md
+│   ├── LDPlayer\  ───► H:\Game\LDPlayer\          │   ├── LDPlayer\           (real here)
+│   └── <other game>\         (real here)          │   └── <other game>\  ───► D:\Game\<other game>\
+├── Software\  (split)                             ├── Software\  (split)
+│   ├── _README.md                                 │   ├── _README.md
+│   ├── Dev\                  (real here)          │   ├── Dev\  ──────► D:\Software\Dev\
+│   └── System\Microsoft\WSL\  (split)             │   └── System\Microsoft\WSL\  (split)
+│       ├── _README.md                             │       ├── _README.md
+│       ├── Setup\  App\      (real here)          │       ├── Setup\  App\  ───► D:\…\WSL\Setup\ · App\
+│       └── Data\  ───► H:\…\WSL\Data\             │       └── Data\           (real here: Ubuntu\ext4.vhdx)
+└── Workspace\                (real here)          └── Workspace\  ────► D:\Workspace\
 ```
 
-Each split folder carries a `_README.md` on both drives (law 3); the check takes it as the one file a split folder may hold.
-Usual drive roles: the main data drive holds the whole tree · a second data drive
-holds blocks moved off it (large media, archive) · a fast SSD holds what needs speed (games, models, virtual disks) and is backed
-up elsewhere · the system drive is not part of the tree; a cloud folder is either the tree root (§The tree root) or not part of it.
+Each split folder carries a `_README.md` on both drives (law 5 of this section); the check takes it as the one file a split
+folder may hold. Usual drive roles: the main data drive is the home of every block and holds it for real unless a reason moves it ·
+a second data drive holds blocks moved off it (large media, archive) · a fast SSD holds, for a while, a block that needs speed
+(a game being played, a model in use, a virtual disk, a long job) and is backed up elsewhere; when the block no longer needs the
+speed it moves back to the main drive, and the tree does not change · the system drive is not part of the tree; a cloud folder is
+either the tree root (§The tree root) or not part of it.
 
 ## The system drive
 
