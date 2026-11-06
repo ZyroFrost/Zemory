@@ -1088,13 +1088,26 @@ export const PROBES = [
       const wait = () => new Promise(r => setTimeout(r, 120));
       const scroller = document.querySelector('.page-card-body');
       if (!scroller) return true;
-      const saved = scroller.scrollTop, errors = [];
+      // (v34, Reconcile 06/11) every box the probe moves is put back: scrollIntoView also scrolls boxes that clip without a
+      // scroll bar (.layout-page), and one left moved pushed the top bar's avatar out of its box (a false dot-whole)
+      const moved = new Map();
+      const keep = box => { if (box && !moved.has(box)) moved.set(box, [box.scrollTop, box.scrollLeft]); };
+      const errors = [];
+      keep(scroller); keep(document.scrollingElement);
       for (const table of document.querySelectorAll('#page table')) {
         if (!table.getClientRects().length || !table.tBodies.length || table.closest('dialog')) continue;
+        for (let e = table.parentElement; e; e = e.parentElement) keep(e);
+        // (v34, Reconcile 06/11) the table's own scrolling frame is the nearest box that scrolls it, not only its parent (a
+        // grid in .pg-scroll inside the page body); its inner box is what shows rows - its scroll bars left out
+        let own = null;
+        for (let e = table.parentElement; e && e !== scroller; e = e.parentElement)
+          if (/(auto|scroll)/.test(getComputedStyle(e).overflowY) || /(auto|scroll)/.test(getComputedStyle(e).overflowX)) { own = e; break; }
         table.scrollIntoView({block: 'start'}); await wait();
-        scroller.scrollTop += 180; await wait();
+        if (own && own.scrollHeight > own.clientHeight + 1) own.scrollTop += 180; else scroller.scrollTop += 180;
+        await wait();
         const head = table.querySelector('thead th')?.getBoundingClientRect();
-        const frame = table.parentElement && /(auto|scroll)/.test(getComputedStyle(table.parentElement).overflowY) ? table.parentElement.getBoundingClientRect() : null;
+        const frame = own ? (b => ({top: b.top + own.clientTop, left: b.left + own.clientLeft,
+          bottom: b.top + own.clientTop + own.clientHeight, right: b.left + own.clientLeft + own.clientWidth}))(own.getBoundingClientRect()) : null;
         const top = Math.max(document.querySelector('#layout-navbar')?.getBoundingClientRect().bottom || 0, head ? head.bottom : 0,
           scroller.getBoundingClientRect().top, frame ? frame.top : 0);
         // (v32) a footer pinned at the bottom (a TOTAL row, sticky) covers the rows under it on purpose, as the pinned head does
@@ -1112,7 +1125,8 @@ export const PROBES = [
         }
         if (bad) errors.push((table.dataset.resizeId || table.id || 'a table') + ': ' + bad + '/' + checked + ' rows in view not drawn');
       }
-      scroller.scrollTop = saved; await wait();
+      for (const [box, [top, left]] of moved) { box.scrollTop = top; box.scrollLeft = left; }
+      await wait();
       return errors.length ? errors.join('; ') : true;
     })()`,
   },

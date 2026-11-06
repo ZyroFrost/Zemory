@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 33
+version: 34
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v33 #dd582d15bb9e
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v34 #42785608faa5
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -270,7 +270,9 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v33 #dd582d15bb9e
 - **The top bar holds its crumbs and its controls only** - no loose line of dates beside them; a period the page holds is said by
   its filter (user 06/11). [bar-no-extra-text]
 - **Every row of a table scrolled into view is drawn** - only the rows under its own pinned header, or behind its footer pinned at the bottom (a TOTAL row, v32), are left out (user 06/11: a table
-  mid-page lost its first rows). A probe: `PROBES` of the check script, evaluated awaited on every page with a table.
+  mid-page lost its first rows). A probe: `PROBES` of the check script, evaluated awaited on every page with a table. It
+  measures inside the table's own scrolling frame, its scroll bars left out, and puts back every box it moved (v34, Reconcile
+  06/11: a grid in a nested frame read as not drawn, and a box left moved pushed the top bar's avatar out of view).
   [rows-painted] The rows passing under a pinned header are cut there, in any scrolling frame (v32). [head-clear] The rows
   passing behind a footer pinned at the bottom are cut at its upper edge, and the box's vertical scrollbar runs between the
   pinned header and the pinned footer (v33, a probe). [foot-clear]
