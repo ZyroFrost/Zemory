@@ -1,5 +1,5 @@
 ---
-version: 32
+version: 33
 lang: vi
 ---
 
@@ -201,7 +201,8 @@ lang: vi
   hệ (hợp đồng app của DB hệ): app giữ danh sách đó, mỗi mã có tên ở mọi ngôn ngữ, và một phép kiểm tĩnh đối chiếu danh sách với
   hợp đồng khi hợp đồng có trên máy. [no-raw-code]
 - **Chấm trạng thái nguyên vẹn:** chấm của avatar trực tuyến nằm trên mép nó, và không khung nào bao quanh - nút hay dòng menu cắt
-  tràn vì hiệu ứng gợn sóng - cắt mất chấm. [dot-whole]
+  tràn vì hiệu ứng gợn sóng - cắt mất chấm. Con số trên một nút (số tin chưa đọc của chuông, `.badge-notifications` hoặc `data-count-badge`)
+  cũng nằm trọn, lòi ra ngoài nút như vậy (v33, user 06/11: con số bị cắt trong nút tròn của chuông). [dot-whole]
 - **Avatar giữ đúng hình vuông:** trong mọi hàng - trang, thanh trên, menu, menu thả xuống - avatar của bộ mẫu đứng `flex-shrink-0`
   cạnh chữ có thể dài, khối chữ co lại và kết bằng "…"; một tên dài không bao giờ ép bẹp avatar. [avatar-square]
 - **Giao diện là của người dùng trên cả hệ:** các cài đặt giao diện tạo nên bề mặt chung - theme, ngôn ngữ, định dạng ngày, kính
@@ -247,7 +248,9 @@ lang: vi
 - **Thanh đầu trang chỉ có crumb và các nút** - không có dòng ngày rời bên cạnh; kỳ mà trang đang giữ do bộ lọc của nó nói (user
   06/11). [bar-no-extra-text]
 - **Mọi dòng của bảng đã cuộn tới đều được vẽ** - chỉ các dòng nằm dưới đầu bảng ghim của chính nó, hoặc sau dòng chân ghim ở đáy (dòng TỔNG, v32), được miễn (user 06/11: một bảng
-  giữa trang mất mấy dòng đầu). Phép đo động: `PROBES` của script kiểm, chạy có chờ trên mọi trang có bảng. [rows-painted] Các dòng trôi xuống dưới đầu bảng ghim bị cắt tại đó, trong mọi khung cuộn (v32). [head-clear]
+  giữa trang mất mấy dòng đầu). Phép đo động: `PROBES` của script kiểm, chạy có chờ trên mọi trang có bảng. [rows-painted] Các dòng trôi xuống dưới đầu bảng ghim bị cắt tại đó, trong mọi khung cuộn (v32). [head-clear] Các
+  dòng trôi ra sau dòng chân ghim ở đáy bị cắt tại mép trên của nó, và thanh cuộn dọc của khung chạy giữa đầu bảng ghim và chân
+  ghim (v33, phép đo động). [foot-clear]
 
 ## 6. Kiểm
 

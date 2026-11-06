@@ -501,10 +501,11 @@ export const RULES = [
   },
   {
     id: 'dot-whole',
-    rule: 'an online avatar shows its status dot whole: no box around the avatar clips the dot that sits on its edge',
+    rule: 'an online avatar shows its status dot whole, and a count on a button (the bell\'s unread) stands whole out of it: no box clips the dot or the count that sits on its edge (v33, user 06/11: the bell\'s count was cut inside its round button)',
     check: `(() => {
+      const folded = e => document.documentElement.classList.contains('head-folded') && e.closest('.nav-row1');
       for (const avatar of document.querySelectorAll('.avatar.avatar-online')) {
-        if (!avatar.getClientRects().length) continue;
+        if (!avatar.getClientRects().length || folded(avatar)) continue;
         const a = avatar.getBoundingClientRect(), need = {l: a.left - 3, t: a.top - 3, r: a.right + 3, b: a.bottom + 3};
         for (let box = avatar.parentElement; box && box !== document.body; box = box.parentElement) {
           if (getComputedStyle(box).overflow === 'visible') continue;
@@ -512,6 +513,17 @@ export const RULES = [
           if (need.l < r.left || need.t < r.top || need.r > r.right || need.b > r.bottom)
             return 'an online dot is clipped by ' + (box.id ? '#' + box.id : box.className.toString().split(' ')[0]);
           break;   // the first box that clips and holds the avatar with its dot is the one that counts
+        }
+      }
+      // (v33) a count badge on a button: the whole badge, no box around it clips it
+      for (const badge of document.querySelectorAll('.badge-notifications, [data-count-badge]')) {
+        if (!badge.getClientRects().length || folded(badge)) continue;
+        const b = badge.getBoundingClientRect();
+        for (let box = badge.parentElement; box && box !== document.body; box = box.parentElement) {
+          if (getComputedStyle(box).overflow === 'visible') continue;
+          const r = box.getBoundingClientRect();
+          if (b.left < r.left - .5 || b.top < r.top - .5 || b.right > r.right + .5 || b.bottom > r.bottom + .5)
+            return 'a count on a button is clipped by ' + (box.id ? '#' + box.id : box.className.toString().split(' ')[0]);
         }
       }
       return true;
@@ -1125,6 +1137,33 @@ export const PROBES = [
       }
       return out.length ? out.join('; ') : true;
     })()`,
+  },
+  {
+    id: 'foot-clear',
+    rule: 'the rows passing behind a footer pinned at the bottom (a TOTAL row) are cut at its upper edge, and the vertical scrollbar of the box runs between the pinned header and the pinned footer (--th / --tf on the box) - in any scrolling frame (v33, user 06/11: a row read through the TOTAL row)',
+    check: `(async () => {
+      const wait = () => new Promise(r => setTimeout(r, 150)), out = [];
+      for (const table of document.querySelectorAll('#page table')) {
+        const cellOf = g => { const c = g && g.querySelector('th, td'); return c && getComputedStyle(c).position === 'sticky' ? c : null; };
+        const th = cellOf(table.tHead), tf = cellOf(table.tFoot), body = table.tBodies[0];
+        if (!tf || !body || !table.getClientRects().length) continue;
+        let box = table.parentElement;
+        while (box && !(/(auto|scroll)/.test(getComputedStyle(box).overflowY) && box.scrollHeight > box.clientHeight + 1)) box = box.parentElement;
+        if (!box) continue;
+        const saved = box.scrollTop;
+        box.scrollTop = Math.max(0, table.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop) + 120;
+        box.dispatchEvent(new Event('scroll')); await wait();
+        const behind = body.getBoundingClientRect().bottom - tf.getBoundingClientRect().top;
+        const m = /inset\\(\\s*(-?[\\d.]+)px\\s+(-?[\\d.]+)px\\s+(-?[\\d.]+)px/.exec(getComputedStyle(body).clipPath || ''), cut = m ? parseFloat(m[3]) : 0;
+        if (behind > 2 && cut < behind - 2) out.push((table.dataset.resizeId || 'a table') + ': ' + Math.round(behind) + ' px of rows behind its pinned footer, cut ' + Math.round(cut) + ' px');
+        const st = getComputedStyle(box), want = [th ? Math.round(th.getBoundingClientRect().height) : 0, Math.round(tf.getBoundingClientRect().height)];
+        const have = [parseFloat(st.getPropertyValue('--th')) || 0, parseFloat(st.getPropertyValue('--tf')) || 0];
+        if (!box.classList.contains('table-scroller') || Math.abs(have[0] - want[0]) > 1 || Math.abs(have[1] - want[1]) > 1)
+          out.push((table.dataset.resizeId || 'a table') + ': the scrollbar does not run between header and footer (--th/--tf ' + have.join('/') + ', want ' + want.join('/') + ')');
+        box.scrollTop = saved; box.dispatchEvent(new Event('scroll')); await wait();
+      }
+      return out.length ? out.join('; ') : true;
+  })()`,
   },
 ];
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop()) && process.argv.includes('--list')) {
