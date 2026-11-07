@@ -595,6 +595,22 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'help-in-menu',
+    rule: 'help opens from one place: the Help page of the frame (the menu\'s Help; its two tabs General and the app\'s own guide, config.help) - the page bar carries no help or guide button of its own; a link inside a page may open a section with sasinShell.openHelp (v39, user 07/11: "2 tab trong cùng 1 trang trợ giúp")',
+    check: `(() => {
+      const WORDS = /^(\\?|trợ giúp|hướng dẫn|help|guide|user guide)$/i;
+      for (const bar of document.querySelectorAll('#page-bar .page-toolbar, #page .page-toolbar')) {
+        for (const b of bar.querySelectorAll('button, a, [role=button]')) {
+          if (!b.getClientRects().length) continue;
+          const said = [b.textContent, b.getAttribute('aria-label'), b.getAttribute('title'), b.dataset.tip].map(x => (x || '').trim()).filter(Boolean);
+          if (b.querySelector('.bx-help-circle, .bx-question-mark, .bx-book-reader') || said.some(x => WORDS.test(x)))
+            return 'the page bar carries a help button of its own (help opens from the menu\\'s Help page): ' + (b.id ? '#' + b.id : said[0] || 'a button');
+        }
+      }
+      return true;
+    })()`,
+  },
+  {
     id: 'tabs-in-panel',
     rule: 'a row of tabs never stands loose in the page: it is in row 2 of the frame (the page bar), in a card or in a dialog (v36, user 07/11: the profile settings tabs stood loose under the bar)',
     check: `(() => {

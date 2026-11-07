@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 38
+version: 39
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v38 #cf0d95b0b81d
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v39 #7da1a2ebba4a
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -233,6 +233,11 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v38 #cf0d95b0b81d
   left empty (v36, user 07/11: "bộ khung chuẩn là panel hàng 2… mất toàn bộ panel hàng 2 mà ko hề nhận ra"). [page-bar]
 - **A row of tabs never stands loose in the page:** it is in the page bar (row 2), in a card or in a dialog (v36, user 07/11:
   the profile settings tabs stood loose under the bar). [tabs-in-panel]
+- **Help opens from one place:** the frame's Help page (the menu's Help) of two tabs - General, the frame's own (an AI helper comes
+  there later), and the app's own guide, named after the app, given in `config.help` (sections with the pages they explain; the
+  section of the page in view is chosen). The page bar carries no help or guide button of its own; a link inside a page may open
+  a section with `openHelp` / `sasinShell.openHelp` (v39, user 07/11: "2 tab trong cùng 1 trang trợ giúp… còn riêng là hướng
+  dẫn riêng"; shell 1.10.0). [help-in-menu]
 - **The controls of one row stand on one line:** every button, field, pick list, tab and search box side by side in one row -
   the page bar, a card or panel head, any row of the page, a dialog - shares its vertical centre (within 3 px); a row is the
   outermost flex row the controls sit in, so a group of fields and a group of buttons in one head are one row (v38, Reconcile

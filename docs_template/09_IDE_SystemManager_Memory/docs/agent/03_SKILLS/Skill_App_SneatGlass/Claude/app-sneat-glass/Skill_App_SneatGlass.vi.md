@@ -1,5 +1,5 @@
 ---
-version: 38
+version: 39
 lang: vi
 ---
 
@@ -214,6 +214,11 @@ lang: vi
   trống hàng 2 (v36, user 07/11: "bộ khung chuẩn là panel hàng 2… mất toàn bộ panel hàng 2 mà ko hề nhận ra"). [page-bar]
 - **Hàng tab không nằm trơ trong trang:** nó ở thanh trang (hàng 2), trong một card hoặc trong hộp thoại (v36, user 07/11:
   tab của cài đặt hồ sơ nằm trơ dưới thanh). [tabs-in-panel]
+- **Trợ giúp mở từ một chỗ:** trang Trợ giúp của khung (mục Trợ giúp ở menu) có hai tab - Chung, của khung (sau này đặt trợ lý AI
+  ở đây), và hướng dẫn riêng của app, mang tên app, khai trong `config.help` (các mục kèm trang mà mục đó nói về; mở ở trang nào
+  thì chọn mục của trang đó). Thanh trang không có nút trợ giúp hay hướng dẫn riêng; liên kết trong trang có thể mở một mục bằng
+  `openHelp` / `sasinShell.openHelp` (v39, user 07/11: "2 tab trong cùng 1 trang trợ giúp… còn riêng là hướng dẫn riêng";
+  khung 1.10.0). [help-in-menu]
 - **Các ô trong một hàng thẳng một đường:** mọi nút, ô nhập, ô chọn, tab và ô tìm đứng cạnh nhau trong một hàng - thanh
   trang, đầu card hay panel, mọi hàng trong trang, hộp thoại - có chung tâm dọc (lệch tối đa 3 px); một hàng là hàng flex
   ngoài cùng chứa chúng, nên nhóm ô nhập và nhóm nút trong cùng một đầu panel vẫn là một hàng (v38, Reconcile 07/11: lỗi nằm ở
