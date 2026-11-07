@@ -1222,8 +1222,10 @@ export const PROBES = [
         const top = Math.max(document.querySelector('#layout-navbar')?.getBoundingClientRect().bottom || 0, head ? head.bottom : 0,
           scroller.getBoundingClientRect().top, frame ? frame.top : 0);
         // (v32) a footer pinned at the bottom (a TOTAL row, sticky) covers the rows under it on purpose, as the pinned head does
+        // (v40, Reconcile 07/11) pinned on its cell, its row or the tfoot - the cell moves with whichever of them sticks
         const footCell = table.tFoot && table.tFoot.querySelector('td, th');
-        const foot = footCell && getComputedStyle(footCell).position === 'sticky' ? footCell.getBoundingClientRect().top : Infinity;   // the pinned cell, drawn where it sticks
+        const pinned = footCell && [footCell, footCell.parentElement, table.tFoot].some(e => getComputedStyle(e).position === 'sticky');
+        const foot = pinned ? footCell.getBoundingClientRect().top : Infinity;   // the pinned cell, drawn where it sticks
         const bottom = Math.min(innerHeight, scroller.getBoundingClientRect().bottom, frame ? frame.bottom : innerHeight, foot);
         let bad = 0, checked = 0;
         for (const row of table.tBodies[0].rows) {
