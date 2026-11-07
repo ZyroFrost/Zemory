@@ -1,5 +1,5 @@
 ---
-version: 41
+version: 42
 lang: vi
 ---
 
@@ -26,7 +26,17 @@ lang: vi
 - **Mọi nút công cụ riêng của trang là nút có khung** (v41, user 07/11: "mọi chức năng riêng của app phải là 1 nút có khung
   vuông đúng template... có hiệu ứng bấm"): ở cụm trái mỗi nút mang khung của nút lọc - cao bằng thanh, có nền hoặc viền, bo
   góc theo kit, sáng màu nhấn khi bật, lún khi bấm - không bao giờ là icon trơ; nút có màu (nút thêm) giữ màu, cùng chiều cao.
-  Khung tự cho nút thường kiểu này. [tool-framed]
+  Khung tự cho nút thường kiểu này. [tool-framed] Mọi nút của cụm trái, cả nút thêm, cao bằng bộ lọc bên phải, lệch tối đa
+  1 px (v42, user 07/11: "chiều cao của nút riêng phải luôn bằng chiều cao của nguyên bộ filter bên phải"). [tool-framed]
+- **Hai đầu mỗi hàng chừa bằng nhau** (v42, user 07/11): hàng 1 và thanh trang - từ mép trái tới control đầu bằng từ control
+  cuối tới mép phải, lệch tối đa 2 px. [bar-ends-even]
+- **Nút hàng 1 có khung** (v42, user 07/11: "2 nút app và chuông cũng phải khung luôn cho đồng bộ"): nút ứng dụng và chuông là
+  ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Đường
+  dẫn ngăn bằng mũi tên của kit,** không bao giờ là "/" gõ tay ("cái path nên thành >"). [crumb-chevron]
+- **Cái đang chọn thì sáng, phần còn lại mang khung xám** (v42, user 07/11: "khung đang mở là màu xám, bấm qua thì nhận màu
+  sáng... phải có hiệu ứng sáng chạy qua nút mới"): mọi tab trong hàng có khung khi chưa chọn; tab đang chọn, kiểu xem đang
+  chọn, công cụ đang bật và dòng menu của trang đang mở được tô màu nhấn (chữ trắng), và một vệt sáng chạy qua cái vừa chọn,
+  một lần (FX: sheen; tắt theo hiệu ứng con trỏ và chế độ giảm chuyển động). [chosen-lit]
 - Trang chỉ có một kiểu xem (mọi trang báo cáo) không hiện nút kiểu xem (user 06/11: nút mờ chỉ chiếm chỗ trên thanh); nút kiểu xem, khi có, có từ hai kiểu trở lên. Trang chưa có bộ lọc vẫn hiện nút lọc, ở trạng thái tắt.
   [toolbar] Nút đang bật thì làm đúng việc nó nói: dạng danh sách hiện dòng (một bảng, sắp được theo tiêu đề cột khi có ích -
   trạng thái, độ trễ), dạng thẻ hiện thẻ; trang toàn thẻ (trang chọn app) có dạng danh sách thật, không bao giờ để nút bấm mà

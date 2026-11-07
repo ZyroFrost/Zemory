@@ -310,16 +310,96 @@ export const RULES = [
     check: `(() => {
       const start = document.querySelector('#page-bar #card-start, .page-toolbar #card-start, .page-toolbar .card-start');
       if (!start) return true;
-      const h = parseFloat(getComputedStyle(start.closest('.page-toolbar') || start).getPropertyValue('--tool-h')) || 38;
+      // (v42, user 07/11: "chiều cao của nút riêng phải luôn bằng chiều cao của nguyên bộ filter bên phải") the height is the
+      // filter button's as drawn, within 1 px - the add button and every coloured one too
+      const bar = start.closest('.page-toolbar') || start, filter = bar.querySelector('.page-filter > .btn');
+      const h = filter && filter.getClientRects().length ? filter.getBoundingClientRect().height : parseFloat(getComputedStyle(bar).getPropertyValue('--tool-h')) || 38;
       // a fill or an edge under 4% opacity shows nothing (a fading fill is read as clear)
       const clear = v => { if (!v || v === 'transparent') return true; const a = /rgba\\([^)]*,\\s*([\\d.]+)\\)$/.exec(v); return Boolean(a) && parseFloat(a[1]) < .04; };
-      for (const b of start.querySelectorAll('button, a.btn, [role=button]')) {
+      for (const b of start.querySelectorAll('button, a.btn, a.nav-link, [role=button], [role=tab]')) {
         if (!b.getClientRects().length || b.closest('.dropdown-menu, .modal, .slicer-menu')) continue;
         const c = getComputedStyle(b), r = b.getBoundingClientRect(), name = (b.getAttribute('aria-label') || b.textContent || b.id || b.className).trim().slice(0, 30);
         const filled = !clear(c.backgroundColor) || c.backgroundImage !== 'none', edged = parseFloat(c.borderTopWidth) > 0 && !clear(c.borderTopColor);
         if (!filled && !edged) return 'a bare tool button with no frame: ' + name;
         if (parseFloat(c.borderTopLeftRadius) < 2) return 'a tool button with square corners: ' + name;
-        if (Math.abs(r.height - h) > 2) return 'a tool button ' + Math.round(r.height) + ' px tall, the bar\\'s tools are ' + h + ': ' + name;
+        if (Math.abs(r.height - h) > 1) return 'a tool button ' + Math.round(r.height) + ' px tall, the filters are ' + Math.round(h) + ': ' + name;
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'bar-ends-even',
+    rule: '(v42, user 07/11: "padding ở cả 2 đầu panel trên cùng phải bằng nhau") each row of the top block - row 1 and the page bar - keeps the same room at both ends: from its left edge to its first control as from its last control to its right edge, within 2 px',
+    check: `(() => {
+      if (innerWidth < 768) return true;
+      const rows = [document.querySelector('#layout-navbar > .nav-row1'), document.querySelector('#page-bar > .page-toolbar')].filter(r => r && r.getClientRects().length && r.getBoundingClientRect().height > 8);
+      for (const row of rows) {
+        const b = row.getBoundingClientRect();
+        const kids = [...row.querySelectorAll('button, input, select, a, .breadcrumb, .avatar, .nav-pills')].filter(e => e.getClientRects().length && !e.closest('.dropdown-menu, .slicer-menu, [hidden]'))
+          .map(e => e.getBoundingClientRect()).filter(r => r.width > 0 && r.right > b.left && r.left < b.right);
+        if (!kids.length) continue;
+        const left = Math.min(...kids.map(k => k.left)) - b.left, right = b.right - Math.max(...kids.map(k => k.right));
+        if (left > b.width / 2) continue;   // nothing stands at the left: no left end to compare
+        if (Math.abs(left - right) > 2) return (row.id || row.className.split(' ')[0]) + ': ' + Math.round(left) + ' px at the left end, ' + Math.round(right) + ' px at the right';
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'head-framed',
+    rule: '(v42, user 07/11: "2 nút app và chuông cũng phải khung luôn cho đồng bộ") every icon button of row 1 (the apps, the bell) is framed like the bar\'s buttons - a fill or an edge, the kit radius (a square, not a circle) - at the search box\'s height, within 1 px',
+    check: `(() => {
+      const row = document.querySelector('#layout-navbar .navbar-actions');
+      if (!row) return true;
+      const search = document.querySelector('#layout-navbar .navbar-search .form-control, #layout-navbar .navbar-search input');
+      const h = search && search.getClientRects().length ? search.getBoundingClientRect().height : 38;
+      const clear = v => { if (!v || v === 'transparent') return true; const a = /rgba\\([^)]*,\\s*([\\d.]+)\\)$/.exec(v); return Boolean(a) && parseFloat(a[1]) < .04; };
+      for (const b of row.querySelectorAll(':scope > li > .btn-icon, :scope > li > button.nav-link:not(:has(.avatar))')) {
+        if (!b.getClientRects().length) continue;
+        const c = getComputedStyle(b), r = b.getBoundingClientRect(), name = b.id || b.getAttribute('aria-label') || b.className;
+        if (clear(c.backgroundColor) && c.backgroundImage === 'none' && !(parseFloat(c.borderTopWidth) > 0 && !clear(c.borderTopColor))) return 'a bare button in row 1: ' + name;
+        if (parseFloat(c.borderTopLeftRadius) >= r.height / 2 - 1) return 'a round button in row 1 (the bar\\'s buttons are squares): ' + name;
+        if (Math.abs(r.height - h) > 1) return 'a row 1 button ' + Math.round(r.height) + ' px tall, the search box is ' + Math.round(h) + ': ' + name;
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'chosen-lit',
+    rule: '(v42, user 07/11: "khung đang mở là màu xám, bấm qua thì nhận màu sáng") what is chosen is lit and what is not wears the grey frame: in a row of tabs every tab is framed and the chosen one has another fill and other words than the rest; the chosen view of the switch the same; the menu row of the page on screen reads on a filled pill',
+    check: `(() => {
+      const clear = v => { if (!v || v === 'transparent') return true; const a = /rgba\\([^)]*,\\s*([\\d.]+)\\)$/.exec(v); return Boolean(a) && parseFloat(a[1]) < .04; };
+      const fill = e => { const c = getComputedStyle(e); return c.backgroundImage !== 'none' ? c.backgroundImage : c.backgroundColor; };
+      const framed = e => { const c = getComputedStyle(e); return !clear(c.backgroundColor) || c.backgroundImage !== 'none' || (parseFloat(c.borderTopWidth) > 0 && !clear(c.borderTopColor)); };
+      const rows = [...document.querySelectorAll('.nav-pills, .page-toolbar .view-switch')].filter(r => r.getClientRects().length && !r.closest('.dropdown-menu, [hidden]'));
+      for (const row of rows) {
+        const items = [...row.querySelectorAll('.nav-link, :scope > .btn')].filter(e => e.getClientRects().length && !e.closest('.dropdown-menu'));
+        const on = items.find(e => e.classList.contains('active') || e.getAttribute('aria-selected') === 'true' || e.getAttribute('aria-pressed') === 'true');
+        const rest = items.filter(e => e !== on && !e.disabled);
+        const bare = rest.find(e => !framed(e));
+        if (bare) return 'a tab or view at rest with no frame: ' + bare.textContent.trim().slice(0, 30);
+        if (on && rest.length && (rest.some(e => fill(e) === fill(on)) || getComputedStyle(rest[0]).color === getComputedStyle(on).color)) return 'the chosen one is not lit: ' + on.textContent.trim().slice(0, 30);
+      }
+      const menu = document.getElementById('layout-menu'), pill = menu && menu.querySelector('.menu-inner > .g-pill');
+      // (a menu off the screen - a narrow window keeps it closed - is not read; nor while its colours still ease in)
+      const shown = menu && menu.getBoundingClientRect().right > 8 && menu.getBoundingClientRect().left < innerWidth;
+      if (shown && pill && pill.getClientRects().length && pill.getBoundingClientRect().height > 4 && !pill.getAnimations().length) {
+        const c = getComputedStyle(pill);
+        if (c.backgroundImage === 'none' && clear(c.backgroundColor)) return 'the menu row of the page on screen stands on no fill';
+        const leaf = menu.querySelector('.menu-item.active:not(:has(> .menu-sub)) > .menu-link'), idle = menu.querySelector('.menu-item:not(.active) > .menu-link');
+        if (leaf && idle && getComputedStyle(leaf).color === getComputedStyle(idle).color) return 'the menu row of the page on screen reads like the others';
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'crumb-chevron',
+    rule: '(v42, user 07/11: "cái path nên thành > cho đẹp") the crumbs are parted by a chevron (the kit\'s icon), never a typed "/"',
+    check: `(() => {
+      for (const item of document.querySelectorAll('.breadcrumb-item + .breadcrumb-item')) {
+        if (!item.getClientRects().length) continue;
+        const c = getComputedStyle(item, '::before');
+        if (/[\\/|]/.test(c.content) || (c.content !== 'none' && c.content !== '""' && c.maskImage === 'none' && c.webkitMaskImage === 'none' && !/svg|chevron/.test(c.backgroundImage))) return 'a crumb parted by ' + c.content;
       }
       return true;
     })()`,
@@ -546,7 +626,9 @@ export const RULES = [
     id: 'dot-whole',
     rule: 'an online avatar shows its status dot whole, and a count on a button (the bell\'s unread) stands whole out of it: no box clips the dot or the count that sits on its edge (v33, user 06/11: the bell\'s count was cut inside its round button)',
     check: `(() => {
-      const folded = e => document.documentElement.classList.contains('head-folded') && e.closest('.nav-row1');
+      // row 1 folded, or folding / unfolding (v42, Reconcile 07/11: read mid-flight its avatar stood above .layout-page and
+      // read as clipped, now and then): not read
+      const folded = e => { const row = e.closest('.nav-row1'); return Boolean(row) && (document.documentElement.classList.contains('head-folded') || row.getAnimations().length > 0); };
       for (const avatar of document.querySelectorAll('.avatar.avatar-online')) {
         if (!avatar.getClientRects().length || folded(avatar)) continue;
         const a = avatar.getBoundingClientRect(), need = {l: a.left - 3, t: a.top - 3, r: a.right + 3, b: a.bottom + 3};

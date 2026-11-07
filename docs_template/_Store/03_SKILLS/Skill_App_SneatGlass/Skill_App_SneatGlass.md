@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 41
+version: 42
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -33,6 +33,17 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   khung vuông đúng template... có hiệu ứng bấm"): in the left group each button wears the filter button's frame - the toolbar
   height, a fill or an edge, the kit radius, the accent when on, a press that gives - never a bare icon; a coloured button
   (the add button) keeps its colour at the same height. The frame gives a plain button this look by itself. [tool-framed]
+  Every button of the left group, the add button too, stands at the height of the filters on the right, within 1 px (v42,
+  user 07/11: "chiều cao của nút riêng phải luôn bằng chiều cao của nguyên bộ filter bên phải"). [tool-framed]
+- **Both ends of each row keep the same room** (v42, user 07/11): row 1 and the page bar - from the left edge to the first
+  control as from the last control to the right edge, within 2 px. [bar-ends-even]
+- **Row 1's buttons are framed** (v42, user 07/11: "2 nút app và chuông cũng phải khung luôn cho đồng bộ"): the apps and the
+  bell are squares with the bar's frame (fill, edge, kit radius) at the search box's height; open, lit as the filter button.
+  [head-framed] **The crumbs are parted by the kit's chevron,** never a typed "/" ("cái path nên thành >"). [crumb-chevron]
+- **What is chosen is lit, the rest wears the grey frame** (v42, user 07/11: "khung đang mở là màu xám, bấm qua thì nhận màu
+  sáng... phải có hiệu ứng sáng chạy qua nút mới"): every tab of a row is framed at rest; the chosen tab, the chosen view of
+  the switch, a tool that is on and the menu row of the page on screen are filled with the accent (white words), and a light
+  runs across the one just chosen, once (FX: sheen; off with the pointer effects and with reduced motion). [chosen-lit]
 - A page with one view (every report) shows no switch at all (user 06/11: a faded switch only took room on the bar); a switch, when shown, has two views or more. A page with no filter yet still shows the filter button, turned off.
   [toolbar] A switch that is on does what it says: the list view shows rows (a table, sortable by its headers where it helps -
   status, latency), the grid view cards; a page of cards (a launcher) gets a real list view, never a switch that changes
