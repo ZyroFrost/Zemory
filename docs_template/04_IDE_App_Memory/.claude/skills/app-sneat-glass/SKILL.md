@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 40
+version: 41
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v40 #c0cfbd3be88d
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v41 #a1e8942ae87b
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -30,6 +30,10 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v40 #c0cfbd3be88d
     filter button, the filter box, the view switch (list · grid, or the page's own views). [bar-anchor]
 - The seek group takes the rest of the line and its pinned filters shrink (ending in "…") before it would reach the left
   group; the two never overlap; pinning a filter never moves the left group. [bar-anchor] [filter-row]
+- **Every button of the page's own tools is a framed button** (v41, user 07/11: "mọi chức năng riêng của app phải là 1 nút có
+  khung vuông đúng template... có hiệu ứng bấm"): in the left group each button wears the filter button's frame - the toolbar
+  height, a fill or an edge, the kit radius, the accent when on, a press that gives - never a bare icon; a coloured button
+  (the add button) keeps its colour at the same height. The frame gives a plain button this look by itself. [tool-framed]
 - A page with one view (every report) shows no switch at all (user 06/11: a faded switch only took room on the bar); a switch, when shown, has two views or more. A page with no filter yet still shows the filter button, turned off.
   [toolbar] A switch that is on does what it says: the list view shows rows (a table, sortable by its headers where it helps -
   status, latency), the grid view cards; a page of cards (a launcher) gets a real list view, never a switch that changes
@@ -143,6 +147,9 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v40 #c0cfbd3be88d
   their height (`flex-shrink: 0`), none overlaps the next; the list keeps a scrollbar gutter. [list-rows]
 - **The folded menu is centred:** the badge and every icon on the rail's centre line; the brand word leaves no room behind.
   [folded-centre]
+- **The folded rail is slim and its badge whole** (v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí", "cái logo khi thu gọn
+  lại méo"): 72 px (4.5rem), not the kit's 84; the badge 28 px at least, inside the rail, uncut, in its own shape - never
+  squeezed or stretched. [rail-slim]
 - **No fake button:** every button does something - a link styled as a button never points at the page already open; an
   item that would (a notification about the home page) gets the action it means (open that app, turn that card) or none.
   [real-actions]
@@ -190,8 +197,10 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v40 #c0cfbd3be88d
   like every menu over a glass card. [filter-set] An ordered time axis (the months of a year, quarters) is no list of records:
   it keeps all its values and is declared so (`data-filter-kind="period"`); a period the page always holds (from - to, never
   empty) is never marked set (`.on`) and is never cleared by Clear.
-- **The filter button always opens its popover;** the person pins each filter on the bar or keeps it there. The popover
-  heads with the pins (a tick per filter, Pin all, Unpin all), then every filter not pinned; it keeps one fixed width
+- **The filter button always opens its popover;** the person pins each filter on the bar or keeps it there. The popover's
+  head is ONE line (v41, user 07/11: a tick per filter ate the popover's room): the pinned filters as chips (x unpins one), Pin
+  all and Unpin all as two icons at its end; each filter in the popover carries its pin on its own label line, adding no
+  height; then every filter not pinned; it keeps one fixed width
   (22rem) whatever is pinned. The pins are the person's UI setting `filter_pins` (a JSON map page path → filter ids), so they
   hold in every app; a page with no pins of its own follows the UI setting `filters` (`bar` pins all, `popover` none). A
   phone keeps every filter in the popover. A pinned or unpinned filter FLIES from where it stood to its new place (FX: flip:

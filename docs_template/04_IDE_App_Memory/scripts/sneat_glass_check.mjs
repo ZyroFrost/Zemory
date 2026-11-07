@@ -282,6 +282,49 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'rail-slim',
+    rule: '(v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí") the folded menu is a slim rail of 72 px (4.5rem), not the kit\'s 84 px; and its badge stays whole - its own shape (never squeezed or stretched), 28 px at least, inside the rail',
+    check: `(() => {
+      const html = document.documentElement, menu = document.getElementById('layout-menu');
+      if (!menu || !html.classList.contains('layout-menu-collapsed') || html.classList.contains('layout-menu-hover') || innerWidth < 1200) return true;
+      const m = menu.getBoundingClientRect();
+      if (Math.abs(m.width - 72) > 1) return 'the folded rail is ' + Math.round(m.width) + ' px, not 72';
+      const img = menu.querySelector('.app-brand-logo img, .app-brand img');
+      if (!img || !img.getClientRects().length) return true;
+      const r = img.getBoundingClientRect(), c = getComputedStyle(img);
+      if (r.width < 28 || r.height < 28) return 'the badge shrank to ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' px';
+      if (r.left < m.left - .5 || r.right > m.right + .5) return 'the badge runs out of the rail';
+      // the drawn picture keeps its own shape: a box of another shape is fine only when the picture is fitted into it
+      const nat = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 0;
+      if (nat && Math.abs(r.width / r.height - nat) > .04 * nat && !/contain|scale-down|none/.test(c.objectFit)) return 'the badge is ' + (r.width / r.height > nat ? 'stretched' : 'squeezed') + ': its box ' + Math.round(r.width) + 'x' + Math.round(r.height) + ' for a picture of ' + img.naturalWidth + 'x' + img.naturalHeight;
+      for (let box = img.parentElement; box && box !== menu; box = box.parentElement) {
+        if (getComputedStyle(box).overflow === 'visible') continue;
+        const k = box.getBoundingClientRect();
+        if (r.left < k.left - .5 || r.right > k.right + .5 || r.top < k.top - .5 || r.bottom > k.bottom + .5) return 'the badge is cut by ' + (box.id || box.className); }
+      return true;
+    })()`,
+  },
+  {
+    id: 'tool-framed',
+    rule: '(v41, user 07/11: "mọi chức năng riêng của app phải là 1 nút có khung vuông đúng template, có hiệu ứng bấm") every button of the page\'s own tools (the left group of the bar, #card-start) is a framed button of the toolbar\'s height: a fill or an edge, rounded corners - never a bare icon',
+    check: `(() => {
+      const start = document.querySelector('#page-bar #card-start, .page-toolbar #card-start, .page-toolbar .card-start');
+      if (!start) return true;
+      const h = parseFloat(getComputedStyle(start.closest('.page-toolbar') || start).getPropertyValue('--tool-h')) || 38;
+      // a fill or an edge under 4% opacity shows nothing (a fading fill is read as clear)
+      const clear = v => { if (!v || v === 'transparent') return true; const a = /rgba\\([^)]*,\\s*([\\d.]+)\\)$/.exec(v); return Boolean(a) && parseFloat(a[1]) < .04; };
+      for (const b of start.querySelectorAll('button, a.btn, [role=button]')) {
+        if (!b.getClientRects().length || b.closest('.dropdown-menu, .modal, .slicer-menu')) continue;
+        const c = getComputedStyle(b), r = b.getBoundingClientRect(), name = (b.getAttribute('aria-label') || b.textContent || b.id || b.className).trim().slice(0, 30);
+        const filled = !clear(c.backgroundColor) || c.backgroundImage !== 'none', edged = parseFloat(c.borderTopWidth) > 0 && !clear(c.borderTopColor);
+        if (!filled && !edged) return 'a bare tool button with no frame: ' + name;
+        if (parseFloat(c.borderTopLeftRadius) < 2) return 'a tool button with square corners: ' + name;
+        if (Math.abs(r.height - h) > 2) return 'a tool button ' + Math.round(r.height) + ' px tall, the bar\\'s tools are ' + h + ': ' + name;
+      }
+      return true;
+    })()`,
+  },
+  {
     id: 'real-actions',
     rule: 'no fake button: a button-styled link never points at the page already open',
     check: `(() => {

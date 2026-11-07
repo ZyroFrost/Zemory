@@ -1,5 +1,5 @@
 ---
-version: 40
+version: 41
 lang: vi
 ---
 
@@ -23,6 +23,10 @@ lang: vi
     xem (danh sách · thẻ, hoặc các kiểu riêng của trang). [bar-anchor]
 - Cụm tìm lấy phần còn lại của dòng; các bộ lọc ghim co lại (cắt bằng "…") trước khi chạm tới cụm trái; hai cụm không bao giờ
   đè nhau; ghim bộ lọc không làm cụm trái xê dịch. [bar-anchor] [filter-row]
+- **Mọi nút công cụ riêng của trang là nút có khung** (v41, user 07/11: "mọi chức năng riêng của app phải là 1 nút có khung
+  vuông đúng template... có hiệu ứng bấm"): ở cụm trái mỗi nút mang khung của nút lọc - cao bằng thanh, có nền hoặc viền, bo
+  góc theo kit, sáng màu nhấn khi bật, lún khi bấm - không bao giờ là icon trơ; nút có màu (nút thêm) giữ màu, cùng chiều cao.
+  Khung tự cho nút thường kiểu này. [tool-framed]
 - Trang chỉ có một kiểu xem (mọi trang báo cáo) không hiện nút kiểu xem (user 06/11: nút mờ chỉ chiếm chỗ trên thanh); nút kiểu xem, khi có, có từ hai kiểu trở lên. Trang chưa có bộ lọc vẫn hiện nút lọc, ở trạng thái tắt.
   [toolbar] Nút đang bật thì làm đúng việc nó nói: dạng danh sách hiện dòng (một bảng, sắp được theo tiêu đề cột khi có ích -
   trạng thái, độ trễ), dạng thẻ hiện thẻ; trang toàn thẻ (trang chọn app) có dạng danh sách thật, không bao giờ để nút bấm mà
@@ -129,6 +133,9 @@ lang: vi
   cao của chúng (`flex-shrink: 0`), không dòng nào đè dòng sau; danh sách giữ rãnh thanh cuộn. [list-rows]
 - **Menu thu gọn nằm giữa:** huy hiệu và mọi icon trên đường giữa của rail; chữ thương hiệu không để lại khoảng trống.
   [folded-centre]
+- **Menu thu gọn là thanh mảnh, huy hiệu nguyên vẹn** (v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí", "cái logo khi thu
+  gọn lại méo"): 72 px (4.5rem), không phải 84 của kit; huy hiệu ít nhất 28 px, nằm trong thanh, không bị cắt, đúng hình của
+  nó - không bị bóp hay kéo giãn. [rail-slim]
 - **Không có nút giả:** mọi nút đều làm một việc - liên kết mang dáng nút không bao giờ trỏ về trang đang mở; mục nào sẽ làm vậy
   (thông báo về trang chủ) thì nhận đúng thao tác nó muốn nói (mở app đó, lật thẻ đó) hoặc không có thao tác. [real-actions]
 - **Mọi bảng dữ liệu giữ việc đổi độ rộng cột,** cả hai chiều: mỗi ô tiêu đề có tay kéo `col-resize` nhìn thấy được ở dạng danh
@@ -173,8 +180,10 @@ lang: vi
   thẻ kính. [filter-set] Một trục thời gian có thứ tự (các tháng trong năm, các quý) không phải danh sách bản ghi: nó giữ đủ mọi giá
   trị và được khai như vậy (`data-filter-kind="period"`); một kỳ trang luôn có (từ - đến, không bao giờ trống) không bao giờ được đánh
   dấu đã đặt (`.on`) và không bao giờ bị Xoá lọc xoá.
-- **Nút lọc luôn mở popover;** người dùng ghim từng bộ lọc lên thanh hoặc để nó trong popover. Đầu popover là danh sách ghim (mỗi
-  bộ lọc một ô tick, Ghim tất cả, Bỏ ghim), rồi mọi bộ lọc chưa ghim; popover giữ một bề rộng cố định (22rem) dù ghim gì. Ghim
+- **Nút lọc luôn mở popover;** người dùng ghim từng bộ lọc lên thanh hoặc để nó trong popover. Đầu popover chỉ là MỘT dòng (v41,
+  user 07/11: mỗi bộ lọc một ô tick chiếm chỗ của popover): các bộ lọc đã ghim thành chip (dấu x bỏ ghim từng cái), Ghim tất
+  cả và Bỏ ghim tất cả là hai icon cuối dòng; mỗi bộ lọc trong popover mang nút ghim ngay trên dòng nhãn của nó, không thêm
+  chiều cao; rồi mọi bộ lọc chưa ghim; popover giữ một bề rộng cố định (22rem) dù ghim gì. Ghim
   là cài đặt giao diện `filter_pins` của người dùng (một map JSON đường dẫn trang → id bộ lọc), nên giữ ở mọi app; trang chưa có
   ghim riêng theo cài đặt `filters` (`bar` ghim tất cả, `popover` không ghim). Điện thoại giữ mọi bộ lọc trong popover. Bộ lọc
   được ghim hay bỏ ghim BAY từ chỗ cũ tới chỗ mới (FX: flip: chỗ xuất phát ghi lại trước khi ghim, giữ tới khi nó đã dời - hàng
