@@ -4,11 +4,70 @@
 // is measured by stratified k-fold cross-validation on the reviewed labels; thresholds are picked on the training folds
 // only. Nothing here touches the hook or HS: the report decides, the person approves, step 04 exports.
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { currentEmbedProfile, embedQuery } from "../../memory/embed.js";
+import { currentEmbedProfile, embedQuery, type EmbedProfile } from "../../memory/embed.js";
 import { trainingDir } from "./01_pull.js";
 import { doorsOf, regexLabels } from "./02_label.js";
+
+/** The key of a text in the vector cache: its exact bytes, not a normalised form (the hook embeds the exact text). */
+export const textKey = (t: string): string => createHash("sha1").update(t, "utf8").digest("hex").slice(0, 16);
+
+/**
+ * Vectors of the texts under one embed profile, each text embedded once: 02_processing/vectors-<profile>.jsonl holds one
+ * line per text ({ k, v } with v the float32 vector in base64), appended as each vector is made, so a run that stops resumes
+ * where it stopped. A torn last line (the process died mid-write) is skipped and that text embedded again. The path is the
+ * one the hook takes (`embedQuery`, query prompt) — a vector made any other way would train a model the hook cannot feed.
+ */
+export async function embedCached(
+  texts: string[],
+  opts: {
+    dir?: string;
+    profile?: EmbedProfile;
+    embed?: (t: string) => Promise<number[] | null>;
+    onProgress?: (done: number, total: number) => void;
+  } = {},
+): Promise<Map<string, number[]>> {
+  const profile = opts.profile ?? currentEmbedProfile();
+  const embed = opts.embed ?? ((t: string) => embedQuery(t, profile));
+  const proc = join(opts.dir ?? trainingDir(), "02_processing");
+  mkdirSync(proc, { recursive: true });
+  const file = join(proc, `vectors-${profile}.jsonl`);
+  const have = new Map<string, number[]>();
+  if (existsSync(file)) {
+    const body = readFileSync(file, "utf8");
+    for (const line of body.split("\n")) {
+      if (!line) continue;
+      try {
+        const { k, v } = JSON.parse(line) as { k: string; v: string };
+        const b = Buffer.from(v, "base64");
+        have.set(k, Array.from(new Float32Array(b.buffer, b.byteOffset, b.byteLength / 4)));
+      } catch {
+        /* a torn line: its text is embedded again below */
+      }
+    }
+    if (body.length && !body.endsWith("\n")) appendFileSync(file, "\n");
+  }
+  const out = new Map<string, number[]>();
+  const todo: string[] = [];
+  for (const t of new Set(texts)) {
+    const v = have.get(textKey(t));
+    if (v) out.set(t, v);
+    else todo.push(t);
+  }
+  let done = 0;
+  for (const t of todo) {
+    const v = await embed(t);
+    done++;
+    if (!v) continue;
+    out.set(t, v);
+    const b = Buffer.from(new Float32Array(v).buffer);
+    appendFileSync(file, JSON.stringify({ k: textKey(t), v: b.toString("base64") }) + "\n");
+    opts.onProgress?.(done, todo.length);
+  }
+  return out;
+}
 
 export interface Labelled {
   id: string | number;
@@ -193,11 +252,7 @@ export async function train(opts: { dir?: string; k?: number } = {}): Promise<Tr
     }
   }
   const profile = currentEmbedProfile();
-  const vecs = new Map<string, number[]>();
-  for (const t of new Set(rows.map((r) => r.text))) {
-    const v = await embedQuery(t, profile);
-    if (v) vecs.set(t, v);
-  }
+  const vecs = await embedCached([...new Set(rows.map((r) => r.text))], { dir, profile });
   const doors = doorsOf();
   const k = opts.k ?? 5;
   const reports: DoorReport[] = [];
