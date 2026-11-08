@@ -1,0 +1,252 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit"
+    ]
+  },
+  "block": [
+    {
+      "note": "a pinned filter given its own height",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".filter-row .form-select { height: 34px; padding-block: .25rem; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a tool button given a height in rem",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".page-toolbar .card-start .btn {\n  height: 2.75rem;\n}\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "an icon button of the bar given its own width",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": "#card-start .btn-icon { width: 46px; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a height added inside a bar rule already in the file",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n",
+        "frontend/src/styles/app.css": ".page-toolbar > .card-start .btn { gap: .5rem; }\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "old_string": "gap: .5rem;",
+        "new_string": "gap: .5rem; min-height: 40px;"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "nút thêm cao hơn hàng filter"
+    }
+  ],
+  "pass": [
+    {
+      "note": "the bar's own size",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".filter-row .form-select { height: var(--tool-h); }\n#card-start .btn-icon { width: var(--tool-h); height: var(--tool-h, 38px); }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "the size set once on the bar",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".page-toolbar { --tool-h: 38px; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a popover hanging from the bar keeps its width",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".page-toolbar .filter-pop { width: 22rem; }\n.page-toolbar .dropdown-menu { max-height: 20rem; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "the filter box keeps its width",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".filters-in-row .page-search { width: 11rem; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "an icon inside a control",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".page-toolbar .btn .ico { width: 18px; height: 18px; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a rule outside the bar",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".card .btn { height: 30px; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "the bar itself and its groups hold their own height (row 2 is 44 px)",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": "#page-bar > .page-toolbar { min-block-size: 44px; }\n.page-toolbar > .card-start { min-height: 40px; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a repo not of a Sneat style",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"Glass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".filter-row .form-select { height: 34px; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a declaration already there, moved",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n",
+        "frontend/src/styles/app.css": ".filter-row .x { height: 34px; }\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "old_string": ".filter-row .x { height: 34px; }",
+        "new_string": ".filter-row .x { color: red; height: 34px; }"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa câu SQL"
+    }
+  ],
+  "prompt": {
+    "kind": "app-bar-size",
+    "re": "\\b(cao (hơn|bằng|lệch)|lệch (chiều )?cao|cỡ nút|size nút|nút .*(to|lớn|nhỏ) hơn|bằng (hàng|dãy) (filter|lọc)|tool-h)\\b",
+    "text": "[zemory] Rule_Gate_97_BarOneSize: every control of the page bar - the page tools and the \"+\", every pinned filter, the filter button, the box, the view switch - is the bar's one height var(--tool-h); an icon button is a square of it; never a number. The shared rule bar-one-size of scripts/sneat_glass_check.mjs must hold."
+  }
+}

@@ -271,24 +271,24 @@ export const RULES = [
   },
   {
     id: 'folded-centre',
-    rule: 'the folded menu sets the badge and every icon on the rail centre line',
+    rule: '(v43, user 08/11: "sao logo vẫn chưa canh giữa lại" - the brand row kept the kit\'s 84 px on a narrower rail, the badge 6 px right of the icons) the folded menu sets the badge, its brand row and every icon on the rail centre line, within 1 px',
     check: `(() => {
       const html = document.documentElement;
       if (!html.classList.contains('layout-menu-collapsed') || html.classList.contains('layout-menu-hover') || innerWidth < 1200) return true;
       const m = document.getElementById('layout-menu').getBoundingClientRect(), c = (m.left + m.right) / 2;
-      const bad = [document.querySelector('#layout-menu .app-brand-logo'), ...document.querySelectorAll('#layout-menu .menu-icon')]
-        .find(e => e && Math.abs((e.getBoundingClientRect().left + e.getBoundingClientRect().right) / 2 - c) > 2);
+      const bad = [document.querySelector('#layout-menu .app-brand-logo'), document.querySelector('#layout-menu .app-brand'), ...document.querySelectorAll('#layout-menu .menu-icon, #layout-menu .menu-inner > .menu-item > .menu-link > i')]
+        .find(e => e && e.getClientRects().length && Math.abs((e.getBoundingClientRect().left + e.getBoundingClientRect().right) / 2 - c) > 1);
       return bad ? 'off the rail centre: ' + (bad.className || bad.tagName) : true;
     })()`,
   },
   {
     id: 'rail-slim',
-    rule: '(v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí") the folded menu is a slim rail of 72 px (4.5rem), not the kit\'s 84 px; and its badge stays whole - its own shape (never squeezed or stretched), 28 px at least, inside the rail',
+    rule: '(v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí") (v43, user 08/11: "menu vẫn chưa làm mỏng lại") the folded menu is a slim rail of 64 px (4rem), not the kit\'s 84 px; and its badge stays whole - its own shape (never squeezed or stretched), 28 px at least, inside the rail',
     check: `(() => {
       const html = document.documentElement, menu = document.getElementById('layout-menu');
       if (!menu || !html.classList.contains('layout-menu-collapsed') || html.classList.contains('layout-menu-hover') || innerWidth < 1200) return true;
       const m = menu.getBoundingClientRect();
-      if (Math.abs(m.width - 72) > 1) return 'the folded rail is ' + Math.round(m.width) + ' px, not 72';
+      if (Math.abs(m.width - 64) > 1) return 'the folded rail is ' + Math.round(m.width) + ' px, not 64';
       const img = menu.querySelector('.app-brand-logo img, .app-brand img');
       if (!img || !img.getClientRects().length) return true;
       const r = img.getBoundingClientRect(), c = getComputedStyle(img);
@@ -301,6 +301,58 @@ export const RULES = [
         if (getComputedStyle(box).overflow === 'visible') continue;
         const k = box.getBoundingClientRect();
         if (r.left < k.left - .5 || r.right > k.right + .5 || r.top < k.top - .5 || r.bottom > k.bottom + .5) return 'the badge is cut by ' + (box.id || box.className); }
+      return true;
+    })()`,
+  },
+  {
+    id: 'wall-brand',
+    rule: '(v43, user 08/11: "đỏ nhiều quá... nó là 3 màu đỏ trắng đen, trắng vẫn nhiều hơn") the family\'s brand wallpaper tone (the one the frame names in data-wall-brand on <html>) is white, black and the brand colour, white the most: the large blob a a white light, the large blob b black or charcoal, and the brand colour (--g-brand) only in the small blob c, in both themes',
+    check: `(() => {
+      const html = document.documentElement, brand = html.dataset.wallBrand;
+      if (!brand || html.dataset.wall !== brand) return true;
+      const s = getComputedStyle(html), rgb = (v) => { const p = document.createElement('i'); p.style.color = v; document.body.append(p); const c = getComputedStyle(p).color.match(/\\d+/g).map(Number); p.remove(); return c; };
+      const lum = ([r, g, b]) => (.2126 * r + .7152 * g + .0722 * b) / 255, grey = (c) => Math.max(...c) - Math.min(...c) <= 30;
+      const a = rgb(s.getPropertyValue('--g-blob-a').trim()), b = rgb(s.getPropertyValue('--g-blob-b').trim()), c = rgb(s.getPropertyValue('--g-blob-c').trim()), k = rgb(s.getPropertyValue('--g-brand').trim());
+      if (lum(a) < .8 || !grey(a)) return 'the large blob a of the brand tone is not a white light: rgb(' + a + ')';
+      if (lum(b) > .3 || !grey(b)) return 'the large blob b of the brand tone is not black or charcoal: rgb(' + b + ')';
+      if (c.some((v, i) => Math.abs(v - k[i]) > 24)) return 'the small blob c of the brand tone is not the brand colour: rgb(' + c + '), the brand rgb(' + k + ')';
+      return true;
+    })()`,
+  },
+  {
+    id: 'bar-one-size',
+    rule: '(v43, user 08/11: the "+" stood 38 px beside pinned filters of 34 px, "phải khóa lại chính xác size") every control of the page bar - the page\'s own tools and the "+", every pinned filter, the filter button, the filter box, the view switch - is drawn at the bar\'s one height --tool-h within 1 px, and a button carrying only an icon is a square of it (Rule_Gate_97_BarOneSize)',
+    check: `(() => {
+      const bar = document.querySelector('#page-bar .page-toolbar, .page-toolbar');
+      if (!bar || !bar.getClientRects().length) return true;
+      const h = parseFloat(getComputedStyle(bar).getPropertyValue('--tool-h')) || 38;
+      const sel = '.card-start button, .card-start a.btn, .filter-row .form-select, .filter-row .form-control, .page-filter > .btn, .page-search .form-control, .view-switch > .btn, .card-tools > .filter-clear';
+      for (const e of bar.querySelectorAll(sel)) {
+        if (!e.getClientRects().length || e.closest('.dropdown-menu, .modal, .slicer-menu, .filter-pop')) continue;
+        const r = e.getBoundingClientRect(), name = (e.getAttribute('aria-label') || e.textContent || e.id || e.className).trim().slice(0, 30);
+        if (Math.abs(r.height - h) > 1) return 'a control of the page bar is ' + Math.round(r.height) + ' px tall, the bar is ' + Math.round(h) + ': ' + name;
+        const words = (e.innerText || '').split('+').join('').trim();
+        if (e.matches('button, a.btn') && !words && Math.abs(r.width - r.height) > 1) return 'an icon button of the page bar is ' + Math.round(r.width) + ' x ' + Math.round(r.height) + ', not a square: ' + name;
+      }
+      return true;
+    })()`,
+  },
+  {
+    id: 'pins-slim',
+    rule: '(v41, user 07/11: "cái track để ghim tốn 1 đống diện tích") while the filter popover is open its pin head is ONE line (no tick list, at most 48 px) and each filter\'s pin sits on its label\'s line, at its right end, never over its words',
+    check: `(() => {
+      const h = document.getElementById('filter-pins');
+      if (!h || !h.getClientRects().length) return true;
+      if (h.querySelector('input[type=checkbox]')) return 'a tick list of pins is back at the popover head';
+      const r = h.getBoundingClientRect(); if (r.height > 48) return 'the pin head is ' + Math.round(r.height) + ' px tall';
+      for (const f of document.querySelectorAll('#filter-pop .filter-place')) {
+        const pin = f.querySelector(':scope > [data-pin]'), label = f.querySelector('.filter-label');
+        if (!pin || !label) return 'no pin or label on ' + f.dataset.filterId;
+        const b = pin.getBoundingClientRect(), l = label.getBoundingClientRect(), c = f.getBoundingClientRect();
+        if (b.bottom > l.bottom + 6 || b.top < c.top - 6 || b.right > c.right + 1) return 'the pin of ' + f.dataset.filterId + ' leaves its label line';
+        const words = document.createRange(); words.selectNodeContents(label);
+        if (b.left < words.getBoundingClientRect().right - 1) return 'the pin of ' + f.dataset.filterId + ' lies over its label';
+      }
       return true;
     })()`,
   },

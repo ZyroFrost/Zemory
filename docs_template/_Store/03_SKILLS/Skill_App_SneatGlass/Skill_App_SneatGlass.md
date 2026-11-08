@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 42
+version: 43
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -35,6 +35,11 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   (the add button) keeps its colour at the same height. The frame gives a plain button this look by itself. [tool-framed]
   Every button of the left group, the add button too, stands at the height of the filters on the right, within 1 px (v42,
   user 07/11: "chiều cao của nút riêng phải luôn bằng chiều cao của nguyên bộ filter bên phải"). [tool-framed]
+- **Every control of the bar is ONE size, locked** (v43, user 08/11: the "+" stood 38 px beside pinned filters of 34 px,
+  "phải khóa lại chính xác size"): the page's tools and the "+", every pinned filter, the filter button, the filter box and the
+  view switch are drawn at `--tool-h` (38 px, set once on `.page-toolbar`) within 1 px; a button carrying only an icon is a
+  square of it. No style rule of the frame or of an app writes a number for the height of a control of the bar, or for an icon
+  button's width - `Rule_Gate_97_BarOneSize` blocks it as it is written; the size changes only through `--tool-h`. [bar-one-size]
 - **Both ends of each row keep the same room** (v42, user 07/11): row 1 and the page bar - from the left edge to the first
   control as from the last control to the right edge, within 2 px. [bar-ends-even]
 - **Row 1's buttons are framed** (v42, user 07/11: "2 nút app và chuông cũng phải khung luôn cho đồng bộ"): the apps and the
@@ -68,8 +73,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 ## 2b. The top bar — one glass head of two rows, the same in every app of the family
 
 - **One glass block, two rows, no gap:** row 1 (56 px) is the family's bar, row 2 (44 px) the page's bar, a hairline between
-  them; scrolling down folds row 1 away so only the page bar stays on top, scrolling up or reaching the top brings it back. A
-  page with no bar of its own shows row 1 only. [crumbs] [frame] The head grows with its two rows - never the kit's fixed
+  them; scrolling down folds row 1 away so only the page bar stays on top, scrolling up or reaching the top brings it back. Only
+  the page's own scroll does it: a box scrolling inside the page (a log at its foot, a wide table) never folds row 1 (v42,
+  Reconcile 07/11). A page with no bar of its own shows row 1 only. [crumbs] [frame] The head grows with its two rows - never the kit's fixed
   `block-size: 4rem` that the page bar spills out of - and the page starts below it, nothing of the page under the bar.
   [head-whole]
 - **Row 1 gives its room to the crumbs:** the crumbs from its start, then the one search right beside the buttons at its end,
@@ -92,6 +98,10 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   ("Internal Control Report"), never the code first ("IC_02 …") - the code is an identifier. [no-code-prefix]
 - **The menu brand shows the app's name with its accent part (`.text-primary`, the end of the name) in the shared brand
   colour token `--g-brand`,** in both themes; the app defines the token. [brand-one-red]
+- **The family wallpaper tone is red, white and black, white the most** (v43, user 08/11: "đỏ nhiều quá... nó là 3 màu đỏ trắng
+  đen, trắng vẫn nhiều hơn"): the family's brand tone (named by the frame in `data-wall-brand` on `<html>`) in both themes: the
+  large blob a a white light, the large blob b black (charcoal on the light theme), the brand colour (`--g-brand`) only in the
+  small middle blob c, smaller and fainter than the others; the tone's swatch in Settings shows the same three. [wall-brand]
 - **Under the family name,** the small line names only the app currently open (`data-app-name` of the menu): the dashboard
   app's name in the dashboard app, the hub's own name in the hub. It stays fixed while moving between that app's pages; the
   crumbs name the current page. [brand-area]
@@ -155,10 +165,11 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   multiplies the font size by `currentCSSZoom`.
 - **A scrolling list never squeezes its rows** (a dropdown, a dialog list): the rows of a height-limited flex column keep
   their height (`flex-shrink: 0`), none overlaps the next; the list keeps a scrollbar gutter. [list-rows]
-- **The folded menu is centred:** the badge and every icon on the rail's centre line; the brand word leaves no room behind.
-  [folded-centre]
+- **The folded menu is centred:** the badge, its brand row and every icon on the rail's centre line, within 1 px; the brand row
+  is the rail's width while folded, never the kit's own (v43, user 08/11: the badge stood 6 px right of the icons); the brand
+  word leaves no room behind. [folded-centre]
 - **The folded rail is slim and its badge whole** (v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí", "cái logo khi thu gọn
-  lại méo"): 72 px (4.5rem), not the kit's 84; the badge 28 px at least, inside the rail, uncut, in its own shape - never
+  lại méo"; v43, user 08/11: "menu vẫn chưa làm mỏng lại"): 64 px (4rem), not the kit's 84; the badge 28 px at least, inside the rail, uncut, in its own shape - never
   squeezed or stretched. [rail-slim]
 - **No fake button:** every button does something - a link styled as a button never points at the page already open; an
   item that would (a notification about the home page) gets the action it means (open that app, turn that card) or none.
@@ -210,7 +221,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - **The filter button always opens its popover;** the person pins each filter on the bar or keeps it there. The popover's
   head is ONE line (v41, user 07/11: a tick per filter ate the popover's room): the pinned filters as chips (x unpins one), Pin
   all and Unpin all as two icons at its end; each filter in the popover carries its pin on its own label line, adding no
-  height; then every filter not pinned; it keeps one fixed width
+  height [pins-slim]; then every filter not pinned; it keeps one fixed width
   (22rem) whatever is pinned. The pins are the person's UI setting `filter_pins` (a JSON map page path → filter ids), so they
   hold in every app; a page with no pins of its own follows the UI setting `filters` (`bar` pins all, `popover` none). A
   phone keeps every filter in the popover. A pinned or unpinned filter FLIES from where it stood to its new place (FX: flip:
@@ -371,4 +382,5 @@ A repo outside any family builds the frame itself by §1–§5, with the system-
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved on its template before it is ported · kiểu được duyệt trên template trước khi chép sang app
+- `Rule_Gate_97_BarOneSize` — every control of the page bar is the bar's one size · mọi control của thanh trang cùng một cỡ
 - `Rule_Keys_90_AppFamilyContract` — in a family, the frame of this kind is built once by the system-manager · trong một hệ, khung của kiểu này do repo quản hệ dựng một lần

@@ -1,5 +1,5 @@
 ---
-version: 42
+version: 43
 lang: vi
 ---
 
@@ -28,6 +28,11 @@ lang: vi
   góc theo kit, sáng màu nhấn khi bật, lún khi bấm - không bao giờ là icon trơ; nút có màu (nút thêm) giữ màu, cùng chiều cao.
   Khung tự cho nút thường kiểu này. [tool-framed] Mọi nút của cụm trái, cả nút thêm, cao bằng bộ lọc bên phải, lệch tối đa
   1 px (v42, user 07/11: "chiều cao của nút riêng phải luôn bằng chiều cao của nguyên bộ filter bên phải"). [tool-framed]
+- **Mọi control của thanh cùng MỘT cỡ, khoá cứng** (v43, user 08/11: nút "+" cao 38 px cạnh bộ lọc ghim 34 px, "phải khóa lại
+  chính xác size"): công cụ của trang và nút "+", mọi bộ lọc ghim, nút lọc, ô tìm và nút đổi kiểu xem vẽ ra đúng `--tool-h`
+  (38 px, đặt một lần trên `.page-toolbar`), lệch tối đa 1 px; nút chỉ có icon là ô vuông cỡ đó. Không luật style nào của khung
+  hay của app ghi số cho chiều cao một control của thanh, hay bề rộng một nút icon - `Rule_Gate_97_BarOneSize` chặn ngay lúc ghi;
+  cỡ chỉ đổi qua `--tool-h`. [bar-one-size]
 - **Hai đầu mỗi hàng chừa bằng nhau** (v42, user 07/11): hàng 1 và thanh trang - từ mép trái tới control đầu bằng từ control
   cuối tới mép phải, lệch tối đa 2 px. [bar-ends-even]
 - **Nút hàng 1 có khung** (v42, user 07/11: "2 nút app và chuông cũng phải khung luôn cho đồng bộ"): nút ứng dụng và chuông là
@@ -61,7 +66,8 @@ lang: vi
 
 - **Một khối kính, hai hàng, không khe hở:** hàng 1 (56 px) là thanh chung của hệ, hàng 2 (44 px) là thanh của trang, giữa hai
   hàng là một vạch mảnh; cuộn xuống thì hàng 1 thu lại, chỉ còn thanh trang dính trên cùng; cuộn lên hay về đầu trang thì hàng 1
-  hiện lại. Trang không có thanh riêng thì chỉ có hàng 1. [crumbs] [frame] Đầu trang lớn theo hai hàng của nó - không bao giờ giữ
+  hiện lại. Chỉ cuộn của chính trang mới làm vậy: một hộp cuộn bên trong trang (nhật ký ở chân, bảng rộng) không bao giờ thu
+  hàng 1 (v42, Reconcile 07/11). Trang không có thanh riêng thì chỉ có hàng 1. [crumbs] [frame] Đầu trang lớn theo hai hàng của nó - không bao giờ giữ
   `block-size: 4rem` cố định của bộ mẫu để thanh trang tràn ra ngoài - và trang bắt đầu dưới nó, không phần nào của trang nằm dưới
   thanh. [head-whole]
 - **Hàng 1 nhường chỗ cho đường dẫn:** đường dẫn từ đầu hàng, rồi ô tìm duy nhất đứng sát dãy nút ở cuối, và dãy nút chỉ còn app ·
@@ -82,6 +88,10 @@ lang: vi
   bao giờ ghi mã trước ("IC_02 …") - mã là định danh. [no-code-prefix]
 - **Tên app ở menu có phần nhấn (`.text-primary`, cuối tên) mang token màu thương hiệu chung `--g-brand`,** ở cả hai theme; app
   tự định nghĩa token. [brand-one-red]
+- **Hình nền của hệ là ba màu đỏ, trắng, đen, trắng nhiều nhất** (v43, user 08/11: "đỏ nhiều quá... nó là 3 màu đỏ trắng đen,
+  trắng vẫn nhiều hơn"): tông thương hiệu của hệ (khung ghi tên nó ở `data-wall-brand` trên `<html>`), ở cả hai giao diện: mảng
+  lớn a là ánh trắng, mảng lớn b là đen (xám than ở giao diện sáng), màu thương hiệu (`--g-brand`) chỉ ở mảng nhỏ c giữa màn
+  hình, nhỏ và nhạt hơn hai mảng kia; ô mẫu của tông này trong Cài đặt cũng đúng ba màu đó. [wall-brand]
 - **Dưới tên hệ,** dòng nhỏ chỉ ghi app đang mở (`data-app-name` của menu): tên app dashboard trong app dashboard, tên riêng của
   hub trong hub. Dòng này giữ nguyên khi đi giữa các trang của app đó; đường dẫn ghi trang hiện tại. [brand-area]
 - **Nhãn nhóm của menu cách vạch ngăn ngắn** ít nhất 8 px khi menu mở. [menu-header-gap]
@@ -141,10 +151,11 @@ lang: vi
   mọi cỡ là mức sàn trên màn (cỡ × 1/zoom, không dưới cỡ đã viết); phép kiểm nhân cỡ chữ với `currentCSSZoom`.
 - **Danh sách cuộn không bóp dòng** (menu thả, danh sách trong hộp thoại): các dòng của cột flex bị giới hạn chiều cao giữ chiều
   cao của chúng (`flex-shrink: 0`), không dòng nào đè dòng sau; danh sách giữ rãnh thanh cuộn. [list-rows]
-- **Menu thu gọn nằm giữa:** huy hiệu và mọi icon trên đường giữa của rail; chữ thương hiệu không để lại khoảng trống.
-  [folded-centre]
+- **Menu thu gọn nằm giữa:** huy hiệu, hàng thương hiệu và mọi icon trên đường giữa của rail, lệch tối đa 1 px; khi thu gọn,
+  hàng thương hiệu rộng đúng bằng rail, không giữ bề rộng riêng của kit (v43, user 08/11: huy hiệu lệch phải 6 px so với icon);
+  chữ thương hiệu không để lại khoảng trống. [folded-centre]
 - **Menu thu gọn là thanh mảnh, huy hiệu nguyên vẹn** (v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí", "cái logo khi thu
-  gọn lại méo"): 72 px (4.5rem), không phải 84 của kit; huy hiệu ít nhất 28 px, nằm trong thanh, không bị cắt, đúng hình của
+  gọn lại méo"; v43, user 08/11: "menu vẫn chưa làm mỏng lại"): 64 px (4rem), không phải 84 của kit; huy hiệu ít nhất 28 px, nằm trong thanh, không bị cắt, đúng hình của
   nó - không bị bóp hay kéo giãn. [rail-slim]
 - **Không có nút giả:** mọi nút đều làm một việc - liên kết mang dáng nút không bao giờ trỏ về trang đang mở; mục nào sẽ làm vậy
   (thông báo về trang chủ) thì nhận đúng thao tác nó muốn nói (mở app đó, lật thẻ đó) hoặc không có thao tác. [real-actions]
@@ -193,7 +204,7 @@ lang: vi
 - **Nút lọc luôn mở popover;** người dùng ghim từng bộ lọc lên thanh hoặc để nó trong popover. Đầu popover chỉ là MỘT dòng (v41,
   user 07/11: mỗi bộ lọc một ô tick chiếm chỗ của popover): các bộ lọc đã ghim thành chip (dấu x bỏ ghim từng cái), Ghim tất
   cả và Bỏ ghim tất cả là hai icon cuối dòng; mỗi bộ lọc trong popover mang nút ghim ngay trên dòng nhãn của nó, không thêm
-  chiều cao; rồi mọi bộ lọc chưa ghim; popover giữ một bề rộng cố định (22rem) dù ghim gì. Ghim
+  chiều cao [pins-slim]; rồi mọi bộ lọc chưa ghim; popover giữ một bề rộng cố định (22rem) dù ghim gì. Ghim
   là cài đặt giao diện `filter_pins` của người dùng (một map JSON đường dẫn trang → id bộ lọc), nên giữ ở mọi app; trang chưa có
   ghim riêng theo cài đặt `filters` (`bar` ghim tất cả, `popover` không ghim). Điện thoại giữ mọi bộ lọc trong popover. Bộ lọc
   được ghim hay bỏ ghim BAY từ chỗ cũ tới chỗ mới (FX: flip: chỗ xuất phát ghi lại trước khi ghim, giữ tới khi nó đã dời - hàng
@@ -345,4 +356,5 @@ Repo không thuộc hệ nào tự dựng khung theo §1–§5, lấy frontend c
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the look of a kind is approved on its template before it is ported · kiểu được duyệt trên template trước khi chép sang app
+- `Rule_Gate_97_BarOneSize` — every control of the page bar is the bar's one size · mọi control của thanh trang cùng một cỡ
 - `Rule_Keys_90_AppFamilyContract` — in a family, the frame of this kind is built once by the system-manager · trong một hệ, khung của kiểu này do repo quản hệ dựng một lần
