@@ -278,7 +278,14 @@ export const RULES = [
       const m = document.getElementById('layout-menu').getBoundingClientRect(), c = (m.left + m.right) / 2;
       const bad = [document.querySelector('#layout-menu .app-brand-logo'), document.querySelector('#layout-menu .app-brand'), ...document.querySelectorAll('#layout-menu .menu-icon, #layout-menu .menu-inner > .menu-item > .menu-link > i')]
         .find(e => e && e.getClientRects().length && Math.abs((e.getBoundingClientRect().left + e.getBoundingClientRect().right) / 2 - c) > 1);
-      return bad ? 'off the rail centre: ' + (bad.className || bad.tagName) : true;
+      if (bad) return 'off the rail centre: ' + (bad.className || bad.tagName);
+      // (v44, user 08/11: "bóp khung menu lại thì cái ô vuông khi chọn cũng phải vuông lại theo") the lit pill of the folded menu is a square
+      const pill = document.querySelector('#layout-menu .menu-inner > .g-pill');
+      if (pill && getComputedStyle(pill).opacity !== '0' && pill.getClientRects().length) {
+        const p = pill.getBoundingClientRect();
+        if (Math.abs(p.width - p.height) > 1) return 'the lit pill of the folded menu is ' + Math.round(p.width) + ' x ' + Math.round(p.height) + ', not a square';
+      }
+      return true;
     })()`,
   },
   {

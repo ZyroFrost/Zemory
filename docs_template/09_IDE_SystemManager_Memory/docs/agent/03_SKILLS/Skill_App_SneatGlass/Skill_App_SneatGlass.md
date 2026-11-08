@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 43
+version: 44
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v43 #3b4479af1db1
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v44 #5e281bf7831c
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -168,7 +168,8 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v43 #3b4479af1db1
   their height (`flex-shrink: 0`), none overlaps the next; the list keeps a scrollbar gutter. [list-rows]
 - **The folded menu is centred:** the badge, its brand row and every icon on the rail's centre line, within 1 px; the brand row
   is the rail's width while folded, never the kit's own (v43, user 08/11: the badge stood 6 px right of the icons); the brand
-  word leaves no room behind. [folded-centre]
+  word leaves no room behind. Each folded row is a square, so the lit pill on it is a square too (v44, user 08/11: "bóp khung
+  menu lại thì cái ô vuông khi chọn cũng phải vuông lại theo"). [folded-centre]
 - **The folded rail is slim and its badge whole** (v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí", "cái logo khi thu gọn
   lại méo"; v43, user 08/11: "menu vẫn chưa làm mỏng lại"): 64 px (4rem), not the kit's 84; the badge 28 px at least, inside the rail, uncut, in its own shape - never
   squeezed or stretched. [rail-slim]

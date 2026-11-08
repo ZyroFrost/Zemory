@@ -1,5 +1,5 @@
 ---
-version: 43
+version: 44
 lang: vi
 ---
 
@@ -153,7 +153,8 @@ lang: vi
   cao của chúng (`flex-shrink: 0`), không dòng nào đè dòng sau; danh sách giữ rãnh thanh cuộn. [list-rows]
 - **Menu thu gọn nằm giữa:** huy hiệu, hàng thương hiệu và mọi icon trên đường giữa của rail, lệch tối đa 1 px; khi thu gọn,
   hàng thương hiệu rộng đúng bằng rail, không giữ bề rộng riêng của kit (v43, user 08/11: huy hiệu lệch phải 6 px so với icon);
-  chữ thương hiệu không để lại khoảng trống. [folded-centre]
+  chữ thương hiệu không để lại khoảng trống. Mỗi hàng khi thu gọn là một ô vuông, nên ô sáng của mục đang chọn cũng vuông (v44,
+  user 08/11: "bóp khung menu lại thì cái ô vuông khi chọn cũng phải vuông lại theo"). [folded-centre]
 - **Menu thu gọn là thanh mảnh, huy hiệu nguyên vẹn** (v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí", "cái logo khi thu
   gọn lại méo"; v43, user 08/11: "menu vẫn chưa làm mỏng lại"): 64 px (4rem), không phải 84 của kit; huy hiệu ít nhất 28 px, nằm trong thanh, không bị cắt, đúng hình của
   nó - không bị bóp hay kéo giãn. [rail-slim]
