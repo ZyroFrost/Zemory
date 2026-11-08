@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 46
+version: 47
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -74,7 +74,8 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   column for a table. Only a board of several cards (an overview of figures and charts) scrolls the column (`fill: false`).
   The room for the data comes from row 1 folding (`head_fold` Most room, §2b), never from scrolling the whole page. The
   table is level with the page bar: its first column's text starts where the bar's tools start (.75rem from the card edge).
-  [table-edges]
+  The table of a table page stands straight in the page card's body, never wrapped in an inner card; a table in a panel of a
+  board (an inner card) keeps that card's 1rem inset (v47, Dashboard 09/11). [table-edges] [card-inset]
 - **The tab panel of the sibling pages** (v46, Dashboard 08/11, the user 09/11 - "khu vực tab phải là khu vực tách rời, ko
   được load lại… gần như là panel khung dòng thứ 3… nó cũng phải neo"): an app that groups many pages under one menu row turns
   on the frame's tab panel (`pageHead`); it is a frame panel above the page and outside it - moving between its tabs changes

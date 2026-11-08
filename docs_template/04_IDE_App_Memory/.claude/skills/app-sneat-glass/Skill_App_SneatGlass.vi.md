@@ -1,5 +1,5 @@
 ---
-version: 46
+version: 47
 lang: vi
 ---
 
@@ -64,7 +64,9 @@ lang: vi
   một bảng hay ma trận là một thẻ trang lấp đầy khung (`fill`, mặc định), bảng cuộn bên trong với hàng tiêu đề và cột đầu ghim,
   thanh trang luôn có; trang không bao giờ cuộn cả cột vì một bảng. Chỉ board nhiều thẻ (tổng quan số liệu và biểu đồ) mới cuộn
   cả cột (`fill: false`). Chỗ cho dữ liệu đến từ việc thu hàng 1 (`head_fold` Tối đa chỗ, §2b), không bao giờ từ cuộn cả trang.
-  Bảng thẳng hàng với thanh trang: chữ cột đầu bắt đầu đúng chỗ công cụ của thanh bắt đầu (.75rem từ mép thẻ). [table-edges]
+  Bảng thẳng hàng với thanh trang: chữ cột đầu bắt đầu đúng chỗ công cụ của thanh bắt đầu (.75rem từ mép thẻ). Bảng của trang
+  bảng nằm thẳng trong thân thẻ trang, không bao giờ bọc trong thẻ con; bảng trong panel của board (một thẻ con) giữ lề 1rem của
+  thẻ đó (v47, Dashboard 09/11). [table-edges] [card-inset]
 - **Dải tab các trang cùng nhóm** (v46, Dashboard 08/11, user 09/11 - "khu vực tab phải là khu vực tách rời, ko được load lại…
   gần như là panel khung dòng thứ 3… nó cũng phải neo"): app gom nhiều trang dưới một hàng menu thì bật dải tab của khung
   (`pageHead`); dải là panel của khung nằm trên trang và ngoài trang - đổi tab chỉ đổi trang - neo trên đầu, 1,5rem phía trên,

@@ -368,8 +368,11 @@ export const RULES = [
     rule: '(v46, the user 09/11 through Reconcile) a table in a page card is level with the page bar: the text of its first column starts where the tools of the page bar start (.75rem from the card edge), within 1 px',
     check: `(() => {
       const card = document.querySelector('#page > .page-card');
-      if (!card || card.matches('.view-grid')) return true;
-      const body = card.querySelector(':scope > .page-card-body'), table = body && body.querySelector('table.table');
+      // (v47, Dashboard 09/11) a table page only: a table straight in the body of a page card that fills the frame - a table in a
+      // panel of a board, or in an inner card, keeps that card's 1rem inset (card-inset) and is not read here; nor while the
+      // card still rises in (FX: reveal scales it a little, a few px off)
+      if (!card || card.matches('.view-grid') || !card.classList.contains('fill') || card.getAnimations().length) return true;
+      const body = card.querySelector(':scope > .page-card-body'), table = body && [...body.querySelectorAll('table.table')].find(t => t.parentElement.closest('.card') === card);
       const bar = document.querySelector('#page-bar .page-toolbar') || card.querySelector(':scope > .page-toolbar');
       if (!table || !bar || !table.getClientRects().length || !bar.getClientRects().length || body.scrollLeft > 0) return true;
       const th = [...table.querySelectorAll('thead tr:first-child > th')].find(e => e.getClientRects().length);
