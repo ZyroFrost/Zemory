@@ -44,6 +44,8 @@ export const Q = {
   sessionTotals: "SELECT COUNT(*) AS n, COALESCE(SUM(message_count), 0) AS m, MAX(ended_at) AS last FROM sessions",
   // the encoded folder name is spelt with the drive letter's case of the cwd Claude Code saw: compare without case
   sessionAliasOfAnyCase: "SELECT session_id AS id FROM session_alias WHERE lower(alias_id) = lower(?)",
+  // aliases whose id starts with a prefix, any case (args: prefix length, prefix) - the notes a project move must carry on
+  sessionAliasesByPrefix: "SELECT alias_id, session_id FROM session_alias WHERE substr(lower(alias_id), 1, ?) = lower(?)",
   upsertSessionAlias: "INSERT INTO session_alias (alias_id, session_id) VALUES (?, ?) ON CONFLICT(alias_id) DO UPDATE SET session_id = excluded.session_id",
   messageIdByUuid: "SELECT id FROM messages WHERE session_id = ? AND uuid = ?",
   // the uuid-less messages of ONE session (the (session_id, uuid) index): the receiving side keys their vectors by a hash

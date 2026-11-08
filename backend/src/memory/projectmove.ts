@@ -15,8 +15,10 @@
 // Nothing is deleted: every step renames or repoints (constitution art. 3).
 //
 // Every step looks at the current state first, so a run stopped half way can simply be run again.
+// Moved by other means (the old path left as a link to the new one) with Claude Code already open in the new folder: the
+// folder step is skipped, the old session folder is merged into the new one, and every other step runs as usual.
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { homedir, hostname } from "node:os";
 import { dirname, join, posix, resolve, win32 } from "node:path";
 import { encodeProjectDir } from "./adapters/claudemem.js";
@@ -107,6 +109,45 @@ export function copyFolderVerified(src: string, dst: string): { ok: boolean; sou
   return { ok: source.files === copy.files && source.bytes === copy.bytes, source, copy };
 }
 
+/**
+ * The source is a link (junction / symlink) resolving to the target: the folder was already moved by other means and the old
+ * path left pointing at the new one (08/11: the zemory repo robocopied D → H by a scheduled task, D:\…\zemory a junction).
+ */
+function linksTo(src: string, dst: string): boolean {
+  try {
+    return lstatSync(src).isSymbolicLink() && low(realpathSync.native(src)) === low(realpathSync.native(dst));
+  } catch {
+    return false;
+  }
+}
+
+/** Relative paths that are a FILE (or a file vs folder) on both sides: a merge of `src` into `dst` would overwrite them. */
+function mergeClashes(src: string, dst: string, rel = ""): string[] {
+  const out: string[] = [];
+  for (const e of readdirSync(src, { withFileTypes: true })) {
+    const d = join(dst, e.name);
+    if (!existsSync(d)) continue;
+    if (e.isDirectory() && statSync(d).isDirectory()) out.push(...mergeClashes(join(src, e.name), d, join(rel, e.name)));
+    else out.push(join(rel, e.name));
+  }
+  return out;
+}
+
+/** Move every entry of `src` into `dst` (a folder on both sides is merged the same way); returns the entries moved. */
+function mergeInto(src: string, dst: string): number {
+  let n = 0;
+  for (const e of readdirSync(src, { withFileTypes: true })) {
+    const s = join(src, e.name);
+    const d = join(dst, e.name);
+    if (existsSync(d)) n += mergeInto(s, d); // a folder on both sides: mergeClashes ruled out a file
+    else {
+      renameSync(s, d);
+      n++;
+    }
+  }
+  return n;
+}
+
 export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}): MoveReport {
   const from = hostForm(fromIn);
   const to = hostForm(toIn);
@@ -122,8 +163,10 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
   const report: MoveReport = { from, to, applied: false, blockers: [], steps: [] };
 
   // ── preconditions ────────────────────────────────────────────────────────────────────────────────────────────────
-  const fromThere = existsSync(fromLocal);
   const toThere = existsSync(toLocal);
+  // the old path a link to the new one: the folder is moved already, the link stays (it is not ours to delete)
+  const linked = toThere && linksTo(fromLocal, toLocal);
+  const fromThere = existsSync(fromLocal) && !linked;
   if (low(from) === low(to)) report.blockers.push("source and target are the same folder");
   if (under(to, from)) report.blockers.push("target is inside the source");
   if (!fromThere && !toThere) report.blockers.push(`neither ${from} nor ${to} exists`);
@@ -135,16 +178,24 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
   // from that name, so the new folder keeps the same spelling style.
   const projectsDir = join(claudeHome, "projects");
   const oldEnc = safeList(projectsDir).find((d) => d.toLowerCase() === encodeProjectDir(from).toLowerCase()) ?? encodeProjectDir(from);
-  let newEnc = encodeProjectDir(to);
-  if (/^[a-z]/.test(oldEnc) && /^[A-Z]/.test(newEnc)) newEnc = newEnc[0].toLowerCase() + newEnc.slice(1);
+  // a session folder Claude Code already made for the target keeps its own spelling: note ids are built from it
+  const newEncThere = safeList(projectsDir).find((d) => d.toLowerCase() === encodeProjectDir(to).toLowerCase());
+  let newEnc = newEncThere ?? encodeProjectDir(to);
+  if (!newEncThere && /^[a-z]/.test(oldEnc) && /^[A-Z]/.test(newEnc)) newEnc = newEnc[0].toLowerCase() + newEnc.slice(1);
   const oldSlug = join(claudeHome, "projects", oldEnc);
   const newSlug = join(claudeHome, "projects", newEnc);
   const slugFrom = existsSync(oldSlug);
-  if (slugFrom && existsSync(newSlug) && low(oldSlug) !== low(newSlug)) report.blockers.push(`Claude Code already has a session folder for the target: ${newSlug}`);
+  // Claude Code opened the new folder before the move caught up (a session already runs there): the old sessions are moved
+  // INTO its folder entry by entry - each transcript is its own UUID - unless the same file name sits on both sides.
+  const merge = slugFrom && existsSync(newSlug) && low(oldSlug) !== low(newSlug);
+  const clashes = merge ? mergeClashes(oldSlug, newSlug) : [];
+  if (clashes.length) report.blockers.push(`both session folders hold ${clashes.length} same-named file(s) (${clashes.slice(0, 3).join(", ")}${clashes.length > 3 ? ", …" : ""}): ${oldSlug} → ${newSlug}`);
   if (report.blockers.length) return report;
 
   // ── 1. the folder itself (first: a locked folder fails here, before anything else changes) ─────────────────────────
-  const folderNote = !fromThere ? "already moved" : copy ? `${from} → ${to} (another drive: copied and verified, the source is kept)` : `${from} → ${to}`;
+  const folderNote = linked
+    ? `already moved: ${from} is a link to ${to} (the link is kept)`
+    : !fromThere ? "already moved" : copy ? `${from} → ${to} (another drive: copied and verified, the source is kept)` : `${from} → ${to}`;
   report.steps.push({ what: "folder", n: fromThere ? 1 : 0, note: folderNote });
   if (apply && fromThere) {
     mkdirSync(dirname(toLocal), { recursive: true });
@@ -159,8 +210,14 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
   }
 
   // ── 2. Claude Code's session folder ──────────────────────────────────────────────────────────────────────────────
-  report.steps.push({ what: "claude session folder", n: slugFrom ? 1 : 0, note: slugFrom ? `${oldEnc} → ${newEnc}` : "none for this folder" });
-  if (apply && slugFrom) renameSync(oldSlug, newSlug);
+  // merge: the files still to move (a second run finds only the emptied folders, so 0)
+  const slugN = merge ? tally(oldSlug).files : slugFrom ? 1 : 0;
+  const slugNote = !slugFrom ? "none for this folder" : merge ? `${oldEnc} → ${newEnc} (merged into the existing folder, entry by entry; the emptied ${oldEnc} is kept)` : `${oldEnc} → ${newEnc}`;
+  report.steps.push({ what: "claude session folder", n: slugN, note: slugNote });
+  if (apply && slugFrom) {
+    if (merge) mergeInto(oldSlug, newSlug);
+    else renameSync(oldSlug, newSlug);
+  }
 
   // ── 3. the store, one transaction ────────────────────────────────────────────────────────────────────────────────
   const db = openMemory(opts.dbPath ?? currentMemoryDb());
@@ -187,13 +244,23 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
     const S = low(oldSlugKey);
     const states = count(`SELECT COUNT(*) AS n FROM ingest_state WHERE ${isUnder("file_path")}`, S, S.length + 1, S + "\\");
     const notePrefix = `claude-memory-${host}-${oldEnc}-`;
-    // notes of the old folder that have no alias for the new one yet (a second run finds none)
+    // notes of the old folder that have no alias for the new one yet (a second run finds none). A note moved before is known
+    // to the old folder only by an ALIAS (its id still names the folder of an earlier move): the alias leads to the session.
+    // Without it the new folder's notes come in as new sessions (08/11: 15 notes of zemory, ids from d--Work-Study-…).
     const newPrefix = `claude-memory-${host}-${newEnc}-`;
-    const notes = (db
+    const byId = (db
       .prepare("SELECT id FROM sessions WHERE source = 'claude-code-memory' AND substr(lower(id), 1, ?) = lower(?)")
-      .all(notePrefix.length, notePrefix) as { id: string }[]).filter(
-      ({ id }) => newPrefix === notePrefix || !db.prepare(Q.sessionAliasOfAnyCase).get(newPrefix + id.slice(notePrefix.length)),
+      .all(notePrefix.length, notePrefix) as { id: string }[]).map(({ id }) => ({ stem: id.slice(notePrefix.length), id }));
+    const byAlias = (db.prepare(Q.sessionAliasesByPrefix).all(notePrefix.length, notePrefix) as { alias_id: string; session_id: string }[]).map(
+      (a) => ({ stem: a.alias_id.slice(notePrefix.length), id: a.session_id }),
     );
+    const seen = new Set<string>();
+    const notes = [...byId, ...byAlias].filter(({ stem }) => {
+      const k = stem.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return newPrefix === notePrefix || !db.prepare(Q.sessionAliasOfAnyCase).get(newPrefix + stem);
+    });
 
     report.steps.push(
       { what: "sessions.project_root (this host, pinned)", n: sessions },
@@ -221,8 +288,8 @@ export function projectMove(fromIn: string, toIn: string, opts: MoveOptions = {}
         for (const r of st) db.prepare("UPDATE OR IGNORE ingest_state SET file_path = ? WHERE file_path = ?").run(swapPrefix(r.file_path, oldSlugKey, newSlugKey), r.file_path);
         // A note KEEPS its id: the id the scan computes from the new folder is recorded as an alias of it. Renaming the session
         // instead sent the new id to the other machine as a new session while it kept the old one (25/10: 825 vs 568 notes).
-        for (const { id } of notes) {
-          const next = `claude-memory-${host}-${newEnc}-` + id.slice(notePrefix.length);
+        for (const { stem, id } of notes) {
+          const next = newPrefix + stem;
           if (next === id || count("SELECT COUNT(*) AS n FROM sessions WHERE id = ?", next)) continue; // already ingested under the new id
           db.prepare(Q.upsertSessionAlias).run(next, id);
         }
