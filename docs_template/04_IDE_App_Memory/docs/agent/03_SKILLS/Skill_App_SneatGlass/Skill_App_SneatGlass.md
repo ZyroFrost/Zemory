@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 44
+version: 45
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v44 #5e281bf7831c
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v45 #38672c5ac4fd
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -74,9 +74,14 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v44 #5e281bf7831c
 ## 2b. The top bar — one glass head of two rows, the same in every app of the family
 
 - **One glass block, two rows, no gap:** row 1 (56 px) is the family's bar, row 2 (44 px) the page's bar, a hairline between
-  them; scrolling down folds row 1 away so only the page bar stays on top, scrolling up or reaching the top brings it back. Only
-  the page's own scroll does it: a box scrolling inside the page (a log at its foot, a wide table) never folds row 1 (v42,
-  Reconcile 07/11). A page with no bar of its own shows row 1 only. [crumbs] [frame] The head grows with its two rows - never the kit's fixed
+  them. **Whether row 1 folds is the person's setting** (v45, user 08/11 through Reconcile), Settings > Layout > "Thu gọn hàng 1
+  khi cuộn" (`head_fold`): **Fixed** (the default) - row 1 always shown; **Most room** - scrolling down the page's own scroll
+  folds row 1 away so only the page bar stays on top and the page takes its room, scrolling up or reaching the top brings it
+  back, and while it is folded a button at the end of the page bar (the bar's one size) opens it by hand, the next scroll down
+  folding it again. The page's own scroll is the window, the page column, the page card's body, a box marked
+  `data-page-scroll`, and on a page that fills the frame the table's own scroll box in the card body when at least half its
+  height; a small box inside the page (a log at its foot, a list in a dialog) never folds row 1 (v42, Reconcile 07/11). One
+  scroll only: the header row, a pinned first column and the page bar always stay. A page with no bar of its own shows row 1 only. [crumbs] [frame] The head grows with its two rows - never the kit's fixed
   `block-size: 4rem` that the page bar spills out of - and the page starts below it, nothing of the page under the bar.
   [head-whole]
 - **Row 1 gives its room to the crumbs:** the crumbs from its start, then the one search right beside the buttons at its end,

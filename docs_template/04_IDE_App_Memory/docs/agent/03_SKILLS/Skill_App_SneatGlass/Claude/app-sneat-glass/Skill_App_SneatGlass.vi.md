@@ -1,5 +1,5 @@
 ---
-version: 44
+version: 45
 lang: vi
 ---
 
@@ -65,9 +65,14 @@ lang: vi
 ## 2b. Thanh trên — một khối kính hai hàng, giống nhau ở mọi app của hệ
 
 - **Một khối kính, hai hàng, không khe hở:** hàng 1 (56 px) là thanh chung của hệ, hàng 2 (44 px) là thanh của trang, giữa hai
-  hàng là một vạch mảnh; cuộn xuống thì hàng 1 thu lại, chỉ còn thanh trang dính trên cùng; cuộn lên hay về đầu trang thì hàng 1
-  hiện lại. Chỉ cuộn của chính trang mới làm vậy: một hộp cuộn bên trong trang (nhật ký ở chân, bảng rộng) không bao giờ thu
-  hàng 1 (v42, Reconcile 07/11). Trang không có thanh riêng thì chỉ có hàng 1. [crumbs] [frame] Đầu trang lớn theo hai hàng của nó - không bao giờ giữ
+  hàng là một vạch mảnh. **Hàng 1 có thu lại hay không là cài đặt của từng người** (v45, user 08/11 qua Reconcile), Cài đặt > Bố
+  cục > "Thu gọn hàng 1 khi cuộn" (`head_fold`): **Cố định** (mặc định) - hàng 1 luôn hiện; **Tối đa chỗ** - cuộn xuống ở
+  cuộn của chính trang thì hàng 1 thu lại, chỉ còn thanh trang dính trên cùng và trang lấy chỗ của nó, cuộn lên hay về đầu trang
+  thì hàng 1 hiện lại; khi hàng 1 đang thu, cuối thanh trang có một nút (cỡ chung của thanh) để mở lại bằng tay, lần cuộn xuống
+  sau lại thu. Cuộn của chính trang là cửa sổ, cột trang, thân thẻ trang, hộp khai `data-page-scroll`, và trên trang lấp đầy
+  khung thì hộp cuộn riêng của bảng trong thân thẻ khi cao ít nhất nửa thân thẻ; một hộp nhỏ bên trong trang (nhật ký ở chân,
+  danh sách trong hộp thoại) không bao giờ thu hàng 1 (v42, Reconcile 07/11). Chỉ một lần cuộn: hàng tiêu đề, cột đầu ghim và
+  thanh trang luôn đứng yên. Trang không có thanh riêng thì chỉ có hàng 1. [crumbs] [frame] Đầu trang lớn theo hai hàng của nó - không bao giờ giữ
   `block-size: 4rem` cố định của bộ mẫu để thanh trang tràn ra ngoài - và trang bắt đầu dưới nó, không phần nào của trang nằm dưới
   thanh. [head-whole]
 - **Hàng 1 nhường chỗ cho đường dẫn:** đường dẫn từ đầu hàng, rồi ô tìm duy nhất đứng sát dãy nút ở cuối, và dãy nút chỉ còn app ·
