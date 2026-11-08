@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 45
+version: 46
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -68,6 +68,20 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - A page whose content is one page card fills that area and scrolls INSIDE the card: the page bar (row 2 of the top bar) and
   its table's header row stay pinned, as in the Glass shell. A frame inside the card body is never a scroll box of its own
   unless it pins something itself (a matrix whose first column pins sideways). [frame]
+- **A table page: the card fills, the table scrolls inside - settled** (v46, the user 09/11 through Reconcile, for every app of
+  the family): a page of a table or a matrix is one page card that fills the frame (`fill`, the default), its table scrolling
+  inside it with the header row and the first column pinned and the page bar always there; a page never scrolls its whole
+  column for a table. Only a board of several cards (an overview of figures and charts) scrolls the column (`fill: false`).
+  The room for the data comes from row 1 folding (`head_fold` Most room, §2b), never from scrolling the whole page. The
+  table is level with the page bar: its first column's text starts where the bar's tools start (.75rem from the card edge).
+  [table-edges]
+- **The tab panel of the sibling pages** (v46, Dashboard 08/11, the user 09/11 - "khu vực tab phải là khu vực tách rời, ko
+  được load lại… gần như là panel khung dòng thứ 3… nó cũng phải neo"): an app that groups many pages under one menu row turns
+  on the frame's tab panel (`pageHead`); it is a frame panel above the page and outside it - moving between its tabs changes
+  only the page - pinned at the top, 1.5rem above it, a hairline under it, 1.5rem to the page; the page on screen is lit by a
+  pill sliding from the tab before; tabs that do not fit one row go under "Thêm (n)", the page on screen always on the row
+  (the user turned down tabs on three lines). Each person shows or hides it in Settings > Layout ("cái tab hiện ra hay ko
+  phải là tính năng được option chọn ở setting"). [page-tabs]
 - On a phone the window scrolls and the top bar is sticky.
 
 ## 2b. The top bar — one glass head of two rows, the same in every app of the family

@@ -1,5 +1,5 @@
 ---
-version: 45
+version: 46
 lang: vi
 ---
 
@@ -60,6 +60,17 @@ lang: vi
 - Trang có nội dung là một thẻ trang thì thẻ lấp đầy vùng đó và cuộn BÊN TRONG thẻ: thanh trang (hàng 2 của thanh trên) và hàng
   tiêu đề bảng luôn ghim, như khung Glass. Khung con trong thân thẻ không làm ô cuộn riêng, trừ khi chính nó ghim thứ gì (ma trận
   ghim cột đầu theo chiều ngang). [frame]
+- **Trang bảng: thẻ lấp đầy, bảng cuộn bên trong - đã chốt** (v46, user 09/11 qua Reconcile, cho mọi app của hệ): trang của
+  một bảng hay ma trận là một thẻ trang lấp đầy khung (`fill`, mặc định), bảng cuộn bên trong với hàng tiêu đề và cột đầu ghim,
+  thanh trang luôn có; trang không bao giờ cuộn cả cột vì một bảng. Chỉ board nhiều thẻ (tổng quan số liệu và biểu đồ) mới cuộn
+  cả cột (`fill: false`). Chỗ cho dữ liệu đến từ việc thu hàng 1 (`head_fold` Tối đa chỗ, §2b), không bao giờ từ cuộn cả trang.
+  Bảng thẳng hàng với thanh trang: chữ cột đầu bắt đầu đúng chỗ công cụ của thanh bắt đầu (.75rem từ mép thẻ). [table-edges]
+- **Dải tab các trang cùng nhóm** (v46, Dashboard 08/11, user 09/11 - "khu vực tab phải là khu vực tách rời, ko được load lại…
+  gần như là panel khung dòng thứ 3… nó cũng phải neo"): app gom nhiều trang dưới một hàng menu thì bật dải tab của khung
+  (`pageHead`); dải là panel của khung nằm trên trang và ngoài trang - đổi tab chỉ đổi trang - neo trên đầu, 1,5rem phía trên,
+  vạch mảnh dưới, 1,5rem tới trang; tab của trang đang mở sáng nhờ viên trượt từ tab trước; tab không vừa một dòng gom vào
+  "Thêm (n)", tab đang mở luôn trên dòng (user chê tab xuống 3 dòng). Mỗi người bật/tắt ở Cài đặt > Bố cục ("cái tab hiện ra hay
+  ko phải là tính năng được option chọn ở setting"). [page-tabs]
 - Trên điện thoại, cửa sổ cuộn và thanh trên dính (sticky).
 
 ## 2b. Thanh trên — một khối kính hai hàng, giống nhau ở mọi app của hệ

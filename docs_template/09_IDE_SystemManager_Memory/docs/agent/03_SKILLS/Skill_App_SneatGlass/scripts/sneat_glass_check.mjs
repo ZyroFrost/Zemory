@@ -364,6 +364,40 @@ export const RULES = [
     })()`,
   },
   {
+    id: 'table-edges',
+    rule: '(v46, the user 09/11 through Reconcile) a table in a page card is level with the page bar: the text of its first column starts where the tools of the page bar start (.75rem from the card edge), within 1 px',
+    check: `(() => {
+      const card = document.querySelector('#page > .page-card');
+      if (!card || card.matches('.view-grid')) return true;
+      const body = card.querySelector(':scope > .page-card-body'), table = body && body.querySelector('table.table');
+      const bar = document.querySelector('#page-bar .page-toolbar') || card.querySelector(':scope > .page-toolbar');
+      if (!table || !bar || !table.getClientRects().length || !bar.getClientRects().length || body.scrollLeft > 0) return true;
+      const th = [...table.querySelectorAll('thead tr:first-child > th')].find(e => e.getClientRects().length);
+      if (!th) return true;
+      const barIn = bar.getBoundingClientRect().left + parseFloat(getComputedStyle(bar).paddingLeft);
+      const textIn = th.getBoundingClientRect().left + parseFloat(getComputedStyle(th).paddingLeft);
+      return Math.abs(textIn - barIn) <= 1 || 'the first column of the table starts ' + Math.round(textIn - barIn) + ' px off the tools of the page bar';
+    })()`,
+  },
+  {
+    id: 'page-tabs',
+    rule: '(v46, Dashboard 08/11, the user 09/11) the tab panel of the sibling pages, where an app shows it, is a frame panel above the page and outside it, pinned at the top, its tabs on one row (the rest under more), the pill under the tab of the page on screen',
+    check: `(() => {
+      const t = document.getElementById('page-tabs');
+      if (!t || !t.getClientRects().length) return true;
+      if (t.closest('#page')) return 'the tab panel stands inside the page - it is a panel of the frame above it';
+      if (getComputedStyle(t).position !== 'sticky') return 'the tab panel is not pinned at the top';
+      const list = t.querySelector('.page-tabs-list'), items = [...list.querySelectorAll(':scope > .nav-item')].filter(i => i.getClientRects().length);
+      if (new Set(items.map(i => Math.round(i.getBoundingClientRect().top))).size > 1 || list.scrollWidth > list.clientWidth + 1) return 'the tabs run past one row - the rest belongs under more';
+      const a = list.querySelector('.nav-link.active'), p = t.querySelector('.page-tabs-pill');
+      if (a && p && !p.getAnimations().length) {
+        const x = p.getBoundingClientRect(), y = a.getBoundingClientRect();
+        if (Math.abs(x.left - y.left) > 1 || Math.abs(x.width - y.width) > 1) return 'the pill is not under the tab of the page on screen';
+      }
+      return true;
+    })()`,
+  },
+  {
     id: 'tool-framed',
     rule: '(v41, user 07/11: "mọi chức năng riêng của app phải là 1 nút có khung vuông đúng template, có hiệu ứng bấm") every button of the page\'s own tools (the left group of the bar, #card-start) is a framed button of the toolbar\'s height: a fill or an edge, rounded corners - never a bare icon',
     check: `(() => {
@@ -818,7 +852,8 @@ export const RULES = [
         if (!tab || !tab.getClientRects().length) continue;
         if (filled(tab)) continue;
         const t = tab.getBoundingClientRect(), cx = (t.left + t.right) / 2, cy = (t.top + t.bottom) / 2;
-        const pill = [...row.querySelectorAll('.g-pill')].find(p => { const r = p.getBoundingClientRect(); return filled(p) && r.left <= cx && cx <= r.right && r.top <= cy && cy <= r.bottom; });
+        // (v46, Dashboard 09/11) the sliding pill may stand beside the row of tabs, in the panel holding both (the frame tab panel)
+        const pill = [...(row.parentElement || row).querySelectorAll('.g-pill')].find(p => { const r = p.getBoundingClientRect(); return filled(p) && r.left <= cx && cx <= r.right && r.top <= cy && cy <= r.bottom; });
         if (!pill) return 'a chosen tab stands as bare words, no pill under it: ' + tab.textContent.trim().slice(0, 30);
       }
       return true;

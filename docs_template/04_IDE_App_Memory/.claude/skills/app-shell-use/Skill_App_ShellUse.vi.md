@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 
@@ -47,6 +47,10 @@ lang: vi
 - Khung đưa mỗi trang một chỗ trong thẻ trang, ở light DOM (class của kiểu và token của khung chạm tới được). Thẻ phủ kín khung, cuộn
   bên trong, ghim dòng tiêu đề và cho kéo cột - trang chỉ vẽ một bảng thường với class của kiểu là có đủ. Một dòng riêng của trang cần
   luôn trong tầm nhìn (dòng tổng) do trang tự ghim.
+- **Trang bảng: thẻ lấp đầy, bảng cuộn bên trong** (v3, user 09/11 - đã chốt cho cả hệ, app-sneat-glass §2): không bao giờ
+  đổi trang bảng sang cuộn cả cột để lấy chỗ; để `fill` bật và để người dùng thu hàng 1 (Cài đặt > Bố cục > "Thu gọn hàng 1 khi
+  cuộn"). `fill: false` chỉ dành cho board nhiều thẻ. Nhiều trang dưới một hàng menu: bật dải tab của khung (`pageHead: true`),
+  không bao giờ tự vẽ tab.
 - Bộ lọc: trang khai các bộ lọc nó có (chọn một · chọn nhiều · ngày · khoảng ngày · số · custom - ô trang tự vẽ, cho kiểu khung chưa
   có). Bộ lọc trong popover là bản nháp tới khi người dùng bấm Áp dụng; bộ lọc ghim trên thanh lọc ngay; trang nhận mỗi giá trị khi nó
   có hiệu lực, rồi gọi API của nó. Trang báo có bao nhiêu bộ lọc đang đặt và cách xoá hết; một giá trị trang luôn có (kỳ) không bao giờ
