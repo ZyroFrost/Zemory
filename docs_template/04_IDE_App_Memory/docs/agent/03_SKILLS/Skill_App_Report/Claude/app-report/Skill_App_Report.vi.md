@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 
@@ -30,7 +30,11 @@ lang: vi
 - **Hàng card đứng riêng một dòng** (v10, user 08/11: "nó không được nằm trong chỗ card, nó phải nằm riêng ra"): không chart,
   donut hay bảng nào đứng cạnh nó trong cùng một hàng của lưới - chart của cùng chỉ số đặt ở hàng dưới. [rp-cards-apart]
 - **Card cao vừa nội dung của nó** (v10, user 08/11: "card dài sọc"): không bị kéo cao theo khối đứng cạnh - tối đa 1,6 lần
-  các dòng chữ cộng padding. [rp-card-fit]
+  các dòng chữ cộng padding, đo trên phần card vẽ ra (v11: `.card-body` của card Sneat giãn theo card). [rp-card-fit]
+- **Card quá nhiều cho một dòng thì chia trên dưới thành các dòng đều nhau** (v11, user 08/11: "quá nhiều card thì phải chia
+  hàng ra, ko dc cả nùi", "chia trên dưới làm đôi, giữ đúng size và thiết kế card"): card giữ đúng cỡ và thiết kế - không
+  bao giờ bị ép hẹp dưới 140 px để giữ một dòng; các dòng dài đều nhau (8 → 4 + 4, 15 → 8 + 7, 7 → 4 + 3) và không card nào
+  đứng một mình một dòng. [rp-cards-wrap]
 - **Con số không bao giờ làm tròn về 0 kèm đơn vị** (v10, user 08/11: Group Size 1,75 hiện "0 k"): giá trị nhỏ hơn đơn vị thì
   hiện bằng đơn vị nhỏ hơn hoặc số đầy đủ; không bao giờ có `0 k` · `0 tr` · `0 tỷ`. [rp-figure-scale]
 - **Tiêu đề card vừa card;** dài thì rút gọn (bỏ vế phụ, nghĩa đủ ghi vào bảng giải thích của trang), không thu nhỏ chữ riêng
@@ -52,7 +56,9 @@ lang: vi
 - **Mọi bảng một kiểu:** header đậm có nền, dòng xen màu, dòng tổng đậm, chỉ kẻ ngang; cột % tô theo chính chỉ số đó (§1);
   heat map (màu theo cường độ) được giữ. Tên cột là chữ người đọc, không để tên field (`chi_tieu`, `StoreName2`). [rp-table-style]
 - **Bảng không dùng cho ít thông tin:** một dòng ⇒ card nhiều giá trị; một chiều ≤ 6 giá trị (không có trường cột) ⇒ chart,
-  chỉ số khác đơn vị để trong tooltip. Bảng chi tiết (mỗi dòng một bản ghi) được miễn. [rp-table-few]
+  chỉ số khác đơn vị để trong tooltip (v11, user 08/11: "bảng nào nhỏ ko đáng là matrix thì dùng dạng chart khác") - kể cả
+  khi report đang thay vẽ nó thành bảng, và kể cả khi nó có nhiều measure. Bảng chi tiết (mỗi dòng một bản ghi) được miễn;
+  bảng ít nhóm không bao giờ được khai là bảng chi tiết. [rp-table-few]
 - **Không gì cuộn ngang trong khung, không bảng nào tràn ra ngoài panel** (bề rộng cột đo lúc vẽ lần đầu, nên header được xuống dòng; điện thoại cho bảng dữ liệu cuộn ngang trong khung, app-base M5). Bảng trải theo kỳ chỉ hiện các kỳ gần nhất (cửa sổ đi theo bộ lọc trang); cột rộng
   vừa số dài nhất, tổng vừa khung; vẫn không vừa thì đổi sang triệu một chữ số lẻ. Cuộn dọc là bình thường. [rp-no-side-scroll]
 - **Số trong bảng theo định dạng số của từng người** (v9, user 06/11: "setting 1 lần sẽ cho hiện ở cái báo cáo dashboard
@@ -94,6 +100,9 @@ lang: vi
 
 ## 8. Dựng lại một report
 
+- **Report đang thay là bản Power BI White** (v11, user 08/11: "pbi classic là cái ban đầu… white mới là cái đã sắp lại rồi"):
+  bản classic chỉ là bản nháp đầu; trang, visual và thứ tự theo White, chỉ đọc classic cho trang mà White không có. Đối
+  chiếu giữ cái White hiện, theo dạng skill này quy định: hàng card bổ sung cho đủ bốn (§2), bảng nhỏ vẽ thành chart (§4).
 - **Mọi trang và mọi visual của report đang thay đều có mặt**, đúng thứ tự. Visual bỏ có chủ đích, hoặc đang chờ nguồn DW
   chưa có, khai trong danh sách đối chiếu của bảng kèm lý do; test của repo so danh sách đó với visual của report (cả hai chiều).
 - **Số khớp report:** mỗi measure dựng lại từ công thức và đối chiếu với chính số của report, từng phần; chỗ lệch có chủ đích

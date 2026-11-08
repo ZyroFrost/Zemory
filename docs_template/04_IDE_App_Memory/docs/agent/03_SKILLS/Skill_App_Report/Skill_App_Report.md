@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 10
+version: 11
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v10 #d60d2fa60795
+from: _Store/03_SKILLS/Skill_App_Report @v11 #fa0939fc5e7f
 ---
 
 # app-report — the report pages of an app
@@ -39,7 +39,12 @@ from: _Store/03_SKILLS/Skill_App_Report @v10 #d60d2fa60795
 - **The card row stands alone on its line** (v10, user 08/11: "nó không được nằm trong chỗ card, nó phải nằm riêng ra"): no
   chart, donut or table beside it in the same row of the grid - a chart of the same figures goes on the row below. [rp-cards-apart]
 - **A card is as tall as what it holds** (v10, user 08/11: "card dài sọc"): never pulled to the height of a block beside it -
-  at most 1.6 times its lines and padding. [rp-card-fit]
+  at most 1.6 times its lines and padding, measured on what the card draws (v11: a Sneat card's `.card-body` stretches
+  with the card). [rp-card-fit]
+- **Too many cards for one line split top and bottom into even lines** (v11, user 08/11: "quá nhiều card thì phải chia hàng
+  ra, ko dc cả nùi", "chia trên dưới làm đôi, giữ đúng size và thiết kế card"): the cards keep their size and design - never
+  squeezed narrower than 140 px to keep one line; the lines are even (8 → 4 + 4, 15 → 8 + 7, 7 → 4 + 3) and no card stands
+  alone on a line. [rp-cards-wrap]
 - **A figure is never rounded to 0 with a unit** (v10, user 08/11: a Group Size of 1,75 read "0 k"): a value below the unit
   shows in a smaller unit or in full; `0 k` · `0 tr` · `0 tỷ` never appear. [rp-figure-scale]
 - **A card title fits its card;** a long one is abbreviated (the qualifying clause dropped, the full meaning in the page's
@@ -65,8 +70,9 @@ from: _Store/03_SKILLS/Skill_App_Report @v10 #d60d2fa60795
   only; a % column coloured by its own measure (§1); heat maps (intensity colour) are kept. Column headers are reader's words,
   never field names (`chi_tieu`, `StoreName2`). [rp-table-style]
 - **A table is not for little information:** one row ⇒ a card with several values; one dimension with six values or fewer
-  (and no column field) ⇒ a chart, measures of other units in its tooltip. A detail table (one row per record) is exempt.
-  [rp-table-few]
+  (and no column field) ⇒ a chart, measures of other units in its tooltip (v11, user 08/11: "bảng nào nhỏ ko đáng là matrix
+  thì dùng dạng chart khác") - also when the report being replaced drew it as a table, and also when it has several
+  measures. A detail table (one row per record) is exempt; a table of few groups is never declared one. [rp-table-few]
 - **Nothing scrolls sideways inside its frame, and no table spills out of its panel** (column widths are measured at first draw, so headers may wrap; a phone scrolls a data grid inside its frame, app-base M5). A table spread over periods shows only the latest ones (the window follows
   the page filter); columns are as wide as their longest figure, all fitting the frame; figures that still do not fit switch
   to millions with one decimal. Scrolling down is normal. [rp-no-side-scroll]
@@ -117,6 +123,10 @@ from: _Store/03_SKILLS/Skill_App_Report @v10 #d60d2fa60795
 
 ## 8. Rebuilding a report
 
+- **The report being replaced is its Power BI White version** (v11, user 08/11: "pbi classic là cái ban đầu… white mới là cái
+  đã sắp lại rồi"): the classic report is only the first draft; pages, visuals and order follow White, and the classic is
+  read only for a page White does not have. Parity keeps what White shows, in the form this skill gives it: a card row
+  topped up to four (§2), a small table drawn as a chart (§4).
 - **Every page and every visual of the report being replaced is present**, in its order. A visual dropped on purpose, or
   waiting for a source the DW does not have yet, is declared in the board's parity list with its reason; the repo's test
   compares that list with the report's visuals (both ways).

@@ -95,14 +95,30 @@ export const RULES = [
       if (beside) return 'a ' + beside.dataset.rpVisual + ' stands beside the card row: ' + name(beside);
     }
     return true;`),
+  rule('rp-cards-wrap', 'a card row too long for one line splits into even lines, top and bottom, the cards keeping their size: no card squeezed under 140 px, the lines differ by one card at most, no card alone on a line (v11, user 08/11: "quá nhiều card thì phải chia hàng ra, ko dc cả nùi", "chia trên dưới làm đôi, giữ đúng size và thiết kế card")', `
+    if (innerWidth < 768) return true;   // a phone stacks the cards
+    for (const row of document.querySelectorAll('[data-rp-visual=cards]')) {
+      if (!row.getClientRects().length) continue;
+      const cards = [...row.querySelectorAll('.kpi-card')].filter(c => c.getClientRects().length && !c.parentElement.closest('.kpi-card'));
+      const narrow = cards.find(c => box(c).width < 140);
+      if (narrow) return 'a card squeezed to ' + Math.round(box(narrow).width) + ' px (split the row into lines): ' + txt(narrow).slice(0, 30);
+      const lines = new Map();
+      for (const c of cards) { const k = Math.round(box(c).top / 4); lines.set(k, (lines.get(k) || 0) + 1); }
+      const n = [...lines.values()];
+      if (n.length > 1 && (Math.max(...n) - Math.min(...n) > 1 || Math.min(...n) === 1)) return 'card lines of uneven length: ' + n.join(' + ');
+    }
+    return true;`),
   rule('rp-card-fit', 'a figure card is as tall as what it holds: never more than 1.6 times its lines and padding (v10, user 08/11: "card dài sọc" - a card pulled to the height of a chart beside it)', `
     for (const c of document.querySelectorAll('[data-rp-visual=cards] .kpi-card')) {
       if (!c.getClientRects().length || c.parentElement.closest('.kpi-card')) continue;
-      const kids = [...c.children].filter(k => k.getClientRects().length);
-      if (!kids.length) continue;
-      const st = getComputedStyle(c), top = Math.min(...kids.map(k => box(k).top)), bottom = Math.max(...kids.map(k => box(k).bottom));
-      const need = bottom - top + parseFloat(st.paddingTop) + parseFloat(st.paddingBottom) + parseFloat(st.borderTopWidth) + parseFloat(st.borderBottomWidth);
-      const h = box(c).height;
+      // (v11, Dashboard 08/11) what the card DRAWS - its text and pictures at any depth: a Sneat card is .kpi-card > .card-body,
+      // and the body stretches with the card, so its direct children always look as tall as the card
+      const ink = [...c.querySelectorAll('*')].filter(e => e.getClientRects().length &&
+        (e.matches('img, svg, canvas, input') || [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())));
+      if (!ink.length) continue;
+      const r = box(c), top = Math.min(...ink.map(e => box(e).top)), bottom = Math.max(...ink.map(e => box(e).bottom));
+      // the lines from the card's top edge, and the same room again below them (the padding of the card and its body)
+      const need = (bottom - r.top) + (top - r.top), h = r.height;
       if (h > need * 1.6 && h - need > 24) return 'a card ' + Math.round(h) + ' px tall for ' + Math.round(need) + ' px of content: ' + txt(c).slice(0, 30);
     }
     return true;`),
@@ -368,6 +384,8 @@ const SHELL = body => `<!doctype html><html><head><meta charset="utf-8"><style>
 </style></head><body><div data-rp-page data-rp-dept="IC">${body}</div></body></html>`;
 const card = (title, main, pct, kind, cls) => `<div class="card kpi-card" style="flex:1"><p class="kpi-title">${title}</p><div class="kpi-main">${main}</div>` +
   `<small class="kpi-percentage ${cls}"${kind ? ` data-rp-pct="${kind}"` : ''}>${pct}</small></div>`;
+// a card of the Sneat kit: its lines in a .card-body that stretches with the card
+const cardB = (...a) => card(...a).replace('<p class="kpi-title">', '<div class="card-body" style="height:100%;box-sizing:border-box"><p class="kpi-title">').replace(/<\/div>$/, '</div></div>');
 const bars = (n, colour, extra = '') => Array.from({length: n}, (_, i) => `<i data-rp-mark data-rp-item data-tip="${i}h: ${20 + i * 8}" style="height:${20 + i * 8}px;background:${colour}"></i>`).join('') + extra;
 const chart = (title, colour, n, fields) => `<div class="card" data-rp-visual="chart" data-rp-axis="column" data-rp-fields="${fields}" style="flex:1">` +
   `<h6 data-rp-title>${title}</h6><div class="bars" data-rp-body>${bars(n, colour)}</div></div>`;
@@ -384,8 +402,9 @@ export const SELF_TEST = {
     `<div data-rp-glossary hidden><p data-rp-term="TC">TC (Transaction Count): số hoá đơn</p></div>` +
     `<div data-rp-card data-built style="position:relative;width:300px"><button data-rp-card-flip style="position:absolute;top:4px;right:4px">i</button>` +
     `<ul data-rp-card-pages style="display:grid;grid-template-columns:1fr 1fr;margin-top:30px"><li>A</li><li>B</li><li>C</li></ul><div data-rp-card-status hidden>ok</div></div>`),
-  faulty: SHELL(`<div class="row" style="align-items:stretch"><div class="row" data-rp-visual="cards" style="flex:2;margin:0">${card('Group Size', '0 k', '+1,0% MoM', 'up', 'text-success')}${card('B', '2', '+1,0% MoM', 'up', 'text-success')}` +
-    `${card('C', '3', '+1,0% MoM', 'up', 'text-success')}${card('D', '4', '+1,0% MoM', 'up', 'text-success')}</div>` +
+  faulty: SHELL(`<div class="row" style="align-items:stretch"><div class="row" data-rp-visual="cards" style="flex:2;margin:0">${cardB('Group Size', '0 k', '+1,0% MoM', 'up', 'text-success')}${cardB('B', '2', '+1,0% MoM', 'up', 'text-success')}` +
+    `${cardB('C', '3', '+1,0% MoM', 'up', 'text-success')}${cardB('D', '4', '+1,0% MoM', 'up', 'text-success')}</div>` +
+    `<div class="row" data-rp-visual="cards" style="flex-wrap:nowrap">${Array.from({length: 9}, (_, i) => card('K' + i, String(i + 1), '+1,0% MoM', 'up', 'text-success')).join('')}</div>` +
     `<div class="card" data-rp-visual="donut" style="flex:1;height:320px"><h6 data-rp-title>Tỷ trọng</h6><svg width="60" height="60"></svg></div></div>` +
     `<div class="row" data-rp-visual="cards">${card('Doanh thu cả tháng gồm tất cả các kênh bán hàng của nhà hàng', '1.200', '+5,2%', 'up', '').replace('flex:1', 'flex:0 0 150px;min-width:0')}` +
     `${card('Tỷ lệ', '40%', '+3,0% MoM', 'up', 'text-danger')}<svg width="5" height="5"></svg></div>` +
