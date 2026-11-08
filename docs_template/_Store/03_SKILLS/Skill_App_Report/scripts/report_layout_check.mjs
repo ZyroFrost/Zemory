@@ -86,6 +86,34 @@ export const RULES = [
       if (bare) return 'a card without its % line: ' + txt(bare).slice(0, 30);
     }
     return true;`),
+  rule('rp-cards-apart', 'a card row stands alone on its line: no chart, donut or table beside it in the same row of the grid (v10, user 08/11: "nó không được nằm trong chỗ card, nó phải nằm riêng ra")', `
+    for (const row of document.querySelectorAll('[data-rp-visual=cards]')) {
+      if (!row.getClientRects().length) continue;
+      const r = box(row);
+      const beside = vis().find(v => v !== row && v.dataset.rpVisual !== 'cards' && !row.contains(v) && !v.contains(row) && !v.closest('[data-rp-visual=cards]') &&
+        Math.min(box(v).bottom, r.bottom) - Math.max(box(v).top, r.top) > Math.min(box(v).height, r.height) / 2);
+      if (beside) return 'a ' + beside.dataset.rpVisual + ' stands beside the card row: ' + name(beside);
+    }
+    return true;`),
+  rule('rp-card-fit', 'a figure card is as tall as what it holds: never more than 1.6 times its lines and padding (v10, user 08/11: "card dài sọc" - a card pulled to the height of a chart beside it)', `
+    for (const c of document.querySelectorAll('[data-rp-visual=cards] .kpi-card')) {
+      if (!c.getClientRects().length || c.parentElement.closest('.kpi-card')) continue;
+      const kids = [...c.children].filter(k => k.getClientRects().length);
+      if (!kids.length) continue;
+      const st = getComputedStyle(c), top = Math.min(...kids.map(k => box(k).top)), bottom = Math.max(...kids.map(k => box(k).bottom));
+      const need = bottom - top + parseFloat(st.paddingTop) + parseFloat(st.paddingBottom) + parseFloat(st.borderTopWidth) + parseFloat(st.borderBottomWidth);
+      const h = box(c).height;
+      if (h > need * 1.6 && h - need > 24) return 'a card ' + Math.round(h) + ' px tall for ' + Math.round(need) + ' px of content: ' + txt(c).slice(0, 30);
+    }
+    return true;`),
+  rule('rp-figure-scale', 'a figure is never rounded to 0 with a unit (0 k · 0 tr · 0 tỷ): a value below the unit shows in a smaller unit or in full (v10, user 08/11: Group Size 1,75 read "0 k")', `
+    const zero = /^[-+−]?0([.,]0+)?\\s?(k|K|nghìn|ngàn|tr|tr\\.|triệu|tỷ|ty|M|Mn|B|bn)$/;
+    for (const v of vis()) for (const e of v.querySelectorAll('*')) {
+      if (e.children.length || !e.getClientRects().length) continue;
+      const t = txt(e);
+      if (zero.test(t)) return 'a figure rounded to 0 with its unit: "' + t + '" in ' + name(v);
+    }
+    return true;`),
   rule('rp-card-label', 'a card title fits its card and every title of a card row has one size (abbreviate, never shrink one card)', `
     for (const row of document.querySelectorAll('[data-rp-visual=cards]')) {
       const titles = [...row.querySelectorAll('.kpi-title')].filter(t => t.getClientRects().length);
@@ -356,7 +384,10 @@ export const SELF_TEST = {
     `<div data-rp-glossary hidden><p data-rp-term="TC">TC (Transaction Count): số hoá đơn</p></div>` +
     `<div data-rp-card data-built style="position:relative;width:300px"><button data-rp-card-flip style="position:absolute;top:4px;right:4px">i</button>` +
     `<ul data-rp-card-pages style="display:grid;grid-template-columns:1fr 1fr;margin-top:30px"><li>A</li><li>B</li><li>C</li></ul><div data-rp-card-status hidden>ok</div></div>`),
-  faulty: SHELL(`<div class="row" data-rp-visual="cards">${card('Doanh thu cả tháng gồm tất cả các kênh bán hàng của nhà hàng', '1.200', '+5,2%', 'up', '').replace('flex:1', 'flex:0 0 150px;min-width:0')}` +
+  faulty: SHELL(`<div class="row" style="align-items:stretch"><div class="row" data-rp-visual="cards" style="flex:2;margin:0">${card('Group Size', '0 k', '+1,0% MoM', 'up', 'text-success')}${card('B', '2', '+1,0% MoM', 'up', 'text-success')}` +
+    `${card('C', '3', '+1,0% MoM', 'up', 'text-success')}${card('D', '4', '+1,0% MoM', 'up', 'text-success')}</div>` +
+    `<div class="card" data-rp-visual="donut" style="flex:1;height:320px"><h6 data-rp-title>Tỷ trọng</h6><svg width="60" height="60"></svg></div></div>` +
+    `<div class="row" data-rp-visual="cards">${card('Doanh thu cả tháng gồm tất cả các kênh bán hàng của nhà hàng', '1.200', '+5,2%', 'up', '').replace('flex:1', 'flex:0 0 150px;min-width:0')}` +
     `${card('Tỷ lệ', '40%', '+3,0% MoM', 'up', 'text-danger')}<svg width="5" height="5"></svg></div>` +
     `<div class="row"><div class="card" data-rp-visual="chart" data-rp-axis="column" data-rp-fields="hour" style="width:500px"><h6 data-rp-title>Theo giờ</h6>` +
     `<div class="bars" data-rp-body>${bars(2, 'rgb(61, 126, 191)', '<i data-rp-mark data-rp-value="-5" style="height:5px;flex:0 0 10px"></i>')}<span style="flex:1"></span></div></div>` +

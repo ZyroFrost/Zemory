@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 9
+version: 10
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -35,6 +35,12 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **A card row holds only cards** - no chart, no table in it - **at least four**, every card with its % line. A page whose
   own new cards would be one to three drops the row; cards carried over from the report being replaced are kept and topped
   up to four with figures the page already reads. [rp-cards]
+- **The card row stands alone on its line** (v10, user 08/11: "nó không được nằm trong chỗ card, nó phải nằm riêng ra"): no
+  chart, donut or table beside it in the same row of the grid - a chart of the same figures goes on the row below. [rp-cards-apart]
+- **A card is as tall as what it holds** (v10, user 08/11: "card dài sọc"): never pulled to the height of a block beside it -
+  at most 1.6 times its lines and padding. [rp-card-fit]
+- **A figure is never rounded to 0 with a unit** (v10, user 08/11: a Group Size of 1,75 read "0 k"): a value below the unit
+  shows in a smaller unit or in full; `0 k` · `0 tr` · `0 tỷ` never appear. [rp-figure-scale]
 - **A card title fits its card;** a long one is abbreviated (the qualifying clause dropped, the full meaning in the page's
   glossary), never by shrinking the font of one card - the titles of a row share one size, and so do the figures.
   [rp-card-label]

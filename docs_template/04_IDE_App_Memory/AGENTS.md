@@ -58,3 +58,4 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | lọc chéo · bấm chart lọc · chart lọc lẫn nhau · liên kết chart · filter như PBI · cross filter | `.claude/skills/app-cross-filter/SKILL.md` |
 | sneat glass · kiểu sneat-glass · thanh lọc · bộ lọc trang · neo khung · cỡ hộp thoại · bố cục rộng · bố cục gọn | `.claude/skills/app-sneat-glass/SKILL.md` |
 | gắn khung · dùng khung chung · lên bản khung · ghim khung · vùng trang · lỗi khung | `.claude/skills/app-shell-use/SKILL.md` |
+| trang báo cáo · bảng dashboard · dựng lại pbi · chuẩn pbi white cho app · card kpi · bảng ma trận · bố cục chart · bảng giải thích | `.claude/skills/app-report/SKILL.md` |

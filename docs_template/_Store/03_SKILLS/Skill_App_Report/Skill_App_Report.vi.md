@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 
@@ -27,6 +27,12 @@ lang: vi
 
 - **Hàng card chỉ chứa card** — không chart, không bảng — **ít nhất bốn**, card nào cũng có dòng %. Trang chỉ tự có 1–3 card
   mới thì bỏ cả hàng; card mang sang từ report đang thay thì giữ và bổ sung cho đủ bốn bằng chỉ số trang đã đọc. [rp-cards]
+- **Hàng card đứng riêng một dòng** (v10, user 08/11: "nó không được nằm trong chỗ card, nó phải nằm riêng ra"): không chart,
+  donut hay bảng nào đứng cạnh nó trong cùng một hàng của lưới - chart của cùng chỉ số đặt ở hàng dưới. [rp-cards-apart]
+- **Card cao vừa nội dung của nó** (v10, user 08/11: "card dài sọc"): không bị kéo cao theo khối đứng cạnh - tối đa 1,6 lần
+  các dòng chữ cộng padding. [rp-card-fit]
+- **Con số không bao giờ làm tròn về 0 kèm đơn vị** (v10, user 08/11: Group Size 1,75 hiện "0 k"): giá trị nhỏ hơn đơn vị thì
+  hiện bằng đơn vị nhỏ hơn hoặc số đầy đủ; không bao giờ có `0 k` · `0 tr` · `0 tỷ`. [rp-figure-scale]
 - **Tiêu đề card vừa card;** dài thì rút gọn (bỏ vế phụ, nghĩa đủ ghi vào bảng giải thích của trang), không thu nhỏ chữ riêng
   một card — tiêu đề một hàng cùng cỡ, con số cũng vậy. [rp-card-label]
 - Màu số trên card theo thứ tự màu của theme (card *i* → màu *i*).
