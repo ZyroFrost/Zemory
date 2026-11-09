@@ -1748,6 +1748,9 @@ export interface PromptGate {
   kind: string;
   re: string;
   text: string;
+  /** The owning rule's folder name and path (plan/38 §8): the key a self-trained model answers for. Rules only. */
+  part?: string;
+  dir?: string;
 }
 
 export function gateOf(dir: string): { read?: ReadTrigger[]; prompt?: PromptGate; trigger?: string } | null {
@@ -1808,7 +1811,7 @@ export function promptGates(skillsDir: string, agentDir: string): PromptGate[] {
       const g = isRetired(p) ? undefined : gateOf(p.dir)?.prompt;
       if (!ok(g)) continue;
       const body = englishHalf(bodyOf(readFileSync(mainPath(p.dir, mainOf(p)), "utf8"))).trim();
-      out.push({ ...g, text: body ? `${g.text}\n\nThe rule (${p.folder}):\n${body}` : g.text });
+      out.push({ ...g, text: body ? `${g.text}\n\nThe rule (${p.folder}):\n${body}` : g.text, part: p.folder, dir: p.dir });
     }
   }
   return out;

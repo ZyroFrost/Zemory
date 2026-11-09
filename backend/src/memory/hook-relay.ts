@@ -7,7 +7,7 @@
 // set by docker-compose.yml). `cwd` is NOT translated: it is the project's identity, and the store keys projects by the
 // host path (plan/30 §3 a).
 
-import { handleHook, type HookEventName } from "./capture-hook.js";
+import { handleHook, promptModelVerdicts, type HookEventName } from "./capture-hook.js";
 import { judgeSendPurpose, judgeSendTarget, judgeSendUpward, listPeers } from "./send-guard.js";
 import { mapHostPath, type PathPair } from "../util/hostpath.js";
 
@@ -30,7 +30,7 @@ export function mapPayload(payload: Record<string, unknown>, map: PathPair[]): R
 }
 
 /** Run one hook event for a payload posted by the host client. Unknown event ⇒ code 0, nothing said (fail-open). */
-export function relayHook(event: string, payload: Record<string, unknown>, map: PathPair[]): HookAnswer {
+export function relayHook(event: string, payload: Record<string, unknown>, map: PathPair[], verdicts?: Map<string, boolean>): HookAnswer {
   if (!EVENTS.includes(event)) return { stdout: "", stderr: "", code: 0, known: false };
   const p = mapPayload(payload, map);
   const tp = p.transcript_path;
@@ -50,5 +50,11 @@ export function relayHook(event: string, payload: Record<string, unknown>, map: 
       known: true,
     };
   }
-  return { stdout: handleHook(event as HookEventName, p), stderr: "", code: 0, known: true };
+  return { stdout: handleHook(event as HookEventName, p, verdicts), stderr: "", code: 0, known: true };
+}
+
+/** relayHook, with a self-trained model asked first on a prompt (plan/38 §8): the model's wait stays out of the sync path. */
+export async function relayHookAsync(event: string, payload: Record<string, unknown>, map: PathPair[]): Promise<HookAnswer> {
+  const verdicts = event === "prompt" ? await promptModelVerdicts(mapPayload(payload, map)) : undefined;
+  return relayHook(event, payload, map, verdicts);
 }

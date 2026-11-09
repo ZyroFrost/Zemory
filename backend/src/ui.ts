@@ -229,7 +229,7 @@ import { getPathsWatch, setPathsWatch } from "./config/settings.js";
 import { getShortcutPrompted, setShortcutPrompted } from "./config/settings.js";
 import { type ScopeLane, markConnectionsStale, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
-import { parsePathMap, relayHook } from "./memory/hook-relay.js";
+import { parsePathMap, relayHookAsync } from "./memory/hook-relay.js";
 import { toHostPath, toLocalPath } from "./util/hostpath.js";
 import { loginViewUrl, otherRuntimeMessage, RUNTIME, runtimeOf, type Runtime } from "./util/runtime.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
@@ -2584,7 +2584,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       } catch {
         // an unreadable payload is nothing to judge: let it through, as the stdin hook does
       }
-      return json(res, relayHook(decodeURIComponent(p.slice("/hook/".length)), payload, parsePathMap(process.env.ZEMORY_PATH_MAP)));
+      return json(res, await relayHookAsync(decodeURIComponent(p.slice("/hook/".length)), payload, parsePathMap(process.env.ZEMORY_PATH_MAP)));
     }
     if (req.method === "POST" && p === "/gate-acquire") {
       // A CLI is about to write the memory — pause the scheduler so they don't

@@ -1,6 +1,6 @@
 // `zemory hook <install|stop|...>` — the 0-token capture hook wiring (HP điều 10).
 import { join, relative } from "node:path";
-import { currentProjectRoot } from "../core/config.js";
+import { currentProjectRoot, uiPort } from "../core/config.js";
 import { generateGuards, GUARD_MATCHER, guardCommand } from "../docs/guard-gen.js";
 import { handleHook, installCodexHooks, installHooks, uninstallHooks } from "../memory/capture-hook.js";
 import { judgeSendPurpose, judgeSendTarget, judgeSendUpward } from "../memory/send-guard.js";
@@ -138,7 +138,35 @@ export async function cmdHook(args: string[]): Promise<void> {
     payload = {};
   }
   if (!payload.cwd) payload.cwd = process.cwd();
+  // A self-trained model (plan/38 §8) needs the embedder warm: a one-shot hook process loads it cold (30-65 s measured in the
+  // container, 2026-11-09), past any budget. With the switch on, the running daemon answers the whole hook instead; no daemon
+  // ⇒ the hook runs here on the regex, as before.
+  if (sub === "prompt") {
+    const viaDaemon = await promptViaDaemon(payload);
+    if (viaDaemon !== null) {
+      if (viaDaemon) process.stdout.write(viaDaemon);
+      return;
+    }
+  }
   const out = handleHook(sub as Parameters<typeof handleHook>[0], payload);
   if (out) process.stdout.write(out);
 }
 
+/** The daemon's answer to a prompt hook when a self-trained gate is switched on; null = run it here (off, or no daemon). */
+async function promptViaDaemon(payload: Record<string, unknown>): Promise<string | null> {
+  try {
+    const gate = await import("../training/prompt-gates/04_export.js");
+    if (!gate.loadGates()) return null;
+    const res = await fetch(`http://127.0.0.1:${uiPort()}/hook/prompt`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(gate.gateBudgetMs() + 3000),
+    });
+    if (!res.ok) return null;
+    const a = (await res.json()) as { stdout?: unknown; known?: unknown };
+    return a.known === true && typeof a.stdout === "string" ? a.stdout : null;
+  } catch {
+    return null;
+  }
+}

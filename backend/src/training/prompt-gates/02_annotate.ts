@@ -154,7 +154,7 @@ export function annotatePlan(labelDir: string): AnnotatePlan {
   const all = chunkIds(labelDir);
   const done = all.filter((c) => chunkProblem(labelDir, c, doors) === null);
   const todo = all.filter((c) => !done.includes(c));
-  const host = spawnSync(process.platform === "win32" ? "where" : "which", ["claude"], { stdio: "ignore" }).status === 0 ? "claude" : "none";
+  const host = spawnSync(process.platform === "win32" ? "where" : "which", ["claude"], { stdio: "ignore", windowsHide: true }).status === 0 ? "claude" : "none";
   return { labelDir, todo, done, tokens: todo.length * TOKENS_PER_CHUNK, host };
 }
 
@@ -169,7 +169,7 @@ function runAnnotator(labelDir: string, c: string, doors: string[], model: strin
   const args = ["-p", "--model", model, "--no-session-persistence", "--setting-sources", "project",
     "--permission-mode", "acceptEdits", "--allowedTools", "Read", "Write", "Edit", "Glob", "Bash(node:*)"];
   const run = (shell: boolean): Promise<string> => new Promise((resolve, reject) => {
-    const p = spawn("claude", args, { cwd: work, shell, stdio: ["pipe", "pipe", "pipe"] });
+    const p = spawn("claude", args, { cwd: work, shell, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
     p.on("error", reject);
     p.stdin.end(annotatorPrompt(c, doors.length));
     let said = "";

@@ -1654,7 +1654,22 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         }
         console.log(`  model: ${r.modelFile}`);
         console.log(`  report: ${r.reportFile}`);
-        console.log("  a door uses the model only where it beat the regex on the held-out messages; the hook does not read it yet");
+        console.log("  a door uses the model only where it beat the regex on the held-out messages");
+        console.log("  the reminder hook keeps the regex until you run `zemory memory bench --prompts --train --enable`");
+        return;
+      }
+      // step 04: the reminder hook reads the model only after an explicit switch; --disable returns every door to the regex
+      if (args.includes("--enable") || args.includes("--disable")) {
+        const { disableGates, enableGates, switchPath } = await import("../training/prompt-gates/04_export.js");
+        if (args.includes("--disable")) {
+          console.log(disableGates() ? "zemory memory bench --prompts --train --disable — every door is back on its regex" : "  nothing was enabled: every door already runs its regex");
+          return;
+        }
+        const sw = enableGates();
+        console.log(`zemory memory bench --prompts --train --enable — profile ${sw.profile} · ${sw.doors.length} door(s) on the model, the rest on the regex`);
+        for (const d of sw.doors) console.log(`  ${d}`);
+        console.log(`  ${switchPath()}`);
+        console.log("  a door whose rule text changed since the labels, a slow embedding or any error falls back to the regex");
         return;
       }
       // step 01. The training never reads the live GM (plan/38 header): a read-only online-backup copy is made when no

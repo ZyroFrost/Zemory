@@ -75,6 +75,8 @@ App/                                # 1 APP = cây này  (Monorepo → apps/<app
 │   │  │                          KHÁC test/ (pass/fail tất định)
 │   │  ├── training/       [opt]  HUẤN LUYỆN model CỦA MÌNH: <model>/01_pull · 02_label · 03_train · 04_export. Dữ liệu + kết quả →
 │   │  │                          data/training/. KHÁC evals/ (chỉ đo) · pipelines/ (ETL tất định) · ai/ (gọi model lúc chạy)
+│   │  │   └── prompt-gates/       cửa nhắc luật tự train trên GM của chính mình (plan/38 §8): 01_pull · 02_label/02_annotate ·
+│   │  │                          03_train · 04_export (công tắc `--enable` + phần hook đọc lúc chạy)
 │   │  ├── search/         [opt]  INDEX & retrieval (FTS/vector/Elastic): build index + query/rank/rerank
 │   │  ├── pipelines/      [opt]  ETL / ingest / batch NHIỀU-BƯỚC (đường ống dữ liệu) — KHÁC jobs (lịch) & events (phản ứng)
 │   │  ├── jobs/           [opt]  job nền / cron / queue / scheduled task

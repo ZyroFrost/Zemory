@@ -31,7 +31,7 @@ import { syncCheck } from "../docs/adopt.js";
 import { kitBehind } from "../docs/kit-sync.js";
 import { repoKit } from "../docs/kit-apply.js";
 import { coreForCompaction, coreReinjectCap } from "../docs/rule-core.js";
-import { isFolderHarness, isRetired, listParts, promptGates } from "../docs/store.js";
+import { isFolderHarness, isRetired, listParts, promptGates, type PromptGate } from "../docs/store.js";
 import { stopDecision } from "../docs/turn-evidence.js";
 import { AUTO_COMMIT_LINES, autoCommit } from "../docs/auto-commit.js";
 import { promptMatches, SHELF } from "../docs/harness-names.js";
@@ -108,7 +108,7 @@ function warnedFlagPath(sessionId: string): string {
  *   · closing a session (02 §Chốt phiên): the prompt says "chốt phiên / note lại / ghi sổ …" ⇒ the session-close steps.
  *   · auditing the ledger (02 §Hành xử): the prompt asks "còn gì / soát sổ / check todo …" ⇒ measure all three sources.
  */
-export function ruleReminders(payload: any): string {
+export function ruleReminders(payload: any, verdicts?: Map<string, boolean>): string {
   const sidRaw = String(payload?.session_id ?? payload?.transcript_path ?? "");
   if (!sidRaw) return "";
   const once = (kind: string): boolean => {
@@ -142,25 +142,47 @@ export function ruleReminders(payload: any): string {
   // A host event delivered as a "prompt" (a background task finishing, a system notice) is not the user speaking: its
   // text quotes agent output, so keyword doors fired on it (two reminders on one task notification, 2026-10-14).
   if (/<task-notification>|\[SYSTEM NOTIFICATION|^\s*<system-reminder>/i.test(prompt)) return out.join("\n");
-  // Folder harness (plan/28 §0n): each reminder is declared beside its owner — a skill or a rule — in gate.json › prompt,
-  // so a repo carries exactly the reminders of the skills and rules it has. File harness: the built-in four.
-  let gates: Array<{ kind: string; re: string; text: string }> = BUILTIN_PROMPT_GATES;
-  try {
-    const hp = cwd ? harnessPathsAt(toLocalPath(cwd)) : null;
-    if (hp && isFolderHarness(hp.agent)) gates = promptGates(hp.skills, hp.agent);
-  } catch {
-    gates = BUILTIN_PROMPT_GATES; // fail-open (HP article 9): the built-in reminders
-  }
-  for (const g of gates) {
-    // the matching the keyword table was measured with (plan/28 §0o)
-    if (promptMatches(g.re, prompt) && once(g.kind)) out.push(g.text);
+  for (const g of promptGatesAt(cwd)) {
+    // a self-trained model's verdict where it has one (plan/38 §8), else the matching the keyword table was measured with
+    // (plan/28 §0o)
+    const fire = g.part && verdicts?.has(g.part) ? verdicts.get(g.part)! : promptMatches(g.re, prompt);
+    if (fire && once(g.kind)) out.push(g.text);
   }
   return out.join("\n");
 }
 
+/** Folder harness (plan/28 §0n): each reminder is declared beside its owner — a skill or a rule — in gate.json › prompt,
+ *  so a repo carries exactly the reminders of the skills and rules it has. File harness: the built-in four. */
+function promptGatesAt(cwd: string): PromptGate[] {
+  try {
+    const hp = cwd ? harnessPathsAt(toLocalPath(cwd)) : null;
+    if (hp && isFolderHarness(hp.agent)) return promptGates(hp.skills, hp.agent);
+  } catch {
+    /* fail-open (HP article 9): the built-in reminders */
+  }
+  return BUILTIN_PROMPT_GATES;
+}
+
+/**
+ * The self-trained model's verdicts for this prompt (plan/38 §8), computed before the synchronous hook runs: part → fire.
+ * Empty (every door on its regex) when the person never ran `--enable`, on a host event, or when anything fails or is slow.
+ */
+export async function promptModelVerdicts(payload: any): Promise<Map<string, boolean>> {
+  try {
+    const prompt = String(payload?.prompt ?? "");
+    if (!prompt.trim() || /<task-notification>|\[SYSTEM NOTIFICATION|^\s*<system-reminder>/i.test(prompt)) return new Map();
+    // loaded on demand: a hook process that never meets an enabled model does not pay for the training code
+    const gate = await import("../training/prompt-gates/04_export.js");
+    if (!gate.loadGates()) return new Map(); // the cheap test first: no switch, no gate scan, no embedding
+    return await gate.modelVerdicts(prompt, promptGatesAt(String(payload?.cwd ?? "")));
+  } catch {
+    return new Map();
+  }
+}
+
 /** The reminders of a file-harness repo (before plan/28 they were the only ones). A folder harness reads them from the
  *  gate.json of session-close · 02-12 · 02-62 · 02-14 instead. */
-const BUILTIN_PROMPT_GATES = [
+const BUILTIN_PROMPT_GATES: PromptGate[] = [
   { kind: "close", re: "(chốt phiên|note lại|ghi sổ|docs lại|đổi session|sắp hết context|mở phiên mới)",
     text: "[zemory] Closing the session: follow skill session-close — `zemory memory scan` → digest/search GM (the summary is not the source) → re-measure 05_TODO from 3 sources → `zemory archive` → `zemory validate`." },
   { kind: "audit", re: "(còn gì|còn việc|soát sổ|check todo|check hết todo|việc gì còn)",
@@ -282,7 +304,7 @@ export function readContextState(sessionId: string, dir?: string): ContextState 
 }
 
 /** Run a hook handler. Returns text to write to stdout (may be ""). */
-export function handleHook(event: HookEventName, payload: any): string {
+export function handleHook(event: HookEventName, payload: any, verdicts?: Map<string, boolean>): string {
   try {
     const cwd: string | undefined = payload?.cwd;
 
@@ -396,7 +418,7 @@ export function handleHook(event: HookEventName, payload: any): string {
       // RULE REMINDERS (rule audit 2026-10-07, class C — rules a machine can only REMIND of). Each fires AT MOST ONCE per
       // session (a flag per kind), so this hook stays quiet: 0 characters on every other prompt.
       try {
-        const extra = ruleReminders(payload);
+        const extra = ruleReminders(payload, verdicts);
         if (extra) updNote = updNote ? `${updNote}\n${extra}` : extra;
       } catch {
         /* fail-open */
