@@ -5,7 +5,7 @@
 // Edits = Write / Edit / MultiEdit / NotebookEdit on a code file. Checks = a shell command that runs the repo's gate, tests,
 // type check or lint (or a command the repo declares in its marker as one of its own gates). The verdict blocks once per
 // turn: the host marks a Stop that follows our own block with `stop_hook_active`, and that one always passes.
-import { readFileSync } from "node:fs";
+import { closeSync, fstatSync, openSync, readSync } from "node:fs";
 
 const CODE = /\.(ts|tsx|js|jsx|mjs|cjs|py|ps1|psm1|sh|sql|cs|go|rs|java|kt|rb|php|vue|svelte)$/i;
 const CHECK = /\b(npm\s+(run\s+)?(test|check|lint|build|typecheck)|pnpm\s+(test|check|lint)|yarn\s+(test|check|lint)|node\s+--test|npx\s+(tsc|eslint|vitest|jest|mocha|playwright)|tsc\b|eslint\b|pytest|python\d?\s+-m\s+(pytest|unittest)|py\s+-m\s+(pytest|unittest)|dotnet\s+test|go\s+test|cargo\s+test|zemory\s+(gates|conform|validate|doctor))/i;
@@ -93,6 +93,47 @@ export function replyVocab(text: string): string | null {
     "warehouse) or HS (the harness store) and send it again:\n" + bad.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n");
 }
 
+/** Is this transcript line something the person typed (not a tool result, a meta record or a host notice)? */
+function typedLine(line: string): boolean {
+  if (!line.includes('"user"')) return false;
+  let j: { type?: string; message?: { content?: unknown }; isMeta?: boolean };
+  try { j = JSON.parse(line); } catch { return false; }
+  if (j.type !== "user" || j.isMeta) return false;
+  const content = j.message?.content;
+  return typeof content === "string" ? content.trim() !== "" && !/^<(task-notification|system-reminder)/.test(content.trim())
+    : Array.isArray(content) && content.some((c: { type?: string; text?: string }) => c?.type === "text" && !/^\s*<(task-notification|system-reminder)/.test(c.text ?? ""));
+}
+
+/**
+ * The current turn of a transcript: its lines from the last thing the person typed to the end, read BACKWARDS in chunks.
+ * The Stop hook read and parsed the whole file on every turn end; a long session's transcript is tens of MB on the
+ * container's 9p mount, and that held the daemon's event loop for 20-50 s (measured through the inspector, 2026-11-09).
+ * Equal for callsThisTurn/replyThisTurn: both reset at the last typed line anyway. No typed line ⇒ the whole file.
+ */
+export function readTurn(path: string, chunk = 256 * 1024): string {
+  const fd = openSync(path, "r");
+  try {
+    let pos = fstatSync(fd).size;
+    let tail = Buffer.alloc(0);
+    while (pos > 0) {
+      const n = Math.min(chunk, pos);
+      pos -= n;
+      const buf = Buffer.alloc(n);
+      readSync(fd, buf, 0, n, pos);
+      tail = Buffer.concat([buf, tail]);
+      // the first line may be cut by the chunk edge: a cut piece never parses as a record (quotes inside a JSON string are
+      // escaped), so it can never pass for a typed line; the next chunk completes it
+      const lines = tail.toString("utf8").split("\n");
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (typedLine(lines[i])) return lines.slice(i).join("\n");
+      }
+    }
+    return tail.toString("utf8");
+  } finally {
+    closeSync(fd);
+  }
+}
+
 /** The Stop hook's answer: a block decision once per turn, nothing otherwise (fail-open on any error). */
 export function stopDecision(
   payload: { transcript_path?: unknown; stop_hook_active?: unknown },
@@ -103,7 +144,7 @@ export function stopDecision(
   const p = typeof payload.transcript_path === "string" ? payload.transcript_path : "";
   if (!p) return "";
   try {
-    const text = readFileSync(p, "utf8");
+    const text = readTurn(p);
     const why = [checks.evidence ? turnEvidence(text, ownGates) : null, checks.vocab ? replyVocab(replyThisTurn(text)) : null]
       .filter((x): x is string => Boolean(x));
     return why.length ? JSON.stringify({ decision: "block", reason: why.join("\n\n") }) : "";
