@@ -1415,6 +1415,25 @@ export const RULES = [
       return true;
     })()`,
   },
+  // (v53, the user 09/11: "mọi điểm dừng ở path đều cần có 1 trang danh sách chứa toàn bộ các chi tiết của trang sau")
+  {
+    id: 'nav-stops',
+    rule: 'every stop of the path is a page: a menu row with sub-rows opens its list page (an href, never "#"), and a list page holds every page and branch its row holds',
+    check: `(() => {
+      const menu = document.getElementById('layout-menu');
+      if (!menu) return true;
+      const bare = [...menu.querySelectorAll('a.menu-toggle')].find(a => { const h = a.getAttribute('href') || ''; return !h || h === '#'; });
+      if (bare) return 'a menu row with sub-rows opens no page (href ' + (bare.getAttribute('href') || 'none') + '): ' + (bare.textContent || '').trim().slice(0, 30);
+      const index = document.querySelector('#page [data-nav-index]');
+      if (!index) return true;
+      const here = [...menu.querySelectorAll('a.menu-toggle')].find(a => a.getAttribute('href') === location.pathname);
+      if (!here) return 'a list page that no menu row opens: ' + location.pathname;
+      const links = new Set([...index.querySelectorAll('a[href]')].map(a => a.getAttribute('href')));
+      const kids = [...here.parentElement.querySelectorAll(':scope > .menu-sub > .menu-item > a')].map(a => a.getAttribute('href'));
+      const lost = kids.filter(h => !links.has(h));
+      return lost.length ? 'the list page leaves out ' + lost.length + ' of what its row holds: ' + lost.slice(0, 3).join(', ') : true;
+    })()`,
+  },
   // (v52, the user 09/11 through an app of the family: "khung panel này đang bị thiếu viền cong ở dưới")
   {
     id: 'tabs-round',

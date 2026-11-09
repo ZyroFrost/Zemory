@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 52
+version: 53
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -123,6 +123,14 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   out of the card. A box that CAN scroll is no scrolling: only content wider than its box is (v52, an app of the family read
   this rule as at odds with the report rule against sideways scroll - they hold together: every table boxed, none spilling).
   [table-boxed]
+- **Every stop of the path is a page** (v53, the user 09/11: "mọi điểm dừng ở path đều cần có 1 trang danh sách chứa toàn bộ các
+  chi tiết của trang sau, mỗi lớp đều có phân cấp rõ ràng… cấu trúc khung tổng chung mọi repo cần theo"; "bấm vào chữ sẽ ra
+  trang, còn rê chuột vào thì tự bung ra cây của nó"): every node of the menu is a page - a leaf the app's page, a branch (a
+  department, a group of reports, a group inside it) the list of what it holds, a row the width of the page per part with its
+  pages spread across it. The app gives a branch its own list page (`to` of the row, of a `toggle` group); without one the frame
+  draws it at `/~/<keys>`, its crumbs the branches down to it. In the menu the words of a row with sub-rows open its list page,
+  its chevron only folds or unfolds, hovering the row unfolds its tree (leaving folds it, the branch of the page on screen
+  stays); folded, the icon opens the page. The crumbs, the menu and the list page read one tree. [nav-stops]
 - On a phone the window scrolls and the top bar is sticky.
 
 ## 2b. The top bar — one glass head of two rows, the same in every app of the family

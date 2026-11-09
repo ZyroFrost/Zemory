@@ -1,5 +1,5 @@
 ---
-version: 52
+version: 53
 lang: vi
 ---
 
@@ -87,7 +87,15 @@ lang: vi
   cùng, không bao giờ neo ở đỉnh khung cuộn sau lưng thanh (trang board từng mất dải dưới thanh). Ba hàng: hàng 1+2 một khối,
   dải đứng riêng bên dưới (khe đầu trang, 1rem). Hàng 1 thu gọn: dải dính lên hàng 2, không khe - một khối 2+3, góc dưới của
   thanh và góc trên của dải vuông, giữa là line đứt mờ - và luôn thấy được, không gì đè lên. Trang đầy khung cũng đóng khe
-  như vậy. [tabs-dock] Đứng riêng trên một board, dải là một khối riêng, bo đủ bốn góc (v52, user 09/11: "khung panel này đang bị
+  như vậy. [tabs-dock]
+- **Mọi điểm dừng của đường dẫn là một trang** (v53, user 09/11: "mọi điểm dừng ở path đều cần có 1 trang danh sách chứa toàn bộ
+  các chi tiết của trang sau, mỗi lớp đều có phân cấp rõ ràng… cấu trúc khung tổng chung mọi repo cần theo"; "bấm vào chữ sẽ ra
+  trang, còn rê chuột vào thì tự bung ra cây của nó"): mọi nút của menu là một trang - lá là trang của app, nhánh (phòng ban, nhóm
+  báo cáo, nhóm con) là danh sách những gì nó chứa, mỗi phần một dòng rộng bằng trang, các trang của nó trải đều. App đưa nhánh
+  trang danh sách riêng (`to` của hàng, của nhóm `toggle`); không có thì khung tự vẽ ở `/~/<khoá>`, đường dẫn là các nhánh xuống tới
+  nó. Trên menu bấm chữ hàng có hàng con thì mở trang danh sách, mũi tên chỉ gập/mở, rê chuột lên hàng thì bung cây (rời chuột thì
+  gập, nhánh của trang đang mở thì giữ); menu thu gọn thì bấm icon mở trang. Đường dẫn, menu và trang danh sách đọc chung một cây.
+  [nav-stops] Đứng riêng trên một board, dải là một khối riêng, bo đủ bốn góc (v52, user 09/11: "khung panel này đang bị
   thiếu viền cong ở dưới"); trên thẻ trang thì hai góc dưới nối vào thẻ. [tabs-round]
 - **Kỳ trang luôn giữ không bao giờ được đếm là một bộ lọc** (v52, user 09/11 qua một app trong hệ): nút lọc chỉ đếm cái người
   dùng đặt - kỳ hay ngày làm việc cố định (`fixed`, `data-fixed` trên ô của nó) không bao giờ vào số đếm, cũng không sáng như đã đặt.
