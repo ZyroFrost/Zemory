@@ -150,7 +150,10 @@ export const FILTER_TO_CHART = `(async () => {
     const item = menu && [...menu.querySelectorAll('.slicer-item')].find(i => { const t = (i.textContent || '').trim(); return t === value || t === name; });
     if (!item) return false;
     item.querySelector('input').click(); await wait(200);
-    document.body.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true})); await wait(150);
+    // (v6, Dashboard 09/11: a press on the body closed the whole filter popover and dropped the draft) the slicer's list is closed
+    // by a press inside the popover (or on the page bar), so the popover stays open for Apply
+    const pop2 = document.getElementById('filter-pop');
+    (pop2 && pop2.contains(place) ? pop2 : document.getElementById('page-bar') || document.body).dispatchEvent(new PointerEvent('pointerdown', {bubbles: true})); await wait(150);
     const apply = document.getElementById('filter-apply');
     if (apply && !apply.disabled && apply.getClientRects().length) { apply.click(); await wait(400); }
     return true;
