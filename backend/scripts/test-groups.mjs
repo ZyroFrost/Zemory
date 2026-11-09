@@ -52,8 +52,6 @@ export const LIGHT_DESPITE_MATCH = {
   "vec-pending-plan.test.mjs": 48,
   // Đo bằng gate-cage 2026-10-14: chỉ ĐỌC mã nguồn backend/src để đếm chuỗi SQL viết tại chỗ — không nạp model/grammar.
   "sql-one-way.test.mjs": 69,
-  // Measured with gate-cage 2026-11-09: self-trained gates with an injected embed and hand-built models - no ONNX model.
-  "training-gates.test.mjs": 150,
   // Measured with gate-cage 2026-11-09: hook workers ingest an 8 MB synthetic transcript into a temp store - no model.
   "hookpool.test.mjs": 332,
 };
