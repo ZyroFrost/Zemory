@@ -1811,7 +1811,7 @@ export function promptGates(skillsDir: string, agentDir: string): PromptGate[] {
       const g = isRetired(p) ? undefined : gateOf(p.dir)?.prompt;
       if (!ok(g)) continue;
       const body = englishHalf(bodyOf(readFileSync(mainPath(p.dir, mainOf(p)), "utf8"))).trim();
-      out.push({ ...g, text: body ? `${g.text}\n\nThe rule (${p.folder}):\n${body}` : g.text, part: p.folder, dir: p.dir });
+      out.push({ ...g, text: body ? `${g.text}\n\nThe rule (${p.folder}):\n${body}` : g.text, part: p.folder.split("/").pop(), dir: p.dir });
     }
   }
   return out;
