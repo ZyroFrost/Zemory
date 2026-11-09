@@ -60,16 +60,16 @@ export function sessionWrittenFilesAt(path: string): string[] {
     let s = seen.get(path);
     if (!s || size < s.size) s = { size: 0, carry: Buffer.alloc(0), files: new Set() };
     if (size > s.size) {
-      const fresh = Buffer.alloc(size - s.size);
+      const fresh = Buffer.allocUnsafe(size - s.size);
       let got = 0;
       while (got < fresh.length) {
         const n = readSync(fd, fresh, got, fresh.length - got, s.size + got);
         if (n <= 0) break;
         got += n;
       }
-      const buf = Buffer.concat([s.carry, fresh.subarray(0, got)]);
+      const buf = s.carry.length ? Buffer.concat([s.carry, fresh.subarray(0, got)]) : fresh.subarray(0, got);
       const cut = buf.lastIndexOf(0x0a) + 1;
-      for (const file of sessionWrittenFiles(buf.subarray(0, cut).toString("utf8"))) s.files.add(file);
+      for (const file of sessionWrittenFiles(toolLines(buf, cut))) s.files.add(file);
       s = { size: s.size + got, carry: Buffer.from(buf.subarray(cut)), files: s.files };
     }
     seen.delete(path);
@@ -81,6 +81,25 @@ export function sessionWrittenFilesAt(path: string): string[] {
   } finally {
     closeSync(fd);
   }
+}
+
+const TOOL_USE = Buffer.from('"tool_use"');
+
+/** Only the lines of `buf[0, end)` that carry a tool call, decoded - the rest of a long transcript is never turned into a
+ *  string (the whole 18 MB decoded cost about a second on a cold Stop hook). */
+function toolLines(buf: Buffer, end: number): string {
+  const out: string[] = [];
+  let from = 0;
+  for (;;) {
+    const at = buf.indexOf(TOOL_USE, from);
+    if (at < 0 || at >= end) break;
+    const start = buf.lastIndexOf(0x0a, at) + 1;
+    let stop = buf.indexOf(0x0a, at);
+    if (stop < 0 || stop > end) stop = end;
+    out.push(buf.toString("utf8", start, stop));
+    from = stop + 1;
+  }
+  return out.join("\n");
 }
 
 /** Forget what was read (tests). */
@@ -146,11 +165,16 @@ export function autoCommit(root: string, transcript: string | string[], limit = 
   try {
     // the session may run in a subfolder; outside any git tree rev-parse throws ⇒ null below
     const top = canon(git(root, ["rev-parse", "--show-toplevel"]));
+    const dirs = new Map<string, string>();
     const eol = crlfArgs(top);
     const rel = (hostFile: string): string | null => {
       // the transcript names host paths; in the container they sit under the mounts (identity on a native install)
       const f = toLocalPath(hostFile);
-      const r = relative(top, canon(isAbsolute(f) ? f : resolve(root, f))).replace(/\\/g, "/");
+      const abs = isAbsolute(f) ? f : resolve(root, f);
+      const dir = dirname(abs);
+      let real = dirs.get(dir);
+      if (real === undefined) dirs.set(dir, (real = canon(dir)));
+      const r = relative(top, join(real, basename(abs))).replace(/\\/g, "/");
       return r && !r.startsWith("..") && !isAbsolute(r) ? r : null;
     };
     const listed = typeof transcript === "string" ? sessionWrittenFiles(transcript) : transcript;
