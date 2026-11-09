@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 
@@ -19,6 +19,13 @@ lang: vi
 - **Esc** (khi không có hộp thoại hay popover nào mở) và nút **Xoá lọc** của bộ lọc trang bỏ cả lựa chọn. [cf-interaction]
 - **Mọi phần của một hình đều là điểm** (v3, user 06/11), như Power BI: đoạn cột chồng, chấm trên đường, thanh, cột, lát, mục chú
   giải, dòng bảng. Hình gồm các chỉ số đặt cạnh nhau (`data-rp-free`) không có trường nên được miễn. [cf-every-mark]
+- **Mọi mục chú giải (legend) là một bộ lọc thật của thanh trang** (v4, user 09/11: "mọi legend đều phải là 1 filter thật nối dc vào
+  bộ khung filter ở trên, đây cũng là skill hook"): legend theo giá trị một trường (một chuỗi: năm, kênh, xếp loại) là các điểm trên
+  trường đó (`data-cf-dim`), và trường đó có bộ lọc trên thanh trang - một bộ lọc: bấm mục thì bộ lọc đặt giá trị đó, nút lọc đếm,
+  đặt bộ lọc thì mục sáng còn mục khác mờ, Xoá lọc hay bấm lần hai thì bỏ. Legend theo CHỈ SỐ (năm nay / năm trước, doanh thu /
+  chỉ tiêu) là ô "Chỉ số" của trang (`data-cf-dim="measure"`, bộ lọc `measure`): bấm thì chỉ số đó sáng trên mọi chart của trang,
+  chuỗi khác mờ, không lọc dòng nào; Xoá lọc thì bỏ. Chỉ đường của cả chuỗi (`data-rp-free`) được miễn. [cf-legend-filter]
+  [cf-legend-click]
 
 ## 2. Những gì đi theo lựa chọn
 
@@ -55,7 +62,9 @@ lang: vi
 - Bài kiểm trình duyệt của repo import `scripts/crossfilter_check.mjs`, chạy mọi luật `RULES` trên mọi trang báo cáo, rồi chạy
   `INTERACTION` (có chờ) một lần mỗi trang: bấm một điểm và đòi điểm đó sáng, các điểm cùng trường mờ, chip hiện và ít nhất một
   hình hay KPI KHÁC đổi, ô lọc của trường có mặt và được đếm; bấm lần hai thì bỏ; Esc thì bỏ. Rồi `EVERY_CLICK` (có chờ): ở
-  mỗi hình, bấm một điểm làm một hình khác đổi và bấm lần hai đưa trang về như cũ - điểm không lọc gì thì không phải điểm. Nó chạy `SELF_TEST` trước: trang tốt phải qua và trang lỗi phải trượt mọi
+  mỗi hình, bấm một điểm làm một hình khác đổi và bấm lần hai đưa trang về như cũ - điểm không lọc gì thì không phải điểm. Rồi
+  `LEGEND_CLICK` (có chờ): bấm mục legend đầu thì bộ lọc của trường đó trên thanh trang hiện mục ấy và nút lọc đếm thêm một; bấm lần
+  hai thì bỏ. Nó chạy `SELF_TEST` trước: trang tốt phải qua và trang lỗi phải trượt mọi
   luật, để chứng minh phép kiểm đỏ được.
 - Test đơn vị của repo phủ `pick` và `filterRows`, mỗi trường hợp mới được chứng minh đỏ bằng cách làm hỏng hàm nó canh.
 

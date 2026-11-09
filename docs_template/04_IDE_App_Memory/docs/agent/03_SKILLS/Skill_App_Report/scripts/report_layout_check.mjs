@@ -108,6 +108,17 @@ export const RULES = [
       if (n.length > 1 && (Math.max(...n) - Math.min(...n) > 1 || Math.min(...n) === 1)) return 'card lines of uneven length: ' + n.join(' + ');
     }
     return true;`),
+  rule('rp-card-tone', 'a figure card carries its tone (data-tone) and the tinted fill of it - a pastel of the slot colour; never the bare glass, white, or the tone as a stripe alone (v12, the user 09/11, Rule_Gate_98_FigureCardTone)', `
+    for (const c of document.querySelectorAll('[data-rp-visual=cards] .kpi-card')) {
+      if (!c.getClientRects().length || c.parentElement.closest('.kpi-card')) continue;
+      if (!c.dataset.tone) return 'a figure card with no tone (data-tone): ' + txt(c).slice(0, 30);
+      const st = getComputedStyle(c);
+      // a fill of a colour: its own colour, or a colour of its gradient (a glass sheen is white and does not count)
+      const colours = [st.backgroundColor, ...(st.backgroundImage.match(/rgba?\\([^)]*\\)/g) || [])];
+      const tinted = colours.some(v => !clear(v) && sat(v) >= .08 && (rgb(v)[3] ?? 1) >= .04);
+      if (!tinted) return 'a figure card without the tinted fill of its tone (' + st.backgroundColor + '): ' + txt(c).slice(0, 30);
+    }
+    return true;`),
   rule('rp-card-fit', 'a figure card is as tall as what it holds: never more than 1.6 times its lines and padding (v10, user 08/11: "card dài sọc" - a card pulled to the height of a chart beside it)', `
     for (const c of document.querySelectorAll('[data-rp-visual=cards] .kpi-card')) {
       if (!c.getClientRects().length || c.parentElement.closest('.kpi-card')) continue;
@@ -376,6 +387,7 @@ export const RULES = [
 ];
 
 const SHELL = body => `<!doctype html><html><head><meta charset="utf-8"><style>
+  .kpi-card[data-tone]{background:rgba(61,126,191,.14)}
   body{font:14px sans-serif;margin:0;width:1200px}.row{display:flex;gap:10px;margin:10px}.card{background:#fff;border-radius:8px;padding:8px;box-sizing:border-box}
   .text-success{color:rgb(0,122,54)}.text-danger{color:rgb(197,30,36)}.kpi-title{font-size:14px;white-space:nowrap;overflow:hidden}.kpi-main{font-size:22px}
   .bars{display:flex;align-items:flex-end;height:120px;gap:4px}.bars i{display:block;flex:1}h6{font-size:14px;margin:0 0 4px;text-align:left}
@@ -391,10 +403,12 @@ const chart = (title, colour, n, fields) => `<div class="card" data-rp-visual="c
   `<h6 data-rp-title>${title}</h6><div class="bars" data-rp-body>${bars(n, colour)}</div></div>`;
 const rowsOf = n => Array.from({length: n}, (_, i) => `<tr><td>N${i}</td><td data-rp-num="count" data-rp-raw="${i}">${i}</td></tr>`).join('');
 
+// (v12) a figure card of the good page carries its tone
+const toned = html => html.replace(/class="card kpi-card"/g, (m, at) => m + ' data-tone="' + 'abcd'[(at / 7 | 0) % 4] + '"');
 export const SELF_TEST = {
-  good: SHELL(`<div class="row" data-rp-visual="cards">${card('Doanh thu', '1.200', '+5,2% MoM', 'up', 'text-success')}` +
+  good: SHELL(toned(`<div class="row" data-rp-visual="cards">${card('Doanh thu', '1.200', '+5,2% MoM', 'up', 'text-success')}` +
     `${card('Huỷ món', '35', '+3,0% MoM', 'down', 'text-danger')}${card('Bill', '420', '-1,0% MoM', 'up', 'text-danger')}` +
-    `${card('Tỷ trọng', '40%', '+2,0 pp MoM', 'up', 'text-success')}</div>` +
+    `${card('Tỷ trọng', '40%', '+2,0 pp MoM', 'up', 'text-success')}</div>`) +
     `<div class="row">${chart('Theo giờ', 'rgb(61, 126, 191)', 12, 'hour')}${chart('Theo ngày', 'rgb(46, 156, 122)', 12, 'day')}</div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Chi tiết</h6><table><thead><tr><th>Nhà</th><th>Số</th></tr></thead>` +
     `<tbody>${rowsOf(8)}<tr data-rp-total style="font-weight:700"><td>Tổng</td><td data-rp-num="money" data-rp-raw="1234567890">1,2 tỷ</td></tr></tbody></table></div></div>` +

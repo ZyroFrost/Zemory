@@ -58,7 +58,51 @@ export const RULES = [
       return bad.length ? bad.length + '/' + (marks.length + keys.length) + ' parts of the visuals cannot be clicked' : true;
     })()`,
   },
+  {
+    id: 'cf-legend-filter',
+    rule: 'every legend entry is a real filter of the page bar (v4, the user 09/11: "mọi legend đều phải là 1 filter thật nối dc vào bộ khung filter ở trên"): each entry of a [data-rp-legend] is a point on a field (data-cf-dim; a legend of measures is the field measure) and that field has its filter on the page bar (data-filter-id or the id of the field); a line of the whole series (data-rp-free) is left out',
+    check: `(() => {
+      const live = e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
+      const entries = [...document.querySelectorAll('[data-rp-legend] > *:not([data-rp-free])')].filter(live);
+      if (!entries.length) return true;
+      const dimOf = e => (e.closest('[data-cf-dim]') || e.querySelector('[data-cf-dim]'))?.dataset.cfDim;
+      const loose = entries.find(e => !dimOf(e));
+      if (loose) return 'a legend entry that is no filter (no data-cf-dim): ' + (loose.textContent || '').trim().slice(0, 30);
+      const bar = '.page-toolbar, #page-bar, #filter-pop, #filter-row, #filter-lead';
+      const has = d => [...document.querySelectorAll(bar)].some(b => b.querySelector('[data-filter-id="' + CSS.escape(d) + '"], #' + CSS.escape(d)))
+        || Boolean(document.querySelector('[data-filter-id="' + CSS.escape(d) + '"]'));
+      const missing = [...new Set(entries.flatMap(e => dimOf(e).split('|')))].filter(d => !has(d));
+      return missing.length ? 'a legend of a field with no filter on the page bar: ' + missing.join(', ') : true;
+    })()`,
+  },
 ];
+
+/** (v4) A click on the first legend entry sets its field's filter on the page bar to that entry and the filter button counts one
+ *  more; a second click takes it off (skill app-cross-filter §1, cf-legend-click). Async: awaitPromise. */
+export const LEGEND_CLICK = `(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const live = e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
+  const first = [...document.querySelectorAll('[data-rp-legend] > *:not([data-rp-free])')].find(live);
+  if (!first) return true;
+  const point = first.closest('[data-cf-value]') || first.querySelector('[data-cf-value]');
+  if (!point) return 'a legend entry that is no filter (no data-cf-value): ' + (first.textContent || '').trim().slice(0, 30);
+  const dim = point.dataset.cfDim.split('|')[0], value = point.dataset.cfValue.split('|')[0];
+  const count = () => Number(document.querySelector('#filter-toggle .filter-count')?.textContent || 0);
+  const field = () => document.querySelector('[data-filter-id="' + CSS.escape(dim) + '"]') || document.getElementById(dim);
+  const again = () => document.querySelector('[data-rp-legend] [data-cf-dim="' + CSS.escape(point.dataset.cfDim) + '"][data-cf-value="' + CSS.escape(point.dataset.cfValue) + '"]')
+    || document.querySelector('[data-cf-dim="' + CSS.escape(point.dataset.cfDim) + '"][data-cf-value="' + CSS.escape(point.dataset.cfValue) + '"]');
+  document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await wait(300);
+  const counted = count();
+  point.click(); await wait(500);
+  if (!field()) return 'the legend of ' + dim + ' has no filter on the page bar';
+  if (count() !== counted + 1) return 'a click on the legend entry ' + value + ' is not counted by the filter button (' + counted + ' -> ' + count() + ')';
+  const shown = (field().textContent || '') + ' ' + (field().value || '') + ' ' + (field().getAttribute('data-value') || '') + ' ' + (field().getAttribute('aria-label') || '');
+  const name = (point.getAttribute('title') || point.getAttribute('aria-label') || point.textContent || '').trim();
+  if (!shown.includes(value) && !(name && shown.includes(name.split(':')[0].trim()))) return 'the filter ' + dim + ' does not show the legend entry ' + value + ' it was set to';
+  again()?.click(); await wait(500);
+  if (count() !== counted) return 'a second click on the legend entry does not take the filter off';
+  return true;
+})()`;
 
 /** Click a point of a visual with two or more points; the page must answer as skill app-cross-filter §1-2 says. */
 export const INTERACTION = `(async () => {
@@ -137,12 +181,13 @@ export const SELF_TEST = {
     const visual = (id, d, key) => { const counts = {}; for (const r of keep(d)) counts[key(r)] = (counts[key(r)] || 0) + 1;
       document.getElementById(id).innerHTML = Object.entries(counts).map(([v, n]) => { const on = (sel[d] || []).includes(v), dim = sel[d] && !on;
         return '<span role="button" tabindex="0" data-rp-mark title="' + v + '" data-cf-dim="' + d + '" data-cf-value="' + v + '" aria-pressed="' + on + '" class="' + (dim ? 'cf-dim' : '') + '">' + v + ':' + n + '</span>'; }).join(' '); };
-    const draw = () => { visual('a', 's', r => r.s); visual('b', 'h', r => r.h); document.getElementById('k').textContent = 'rows ' + keep().length;
+    const draw = () => { visual('a', 's', r => r.s); visual('b', 'h', r => r.h);
+      document.getElementById('a').insertAdjacentHTML('beforeend', '<div data-rp-legend>' + ['A', 'B'].map(v => '<span role="button" tabindex="0" title="' + v + '" data-cf-dim="s" data-cf-value="' + v + '" aria-pressed="' + (sel.s || []).includes(v) + '">' + v + '</span>').join('') + '</div>'); document.getElementById('k').textContent = 'rows ' + keep().length;
       const n = Object.keys(sel).length; document.getElementById('lead').innerHTML = '<button id="filter-toggle">F' + (n ? '<span class="filter-count">' + n + '</span>' : '') + '</button><div class="filter-field" data-filter-id="s">' + (sel.s || []).join(',') + '</div><div class="filter-field" data-filter-id="h">' + (sel.h || []).join(',') + '</div>';
       document.querySelectorAll('[data-cf-dim]').forEach(p => p.onclick = e => pick(p.dataset.cfDim, p.dataset.cfValue, e.ctrlKey)); };
     addEventListener('keydown', e => { if (e.key === 'Escape') { sel = {}; draw(); } });
     draw();`),
-  faulty: PAGE(`<div id="cf-chips"></div><div class="card" data-rp-visual="chart"><span data-cf-dim="s" data-rp-mark>A</span><span data-cf-dim="s" data-rp-mark>B</span><i data-rp-mark style="display:inline-block;width:8px;height:8px"></i><span role="button" tabindex="0" data-rp-mark data-cf-dim="h" data-cf-value="1">1</span><span role="button" tabindex="0" data-cf-dim="h" data-cf-value="2">2</span></div>`, `
+  faulty: PAGE(`<div id="cf-chips"></div><div class="card" data-rp-visual="chart"><span data-cf-dim="s" data-rp-mark>A</span><span data-cf-dim="s" data-rp-mark>B</span><i data-rp-mark style="display:inline-block;width:8px;height:8px"></i><span role="button" tabindex="0" data-rp-mark data-cf-dim="h" data-cf-value="1">1</span><span role="button" tabindex="0" data-cf-dim="h" data-cf-value="2">2</span><div data-rp-legend><span>Year 2025</span></div></div>`, `
     document.querySelectorAll('[data-cf-dim]').forEach(p => p.onclick = () => {});`),
 };
 

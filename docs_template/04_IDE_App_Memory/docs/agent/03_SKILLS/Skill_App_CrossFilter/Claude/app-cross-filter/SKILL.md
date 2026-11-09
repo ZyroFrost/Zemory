@@ -1,12 +1,12 @@
 ---
 id: Skill_App_CrossFilter
 name: app-cross-filter
-version: 3
+version: 4
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_PBI_Base]
 installs: [scripts/crossfilter_check.mjs]
 description: Cross-filtering between the visuals of one report page, as Power BI does it - a click on a data point (a bar, a column, a donut part, a table row) filters every other visual, table and KPI of the page; Ctrl adds points; the clicked visual only dims; chips show what is picked; Escape clears. Use when building or fixing a report page of an app (charts, KPI tiles, tables over the same facts), or when a chart is asked to "filter the others". Vietnamese triggers - "lọc chéo", "bấm chart lọc", "chart lọc lẫn nhau", "liên kết chart", "filter như PBI", "cross filter", "bấm vào cột lọc".
-from: _Store/03_SKILLS/Skill_App_CrossFilter @v3 #49f3d189ffb1
+from: _Store/03_SKILLS/Skill_App_CrossFilter @v4 #4763a55c1ca9
 ---
 
 # app-cross-filter — the visuals of a report page filter each other
@@ -25,6 +25,14 @@ from: _Store/03_SKILLS/Skill_App_CrossFilter @v3 #49f3d189ffb1
 - **Escape** (when no dialog or popover is open) and the page filter's **Clear** remove the whole selection. [cf-interaction]
 - **Every part of a visual is a point** (v3, user 06/11), as in Power BI: a stacked part, a line dot, a bar, a column, a slice,
   a key entry, a table row. A visual of measures side by side (`data-rp-free`) has no field and is left out. [cf-every-mark]
+- **Every legend entry is a real filter of the page bar** (v4, the user 09/11: "mọi legend đều phải là 1 filter thật nối dc vào bộ
+  khung filter ở trên, đây cũng là skill hook"): a legend of the values of a field (a series: a year, a channel, a grade) is a
+  set of points on that field (`data-cf-dim`), and that field has its filter on the page bar - one filter: a click on an entry
+  sets the filter to that value, the filter button counts it, setting the filter lights the entry and dims the others, Clear
+  and a second click take it off. A legend of MEASURES (this year / last year, revenue / target) is the page's "Measure" filter
+  (`data-cf-dim="measure"`, the filter `measure`): a click keeps that measure lit on every chart of the page and dims the other
+  series, it filters no row; Clear takes it off. Only a line of the whole series (`data-rp-free`) is left out. [cf-legend-filter]
+  [cf-legend-click]
 
 ## 2. What follows a selection
 
@@ -62,7 +70,8 @@ from: _Store/03_SKILLS/Skill_App_CrossFilter @v3 #49f3d189ffb1
   `INTERACTION` (awaited) once per page: it clicks a point and expects the point lit, its siblings dimmed, the chips shown and
   at least one OTHER visual or KPI changed, the field's page filter present and counted; a second click clears; Escape clears.
   Then `EVERY_CLICK` (awaited): in each visual a click on a point changes another visual and a second click brings the page
-  back - a point that filters nothing is no point. It runs `SELF_TEST` first: the good page must
+  back - a point that filters nothing is no point. Then `LEGEND_CLICK` (awaited): a click on the first legend entry sets its
+  field's filter on the page bar to that entry and the filter button counts one more; a second click takes it off. It runs `SELF_TEST` first: the good page must
   pass and the faulty page must fail every rule, so the check is proven red.
 - The repo's unit tests cover `pick` and `filterRows`, each new case proven red by breaking the function it guards.
 

@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 
@@ -35,6 +35,11 @@ lang: vi
   hàng ra, ko dc cả nùi", "chia trên dưới làm đôi, giữ đúng size và thiết kế card"): card giữ đúng cỡ và thiết kế - không
   bao giờ bị ép hẹp dưới 140 px để giữ một dòng; các dòng dài đều nhau (8 → 4 + 4, 15 → 8 + 7, 7 → 4 + 3) và không card nào
   đứng một mình một dòng. [rp-cards-wrap]
+- **Thẻ chỉ số mang nền tô màu theo tông của nó** (v12, user 09/11: "cái này là skill, nên có hook cho skill"): mọi thẻ trong
+  hàng thẻ mang `data-tone` (thẻ *i* → ô màu *i* của theme) và được tô bằng màu pastel của tông đó - màu ô ở độ đậm thấp
+  (`--tone-bg`), số màu chữ thường, icon màu ô đậm - ở cả hai theme. Không bao giờ là kính trơn của khung, không trắng, không
+  hiện tông bằng vạch hay viền một bên; khung giữ nền của thẻ có `data-tone`. Khoá bởi `Rule_Gate_98_FigureCardTone` (hook chặn
+  style gỡ nền). [rp-card-tone]
 - **Con số không bao giờ làm tròn về 0 kèm đơn vị** (v10, user 08/11: Group Size 1,75 hiện "0 k"): giá trị nhỏ hơn đơn vị thì
   hiện bằng đơn vị nhỏ hơn hoặc số đầy đủ; không bao giờ có `0 k` · `0 tr` · `0 tỷ`. [rp-figure-scale]
 - **Tiêu đề card vừa card;** dài thì rút gọn (bỏ vế phụ, nghĩa đủ ghi vào bảng giải thích của trang), không thu nhỏ chữ riêng
@@ -128,6 +133,7 @@ lang: vi
 | `data-rp-item` · `data-rp-topn` · `data-rp-rows` | mục · visual Top N · số mục có thật | [rp-topn] |
 | `data-rp-label` | nhãn số | [rp-label] |
 | `data-rp-pct` = `up` · `down` · `share` | mỗi % (dòng card, nhãn, ô) | [rp-pct-*] |
+| `data-tone` = một ô màu của theme | mỗi thẻ chỉ số | nền pastel của nó [rp-card-tone] |
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | bảng · dòng tổng | [rp-table-few] [rp-table-style] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | bảng giải thích · mỗi dòng | [rp-glossary] |
 | `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | ô số của bảng · giá trị gốc | [rp-num-format] |
@@ -142,4 +148,5 @@ Card dùng bốn vai chữ của `app-sneat-glass` (`kpi-title` · `kpi-main` ·
 - Máy chưa đo (xét khi trình trang): chiều rộng chart theo số nhóm, donut nằm trong hàng, tab chỉ thêm vì quá tải, màu theo nghĩa.
 
 ## Implements · Thi hành luật
+- `Rule_Gate_98_FigureCardTone` — a figure card wears the tinted fill of its tone · thẻ chỉ số mang nền tô màu theo tông
 - `Rule_Keys_62_DesignChangeApproval` — a report layout is approved before it is built or changed · bố cục báo cáo được duyệt trước khi dựng hay đổi

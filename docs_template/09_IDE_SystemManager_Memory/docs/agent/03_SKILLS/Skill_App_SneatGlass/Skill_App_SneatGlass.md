@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 50
+version: 51
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v50 #704f67ec86d8
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v51 #1b5f3d0f7f76
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -45,7 +45,11 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v50 #704f67ec86d8
   control as from the last control to the right edge, within 2 px. [bar-ends-even]
 - **Row 1's buttons are framed** (v42, user 07/11: "2 nút app và chuông cũng phải khung luôn cho đồng bộ"): the apps and the
   bell are squares with the bar's frame (fill, edge, kit radius) at the search box's height; open, lit as the filter button.
-  [head-framed] **The crumbs are parted by the kit's chevron,** never a typed "/" ("cái path nên thành >"). [crumb-chevron]
+  [head-framed] **The right of row 1 is one group, one third of the bar** (v51, the user 09/11: "ô search đang ko cách đúng
+  khoảng chuẩn… tổng chiều dài của bên phải bằng đúng 1/3 chiều dài của toàn bộ panel đầu"): the search and the actions stand
+  together at the end of row 1, exactly a third of the top bar wide (the search takes what the buttons leave), every part
+  apart from the next by the page bar's own gap - never a wider gap before the search. [row1-end]
+  **The crumbs are parted by the kit's chevron,** never a typed "/" ("cái path nên thành >"). [crumb-chevron]
 - **What is chosen is lit, the rest wears the grey frame** (v42, user 07/11: "khung đang mở là màu xám, bấm qua thì nhận màu
   sáng... phải có hiệu ứng sáng chạy qua nút mới"): every tab of a row is framed at rest; the chosen tab, the chosen view of
   the switch and a tool that is on are filled with the accent (white words), and a light runs across the one just chosen,
@@ -105,6 +109,14 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v50 #704f67ec86d8
   measure on screen (a dropdown, a popover, a tip, a menu, a pill, a drag) is divided by the zoom - the frame exports
   uiZoom / toPage for an app's own code. A checker measures the design's px: it turns the scale off
   (localStorage sasinShell.scale = off) before the page loads. [ui-scale]
+- **A tip shows one line per fact, at the page's size** (v51, the user 09/11 through an app of the family: "toàn bộ info thêm thì
+  phải size chuẩn ko dc nhỏ và ko được nhảy xuống dòng… 1 dòng = 1 thông tin ko dc xuống dòng"): each line of a `data-tip`
+  (`\n`) is one line of the tip and never wraps; the box is as wide as its longest line (up to the window, placed back inside
+  it); its words are the page's size (.875rem), never smaller; a number in a tip is written whole. [tip-lines]
+- **Every table stands in a sideways scroll box of its own** (v51, the user 09/11 through an app of the family: a widened column
+  ran a table out of its panel): a table of a page card, a board card or a dialog sits in its own box that scrolls sideways
+  (`.table-responsive`, or the page card's body), inside its card; a column widened past the card scrolls there, never spills
+  out of the card. [table-boxed]
 - On a phone the window scrolls and the top bar is sticky.
 
 ## 2b. The top bar — one glass head of two rows, the same in every app of the family
@@ -287,6 +299,12 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v50 #704f67ec86d8
 - **Every date follows the person's date format:** a date the surface shows or takes (a cell, a filter, a calendar) follows
   the family setting `date_format` (`vn` dd/mm/yyyy, `us` mm/dd/yyyy) and the app's language - the app's own date field and
   calendar (week from Monday), never the browser's date input, which follows the browser's locale. [date-format]
+- **A date range offers its relative periods, as Power BI's relative date filter** (v51, the user 09/11: "filter nên có nút
+  current month để mọi dashboard tự lấy tháng gần nhất", "current year luôn giống pbi"): beside its two dates every range has
+  the quick picks This month · Last month · This year. The value is the TOKEN, not two dead dates: "this month" is the month of
+  the last day the data has (today when the page has no such day), this and last month whole calendar months, this year Jan 1
+  to Dec 31; the control names it ("Tháng này (11/2026)"); the app keeps the token in the person's settings, so the page opens
+  on the newest month the next time; a newer last day moves the period with it. [date-relative]
 - **A person reads names, never codes:** a pick list, a filter, a badge or an action name shows the name of a value from the
   dictionaries, never its stored code (`data_query`, `login_ok`); a code outside the list reads as "Other action". The action
   codes are the family's closed list (the app contract of the family database): the app keeps that list with a name for each code in every

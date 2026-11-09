@@ -1,5 +1,5 @@
 ---
-version: 50
+version: 51
 lang: vi
 ---
 
@@ -36,7 +36,11 @@ lang: vi
 - **Hai đầu mỗi hàng chừa bằng nhau** (v42, user 07/11): hàng 1 và thanh trang - từ mép trái tới control đầu bằng từ control
   cuối tới mép phải, lệch tối đa 2 px. [bar-ends-even]
 - **Nút hàng 1 có khung** (v42, user 07/11: "2 nút app và chuông cũng phải khung luôn cho đồng bộ"): nút ứng dụng và chuông là
-  ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Đường
+  ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Bên phải hàng 1 là một
+  nhóm, đúng một phần ba thanh** (v51, user 09/11: "ô search đang ko cách đúng khoảng chuẩn… tổng chiều dài của bên phải bằng đúng 1/3
+  chiều dài của toàn bộ panel đầu"): ô tìm và các nút đứng chung ở cuối hàng 1, rộng đúng một phần ba thanh trên cùng (ô tìm lấy phần
+  các nút để lại), mọi phần cách phần kế bằng đúng khoảng cách của thanh trang - không bao giờ khe rộng hơn trước ô tìm. [row1-end]
+  **Đường
   dẫn ngăn bằng mũi tên của kit,** không bao giờ là "/" gõ tay ("cái path nên thành >"). [crumb-chevron]
 - **Cái đang chọn thì sáng, phần còn lại mang khung xám** (v42, user 07/11: "khung đang mở là màu xám, bấm qua thì nhận màu
   sáng... phải có hiệu ứng sáng chạy qua nút mới"): mọi tab trong hàng có khung khi chưa chọn; tab đang chọn, kiểu xem đang
@@ -84,6 +88,13 @@ lang: vi
   dải đứng riêng bên dưới (khe đầu trang, 1rem). Hàng 1 thu gọn: dải dính lên hàng 2, không khe - một khối 2+3, góc dưới của
   thanh và góc trên của dải vuông, giữa là line đứt mờ - và luôn thấy được, không gì đè lên. Trang đầy khung cũng đóng khe
   như vậy. [tabs-dock]
+- **Ô gợi ý một dòng một thông tin, cỡ chữ của trang** (v51, user 09/11 qua một app trong hệ: "toàn bộ info thêm thì phải size chuẩn
+  ko dc nhỏ và ko được nhảy xuống dòng… 1 dòng = 1 thông tin ko dc xuống dòng"): mỗi dòng của `data-tip` (`\n`) là một dòng của ô
+  gợi ý và không bao giờ xuống dòng; hộp rộng theo dòng dài nhất (tối đa bằng cửa sổ, đặt lại vào trong cửa sổ); chữ cỡ của trang
+  (.875rem), không nhỏ hơn; số trong ô gợi ý viết đủ. [tip-lines]
+- **Mọi bảng đứng trong một hộp cuộn ngang của riêng nó** (v51, user 09/11 qua một app trong hệ: kéo rộng một cột làm bảng tràn ra
+  khỏi panel): bảng trong thẻ trang, thẻ board hay hộp thoại nằm trong hộp riêng cuộn ngang được (`.table-responsive`, hoặc thân
+  thẻ trang), bên trong thẻ của nó; cột kéo rộng quá thẻ thì cuộn trong hộp đó, không bao giờ tràn ra ngoài thẻ. [table-boxed]
 - **Cả app co giãn theo cửa sổ từ một khuôn thiết kế** (v50, user 09/11: "làm lại đúng chức năng đó cho full app, tự scale 1
   cấu trúc tỉ lệ thôi"): đã đăng nhập, trang vẽ trên 1920 x 1080 rồi zoom = min(rộng/1920, cao/1080), không quá 1, không dưới
   0,7, nên kéo cửa sổ không làm bố cục xô lệch; điện thoại (768 px trở xuống) không co. Mỗi người tắt được ở Cài đặt › Bố cục
@@ -263,6 +274,12 @@ lang: vi
 - **Mọi ngày theo định dạng ngày của người dùng:** ngày mà bề mặt hiện hay nhận (một ô, một bộ lọc, một lịch) theo cài đặt chung
   `date_format` (`vn` dd/mm/yyyy, `us` mm/dd/yyyy) và ngôn ngữ của app - ô ngày và lịch riêng của app (tuần bắt đầu từ thứ Hai),
   không bao giờ là ô ngày của trình duyệt, vốn theo locale của trình duyệt. [date-format]
+- **Khoảng ngày có các kỳ tương đối, như bộ lọc ngày tương đối của Power BI** (v51, user 09/11: "filter nên có nút current month
+  để mọi dashboard tự lấy tháng gần nhất", "current year luôn giống pbi"): cạnh hai ô ngày, mọi khoảng ngày có nút chọn nhanh Tháng
+  này · Tháng trước · Năm nay. Giá trị là TOKEN, không phải hai ngày chết: "tháng này" là tháng của ngày cuối có dữ liệu (hôm nay nếu
+  trang không có ngày đó), tháng này và tháng trước là trọn tháng lịch, năm nay từ 1/1 tới 31/12; ô hiện tên kỳ ("Tháng này
+  (11/2026)"); app lưu token vào cài đặt của người dùng, nên lần sau mở trang là tháng mới nhất; ngày cuối có dữ liệu mới hơn thì
+  kỳ dời theo. [date-relative]
 - **Người dùng đọc tên, không đọc mã:** danh sách chọn, bộ lọc, nhãn hay tên hành động hiện tên của giá trị lấy từ từ điển, không
   bao giờ hiện mã lưu (`data_query`, `login_ok`); mã ngoài danh sách đọc là "Hành động khác". Mã hành động là danh sách đóng của
   hệ (hợp đồng app của DB hệ): app giữ danh sách đó, mỗi mã có tên ở mọi ngôn ngữ, và một phép kiểm tĩnh đối chiếu danh sách với

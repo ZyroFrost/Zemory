@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 
@@ -57,7 +57,8 @@ lang: vi
   hay vị trí ghi từ số đo trên màn hình (rect, vị trí con trỏ, kéo) đi qua `toPage(px)` của khung (hoặc chia `uiZoom()`) - cả hai
   có trên `window.sasinShell`. Bộ co giãn cũ riêng của app (zoom hay transform trên trang) bị gỡ khi app lên khung.
 - Bộ lọc: trang khai các bộ lọc nó có (chọn một · chọn nhiều · ngày · khoảng ngày · số · custom - ô trang tự vẽ, cho kiểu khung chưa
-  có). Bộ lọc trong popover là bản nháp tới khi người dùng bấm Áp dụng; bộ lọc ghim trên thanh lọc ngay; trang nhận mỗi giá trị khi nó
+  có). Khoảng ngày của báo cáo đưa khung `latest` (ngày cuối có dữ liệu) và lưu token `relative` mà `onChange` trả (tháng này · tháng
+  trước · năm nay) vào cài đặt của người dùng, không lưu hai ngày (v6, app-sneat-glass [date-relative]). Bộ lọc trong popover là bản nháp tới khi người dùng bấm Áp dụng; bộ lọc ghim trên thanh lọc ngay; trang nhận mỗi giá trị khi nó
   có hiệu lực, rồi gọi API của nó. Trang báo có bao nhiêu bộ lọc đang đặt và cách xoá hết; một giá trị trang luôn có (kỳ) không bao giờ
   được đếm. Ô lọc: khung đưa cho trang mỗi lần chữ đổi và không tự lọc trang; trang lọc thứ nó hiện - tại chỗ, hoặc gọi API của nó
   (chờ người dùng gõ xong là việc của trang).

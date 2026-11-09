@@ -1396,6 +1396,52 @@ export const RULES = [
       return loose.length ? 'a loose text in the top bar: ' + loose[0].textContent.trim().slice(0, 40) : true;
     })()`,
   },
+  // (v51, the user 09/11: "ô search đang ko cách đúng khoảng chuẩn… tổng chiều dài của bên phải bằng đúng 1/3 chiều dài của toàn bộ panel đầu")
+  {
+    id: 'row1-end',
+    rule: 'from a desktop up, the right of row 1 - the search and the actions, one group - is exactly one third of the top bar, and every part of it stands apart from the next by the own gap of the page bar (the gap of its tools)',
+    check: `(() => {
+      const n = document.getElementById('layout-navbar'), r = n && n.querySelector('.navbar-right');
+      if (!r || !r.getClientRects().length || innerWidth < 1200) return true;
+      const third = n.getBoundingClientRect().width / 3, w = r.getBoundingClientRect().width;
+      if (Math.abs(w - third) > 2) return 'the right of row 1 is ' + Math.round(w) + ' px, not one third of the panel (' + Math.round(third) + ')';
+      const tools = document.querySelector('.page-toolbar .card-tools');
+      const gap = tools ? parseFloat(getComputedStyle(tools).columnGap) || 8 : 8;
+      const parts = [r.querySelector('.navbar-search'), ...r.querySelectorAll('.navbar-actions > .nav-item')].filter(e => e && e.getClientRects().length);
+      for (let i = 1; i < parts.length; i++) {
+        const g = parts[i].getBoundingClientRect().left - parts[i - 1].getBoundingClientRect().right;
+        if (Math.abs(g - gap) > 1) return 'row 1: ' + Math.round(g) + ' px before ' + (parts[i].querySelector('[id]')?.id || 'a part') + ' (the page bar gap: ' + gap + ' px)';
+      }
+      return true;
+    })()`,
+  },
+  // (v51, the user 09/11 through an app of the family: "1 dòng = 1 thông tin ko dc xuống dòng", "size chuẩn ko dc nhỏ")
+  {
+    id: 'tip-lines',
+    rule: 'the frame tip (data-tip) shows each of its lines as ONE line - never wrapped, the box as wide as its longest line - at the size of the page words, never smaller',
+    check: `(() => {
+      const tip = document.getElementById('g-tip');
+      if (!tip || getComputedStyle(tip).display === 'none') return true;
+      const was = tip.textContent;
+      tip.textContent = 'Doanh thu kỳ này 244.008.536.989 so với kỳ trước 231.774.002.115\\nSố bill 18';
+      const range = document.createRange(); range.selectNodeContents(tip);
+      const lines = new Set([...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size;
+      const size = parseFloat(getComputedStyle(tip).fontSize), page = parseFloat(getComputedStyle(document.body).fontSize);
+      tip.textContent = was;
+      if (size < Math.min(13, page * .9)) return 'a tip is ' + size + ' px, smaller than the words of the page (' + page + ' px)';
+      return lines === 2 || 'a tip of two lines drew ' + lines + ' lines (one line of the tip is one line, never wrapped)';
+    })()`,
+  },
+  // (v51, the user 09/11: "filter nên có nút current month để mọi dashboard tự lấy tháng gần nhất")
+  {
+    id: 'date-relative',
+    rule: 'a date range drawn with its two dates offers the relative periods as Power BI: This month, Last month, This year (three quick picks beside the dates)',
+    check: `(() => {
+      const ranges = [...document.querySelectorAll('.filter-field.date-range')].filter(r => r.getClientRects().length && r.querySelectorAll('.date-field').length === 2);
+      const bare = ranges.find(r => r.querySelectorAll('.date-quick > button').length < 3);
+      return bare ? 'a date range with no relative periods (this month, last month, this year): ' + (bare.querySelector('.filter-label')?.textContent || bare.id).trim().slice(0, 30) : true;
+    })()`,
+  },
   // (v50, the user 09/11: "khi kéo mất panel 1 thì panel 3 dính liền lên panel 2" - a board lost its strip under the bar)
   {
     id: 'tabs-dock',
@@ -1463,6 +1509,42 @@ export const DIALOG_RULES = [
 
 /** (v31) Probes: async browser expressions (evaluate with awaitPromise) that move the page and measure it, then put it back. */
 export const PROBES = [
+  // (v51, the user 09/11 through an app of the family: a widened column ran a table out of its panel. Async, Reconcile 09/11: a
+  // page that draws its tables after it settles - a journal awaiting its API - passed a rule read at once on no table at all)
+  {
+    id: 'table-boxed',
+    rule: 'every table of a page, a board card or a dialog stands in a sideways scroll box of its own inside its card (overflow-x auto or scroll), and that box never runs past the card: a column widened past the card scrolls, it never spills out - read once the page has drawn its tables (up to 8 s while it is still busy)',
+    check: `(async () => {
+      // a phone scrolls the window and shows a list's rows as cards: no sideways box there
+      if (innerWidth < 768) return true;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const busy = () => Boolean(document.querySelector('#page.g-loading, #page [aria-busy="true"], #page .spinner-border, #page .state-box[data-state="loading"], #page .placeholder-glow'));
+      const tables = () => [...document.querySelectorAll('#page table, .modal-content table, dialog table')].filter(t => t.getClientRects().length && !t.closest('.dropdown-menu, .date-menu, .view-grid'));
+      // wait while the page is busy, then 1.5 s calm more - a page that fetches its panels without a busy mark draws them by then
+      // (a table already on the page is no sign the rest has come: a journal draws its panels one by one)
+      for (let ms = 0, calm = 0; ms < 8000; ms += 250) {
+        calm = busy() ? 0 : calm + 250;
+        if (calm >= 1500) break;
+        await wait(250);
+      }
+      const out = [];
+      for (const table of tables()) {
+        const card = table.closest('.card, .page-card, .modal-content, dialog');
+        if (!card) continue;
+        let box = table.parentElement, boxed = false;
+        while (box) {
+          if (/(auto|scroll)/.test(getComputedStyle(box).overflowX)) { boxed = true; break; }
+          if (box === card) break;
+          box = box.parentElement;
+        }
+        const name = table.dataset.resizeId || table.id || String(table.className).split(' ').slice(0, 2).join('.') || 'a table';
+        if (!boxed) { out.push(name + ' has no sideways scroll box of its own inside its card'); continue; }
+        const b = box.getBoundingClientRect(), c = card.getBoundingClientRect();
+        if (b.right > c.right + 1) out.push(name + ': its scroll box runs ' + Math.round(b.right - c.right) + ' px past its card');
+      }
+      return out.length ? out.slice(0, 4).join('; ') : true;
+    })()`,
+  },
   {
     id: 'rows-painted',
     rule: 'every row of a table scrolled into view is drawn: a point in the middle of each row in view hits that row - rows under the table\'s own pinned header or behind its footer pinned at the bottom are left out, nothing else (user 06/11: a table mid-page lost its first rows)',

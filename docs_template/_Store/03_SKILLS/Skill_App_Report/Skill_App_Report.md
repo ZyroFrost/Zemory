@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 11
+version: 12
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -44,6 +44,11 @@ description: The report pages of an app - what a page of figures, charts and tab
   ra, ko dc cả nùi", "chia trên dưới làm đôi, giữ đúng size và thiết kế card"): the cards keep their size and design - never
   squeezed narrower than 140 px to keep one line; the lines are even (8 → 4 + 4, 15 → 8 + 7, 7 → 4 + 3) and no card stands
   alone on a line. [rp-cards-wrap]
+- **A figure card wears the tinted fill of its tone** (v12, the user 09/11: "cái này là skill, nên có hook cho skill"): every
+  card of a card row carries `data-tone` (card *i* → slot *i* of the theme) and is filled with a pastel of it - the slot colour
+  at a low alpha (`--tone-bg`), the figure in the text colour, the icon in the full slot colour - in both themes. Never the bare
+  glass of the frame, never white, never the tone as a stripe or a border on one side; the frame keeps the fill of a card with
+  `data-tone`. Locked by `Rule_Gate_98_FigureCardTone` (its hook blocks the style that takes the fill off). [rp-card-tone]
 - **A figure is never rounded to 0 with a unit** (v10, user 08/11: a Group Size of 1,75 read "0 k"): a value below the unit
   shows in a smaller unit or in full; `0 k` · `0 tr` · `0 tỷ` never appear. [rp-figure-scale]
 - **A card title fits its card;** a long one is abbreviated (the qualifying clause dropped, the full meaning in the page's
@@ -153,6 +158,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 | `data-rp-item` · `data-rp-topn` · `data-rp-rows` | items · a Top N visual · the count that exists | [rp-topn] |
 | `data-rp-label` | a data label | [rp-label] |
 | `data-rp-pct` = `up` · `down` · `share` | each % (card line, label, cell) | [rp-pct-*] |
+| `data-tone` = a slot of the theme | each figure card | its pastel fill [rp-card-tone] |
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | a table · its total row | [rp-table-few] [rp-table-style] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | the glossary · each line | [rp-glossary] |
 | `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | a number cell of a table · its raw value | [rp-num-format] |
@@ -169,4 +175,5 @@ Cards use the four typography roles of `app-sneat-glass` (`kpi-title` · `kpi-ma
   added only for load, colours by meaning.
 
 ## Implements · Thi hành luật
+- `Rule_Gate_98_FigureCardTone` — a figure card wears the tinted fill of its tone · thẻ chỉ số mang nền tô màu theo tông
 - `Rule_Keys_62_DesignChangeApproval` — a report layout is approved before it is built or changed · bố cục báo cáo được duyệt trước khi dựng hay đổi

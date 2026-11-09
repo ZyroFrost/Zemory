@@ -1,11 +1,11 @@
 ---
 id: Skill_App_ShellUse
 name: app-shell-use
-version: 5
+version: 6
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_App_Shell, Rule_Keys_90_AppFamilyContract, Frontend_173_Shell]
 description: Wear the system's frame in an app of the system - pin a published build, hand it the app's config, build only page content, and ask the system manager for anything of the frame. Use in an app of a system (role app, owner a system-manager) when its surface is built or changed, when it moves onto the frame or to a newer build, or when something of the frame looks wrong. Vietnamese triggers - "gắn khung", "dùng khung chung", "lên bản khung", "ghim khung", "vùng trang", "lỗi khung".
-from: _Store/03_SKILLS/Skill_App_ShellUse @v5 #9dd9485df1f0
+from: _Store/03_SKILLS/Skill_App_ShellUse @v6 #e4302521fab1
 ---
 
 # app-shell-use — an app wears the system's frame, it never builds one
@@ -67,7 +67,9 @@ from: _Store/03_SKILLS/Skill_App_ShellUse @v5 #9dd9485df1f0
   goes through the frame's `toPage(px)` (or divides by `uiZoom()`) - both on `window.sasinShell` too. An old scaler of the
   app's own (a zoom or transform on the page) is removed when the app takes the frame.
 - Filters: the page declares the filters it offers (pick · several · date · date range · number · custom - a control the page
-  draws itself, for a mix the frame has no kind for). A filter in the popover is a draft until the person presses Apply; a filter
+  draws itself, for a mix the frame has no kind for). A date range of a report gives the frame `latest` (the data's last day)
+  and keeps the `relative` token its `onChange` hands (this month · last month · this year) in the person's settings, never
+  the two dates (v6, app-sneat-glass [date-relative]). A filter in the popover is a draft until the person presses Apply; a filter
   pinned on the bar filters at once; the page receives each value when it takes effect, then asks its own API. The page reports
   how many filters are set and how to clear them; a value the page always holds (the period) is never counted. The filter box:
   the frame hands the page every change of its text and never filters the page itself; the page filters what it shows - on

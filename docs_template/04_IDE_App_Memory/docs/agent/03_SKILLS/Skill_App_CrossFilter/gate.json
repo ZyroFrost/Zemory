@@ -2,8 +2,8 @@
   "trigger": "lọc chéo · bấm chart lọc · chart lọc lẫn nhau · liên kết chart · filter như PBI · cross filter",
   "prompt": {
     "kind": "app-cross-filter",
-    "re": "\\b(loc cheo|cross.?filter|chart loc|bam (vao )?(chart|cot|bieu do) (de )?loc|lien ket (cac )?chart|filter (nhu|giong) pbi|loc lan nhau|(chart|bieu do) khac (cung )?loc)\\b",
-    "text": "[zemory] Report page: follow skill app-cross-filter - one selection per page; a click picks one point (Ctrl adds), every OTHER visual, table and KPI follows by the fields it carries, the clicked visual only dims, chips + clear button, Escape clears; points carry data-cf-dim / data-cf-value / aria-pressed; the repo's browser test runs scripts/crossfilter_check.mjs."
+    "re": "\\b(legend|chu giai|loc cheo|cross.?filter|chart loc|bam (vao )?(chart|cot|bieu do) (de )?loc|lien ket (cac )?chart|filter (nhu|giong) pbi|loc lan nhau|(chart|bieu do) khac (cung )?loc)\\b",
+    "text": "[zemory] Report page: follow skill app-cross-filter - one selection per page; a click picks one point (Ctrl adds), every OTHER visual, table and KPI follows by the fields it carries, the clicked visual only dims, chips + clear button, Escape clears; points carry data-cf-dim / data-cf-value / aria-pressed; every legend entry is a real filter of the page bar (a legend of measures = the Measure filter); the repo's browser test runs scripts/crossfilter_check.mjs (RULES, INTERACTION, EVERY_CLICK, LEGEND_CLICK)."
   },
   "block": [
     {
