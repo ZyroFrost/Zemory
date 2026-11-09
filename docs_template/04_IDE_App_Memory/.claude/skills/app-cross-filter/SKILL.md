@@ -1,12 +1,12 @@
 ---
 id: Skill_App_CrossFilter
 name: app-cross-filter
-version: 6
+version: 7
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_PBI_Base]
 installs: [scripts/crossfilter_check.mjs]
 description: Cross-filtering between the visuals of one report page, as Power BI does it - a click on a data point (a bar, a column, a donut part, a table row) filters every other visual, table and KPI of the page; Ctrl adds points; the clicked visual only dims; chips show what is picked; Escape clears. Use when building or fixing a report page of an app (charts, KPI tiles, tables over the same facts), or when a chart is asked to "filter the others". Vietnamese triggers - "lọc chéo", "bấm chart lọc", "chart lọc lẫn nhau", "liên kết chart", "filter như PBI", "cross filter", "bấm vào cột lọc".
-from: _Store/03_SKILLS/Skill_App_CrossFilter @v6 #8813b5cebf7f
+from: _Store/03_SKILLS/Skill_App_CrossFilter @v7 #e4eb41a08f2e
 ---
 
 # app-cross-filter — the visuals of a report page filter each other

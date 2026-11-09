@@ -122,9 +122,13 @@ export const LEGEND_CLICK = `(async () => {
   // (v5) the series of that entry is lit and the rest dimmed, in the chart of the legend
   const chart = point.closest('[data-rp-visual], .card');
   const dimmed = chart ? chart.querySelectorAll('.cf-dim').length : 0;
+  // (v7, Dashboard 09/11) a chart of one legend entry (one measure) has nothing of its own to dim: the entry picked, or another
+  // visual of the page dimmed, is enough
+  const single = chart && chart.querySelectorAll('[data-rp-legend] > *').length <= 1;
+  const lit = (again()?.getAttribute('aria-pressed') === 'true') || document.querySelectorAll('.cf-dim').length > 0;
   again()?.click(); await wait(500);
   if (count() !== counted) return 'a second click on the legend entry does not take the filter off';
-  if (chart && !dimmed) return 'a click on the legend entry ' + value + ' dims nothing in its chart - the series is not lit against the rest';
+  if (chart && !dimmed && !(single && lit)) return 'a click on the legend entry ' + value + ' dims nothing in its chart - the series is not lit against the rest';
   return true;
 })()`;
 
