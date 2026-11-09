@@ -3,7 +3,7 @@
 // Incremental + idempotent: append-mode files resume from a line offset;
 // whole-mode files re-parse only when changed. Local-only: no network anywhere.
 
-import { closeSync, fstatSync, openSync, readFileSync, readSync, statSync } from "node:fs";
+import { closeSync, fstatSync, openSync, readSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { canonProjectRoot } from "../core/config.js";
 import { homedir, hostname } from "node:os";
@@ -675,6 +675,43 @@ function writeSession(db: MemoryDB, args: WriteSessionArgs): number {
   return a.wholeReplace ? Math.max(0, inserted - before) : inserted;
 }
 
+/** One byte of a file at `at` (-1 when it cannot be read). */
+function byteAt(path: string, at: number): number {
+  try {
+    const fd = openSync(path, "r");
+    try {
+      const b = Buffer.alloc(1);
+      return readSync(fd, b, 0, 1, at) === 1 ? b[0] : -1;
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+    return -1;
+  }
+}
+
+/**
+ * Bytes [from, end) of a file as UTF-8. The scan reads up to the size it records, so the size and the line count it stores
+ * stay one consistent pair (a line written meanwhile is read next scan). `from` sits right after a "\n"; a cut at `end` is a
+ * partial last line, which the caller never consumes.
+ */
+function readRange(path: string, from: number, end: number): string {
+  const fd = openSync(path, "r");
+  try {
+    const n = Math.max(0, Math.min(end, fstatSync(fd).size) - from);
+    const buf = Buffer.alloc(n);
+    let got = 0;
+    while (got < n) {
+      const r = readSync(fd, buf, got, n - got, from + got);
+      if (r <= 0) break;
+      got += r;
+    }
+    return buf.subarray(0, got).toString("utf8");
+  } finally {
+    closeSync(fd);
+  }
+}
+
 function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileResult {
   const sessionId = adapter.sessionId(file.path);
   // the key is the HOST path (util/hostpath.ts): in the Docker container the file is opened under a mount, but the
@@ -742,10 +779,17 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
   let wholeReplace = false;
 
   if (adapter.mode === "append" && adapter.parseLine) {
+    const needsRebuild = !prev || prev.parser_version < PARSER_VERSION || file.size < prev.size;
+    // Only the appended part when the last scan ended on a whole line (its last byte is "\n"): then prev.last_line lines
+    // fill bytes [0, prev.size) exactly. A long session's transcript is tens of MB on the container's 9p mount, and
+    // reading it whole on every turn end held the daemon's event loop ~30 s (inspector stack, 2026-11-09). Anything else
+    // (a rebuild, a partial last line left unconsumed) reads the whole file, as before.
+    const from = !needsRebuild && prev && prev.size > 0 && byteAt(file.path, prev.size - 1) === 0x0a ? prev.size : 0;
+    const base = from ? prev!.last_line : 0;
     let text: string;
     let lines: string[];
     try {
-      text = readFileSync(file.path, "utf8");
+      text = readRange(file.path, from, file.size);
       lines = text.split("\n");
     } catch {
       return { changed: false, sessions: [] };
@@ -763,10 +807,9 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
     }
     completeLines = Math.max(0, completeLines);
 
-    const needsRebuild = !prev || prev.parser_version < PARSER_VERSION || file.size < prev.size;
     // Parser v1 stored lines.length, including the trailing empty segment. A
     // one-time full replacement repairs every line it previously skipped.
-    const start = needsRebuild ? 0 : Math.min(prev.last_line, completeLines);
+    const start = needsRebuild || from ? 0 : Math.min(prev.last_line, completeLines);
     wholeReplace = Boolean(prev && needsRebuild);
     for (let i = start; i < completeLines; i++) {
       const p = adapter.parseLine(lines[i]);
@@ -779,7 +822,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
         else if (!titleLocked) title = p.title;
       } else if (p.kind === "meta" && p.cwd) cwd = p.cwd;
     }
-    nextLine = completeLines;
+    nextLine = base + completeLines;
   } else if (adapter.mode === "whole" && adapter.parseFile) {
     const parsed = adapter.parseFile(file.path);
     if (!parsed) return { changed: false, sessions: [] };
