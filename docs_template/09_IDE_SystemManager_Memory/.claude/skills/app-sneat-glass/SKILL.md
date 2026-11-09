@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 49
+version: 50
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v49 #bd1e41229305
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v50 #704f67ec86d8
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -48,8 +48,11 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v49 #bd1e41229305
   [head-framed] **The crumbs are parted by the kit's chevron,** never a typed "/" ("cái path nên thành >"). [crumb-chevron]
 - **What is chosen is lit, the rest wears the grey frame** (v42, user 07/11: "khung đang mở là màu xám, bấm qua thì nhận màu
   sáng... phải có hiệu ứng sáng chạy qua nút mới"): every tab of a row is framed at rest; the chosen tab, the chosen view of
-  the switch, a tool that is on and the menu row of the page on screen are filled with the accent (white words), and a light
-  runs across the one just chosen, once (FX: sheen; off with the pointer effects and with reduced motion). [chosen-lit]
+  the switch and a tool that is on are filled with the accent (white words), and a light runs across the one just chosen,
+  once (FX: sheen; off with the pointer effects and with reduced motion). [chosen-lit] **The menu row of the page on screen
+  keeps the template's own chosen look** (v50, the user 09/11: "màu khi chọn của bạn đang sai mẫu, mẫu người ta là màu
+  trắng"): it stands on the white glass pill (the glass-strong colour), its words the text colour, its icon the accent -
+  never the accent fill of a chosen tab. [menu-pill-glass]
 - A page with one view (every report) shows no switch at all (user 06/11: a faded switch only took room on the bar); a switch, when shown, has two views or more. A page with no filter yet still shows the filter button, turned off.
   [toolbar] A switch that is on does what it says: the list view shows rows (a table, sortable by its headers where it helps -
   status, latency), the grid view cards; a page of cards (a launcher) gets a real list view, never a switch that changes
@@ -88,7 +91,20 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v49 #bd1e41229305
   padding 2 đầu chứ"); the page on screen is lit by a
   pill sliding from the tab before; tabs that do not fit one row go under "Thêm (n)", the page on screen always on the row
   (the user turned down tabs on three lines). Each person shows or hides it in Settings > Layout ("cái tab hiện ra hay ko
-  phải là tính năng được option chọn ở setting"). [page-tabs]
+  phải là tính năng được option chọn ở setting"). [page-tabs] **It docks in two modes** (v50, the user 09/11: "khi 3 dòng thì
+  tách lẻ, còn khi kéo mất panel 1 thì panel 3 dính liền lên panel 2… 2 chế độ, 1+2 và 2+3"): it pins right UNDER the top
+  bar, never at the scroll box's top behind it (a board once lost its strip under the bar). Three rows: rows 1+2 are one block
+  and the strip stands apart under it (the page's top gap, 1rem). Row 1 folded: the strip docks on row 2 with no gap - one
+  block 2+3, the bar's lower corners and the strip's upper ones square, a faint dashed line between - and stays on screen
+  with nothing over it. A page that fills the frame closes that gap the same way. [tabs-dock]
+- **The whole app scales to the window from one design canvas** (v50, the user 09/11: "làm lại đúng chức năng đó cho full
+  app, tự scale 1 cấu trúc tỉ lệ thôi"): signed in, the page is drawn on 1920 x 1080 and zoomed to min(width/1920,
+  height/1080), never above 1 nor below 0.7, so dragging the window never re-flows the layout; a phone (768 px and less) is
+  never zoomed. Each person turns it off in Settings > Layout (Scale to the screen: fit the window | 100%). Under the zoom,
+  window heights and widths come from the frame's --app-h / --app-w (never vh / vw), and a size or place written from a
+  measure on screen (a dropdown, a popover, a tip, a menu, a pill, a drag) is divided by the zoom - the frame exports
+  uiZoom / toPage for an app's own code. A checker measures the design's px: it turns the scale off
+  (localStorage sasinShell.scale = off) before the page loads. [ui-scale]
 - On a phone the window scrolls and the top bar is sticky.
 
 ## 2b. The top bar — one glass head of two rows, the same in every app of the family

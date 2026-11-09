@@ -1396,6 +1396,50 @@ export const RULES = [
       return loose.length ? 'a loose text in the top bar: ' + loose[0].textContent.trim().slice(0, 40) : true;
     })()`,
   },
+  // (v50, the user 09/11: "khi kéo mất panel 1 thì panel 3 dính liền lên panel 2" - a board lost its strip under the bar)
+  {
+    id: 'tabs-dock',
+    rule: 'the tab strip of the sibling pages pins right under the top bar and stays on screen with nothing over it: with three rows it stands apart under the bar (rows 1+2 one block); with row 1 folded it docks on row 2 with no gap (one block 2+3)',
+    check: `(() => {
+      const t = document.getElementById('page-tabs'), n = document.getElementById('layout-navbar');
+      if (!t || !n || !t.getClientRects().length || innerWidth < 768) return true;
+      const a = t.getBoundingClientRect(), b = n.getBoundingClientRect(), g = a.top - b.bottom;
+      const hit = document.elementFromPoint(a.left + Math.min(40, a.width / 2), a.top + a.height / 2);
+      if (!hit || !t.contains(hit)) return 'the tab strip is covered by ' + (hit ? (hit.id || String(hit.className).slice(0, 40) || hit.tagName) : 'nothing');
+      if (document.documentElement.classList.contains('head-folded')) return Math.abs(g) <= 1 || 'row 1 folded, the strip stands ' + Math.round(g) + ' px under the bar (docked: 0)';
+      return g >= 8 || 'three rows, the strip stands ' + Math.round(g) + ' px under the bar (apart: the page gap)';
+    })()`,
+  },
+  // (v50, the user 09/11: "mẫu người ta là màu trắng")
+  {
+    id: 'menu-pill-glass',
+    rule: 'the menu row of the page on screen keeps the template look: it stands on the white glass pill (no accent fill of its own), its words the text colour, its icon the accent',
+    check: `(() => {
+      const menu = document.getElementById('layout-menu'), pill = menu && menu.querySelector('.menu-inner > .g-pill');
+      if (!pill || !pill.getClientRects().length || pill.getBoundingClientRect().height <= 4 || pill.getAnimations().length) return true;
+      const m = menu.getBoundingClientRect();
+      if (m.right <= 8 || m.left >= innerWidth) return true;
+      const c = getComputedStyle(pill);
+      if (c.backgroundImage !== 'none') return 'the menu pill wears an accent fill (' + c.backgroundImage.slice(0, 48) + ') - the template chooses on the white glass';
+      const icon = menu.querySelector('.menu-item.active:not(:has(> .menu-sub)) > .menu-link .menu-icon');
+      if (!icon || !icon.getClientRects().length) return true;
+      const probe = document.createElement('span'); probe.style.color = 'var(--g-accent)'; menu.append(probe);
+      const accent = getComputedStyle(probe).color; probe.remove();
+      return getComputedStyle(icon).color === accent || 'the chosen row icon is ' + getComputedStyle(icon).color + ', not the accent ' + accent;
+    })()`,
+  },
+  // (v50, the user 09/11: "tự scale 1 cấu trúc tỉ lệ thôi")
+  {
+    id: 'ui-scale',
+    rule: 'zoomed to the window, the frame still fills it exactly: --app-h times the zoom is the window height (heights come from the frame, never from vh)',
+    check: `(() => {
+      const z = parseFloat(document.documentElement.style.zoom || '1');
+      if (!(z > 0) || z === 1) return true;
+      const h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--app-h'));
+      if (!h) return 'zoomed ' + z + ' with no --app-h: a height from vh runs past the window';
+      return Math.abs(h * z - innerHeight) <= 2 || '--app-h ' + h + ' x zoom ' + z + ' is not the window height ' + innerHeight;
+    })()`,
+  },
 ];
 
 /** Rules on an open dialog. */

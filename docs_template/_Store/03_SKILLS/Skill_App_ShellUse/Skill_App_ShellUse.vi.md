@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 
@@ -51,7 +51,11 @@ lang: vi
   đổi trang bảng sang cuộn cả cột để lấy chỗ; để `fill` bật và để người dùng thu hàng 1 (Cài đặt > Bố cục > "Thu gọn hàng 1 khi
   cuộn"). Board nhiều thẻ dùng `board` của khung (React `PageCard board`, DOM `DomPage.board`): thanh
   trang giữ nguyên, không thẻ trang bọc board, các thẻ đứng thẳng trên nền (v4). Nhiều trang dưới một hàng menu: bật dải tab của khung (`pageHead: true`),
-  không bao giờ tự vẽ tab.
+  không bao giờ tự vẽ tab; dải tự neo dưới thanh trên và tự dính lên hàng 2 khi hàng 1 thu (v5) - trang không dời hay che nó.
+- **Cả app co giãn theo cửa sổ** (v5, user 09/11, app-sneat-glass §2 [ui-scale]): khung zoom trang vẽ trên 1920 x 1080 cho vừa cửa
+  sổ. Trang không bao giờ lấy cỡ từ `vh` / `vw` hay `innerHeight` / `innerWidth`: dùng `var(--app-h)` / `var(--app-w)`, và cỡ
+  hay vị trí ghi từ số đo trên màn hình (rect, vị trí con trỏ, kéo) đi qua `toPage(px)` của khung (hoặc chia `uiZoom()`) - cả hai
+  có trên `window.sasinShell`. Bộ co giãn cũ riêng của app (zoom hay transform trên trang) bị gỡ khi app lên khung.
 - Bộ lọc: trang khai các bộ lọc nó có (chọn một · chọn nhiều · ngày · khoảng ngày · số · custom - ô trang tự vẽ, cho kiểu khung chưa
   có). Bộ lọc trong popover là bản nháp tới khi người dùng bấm Áp dụng; bộ lọc ghim trên thanh lọc ngay; trang nhận mỗi giá trị khi nó
   có hiệu lực, rồi gọi API của nó. Trang báo có bao nhiêu bộ lọc đang đặt và cách xoá hết; một giá trị trang luôn có (kỳ) không bao giờ
@@ -75,7 +79,8 @@ lang: vi
 ## 6. Phép kiểm
 
 - Phép kiểm trình duyệt của app chạy luật và bộ đo của kiểu (`Skill_App_SneatGlass` §6) trên mọi trang của app CÓ gắn khung đã ghim,
-  ở một độ rộng máy bàn và một độ rộng điện thoại, cả hai theme; xanh trước mỗi lần phát.
+  ở một độ rộng máy bàn và một độ rộng điện thoại, cả hai theme; xanh trước mỗi lần phát. Phép kiểm đo px thiết kế: đặt
+  `localStorage sasinShell.scale = off` trước khi trang tải (v5).
 - Build của app hỏng khi thiếu `frontend/config/shell.json` hoặc nó ghi một số gateway không phục vụ.
 - Một phần của khung bị app tự dựng lại (§1) do chủ repo xét; luật của kiểu bắt phần lớn trên trang.
 

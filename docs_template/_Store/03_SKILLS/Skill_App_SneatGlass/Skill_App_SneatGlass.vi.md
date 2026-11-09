@@ -1,5 +1,5 @@
 ---
-version: 49
+version: 50
 lang: vi
 ---
 
@@ -40,8 +40,10 @@ lang: vi
   dẫn ngăn bằng mũi tên của kit,** không bao giờ là "/" gõ tay ("cái path nên thành >"). [crumb-chevron]
 - **Cái đang chọn thì sáng, phần còn lại mang khung xám** (v42, user 07/11: "khung đang mở là màu xám, bấm qua thì nhận màu
   sáng... phải có hiệu ứng sáng chạy qua nút mới"): mọi tab trong hàng có khung khi chưa chọn; tab đang chọn, kiểu xem đang
-  chọn, công cụ đang bật và dòng menu của trang đang mở được tô màu nhấn (chữ trắng), và một vệt sáng chạy qua cái vừa chọn,
-  một lần (FX: sheen; tắt theo hiệu ứng con trỏ và chế độ giảm chuyển động). [chosen-lit]
+  chọn và công cụ đang bật được tô màu nhấn (chữ trắng), và một vệt sáng chạy qua cái vừa chọn,
+  một lần (FX: sheen; tắt theo hiệu ứng con trỏ và chế độ giảm chuyển động). [chosen-lit] **Hàng menu của trang đang mở giữ đúng kiểu chọn của mẫu** (v50, user 09/11: "màu khi
+  chọn của bạn đang sai mẫu, mẫu người ta là màu trắng"): đứng trên viên kính trắng (màu glass-strong), chữ màu chữ thường,
+  icon màu nhấn - không bao giờ tô màu nhấn như tab đang chọn. [menu-pill-glass]
 - Trang chỉ có một kiểu xem (mọi trang báo cáo) không hiện nút kiểu xem (user 06/11: nút mờ chỉ chiếm chỗ trên thanh); nút kiểu xem, khi có, có từ hai kiểu trở lên. Trang chưa có bộ lọc vẫn hiện nút lọc, ở trạng thái tắt.
   [toolbar] Nút đang bật thì làm đúng việc nó nói: dạng danh sách hiện dòng (một bảng, sắp được theo tiêu đề cột khi có ích -
   trạng thái, độ trễ), dạng thẻ hiện thẻ; trang toàn thẻ (trang chọn app) có dạng danh sách thật, không bao giờ để nút bấm mà
@@ -76,7 +78,19 @@ lang: vi
   luôn ko dc rời ra, chỉ phân tách bằng line ảo"); thấp và gọn, không bao giờ rộng hơn thẻ; mọi tab cách nhau đúng một khoảng,
   bằng lề hai đầu dải ("phải cách bằng với padding 2 đầu chứ"); tab của trang đang mở sáng nhờ viên trượt từ tab trước; tab không vừa một dòng gom vào
   "Thêm (n)", tab đang mở luôn trên dòng (user chê tab xuống 3 dòng). Mỗi người bật/tắt ở Cài đặt > Bố cục ("cái tab hiện ra hay
-  ko phải là tính năng được option chọn ở setting"). [page-tabs]
+  ko phải là tính năng được option chọn ở setting"). [page-tabs] **Dải neo theo hai chế độ** (v50, user 09/11: "khi 3 dòng thì
+  tách lẻ, còn khi kéo mất panel 1 thì panel 3 dính liền lên panel 2… 2 chế độ, 1+2 và 2+3"): dải neo ngay DƯỚI thanh trên
+  cùng, không bao giờ neo ở đỉnh khung cuộn sau lưng thanh (trang board từng mất dải dưới thanh). Ba hàng: hàng 1+2 một khối,
+  dải đứng riêng bên dưới (khe đầu trang, 1rem). Hàng 1 thu gọn: dải dính lên hàng 2, không khe - một khối 2+3, góc dưới của
+  thanh và góc trên của dải vuông, giữa là line đứt mờ - và luôn thấy được, không gì đè lên. Trang đầy khung cũng đóng khe
+  như vậy. [tabs-dock]
+- **Cả app co giãn theo cửa sổ từ một khuôn thiết kế** (v50, user 09/11: "làm lại đúng chức năng đó cho full app, tự scale 1
+  cấu trúc tỉ lệ thôi"): đã đăng nhập, trang vẽ trên 1920 x 1080 rồi zoom = min(rộng/1920, cao/1080), không quá 1, không dưới
+  0,7, nên kéo cửa sổ không làm bố cục xô lệch; điện thoại (768 px trở xuống) không co. Mỗi người tắt được ở Cài đặt › Bố cục
+  (Tỉ lệ theo màn hình: tự co giãn | 100%). Dưới zoom, chiều cao/rộng cửa sổ lấy từ --app-h / --app-w của khung (không dùng
+  vh / vw), và cỡ hay vị trí ghi từ số đo trên màn hình (dropdown, popover, tip, menu, viên chọn, kéo) chia cho zoom - khung
+  xuất uiZoom / toPage cho code riêng của app. Bộ soi đo px thiết kế: tắt co giãn (localStorage sasinShell.scale = off) trước
+  khi trang tải. [ui-scale]
 - Trên điện thoại, cửa sổ cuộn và thanh trên dính (sticky).
 
 ## 2b. Thanh trên — một khối kính hai hàng, giống nhau ở mọi app của hệ
