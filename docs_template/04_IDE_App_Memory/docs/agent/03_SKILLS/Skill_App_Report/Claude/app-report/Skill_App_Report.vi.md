@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 
@@ -46,6 +46,9 @@ lang: vi
   một card — tiêu đề một hàng cùng cỡ, con số cũng vậy. [rp-card-label]
 - Màu số trên card theo thứ tự màu của theme (card *i* → màu *i*).
 
+- **Số của card không bao giờ tràn mép** (v13, user 09/11): số là chữ (tên nhà hàng) thì nhỏ lại theo bề ngang card, vẫn dài thì
+  "…"; card một nhà hàng hiện tên ngắn, tên đủ ở tooltip, không lặp ở dòng dưới. [rp-card-no-overflow]
+
 ## 3. Màu và nhãn của chart
 
 - **Chart nào cũng đánh dấu chuỗi và lấy màu theo thứ tự màu theme,** nối tiếp trong một màn; **hai chart cùng màn không
@@ -56,6 +59,22 @@ lang: vi
   như Power BI (user 05/11) - qua tooltip của khung (`data-tip`, nhiều dòng bằng `\n`), không dùng `title` của trình duyệt.
   [rp-tooltip]
 
+- **Chart có legend theo một trường thì vẽ chồng theo legend** (v13, user 09/11: "chart lẻ phải có số theo lẻ"): cột hay thanh chia
+  theo giá trị của legend, màu của report, mỗi phần đủ rộng (6 % bề dài) mang số của nó, tổng ở cuối thanh hay đầu cột.
+  [rp-stacked-labels] Các chart chồng theo cùng một trường mang màu cố định của trường đó ở mọi chart của trang (mỗi giá trị một
+  màu, như xếp loại A/B/C/D) - hai chart như vậy trùng màu là đúng; chart một chuỗi vẫn lấy màu chính riêng.
+- **Số của chart đường không đè nhau** (v13, user 09/11: "số bị đè lên nhau"): không hai nhãn số nào của một hình giao nhau; nhãn
+  mang màu chuỗi của nó. [rp-labels-apart]
+- **Tooltip mỗi dòng một thông tin, "Trường: Giá trị"** (v13, user 09/11): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
+  số viết đủ (244.008.536.989), không cắt thành tỷ / tr / k; % và điểm giữ dạng. [rp-tip-field-value]
+- **Màu trên một con số nói mức của nó, không bao giờ để trang trí** (v13, user 09/11: "màu theo tỉ lệ, chứ có phải làm cho đẹp
+  đâu… mọi chart đều phải có quy chuẩn", như tô màu có điều kiện của Power BI): một thang mức cho cả app, tốt tới xấu - xanh · vàng ·
+  cam · đỏ; xếp loại A/B/C/D theo cùng thang; sọc xen kẽ của bảng không bao giờ đè ô tô theo giá trị; không màu tím hay info cho một
+  mức. [rp-value-colour]
+- **% so chỉ tiêu tô theo giá trị thật** (v13, user 09/11: "màu nên phân cấp, cam vàng đỏ xanh, ko có 2 màu ntn, nên phân theo %
+  thật"; ngưỡng user chốt): < 40 % đỏ · 40 tới < 70 % cam · 70 tới < 100 % vàng · từ 100 % xanh - bốn màu, không bao giờ hai.
+  [rp-target-graded]
+
 ## 4. Bảng
 
 - **Mọi bảng một kiểu:** header đậm có nền, dòng xen màu, dòng tổng đậm, chỉ kẻ ngang; cột % tô theo chính chỉ số đó (§1);
@@ -65,7 +84,9 @@ lang: vi
   khi report đang thay vẽ nó thành bảng, và kể cả khi nó có nhiều measure. Bảng chi tiết (mỗi dòng một bản ghi) được miễn;
   bảng ít nhóm không bao giờ được khai là bảng chi tiết. [rp-table-few]
 - **Không gì cuộn ngang trong khung, không bảng nào tràn ra ngoài panel** (bề rộng cột đo lúc vẽ lần đầu, nên header được xuống dòng; điện thoại cho bảng dữ liệu cuộn ngang trong khung, app-base M5). Bảng trải theo kỳ chỉ hiện các kỳ gần nhất (cửa sổ đi theo bộ lọc trang); cột rộng
-  vừa số dài nhất, tổng vừa khung; vẫn không vừa thì đổi sang triệu một chữ số lẻ. Cuộn dọc là bình thường. [rp-no-side-scroll]
+  vừa số dài nhất, tổng vừa khung; vẫn không vừa thì đổi sang triệu một chữ số lẻ. Cuộn dọc là bình thường. Hộp cuộn ngang riêng của
+  bảng (`table-boxed` của app-sneat-glass) không phải là cuộn khi bảng vừa nó: chỉ bảng rộng hơn panel, hay hộp có nội dung tràn, mới
+  phạm luật này (v13). [rp-no-side-scroll]
 - **Số trong bảng theo định dạng số của từng người** (v9, user 06/11: "setting 1 lần sẽ cho hiện ở cái báo cáo dashboard
   hết… chỉ lấy của table"): Cài đặt > Số của khung chung (đơn vị, số lẻ, làm tròn, dấu phân cách, số âm), lưu trên
   `<html data-num-format>`. Ô số nói nó là gì (`data-rp-num` = `money` · `count` · `pct`) và giá trị gốc (`data-rp-raw`), và
@@ -85,6 +106,16 @@ lang: vi
 - **Top / Bottom N hiện đúng N** (phá hoà), dạng cột đứng. [rp-topn]
 - **Cột của một số tiền không chúc xuống dưới trục:** vẽ số lỗ là số dương, dấu giữ ở nhãn. % được âm. [rp-no-negative-bars]
 - **Đáy cột của các chart cùng hàng nằm trên một đường** (cùng chỗ cho nhãn trục). [rp-baseline]
+
+- **Board không để ô trống** (v13, user 09/11): chart ngắn chồng một cột cạnh chart cao, danh sách dài (Top 10) đứng nửa hàng và
+  cao bằng hai ô; mọi cột của một hàng chạm tới đáy hàng. [rp-no-hole]
+- **Thanh xếp hạng chừa chỗ cho tên** (v13, user 09/11): cột tên 30 tới 40 % bề ngang thanh, tối đa hai dòng (tên đủ ở tooltip), không
+  bao giờ thanh dài cạnh tên sáu dòng. [rp-rank-name]
+- **Chart nào cũng phóng to riêng được** (v13, user 09/11, như focus mode của Power BI): một nút (`.rp-focus-btn`) trên mỗi chart và
+  donut, cao bằng một chip legend và cùng hàng; bấm thì chart chiếm thân trang, hình khác ẩn, thanh trang giữ; bấm lại hay Esc thì
+  trang về như cũ. [rp-focus]
+- **Danh sách báo cáo của phòng ban là các dòng rộng bằng trang** (v13, user 09/11 qua một app trong hệ): mỗi card báo cáo của trang
+  danh mục là một dòng rộng bằng trang, các trang của nó trải đều bề ngang đó - không bao giờ card trong cột hẹp. [rp-catalog-rows]
 
 ## 6. Tab, tên, tiêu đề
 
@@ -120,6 +151,14 @@ lang: vi
   lỗi kèm lần đọc tốt gần nhất, chưa đọc; giờ cập nhật, kỳ, thời gian đọc, chu kỳ tự làm mới. Chỉ phần nội dung lật, nền kính của
   thẻ đứng yên (v7, user 06/11). [rp-card-pages-even] [rp-card-status]
 
+- **Card tổng của report dùng measure của chart** (v13, user 09/11): số của chuỗi mà report vẽ từ cùng measure với một chart (điểm
+  chuỗi = đường xu hướng) được tính như chart đó; card đếm nhà hàng (đạt, xếp loại D, A) giữ điểm của từng nhà; DAX của report chép
+  đúng như nó, cả cách trung bình theo dòng - app không "sửa" report. Xét khi xem trang.
+- **Số lệch report thì truy theo nguồn trước** (v13, user 09/11): lệch với Power BI thì đối chiếu từng nguồn (bảng datalake và file
+  report đọc) trước khi sửa app.
+- **Số bán theo ngày chỉ tính ngày đã đóng sổ** (v13, user 09/11): số theo ngày bán chỉ đọc ngày đã đóng sổ
+  (`Dim_Date.IsSaleDayClosed = 1`), như report.
+
 ## 9. Hợp đồng markup
 
 | Thuộc tính | Gắn vào | Nghĩa |
@@ -133,6 +172,9 @@ lang: vi
 | `data-rp-item` · `data-rp-topn` · `data-rp-rows` | mục · visual Top N · số mục có thật | [rp-topn] |
 | `data-rp-label` | nhãn số | [rp-label] |
 | `data-rp-pct` = `up` · `down` · `share` | mỗi % (dòng card, nhãn, ô) | [rp-pct-*] |
+| `data-rp-target` = số % (như 85) | một % so chỉ tiêu | màu theo dải [rp-target-graded] |
+| `data-rp-cf` = `good` · `ok` · `warn` · `bad` | giá trị tô theo mức | mỗi mức một màu [rp-value-colour] |
+| `.rp-focus-btn` · `.bar-name` | nút phóng to của chart · tên của thanh xếp hạng | [rp-focus] [rp-rank-name] |
 | `data-tone` = một ô màu của theme | mỗi thẻ chỉ số | nền pastel của nó [rp-card-tone] |
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | bảng · dòng tổng | [rp-table-few] [rp-table-style] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | bảng giải thích · mỗi dòng | [rp-glossary] |

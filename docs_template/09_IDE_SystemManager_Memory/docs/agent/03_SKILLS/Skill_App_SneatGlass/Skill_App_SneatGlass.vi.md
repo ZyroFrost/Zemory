@@ -1,5 +1,5 @@
 ---
-version: 51
+version: 52
 lang: vi
 ---
 
@@ -87,14 +87,20 @@ lang: vi
   cùng, không bao giờ neo ở đỉnh khung cuộn sau lưng thanh (trang board từng mất dải dưới thanh). Ba hàng: hàng 1+2 một khối,
   dải đứng riêng bên dưới (khe đầu trang, 1rem). Hàng 1 thu gọn: dải dính lên hàng 2, không khe - một khối 2+3, góc dưới của
   thanh và góc trên của dải vuông, giữa là line đứt mờ - và luôn thấy được, không gì đè lên. Trang đầy khung cũng đóng khe
-  như vậy. [tabs-dock]
+  như vậy. [tabs-dock] Đứng riêng trên một board, dải là một khối riêng, bo đủ bốn góc (v52, user 09/11: "khung panel này đang bị
+  thiếu viền cong ở dưới"); trên thẻ trang thì hai góc dưới nối vào thẻ. [tabs-round]
+- **Kỳ trang luôn giữ không bao giờ được đếm là một bộ lọc** (v52, user 09/11 qua một app trong hệ): nút lọc chỉ đếm cái người
+  dùng đặt - kỳ hay ngày làm việc cố định (`fixed`, `data-fixed` trên ô của nó) không bao giờ vào số đếm, cũng không sáng như đã đặt.
+  [filter-count-fixed]
 - **Ô gợi ý một dòng một thông tin, cỡ chữ của trang** (v51, user 09/11 qua một app trong hệ: "toàn bộ info thêm thì phải size chuẩn
   ko dc nhỏ và ko được nhảy xuống dòng… 1 dòng = 1 thông tin ko dc xuống dòng"): mỗi dòng của `data-tip` (`\n`) là một dòng của ô
   gợi ý và không bao giờ xuống dòng; hộp rộng theo dòng dài nhất (tối đa bằng cửa sổ, đặt lại vào trong cửa sổ); chữ cỡ của trang
   (.875rem), không nhỏ hơn; số trong ô gợi ý viết đủ. [tip-lines]
 - **Mọi bảng đứng trong một hộp cuộn ngang của riêng nó** (v51, user 09/11 qua một app trong hệ: kéo rộng một cột làm bảng tràn ra
   khỏi panel): bảng trong thẻ trang, thẻ board hay hộp thoại nằm trong hộp riêng cuộn ngang được (`.table-responsive`, hoặc thân
-  thẻ trang), bên trong thẻ của nó; cột kéo rộng quá thẻ thì cuộn trong hộp đó, không bao giờ tràn ra ngoài thẻ. [table-boxed]
+  thẻ trang), bên trong thẻ của nó; cột kéo rộng quá thẻ thì cuộn trong hộp đó, không bao giờ tràn ra ngoài thẻ. Hộp CÓ THỂ cuộn
+  không phải là cuộn: chỉ nội dung rộng hơn hộp mới là cuộn (v52: một app tưởng luật này đá với luật báo cáo cấm cuộn ngang - hai
+  luật đi cùng nhau: bảng nào cũng có hộp, không bảng nào tràn). [table-boxed]
 - **Cả app co giãn theo cửa sổ từ một khuôn thiết kế** (v50, user 09/11: "làm lại đúng chức năng đó cho full app, tự scale 1
   cấu trúc tỉ lệ thôi"): đã đăng nhập, trang vẽ trên 1920 x 1080 rồi zoom = min(rộng/1920, cao/1080), không quá 1, không dưới
   0,7, nên kéo cửa sổ không làm bố cục xô lệch; điện thoại (768 px trở xuống) không co. Mỗi người tắt được ở Cài đặt › Bố cục

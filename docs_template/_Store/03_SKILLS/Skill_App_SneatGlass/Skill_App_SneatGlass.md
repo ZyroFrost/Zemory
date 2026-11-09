@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 51
+version: 52
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -99,7 +99,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   bar, never at the scroll box's top behind it (a board once lost its strip under the bar). Three rows: rows 1+2 are one block
   and the strip stands apart under it (the page's top gap, 1rem). Row 1 folded: the strip docks on row 2 with no gap - one
   block 2+3, the bar's lower corners and the strip's upper ones square, a faint dashed line between - and stays on screen
-  with nothing over it. A page that fills the frame closes that gap the same way. [tabs-dock]
+  with nothing over it. A page that fills the frame closes that gap the same way. [tabs-dock] Standing apart over a board, the
+  strip is a block of its own, rounded at all four corners (v52, the user 09/11: "khung panel này đang bị thiếu viền cong ở
+  dưới"); over a page card its lower corners join the card. [tabs-round]
 - **The whole app scales to the window from one design canvas** (v50, the user 09/11: "làm lại đúng chức năng đó cho full
   app, tự scale 1 cấu trúc tỉ lệ thôi"): signed in, the page is drawn on 1920 x 1080 and zoomed to min(width/1920,
   height/1080), never above 1 nor below 0.7, so dragging the window never re-flows the layout; a phone (768 px and less) is
@@ -108,6 +110,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   measure on screen (a dropdown, a popover, a tip, a menu, a pill, a drag) is divided by the zoom - the frame exports
   uiZoom / toPage for an app's own code. A checker measures the design's px: it turns the scale off
   (localStorage sasinShell.scale = off) before the page loads. [ui-scale]
+- **A period the page always holds is never counted as a filter** (v52, the user 09/11 through an app of the family): the filter
+  button counts only what the person set - a fixed period or business day (`fixed`, `data-fixed` on its field) is never part
+  of the count, nor lit as set. [filter-count-fixed]
 - **A tip shows one line per fact, at the page's size** (v51, the user 09/11 through an app of the family: "toàn bộ info thêm thì
   phải size chuẩn ko dc nhỏ và ko được nhảy xuống dòng… 1 dòng = 1 thông tin ko dc xuống dòng"): each line of a `data-tip`
   (`\n`) is one line of the tip and never wraps; the box is as wide as its longest line (up to the window, placed back inside
@@ -115,7 +120,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - **Every table stands in a sideways scroll box of its own** (v51, the user 09/11 through an app of the family: a widened column
   ran a table out of its panel): a table of a page card, a board card or a dialog sits in its own box that scrolls sideways
   (`.table-responsive`, or the page card's body), inside its card; a column widened past the card scrolls there, never spills
-  out of the card. [table-boxed]
+  out of the card. A box that CAN scroll is no scrolling: only content wider than its box is (v52, an app of the family read
+  this rule as at odds with the report rule against sideways scroll - they hold together: every table boxed, none spilling).
+  [table-boxed]
 - On a phone the window scrolls and the top bar is sticky.
 
 ## 2b. The top bar — one glass head of two rows, the same in every app of the family

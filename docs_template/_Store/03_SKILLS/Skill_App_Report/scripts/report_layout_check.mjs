@@ -119,6 +119,14 @@ export const RULES = [
       if (!tinted) return 'a figure card without the tinted fill of its tone (' + st.backgroundColor + '): ' + txt(c).slice(0, 30);
     }
     return true;`),
+  rule('rp-card-no-overflow', 'the figure of a card never runs past its edge: words shrink and end in "…" (v13, the user 09/11)', `
+    for (const m of document.querySelectorAll('[data-rp-visual=cards] .kpi-card .kpi-main, [data-rp-visual=cards] .kpi-card .kpi-main *')) {
+      if (!m.getClientRects().length || !m.textContent.trim()) continue;
+      if (m.scrollWidth > m.clientWidth + 1 && getComputedStyle(m).textOverflow !== 'ellipsis') return 'a card figure runs past its edge: ' + txt(m).slice(0, 30);
+      const c = m.closest('.kpi-card');
+      if (box(m).right > box(c).right + 1) return 'a card figure stands out of its card: ' + txt(m).slice(0, 30);
+    }
+    return true;`),
   rule('rp-card-fit', 'a figure card is as tall as what it holds: never more than 1.6 times its lines and padding (v10, user 08/11: "card dài sọc" - a card pulled to the height of a chart beside it)', `
     for (const c of document.querySelectorAll('[data-rp-visual=cards] .kpi-card')) {
       if (!c.getClientRects().length || c.parentElement.closest('.kpi-card')) continue;
@@ -157,7 +165,11 @@ export const RULES = [
       const mark = c.querySelector('[data-rp-mark]:not([data-rp-compare])');
       if (!mark && c.querySelector('[data-rp-empty]')) continue;   // an empty state: nothing to colour
       if (!mark) return 'a chart without data-rp-mark: ' + name(c);
-      if (c.dataset.rpVisual === 'chart') {
+      // (v13, Dashboard 09/11: the charts of a page stacked by one field - CCTV / OS - wear that field's fixed colours, as the
+      // report does) a chart whose main parts are the values of a field it keys in its own legend shares the field's colours
+      const part = mark.closest('[data-cf-dim]')?.dataset.cfDim;
+      const byField = part && c.querySelector('[data-rp-legend] [data-cf-dim="' + CSS.escape(part) + '"]');
+      if (c.dataset.rpVisual === 'chart' && !byField) {
         const col = paint(mark);
         if (seen.has(col)) return 'two charts of one view share the main colour: ' + seen.get(col) + ' · ' + name(c);
         seen.set(col, name(c));
@@ -175,6 +187,69 @@ export const RULES = [
     return true;`),
 
   // D. Tables (§4)
+  rule('rp-stacked-labels', 'a chart with a legend of a field is stacked by it and every part of 6 % of the length or more carries its number (v13, the user 09/11: "chart lẻ phải có số theo lẻ")', `
+    for (const v of vis().filter(v => v.dataset.rpVisual === 'chart' && v.querySelector('[data-rp-legend] [data-cf-dim]'))) {
+      const body = v.querySelector('[data-rp-body]') || v, b = box(body);
+      const labels = [...v.querySelectorAll('[data-rp-label]')].filter(l => l.getClientRects().length).map(box);
+      for (const m of v.querySelectorAll('[data-rp-mark]')) {
+        if (!m.getClientRects().length || m.closest('[data-rp-legend]')) continue;
+        const r = box(m), long = Math.max(r.width / (b.width || 1), r.height / (b.height || 1));
+        if (long < .06) continue;
+        const inside = m.querySelector('[data-rp-label]') || labels.some(l => l.left + l.width / 2 >= r.left - 1 && l.left + l.width / 2 <= r.right + 1 && l.top + l.height / 2 >= r.top - 1 && l.top + l.height / 2 <= r.bottom + 1);
+        if (!inside) return 'a part of a stacked chart carries no number of its own: ' + name(v);
+      }
+    }
+    return true;`),
+  rule('rp-labels-apart', 'no two data labels of a visual cover each other (v13, the user 09/11: "số bị đè lên nhau")', `
+    for (const v of vis()) {
+      const ls = [...v.querySelectorAll('[data-rp-label]')].filter(l => l.getClientRects().length && txt(l)).map(l => [l, box(l)]);
+      for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) {
+        const a = ls[i][1], c = ls[j][1];
+        if (a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1) return 'two numbers cover each other (' + txt(ls[i][0]) + ' · ' + txt(ls[j][0]) + '): ' + name(v);
+      }
+    }
+    return true;`),
+  rule('rp-tip-field-value', 'a tip of a data mark says one fact a line, "Field: Value", every number in full - never cut to tỷ / tr / k / M (v13, the user 09/11)', `
+    for (const m of document.querySelectorAll('[data-rp-visual] [data-rp-mark][data-tip], [data-rp-visual] [data-rp-mark] [data-tip]')) {
+      if (!m.getClientRects().length) continue;
+      for (const line of (m.getAttribute('data-tip') || '').split('\\n').map(s => s.trim()).filter(Boolean)) {
+        if (!line.includes(': ')) return 'a tip line without "Field: Value": ' + line.slice(0, 40);
+        if (/\\d\\s*(tỷ|tr|k|K|M|B|bn)$/.test(line)) return 'a tip number cut short: ' + line.slice(0, 40);
+      }
+    }
+    return true;`),
+  rule('rp-value-colour', 'a colour on a value says its level: one colour per level (data-rp-cf) across the even and odd rows - a stripe never paints over it - and no purple or info colour stands for a level (v13, the user 09/11)', `
+    const paintOf = e => { const s = getComputedStyle(e); return s.backgroundImage !== 'none' ? s.backgroundImage : !clear(s.backgroundColor) ? s.backgroundColor : s.color; };
+    const hue = c => { const [r, g, b] = rgb(c).map(x => x / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (!d) return -1;
+      const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; return (h * 60 + 360) % 360; };
+    const seen = new Map();
+    for (const cell of document.querySelectorAll('[data-rp-cf]')) {
+      if (!cell.getClientRects().length) continue;
+      const level = cell.dataset.rpCf, p = paintOf(cell);
+      if (seen.has(level) && seen.get(level) !== p) return 'one level painted two ways (' + level + '): ' + seen.get(level) + ' / ' + p;
+      seen.set(level, p);
+      const h = /rgb/.test(p) ? hue(p.match(/rgba?\\([^)]*\\)/)[0]) : -1;
+      if (h >= 250 && h <= 320 && sat(p.match(/rgba?\\([^)]*\\)/)?.[0] || p) > .25) return 'a purple stands for a level (' + level + ')';
+    }
+    return true;`),
+  rule('rp-target-graded', 'a % against a target is graded on its real value: < 40 red · 40 to < 70 orange · 70 to < 100 yellow · 100 and more green - four colours, never two (v13, the user 09/11; the bands set by the user)', `
+    const band = v => v < 40 ? 0 : v < 70 ? 1 : v < 100 ? 2 : 3;
+    const colour = e => { const s = getComputedStyle(e); return !clear(s.backgroundColor) ? s.backgroundColor : s.color; };
+    const byBand = new Map();
+    for (const cell of document.querySelectorAll('[data-rp-target]')) {
+      if (!cell.getClientRects().length) continue;
+      const v = Number(cell.dataset.rpTarget || NaN) || num(txt(cell));
+      if (!Number.isFinite(v)) continue;
+      const k = band(v), c = colour(cell);
+      if (byBand.has(k) && byBand.get(k) !== c) return 'one band of % target painted two ways: ' + byBand.get(k) + ' / ' + c;
+      byBand.set(k, c);
+    }
+    const cs = [...byBand.entries()];
+    for (let i = 0; i < cs.length; i++) for (let j = i + 1; j < cs.length; j++) if (cs[i][1] === cs[j][1]) return 'two bands of % target share one colour (' + ['< 40', '40-70', '70-100', '>= 100'][cs[i][0]] + ' and ' + ['< 40', '40-70', '70-100', '>= 100'][cs[j][0]] + ')';
+    const [r, g] = rgb(byBand.get(3) || 'rgb(0,128,0)'), [r0, g0] = rgb(byBand.get(0) || 'rgb(200,0,0)');
+    if (g <= r) return 'a % target of 100 or more is not green';
+    if (r0 <= g0) return 'a % target under 40 is not red';
+    return true;`),
   rule('rp-table-style', 'every report table has a bold filled header, alternating rows, a bold total row and horizontal lines only', `
     for (const v of vis().filter(v => v.dataset.rpVisual === 'table')) {
       const t = v.querySelector('table'); if (!t) return 'a table visual without a table: ' + name(v);
@@ -283,6 +358,48 @@ export const RULES = [
     return true;`),
 
   // F. Tabs, page names, titles (§6)
+  rule('rp-no-hole', 'a board leaves no hole: every column of a row of visuals reaches the foot of the row (short charts stack beside a tall one) (v13, the user 09/11)', `
+    if (innerWidth < 768) return true;
+    for (const row of document.querySelectorAll('[data-rp-page] .row')) {
+      const cols = [...row.children].filter(c => c.getClientRects().length && c.querySelector('[data-rp-visual]:not([data-rp-visual=cards])') && !c.matches('[data-rp-visual=cards]'));
+      const lines = new Map();
+      for (const c of cols) { const k = Math.round(box(c).top / 8); (lines.get(k) || lines.set(k, []).get(k)).push(c); }
+      for (const line of lines.values()) {
+        if (line.length < 2) continue;
+        const foot = Math.max(...line.map(c => box(c).bottom));
+        for (const c of line) {
+          const last = [...c.querySelectorAll('[data-rp-visual]')].filter(v => v.getClientRects().length).pop() || c;
+          if (foot - box(last).bottom > 24) return 'a hole of ' + Math.round(foot - box(last).bottom) + ' px under ' + name(last);
+        }
+      }
+    }
+    return true;`),
+  rule('rp-rank-name', 'a ranking bar gives its names 30 to 40 % of its width, on two lines at most (v13, the user 09/11)', `
+    for (const n of document.querySelectorAll('[data-rp-visual] .bar-name')) {
+      if (!n.getClientRects().length) continue;
+      const row = n.parentElement, share = box(n).width / (box(row).width || 1);
+      if (share < .29 || share > .41) return 'a ranking name takes ' + Math.round(share * 100) + ' % of its bar (30-40 %): ' + txt(n).slice(0, 30);
+      const r = document.createRange(); r.selectNodeContents(n);
+      const lines = new Set([...r.getClientRects()].filter(x => x.width > 0).map(x => Math.round(x.top / 3))).size;
+      if (lines > 2) return 'a ranking name on ' + lines + ' lines (two at most): ' + txt(n).slice(0, 30);
+    }
+    return true;`),
+  rule('rp-focus', 'every chart and donut has its enlarge button (.rp-focus-btn), as tall as a legend chip and on its line when the chart has a chip legend (v13, the user 09/11, as Power BI focus mode)', `
+    for (const v of vis().filter(v => v.dataset.rpVisual === 'chart' || v.dataset.rpVisual === 'donut')) {
+      const b = v.querySelector('.rp-focus-btn');
+      if (!b || !b.getClientRects().length) return 'a chart with no enlarge button (.rp-focus-btn): ' + name(v);
+      const chip = v.querySelector('[data-rp-legend] > *');
+      if (chip && chip.getClientRects().length && (Math.abs(box(b).height - box(chip).height) > 1 || Math.abs(box(b).top - box(chip).top) > 2)) return 'the enlarge button is not a legend chip high and on its line: ' + name(v);
+    }
+    return true;`),
+  rule('rp-catalog-rows', 'a report card of a catalog page is a row as wide as its page, never a card in a narrow column (v13, the user 09/11)', `
+    if (innerWidth < 768) return true;
+    for (const card of document.querySelectorAll('[data-rp-card]')) {
+      if (!card.getClientRects().length) continue;
+      const host = card.closest('.row') || card.parentElement;
+      if (box(card).width < box(host).width * .9) return 'a report card ' + Math.round(box(card).width) + ' px wide in a row of ' + Math.round(box(host).width) + ' px (a row the width of the page)';
+    }
+    return true;`),
   rule('rp-tab-label', 'a page tab label is at most 10 characters and shows in full', `
     for (const t of tabs()) {
       const s = txt(t);
@@ -409,12 +526,21 @@ export const SELF_TEST = {
   good: SHELL(toned(`<div class="row" data-rp-visual="cards">${card('Doanh thu', '1.200', '+5,2% MoM', 'up', 'text-success')}` +
     `${card('Huỷ món', '35', '+3,0% MoM', 'down', 'text-danger')}${card('Bill', '420', '-1,0% MoM', 'up', 'text-danger')}` +
     `${card('Tỷ trọng', '40%', '+2,0 pp MoM', 'up', 'text-success')}</div>`) +
-    `<div class="row">${chart('Theo giờ', 'rgb(61, 126, 191)', 12, 'hour')}${chart('Theo ngày', 'rgb(46, 156, 122)', 12, 'day')}</div>` +
+    `<div class="row">${chart('Theo giờ', 'rgb(61, 126, 191)', 12, 'hour').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}${chart('Theo ngày', 'rgb(46, 156, 122)', 12, 'day').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}</div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Chi tiết</h6><table><thead><tr><th>Nhà</th><th>Số</th></tr></thead>` +
     `<tbody>${rowsOf(8)}<tr data-rp-total style="font-weight:700"><td>Tổng</td><td data-rp-num="money" data-rp-raw="1234567890">1,2 tỷ</td></tr></tbody></table></div></div>` +
+    `<div class="row"><div class="card" data-rp-visual="chart" data-rp-fields="year" style="flex:1;position:relative"><h6 data-rp-title>Theo năm</h6>` +
+    `<div data-rp-legend style="display:flex;gap:6px;white-space:nowrap"><span data-cf-dim="year" data-cf-value="2025" style="height:20px">2025</span><span data-cf-dim="year" data-cf-value="2026" style="height:20px">2026</span><button class="rp-focus-btn" style="height:20px;padding:0">+</button></div>` +
+    `<div class="bars" data-rp-body><i data-rp-mark data-tip="Năm: 2025\\nDoanh thu: 1.200" style="height:60px;background:rgb(214, 96, 77);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">60</span></i>` +
+    `<i data-rp-mark data-tip="Năm: 2026\\nDoanh thu: 1.500" style="height:90px;background:rgb(230, 160, 40);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">90</span></i></div></div>` +
+    `<div class="card" data-rp-visual="chart" data-rp-fields="store" style="flex:1;position:relative"><h6 data-rp-title>Xếp hạng</h6><button class="rp-focus-btn" style="position:absolute;top:2px;right:2px">+</button>` +
+    `<div class="bar-row" style="display:flex;width:400px"><span class="bar-name" style="width:35%">Nhà hàng A</span><div style="flex:1"><i data-rp-mark data-tip="Nhà hàng: A\\nDoanh thu: 100" style="display:block;height:8px;width:80%;background:rgb(0, 150, 170)"></i></div></div></div></div>` +
+    `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Đạt chỉ tiêu</h6><table><thead><tr><th>Nhà</th><th>% Target</th></tr></thead><tbody>` +
+    [[30, 'rgb(197, 30, 36)'], [55, 'rgb(240, 140, 0)'], [85, 'rgb(230, 190, 0)'], [104, 'rgb(0, 122, 54)']].map(([v, c], i) => `<tr><td>N${i}</td><td data-rp-target="${v}" data-rp-raw="${v / 100}" data-rp-pct="share" data-rp-cf="${['bad', 'warn', 'ok', 'good'][i]}" data-rp-num="pct" style="background:${c}">${v},0%</td></tr>`).join('') +
+    `</tbody></table></div></div>` +
     `<nav><a role="tab">Tổng quan</a><a role="tab">Huỷ món</a></nav>` +
     `<div data-rp-glossary hidden><p data-rp-term="TC">TC (Transaction Count): số hoá đơn</p></div>` +
-    `<div data-rp-card data-built style="position:relative;width:300px"><button data-rp-card-flip style="position:absolute;top:4px;right:4px">i</button>` +
+    `<div data-rp-card data-built style="position:relative;width:auto;margin:10px"><button data-rp-card-flip style="position:absolute;top:4px;right:4px">i</button>` +
     `<ul data-rp-card-pages style="display:grid;grid-template-columns:1fr 1fr;margin-top:30px"><li>A</li><li>B</li><li>C</li></ul><div data-rp-card-status hidden>ok</div></div>`),
   faulty: SHELL(`<div class="row" style="align-items:stretch"><div class="row" data-rp-visual="cards" style="flex:2;margin:0">${cardB('Group Size', '0 k', '+1,0% MoM', 'up', 'text-success')}${cardB('B', '2', '+1,0% MoM', 'up', 'text-success')}` +
     `${cardB('C', '3', '+1,0% MoM', 'up', 'text-success')}${cardB('D', '4', '+1,0% MoM', 'up', 'text-success')}</div>` +
@@ -437,7 +563,13 @@ export const SELF_TEST = {
     `<nav><a role="tab">Báo cáo huỷ món IC</a></nav><div data-rp-glossary hidden><p data-rp-term="X">X: một · Y: hai</p></div>` +
     `<div class="view-switch"><button class="btn" id="view-list">L</button><button class="btn" id="view-grid">G</button></div>` +
     `<div class="row"><div data-rp-visual="table" style="flex:1"><table><thead><tr><th>Long</th></tr></thead><tbody>${Array.from({length: 12}, (_, i) => `<tr><td>${i}</td></tr>`).join('')}</tbody></table></div></div>` +
-    `<div data-rp-card data-built style="width:300px"><ul data-rp-card-pages style="display:grid;grid-template-columns:1fr"><li>A</li><li>B</li></ul></div>`),
+    `<div data-rp-card data-built style="width:300px"><ul data-rp-card-pages style="display:grid;grid-template-columns:1fr"><li>A</li><li>B</li></ul></div>` +
+    `<div class="row" data-rp-visual="cards"><div class="card kpi-card" style="width:120px"><p class="kpi-title">Nhà</p><div class="kpi-main" style="white-space:nowrap">Nhà hàng Lê Văn Sỹ Quận Ba</div></div></div>` +
+    `<div class="row" style="align-items:flex-start"><div style="flex:1"><div class="card" data-rp-visual="chart" style="height:300px"><h6 data-rp-title>Cao</h6><svg width="60" height="60"></svg></div></div><div style="flex:1"><div class="card" data-rp-visual="chart" style="height:80px"><h6 data-rp-title>Ngắn</h6><svg width="60" height="60"></svg></div></div></div>` +
+    `<div class="row"><div class="card" data-rp-visual="chart" style="width:400px"><h6 data-rp-title>Chồng</h6><div data-rp-legend style="width:40px"><span data-cf-dim="y" data-cf-value="1">Năm 2025 dài</span></div><div class="bars" data-rp-body><i data-rp-mark data-tip="1,2 tỷ" style="height:80px;width:60px;background:red"></i><span data-rp-label style="position:absolute;left:10px;top:10px">12</span><span data-rp-label style="position:absolute;left:12px;top:12px">13</span></div>` +
+    `<div class="bar-row" style="display:flex;width:400px"><span class="bar-name" style="width:10%">Nhà hàng có tên rất dài ở quận một</span><div style="flex:1"></div></div></div></div>` +
+    `<table><tbody><tr><td data-rp-target="96" style="background:rgb(0, 122, 54)">96%</td></tr><tr><td data-rp-target="104" style="background:rgb(0, 122, 54)">104%</td></tr>` +
+    `<tr><td data-rp-cf="good" style="background:rgb(0, 122, 54)">A</td></tr><tr><td data-rp-cf="good" style="background:rgb(240, 240, 240)">A</td></tr></tbody></table>`),
 };
 
 if (process.argv.includes('--list')) for (const r of RULES) console.log(r.id.padEnd(22) + r.rule);

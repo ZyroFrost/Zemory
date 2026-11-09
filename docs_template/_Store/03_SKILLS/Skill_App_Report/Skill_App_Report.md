@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 12
+version: 13
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -56,6 +56,10 @@ description: The report pages of an app - what a page of figures, charts and tab
   [rp-card-label]
 - Figures on cards take the theme's colour slots in order (card *i* → slot *i*).
 
+- **A card's figure never runs past its edge** (v13, the user 09/11): a figure that is words (a store's name) shrinks with the
+  card's width and ends in "…" when still too long; a card of one store shows its short name, the full name in its tip, never
+  again on the line below. [rp-card-no-overflow]
+
 ## 3. Chart colours and labels
 
 - **Every chart marks its series and takes its colours from the theme sequence,** continuing the sequence within a view;
@@ -68,6 +72,22 @@ description: The report pages of an app - what a page of figures, charts and tab
   Power BI does (user 05/11) - through the frame's tooltip (`data-tip`, several lines with `\n`), never the browser's plain
   `title`. [rp-tooltip]
 
+- **A chart with a legend of a field is stacked by that legend** (v13, the user 09/11: "chart lẻ phải có số theo lẻ"): its columns or
+  bars are cut by the legend's values in the report's colours, every part wide enough (6 % of the length) carries its own
+  number, the total at the end of the bar or the top of the column. [rp-stacked-labels] Charts stacked by the same field wear that field's fixed colours on every chart of the page (one colour per
+  value, as a grade A/B/C/D) - two of them sharing a colour is right; a chart of one series still takes its own main colour.
+- **The numbers of a line chart never cover each other** (v13, the user 09/11: "số bị đè lên nhau"): no two data labels of a
+  visual overlap; a label takes its series' colour. [rp-labels-apart]
+- **A tip says one fact a line, "Field: Value"** (v13, the user 09/11): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
+  every number in full (244.008.536.989), never cut to tỷ / tr / k; % and points keep their form. [rp-tip-field-value]
+- **A colour on a number says its level, never decoration** (v13, the user 09/11: "màu theo tỉ lệ, chứ có phải làm cho đẹp đâu…
+  mọi chart đều phải có quy chuẩn", as Power BI's conditional formatting): one scale of levels for the whole app, good to bad -
+  green · yellow · orange · red; a grade A/B/C/D takes the same scale; the stripes of a table never paint over a cell coloured by
+  its value; no purple or info colour stands for a level. [rp-value-colour]
+- **A % against a target is graded on its real value** (v13, the user 09/11: "màu nên phân cấp, cam vàng đỏ xanh, ko có 2 màu ntn,
+  nên phân theo % thật"; the bands set by the user): < 40 % red · 40 to < 70 % orange · 70 to < 100 % yellow · 100 % and more
+  green - four colours, never two. [rp-target-graded]
+
 ## 4. Tables
 
 - **One style for every table:** header row bold on its own fill, rows alternating, the total row bold, horizontal lines
@@ -79,7 +99,9 @@ description: The report pages of an app - what a page of figures, charts and tab
   measures. A detail table (one row per record) is exempt; a table of few groups is never declared one. [rp-table-few]
 - **Nothing scrolls sideways inside its frame, and no table spills out of its panel** (column widths are measured at first draw, so headers may wrap; a phone scrolls a data grid inside its frame, app-base M5). A table spread over periods shows only the latest ones (the window follows
   the page filter); columns are as wide as their longest figure, all fitting the frame; figures that still do not fit switch
-  to millions with one decimal. Scrolling down is normal. [rp-no-side-scroll]
+  to millions with one decimal. Scrolling down is normal. A table's own sideways box (`table-boxed` of app-sneat-glass) is no
+  scroll while the table fits it: only a table wider than its panel, or a box whose content runs past it, breaks this rule (v13).
+  [rp-no-side-scroll]
 - **The numbers of a table follow the person's number format** (v9, user 06/11: "setting 1 lần sẽ cho hiện ở cái báo cáo
   dashboard hết… chỉ lấy của table"): Settings > Numbers of the family frame (unit, decimals, rounding, separator, negatives),
   kept on `<html data-num-format>`. Each number cell says what it is (`data-rp-num` = `money` · `count` · `pct`) and its value
@@ -103,6 +125,17 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **No column of an amount points below its axis:** draw the loss as a positive figure, the sign kept in its label. A % may
   be negative. [rp-no-negative-bars]
 - **The columns of the charts of one row stand on one line** (the same axis-label room). [rp-baseline]
+
+- **A board leaves no hole** (v13, the user 09/11): short charts stack in one column beside a tall one, a long list (Top 10) stands
+  half a row and two blocks tall; every column of a row reaches the row's foot. [rp-no-hole]
+- **A ranking bar gives its names room** (v13, the user 09/11): the name column is 30 to 40 % of the bar's width, two lines at
+  most (the full name in the tip), never a long bar beside a name on six lines. [rp-rank-name]
+- **Every chart can be enlarged alone** (v13, the user 09/11, as Power BI's focus mode): a button (`.rp-focus-btn`) on each chart
+  and donut, as tall as a legend chip and on its line; pressed, the chart takes the page body, the others hide, the page bar
+  stays; pressed again or Escape, the page comes back. [rp-focus]
+- **A department's list of reports is rows the width of the page** (v13, the user 09/11 through an app of the family): each
+  report card of a catalog page is a row as wide as its page, its pages spread across that width - never a card in a narrow
+  column. [rp-catalog-rows]
 
 ## 6. Tabs, names, titles
 
@@ -145,6 +178,15 @@ description: The report pages of an app - what a page of figures, charts and tab
   how often it refreshes. Only the content turns; the card's glass stands still (v7, user 06/11). [rp-card-pages-even]
   [rp-card-status]
 
+- **A card total of the report uses the measure of its chart** (v13, the user 09/11): a chain figure that the report draws from the
+  same measure as a chart (the chain's score = the trend line) is computed as that chart is; a count of stores (passed, grade D,
+  grade A) keeps each store's own score; the report's DAX is copied as it is, its averaging over rows included - the app never
+  "fixes" the report. Judged when the page is shown.
+- **A figure off the report is traced by its sources first** (v13, the user 09/11): a difference with Power BI is compared source
+  by source (the datalake table and the file the report reads) before the app is changed.
+- **A day's sales count closed days only** (v13, the user 09/11): a figure by sale day reads only the days whose books are closed
+  (`Dim_Date.IsSaleDayClosed = 1`), as the report does.
+
 ## 9. The markup contract
 
 | Attribute | On | Meaning |
@@ -158,6 +200,9 @@ description: The report pages of an app - what a page of figures, charts and tab
 | `data-rp-item` · `data-rp-topn` · `data-rp-rows` | items · a Top N visual · the count that exists | [rp-topn] |
 | `data-rp-label` | a data label | [rp-label] |
 | `data-rp-pct` = `up` · `down` · `share` | each % (card line, label, cell) | [rp-pct-*] |
+| `data-rp-target` = the % (as 85) | a % against a target | its band colour [rp-target-graded] |
+| `data-rp-cf` = `good` · `ok` · `warn` · `bad` | a value coloured by its level | one colour per level [rp-value-colour] |
+| `.rp-focus-btn` · `.bar-name` | a chart's enlarge button · a ranking bar's name | [rp-focus] [rp-rank-name] |
 | `data-tone` = a slot of the theme | each figure card | its pastel fill [rp-card-tone] |
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | a table · its total row | [rp-table-few] [rp-table-style] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | the glossary · each line | [rp-glossary] |

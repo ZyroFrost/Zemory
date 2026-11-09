@@ -60,10 +60,10 @@ export const RULES = [
   },
   {
     id: 'cf-legend-filter',
-    rule: 'every legend entry is a real filter of the page bar (v4, the user 09/11: "mọi legend đều phải là 1 filter thật nối dc vào bộ khung filter ở trên"): each entry of a [data-rp-legend] is a point on a field (data-cf-dim; a legend of measures is the field measure) and that field has its filter on the page bar (data-filter-id or the id of the field); a line of the whole series (data-rp-free) is left out',
+    rule: 'every legend entry is a real filter of the page bar (v4, the user 09/11: "mọi legend đều phải là 1 filter thật nối dc vào bộ khung filter ở trên"): each entry of a [data-rp-legend] is a point on a field (data-cf-dim; a legend of measures is the field measure) and that field has its filter on the page bar (data-filter-id or the id of the field); (v5) a line of the whole series is a legend entry too, picked on the measure filter',
     check: `(() => {
       const live = e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
-      const entries = [...document.querySelectorAll('[data-rp-legend] > *:not([data-rp-free])')].filter(live);
+      const entries = [...document.querySelectorAll('[data-rp-legend] > *')].filter(live);
       if (!entries.length) return true;
       const dimOf = e => (e.closest('[data-cf-dim]') || e.querySelector('[data-cf-dim]'))?.dataset.cfDim;
       const loose = entries.find(e => !dimOf(e));
@@ -75,6 +75,26 @@ export const RULES = [
       return missing.length ? 'a legend of a field with no filter on the page bar: ' + missing.join(', ') : true;
     })()`,
   },
+  {
+    id: 'cf-legend-one-line',
+    rule: 'a chip legend stands on one line (v5, the user 09/11: "legend ko dc xuống hàng ntn, đây là luật, nếu quá dài thì phải là chart dài", "kể cả là trong 1 tag"): its chips share one top, the legend never runs past its box, and the text of a chip never wraps; the vertical key of a donut (.legend) is no chip legend',
+    check: `(() => {
+      for (const lg of document.querySelectorAll('[data-rp-legend]')) {
+        if (!lg.getClientRects().length || lg.matches('.legend') || lg.closest('[data-rp-visual="donut"]')) continue;
+        const chips = [...lg.children].filter(c => c.getClientRects().length);
+        if (!chips.length) continue;
+        const tops = new Set(chips.map(c => Math.round(c.getBoundingClientRect().top / 3)));
+        if (tops.size > 1) return 'a legend on ' + tops.size + ' lines (a long legend makes the chart take the whole row): ' + (chips[0].textContent || '').trim().slice(0, 20);
+        if (lg.scrollWidth > lg.clientWidth + 1) return 'a legend runs past its box: ' + (chips[0].textContent || '').trim().slice(0, 20);
+        for (const c of chips) {
+          const r = document.createRange(); r.selectNodeContents(c);
+          const lines = new Set([...r.getClientRects()].filter(x => x.width > 0).map(x => Math.round(x.top / 3))).size;
+          if (lines > 1) return 'a legend chip wraps its words: ' + (c.textContent || '').trim().slice(0, 30);
+        }
+      }
+      return true;
+    })()`,
+  },
 ];
 
 /** (v4) A click on the first legend entry sets its field's filter on the page bar to that entry and the filter button counts one
@@ -82,7 +102,7 @@ export const RULES = [
 export const LEGEND_CLICK = `(async () => {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const live = e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
-  const first = [...document.querySelectorAll('[data-rp-legend] > *:not([data-rp-free])')].find(live);
+  const first = [...document.querySelectorAll('[data-rp-legend] > *')].find(live);
   if (!first) return true;
   const point = first.closest('[data-cf-value]') || first.querySelector('[data-cf-value]');
   if (!point) return 'a legend entry that is no filter (no data-cf-value): ' + (first.textContent || '').trim().slice(0, 30);
@@ -99,9 +119,50 @@ export const LEGEND_CLICK = `(async () => {
   const shown = (field().textContent || '') + ' ' + (field().value || '') + ' ' + (field().getAttribute('data-value') || '') + ' ' + (field().getAttribute('aria-label') || '');
   const name = (point.getAttribute('title') || point.getAttribute('aria-label') || point.textContent || '').trim();
   if (!shown.includes(value) && !(name && shown.includes(name.split(':')[0].trim()))) return 'the filter ' + dim + ' does not show the legend entry ' + value + ' it was set to';
+  // (v5) the series of that entry is lit and the rest dimmed, in the chart of the legend
+  const chart = point.closest('[data-rp-visual], .card');
+  const dimmed = chart ? chart.querySelectorAll('.cf-dim').length : 0;
   again()?.click(); await wait(500);
   if (count() !== counted) return 'a second click on the legend entry does not take the filter off';
+  if (chart && !dimmed) return 'a click on the legend entry ' + value + ' dims nothing in its chart - the series is not lit against the rest';
   return true;
+})()`;
+
+/** (v5) The other way: setting a field's slicer on the page bar lights the matching points and dims the others (the bar and the
+ *  picks are one). Opens the frame slicer of the first field with points, ticks the value of a point, applies, measures, unticks.
+ *  Async: awaitPromise. */
+export const FILTER_TO_CHART = `(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const points = [...document.querySelectorAll('[data-cf-dim][data-cf-value]')].filter(p => p.getClientRects().length);
+  const point = points.find(p => document.querySelector('[data-filter-id="' + CSS.escape(p.dataset.cfDim.split('|')[0]) + '"] .slicer-btn'));
+  if (!point) return points.length && points.some(p => !document.querySelector('[data-filter-id="' + CSS.escape(p.dataset.cfDim.split('|')[0]) + '"]'))
+    ? 'a field of the page has no slicer on the bar: ' + points[0].dataset.cfDim : true;
+  const dim = point.dataset.cfDim.split('|')[0], value = point.dataset.cfValue.split('|')[0];
+  const name = (point.getAttribute('title') || point.getAttribute('aria-label') || point.textContent || '').split(':')[0].trim();
+  const tick = async () => {
+    // the page draws itself again after a pick: the slicer is found afresh each time
+    const place = [...document.querySelectorAll('[data-filter-id="' + CSS.escape(dim) + '"]')].find(p => p.querySelector('.slicer-btn'));
+    if (!place) return false;
+    const pop = document.getElementById('filter-pop');
+    if (pop && pop.contains(place) && pop.hidden) { document.getElementById('filter-toggle')?.click(); await wait(300); }
+    place.querySelector('.slicer-btn').click(); await wait(300);
+    const menu = document.getElementById(dim + '-menu') || place.querySelector('.slicer-menu');
+    const item = menu && [...menu.querySelectorAll('.slicer-item')].find(i => { const t = (i.textContent || '').trim(); return t === value || t === name; });
+    if (!item) return false;
+    item.querySelector('input').click(); await wait(200);
+    document.body.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true})); await wait(150);
+    const apply = document.getElementById('filter-apply');
+    if (apply && !apply.disabled && apply.getClientRects().length) { apply.click(); await wait(400); }
+    return true;
+  };
+  document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await wait(300);
+  if (!(await tick())) return 'the slicer of ' + dim + ' does not offer the value of its point: ' + value;
+  await wait(400);
+  const same = [...document.querySelectorAll('[data-cf-dim="' + CSS.escape(point.dataset.cfDim) + '"]')].filter(p => p.getClientRects().length);
+  const lit = same.some(p => p.dataset.cfValue === point.dataset.cfValue && (p.getAttribute('aria-pressed') === 'true' || p.classList.contains('cf-picked')));
+  const dimmed = same.some(p => p.classList.contains('cf-dim'));
+  await tick(); await wait(300);
+  return lit || dimmed || 'the slicer of ' + dim + ' set to ' + value + ' lights nothing on the charts (the bar and the picks are not one)';
 })()`;
 
 /** Click a point of a visual with two or more points; the page must answer as skill app-cross-filter §1-2 says. */
@@ -182,12 +243,15 @@ export const SELF_TEST = {
       document.getElementById(id).innerHTML = Object.entries(counts).map(([v, n]) => { const on = (sel[d] || []).includes(v), dim = sel[d] && !on;
         return '<span role="button" tabindex="0" data-rp-mark title="' + v + '" data-cf-dim="' + d + '" data-cf-value="' + v + '" aria-pressed="' + on + '" class="' + (dim ? 'cf-dim' : '') + '">' + v + ':' + n + '</span>'; }).join(' '); };
     const draw = () => { visual('a', 's', r => r.s); visual('b', 'h', r => r.h);
-      document.getElementById('a').insertAdjacentHTML('beforeend', '<div data-rp-legend>' + ['A', 'B'].map(v => '<span role="button" tabindex="0" title="' + v + '" data-cf-dim="s" data-cf-value="' + v + '" aria-pressed="' + (sel.s || []).includes(v) + '">' + v + '</span>').join('') + '</div>'); document.getElementById('k').textContent = 'rows ' + keep().length;
+      document.getElementById('a').insertAdjacentHTML('beforeend', '<div data-rp-legend style="display:flex;gap:6px;white-space:nowrap">' + ['A', 'B'].map(v => '<span role="button" tabindex="0" title="' + v + '" data-cf-dim="s" data-cf-value="' + v + '" aria-pressed="' + (sel.s || []).includes(v) + '"' + (sel.s && !sel.s.includes(v) ? ' class="cf-dim"' : '') + '>' + v + '</span>').join('') + '</div>'); document.getElementById('k').textContent = 'rows ' + keep().length;
       const n = Object.keys(sel).length; document.getElementById('lead').innerHTML = '<button id="filter-toggle">F' + (n ? '<span class="filter-count">' + n + '</span>' : '') + '</button><div class="filter-field" data-filter-id="s">' + (sel.s || []).join(',') + '</div><div class="filter-field" data-filter-id="h">' + (sel.h || []).join(',') + '</div>';
-      document.querySelectorAll('[data-cf-dim]').forEach(p => p.onclick = e => pick(p.dataset.cfDim, p.dataset.cfValue, e.ctrlKey)); };
+      document.querySelectorAll('[data-cf-dim]').forEach(p => p.onclick = e => pick(p.dataset.cfDim, p.dataset.cfValue, e.ctrlKey));
+      document.getElementById('lead').insertAdjacentHTML('beforeend', '<div class="filter-place" data-filter-id="s" id="pl-s"><div class="filter-field slicer"><button class="slicer-btn" type="button">S</button></div></div>');
+      document.querySelector('#pl-s .slicer-btn').onclick = () => { document.getElementById('s-menu')?.remove(); document.body.insertAdjacentHTML('beforeend', '<div id="s-menu" class="slicer-menu">' + ['A', 'B'].map(v => '<label class="slicer-item"><input type="checkbox"' + ((sel.s || []).includes(v) ? ' checked' : '') + ' data-v="' + v + '">' + v + '</label>').join('') + '</div>');
+        document.querySelectorAll('#s-menu input').forEach(i => i.onchange = () => { pick('s', i.dataset.v, true); document.getElementById('s-menu')?.remove(); }); }; };
     addEventListener('keydown', e => { if (e.key === 'Escape') { sel = {}; draw(); } });
     draw();`),
-  faulty: PAGE(`<div id="cf-chips"></div><div class="card" data-rp-visual="chart"><span data-cf-dim="s" data-rp-mark>A</span><span data-cf-dim="s" data-rp-mark>B</span><i data-rp-mark style="display:inline-block;width:8px;height:8px"></i><span role="button" tabindex="0" data-rp-mark data-cf-dim="h" data-cf-value="1">1</span><span role="button" tabindex="0" data-cf-dim="h" data-cf-value="2">2</span><div data-rp-legend><span>Year 2025</span></div></div>`, `
+  faulty: PAGE(`<div id="cf-chips"></div><div class="card" data-rp-visual="chart"><span data-cf-dim="s" data-rp-mark>A</span><span data-cf-dim="s" data-rp-mark>B</span><i data-rp-mark style="display:inline-block;width:8px;height:8px"></i><span role="button" tabindex="0" data-rp-mark data-cf-dim="h" data-cf-value="1">1</span><span role="button" tabindex="0" data-cf-dim="h" data-cf-value="2">2</span><div data-rp-legend style="width:60px"><span style="display:block">Year 2025 and more</span><span style="display:block">B</span></div><div class="filter-place" data-filter-id="h"><div class="filter-field slicer"><button class="slicer-btn" type="button" onclick="document.body.insertAdjacentHTML('beforeend','<div id=&quot;h-menu&quot; class=&quot;slicer-menu&quot;><label class=&quot;slicer-item&quot;><input type=&quot;checkbox&quot;>1</label></div>')">H</button></div></div></div>`, `
     document.querySelectorAll('[data-cf-dim]').forEach(p => p.onclick = () => {});`),
 };
 

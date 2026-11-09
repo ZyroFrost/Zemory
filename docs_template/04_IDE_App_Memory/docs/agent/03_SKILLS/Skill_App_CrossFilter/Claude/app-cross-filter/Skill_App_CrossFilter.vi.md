@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 
@@ -24,8 +24,18 @@ lang: vi
   trường đó (`data-cf-dim`), và trường đó có bộ lọc trên thanh trang - một bộ lọc: bấm mục thì bộ lọc đặt giá trị đó, nút lọc đếm,
   đặt bộ lọc thì mục sáng còn mục khác mờ, Xoá lọc hay bấm lần hai thì bỏ. Legend theo CHỈ SỐ (năm nay / năm trước, doanh thu /
   chỉ tiêu) là ô "Chỉ số" của trang (`data-cf-dim="measure"`, bộ lọc `measure`): bấm thì chỉ số đó sáng trên mọi chart của trang,
-  chuỗi khác mờ, không lọc dòng nào; Xoá lọc thì bỏ. Chỉ đường của cả chuỗi (`data-rp-free`) được miễn. [cf-legend-filter]
-  [cf-legend-click]
+  chuỗi khác mờ, không lọc dòng nào; Xoá lọc thì bỏ. (v5, user 09/11: "ít nhất khi bấm legend nó phải hiển thị sáng lên cái line
+  đó mới đúng") mục nào cũng bấm được, kể cả đường của cả chuỗi (chọn trên ô Chỉ số): bấm thì đường hay chuỗi đó sáng, còn lại mờ.
+  [cf-legend-filter] [cf-legend-click]
+- **Legend đứng một hàng** (v5, user 09/11: "legend ko dc xuống hàng ntn, đây là luật, nếu quá dài thì phải là chart dài", "kể cả
+  là trong 1 tag"): các chip chung một hàng, không xuống hàng, chữ trong một chip cũng không; legend dài hơn đầu panel thì chart
+  chiếm cả hàng. Danh sách dọc của donut không phải legend chip. [cf-legend-one-line]
+- **Thanh trang và các lựa chọn là một, cả hai chiều** (v5, user 09/11: "filter trên và chọn ở dưới luôn phải dính đồng bộ", "mỗi
+  trang cần ma trận filter riêng"): mọi trường mà visual của trang chọn được (trục, cột, legend) có slicer trên thanh; đặt slicer thì
+  các điểm khớp sáng, điểm khác mờ, như bấm chart thì slicer đổi. [filter-one] [cf-filter-to-chart]
+- **Bộ lọc là cài đặt của người dùng** (v5, user 09/11): cái người dùng đặt trên một trang (slicer, lựa chọn, token kỳ) lưu vào cài
+  đặt của họ trong hệ (`Config_UserSetting`, `<app>.filters` theo đường trang, kỳ lưu bằng token tương đối), nạp khi mở app và ghi
+  sau mỗi lần đổi - trang mở lại như lúc rời đi, ở máy nào cũng vậy. Phép kiểm trình duyệt của app chứng minh (đặt, tải lại, vẫn còn).
 
 ## 2. Những gì đi theo lựa chọn
 

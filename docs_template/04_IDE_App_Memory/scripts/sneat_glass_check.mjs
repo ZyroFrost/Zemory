@@ -1415,6 +1415,33 @@ export const RULES = [
       return true;
     })()`,
   },
+  // (v52, the user 09/11 through an app of the family: "khung panel này đang bị thiếu viền cong ở dưới")
+  {
+    id: 'tabs-round',
+    rule: 'the tab strip standing apart over a board is a block of its own, rounded at all four corners; over a page card its upper corners are rounded and its lower ones join the card',
+    check: `(() => {
+      const t = document.getElementById('page-tabs');
+      if (!t || !t.getClientRects().length || document.documentElement.classList.contains('head-folded')) return true;
+      const page = t.nextElementSibling, card = page && page.firstElementChild && page.firstElementChild.matches('.page-card');
+      const c = getComputedStyle(t), r = [c.borderTopLeftRadius, c.borderTopRightRadius, c.borderBottomRightRadius, c.borderBottomLeftRadius].map(parseFloat);
+      if (r[0] < 4 || r[1] < 4) return 'the tab strip has square upper corners (' + r.join(' / ') + ')';
+      return card || (r[2] >= 4 && r[3] >= 4) || 'the tab strip standing apart has square lower corners (' + r.join(' / ') + ')';
+    })()`,
+  },
+  // (v52, the user 09/11 through an app of the family: a fixed period counted as a filter)
+  {
+    id: 'filter-count-fixed',
+    rule: 'the filter button counts only what the person set: a period or business day the page always holds (data-fixed) is never counted nor lit as set, and the count never exceeds the set filters',
+    check: `(() => {
+      const lit = document.querySelector('.filter-field[data-fixed].on');
+      if (lit) return 'a fixed period is lit as a set filter: ' + (lit.querySelector('.filter-label')?.textContent || lit.id || '').trim().slice(0, 30);
+      const btn = document.querySelector('.page-toolbar #filter-toggle');
+      if (!btn || !document.querySelector('#filter-pop, #filter-row')) return true;
+      const n = Number((btn.querySelector('.filter-count')?.textContent || '0').trim()) || 0;
+      const set = new Set([...document.querySelectorAll('.filter-place')].filter(p => p.querySelector(':scope .filter-field.on:not([data-fixed])')).map(p => p.dataset.filterId));
+      return n <= set.size || 'the filter button counts ' + n + ' with ' + set.size + ' filter(s) set (a fixed period counted?)';
+    })()`,
+  },
   // (v51, the user 09/11 through an app of the family: "1 dòng = 1 thông tin ko dc xuống dòng", "size chuẩn ko dc nhỏ")
   {
     id: 'tip-lines',
@@ -1522,9 +1549,10 @@ export const PROBES = [
       const tables = () => [...document.querySelectorAll('#page table, .modal-content table, dialog table')].filter(t => t.getClientRects().length && !t.closest('.dropdown-menu, .date-menu, .view-grid'));
       // wait while the page is busy, then 1.5 s calm more - a page that fetches its panels without a busy mark draws them by then
       // (a table already on the page is no sign the rest has come: a journal draws its panels one by one)
+      // (v52, Reconcile 09/11: a page that settles at once let a table drawn 2 s later through) 2.5 s at least, whatever the page says
       for (let ms = 0, calm = 0; ms < 8000; ms += 250) {
         calm = busy() ? 0 : calm + 250;
-        if (calm >= 1500) break;
+        if (calm >= 1500 && ms >= 2500) break;
         await wait(250);
       }
       const out = [];
