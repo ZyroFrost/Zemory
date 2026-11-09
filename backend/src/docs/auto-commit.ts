@@ -198,11 +198,14 @@ export function autoCommit(root: string, transcript: string | string[], limit = 
     }
     const untracked = fresh.filter((w) => !ignored.some((i) => sameFile(i, w)));
     // tracked, or gone from the disk (a deletion): what differs from HEAD, per file. -z keeps odd names unquoted.
+    // Plumbing diff-index, not `git diff`: the porcelain refreshes and rewrites the index under index.lock (even with
+    // GIT_OPTIONAL_LOCKS=0), and a daemon stopped mid-call left that lock behind, blocking every git command on the host.
+    // Only add/commit below take the lock.
     const others = written.filter((w) => !fresh.includes(w));
     const changed: string[] = [];
     let lines = 0;
     if (others.length) {
-      const out = git(top, [...eol, "diff", "--numstat", "--no-renames", "-z", "HEAD", "--", ...others]);
+      const out = git(top, [...eol, "diff-index", "--numstat", "--no-renames", "-z", "HEAD", "--", ...others]);
       for (const rec of out.split("\0").filter(Boolean)) {
         const [a, d, path] = rec.split("\t");
         if (!path) continue;
