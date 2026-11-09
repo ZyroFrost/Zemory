@@ -44,7 +44,7 @@ export class HookPool {
 
   /** Start every worker now, so the first hook does not pay the ~1 s start of a worker (measured 2026-11-09). */
   warm(): void {
-    while (!this.broken && this.slots.length < this.size) if (!this.spawn()) break;
+    while (!this.broken && this.slots.length < this.size) if (!this.startWorker()) break;
   }
 
   run(event: string, payload: Record<string, unknown>, map: PathPair[]): Promise<HookAnswer> {
@@ -74,7 +74,7 @@ export class HookPool {
   private pump(): void {
     while (this.queue.length) {
       let slot = this.slots.find((s) => !s.job);
-      if (!slot && this.slots.length < this.size) slot = this.spawn() ?? undefined;
+      if (!slot && this.slots.length < this.size) slot = this.startWorker() ?? undefined;
       if (!slot) {
         if (this.broken) for (const j of this.queue.splice(0)) j.done(relayHook(j.event, j.payload, j.map));
         return;
@@ -85,7 +85,7 @@ export class HookPool {
     }
   }
 
-  private spawn(): Slot | null {
+  private startWorker(): Slot | null {
     let w: Worker;
     try {
       w = new Worker(this.entry);
