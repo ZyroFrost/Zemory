@@ -1,11 +1,11 @@
 ---
 id: Skill_App_ShellUse
 name: app-shell-use
-version: 3
+version: 4
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_App_Shell, Rule_Keys_90_AppFamilyContract, Frontend_173_Shell]
 description: Wear the system's frame in an app of the system - pin a published build, hand it the app's config, build only page content, and ask the system manager for anything of the frame. Use in an app of a system (role app, owner a system-manager) when its surface is built or changed, when it moves onto the frame or to a newer build, or when something of the frame looks wrong. Vietnamese triggers - "gắn khung", "dùng khung chung", "lên bản khung", "ghim khung", "vùng trang", "lỗi khung".
-from: _Store/03_SKILLS/Skill_App_ShellUse @v3 #abef4ebf6495
+from: _Store/03_SKILLS/Skill_App_ShellUse @v4 #301a7e341c74
 ---
 
 # app-shell-use — an app wears the system's frame, it never builds one
@@ -57,7 +57,8 @@ from: _Store/03_SKILLS/Skill_App_ShellUse @v3 #abef4ebf6495
   kind's classes and gets all of that. A row of the page's own that must stay in sight (a totals row) is pinned by the page.
 - **A table page: the card fills, the table scrolls inside** (v3, the user 09/11 - settled for the family, app-sneat-glass
   §2): never turn a table page into a whole-column scroll to win room; leave `fill` on and let the person fold row 1 (Settings
-  > Layout > "Thu gọn hàng 1 khi cuộn"). `fill: false` is for a board of several cards only. Many pages under one menu row:
+  > Layout > "Thu gọn hàng 1 khi cuộn"). A board of several cards takes the frame's `board` (React `PageCard board`, DOM `DomPage.board`):
+  the page bar stays, no page card wraps the board, its cards stand straight on the wallpaper (v4). Many pages under one menu row:
   turn on the frame's tab panel (`pageHead: true`), never draw tabs of your own.
 - Filters: the page declares the filters it offers (pick · several · date · date range · number · custom - a control the page
   draws itself, for a mix the frame has no kind for). A filter in the popover is a draft until the person presses Apply; a filter

@@ -5,6 +5,7 @@
 // Second machine (02-1): the pull stays on the training machine on purpose (the user's own words, plan/38 §3); a machine
 // without it rebuilds it from its own GM with the same command.
 
+import Database from "better-sqlite3";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -62,6 +63,9 @@ const NOT_SPOKEN: RegExp[] = [
   /^\s*Caveat: The messages below were generated/i,
   /^\s*\[?\{\s*"(type|tool_use_id|role)"\s*:/,
   /^\s*\[Request interrupted by user/i,
+  // the instructions of a labelling agent (step 02, plan/38 §8), should one of its sessions reach the GM
+  /^\s*\[zemory-annotator\]/,
+  /^\s*You are (an annotator|a dispatcher)\b/i,
 ];
 
 /** Shorter is not a request; longer is a pasted document, not a message the door reads. */
@@ -137,6 +141,24 @@ export function pull(opts: { perProject?: number; dbPath?: string } = {}): PullR
   }
   rows.sort((a, b) => a.id - b.id);
   return { read: all.length, spoken: said.length, unique: unique.length, kept: rows.length, projects: byProject.size, rows };
+}
+
+/**
+ * A copy of the GM to pull from (the training never reads the live GM, plan/38 header): the live file opened read-only and
+ * copied with SQLite's online backup into 02_processing/gm-snapshot-<time>.db, consistent even while the daemon writes.
+ * Second machine (02-1): a throwaway copy, never synced; each machine makes its own from its own GM.
+ */
+export async function snapshotGm(dir = trainingDir(), live = currentMemoryDb()): Promise<string> {
+  const proc = join(dir, "02_processing");
+  mkdirSync(proc, { recursive: true });
+  const out = join(proc, `gm-snapshot-${new Date().toISOString().replace(/[:.]/g, "-")}.db`);
+  const db = new Database(live, { readonly: true, fileMustExist: true });
+  try {
+    await db.backup(out);
+  } finally {
+    db.close();
+  }
+  return out;
 }
 
 /** One JSON line per message into a NEW file of 01_raw; returns its path and the hash of its content. */

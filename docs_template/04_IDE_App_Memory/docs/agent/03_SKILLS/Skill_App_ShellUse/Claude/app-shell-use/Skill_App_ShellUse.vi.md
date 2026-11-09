@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 
@@ -49,7 +49,8 @@ lang: vi
   luôn trong tầm nhìn (dòng tổng) do trang tự ghim.
 - **Trang bảng: thẻ lấp đầy, bảng cuộn bên trong** (v3, user 09/11 - đã chốt cho cả hệ, app-sneat-glass §2): không bao giờ
   đổi trang bảng sang cuộn cả cột để lấy chỗ; để `fill` bật và để người dùng thu hàng 1 (Cài đặt > Bố cục > "Thu gọn hàng 1 khi
-  cuộn"). `fill: false` chỉ dành cho board nhiều thẻ. Nhiều trang dưới một hàng menu: bật dải tab của khung (`pageHead: true`),
+  cuộn"). Board nhiều thẻ dùng `board` của khung (React `PageCard board`, DOM `DomPage.board`): thanh
+  trang giữ nguyên, không thẻ trang bọc board, các thẻ đứng thẳng trên nền (v4). Nhiều trang dưới một hàng menu: bật dải tab của khung (`pageHead: true`),
   không bao giờ tự vẽ tab.
 - Bộ lọc: trang khai các bộ lọc nó có (chọn một · chọn nhiều · ngày · khoảng ngày · số · custom - ô trang tự vẽ, cho kiểu khung chưa
   có). Bộ lọc trong popover là bản nháp tới khi người dùng bấm Áp dụng; bộ lọc ghim trên thanh lọc ngay; trang nhận mỗi giá trị khi nó

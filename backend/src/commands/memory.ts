@@ -1586,20 +1586,91 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         console.log(`  review: ${r.reviewFile}`);
         return;
       }
-      // isolated until the user approves the measurements (plan/38 header): it reads a SNAPSHOT of the GM, never the live one
-      const snap = flagValue(args, "--db");
-      if (!snap) {
-        console.log("zemory memory bench --prompts --train: --db <snapshot of the GM> is required - the training never reads the live GM.");
-        process.exitCode = 1;
+      // self-trained gates (plan/38 §8): sample → annotate (the person's own tokens, only after --yes) → merge → fit
+      if (args.includes("--prepare")) {
+        const { prepare, TOKENS_PER_CHUNK } = await import("../training/prompt-gates/02_annotate.js");
+        const s = flagValue(args, "--sample");
+        const p = prepare({ sample: s ? Number(s) : undefined });
+        console.log(`zemory memory bench --prompts --train --prepare — ${p.messages} message(s) in ${p.chunks} chunk(s) of 300 · ${p.doors.length} door(s)`);
+        console.log(`  ${p.dir}`);
+        console.log(`  labelling them costs about ${Math.round(p.tokens / 1000)}k tokens of YOUR account (${p.chunks} × ~${TOKENS_PER_CHUNK / 1000}k, measured on Opus)`);
+        console.log("  next: `zemory memory bench --prompts --train --annotate` shows the cost again and asks for --yes");
         return;
       }
-      const { pull, writePull } = await import("../training/prompt-gates/01_pull.js");
+      if (args.includes("--annotate")) {
+        const { annotate, annotatePlan, latestLabelDir } = await import("../training/prompt-gates/02_annotate.js");
+        const labelDir = flagValue(args, "--dir") ?? latestLabelDir();
+        if (!labelDir) {
+          console.log("zemory memory bench --prompts --train --annotate: nothing prepared - run --prepare first.");
+          process.exitCode = 1;
+          return;
+        }
+        const plan = annotatePlan(labelDir);
+        const model = flagValue(args, "--model") ?? "opus";
+        console.log(`zemory memory bench --prompts --train --annotate — ${plan.todo.length} chunk(s) to label · ${plan.done.length} done · ${labelDir}`);
+        if (!plan.todo.length) { console.log("  every chunk is labelled: next `--merge`"); return; }
+        if (plan.host !== "claude") {
+          console.log("  no Claude Code (`claude`) on PATH: give each chunk to an agent with the instructions in ANNOTATE.md of that folder");
+          console.log(`  (chunks: ${plan.todo.join(", ")}), then run --merge`);
+          return;
+        }
+        console.log(`  this spends about ${Math.round(plan.tokens / 1000)}k tokens of YOUR account (model ${model}, one headless \`claude -p\` per chunk)`);
+        if (!args.includes("--yes")) {
+          console.log("  nothing started: run the same command with --yes to start it (a rerun resumes where it stopped)");
+          return;
+        }
+        const par = flagValue(args, "--parallel");
+        const after = await annotate(labelDir, {
+          model, parallel: par ? Number(par) : undefined,
+          onChunk: (c, line, problem) => console.log(`  ${c}: ${problem ? `NOT usable (${problem})` : "ok"}${line ? ` · ${line}` : ""}`),
+        });
+        console.log(`  done: ${after.done.length} chunk(s) usable · ${after.todo.length} still to label${after.todo.length ? ` (${after.todo.join(", ")}): rerun to retry` : " · next `--merge`"}`);
+        if (after.todo.length) process.exitCode = 1;
+        return;
+      }
+      if (args.includes("--merge")) {
+        const { merge, latestLabelDir } = await import("../training/prompt-gates/02_annotate.js");
+        const labelDir = flagValue(args, "--dir") ?? latestLabelDir();
+        if (!labelDir) {
+          console.log("zemory memory bench --prompts --train --merge: nothing prepared - run --prepare first.");
+          process.exitCode = 1;
+          return;
+        }
+        const r = merge(labelDir);
+        console.log(`zemory memory bench --prompts --train --merge — ${r.rows} labelled message(s) · ${r.withDoor} with a door${r.rows ? ` -> ${r.file}` : ""}`);
+        for (const b of r.bad) console.log(`  chunk ${b.chunk} left out: ${b.problem}`);
+        if (r.bad.length) process.exitCode = 1;
+        else console.log("  next: `zemory memory bench --prompts --train --fit`");
+        return;
+      }
+      if (args.includes("--fit")) {
+        const { fitGates } = await import("../training/prompt-gates/03_train.js");
+        const r = await fitGates({ onProgress: (w) => console.log(`  ${w}`) });
+        console.log(`zemory memory bench --prompts --train --fit — ${r.labels} labelled message(s) · fit ${r.split.fit} · val ${r.split.val} · test ${r.split.test} · profile ${r.profile} · ${Math.round(r.ms / 1000)} s`);
+        console.log("  door                                  test+  regex  model  model+regex  -> uses");
+        for (const d of r.doors) {
+          const f = (x: number): string => x.toFixed(2).padStart(5);
+          console.log(`  ${d.part.padEnd(38)}${String(d.positives.test).padStart(5)}  ${f(d.f1.regex)}  ${f(d.f1.mlp)}  ${f(d.f1.stack).padStart(11)}  -> ${d.mode}`);
+        }
+        console.log(`  model: ${r.modelFile}`);
+        console.log(`  report: ${r.reportFile}`);
+        console.log("  a door uses the model only where it beat the regex on the held-out messages; the hook does not read it yet");
+        return;
+      }
+      // step 01. The training never reads the live GM (plan/38 header): a read-only online-backup copy is made when no
+      // --db <copy> is given
+      const { pull, snapshotGm, writePull } = await import("../training/prompt-gates/01_pull.js");
+      let snap = flagValue(args, "--db");
+      if (!snap) {
+        snap = await snapshotGm();
+        console.log(`  GM copied read-only -> ${snap}`);
+      }
       const perRaw = flagValue(args, "--per-project");
       const r = pull({ perProject: perRaw ? Number(perRaw) : undefined, dbPath: snap });
       const w = writePull(r.rows);
       console.log(`zemory memory bench --prompts --train — step 01 pull: ${r.read} user message(s) · ${r.spoken} spoken · ${r.unique} unique · ${r.kept} kept from ${r.projects} project(s)`);
       console.log(`  ${w.path}  (hash ${w.hash})`);
-      console.log("  next: step 02 drafts the labels for review (not built yet)");
+      console.log("  next: `zemory memory bench --prompts --train --prepare [--sample 3000]`");
       return;
     }
     // `--recall`: cổng ĐO TRÊN KHO THẬT (corpus có nhãn, mồi nhiễu gần chủ đề). Khác hẳn

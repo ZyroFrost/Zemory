@@ -1,5 +1,5 @@
 ---
-version: 48
+version: 49
 lang: vi
 ---
 
@@ -63,7 +63,9 @@ lang: vi
 - **Trang bảng: thẻ lấp đầy, bảng cuộn bên trong - đã chốt** (v46, user 09/11 qua Reconcile, cho mọi app của hệ): trang của
   một bảng hay ma trận là một thẻ trang lấp đầy khung (`fill`, mặc định), bảng cuộn bên trong với hàng tiêu đề và cột đầu ghim,
   thanh trang luôn có; trang không bao giờ cuộn cả cột vì một bảng. Chỉ board nhiều thẻ (tổng quan số liệu và biểu đồ) mới cuộn
-  cả cột (`fill: false`). Chỗ cho dữ liệu đến từ việc thu hàng 1 (`head_fold` Tối đa chỗ, §2b), không bao giờ từ cuộn cả trang.
+  cả cột, và board đứng như trang Thống kê của repo quản hệ: cùng thanh trang, không thẻ trang bọc ngoài, mỗi thẻ là một tấm kính
+  riêng đứng thẳng trên nền, cách nhau bằng khoảng hàng của kit (`board` của khung, v49, user 09/11: "sao chart ko phân panel ra
+  giống thống kê ở one vậy?"). Chỗ cho dữ liệu đến từ việc thu hàng 1 (`head_fold` Tối đa chỗ, §2b), không bao giờ từ cuộn cả trang.
   Bảng thẳng hàng với thanh trang: chữ cột đầu bắt đầu đúng chỗ công cụ của thanh bắt đầu (.75rem từ mép thẻ). Bảng của trang
   bảng nằm thẳng trong thân thẻ trang, không bao giờ bọc trong thẻ con; bảng trong panel của board (một thẻ con) giữ lề 1rem của
   thẻ đó (v47, Dashboard 09/11). [table-edges] [card-inset]

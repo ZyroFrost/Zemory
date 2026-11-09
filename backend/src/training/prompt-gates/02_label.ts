@@ -14,6 +14,8 @@ import { trainingDir, type PulledMessage } from "./01_pull.js";
 export interface Door {
   /** The part that owns the door (its folder name), e.g. Rule_Keys_08_ClarifyFirst. */
   part: string;
+  /** The part's folder in HS (its rule or skill file sits there as `<part>.md`). */
+  dir?: string;
   re: string;
   block: string[];
   pass: string[];
@@ -33,7 +35,7 @@ export function doorsOf(storeDir = STORE_DIR): Door[] {
         try {
           const j = JSON.parse(readFileSync(g, "utf8"));
           const said = (xs: unknown): string[] => (Array.isArray(xs) ? xs : []).map((x) => String((x as { prompt?: unknown })?.prompt ?? "")).filter(Boolean);
-          if (j?.prompt?.re) out.push({ part: e.name, re: String(j.prompt.re), block: said(j.block), pass: said(j.pass) });
+          if (j?.prompt?.re) out.push({ part: e.name, dir: d, re: String(j.prompt.re), block: said(j.block), pass: said(j.pass) });
         } catch {
           /* a gate.json that does not parse is the store gate's to report */
         }

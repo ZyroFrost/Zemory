@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 48
+version: 49
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v48 #74c0cba4f834
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v49 #bd1e41229305
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -72,7 +72,9 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v48 #74c0cba4f834
 - **A table page: the card fills, the table scrolls inside - settled** (v46, the user 09/11 through Reconcile, for every app of
   the family): a page of a table or a matrix is one page card that fills the frame (`fill`, the default), its table scrolling
   inside it with the header row and the first column pinned and the page bar always there; a page never scrolls its whole
-  column for a table. Only a board of several cards (an overview of figures and charts) scrolls the column (`fill: false`).
+  column for a table. Only a board of several cards (an overview of figures and charts) scrolls the column, and a board stands
+  as the system manager's own overview of figures: the same page bar, no page card round it, each card its own glass straight on the wallpaper, apart
+  by the kit's row gutters (the frame's `board`, v49, the user 09/11: "sao chart ko phân panel ra giống thống kê ở one vậy?").
   The room for the data comes from row 1 folding (`head_fold` Most room, §2b), never from scrolling the whole page. The
   table is level with the page bar: its first column's text starts where the bar's tools start (.75rem from the card edge).
   The table of a table page stands straight in the page card's body, never wrapped in an inner card; a table in a panel of a

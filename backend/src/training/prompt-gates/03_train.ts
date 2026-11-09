@@ -9,6 +9,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, write
 import { join } from "node:path";
 import { currentEmbedProfile, embedQuery, type EmbedProfile } from "../../memory/embed.js";
 import { trainingDir } from "./01_pull.js";
+import { promptMatches } from "../../docs/harness-names.js";
 import { doorsOf, regexLabels } from "./02_label.js";
 
 /** The key of a text in the vector cache: its exact bytes, not a normalised form (the hook embeds the exact text). */
@@ -306,5 +307,340 @@ export async function train(opts: { dir?: string; k?: number } = {}): Promise<Tr
   const file = join(out, "report.json");
   const rep = { profile, labels: files, folds: k, doors: reports, file, ms: Date.now() - t0 };
   writeFileSync(file, JSON.stringify(rep, null, 1) + "\n", "utf8");
+  return rep;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Self-trained gates (plan/38 §8): one MLP for all judgement doors over the full labels of a person's own messages, a
+// 2-feature stacker per door on [MLP score, regex hit], and per door the way that beat the regex on the held-out part.
+// Typed arrays throughout: the number[][] code above is O(n²) in places and does not finish on 21k rows. Measured on the
+// owner's GM (plan/38 §6, round seven): MLP + stacker won or tied the regex on every door with enough positives.
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface FullLabel {
+  text: string;
+  doors: string[];
+}
+
+/** A seeded order of `a` (Park–Miller): the same split on every run and every machine. */
+export function seededShuffle<T>(a: T[], seed: number): T[] {
+  let s = seed;
+  const r = (): number => (s = (s * 48271) % 2147483647) / 2147483647;
+  return a.map((x) => [r(), x] as const).sort((p, q) => p[0] - q[0]).map((x) => x[1]);
+}
+
+/** The best-F1 threshold in one sweep over the sorted scores (ties: the higher threshold, fewer reminders). */
+export function sweepThreshold(s: ArrayLike<number>, y: ArrayLike<number>): { t: number; f1: number } {
+  const n = s.length;
+  const idx = Array.from({ length: n }, (_, i) => i).sort((a, b) => s[b] - s[a]);
+  let P = 0;
+  for (let i = 0; i < n; i++) P += y[i] ? 1 : 0;
+  let tp = 0, fp = 0, best = Infinity, bestF = -1;
+  for (let k = 0; k < n; k++) {
+    if (y[idx[k]]) tp++; else fp++;
+    if (k + 1 < n && s[idx[k + 1]] === s[idx[k]]) continue;
+    const f = tp ? (2 * tp) / (2 * tp + fp + (P - tp)) : 0;
+    if (f > bestF) { bestF = f; best = s[idx[k]]; }
+  }
+  return { t: best, f1: bestF < 0 ? 0 : bestF };
+}
+
+export interface Mlp {
+  dim: number;
+  hidden: number;
+  out: number;
+  /** dim × hidden, row-major by input */
+  w1: Float32Array;
+  b1: Float32Array;
+  /** hidden × out */
+  w2: Float32Array;
+  b2: Float32Array;
+}
+
+/** Logits of one input row (length dim, starting at `off`) → out. */
+export function mlpForward(m: Mlp, x: ArrayLike<number>, off = 0, h = new Float32Array(m.hidden), o = new Float32Array(m.out)): Float32Array {
+  h.set(m.b1);
+  for (let j = 0; j < m.dim; j++) {
+    const v = x[off + j];
+    if (v === 0) continue;
+    const r = j * m.hidden;
+    for (let k = 0; k < m.hidden; k++) h[k] += v * m.w1[r + k];
+  }
+  o.set(m.b2);
+  for (let k = 0; k < m.hidden; k++) {
+    const v = h[k] > 0 ? h[k] : 0;
+    h[k] = v;
+    if (v === 0) continue;
+    const r = k * m.out;
+    for (let c = 0; c < m.out; c++) o[c] += v * m.w2[r + c];
+  }
+  return o;
+}
+
+/** Logits of n rows, row-major n × out. */
+export function mlpScores(m: Mlp, X: Float32Array, n: number): Float32Array {
+  const out = new Float32Array(n * m.out), h = new Float32Array(m.hidden), o = new Float32Array(m.out);
+  for (let i = 0; i < n; i++) out.set(mlpForward(m, X, i * m.dim, h, o), i * m.out);
+  return out;
+}
+
+/** Column c of a row-major n × out matrix. */
+export function column(s: ArrayLike<number>, n: number, out: number, c: number): Float32Array {
+  const v = new Float32Array(n);
+  for (let i = 0; i < n; i++) v[i] = s[i * out + c];
+  return v;
+}
+
+/**
+ * One hidden ReLU layer shared by all outputs, sigmoid outputs, BCE with a positive weight √(neg/pos) per output, Adam,
+ * batch 64. The epoch kept is the one with the best mean best-F1 on the validation rows (outputs with ≥ 5 positives there).
+ */
+export function fitMlp(
+  X: Float32Array, Y: Uint8Array, n: number, dim: number, out: number,
+  val: { X: Float32Array; Y: Uint8Array; n: number },
+  opts: { hidden?: number; epochs?: number; rate?: number; seed?: number; onEpoch?: (ep: number, f: number) => void } = {},
+): Mlp {
+  const H = opts.hidden ?? 256, EPOCHS = opts.epochs ?? 20, LR = opts.rate ?? 1e-3, B1 = 0.9, B2 = 0.999, WD = 1e-4, BATCH = 64;
+  let s = opts.seed ?? 12345;
+  const rnd = (): number => (s = (s * 48271) % 2147483647) / 2147483647;
+  const gauss = (): number => Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(2 * Math.PI * rnd());
+  const m: Mlp = {
+    dim, hidden: H, out,
+    w1: new Float32Array(dim * H).map(() => gauss() * Math.sqrt(2 / dim)), b1: new Float32Array(H),
+    w2: new Float32Array(H * out).map(() => gauss() * Math.sqrt(1 / H)), b2: new Float32Array(out),
+  };
+  const P = [m.w1, m.b1, m.w2, m.b2];
+  const G = P.map((p) => new Float32Array(p.length)), M1 = P.map((p) => new Float32Array(p.length)), M2 = P.map((p) => new Float32Array(p.length));
+  const posW = new Float32Array(out);
+  for (let c = 0; c < out; c++) {
+    let p = 0;
+    for (let i = 0; i < n; i++) p += Y[i * out + c];
+    posW[c] = Math.sqrt((n - p) / Math.max(1, p));
+  }
+  const h = new Float32Array(H), o = new Float32Array(out), dz = new Float32Array(out), dh = new Float32Array(H);
+  let step = 0, best = -1, keep = P.map((p) => Float32Array.from(p));
+  for (let ep = 1; ep <= EPOCHS; ep++) {
+    const order = seededShuffle(Array.from({ length: n }, (_, i) => i), 1000 + ep);
+    for (let b = 0; b < n; b += BATCH) {
+      for (const g of G) g.fill(0);
+      const bs = Math.min(BATCH, n - b);
+      for (let q = 0; q < bs; q++) {
+        const i = order[b + q];
+        mlpForward(m, X, i * dim, h, o);
+        for (let c = 0; c < out; c++) {
+          const y = Y[i * out + c], p = 1 / (1 + Math.exp(-o[c]));
+          dz[c] = ((p - y) * (y ? posW[c] : 1)) / bs;
+        }
+        dh.fill(0);
+        for (let k = 0; k < H; k++) {
+          if (h[k] === 0) continue;
+          const r = k * out;
+          for (let c = 0; c < out; c++) { G[2][r + c] += h[k] * dz[c]; dh[k] += m.w2[r + c] * dz[c]; }
+        }
+        for (let c = 0; c < out; c++) G[3][c] += dz[c];
+        const off = i * dim;
+        for (let j = 0; j < dim; j++) {
+          const v = X[off + j];
+          if (v === 0) continue;
+          const r = j * H;
+          for (let k = 0; k < H; k++) G[0][r + k] += v * dh[k];
+        }
+        for (let k = 0; k < H; k++) G[1][k] += dh[k];
+      }
+      step++;
+      const c1 = 1 - B1 ** step, c2 = 1 - B2 ** step;
+      for (let p = 0; p < 4; p++) {
+        const W = P[p], g0 = G[p], a = M1[p], v = M2[p], wd = p % 2 === 0 ? WD : 0;
+        for (let z = 0; z < W.length; z++) {
+          const g = g0[z] + wd * W[z];
+          a[z] = B1 * a[z] + (1 - B1) * g;
+          v[z] = B2 * v[z] + (1 - B2) * g * g;
+          W[z] -= (LR * (a[z] / c1)) / (Math.sqrt(v[z] / c2) + 1e-8);
+        }
+      }
+    }
+    const sv = mlpScores(m, val.X, val.n);
+    let sum = 0, cnt = 0;
+    for (let c = 0; c < out; c++) {
+      const ys = column(val.Y, val.n, out, c);
+      if (ys.reduce((a, b) => a + b, 0) < 5) continue;
+      sum += sweepThreshold(column(sv, val.n, out, c), ys).f1;
+      cnt++;
+    }
+    const f = cnt ? sum / cnt : 0;
+    opts.onEpoch?.(ep, f);
+    if (f > best) { best = f; keep = P.map((p) => Float32Array.from(p)); }
+  }
+  keep.forEach((w, p) => P[p].set(w));
+  return m;
+}
+
+/** Logistic regression on [standardised model score, regex hit], class-weighted, fit on the validation rows. */
+export interface Stack { w0: number; w1: number; b: number; mean: number; sd: number }
+export function fitStack(s: ArrayLike<number>, r: ArrayLike<number>, y: ArrayLike<number>, iters = 2000): Stack {
+  const n = s.length;
+  let pos = 0, mean = 0;
+  for (let i = 0; i < n; i++) { pos += y[i] ? 1 : 0; mean += s[i] / n; }
+  let v = 0;
+  for (let i = 0; i < n; i++) v += (s[i] - mean) ** 2 / n;
+  const sd = Math.sqrt(v) || 1, cwP = n / (2 * Math.max(1, pos)), cwN = n / (2 * Math.max(1, n - pos));
+  let w0 = 0, w1 = 0, b = 0;
+  for (let it = 0; it < iters; it++) {
+    let g0 = 0, g1 = 0, gb = 0;
+    for (let i = 0; i < n; i++) {
+      const x0 = (s[i] - mean) / sd;
+      const e = (1 / (1 + Math.exp(-(w0 * x0 + w1 * r[i] + b))) - (y[i] ? 1 : 0)) * (y[i] ? cwP : cwN);
+      g0 += e * x0; g1 += e * r[i]; gb += e;
+    }
+    w0 -= (0.5 * g0) / n; w1 -= (0.5 * g1) / n; b -= (0.5 * gb) / n;
+  }
+  return { w0, w1, b, mean, sd };
+}
+export const stackScore = (k: Stack, s: number, r: number): number => k.w0 * ((s - k.mean) / k.sd) + k.w1 * r + k.b;
+
+/** How a door decides at run time: the regex (as today), the MLP score alone, or the MLP score stacked with the regex. */
+export type GateMode = "regex" | "mlp" | "stack";
+
+export interface GateDoor {
+  part: string;
+  mode: GateMode;
+  threshold: number;
+  stack?: Stack;
+  /** sha1 of the rule text + regex the labels were made against: a changed rule falls back to the regex at run time. */
+  ruleHash: string;
+  positives: { train: number; test: number };
+  f1: { regex: number; mlp: number; stack: number };
+}
+
+export interface GateModel {
+  version: 1;
+  profile: string;
+  trainedAt: string;
+  labels: number;
+  mean: number[];
+  mlp: { dim: number; hidden: number; out: number; w1: string; b1: string; w2: string; b2: string };
+  doors: GateDoor[];
+}
+
+/** A door uses the model only when it beat the regex on the held-out part by ≥ MIN_GAIN, with ≥ MIN_TEST_POSITIVES there. */
+export const MIN_TEST_POSITIVES = 10;
+export const MIN_GAIN = 0.05;
+export function chooseMode(f1: { regex: number; mlp: number; stack: number }, testPositives: number): GateMode {
+  if (testPositives < MIN_TEST_POSITIVES) return "regex";
+  const m: GateMode = f1.stack >= f1.mlp ? "stack" : "mlp";
+  return f1[m] - f1.regex >= MIN_GAIN ? m : "regex";
+}
+
+/** sha1 (12 hex) of a door's rule body (frontmatter removed) and its regex: the text its labels were judged against. */
+export function ruleHashOf(dirOfPart: string | undefined, part: string, re: string): string {
+  const f = dirOfPart ? join(dirOfPart, `${part}.md`) : "";
+  const body = f && existsSync(f) ? readFileSync(f, "utf8").replace(/^---[\s\S]*?\n---\r?\n/, "") : "";
+  return createHash("sha1").update(body).update("\n").update(re).digest("hex").slice(0, 12);
+}
+
+const b64 = (a: Float32Array): string => Buffer.from(a.buffer, a.byteOffset, a.byteLength).toString("base64");
+const f32 = (s: string): Float32Array => { const b = Buffer.from(s, "base64"); return new Float32Array(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)); };
+export function mlpOf(g: GateModel): Mlp {
+  return { dim: g.mlp.dim, hidden: g.mlp.hidden, out: g.mlp.out, w1: f32(g.mlp.w1), b1: f32(g.mlp.b1), w2: f32(g.mlp.w2), b2: f32(g.mlp.b2) };
+}
+export function modelOf(m: Mlp, rest: Omit<GateModel, "mlp">): GateModel {
+  return { ...rest, mlp: { dim: m.dim, hidden: m.hidden, out: m.out, w1: b64(m.w1), b1: b64(m.b1), w2: b64(m.w2), b2: b64(m.b2) } };
+}
+
+/** Centre on the training mean, then unit length (as the SVM above): the shared direction of all sentences removed. */
+export function centreInto(v: ArrayLike<number>, mean: ArrayLike<number>, into: Float32Array, off: number): void {
+  let s = 0;
+  for (let j = 0; j < mean.length; j++) { const x = v[j] - mean[j]; into[off + j] = x; s += x * x; }
+  s = Math.sqrt(s) || 1;
+  for (let j = 0; j < mean.length; j++) into[off + j] /= s;
+}
+
+export interface GateFitReport {
+  profile: string;
+  labels: number;
+  split: { fit: number; val: number; test: number };
+  doors: GateDoor[];
+  modelFile: string;
+  reportFile: string;
+  ms: number;
+}
+
+/**
+ * Train the self-trained gates on every 01_raw/full-labels-*.jsonl: split 64 / 16 / 20 (fit / thresholds + stacker / test),
+ * one MLP over the judgement doors, per door the threshold and stacker on the validation rows, the three ways scored on the
+ * test rows, the mode chosen by `chooseMode`. Writes 03_output/model-<profile>.json and the run's report.json.
+ */
+export async function fitGates(opts: {
+  dir?: string; hidden?: number; epochs?: number; profile?: EmbedProfile;
+  embed?: (t: string) => Promise<number[] | null>;
+  doors?: { part: string; dir?: string; re: string }[];
+  onProgress?: (what: string) => void;
+} = {}): Promise<GateFitReport> {
+  const t0 = Date.now();
+  const dir = opts.dir ?? trainingDir();
+  const raw = join(dir, "01_raw");
+  const files = existsSync(raw) ? readdirSync(raw).filter((n) => /^full-labels-.*\.jsonl$/.test(n)).sort() : [];
+  if (!files.length) throw new Error("no full labels in 01_raw: run --prepare, --annotate --yes and --merge first");
+  const seen = new Set<string>();
+  const rows: FullLabel[] = [];
+  for (const f of files) {
+    for (const r of readFileSync(join(raw, f), "utf8").split(/\r?\n/).filter(Boolean).map((l) => JSON.parse(l) as FullLabel)) {
+      if (seen.has(r.text)) continue;
+      seen.add(r.text);
+      rows.push(r);
+    }
+  }
+  const doors = (opts.doors ?? doorsOf()).filter((d) => /^Rule_Keys_/.test(d.part));
+  if (!doors.length) throw new Error("no judgement-rule door (Rule_Keys_* with a gate.json prompt) in HS");
+  const K = doors.length;
+  const profile = opts.profile ?? currentEmbedProfile();
+  opts.onProgress?.(`embedding ${rows.length} message(s) (cached ones are read back)`);
+  const vecs = await embedCached(rows.map((r) => r.text), {
+    dir, profile, embed: opts.embed,
+    onProgress: (d, t) => { if (d % 500 === 0 || d === t) opts.onProgress?.(`  embedded ${d}/${t}`); },
+  });
+  const data = seededShuffle(rows.filter((r) => vecs.has(r.text)), 7);
+  if (data.length < 50) throw new Error(`only ${data.length} labelled message(s) with a vector: too few to train`);
+  const nTest = Math.floor(data.length * 0.2), rest = data.slice(nTest), nFit = Math.floor(rest.length * 0.8);
+  const test = data.slice(0, nTest), fit = rest.slice(0, nFit), val = rest.slice(nFit);
+  const D = vecs.get(data[0].text)!.length;
+  const mean = new Float64Array(D);
+  for (const r of fit) { const v = vecs.get(r.text)!; for (let j = 0; j < D; j++) mean[j] += v[j] / fit.length; }
+  const mat = (rs: FullLabel[]): Float32Array => { const m = new Float32Array(rs.length * D); rs.forEach((r, i) => centreInto(vecs.get(r.text)!, mean, m, i * D)); return m; };
+  const lab = (rs: FullLabel[]): Uint8Array => { const y = new Uint8Array(rs.length * K); rs.forEach((r, i) => doors.forEach((d, c) => { y[i * K + c] = r.doors.includes(d.part) ? 1 : 0; })); return y; };
+  const XF = mat(fit), XV = mat(val), XT = mat(test), YF = lab(fit), YV = lab(val), YT = lab(test);
+  opts.onProgress?.(`training: fit ${fit.length} · val ${val.length} · test ${test.length} · ${K} door(s)`);
+  const m = fitMlp(XF, YF, fit.length, D, K, { X: XV, Y: YV, n: val.length }, {
+    hidden: opts.hidden, epochs: opts.epochs, onEpoch: (ep, f) => opts.onProgress?.(`  epoch ${ep}: val mean F1 ${f.toFixed(3)}`),
+  });
+  const SV = mlpScores(m, XV, val.length), ST = mlpScores(m, XT, test.length);
+  const rx = (rs: FullLabel[], re: string): Uint8Array => Uint8Array.from(rs.map((r) => (promptMatches(re, r.text) ? 1 : 0)));
+  const sum = (a: ArrayLike<number>): number => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i]; return s; };
+  const out: GateDoor[] = doors.map((d, c) => {
+    const yv = column(YV, val.length, K, c), yt = column(YT, test.length, K, c);
+    const sv = column(SV, val.length, K, c), st = column(ST, test.length, K, c);
+    const rv = rx(val, d.re), rt = rx(test, d.re);
+    const gold = Array.from(yt, (y) => (y ? 1 : 0) as 0 | 1);
+    const f1 = (pred: (i: number) => boolean): number => score(gold.map((_, i) => pred(i)), gold).f1;
+    const t = sweepThreshold(sv, yv).t;
+    const k = fitStack(sv, rv, yv);
+    const t2 = sweepThreshold(Array.from(sv, (s, i) => stackScore(k, s, rv[i])), yv).t;
+    const f = { regex: f1((i) => rt[i] === 1), mlp: f1((i) => st[i] >= t), stack: f1((i) => stackScore(k, st[i], rt[i]) >= t2) };
+    const posTest = sum(yt);
+    const mode = chooseMode(f, posTest);
+    return {
+      part: d.part, mode, threshold: mode === "stack" ? t2 : t, ...(mode === "stack" ? { stack: k } : {}),
+      ruleHash: ruleHashOf(d.dir, d.part, d.re), positives: { train: sum(column(YF, fit.length, K, c)) + sum(yv), test: posTest }, f1: f,
+    };
+  });
+  const model = modelOf(m, { version: 1, profile, trainedAt: new Date().toISOString(), labels: rows.length, mean: Array.from(mean), doors: out });
+  const o3 = join(dir, "03_output");
+  const run = join(o3, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+  mkdirSync(run, { recursive: true });
+  const modelFile = join(o3, `model-${profile}.json`);
+  writeFileSync(modelFile, JSON.stringify(model) + "\n", "utf8");
+  const reportFile = join(run, "report.json");
+  const rep: GateFitReport = { profile, labels: rows.length, split: { fit: fit.length, val: val.length, test: test.length }, doors: out, modelFile, reportFile, ms: Date.now() - t0 };
+  writeFileSync(reportFile, JSON.stringify({ ...rep, labelFiles: files }, null, 1) + "\n", "utf8");
   return rep;
 }
