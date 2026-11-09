@@ -158,12 +158,28 @@ export function ruleReminders(payload: any, verdicts?: Map<string, boolean>): st
  *  so a repo carries exactly the reminders of the skills and rules it has. File harness: the built-in four. */
 function promptGatesAt(cwd: string): PromptGate[] {
   try {
+    const now = Date.now();
+    const hit = gatesSeen.get(cwd);
+    if (hit && now - hit.at < GATES_TTL_MS) return hit.gates;
     const hp = cwd ? harnessPathsAt(toLocalPath(cwd)) : null;
-    if (hp && isFolderHarness(hp.agent)) return promptGates(hp.skills, hp.agent);
+    const gates = hp && isFolderHarness(hp.agent) ? promptGates(hp.skills, hp.agent) : BUILTIN_PROMPT_GATES;
+    gatesSeen.set(cwd, { at: now, gates });
+    return gates;
   } catch {
-    /* fail-open (HP article 9): the built-in reminders */
+    return BUILTIN_PROMPT_GATES; // fail-open (HP article 9): the built-in reminders
   }
-  return BUILTIN_PROMPT_GATES;
+}
+
+/**
+ * A repo's prompt gates, kept a minute per cwd. Reading them walks every part of the set (48 in a kit repo), and over the
+ * container's 9p mount that took 4.6-13.5 s on EVERY prompt (measured 2026-11-09) — the daemon stood still meanwhile. A
+ * gate.json edited now reaches the hook within a minute; a one-shot `zemory hook` process reads them fresh every time.
+ */
+const GATES_TTL_MS = 60_000;
+const gatesSeen = new Map<string, { at: number; gates: PromptGate[] }>();
+/** Forget the cached gates (a test that edits gate.json between prompts). */
+export function forgetPromptGates(): void {
+  gatesSeen.clear();
 }
 
 /** The reminders of a file-harness repo (before plan/28 they were the only ones). A folder harness reads them from the

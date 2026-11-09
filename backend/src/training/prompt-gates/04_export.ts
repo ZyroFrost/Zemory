@@ -81,6 +81,22 @@ export function loadGates(dir = trainingDir()): Runtime | null {
 
 export interface DoorAsk { part?: string; dir?: string; re: string }
 
+/**
+ * ruleHashOf, kept a minute per rule: it reads the rule file, and eleven reads over the container's 9p mount cost 0.4-0.7 s
+ * on every prompt (measured 2026-11-09). A rule edited now falls back to its regex within a minute.
+ */
+const HASH_TTL_MS = 60_000;
+const hashSeen = new Map<string, { at: number; hash: string }>();
+function ruleHashSeen(dir: string | undefined, part: string, re: string): string {
+  const key = `${dir ?? ""}\u0000${part}\u0000${re}`;
+  const now = Date.now();
+  const hit = hashSeen.get(key);
+  if (hit && now - hit.at < HASH_TTL_MS) return hit.hash;
+  const hash = ruleHashOf(dir, part, re);
+  hashSeen.set(key, { at: now, hash });
+  return hash;
+}
+
 /** Model verdicts for the doors the switch covers: part → fire or not. A door missing from the answer keeps its regex. */
 export function modelVerdicts(prompt: string, doors: DoorAsk[], dir?: string): Map<string, boolean> {
   const out = new Map<string, boolean>();
@@ -89,7 +105,7 @@ export function modelVerdicts(prompt: string, doors: DoorAsk[], dir?: string): M
     if (!rt || !prompt.trim()) return out;
     const asks = doors.filter((d) => {
       const door = d.part ? rt.doors.get(d.part) : undefined;
-      return door !== undefined && door.ruleHash === ruleHashOf(d.dir, d.part!, d.re);
+      return door !== undefined && door.ruleHash === ruleHashSeen(d.dir, d.part!, d.re);
     });
     if (!asks.length) return out;
     const x = tfidf(gramCounts(prompt, rt.bits), rt.idf);
@@ -103,4 +119,9 @@ export function modelVerdicts(prompt: string, doors: DoorAsk[], dir?: string): M
     out.clear();
   }
   return out;
+}
+
+/** Forget the cached rule hashes (a test that edits a rule, or a caller that just wrote one). */
+export function forgetRuleHashes(): void {
+  hashSeen.clear();
 }
