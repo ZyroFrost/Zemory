@@ -230,6 +230,8 @@ import { getShortcutPrompted, setShortcutPrompted } from "./config/settings.js";
 import { type ScopeLane, markConnectionsStale, scopeTree, toggleLane } from "./memory/scope.js";
 import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "./memory/capture-hook.js";
 import { parsePathMap, relayHookAsync } from "./memory/hook-relay.js";
+import { deferHarnessCheck } from "./memory/capture-hook.js";
+import { harnessNoteInWorker } from "./jobs/harnessworker.js";
 import { toHostPath, toLocalPath } from "./util/hostpath.js";
 import { loginViewUrl, otherRuntimeMessage, RUNTIME, runtimeOf, type Runtime } from "./util/runtime.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
@@ -4378,6 +4380,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // reconcile the OS autostart hook and start the idle background scheduler.
   armCrashReport();
   daemonLog(`daemon up on ${url} pid=${process.pid}`);
+  // the prompt hook's harness check walks a repo tree: in the daemon it runs in a worker thread, never on this loop (2026-11-09)
+  deferHarnessCheck((here, notePath) => void harnessNoteInWorker(here, notePath));
   // Mồi 3 check RẺ (FTS query · đọc docs · đọc skill — <1s mỗi cái) để cửa sổ đầu tiên mở ra
   // là pill sáng liền. CỐ Ý không mồi probe sâu (vector/rerank nạp model 8s+ — giữ thủ công).
   setTimeout(() => {

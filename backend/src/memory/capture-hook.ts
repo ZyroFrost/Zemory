@@ -194,6 +194,52 @@ const BUILTIN_PROMPT_GATES: PromptGate[] = [
     text: "[zemory] Design proposal: run `zemory plan search \"<area>\"` before proposing — a direction already rejected must not be proposed again; state an objection to a flawed design before building it (02-14)." },
 ];
 
+/**
+ * The once-per-session "harness behind" note of a repo (2026-08-21): zemory itself out of date, a kit repo behind its set,
+ * a file-harness repo missing standard files. Synchronous and slow on a big repo (it walks the tree; over the container's
+ * 9p mount that held the daemon's event loop for minutes, 2026-11-09), so the daemon runs it in a worker thread.
+ */
+export function harnessNote(here: string): string {
+  const r = syncCheck(here);
+  const notes: string[] = [];
+  // Bản THÂN CÔNG CỤ cũ — nói TRƯỚC, vì `zemory sync` gap-fill từ template của
+  // bản đang cài: áp chuẩn bằng một bản cũ là chép lại cái cũ.
+  if (r.appUpdate) {
+    // Nêu đúng nguồn: git (commit) hay tem kênh chung (máy đóng dấu).
+    const u = r.appUpdate;
+    const where = u.source === "git" ? `git commit ${u.from || "?"}` : `${u.from} đóng dấu ${u.at}`;
+    notes.push(`[zemory] ⚠ zemory ${u.have} — có bản MỚI ${u.latest} (${where}). Áp bằng MỘT lệnh: \`zemory selfupdate\`.`);
+  }
+  // A kit repo (folder harness) is measured against its set, not the old single files: the file-harness check
+  // reported the same 21 "missing" files in every folder repo, synced or not.
+  const kb = r.connected ? kitBehind(here) : null;
+  if (kb) {
+    const parts = [
+      kb.missing ? `${kb.missing} phần chưa có` : "",
+      kb.drift ? `${kb.drift} phần cũ hơn HS` : "",
+      kb.manual ? `${kb.manual} phần xung đột (gộp tay)` : "",
+      kb.guardStale.length ? `guard lỗi thời (${kb.guardStale.join(" · ")})` : "",
+    ].filter(Boolean);
+    if (parts.length) notes.push(`[zemory] ⚠ Harness repo này sau bộ ${kb.kit} — ${parts.join(" · ")}. Chạy \`zemory sync\` khi tiện.`);
+  } else if (r.connected && !repoKit(here) &&(r.missing.length > 0 || r.guardStale.length > 0)) {
+    const parts = [
+      r.missing.length ? `${r.missing.length} file chuẩn mới chưa nhận` : "",
+      r.guardStale.length ? `guard lỗi thời (${r.guardStale.join(" · ")})` : "",
+    ].filter(Boolean);
+    notes.push(
+      `[zemory] ⚠ Harness repo này CŨ so với bộ chuẩn hiện hành — ${parts.join(" · ")}. ` +
+        `Chạy \`zemory sync\`${r.guardStale.length ? " rồi `zemory hook guard`" : ""} khi tiện (xem \`zemory doctor\`).`,
+    );
+  }
+  return notes.join("\n");
+}
+
+/** Set by the daemon: run harnessNote off the event loop and leave its answer at `notePath` for the session's next prompt. */
+let deferHarness: ((here: string, notePath: string) => void) | null = null;
+export function deferHarnessCheck(fn: ((here: string, notePath: string) => void) | null): void {
+  deferHarness = fn;
+}
+
 function alreadyWarned(sessionId: string, transcriptPath?: string): boolean {
   const p = warnedFlagPath(sessionId);
   if (!existsSync(p)) return false;
@@ -368,6 +414,12 @@ export function handleHook(event: HookEventName, payload: any, verdicts?: Map<st
         const sidRaw = String(payload?.session_id ?? payload?.transcript_path ?? "");
         if (cwd && sidRaw) {
           const flag = join(currentMemoryDir(), "context-guard", `${sidRaw.replace(/[^\w.-]/g, "_")}.harness`);
+          // a note a worker left for this session (daemon path): it arrives one prompt late, the daemon never waits for it
+          const late = `${flag}-note`;
+          if (existsSync(late)) {
+            updNote = readFileSync(late, "utf8").trim();
+            rmSync(late, { force: true });
+          }
           if (!existsSync(flag)) {
             mkdirSync(dirname(flag), { recursive: true });
             // `writeFileAtomic`, KHÔNG phải `writeFileSync` trần: cổng `fs-atomic` cấm ghi trần
@@ -378,38 +430,8 @@ export function handleHook(event: HookEventName, payload: any, verdicts?: Map<st
             // the repo is read where it sits HERE: in the container a host cwd (d:\…) is no path at all, and the marker
             // search then climbed to the image's own /app marker - 14 "missing" files on a repo in sync (2026-10-28)
             const here = toLocalPath(cwd);
-            const r = syncCheck(here);
-            const notes: string[] = [];
-            // Bản THÂN CÔNG CỤ cũ — nói TRƯỚC, vì `zemory sync` gap-fill từ template của
-            // bản đang cài: áp chuẩn bằng một bản cũ là chép lại cái cũ.
-            if (r.appUpdate) {
-              // Nêu đúng nguồn: git (commit) hay tem kênh chung (máy đóng dấu).
-              const u = r.appUpdate;
-              const where = u.source === "git" ? `git commit ${u.from || "?"}` : `${u.from} đóng dấu ${u.at}`;
-              notes.push(`[zemory] ⚠ zemory ${u.have} — có bản MỚI ${u.latest} (${where}). Áp bằng MỘT lệnh: \`zemory selfupdate\`.`);
-            }
-            // A kit repo (folder harness) is measured against its set, not the old single files: the file-harness check
-            // reported the same 21 "missing" files in every folder repo, synced or not.
-            const kb = r.connected ? kitBehind(here) : null;
-            if (kb) {
-              const parts = [
-                kb.missing ? `${kb.missing} phần chưa có` : "",
-                kb.drift ? `${kb.drift} phần cũ hơn HS` : "",
-                kb.manual ? `${kb.manual} phần xung đột (gộp tay)` : "",
-                kb.guardStale.length ? `guard lỗi thời (${kb.guardStale.join(" · ")})` : "",
-              ].filter(Boolean);
-              if (parts.length) notes.push(`[zemory] ⚠ Harness repo này sau bộ ${kb.kit} — ${parts.join(" · ")}. Chạy \`zemory sync\` khi tiện.`);
-            } else if (r.connected && !repoKit(here) &&(r.missing.length > 0 || r.guardStale.length > 0)) {
-              const parts = [
-                r.missing.length ? `${r.missing.length} file chuẩn mới chưa nhận` : "",
-                r.guardStale.length ? `guard lỗi thời (${r.guardStale.join(" · ")})` : "",
-              ].filter(Boolean);
-              notes.push(
-                `[zemory] ⚠ Harness repo này CŨ so với bộ chuẩn hiện hành — ${parts.join(" · ")}. ` +
-                  `Chạy \`zemory sync\`${r.guardStale.length ? " rồi `zemory hook guard`" : ""} khi tiện (xem \`zemory doctor\`).`,
-              );
-            }
-            if (notes.length) updNote = notes.join("\n");
+            if (deferHarness) deferHarness(here, `${flag}-note`);
+            else updNote = harnessNote(here);
           }
         }
       } catch {
