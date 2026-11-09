@@ -52,8 +52,6 @@ export const LIGHT_DESPITE_MATCH = {
   "vec-pending-plan.test.mjs": 48,
   // Đo bằng gate-cage 2026-10-14: chỉ ĐỌC mã nguồn backend/src để đếm chuỗi SQL viết tại chỗ — không nạp model/grammar.
   "sql-one-way.test.mjs": 69,
-  // Measured with gate-cage 2026-11-09: hook workers ingest an 8 MB synthetic transcript into a temp store - no model.
-  "hookpool.test.mjs": 332,
 };
 /** Nhóm nạp model chạy TUẦN TỰ — đỉnh RAM ≤ một model. Đổi số này là bỏ luôn lý do tách nhóm. */
 export const HEAVY_CONCURRENCY = 1;
