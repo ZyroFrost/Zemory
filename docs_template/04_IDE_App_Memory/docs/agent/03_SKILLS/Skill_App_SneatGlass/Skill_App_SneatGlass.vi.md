@@ -1,5 +1,5 @@
 ---
-version: 47
+version: 48
 lang: vi
 ---
 
@@ -69,8 +69,10 @@ lang: vi
   thẻ đó (v47, Dashboard 09/11). [table-edges] [card-inset]
 - **Dải tab các trang cùng nhóm** (v46, Dashboard 08/11, user 09/11 - "khu vực tab phải là khu vực tách rời, ko được load lại…
   gần như là panel khung dòng thứ 3… nó cũng phải neo"): app gom nhiều trang dưới một hàng menu thì bật dải tab của khung
-  (`pageHead`); dải là panel của khung nằm trên trang và ngoài trang - đổi tab chỉ đổi trang - neo trên đầu, 1,5rem phía trên,
-  vạch mảnh dưới, 1,5rem tới trang; tab của trang đang mở sáng nhờ viên trượt từ tab trước; tab không vừa một dòng gom vào
+  (`pageHead`); dải nằm trên trang và ngoài trang - đổi tab chỉ đổi trang - neo trên đầu; dải là phần trên của thẻ trang, cùng
+  một khối kính, ngăn với trang bằng một đường kẻ mờ, không bao giờ thành panel rời (v48, user 09/11: "nó phải nối vào main chính
+  luôn ko dc rời ra, chỉ phân tách bằng line ảo"); thấp và gọn, không bao giờ rộng hơn thẻ; mọi tab cách nhau đúng một khoảng,
+  bằng lề hai đầu dải ("phải cách bằng với padding 2 đầu chứ"); tab của trang đang mở sáng nhờ viên trượt từ tab trước; tab không vừa một dòng gom vào
   "Thêm (n)", tab đang mở luôn trên dòng (user chê tab xuống 3 dòng). Mỗi người bật/tắt ở Cài đặt > Bố cục ("cái tab hiện ra hay
   ko phải là tính năng được option chọn ở setting"). [page-tabs]
 - Trên điện thoại, cửa sổ cuộn và thanh trên dính (sticky).

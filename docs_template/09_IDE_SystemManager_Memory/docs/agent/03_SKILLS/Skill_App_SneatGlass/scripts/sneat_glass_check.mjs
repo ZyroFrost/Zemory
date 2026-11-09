@@ -384,7 +384,7 @@ export const RULES = [
   },
   {
     id: 'page-tabs',
-    rule: '(v46, Dashboard 08/11, the user 09/11) the tab panel of the sibling pages, where an app shows it, is a frame panel above the page and outside it, pinned at the top, its tabs on one row (the rest under more), the pill under the tab of the page on screen',
+    rule: '(v46, Dashboard 08/11, the user 09/11) the tab panel of the sibling pages, where an app shows it, is a frame panel above the page and outside it, pinned at the top, its tabs on one row (the rest under more), the pill under the tab of the page on screen, one even space between the tabs equal to the strip room at its ends (v48)',
     check: `(() => {
       const t = document.getElementById('page-tabs');
       if (!t || !t.getClientRects().length) return true;
@@ -397,6 +397,11 @@ export const RULES = [
         const x = p.getBoundingClientRect(), y = a.getBoundingClientRect();
         if (Math.abs(x.left - y.left) > 1 || Math.abs(x.width - y.width) > 1) return 'the pill is not under the tab of the page on screen';
       }
+      // (v48, the user 09/11: the spaces between tabs were uneven) one space: the first tab at the strip's own room from its left
+      // edge, and every two tabs exactly that room apart, within 1 px
+      const pad = parseFloat(getComputedStyle(t).paddingLeft), start = t.getBoundingClientRect().left + t.clientLeft + pad, rs = items.map(i => i.getBoundingClientRect());
+      if (rs.length && Math.abs(rs[0].left - start) > 1) return 'the first tab stands ' + Math.round(rs[0].left - start + pad) + ' px from the strip edge, the strip keeps ' + Math.round(pad);
+      for (let i = 1; i < rs.length; i++) { const gap = rs[i].left - rs[i - 1].right; if (Math.abs(gap - pad) > 1) return 'two tabs stand ' + Math.round(gap) + ' px apart, the strip ends ' + Math.round(pad) + ' px - one even space'; }
       return true;
     })()`,
   },

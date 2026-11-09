@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 47
+version: 48
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v47 #fcc925092bba
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v48 #74c0cba4f834
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -79,8 +79,11 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v47 #fcc925092bba
   board (an inner card) keeps that card's 1rem inset (v47, Dashboard 09/11). [table-edges] [card-inset]
 - **The tab panel of the sibling pages** (v46, Dashboard 08/11, the user 09/11 - "khu vực tab phải là khu vực tách rời, ko
   được load lại… gần như là panel khung dòng thứ 3… nó cũng phải neo"): an app that groups many pages under one menu row turns
-  on the frame's tab panel (`pageHead`); it is a frame panel above the page and outside it - moving between its tabs changes
-  only the page - pinned at the top, 1.5rem above it, a hairline under it, 1.5rem to the page; the page on screen is lit by a
+  on the frame's tab panel (`pageHead`); it stands above the page and outside it - moving between its tabs changes only the
+  page - pinned at the top; it is the top of the page card, the same glass block, parted from the page by a faint dashed line,
+  never a panel apart (v48, the user 09/11: "nó phải nối vào main chính luôn ko dc rời ra, chỉ phân tách bằng line ảo"); low
+  and tight, never wider than the card; one even space between its tabs, equal to its room at the ends ("phải cách bằng với
+  padding 2 đầu chứ"); the page on screen is lit by a
   pill sliding from the tab before; tabs that do not fit one row go under "Thêm (n)", the page on screen always on the row
   (the user turned down tabs on three lines). Each person shows or hides it in Settings > Layout ("cái tab hiện ra hay ko
   phải là tính năng được option chọn ở setting"). [page-tabs]
