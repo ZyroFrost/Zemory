@@ -1645,12 +1645,12 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       }
       if (args.includes("--fit")) {
         const { fitGates } = await import("../training/prompt-gates/03_train.js");
-        const r = await fitGates({ onProgress: (w) => console.log(`  ${w}`) });
-        console.log(`zemory memory bench --prompts --train --fit — ${r.labels} labelled message(s) · fit ${r.split.fit} · val ${r.split.val} · test ${r.split.test} · profile ${r.profile} · ${Math.round(r.ms / 1000)} s`);
-        console.log("  door                                  test+  regex  model  model+regex  -> uses");
+        const r = fitGates({ onProgress: (w) => console.log(`  ${w}`) });
+        console.log(`zemory memory bench --prompts --train --fit — ${r.labels} labelled message(s) · fit ${r.split.fit} · val ${r.split.val} · test ${r.split.test} · text model · ${Math.round(r.ms / 1000)} s`);
+        console.log("  door                                  test+  regex   text   text+regex  -> uses");
         for (const d of r.doors) {
           const f = (x: number): string => x.toFixed(2).padStart(5);
-          console.log(`  ${d.part.padEnd(38)}${String(d.positives.test).padStart(5)}  ${f(d.f1.regex)}  ${f(d.f1.mlp)}  ${f(d.f1.stack).padStart(11)}  -> ${d.mode}`);
+          console.log(`  ${d.part.padEnd(38)}${String(d.positives.test).padStart(5)}  ${f(d.f1.regex)}  ${f(d.f1.text)}  ${f(d.f1.stack).padStart(11)}  -> ${d.mode}`);
         }
         console.log(`  model: ${r.modelFile}`);
         console.log(`  report: ${r.reportFile}`);
@@ -1666,10 +1666,10 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           return;
         }
         const sw = enableGates();
-        console.log(`zemory memory bench --prompts --train --enable — profile ${sw.profile} · ${sw.doors.length} door(s) on the model, the rest on the regex`);
+        console.log(`zemory memory bench --prompts --train --enable — ${sw.doors.length} door(s) on the model, the rest on the regex`);
         for (const d of sw.doors) console.log(`  ${d}`);
         console.log(`  ${switchPath()}`);
-        console.log("  a door whose rule text changed since the labels, a slow embedding or any error falls back to the regex");
+        console.log("  a door whose rule text changed since the labels, or any error, falls back to the regex");
         return;
       }
       // step 01. The training never reads the live GM (plan/38 header): a read-only online-backup copy is made when no

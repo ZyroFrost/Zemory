@@ -32,6 +32,7 @@ import { kitBehind } from "../docs/kit-sync.js";
 import { repoKit } from "../docs/kit-apply.js";
 import { coreForCompaction, coreReinjectCap } from "../docs/rule-core.js";
 import { isFolderHarness, isRetired, listParts, promptGates, type PromptGate } from "../docs/store.js";
+import { modelVerdicts } from "../training/prompt-gates/04_export.js";
 import { stopDecision } from "../docs/turn-evidence.js";
 import { AUTO_COMMIT_LINES, autoCommit } from "../docs/auto-commit.js";
 import { promptMatches, SHELF } from "../docs/harness-names.js";
@@ -142,10 +143,12 @@ export function ruleReminders(payload: any, verdicts?: Map<string, boolean>): st
   // A host event delivered as a "prompt" (a background task finishing, a system notice) is not the user speaking: its
   // text quotes agent output, so keyword doors fired on it (two reminders on one task notification, 2026-10-14).
   if (/<task-notification>|\[SYSTEM NOTIFICATION|^\s*<system-reminder>/i.test(prompt)) return out.join("\n");
-  for (const g of promptGatesAt(cwd)) {
-    // a self-trained model's verdict where it has one (plan/38 §8), else the matching the keyword table was measured with
-    // (plan/28 §0o)
-    const fire = g.part && verdicts?.has(g.part) ? verdicts.get(g.part)! : promptMatches(g.re, prompt);
+  const gates = promptGatesAt(cwd);
+  // a self-trained model (plan/38 §8) answers the doors it was switched on for, in ~0.2 ms here; none switched on ⇒ empty
+  const said = verdicts ?? modelVerdicts(prompt, gates);
+  for (const g of gates) {
+    // the model's verdict where it has one, else the matching the keyword table was measured with (plan/28 §0o)
+    const fire = g.part && said.has(g.part) ? said.get(g.part)! : promptMatches(g.re, prompt);
     if (fire && once(g.kind)) out.push(g.text);
   }
   return out.join("\n");
@@ -161,23 +164,6 @@ function promptGatesAt(cwd: string): PromptGate[] {
     /* fail-open (HP article 9): the built-in reminders */
   }
   return BUILTIN_PROMPT_GATES;
-}
-
-/**
- * The self-trained model's verdicts for this prompt (plan/38 §8), computed before the synchronous hook runs: part → fire.
- * Empty (every door on its regex) when the person never ran `--enable`, on a host event, or when anything fails or is slow.
- */
-export async function promptModelVerdicts(payload: any): Promise<Map<string, boolean>> {
-  try {
-    const prompt = String(payload?.prompt ?? "");
-    if (!prompt.trim() || /<task-notification>|\[SYSTEM NOTIFICATION|^\s*<system-reminder>/i.test(prompt)) return new Map();
-    // loaded on demand: a hook process that never meets an enabled model does not pay for the training code
-    const gate = await import("../training/prompt-gates/04_export.js");
-    if (!gate.loadGates()) return new Map(); // the cheap test first: no switch, no gate scan, no embedding
-    return await gate.modelVerdicts(prompt, promptGatesAt(String(payload?.cwd ?? "")));
-  } catch {
-    return new Map();
-  }
 }
 
 /** The reminders of a file-harness repo (before plan/28 they were the only ones). A folder harness reads them from the
@@ -350,7 +336,7 @@ export function readContextState(sessionId: string, dir?: string): ContextState 
 }
 
 /** Run a hook handler. Returns text to write to stdout (may be ""). */
-export function handleHook(event: HookEventName, payload: any, verdicts?: Map<string, boolean>): string {
+export function handleHook(event: HookEventName, payload: any): string {
   try {
     const cwd: string | undefined = payload?.cwd;
 
@@ -440,7 +426,7 @@ export function handleHook(event: HookEventName, payload: any, verdicts?: Map<st
       // RULE REMINDERS (rule audit 2026-10-07, class C — rules a machine can only REMIND of). Each fires AT MOST ONCE per
       // session (a flag per kind), so this hook stays quiet: 0 characters on every other prompt.
       try {
-        const extra = ruleReminders(payload, verdicts);
+        const extra = ruleReminders(payload);
         if (extra) updNote = updNote ? `${updNote}\n${extra}` : extra;
       } catch {
         /* fail-open */
