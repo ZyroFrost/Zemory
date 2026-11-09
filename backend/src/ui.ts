@@ -232,6 +232,17 @@ import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "
 import { parsePathMap, relayHook } from "./memory/hook-relay.js";
 import { deferHarnessCheck } from "./memory/capture-hook.js";
 import { harnessNoteInWorker } from "./jobs/harnessworker.js";
+import { HookPool } from "./jobs/hookpool.js";
+
+/** The daemon's hook workers (jobs/hookpool.ts), made on the first hook. ZEMORY_HOOK_WORKERS=0 ⇒ none: hooks run inline. */
+let hookWorkers: HookPool | null | undefined;
+function hookPool(): HookPool | null {
+  if (hookWorkers === undefined) {
+    const n = Number(process.env.ZEMORY_HOOK_WORKERS ?? 2);
+    hookWorkers = Number.isFinite(n) && n > 0 ? new HookPool({ size: Math.min(4, Math.floor(n)) }) : null;
+  }
+  return hookWorkers;
+}
 import { toHostPath, toLocalPath } from "./util/hostpath.js";
 import { loginViewUrl, otherRuntimeMessage, RUNTIME, runtimeOf, type Runtime } from "./util/runtime.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
@@ -2586,7 +2597,9 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       } catch {
         // an unreadable payload is nothing to judge: let it through, as the stdin hook does
       }
-      return json(res, relayHook(decodeURIComponent(p.slice("/hook/".length)), payload, parsePathMap(process.env.ZEMORY_PATH_MAP)));
+      // off the event loop (jobs/hookpool.ts); ZEMORY_HOOK_WORKERS=0 runs them here, as before
+      const ev = decodeURIComponent(p.slice("/hook/".length)), map = parsePathMap(process.env.ZEMORY_PATH_MAP);
+      return json(res, hookPool() ? await hookPool()!.run(ev, payload, map) : relayHook(ev, payload, map));
     }
     if (req.method === "POST" && p === "/gate-acquire") {
       // A CLI is about to write the memory — pause the scheduler so they don't
@@ -4382,6 +4395,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   daemonLog(`daemon up on ${url} pid=${process.pid}`);
   // the prompt hook's harness check walks a repo tree: in the daemon it runs in a worker thread, never on this loop (2026-11-09)
   deferHarnessCheck((here, notePath) => void harnessNoteInWorker(here, notePath));
+  hookPool()?.warm(); // the hook workers start with the daemon, not on the first prompt
   // Mồi 3 check RẺ (FTS query · đọc docs · đọc skill — <1s mỗi cái) để cửa sổ đầu tiên mở ra
   // là pill sáng liền. CỐ Ý không mồi probe sâu (vector/rerank nạp model 8s+ — giữ thủ công).
   setTimeout(() => {

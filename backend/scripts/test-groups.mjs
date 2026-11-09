@@ -54,6 +54,8 @@ export const LIGHT_DESPITE_MATCH = {
   "sql-one-way.test.mjs": 69,
   // Measured with gate-cage 2026-11-09: self-trained gates with an injected embed and hand-built models - no ONNX model.
   "training-gates.test.mjs": 150,
+  // Measured with gate-cage 2026-11-09: hook workers ingest an 8 MB synthetic transcript into a temp store - no model.
+  "hookpool.test.mjs": 332,
 };
 /** Nhóm nạp model chạy TUẦN TỰ — đỉnh RAM ≤ một model. Đổi số này là bỏ luôn lý do tách nhóm. */
 export const HEAVY_CONCURRENCY = 1;

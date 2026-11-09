@@ -15,6 +15,7 @@
 
 import { mkdirSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { threadId } from "node:worker_threads";
 import { currentMemoryDir } from "../memory/db.js";
 
 /** Poll interval while waiting for the turn. Turns last ms–seconds, so waiting a full second (the channel lock's step) is waste. */
@@ -40,8 +41,32 @@ function pidAlive(pid: number): boolean {
 
 const pidOf = (ticket: string): number => Number(ticket.split("-")[1]);
 
-/** The ticket holding the turn now, after dropping dead / abandoned ones. */
+/** A "choosing" mark this old belongs to a writer that died mid-choice — it never blocks the queue. */
+const CHOOSING_STALE_MS = 30_000;
+
+/**
+ * The ticket holding the turn now, after dropping dead / abandoned ones. Nobody holds it while a live writer is still
+ * choosing its number (Lamport's bakery): a ticket written in the same millisecond can sort BEFORE one already checked,
+ * and both writers then saw themselves first — two holders, measured with four threads released at once (2026-11-09).
+ */
 function head(dir: string): string | null {
+  let all: string[];
+  try {
+    all = readdirSync(dir);
+  } catch {
+    return null;
+  }
+  for (const c of all.filter((n) => n.endsWith(".c"))) {
+    let old: boolean;
+    try {
+      old = Date.now() - statSync(join(dir, c)).mtimeMs > CHOOSING_STALE_MS;
+    } catch {
+      continue; // finished between list and stat
+    }
+    if (pidAlive(Number(c.split("-")[0])) && !old) return null; // someone is choosing: wait, then look again
+    rmSync(join(dir, c), { force: true });
+  }
+  // listed AFTER the choosing marks: a writer that finished choosing in between has its ticket here
   let names: string[];
   try {
     names = readdirSync(dir).filter((n) => n.endsWith(".t"));
@@ -64,9 +89,21 @@ function head(dir: string): string | null {
 
 function takeTicket(dir: string): string {
   mkdirSync(dir, { recursive: true });
-  const name = `${String(Date.now()).padStart(15, "0")}-${process.pid}-${String(seq++).padStart(6, "0")}.t`;
-  writeFileSync(join(dir, name), "");
-  return name;
+  // the thread is part of the name: a hook worker shares the daemon's pid and keeps its own `seq`, so pid + seq alone gave two
+  // threads the SAME ticket in one millisecond (hook workers, 2026-11-09)
+  const who = `${process.pid}-${String(threadId).padStart(3, "0")}${String(seq++).padStart(6, "0")}`;
+  // bakery: mark "choosing", take a number above every ticket already there, write the ticket, drop the mark
+  const choosing = join(dir, `${who}.c`);
+  writeFileSync(choosing, "");
+  try {
+    let top = 0;
+    for (const n of readdirSync(dir)) if (n.endsWith(".t")) top = Math.max(top, Number(n.slice(0, 15)) || 0);
+    const name = `${String(Math.max(Date.now(), top + 1)).padStart(15, "0")}-${who}.t`;
+    writeFileSync(join(dir, name), "");
+    return name;
+  } finally {
+    rmSync(choosing, { force: true });
+  }
 }
 
 /** While held, a turn beats (mtime) so a long write — the first merge of a big channel — is never read as abandoned. */
