@@ -121,3 +121,35 @@ export class HookPool {
     return slot;
   }
 }
+
+/** The hooks that may be slow (ingesting the session, the auto-commit's git, reading a long transcript). */
+const SLOW_EVENTS = new Set(["stop", "session-end"]);
+
+/**
+ * Two lanes, so a prompt never queues behind a stop: the stop hook of a long session took over 14 s in the container (its
+ * auto-commit reads the whole 18 MB transcript and runs git over the 9p mount), and with one shared pool the prompts behind
+ * two such stops hit the deadline and answered nothing — their reminders lost (measured 2026-11-09). A prompt, a session
+ * start, a compaction and the send guard run in the fast lane; stop and session end in the slow one.
+ */
+export class HookLanes {
+  private readonly fast: HookPool;
+  private readonly slow: HookPool;
+
+  constructor(o: { fast?: number; slow?: number; entry?: URL; answerMs?: number } = {}) {
+    this.fast = new HookPool({ size: o.fast ?? 1, entry: o.entry, answerMs: o.answerMs });
+    this.slow = new HookPool({ size: o.slow ?? 1, entry: o.entry, answerMs: o.answerMs });
+  }
+
+  warm(): void {
+    this.fast.warm();
+    this.slow.warm();
+  }
+
+  run(event: string, payload: Record<string, unknown>, map: PathPair[]): Promise<HookAnswer> {
+    return (SLOW_EVENTS.has(event) ? this.slow : this.fast).run(event, payload, map);
+  }
+
+  close(): Promise<unknown> {
+    return Promise.all([this.fast.close(), this.slow.close()]);
+  }
+}

@@ -232,15 +232,13 @@ import { hooksInstalled, installHooks, readContextState, uninstallHooks } from "
 import { parsePathMap, relayHook } from "./memory/hook-relay.js";
 import { deferHarnessCheck } from "./memory/capture-hook.js";
 import { harnessNoteInWorker } from "./jobs/harnessworker.js";
-import { HookPool } from "./jobs/hookpool.js";
+import { HookLanes } from "./jobs/hookpool.js";
 
-/** The daemon's hook workers (jobs/hookpool.ts), made on the first hook. ZEMORY_HOOK_WORKERS=0 ⇒ none: hooks run inline. */
-let hookWorkers: HookPool | null | undefined;
-function hookPool(): HookPool | null {
-  if (hookWorkers === undefined) {
-    const n = Number(process.env.ZEMORY_HOOK_WORKERS ?? 2);
-    hookWorkers = Number.isFinite(n) && n > 0 ? new HookPool({ size: Math.min(4, Math.floor(n)) }) : null;
-  }
+/** The daemon's hook workers (jobs/hookpool.ts): a fast lane and a slow lane, one worker each. ZEMORY_HOOK_WORKERS=0 ⇒ none:
+ *  hooks run inline, as before. */
+let hookWorkers: HookLanes | null | undefined;
+function hookPool(): HookLanes | null {
+  if (hookWorkers === undefined) hookWorkers = process.env.ZEMORY_HOOK_WORKERS === "0" ? null : new HookLanes();
   return hookWorkers;
 }
 import { toHostPath, toLocalPath } from "./util/hostpath.js";
