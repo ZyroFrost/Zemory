@@ -113,7 +113,7 @@ export const LEGEND_CLICK = `(async () => {
     || document.querySelector('[data-cf-dim="' + CSS.escape(point.dataset.cfDim) + '"][data-cf-value="' + CSS.escape(point.dataset.cfValue) + '"]');
   document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await wait(300);
   const counted = count();
-  point.click(); await wait(500);
+  point.dispatchEvent(new MouseEvent('click', {bubbles: true})); await wait(500);   // (v9) an svg mark has no click()
   if (!field()) return 'the legend of ' + dim + ' has no filter on the page bar';
   if (count() !== counted + 1) return 'a click on the legend entry ' + value + ' is not counted by the filter button (' + counted + ' -> ' + count() + ')';
   const shown = (field().textContent || '') + ' ' + (field().value || '') + ' ' + (field().getAttribute('data-value') || '') + ' ' + (field().getAttribute('aria-label') || '');
@@ -126,7 +126,7 @@ export const LEGEND_CLICK = `(async () => {
   // visual of the page dimmed, is enough
   const single = chart && chart.querySelectorAll('[data-rp-legend] > *').length <= 1;
   const lit = (again()?.getAttribute('aria-pressed') === 'true') || document.querySelectorAll('.cf-dim').length > 0;
-  again()?.click(); await wait(500);
+  again()?.dispatchEvent(new MouseEvent('click', {bubbles: true})); await wait(500);
   if (count() !== counted) return 'a second click on the legend entry does not take the filter off';
   if (chart && !dimmed && !(single && lit)) return 'a click on the legend entry ' + value + ' dims nothing in its chart - the series is not lit against the rest';
   return true;
@@ -193,7 +193,7 @@ export const INTERACTION = `(async () => {
   const count = () => Number(document.querySelector('#filter-toggle .filter-count')?.textContent || 0);
   const field = () => document.querySelector('[data-filter-id="' + CSS.escape(dim.split('|')[0]) + '"]');
   const before = others() + '#' + kpis(), counted = count();
-  find().click();
+  find().dispatchEvent(new MouseEvent('click', {bubbles: true}));
   await wait(500);
   const picked = find();
   if (!picked || picked.getAttribute('aria-pressed') !== 'true') return 'the clicked point is not marked picked (aria-pressed)';
@@ -203,10 +203,10 @@ export const INTERACTION = `(async () => {
   if (count() <= counted) return 'the filter button does not count the pick (' + counted + ' -> ' + count() + ')';
   if (document.querySelector('#cf-chips')) return 'a second row of chips (#cf-chips) beside the page filter';
   if (others() + '#' + kpis() === before) return 'nothing else on the page changed after the click';
-  find().click();
+  find().dispatchEvent(new MouseEvent('click', {bubbles: true}));
   await wait(500);
   if (find().getAttribute('aria-pressed') === 'true' || count() !== counted) return 'a second click on the only picked point does not clear';
-  find().click();
+  find().dispatchEvent(new MouseEvent('click', {bubbles: true}));
   await wait(400);
   document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
   window.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
@@ -227,10 +227,10 @@ export const EVERY_CLICK = `(async () => {
     const p = [...v.querySelectorAll('[data-cf-value]')].find(e => e.getClientRects().length);
     if (!p) continue;
     const dim = p.dataset.cfDim, value = p.dataset.cfValue, whole = sig(null), others = sig(p);
-    p.click(); await wait(400);
+    p.dispatchEvent(new MouseEvent('click', {bubbles: true})); await wait(400);   // (v9) an svg mark has no click()
     const again = document.querySelector('[data-cf-dim="' + CSS.escape(dim) + '"][data-cf-value="' + CSS.escape(value) + '"]');
     const changed = sig(again) !== others;
-    again?.click(); await wait(400);
+    again?.dispatchEvent(new MouseEvent('click', {bubbles: true})); await wait(400);
     if (!changed) out.push('a point of ' + dim + ' (' + value + ') filters nothing');
     else if (sig(null) !== whole) out.push('a point of ' + dim + ': a second click does not bring the page back');
   }

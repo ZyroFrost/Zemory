@@ -1,5 +1,5 @@
 ---
-version: 14
+version: 15
 lang: vi
 ---
 
@@ -29,6 +29,9 @@ lang: vi
   mới thì bỏ cả hàng; card mang sang từ report đang thay thì giữ và bổ sung cho đủ bốn bằng chỉ số trang đã đọc. [rp-cards]
 - **Hàng card đứng riêng một dòng** (v10): không chart,
   donut hay bảng nào đứng cạnh nó trong cùng một hàng của lưới - chart của cùng chỉ số đặt ở hàng dưới. [rp-cards-apart]
+- **Hàng card nằm trên một hàng có cùng số panel thì thẳng mép với chúng** (v15): mỗi card rộng bằng panel bên dưới, lệch tối đa
+  2 px, kể cả khi panel nới ra cho bảng - card đi theo bề rộng panel (px bố cục: khung có zoom làm thu số đo khung chữ nhật, không
+  thu bề rộng được đặt). [rp-cards-aligned]
 - **Card cao vừa nội dung của nó** (v10): không bị kéo cao theo khối đứng cạnh - tối đa 1,6 lần
   các dòng chữ cộng padding, đo trên phần card vẽ ra (v11: `.card-body` của card Sneat giãn theo card). [rp-card-fit]
 - **Card quá nhiều cho một dòng thì chia trên dưới thành các dòng đều nhau** (v11): card giữ đúng cỡ và thiết kế - không
@@ -87,7 +90,18 @@ lang: vi
 - **Số trong bảng theo định dạng số của từng người** (v9): Cài đặt > Số của khung chung (đơn vị, số lẻ, làm tròn, dấu phân cách, số âm), lưu trên
   `<html data-num-format>`. Ô số nói nó là gì (`data-rp-num` = `money` · `count` · `pct`) và giá trị gốc (`data-rp-raw`), và
   hiện đúng định dạng đó (`fmtNum` của khung); số âm tô đỏ mang `text-danger`. Chart và card KPI giữ cách hiện riêng. [rp-num-format]
-- **Bảng hiện tối đa mười dòng**, phần còn lại cuộn trong khung của chính nó, và vẫn nằm chung trang với các hình khác (v7). [rp-table-rows-cap]
+- **Bảng hiện tối đa mười dòng**, phần còn lại cuộn trong khung của chính nó, và vẫn nằm chung trang với các hình khác (v7);
+  mười dòng theo chiều cao thật - dòng hai hàng chữ cao hơn - không phải chiều cao cố định. [rp-table-rows-cap]
+- **Cách cho bảng vừa panel** (v15, cách giữ rp-no-side-scroll): bảng rộng hơn panel ở lề của kit thì dùng lề ô hẹp; đo cả hàng
+  một lần, bảng được nới tới cỡ cần chỉ khi mọi panel của hàng vẫn vừa (donut/chart giữ 15rem), không thì giữ tỉ lệ của report;
+  tiêu đề xuống dòng giữa các từ, không bẻ giữa một từ; ma trận có trường cột hơn 24 giá trị (80 cửa hàng làm cột) lật lại, các
+  giá trị đó thành dòng, màu đi theo ô; bảng report vẽ rộng từ 60 % trang trở lên đứng riêng một hàng.
+- **Không cột trống** (v15): ma trận không hiện cột mà mọi số đều trống, như Power BI không hiện mục không có dữ liệu (như dòng
+  trống). [rp-blank-cols]
+- **Tiêu đề không là tên trường** (v15): kiểu CamelCase (`StoreName2`, `ShortName`) hay có số bản sao (`Vị Trí1`) thì đọc tên
+  của trường trên trang. [rp-header-words]
+- **Câu chữ không là ô bảng** (v15): measure chữ không có trường (kết luận, nhận xét) là khối chữ xuống dòng trong panel.
+  [rp-sentences] Measure chữ viết ra một số (số đếm, % theo công tắc) thì hiện như số đó, theo định dạng của người xem.
 
 ## 5. Bố cục
 
@@ -109,6 +123,8 @@ lang: vi
 - **Chart nào cũng phóng to riêng được** (v13, như focus mode của Power BI): một nút (`.rp-focus-btn`) trên mỗi chart và
   donut, cao bằng một chip legend và cùng hàng; bấm thì chart chiếm thân trang, hình khác ẩn, thanh trang giữ; bấm lại hay Esc thì
   trang về như cũ. [rp-focus]
+- **Trang giữ nguyên cỡ** (v15): không bao giờ thu nhỏ cho vừa màn hình (không transform scale trên trang hay một khối của nó);
+  trang cao hơn màn hình thì cuộn. Từng trang một tab hay mọi trang nối nhau là cách xem; không cách nào thu nhỏ. [rp-no-page-scale]
 - **Danh sách báo cáo của phòng ban là các dòng rộng bằng trang** (v13): mỗi card báo cáo của trang
   danh mục là một dòng rộng bằng trang, các trang của nó trải đều bề ngang đó - không bao giờ card trong cột hẹp. [rp-catalog-rows]
 
@@ -153,6 +169,9 @@ lang: vi
   report đọc) trước khi sửa app.
 - **Số bán theo ngày chỉ tính ngày đã đóng sổ** (v13): số theo ngày bán chỉ đọc ngày đã đóng sổ
   (`Dim_Date.IsSaleDayClosed = 1`), như report.
+- **Mỗi visual vẽ đúng loại của nó** (v15): scatter là chấm (X, Y, Size), cột chồng 100 % là các phần của 100 % có % từng phần, pie
+  chỉ có trường Legend thì mỗi giá trị legend một lát - không bao giờ cột nhóm hay panel trống cho một loại chưa dựng (visual đó
+  chờ, có khai, rp-parity).
 
 ## 9. Hợp đồng markup
 
@@ -174,6 +193,7 @@ lang: vi
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | bảng · dòng tổng | [rp-table-few] [rp-table-style] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | bảng giải thích · mỗi dòng | [rp-glossary] |
 | `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | ô số của bảng · giá trị gốc | [rp-num-format] |
+| `data-rp-id` | ô hay cột mã (mã nhân viên 03163) | không phải số [rp-num-format] |
 
 Card dùng bốn vai chữ của `app-sneat-glass` (`kpi-title` · `kpi-main` · `kpi-percentage` · `kpi-secondary`).
 
@@ -182,6 +202,8 @@ Card dùng bốn vai chữ của `app-sneat-glass` (`kpi-title` · `kpi-main` ·
 - Bài kiểm trình duyệt của repo nhập `scripts/report_layout_check.mjs`, chạy mọi mục `RULES` trên mọi trang báo cáo (mọi màn và
   tab), ở khổ desktop và điện thoại, cả hai theme. Chạy `SELF_TEST` trước: trang tốt qua mọi luật, trang lỗi trượt từng luật,
   nên luật nào cũng đã được chứng minh đỏ. Thêm luật ở đây thì thêm mục ở đó trong cùng lần sửa.
+- **Bảng chưa xong khi bài kiểm này chưa xanh trên các trang của nó** (v15, `Rule_Gate_01_DoneMeansRun`): đếm đủ visual không
+  phải là kiểm. Bài kiểm của repo chạy riêng một bảng (`--only <tiền tố đường dẫn>`) trong lúc dựng.
 - Máy chưa đo (xét khi trình trang): chiều rộng chart theo số nhóm, donut nằm trong hàng, tab chỉ thêm vì quá tải, màu theo nghĩa.
 
 ## Implements · Thi hành luật

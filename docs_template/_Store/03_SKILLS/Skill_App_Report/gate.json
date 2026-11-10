@@ -2,8 +2,8 @@
   "trigger": "trang báo cáo · bảng dashboard · dựng lại pbi · chuẩn pbi white cho app · card kpi · bảng ma trận · bố cục chart · bảng giải thích",
   "prompt": {
     "kind": "app-report",
-    "re": "\\b(trang bao cao|bang dashboard|dung lai (bao cao |report )?pbi|tai tao (lai )?(bao cao |report )?pbi|pbi white|card kpi|bang ma tran|bo cuc (cac )?chart|bang giai thich|glossary)\\b",
-    "text": "[zemory] Report page: follow skill app-report - every % names its period/base, declares up/down/share, two colours only (pp for a ratio card); card rows of 4+ cards only; one table style, no table for little information, nothing scrolls sideways; same-kind visuals in one even row, no chart >30% empty, Top N shows N, no negative bars; tab labels <= 10 chars, no dept code / Report in names; a glossary per page; parity with the report it replaces; the repo's browser test runs scripts/report_layout_check.mjs."
+    "re": "\\b(trang bao cao|bang dashboard|dung lai (bao cao |report )?pbi|tai tao (lai )?(bao cao |report )?pbi|pbi white|card kpi|bang ma tran|bo cuc (cac )?chart|bang giai thich|glossary|(dung|lam( tiep)?|xong|giao|len ban) (cac )?(bang|board)( (ops|ic|bao cao)\\w*)?)\\b",
+    "text": "[zemory] Report page: follow skill app-report - every % names its period/base, declares up/down/share, two colours only (pp for a ratio card); card rows of 4+ cards only; one table style, no table for little information, nothing scrolls sideways; same-kind visuals in one even row, no chart >30% empty, Top N shows N, no negative bars; tab labels <= 10 chars, no dept code / Report in names; a glossary per page; parity with the report it replaces; cards in line with the panels under them; a page never scaled down; no blank column, no field name as header, no sentence in a cell; each visual drawn as its kind; a board is done only when the repo's browser test (scripts/report_layout_check.mjs) is green on its pages."
   },
   "block": [
     {
@@ -13,12 +13,20 @@
     {
       "note": "a report page's card row",
       "prompt": "sửa card kpi của trang báo cáo cho đúng chuẩn"
+    },
+    {
+      "note": "(v15) building or handing over a board: the check must be green on its pages",
+      "prompt": "làm tiếp bảng OPS_06 rồi lên bản"
     }
   ],
   "pass": [
     {
       "note": "the sign-in page, not a report page",
       "prompt": "chỉnh cỡ chữ trang đăng nhập"
+    },
+    {
+      "note": "a table in a database, not a board",
+      "prompt": "tạo bảng mới trong SQL cho dữ liệu nhân sự"
     }
   ]
 }

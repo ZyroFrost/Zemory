@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 14
+version: 15
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -37,6 +37,9 @@ description: The report pages of an app - what a page of figures, charts and tab
   up to four with figures the page already reads. [rp-cards]
 - **The card row stands alone on its line** (v10): no
   chart, donut or table beside it in the same row of the grid - a chart of the same figures goes on the row below. [rp-cards-apart]
+- **A card row over a row of as many panels is in line with them** (v15): each card is as wide as the panel under it, edges
+  within 2 px, also when a panel takes more room for its table - the cards follow the panels' widths (layout px: a frame that
+  zooms scales a rect, not a width it is given). [rp-cards-aligned]
 - **A card is as tall as what it holds** (v10): never pulled to the height of a block beside it -
   at most 1.6 times its lines and padding, measured on what the card draws (v11: a Sneat card's `.card-body` stretches
   with the card). [rp-card-fit]
@@ -103,8 +106,18 @@ description: The report pages of an app - what a page of figures, charts and tab
   (`data-rp-raw`), and shows exactly that format (the frame's `fmtNum`); a negative in red carries `text-danger`. Charts and
   KPI cards keep their own form. [rp-num-format]
 - **A table shows ten rows at most** and scrolls the rest inside its own frame, staying on the page beside the other visuals
-  (v7).
-  [rp-table-rows-cap]
+  (v7); ten rows as drawn - a row of two lines is taller - never a fixed height. [rp-table-rows-cap]
+- **How a table fits its panel** (v15, the means of rp-no-side-scroll): tight cell padding for a table wider than its panel at
+  the kit's; the row measured once, its tables given the width they need only while every panel of the row still fits it (a
+  donut or chart keeps 15rem), else the report's shares stand; a header wraps between words, never inside one; a matrix whose
+  column field has more than 24 values (80 stores as columns) turns over, those values becoming its rows, its colours with them;
+  a table the report draws across 60 % of its page or more keeps a row of its own.
+- **No blank column** (v15): a matrix shows no column whose figures are all blank, as Power BI shows no member without data (as
+  no blank row). [rp-blank-cols]
+- **A header is never a field name** (v15): CamelCase (`StoreName2`, `ShortName`) or a copy number (`Vị Trí1`) reads the
+  page's name of the field. [rp-header-words]
+- **A sentence is never a table cell** (v15): a text measure with no field (a conclusion, a commentary) is wrapped text in its
+  panel. [rp-sentences] A text measure that writes a number (a count, a % under a switch) is that number in the person's format.
 
 ## 5. Layout
 
@@ -120,6 +133,9 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **No column of an amount points below its axis:** draw the loss as a positive figure, the sign kept in its label. A % may
   be negative. [rp-no-negative-bars]
 - **The columns of the charts of one row stand on one line** (the same axis-label room). [rp-baseline]
+
+- **A page keeps its size** (v15): never scaled down to fit the screen (no transform scale on the page or a block of it); a
+  page taller than the screen scrolls. One page a tab or every page one after the other are views; neither shrinks. [rp-no-page-scale]
 
 - **A board leaves no hole** (v13): short charts stack in one column beside a tall one, a long list (Top 10) stands
   half a row and two blocks tall; every column of a row reaches the row's foot. [rp-no-hole]
@@ -180,6 +196,9 @@ description: The report pages of an app - what a page of figures, charts and tab
   by source (the datalake table and the file the report reads) before the app is changed.
 - **A day's sales count closed days only** (v13): a figure by sale day reads only the days whose books are closed
   (`Dim_Date.IsSaleDayClosed = 1`), as the report does.
+- **Each visual is drawn as its kind** (v15): a scatter chart as dots (X, Y, Size), a 100 % stacked chart as parts of 100 %
+  with each part's %, a pie with only a Legend field as a slice per legend value - never grouped columns or an empty panel for a
+  kind not built yet (that visual waits, declared, rp-parity).
 
 ## 9. The markup contract
 
@@ -201,6 +220,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | a table · its total row | [rp-table-few] [rp-table-style] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | the glossary · each line | [rp-glossary] |
 | `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | a number cell of a table · its raw value | [rp-num-format] |
+| `data-rp-id` | a cell or column of codes (an employee's 03163) | not a number [rp-num-format] |
 
 Cards use the four typography roles of `app-sneat-glass` (`kpi-title` · `kpi-main` · `kpi-percentage` · `kpi-secondary`).
 
@@ -210,6 +230,8 @@ Cards use the four typography roles of `app-sneat-glass` (`kpi-title` · `kpi-ma
   (every view and tab), at a desktop and a phone width and in both themes. It runs `SELF_TEST` first: the good page passes
   every rule and the faulty page fails each, so every rule is proven red. A rule added here adds its entry there in the same
   change.
+- **A board is not done until this check is green on its pages** (v15, `Rule_Gate_01_DoneMeansRun`): a count of the visuals
+  drawn is not the check. The repo's test runs one board alone (`--only <path prefix>`) while it is being built.
 - Not measured by the machine yet (judged when the page is shown): chart width by groups, a donut kept in its row, a tab
   added only for load, colours by meaning.
 

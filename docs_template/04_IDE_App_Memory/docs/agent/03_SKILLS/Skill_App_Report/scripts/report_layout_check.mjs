@@ -60,6 +60,7 @@ export const RULES = [
     const good = probe('text-success'), bad = probe('text-danger');
     for (const e of document.querySelectorAll('[data-rp-pct]')) {
       if (!e.getClientRects().length) continue;
+      if (e.closest('[data-rp-target]')) continue;   // (v15) graded by its band, rp-target-graded
       const v = num(txt(e)), c = getComputedStyle(e).color, kind = e.dataset.rpPct;
       if (kind === 'share') { if (c === good || c === bad) return 'a share % is coloured as up/down: ' + txt(e).slice(0, 30); continue; }
       if (!['up', 'down'].includes(kind) || !Number.isFinite(v) || v === 0) continue;
@@ -388,7 +389,7 @@ export const RULES = [
     for (const v of vis().filter(v => v.dataset.rpVisual === 'chart' || v.dataset.rpVisual === 'donut')) {
       const b = v.querySelector('.rp-focus-btn');
       if (!b || !b.getClientRects().length) return 'a chart with no enlarge button (.rp-focus-btn): ' + name(v);
-      const chip = v.querySelector('[data-rp-legend] > *');
+      const chip = v.dataset.rpVisual === 'donut' ? null : v.querySelector('[data-rp-legend] > *');   // (v15) a donut's legend is a list
       if (chip && chip.getClientRects().length && (Math.abs(box(b).height - box(chip).height) > 1 || Math.abs(box(b).top - box(chip).top) > 2)) return 'the enlarge button is not a legend chip high and on its line: ' + name(v);
     }
     return true;`),
@@ -491,7 +492,7 @@ export const RULES = [
     };
     const looks = /^[-(]?\\d[\\d.,\\s]*(%|K|M|B| N| tr| tỷ)?\\)?$/;
     for (const cell of document.querySelectorAll('[data-rp-page] [data-rp-visual="table"] td')) {
-      if (!cell.getClientRects().length) continue;
+      if (!cell.getClientRects().length || cell.closest('[data-rp-id]')) continue;   // (v15) a code (employee 03163) is no number
       const shown = (cell.textContent || '').replace(/\\s+/g, ' ').trim();
       if (!cell.dataset.rpNum) { if (looks.test(shown)) return 'a number outside the format of the person (no data-rp-num): ' + shown; continue; }
       const raw = Number(cell.dataset.rpRaw);
@@ -499,6 +500,60 @@ export const RULES = [
       const want = fmt(raw, cell.dataset.rpNum);
       if (shown !== want.text) return 'a number not in the format of the person: ' + shown + ' (want ' + want.text + ')';
       if (want.neg && f.neg === 'red' && !cell.closest('.text-danger') && !cell.querySelector('.text-danger')) return 'a negative not in red: ' + shown;
+    }
+    return true;`),
+  // F. v15: lessons of a rebuilt board that passed every rule above and still looked wrong
+  rule('rp-cards-aligned', 'a card row standing over a row of as many panels has its edges in line with them (2 px), whatever width a panel needs (v15)', `
+    if (innerWidth < 1100) return true;
+    for (const cards of document.querySelectorAll('[data-rp-visual=cards]')) {
+      const items = [...cards.querySelectorAll('.kpi-card')].filter(c => c.getClientRects().length);
+      if (items.length < 2 || new Set(items.map(c => Math.round(box(c).top))).size > 1) continue;
+      const b = box(cards);
+      const below = vis().filter(v => !v.parentElement.closest('[data-rp-visual]') && v.dataset.rpVisual !== 'cards' && box(v).top >= b.bottom - 1);
+      if (!below.length) continue;
+      const top = Math.min(...below.map(v => box(v).top));
+      if (top - b.bottom > 48) continue;
+      const row = below.filter(v => Math.abs(box(v).top - top) < 4).sort((x, y) => box(x).left - box(y).left);
+      if (row.length !== items.length) continue;
+      items.sort((x, y) => box(x).left - box(y).left);
+      for (let i = 0; i < row.length; i++) {
+        const c = box(items[i]), v = box(row[i]);
+        if (Math.abs(c.left - v.left) > 2 || Math.abs(c.right - v.right) > 2) return 'card ' + (i + 1) + ' is not in line with the panel under it (' + Math.round(c.left) + '-' + Math.round(c.right) + ' over ' + Math.round(v.left) + '-' + Math.round(v.right) + '): ' + name(row[i]);
+      }
+    }
+    return true;`),
+  rule('rp-no-page-scale', 'a report page is never scaled down to fit the screen: it keeps its size and scrolls (v15)', `
+    const page = document.querySelector('[data-rp-page]');
+    if (!page) return true;
+    for (const v of vis()) {
+      for (let e = v; e && e !== document.body; e = e.parentElement) {
+        if (e.classList.contains('rp-focus')) break;
+        const m = getComputedStyle(e).transform.match(/^matrix\\(([-\\d.e]+)/);
+        if (m && Number(m[1]) < 0.99) return 'a report page scaled to ' + Number(m[1]).toFixed(2) + ': ' + name(v);
+        if (e === page) break;
+      }
+    }
+    return true;`),
+  rule('rp-blank-cols', 'a matrix shows no column whose figures are all blank, as Power BI shows no member without data (v15)', `
+    const blank = c => !c || /^[\\s—–\\-]*$/.test(c.textContent || '');
+    for (const v of vis().filter(v => v.dataset.rpVisual === 'table')) {
+      const t = v.querySelector('table'); if (!t || !t.tBodies[0]) continue;
+      const rows = [...t.tBodies[0].rows].filter(r => r.getClientRects().length && !r.hasAttribute('data-rp-total'));
+      if (rows.length < 2) continue;
+      const heads = [...(t.tHead?.rows[0]?.cells || [])];
+      for (let i = 1; i < heads.length; i++) if (rows.every(r => blank(r.cells[i]))) return 'a column with no figure: ' + (heads[i].textContent || '').trim() + ' in ' + name(v);
+    }
+    return true;`),
+  rule('rp-header-words', 'a column header is the reader\'s word, never a field\'s name (StoreName2, ShortName, Vị Trí1): the page\'s name of the field (v15)', `
+    for (const th of document.querySelectorAll('[data-rp-page] [data-rp-visual] th')) {
+      if (!th.getClientRects().length) continue;
+      const h = (th.textContent || '').trim();
+      if (/^[a-z]*[A-Z][a-z]+[A-Z][a-z]+\\d*$/.test(h) || /\\p{Ll}{2,}\\d$/u.test(h)) return 'a header that is a field name: ' + h;
+    }
+    return true;`),
+  rule('rp-sentences', 'a sentence is never a table cell: a text measure with no field is written as wrapped text in its panel (v15)', `
+    for (const td of document.querySelectorAll('[data-rp-page] [data-rp-visual=table] td')) {
+      if (td.getClientRects().length && (td.textContent || '').trim().length > 80) return 'a sentence in a table cell: ' + td.textContent.trim().slice(0, 40);
     }
     return true;`),
 ];
@@ -569,7 +624,12 @@ export const SELF_TEST = {
     `<div class="row"><div class="card" data-rp-visual="chart" style="width:400px"><h6 data-rp-title>Chồng</h6><div data-rp-legend style="width:40px"><span data-cf-dim="y" data-cf-value="1">Năm 2025 dài</span></div><div class="bars" data-rp-body><i data-rp-mark data-tip="1,2 tỷ" style="height:80px;width:60px;background:red"></i><span data-rp-label style="position:absolute;left:10px;top:10px">12</span><span data-rp-label style="position:absolute;left:12px;top:12px">13</span></div>` +
     `<div class="bar-row" style="display:flex;width:400px"><span class="bar-name" style="width:10%">Nhà hàng có tên rất dài ở quận một</span><div style="flex:1"></div></div></div></div>` +
     `<table><tbody><tr><td data-rp-target="96" style="background:rgb(0, 122, 54)">96%</td></tr><tr><td data-rp-target="104" style="background:rgb(0, 122, 54)">104%</td></tr>` +
-    `<tr><td data-rp-cf="good" style="background:rgb(0, 122, 54)">A</td></tr><tr><td data-rp-cf="good" style="background:rgb(240, 240, 240)">A</td></tr></tbody></table>`),
+    `<tr><td data-rp-cf="good" style="background:rgb(0, 122, 54)">A</td></tr><tr><td data-rp-cf="good" style="background:rgb(240, 240, 240)">A</td></tr></tbody></table>` +
+    // (v15) cards out of line with the panels under them · a page scaled down · a blank column · a field name as header · a sentence in a cell
+    `<div class="row" data-rp-visual="cards" style="margin-top:60px">${card('Một', '1', '+1,0% MoM', 'up', 'text-success')}${card('Hai', '2', '+1,0% MoM', 'up', 'text-success')}</div>` +
+    `<div class="row"><div class="card" data-rp-visual="chart" style="width:300px"><h6 data-rp-title>Hẹp</h6><svg width="60" height="60"></svg></div><div class="card" data-rp-visual="chart" style="flex:1"><h6 data-rp-title>Rộng</h6><svg width="60" height="60"></svg></div></div>` +
+    `<div style="transform:scale(.6);transform-origin:0 0"><div class="card" data-rp-visual="table" data-rp-detail><h6 data-rp-title>Thu nhỏ</h6><table><thead><tr><th>StoreName2</th><th>Rỗng</th></tr></thead>` +
+    `<tbody><tr><td>Một câu kết luận rất dài viết ra thành chữ, vượt tám mươi ký tự, lẽ ra phải là một khối chữ chứ không phải một ô</td><td>—</td></tr><tr><td>B</td><td>—</td></tr></tbody></table></div></div>`),
 };
 
 if (process.argv.includes('--list')) for (const r of RULES) console.log(r.id.padEnd(22) + r.rule);

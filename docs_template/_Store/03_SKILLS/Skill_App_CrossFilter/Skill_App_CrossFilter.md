@@ -1,7 +1,7 @@
 ---
 id: Skill_App_CrossFilter
 name: app-cross-filter
-version: 8
+version: 9
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_PBI_Base]
 installs: [scripts/crossfilter_check.mjs]
@@ -79,6 +79,7 @@ description: Cross-filtering between the visuals of one report page, as Power BI
   back - a point that filters nothing is no point. Then `LEGEND_CLICK` (awaited): a click on the first legend entry sets its
   field's filter on the page bar to that entry and the filter button counts one more; a second click takes it off. It runs `SELF_TEST` first: the good page must
   pass and the faulty page must fail every rule, so the check is proven red.
+- (v9) The checks click a point by a dispatched click event, not `.click()`: a point may be an svg mark (a donut's slice).
 - The repo's unit tests cover `pick` and `filterRows`, each new case proven red by breaking the function it guards.
 
 ## Implements · Thi hành luật
