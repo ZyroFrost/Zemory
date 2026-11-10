@@ -1,5 +1,5 @@
 ---
-version: 54
+version: 55
 lang: vi
 ---
 
@@ -98,6 +98,12 @@ lang: vi
   thẻ trang), bên trong thẻ của nó; cột kéo rộng quá thẻ thì cuộn trong hộp đó, không bao giờ tràn ra ngoài thẻ. Hộp CÓ THỂ cuộn
   không phải là cuộn: chỉ nội dung rộng hơn hộp mới là cuộn (v52: một app tưởng luật này đá với luật báo cáo cấm cuộn ngang - hai
   luật đi cùng nhau: bảng nào cũng có hộp, không bảng nào tràn). [table-boxed]
+- **Danh sách dài hơn màn hình chỉ chiếm một màn hình** (v55, mọi app của hệ): bảng cao hơn khoảng trống dưới thanh trên
+  (`--table-room`) cuộn trong một hộp cao tối đa bằng khoảng đó, hàng tiêu đề neo ở đầu hộp - thân thẻ trang lấp khung, hoặc
+  hộp riêng (một panel, một nhật ký); không bao giờ để cột trang cuộn cả danh sách, không bao giờ có hộp cao bằng cả danh sách.
+  Khung tự lo việc này: trong thẻ lấp khung, mỗi hộp riêng chứa bảng là một cửa sổ danh sách cao tối đa bằng phần thân thẻ đang
+  hiện (`.list-window`, `--card-room`); trang không lấp khung thì dùng cửa sổ bảng (1.13.1) - app không tự viết giới hạn riêng.
+  Đọc sau khi trang đã vẽ xong các bảng. [list-one-screen]
 - **Cả app co giãn theo cửa sổ từ một khuôn thiết kế** (v50): đã đăng nhập, trang vẽ trên 1920 x 1080 rồi zoom = min(rộng/1920, cao/1080), không quá 1, không dưới
   0,7, nên kéo cửa sổ không làm bố cục xô lệch; điện thoại (768 px trở xuống) không co. Mỗi người tắt được ở Cài đặt › Bố cục
   (Tỉ lệ theo màn hình: tự co giãn | 100%). Dưới zoom, chiều cao/rộng cửa sổ lấy từ --app-h / --app-w của khung (không dùng

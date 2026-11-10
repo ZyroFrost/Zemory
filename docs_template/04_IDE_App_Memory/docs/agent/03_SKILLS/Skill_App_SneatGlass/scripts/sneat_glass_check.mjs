@@ -1592,6 +1592,38 @@ export const PROBES = [
       return out.length ? out.slice(0, 4).join('; ') : true;
     })()`,
   },
+  // (v55) every list longer than the screen stands in one screen and scrolls inside its own panel, in every app of the family
+  // (measured on an app: two journal lists of 1274 and 1312 px in boxes as tall as themselves, room 759 px - red)
+  {
+    id: 'list-one-screen',
+    rule: 'a table longer than the screen scrolls inside a box at most one screen tall (the room under the top bar, --table-room): the body of a page card that fills the frame, or a box of its own - never the page column scrolling a long list, never a box as tall as the whole list - read once the page has drawn its tables',
+    check: `(async () => {
+      // a phone scrolls the window and shows a list's rows as cards
+      if (innerWidth < 768) return true;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const busy = () => Boolean(document.querySelector('#page.g-loading, #page [aria-busy="true"], #page .spinner-border, #page .state-box[data-state="loading"], #page .placeholder-glow'));
+      for (let ms = 0, calm = 0; ms < 8000; ms += 250) {
+        calm = busy() ? 0 : calm + 250;
+        if (calm >= 1500 && ms >= 2500) break;
+        await wait(250);
+      }
+      const room = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--table-room')) || innerHeight;
+      const page = '.layout-page, .content-wrapper, .container-p-y, #page, .page-card:not(.fill) > .page-card-body';
+      const out = [];
+      for (const table of document.querySelectorAll('#page table')) {
+        if (!table.getClientRects().length || !table.tBodies[0]?.rows.length || table.closest('dialog, .dropdown-menu, .date-menu, .view-grid')) continue;
+        let box = table.parentElement;
+        while (box && box !== document.body && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+        const name = table.dataset.resizeId || table.id || 'a table', tall = table.getBoundingClientRect().height;
+        if (!box || box === document.body || box.matches(page)) {
+          if (tall > room + 2) out.push(name + ' (' + Math.round(tall) + ' px) scrolls with the page column - no box of its own one screen tall');
+          continue;
+        }
+        if (box.clientHeight > room + 2) out.push(name + ': its scroll box is ' + box.clientHeight + ' px, taller than the screen (' + Math.round(room) + ' px)');
+      }
+      return out.length ? out.slice(0, 4).join('; ') : true;
+    })()`,
+  },
   {
     id: 'rows-painted',
     rule: 'every row of a table scrolled into view is drawn: a point in the middle of each row in view hits that row - rows under the table\'s own pinned header or behind its footer pinned at the bottom are left out, nothing else (user 06/11: a table mid-page lost its first rows)',

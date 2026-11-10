@@ -1592,9 +1592,8 @@ export const PROBES = [
       return out.length ? out.slice(0, 4).join('; ') : true;
     })()`,
   },
-  // (v55, the user 10/11 through Reconcile: "every list panel longer than the screen stands in one screen and scrolls inside
-  // that panel, as the main reconcile grid, everywhere - Dashboard and every other app too"; Reconcile 4.7.15 red: two journal
-  // lists of 1274 and 1312 px in boxes as tall as themselves, room 759 px)
+  // (v55) every list longer than the screen stands in one screen and scrolls inside its own panel, in every app of the family
+  // (measured on an app: two journal lists of 1274 and 1312 px in boxes as tall as themselves, room 759 px - red)
   {
     id: 'list-one-screen',
     rule: 'a table longer than the screen scrolls inside a box at most one screen tall (the room under the top bar, --table-room): the body of a page card that fills the frame, or a box of its own - never the page column scrolling a long list, never a box as tall as the whole list - read once the page has drawn its tables',

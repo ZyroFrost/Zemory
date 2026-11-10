@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 54
+version: 55
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -114,6 +114,12 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   out of the card. A box that CAN scroll is no scrolling: only content wider than its box is (v52, an app of the family read
   this rule as at odds with the report rule against sideways scroll - they hold together: every table boxed, none spilling).
   [table-boxed]
+- **A list longer than the screen stands in one screen** (v55, every app of the family): a table taller than the room under
+  the top bar (`--table-room`) scrolls inside a box at most that tall, its header row pinned at the box's top - the body of a
+  page card that fills the frame, or a box of its own (a panel, a journal); never the page column scrolling the whole list,
+  never a box as tall as its list. The frame gives this itself: in a fill card each box of its own holding a table is a list
+  window as tall as the card body on screen at most (`.list-window`, `--card-room`), on a page that does not fill the table
+  window (1.13.1) - an app writes no cap of its own. Read once the page has drawn its tables. [list-one-screen]
 - **Every stop of the path is a page** (v53): every node of the menu is a page - a leaf the app's page, a branch (a
   department, a group of reports, a group inside it) the list of what it holds, a row the width of the page per part with its
   pages spread across it. The app gives a branch its own list page (`to` of the row, of a `toggle` group); without one the frame
