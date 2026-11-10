@@ -8,6 +8,7 @@ import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { findProjectRoot, normalizeRoot, uiPort } from "../core/config.js";
+import { toLocalPath } from "../util/hostpath.js";
 import { scan } from "../memory/ingest.js";
 import { scanWebPlatforms } from "../memory/scanweb.js";
 import { vectorRemaining } from "../memory/vectors.js";
@@ -52,7 +53,9 @@ const currentProject = (args: JsonObject, env: McpEnv): string | undefined => {
   // The MCP caller's `project` / env root arrives in whatever casing it had; normalize
   // it or a scoped search looks up a key the index never wrote (see normalizeRoot).
   const picked = asString(args.project) || env.projectRoot;
-  return picked ? normalizeRoot(picked) : findProjectRoot() || undefined;
+  // a host path (D:\Workspace\…) is read under the container's mounts first: unmapped, Linux took `D:\…` for a relative
+  // name and graph_impact looked in `/host/…/Zemory/D:\Workspace\…` (measured 2026-11-10)
+  return picked ? normalizeRoot(toLocalPath(picked)) : findProjectRoot() || undefined;
 };
 
 const jsonText = (value: unknown): string => JSON.stringify(value, null, 2);
