@@ -46,16 +46,15 @@
   thật** (gọi endpoint · lệnh · UI thật · mở app nhìn tận mắt · log tiến trình đang chạy). Ba nguồn khớp mới kết
   luận; lệch ⇒ cái mới hơn thắng và ghi rõ cái cũ bị thay; không chạm được một nguồn ⇒ ghi "chưa xác minh được" kèm
   nguồn đã thử — không mặc định "chưa làm", không lấy hai nguồn còn lại làm đủ. Mục quá 7 ngày không ai đụng = nghi
-  ngờ. Hỏi lại một việc đã chốt là lỗi. Máy đo: `zemory todo verify` (ký hiệu mục nêu có thật không · phép đo mục tự
-  nêu còn đúng không · nguồn đổi sau khi dòng sổ được viết chưa; exit ≠ 0 khi lệch, nối được vào cổng).
-- `02-69` **Soát hoặc ghi `05_TODO` · `06_CHANGES` · plan lúc chốt phiên áp `02-12`** — luật đó áp mọi lúc, không
-  riêng lúc chốt.
+  ngờ. Hỏi lại một việc đã chốt là lỗi. Máy đo: `zemory todo verify` (ký hiệu có thật · phép đo tự nêu còn đúng ·
+  nguồn đổi sau khi ghi sổ; lệch ⇒ exit ≠ 0, nối được vào cổng).
+- `02-69` **Chốt phiên soát/ghi `05_TODO` · `06_CHANGES` · plan ⇒ áp `02-12`.**
 - `02-14` **Thấy điểm bất hợp lý trong thiết kế ⇒ nêu phản biện trước khi làm;** quyết định cuối thuộc người giao
   việc.
 - `02-62` **Mọi quyết định thiết kế giao diện phải trình duyệt trước.** Layout · kích thước · khung · màu ·
   theme · hình dạng component · thêm/bớt phần tử · đổi style · cách sắp xếp: nêu đề xuất cụ thể (hoặc bản nháp/ảnh),
   chờ chấp thuận rồi mới làm. Sửa lỗi kỹ thuật (lệch · tràn · hỏng) thì cứ sửa. Hướng được giao còn hở chi tiết
-  thiết kế ⇒ trình phương án cho phần hở. Convention thiết kế cụ thể: `03_STRUCTURE §5` và skill `app-design`.
+  thiết kế ⇒ trình phương án cho phần hở. Chi tiết: `03_STRUCTURE §5` · skill `app-design`.
 - `02-16` **Skill là tham khảo cho khuyến nghị, không tự áp.** Trước khi thiết kế/nắn UI hay làm việc skill phủ ⇒
   đọc skill, rút khuyến nghị (nên theo · đang kẹt · nên chuẩn hoá), trình rồi mới làm; đổi giao diện vẫn theo
   `02-62`. Có ý tưởng UI mới ⇒ soi skill để gợi ý lại. Quy trình: `04_SKILLS` §1.
@@ -86,8 +85,7 @@
 - `02-35` **Mỗi file harness một việc, không lặp nội dung file khác:** `01` hiến pháp · `02` luật làm việc · `03`
   chuẩn cấu trúc · `04` sổ đăng ký skill (playbook ở `.claude/skills/`) · `05` backlog · `06` changelog. Một nội
   dung sống ở một nhà; nơi khác dẫn chiếu (link + số hiệu).
-- `02-39` **Việc · lỗi · quyết định ở phiên khác ⇒ `zemory memory search "<q>" [--all]`;** tra đúng câu hỏi, không
-  tra bừa.
+- `02-39` **Việc · lỗi · quyết định ở phiên khác ⇒ `zemory memory search "<q>" [--all]`;** tra đúng câu hỏi.
 - `02-40` **Global Memory là nguồn của phiên.** Khi đổi phiên · ghi docs · audit · báo cáo ⇒ dò Global Memory
   (`zemory memory search` · `digest <session>`) và đối chiếu thứ thật để xác minh từng mục trước khi ghi hay khẳng
   định; không ghi theo bản tóm tắt hay kết quả subagent chưa kiểm. Chi tiết: `.claude/skills/session-close/SKILL.md`

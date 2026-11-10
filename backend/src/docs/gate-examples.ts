@@ -174,7 +174,8 @@ const PRIVATE: Array<[string, RegExp, "md" | "all"]> = [
   // `.example` / `example.com` are reserved for examples (RFC 2606) — a sample address, not a contact. A domain ends in a
   // letter suffix: `@tabler/icons@3.19.0` is a package version.
   ["an e-mail address", /[\w.+-]+@(?![\w.-]*\bexample\b)[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}\b/, "all"],
-  ["an IPv4 address", /\b(?:\d{1,3}\.){3}\d{1,3}\b/, "all"],
+  // every octet 0-255 without a padding zero: a Vietnamese amount `244.008.536.989` (dots between thousands) is not an address
+  ["an IPv4 address", /(?<![\d.])(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?![\d.]*\d)/, "all"],
   ["a path under a user profile", /[A-Za-z]:[\\/]Users[\\/][^\\/\s<]+/, "all"],
   ["a personal alias", /ZyroFrost/i, "all"],
 ];

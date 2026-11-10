@@ -105,7 +105,8 @@ export function useHsSnapshot(): HsSnapshot | null {
       mkdirSync(tmp, { recursive: true });
       try {
         git([...(crlf ? ["-c", `core.autocrlf=${crlf}`] : []), "archive", "--format=tar", "-o", tar, "HEAD", "docs_template"]);
-        execFileSync("tar", ["-xf", tar, "-C", tmp], { windowsHide: true, stdio: "ignore" });
+        // relative names from the cache folder: GNU tar (first on PATH under Git Bash) reads `C:\…` as host `C`, file `\…`
+        execFileSync("tar", ["-xf", basename(tar), "-C", basename(tmp)], { cwd: cache, windowsHide: true, stdio: "ignore" });
       } finally {
         rmSync(tar, { force: true });
       }
