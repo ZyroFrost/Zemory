@@ -80,6 +80,11 @@ function toolResult(value: unknown) {
   return { content: [{ type: "text", text: typeof value === "string" ? value : jsonText(value) }] };
 }
 
+/** One-line JSON for answers only an agent reads, where indentation is pure token cost. */
+function compactResult(value: unknown) {
+  return { content: [{ type: "text", text: JSON.stringify(value) }] };
+}
+
 // ── Hạ tầng dùng chung cho ba tool ĐIỀU KHIỂN ────────────────────────────────
 
 /**
@@ -830,11 +835,18 @@ export async function callMcpTool(name: string, args: JsonObject = {}, env: McpE
         ? errorResult(`"${file}" is ambiguous — did you mean: ${impact.candidates.join(" · ")}`)
         : errorResult(`No file matching "${file}" in the code graph of ${root}.`);
     }
-    if (name === "graph_impact") return toolResult(impact);
+    // Compact on purpose: an agent pays for every byte of this answer. Pretty JSON plus symbolsDetail (the line span of each
+    // function) made a hub file ~1.2k tokens, as much as one grep round. Names stay in `symbols`; spans are a Read away.
+    if (name === "graph_impact") {
+      const lean: Partial<typeof impact> = { ...impact };
+      delete lean.symbolsDetail;
+      delete lean.candidates;
+      return compactResult(lean);
+    }
 
     const dir = asString(args.direction).trim() || "both";
     const cap = clampLimit(args.limit, 20, 100);
-    return toolResult({
+    return compactResult({
       file: impact.file,
       isHub: impact.isHub,
       ...(dir === "out" ? {} : { importedBy: impact.importers.slice(0, cap), fanIn: impact.fanIn }),
