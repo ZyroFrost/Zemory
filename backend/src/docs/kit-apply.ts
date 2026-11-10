@@ -6,6 +6,7 @@
 // Reading is the default; nothing is written without `apply`.
 import { execFileSync } from "node:child_process";
 import { hsSnapshot, writeBackSet } from "./hs-snapshot.js";
+import { crlfArgs } from "./auto-commit.js";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
@@ -313,7 +314,9 @@ export function uncommittedHs(storeDir = STORE_DIR, fresh = false): string[] | n
   let paths: string[] | null;
   try {
     const top = execFileSync("git", ["rev-parse", "--show-toplevel"], { cwd: base, encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"] }).trim();
-    const out = execFileSync("git", ["status", "--porcelain", "--", "."], { cwd: base, encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"] });
+    // read with the host's line endings: in the container a CRLF file of a Windows clone (bin/_python.cmd) read as changed
+    // and every set carrying it waited for a commit that could never come (measured 2026-11-10: DW and 9 Dept repos)
+    const out = execFileSync("git", [...crlfArgs(top), "status", "--porcelain", "--", "."], { cwd: base, encoding: "utf8", windowsHide: true, stdio: ["ignore", "pipe", "ignore"] });
     paths = out
       .split(/\r?\n/)
       .filter((l) => l.length > 3)
