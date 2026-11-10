@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 
@@ -27,26 +27,25 @@ lang: vi
 
 - **Hàng card chỉ chứa card** — không chart, không bảng — **ít nhất bốn**, card nào cũng có dòng %. Trang chỉ tự có 1–3 card
   mới thì bỏ cả hàng; card mang sang từ report đang thay thì giữ và bổ sung cho đủ bốn bằng chỉ số trang đã đọc. [rp-cards]
-- **Hàng card đứng riêng một dòng** (v10, user 08/11: "nó không được nằm trong chỗ card, nó phải nằm riêng ra"): không chart,
+- **Hàng card đứng riêng một dòng** (v10): không chart,
   donut hay bảng nào đứng cạnh nó trong cùng một hàng của lưới - chart của cùng chỉ số đặt ở hàng dưới. [rp-cards-apart]
-- **Card cao vừa nội dung của nó** (v10, user 08/11: "card dài sọc"): không bị kéo cao theo khối đứng cạnh - tối đa 1,6 lần
+- **Card cao vừa nội dung của nó** (v10): không bị kéo cao theo khối đứng cạnh - tối đa 1,6 lần
   các dòng chữ cộng padding, đo trên phần card vẽ ra (v11: `.card-body` của card Sneat giãn theo card). [rp-card-fit]
-- **Card quá nhiều cho một dòng thì chia trên dưới thành các dòng đều nhau** (v11, user 08/11: "quá nhiều card thì phải chia
-  hàng ra, ko dc cả nùi", "chia trên dưới làm đôi, giữ đúng size và thiết kế card"): card giữ đúng cỡ và thiết kế - không
+- **Card quá nhiều cho một dòng thì chia trên dưới thành các dòng đều nhau** (v11): card giữ đúng cỡ và thiết kế - không
   bao giờ bị ép hẹp dưới 140 px để giữ một dòng; các dòng dài đều nhau (8 → 4 + 4, 15 → 8 + 7, 7 → 4 + 3) và không card nào
   đứng một mình một dòng. [rp-cards-wrap]
-- **Thẻ chỉ số mang nền tô màu theo tông của nó** (v12, user 09/11: "cái này là skill, nên có hook cho skill"): mọi thẻ trong
+- **Thẻ chỉ số mang nền tô màu theo tông của nó** (v12): mọi thẻ trong
   hàng thẻ mang `data-tone` (thẻ *i* → ô màu *i* của theme) và được tô bằng màu pastel của tông đó - màu ô ở độ đậm thấp
   (`--tone-bg`), số màu chữ thường, icon màu ô đậm - ở cả hai theme. Không bao giờ là kính trơn của khung, không trắng, không
   hiện tông bằng vạch hay viền một bên; khung giữ nền của thẻ có `data-tone`. Khoá bởi `Rule_Gate_98_FigureCardTone` (hook chặn
   style gỡ nền). [rp-card-tone]
-- **Con số không bao giờ làm tròn về 0 kèm đơn vị** (v10, user 08/11: Group Size 1,75 hiện "0 k"): giá trị nhỏ hơn đơn vị thì
+- **Con số không bao giờ làm tròn về 0 kèm đơn vị** (v10: Group Size 1,75 hiện "0 k"): giá trị nhỏ hơn đơn vị thì
   hiện bằng đơn vị nhỏ hơn hoặc số đầy đủ; không bao giờ có `0 k` · `0 tr` · `0 tỷ`. [rp-figure-scale]
 - **Tiêu đề card vừa card;** dài thì rút gọn (bỏ vế phụ, nghĩa đủ ghi vào bảng giải thích của trang), không thu nhỏ chữ riêng
   một card — tiêu đề một hàng cùng cỡ, con số cũng vậy. [rp-card-label]
 - Màu số trên card theo thứ tự màu của theme (card *i* → màu *i*).
 
-- **Số của card không bao giờ tràn mép** (v13, user 09/11): số là chữ (tên nhà hàng) thì nhỏ lại theo bề ngang card, vẫn dài thì
+- **Số của card không bao giờ tràn mép** (v13): số là chữ (tên nhà hàng) thì nhỏ lại theo bề ngang card, vẫn dài thì
   "…"; card một nhà hàng hiện tên ngắn, tên đủ ở tooltip, không lặp ở dòng dưới. [rp-card-no-overflow]
 
 ## 3. Màu và nhãn của chart
@@ -56,23 +55,21 @@ lang: vi
 - **Nhãn số không có khung nền; mọi nhãn % in đậm.** Chart nào cũng hiện số (`app-sneat-glass` [chart-labels]). [rp-label]
 
 - **Mỗi điểm dữ liệu khi trỏ vào đều cho biết nó là gì** (một cột, một đoạn cột chồng, một chấm, một lát), kèm giá trị,
-  như Power BI (user 05/11) - qua tooltip của khung (`data-tip`, nhiều dòng bằng `\n`), không dùng `title` của trình duyệt.
+  như Power BI - qua tooltip của khung (`data-tip`, nhiều dòng bằng `\n`), không dùng `title` của trình duyệt.
   [rp-tooltip]
 
-- **Chart có legend theo một trường thì vẽ chồng theo legend** (v13, user 09/11: "chart lẻ phải có số theo lẻ"): cột hay thanh chia
+- **Chart có legend theo một trường thì vẽ chồng theo legend** (v13): cột hay thanh chia
   theo giá trị của legend, màu của report, mỗi phần đủ rộng (6 % bề dài) mang số của nó, tổng ở cuối thanh hay đầu cột.
   [rp-stacked-labels] Các chart chồng theo cùng một trường mang màu cố định của trường đó ở mọi chart của trang (mỗi giá trị một
   màu, như xếp loại A/B/C/D) - hai chart như vậy trùng màu là đúng; chart một chuỗi vẫn lấy màu chính riêng.
-- **Số của chart đường không đè nhau** (v13, user 09/11: "số bị đè lên nhau"): không hai nhãn số nào của một hình giao nhau; nhãn
+- **Số của chart đường không đè nhau** (v13): không hai nhãn số nào của một hình giao nhau; nhãn
   mang màu chuỗi của nó. [rp-labels-apart]
-- **Tooltip mỗi dòng một thông tin, "Trường: Giá trị"** (v13, user 09/11): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
+- **Tooltip mỗi dòng một thông tin, "Trường: Giá trị"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
   số viết đủ (244.008.536.989), không cắt thành tỷ / tr / k; % và điểm giữ dạng. [rp-tip-field-value]
-- **Màu trên một con số nói mức của nó, không bao giờ để trang trí** (v13, user 09/11: "màu theo tỉ lệ, chứ có phải làm cho đẹp
-  đâu… mọi chart đều phải có quy chuẩn", như tô màu có điều kiện của Power BI): một thang mức cho cả app, tốt tới xấu - xanh · vàng ·
+- **Màu trên một con số nói mức của nó, không bao giờ để trang trí** (v13, như tô màu có điều kiện của Power BI): một thang mức cho cả app, tốt tới xấu - xanh · vàng ·
   cam · đỏ; xếp loại A/B/C/D theo cùng thang; sọc xen kẽ của bảng không bao giờ đè ô tô theo giá trị; không màu tím hay info cho một
   mức. [rp-value-colour]
-- **% so chỉ tiêu tô theo giá trị thật** (v13, user 09/11: "màu nên phân cấp, cam vàng đỏ xanh, ko có 2 màu ntn, nên phân theo %
-  thật"; ngưỡng user chốt): < 40 % đỏ · 40 tới < 70 % cam · 70 tới < 100 % vàng · từ 100 % xanh - bốn màu, không bao giờ hai.
+- **% so chỉ tiêu tô theo giá trị thật** (v13): < 40 % đỏ · 40 tới < 70 % cam · 70 tới < 100 % vàng · từ 100 % xanh - bốn màu, không bao giờ hai.
   [rp-target-graded]
 
 ## 4. Bảng
@@ -80,19 +77,17 @@ lang: vi
 - **Mọi bảng một kiểu:** header đậm có nền, dòng xen màu, dòng tổng đậm, chỉ kẻ ngang; cột % tô theo chính chỉ số đó (§1);
   heat map (màu theo cường độ) được giữ. Tên cột là chữ người đọc, không để tên field (`chi_tieu`, `StoreName2`). [rp-table-style]
 - **Bảng không dùng cho ít thông tin:** một dòng ⇒ card nhiều giá trị; một chiều ≤ 6 giá trị (không có trường cột) ⇒ chart,
-  chỉ số khác đơn vị để trong tooltip (v11, user 08/11: "bảng nào nhỏ ko đáng là matrix thì dùng dạng chart khác") - kể cả
+  chỉ số khác đơn vị để trong tooltip (v11) - kể cả
   khi report đang thay vẽ nó thành bảng, và kể cả khi nó có nhiều measure. Bảng chi tiết (mỗi dòng một bản ghi) được miễn;
   bảng ít nhóm không bao giờ được khai là bảng chi tiết. [rp-table-few]
 - **Không gì cuộn ngang trong khung, không bảng nào tràn ra ngoài panel** (bề rộng cột đo lúc vẽ lần đầu, nên header được xuống dòng; điện thoại cho bảng dữ liệu cuộn ngang trong khung, app-base M5). Bảng trải theo kỳ chỉ hiện các kỳ gần nhất (cửa sổ đi theo bộ lọc trang); cột rộng
   vừa số dài nhất, tổng vừa khung; vẫn không vừa thì đổi sang triệu một chữ số lẻ. Cuộn dọc là bình thường. Hộp cuộn ngang riêng của
   bảng (`table-boxed` của app-sneat-glass) không phải là cuộn khi bảng vừa nó: chỉ bảng rộng hơn panel, hay hộp có nội dung tràn, mới
   phạm luật này (v13). [rp-no-side-scroll]
-- **Số trong bảng theo định dạng số của từng người** (v9, user 06/11: "setting 1 lần sẽ cho hiện ở cái báo cáo dashboard
-  hết… chỉ lấy của table"): Cài đặt > Số của khung chung (đơn vị, số lẻ, làm tròn, dấu phân cách, số âm), lưu trên
+- **Số trong bảng theo định dạng số của từng người** (v9): Cài đặt > Số của khung chung (đơn vị, số lẻ, làm tròn, dấu phân cách, số âm), lưu trên
   `<html data-num-format>`. Ô số nói nó là gì (`data-rp-num` = `money` · `count` · `pct`) và giá trị gốc (`data-rp-raw`), và
   hiện đúng định dạng đó (`fmtNum` của khung); số âm tô đỏ mang `text-danger`. Chart và card KPI giữ cách hiện riêng. [rp-num-format]
-- **Bảng hiện tối đa mười dòng**, phần còn lại cuộn trong khung của chính nó, và vẫn nằm chung trang với các hình khác (v7, user
-  06/11: "có giới hạn bao nhiêu dòng, rồi phần còn lại cho scrollbar tự động trong chính dashboard đó"). [rp-table-rows-cap]
+- **Bảng hiện tối đa mười dòng**, phần còn lại cuộn trong khung của chính nó, và vẫn nằm chung trang với các hình khác (v7). [rp-table-rows-cap]
 
 ## 5. Bố cục
 
@@ -107,14 +102,14 @@ lang: vi
 - **Cột của một số tiền không chúc xuống dưới trục:** vẽ số lỗ là số dương, dấu giữ ở nhãn. % được âm. [rp-no-negative-bars]
 - **Đáy cột của các chart cùng hàng nằm trên một đường** (cùng chỗ cho nhãn trục). [rp-baseline]
 
-- **Board không để ô trống** (v13, user 09/11): chart ngắn chồng một cột cạnh chart cao, danh sách dài (Top 10) đứng nửa hàng và
+- **Board không để ô trống** (v13): chart ngắn chồng một cột cạnh chart cao, danh sách dài (Top 10) đứng nửa hàng và
   cao bằng hai ô; mọi cột của một hàng chạm tới đáy hàng. [rp-no-hole]
-- **Thanh xếp hạng chừa chỗ cho tên** (v13, user 09/11): cột tên 30 tới 40 % bề ngang thanh, tối đa hai dòng (tên đủ ở tooltip), không
+- **Thanh xếp hạng chừa chỗ cho tên** (v13): cột tên 30 tới 40 % bề ngang thanh, tối đa hai dòng (tên đủ ở tooltip), không
   bao giờ thanh dài cạnh tên sáu dòng. [rp-rank-name]
-- **Chart nào cũng phóng to riêng được** (v13, user 09/11, như focus mode của Power BI): một nút (`.rp-focus-btn`) trên mỗi chart và
+- **Chart nào cũng phóng to riêng được** (v13, như focus mode của Power BI): một nút (`.rp-focus-btn`) trên mỗi chart và
   donut, cao bằng một chip legend và cùng hàng; bấm thì chart chiếm thân trang, hình khác ẩn, thanh trang giữ; bấm lại hay Esc thì
   trang về như cũ. [rp-focus]
-- **Danh sách báo cáo của phòng ban là các dòng rộng bằng trang** (v13, user 09/11 qua một app trong hệ): mỗi card báo cáo của trang
+- **Danh sách báo cáo của phòng ban là các dòng rộng bằng trang** (v13): mỗi card báo cáo của trang
   danh mục là một dòng rộng bằng trang, các trang của nó trải đều bề ngang đó - không bao giờ card trong cột hẹp. [rp-catalog-rows]
 
 ## 6. Tab, tên, tiêu đề
@@ -131,12 +126,12 @@ lang: vi
   cột và trục, tiêu đề card. Chữ viết tắt ghi kèm nguyên văn một lần (`TC (Transaction Count): số hoá đơn`), tra theo thứ tự
   thuật ngữ của công ty → từ điển hệ cũ → tài liệu DW → chính measure — không tự đặt. Mỗi định nghĩa một dòng. Lời giải thích
   một con số nằm ở đây, không nằm trong khung trên trang. [rp-glossary]
-- **Trang báo cáo chỉ có một kiểu xem: không có nút danh sách / thẻ** trên thanh (user 06/11) - báo cáo đọc một cách, nút
+- **Trang báo cáo chỉ có một kiểu xem: không có nút danh sách / thẻ** trên thanh - báo cáo đọc một cách, nút
   chỉ chiếm chỗ. Trang khai điều đó (`views={false}` trên khung chung của hệ), khung khi đó không vẽ nút. [rp-no-view-switch]
 
 ## 8. Dựng lại một report
 
-- **Report đang thay là bản Power BI White** (v11, user 08/11: "pbi classic là cái ban đầu… white mới là cái đã sắp lại rồi"):
+- **Report đang thay là bản Power BI White** (v11):
   bản classic chỉ là bản nháp đầu; trang, visual và thứ tự theo White, chỉ đọc classic cho trang mà White không có. Đối
   chiếu giữ cái White hiện, theo dạng skill này quy định: hàng card bổ sung cho đủ bốn (§2), bảng nhỏ vẽ thành chart (§4).
 - **Mọi trang và mọi visual của report đang thay đều có mặt**, đúng thứ tự. Visual bỏ có chủ đích, hoặc đang chờ nguồn DW
@@ -149,14 +144,14 @@ lang: vi
 - **Thẻ report ở trang danh mục** xếp các trang của nó thành hai cột đều (`data-rp-card-pages`) và, khi đã dựng, lật được bằng một
   nút ở góc phải trên (`data-rp-card-flip`) sang trạng thái số liệu (`data-rp-card-status`): bình thường, kỳ chưa có số, đọc
   lỗi kèm lần đọc tốt gần nhất, chưa đọc; giờ cập nhật, kỳ, thời gian đọc, chu kỳ tự làm mới. Chỉ phần nội dung lật, nền kính của
-  thẻ đứng yên (v7, user 06/11). [rp-card-pages-even] [rp-card-status]
+  thẻ đứng yên (v7). [rp-card-pages-even] [rp-card-status]
 
-- **Card tổng của report dùng measure của chart** (v13, user 09/11): số của chuỗi mà report vẽ từ cùng measure với một chart (điểm
+- **Card tổng của report dùng measure của chart** (v13): số của chuỗi mà report vẽ từ cùng measure với một chart (điểm
   chuỗi = đường xu hướng) được tính như chart đó; card đếm nhà hàng (đạt, xếp loại D, A) giữ điểm của từng nhà; DAX của report chép
   đúng như nó, cả cách trung bình theo dòng - app không "sửa" report. Xét khi xem trang.
-- **Số lệch report thì truy theo nguồn trước** (v13, user 09/11): lệch với Power BI thì đối chiếu từng nguồn (bảng datalake và file
+- **Số lệch report thì truy theo nguồn trước** (v13): lệch với Power BI thì đối chiếu từng nguồn (bảng datalake và file
   report đọc) trước khi sửa app.
-- **Số bán theo ngày chỉ tính ngày đã đóng sổ** (v13, user 09/11): số theo ngày bán chỉ đọc ngày đã đóng sổ
+- **Số bán theo ngày chỉ tính ngày đã đóng sổ** (v13): số theo ngày bán chỉ đọc ngày đã đóng sổ
   (`Dim_Date.IsSaleDayClosed = 1`), như report.
 
 ## 9. Hợp đồng markup

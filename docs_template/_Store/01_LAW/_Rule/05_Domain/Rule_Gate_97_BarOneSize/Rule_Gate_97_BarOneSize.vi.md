@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Rule_Gate_97_BarOneSize — Every control of the page bar is the bar's one size
@@ -7,7 +7,7 @@ lang: vi
 ## Luật là gì
 Trong app kiểu Sneat-Glass, mọi control của thanh trang cao MỘT cỡ: công cụ riêng của trang (nút thêm và dấu "+" của nó), mọi
 bộ lọc đã ghim lên thanh, nút lọc, ô tìm và nút đổi kiểu xem. Cỡ đó là `--tool-h` (38 px), đặt một lần trên `.page-toolbar`;
-nút chỉ có icon là ô vuông cỡ đó. Không luật style nào được cho control của thanh một cỡ riêng (user 08/11: bộ lọc ghim cao 34 px
+nút chỉ có icon là ô vuông cỡ đó. Không luật style nào được cho control của thanh một cỡ riêng (bộ lọc ghim cao 34 px
 cạnh nút "+" 38 px, "phải khóa lại chính xác size").
 
 ## Khi nào áp

@@ -1,11 +1,11 @@
 ---
 id: Rule_98
 name: figure-card-tone
-version: 1
+version: 2
 kind: action
 code: 05_Domain
 checked: [Skill_App_Report, Skill_App_SneatGlass, Rule_Gate_97_BarOneSize]
-from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_98_FigureCardTone @v1 #d7387d19f06d
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_98_FigureCardTone @v2 #bed32ddc668f
 ---
 # Rule_Gate_98_FigureCardTone — A figure card wears the tinted fill of its tone
 
@@ -13,8 +13,7 @@ from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_98_FigureCardTone @v1 #d7387d19f06
 On a report page of an app of a Sneat or Glass kind, every figure card (`.kpi-card` in a card row) carries a tone
 (`data-tone`, one slot of the theme, card *i* → slot *i*) and is filled with it: a pastel - the slot colour at a low alpha
 (`--tone-bg`) - with the words in the text colour and the icon in the full slot colour. Never the bare glass of the frame,
-never white, never the tone shown only as a stripe or a border on one side (the user 09/11, through an app of the family:
-the frame's glass had painted over the figure cards' own fill, "cái này là skill, nên có hook cho skill").
+never white, never the tone shown only as a stripe or a border on one side (the frame's glass had painted over the figure cards' own fill, "cái này là skill, nên có hook cho skill").
 
 ## When
 - Writing or editing a style rule (`.css` · `.scss` · `.less`) whose selector ends on a figure card (`.kpi-card`, a

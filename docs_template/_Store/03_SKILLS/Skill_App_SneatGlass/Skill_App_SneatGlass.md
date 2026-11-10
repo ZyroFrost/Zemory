@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 53
+version: 54
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -29,34 +29,29 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
     filter button, the filter box, the view switch (list · grid, or the page's own views). [bar-anchor]
 - The seek group takes the rest of the line and its pinned filters shrink (ending in "…") before it would reach the left
   group; the two never overlap; pinning a filter never moves the left group. [bar-anchor] [filter-row]
-- **Every button of the page's own tools is a framed button** (v41, user 07/11: "mọi chức năng riêng của app phải là 1 nút có
-  khung vuông đúng template... có hiệu ứng bấm"): in the left group each button wears the filter button's frame - the toolbar
+- **Every button of the page's own tools is a framed button** (v41): in the left group each button wears the filter button's frame - the toolbar
   height, a fill or an edge, the kit radius, the accent when on, a press that gives - never a bare icon; a coloured button
   (the add button) keeps its colour at the same height. The frame gives a plain button this look by itself. [tool-framed]
-  Every button of the left group, the add button too, stands at the height of the filters on the right, within 1 px (v42,
-  user 07/11: "chiều cao của nút riêng phải luôn bằng chiều cao của nguyên bộ filter bên phải"). [tool-framed]
-- **Every control of the bar is ONE size, locked** (v43, user 08/11: the "+" stood 38 px beside pinned filters of 34 px,
+  Every button of the left group, the add button too, stands at the height of the filters on the right, within 1 px (v42). [tool-framed]
+- **Every control of the bar is ONE size, locked** (v43: the "+" stood 38 px beside pinned filters of 34 px,
   "phải khóa lại chính xác size"): the page's tools and the "+", every pinned filter, the filter button, the filter box and the
   view switch are drawn at `--tool-h` (38 px, set once on `.page-toolbar`) within 1 px; a button carrying only an icon is a
   square of it. No style rule of the frame or of an app writes a number for the height of a control of the bar, or for an icon
   button's width - `Rule_Gate_97_BarOneSize` blocks it as it is written; the size changes only through `--tool-h`. [bar-one-size]
-- **Both ends of each row keep the same room** (v42, user 07/11): row 1 and the page bar - from the left edge to the first
+- **Both ends of each row keep the same room** (v42): row 1 and the page bar - from the left edge to the first
   control as from the last control to the right edge, within 2 px. [bar-ends-even]
-- **Row 1's buttons are framed** (v42, user 07/11: "2 nút app và chuông cũng phải khung luôn cho đồng bộ"): the apps and the
+- **Row 1's buttons are framed** (v42): the apps and the
   bell are squares with the bar's frame (fill, edge, kit radius) at the search box's height; open, lit as the filter button.
-  [head-framed] **The right of row 1 is one group, one third of the bar** (v51, the user 09/11: "ô search đang ko cách đúng
-  khoảng chuẩn… tổng chiều dài của bên phải bằng đúng 1/3 chiều dài của toàn bộ panel đầu"): the search and the actions stand
+  [head-framed] **The right of row 1 is one group, one third of the bar** (v51): the search and the actions stand
   together at the end of row 1, exactly a third of the top bar wide (the search takes what the buttons leave), every part
   apart from the next by the page bar's own gap - never a wider gap before the search. [row1-end]
   **The crumbs are parted by the kit's chevron,** never a typed "/" ("cái path nên thành >"). [crumb-chevron]
-- **What is chosen is lit, the rest wears the grey frame** (v42, user 07/11: "khung đang mở là màu xám, bấm qua thì nhận màu
-  sáng... phải có hiệu ứng sáng chạy qua nút mới"): every tab of a row is framed at rest; the chosen tab, the chosen view of
+- **What is chosen is lit, the rest wears the grey frame** (v42): every tab of a row is framed at rest; the chosen tab, the chosen view of
   the switch and a tool that is on are filled with the accent (white words), and a light runs across the one just chosen,
   once (FX: sheen; off with the pointer effects and with reduced motion). [chosen-lit] **The menu row of the page on screen
-  keeps the template's own chosen look** (v50, the user 09/11: "màu khi chọn của bạn đang sai mẫu, mẫu người ta là màu
-  trắng"): it stands on the white glass pill (the glass-strong colour), its words the text colour, its icon the accent -
+  keeps the template's own chosen look** (v50): it stands on the white glass pill (the glass-strong colour), its words the text colour, its icon the accent -
   never the accent fill of a chosen tab. [menu-pill-glass]
-- A page with one view (every report) shows no switch at all (user 06/11: a faded switch only took room on the bar); a switch, when shown, has two views or more. A page with no filter yet still shows the filter button, turned off.
+- A page with one view (every report) shows no switch at all (a faded switch only took room on the bar); a switch, when shown, has two views or more. A page with no filter yet still shows the filter button, turned off.
   [toolbar] A switch that is on does what it says: the list view shows rows (a table, sortable by its headers where it helps -
   status, latency), the grid view cards; a page of cards (a launcher) gets a real list view, never a switch that changes
   nothing. [view-real]
@@ -75,57 +70,51 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - A page whose content is one page card fills that area and scrolls INSIDE the card: the page bar (row 2 of the top bar) and
   its table's header row stay pinned, as in the Glass shell. A frame inside the card body is never a scroll box of its own
   unless it pins something itself (a matrix whose first column pins sideways). [frame]
-- **A table page: the card fills, the table scrolls inside - settled** (v46, the user 09/11 through Reconcile, for every app of
+- **A table page: the card fills, the table scrolls inside - settled** (v46, for every app of
   the family): a page of a table or a matrix is one page card that fills the frame (`fill`, the default), its table scrolling
   inside it with the header row and the first column pinned and the page bar always there; a page never scrolls its whole
   column for a table. Only a board of several cards (an overview of figures and charts) scrolls the column, and a board stands
   as the system manager's own overview of figures: the same page bar, no page card round it, each card its own glass straight on the wallpaper, apart
-  by the kit's row gutters (the frame's `board`, v49, the user 09/11: "sao chart ko phân panel ra giống thống kê ở one vậy?").
+  by the kit's row gutters (the frame's `board`, v49).
   The room for the data comes from row 1 folding (`head_fold` Most room, §2b), never from scrolling the whole page. The
   table is level with the page bar: its first column's text starts where the bar's tools start (.75rem from the card edge).
   The table of a table page stands straight in the page card's body, never wrapped in an inner card; a table in a panel of a
   board (an inner card) keeps that card's 1rem inset (v47, Dashboard 09/11). [table-edges] [card-inset]
-- **The tab panel of the sibling pages** (v46, Dashboard 08/11, the user 09/11 - "khu vực tab phải là khu vực tách rời, ko
+- **The tab panel of the sibling pages** (v46, Dashboard 08/11 - "khu vực tab phải là khu vực tách rời, ko
   được load lại… gần như là panel khung dòng thứ 3… nó cũng phải neo"): an app that groups many pages under one menu row turns
   on the frame's tab panel (`pageHead`); it stands above the page and outside it - moving between its tabs changes only the
   page - pinned at the top; it is the top of the page card, the same glass block, parted from the page by a faint dashed line,
-  never a panel apart (v48, the user 09/11: "nó phải nối vào main chính luôn ko dc rời ra, chỉ phân tách bằng line ảo"); low
+  never a panel apart (v48); low
   and tight, never wider than the card; one even space between its tabs, equal to its room at the ends ("phải cách bằng với
   padding 2 đầu chứ"); the page on screen is lit by a
   pill sliding from the tab before; tabs that do not fit one row go under "Thêm (n)", the page on screen always on the row
-  (the user turned down tabs on three lines). Each person shows or hides it in Settings > Layout ("cái tab hiện ra hay ko
-  phải là tính năng được option chọn ở setting"). [page-tabs] **It docks in two modes** (v50, the user 09/11: "khi 3 dòng thì
-  tách lẻ, còn khi kéo mất panel 1 thì panel 3 dính liền lên panel 2… 2 chế độ, 1+2 và 2+3"): it pins right UNDER the top
+  (never tabs on three lines). Each person shows or hides it in Settings > Layout ("cái tab hiện ra hay ko
+  phải là tính năng được option chọn ở setting"). [page-tabs] **It docks in two modes** (v50): it pins right UNDER the top
   bar, never at the scroll box's top behind it (a board once lost its strip under the bar). Three rows: rows 1+2 are one block
   and the strip stands apart under it (the page's top gap, 1rem). Row 1 folded: the strip docks on row 2 with no gap - one
   block 2+3, the bar's lower corners and the strip's upper ones square, a faint dashed line between - and stays on screen
   with nothing over it. A page that fills the frame closes that gap the same way. [tabs-dock] Standing apart over a board, the
-  strip is a block of its own, rounded at all four corners (v52, the user 09/11: "khung panel này đang bị thiếu viền cong ở
-  dưới"); over a page card its lower corners join the card. [tabs-round]
-- **The whole app scales to the window from one design canvas** (v50, the user 09/11: "làm lại đúng chức năng đó cho full
-  app, tự scale 1 cấu trúc tỉ lệ thôi"): signed in, the page is drawn on 1920 x 1080 and zoomed to min(width/1920,
+  strip is a block of its own, rounded at all four corners (v52); over a page card its lower corners join the card. [tabs-round]
+- **The whole app scales to the window from one design canvas** (v50): signed in, the page is drawn on 1920 x 1080 and zoomed to min(width/1920,
   height/1080), never above 1 nor below 0.7, so dragging the window never re-flows the layout; a phone (768 px and less) is
   never zoomed. Each person turns it off in Settings > Layout (Scale to the screen: fit the window | 100%). Under the zoom,
   window heights and widths come from the frame's --app-h / --app-w (never vh / vw), and a size or place written from a
   measure on screen (a dropdown, a popover, a tip, a menu, a pill, a drag) is divided by the zoom - the frame exports
   uiZoom / toPage for an app's own code. A checker measures the design's px: it turns the scale off
   (localStorage sasinShell.scale = off) before the page loads. [ui-scale]
-- **A period the page always holds is never counted as a filter** (v52, the user 09/11 through an app of the family): the filter
+- **A period the page always holds is never counted as a filter** (v52): the filter
   button counts only what the person set - a fixed period or business day (`fixed`, `data-fixed` on its field) is never part
   of the count, nor lit as set. [filter-count-fixed]
-- **A tip shows one line per fact, at the page's size** (v51, the user 09/11 through an app of the family: "toàn bộ info thêm thì
-  phải size chuẩn ko dc nhỏ và ko được nhảy xuống dòng… 1 dòng = 1 thông tin ko dc xuống dòng"): each line of a `data-tip`
+- **A tip shows one line per fact, at the page's size** (v51): each line of a `data-tip`
   (`\n`) is one line of the tip and never wraps; the box is as wide as its longest line (up to the window, placed back inside
   it); its words are the page's size (.875rem), never smaller; a number in a tip is written whole. [tip-lines]
-- **Every table stands in a sideways scroll box of its own** (v51, the user 09/11 through an app of the family: a widened column
+- **Every table stands in a sideways scroll box of its own** (v51: a widened column
   ran a table out of its panel): a table of a page card, a board card or a dialog sits in its own box that scrolls sideways
   (`.table-responsive`, or the page card's body), inside its card; a column widened past the card scrolls there, never spills
   out of the card. A box that CAN scroll is no scrolling: only content wider than its box is (v52, an app of the family read
   this rule as at odds with the report rule against sideways scroll - they hold together: every table boxed, none spilling).
   [table-boxed]
-- **Every stop of the path is a page** (v53, the user 09/11: "mọi điểm dừng ở path đều cần có 1 trang danh sách chứa toàn bộ các
-  chi tiết của trang sau, mỗi lớp đều có phân cấp rõ ràng… cấu trúc khung tổng chung mọi repo cần theo"; "bấm vào chữ sẽ ra
-  trang, còn rê chuột vào thì tự bung ra cây của nó"): every node of the menu is a page - a leaf the app's page, a branch (a
+- **Every stop of the path is a page** (v53): every node of the menu is a page - a leaf the app's page, a branch (a
   department, a group of reports, a group inside it) the list of what it holds, a row the width of the page per part with its
   pages spread across it. The app gives a branch its own list page (`to` of the row, of a `toggle` group); without one the frame
   draws it at `/~/<keys>`, its crumbs the branches down to it. In the menu the words of a row with sub-rows open its list page,
@@ -136,7 +125,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 ## 2b. The top bar — one glass head of two rows, the same in every app of the family
 
 - **One glass block, two rows, no gap:** row 1 (56 px) is the family's bar, row 2 (44 px) the page's bar, a hairline between
-  them. **Whether row 1 folds is the person's setting** (v45, user 08/11 through Reconcile), Settings > Layout > "Thu gọn hàng 1
+  them. **Whether row 1 folds is the person's setting** (v45), Settings > Layout > "Thu gọn hàng 1
   khi cuộn" (`head_fold`): **Fixed** (the default) - row 1 always shown; **Most room** - scrolling down the page's own scroll
   folds row 1 away so only the page bar stays on top and the page takes its room, scrolling up or reaching the top brings it
   back, and while it is folded a button at the end of the page bar (the bar's one size) opens it by hand, the next scroll down
@@ -166,8 +155,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   ("Internal Control Report"), never the code first ("IC_02 …") - the code is an identifier. [no-code-prefix]
 - **The menu brand shows the app's name with its accent part (`.text-primary`, the end of the name) in the shared brand
   colour token `--g-brand`,** in both themes; the app defines the token. [brand-one-red]
-- **The family wallpaper tone is red, white and black, white the most** (v43, user 08/11: "đỏ nhiều quá... nó là 3 màu đỏ trắng
-  đen, trắng vẫn nhiều hơn"): the family's brand tone (named by the frame in `data-wall-brand` on `<html>`) in both themes: the
+- **The family wallpaper tone is red, white and black, white the most** (v43): the family's brand tone (named by the frame in `data-wall-brand` on `<html>`) in both themes: the
   large blob a a white light, the large blob b black (charcoal on the light theme), the brand colour (`--g-brand`) only in the
   small middle blob c, smaller and fainter than the others; the tone's swatch in Settings shows the same three. [wall-brand]
 - **Under the family name,** the small line names only the app currently open (`data-app-name` of the menu): the dashboard
@@ -234,11 +222,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - **A scrolling list never squeezes its rows** (a dropdown, a dialog list): the rows of a height-limited flex column keep
   their height (`flex-shrink: 0`), none overlaps the next; the list keeps a scrollbar gutter. [list-rows]
 - **The folded menu is centred:** the badge, its brand row and every icon on the rail's centre line, within 1 px; the brand row
-  is the rail's width while folded, never the kit's own (v43, user 08/11: the badge stood 6 px right of the icons); the brand
-  word leaves no room behind. Each folded row is a square, so the lit pill on it is a square too (v44, user 08/11: "bóp khung
-  menu lại thì cái ô vuông khi chọn cũng phải vuông lại theo"). [folded-centre]
-- **The folded rail is slim and its badge whole** (v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí", "cái logo khi thu gọn
-  lại méo"; v43, user 08/11: "menu vẫn chưa làm mỏng lại"): 64 px (4rem), not the kit's 84; the badge 28 px at least, inside the rail, uncut, in its own shape - never
+  is the rail's width while folded, never the kit's own (v43: the badge stood 6 px right of the icons); the brand
+  word leaves no room behind. Each folded row is a square, so the lit pill on it is a square too (v44). [folded-centre]
+- **The folded rail is slim and its badge whole** (v41; v43): 64 px (4rem), not the kit's 84; the badge 28 px at least, inside the rail, uncut, in its own shape - never
   squeezed or stretched. [rail-slim]
 - **No fake button:** every button does something - a link styled as a button never points at the page already open; an
   item that would (a notification about the home page) gets the action it means (open that app, turn that card) or none.
@@ -288,7 +274,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   it keeps all its values and is declared so (`data-filter-kind="period"`); a period the page always holds (from - to, never
   empty) is never marked set (`.on`) and is never cleared by Clear.
 - **The filter button always opens its popover;** the person pins each filter on the bar or keeps it there. The popover's
-  head is ONE line (v41, user 07/11: a tick per filter ate the popover's room): the pinned filters as chips (x unpins one), Pin
+  head is ONE line (v41: a tick per filter ate the popover's room): the pinned filters as chips (x unpins one), Pin
   all and Unpin all as two icons at its end; each filter in the popover carries its pin on its own label line, adding no
   height [pins-slim]; then every filter not pinned; it keeps one fixed width
   (22rem) whatever is pinned. The pins are the person's UI setting `filter_pins` (a JSON map page path → filter ids), so they
@@ -313,8 +299,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - **Every date follows the person's date format:** a date the surface shows or takes (a cell, a filter, a calendar) follows
   the family setting `date_format` (`vn` dd/mm/yyyy, `us` mm/dd/yyyy) and the app's language - the app's own date field and
   calendar (week from Monday), never the browser's date input, which follows the browser's locale. [date-format]
-- **A date range offers its relative periods, as Power BI's relative date filter** (v51, the user 09/11: "filter nên có nút
-  current month để mọi dashboard tự lấy tháng gần nhất", "current year luôn giống pbi"): beside its two dates every range has
+- **A date range offers its relative periods, as Power BI's relative date filter** (v51): beside its two dates every range has
   the quick picks This month · Last month · This year. The value is the TOKEN, not two dead dates: "this month" is the month of
   the last day the data has (today when the page has no such day), this and last month whole calendar months, this year Jan 1
   to Dec 31; the control names it ("Tháng này (11/2026)"); the app keeps the token in the person's settings, so the page opens
@@ -325,24 +310,22 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code]
 - **The status dot is whole:** an online avatar's dot sits on its edge, and no box around it - a button or a menu row that
   clips for its ripple - cuts it. A count on a button (the bell's unread, `.badge-notifications` or `data-count-badge`) stands
-  whole out of it the same way (v33, user 06/11: the count was cut inside the bell's round button). [dot-whole]
+  whole out of it the same way (v33: the count was cut inside the bell's round button). [dot-whole]
 - **An avatar stands inside the box that holds it:** a box never smaller than its avatar - a fixed 100 px box held a 120 px
-  profile avatar, which ran over the gap into the name (v35, user 07/11). An avatar stack, overlapping on purpose, is left out.
+  profile avatar, which ran over the gap into the name (v35). An avatar stack, overlapping on purpose, is left out.
   [box-holds]
 - **A chosen tab is a filled pill, as in Sneat:** a row of tabs (`.nav-pills`, a tablist) shows its chosen tab with its own fill
-  or the sliding pill under it - never bare words standing loose on the page (v35, user 07/11: "cấu trúc skill sneat ko có nút
-  nào nằm lẻ như chữ tài khoản với mk"). The family frame fills a `.nav-pills` row with no pill of its own. [tab-pill]
+  or the sliding pill under it - never bare words standing loose on the page (v35). The family frame fills a `.nav-pills` row with no pill of its own. [tab-pill]
 - **Every page has its row-2 panel** - the page's own bar (`page-toolbar`) under the top bar: row 2 of the compact frame
   (`#page-bar`), or the page's first card in the classic frame. A page that is not one page card fills it with the frame's
   `PageToolbar({start, tools})` - its tabs or its main action from the left, its seek tools from the right; row 2 is never
-  left empty (v36, user 07/11: "bộ khung chuẩn là panel hàng 2… mất toàn bộ panel hàng 2 mà ko hề nhận ra"). [page-bar]
-- **A row of tabs never stands loose in the page:** it is in the page bar (row 2), in a card or in a dialog (v36, user 07/11:
+  left empty (v36). [page-bar]
+- **A row of tabs never stands loose in the page:** it is in the page bar (row 2), in a card or in a dialog (v36:
   the profile settings tabs stood loose under the bar). [tabs-in-panel]
 - **Help opens from one place:** the frame's Help page (the menu's Help) of two tabs - General, the frame's own (an AI helper comes
   there later), and the app's own guide, named after the app, given in `config.help` (sections with the pages they explain; the
   section of the page in view is chosen). The page bar carries no help or guide button of its own; a link inside a page may open
-  a section with `openHelp` / `sasinShell.openHelp` (v39, user 07/11: "2 tab trong cùng 1 trang trợ giúp… còn riêng là hướng
-  dẫn riêng"; shell 1.10.0). [help-in-menu]
+  a section with `openHelp` / `sasinShell.openHelp` (v39; shell 1.10.0). [help-in-menu]
 - **The controls of one row stand on one line:** every button, field, pick list, tab and search box side by side in one row -
   the page bar, a card or panel head, any row of the page, a dialog - shares its vertical centre (within 3 px); a row is the
   outermost flex row the controls sit in, so a group of fields and a group of buttons in one head are one row (v38, Reconcile
@@ -373,7 +356,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   password change). The avatar and banner pictures are files kept outside the code, the family database holding only what
   points to them.
 
-## 5b. Menus, tables, accordions (v29, user 06/11 - raised from an app of the family)
+## 5b. Menus, tables, accordions (v29)
 
 - **The menu scrolls inside itself** when its rows are taller than the window; the brand and the collapse button stay.
   [menu-scroll] **Rows with sub-rows fold** by their chevron (`menu-toggle` with `aria-expanded`), the branch of the page on
@@ -387,17 +370,16 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   (3:1 against the card at least). [accordion-flat] [chevron-visible]
 - **Nothing of the head runs past its left or right edge** (a tool of the page bar at 390 px). [head-whole]
 
-- **A dialog, a menu and a popover are opaque** in every theme, glass on or off - the page never reads through them (user
-  06/11, `app-base` F18 with its machine check). [surface-opaque]
-- **An empty place and a wait wear the one template** (user 06/11): centred where they stand - an empty place a round icon, a
+- **A dialog, a menu and a popover are opaque** in every theme, glass on or off - the page never reads through them (`app-base` F18 with its machine check). [surface-opaque]
+- **An empty place and a wait wear the one template**: centred where they stand - an empty place a round icon, a
   title and a hint (the frame's `Empty`, `sasinShell.empty`); a wait the kit's large spinner, its words for screen readers only
   (`Loading`, `sasinShell.loading`). Never a lone line of text such as "no matching rows" or "loading". [state-template]
 
-- **A field of many values is a slicer with its find box** (`data-searchable`; v31, user 06/11): the stores, dishes or staff a
+- **A field of many values is a slicer with its find box** (`data-searchable`; v31): the stores, dishes or staff a
   report cross-filters on stand on the page's one filter; a plain pick list still holds 10 values at most. [filter-set]
 - **The top bar holds its crumbs and its controls only** - no loose line of dates beside them; a period the page holds is said by
-  its filter (user 06/11). [bar-no-extra-text]
-- **Every row of a table scrolled into view is drawn** - only the rows under its own pinned header, or behind its footer pinned at the bottom (a TOTAL row, v32; pinned on its cells, its row or the `tfoot`, v40, Reconcile 07/11: a TOTAL pinned on its row read as a row not drawn), are left out (user 06/11: a table
+  its filter. [bar-no-extra-text]
+- **Every row of a table scrolled into view is drawn** - only the rows under its own pinned header, or behind its footer pinned at the bottom (a TOTAL row, v32; pinned on its cells, its row or the `tfoot`, v40, Reconcile 07/11: a TOTAL pinned on its row read as a row not drawn), are left out (a table
   mid-page lost its first rows). A probe: `PROBES` of the check script, evaluated awaited on every page with a table. It
   measures inside the table's own scrolling frame, its scroll bars left out, and puts back every box it moved (v34, Reconcile
   06/11: a grid in a nested frame read as not drawn, and a box left moved pushed the top bar's avatar out of view).

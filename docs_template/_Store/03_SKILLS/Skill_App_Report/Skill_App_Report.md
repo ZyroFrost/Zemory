@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 13
+version: 14
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -35,28 +35,27 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **A card row holds only cards** - no chart, no table in it - **at least four**, every card with its % line. A page whose
   own new cards would be one to three drops the row; cards carried over from the report being replaced are kept and topped
   up to four with figures the page already reads. [rp-cards]
-- **The card row stands alone on its line** (v10, user 08/11: "nó không được nằm trong chỗ card, nó phải nằm riêng ra"): no
+- **The card row stands alone on its line** (v10): no
   chart, donut or table beside it in the same row of the grid - a chart of the same figures goes on the row below. [rp-cards-apart]
-- **A card is as tall as what it holds** (v10, user 08/11: "card dài sọc"): never pulled to the height of a block beside it -
+- **A card is as tall as what it holds** (v10): never pulled to the height of a block beside it -
   at most 1.6 times its lines and padding, measured on what the card draws (v11: a Sneat card's `.card-body` stretches
   with the card). [rp-card-fit]
-- **Too many cards for one line split top and bottom into even lines** (v11, user 08/11: "quá nhiều card thì phải chia hàng
-  ra, ko dc cả nùi", "chia trên dưới làm đôi, giữ đúng size và thiết kế card"): the cards keep their size and design - never
+- **Too many cards for one line split top and bottom into even lines** (v11): the cards keep their size and design - never
   squeezed narrower than 140 px to keep one line; the lines are even (8 → 4 + 4, 15 → 8 + 7, 7 → 4 + 3) and no card stands
   alone on a line. [rp-cards-wrap]
-- **A figure card wears the tinted fill of its tone** (v12, the user 09/11: "cái này là skill, nên có hook cho skill"): every
+- **A figure card wears the tinted fill of its tone** (v12): every
   card of a card row carries `data-tone` (card *i* → slot *i* of the theme) and is filled with a pastel of it - the slot colour
   at a low alpha (`--tone-bg`), the figure in the text colour, the icon in the full slot colour - in both themes. Never the bare
   glass of the frame, never white, never the tone as a stripe or a border on one side; the frame keeps the fill of a card with
   `data-tone`. Locked by `Rule_Gate_98_FigureCardTone` (its hook blocks the style that takes the fill off). [rp-card-tone]
-- **A figure is never rounded to 0 with a unit** (v10, user 08/11: a Group Size of 1,75 read "0 k"): a value below the unit
+- **A figure is never rounded to 0 with a unit** (v10: a Group Size of 1,75 read "0 k"): a value below the unit
   shows in a smaller unit or in full; `0 k` · `0 tr` · `0 tỷ` never appear. [rp-figure-scale]
 - **A card title fits its card;** a long one is abbreviated (the qualifying clause dropped, the full meaning in the page's
   glossary), never by shrinking the font of one card - the titles of a row share one size, and so do the figures.
   [rp-card-label]
 - Figures on cards take the theme's colour slots in order (card *i* → slot *i*).
 
-- **A card's figure never runs past its edge** (v13, the user 09/11): a figure that is words (a store's name) shrinks with the
+- **A card's figure never runs past its edge** (v13): a figure that is words (a store's name) shrinks with the
   card's width and ends in "…" when still too long; a card of one store shows its short name, the full name in its tip, never
   again on the line below. [rp-card-no-overflow]
 
@@ -69,23 +68,21 @@ description: The report pages of an app - what a page of figures, charts and tab
   [chart-labels]). [rp-label]
 
 - **Every data mark tells what it stands for when pointed at** (a bar, a stacked part, a dot, a slice), with its value, as
-  Power BI does (user 05/11) - through the frame's tooltip (`data-tip`, several lines with `\n`), never the browser's plain
+  Power BI does - through the frame's tooltip (`data-tip`, several lines with `\n`), never the browser's plain
   `title`. [rp-tooltip]
 
-- **A chart with a legend of a field is stacked by that legend** (v13, the user 09/11: "chart lẻ phải có số theo lẻ"): its columns or
+- **A chart with a legend of a field is stacked by that legend** (v13): its columns or
   bars are cut by the legend's values in the report's colours, every part wide enough (6 % of the length) carries its own
   number, the total at the end of the bar or the top of the column. [rp-stacked-labels] Charts stacked by the same field wear that field's fixed colours on every chart of the page (one colour per
   value, as a grade A/B/C/D) - two of them sharing a colour is right; a chart of one series still takes its own main colour.
-- **The numbers of a line chart never cover each other** (v13, the user 09/11: "số bị đè lên nhau"): no two data labels of a
+- **The numbers of a line chart never cover each other** (v13): no two data labels of a
   visual overlap; a label takes its series' colour. [rp-labels-apart]
-- **A tip says one fact a line, "Field: Value"** (v13, the user 09/11): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
+- **A tip says one fact a line, "Field: Value"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
   every number in full (244.008.536.989), never cut to tỷ / tr / k; % and points keep their form. [rp-tip-field-value]
-- **A colour on a number says its level, never decoration** (v13, the user 09/11: "màu theo tỉ lệ, chứ có phải làm cho đẹp đâu…
-  mọi chart đều phải có quy chuẩn", as Power BI's conditional formatting): one scale of levels for the whole app, good to bad -
+- **A colour on a number says its level, never decoration** (v13, as Power BI's conditional formatting): one scale of levels for the whole app, good to bad -
   green · yellow · orange · red; a grade A/B/C/D takes the same scale; the stripes of a table never paint over a cell coloured by
   its value; no purple or info colour stands for a level. [rp-value-colour]
-- **A % against a target is graded on its real value** (v13, the user 09/11: "màu nên phân cấp, cam vàng đỏ xanh, ko có 2 màu ntn,
-  nên phân theo % thật"; the bands set by the user): < 40 % red · 40 to < 70 % orange · 70 to < 100 % yellow · 100 % and more
+- **A % against a target is graded on its real value** (v13): < 40 % red · 40 to < 70 % orange · 70 to < 100 % yellow · 100 % and more
   green - four colours, never two. [rp-target-graded]
 
 ## 4. Tables
@@ -94,21 +91,19 @@ description: The report pages of an app - what a page of figures, charts and tab
   only; a % column coloured by its own measure (§1); heat maps (intensity colour) are kept. Column headers are reader's words,
   never field names (`chi_tieu`, `StoreName2`). [rp-table-style]
 - **A table is not for little information:** one row ⇒ a card with several values; one dimension with six values or fewer
-  (and no column field) ⇒ a chart, measures of other units in its tooltip (v11, user 08/11: "bảng nào nhỏ ko đáng là matrix
-  thì dùng dạng chart khác") - also when the report being replaced drew it as a table, and also when it has several
+  (and no column field) ⇒ a chart, measures of other units in its tooltip (v11) - also when the report being replaced drew it as a table, and also when it has several
   measures. A detail table (one row per record) is exempt; a table of few groups is never declared one. [rp-table-few]
 - **Nothing scrolls sideways inside its frame, and no table spills out of its panel** (column widths are measured at first draw, so headers may wrap; a phone scrolls a data grid inside its frame, app-base M5). A table spread over periods shows only the latest ones (the window follows
   the page filter); columns are as wide as their longest figure, all fitting the frame; figures that still do not fit switch
   to millions with one decimal. Scrolling down is normal. A table's own sideways box (`table-boxed` of app-sneat-glass) is no
   scroll while the table fits it: only a table wider than its panel, or a box whose content runs past it, breaks this rule (v13).
   [rp-no-side-scroll]
-- **The numbers of a table follow the person's number format** (v9, user 06/11: "setting 1 lần sẽ cho hiện ở cái báo cáo
-  dashboard hết… chỉ lấy của table"): Settings > Numbers of the family frame (unit, decimals, rounding, separator, negatives),
+- **The numbers of a table follow the person's number format** (v9): Settings > Numbers of the family frame (unit, decimals, rounding, separator, negatives),
   kept on `<html data-num-format>`. Each number cell says what it is (`data-rp-num` = `money` · `count` · `pct`) and its value
   (`data-rp-raw`), and shows exactly that format (the frame's `fmtNum`); a negative in red carries `text-danger`. Charts and
   KPI cards keep their own form. [rp-num-format]
 - **A table shows ten rows at most** and scrolls the rest inside its own frame, staying on the page beside the other visuals
-  (v7, user 06/11: "có giới hạn bao nhiêu dòng, rồi phần còn lại cho scrollbar tự động trong chính dashboard đó").
+  (v7).
   [rp-table-rows-cap]
 
 ## 5. Layout
@@ -126,14 +121,14 @@ description: The report pages of an app - what a page of figures, charts and tab
   be negative. [rp-no-negative-bars]
 - **The columns of the charts of one row stand on one line** (the same axis-label room). [rp-baseline]
 
-- **A board leaves no hole** (v13, the user 09/11): short charts stack in one column beside a tall one, a long list (Top 10) stands
+- **A board leaves no hole** (v13): short charts stack in one column beside a tall one, a long list (Top 10) stands
   half a row and two blocks tall; every column of a row reaches the row's foot. [rp-no-hole]
-- **A ranking bar gives its names room** (v13, the user 09/11): the name column is 30 to 40 % of the bar's width, two lines at
+- **A ranking bar gives its names room** (v13): the name column is 30 to 40 % of the bar's width, two lines at
   most (the full name in the tip), never a long bar beside a name on six lines. [rp-rank-name]
-- **Every chart can be enlarged alone** (v13, the user 09/11, as Power BI's focus mode): a button (`.rp-focus-btn`) on each chart
+- **Every chart can be enlarged alone** (v13, as Power BI's focus mode): a button (`.rp-focus-btn`) on each chart
   and donut, as tall as a legend chip and on its line; pressed, the chart takes the page body, the others hide, the page bar
   stays; pressed again or Escape, the page comes back. [rp-focus]
-- **A department's list of reports is rows the width of the page** (v13, the user 09/11 through an app of the family): each
+- **A department's list of reports is rows the width of the page** (v13): each
   report card of a catalog page is a row as wide as its page, its pages spread across that width - never a card in a narrow
   column. [rp-catalog-rows]
 
@@ -154,14 +149,13 @@ description: The report pages of an app - what a page of figures, charts and tab
   Count): số hoá đơn`), looked up in the company's terms, then the old system's dictionary, then the DW docs, then the
   measure itself - never invented. One definition per line. Explanations of a figure live there, not in a frame on the page.
   [rp-glossary]
-- **A report page has one view: no list / grid switch** on its bar (user 06/11) - a report is read one way, and a switch
+- **A report page has one view: no list / grid switch** on its bar - a report is read one way, and a switch
   only takes room. The page declares it (`views={false}` on the family's frame), and the frame then draws no switch.
   [rp-no-view-switch]
 
 ## 8. Rebuilding a report
 
-- **The report being replaced is its Power BI White version** (v11, user 08/11: "pbi classic là cái ban đầu… white mới là cái
-  đã sắp lại rồi"): the classic report is only the first draft; pages, visuals and order follow White, and the classic is
+- **The report being replaced is its Power BI White version** (v11): the classic report is only the first draft; pages, visuals and order follow White, and the classic is
   read only for a page White does not have. Parity keeps what White shows, in the form this skill gives it: a card row
   topped up to four (§2), a small table drawn as a chart (§4).
 - **Every page and every visual of the report being replaced is present**, in its order. A visual dropped on purpose, or
@@ -175,16 +169,16 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **A report card on a catalog page** lists its pages in two even columns (`data-rp-card-pages`) and, once built, turns by a
   button at its top right (`data-rp-card-flip`) to the state of its numbers (`data-rp-card-status`): normal, a period with no
   numbers yet, a read that failed with the last good read, not read yet; the time of the update, the period, how long it read,
-  how often it refreshes. Only the content turns; the card's glass stands still (v7, user 06/11). [rp-card-pages-even]
+  how often it refreshes. Only the content turns; the card's glass stands still (v7). [rp-card-pages-even]
   [rp-card-status]
 
-- **A card total of the report uses the measure of its chart** (v13, the user 09/11): a chain figure that the report draws from the
+- **A card total of the report uses the measure of its chart** (v13): a chain figure that the report draws from the
   same measure as a chart (the chain's score = the trend line) is computed as that chart is; a count of stores (passed, grade D,
   grade A) keeps each store's own score; the report's DAX is copied as it is, its averaging over rows included - the app never
   "fixes" the report. Judged when the page is shown.
-- **A figure off the report is traced by its sources first** (v13, the user 09/11): a difference with Power BI is compared source
+- **A figure off the report is traced by its sources first** (v13): a difference with Power BI is compared source
   by source (the datalake table and the file the report reads) before the app is changed.
-- **A day's sales count closed days only** (v13, the user 09/11): a figure by sale day reads only the days whose books are closed
+- **A day's sales count closed days only** (v13): a figure by sale day reads only the days whose books are closed
   (`Dim_Date.IsSaleDayClosed = 1`), as the report does.
 
 ## 9. The markup contract

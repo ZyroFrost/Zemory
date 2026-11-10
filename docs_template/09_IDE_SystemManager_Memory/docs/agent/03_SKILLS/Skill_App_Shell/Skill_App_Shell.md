@@ -5,6 +5,7 @@ version: 2
 type: process
 checked: [Skill_App_SneatGlass, Skill_App_Base, Skill_App_Release, Rule_Keys_90_AppFamilyContract, Frontend_173_Shell]
 description: Build, change and publish the frame every app of a system wears - the one copy of the top bar, menu, page bar, filters, tables, dialogs and toasts kept in the system-manager repo (frontend/shell/) and published as numbered builds the apps pin. Use in a system-manager repo when the frame is changed, a part moves between the frame and an app, an app reports a fault of the frame, or a build of the frame is published. Vietnamese triggers - "khung chung", "khung chuẩn", "gói khung", "phát khung", "bản khung", "sửa khung".
+from: _Store/03_SKILLS/Skill_App_Shell @v2 #c04ac5a46092
 ---
 
 # app-shell — the system's one frame, kept and published by the system manager

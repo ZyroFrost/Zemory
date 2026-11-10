@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 
@@ -17,23 +17,19 @@ lang: vi
 - **Ctrl / Cmd / Shift + bấm thêm hoặc bớt** điểm đó và giữ phần các hình khác đã chọn.
 - **Enter hoặc Space** trên một điểm đang được trỏ làm như bấm; mọi điểm tới được bằng Tab. [cf-points]
 - **Esc** (khi không có hộp thoại hay popover nào mở) và nút **Xoá lọc** của bộ lọc trang bỏ cả lựa chọn. [cf-interaction]
-- **Mọi phần của một hình đều là điểm** (v3, user 06/11), như Power BI: đoạn cột chồng, chấm trên đường, thanh, cột, lát, mục chú
+- **Mọi phần của một hình đều là điểm** (v3), như Power BI: đoạn cột chồng, chấm trên đường, thanh, cột, lát, mục chú
   giải, dòng bảng. Hình gồm các chỉ số đặt cạnh nhau (`data-rp-free`) không có trường nên được miễn. [cf-every-mark]
-- **Mọi mục chú giải (legend) là một bộ lọc thật của thanh trang** (v4, user 09/11: "mọi legend đều phải là 1 filter thật nối dc vào
-  bộ khung filter ở trên, đây cũng là skill hook"): legend theo giá trị một trường (một chuỗi: năm, kênh, xếp loại) là các điểm trên
+- **Mọi mục chú giải (legend) là một bộ lọc thật của thanh trang** (v4): legend theo giá trị một trường (một chuỗi: năm, kênh, xếp loại) là các điểm trên
   trường đó (`data-cf-dim`), và trường đó có bộ lọc trên thanh trang - một bộ lọc: bấm mục thì bộ lọc đặt giá trị đó, nút lọc đếm,
   đặt bộ lọc thì mục sáng còn mục khác mờ, Xoá lọc hay bấm lần hai thì bỏ. Legend theo CHỈ SỐ (năm nay / năm trước, doanh thu /
   chỉ tiêu) là ô "Chỉ số" của trang (`data-cf-dim="measure"`, bộ lọc `measure`): bấm thì chỉ số đó sáng trên mọi chart của trang,
-  chuỗi khác mờ, không lọc dòng nào; Xoá lọc thì bỏ. (v5, user 09/11: "ít nhất khi bấm legend nó phải hiển thị sáng lên cái line
-  đó mới đúng") mục nào cũng bấm được, kể cả đường của cả chuỗi (chọn trên ô Chỉ số): bấm thì đường hay chuỗi đó sáng, còn lại mờ.
+  chuỗi khác mờ, không lọc dòng nào; Xoá lọc thì bỏ. (v5) mục nào cũng bấm được, kể cả đường của cả chuỗi (chọn trên ô Chỉ số): bấm thì đường hay chuỗi đó sáng, còn lại mờ.
   [cf-legend-filter] [cf-legend-click]
-- **Legend đứng một hàng** (v5, user 09/11: "legend ko dc xuống hàng ntn, đây là luật, nếu quá dài thì phải là chart dài", "kể cả
-  là trong 1 tag"): các chip chung một hàng, không xuống hàng, chữ trong một chip cũng không; legend dài hơn đầu panel thì chart
+- **Legend đứng một hàng** (v5): các chip chung một hàng, không xuống hàng, chữ trong một chip cũng không; legend dài hơn đầu panel thì chart
   chiếm cả hàng. Danh sách dọc của donut không phải legend chip. [cf-legend-one-line]
-- **Thanh trang và các lựa chọn là một, cả hai chiều** (v5, user 09/11: "filter trên và chọn ở dưới luôn phải dính đồng bộ", "mỗi
-  trang cần ma trận filter riêng"): mọi trường mà visual của trang chọn được (trục, cột, legend) có slicer trên thanh; đặt slicer thì
+- **Thanh trang và các lựa chọn là một, cả hai chiều** (v5): mọi trường mà visual của trang chọn được (trục, cột, legend) có slicer trên thanh; đặt slicer thì
   các điểm khớp sáng, điểm khác mờ, như bấm chart thì slicer đổi. [filter-one] [cf-filter-to-chart]
-- **Bộ lọc là cài đặt của người dùng** (v5, user 09/11): cái người dùng đặt trên một trang (slicer, lựa chọn, token kỳ) lưu vào cài
+- **Bộ lọc là cài đặt của người dùng** (v5): cái người dùng đặt trên một trang (slicer, lựa chọn, token kỳ) lưu vào cài
   đặt của họ trong hệ (`Config_UserSetting`, `<app>.filters` theo đường trang, kỳ lưu bằng token tương đối), nạp khi mở app và ghi
   sau mỗi lần đổi - trang mở lại như lúc rời đi, ở máy nào cũng vậy. Phép kiểm trình duyệt của app chứng minh (đặt, tải lại, vẫn còn).
 
@@ -46,8 +42,7 @@ lang: vi
 - **Ô KPI và bảng đi theo** lựa chọn. Một KPI mà trình duyệt không tính lại được (không có dòng dữ liệu) thì hiện số của server cho
   đúng thành phần được chọn khi chỉ chọn một (chỉ số theo từng thành phần), không thì hiện số toàn trang - không bao giờ cộng tỷ lệ
   sai.
-- **Giá trị đã chọn hiện trên bộ lọc DUY NHẤT của trang** (v3, user 06/11: "bấm ở dưới là dùng chính bộ lọc ở trên, không phải
-  thêm bộ lọc khác"): ô lọc của trường đó trên thanh trang giữ giá trị và nút lọc đếm nó; đặt ô lọc đó thì các hình lọc y như
+- **Giá trị đã chọn hiện trên bộ lọc DUY NHẤT của trang** (v3): ô lọc của trường đó trên thanh trang giữ giá trị và nút lọc đếm nó; đặt ô lọc đó thì các hình lọc y như
   vậy. Không có dãy chip thứ hai. [filter-one] [cf-interaction]
 
 ## 3. Khuôn markup

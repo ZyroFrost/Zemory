@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Rule_Gate_98_FigureCardTone — A figure card wears the tinted fill of its tone
@@ -8,7 +8,7 @@ lang: vi
 Trên trang báo cáo của app kiểu Sneat hoặc Glass, mọi thẻ chỉ số (`.kpi-card` trong hàng thẻ) mang một tông (`data-tone`, một
 ô màu của theme, thẻ thứ *i* → ô *i*) và được tô bằng tông đó: màu pastel - màu ô ở độ đậm thấp (`--tone-bg`) - chữ màu chữ
 thường, icon màu ô đậm. Không bao giờ là kính trơn của khung, không màu trắng, không chỉ hiện tông bằng một vạch hay viền một
-bên (user 09/11, qua một app trong hệ: kính của khung từng đè mất nền riêng của thẻ chỉ số, "cái này là skill, nên có hook
+bên (kính của khung từng đè mất nền riêng của thẻ chỉ số, "cái này là skill, nên có hook
 cho skill").
 
 ## Khi nào áp
@@ -16,7 +16,7 @@ cho skill").
   trong repo mà `frontend/config/ui.json` khai kiểu Sneat hoặc Glass.
 - Thêm một thẻ chỉ số vào trang báo cáo.
 
-## Làm
+## Phải làm gì
 1. Thẻ mang `data-tone="<ô>"`; style của nó lấy `background: var(--tone-bg)` (hoặc màu ô pha nhạt thành pastel), ở cả hai theme.
 2. Tông không bao giờ là viền: không vạch `border-left` / `border-top`, không chỉ viền màu.
 3. Khung giữ nền của thẻ có `data-tone` (kính của khung chỉ phủ thẻ không có tông); app không tăng độ mạnh selector để giành lại.
@@ -29,7 +29,7 @@ cho skill").
   là một đường mảnh.
 - ✓ Đúng: `.kpi-card[data-tone] { background: var(--tone-bg); }`, màu ô ở độ đậm thấp; số màu chữ thường, icon màu ô.
 
-## Kiểm
+## Máy kiểm
 - Hook chặn lần ghi file style thêm, dưới selector kết thúc ở thẻ chỉ số, một nền none, transparent, trắng hay kính trơn
   (`var(--g-glass…)`), hoặc một viền màu một bên. Cho qua: nền tô màu (`var(--tone-bg)`, `rgba()` của một màu, `color-mix()`) ·
   luật cho phần bên trong thẻ (tiêu đề, số, dòng %, icon) · hover · viền đặt `0` / `none` · repo kiểu khác · khai báo đã có sẵn.

@@ -1,7 +1,7 @@
 ---
 id: Skill_App_ShellUse
 name: app-shell-use
-version: 6
+version: 7
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_App_Shell, Rule_Keys_90_AppFamilyContract, Frontend_173_Shell]
 description: Wear the system's frame in an app of the system - pin a published build, hand it the app's config, build only page content, and ask the system manager for anything of the frame. Use in an app of a system (role app, owner a system-manager) when its surface is built or changed, when it moves onto the frame or to a newer build, or when something of the frame looks wrong. Vietnamese triggers - "gắn khung", "dùng khung chung", "lên bản khung", "ghim khung", "vùng trang", "lỗi khung".
@@ -54,13 +54,13 @@ description: Wear the system's frame in an app of the system - pin a published b
 - The frame hands each page a place in the page card, in the light DOM (the kind's classes and the frame's tokens reach it). The
   card fills the frame, scrolls inside, pins its header row and resizes its columns - the page renders a plain table with the
   kind's classes and gets all of that. A row of the page's own that must stay in sight (a totals row) is pinned by the page.
-- **A table page: the card fills, the table scrolls inside** (v3, the user 09/11 - settled for the family, app-sneat-glass
+- **A table page: the card fills, the table scrolls inside** (v3 - settled for the family, app-sneat-glass
   §2): never turn a table page into a whole-column scroll to win room; leave `fill` on and let the person fold row 1 (Settings
   > Layout > "Thu gọn hàng 1 khi cuộn"). A board of several cards takes the frame's `board` (React `PageCard board`, DOM `DomPage.board`):
   the page bar stays, no page card wraps the board, its cards stand straight on the wallpaper (v4). Many pages under one menu row:
   turn on the frame's tab panel (`pageHead: true`), never draw tabs of your own; it pins under the top bar and docks on row 2
   when row 1 folds by itself (v5) - the page never moves or covers it.
-- **The whole app scales to the window** (v5, the user 09/11, app-sneat-glass §2 [ui-scale]): the frame zooms the page drawn on
+- **The whole app scales to the window** (v5, app-sneat-glass §2 [ui-scale]): the frame zooms the page drawn on
   1920 x 1080 to the window. A page never sizes anything from `vh` / `vw` or `innerHeight` / `innerWidth`: it takes
   `var(--app-h)` / `var(--app-w)`, and a size or place it writes from a measure on screen (a rect, a pointer position, a drag)
   goes through the frame's `toPage(px)` (or divides by `uiZoom()`) - both on `window.sasinShell` too. An old scaler of the

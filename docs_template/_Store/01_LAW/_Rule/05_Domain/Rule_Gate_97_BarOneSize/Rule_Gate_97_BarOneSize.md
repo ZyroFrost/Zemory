@@ -1,7 +1,7 @@
 ---
 id: Rule_97
 name: bar-one-size
-version: 1
+version: 2
 kind: action
 code: 05_Domain
 checked: [Skill_App_SneatGlass, Skill_App_Shell, Rule_Keys_90_AppFamilyContract]
@@ -12,7 +12,7 @@ checked: [Skill_App_SneatGlass, Skill_App_Shell, Rule_Keys_90_AppFamilyContract]
 In an app of the Sneat-Glass kind, every control of the page bar is ONE height: the page's own tools (the add button and its
 "+"), every filter pinned on the bar, the filter button, the filter box and the view switch. The size is `--tool-h` (38 px), set
 once on `.page-toolbar`; a button that carries only an icon is a square of it. No style rule gives a control of the bar a size
-of its own (user 08/11: pinned filters stood 34 px beside a 38 px "+", "phải khóa lại chính xác size").
+of its own (pinned filters stood 34 px beside a 38 px "+", "phải khóa lại chính xác size").
 
 ## When
 - Writing or editing a style rule (`.css` · `.scss` · `.less`) whose selector names a control of the page bar, in a repo whose

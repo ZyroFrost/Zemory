@@ -1,5 +1,5 @@
 ---
-version: 53
+version: 54
 lang: vi
 ---
 
@@ -23,32 +23,28 @@ lang: vi
     xem (danh sách · thẻ, hoặc các kiểu riêng của trang). [bar-anchor]
 - Cụm tìm lấy phần còn lại của dòng; các bộ lọc ghim co lại (cắt bằng "…") trước khi chạm tới cụm trái; hai cụm không bao giờ
   đè nhau; ghim bộ lọc không làm cụm trái xê dịch. [bar-anchor] [filter-row]
-- **Mọi nút công cụ riêng của trang là nút có khung** (v41, user 07/11: "mọi chức năng riêng của app phải là 1 nút có khung
-  vuông đúng template... có hiệu ứng bấm"): ở cụm trái mỗi nút mang khung của nút lọc - cao bằng thanh, có nền hoặc viền, bo
+- **Mọi nút công cụ riêng của trang là nút có khung** (v41): ở cụm trái mỗi nút mang khung của nút lọc - cao bằng thanh, có nền hoặc viền, bo
   góc theo kit, sáng màu nhấn khi bật, lún khi bấm - không bao giờ là icon trơ; nút có màu (nút thêm) giữ màu, cùng chiều cao.
   Khung tự cho nút thường kiểu này. [tool-framed] Mọi nút của cụm trái, cả nút thêm, cao bằng bộ lọc bên phải, lệch tối đa
-  1 px (v42, user 07/11: "chiều cao của nút riêng phải luôn bằng chiều cao của nguyên bộ filter bên phải"). [tool-framed]
-- **Mọi control của thanh cùng MỘT cỡ, khoá cứng** (v43, user 08/11: nút "+" cao 38 px cạnh bộ lọc ghim 34 px, "phải khóa lại
+  1 px (v42). [tool-framed]
+- **Mọi control của thanh cùng MỘT cỡ, khoá cứng** (v43: nút "+" cao 38 px cạnh bộ lọc ghim 34 px, "phải khóa lại
   chính xác size"): công cụ của trang và nút "+", mọi bộ lọc ghim, nút lọc, ô tìm và nút đổi kiểu xem vẽ ra đúng `--tool-h`
   (38 px, đặt một lần trên `.page-toolbar`), lệch tối đa 1 px; nút chỉ có icon là ô vuông cỡ đó. Không luật style nào của khung
   hay của app ghi số cho chiều cao một control của thanh, hay bề rộng một nút icon - `Rule_Gate_97_BarOneSize` chặn ngay lúc ghi;
   cỡ chỉ đổi qua `--tool-h`. [bar-one-size]
-- **Hai đầu mỗi hàng chừa bằng nhau** (v42, user 07/11): hàng 1 và thanh trang - từ mép trái tới control đầu bằng từ control
+- **Hai đầu mỗi hàng chừa bằng nhau** (v42): hàng 1 và thanh trang - từ mép trái tới control đầu bằng từ control
   cuối tới mép phải, lệch tối đa 2 px. [bar-ends-even]
-- **Nút hàng 1 có khung** (v42, user 07/11: "2 nút app và chuông cũng phải khung luôn cho đồng bộ"): nút ứng dụng và chuông là
+- **Nút hàng 1 có khung** (v42): nút ứng dụng và chuông là
   ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Bên phải hàng 1 là một
-  nhóm, đúng một phần ba thanh** (v51, user 09/11: "ô search đang ko cách đúng khoảng chuẩn… tổng chiều dài của bên phải bằng đúng 1/3
-  chiều dài của toàn bộ panel đầu"): ô tìm và các nút đứng chung ở cuối hàng 1, rộng đúng một phần ba thanh trên cùng (ô tìm lấy phần
+  nhóm, đúng một phần ba thanh** (v51): ô tìm và các nút đứng chung ở cuối hàng 1, rộng đúng một phần ba thanh trên cùng (ô tìm lấy phần
   các nút để lại), mọi phần cách phần kế bằng đúng khoảng cách của thanh trang - không bao giờ khe rộng hơn trước ô tìm. [row1-end]
   **Đường
   dẫn ngăn bằng mũi tên của kit,** không bao giờ là "/" gõ tay ("cái path nên thành >"). [crumb-chevron]
-- **Cái đang chọn thì sáng, phần còn lại mang khung xám** (v42, user 07/11: "khung đang mở là màu xám, bấm qua thì nhận màu
-  sáng... phải có hiệu ứng sáng chạy qua nút mới"): mọi tab trong hàng có khung khi chưa chọn; tab đang chọn, kiểu xem đang
+- **Cái đang chọn thì sáng, phần còn lại mang khung xám** (v42): mọi tab trong hàng có khung khi chưa chọn; tab đang chọn, kiểu xem đang
   chọn và công cụ đang bật được tô màu nhấn (chữ trắng), và một vệt sáng chạy qua cái vừa chọn,
-  một lần (FX: sheen; tắt theo hiệu ứng con trỏ và chế độ giảm chuyển động). [chosen-lit] **Hàng menu của trang đang mở giữ đúng kiểu chọn của mẫu** (v50, user 09/11: "màu khi
-  chọn của bạn đang sai mẫu, mẫu người ta là màu trắng"): đứng trên viên kính trắng (màu glass-strong), chữ màu chữ thường,
+  một lần (FX: sheen; tắt theo hiệu ứng con trỏ và chế độ giảm chuyển động). [chosen-lit] **Hàng menu của trang đang mở giữ đúng kiểu chọn của mẫu** (v50): đứng trên viên kính trắng (màu glass-strong), chữ màu chữ thường,
   icon màu nhấn - không bao giờ tô màu nhấn như tab đang chọn. [menu-pill-glass]
-- Trang chỉ có một kiểu xem (mọi trang báo cáo) không hiện nút kiểu xem (user 06/11: nút mờ chỉ chiếm chỗ trên thanh); nút kiểu xem, khi có, có từ hai kiểu trở lên. Trang chưa có bộ lọc vẫn hiện nút lọc, ở trạng thái tắt.
+- Trang chỉ có một kiểu xem (mọi trang báo cáo) không hiện nút kiểu xem (nút mờ chỉ chiếm chỗ trên thanh); nút kiểu xem, khi có, có từ hai kiểu trở lên. Trang chưa có bộ lọc vẫn hiện nút lọc, ở trạng thái tắt.
   [toolbar] Nút đang bật thì làm đúng việc nó nói: dạng danh sách hiện dòng (một bảng, sắp được theo tiêu đề cột khi có ích -
   trạng thái, độ trễ), dạng thẻ hiện thẻ; trang toàn thẻ (trang chọn app) có dạng danh sách thật, không bao giờ để nút bấm mà
   không đổi gì. [view-real]
@@ -66,51 +62,43 @@ lang: vi
 - Trang có nội dung là một thẻ trang thì thẻ lấp đầy vùng đó và cuộn BÊN TRONG thẻ: thanh trang (hàng 2 của thanh trên) và hàng
   tiêu đề bảng luôn ghim, như khung Glass. Khung con trong thân thẻ không làm ô cuộn riêng, trừ khi chính nó ghim thứ gì (ma trận
   ghim cột đầu theo chiều ngang). [frame]
-- **Trang bảng: thẻ lấp đầy, bảng cuộn bên trong - đã chốt** (v46, user 09/11 qua Reconcile, cho mọi app của hệ): trang của
+- **Trang bảng: thẻ lấp đầy, bảng cuộn bên trong - đã chốt** (v46, cho mọi app của hệ): trang của
   một bảng hay ma trận là một thẻ trang lấp đầy khung (`fill`, mặc định), bảng cuộn bên trong với hàng tiêu đề và cột đầu ghim,
   thanh trang luôn có; trang không bao giờ cuộn cả cột vì một bảng. Chỉ board nhiều thẻ (tổng quan số liệu và biểu đồ) mới cuộn
   cả cột, và board đứng như trang Thống kê của repo quản hệ: cùng thanh trang, không thẻ trang bọc ngoài, mỗi thẻ là một tấm kính
-  riêng đứng thẳng trên nền, cách nhau bằng khoảng hàng của kit (`board` của khung, v49, user 09/11: "sao chart ko phân panel ra
-  giống thống kê ở one vậy?"). Chỗ cho dữ liệu đến từ việc thu hàng 1 (`head_fold` Tối đa chỗ, §2b), không bao giờ từ cuộn cả trang.
+  riêng đứng thẳng trên nền, cách nhau bằng khoảng hàng của kit (`board` của khung, v49). Chỗ cho dữ liệu đến từ việc thu hàng 1 (`head_fold` Tối đa chỗ, §2b), không bao giờ từ cuộn cả trang.
   Bảng thẳng hàng với thanh trang: chữ cột đầu bắt đầu đúng chỗ công cụ của thanh bắt đầu (.75rem từ mép thẻ). Bảng của trang
   bảng nằm thẳng trong thân thẻ trang, không bao giờ bọc trong thẻ con; bảng trong panel của board (một thẻ con) giữ lề 1rem của
   thẻ đó (v47, Dashboard 09/11). [table-edges] [card-inset]
-- **Dải tab các trang cùng nhóm** (v46, Dashboard 08/11, user 09/11 - "khu vực tab phải là khu vực tách rời, ko được load lại…
+- **Dải tab các trang cùng nhóm** (v46, Dashboard 08/11 - "khu vực tab phải là khu vực tách rời, ko được load lại…
   gần như là panel khung dòng thứ 3… nó cũng phải neo"): app gom nhiều trang dưới một hàng menu thì bật dải tab của khung
   (`pageHead`); dải nằm trên trang và ngoài trang - đổi tab chỉ đổi trang - neo trên đầu; dải là phần trên của thẻ trang, cùng
-  một khối kính, ngăn với trang bằng một đường kẻ mờ, không bao giờ thành panel rời (v48, user 09/11: "nó phải nối vào main chính
-  luôn ko dc rời ra, chỉ phân tách bằng line ảo"); thấp và gọn, không bao giờ rộng hơn thẻ; mọi tab cách nhau đúng một khoảng,
+  một khối kính, ngăn với trang bằng một đường kẻ mờ, không bao giờ thành panel rời (v48); thấp và gọn, không bao giờ rộng hơn thẻ; mọi tab cách nhau đúng một khoảng,
   bằng lề hai đầu dải ("phải cách bằng với padding 2 đầu chứ"); tab của trang đang mở sáng nhờ viên trượt từ tab trước; tab không vừa một dòng gom vào
-  "Thêm (n)", tab đang mở luôn trên dòng (user chê tab xuống 3 dòng). Mỗi người bật/tắt ở Cài đặt > Bố cục ("cái tab hiện ra hay
-  ko phải là tính năng được option chọn ở setting"). [page-tabs] **Dải neo theo hai chế độ** (v50, user 09/11: "khi 3 dòng thì
-  tách lẻ, còn khi kéo mất panel 1 thì panel 3 dính liền lên panel 2… 2 chế độ, 1+2 và 2+3"): dải neo ngay DƯỚI thanh trên
+  "Thêm (n)", tab đang mở luôn trên dòng (không để tab xuống 3 dòng). Mỗi người bật/tắt ở Cài đặt > Bố cục ("cái tab hiện ra hay
+  ko phải là tính năng được option chọn ở setting"). [page-tabs] **Dải neo theo hai chế độ** (v50): dải neo ngay DƯỚI thanh trên
   cùng, không bao giờ neo ở đỉnh khung cuộn sau lưng thanh (trang board từng mất dải dưới thanh). Ba hàng: hàng 1+2 một khối,
   dải đứng riêng bên dưới (khe đầu trang, 1rem). Hàng 1 thu gọn: dải dính lên hàng 2, không khe - một khối 2+3, góc dưới của
   thanh và góc trên của dải vuông, giữa là line đứt mờ - và luôn thấy được, không gì đè lên. Trang đầy khung cũng đóng khe
   như vậy. [tabs-dock]
-- **Mọi điểm dừng của đường dẫn là một trang** (v53, user 09/11: "mọi điểm dừng ở path đều cần có 1 trang danh sách chứa toàn bộ
-  các chi tiết của trang sau, mỗi lớp đều có phân cấp rõ ràng… cấu trúc khung tổng chung mọi repo cần theo"; "bấm vào chữ sẽ ra
-  trang, còn rê chuột vào thì tự bung ra cây của nó"): mọi nút của menu là một trang - lá là trang của app, nhánh (phòng ban, nhóm
+- **Mọi điểm dừng của đường dẫn là một trang** (v53): mọi nút của menu là một trang - lá là trang của app, nhánh (phòng ban, nhóm
   báo cáo, nhóm con) là danh sách những gì nó chứa, mỗi phần một dòng rộng bằng trang, các trang của nó trải đều. App đưa nhánh
   trang danh sách riêng (`to` của hàng, của nhóm `toggle`); không có thì khung tự vẽ ở `/~/<khoá>`, đường dẫn là các nhánh xuống tới
   nó. Trên menu bấm chữ hàng có hàng con thì mở trang danh sách, mũi tên chỉ gập/mở, rê chuột lên hàng thì bung cây (rời chuột thì
   gập, nhánh của trang đang mở thì giữ); menu thu gọn thì bấm icon mở trang. Đường dẫn, menu và trang danh sách đọc chung một cây.
-  [nav-stops] Đứng riêng trên một board, dải là một khối riêng, bo đủ bốn góc (v52, user 09/11: "khung panel này đang bị
-  thiếu viền cong ở dưới"); trên thẻ trang thì hai góc dưới nối vào thẻ. [tabs-round]
-- **Kỳ trang luôn giữ không bao giờ được đếm là một bộ lọc** (v52, user 09/11 qua một app trong hệ): nút lọc chỉ đếm cái người
+  [nav-stops] Đứng riêng trên một board, dải là một khối riêng, bo đủ bốn góc (v52); trên thẻ trang thì hai góc dưới nối vào thẻ. [tabs-round]
+- **Kỳ trang luôn giữ không bao giờ được đếm là một bộ lọc** (v52): nút lọc chỉ đếm cái người
   dùng đặt - kỳ hay ngày làm việc cố định (`fixed`, `data-fixed` trên ô của nó) không bao giờ vào số đếm, cũng không sáng như đã đặt.
   [filter-count-fixed]
-- **Ô gợi ý một dòng một thông tin, cỡ chữ của trang** (v51, user 09/11 qua một app trong hệ: "toàn bộ info thêm thì phải size chuẩn
-  ko dc nhỏ và ko được nhảy xuống dòng… 1 dòng = 1 thông tin ko dc xuống dòng"): mỗi dòng của `data-tip` (`\n`) là một dòng của ô
+- **Ô gợi ý một dòng một thông tin, cỡ chữ của trang** (v51): mỗi dòng của `data-tip` (`\n`) là một dòng của ô
   gợi ý và không bao giờ xuống dòng; hộp rộng theo dòng dài nhất (tối đa bằng cửa sổ, đặt lại vào trong cửa sổ); chữ cỡ của trang
   (.875rem), không nhỏ hơn; số trong ô gợi ý viết đủ. [tip-lines]
-- **Mọi bảng đứng trong một hộp cuộn ngang của riêng nó** (v51, user 09/11 qua một app trong hệ: kéo rộng một cột làm bảng tràn ra
+- **Mọi bảng đứng trong một hộp cuộn ngang của riêng nó** (v51: kéo rộng một cột làm bảng tràn ra
   khỏi panel): bảng trong thẻ trang, thẻ board hay hộp thoại nằm trong hộp riêng cuộn ngang được (`.table-responsive`, hoặc thân
   thẻ trang), bên trong thẻ của nó; cột kéo rộng quá thẻ thì cuộn trong hộp đó, không bao giờ tràn ra ngoài thẻ. Hộp CÓ THỂ cuộn
   không phải là cuộn: chỉ nội dung rộng hơn hộp mới là cuộn (v52: một app tưởng luật này đá với luật báo cáo cấm cuộn ngang - hai
   luật đi cùng nhau: bảng nào cũng có hộp, không bảng nào tràn). [table-boxed]
-- **Cả app co giãn theo cửa sổ từ một khuôn thiết kế** (v50, user 09/11: "làm lại đúng chức năng đó cho full app, tự scale 1
-  cấu trúc tỉ lệ thôi"): đã đăng nhập, trang vẽ trên 1920 x 1080 rồi zoom = min(rộng/1920, cao/1080), không quá 1, không dưới
+- **Cả app co giãn theo cửa sổ từ một khuôn thiết kế** (v50): đã đăng nhập, trang vẽ trên 1920 x 1080 rồi zoom = min(rộng/1920, cao/1080), không quá 1, không dưới
   0,7, nên kéo cửa sổ không làm bố cục xô lệch; điện thoại (768 px trở xuống) không co. Mỗi người tắt được ở Cài đặt › Bố cục
   (Tỉ lệ theo màn hình: tự co giãn | 100%). Dưới zoom, chiều cao/rộng cửa sổ lấy từ --app-h / --app-w của khung (không dùng
   vh / vw), và cỡ hay vị trí ghi từ số đo trên màn hình (dropdown, popover, tip, menu, viên chọn, kéo) chia cho zoom - khung
@@ -121,7 +109,7 @@ lang: vi
 ## 2b. Thanh trên — một khối kính hai hàng, giống nhau ở mọi app của hệ
 
 - **Một khối kính, hai hàng, không khe hở:** hàng 1 (56 px) là thanh chung của hệ, hàng 2 (44 px) là thanh của trang, giữa hai
-  hàng là một vạch mảnh. **Hàng 1 có thu lại hay không là cài đặt của từng người** (v45, user 08/11 qua Reconcile), Cài đặt > Bố
+  hàng là một vạch mảnh. **Hàng 1 có thu lại hay không là cài đặt của từng người** (v45), Cài đặt > Bố
   cục > "Thu gọn hàng 1 khi cuộn" (`head_fold`): **Cố định** (mặc định) - hàng 1 luôn hiện; **Tối đa chỗ** - cuộn xuống ở
   cuộn của chính trang thì hàng 1 thu lại, chỉ còn thanh trang dính trên cùng và trang lấy chỗ của nó, cuộn lên hay về đầu trang
   thì hàng 1 hiện lại; khi hàng 1 đang thu, cuối thanh trang có một nút (cỡ chung của thanh) để mở lại bằng tay, lần cuộn xuống
@@ -149,8 +137,7 @@ lang: vi
   bao giờ ghi mã trước ("IC_02 …") - mã là định danh. [no-code-prefix]
 - **Tên app ở menu có phần nhấn (`.text-primary`, cuối tên) mang token màu thương hiệu chung `--g-brand`,** ở cả hai theme; app
   tự định nghĩa token. [brand-one-red]
-- **Hình nền của hệ là ba màu đỏ, trắng, đen, trắng nhiều nhất** (v43, user 08/11: "đỏ nhiều quá... nó là 3 màu đỏ trắng đen,
-  trắng vẫn nhiều hơn"): tông thương hiệu của hệ (khung ghi tên nó ở `data-wall-brand` trên `<html>`), ở cả hai giao diện: mảng
+- **Hình nền của hệ là ba màu đỏ, trắng, đen, trắng nhiều nhất** (v43): tông thương hiệu của hệ (khung ghi tên nó ở `data-wall-brand` trên `<html>`), ở cả hai giao diện: mảng
   lớn a là ánh trắng, mảng lớn b là đen (xám than ở giao diện sáng), màu thương hiệu (`--g-brand`) chỉ ở mảng nhỏ c giữa màn
   hình, nhỏ và nhạt hơn hai mảng kia; ô mẫu của tông này trong Cài đặt cũng đúng ba màu đó. [wall-brand]
 - **Dưới tên hệ,** dòng nhỏ chỉ ghi app đang mở (`data-app-name` của menu): tên app dashboard trong app dashboard, tên riêng của
@@ -213,11 +200,9 @@ lang: vi
 - **Danh sách cuộn không bóp dòng** (menu thả, danh sách trong hộp thoại): các dòng của cột flex bị giới hạn chiều cao giữ chiều
   cao của chúng (`flex-shrink: 0`), không dòng nào đè dòng sau; danh sách giữ rãnh thanh cuộn. [list-rows]
 - **Menu thu gọn nằm giữa:** huy hiệu, hàng thương hiệu và mọi icon trên đường giữa của rail, lệch tối đa 1 px; khi thu gọn,
-  hàng thương hiệu rộng đúng bằng rail, không giữ bề rộng riêng của kit (v43, user 08/11: huy hiệu lệch phải 6 px so với icon);
-  chữ thương hiệu không để lại khoảng trống. Mỗi hàng khi thu gọn là một ô vuông, nên ô sáng của mục đang chọn cũng vuông (v44,
-  user 08/11: "bóp khung menu lại thì cái ô vuông khi chọn cũng phải vuông lại theo"). [folded-centre]
-- **Menu thu gọn là thanh mảnh, huy hiệu nguyên vẹn** (v41, user 07/11: "thu nhỏ menu bên trái lại 1 tí", "cái logo khi thu
-  gọn lại méo"; v43, user 08/11: "menu vẫn chưa làm mỏng lại"): 64 px (4rem), không phải 84 của kit; huy hiệu ít nhất 28 px, nằm trong thanh, không bị cắt, đúng hình của
+  hàng thương hiệu rộng đúng bằng rail, không giữ bề rộng riêng của kit (v43: huy hiệu lệch phải 6 px so với icon);
+  chữ thương hiệu không để lại khoảng trống. Mỗi hàng khi thu gọn là một ô vuông, nên ô sáng của mục đang chọn cũng vuông (v44). [folded-centre]
+- **Menu thu gọn là thanh mảnh, huy hiệu nguyên vẹn** (v41; v43): 64 px (4rem), không phải 84 của kit; huy hiệu ít nhất 28 px, nằm trong thanh, không bị cắt, đúng hình của
   nó - không bị bóp hay kéo giãn. [rail-slim]
 - **Không có nút giả:** mọi nút đều làm một việc - liên kết mang dáng nút không bao giờ trỏ về trang đang mở; mục nào sẽ làm vậy
   (thông báo về trang chủ) thì nhận đúng thao tác nó muốn nói (mở app đó, lật thẻ đó) hoặc không có thao tác. [real-actions]
@@ -263,8 +248,7 @@ lang: vi
   thẻ kính. [filter-set] Một trục thời gian có thứ tự (các tháng trong năm, các quý) không phải danh sách bản ghi: nó giữ đủ mọi giá
   trị và được khai như vậy (`data-filter-kind="period"`); một kỳ trang luôn có (từ - đến, không bao giờ trống) không bao giờ được đánh
   dấu đã đặt (`.on`) và không bao giờ bị Xoá lọc xoá.
-- **Nút lọc luôn mở popover;** người dùng ghim từng bộ lọc lên thanh hoặc để nó trong popover. Đầu popover chỉ là MỘT dòng (v41,
-  user 07/11: mỗi bộ lọc một ô tick chiếm chỗ của popover): các bộ lọc đã ghim thành chip (dấu x bỏ ghim từng cái), Ghim tất
+- **Nút lọc luôn mở popover;** người dùng ghim từng bộ lọc lên thanh hoặc để nó trong popover. Đầu popover chỉ là MỘT dòng (v41: mỗi bộ lọc một ô tick chiếm chỗ của popover): các bộ lọc đã ghim thành chip (dấu x bỏ ghim từng cái), Ghim tất
   cả và Bỏ ghim tất cả là hai icon cuối dòng; mỗi bộ lọc trong popover mang nút ghim ngay trên dòng nhãn của nó, không thêm
   chiều cao [pins-slim]; rồi mọi bộ lọc chưa ghim; popover giữ một bề rộng cố định (22rem) dù ghim gì. Ghim
   là cài đặt giao diện `filter_pins` của người dùng (một map JSON đường dẫn trang → id bộ lọc), nên giữ ở mọi app; trang chưa có
@@ -288,8 +272,7 @@ lang: vi
 - **Mọi ngày theo định dạng ngày của người dùng:** ngày mà bề mặt hiện hay nhận (một ô, một bộ lọc, một lịch) theo cài đặt chung
   `date_format` (`vn` dd/mm/yyyy, `us` mm/dd/yyyy) và ngôn ngữ của app - ô ngày và lịch riêng của app (tuần bắt đầu từ thứ Hai),
   không bao giờ là ô ngày của trình duyệt, vốn theo locale của trình duyệt. [date-format]
-- **Khoảng ngày có các kỳ tương đối, như bộ lọc ngày tương đối của Power BI** (v51, user 09/11: "filter nên có nút current month
-  để mọi dashboard tự lấy tháng gần nhất", "current year luôn giống pbi"): cạnh hai ô ngày, mọi khoảng ngày có nút chọn nhanh Tháng
+- **Khoảng ngày có các kỳ tương đối, như bộ lọc ngày tương đối của Power BI** (v51): cạnh hai ô ngày, mọi khoảng ngày có nút chọn nhanh Tháng
   này · Tháng trước · Năm nay. Giá trị là TOKEN, không phải hai ngày chết: "tháng này" là tháng của ngày cuối có dữ liệu (hôm nay nếu
   trang không có ngày đó), tháng này và tháng trước là trọn tháng lịch, năm nay từ 1/1 tới 31/12; ô hiện tên kỳ ("Tháng này
   (11/2026)"); app lưu token vào cài đặt của người dùng, nên lần sau mở trang là tháng mới nhất; ngày cuối có dữ liệu mới hơn thì
@@ -300,22 +283,21 @@ lang: vi
   hợp đồng khi hợp đồng có trên máy. [no-raw-code]
 - **Chấm trạng thái nguyên vẹn:** chấm của avatar trực tuyến nằm trên mép nó, và không khung nào bao quanh - nút hay dòng menu cắt
   tràn vì hiệu ứng gợn sóng - cắt mất chấm. Con số trên một nút (số tin chưa đọc của chuông, `.badge-notifications` hoặc `data-count-badge`)
-  cũng nằm trọn, lòi ra ngoài nút như vậy (v33, user 06/11: con số bị cắt trong nút tròn của chuông). [dot-whole]
+  cũng nằm trọn, lòi ra ngoài nút như vậy (v33: con số bị cắt trong nút tròn của chuông). [dot-whole]
 - **Ảnh đại diện nằm trong khung bọc nó:** khung không được nhỏ hơn ảnh - khung cố định 100 px bọc ảnh hồ sơ 120 px, ảnh
-  tràn qua khoảng cách, dính vào tên (v35, user 07/11). Chồng ảnh (cố ý chồng lên nhau) được miễn. [box-holds]
+  tràn qua khoảng cách, dính vào tên (v35). Chồng ảnh (cố ý chồng lên nhau) được miễn. [box-holds]
 - **Tab đang chọn là một ô có nền, như Sneat:** hàng tab (`.nav-pills`, tablist) hiện tab đang chọn bằng nền của chính nó
-  hoặc ô trượt bên dưới - không để chữ trơn nằm lẻ trên trang (v35, user 07/11: "cấu trúc skill sneat ko có nút nào nằm lẻ
-  như chữ tài khoản với mk"). Khung chung tự tô nền cho hàng `.nav-pills` không có ô trượt riêng. [tab-pill]
+  hoặc ô trượt bên dưới - không để chữ trơn nằm lẻ trên trang (v35). Khung chung tự tô nền cho hàng `.nav-pills` không có ô trượt riêng. [tab-pill]
 - **Trang nào cũng có panel hàng 2** - thanh riêng của trang (`page-toolbar`) dưới thanh đầu: hàng 2 của khung gọn
   (`#page-bar`), hoặc card đầu tiên của trang ở khung cổ điển. Trang không phải một page card thì lấp hàng 2 bằng
   `PageToolbar({start, tools})` của khung - tab hoặc hành động chính từ trái, công cụ tìm lọc từ phải; không bao giờ để
-  trống hàng 2 (v36, user 07/11: "bộ khung chuẩn là panel hàng 2… mất toàn bộ panel hàng 2 mà ko hề nhận ra"). [page-bar]
-- **Hàng tab không nằm trơ trong trang:** nó ở thanh trang (hàng 2), trong một card hoặc trong hộp thoại (v36, user 07/11:
+  trống hàng 2 (v36). [page-bar]
+- **Hàng tab không nằm trơ trong trang:** nó ở thanh trang (hàng 2), trong một card hoặc trong hộp thoại (v36:
   tab của cài đặt hồ sơ nằm trơ dưới thanh). [tabs-in-panel]
 - **Trợ giúp mở từ một chỗ:** trang Trợ giúp của khung (mục Trợ giúp ở menu) có hai tab - Chung, của khung (sau này đặt trợ lý AI
   ở đây), và hướng dẫn riêng của app, mang tên app, khai trong `config.help` (các mục kèm trang mà mục đó nói về; mở ở trang nào
   thì chọn mục của trang đó). Thanh trang không có nút trợ giúp hay hướng dẫn riêng; liên kết trong trang có thể mở một mục bằng
-  `openHelp` / `sasinShell.openHelp` (v39, user 07/11: "2 tab trong cùng 1 trang trợ giúp… còn riêng là hướng dẫn riêng";
+  `openHelp` / `sasinShell.openHelp` (v39;
   khung 1.10.0). [help-in-menu]
 - **Các ô trong một hàng thẳng một đường:** mọi nút, ô nhập, ô chọn, tab và ô tìm đứng cạnh nhau trong một hàng - thanh
   trang, đầu card hay panel, mọi hàng trong trang, hộp thoại - có chung tâm dọc (lệch tối đa 3 px); một hàng là hàng flex
@@ -344,7 +326,7 @@ lang: vi
   người dùng sửa họ tên và email, tên đăng nhập là của quản trị viên; đổi mật khẩu). Ảnh đại diện và ảnh nền là file giữ ngoài
   code, DB của hệ chỉ giữ thông tin trỏ tới chúng.
 
-## 5b. Menu, bảng, accordion (v29, user 06/11 - nâng lên từ một app của hệ)
+## 5b. Menu, bảng, accordion (v29 - nâng lên từ một app của hệ)
 
 - **Menu tự cuộn bên trong** khi các dòng cao hơn cửa sổ; brand và nút thu gọn đứng yên. [menu-scroll] **Dòng có dòng con
   thì gập/mở** bằng mũi tên (`menu-toggle` mang `aria-expanded`), nhánh chứa trang đang xem thì mở. [menu-fold] **Mọi tên nằm
@@ -358,16 +340,15 @@ lang: vi
 - **Không gì của thanh đầu trang lòi ra mép trái hay phải** (một nút của thanh trang ở 390 px). [head-whole]
 
 - **Hộp thoại, menu và popover có nền đục** ở mọi giao diện, kính bật hay tắt - trang phía sau không bao giờ đọc xuyên qua
-  (user 06/11, `app-base` F18 kèm phép kiểm máy). [surface-opaque]
-- **Chỗ trống và chỗ chờ dùng một mẫu chung** (user 06/11): nằm giữa nơi chúng đứng - chỗ trống có icon tròn, tiêu đề và gợi ý
+  (`app-base` F18 kèm phép kiểm máy). [surface-opaque]
+- **Chỗ trống và chỗ chờ dùng một mẫu chung**: nằm giữa nơi chúng đứng - chỗ trống có icon tròn, tiêu đề và gợi ý
   (`Empty` của khung, `sasinShell.empty`); chỗ chờ là spinner lớn của bộ mẫu, chữ chỉ cho trình đọc màn hình (`Loading`,
   `sasinShell.loading`). Không bao giờ để một dòng chữ trơ như "không có dòng khớp" hay "đang tải". [state-template]
 
-- **Trường nhiều giá trị là slicer có ô tìm** (`data-searchable`; v31, user 06/11): nhà hàng, món, nhân viên mà báo cáo lọc chéo
+- **Trường nhiều giá trị là slicer có ô tìm** (`data-searchable`; v31): nhà hàng, món, nhân viên mà báo cáo lọc chéo
   nằm trên bộ lọc duy nhất của trang; ô chọn thường vẫn tối đa 10 giá trị. [filter-set]
-- **Thanh đầu trang chỉ có crumb và các nút** - không có dòng ngày rời bên cạnh; kỳ mà trang đang giữ do bộ lọc của nó nói (user
-  06/11). [bar-no-extra-text]
-- **Mọi dòng của bảng đã cuộn tới đều được vẽ** - chỉ các dòng nằm dưới đầu bảng ghim của chính nó, hoặc sau dòng chân ghim ở đáy (dòng TỔNG, v32; ghim trên ô, trên dòng hay trên `tfoot`, v40, Reconcile 07/11: dòng TỔNG ghim trên dòng bị tính là một dòng chưa vẽ), được miễn (user 06/11: một bảng
+- **Thanh đầu trang chỉ có crumb và các nút** - không có dòng ngày rời bên cạnh; kỳ mà trang đang giữ do bộ lọc của nó nói. [bar-no-extra-text]
+- **Mọi dòng của bảng đã cuộn tới đều được vẽ** - chỉ các dòng nằm dưới đầu bảng ghim của chính nó, hoặc sau dòng chân ghim ở đáy (dòng TỔNG, v32; ghim trên ô, trên dòng hay trên `tfoot`, v40, Reconcile 07/11: dòng TỔNG ghim trên dòng bị tính là một dòng chưa vẽ), được miễn (một bảng
   giữa trang mất mấy dòng đầu). Phép đo động: `PROBES` của script kiểm, chạy có chờ trên mọi trang có bảng; đo bên trong khung cuộn riêng của bảng, không tính thanh cuộn, và
   trả lại mọi khung đã cuộn (v34, Reconcile 06/11: lưới trong khung con bị tính là chưa vẽ, một khung bị lệch đẩy avatar ra
   ngoài). [rows-painted] Các dòng trôi xuống dưới đầu bảng ghim bị cắt tại đó, trong mọi khung cuộn (v32). [head-clear] Các
