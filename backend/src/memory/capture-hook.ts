@@ -545,7 +545,11 @@ export function endOfTurnAutoCommit(payload: any, transcriptPath: string): strin
   try {
     const cwd = String(payload?.cwd ?? "");
     if (!cwd) return "";
-    const r = autoCommit(toLocalPath(cwd), sessionWrittenFilesAt(transcriptPath));
+    const written = sessionWrittenFilesAt(transcriptPath);
+    // the repo's code graph stays current for graph_impact: a turn that wrote a source file starts a rebuild in a worker
+    const root = findProjectRoot(toLocalPath(cwd));
+    if (root) void import("./graph/graph-cache.js").then((m) => m.kickGraphAfterTurn(root, written)).catch(() => {});
+    const r = autoCommit(toLocalPath(cwd), written);
     if (!r || (!r.committed && !r.note.startsWith("commit refused"))) return "";
     return r.committed
       ? `[zemory] Auto-committed locally, not pushed: ${r.lines} uncommitted lines in ${r.files.length} file(s) of this session passed ${AUTO_COMMIT_LINES}. Undo with \`git reset --soft HEAD~1\`.`

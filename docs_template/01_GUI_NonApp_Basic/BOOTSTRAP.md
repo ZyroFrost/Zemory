@@ -193,8 +193,8 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 155 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_67_InterruptQueue/Rule_Keys_67_InterruptQueue.md` | 35 |
 | 156 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_67_InterruptQueue/Rule_Keys_67_InterruptQueue.vi.md` | 26 |
 | 157 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_67_InterruptQueue/gate.json` | 19 |
-| 158 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md` | 42 |
-| 159 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.vi.md` | 34 |
+| 158 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.md` | 44 |
+| 159 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/Rule_Keys_80_SharedChangeImpact.vi.md` | 36 |
 | 160 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact/gate.json` | 19 |
 | 161 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_81_FollowExistingPattern/Rule_Keys_81_FollowExistingPattern.md` | 32 |
 | 162 | `docs/agent/01_LAW/_Rule/02_Work/Rule_Keys_81_FollowExistingPattern/Rule_Keys_81_FollowExistingPattern.vi.md` | 25 |

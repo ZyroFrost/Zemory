@@ -1,10 +1,10 @@
 ---
 id: Rule_80
 name: shared-change-impact
-version: 7
+version: 8
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact @v7 #f63a8083d9c8
+from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_80_SharedChangeImpact @v8 #5e5925da7b8f
 ---
 # Rule_Keys_80_SharedChangeImpact — Changing something shared: name and handle every place that uses it
 
@@ -17,7 +17,9 @@ of them. Fixing one place that uses a source and leaving the others is a fault.
 - One source feeds several branches (files, tables, models).
 
 ## Do
-1. List every place that uses the thing and the effect on each, before the change. The proposal carries that list.
+1. List every place that uses the thing and the effect on each, before the change. The proposal carries that list. For a code
+   file the list starts from the code graph, one call instead of rounds of grep: `graph_impact` (zemory MCP, answered from the
+   saved graph) or `zemory graph impact <file>` - importers, transitive importers, hub or not.
 2. Handle every place on the list. A source that feeds several branches: one branch written while another is still not fed ⇒
    the work is not done, even if the written branch is right.
 3. Several places use one file: one fix of the file is enough, but each dataset / model still needs its own refresh.
@@ -34,7 +36,7 @@ of them. Fixing one place that uses a source and leaving the others is a fault.
   new calculation, give A its own column.
 
 ## Check
-- Keyword reminder: a request to change a shared column, table, query or component shows this law. Judgment; where the CLI is present, `zemory graph` finds the places that use it. A harness part has its own list: `zemory impact <part>`
+- Keyword reminder: a request to change a shared column, table, query or component shows this law. Judgment; where zemory is present, `graph_impact` / `zemory graph impact` finds the code that uses a file. A harness part has its own list: `zemory impact <part>`
   (`Rule_Gate_83_HarnessFromStore`).
 
 ## Links · Liên kết

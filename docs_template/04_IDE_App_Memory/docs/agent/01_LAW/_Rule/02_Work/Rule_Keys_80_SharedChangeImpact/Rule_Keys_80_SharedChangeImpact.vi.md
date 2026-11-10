@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 # Rule_Keys_80_SharedChangeImpact — Changing something shared: name and handle every place that uses it
@@ -13,7 +13,9 @@ mà bỏ các nơi khác cùng nguồn là lỗi.
 - Một nguồn đổ vào nhiều nhánh (file, bảng, model).
 
 ## Phải làm gì
-1. Liệt kê mọi nơi đang dùng và tác động lên từng nơi, trước khi sửa. Đề xuất sửa phải kèm danh sách đó.
+1. Liệt kê mọi nơi đang dùng và tác động lên từng nơi, trước khi sửa. Đề xuất sửa phải kèm danh sách đó. Với một file code, danh
+   sách bắt đầu từ graph code, một lần gọi thay cho nhiều vòng grep: `graph_impact` (MCP của zemory, trả từ graph đã lưu) hoặc
+   `zemory graph impact <file>`: file import nó, file import gián tiếp, có phải hub không.
 2. Xử đủ mọi nơi trong danh sách. Một nguồn đổ vào nhiều nhánh: ghi một nhánh mà còn nhánh chưa đổ ⇒ việc chưa xong, dù nhánh
    vừa ghi đúng.
 3. Nhiều nơi dùng chung một file: sửa file một lần là đủ, nhưng mỗi dataset / model vẫn phải làm mới riêng.
@@ -30,5 +32,5 @@ mà bỏ các nơi khác cùng nguồn là lỗi.
   thì tách cột riêng cho A.
 
 ## Máy kiểm
-- Nhắc theo từ khoá: yêu cầu đổi một cột, bảng, câu truy vấn hay component dùng chung hiện luật này. Phán đoán; có CLI thì `zemory graph` tra nơi dùng. Phần harness có danh sách riêng: `zemory impact <phần>`
+- Nhắc theo từ khoá: yêu cầu đổi một cột, bảng, câu truy vấn hay component dùng chung hiện luật này. Phán đoán; có zemory thì `graph_impact` / `zemory graph impact` tra code đang dùng một file. Phần harness có danh sách riêng: `zemory impact <phần>`
   (`Rule_Gate_83_HarnessFromStore`).
