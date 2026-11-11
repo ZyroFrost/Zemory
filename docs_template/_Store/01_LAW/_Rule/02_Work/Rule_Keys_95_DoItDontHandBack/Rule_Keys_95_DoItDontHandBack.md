@@ -1,7 +1,7 @@
 ---
 id: Rule_95
 name: do-it-dont-hand-back
-version: 1
+version: 2
 kind: judgment
 code: 02_Work
 checked: [Rule_Keys_07_ScopeOnly, Rule_Keys_08_ClarifyFirst, Rule_Gate_89_MessageOnlyWithWork]
@@ -20,7 +20,8 @@ out, not turned into choices.
 
 ## Do
 1. Work within reach ⇒ do it: through the app's own endpoint when it manages the file, otherwise stop what holds the file,
-   change it, start it again. Doing it is not a reason to ask.
+   change it, start it again. Doing it is not a reason to ask. Stop only the exact process that holds the handle (find it by the
+   handle); never ask the person to close their editor.
 2. Before telling the person "press X in screen Y", check that X exists and works; never advise an action that does not exist.
 3. A list or plan already given ⇒ carry it out in full. A decision the person really owns ⇒ one paragraph: the measurement,
    the proposal, one question — never a set of choices.

@@ -2,7 +2,7 @@
 id: Skill_Task_Fill
 aka: fill
 name: task-fill
-version: 11
+version: 12
 type: process
 description: Fill a blank template with real numbers and export the finished deliverable (report, sheet, document). Use when a template exists and the data is ready, or when asked to produce, generate, or make a report from existing figures. Vietnamese triggers - "làm báo cáo", "điền số vào mẫu", "xuất báo cáo", "đổ số liệu", "lên report", "ra file cuối".
 ---
@@ -34,6 +34,15 @@ description: Fill a blank template with real numbers and export the finished del
 
 Changing the **shape/layout** of a deliverable is a PRESENTATION decision, not a technical one — the people
 receiving the report are used to the old layout. Need a chart idea → look for references, then **propose**, never apply it on your own.
+
+## The file is the original with new data
+
+- A file the pipeline writes or overwrites is identical to the original except for the data: names, columns, widths, hidden
+  columns, merges, row heights, styles and the set of parts inside the package.
+- A library that rebuilds the workbook from its own object model drops what it does not model, silently (column widths left
+  behind by an inserted column, `customXml` parts and their content types). A file that opens in Excel can still be refused by
+  Power BI. So the fill script ends with a gate that compares structure and parts against the template and exits non-zero on
+  any difference.
 
 ## Forbidden
 

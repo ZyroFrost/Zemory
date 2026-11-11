@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 # Rule_Keys_07_ScopeOnly — Do exactly the work given
@@ -24,7 +24,8 @@ xuất kèm câu trả lời cho ba câu hỏi.
 6. "Không liên quan, bỏ đi" ⇒ cắt ngay trong lượt và dọn sạch: mã, khoá ở cả hai từ điển, neo test, chữ còn hứa hẹn về nó. Giải
    thích cơ chế, đổi nhãn hay đề xuất thứ thay thế không phải câu trả lời.
 7. Xác minh · audit · "đóng case được chưa" ⇒ đo, báo, dừng. Lỗi tìm ra lúc đo thì báo kèm số đo và mức nghiêm trọng; chỉ sửa khi
-   người dùng bảo.
+   người dùng bảo. "Có X không" ⇒ có hay không kèm con số, rồi dừng: không mức độ, kế hoạch hay khuyến nghị, trừ khi nó chặn
+   đúng việc đang làm (khi đó một câu); thiếu ở ngoài repo (bộ phận khác chưa nhập liệu) là một dòng, không lập kế hoạch.
 
 ## Ví dụ
 - Tình huống: người dùng nhờ sửa chính tả một tiêu đề cột trong báo cáo.

@@ -1,7 +1,7 @@
 ---
 id: Host_IDE
 name: host-ide
-version: 7
+version: 8
 kind: host
 ---
 # IDE The IDE host — the agent inside a code editor
@@ -55,6 +55,12 @@ kind: host
 - A session has two names: the messaging name (what `SendMessage` addresses, changed only by `/rename`) and the title the
   person sets in the session list (the last `custom-title` line of the session's transcript). Message the session the
   sessions table marks; reply to the `from` address of the message received.
+
+## The machine the editor runs on
+
+- Freeing memory or CPU means making room FOR the code editor the person works in; never propose closing it.
+- An antivirus alert naming a hidden PowerShell command line started by the agent's host (Windows Defender
+  `PowhidSubExec`) flags the command line, not a file: a known false positive, nothing to remove.
 
 ## Traps of the agent's own tools
 - A shell line with `$(...)` or backticks sent from PowerShell through `wsl` / `docker exec` / `sh -c` is re-parsed by each

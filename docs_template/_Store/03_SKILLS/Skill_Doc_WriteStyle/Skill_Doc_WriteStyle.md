@@ -2,7 +2,7 @@
 id: Skill_Doc_WriteStyle
 aka: write-style
 name: doc-write-style
-version: 10
+version: 11
 type: process
 description: Strict prose rules for reader-facing text (reports, emails, announcements, content, docs handed to people) — distilled from Wikipedia's "Signs of AI writing" into hard bans, so the result reads like a careful human wrote it. Use BEFORE drafting any text a person will read, and as a revision checklist afterwards. Do not use for code comments or the harness docs themselves (those follow the repo's own language rules). Vietnamese triggers - "viết văn bản", "soạn báo cáo", "viết email", "viết content", "viết bài", "văn phong", "giọng AI quá", "viết cho tự nhiên", "bớt giọng máy".
 ---
@@ -96,6 +96,14 @@ Best regards,
 - The default signature and Cc recipients come from the region's `values.json`: `mail_signature` · `mail_cc` for mail sent from a personal mailbox;
   `shared_mailbox` · `shared_mailbox_signature` for mail sent from a shared mailbox — that mail is signed with the unit's name and has no default Cc.
 - The layout is not the tone: the form of address follows the recipient's standing, settled per case in `spec.md`.
+
+## What a mail says
+
+- A REPORT mail carries the measured numbers, which are what it delivers: no estimate of impact, no business cause of a rise or a
+  fall, no request to the reader. A number that waits on another unit says which unit (that is the data's path, not a cause).
+  A gap says what is missing and up to which date.
+- A DATA HANDOFF mail (a file sent for another unit to analyse) says what is sent, its size in orders and rows, and one sentence
+  of scope when the scope reads two ways; no amounts and no statistics. The amounts are still measured before sending.
 
 ## How to apply
 
