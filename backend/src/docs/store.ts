@@ -1226,6 +1226,24 @@ function planOne(part: Part, t: AssemblyTarget, target = targetDir(t, part)): As
   return { part, target, verdict: "merged", write: out, remove };
 }
 
+/**
+ * What to write over `p`: null when the file already says the same thing (line endings aside), else `text` in the line
+ * endings the file already has. A step writes every file of a part when only its header changed, and the source's bytes
+ * depend on who reads HS (the container's snapshot of a Windows clone is CRLF): measured 2026-11-11, DW (eol=lf) got six
+ * hook.cjs rewritten CRLF with not one line changed, and git showed them modified until someone committed.
+ */
+export function keepEol(p: string, text: string): string | null {
+  let old: string;
+  try {
+    old = readFileSync(p, "utf8");
+  } catch {
+    return text; // a new file: the source's bytes
+  }
+  const lf = text.replace(/\r\n/g, "\n");
+  if (old.replace(/\r\n/g, "\n") === lf) return null;
+  return old.includes("\r\n") ? lf.replace(/\n/g, "\r\n") : lf;
+}
+
 /** Write a plan. Only absent · clean · merged steps write; the others are reported by the caller. */
 export function applyAssembly(steps: AssemblyStep[]): AssemblyStep[] {
   const done: AssemblyStep[] = [];
@@ -1244,7 +1262,8 @@ export function applyAssembly(steps: AssemblyStep[]): AssemblyStep[] {
     for (const [f, text] of s.write) {
       const p = join(s.target, disk(f));
       mkdirSync(dirname(p), { recursive: true });
-      writeFileSync(p, text);
+      const next = keepEol(p, text);
+      if (next !== null) writeFileSync(p, next);
     }
     if (s.write.has(key)) {
       for (const stale of [key, s.renameFrom ? ownMainName(s.renameFrom) : ""]) {
