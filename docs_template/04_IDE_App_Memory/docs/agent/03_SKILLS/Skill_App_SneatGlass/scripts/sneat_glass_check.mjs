@@ -1556,6 +1556,41 @@ export const RULES = [
       return need + 48 > free || 'automatic, the tab cluster (' + Math.round(need) + ' px) stands as row 3 while row 2 has ' + Math.round(free) + ' px free';
     })()`,
   },
+  // (v58, the user 11/11: "khu vực nút riêng, khu vực thông tin riêng, và khu vực tab… riêng, để ko dính chùm", for every app)
+  {
+    id: 'bar-zones',
+    rule: 'row 2 stands in zones - the page\'s buttons, its info (words and figures in .page-info) and the tab cluster - each apart from the zone before it by a faint divider; no words of the page stand loose among its buttons',
+    check: `(() => {
+      const start = document.querySelector('#page-bar #card-start');
+      if (!start || !start.getClientRects().length || innerWidth < 768) return true;
+      const walk = document.createTreeWalker(start, NodeFilter.SHOW_TEXT);
+      for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+        const p = n.parentElement, words = n.textContent.trim();
+        if (!words || !p || !p.getClientRects().length) continue;
+        if (p.closest('.page-info, button, a, label, select, .dropdown-menu, [hidden], .visually-hidden, [class*="chip"], [role="button"]')) continue;
+        return 'words beside the page buttons stand in no info zone (.page-info): ' + words.slice(0, 40);
+      }
+      const info = start.querySelector(':scope > .page-info');
+      if (info && info.getClientRects().length && info.previousElementSibling && info.previousElementSibling.getClientRects().length
+        && info.previousElementSibling.getBoundingClientRect().width > 0 && !(parseFloat(getComputedStyle(info).borderInlineStartWidth) >= 1))
+        return 'the info zone stands against the page buttons with no divider';
+      const t = document.getElementById('page-tabs'), slot = t && t.parentElement;
+      if (t && slot && slot.id === 'page-tabs-slot' && [...start.children].some(c => c.getClientRects().length && c.getBoundingClientRect().width > 0)
+        && !(parseFloat(getComputedStyle(slot).borderInlineStartWidth) >= 1)) return 'the tab cluster in row 2 stands against the page zone with no divider';
+      return true;
+    })()`,
+  },
+  // (v58, the user 11/11: "thêm tính năng user kéo đổi chỗ vị trí các tab")
+  {
+    id: 'tabs-reorder',
+    rule: 'every tab of the cluster on a desktop can be dragged to reorder the group, the person\'s order kept',
+    check: `(() => {
+      const t = document.getElementById('page-tabs');
+      if (!t || !t.getClientRects().length || innerWidth < 768) return true;
+      const fixed = [...t.querySelectorAll('.page-tabs-list > .nav-item[data-to]')].find(li => li.getAttribute('draggable') !== 'true');
+      return !fixed || 'a tab cannot be dragged to reorder its group: ' + fixed.textContent.trim().slice(0, 30);
+    })()`,
+  },
   // (v56, the user: the three quick periods did not wear the template and did not share the row)
   {
     id: 'date-quick-even',

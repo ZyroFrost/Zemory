@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 57
+version: 58
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v57 #cf485fb0bafc
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v58 #669d899f91f8
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -102,7 +102,11 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v57 #cf485fb0bafc
   the page's tools and the seek group, touching neither, one framed group at the bar's one height - when every tab fits there
   with room to spare, else as row 3; it moves back only when it no longer fits, never flipping on a few pixels. The person drags
   it by its grip onto row 2 or under the bar to pin it there (a setting of theirs; Settings > Layout puts it back on automatic);
-  pinned to row 2 with too little room, the tabs left over go under "Thêm (n)". A phone keeps row 3. [tabs-cluster]
+  pinned to row 2 with too little room, the tabs left over go under "Thêm (n)". A phone keeps row 3. [tabs-cluster] Each
+  person reorders the tabs of a group by dragging one onto another place; the order is theirs and kept per group, Settings >
+  Layout puts every group back on the menu order (v58). [tabs-reorder] **Row 2 stands in zones, in every app** (v58): the page's
+  buttons, then its info - words and figures about the page, in `.page-info` - then the tab cluster when it stands in row 2,
+  each apart from the zone before it by the row's room and a faint divider; no words stand loose among the buttons. [bar-zones]
 - **The whole app scales to the window from one design canvas** (v50): signed in, the page is drawn on 1920 x 1080 and zoomed to min(width/1920,
   height/1080), never above 1 nor below 0.7, so dragging the window never re-flows the layout; a phone (768 px and less) is
   never zoomed. Each person turns it off in Settings > Layout (Scale to the screen: fit the window | 100%). Under the zoom,
