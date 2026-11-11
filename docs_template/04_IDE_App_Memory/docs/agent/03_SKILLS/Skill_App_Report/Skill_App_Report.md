@@ -6,7 +6,7 @@ type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v16 #810bfed90e84
+from: _Store/03_SKILLS/Skill_App_Report @v16 #76e24f4ab993
 ---
 
 # app-report — the report pages of an app
@@ -102,13 +102,14 @@ from: _Store/03_SKILLS/Skill_App_Report @v16 #810bfed90e84
   the page filter); columns are as wide as their longest figure, all fitting the frame; figures that still do not fit switch
   to millions with one decimal. Scrolling down is normal. A table's own sideways box (`table-boxed` of app-sneat-glass) is no
   scroll while the table fits it: only a table wider than its panel, or a box whose content runs past it, breaks this rule (v13).
-  [rp-no-side-scroll]
+  [rp-no-side-scroll] A page of one matrix (its only data visual a table - a P&L of twelve months, as the report's own page) scrolls
+  it sideways inside its own frame, never spilling out of its panel (v16).
 - **The numbers of a table follow the person's number format** (v9): Settings > Numbers of the family frame (unit, decimals, rounding, separator, negatives),
   kept on `<html data-num-format>`. Each number cell says what it is (`data-rp-num` = `money` · `count` · `pct`) and its value
   (`data-rp-raw`), and shows exactly that format (the frame's `fmtNum`); a negative in red carries `text-danger`. Charts and
   KPI cards keep their own form. [rp-num-format]
 - **A table shows ten rows at most** and scrolls the rest inside its own frame, staying on the page beside the other visuals
-  (v7); ten rows as drawn - a row of two lines is taller - never a fixed height. [rp-table-rows-cap]
+  (v7); ten rows as drawn - a row of two lines is taller - never a fixed height. [rp-table-rows-cap] The only table of its page takes the page height, in a frame that really scrolls (v16).
 - **How a table fits its panel** (v15, the means of rp-no-side-scroll): tight cell padding for a table wider than its panel at
   the kit's; the row measured once, its tables given the width they need only while every panel of the row still fits it (a
   donut or chart keeps 15rem), else the report's shares stand; a header wraps between words, never inside one; a matrix whose

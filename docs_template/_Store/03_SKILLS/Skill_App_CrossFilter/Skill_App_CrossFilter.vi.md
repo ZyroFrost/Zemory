@@ -1,5 +1,5 @@
 ---
-version: 9
+version: 10
 lang: vi
 ---
 
@@ -52,7 +52,8 @@ lang: vi
   [cf-points]
 - Mỗi trường mà một hình lọc theo là một ô lọc của thanh trang: `data-filter-id` = trường (một điểm đứng trên hai trường ghi
   `data-cf-dim="month|grade"` và `data-cf-value="T3|A"`); nút lọc `#filter-toggle` đếm chúng ở `.filter-count`. [filter-one]
-- Một trang báo cáo có điểm dữ liệu ở ít nhất hai hình; chỉ một hình thì không có gì để lọc. [cf-visuals]
+- Một trang báo cáo có điểm dữ liệu ở ít nhất hai hình; chỉ một hình thì không có gì để lọc. [cf-visuals] Trang chỉ có một ma trận (visual dữ liệu duy nhất là
+  bảng) thì không có gì để lọc chéo: luật này và hai phép bấm thử đứng ngoài; một chart đứng một mình vẫn đỏ (v10).
 
 ## 4. Cách dựng
 

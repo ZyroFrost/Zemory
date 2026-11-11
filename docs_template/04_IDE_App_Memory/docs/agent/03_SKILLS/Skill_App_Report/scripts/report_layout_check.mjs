@@ -23,6 +23,8 @@ const H = `
   const paint = m => { const st = getComputedStyle(m); return st.backgroundImage !== 'none' ? st.backgroundImage : m instanceof SVGElement ? st.fill : st.backgroundColor; };
   const name = v => txt(v.querySelector('[data-rp-title]') || v).slice(0, 30);
   const tabs = () => [...document.querySelectorAll('[role=tab], .board-tabs .nav-link')].filter(e => e.getClientRects().length);
+  // (v16) a page of one matrix: its only data visual is a table (a P&L of 71 columns, as the report's own page)
+  const lone = () => { const d = vis().filter(v => v.dataset.rpVisual !== 'cards' && !v.parentElement.closest('[data-rp-visual]')); return d.length === 1 && d[0].dataset.rpVisual === 'table' ? d[0] : null; };
 `;
 const rule = (id, text, body) => ({id, rule: text, check: `(() => {${H}${body}})()`});
 
@@ -282,6 +284,15 @@ export const RULES = [
     return true;`),
   rule('rp-no-side-scroll', 'no table or chart scrolls sideways inside its frame (show the latest periods, fit the columns, switch to millions); a phone scrolls a data grid inside its frame (app-base M5)', `
     if (innerWidth < 768) return true;
+    // (v16) a page of one matrix scrolls it sideways inside its own frame, as the report does - never spilling out of its panel
+    const one = lone();
+    if (one) {
+      const t = one.querySelector('table');
+      let f = t && t.parentElement; while (f && f !== one && !/(auto|scroll)/.test(getComputedStyle(f).overflowX)) f = f.parentElement;
+      if (t && box(t).width > box(one).width + 1 && (!f || f === one)) return 'a table wider than its panel and no sideways scroll of its own: ' + name(one);
+      if (f && f !== one && box(f).right > box(one).right + 1) return 'the scroll frame of the matrix runs out of its panel: ' + name(one);
+      return true;
+    }
     for (const v of vis()) {
       // A table may also spill out of its panel without a scroll box: as wrong as scrolling.
       const t = v.querySelector('table'), body = v.querySelector('[data-rp-body]') || v;
@@ -303,6 +314,12 @@ export const RULES = [
       const what = name(table.closest('[data-rp-visual]') || table);
       if (!frame || frame.matches('[data-rp-page]')) return what + ': ' + rows.length + ' rows and no scroll of its own';
       const row = rows[0].getBoundingClientRect().height || 40, head = table.tHead ? table.tHead.getBoundingClientRect().height : 0;
+      // (v16) the only table of its page takes the page: the cap is for a table among other visuals
+      if (lone() && table.closest('[data-rp-visual]') === lone()) {
+        // ... in a frame that really scrolls (overflow-x alone makes the other axis auto too, with nothing to scroll)
+        if (frame.scrollHeight <= frame.clientHeight + 1 && box(table).bottom > innerHeight + 1) return what + ': ' + rows.length + ' rows run past the screen, no scroll of its own';
+        continue;
+      }
       if (frame.clientHeight > head + row * 11 + 2) return what + ': shows ' + Math.round((frame.clientHeight - head) / row) + ' rows, the cap is 10';
     }
     return true;`),

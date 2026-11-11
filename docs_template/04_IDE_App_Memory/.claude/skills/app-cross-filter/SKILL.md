@@ -1,12 +1,12 @@
 ---
 id: Skill_App_CrossFilter
 name: app-cross-filter
-version: 9
+version: 10
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_PBI_Base]
 installs: [scripts/crossfilter_check.mjs]
 description: Cross-filtering between the visuals of one report page, as Power BI does it - a click on a data point (a bar, a column, a donut part, a table row) filters every other visual, table and KPI of the page; Ctrl adds points; the clicked visual only dims; chips show what is picked; Escape clears. Use when building or fixing a report page of an app (charts, KPI tiles, tables over the same facts), or when a chart is asked to "filter the others". Vietnamese triggers - "lọc chéo", "bấm chart lọc", "chart lọc lẫn nhau", "liên kết chart", "filter như PBI", "cross filter", "bấm vào cột lọc".
-from: _Store/03_SKILLS/Skill_App_CrossFilter @v9 #457ebd3ce7dd
+from: _Store/03_SKILLS/Skill_App_CrossFilter @v10 #cd89d08f89c7
 ---
 
 # app-cross-filter — the visuals of a report page filter each other
@@ -61,7 +61,8 @@ from: _Store/03_SKILLS/Skill_App_CrossFilter @v9 #457ebd3ce7dd
 - Each field a visual filters on is a filter of the page bar: `data-filter-id` = the field (a point on two fields says
   `data-cf-dim="month|grade"` and `data-cf-value="T3|A"`); the filter button `#filter-toggle` counts them in `.filter-count`.
   [filter-one]
-- A report page has data points in at least two visuals; one visual alone has nothing to filter. [cf-visuals]
+- A report page has data points in at least two visuals; one visual alone has nothing to filter. [cf-visuals] A page of one matrix (its only data visual a
+  table) has nothing to cross-filter: the rule and both click checks stand aside there; a lone chart still fails (v10).
 
 ## 4. Building it
 

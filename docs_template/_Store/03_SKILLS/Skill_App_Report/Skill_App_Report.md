@@ -101,13 +101,14 @@ description: The report pages of an app - what a page of figures, charts and tab
   the page filter); columns are as wide as their longest figure, all fitting the frame; figures that still do not fit switch
   to millions with one decimal. Scrolling down is normal. A table's own sideways box (`table-boxed` of app-sneat-glass) is no
   scroll while the table fits it: only a table wider than its panel, or a box whose content runs past it, breaks this rule (v13).
-  [rp-no-side-scroll]
+  [rp-no-side-scroll] A page of one matrix (its only data visual a table - a P&L of twelve months, as the report's own page) scrolls
+  it sideways inside its own frame, never spilling out of its panel (v16).
 - **The numbers of a table follow the person's number format** (v9): Settings > Numbers of the family frame (unit, decimals, rounding, separator, negatives),
   kept on `<html data-num-format>`. Each number cell says what it is (`data-rp-num` = `money` · `count` · `pct`) and its value
   (`data-rp-raw`), and shows exactly that format (the frame's `fmtNum`); a negative in red carries `text-danger`. Charts and
   KPI cards keep their own form. [rp-num-format]
 - **A table shows ten rows at most** and scrolls the rest inside its own frame, staying on the page beside the other visuals
-  (v7); ten rows as drawn - a row of two lines is taller - never a fixed height. [rp-table-rows-cap]
+  (v7); ten rows as drawn - a row of two lines is taller - never a fixed height. [rp-table-rows-cap] The only table of its page takes the page height, in a frame that really scrolls (v16).
 - **How a table fits its panel** (v15, the means of rp-no-side-scroll): tight cell padding for a table wider than its panel at
   the kit's; the row measured once, its tables given the width they need only while every panel of the row still fits it (a
   donut or chart keeps 15rem), else the report's shares stand; a header wraps between words, never inside one; a matrix whose

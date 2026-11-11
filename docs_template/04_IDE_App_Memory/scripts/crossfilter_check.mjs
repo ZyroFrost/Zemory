@@ -31,6 +31,8 @@ export const RULES = [
     check: `(() => {
       const points = [...document.querySelectorAll('[data-cf-dim]')];
       if (!points.length) return true;
+      // (v10) a page of one matrix (its only data visual a table, as a P&L page of the report) has nothing to filter
+      if ((() => { const d = [...document.querySelectorAll('[data-rp-visual]')].filter(v => v.getClientRects().length && v.dataset.rpVisual !== 'cards' && !v.parentElement.closest('[data-rp-visual]')); return d.length === 1 && d[0].dataset.rpVisual === 'table'; })()) return true;
       const visuals = new Set(points.map(p => p.closest('.card, section, figure') || p.parentElement));
       return visuals.size >= 2 ? true : 'data points in ' + visuals.size + ' visual only';
     })()`,
@@ -177,6 +179,7 @@ export const INTERACTION = `(async () => {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const points = [...document.querySelectorAll('[data-cf-dim]')];
   if (!points.length) return true;
+  if ((() => { const d = [...document.querySelectorAll('[data-rp-visual]')].filter(v => v.getClientRects().length && v.dataset.rpVisual !== 'cards' && !v.parentElement.closest('[data-rp-visual]')); return d.length === 1 && d[0].dataset.rpVisual === 'table'; })()) return true;   // (v10) a page of one matrix: nothing else to change
   const visualOf = p => p.closest('.card, section, figure') || p.parentElement;
   const target = points.find(p => points.some(q => q !== p && visualOf(q) === visualOf(p) && q.dataset.cfDim === p.dataset.cfDim));
   if (!target) return 'no visual has two points of one field to pick from';
@@ -221,6 +224,7 @@ export const EVERY_CLICK = `(async () => {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const visuals = () => [...document.querySelectorAll('[data-rp-visual], .card')].filter(v => v.querySelector('[data-cf-value]'));
   const sig = except => visuals().filter(v => !except || !v.contains(except)).map(v => v.innerText).join('#');
+  if ((() => { const d = [...document.querySelectorAll('[data-rp-visual]')].filter(v => v.getClientRects().length && v.dataset.rpVisual !== 'cards' && !v.parentElement.closest('[data-rp-visual]')); return d.length === 1 && d[0].dataset.rpVisual === 'table'; })()) return true;   // (v10) a page of one matrix: nothing else to filter
   document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await wait(300);
   const out = [];
   for (const v of visuals()) {
