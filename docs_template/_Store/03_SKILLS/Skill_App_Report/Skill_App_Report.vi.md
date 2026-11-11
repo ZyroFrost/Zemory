@@ -1,5 +1,5 @@
 ---
-version: 15
+version: 16
 lang: vi
 ---
 
@@ -102,6 +102,10 @@ lang: vi
   của trường trên trang. [rp-header-words]
 - **Câu chữ không là ô bảng** (v15): measure chữ không có trường (kết luận, nhận xét) là khối chữ xuống dòng trong panel.
   [rp-sentences] Measure chữ viết ra một số (số đếm, % theo công tắc) thì hiện như số đó, theo định dạng của người xem.
+- **Số sắp theo giá trị** (v16): số viết kèm đơn vị (`2,8 tỷ`, `15 tr`, `3k`) không phải số với bộ sắp đọc chữ; ô mang giá trị
+  của nó (`data-sort-value`, chữ số trơn, không dấu phân cách). Dòng tổng đứng ngoài phần thân được sắp (`tfoot`): luôn ở cuối.
+  [rp-sort-value] Bấm tiêu đề thì cột được sắp và không panel nào đổi bề ngang: panel chỉ nới cho bảng phần bảng tràn ra ngoài
+  khung, không bao giờ lấy bề rộng của chính bảng đã giãn theo panel (nó lớn dần sau mỗi lần đổi cỡ). [SORT_PROBE]
 
 ## 5. Bố cục
 
@@ -118,6 +122,8 @@ lang: vi
 
 - **Board không để ô trống** (v13): chart ngắn chồng một cột cạnh chart cao, danh sách dài (Top 10) đứng nửa hàng và
   cao bằng hai ô; mọi cột của một hàng chạm tới đáy hàng. [rp-no-hole]
+- **Chart lấp tới đáy panel** (v16): panel bị kéo cao theo ô cao hơn cùng hàng (một bảng) thì vùng vẽ giãn theo - cột đứng trên
+  đáy panel, đường trải hết chiều cao; chiều cao riêng của vùng vẽ là sàn, không phải cỡ cố định. [rp-plot-fills]
 - **Thanh xếp hạng chừa chỗ cho tên** (v13): cột tên 30 tới 40 % bề ngang thanh, tối đa hai dòng (tên đủ ở tooltip), không
   bao giờ thanh dài cạnh tên sáu dòng. [rp-rank-name]
 - **Chart nào cũng phóng to riêng được** (v13, như focus mode của Power BI): một nút (`.rp-focus-btn`) trên mỗi chart và
@@ -202,6 +208,9 @@ Card dùng bốn vai chữ của `app-sneat-glass` (`kpi-title` · `kpi-main` ·
 - Bài kiểm trình duyệt của repo nhập `scripts/report_layout_check.mjs`, chạy mọi mục `RULES` trên mọi trang báo cáo (mọi màn và
   tab), ở khổ desktop và điện thoại, cả hai theme. Chạy `SELF_TEST` trước: trang tốt qua mọi luật, trang lỗi trượt từng luật,
   nên luật nào cũng đã được chứng minh đỏ. Thêm luật ở đây thì thêm mục ở đó trong cùng lần sửa.
+- `SORT_PROBE` (v16, bất đồng bộ) do cùng bài kiểm chạy trên mỗi trang báo cáo ở khổ desktop: bấm tiêu đề một cột số ba lần
+  (tăng, giảm, bỏ) và đỏ khi cột không được sắp hoặc một panel rộng ra. Đã chứng minh đỏ trên đúng hai lỗi nó sinh ra để bắt
+  (không có giá trị sắp; bề ngang lớn dần) bằng cách chạy trên trang có từng lỗi được đặt lại.
 - **Bảng chưa xong khi bài kiểm này chưa xanh trên các trang của nó** (v15, `Rule_Gate_01_DoneMeansRun`): đếm đủ visual không
   phải là kiểm. Bài kiểm của repo chạy riêng một bảng (`--only <tiền tố đường dẫn>`) trong lúc dựng.
 - Máy chưa đo (xét khi trình trang): chiều rộng chart theo số nhóm, donut nằm trong hàng, tab chỉ thêm vì quá tải, màu theo nghĩa.

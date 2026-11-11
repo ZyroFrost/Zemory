@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 15
+version: 16
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v15 #65ff3daeff45
+from: _Store/03_SKILLS/Skill_App_Report @v16 #712697efc5f2
 ---
 
 # app-report — the report pages of an app
@@ -119,6 +119,11 @@ from: _Store/03_SKILLS/Skill_App_Report @v15 #65ff3daeff45
   page's name of the field. [rp-header-words]
 - **A sentence is never a table cell** (v15): a text measure with no field (a conclusion, a commentary) is wrapped text in its
   panel. [rp-sentences] A text measure that writes a number (a count, a % under a switch) is that number in the person's format.
+- **A figure sorts by its value** (v16): a figure written with a unit (`2,8 tỷ`, `15 tr`, `3k`) is no number to a sort that reads
+  the text; the cell carries its value (`data-sort-value`, plain digits, no separator). A total row stands outside the body
+  that is sorted (`tfoot`): it stays last whatever the order. [rp-sort-value] A click on a header sorts the column and moves no
+  panel's width: what widens a panel for its table is only what the table runs past its box, never the table's own width
+  stretched to the panel (that grows on every resize, a ratchet). [SORT_PROBE]
 
 ## 5. Layout
 
@@ -140,6 +145,9 @@ from: _Store/03_SKILLS/Skill_App_Report @v15 #65ff3daeff45
 
 - **A board leaves no hole** (v13): short charts stack in one column beside a tall one, a long list (Top 10) stands
   half a row and two blocks tall; every column of a row reaches the row's foot. [rp-no-hole]
+- **A chart fills its panel to the bottom** (v16): a panel stretched by a taller neighbour of its row (a table) grows its plot -
+  the columns stand on the panel's foot, a line spreads over the height; the plot's own height is its floor, never its size.
+  [rp-plot-fills]
 - **A ranking bar gives its names room** (v13): the name column is 30 to 40 % of the bar's width, two lines at
   most (the full name in the tip), never a long bar beside a name on six lines. [rp-rank-name]
 - **Every chart can be enlarged alone** (v13, as Power BI's focus mode): a button (`.rp-focus-btn`) on each chart
@@ -231,6 +239,9 @@ Cards use the four typography roles of `app-sneat-glass` (`kpi-title` · `kpi-ma
   (every view and tab), at a desktop and a phone width and in both themes. It runs `SELF_TEST` first: the good page passes
   every rule and the faulty page fails each, so every rule is proven red. A rule added here adds its entry there in the same
   change.
+- `SORT_PROBE` (v16, async) is run by the same test on each report page at a desktop width: it clicks the header of a figure
+  column three times (asc, desc, none) and fails when the column did not sort or a panel grew wider. It is proven red on the
+  two faults it was made for (no sort value; a width ratchet) by running it on the page with each fault put back.
 - **A board is not done until this check is green on its pages** (v15, `Rule_Gate_01_DoneMeansRun`): a count of the visuals
   drawn is not the check. The repo's test runs one board alone (`--only <path prefix>`) while it is being built.
 - Not measured by the machine yet (judged when the page is shown): chart width by groups, a donut kept in its row, a tab

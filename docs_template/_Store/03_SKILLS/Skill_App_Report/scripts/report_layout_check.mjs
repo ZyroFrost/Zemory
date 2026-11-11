@@ -556,7 +556,61 @@ export const RULES = [
       if (td.getClientRects().length && (td.textContent || '').trim().length > 80) return 'a sentence in a table cell: ' + td.textContent.trim().slice(0, 40);
     }
     return true;`),
+  // G. v16 (user 11/11): a combo's columns stood 250 px above the foot of a panel stretched by a table beside it; a sort click
+  // did not sort ("2,8 tỷ" is no number to the frame) and pushed the panel wider on every click.
+  rule('rp-plot-fills', 'a chart fills its panel to the bottom: a panel stretched by a taller neighbour grows its plot, it leaves no empty band under the axis (v16)', `
+    for (const v of vis().filter(v => v.dataset.rpVisual === 'chart' && !v.closest('.rp-focus'))) {
+      // a plot that grows upward: columns on one baseline, or a line; a ranking of horizontal bars is not one
+      const marks = [...v.querySelectorAll('[data-rp-mark]')].filter(m => m.getClientRects().length && box(m).height > 0).map(m => box(m).bottom);
+      if (!v.querySelector('svg polyline') && !(marks.length > 1 && Math.max(...marks) - Math.min(...marks) <= 2)) continue;
+      let low = 0;
+      for (const e of v.querySelectorAll('*')) {
+        const tag = e.tagName.toLowerCase();
+        // the leaves and the marks (a column holding its value label is no leaf)
+        if ((e.children.length && tag !== 'svg' && !e.hasAttribute('data-rp-mark')) || (tag !== 'svg' && e.closest('svg')) || !e.getClientRects().length) continue;
+        const r = box(e); if (r.height > 0 && r.bottom > low) low = r.bottom;
+      }
+      if (low && box(v).bottom - low > 48) return 'an empty band of ' + Math.round(box(v).bottom - low) + ' px under the plot of ' + name(v);
+    }
+    return true;`),
+  rule('rp-sort-value', 'a figure cell sorts by its value: one written with a unit (2,8 tỷ · 15 tr · 3k) carries data-sort-value; a total row stands outside the sorted body (tfoot) (v16)', `
+    for (const v of vis().filter(v => v.dataset.rpVisual === 'table')) {
+      for (const t of v.querySelectorAll('table')) {
+        const body = t.tBodies[0]; if (!body) continue;
+        if (body.querySelector('[data-rp-total]')) return 'a total row inside the sorted body (it moves on a sort): ' + name(v);
+        for (const td of body.querySelectorAll('td[data-rp-num]')) {
+          const s = (td.textContent || '').replace(/[\\s%₫$€đ]/gi, '').replace(/^\\((.*)\\)$/, '-$1');
+          if (s && !/^[-+]?[\\d.,]+$/.test(s) && !td.hasAttribute('data-sort-value')) return 'a figure the frame cannot sort (no data-sort-value): ' + td.textContent.trim() + ' in ' + name(v);
+        }
+      }
+    }
+    return true;`),
 ];
+
+/** v16 probe (async; the repo's browser check runs it on each report page): a click on the header of a figure column sorts it
+ *  (its values in order) and moves no panel's width; three clicks bring the page back (asc · desc · none). */
+export const SORT_PROBE = `(async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const panels = () => [...document.querySelectorAll('[data-rp-page] [data-rp-visual]')].filter(e => e.getClientRects().length && e.dataset.rpVisual !== 'cards');
+  const widths = () => panels().map(p => Math.round(p.getBoundingClientRect().width));
+  const val = td => { const s = td.dataset.sortValue ?? td.dataset.rpRaw; return s == null || s === '' ? null : Number(s); };
+  for (const v of panels().filter(p => p.dataset.rpVisual === 'table')) {
+    const t = v.querySelector('table'); if (!t || !t.tBodies[0] || t.tBodies[0].rows.length < 3) continue;
+    const heads = [...(t.tHead?.rows[0]?.cells || [])];
+    const col = heads.findIndex((th, i) => th.dataset.sortable && [...t.tBodies[0].rows].some(r => r.cells[i]?.hasAttribute('data-rp-num')));
+    if (col < 0) continue;
+    const before = widths(), name = (v.querySelector('[data-rp-title]')?.textContent || '').trim().slice(0, 30);
+    const click = () => heads[col].dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    click(); await sleep(700);
+    const xs = [...t.tBodies[0].rows].map(r => r.cells[col] && val(r.cells[col])).filter(x => x != null);
+    const up = xs.every((x, i) => !i || x >= xs[i - 1]), down = xs.every((x, i) => !i || x <= xs[i - 1]);
+    click(); await sleep(400); click(); await sleep(700);
+    const after = widths(), grew = after.findIndex((w, i) => w - before[i] > 2);
+    if (xs.length > 2 && !up && !down) return 'a click on ' + (heads[col].textContent || '').trim() + ' did not sort ' + name;
+    if (grew >= 0) return 'a sort click widened a panel by ' + (after[grew] - before[grew]) + ' px (' + name + ')';
+  }
+  return true;
+})()`;
 
 const SHELL = body => `<!doctype html><html><head><meta charset="utf-8"><style>
   .kpi-card[data-tone]{background:rgba(61,126,191,.14)}
@@ -583,10 +637,10 @@ export const SELF_TEST = {
     `${card('Tỷ trọng', '40%', '+2,0 pp MoM', 'up', 'text-success')}</div>`) +
     `<div class="row">${chart('Theo giờ', 'rgb(61, 126, 191)', 12, 'hour').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}${chart('Theo ngày', 'rgb(46, 156, 122)', 12, 'day').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}</div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Chi tiết</h6><table><thead><tr><th>Nhà</th><th>Số</th></tr></thead>` +
-    `<tbody>${rowsOf(8)}<tr data-rp-total style="font-weight:700"><td>Tổng</td><td data-rp-num="money" data-rp-raw="1234567890">1,2 tỷ</td></tr></tbody></table></div></div>` +
-    `<div class="row"><div class="card" data-rp-visual="chart" data-rp-fields="year" style="flex:1;position:relative"><h6 data-rp-title>Theo năm</h6>` +
+    `<tbody>${rowsOf(8)}</tbody><tfoot><tr data-rp-total style="font-weight:700"><td>Tổng</td><td data-rp-num="money" data-rp-raw="1234567890" data-sort-value="1234567890">1,2 tỷ</td></tr></tfoot></table></div></div>` +
+    `<div class="row"><div class="card" data-rp-visual="chart" data-rp-fields="year" style="flex:1;position:relative;display:flex;flex-direction:column"><h6 data-rp-title>Theo năm</h6>` +
     `<div data-rp-legend style="display:flex;gap:6px;white-space:nowrap"><span data-cf-dim="year" data-cf-value="2025" style="height:20px">2025</span><span data-cf-dim="year" data-cf-value="2026" style="height:20px">2026</span><button class="rp-focus-btn" style="height:20px;padding:0">+</button></div>` +
-    `<div class="bars" data-rp-body><i data-rp-mark data-tip="Năm: 2025\\nDoanh thu: 1.200" style="height:60px;background:rgb(214, 96, 77);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">60</span></i>` +
+    `<div class="bars" data-rp-body style="flex:1 0 120px"><i data-rp-mark data-tip="Năm: 2025\\nDoanh thu: 1.200" style="height:60px;background:rgb(214, 96, 77);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">60</span></i>` +
     `<i data-rp-mark data-tip="Năm: 2026\\nDoanh thu: 1.500" style="height:90px;background:rgb(230, 160, 40);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">90</span></i></div></div>` +
     `<div class="card" data-rp-visual="chart" data-rp-fields="store" style="flex:1;position:relative"><h6 data-rp-title>Xếp hạng</h6><button class="rp-focus-btn" style="position:absolute;top:2px;right:2px">+</button>` +
     `<div class="bar-row" style="display:flex;width:400px"><span class="bar-name" style="width:35%">Nhà hàng A</span><div style="flex:1"><i data-rp-mark data-tip="Nhà hàng: A\\nDoanh thu: 100" style="display:block;height:8px;width:80%;background:rgb(0, 150, 170)"></i></div></div></div></div>` +
@@ -629,7 +683,10 @@ export const SELF_TEST = {
     `<div class="row" data-rp-visual="cards" style="margin-top:60px">${card('Một', '1', '+1,0% MoM', 'up', 'text-success')}${card('Hai', '2', '+1,0% MoM', 'up', 'text-success')}</div>` +
     `<div class="row"><div class="card" data-rp-visual="chart" style="width:300px"><h6 data-rp-title>Hẹp</h6><svg width="60" height="60"></svg></div><div class="card" data-rp-visual="chart" style="flex:1"><h6 data-rp-title>Rộng</h6><svg width="60" height="60"></svg></div></div>` +
     `<div style="transform:scale(.6);transform-origin:0 0"><div class="card" data-rp-visual="table" data-rp-detail><h6 data-rp-title>Thu nhỏ</h6><table><thead><tr><th>StoreName2</th><th>Rỗng</th></tr></thead>` +
-    `<tbody><tr><td>Một câu kết luận rất dài viết ra thành chữ, vượt tám mươi ký tự, lẽ ra phải là một khối chữ chứ không phải một ô</td><td>—</td></tr><tr><td>B</td><td>—</td></tr></tbody></table></div></div>`),
+    `<tbody><tr><td>Một câu kết luận rất dài viết ra thành chữ, vượt tám mươi ký tự, lẽ ra phải là một khối chữ chứ không phải một ô</td><td>—</td></tr><tr><td>B</td><td>—</td></tr></tbody></table></div></div>` +
+    // (v16) columns standing high in a panel stretched to 320 px · a figure with a unit and no sort value
+    `<div class="row"><div class="card" data-rp-visual="chart" style="flex:1;height:320px"><h6 data-rp-title>Cột lơ lửng</h6><div class="bars" data-rp-body>${bars(4, 'rgb(61, 126, 191)')}</div></div>` +
+    `<div class="card" data-rp-visual="table" style="flex:1"><table><thead><tr><th>Nhà</th><th>Ebitda</th></tr></thead><tbody><tr><td>A</td><td data-rp-num="money" data-rp-raw="2800000000">2,8 tỷ</td></tr></tbody></table></div></div>`),
 };
 
 if (process.argv.includes('--list')) for (const r of RULES) console.log(r.id.padEnd(22) + r.rule);
