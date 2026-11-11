@@ -1619,6 +1619,12 @@ export const DIALOG_RULES = [
       if (innerWidth <= 768) return Math.abs(r.width - innerWidth) <= 2 ? true : 'a phone dialog is not full screen';
       const size = [...d.classList].find(c => /^sz-[sml]$/.test(c));
       if (!size) return 'a dialog has no size class sz-s / sz-m / sz-l';
+      // (v57, Reconcile 11/11: a third dialog stood still at 0.94 of its size, the opening scale) a dialog still opening is
+      // waited for; one standing still while shrunk never got its opened state - named apart from a wrong size
+      const shrunk = [d, ...d.querySelectorAll('.modal-dialog, .modal-content')].map(e => ({e, s: new DOMMatrixReadOnly(getComputedStyle(e).transform === 'none' ? undefined : getComputedStyle(e).transform).a}))
+        .find(x => Math.abs(x.s - 1) > .01);
+      if (shrunk) return d.getAnimations({subtree: true}).some(a => a.playState === 'running') ? 'the dialog is still opening'
+        : 'a dialog stands shrunk at ' + shrunk.s.toFixed(2) + ' of its size (' + (shrunk.e.id || String(shrunk.e.className).split(' ')[0] || shrunk.e.tagName) + '): its opening effect never ended - the opened state is not applied';
       const p = {s: 40, m: 60, l: 90}[size.slice(3)], w = Math.min(p * innerWidth / 100, p * innerHeight / 100 * 16 / 9);
       return Math.abs(r.width - w) <= 2 && Math.abs(r.height - w * 9 / 16) <= 2 ? true
         : 'dialog ' + Math.round(r.width) + 'x' + Math.round(r.height) + ', want ' + Math.round(w) + 'x' + Math.round(w * 9 / 16);

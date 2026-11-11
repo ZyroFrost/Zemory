@@ -1,5 +1,5 @@
 ---
-version: 56
+version: 57
 lang: vi
 ---
 
@@ -165,7 +165,8 @@ lang: vi
 
 - Hộp thoại là một `<dialog>` chứa `modal-content` của bộ mẫu, lớp cỡ `sz-s` · `sz-m` · `sz-l`: `width: min(P vw, P vh × 16/9)` và
   `aspect-ratio: 16 / 9`, P = 40 / 60 / 90. Không `min-width`, không `max-height` làm méo khung; thân cuộn bên trong; đổi tab không
-  làm khung dời hay đổi cỡ. Toàn màn trên điện thoại. [dialog-size]
+  làm khung dời hay đổi cỡ. Toàn màn trên điện thoại. Mở xong, hộp thoại kết thúc hiệu ứng mở ở đúng cỡ: hộp đứng yên mà vẫn
+  thu nhỏ là chưa nhận trạng thái đã mở, và được gọi đúng tên như vậy (v57). [dialog-size]
 
 ## 4. Cài đặt bố cục (bộ tuỳ chỉnh của bộ mẫu)
 

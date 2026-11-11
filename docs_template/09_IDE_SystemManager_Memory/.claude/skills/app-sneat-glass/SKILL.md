@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 56
+version: 57
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v56 #ea5f7c4cbb96
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v57 #cf485fb0bafc
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -186,7 +186,8 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v56 #ea5f7c4cbb96
 
 - A dialog is a `<dialog>` holding the kit's `modal-content`, size class `sz-s` · `sz-m` · `sz-l`: `width: min(P vw, P vh × 16/9)`
   and `aspect-ratio: 16 / 9`, P = 40 / 60 / 90. No `min-width`, no `max-height` that bends it; the body scrolls inside; switching a
-  tab never moves or resizes the frame. Full screen on a phone. [dialog-size]
+  tab never moves or resizes the frame. Full screen on a phone. Opened, a dialog ends its opening effect at its full size: one
+  standing still while shrunk never got its opened state, and is named so (v57). [dialog-size]
 
 ## 4. Layout settings (the kit's customizer)
 
