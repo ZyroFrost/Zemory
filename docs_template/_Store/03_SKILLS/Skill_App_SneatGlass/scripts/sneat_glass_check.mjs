@@ -1545,8 +1545,10 @@ export const RULES = [
       if (t.dataset.place !== 'auto') return true;
       const bs = getComputedStyle(bar), gap = parseFloat(bs.columnGap) || 0;
       // the seek group grows to fill the row: what it holds is its width, not its box
-      const natural = c => { if (c.id !== 'card-tools') return c.offsetWidth; const k = [...c.children].filter(x => x.getClientRects().length), g = parseFloat(getComputedStyle(c).columnGap) || 0;
-        return k.reduce((a, x) => a + x.offsetWidth, 0) + Math.max(0, k.length - 1) * g; };
+      // (v59) every box that grows (the pinned filters' row too) is measured by what it holds
+      const natural = c => { const s = getComputedStyle(c); if (c.id !== 'card-tools' && !(parseFloat(s.flexGrow) > 0)) return c.offsetWidth;
+        const k = [...c.children].filter(x => x.getClientRects().length), g = parseFloat(s.columnGap) || 0;
+        return k.reduce((a, x) => a + natural(x), 0) + Math.max(0, k.length - 1) * g + parseFloat(s.paddingLeft) + parseFloat(s.paddingRight); };
       const others = [...bar.children].filter(c => c.id !== 'page-tabs-slot' && c.getClientRects().length);
       const used = others.reduce((a, c) => a + natural(c), 0) + Math.max(0, others.length - 1) * gap;
       const free = bar.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight) - used - gap;
