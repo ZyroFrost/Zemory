@@ -76,7 +76,8 @@ description: The report pages of an app - what a page of figures, charts and tab
 
 - **A chart with a legend of a field is stacked by that legend** (v13): its columns or
   bars are cut by the legend's values in the report's colours, every part wide enough (6 % of the length) carries its own
-  number, the total at the end of the bar or the top of the column. [rp-stacked-labels] Charts stacked by the same field wear that field's fixed colours on every chart of the page (one colour per
+  number, the total at the end of the bar or the top of the column. A legend of measures (Revenue · Ebitda side by side) is no
+  field: its columns are grouped, the number over each (v16). [rp-stacked-labels] Charts stacked by the same field wear that field's fixed colours on every chart of the page (one colour per
   value, as a grade A/B/C/D) - two of them sharing a colour is right; a chart of one series still takes its own main colour.
 - **The numbers of a line chart never cover each other** (v13): no two data labels of a
   visual overlap; a label takes its series' colour. [rp-labels-apart]
@@ -127,7 +128,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 ## 5. Layout
 
 - **Visuals of the same kind and fields** (differing only by a filter) **sit in one row,** the same height, the width split
-  evenly. [rp-same-row]
+  evenly. [rp-same-row] Each one the whole row (a time series per P&L line) stands one under the other (v16).
 - **An even split is absolutely even** - two blocks meant to be equal never differ by a few pixels (325 + 330). [rp-even-split]
 - **A chart is as wide as its number of groups** (about 60 px a group); short charts stand side by side; a chart with little
   in it (one series, a few points, a donut of a few slices) is small - at most half the view - and a donut sits in one row,

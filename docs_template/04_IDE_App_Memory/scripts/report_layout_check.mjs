@@ -189,7 +189,8 @@ export const RULES = [
 
   // D. Tables (§4)
   rule('rp-stacked-labels', 'a chart with a legend of a field is stacked by it and every part of 6 % of the length or more carries its number (v13, the user 09/11: "chart lẻ phải có số theo lẻ")', `
-    for (const v of vis().filter(v => v.dataset.rpVisual === 'chart' && v.querySelector('[data-rp-legend] [data-cf-dim]'))) {
+    // (v16) a legend of measures (Revenue · Ebitda · % Ebitda side by side) is no field: its columns are grouped, not stacked
+    for (const v of vis().filter(v => v.dataset.rpVisual === 'chart' && v.querySelector('[data-rp-legend] [data-cf-dim]:not([data-cf-dim=measure])'))) {
       const body = v.querySelector('[data-rp-body]') || v, b = box(body);
       const labels = [...v.querySelectorAll('[data-rp-label]')].filter(l => l.getClientRects().length).map(box);
       for (const m of v.querySelectorAll('[data-rp-mark]')) {
@@ -311,8 +312,11 @@ export const RULES = [
     if (innerWidth < 768) return true;   // (v8) a phone stacks the visuals of a row
     const groups = new Map();
     for (const v of vis()) { if (!v.dataset.rpFields) continue; const k = v.dataset.rpVisual + '|' + v.dataset.rpFields; groups.set(k, [...(groups.get(k) || []), v]); }
+    const page = document.querySelector('[data-rp-page]') || document.body;
     for (const [k, list] of groups) {
       if (list.length < 2) continue;
+      // (v16) each one the whole row (a time series of twelve months per P&L line, OPS_03 Metrics): stacked as a phone stacks
+      if (list.every(v => box(v).width >= box(page).width * 0.9)) continue;
       const spread = f => { const xs = list.map(f); return Math.max(...xs) - Math.min(...xs); };
       if (spread(v => box(v).top) > 1) return 'visuals of one kind on different rows: ' + k;
       if (spread(v => box(v).height) > 1) return 'visuals of one kind with different heights: ' + k;

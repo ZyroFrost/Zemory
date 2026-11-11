@@ -6,7 +6,7 @@ type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v16 #712697efc5f2
+from: _Store/03_SKILLS/Skill_App_Report @v16 #810bfed90e84
 ---
 
 # app-report — the report pages of an app
@@ -77,7 +77,8 @@ from: _Store/03_SKILLS/Skill_App_Report @v16 #712697efc5f2
 
 - **A chart with a legend of a field is stacked by that legend** (v13): its columns or
   bars are cut by the legend's values in the report's colours, every part wide enough (6 % of the length) carries its own
-  number, the total at the end of the bar or the top of the column. [rp-stacked-labels] Charts stacked by the same field wear that field's fixed colours on every chart of the page (one colour per
+  number, the total at the end of the bar or the top of the column. A legend of measures (Revenue · Ebitda side by side) is no
+  field: its columns are grouped, the number over each (v16). [rp-stacked-labels] Charts stacked by the same field wear that field's fixed colours on every chart of the page (one colour per
   value, as a grade A/B/C/D) - two of them sharing a colour is right; a chart of one series still takes its own main colour.
 - **The numbers of a line chart never cover each other** (v13): no two data labels of a
   visual overlap; a label takes its series' colour. [rp-labels-apart]
@@ -128,7 +129,7 @@ from: _Store/03_SKILLS/Skill_App_Report @v16 #712697efc5f2
 ## 5. Layout
 
 - **Visuals of the same kind and fields** (differing only by a filter) **sit in one row,** the same height, the width split
-  evenly. [rp-same-row]
+  evenly. [rp-same-row] Each one the whole row (a time series per P&L line) stands one under the other (v16).
 - **An even split is absolutely even** - two blocks meant to be equal never differ by a few pixels (325 + 330). [rp-even-split]
 - **A chart is as wide as its number of groups** (about 60 px a group); short charts stand side by side; a chart with little
   in it (one series, a few points, a donut of a few slices) is small - at most half the view - and a donut sits in one row,

@@ -63,6 +63,7 @@ lang: vi
 
 - **Chart có legend theo một trường thì vẽ chồng theo legend** (v13): cột hay thanh chia
   theo giá trị của legend, màu của report, mỗi phần đủ rộng (6 % bề dài) mang số của nó, tổng ở cuối thanh hay đầu cột.
+  Legend là các measure (Revenue · Ebitda cạnh nhau) không phải trường: cột nhóm cạnh nhau, số trên đầu mỗi cột (v16).
   [rp-stacked-labels] Các chart chồng theo cùng một trường mang màu cố định của trường đó ở mọi chart của trang (mỗi giá trị một
   màu, như xếp loại A/B/C/D) - hai chart như vậy trùng màu là đúng; chart một chuỗi vẫn lấy màu chính riêng.
 - **Số của chart đường không đè nhau** (v13): không hai nhãn số nào của một hình giao nhau; nhãn
@@ -109,7 +110,8 @@ lang: vi
 
 ## 5. Bố cục
 
-- **Visual cùng loại, cùng trường** (chỉ khác bộ lọc) **xếp một hàng,** cùng chiều cao, chia đều chiều rộng. [rp-same-row]
+- **Visual cùng loại, cùng trường** (chỉ khác bộ lọc) **xếp một hàng,** cùng chiều cao, chia đều chiều rộng. [rp-same-row] Visual nào cũng trải hết hàng (chuỗi thời gian theo từng
+  dòng P&L) thì xếp chồng (v16).
 - **Chia đều là đều tuyệt đối** — hai khối định bằng nhau không lệch vài px (325 + 330). [rp-even-split]
 - **Chart rộng theo số nhóm** (khoảng 60 px một nhóm); chart ngắn đặt cạnh nhau; chart ít thông tin (một chuỗi, ít điểm, donut
   vài lát) thì nhỏ — tối đa nửa màn — và donut nằm trong một hàng, không kéo thành cột. Chart dài (≥ 28 nhóm) dùng cả chiều
