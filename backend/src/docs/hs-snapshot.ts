@@ -8,7 +8,7 @@
 //
 // The store module reads ZEMORY_STORE_ROOT when it loads, so `useHsSnapshot` runs before it is imported (cli.ts).
 import { execFileSync } from "node:child_process";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, copyFileSync, cpSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 
@@ -67,8 +67,75 @@ function prune(cache: string, keep: string): void {
     }
   };
   for (const n of names.filter((n) => n.startsWith("work-") && Date.now() - at(n) > WORK_MAX_AGE_MS)) rmSync(join(cache, n), { recursive: true, force: true });
+  // the temp folder and tar of an unpack whose process died (killed mid-unpack, or a version before unpackOnce)
+  for (const n of names) {
+    const m = /\.tmp-(\d+)(\.tar)?$/.exec(n);
+    if (m && (!pidAlive(Number(m[1])) || Date.now() - at(n) > UNPACK_STALE_MS)) rmSync(join(cache, n), { recursive: true, force: true });
+  }
   const trees = names.filter((n) => /^[0-9a-f]{40,64}(-a[0-9a-f]+)?(-crlf-\w+)?$/.test(n) && n !== keep).sort((a, b) => at(b) - at(a));
   for (const n of trees.slice(KEEP_TREES - 1)) rmSync(join(cache, n), { recursive: true, force: true });
+}
+
+const UNPACK_STALE_MS = 15 * 60_000;
+const UNPACK_WAIT_MS = 10 * 60_000;
+
+const pidAlive = (pid: number): boolean => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === "EPERM";
+  }
+};
+
+/**
+ * Unpack one tree into `pristine`, once across processes. Measured 2026-11-11: test processes starting together on a new
+ * HEAD each unpacked the same tree; every one but the first failed its rename, returned null and so read the WORKING HS -
+ * the very edits in progress the snapshot exists to keep out - and left its temp folder behind (45 of them in the cache).
+ * Now one process holds `<pristine>.lock` (`wx`) and unpacks; the others wait for `.done`. Its temp files always go.
+ */
+function unpackOnce(cache: string, pristine: string, tree: string, archive: (tar: string) => void): void {
+  const done = join(pristine, ".done");
+  const lock = `${pristine}.lock`;
+  const end = Date.now() + UNPACK_WAIT_MS;
+  for (;;) {
+    if (existsSync(done)) return;
+    try {
+      closeSync(openSync(lock, "wx"));
+    } catch {
+      const age = Date.now() - (statOr(lock)?.mtimeMs ?? 0);
+      if (age > UNPACK_STALE_MS) rmSync(lock, { force: true }); // its holder died
+      else if (Date.now() > end) throw new Error("waited too long for another process to unpack HS");
+      else Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+      continue;
+    }
+    const tmp = `${pristine}.tmp-${process.pid}`;
+    const tar = `${tmp}.tar`;
+    try {
+      if (existsSync(done)) return;
+      rmSync(pristine, { recursive: true, force: true });
+      rmSync(tmp, { recursive: true, force: true });
+      mkdirSync(tmp, { recursive: true });
+      archive(tar);
+      // relative names from the cache folder: GNU tar (first on PATH under Git Bash) reads `C:\…` as host `C`, file `\…`
+      execFileSync("tar", ["-xf", basename(tar), "-C", basename(tmp)], { cwd: cache, windowsHide: true, stdio: "ignore" });
+      writeFileSync(join(tmp, ".done"), tree + "\n");
+      renameSync(tmp, pristine);
+      return;
+    } finally {
+      rmSync(tar, { force: true });
+      rmSync(tmp, { recursive: true, force: true });
+      rmSync(lock, { force: true });
+    }
+  }
+}
+
+function statOr(p: string): { mtimeMs: number } | null {
+  try {
+    return statSync(p);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -97,22 +164,7 @@ export function useHsSnapshot(): HsSnapshot | null {
     // the bytes depend on the tree, the attributes and the line endings they were unpacked with
     const pristine = join(cache, `${tree}${attrs ? `-a${attrs}` : ""}${crlf ? `-crlf-${crlf}` : ""}`);
     mkdirSync(cache, { recursive: true });
-    if (!existsSync(join(pristine, ".done"))) {
-      rmSync(pristine, { recursive: true, force: true });
-      const tmp = `${pristine}.tmp-${process.pid}`;
-      const tar = `${tmp}.tar`;
-      rmSync(tmp, { recursive: true, force: true });
-      mkdirSync(tmp, { recursive: true });
-      try {
-        git([...(crlf ? ["-c", `core.autocrlf=${crlf}`] : []), "archive", "--format=tar", "-o", tar, "HEAD", "docs_template"]);
-        // relative names from the cache folder: GNU tar (first on PATH under Git Bash) reads `C:\…` as host `C`, file `\…`
-        execFileSync("tar", ["-xf", basename(tar), "-C", basename(tmp)], { cwd: cache, windowsHide: true, stdio: "ignore" });
-      } finally {
-        rmSync(tar, { force: true });
-      }
-      writeFileSync(join(tmp, ".done"), tree + "\n");
-      renameSync(tmp, pristine);
-    }
+    if (!existsSync(join(pristine, ".done"))) unpackOnce(cache, pristine, tree, (tar) => void git([...(crlf ? ["-c", `core.autocrlf=${crlf}`] : []), "archive", "--format=tar", "-o", tar, "HEAD", "docs_template"]));
     prune(cache, basename(pristine));
     const work = join(cache, `work-${process.pid}-${Date.now()}`);
     cpSync(pristine, work, { recursive: true });

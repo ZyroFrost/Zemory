@@ -32,10 +32,15 @@
 // The persistent ledger (`autosyncRunAt` in `config.json`) is the only thing that survives the
 // process boundary — which is exactly why it exists (see `scheduler.interruptedRunNote`).
 //
+// FOURTH THING, added 2026-11-11: TOO LITTLE FREE MEMORY. The gate peaks at ~3.2 GB for its whole tree (gate-cage); on a
+// machine with twelve agent sessions, VS Code and a browser open, 0.4-1 GB was left and the gate paged: six timing tests went
+// red (one case ran 654 s), each green when run alone. A red the machine made, not the code - so the gate waits for room
+// instead of printing it. Floor: ZEMORY_GATE_MIN_FREE_MB (default 2048).
+//
 // Escape hatch: ZEMORY_GATE_FORCE=1 (say so out loud when you use it).
 
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { freemem, homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -123,6 +128,31 @@ export function syncCutNote(runAt, now, daemonAlive) {
   ].join("\n");
 }
 
+/** Free memory below which the gate would page and time out. */
+export const MIN_FREE_MB_DEFAULT = 2048;
+
+/**
+ * What to say when the machine has too little free memory for the gate - PURE, so the gate can test it. Null when there
+ * is room (or the floor is 0). `availMb` is what the OS can hand out now (os.freemem: available, standby included).
+ */
+export function memoryNote(availMb, minMb) {
+  if (!(minMb > 0) || !Number.isFinite(availMb) || availMb >= minMb) return null;
+  return [
+    `[preflight] ⛔ only ${Math.round(availMb)} MB of memory free; the gate needs ${minMb} MB (it peaks at ~3.2 GB).`,
+    "  Below that the machine pages and timing tests go red with no fault in the code (measured 2026-11-11: 6 red at",
+    "  ~1 GB free, every one green alone).",
+    // never VS Code: the user works in it, and freeing memory on this machine means making room FOR it
+    "  Next: close what you are not using (idle agent sessions, browser tabs) and run it again;",
+    "  or run one file: node --test backend/test/<file>; or ZEMORY_GATE_FORCE=1 (and say so).",
+  ].join("\n");
+}
+
+/** Free memory in MB now; ZEMORY_GATE_AVAIL_MB stands in for it in a test. */
+function availableMb() {
+  const fake = Number(process.env.ZEMORY_GATE_AVAIL_MB);
+  return Number.isFinite(fake) && process.env.ZEMORY_GATE_AVAIL_MB !== undefined ? fake : freemem() / 1_048_576;
+}
+
 // Wrapped in a function (it used to be top-level await) so a test can import `syncCutNote` without
 // the import itself probing the daemon and setting `process.exitCode = 1` — which would turn every
 // test file that imports this into a spurious red on any machine where the daemon happens to be up.
@@ -148,6 +178,15 @@ const cutNote = syncCutNote(readAutosyncRunAt(), Date.now(), Boolean(auto));
 // exitCode (không phải process.exit): gọi exit trong lúc undici còn đang đóng socket làm Node
 // trên Windows chết bằng assertion của libuv và trả 127 — tức chính phép kiểm canh gate lại là
 // thứ làm gate đỏ. Đặt mã thoát rồi để tiến trình tự kết thúc.
+const floor = process.env.ZEMORY_GATE_MIN_FREE_MB === undefined ? MIN_FREE_MB_DEFAULT : Number(process.env.ZEMORY_GATE_MIN_FREE_MB);
+const memNote = busy.length ? null : memoryNote(availableMb(), floor);
+if (memNote && process.env.ZEMORY_GATE_FORCE === "1") {
+  console.log(memNote.replace("⛔", "⚠").split("\n")[0] + " - run anyway because ZEMORY_GATE_FORCE=1; a timing red may be the machine's.");
+} else if (memNote) {
+  console.error(memNote);
+  process.exitCode = 1;
+  return;
+}
 if (!busy.length) {
   console.log("[preflight] máy rảnh — chạy gate.");
   if (cutNote) console.log(cutNote);
