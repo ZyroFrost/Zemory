@@ -60,6 +60,8 @@ playwright==1.64.1
 pluggy==1.7.0
 protobuf==7.36.0
 proxy_tools==0.1.0
+psycopg==3.3.8
+psycopg-binary==3.3.8
 pycparser==3.0
 pydantic==2.14.2
 pydantic_core==2.50.2
