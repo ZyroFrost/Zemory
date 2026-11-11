@@ -45,8 +45,11 @@ export const RULES = [
     id: 'one-fact',
     rule: 'a card line or a table cell holds one fact: a list of things shows as a count that opens their table',
     check: `(() => {
-      const cells = [...document.querySelectorAll('.page-card tbody td, .card .card-body li, .card dd')];
-      const bad = cells.find(c => / · |, .*, /.test(c.textContent.trim()) || c.querySelectorAll('.badge').length > 1);
+      // (v61, Dashboard 11/11: a P&L row named "Tiếp khách, quà tặng, giao tế, khác" read as a list) the label cell that opens a
+      // row of a table of two columns or more is the row's name from the data - one fact; words in brackets are its gloss
+      const label = c => c.matches('td') && !c.previousElementSibling && c.parentElement && c.parentElement.children.length >= 2;
+      const cells = [...document.querySelectorAll('.page-card tbody td, .card .card-body li, .card dd')].filter(c => !label(c));
+      const bad = cells.find(c => / · |, .*, /.test(c.textContent.replace(/\\([^)]*\\)/g, '').trim()) || c.querySelectorAll('.badge').length > 1);
       return bad ? 'a list inside one cell: "' + bad.textContent.trim().slice(0, 60) + '"' : true;
     })()`,
   },
