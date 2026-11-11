@@ -1578,7 +1578,11 @@ export const RULES = [
         return 'the info zone stands against the page buttons with no divider';
       const t = document.getElementById('page-tabs'), slot = t && t.parentElement;
       if (t && slot && slot.id === 'page-tabs-slot' && [...start.children].some(c => c.getClientRects().length && c.getBoundingClientRect().width > 0)
-        && !(parseFloat(getComputedStyle(slot).borderInlineStartWidth) >= 1)) return 'the tab cluster in row 2 stands against the page zone with no divider';
+        && !(parseFloat(getComputedStyle(t).borderInlineStartWidth) >= 1)) return 'the tab cluster in row 2 stands against the page zone with no frame of its own';
+      // (v60, the user 11/11: "cái cục tab nên cho khít vào slot… nó bị cách tới 2 lần") the framed cluster needs no divider: only
+      // the row's gap stands before it
+      if (t && slot && slot.id === 'page-tabs-slot' && (parseFloat(getComputedStyle(slot).paddingInlineStart) > 1 || parseFloat(getComputedStyle(slot).borderInlineStartWidth) >= 1))
+        return 'the tab cluster in row 2 stands behind a divider and room of its own besides its frame - parted twice';
       return true;
     })()`,
   },

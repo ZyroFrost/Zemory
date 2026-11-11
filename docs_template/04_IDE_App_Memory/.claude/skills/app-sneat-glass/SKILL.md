@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 59
+version: 60
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v59 #5c272385ea05
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v60 #ab2211578037
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -106,7 +106,9 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v59 #5c272385ea05
   person reorders the tabs of a group by dragging one onto another place; the order is theirs and kept per group, Settings >
   Layout puts every group back on the menu order (v58). [tabs-reorder] **Row 2 stands in zones, in every app** (v58): the page's
   buttons, then its info - words and figures about the page, in `.page-info` - then the tab cluster when it stands in row 2,
-  each apart from the zone before it by the row's room and a faint divider; no words stand loose among the buttons. [bar-zones]
+  the info zone apart from the buttons by the row's room and a faint divider, the tab cluster by its own frame alone - only the
+  row's gap before it, never a divider and room of its own on top (v60: "nó bị cách tới 2 lần"); no words stand loose among the
+  buttons. [bar-zones]
 - **The whole app scales to the window from one design canvas** (v50): signed in, the page is drawn on 1920 x 1080 and zoomed to min(width/1920,
   height/1080), never above 1 nor below 0.7, so dragging the window never re-flows the layout; a phone (768 px and less) is
   never zoomed. Each person turns it off in Settings > Layout (Scale to the screen: fit the window | 100%). Under the zoom,

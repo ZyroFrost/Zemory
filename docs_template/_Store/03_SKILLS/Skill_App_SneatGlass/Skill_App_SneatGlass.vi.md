@@ -1,5 +1,5 @@
 ---
-version: 59
+version: 60
 lang: vi
 ---
 
@@ -89,8 +89,9 @@ lang: vi
   động); ghim ở hàng 2 mà thiếu chỗ thì tab dư vào "Thêm (n)". Điện thoại giữ hàng 3. [tabs-cluster] Mỗi người kéo một tab thả
   vào chỗ khác để đổi thứ tự các tab của nhóm; thứ tự là của họ, giữ riêng từng nhóm, Cài đặt > Bố cục đưa mọi nhóm về thứ tự
   menu (v58). [tabs-reorder] **Hàng 2 chia khu, ở mọi app** (v58): nút của trang, rồi thông tin - chữ và số về trang, trong
-  `.page-info` - rồi cụm tab khi nó đứng ở hàng 2, mỗi khu cách khu trước bằng khe của hàng và một vạch ngăn mờ; không chữ nào nằm
-  lẫn giữa các nút. [bar-zones]
+  `.page-info` - rồi cụm tab khi nó đứng ở hàng 2; khu thông tin cách khu nút bằng khe của hàng và một vạch ngăn mờ, cụm tab tách
+  chỉ bằng khung riêng của nó - trước nó chỉ có khe của hàng, không thêm vạch ngăn và đệm riêng (v60: "nó bị cách tới 2 lần");
+  không chữ nào nằm lẫn giữa các nút. [bar-zones]
 - **Mọi điểm dừng của đường dẫn là một trang** (v53): mọi nút của menu là một trang - lá là trang của app, nhánh (phòng ban, nhóm
   báo cáo, nhóm con) là danh sách những gì nó chứa, mỗi phần một dòng rộng bằng trang, các trang của nó trải đều. App đưa nhánh
   trang danh sách riêng (`to` của hàng, của nhóm `toggle`); không có thì khung tự vẽ ở `/~/<khoá>`, đường dẫn là các nhánh xuống tới
