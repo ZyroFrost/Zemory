@@ -3,12 +3,12 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 40
+version: 41
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_App_Base @v40 #e0b73e306bd2
+from: _Store/03_SKILLS/Skill_App_Base @v41 #7011cef89569
 ---
 
 # app-base — the APP design standard (FE + BE)
@@ -373,7 +373,7 @@ to catch) and measures the layout:
 | U7 | F14 | a scroll area without `scrollbar-gutter: stable` |
 | U8 | F4 ② | a control or link without a readable label |
 | U9 | F4 ③ | Vietnamese broken into `?` by an encoding (`Th?ng k?`, a `?` shown alone instead of `—`) |
-| U10 | F1b | a visible table header lacks a visible, labelled column-resize handle; app QA also drags, reloads, and resets a column |
+| U10 | F1b | a visible table header lacks a visible, labelled column-resize handle, from a tablet up (a phone hides the handles, v41); app QA also drags, reloads, and resets a column |
 
 - **Config** `ui_check.json` at the repo root: `url` (the dev server or a `file:///` mock-up) · `pages` (each `{name, hash}` or
   `{name, click: "<selector>"}`) · `widths` (default 1920 · 1440 · 1100 · 900 · 390; ≤ 768 is measured as a phone) · `settle_ms` (wait

@@ -102,7 +102,9 @@ const MEASURE = (ignore, o) => `(() => {
     if (d > 0.6) add('U3', row, 'controls on one row: heights ' + hs.map(h => Math.round(h * 10) / 10).join(' / ')); }
   // U4 - dead space: a table, or the only block of a frame, filling too little of its frame's width.
   // U10 - every visible table column has a labelled resize handle (app QA also tests a real drag and restore).
-  for (const table of all.filter(e => e.tagName === 'TABLE')) {
+  // (v41, Audit 11/11) on a phone (768 px and less) the frame hides the handles on purpose - a drag on a narrow touch screen
+  // fights the table's own scroll - so the rule holds from a tablet up
+  for (const table of innerWidth <= 768 ? [] : all.filter(e => e.tagName === 'TABLE')) {
     const head = table.tHead;
     if (!head || !head.rows.length || getComputedStyle(head).display === 'none') continue;
     for (const th of head.rows[0].cells) {
