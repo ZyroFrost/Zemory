@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 
@@ -33,6 +33,11 @@ lang: vi
 - Đổi cấu trúc chỉ qua đường repo đã khai (thư mục mô hình + script), không sửa tay trên máy chủ.
 - Câu đổi cấu trúc, đổi quyền, sửa dữ liệu chạy khi người dùng ra lệnh.
 - Sau khi đổi: đo lại số dòng và đối chiếu với nguồn, bằng số (`Rule_Gate_01_DoneMeansRun`).
+
+## 4. SQL đưa người dùng chạy
+
+- Truy vấn người dùng chạy tay, hay lưu trong `queries/`, là truy vấn thường: giá trị ghi thẳng vào `WHERE`
+  (`f.TRAN_DATE >= '2026-05-01'`), không `DECLARE`, không biến. Dòng ghi chú đầu file nói giá trị nào cần đổi.
 
 ## Implements · Thi hành luật
 - `Cons_Gate_11_WriteBoundary` — how structure changes are written and run · cách viết và chạy thay đổi cấu trúc

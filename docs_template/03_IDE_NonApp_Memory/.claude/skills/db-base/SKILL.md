@@ -3,10 +3,10 @@ id: Skill_Db_Base
 aka: dev-db-design
 name: db-base
 replaces: [Skill_Dev_DbDesign]
-version: 8
+version: 9
 type: process
 description: Design or change tables in a database or data warehouse - one fact in one table, dimensional modelling, and a review of the whole schema before any new table or column. Use whenever a table, column, view or key is about to be created or changed. Vietnamese triggers - "tạo bảng", "thêm cột", "thiết kế bảng", "sửa schema", "mô hình dữ liệu", "dim", "fact".
-from: _Store/03_SKILLS/Skill_Db_Base @v8 #812371d2002b
+from: _Store/03_SKILLS/Skill_Db_Base @v9 #98986347cb65
 ---
 
 # db-base — designing tables and columns
@@ -39,6 +39,11 @@ from: _Store/03_SKILLS/Skill_Db_Base @v8 #812371d2002b
 - Structure changes only through the path the repo declared (the model folder + scripts), never by hand on the server.
 - Statements that change structure, change permissions or fix data run on the requester's order.
 - After the change: count the rows again and reconcile with the source, in numbers (`Rule_Gate_01_DoneMeansRun`).
+
+## 4. SQL handed to a person
+
+- A query the person runs by hand, or keeps in `queries/`, is a plain query: values written straight into `WHERE`
+  (`f.TRAN_DATE >= '2026-05-01'`), no `DECLARE` and no variables. A note in its header says which values to change.
 
 ## Implements · Thi hành luật
 - `Cons_Gate_11_WriteBoundary` — how structure changes are written and run · cách viết và chạy thay đổi cấu trúc

@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 
@@ -29,6 +29,14 @@ lang: vi
 
 Đổi **hình hài/bố cục** sản phẩm giao đi là quyết định TRÌNH BÀY, không phải việc kỹ thuật — người
 nhận báo cáo quen mắt với bố cục cũ. Cần ý tưởng biểu đồ → tham khảo rồi **đề xuất**, không tự áp.
+
+## File là bản gốc với data mới
+
+- File pipeline ghi hay đè giống hệt bản gốc, chỉ khác data: tên, cột, độ rộng, cột ẩn, ô gộp, chiều cao dòng, style và tập part
+  trong gói.
+- Thư viện dựng lại workbook từ object model của nó làm rơi im lặng thứ nó không mô hình hoá (độ rộng cột không dời theo cột
+  chèn, part `customXml` và content type của chúng). File Excel mở được vẫn có thể bị Power BI từ chối. Vì vậy script fill kết
+  thúc bằng một cổng so cấu trúc và part với template, lệch là thoát mã khác 0.
 
 ## Cấm
 

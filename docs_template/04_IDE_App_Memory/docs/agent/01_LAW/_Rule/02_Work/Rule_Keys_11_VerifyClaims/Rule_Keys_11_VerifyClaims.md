@@ -2,10 +2,10 @@
 id: Rule_11
 aka: 02-11
 name: verify-claims
-version: 11
+version: 12
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_11_VerifyClaims @v11 #8687d4e02e11
+from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_11_VerifyClaims @v12 #0107703e690f
 ---
 # Rule_Keys_11_VerifyClaims — Not verified is not a fact
 
@@ -29,7 +29,8 @@ unverified, never filled in by guessing.
    the measure first; the number must fit the physical cost of the work — suspiciously fast is a false green until shown otherwise.
 5. Work · faults · decisions from another session ⇒ search the decision history before claiming: with the CLI `zemory` ⇒
    `zemory memory search "<q>" --all`; without it ⇒ `docs/archive/`. Search the exact question being answered. Never write or
-   claim from a summary or an unchecked subagent result.
+   claim from a summary or an unchecked subagent result. A number or a date found that way is a snapshot of when it was written:
+   cite its date or measure it again ("N days left" runs out by itself).
 6. A ledger item is a claim of state. Before listing, reporting or asking about one ⇒ measure it again with all three sources:
    code/files · decision history · a real run. Applies at all times, not only at session close. Three agree ⇒ conclude; they
    differ ⇒ the newer wins; one source out of reach ⇒ write "not verified", never assume "not done". An item untouched for more
@@ -46,6 +47,14 @@ How to measure, false-alarm traps: `.claude/skills/harness-audit/SKILL.md`. The 
    the repos in use for a similar case before designing a new one.
 11. Find the root by measuring; never patch a guessed symptom. A named system to learn from is studied whole before any of its
    pieces is dropped, and a piece is dropped only for being unneeded.
+12. Findings about data:
+   - two sources that agree confirm each other only when shown independent (they may be one number seen from two sides); trace an
+     effect from the database up, not from the model down: a table the model never loads can still bend a number upstream;
+   - a formula matching one period proves nothing: run it over the whole series. A gap in one direction growing toward the recent
+     periods means late documents (the formula holds); a gap in both directions means a wrong formula or source;
+   - one fault found ⇒ sweep its whole cluster (the block, every sheet, the derived columns) and report once: the first fault with
+     its number reads as the whole damage;
+   - an old deliverable is a comparison, never the standard; the spec and its own constraints are.
 
 ## Example
 - Situation: the agent checks the customer table and reports "120 duplicate customers, propose deleting".

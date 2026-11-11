@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 
@@ -42,6 +42,13 @@ chung của bốn loại nằm ở ba file dưới; skill của từng loại ch
 
 Giá trị thật của cụm (mã màu, theme, icon, khuôn gốc, máy chủ DW, nguồn hệ cũ) nằm ở tổng quản; file chuẩn chỉ nêu tên khoá
 trong giá trị cụm.
+
+## 5. Đọc report của người khác để dò nguồn
+
+- `.pbix` đang chạy thật và workbook nguồn của nó chỉ được ĐỌC: mở bản sao, đọc model qua truy vấn DMV, nạp workbook mà không
+  lưu, ghi thứ dẫn xuất vào thư mục nháp; không bao giờ lưu đè, publish hay sửa chúng.
+- Chỉ dump truy vấn của một model khi cần dò sâu model đó; thiếu dump không phải món nợ. Thứ phải đầy đủ là bản đồ report-nguồn
+  của repo.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the report design standard whose suggestions are shown first · chuẩn thiết kế báo cáo mà gợi ý phải trình trước

@@ -2,10 +2,10 @@
 id: Rule_21
 aka: 02-21
 name: what-enters-git
-version: 15
+version: 16
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit @v15 #103c818c1dfe
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit @v16 #3a071a63fb9c
 ---
 # Rule_Gate_21_WhatEntersGit — What never enters git
 
@@ -41,6 +41,8 @@ that repo's `.env` — the repo's ONE private home.
    product. Where: the data and sample slots of `02_STRUCTURE`.
 6. Heavy binaries (`.pbix` · `.twb` · `.fig` · `.psd` · models) are not committed directly; they follow the LFS lines in
    `.gitattributes`.
+7. A secret the person must supply ⇒ open a window of its own where the person pastes it straight into its home (3a-3c); the
+   agent never asks for the value, never sees it and never echoes it.
 
 ## Example
 - Situation: a job in the log repo needs the read-only SQL login that the warehouse server gave it; two other repos use the same

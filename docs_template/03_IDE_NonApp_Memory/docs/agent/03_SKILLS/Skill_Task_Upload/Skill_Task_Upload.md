@@ -2,11 +2,11 @@
 id: Skill_Task_Upload
 aka: upload
 name: task-upload
-version: 14
+version: 15
 type: process
 installs: [scripts/smtp_mail.py, scripts/graph_mail.py]
 description: Publish a finished deliverable to its destination (BI workspace, Drive, SharePoint, shared folder). Use when the deliverable is complete and needs to go out, or when asked to publish, push, send, or upload the report. Vietnamese triggers - "đẩy lên", "publish", "up báo cáo", "đưa lên workspace", "gửi bản cuối", "đăng lên".
-from: _Store/03_SKILLS/Skill_Task_Upload @v14 #0dff1e7edf17
+from: _Store/03_SKILLS/Skill_Task_Upload @v15 #6f5d6c24bae8
 ---
 
 # upload — push / publish a deliverable to its destination
@@ -27,6 +27,15 @@ from: _Store/03_SKILLS/Skill_Task_Upload @v14 #0dff1e7edf17
 4. **Verify at the destination**: open the copy just pushed, check a few anchor numbers. Pushed but not opened and looked at is not
    done yet.
 5. **Record the publish** in `05_CHANGES.md` — once approved.
+
+## One period, one file
+
+- The deliverable of a period overwrites the copy of that period; never a second file beside it. A wrong name made by mistake is
+  removed.
+- Its name follows the pattern of the original in the same folder (date · kind · period); never a name of the agent's own.
+- "Is the file right?" is answered by exactly three checks, each with its number, then stop: the sources are in · everything was
+  taken from the database (query it again and compare every cell; a file the pull itself wrote proves nothing) · the formulas hold
+  and carry values. Anything else seen on the way is one line in the task's `spec.md`, not a new item.
 
 ## Forbidden
 

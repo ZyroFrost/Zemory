@@ -1,5 +1,5 @@
 ---
-version: 14
+version: 15
 lang: vi
 ---
 
@@ -21,6 +21,14 @@ lang: vi
 4. **Verify ở đích**: mở lại bản vừa đẩy, kiểm vài số mốc. Đẩy xong mà không mở ra nhìn thì chưa gọi
    là xong.
 5. **Ghi lần publish** vào `05_CHANGES.md` — sau khi được duyệt.
+
+## Một kỳ, một file
+
+- Deliverable của một kỳ đè lên bản của kỳ đó; không bao giờ đặt thêm file thứ hai bên cạnh. Lỡ tạo tên sai thì xoá bản thừa.
+- Tên theo mẫu của file gốc trong cùng thư mục (ngày · loại · kỳ); không bao giờ tự đặt tên.
+- "File chuẩn chưa?" trả lời bằng đúng ba phép kiểm, mỗi phép kèm số, rồi dừng: nguồn đã lên · lấy đủ từ cơ sở dữ liệu (chạy lại
+  truy vấn và so từng ô; so với file chính bước kéo sinh ra thì không chứng minh gì) · công thức đúng và đã có giá trị. Thứ khác
+  thấy dọc đường là một dòng trong `spec.md` của task, không thành mục mới.
 
 ## Cấm
 

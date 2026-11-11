@@ -1,5 +1,5 @@
 ---
-version: 15
+version: 16
 lang: vi
 ---
 # Rule_Gate_21_WhatEntersGit — What never enters git
@@ -34,6 +34,8 @@ của repo đó — chỗ riêng DUY NHẤT của repo.
 5. Dữ liệu thật (nguồn · extract · dữ liệu khách) không lên git. Repo chỉ giữ mẫu nhỏ, giả, đủ để mở sản phẩm. Chỗ đặt: slot dữ
    liệu và slot mẫu của `02_STRUCTURE`.
 6. Nhị phân nặng (`.pbix` · `.twb` · `.fig` · `.psd` · model) không commit thẳng; đi theo khai LFS trong `.gitattributes`.
+7. Bí mật người dùng phải đưa ⇒ mở một cửa sổ riêng để người dùng dán thẳng vào nhà của nó (3a-3c); agent không bao giờ hỏi
+   giá trị, không thấy và không in lại nó.
 
 ## Ví dụ
 - Tình huống: một job của repo log cần login SQL chỉ đọc mà máy chủ DW cấp; hai repo khác cũng dùng login đó.

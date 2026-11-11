@@ -2,10 +2,10 @@
 id: Rule_7
 aka: 02-7
 name: scope-only
-version: 10
+version: 11
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_07_ScopeOnly @v10 #dd1eb78e8fe4
+from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_07_ScopeOnly @v11 #064b5e5655fd
 ---
 # Rule_Keys_07_ScopeOnly — Do exactly the work given
 
@@ -31,7 +31,9 @@ for needs a proposal that answers three questions.
 6. "Not related, remove it" ⇒ cut it in that turn and clean fully: the code, the keys of both dictionaries, the test anchors,
    any text still promising it. Explaining the mechanism, renaming it or proposing a replacement is not the answer.
 7. Verify · audit · "can this case be closed" ⇒ measure, report, stop. A defect found while measuring is reported with its
-   measurement and severity; it is fixed only when the person says so.
+   measurement and severity; it is fixed only when the person says so. "Is there X" ⇒ yes or no with the number, then stop: no
+   severity, plan or recommendation unless it blocks the work at hand (then one sentence); a gap outside the repo (another unit
+   has not entered its data) is one line, never a plan.
 
 ## Example
 - Situation: the requester asks to fix a typo in one column title of a report.

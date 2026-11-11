@@ -1,13 +1,13 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 12
+version: 13
 type: process
 installs: [scripts/pbi_engine_query.ps1]
 aka: dev-pbi
 replaces: [Skill_Dev_Pbi]
 description: Build or change a BI report - layout and chart choice, measures and queries kept in one named store, and the report file handled as a heavy binary. Use whenever a report, dashboard, measure or visual is created or changed. Vietnamese triggers - "báo cáo", "dashboard", "biểu đồ", "measure", "DAX", "Power Query", "pbix".
-from: _Store/03_SKILLS/Skill_PBI_Base @v12 #c92378fe3a27
+from: _Store/03_SKILLS/Skill_PBI_Base @v13 #d9cb08a4c561
 ---
 
 # pbi-base — building and editing BI reports
@@ -49,6 +49,13 @@ shared standard of the four kinds is in the three files below; each kind's skill
 
 The group's real values (colour codes, theme, icons, original template, DW server, old-system sources) live in the manager; the standard files only name the key
 in the group's values.
+
+## 5. Reading someone's report to trace a source
+
+- A production `.pbix` and its source workbooks are read only: open a copy, read the model through DMV queries, load a workbook
+  without saving it, write anything derived to the scratch folder; never save over, publish or alter them.
+- Dump a model's queries only to dive deep into that model; a missing dump is not a debt. What must be complete is the repo's
+  report-to-source map.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_62_DesignChangeApproval` — the report design standard whose suggestions are shown first · chuẩn thiết kế báo cáo mà gợi ý phải trình trước

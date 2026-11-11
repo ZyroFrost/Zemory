@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 
@@ -90,6 +90,14 @@ Best regards,
 - Chữ ký và người nhận Cc mặc định lấy từ `values.json` của vùng: `mail_signature` · `mail_cc` cho mail gửi từ hộp thư cá nhân;
   `shared_mailbox` · `shared_mailbox_signature` cho mail gửi từ hộp thư chung — mail đó ký tên đơn vị và không Cc mặc định.
 - Bố cục không phải giọng văn: cách xưng hô theo vai vế người nhận, chốt riêng từng case ở `spec.md`.
+
+## Mail nói gì
+
+- Mail BÁO CÁO mang con số đo thật, vì đó là thứ nó giao: không ước tính ảnh hưởng, không nguyên nhân kinh doanh của một lần tăng hay
+  giảm, không câu yêu cầu người đọc. Con số chờ bộ phận khác thì nói bộ phận nào (đó là đường đi của dữ liệu, không phải nguyên
+  nhân). Chỗ thiếu thì nói thiếu gì, tới ngày nào.
+- Mail GIAO DATA (file gửi để bộ phận khác tự phân tích) nói gửi gì, quy mô bao nhiêu đơn và dòng, và một câu về phạm vi khi phạm
+  vi đọc được hai cách; không số tiền, không thống kê. Số tiền vẫn được đo trước khi gửi.
 
 ## Quy trình áp dụng
 

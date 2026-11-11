@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Rule_Keys_95_DoItDontHandBack — Việc agent làm được thì tự làm; không đẩy về cho người dùng
@@ -14,7 +14,8 @@ Việc agent tự làm được — dọn dẹp trong tầm tay, file do app qu�
 
 ## Phải làm gì
 1. Việc trong tầm tay ⇒ làm: qua endpoint của app khi app quản lý file đó, không thì dừng thứ đang giữ file, sửa, bật lại. Làm được
-   thì không phải lý do để hỏi.
+   thì không phải lý do để hỏi. Chỉ dừng đúng tiến trình đang giữ handle (tìm theo handle); không bao giờ bảo người dùng đóng trình
+   soạn thảo.
 2. Trước khi bảo người dùng "bấm X ở màn Y", kiểm X có thật và làm được; không bao giờ khuyên một thao tác không tồn tại.
 3. Danh sách hay plan đã giao ⇒ làm trọn. Quyết định thật sự thuộc người dùng ⇒ một đoạn: số đo, đề xuất, một câu hỏi — không bao
    giờ một bộ lựa chọn.
