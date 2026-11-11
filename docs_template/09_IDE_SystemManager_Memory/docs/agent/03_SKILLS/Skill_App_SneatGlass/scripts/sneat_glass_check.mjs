@@ -389,7 +389,8 @@ export const RULES = [
       const t = document.getElementById('page-tabs');
       if (!t || !t.getClientRects().length) return true;
       if (t.closest('#page')) return 'the tab panel stands inside the page - it is a panel of the frame above it';
-      if (getComputedStyle(t).position !== 'sticky') return 'the tab panel is not pinned at the top';
+      // (v56) in row 2 the cluster is part of the bar, which is pinned itself
+      if (!t.closest('#layout-navbar') && getComputedStyle(t).position !== 'sticky') return 'the tab panel is not pinned at the top';
       const list = t.querySelector('.page-tabs-list'), items = [...list.querySelectorAll(':scope > .nav-item')].filter(i => i.getClientRects().length);
       if (new Set(items.map(i => Math.round(i.getBoundingClientRect().top))).size > 1 || list.scrollWidth > list.clientWidth + 1) return 'the tabs run past one row - the rest belongs under more';
       const a = list.querySelector('.nav-link.active'), p = t.querySelector('.page-tabs-pill');
@@ -399,7 +400,9 @@ export const RULES = [
       }
       // (v48, the user 09/11: the spaces between tabs were uneven) one space: the first tab at the strip's own room from its left
       // edge, and every two tabs exactly that room apart, within 1 px
-      const pad = parseFloat(getComputedStyle(t).paddingLeft), start = t.getBoundingClientRect().left + t.clientLeft + pad, rs = items.map(i => i.getBoundingClientRect());
+      // (v56) the cluster's grip leads it: the first tab stands that same room after the grip
+      const pad = parseFloat(getComputedStyle(t).paddingLeft), grip = t.querySelector('.page-tabs-grip'), rs = items.map(i => i.getBoundingClientRect());
+      const start = grip && grip.getClientRects().length ? grip.getBoundingClientRect().right + pad : t.getBoundingClientRect().left + t.clientLeft + pad;
       if (rs.length && Math.abs(rs[0].left - start) > 1) return 'the first tab stands ' + Math.round(rs[0].left - start + pad) + ' px from the strip edge, the strip keeps ' + Math.round(pad);
       for (let i = 1; i < rs.length; i++) { const gap = rs[i].left - rs[i - 1].right; if (Math.abs(gap - pad) > 1) return 'two tabs stand ' + Math.round(gap) + ' px apart, the strip ends ' + Math.round(pad) + ' px - one even space'; }
       return true;
@@ -436,12 +439,15 @@ export const RULES = [
       const rows = [document.querySelector('#layout-navbar > .nav-row1'), document.querySelector('#page-bar > .page-toolbar')].filter(r => r && r.getClientRects().length && r.getBoundingClientRect().height > 8);
       for (const row of rows) {
         const b = row.getBoundingClientRect();
-        const kids = [...row.querySelectorAll('button, input, select, a, .breadcrumb, .avatar, .nav-pills')].filter(e => e.getClientRects().length && !e.closest('.dropdown-menu, .slicer-menu, [hidden]'))
-          .map(e => e.getBoundingClientRect()).filter(r => r.width > 0 && r.right > b.left && r.left < b.right);
+        // (v56) the tab cluster in row 2 is one control: its frame, not the grip and tabs inside it
+        const kids = [...row.querySelectorAll('button, input, select, a, .breadcrumb, .avatar, .nav-pills, .page-tabs-panel')]
+          .filter(e => e.getClientRects().length && !e.closest('.dropdown-menu, .slicer-menu, [hidden]') && !(e.parentElement && e.parentElement.closest('.page-tabs-panel')))
+          .map(e => ({e, r: e.getBoundingClientRect()})).filter(({r}) => r.width > 0 && r.right > b.left && r.left < b.right);
         if (!kids.length) continue;
-        const left = Math.min(...kids.map(k => k.left)) - b.left, right = b.right - Math.max(...kids.map(k => k.right));
+        const first = kids.reduce((a, k) => (k.r.left < a.r.left ? k : a));
+        const left = first.r.left - b.left, right = b.right - Math.max(...kids.map(k => k.r.right));
         if (left > b.width / 2) continue;   // nothing stands at the left: no left end to compare
-        if (Math.abs(left - right) > 2) return (row.id || row.className.split(' ')[0]) + ': ' + Math.round(left) + ' px at the left end, ' + Math.round(right) + ' px at the right';
+        if (Math.abs(left - right) > 2) return (row.id || row.className.split(' ')[0]) + ': ' + Math.round(left) + ' px at the left end (' + (first.e.id || String(first.e.className).split(' ')[0] || first.e.tagName) + '), ' + Math.round(right) + ' px at the right';
       }
       return true;
     })()`,
@@ -1138,7 +1144,8 @@ export const RULES = [
     check: `(() => {
       const path = a => { try { let p = new URL(a.getAttribute('href'), location.href).pathname; while (p.length > 1 && p.endsWith('/')) p = p.slice(0, -1); return p; } catch { return ''; } };
       const menu = new Set([...document.querySelectorAll('#layout-menu a[href]')].map(path).filter(p => p && p !== '/'));
-      const tab = [...document.querySelectorAll('#page-bar a[href]')].find(a => a.getClientRects().length && menu.has(path(a)));
+      // (v56) the frame's own tab cluster may stand in row 2 (tabs-cluster); an app's own tab there may not
+      const tab = [...document.querySelectorAll('#page-bar a[href]')].find(a => a.getClientRects().length && !a.closest('#page-tabs') && menu.has(path(a)));
       return tab ? 'a page of the menu stands as a tab on the page bar: ' + tab.textContent.trim() : true;
     })()`,
   },
@@ -1437,14 +1444,13 @@ export const RULES = [
   // (v52, the user 09/11 through an app of the family: "khung panel này đang bị thiếu viền cong ở dưới")
   {
     id: 'tabs-round',
-    rule: 'the tab strip standing apart over a board is a block of its own, rounded at all four corners; over a page card its upper corners are rounded and its lower ones join the card',
+    rule: 'the tab strip over a board ends the top bar\'s block with rounded lower corners; over a page card its lower corners join the card (v56: its upper corners are the bar\'s join, tabs-dock)',
     check: `(() => {
       const t = document.getElementById('page-tabs');
-      if (!t || !t.getClientRects().length || document.documentElement.classList.contains('head-folded')) return true;
+      if (!t || !t.getClientRects().length || t.closest('#layout-navbar')) return true;
       const page = t.nextElementSibling, card = page && page.firstElementChild && page.firstElementChild.matches('.page-card');
       const c = getComputedStyle(t), r = [c.borderTopLeftRadius, c.borderTopRightRadius, c.borderBottomRightRadius, c.borderBottomLeftRadius].map(parseFloat);
-      if (r[0] < 4 || r[1] < 4) return 'the tab strip has square upper corners (' + r.join(' / ') + ')';
-      return card || (r[2] >= 4 && r[3] >= 4) || 'the tab strip standing apart has square lower corners (' + r.join(' / ') + ')';
+      return card || (r[2] >= 4 && r[3] >= 4) || 'the tab strip over a board has square lower corners (' + r.join(' / ') + ')';
     })()`,
   },
   // (v52, the user 09/11 through an app of the family: a fixed period counted as a filter)
@@ -1488,18 +1494,85 @@ export const RULES = [
       return bare ? 'a date range with no relative periods (this month, last month, this year): ' + (bare.querySelector('.filter-label')?.textContent || bare.id).trim().slice(0, 30) : true;
     })()`,
   },
-  // (v50, the user 09/11: "khi kéo mất panel 1 thì panel 3 dính liền lên panel 2" - a board lost its strip under the bar)
+  // (v50, a board lost its strip under the bar; v56, the gap over the strip and the gap under it were not the same - the strip
+  // is always the bar's third row)
   {
     id: 'tabs-dock',
-    rule: 'the tab strip of the sibling pages pins right under the top bar and stays on screen with nothing over it: with three rows it stands apart under the bar (rows 1+2 one block); with row 1 folded it docks on row 2 with no gap (one block 2+3)',
+    rule: 'the tab strip of the sibling pages is the top bar\'s third row: docked on the bar with no gap whether row 1 shows or folds (one block, the bar\'s lower corners and the strip\'s upper ones square), and on screen with nothing over it',
     check: `(() => {
       const t = document.getElementById('page-tabs'), n = document.getElementById('layout-navbar');
-      if (!t || !n || !t.getClientRects().length || innerWidth < 768) return true;
+      if (!t || !n || !t.getClientRects().length || innerWidth < 768 || n.contains(t)) return true;
       const a = t.getBoundingClientRect(), b = n.getBoundingClientRect(), g = a.top - b.bottom;
       const hit = document.elementFromPoint(a.left + Math.min(40, a.width / 2), a.top + a.height / 2);
       if (!hit || !t.contains(hit)) return 'the tab strip is covered by ' + (hit ? (hit.id || String(hit.className).slice(0, 40) || hit.tagName) : 'nothing');
-      if (document.documentElement.classList.contains('head-folded')) return Math.abs(g) <= 1 || 'row 1 folded, the strip stands ' + Math.round(g) + ' px under the bar (docked: 0)';
-      return g >= 8 || 'three rows, the strip stands ' + Math.round(g) + ' px under the bar (apart: the page gap)';
+      if (Math.abs(g) > 1) return 'the strip stands ' + Math.round(g) + ' px under the top bar (docked: 0)';
+      const nc = getComputedStyle(n), tc = getComputedStyle(t);
+      const r = [nc.borderBottomLeftRadius, nc.borderBottomRightRadius, tc.borderTopLeftRadius, tc.borderTopRightRadius].map(parseFloat);
+      return r.every(x => x < 1) || 'docked, the joined corners are not square (bar lower / strip upper: ' + r.join(' / ') + ')';
+    })()`,
+  },
+  // (v56, the user: the long page of a group and its tabs are one setting - a long page needs no tabs)
+  {
+    id: 'page-view-scroll',
+    rule: 'the pages of a group seen as one long page (Settings > Layout, html[data-page-view="scroll"]) show no tab strip',
+    check: `(() => {
+      if (document.documentElement.dataset.pageView !== 'scroll') return true;
+      const t = document.getElementById('page-tabs');
+      return !(t && t.getClientRects().length) || 'the long page of the group still shows the tab strip';
+    })()`,
+  },
+  // (v56, the user: a report of few pages lost a whole row to its strip; the tabs one cluster with a grip to drag it)
+  {
+    id: 'tabs-cluster',
+    rule: 'the tabs of the sibling pages are one cluster led by a grip: in row 2 it is one framed group at the bar\'s one height, between the page\'s tools and the seek group, touching neither, every tab on the row when it stands there on its own (automatic); left automatic, it never stands as row 3 when row 2 has room for it',
+    check: `(() => {
+      const t = document.getElementById('page-tabs');
+      if (!t || !t.getClientRects().length || innerWidth < 768) return true;
+      if (!t.querySelector('.page-tabs-grip')) return 'the tab cluster has no grip to drag it';
+      const bar = document.querySelector('#page-bar .page-toolbar');
+      const list = t.querySelector('.page-tabs-list');
+      if (!bar || !list) return true;
+      if (bar.contains(t)) {
+        const h = parseFloat(getComputedStyle(bar).getPropertyValue('--tool-h')) || 38, r = t.getBoundingClientRect();
+        if (Math.abs(r.height - h) > 1) return 'the tab cluster in row 2 is ' + Math.round(r.height) + ' px tall, the bar is ' + Math.round(h);
+        for (const id of ['card-start', 'card-tools']) {
+          const o = document.getElementById(id), q = o && o.getClientRects().length && o.getBoundingClientRect();
+          if (q && q.width > 0 && r.left < q.right - 1 && r.right > q.left + 1) return 'the tab cluster in row 2 runs into #' + id;
+        }
+        if (t.dataset.place === 'auto' && t.querySelector('#page-tabs-more')) return 'standing in row 2 on its own, the tab cluster hides tabs under more';
+        return true;
+      }
+      if (t.dataset.place !== 'auto') return true;
+      const bs = getComputedStyle(bar), gap = parseFloat(bs.columnGap) || 0;
+      // the seek group grows to fill the row: what it holds is its width, not its box
+      const natural = c => { if (c.id !== 'card-tools') return c.offsetWidth; const k = [...c.children].filter(x => x.getClientRects().length), g = parseFloat(getComputedStyle(c).columnGap) || 0;
+        return k.reduce((a, x) => a + x.offsetWidth, 0) + Math.max(0, k.length - 1) * g; };
+      const others = [...bar.children].filter(c => c.id !== 'page-tabs-slot' && c.getClientRects().length);
+      const used = others.reduce((a, c) => a + natural(c), 0) + Math.max(0, others.length - 1) * gap;
+      const free = bar.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight) - used - gap;
+      if (t.querySelector('#page-tabs-more')) return true;
+      const items = [...list.children], tg = parseFloat(getComputedStyle(list).columnGap) || 0;
+      const need = t.offsetWidth - list.clientWidth + items.reduce((a, li) => a + li.offsetWidth, 0) + tg * Math.max(0, items.length - 1);
+      return need + 48 > free || 'automatic, the tab cluster (' + Math.round(need) + ' px) stands as row 3 while row 2 has ' + Math.round(free) + ' px free';
+    })()`,
+  },
+  // (v56, the user: the three quick periods did not wear the template and did not share the row)
+  {
+    id: 'date-quick-even',
+    rule: 'the quick periods of a date range are one group of the frame\'s switch (grey glass at rest, never the outlined accent button) spanning the row of the two dates in equal parts',
+    check: `(() => {
+      for (const g of document.querySelectorAll('.date-quick')) {
+        const bs = [...g.children].filter(b => b.matches('button') && b.getClientRects().length);
+        if (bs.length < 2) continue;
+        if (bs.some(b => b.matches('.btn-outline-primary'))) return 'a quick period wears the outlined accent button, not the frame\\'s switch';
+        const w = bs.map(b => b.getBoundingClientRect().width);
+        if (Math.max(...w) - Math.min(...w) > 2) return 'the quick periods are not equal (' + w.map(Math.round).join(' / ') + ' px)';
+        const row = g.parentElement && g.parentElement.parentElement, dates = row && row.querySelector('.date-field')?.parentElement;
+        const want = dates ? dates.getBoundingClientRect().width : g.parentElement.clientWidth;
+        const have = g.getBoundingClientRect().width;
+        if (have < want - 2) return 'the quick periods span ' + Math.round(have) + ' of the ' + Math.round(want) + ' px row of the dates';
+      }
+      return true;
     })()`,
   },
   // (v50, the user 09/11: "mẫu người ta là màu trắng")

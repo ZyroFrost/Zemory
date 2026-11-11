@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 55
+version: 56
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -88,13 +88,20 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   and tight, never wider than the card; one even space between its tabs, equal to its room at the ends ("phải cách bằng với
   padding 2 đầu chứ"); the page on screen is lit by a
   pill sliding from the tab before; tabs that do not fit one row go under "Thêm (n)", the page on screen always on the row
-  (never tabs on three lines). Each person shows or hides it in Settings > Layout ("cái tab hiện ra hay ko
-  phải là tính năng được option chọn ở setting"). [page-tabs] **It docks in two modes** (v50): it pins right UNDER the top
-  bar, never at the scroll box's top behind it (a board once lost its strip under the bar). Three rows: rows 1+2 are one block
-  and the strip stands apart under it (the page's top gap, 1rem). Row 1 folded: the strip docks on row 2 with no gap - one
-  block 2+3, the bar's lower corners and the strip's upper ones square, a faint dashed line between - and stays on screen
-  with nothing over it. A page that fills the frame closes that gap the same way. [tabs-dock] Standing apart over a board, the
-  strip is a block of its own, rounded at all four corners (v52); over a page card its lower corners join the card. [tabs-round]
+  (never tabs on three lines). [page-tabs] **One setting for how the pages of a group are seen** (v56), Settings > Layout:
+  One page per tab (the default, for a new person on every screen) · Long scroll (every page of the group on one long page,
+  only in an app that has one) · No tabs; the long page and no tabs show no strip - a long page needs no tabs, and an app never
+  keeps its own switch for it on the page bar. [page-view-scroll] **The strip is the top bar's third row** (v50, v56): it pins
+  right UNDER the top bar, never at the scroll box's top behind it (a board once lost its strip under the bar), docked on row 2
+  with no gap whether row 1 shows or folds - one block, the bar's lower corners and the strip's upper ones square, a faint
+  dashed line between - on screen with nothing over it; the one gap left is the block's to the page (a strip standing apart
+  made the gap over it and the gap under it unequal). [tabs-dock] Over a board the strip ends the block, its lower corners
+  rounded (v52); over a page card its lower corners join the card. [tabs-round] **The tabs are one cluster, led by a grip**
+  (v56: a report of few pages lost a whole row to its strip): left automatic (the default) the cluster stands in row 2 - between
+  the page's tools and the seek group, touching neither, one framed group at the bar's one height - when every tab fits there
+  with room to spare, else as row 3; it moves back only when it no longer fits, never flipping on a few pixels. The person drags
+  it by its grip onto row 2 or under the bar to pin it there (a setting of theirs; Settings > Layout puts it back on automatic);
+  pinned to row 2 with too little room, the tabs left over go under "Thêm (n)". A phone keeps row 3. [tabs-cluster]
 - **The whole app scales to the window from one design canvas** (v50): signed in, the page is drawn on 1920 x 1080 and zoomed to min(width/1920,
   height/1080), never above 1 nor below 0.7, so dragging the window never re-flows the layout; a phone (768 px and less) is
   never zoomed. Each person turns it off in Settings > Layout (Scale to the screen: fit the window | 100%). Under the zoom,
@@ -155,8 +162,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   greeting never takes room in row 1. [crumbs] [bar-switches]
 - **The version of the open app stands at the foot of the menu** (`v<M.m.p>`, read from the app's health), hidden while the
   menu is folded; never in row 1.
-- **A page bar carries no tab to a page of the menu:** the pages of an app are found in the menu; the page bar's left group is
-  the page's tools (its main action, a switch, the cross-filter chips). [tabs-in-menu]
+- **A page bar carries no tab of the app's own to a page of the menu:** the pages of an app are found in the menu; the page
+  bar's left group is the page's tools (its main action, a switch, the cross-filter chips). Only the frame's tab cluster may
+  stand in row 2 (v56, [tabs-cluster]). [tabs-in-menu]
 - **A name a person reads carries no record code before it:** the menu, the crumbs and the card titles say the name
   ("Internal Control Report"), never the code first ("IC_02 …") - the code is an identifier. [no-code-prefix]
 - **The menu brand shows the app's name with its accent part (`.text-primary`, the end of the name) in the shared brand
@@ -309,7 +317,9 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   the quick picks This month · Last month · This year. The value is the TOKEN, not two dead dates: "this month" is the month of
   the last day the data has (today when the page has no such day), this and last month whole calendar months, this year Jan 1
   to Dec 31; the control names it ("Tháng này (11/2026)"); the app keeps the token in the person's settings, so the page opens
-  on the newest month the next time; a newer last day moves the period with it. [date-relative]
+  on the newest month the next time; a newer last day moves the period with it. [date-relative] The three quick picks are
+  one group of the frame's switch (v56) - grey glass framed at rest, the chosen one in the accent fill with the sheen, as the
+  view switch, never the outlined accent button - spanning the row of the two dates in three equal parts. [date-quick-even]
 - **A person reads names, never codes:** a pick list, a filter, a badge or an action name shows the name of a value from the
   dictionaries, never its stored code (`data_query`, `login_ok`); a code outside the list reads as "Other action". The action
   codes are the family's closed list (the app contract of the family database): the app keeps that list with a name for each code in every

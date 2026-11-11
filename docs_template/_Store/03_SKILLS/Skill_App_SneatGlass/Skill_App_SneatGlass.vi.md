@@ -1,5 +1,5 @@
 ---
-version: 55
+version: 56
 lang: vi
 ---
 
@@ -75,18 +75,24 @@ lang: vi
   (`pageHead`); dải nằm trên trang và ngoài trang - đổi tab chỉ đổi trang - neo trên đầu; dải là phần trên của thẻ trang, cùng
   một khối kính, ngăn với trang bằng một đường kẻ mờ, không bao giờ thành panel rời (v48); thấp và gọn, không bao giờ rộng hơn thẻ; mọi tab cách nhau đúng một khoảng,
   bằng lề hai đầu dải ("phải cách bằng với padding 2 đầu chứ"); tab của trang đang mở sáng nhờ viên trượt từ tab trước; tab không vừa một dòng gom vào
-  "Thêm (n)", tab đang mở luôn trên dòng (không để tab xuống 3 dòng). Mỗi người bật/tắt ở Cài đặt > Bố cục ("cái tab hiện ra hay
-  ko phải là tính năng được option chọn ở setting"). [page-tabs] **Dải neo theo hai chế độ** (v50): dải neo ngay DƯỚI thanh trên
-  cùng, không bao giờ neo ở đỉnh khung cuộn sau lưng thanh (trang board từng mất dải dưới thanh). Ba hàng: hàng 1+2 một khối,
-  dải đứng riêng bên dưới (khe đầu trang, 1rem). Hàng 1 thu gọn: dải dính lên hàng 2, không khe - một khối 2+3, góc dưới của
-  thanh và góc trên của dải vuông, giữa là line đứt mờ - và luôn thấy được, không gì đè lên. Trang đầy khung cũng đóng khe
-  như vậy. [tabs-dock]
+  "Thêm (n)", tab đang mở luôn trên dòng (không để tab xuống 3 dòng). [page-tabs] **Một cài đặt cho cách xem các trang cùng
+  nhóm** (v56), Cài đặt > Bố cục: Tab từng trang (mặc định, cho người mới ở mọi màn hình) · Cuộn dài (mọi trang của nhóm nối thành
+  một trang dài, chỉ ở app có kiểu này) · Không tab; cuộn dài và không tab đều không hiện dải - trang dài không cần tab, và app
+  không giữ nút chuyển riêng cho việc này trên thanh trang. [page-view-scroll] **Dải là hàng 3 của thanh trên** (v50, v56): dải
+  neo ngay DƯỚI thanh trên cùng, không bao giờ neo ở đỉnh khung cuộn sau lưng thanh (trang board từng mất dải dưới thanh), dính
+  lên hàng 2 không khe dù hàng 1 hiện hay thu - một khối, góc dưới của thanh và góc trên của dải vuông, giữa là line đứt mờ - luôn
+  thấy được, không gì đè lên; khe duy nhất còn lại là từ khối tới trang (dải đứng riêng làm khe trên và khe dưới dải không đều).
+  [tabs-dock] **Các tab là một cụm, đầu cụm là tay nắm** (v56: báo cáo ít trang mất trọn một hàng cho dải tab): để tự động (mặc
+  định), cụm đứng ở hàng 2 - giữa công cụ của trang và cụm tìm, không chạm bên nào, một nhóm có khung cao bằng cỡ chung của thanh
+  - khi mọi tab vừa ở đó và còn dư chỗ, không thì thành hàng 3; chỉ quay lại khi không còn vừa, không bao giờ nhảy qua lại vì vài
+  px. Người dùng kéo tay nắm thả lên hàng 2 hoặc xuống dưới thanh để ghim cụm ở đó (cài đặt của họ; Cài đặt > Bố cục đưa về tự
+  động); ghim ở hàng 2 mà thiếu chỗ thì tab dư vào "Thêm (n)". Điện thoại giữ hàng 3. [tabs-cluster]
 - **Mọi điểm dừng của đường dẫn là một trang** (v53): mọi nút của menu là một trang - lá là trang của app, nhánh (phòng ban, nhóm
   báo cáo, nhóm con) là danh sách những gì nó chứa, mỗi phần một dòng rộng bằng trang, các trang của nó trải đều. App đưa nhánh
   trang danh sách riêng (`to` của hàng, của nhóm `toggle`); không có thì khung tự vẽ ở `/~/<khoá>`, đường dẫn là các nhánh xuống tới
   nó. Trên menu bấm chữ hàng có hàng con thì mở trang danh sách, mũi tên chỉ gập/mở, rê chuột lên hàng thì bung cây (rời chuột thì
   gập, nhánh của trang đang mở thì giữ); menu thu gọn thì bấm icon mở trang. Đường dẫn, menu và trang danh sách đọc chung một cây.
-  [nav-stops] Đứng riêng trên một board, dải là một khối riêng, bo đủ bốn góc (v52); trên thẻ trang thì hai góc dưới nối vào thẻ. [tabs-round]
+  [nav-stops] Trên một board, dải là phần cuối của khối thanh, hai góc dưới bo (v52); trên thẻ trang thì hai góc dưới nối vào thẻ. [tabs-round]
 - **Kỳ trang luôn giữ không bao giờ được đếm là một bộ lọc** (v52): nút lọc chỉ đếm cái người
   dùng đặt - kỳ hay ngày làm việc cố định (`fixed`, `data-fixed` trên ô của nó) không bao giờ vào số đếm, cũng không sáng như đã đặt.
   [filter-count-fixed]
@@ -137,8 +143,9 @@ lang: vi
   tôi, Cài đặt, các cài đặt nhanh - ngôn ngữ (VI · EN), sáng / tối, công tắc kính - rồi Đăng xuất. Lời chào không bao giờ chiếm chỗ
   ở hàng 1. [crumbs] [bar-switches]
 - **Số phiên bản của app đang mở nằm ở chân menu** (`v<M.m.p>`, đọc từ health của app), ẩn khi menu thu gọn; không bao giờ ở hàng 1.
-- **Thanh trang không có tab tới một trang của menu:** các trang của app tìm trong menu; cụm trái của thanh trang là công cụ của trang
-  (thao tác chính, một công tắc, các chip lọc chéo). [tabs-in-menu]
+- **Thanh trang không có tab riêng của app tới một trang của menu:** các trang của app tìm trong menu; cụm trái của thanh trang là
+  công cụ của trang (thao tác chính, một công tắc, các chip lọc chéo). Chỉ cụm tab của khung được đứng ở hàng 2 (v56,
+  [tabs-cluster]). [tabs-in-menu]
 - **Tên người dùng đọc không mang mã bản ghi phía trước:** menu, đường dẫn và tiêu đề thẻ ghi tên ("Internal Control Report"), không
   bao giờ ghi mã trước ("IC_02 …") - mã là định danh. [no-code-prefix]
 - **Tên app ở menu có phần nhấn (`.text-primary`, cuối tên) mang token màu thương hiệu chung `--g-brand`,** ở cả hai theme; app
@@ -282,7 +289,9 @@ lang: vi
   này · Tháng trước · Năm nay. Giá trị là TOKEN, không phải hai ngày chết: "tháng này" là tháng của ngày cuối có dữ liệu (hôm nay nếu
   trang không có ngày đó), tháng này và tháng trước là trọn tháng lịch, năm nay từ 1/1 tới 31/12; ô hiện tên kỳ ("Tháng này
   (11/2026)"); app lưu token vào cài đặt của người dùng, nên lần sau mở trang là tháng mới nhất; ngày cuối có dữ liệu mới hơn thì
-  kỳ dời theo. [date-relative]
+  kỳ dời theo. [date-relative] Ba nút chọn nhanh là một nhóm nút chuyển của khung (v56) - kính xám có khung khi chưa chọn, nút đang
+  chọn tô màu nhấn có vệt sáng, như nút kiểu xem, không bao giờ là nút viền màu nhấn - trải hết hàng của hai ô ngày, ba phần bằng
+  nhau. [date-quick-even]
 - **Người dùng đọc tên, không đọc mã:** danh sách chọn, bộ lọc, nhãn hay tên hành động hiện tên của giá trị lấy từ từ điển, không
   bao giờ hiện mã lưu (`data_query`, `login_ok`); mã ngoài danh sách đọc là "Hành động khác". Mã hành động là danh sách đóng của
   hệ (hợp đồng app của DB hệ): app giữ danh sách đó, mỗi mã có tên ở mọi ngôn ngữ, và một phép kiểm tĩnh đối chiếu danh sách với
