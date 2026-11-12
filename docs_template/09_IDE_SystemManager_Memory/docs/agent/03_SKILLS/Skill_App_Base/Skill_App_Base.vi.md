@@ -1,5 +1,5 @@
 ---
-version: 40
+version: 41
 lang: vi
 ---
 
@@ -355,7 +355,7 @@ ngang thanh cuộn là lỗi phải bắt) và đo bố cục:
 | U7 | F14 | vùng cuộn thiếu `scrollbar-gutter: stable` |
 | U8 | F4 ② | control hoặc link không có nhãn đọc được |
 | U9 | F4 ③ | chữ Việt bị mã hoá vỡ thành `?` (`Th?ng k?`, một dấu `?` đứng một mình thay cho `—`) |
-| U10 | F1b | tiêu đề cột bảng đang hiển thị thiếu tay nắm kéo có nhãn; QA của app còn kéo, tải lại và đặt lại một cột |
+| U10 | F1b | tiêu đề cột bảng đang hiển thị thiếu tay nắm kéo có nhãn, từ khổ máy tính bảng trở lên (điện thoại ẩn tay nắm, v41); QA của app còn kéo, tải lại và đặt lại một cột |
 
 - **Cấu hình** `ui_check.json` ở gốc repo: `url` (máy chủ dev hoặc một bản mẫu `file:///`) · `pages` (mỗi trang `{name, hash}` hoặc
   `{name, click: "<selector>"}`) · `widths` (mặc định 1920 · 1440 · 1100 · 900 · 390; ≤ 768 đo như điện thoại) · `settle_ms` (chờ
