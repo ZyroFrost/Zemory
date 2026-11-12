@@ -63,13 +63,19 @@ export const KHO_WORD = /(^|[^\p{L}])[Kk]ho(?![\p{L}])(?!\s+(?:dữ\s+liệu|hà
 const KHO_STOCK = /(tồn|nhập|xuất|kiểm)\s+kho(?![\p{L}])/giu;
 const KHO_QUOTED = /"[^"\n]*"|“[^”\n]*”|`[^`\n]*`/g;
 
-/** What the agent wrote to the person this turn (its text blocks since the person last typed), oldest first. */
+/**
+ * What the agent wrote since the last Stop (its text blocks after the last typed line or the last `stop_hook_summary`),
+ * oldest first. Text before an earlier Stop was already checked there: a turn woken by another session's message (a META
+ * user record, so no typed line) kept a blocked line from the person's last prompt in "this turn" and re-blocked every
+ * reply with it (SasinONE, 2026-11-12).
+ */
 export function replyThisTurn(transcriptText: string): string {
   let parts: string[] = [];
   for (const line of transcriptText.split("\n")) {
     if (!line.trim()) continue;
-    let j: { type?: string; message?: { content?: unknown }; isMeta?: boolean };
+    let j: { type?: string; subtype?: string; message?: { content?: unknown }; isMeta?: boolean };
     try { j = JSON.parse(line); } catch { continue; }
+    if (j.type === "system" && j.subtype === "stop_hook_summary") { parts = []; continue; }
     const content = j.message?.content;
     if (j.type === "user" && !j.isMeta) {
       const typed = typeof content === "string" ? content.trim() !== "" && !/^<(task-notification|system-reminder)/.test(content.trim())
