@@ -1,5 +1,5 @@
 ---
-version: 64
+version: 66
 lang: vi
 ---
 
@@ -104,11 +104,19 @@ lang: vi
   trang** (v63, user 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm"): khung vẽ cả hai
   đầu cụm nút ở mọi trang; app truyền cách tải lại (`onRefresh`) và thuật ngữ (`glossary`), không tự vẽ nút làm mới hay chú thích
   riêng; chưa có thuật ngữ thì nút chú thích tắt. [page-std-tools] **Cụm tìm là cụm thứ tư** (v64, user 12/11: "khu vực filter
-  search tính là 1 khu vực riêng thứ 4"): có khung như các cụm kia và luôn neo ở mép phải của hàng ("filter luôn neo bên phải như
-  cũ" - không tay nắm; tab, nút trang, tin trang dời trước nó). Mọi người mở hàng 2 theo thứ tự **tab, nút trang, tin trang, cụm
+  search tính là 1 khu vực riêng thứ 4"): có khung và tay nắm như các cụm kia; mặc định (và khi để tự động) neo ở mép phải của hàng
+  ("mặc định nó dính vào đó… khi user kéo thì vẫn dc"); người dùng kéo cả cụm sang chỗ khác, và kéo từng bộ lọc ghim thả lên bộ
+  khác để đổi thứ tự, như tab ("kéo dc từng khung filter giống tab"). Mọi người mở hàng 2 theo thứ tự **tab, nút trang, tin trang, cụm
   tìm** cho tới khi tự kéo ("mặc định… luôn là tab, nút trang, thông tin, filter… khi nào user kéo mới đổi"). **Bộ lọc ghim không bao giờ tràn sang cụm khác**: mỗi bộ lọc trên thanh giữ bề rộng còn bấm được ("1 khung filter
   nhỏ xíu cũng ko bấm vào dc"); các bộ lọc ghim đầu tiên vừa chỗ thì đứng đó, phần còn lại chờ trong popover; đo bằng px của trang
-  nên mỗi cỡ hiển thị có số riêng của nó. [seek-cluster] Cụm không có gì để hiện thì ẩn, không bao giờ là khung trống.
+  nên mỗi cỡ hiển thị có số riêng của nó. [seek-cluster] Cụm không có gì để hiện thì ẩn, không bao giờ là khung trống. **Mọi
+  cụm phải chạy được khi bấm** (v64, user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt động
+  dc để các repo nó tự dò và sửa"): Làm mới gọi lại server, Chú thích mở danh sách thuật ngữ, nút lọc mở popover có bộ lọc, ô tìm
+  lọc được dòng và trả lại dòng khi xoá chữ, nút gọn/dài đổi được tab - bài kiểm trình duyệt bấm từng cái trên mọi trang rồi để
+  trang như cũ. [bar-works] **Hai đầu neo** (v66, user 12/11: "ko dc để nó nằm giữa"): hàng 2 có nhóm trái xếp từ trái và nhóm
+  phải xếp sát phải, giữa là khoảng trống co giãn - không cụm nào trôi ra giữa; kéo một cụm thì hiện mọi chỗ có thể thả (hai đầu,
+  trước, giữa, sau các cụm mỗi đầu) và cụm vào vạch gần con trỏ nhất. **Cả điện thoại** (v66): mọi luật hàng 2 áp cho điện thoại
+  như máy tính - cụm có khung và tay nắm, bộ lọc ghim, tay nắm cụm tab. [seek-cluster] [bar-zones]
 - **Mọi điểm dừng của đường dẫn là một trang** (v53): mọi nút của menu là một trang - lá là trang của app, nhánh (phòng ban, nhóm
   báo cáo, nhóm con) là danh sách những gì nó chứa, mỗi phần một dòng rộng bằng trang, các trang của nó trải đều. App đưa nhánh
   trang danh sách riêng (`to` của hàng, của nhóm `toggle`); không có thì khung tự vẽ ở `/~/<khoá>`, đường dẫn là các nhánh xuống tới

@@ -655,8 +655,11 @@ export const RULES = [
         // before another cluster, it no longer ends the bar (nor do the page tools have to open it)
         const framedSeek = tools.matches('.bar-cluster') && parseFloat(getComputedStyle(tools).borderTopWidth) >= 1;
         const tr = tools.getBoundingClientRect();
-        const moved = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')]
-          .some(c => c !== tools && shown(c) && c.getBoundingClientRect().left > tr.left);
+        // moved = the person's order puts another cluster after it (read from the flex order, never from where things stand: a
+        // seek group that runs over the page tools must still be caught)
+        const ord = e => parseFloat(getComputedStyle(e).order) || 0;
+        const moved = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot')]
+          .some(c => c !== tools && shown(c.matches('#page-tabs-slot') ? c.firstElementChild : c) && ord(c) > ord(tools));
         if (!moved && Math.abs((framedSeek ? tr.right : end.right) - right) > 2) return 'the seek group does not end at the right end of the bar';
         // nothing of the page's own tools inside the seek group
         const stray = tools.querySelector('.page-actions, .add-btn');
@@ -1597,8 +1600,9 @@ export const RULES = [
     id: 'bar-zones',
     rule: 'row 2 stands in zones - the page\'s buttons, its info (words and figures in .page-info) and the tab cluster; (v62, plan 06 §7: managed in clusters) the buttons stand side by side in ONE framed cluster led by its grip, the info in one framed cluster led by its grip with an edge that shortens it, the tab cluster framed with only the row\'s gap before it; (v63) every cluster at one height, the info framed like the buttons and the tabs, and two clusters side by side parted by the row\'s own padding at its ends; no words of the page stand loose among its buttons',
     check: `(() => {
+      // (v65, the user 12/11: every new feature on the phone too) read on a phone as on a desktop
       const start = document.querySelector('#page-bar #card-start');
-      if (!start || innerWidth < 768) return true;
+      if (!start) return true;
       const shown = e => e.getClientRects().length > 0;
       const walk = document.createTreeWalker(start, NodeFilter.SHOW_TEXT);
       for (let n = walk.nextNode(); n; n = walk.nextNode()) {
@@ -1654,6 +1658,10 @@ export const RULES = [
           const gap = b.left - a.right;
           // (v64) the seek cluster standing last keeps the row's right end: the room before it is what the row leaves, never less
           if (i === units.length - 1 && units[i].e.dataset.cluster === 'seek') { if (gap < pad - 1) return 'the seek cluster stands ' + Math.round(gap) + ' px from the cluster before it, the row keeps ' + Math.round(pad); continue; }
+          // (v65, the user 12/11: two anchored ends) across the spacer between the left and the right group the room is what the
+          // row leaves, never less than its padding
+          const sp = row.querySelector(':scope > .bar-spacer'), spr = sp && sp.getBoundingClientRect();
+          if (spr && spr.left >= a.right - 1 && spr.right <= b.left + 1) { if (gap < pad - 1) return 'the two ends of row 2 stand ' + Math.round(gap) + ' px apart, the row keeps ' + Math.round(pad); continue; }
           if (Math.abs(gap - pad) > 1) return 'two clusters of row 2 stand ' + Math.round(gap) + ' px apart, the row keeps ' + Math.round(pad) + ' px at its ends';
         }
       }
@@ -1666,7 +1674,7 @@ export const RULES = [
     rule: 'every tab of the cluster on a desktop can be dragged to reorder the group, the person\'s order kept',
     check: `(() => {
       const t = document.getElementById('page-tabs');
-      if (!t || !t.getClientRects().length || innerWidth < 768) return true;
+      if (!t || !t.getClientRects().length) return true;
       const fixed = [...t.querySelectorAll('.page-tabs-list > .nav-item[data-to]')].find(li => li.getAttribute('draggable') !== 'true');
       return !fixed || 'a tab cannot be dragged to reorder its group: ' + fixed.textContent.trim().slice(0, 30);
     })()`,
@@ -1681,6 +1689,10 @@ export const RULES = [
       if (!t || !t.getClientRects().length) return true;
       const sw = t.querySelector('#page-tabs-style');
       if (!sw || !sw.getClientRects().length) return 'the tab cluster has no short / long switch';
+      // (v64, the user 12/11: "lỗi tràn khung") every tab and "more (n)" stands inside the cluster's frame
+      const fr = t.getBoundingClientRect();
+      const out = [...t.querySelectorAll('.page-tabs-list > .nav-item')].find(li => li.getClientRects().length && (li.getBoundingClientRect().right > fr.right + 1 || li.getBoundingClientRect().left < fr.left - 1));
+      if (out) return 'a tab runs past the frame of its cluster: ' + out.textContent.trim().slice(0, 30);
       if (t.parentElement && t.parentElement.id === 'page-tabs-slot') {
         const r = t.getBoundingClientRect();
         const hit = [...document.querySelectorAll('#card-tools button, #card-tools input, #card-tools select')]
@@ -1695,18 +1707,46 @@ export const RULES = [
   // nén… chỉ lấy các filter ở đầu ra thôi… 1 khung filter nhỏ xíu cũng ko bấm vào dc")
   {
     id: 'seek-cluster',
-    rule: 'the seek group (pinned filters, filter button, filter box, view switch) is the fourth cluster of row 2, framed like the others and always anchored at the row\'s right end (no grip: the other three move before it); its pinned filters never run over another cluster, and each one on the bar keeps a width it can be pressed at (at least 6rem of the page) - the first pinned ones stand there, the ones that do not fit wait in the popover; measured in the page\'s own px, so every display size fits its own count',
+    rule: 'the seek group (pinned filters, filter button, filter box, view switch) is the fourth cluster of row 2, framed and led by a grip like the others, anchored at the row\'s right end by default (the person drags it elsewhere, or drags one pinned filter onto another to reorder them); its pinned filters never run over another cluster, and each one on the bar keeps a width it can be pressed at (at least 6rem of the page) - the first pinned ones stand there, the ones that do not fit wait in the popover; measured in the page\'s own px, so every display size fits its own count',
     check: `(() => {
       const bar = document.querySelector('#page-bar > .page-toolbar'), tools = bar && bar.querySelector(':scope > .card-tools');
-      if (!bar || !tools || !bar.getClientRects().length || innerWidth < 768) return true;
+      if (!bar || !tools || !bar.getClientRects().length) return true;
       if (!tools.matches('.bar-cluster[data-cluster="seek"]') || !(parseFloat(getComputedStyle(tools).borderTopWidth) >= 1)) return 'the seek group is no framed cluster of row 2';
-      // (the user 12/11: "filter luôn neo bên phải như cũ") it always ends the row at its right: no cluster after it
+      // (the user 12/11: "filter… nắm kéo dc cả cụm như 3 cụm kia… mặc định nó dính vào đó… khi user kéo thì vẫn dc") led by its grip;
+      // standing last (the default) it is anchored at the row's right end
+      const grip = tools.querySelector(':scope > .bar-grip');
+      if (!grip || !grip.getClientRects().length) return 'the seek cluster has no grip to drag it';
       const tr = tools.getBoundingClientRect(), bs = getComputedStyle(bar), right = bar.getBoundingClientRect().right - parseFloat(bs.paddingRight);
-      if (Math.abs(tr.right - right) > 2) return 'the seek cluster does not end the row at its right (' + Math.round(right - tr.right) + ' px short)';
       const after = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')].find(c => c !== tools && c.getClientRects().length && c.getBoundingClientRect().left >= tr.right - 1 && c.getBoundingClientRect().top < tr.bottom && c.getBoundingClientRect().bottom > tr.top);
-      if (after) return 'a cluster stands after the seek cluster: ' + (after.dataset.cluster || after.id);
+      // (v65) two anchored ends: no cluster may float in the middle - every cluster stands against its own end, the left group
+      // packed from the left and the right group packed against the right (read by the spacer between them, when the frame
+      // draws one); a seek cluster in the right group, last of it, ends the row
+      const inLeft = (parseFloat(getComputedStyle(tools).order) || 0) < 500;
+      if (!after && !inLeft && innerWidth >= 768 && Math.abs(tr.right - right) > 2) return 'the seek cluster, last of the row, is not anchored at its right end (' + Math.round(right - tr.right) + ' px short)';
+      const sp = bar.querySelector(':scope > .bar-spacer');
+      const oneLine = (() => { const tops = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')].filter(c => c.getClientRects().length).map(c => Math.round(c.getBoundingClientRect().top)); return Math.max(...tops) - Math.min(...tops) <= 2; })();
+      if (sp && sp.getClientRects().length && oneLine) {
+        const so = parseFloat(getComputedStyle(sp).order) || 500, gapX = parseFloat(bs.columnGap) || 0;
+        const all = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')].filter(c => c.getClientRects().length && c.getBoundingClientRect().width > 0)
+          .map(c => ({c, o: parseFloat(getComputedStyle(c.matches('.page-tabs-panel') ? c.parentElement : c).order) || 0, r: c.getBoundingClientRect()}));
+        const lefts = all.filter(u => u.o < so).sort((x, y) => x.r.left - y.r.left), rights = all.filter(u => u.o > so).sort((x, y) => x.r.left - y.r.left);
+        const pack = (list, from, dir) => { let at = from; for (const u of (dir > 0 ? list : [...list].reverse())) {
+          const edge = dir > 0 ? u.r.left : u.r.right;
+          if (Math.abs(edge - at) > 2) return u.c.dataset.cluster || 'tabs';
+          at = dir > 0 ? u.r.right + gapX : u.r.left - gapX; } return null; };
+        const leftEdge = bar.getBoundingClientRect().left + parseFloat(bs.paddingLeft), lead = bar.querySelector(':scope > .card-lead');
+        const lf = pack(lefts, lead && lead.getClientRects().length ? lead.getBoundingClientRect().right + gapX : leftEdge, 1);
+        if (lf) return 'a cluster of the left group floats away from the left end: ' + lf;
+        const rf = pack(rights, right, -1);
+        if (rf) return 'a cluster of the right group floats away from the right end: ' + rf;
+      }
+      // (the user 12/11: "khung filter phải theo size filter tổng chứ ko dc dài hơn") the frame is as wide as what it holds
+      const ts = getComputedStyle(tools), kids = [...tools.children].filter(k => k.getClientRects().length && k.getBoundingClientRect().width > 0);
+      const holds = kids.reduce((a, k) => a + k.getBoundingClientRect().width, 0) + Math.max(0, kids.length - 1) * (parseFloat(ts.columnGap) || 0)
+        + parseFloat(ts.paddingLeft) + parseFloat(ts.paddingRight) + parseFloat(ts.borderLeftWidth) + parseFloat(ts.borderRightWidth);
+      if (tr.width > holds + 4) return 'the seek frame is ' + Math.round(tr.width) + ' px, what it holds ' + Math.round(holds) + ' - wider than its filters';
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-      const places = [...tools.querySelectorAll('#filter-row > .filter-place')].filter(p => p.getClientRects().length);
+      const places =[...tools.querySelectorAll('#filter-row > .filter-place')].filter(p => p.getClientRects().length);
       const thin = places.find(p => p.offsetWidth < 6 * rem - 1);
       if (thin) return 'a pinned filter on the bar is ' + thin.offsetWidth + ' px wide, too narrow to press (at least ' + Math.round(6 * rem) + '): ' + (thin.dataset.filterId || '');
       const row = tools.querySelector('#filter-row');
@@ -1722,7 +1762,7 @@ export const RULES = [
   // (v63, the user 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm")
   {
     id: 'page-std-tools',
-    rule: 'every page\'s buttons cluster opens with the frame\'s refresh button and its glossary button (the glossary lists the page\'s words; with none it stands turned off) - an app hands its own loading (onRefresh) and its words (glossary), never a refresh or glossary button of its own beside them',
+    rule: 'every page\'s buttons cluster opens with the frame\'s refresh button and its glossary button, and (v65) every page hands the words of what it shows - the glossary is never empty or turned off - an app hands its own loading (onRefresh) and its words (glossary), never a refresh or glossary button of its own beside them',
     check: `(() => {
       // (the tools box may be drawn as its children, display: contents - it has no rects of its own; the bar tells it is shown)
       const start = document.querySelector('#page-bar #card-start'), bar = start && start.closest('.page-toolbar');
@@ -1732,6 +1772,9 @@ export const RULES = [
       if (!shown(r)) return 'the page buttons have no refresh button';
       if (!shown(g)) return 'the page buttons have no glossary button';
       if (r.closest('.bar-cluster') !== g.closest('.bar-cluster')) return 'refresh and glossary stand in different clusters';
+      // (v65, the user 12/11: "nhiều trang đang ko có bảng mô tả ở nút mô tả, nút mô tả phải mô tả thông tin của trang") every
+      // page hands the words of what it shows: a glossary turned off, or with no word, is red
+      if (g.disabled || !(Number(g.dataset.count) > 0)) return 'the glossary of this page holds no words - hand the page\\'s terms (glossary) to its PageCard / PageToolbar / DomPage';
       const own = [...start.querySelectorAll('button, a.btn')].filter(b => shown(b) && b !== r && b !== g && /\\bbx-(refresh|book-open|list-ul)\\b/.test(b.innerHTML) && !b.closest('.dropdown-menu, .modal'));
       if (own.length) return 'a refresh or glossary button of the app stands beside the frame\\'s: ' + (own[0].id || own[0].getAttribute('aria-label') || '').slice(0, 30);
       return true;
@@ -1815,6 +1858,85 @@ export const DIALOG_RULES = [
 
 /** (v31) Probes: async browser expressions (evaluate with awaitPromise) that move the page and measure it, then put it back. */
 export const PROBES = [
+  // (v64, the user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt động dc để các repo nó tự dò
+  // và sửa") every control of row 2 is pressed as a person would and must do what it says; the page is left as it was
+  {
+    id: 'bar-works',
+    rule: 'every cluster of row 2 works when pressed: refresh asks the server again (a request within 8 s); the glossary opens its dialog with its words and Escape closes it (or it stands turned off with no words); the filter button opens its popover, which holds filters, and Escape closes it; the filter box filters what the page shows (a text no row holds leaves no row or the empty state, clearing it gives every row back); the short / long switch of the tabs changes them or offers the ways out; the page is left as it was',
+    check: `(async () => {
+      const bar = document.querySelector('#page-bar > .page-toolbar, .page-toolbar');
+      if (!bar || !bar.getClientRects().length) return true;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const until = async (f, ms) => { for (let t = 0; t <= ms; t += 100) { try { if (f()) return true; } catch { /* drawing */ } await wait(100); } return false; };
+      const shown = e => Boolean(e) && e.getClientRects().length > 0;
+      const esc = () => { for (const type of ['keydown', 'keyup']) document.dispatchEvent(new KeyboardEvent(type, {key: 'Escape', bubbles: true})); };
+      const out = [];
+      // refresh: one request to the server at least, counted on fetch and XMLHttpRequest
+      const refresh = document.getElementById('page-refresh');
+      if (shown(refresh) && !refresh.disabled) {
+        // the frame's own rounds (who is signed in, health, notices, the person's settings) are not the page asking again
+        let asked = 0;
+        const own = u => /\\/(auth\\/me|auth\\/ui|health|notices|notifications)\\b/.test(String(u && (u.url || u)));
+        const fetch0 = window.fetch, open0 = XMLHttpRequest.prototype.open;
+        window.fetch = function (...a) { if (!own(a[0])) asked++; return fetch0.apply(this, a); };
+        XMLHttpRequest.prototype.open = function (...a) { if (!own(a[1])) asked++; return open0.apply(this, a); };
+        try { refresh.click(); if (!(await until(() => asked > 0, 8000))) out.push('refresh asked the server nothing'); }
+        finally { window.fetch = fetch0; XMLHttpRequest.prototype.open = open0; }
+        await until(() => !document.querySelector('#page-refresh[aria-busy="true"]'), 15000);
+        await wait(600);
+      }
+      // glossary: its dialog with its words, closed by Escape
+      const gl = document.getElementById('page-glossary');
+      if (shown(gl) && !gl.disabled) {
+        gl.click();
+        const d = () => document.querySelector('#page-glossary-dialog');
+        if (!(await until(() => d() && d().open, 2000))) out.push('the glossary opened no dialog');
+        else {
+          if (!d().querySelector('dt')) out.push('the glossary dialog holds no words');
+          esc();
+          if (!(await until(() => !d() || !d().open, 2000))) out.push('Escape left the glossary open');
+        }
+      }
+      // filter button: its popover, holding filters, closed by Escape
+      const ft = document.getElementById('filter-toggle'), pop = document.getElementById('filter-pop');
+      if (shown(ft) && !ft.disabled && pop) {
+        ft.click();
+        if (!(await until(() => !pop.hidden && shown(pop), 2000))) out.push('the filter button opened no popover');
+        else {
+          if (!pop.querySelector('.filter-place, .filter-field, select, input') && !document.querySelector('#filter-row .filter-place')) out.push('the filter popover holds no filter');
+          esc();
+          if (!(await until(() => pop.hidden || !shown(pop), 2000))) out.push('Escape left the filter popover open');
+        }
+      }
+      // filter box: a text no row holds empties the list; clearing gives the rows back
+      const box = document.querySelector('#page-search input, .page-toolbar .page-search input');
+      const rows = () => [...document.querySelectorAll('#page table tbody tr, #page .view-grid tbody tr')].filter(r => shown(r) && !r.querySelector('[data-empty], .empty-state')).length;
+      if (shown(box) && !box.disabled) {
+        const n0 = rows();
+        if (n0 > 0) {
+          const put = v => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(box, v); box.dispatchEvent(new Event('input', {bubbles: true})); };
+          put('zq\\u00a7xj~nothing');
+          if (!(await until(() => rows() < n0 || document.querySelector('#page [data-empty], #page .empty-state'), 3000))) out.push('the filter box filtered nothing (' + n0 + ' rows stayed)');
+          put('');
+          if (!(await until(() => rows() >= n0, 3000))) out.push('clearing the filter box did not give the rows back (' + rows() + ' of ' + n0 + ')');
+        }
+      }
+      // the short / long switch: the tabs change, or the ways out are offered; then back as it was
+      const sw = document.getElementById('page-tabs-style');
+      if (shown(sw)) {
+        const s0 = sw.dataset.style;
+        sw.click();
+        const changed = await until(() => { const n = document.getElementById('page-tabs-style'); return (n && n.dataset.style !== s0) || shown(document.getElementById('page-tabs-offer')); }, 2500);
+        if (!changed) out.push('the short / long switch of the tabs did nothing');
+        else if (shown(document.getElementById('page-tabs-offer'))) { esc(); document.body.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true})); }
+        else { const n = document.getElementById('page-tabs-style'); if (n) n.click(); await until(() => document.getElementById('page-tabs-style')?.dataset.style === s0, 2500); }
+      }
+      // every grip and edge takes the pointer
+      const dead = [...document.querySelectorAll('.bar-grip, #page-tabs-grip, .bar-resize')].find(g => shown(g) && getComputedStyle(g).pointerEvents === 'none');
+      if (dead) out.push('a grip of row 2 does not take the pointer');
+      return out.length ? out.join('; ') : true;
+    })()`,
+  },
   // (v51, the user 09/11 through an app of the family: a widened column ran a table out of its panel. Async, Reconcile 09/11: a
   // page that draws its tables after it settles - a journal awaiting its API - passed a rule read at once on no table at all)
   {

@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 65
+version: 66
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -132,7 +132,11 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   cluster works when pressed** (v64, the user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt
   động dc để các repo nó tự dò và sửa"): refresh asks the server again, the glossary opens its words, the filter button its
   popover of filters, the filter box filters the rows and gives them back, the tab switch changes the tabs - each pressed by the
-  browser check on every page, the page left as it was. [bar-works]
+  browser check on every page, the page left as it was. [bar-works] **Two anchored ends** (v66, the user 12/11: "ko dc để nó nằm
+  giữa"): row 2 holds a left group packed from the left and a right group packed against the right, a spacer between - no cluster
+  floats in the middle; a dragged cluster shows every place it can join (both ends, before, between and after the clusters of
+  each end) and lands on the one nearest the pointer. **The phone too** (v66): every rule of row 2 holds on a phone as on a desktop
+  - framed clusters with their grips, pinned filters, the tab grip. [seek-cluster] [bar-zones]
 - **The whole app scales to the window from one design canvas** (v50): signed in, the page is drawn on 1920 x 1080 and zoomed to min(width/1920,
   height/1080), never above 1 nor below 0.7, so dragging the window never re-flows the layout; a phone (768 px and less) is
   never zoomed. Each person turns it off in Settings > Layout (Scale to the screen: fit the window | 100%). Under the zoom,

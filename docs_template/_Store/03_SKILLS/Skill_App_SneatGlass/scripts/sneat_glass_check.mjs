@@ -655,8 +655,11 @@ export const RULES = [
         // before another cluster, it no longer ends the bar (nor do the page tools have to open it)
         const framedSeek = tools.matches('.bar-cluster') && parseFloat(getComputedStyle(tools).borderTopWidth) >= 1;
         const tr = tools.getBoundingClientRect();
-        const moved = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')]
-          .some(c => c !== tools && shown(c) && c.getBoundingClientRect().left > tr.left);
+        // moved = the person's order puts another cluster after it (read from the flex order, never from where things stand: a
+        // seek group that runs over the page tools must still be caught)
+        const ord = e => parseFloat(getComputedStyle(e).order) || 0;
+        const moved = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot')]
+          .some(c => c !== tools && shown(c.matches('#page-tabs-slot') ? c.firstElementChild : c) && ord(c) > ord(tools));
         if (!moved && Math.abs((framedSeek ? tr.right : end.right) - right) > 2) return 'the seek group does not end at the right end of the bar';
         // nothing of the page's own tools inside the seek group
         const stray = tools.querySelector('.page-actions, .add-btn');
@@ -1597,8 +1600,9 @@ export const RULES = [
     id: 'bar-zones',
     rule: 'row 2 stands in zones - the page\'s buttons, its info (words and figures in .page-info) and the tab cluster; (v62, plan 06 §7: managed in clusters) the buttons stand side by side in ONE framed cluster led by its grip, the info in one framed cluster led by its grip with an edge that shortens it, the tab cluster framed with only the row\'s gap before it; (v63) every cluster at one height, the info framed like the buttons and the tabs, and two clusters side by side parted by the row\'s own padding at its ends; no words of the page stand loose among its buttons',
     check: `(() => {
+      // (v65, the user 12/11: every new feature on the phone too) read on a phone as on a desktop
       const start = document.querySelector('#page-bar #card-start');
-      if (!start || innerWidth < 768) return true;
+      if (!start) return true;
       const shown = e => e.getClientRects().length > 0;
       const walk = document.createTreeWalker(start, NodeFilter.SHOW_TEXT);
       for (let n = walk.nextNode(); n; n = walk.nextNode()) {
@@ -1654,6 +1658,10 @@ export const RULES = [
           const gap = b.left - a.right;
           // (v64) the seek cluster standing last keeps the row's right end: the room before it is what the row leaves, never less
           if (i === units.length - 1 && units[i].e.dataset.cluster === 'seek') { if (gap < pad - 1) return 'the seek cluster stands ' + Math.round(gap) + ' px from the cluster before it, the row keeps ' + Math.round(pad); continue; }
+          // (v65, the user 12/11: two anchored ends) across the spacer between the left and the right group the room is what the
+          // row leaves, never less than its padding
+          const sp = row.querySelector(':scope > .bar-spacer'), spr = sp && sp.getBoundingClientRect();
+          if (spr && spr.left >= a.right - 1 && spr.right <= b.left + 1) { if (gap < pad - 1) return 'the two ends of row 2 stand ' + Math.round(gap) + ' px apart, the row keeps ' + Math.round(pad); continue; }
           if (Math.abs(gap - pad) > 1) return 'two clusters of row 2 stand ' + Math.round(gap) + ' px apart, the row keeps ' + Math.round(pad) + ' px at its ends';
         }
       }
@@ -1666,7 +1674,7 @@ export const RULES = [
     rule: 'every tab of the cluster on a desktop can be dragged to reorder the group, the person\'s order kept',
     check: `(() => {
       const t = document.getElementById('page-tabs');
-      if (!t || !t.getClientRects().length || innerWidth < 768) return true;
+      if (!t || !t.getClientRects().length) return true;
       const fixed = [...t.querySelectorAll('.page-tabs-list > .nav-item[data-to]')].find(li => li.getAttribute('draggable') !== 'true');
       return !fixed || 'a tab cannot be dragged to reorder its group: ' + fixed.textContent.trim().slice(0, 30);
     })()`,
@@ -1702,7 +1710,7 @@ export const RULES = [
     rule: 'the seek group (pinned filters, filter button, filter box, view switch) is the fourth cluster of row 2, framed and led by a grip like the others, anchored at the row\'s right end by default (the person drags it elsewhere, or drags one pinned filter onto another to reorder them); its pinned filters never run over another cluster, and each one on the bar keeps a width it can be pressed at (at least 6rem of the page) - the first pinned ones stand there, the ones that do not fit wait in the popover; measured in the page\'s own px, so every display size fits its own count',
     check: `(() => {
       const bar = document.querySelector('#page-bar > .page-toolbar'), tools = bar && bar.querySelector(':scope > .card-tools');
-      if (!bar || !tools || !bar.getClientRects().length || innerWidth < 768) return true;
+      if (!bar || !tools || !bar.getClientRects().length) return true;
       if (!tools.matches('.bar-cluster[data-cluster="seek"]') || !(parseFloat(getComputedStyle(tools).borderTopWidth) >= 1)) return 'the seek group is no framed cluster of row 2';
       // (the user 12/11: "filter… nắm kéo dc cả cụm như 3 cụm kia… mặc định nó dính vào đó… khi user kéo thì vẫn dc") led by its grip;
       // standing last (the default) it is anchored at the row's right end
@@ -1710,7 +1718,28 @@ export const RULES = [
       if (!grip || !grip.getClientRects().length) return 'the seek cluster has no grip to drag it';
       const tr = tools.getBoundingClientRect(), bs = getComputedStyle(bar), right = bar.getBoundingClientRect().right - parseFloat(bs.paddingRight);
       const after = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')].find(c => c !== tools && c.getClientRects().length && c.getBoundingClientRect().left >= tr.right - 1 && c.getBoundingClientRect().top < tr.bottom && c.getBoundingClientRect().bottom > tr.top);
-      if (!after && Math.abs(tr.right - right) > 2) return 'the seek cluster, last of the row, is not anchored at its right end (' + Math.round(right - tr.right) + ' px short)';
+      // (v65) two anchored ends: no cluster may float in the middle - every cluster stands against its own end, the left group
+      // packed from the left and the right group packed against the right (read by the spacer between them, when the frame
+      // draws one); a seek cluster in the right group, last of it, ends the row
+      const inLeft = (parseFloat(getComputedStyle(tools).order) || 0) < 500;
+      if (!after && !inLeft && innerWidth >= 768 && Math.abs(tr.right - right) > 2) return 'the seek cluster, last of the row, is not anchored at its right end (' + Math.round(right - tr.right) + ' px short)';
+      const sp = bar.querySelector(':scope > .bar-spacer');
+      const oneLine = (() => { const tops = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')].filter(c => c.getClientRects().length).map(c => Math.round(c.getBoundingClientRect().top)); return Math.max(...tops) - Math.min(...tops) <= 2; })();
+      if (sp && sp.getClientRects().length && oneLine) {
+        const so = parseFloat(getComputedStyle(sp).order) || 500, gapX = parseFloat(bs.columnGap) || 0;
+        const all = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')].filter(c => c.getClientRects().length && c.getBoundingClientRect().width > 0)
+          .map(c => ({c, o: parseFloat(getComputedStyle(c.matches('.page-tabs-panel') ? c.parentElement : c).order) || 0, r: c.getBoundingClientRect()}));
+        const lefts = all.filter(u => u.o < so).sort((x, y) => x.r.left - y.r.left), rights = all.filter(u => u.o > so).sort((x, y) => x.r.left - y.r.left);
+        const pack = (list, from, dir) => { let at = from; for (const u of (dir > 0 ? list : [...list].reverse())) {
+          const edge = dir > 0 ? u.r.left : u.r.right;
+          if (Math.abs(edge - at) > 2) return u.c.dataset.cluster || 'tabs';
+          at = dir > 0 ? u.r.right + gapX : u.r.left - gapX; } return null; };
+        const leftEdge = bar.getBoundingClientRect().left + parseFloat(bs.paddingLeft), lead = bar.querySelector(':scope > .card-lead');
+        const lf = pack(lefts, lead && lead.getClientRects().length ? lead.getBoundingClientRect().right + gapX : leftEdge, 1);
+        if (lf) return 'a cluster of the left group floats away from the left end: ' + lf;
+        const rf = pack(rights, right, -1);
+        if (rf) return 'a cluster of the right group floats away from the right end: ' + rf;
+      }
       // (the user 12/11: "khung filter phải theo size filter tổng chứ ko dc dài hơn") the frame is as wide as what it holds
       const ts = getComputedStyle(tools), kids = [...tools.children].filter(k => k.getClientRects().length && k.getBoundingClientRect().width > 0);
       const holds = kids.reduce((a, k) => a + k.getBoundingClientRect().width, 0) + Math.max(0, kids.length - 1) * (parseFloat(ts.columnGap) || 0)

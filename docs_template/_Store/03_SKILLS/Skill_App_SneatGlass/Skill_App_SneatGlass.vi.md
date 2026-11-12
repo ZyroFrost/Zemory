@@ -1,5 +1,5 @@
 ---
-version: 65
+version: 66
 lang: vi
 ---
 
@@ -113,7 +113,10 @@ lang: vi
   cụm phải chạy được khi bấm** (v64, user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt động
   dc để các repo nó tự dò và sửa"): Làm mới gọi lại server, Chú thích mở danh sách thuật ngữ, nút lọc mở popover có bộ lọc, ô tìm
   lọc được dòng và trả lại dòng khi xoá chữ, nút gọn/dài đổi được tab - bài kiểm trình duyệt bấm từng cái trên mọi trang rồi để
-  trang như cũ. [bar-works]
+  trang như cũ. [bar-works] **Hai đầu neo** (v66, user 12/11: "ko dc để nó nằm giữa"): hàng 2 có nhóm trái xếp từ trái và nhóm
+  phải xếp sát phải, giữa là khoảng trống co giãn - không cụm nào trôi ra giữa; kéo một cụm thì hiện mọi chỗ có thể thả (hai đầu,
+  trước, giữa, sau các cụm mỗi đầu) và cụm vào vạch gần con trỏ nhất. **Cả điện thoại** (v66): mọi luật hàng 2 áp cho điện thoại
+  như máy tính - cụm có khung và tay nắm, bộ lọc ghim, tay nắm cụm tab. [seek-cluster] [bar-zones]
 - **Mọi điểm dừng của đường dẫn là một trang** (v53): mọi nút của menu là một trang - lá là trang của app, nhánh (phòng ban, nhóm
   báo cáo, nhóm con) là danh sách những gì nó chứa, mỗi phần một dòng rộng bằng trang, các trang của nó trải đều. App đưa nhánh
   trang danh sách riêng (`to` của hàng, của nhóm `toggle`); không có thì khung tự vẽ ở `/~/<khoá>`, đường dẫn là các nhánh xuống tới
