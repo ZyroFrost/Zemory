@@ -1,5 +1,5 @@
 ---
-version: 13
+version: 14
 lang: vi
 ---
 
@@ -14,6 +14,9 @@ lang: vi
 - Chọn biểu đồ theo câu hỏi: so sánh giữa nhóm ⇒ cột/thanh · xu hướng theo thời gian ⇒ đường · cơ cấu ít phần ⇒ cột chồng
   hoặc tròn (tối đa vài phần) · chi tiết tra cứu ⇒ bảng.
 - Mỗi hình có tiêu đề nói điều nó trả lời; mỗi số có đơn vị và kỳ; nhãn bằng từ nghiệp vụ (`Rule_Gate_02_ReaderText`).
+  Lời nói của người yêu cầu được đổi sang từ nghiệp vụ trước khi vào display name, legend hay tiêu đề ("full thuế" → `Sau VAT`,
+  "chưa thuế" → `Trước VAT`, hoặc `+VAT` / `-VAT`); cột nằm dưới tiêu đề đã nêu measure thì chỉ giữ từ ngắn (tiêu đề
+  `Doanh Thu NQ` → cột `Trước VAT` · `Sau VAT` · `Target`).
 - Ý tưởng biểu đồ mới ⇒ rút khuyến nghị, trình phương án; không tự áp.
 
 ## 2. Measure và truy vấn

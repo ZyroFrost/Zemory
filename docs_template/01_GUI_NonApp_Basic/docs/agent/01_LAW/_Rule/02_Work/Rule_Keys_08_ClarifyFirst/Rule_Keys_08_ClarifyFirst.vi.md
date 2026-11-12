@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 # Rule_Keys_08_ClarifyFirst — Unclear ⇒ make it clear; unreasonable ⇒ push back before doing it
@@ -29,6 +29,9 @@ Agent tự kích, không chờ lời gọi, khi thấy:
    không phải lời nhắc đi tiếp.
 9. Trước khi hỏi một câu thiết kế, tra plan và bộ nhớ chung bằng chính từ khoá của câu hỏi. Hai điểm đã chốt có vẻ đụng nhau gần
    như luôn nói về hai thứ khác nhau: đọc kỹ cả hai trước khi hỏi.
+10. Lệnh xoá hay dọn nói lỏng ⇒ trước hết tìm việc gỡ đã hẹn trong `04_TODO` hoặc spec của case. Có việc khớp và điều kiện của nó
+   đã đủ ⇒ làm đúng việc đó (sao lưu, kiểm, báo một lần): không nới thành xoá cả file, không hỏi vòng lại. Chỉ hỏi khi không có
+   việc đã hẹn nào khớp.
 
 ## Ví dụ
 - Tình huống: người dùng nhắn ngắn "gỡ phần đồng bộ tài liệu đi".

@@ -1,5 +1,5 @@
 ---
-version: 24
+version: 25
 lang: vi
 ---
 
@@ -201,7 +201,13 @@ Báo cáo nêu từng dòng kèm số và việc đã làm: `② nháp 5 → 0 �
 
 ## Bước cuối
 
-`zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO. **Không tự `git push`**
+**Cây làm việc kết thúc sạch, không hỏi** — lệnh chốt phiên chính là phê duyệt:
+- commit việc của phiên; phần harness `zemory sync` để lại chưa commit thì commit riêng một commit;
+- xoá rác: file theme Power BI Desktop tự thêm khi Save (file mới dưới `StaticResources/SharedResources/BaseThemes/`,
+  `BuiltInThemes/`) mà không `report.json` nào trỏ tới (grep trước), cờ đã dùng, file tạm của chính phiên;
+- trước khi add một file chưa track, soát nó không chứa bí mật.
+
+Rồi `zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO. **Không tự `git push`**
 (`Rule_Gate_50_Git`).
 
 ## Bảng soát tài liệu đi cùng thay đổi (`Rule_Gate_34_DocsFollowChange`)

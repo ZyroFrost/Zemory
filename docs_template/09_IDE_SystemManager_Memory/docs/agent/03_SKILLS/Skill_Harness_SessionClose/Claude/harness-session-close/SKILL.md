@@ -2,10 +2,10 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 24
+version: 25
 type: process
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
-from: _Store/03_SKILLS/Skill_Harness_SessionClose @v24 #e95a0901d57d
+from: _Store/03_SKILLS/Skill_Harness_SessionClose @v25 #b635259a2bea
 ---
 
 # session-close — closing a session / writing the ledgers
@@ -206,7 +206,13 @@ session is reopened) · ⑦ 17 repos committed (--only) · …`.
 
 ## Last step
 
-`zemory validate` (reads the files directly — only green counts as closed) → REPORT. **Never `git push` on your own**
+**The working tree ends clean, without asking** — the order to close the session is the approval:
+- commit this session's work; commit the harness files `zemory sync` left uncommitted in a commit of their own;
+- delete the junk: theme files Power BI Desktop adds on Save (new files under `StaticResources/SharedResources/BaseThemes/`,
+  `BuiltInThemes/`) that no `report.json` references (grep first), used flags, the session's own temp files;
+- before adding an untracked file, check it holds no secret.
+
+Then `zemory validate` (reads the files directly — only green counts as closed) → REPORT. **Never `git push` on your own**
 (`Rule_Gate_50_Git`).
 
 ## The documents that go with a change (`Rule_Gate_34_DocsFollowChange`)

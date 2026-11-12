@@ -1,5 +1,5 @@
 ---
-version: 31
+version: 32
 lang: vi
 ---
 
@@ -124,6 +124,30 @@ che ngay**; và dải tab loạn hẳn — cả 3 vạch đỏ cùng hiện, hà
 Hộp thoại issues mới là cổng thật: nó gọi đúng **tên thuộc tính sai** và **đúng file** chứa nó.
 ⚠ Đừng thay bước 4 bằng đếm cửa sổ — app luôn có thêm một cửa sổ phụ tên `Microsoft Power BI Desktop`.
 
+## 1a. Desktop trên máy dùng chung — mỗi lần một cái, ai mở người đó đóng
+
+```
+trước khi mở      đếm PBIDesktop.exe của mọi repo = 0, và xem RAM trống
+                  còn một cái đang chạy ⇒ không mở cái thứ hai: đóng cái của mình, hoặc dừng và báo chủ repo
+nhiều report      lần lượt: mở → đo → đóng → xác nhận tiến trình đã tắt → cái kế
+kiểm một bản sửa  sửa file + `pbi_gate.py --pre-open` (hoặc `--static`); không mở Desktop chỉ để kiểm
+DirectQuery       không chạy lớp engine (cổng không cờ sẽ mở Desktop; truy vấn engine làm treo model DirectQuery) → `--static`
+```
+- 🔴 Hai Desktop chạy cạnh nhau làm cạn bộ nhớ máy và treo máy. Chỉ mở Desktop khi chủ repo muốn xem report, hoặc khi một bước cần
+  nhìn mà không cổng nào thay được (§1 bước 4 sau khi sửa bố cục); bản sửa measure hay model kiểm bằng cổng và số trong DW, báo cáo
+  ghi "lớp engine chưa chạy".
+- 🔴 **Desktop do agent mở thì agent tự đóng** — không nhờ chủ repo đóng. Chỉ đóng instance có command line là đúng file đang làm
+  (không bao giờ đóng của repo khác), bằng `CloseMainWindow()`; không bao giờ `Stop-Process -Force` / `Kill`.
+- Hộp thoại hỏi lưu khi đóng:
+  - trên instance chủ repo chưa đụng tới (lượt cổng engine, kiểm DAX) ⇒ tự bấm *Don't save*, không hỏi. Hộp thoại vẽ bằng WebView
+    (UI Automation không thấy nút, `PrintWindow` chụp ra đen) ⇒ đưa cửa sổ lên trước rồi gửi phím: `GateClose.DontSave` trong
+    `scripts/pbi_gate.py`;
+  - trên instance mở trên file thật cho chủ repo xem ⇒ từ lúc đó là của chủ repo; có hộp thoại nghĩa là họ có sửa chưa lưu ⇒ dừng
+    và hỏi (§1).
+- Chủ repo đang xem report trong Desktop mà xin sửa ⇒ tự đóng instance đó như trên, sửa, rồi mở lại đúng `.pbip` đó cho họ — không
+  nhờ họ đóng hay mở lại.
+- `Get-Process` / CIM có thể treo trong công cụ PowerShell của agent; `tasklist` / `wmic` từ Bash trả lời được.
+
 ## 1b. MODEL ĐỌC KHO — DirectQuery, đúng chuỗi gateway, chạy được trên web
 
 ```
@@ -146,6 +170,12 @@ nguồn hệ cũ              0 chỗ: mọi nguồn khai ở `legacy_sources`
 - ⚠ **Quét tham chiếu visual TRƯỚC khi xoá một bảng** (`Entity` trong mọi `visual.json` + filter trang) —
   xoá `Fact_PromotionActualItem` chưa quét đã làm hỏng một trang báo cáo.
 - ⚠ Desktop nào đang giữ file mà bị bấm Save là **đè mất** mọi sửa trên đĩa — kiểm tiến trình trước khi sửa.
+- 🔴 **DW bỏ hay đổi tên một cột ⇒ sửa partition, không chỉ khối cột.** Partition đọc nguyên bảng
+  (`Source{[Schema="dbo",Item="Fact_X"]}[Data]`) kéo lại mọi cột nguồn ở lần Refresh kế tiếp trong Desktop, nên chỉ xoá khối
+  `column X` là mất ngay khi chủ repo Refresh để publish. Thêm bước
+  `DropX = Table.RemoveColumns(<bước điều hướng>, {"X"}, MissingField.Ignore)` — chạy được cả trước lẫn sau khi DW bỏ cột; chú
+  thích đặt CUỐI dòng bước (dòng chú thích riêng làm cổng `m-step-comma` báo đỏ) — VÀ xoá khối cột. Trước khi gọi là xong, hỏi
+  Desktop làm gì với thay đổi này khi Refresh và khi Save, để mỗi report chỉ mở và publish một lần.
 
 🔴 **Cột tính (calculated column) trên bảng DirectQuery chỉ nhận hàm dịch được sang SQL**:
 `CONTAINSROW` (cũng là `x IN <biến bảng>`), `ISERROR`, `FIND` đều bị chặn — cột vào trạng thái lỗi (`State = 5`),

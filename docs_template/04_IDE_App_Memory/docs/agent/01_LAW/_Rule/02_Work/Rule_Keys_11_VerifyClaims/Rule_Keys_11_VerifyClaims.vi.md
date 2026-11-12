@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 # Rule_Keys_11_VerifyClaims — Not verified is not a fact
@@ -48,7 +48,10 @@ Cách đo, bẫy báo oan: `.claude/skills/harness-audit/SKILL.md`. Máy đo s�
      (công thức đúng); lệch HAI chiều ⇒ sai công thức hoặc sai nguồn;
    - tìm ra một lỗi ⇒ soát hết cả cụm của nó (cả khối, mọi sheet, các cột dẫn xuất) rồi báo một lượt: lỗi đầu tiên kèm con số
      đọc ra như toàn bộ thiệt hại;
-   - deliverable cũ là đối chứng, không phải chuẩn; chuẩn là spec và ràng buộc nội tại của nó.
+   - deliverable cũ là đối chứng, không phải chuẩn; chuẩn là spec và ràng buộc nội tại của nó;
+   - được hỏi vì sao hai tổng lệch ⇒ đo cả hai tổng, dựng cầu nối từ tổng này sang tổng kia với số tiền ở từng bước, đánh dấu mỗi
+     bước là gây lệch, bù trừ hay chưa rõ, rồi mới nêu nguyên nhân; không đưa ra một nguyên nhân nghe hợp lý trước khi có số. Lệch
+     về số lượng (đơn so với đơn vị, tên gọi) tách riêng khỏi lệch về tiền.
 
 ## Ví dụ
 - Tình huống: agent soát bảng khách hàng và báo "có 120 khách trùng, đề nghị xoá".

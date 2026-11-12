@@ -1,13 +1,13 @@
 ---
 id: Skill_PBI_Pbip
 name: pbi-pbip
-version: 31
+version: 32
 type: process
 aka: pbip
 checked: [Rule_Gate_84_PbipOpenCheck, Skill_PBI_White, Rule_Keys_87_NoSilentBlankPage]
 description: Edit a Power BI .pbip/PBIR report by writing its JSON directly - pages, visuals, bookmarks, buttons, icons, the coordinate grid - without breaking the file; the model diagram standard and the static gate. Use whenever a .pbip report is built or changed, a tab or bookmark is added, an icon or the grid is fixed, or Desktop reports issues. Vietnamese triggers - "sửa report", "sửa pbix", "dựng dashboard", "thêm tab", "gắn bookmark", "đổi icon", "căn lưới", "mở Desktop kiểm".
 installs: [scripts/pbi_gate.py, scripts/fix_literal_type.py, scripts/add_filter_set.py, scripts/pbi_diagram.py, scripts/diagram_order.js, scripts/package.json, scripts/rename_reports.py]
-from: _Store/03_SKILLS/Skill_PBI_Pbip @v31 #ffefb58f2fb4
+from: _Store/03_SKILLS/Skill_PBI_Pbip @v32 #2e35781a09c9
 ---
 
 # Editing `.pbip` without breaking the file
@@ -131,6 +131,30 @@ at once**; and the tab strip went haywire — all 3 red bars showing, the card r
 The issues dialog is the real gate: it names exactly **the wrong property name** and **the exact file** holding it.
 ⚠ Do not replace step 4 by counting windows — the app always has an extra secondary window named `Microsoft Power BI Desktop`.
 
+## 1a. Desktop on a shared workstation — one at a time, closed by whoever opened it
+
+```
+before opening    count PBIDesktop.exe of every repo = 0, and look at the free RAM
+                  one still running ⇒ never open a second: close yours, or stop and tell the owner
+several reports   one by one: open → measure → close → confirm the process is gone → the next
+checking a fix    edit the files + `pbi_gate.py --pre-open` (or `--static`); Desktop is never opened only to check
+DirectQuery       never the engine layer (the gate without a flag opens Desktop; its engine queries hang a DirectQuery model) → `--static`
+```
+- 🔴 Two Desktops side by side exhaust the workstation's memory and freeze it. Desktop is opened when the owner asks to see the
+  report, or when a step needs a look no gate gives (§1 step 4 after a layout edit); a measure or model fix is checked with the gate
+  and the figures in the DW, and the report says "engine layer not run".
+- 🔴 **A Desktop the agent opened is closed by the agent** — never ask the owner to close it. Close only the instance whose command
+  line is the file at hand (never another repo's), with `CloseMainWindow()`; never `Stop-Process -Force` / `Kill`.
+- The save dialog when closing:
+  - on an instance the owner never touched (a gate engine run, a DAX check) ⇒ press *Don't save* yourself, without asking. The
+    dialog is drawn in WebView (UI Automation sees no buttons, `PrintWindow` captures it black) ⇒ bring the window forward and send
+    the keys: `GateClose.DontSave` in `scripts/pbi_gate.py`;
+  - on an instance opened on the real file for the owner to look at ⇒ it is the owner's from that moment; a dialog means unsaved
+    edits of theirs ⇒ stop and ask (§1).
+- The owner, looking at a report in Desktop, asks for a fix ⇒ close that instance yourself as above, fix, then reopen the same
+  `.pbip` for them — never ask them to close or reopen it.
+- `Get-Process` / CIM can hang inside the agent's PowerShell tool; `tasklist` / `wmic` from Bash answer.
+
 ## 1b. A MODEL READING THE DW — DirectQuery, the right gateway string, runs on the web
 
 ```
@@ -153,6 +177,13 @@ old-system sources               0 places: every source declared in `legacy_sour
 - ⚠ **Scan visual references BEFORE deleting a table** (`Entity` in every `visual.json` + page filters) —
   deleting `Fact_PromotionActualItem` without scanning broke a report page.
 - ⚠ A Desktop holding the file getting Save pressed **overwrites** every edit on disk — check the processes before editing.
+- 🔴 **A column the DW drops or renames ⇒ fix the partition, not only the column block.** A partition reading a whole table
+  (`Source{[Schema="dbo",Item="Fact_X"]}[Data]`) brings every source column back on the next Refresh in Desktop, so deleting the
+  `column X` block alone is undone the moment the owner refreshes to publish. Add a step
+  `DropX = Table.RemoveColumns(<navigation step>, {"X"}, MissingField.Ignore)` — it runs before and after the DW drops the column;
+  its comment goes at the END of the step line (a comment line of its own reds the gate `m-step-comma`) — AND delete the column
+  block. Before calling it done, ask what Desktop does to the change on Refresh and on Save, so each report is opened and published
+  once.
 
 🔴 **Calculated columns on a DirectQuery table accept only functions translatable to SQL**:
 `CONTAINSROW` (also `x IN <table variable>`), `ISERROR`, `FIND` are all blocked — the column goes into an error state (`State = 5`),

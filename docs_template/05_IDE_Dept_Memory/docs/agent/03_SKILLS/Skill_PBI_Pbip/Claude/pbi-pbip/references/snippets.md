@@ -97,18 +97,22 @@ Khoanh vùng thì thêm `options = {"targetVisualNames": [<id...>], "suppressDat
 ## Tắt / mở Power BI Desktop
 
 ```powershell
-$p = Get-Process PBIDesktop -ErrorAction SilentlyContinue
-if ($p) { $p.CloseMainWindow() | Out-Null; if (-not $p.WaitForExit(30000)) { $p.Kill() } }
-# doi thoat han roi moi sua file
-do { Start-Sleep -Seconds 3 } while ((Get-Process PBIDesktop -ErrorAction SilentlyContinue))
+# chi dong dung instance mo file dang lam (command line chua <Ten>.pbip), khong dong Desktop cua repo khac
+$t = Get-CimInstance Win32_Process -Filter "Name='PBIDesktop.exe'" | ? { $_.CommandLine -match '<Ten>\.pbip' }
+foreach ($i in $t) { $p = Get-Process -Id $i.ProcessId; $p.CloseMainWindow() | Out-Null
+  if (-not $p.WaitForExit(30000)) { throw "Desktop $($i.ProcessId) chua thoat - xem hop thoai luu (SKILL §1a), khong Kill" } }
 
+# mo: chi khi khong con PBIDesktop.exe nao (SKILL §1a)
+if (Get-Process PBIDesktop -ErrorAction SilentlyContinue) { throw 'con Desktop dang mo - khong mo them' }
 Start-Process -FilePath "<đường dẫn>\<Tên>.pbip"
 do { Start-Sleep -Seconds 10; $q = Get-Process PBIDesktop -ErrorAction SilentlyContinue }
 while (($q | % { $_.MainWindowTitle }) -notmatch '<Ten>')
 ```
 
-⚠ Đang có thay đổi chưa lưu thì `CloseMainWindow` bung hộp thoại hỏi lưu và treo ở đó. **Hỏi người dùng**,
-đừng tự `Kill` — có thể mất việc người ta vừa làm trong Desktop.
+⚠ Đang có thay đổi chưa lưu thì `CloseMainWindow` bung hộp thoại hỏi lưu và treo ở đó. Không bao giờ `Kill`.
+Instance chủ repo chưa đụng tới (lượt cổng engine, kiểm DAX) ⇒ tự bấm *Don't save* bằng `GateClose.DontSave` của
+`scripts/pbi_gate.py`; instance mở trên file thật cho chủ repo xem ⇒ dừng và hỏi (SKILL §1a).
+`Get-Process` / CIM treo trong công cụ PowerShell của agent ⇒ dùng `tasklist` / `wmic` từ Bash.
 
 ## Chụp màn hình khi cửa sổ bị che
 

@@ -2,10 +2,10 @@
 id: Rule_11
 aka: 02-11
 name: verify-claims
-version: 12
+version: 13
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_11_VerifyClaims @v12 #0107703e690f
+from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_11_VerifyClaims @v13 #2279f494e44a
 ---
 # Rule_Keys_11_VerifyClaims — Not verified is not a fact
 
@@ -54,7 +54,10 @@ How to measure, false-alarm traps: `.claude/skills/harness-audit/SKILL.md`. The 
      periods means late documents (the formula holds); a gap in both directions means a wrong formula or source;
    - one fault found ⇒ sweep its whole cluster (the block, every sheet, the derived columns) and report once: the first fault with
      its number reads as the whole damage;
-   - an old deliverable is a comparison, never the standard; the spec and its own constraints are.
+   - an old deliverable is a comparison, never the standard; the spec and its own constraints are;
+   - asked why two totals differ ⇒ measure both totals, build the bridge from one to the other with an amount on every step, mark
+     each step as causing, offsetting or unclear, and only then name the causes; a plausible cause is never offered before the
+     amounts. A count mismatch (orders vs units, names) is kept apart from a money gap.
 
 ## Example
 - Situation: the agent checks the customer table and reports "120 duplicate customers, propose deleting".

@@ -1,13 +1,13 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 13
+version: 14
 type: process
 installs: [scripts/pbi_engine_query.ps1]
 aka: dev-pbi
 replaces: [Skill_Dev_Pbi]
 description: Build or change a BI report - layout and chart choice, measures and queries kept in one named store, and the report file handled as a heavy binary. Use whenever a report, dashboard, measure or visual is created or changed. Vietnamese triggers - "báo cáo", "dashboard", "biểu đồ", "measure", "DAX", "Power Query", "pbix".
-from: _Store/03_SKILLS/Skill_PBI_Base @v13 #d9cb08a4c561
+from: _Store/03_SKILLS/Skill_PBI_Base @v14 #4926c5d43d17
 ---
 
 # pbi-base — building and editing BI reports
@@ -21,6 +21,9 @@ from: _Store/03_SKILLS/Skill_PBI_Base @v13 #d9cb08a4c561
 - Choose a chart by its question: comparing groups ⇒ column/bar · a trend over time ⇒ line · a composition of few parts ⇒ stacked column
   or pie (a few parts at most) · detail to look up ⇒ table.
 - Each visual has a title saying what it answers; each number has a unit and a period; labels in business words (`Rule_Gate_02_ReaderText`).
+  The requester's spoken words are turned into the business term before they reach a display name, legend or title ("full thuế" →
+  `Sau VAT`, "chưa thuế" → `Trước VAT`, or `+VAT` / `-VAT`); a column under a title that already names the measure keeps only the
+  short term (title `Doanh Thu NQ` → columns `Trước VAT` · `Sau VAT` · `Target`).
 - A new chart idea ⇒ draw recommendations, propose the options; never apply on your own.
 
 ## 2. Measures and queries

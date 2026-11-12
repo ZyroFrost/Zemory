@@ -2,10 +2,10 @@
 id: Rule_8
 aka: 02-8
 name: clarify-first
-version: 12
+version: 13
 kind: judgment
 code: 02_Work
-from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_08_ClarifyFirst @v12 #0660a0d0169e
+from: _Store/01_LAW/_Rule/02_Work/Rule_Keys_08_ClarifyFirst @v13 #384c85aaaae4
 ---
 # Rule_Keys_08_ClarifyFirst — Unclear ⇒ make it clear; unreasonable ⇒ push back before doing it
 
@@ -35,6 +35,9 @@ The agent triggers this itself, without being called, when it sees:
    clarify again, not a nudge to go on.
 9. Before asking a design question, search the plans and the shared memory with the question's own words. Two settled points
    that seem to collide almost always speak of different things: read both closely before asking.
+10. A loose order to delete or clean up ⇒ first look for the removal already planned in `04_TODO` or the case spec. One matches
+   and its precondition holds ⇒ do exactly that (backup, verify, report once): never widen it to whole files, never bounce the
+   question back. Ask only when no planned action matches.
 
 ## Example
 - Situation: the requester writes briefly "remove the docs sync part".
