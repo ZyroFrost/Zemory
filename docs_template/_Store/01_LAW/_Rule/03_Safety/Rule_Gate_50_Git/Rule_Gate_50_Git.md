@@ -2,7 +2,7 @@
 id: Rule_50
 aka: 02-50
 name: git
-version: 11
+version: 12
 kind: action
 code: 03_Safety
 ---
@@ -17,8 +17,9 @@ command. History is never rewritten or destroyed without asking first.
 - About to push, force-push, rewrite history, delete a remote tag or branch, or discard uncommitted work.
 
 ## Do
-1. Commit locally in the repo's commit style; no need to ask. A session's own uncommitted work past 300 lines is committed
-   locally at the end of the turn by the hook (only the files the session wrote, through the pre-commit check, never pushed).
+1. Commit locally in the repo's commit style; no need to ask, and never leave finished work waiting for a question: only
+   deleting asks. At the end of every turn the hook commits the session's own uncommitted files locally, however small (only
+   the files the session wrote, plus the set copies of a store part it wrote, through the pre-commit check, never pushed).
 2. Push only when the request contains a push command. Work done ⇒ run the check, report, stop. One push command covers the whole
    batch in progress: later fixes of the same batch are pushed without asking again.
 3. Writing the changelog · committing · "it's done" is not a push command. Pushing is not how a fix takes effect on the running
@@ -38,7 +39,9 @@ command. History is never rewritten or destroyed without asking first.
 ## Check
 - The guard blocks `git push` without a command and the history-breaking commands (flag `discard`).
 - A Basic set (no guard): the host's own permissions from `gate.json › native` — `git push` asks, a force-push is denied.
-- The end-of-turn hook commits the session's own files locally once their uncommitted lines pass 300, and says so in one line.
+- The end-of-turn hook commits the session's own files locally whenever they differ from HEAD, and says so in one line. A part of
+  the HS store the session wrote brings its copies in every set (`docs/agent/…` · `.claude/skills/<name>` · its `installs`):
+  assembling writes them through a shell, so the transcript never names them (11/11: a part committed without set 09's copy).
 
 ## Links · Liên kết
 - Related · Liên quan: `Rule_Gate_10_DestructiveOps` — discarding work is destroying · bỏ việc chưa commit là phá dữ liệu

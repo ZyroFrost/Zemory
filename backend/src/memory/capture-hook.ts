@@ -34,7 +34,7 @@ import { coreForCompaction, coreReinjectCap } from "../docs/rule-core.js";
 import { isFolderHarness, isRetired, listParts, promptGates, type PromptGate } from "../docs/store.js";
 import { modelVerdicts } from "../training/prompt-gates/04_export.js";
 import { stopDecision } from "../docs/turn-evidence.js";
-import { AUTO_COMMIT_LINES, autoCommit, sessionWrittenFilesAt } from "../docs/auto-commit.js";
+import { autoCommit, sessionWrittenFilesAt } from "../docs/auto-commit.js";
 import { promptMatches, SHELF } from "../docs/harness-names.js";
 import { findProjectRoot, harnessPathsAt, readMarker } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
@@ -552,7 +552,7 @@ export function endOfTurnAutoCommit(payload: any, transcriptPath: string): strin
     const r = autoCommit(toLocalPath(cwd), written);
     if (!r || (!r.committed && !r.note.startsWith("commit refused"))) return "";
     return r.committed
-      ? `[zemory] Auto-committed locally, not pushed: ${r.lines} uncommitted lines in ${r.files.length} file(s) of this session passed ${AUTO_COMMIT_LINES}. Undo with \`git reset --soft HEAD~1\`.`
+      ? `[zemory] Auto-committed locally, not pushed: ${r.lines} line(s) in ${r.files.length} file(s) of this session. Undo with \`git reset --soft HEAD~1\`.`
       : `[zemory] Auto-commit of ${r.lines} lines in ${r.files.length} file(s) was refused — ${r.note.slice("commit refused: ".length)}`;
   } catch {
     return "";

@@ -1,7 +1,36 @@
 {
   "gate": "guard",
   "native": {
-    "ask": ["Bash(git push:*)", "PowerShell(git push:*)"],
-    "deny": ["Bash(git push --force:*)", "Bash(git push -f:*)", "PowerShell(git push --force:*)", "PowerShell(git push -f:*)"]
-  }
+    "ask": [
+      "Bash(git push:*)",
+      "PowerShell(git push:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "PowerShell(git push --force:*)",
+      "PowerShell(git push -f:*)"
+    ]
+  },
+  "prompt": {
+    "kind": "Rule_50",
+    "re": "\\bcommit",
+    "text": "[zemory] Rule_Gate_50_Git: commit locally WITHOUT asking — finished work is committed now, never left waiting for a question; the end-of-turn hook commits the session's own files (and the set copies of a store part it wrote) anyway. Only deleting asks; push only on a push command; another session's uncommitted edits stay theirs."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "commit chưa?"
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "làm xong thì commit luôn"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    }
+  ]
 }

@@ -217,9 +217,9 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 179 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope/Rule_Gate_44_RepoScope.md` | 49 |
 | 180 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope/Rule_Gate_44_RepoScope.vi.md` | 39 |
 | 181 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope/gate.json` | 84 |
-| 182 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_50_Git/Rule_Gate_50_Git.md` | 46 |
-| 183 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_50_Git/Rule_Gate_50_Git.vi.md` | 35 |
-| 184 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_50_Git/gate.json` | 7 |
+| 182 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_50_Git/Rule_Gate_50_Git.md` | 49 |
+| 183 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_50_Git/Rule_Gate_50_Git.vi.md` | 38 |
+| 184 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_50_Git/gate.json` | 36 |
 | 185 | `docs/agent/01_LAW/_Rule/04_Writing/Rule_Gate_02_ReaderText/Rule_Gate_02_ReaderText.md` | 40 |
 | 186 | `docs/agent/01_LAW/_Rule/04_Writing/Rule_Gate_02_ReaderText/Rule_Gate_02_ReaderText.vi.md` | 28 |
 | 187 | `docs/agent/01_LAW/_Rule/04_Writing/Rule_Gate_02_ReaderText/gate.json` | 52 |

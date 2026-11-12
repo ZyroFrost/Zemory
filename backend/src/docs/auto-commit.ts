@@ -1,7 +1,10 @@
-// Local auto-commit when a session's work piles up (plan/27 §2e). "Commit locally freely" was a permission nothing
-// enforced, so a long session could sit on thousands of uncommitted lines — one bad command away from losing them. At the
-// end of a turn, when the uncommitted lines in the files THIS session wrote pass the limit, those files (and only those)
-// are committed locally. The commit is reversible and local:
+// Local auto-commit at the end of every turn (plan/27 §2e). "Commit locally freely" was a permission nothing enforced, so a
+// session could sit on uncommitted work. A 300-line limit (2026-10-14) let small work wait for good: on 2026-11-11 eight
+// files of an HS set (21 lines) stayed uncommitted after their part was committed, and every repo syncing that set read
+// "set not rebuilt". The user (2026-11-12): work done is committed, only deleting asks. So at the end of a turn the files
+// THIS session wrote (and only those) are committed locally whenever they differ from HEAD. A part of the HS store the
+// session wrote brings its copies in the sets along (`setCopies`): `zemory store assemble` writes them through a shell, so
+// the transcript never names them. The commit is reversible and local:
 //   · never pushed — the hook runs `git commit`, nothing else;
 //   · only the session's own files (from its transcript: Write / Edit / MultiEdit / NotebookEdit), and only inside the repo
 //     the session runs in — another session's half-done edits in the same tree are not swept in;
@@ -10,11 +13,70 @@
 // re-hashes every file of a Windows-written index (measured 2026-11-09: 37-145 s on this repo, so the Stop hook missed its
 // deadline every turn). The transcript is read from where the previous turn stopped (`sessionWrittenFilesAt`).
 import { execFileSync } from "node:child_process";
-import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, realpathSync, statSync } from "node:fs";
+import { closeSync, existsSync, fstatSync, openSync, readdirSync, readFileSync, readSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
 
-export const AUTO_COMMIT_LINES = 300;
+/** 0 = every turn that leaves the session's files differing from HEAD commits them (user 2026-11-12). */
+export const AUTO_COMMIT_LINES = 0;
+
+const STORE_REL = "docs_template/_Store/";
+
+/** The front-matter value of `key` in a part's main file (a one-line value, or a `[a, b]` list). */
+function metaValues(text: string, key: string): string[] {
+  const m = text.match(new RegExp(`^${key}:\\s*(.+)$`, "m"));
+  if (!m) return [];
+  const v = m[1].trim();
+  const list = v.startsWith("[") ? v.slice(1, v.lastIndexOf("]")).split(",") : [v];
+  return list.map((s) => s.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
+}
+
+/**
+ * The places in the HS sets that hold a copy of a store part this session wrote, relative to the repo top: for each set
+ * folder `docs_template/<set>/` (not `_`-prefixed) that carries the part: `docs/agent/<the part's path under _Store>`, the
+ * host build `.claude/skills/<name>`, each file the part `installs`, and the set's `BOOTSTRAP.md` (its file list counts
+ * lines). Only those that exist. Empty outside a repo with a store.
+ */
+export function setCopies(top: string, written: string[]): string[] {
+  const store = join(top, STORE_REL);
+  const parts = new Set<string>();
+  for (const w of written) {
+    if (!w.startsWith(STORE_REL)) continue;
+    // the part folder is the nearest one up that holds `<folder>.md`
+    let dir = dirname(join(top, w));
+    while (dir.length > store.length && !existsSync(join(dir, `${basename(dir)}.md`))) dir = dirname(dir);
+    if (dir.length > store.length) parts.add(dir);
+  }
+  if (!parts.size) return [];
+  const root = join(top, "docs_template");
+  let sets: string[];
+  try {
+    sets = readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith("_")).map((e) => e.name);
+  } catch {
+    return [];
+  }
+  const out = new Set<string>();
+  for (const dir of parts) {
+    const inStore = relative(store, dir).replace(/\\/g, "/");
+    let main = "";
+    try {
+      main = readFileSync(join(dir, `${basename(dir)}.md`), "utf8");
+    } catch {
+      /* read below as empty */
+    }
+    const name = metaValues(main, "name")[0];
+    const installs = metaValues(main, "installs");
+    for (const set of sets) {
+      const base = `docs_template/${set}/`;
+      if (!existsSync(join(top, base, "docs/agent", inStore))) continue; // the set does not carry this part
+      const places = [`docs/agent/${inStore}`, ...(name ? [`.claude/skills/${name}`] : []), ...installs];
+      // a Basic set's BOOTSTRAP.md lists each file with its line count, so a part's edit changes it too
+      places.push("BOOTSTRAP.md");
+      for (const p of places) if (existsSync(join(top, base, p))) out.add(base + p);
+    }
+  }
+  return [...out];
+}
 
 const EDIT_TOOLS = ["Write", "Edit", "MultiEdit", "NotebookEdit"];
 
@@ -197,18 +259,24 @@ export function autoCommit(root: string, transcript: string | string[], limit = 
       }
     }
     const untracked = fresh.filter((w) => !ignored.some((i) => sameFile(i, w)));
+    // the set copies of a store part this session wrote: what differs below, and their new files here
+    const copies = setCopies(top, written);
+    if (copies.length) {
+      const fresh2 = git(top, [...eol, "ls-files", "--others", "--exclude-standard", "-z", "--", ...copies]).split("\0").filter(Boolean);
+      for (const f of fresh2) if (!untracked.some((u) => sameFile(u, f))) untracked.push(f);
+    }
     // tracked, or gone from the disk (a deletion): what differs from HEAD, per file. -z keeps odd names unquoted.
     // Plumbing diff-index, not `git diff`: the porcelain refreshes and rewrites the index under index.lock (even with
     // GIT_OPTIONAL_LOCKS=0), and a daemon stopped mid-call left that lock behind, blocking every git command on the host.
     // Only add/commit below take the lock.
-    const others = written.filter((w) => !fresh.includes(w));
+    const others = [...written.filter((w) => !fresh.includes(w)), ...copies];
     const changed: string[] = [];
     let lines = 0;
     if (others.length) {
       const out = git(top, [...eol, "diff-index", "--numstat", "--no-renames", "-z", "HEAD", "--", ...others]);
       for (const rec of out.split("\0").filter(Boolean)) {
         const [a, d, path] = rec.split("\t");
-        if (!path) continue;
+        if (!path || changed.includes(path)) continue;
         changed.push(path);
         lines += (Number(a) || 0) + (Number(d) || 0); // a binary file reads "-": counted as 0
       }
@@ -216,8 +284,8 @@ export function autoCommit(root: string, transcript: string | string[], limit = 
     for (const w of untracked) lines += readFileSync(join(top, w), "utf8").split("\n").length;
     const files = [...changed, ...untracked];
     if (!files.length) return null;
-    if (lines <= limit) return { committed: false, lines, files, note: `under the limit (${lines} ≤ ${limit})` };
-    const subject = `Auto-commit: this session's uncommitted work passed ${limit} lines (${lines} lines, ${files.length} file(s))`;
+    if (limit > 0 && lines <= limit) return { committed: false, lines, files, note: `under the limit (${lines} ≤ ${limit})` };
+    const subject = `Auto-commit: this session's work at the end of a turn (${lines} lines, ${files.length} file(s))`;
     const body = files.slice(0, 30).map((f) => `- ${f}`).join("\n") + (files.length > 30 ? `\n- … ${files.length - 30} more` : "");
     try {
       git(top, [...eol, "add", "--", ...files]);
