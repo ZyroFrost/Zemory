@@ -16,6 +16,8 @@ interface Example {
   policy?: Record<string, unknown>;
   tool_name?: string;
   tool_input?: Record<string, unknown>;
+  /** a hook that reads the session transcript: its records, one JSON object each (written as the payload's transcript_path) */
+  transcript?: unknown[];
   /** prompt gates: the words of the request */
   prompt?: string;
   /** read gates: the path written · the command run · the body of the script that command runs */
@@ -99,7 +101,9 @@ function blocks(part: Part, gate: Gate, ex: Example): boolean {
         const file = join(part.dir, h);
         delete requireHere.cache[requireHere.resolve(file)];
         const mod = requireHere(file) as { check: (p: unknown, r: string, pol: unknown) => unknown };
-        return Boolean(mod.check({ tool_name: ex.tool_name, tool_input: input, session_id: "gate-example" }, root, ex.policy ?? {}));
+        const transcript_path = ex.transcript ? join(root, "transcript.jsonl") : undefined;
+        if (transcript_path) writeFileSync(transcript_path, (ex.transcript ?? []).map((r) => JSON.stringify(r)).join("\n") + "\n");
+        return Boolean(mod.check({ tool_name: ex.tool_name, tool_input: input, session_id: "gate-example", transcript_path }, root, ex.policy ?? {}));
       });
     }
     return slotGateFailures(root, part.dir).length > 0;

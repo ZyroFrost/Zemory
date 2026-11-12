@@ -121,6 +121,11 @@
   `02-93_subagent-small-only` chặn lời gọi `Agent` · `Task` · `Workflow` có brief nêu từ 5 file, bảo đọc trọn file, hoặc dài từ
   4.000 ký tự; cờ một lần `.allow-agent` chỉ tạo khi user gọi đích danh subagent/workflow trong phiên. Luật chung:
   `Rule_Gate_93_SubagentSmallOnly`. <!-- gate: guard -->
+- `02-99` **Hỏi graph code trước khi grep code hay sửa file.** Trước khi sửa một file nguồn đang có (không phải test): gọi
+  `graph_impact {"file": "<path>"}` (MCP zemory) hoặc `zemory graph impact <path>`, xử đủ mọi file import nó liệt kê (`02-80`);
+  đi theo cấu trúc bằng `graph_neighbors`; grep chỉ cho chữ không phải phụ thuộc. **Chốt máy:** hook `02-99_graph-first` chặn
+  một lần mỗi file khi sửa file nguồn mà transcript phiên chưa có lần gọi graph nhắc tới file đó, và một lần mỗi phiên khi grep
+  đệ quy trên code; gọi lại y hệt thì qua. Luật chung: `Rule_Gate_99_GraphFirst`. <!-- gate: guard -->
 - `02-94` **Không ghi gì vào memory của agent; bài học vào harness.** Bài học · luật · sở thích ⇒ luật HS kèm chốt máy, skill,
   slot, hoặc docs của repo (hiến pháp · `05_TODO` · `06_CHANGES` · `docs/plan`); không bao giờ vào
   `~/.claude/projects/<p>/memory/`. **Chốt máy:** hook cấp máy `memory-guard` (`zemory hook install`) chặn tool ghi file và

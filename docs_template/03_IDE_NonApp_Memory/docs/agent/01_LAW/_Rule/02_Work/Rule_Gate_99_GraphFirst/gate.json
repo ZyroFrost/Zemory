@@ -1,0 +1,132 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "PowerShell"
+    ]
+  },
+  "prompt": {
+    "kind": "Rule_99",
+    "re": "\\b(refactor|sua (code|ham|file|loi)|fix (bug|loi)|do code|tim (cho|noi) (goi|dung|import)|doi (ten|chu ky) ham)",
+    "text": "[zemory] Rule_Gate_99_GraphFirst: ask the code graph first — graph_impact {\"file\": \"<path>\"} (zemory MCP) or `zemory graph impact <path>` before changing a source file, graph_neighbors to walk the structure; grep only for text that is not a dependency."
+  },
+  "block": [
+    {
+      "note": "an existing source file changed with no graph call in the session",
+      "files": {
+        "src/db/queries.ts": "export const q = 1;\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "src/db/queries.ts",
+        "old_string": "export const q = 1;",
+        "new_string": "export const q = 2;"
+      },
+      "policy": {
+        "flags_dir": "docs/hooks"
+      }
+    },
+    {
+      "note": "a recursive grep over the code of a repo that has code",
+      "files": {
+        "package.json": "{}\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rn \"queries\" src/"
+      },
+      "policy": {
+        "flags_dir": "docs/hooks"
+      }
+    },
+    {
+      "note": "a request to refactor code",
+      "prompt": "refactor hàm lưu đơn hàng"
+    },
+    {
+      "note": "a request to trace who calls a function",
+      "prompt": "tìm chỗ gọi hàm tính thuế"
+    }
+  ],
+  "pass": [
+    {
+      "note": "the session already asked the graph about the file",
+      "files": {
+        "src/db/queries.ts": "export const q = 1;\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "src/db/queries.ts",
+        "old_string": "export const q = 1;",
+        "new_string": "export const q = 2;"
+      },
+      "transcript": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "name": "mcp__zemory__graph_impact",
+                "input": {
+                  "file": "src/db/queries.ts"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "policy": {
+        "flags_dir": "docs/hooks"
+      }
+    },
+    {
+      "note": "a test file",
+      "files": {
+        "src/db/queries.test.ts": "test(1);\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "src/db/queries.test.ts",
+        "old_string": "test(1);",
+        "new_string": "test(2);"
+      },
+      "policy": {
+        "flags_dir": "docs/hooks"
+      }
+    },
+    {
+      "note": "a new file has no importers yet",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/db/new.ts",
+        "content": "export const n = 1;\n"
+      },
+      "policy": {
+        "flags_dir": "docs/hooks"
+      }
+    },
+    {
+      "note": "a recursive grep in a repo without code",
+      "files": {
+        "reports/a.md": "x\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "grep -rn \"doanh thu\" reports/"
+      },
+      "policy": {
+        "flags_dir": "docs/hooks"
+      }
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    }
+  ]
+}

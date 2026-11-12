@@ -196,6 +196,10 @@
     {
       "file": "02-93_subagent-small-only.cjs",
       "rule": "02-93"
+    },
+    {
+      "file": "02-99_graph-first.cjs",
+      "rule": "02-99"
     }
   ],
   "rule_dirs": [],

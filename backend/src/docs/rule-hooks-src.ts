@@ -914,6 +914,66 @@ function check(payload, root, policy) {
   } catch { return null; }
 }`),
 
+  // 02-99 — the code graph before grep and before a change (2026-11-12: every repo had graph_impact and 0 calls in a week).
+  // Two doors, each a reminder that says the exact call: changing an existing source file the session has not asked the
+  // graph about (once per file), and a recursive grep over the code of a repo that has code (once per session). A graph
+  // call already in the transcript - MCP graph_impact / graph_neighbors or the CLI - lets the call through untouched.
+  hook("02-99_graph-first.cjs", String.raw`
+const GRAPH_SRC = /\.(ts|tsx|js|jsx|mjs|cjs|py|sh|bash|java|go|rs|cs)$/i;
+const GRAPH_SKIP = /(^|\/)(test|tests|__tests__|node_modules|external|attic|dist|build|docs|docs_template|\.claude)\//;
+const GRAPH_TEST = /\.test\.|\.spec\.|_test\.|(^|\/)test_[^/]+\.py$/;
+const GREP = /(^|[\s;&|(])(grep|egrep|rg|git\s+grep|findstr|select-string|sls)(\s|$)/i;
+const RECURSIVE = /\s-[a-zA-Z]*[rR][a-zA-Z]*(\s|$)|(^|[\s;&|(])rg(\s|$)|git\s+grep|-Recurse\b|\s\/s(\s|$)/i;
+const CODE_MARK = ["package.json", "pyproject.toml", "requirements.txt", "go.mod", "Cargo.toml", "backend", "src", "frontend"];
+function seenKey(payload, root, policy, key) {
+  const sid = String(payload.session_id || payload.transcript_path || "");
+  try { const all = JSON.parse(fs.readFileSync(path.join(root, policy.flags_dir || "docs/hooks", ".seen.json"), "utf8")) || {}; return Array.isArray(all[sid]) && all[sid].includes(key); } catch { return false; }
+}
+// What the session already asked the graph: the file argument of each MCP call, the whole command of each CLI call.
+function graphAsked(payload) {
+  const out = [];
+  let text = "";
+  try { text = fs.readFileSync(String(payload.transcript_path || ""), "utf8"); } catch { return out; }
+  for (const line of text.split("\n")) {
+    if (!line.includes("graph")) continue;
+    let j; try { j = JSON.parse(line); } catch { continue; }
+    const c = j && j.type === "assistant" && j.message && Array.isArray(j.message.content) ? j.message.content : [];
+    for (const b of c) {
+      if (!b || b.type !== "tool_use") continue;
+      const inp = b.input || {};
+      if (/graph_(impact|neighbors)$/.test(String(b.name || ""))) out.push(String(inp.file || "").replace(/\\/g, "/"));
+      else if (typeof inp.command === "string" && /\bzemory(\.cmd)?\s+graph\s+(impact|neighbors)\b/.test(inp.command)) out.push(inp.command.replace(/\\/g, "/"));
+    }
+  }
+  return out.filter(Boolean);
+}
+const HOW = "graph_impact {\"file\": \"<path>\"} (zemory MCP, answered from the saved graph) or " + BT + "zemory graph impact <path>" + BT;
+function check(payload, root, policy) {
+  try {
+    const tool = payload.tool_name || "";
+    if (tool === "Bash" || tool === "PowerShell") {
+      const cmd = String((payload.tool_input || {}).command || "");
+      if (!GREP.test(cmd) || !RECURSIVE.test(cmd) || /\bzemory\b/.test(cmd)) return null;
+      if (!CODE_MARK.some((m) => fs.existsSync(path.join(root, m)))) return null;
+      if (seenKey(payload, root, policy, "02-99:search")) return null;
+      if (graphAsked(payload).length) { remindOnce(payload, root, policy, "02-99:search"); return null; }
+      if (!remindOnce(payload, root, policy, "02-99:search")) return null;
+      return blocked(root, policy, "02-99", "this searches the code with a recursive grep. Who uses a file, what it imports and how far a " +
+        "change reaches is one call to the code graph: " + HOW + "; graph_neighbors walks one hop at a time. grep stays the tool " +
+        "for text that is not a dependency (a message, a string, a setting)." + ONCE);
+    }
+    const e = edit(payload, root);
+    if (!e || !e.exists || !GRAPH_SRC.test(e.rel) || GRAPH_SKIP.test(e.rel) || GRAPH_TEST.test(e.rel)) return null;
+    const key = "02-99:" + e.rel;
+    if (seenKey(payload, root, policy, key)) return null;
+    const base = path.basename(e.rel);
+    if (graphAsked(payload).some((a) => a.includes(base) || e.rel.endsWith(a))) { remindOnce(payload, root, policy, key); return null; }
+    if (!remindOnce(payload, root, policy, key)) return null;
+    return blocked(root, policy, "02-99", e.rel + " is about to change and this session has not asked the code graph who uses it. " +
+      "Run " + HOW.replace(/<path>/g, e.rel) + " first, then handle every importer it lists (Rule_Keys_80_SharedChangeImpact)." + ONCE);
+  } catch { return null; }
+}`),
+
   hook("02-82_mail-gate.cjs", String.raw`
 const SENDS = /smtplib|\bsend_message\s*\(|\bsendmail\s*\(|\/sendMail\b|Send-MailMessage|Send-MgUserMail|\bgit\s+send-email\b/i;
 const MAIL_SCRIPT = /(^|[\\\/\s"'])([\w.-]*mail[\w.-]*|[\w.-]*send[\w.-]*|[\w.-]*alert[\w.-]*)\.(py|ps1|cmd|bat)\b/i;
