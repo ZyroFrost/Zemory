@@ -27,7 +27,7 @@ import { dirname, join } from "node:path";
 import { constants, setPriority } from "node:os";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
-import { claimDaemonJob, daemonJobBusy, endEmbedLane, releaseDaemonJob, startEmbedLane, yieldDaemonJob } from "./writegate.js";
+import { claimDaemonJob, daemonJobBusy, embedLaneYieldWanted, endEmbedLane, releaseDaemonJob, startEmbedLane, yieldDaemonJob } from "./writegate.js";
 import { backgroundChildEnv } from "./childenv.js";
 import { hasQueuedIngest } from "./ingestqueue.js";
 import { Q } from "../memory/store/queries.js";
@@ -50,6 +50,70 @@ export const FAST_VECTOR_BUDGET_MS = 30_000;
 export const FAST_VECTOR_BATCH = 4;
 /** How often the embed lane looks at the embed frontier when nothing queued it (one indexed query, ~90 ms). */
 export const FAST_FRONTIER_PROBE_MS = 10_000;
+/**
+ * How long an embed child stays alive with nothing left to embed, waiting for the next messages with its model loaded
+ * (2026-11-12). One child per 30 s round reloaded the 1.23 GB fp32 model every round - ~2.1 GB resident and 1.23 GB of file
+ * cache each time, and with 8 sessions chatting the WSL VM was never idle, so its memory never went back to Windows. A child
+ * now loads the model once per burst, keeps embedding while messages come, and exits after this quiet spell - releasing
+ * all of it.
+ */
+export const FAST_EMBED_LINGER_MS = 45_000;
+/** Hard cap on one embed child's life: past it the child exits and the lane starts a fresh one if work is left. */
+export const FAST_EMBED_MAX_LIFE_MS = 15 * 60_000;
+/** Pause between empty probes while an embed child lingers. */
+export const FAST_EMBED_POLL_MS = 5_000;
+
+export interface EmbedRound {
+  embedded: number;
+  embedMs: number;
+  more: boolean;
+  stuckAt: number | null;
+}
+
+/**
+ * One embed child's life: rounds back to back while vectors are owed, then probes every `pollMs` until `lingerMs` passes with
+ * nothing to embed. Ends early when `stopped()` (the daemon asked it to yield its slot), when a round reports a stuck message,
+ * or past `maxLifeMs`. Each round that embedded something is reported through `onProgress`, so its vectors ship at once.
+ */
+export async function embedBurst(o: {
+  round: () => Promise<EmbedRound>;
+  onProgress?: (r: EmbedRound) => void;
+  stopped?: () => boolean;
+  sleep?: (ms: number) => Promise<void>;
+  now?: () => number;
+  lingerMs?: number;
+  maxLifeMs?: number;
+  pollMs?: number;
+}): Promise<EmbedRound & { rounds: number }> {
+  const now = o.now ?? Date.now;
+  const sleep = o.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  const stopped = o.stopped ?? (() => false);
+  const linger = o.lingerMs ?? FAST_EMBED_LINGER_MS;
+  const maxLife = o.maxLifeMs ?? FAST_EMBED_MAX_LIFE_MS;
+  const poll = o.pollMs ?? FAST_EMBED_POLL_MS;
+  const t0 = now();
+  const total: EmbedRound & { rounds: number } = { embedded: 0, embedMs: 0, more: false, stuckAt: null, rounds: 0 };
+  let quietSince: number | null = null;
+  for (;;) {
+    const r = await o.round();
+    total.rounds++;
+    total.embedded += r.embedded;
+    total.embedMs += r.embedMs;
+    total.more = r.more;
+    total.stuckAt = r.stuckAt;
+    if (r.embedded > 0) o.onProgress?.(r);
+    if (stopped() || r.stuckAt !== null || now() - t0 >= maxLife) break;
+    if (r.more) {
+      quietSince = null;
+      continue;
+    }
+    if (r.embedded > 0 || quietSince === null) quietSince = now();
+    if (now() - quietSince >= linger) break;
+    await sleep(poll);
+    if (stopped()) break;
+  }
+  return total;
+}
 
 export interface FastSendState {
   /** highest own message id seen on the last poll (0 = nothing pending) */
@@ -168,6 +232,8 @@ export class FastLane {
   private child: ChildProcess | null = null;
   /** the EMBED lane's child (beside the slot, §12.7) */
   private embedChild: ChildProcess | null = null;
+  /** SIGTERM already sent to the running embed child (once per child). */
+  private embedYieldAsked = false;
   private mergeQueued = false;
   /** A push moved messages without their vectors — ③ owes the block that carries them. */
   private vectorsQueued = false;
@@ -225,6 +291,16 @@ export class FastLane {
 
   /** The EMBED lane (§12.7): beside the write lane, never in the job slot. */
   private tickEmbed(now: number): "vectors" | null {
+    // a child lives for a whole burst: another job waiting on the slot, or a sync round, asks it to yield (it ends the round
+    // in hand, then exits; its result line requeues what is left)
+    if (this.embedChild && !this.embedYieldAsked && (embedLaneYieldWanted() || this.d.syncRunning())) {
+      this.embedYieldAsked = true;
+      try {
+        this.embedChild.kill("SIGTERM");
+      } catch {
+        /* already gone */
+      }
+    }
     if (this.embedChild || !this.d.enabled() || this.d.syncRunning()) return null;
     let owed = this.vectorsQueued;
     if (!owed && this.d.frontier && now - this.frontierProbedAt >= FAST_FRONTIER_PROBE_MS) {
@@ -236,6 +312,12 @@ export class FastLane {
     // Refused while a job that writes WITHOUT the turn holds the slot, or one waits for its turn (writegate).
     if (!startEmbedLane("fastlane-vectors")) return null;
     this.vectorsQueued = false;
+    this.embedYieldAsked = false;
+    const onLine = (line: { progress?: boolean; embedded?: number; embedMs?: number }): void => {
+      if (!line.progress || !(line.embedded ?? 0)) return;
+      this.d.log(`[fastlane] vectors: ${line.embedded} embedded in ${((line.embedMs ?? 0) / 1000).toFixed(1)}s — offering them now (model stays loaded)`);
+      this.d.kickLinks();
+    };
     const c = this.spawnJob("vectors", (code, res, ms, error) => {
       this.embedChild = null;
       endEmbedLane();
@@ -249,7 +331,7 @@ export class FastLane {
         this.d.log(`[fastlane] vectors followed: ${res.embedded} embedded in ${((res.embedMs ?? 0) / 1000).toFixed(1)}s${this.waited(res)} — offering them now${res.more ? " (budget spent, more next round)" : ""}`);
         this.d.kickLinks();
       } else if (!ok) this.d.log(`[fastlane] vectors failed after ${(ms / 1000).toFixed(1)}s: ${error} — the next probe retries`);
-    });
+    }, onLine);
     if (!c) {
       endEmbedLane();
       return null;
@@ -286,7 +368,11 @@ export class FastLane {
   }
 
   /** Spawn one `fastrun.js <mode>` child; `onDone` gets its result line. Null when it could not start. */
-  private spawnJob(mode: FastMode, onDone: (code: number | null, res: JobResult, ms: number, error: string | undefined) => void): ChildProcess | null {
+  private spawnJob(
+    mode: FastMode,
+    onDone: (code: number | null, res: JobResult, ms: number, error: string | undefined) => void,
+    onLine?: (line: Record<string, unknown>) => void,
+  ): ChildProcess | null {
     let c: ChildProcess;
     try {
       c = spawn(process.execPath, [runnerEntry(), mode], { stdio: ["ignore", "pipe", "pipe"], windowsHide: true, env: backgroundChildEnv(process.env, false) });
@@ -308,8 +394,20 @@ export class FastLane {
     let out = "";
     let err = "";
     let settled = false;
+    let partial = "";
     c.stdout?.on("data", (b: Buffer) => {
       out = (out + String(b)).slice(-65536);
+      if (!onLine) return;
+      // whole lines as they arrive: a long-lived child reports progress before its result line
+      const lines = (partial + String(b)).split("\n");
+      partial = lines.pop() ?? "";
+      for (const l of lines) {
+        try {
+          onLine(JSON.parse(l));
+        } catch {
+          /* not a JSON line */
+        }
+      }
     });
     c.stderr?.on("data", (b: Buffer) => {
       err = (err + String(b)).slice(-8192); // drained so a full pipe never hangs the child

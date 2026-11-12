@@ -190,6 +190,12 @@ export function embedLaneBusy(): string | null {
   return embedLane;
 }
 
+/** A job was refused the slot because the embed lane runs (2026-11-12): an embed child now lives for a whole burst, so the
+ *  daemon asks it to yield rather than let the job wait out the burst. */
+export function embedLaneYieldWanted(): boolean {
+  return Boolean(embedLane && deniedForLane && Date.now() - deniedForLane.at < DENIED_PRIORITY_MS);
+}
+
 /** Claim the single daemon-job slot. Returns false when something already runs. */
 export function claimDaemonJob(label: string): boolean {
   if (daemonJob) return false;

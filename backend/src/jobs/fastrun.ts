@@ -9,8 +9,35 @@
 import { mergeInbox } from "../memory/channel/p2pdb.js";
 import { embedFastLane, resolveShareKey } from "../memory/share.js";
 import { drainIngestQueue } from "./ingestqueue.js";
-import { FAST_VECTOR_BATCH, FAST_VECTOR_BUDGET_MS } from "./fastlane.js";
+import { embedBurst, FAST_VECTOR_BATCH, FAST_VECTOR_BUDGET_MS } from "./fastlane.js";
 import { acquireWriteTurn, turnWaitTotalMs, withWriteTurn } from "./writeturn.js";
+import { execFileSync } from "node:child_process";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { embedConfig } from "../memory/embed.js";
+
+/**
+ * Drop the model's files from the Linux page cache once the child is done (2026-11-12): the 1.23 GB fp32 weights were read
+ * into heap, so their file pages only kept the WSL VM's memory from going back to Windows. GNU `dd iflag=nocache count=0`
+ * advises the kernel to drop a whole file's clean pages. Linux only; anything failing is ignored.
+ */
+function dropModelCache(): void {
+  if (process.platform !== "linux") return;
+  try {
+    const cfg = embedConfig();
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]));
+    for (const f of walk(join(cfg.cacheDir, cfg.model))) {
+      try {
+        execFileSync("dd", [`if=${f}`, "iflag=nocache", "count=0", "status=none"], { stdio: "ignore", timeout: 10_000 });
+      } catch {
+        /* no dd, or the file went away: the cache simply stays */
+      }
+    }
+  } catch {
+    /* no model folder: nothing was cached */
+  }
+}
 
 // Every job here writes the store while the EMBED LANE (`vectors`) may be running in parallel (plan/24 §12.7): each takes
 // the store's write turn — ingest / merge for the whole job (seconds), vectors per batch write (ms).
@@ -25,8 +52,19 @@ import { acquireWriteTurn, turnWaitTotalMs, withWriteTurn } from "./writeturn.js
     }
     if (mode === "vectors") {
       const writeTurn = (): Promise<() => void> => acquireWriteTurn();
-      const r = await embedFastLane({ embedBudgetMs: FAST_VECTOR_BUDGET_MS, embedBatch: FAST_VECTOR_BATCH, writeTurn });
-      console.log(JSON.stringify({ ok: true, mode, embedded: r.embedded, embedMs: r.embedMs, more: r.more, stuckAt: r.stuckAt, turnWaitMs: turnWaitTotalMs() }));
+      // the daemon sends SIGTERM when another job wants the slot: the round in hand finishes, then the child exits
+      let stop = false;
+      process.on("SIGTERM", () => {
+        stop = true;
+      });
+      const r = await embedBurst({
+        round: () => embedFastLane({ embedBudgetMs: FAST_VECTOR_BUDGET_MS, embedBatch: FAST_VECTOR_BATCH, writeTurn }),
+        // a progress line per round that embedded: the daemon ships those vectors now, not when the child ends
+        onProgress: (p) => console.log(JSON.stringify({ progress: true, embedded: p.embedded, embedMs: p.embedMs })),
+        stopped: () => stop,
+      });
+      dropModelCache();
+      console.log(JSON.stringify({ ok: true, mode, embedded: r.embedded, embedMs: r.embedMs, more: r.more, stuckAt: r.stuckAt, rounds: r.rounds, turnWaitMs: turnWaitTotalMs() }));
     } else if (mode === "merge") {
       const keyFile = resolveShareKey(process.cwd()) ?? undefined;
       const r = await withWriteTurn(() => mergeInbox({ keyFile }));

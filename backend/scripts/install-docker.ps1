@@ -46,6 +46,21 @@ function Install-ZemoryDocker {
   wsl.exe -d $distro -u root -- sh -c "usermod -aG docker $wslUser; systemctl enable --now docker >/dev/null 2>&1; docker version --format '{{.Server.Version}}' >/dev/null"
   Native "starting docker inside $distro"
   Say "ok  Docker Engine (inside $distro)"
+
+  # Memory back to Windows (plan/30 §0, 2026-11-12). The VM hands Windows only free blocks of 2 MB and more, and by default
+  # never drops its file cache: vmmem sat at 3.5 GB while zemory used ~215 MB. The kernel now compacts free memory as it
+  # goes (blocks form and go back at once; measured 3351 -> 2824 MB in 2 minutes), and WSL drops the cache when idle.
+  wsl.exe -d $distro -u root -- sh -c "printf 'vm.compaction_proactiveness = 100\n' > /etc/sysctl.d/99-zemory-memory.conf; sysctl -q -p /etc/sysctl.d/99-zemory-memory.conf"
+  $wslcfg = Join-Path $env:USERPROFILE ".wslconfig"
+  $cfg = if (Test-Path $wslcfg) { [IO.File]::ReadAllText($wslcfg) } else { "" }
+  if ($cfg -notmatch '(?m)^\s*autoMemoryReclaim\s*=') {
+    # dropcache, not gradual: gradual returned nothing on a distro running cgroup v2 (systemd)
+    $cfg = if ($cfg -match '(?m)^\[experimental\]') { $cfg -replace '(?m)^\[experimental\]', "[experimental]`r`nautoMemoryReclaim=dropcache" }
+           else { $cfg.TrimEnd() + "`r`n`r`n[experimental]`r`nautoMemoryReclaim=dropcache`r`n" }
+    [IO.File]::WriteAllText($wslcfg, $cfg, (New-Object Text.UTF8Encoding $false))
+    Say "added autoMemoryReclaim=dropcache to $wslcfg (takes effect after: wsl --shutdown)"
+  }
+  Say "ok  memory goes back to Windows (compaction + dropcache)"
   $winget = (Get-Command winget -ErrorAction SilentlyContinue).Source
   foreach ($need in @(@{ cmd = "git"; id = "Git.Git" }, @{ cmd = "node"; id = "OpenJS.NodeJS.LTS" })) {
     if (Get-Command $need.cmd -ErrorAction SilentlyContinue) { Say "ok  $($need.cmd)"; continue }
