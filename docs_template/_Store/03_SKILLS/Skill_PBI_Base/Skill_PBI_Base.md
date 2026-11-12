@@ -1,7 +1,7 @@
 ---
 id: Skill_PBI_Base
 name: pbi-base
-version: 13
+version: 14
 type: process
 installs: [scripts/pbi_engine_query.ps1]
 aka: dev-pbi
@@ -20,6 +20,9 @@ description: Build or change a BI report - layout and chart choice, measures and
 - Choose a chart by its question: comparing groups ⇒ column/bar · a trend over time ⇒ line · a composition of few parts ⇒ stacked column
   or pie (a few parts at most) · detail to look up ⇒ table.
 - Each visual has a title saying what it answers; each number has a unit and a period; labels in business words (`Rule_Gate_02_ReaderText`).
+  The requester's spoken words are turned into the business term before they reach a display name, legend or title ("full thuế" →
+  `Sau VAT`, "chưa thuế" → `Trước VAT`, or `+VAT` / `-VAT`); a column under a title that already names the measure keeps only the
+  short term (title `Doanh Thu NQ` → columns `Trước VAT` · `Sau VAT` · `Target`).
 - A new chart idea ⇒ draw recommendations, propose the options; never apply on your own.
 
 ## 2. Measures and queries
