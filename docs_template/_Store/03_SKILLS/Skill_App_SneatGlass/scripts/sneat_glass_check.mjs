@@ -1733,7 +1733,7 @@ export const RULES = [
   // (v63, the user 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm")
   {
     id: 'page-std-tools',
-    rule: 'every page\'s buttons cluster opens with the frame\'s refresh button and its glossary button (the glossary lists the page\'s words; with none it stands turned off) - an app hands its own loading (onRefresh) and its words (glossary), never a refresh or glossary button of its own beside them',
+    rule: 'every page\'s buttons cluster opens with the frame\'s refresh button and its glossary button, and (v65) every page hands the words of what it shows - the glossary is never empty or turned off - an app hands its own loading (onRefresh) and its words (glossary), never a refresh or glossary button of its own beside them',
     check: `(() => {
       // (the tools box may be drawn as its children, display: contents - it has no rects of its own; the bar tells it is shown)
       const start = document.querySelector('#page-bar #card-start'), bar = start && start.closest('.page-toolbar');
@@ -1743,6 +1743,9 @@ export const RULES = [
       if (!shown(r)) return 'the page buttons have no refresh button';
       if (!shown(g)) return 'the page buttons have no glossary button';
       if (r.closest('.bar-cluster') !== g.closest('.bar-cluster')) return 'refresh and glossary stand in different clusters';
+      // (v65, the user 12/11: "nhiều trang đang ko có bảng mô tả ở nút mô tả, nút mô tả phải mô tả thông tin của trang") every
+      // page hands the words of what it shows: a glossary turned off, or with no word, is red
+      if (g.disabled || !(Number(g.dataset.count) > 0)) return 'the glossary of this page holds no words - hand the page\\'s terms (glossary) to its PageCard / PageToolbar / DomPage';
       const own = [...start.querySelectorAll('button, a.btn')].filter(b => shown(b) && b !== r && b !== g && /\\bbx-(refresh|book-open|list-ul)\\b/.test(b.innerHTML) && !b.closest('.dropdown-menu, .modal'));
       if (own.length) return 'a refresh or glossary button of the app stands beside the frame\\'s: ' + (own[0].id || own[0].getAttribute('aria-label') || '').slice(0, 30);
       return true;
