@@ -1681,6 +1681,10 @@ export const RULES = [
       if (!t || !t.getClientRects().length) return true;
       const sw = t.querySelector('#page-tabs-style');
       if (!sw || !sw.getClientRects().length) return 'the tab cluster has no short / long switch';
+      // (v64, the user 12/11: "lỗi tràn khung") every tab and "more (n)" stands inside the cluster's frame
+      const fr = t.getBoundingClientRect();
+      const out = [...t.querySelectorAll('.page-tabs-list > .nav-item')].find(li => li.getClientRects().length && (li.getBoundingClientRect().right > fr.right + 1 || li.getBoundingClientRect().left < fr.left - 1));
+      if (out) return 'a tab runs past the frame of its cluster: ' + out.textContent.trim().slice(0, 30);
       if (t.parentElement && t.parentElement.id === 'page-tabs-slot') {
         const r = t.getBoundingClientRect();
         const hit = [...document.querySelectorAll('#card-tools button, #card-tools input, #card-tools select')]
@@ -1705,8 +1709,13 @@ export const RULES = [
       if (Math.abs(tr.right - right) > 2) return 'the seek cluster does not end the row at its right (' + Math.round(right - tr.right) + ' px short)';
       const after = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')].find(c => c !== tools && c.getClientRects().length && c.getBoundingClientRect().left >= tr.right - 1 && c.getBoundingClientRect().top < tr.bottom && c.getBoundingClientRect().bottom > tr.top);
       if (after) return 'a cluster stands after the seek cluster: ' + (after.dataset.cluster || after.id);
+      // (the user 12/11: "khung filter phải theo size filter tổng chứ ko dc dài hơn") the frame is as wide as what it holds
+      const ts = getComputedStyle(tools), kids = [...tools.children].filter(k => k.getClientRects().length && k.getBoundingClientRect().width > 0);
+      const holds = kids.reduce((a, k) => a + k.getBoundingClientRect().width, 0) + Math.max(0, kids.length - 1) * (parseFloat(ts.columnGap) || 0)
+        + parseFloat(ts.paddingLeft) + parseFloat(ts.paddingRight) + parseFloat(ts.borderLeftWidth) + parseFloat(ts.borderRightWidth);
+      if (tr.width > holds + 4) return 'the seek frame is ' + Math.round(tr.width) + ' px, what it holds ' + Math.round(holds) + ' - wider than its filters';
       const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-      const places = [...tools.querySelectorAll('#filter-row > .filter-place')].filter(p => p.getClientRects().length);
+      const places =[...tools.querySelectorAll('#filter-row > .filter-place')].filter(p => p.getClientRects().length);
       const thin = places.find(p => p.offsetWidth < 6 * rem - 1);
       if (thin) return 'a pinned filter on the bar is ' + thin.offsetWidth + ' px wide, too narrow to press (at least ' + Math.round(6 * rem) + '): ' + (thin.dataset.filterId || '');
       const row = tools.querySelector('#filter-row');
