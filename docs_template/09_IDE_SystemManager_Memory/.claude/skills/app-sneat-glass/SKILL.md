@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 61
+version: 63
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v61 #07500a74df18
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v63 #924d029c98ad
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -108,7 +108,20 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v61 #07500a74df18
   buttons, then its info - words and figures about the page, in `.page-info` - then the tab cluster when it stands in row 2,
   the info zone apart from the buttons by the row's room and a faint divider, the tab cluster by its own frame alone - only the
   row's gap before it, never a divider and room of its own on top (v60: "nó bị cách tới 2 lần"); no words stand loose among the
-  buttons. [bar-zones]
+  buttons. **Row 2 is managed in clusters** (v62, the user 11/11): the page's buttons stand side by side in ONE framed cluster
+  led by a grip, the info in one framed cluster led by a grip with an edge that shortens it (its words end in "…"), the tab
+  cluster the third; the person drags a cluster by its grip to another place among the three, or one item within its own cluster
+  (never into another), and the layout is theirs, kept per page; Settings > Layout resets it. The frame builds the clusters for
+  `PageCard` and `PageToolbar`. **Clusters are even** (v63, the user 12/11): every cluster - the buttons, the info, the tabs -
+  wears the same frame at one height (the controls inside stand shorter, like the tabs), the info framed like the buttons, never
+  bare words; two clusters side by side are parted by exactly the row's own padding at its ends, always. [bar-zones] **Short or
+  long tabs** (v63, the user 12/11): a switch beside the cluster's grip folds the tabs to the one on screen and "more (n)" or
+  shows them all (the default); the person's choice, kept per group, is the same choice in Settings > Layout. In row 2 the
+  cluster never runs over the seek group or its pinned filters: it turns long only when every tab fits the room left, else it
+  stays short and offers "move to row 3, every tab" or "keep short in row 2". [tabs-style] **Refresh and glossary head every
+  page's buttons** (v63, the user 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm"):
+  the frame draws both first in the buttons cluster on every page; the app hands its own loading (`onRefresh`) and its words
+  (`glossary`), never a refresh or glossary button of its own; with no words the glossary button stands turned off. [page-std-tools]
 - **The whole app scales to the window from one design canvas** (v50): signed in, the page is drawn on 1920 x 1080 and zoomed to min(width/1920,
   height/1080), never above 1 nor below 0.7, so dragging the window never re-flows the layout; a phone (768 px and less) is
   never zoomed. Each person turns it off in Settings > Layout (Scale to the screen: fit the window | 100%). Under the zoom,

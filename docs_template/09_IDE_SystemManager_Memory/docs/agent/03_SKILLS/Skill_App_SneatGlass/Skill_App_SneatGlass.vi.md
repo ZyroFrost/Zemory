@@ -1,5 +1,5 @@
 ---
-version: 61
+version: 63
 lang: vi
 ---
 
@@ -91,7 +91,19 @@ lang: vi
   menu (v58). [tabs-reorder] **Hàng 2 chia khu, ở mọi app** (v58): nút của trang, rồi thông tin - chữ và số về trang, trong
   `.page-info` - rồi cụm tab khi nó đứng ở hàng 2; khu thông tin cách khu nút bằng khe của hàng và một vạch ngăn mờ, cụm tab tách
   chỉ bằng khung riêng của nó - trước nó chỉ có khe của hàng, không thêm vạch ngăn và đệm riêng (v60: "nó bị cách tới 2 lần");
-  không chữ nào nằm lẫn giữa các nút. [bar-zones]
+  không chữ nào nằm lẫn giữa các nút. **Hàng 2 quản lý theo cụm** (v62, user 11/11): các nút của trang đứng liền nhau trong MỘT
+  cụm có khung và tay nắm, tin của trang trong một cụm có khung, tay nắm và mép kéo để thu ngắn (chữ dư thành "…"), cụm tab là cụm
+  thứ ba; người dùng kéo tay nắm để dời cả cụm sang chỗ khác trong ba cụm, hoặc kéo một mục để đổi chỗ trong chính cụm của nó
+  (không sang cụm khác); bố cục là của họ, giữ riêng từng trang; Cài đặt > Bố cục đặt lại. Khung dựng cụm cho `PageCard` và
+  `PageToolbar`. **Các cụm đều nhau** (v63, user 12/11): mọi cụm - nút, tin, tab - mang cùng một khung, cùng một chiều cao (control
+  bên trong thấp hơn, như tab), tin luôn nằm trong khung như nút, không bao giờ là chữ trơn; hai cụm cạnh nhau cách đúng bằng padding
+  hai đầu của chính hàng 2, luôn cố định. [bar-zones] **Tab gọn hoặc dài** (v63, user 12/11): nút cạnh tay nắm của cụm thu tab
+  về tab đang mở và "Thêm (n)", hoặc bung mọi tab (mặc định); lựa chọn của từng người, giữ riêng từng nhóm, cũng là lựa chọn ở
+  Cài đặt > Bố cục. Ở hàng 2 cụm không bao giờ đè cụm tìm hay bộ lọc ghim: chỉ bung khi mọi tab vừa phần còn lại, không thì giữ gọn
+  và đề xuất "Đưa xuống hàng 3 và bung" hoặc "Giữ gọn ở hàng 2". [tabs-style] **Làm mới và Chú thích đứng đầu cụm nút của mọi
+  trang** (v63, user 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm"): khung vẽ cả hai
+  đầu cụm nút ở mọi trang; app truyền cách tải lại (`onRefresh`) và thuật ngữ (`glossary`), không tự vẽ nút làm mới hay chú thích
+  riêng; chưa có thuật ngữ thì nút chú thích tắt. [page-std-tools]
 - **Mọi điểm dừng của đường dẫn là một trang** (v53): mọi nút của menu là một trang - lá là trang của app, nhánh (phòng ban, nhóm
   báo cáo, nhóm con) là danh sách những gì nó chứa, mỗi phần một dòng rộng bằng trang, các trang của nó trải đều. App đưa nhánh
   trang danh sách riêng (`to` của hàng, của nhóm `toggle`); không có thì khung tự vẽ ở `/~/<khoá>`, đường dẫn là các nhánh xuống tới

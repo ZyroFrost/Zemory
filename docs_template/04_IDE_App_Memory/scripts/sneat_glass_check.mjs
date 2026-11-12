@@ -331,16 +331,25 @@ export const RULES = [
   },
   {
     id: 'bar-one-size',
-    rule: '(v43, user 08/11: the "+" stood 38 px beside pinned filters of 34 px, "phải khóa lại chính xác size") every control of the page bar - the page\'s own tools and the "+", every pinned filter, the filter button, the filter box, the view switch - is drawn at the bar\'s one height --tool-h within 1 px, and a button carrying only an icon is a square of it (Rule_Gate_97_BarOneSize)',
+    rule: '(v43, user 08/11: the "+" stood 38 px beside pinned filters of 34 px, "phải khóa lại chính xác size") every control of the page bar - the page\'s own tools and the "+", every pinned filter, the filter button, the filter box, the view switch - is drawn at the bar\'s one height --tool-h within 1 px, and a button carrying only an icon is a square of it (Rule_Gate_97_BarOneSize); (v63) a framed cluster of row 2 is drawn at --tool-h and the controls inside it 8 px shorter, like the tabs',
     check: `(() => {
       const bar = document.querySelector('#page-bar .page-toolbar, .page-toolbar');
       if (!bar || !bar.getClientRects().length) return true;
       const h = parseFloat(getComputedStyle(bar).getPropertyValue('--tool-h')) || 38;
       const sel = '.card-start button, .card-start a.btn, .filter-row .form-select, .filter-row .form-control, .page-filter > .btn, .page-search .form-control, .view-switch > .btn, .card-tools > .filter-clear';
+      // (v63, the user 12/11) a framed cluster of row 2 is drawn at --tool-h like the tab cluster, and the controls inside it
+      // stand 8 px shorter, like the tabs
+      const framed = e => { const c = e.closest('.bar-cluster'); return c && parseFloat(getComputedStyle(c).borderTopWidth) >= 1 ? c : null; };
+      for (const c of bar.querySelectorAll('.bar-cluster')) {
+        if (!framed(c) || !c.getClientRects().length) continue;
+        const ch = c.getBoundingClientRect().height;
+        if (Math.abs(ch - h) > 1) return 'a cluster of the page bar is ' + Math.round(ch) + ' px tall, the bar is ' + Math.round(h) + ': ' + c.dataset.cluster;
+      }
       for (const e of bar.querySelectorAll(sel)) {
-        if (!e.getClientRects().length || e.closest('.dropdown-menu, .modal, .slicer-menu, .filter-pop')) continue;
+        if (!e.getClientRects().length || e.closest('.dropdown-menu, .modal, .slicer-menu, .filter-pop') || e.matches('.bar-grip')) continue;
         const r = e.getBoundingClientRect(), name = (e.getAttribute('aria-label') || e.textContent || e.id || e.className).trim().slice(0, 30);
-        if (Math.abs(r.height - h) > 1) return 'a control of the page bar is ' + Math.round(r.height) + ' px tall, the bar is ' + Math.round(h) + ': ' + name;
+        const want = framed(e) ? h - 8 : h;
+        if (Math.abs(r.height - want) > 1) return 'a control of the page bar is ' + Math.round(r.height) + ' px tall, the bar is ' + Math.round(h) + (want !== h ? ' (' + Math.round(want) + ' inside a cluster)' : '') + ': ' + name;
         const words = (e.innerText || '').split('+').join('').trim();
         if (e.matches('button, a.btn') && !words && Math.abs(r.width - r.height) > 1) return 'an icon button of the page bar is ' + Math.round(r.width) + ' x ' + Math.round(r.height) + ', not a square: ' + name;
       }
@@ -404,8 +413,10 @@ export const RULES = [
       // (v48, the user 09/11: the spaces between tabs were uneven) one space: the first tab at the strip's own room from its left
       // edge, and every two tabs exactly that room apart, within 1 px
       // (v56) the cluster's grip leads it: the first tab stands that same room after the grip
-      const pad = parseFloat(getComputedStyle(t).paddingLeft), grip = t.querySelector('.page-tabs-grip'), rs = items.map(i => i.getBoundingClientRect());
-      const start = grip && grip.getClientRects().length ? grip.getBoundingClientRect().right + pad : t.getBoundingClientRect().left + t.clientLeft + pad;
+      // (v63) and its short / long switch beside the grip: the first tab stands that room after the last of the two
+      const pad = parseFloat(getComputedStyle(t).paddingLeft), rs = items.map(i => i.getBoundingClientRect());
+      const heads = [...t.querySelectorAll(':scope > .page-tabs-grip, :scope > .page-tabs-style')].filter(e => e.getClientRects().length);
+      const start = heads.length ? Math.max(...heads.map(e => e.getBoundingClientRect().right)) + pad : t.getBoundingClientRect().left + t.clientLeft + pad;
       if (rs.length && Math.abs(rs[0].left - start) > 1) return 'the first tab stands ' + Math.round(rs[0].left - start + pad) + ' px from the strip edge, the strip keeps ' + Math.round(pad);
       for (let i = 1; i < rs.length; i++) { const gap = rs[i].left - rs[i - 1].right; if (Math.abs(gap - pad) > 1) return 'two tabs stand ' + Math.round(gap) + ' px apart, the strip ends ' + Math.round(pad) + ' px - one even space'; }
       return true;
@@ -424,12 +435,15 @@ export const RULES = [
       // a fill or an edge under 4% opacity shows nothing (a fading fill is read as clear)
       const clear = v => { if (!v || v === 'transparent') return true; const a = /rgba\\([^)]*,\\s*([\\d.]+)\\)$/.exec(v); return Boolean(a) && parseFloat(a[1]) < .04; };
       for (const b of start.querySelectorAll('button, a.btn, a.nav-link, [role=button], [role=tab]')) {
-        if (!b.getClientRects().length || b.closest('.dropdown-menu, .modal, .slicer-menu')) continue;
+        // (v62) the grip of a cluster of row 2 is the frame's handle, not a tool of the page
+        if (!b.getClientRects().length || b.closest('.dropdown-menu, .modal, .slicer-menu') || b.matches('.bar-grip')) continue;
         const c = getComputedStyle(b), r = b.getBoundingClientRect(), name = (b.getAttribute('aria-label') || b.textContent || b.id || b.className).trim().slice(0, 30);
         const filled = !clear(c.backgroundColor) || c.backgroundImage !== 'none', edged = parseFloat(c.borderTopWidth) > 0 && !clear(c.borderTopColor);
         if (!filled && !edged) return 'a bare tool button with no frame: ' + name;
         if (parseFloat(c.borderTopLeftRadius) < 2) return 'a tool button with square corners: ' + name;
-        if (Math.abs(r.height - h) > 1) return 'a tool button ' + Math.round(r.height) + ' px tall, the filters are ' + Math.round(h) + ': ' + name;
+        // (v63) inside a framed cluster of row 2 the cluster's frame stands at the filters' height and the button 8 px shorter
+        const cl = b.closest('.bar-cluster'), want = cl && parseFloat(getComputedStyle(cl).borderTopWidth) >= 1 ? h - 8 : h;
+        if (Math.abs(r.height - want) > 1) return 'a tool button ' + Math.round(r.height) + ' px tall, the filters are ' + Math.round(h) + (want !== h ? ' (' + Math.round(want) + ' inside a cluster)' : '') + ': ' + name;
       }
       return true;
     })()`,
@@ -442,9 +456,10 @@ export const RULES = [
       const rows = [document.querySelector('#layout-navbar > .nav-row1'), document.querySelector('#page-bar > .page-toolbar')].filter(r => r && r.getClientRects().length && r.getBoundingClientRect().height > 8);
       for (const row of rows) {
         const b = row.getBoundingClientRect();
-        // (v56) the tab cluster in row 2 is one control: its frame, not the grip and tabs inside it
-        const kids = [...row.querySelectorAll('button, input, select, a, .breadcrumb, .avatar, .nav-pills, .page-tabs-panel')]
-          .filter(e => e.getClientRects().length && !e.closest('.dropdown-menu, .slicer-menu, [hidden]') && !(e.parentElement && e.parentElement.closest('.page-tabs-panel')))
+        // (v56) the tab cluster in row 2 is one control: its frame, not the grip and tabs inside it; (v62) so is every cluster of
+        // row 2 (the page's buttons, its info)
+        const kids = [...row.querySelectorAll('button, input, select, a, .breadcrumb, .avatar, .nav-pills, .page-tabs-panel, .bar-cluster')]
+          .filter(e => e.getClientRects().length && !e.closest('.dropdown-menu, .slicer-menu, [hidden]') && !(e.parentElement && e.parentElement.closest('.page-tabs-panel, .bar-cluster')))
           .map(e => ({e, r: e.getBoundingClientRect()})).filter(({r}) => r.width > 0 && r.right > b.left && r.left < b.right);
         if (!kids.length) continue;
         const first = kids.reduce((a, k) => (k.r.left < a.r.left ? k : a));
@@ -640,12 +655,16 @@ export const RULES = [
         if (stray) return 'a page tool (' + (stray.id || stray.className.split(' ')[0]) + ') stands in the seek group - it belongs at the left';
         const lead = bar.querySelector(':scope > .card-lead'), start = bar.querySelector(':scope > .card-start');
         if (shown(lead) && lead.getBoundingClientRect().left - left > 2) return 'what leads the bar does not start at its left';
-        if (shown(start)) {
+        // (v63) a tools box drawn as its children (display: contents) is read by what it holds
+        const kids = start ? [...start.children].filter(shown) : [];
+        const flat = start && getComputedStyle(start).display === 'contents';
+        const span = !flat ? (start && start.getBoundingClientRect()) : kids.length ? kids.map(k => k.getBoundingClientRect()).reduce((a, b) => ({left: Math.min(a.left, b.left), right: Math.max(a.right, b.right), top: Math.min(a.top, b.top), bottom: Math.max(a.bottom, b.bottom)})) : null;
+        if (span && (flat || shown(start))) {
           const from = shown(lead) ? lead.getBoundingClientRect().right : left;
-          if (start.getBoundingClientRect().left - from > 20) return 'the page tools do not stand from the left of the bar';
+          if (span.left - from > 20) return 'the page tools do not stand from the left of the bar';
           // the two groups never meet: on one line (a phone wraps them onto two), the first thing shown in the seek group
           // starts after the page tools end
-          const p = start.getBoundingClientRect(), t = tools.getBoundingClientRect();
+          const p = span, t = tools.getBoundingClientRect();
           const first = Math.min(...[...tools.querySelectorAll(':scope > *, :scope > #filter-row > *')].filter(shown).map(e => e.getBoundingClientRect().left));
           if (t.top < p.bottom - 2 && first < p.right + 4) return 'the seek group runs into the page tools at the left';
         }
@@ -1564,21 +1583,44 @@ export const RULES = [
   // (v58, the user 11/11: "khu vực nút riêng, khu vực thông tin riêng, và khu vực tab… riêng, để ko dính chùm", for every app)
   {
     id: 'bar-zones',
-    rule: 'row 2 stands in zones - the page\'s buttons, its info (words and figures in .page-info) and the tab cluster - each apart from the zone before it by a faint divider; no words of the page stand loose among its buttons',
+    rule: 'row 2 stands in zones - the page\'s buttons, its info (words and figures in .page-info) and the tab cluster; (v62, plan 06 §7: managed in clusters) the buttons stand side by side in ONE framed cluster led by its grip, the info in one framed cluster led by its grip with an edge that shortens it, the tab cluster framed with only the row\'s gap before it; (v63) every cluster at one height, the info framed like the buttons and the tabs, and two clusters side by side parted by the row\'s own padding at its ends; no words of the page stand loose among its buttons',
     check: `(() => {
       const start = document.querySelector('#page-bar #card-start');
-      if (!start || !start.getClientRects().length || innerWidth < 768) return true;
+      if (!start || innerWidth < 768) return true;
+      const shown = e => e.getClientRects().length > 0;
       const walk = document.createTreeWalker(start, NodeFilter.SHOW_TEXT);
       for (let n = walk.nextNode(); n; n = walk.nextNode()) {
         const p = n.parentElement, words = n.textContent.trim();
-        if (!words || !p || !p.getClientRects().length) continue;
+        if (!words || !p || !shown(p)) continue;
         if (p.closest('.page-info, button, a, label, select, .dropdown-menu, [hidden], .visually-hidden, [class*="chip"], [role="button"]')) continue;
         return 'words beside the page buttons stand in no info zone (.page-info): ' + words.slice(0, 40);
       }
-      const info = start.querySelector(':scope > .page-info');
-      if (info && info.getClientRects().length && info.previousElementSibling && info.previousElementSibling.getClientRects().length
-        && info.previousElementSibling.getBoundingClientRect().width > 0 && !(parseFloat(getComputedStyle(info).borderInlineStartWidth) >= 1))
-        return 'the info zone stands against the page buttons with no divider';
+      const clusters = [...start.querySelectorAll('.bar-cluster[data-cluster]')].filter(shown);
+      if (clusters.length) {
+        // (v62) the frame's clusters: the buttons in one, the info in one, each framed and led by its grip; the info shortens
+        const buttons = [...start.querySelectorAll('button, a.btn')].filter(b => shown(b) && !b.closest('.dropdown-menu, .modal, .slicer-menu, .page-info'));
+        const homes = new Set(buttons.map(b => b.closest('.bar-cluster[data-cluster="tools"]')));
+        if (homes.has(null)) return 'a page button stands outside the buttons cluster: ' + (buttons.find(b => !b.closest('.bar-cluster[data-cluster="tools"]')).textContent || '').trim().slice(0, 30);
+        if (homes.size > 1) return 'the page buttons stand in ' + homes.size + ' clusters - one cluster, side by side';
+        if (start.querySelectorAll('.bar-cluster[data-cluster="info"]').length > 1) return 'the page info stands in more than one cluster';
+        for (const c of clusters) {
+          const cs = getComputedStyle(c);
+          if (!(parseFloat(cs.borderTopWidth) >= 1)) return 'the ' + c.dataset.cluster + ' cluster of row 2 has no frame';
+          const grip = c.querySelector(':scope > .bar-grip'), edge = c.querySelector(':scope > .bar-resize');
+          if (!grip || !shown(grip)) return 'the ' + c.dataset.cluster + ' cluster of row 2 has no grip to drag it';
+          if (c.dataset.cluster === 'info' && (!edge || !shown(edge))) return 'the info cluster has no edge to shorten it';
+        }
+      } else {
+        // an app that draws its own bar: (v63, the user 12/11) its info stands in a frame of its own, like the buttons and tabs
+        const info = start.querySelector(':scope > .page-info');
+        if (info && shown(info) && info.getBoundingClientRect().width > 0) {
+          const cs = getComputedStyle(info);
+          if (!['Top', 'Right', 'Bottom', 'Left'].every(s => parseFloat(cs['border' + s + 'Width']) >= 1)) return 'the info zone of row 2 stands in no frame of its own';
+        }
+      }
+      // (v63, the user 12/11: the room between clusters equals the row's own room at its ends; the info framed like the buttons
+      // and the tabs) the clusters of row 2 (the buttons, the info, the tabs) stand at one height, and two clusters side by side
+      // are parted by the row's padding at its ends, within 1 px
       const t = document.getElementById('page-tabs'), slot = t && t.parentElement;
       if (t && slot && slot.id === 'page-tabs-slot' && [...start.children].some(c => c.getClientRects().length && c.getBoundingClientRect().width > 0)
         && !(parseFloat(getComputedStyle(t).borderInlineStartWidth) >= 1)) return 'the tab cluster in row 2 stands against the page zone with no frame of its own';
@@ -1586,6 +1628,21 @@ export const RULES = [
       // the row's gap stands before it
       if (t && slot && slot.id === 'page-tabs-slot' && (parseFloat(getComputedStyle(slot).paddingInlineStart) > 1 || parseFloat(getComputedStyle(slot).borderInlineStartWidth) >= 1))
         return 'the tab cluster in row 2 stands behind a divider and room of its own besides its frame - parted twice';
+      const row = document.querySelector('#page-bar > .page-toolbar');
+      if (row) {
+        const units =[...row.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel, :scope > .card-start > .page-info')]
+          .filter(e => shown(e) && e.getBoundingClientRect().width > 0 && !(e.parentElement && e.parentElement.closest('.bar-cluster')))
+          .map(e => ({e, r: e.getBoundingClientRect()})).sort((a, b) => a.r.left - b.r.left);
+        const hs = units.map(u => u.r.height);
+        if (units.length > 1 && Math.max(...hs) - Math.min(...hs) > 1) return 'the clusters of row 2 stand at different heights (' + hs.map(Math.round).join(' / ') + ' px)';
+        const pad = parseFloat(getComputedStyle(row).paddingInlineStart) || 0;
+        for (let i = 1; i < units.length; i++) {
+          const a = units[i - 1].r, b = units[i].r;
+          if (b.top >= a.bottom || a.top >= b.bottom) continue;   // on another line of the row
+          const gap = b.left - a.right;
+          if (Math.abs(gap - pad) > 1) return 'two clusters of row 2 stand ' + Math.round(gap) + ' px apart, the row keeps ' + Math.round(pad) + ' px at its ends';
+        }
+      }
       return true;
     })()`,
   },
@@ -1598,6 +1655,44 @@ export const RULES = [
       if (!t || !t.getClientRects().length || innerWidth < 768) return true;
       const fixed = [...t.querySelectorAll('.page-tabs-list > .nav-item[data-to]')].find(li => li.getAttribute('draggable') !== 'true');
       return !fixed || 'a tab cannot be dragged to reorder its group: ' + fixed.textContent.trim().slice(0, 30);
+    })()`,
+  },
+  // (v63, the user 12/11: "thêm chức năng có thể tùy chỉnh dc tab dạng nén hay dạng dài ra… lỡ như ở trên hàng 2 đang kẹt filter
+  // ghim mà bung ra nữa nếu dài sẽ đụng nhau")
+  {
+    id: 'tabs-style',
+    rule: 'the tab cluster carries its short / long switch beside its grip (short: the tab on screen and "more (n)"; long: every tab), the person\'s choice kept per group and the same in Settings; in row 2 the cluster never runs over the seek group or its pinned filters - long only when every tab fits, else it stays short and offers row 3',
+    check: `(() => {
+      const t = document.getElementById('page-tabs');
+      if (!t || !t.getClientRects().length) return true;
+      const sw = t.querySelector('#page-tabs-style');
+      if (!sw || !sw.getClientRects().length) return 'the tab cluster has no short / long switch';
+      if (t.parentElement && t.parentElement.id === 'page-tabs-slot') {
+        const r = t.getBoundingClientRect();
+        const hit = [...document.querySelectorAll('#card-tools button, #card-tools input, #card-tools select')]
+          .filter(e => e.getClientRects().length && !e.closest('.dropdown-menu, .slicer-menu, [hidden]'))
+          .find(e => { const b = e.getBoundingClientRect(); return b.width > 0 && b.left < r.right - 1 && b.right > r.left + 1 && b.top < r.bottom && b.bottom > r.top; });
+        if (hit) return 'the tab cluster in row 2 runs over the seek group: ' + (hit.id || hit.getAttribute('aria-label') || hit.className).slice(0, 30);
+      }
+      return true;
+    })()`,
+  },
+  // (v63, the user 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm")
+  {
+    id: 'page-std-tools',
+    rule: 'every page\'s buttons cluster opens with the frame\'s refresh button and its glossary button (the glossary lists the page\'s words; with none it stands turned off) - an app hands its own loading (onRefresh) and its words (glossary), never a refresh or glossary button of its own beside them',
+    check: `(() => {
+      // (the tools box may be drawn as its children, display: contents - it has no rects of its own; the bar tells it is shown)
+      const start = document.querySelector('#page-bar #card-start'), bar = start && start.closest('.page-toolbar');
+      if (!start || !bar || !bar.getClientRects().length) return true;
+      const shown = e => e && e.getClientRects().length > 0;
+      const r = start.querySelector('.page-refresh'), g = start.querySelector('.page-glossary');
+      if (!shown(r)) return 'the page buttons have no refresh button';
+      if (!shown(g)) return 'the page buttons have no glossary button';
+      if (r.closest('.bar-cluster') !== g.closest('.bar-cluster')) return 'refresh and glossary stand in different clusters';
+      const own = [...start.querySelectorAll('button, a.btn')].filter(b => shown(b) && b !== r && b !== g && /\\bbx-(refresh|book-open|list-ul)\\b/.test(b.innerHTML) && !b.closest('.dropdown-menu, .modal'));
+      if (own.length) return 'a refresh or glossary button of the app stands beside the frame\\'s: ' + (own[0].id || own[0].getAttribute('aria-label') || '').slice(0, 30);
+      return true;
     })()`,
   },
   // (v56, the user: the three quick periods did not wear the template and did not share the row)
