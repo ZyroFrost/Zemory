@@ -1962,6 +1962,8 @@ export async function embedFastLane(o: {
    * other jobs: the model runs outside any turn, each batch write takes one.
    */
   writeTurn?: () => Promise<() => void>;
+  /** No recent message waits ⇒ embed older ones, newest first, in the same pass (the fast lane's burst child). */
+  backfill?: boolean;
 }): Promise<{ embedded: number; embedMs: number; more: boolean; stuckAt: number | null }> {
   // No frontier ⇒ every recent message already has its vector.
   const t0 = Date.now();
@@ -1979,6 +1981,20 @@ export async function embedFastLane(o: {
     : null;
   // A frontier the pass could not move (0 embedded: the message cannot be embedded here) — the lane must not respawn on it.
   const stuckAt = frontier !== null && (r?.embedded ?? 0) === 0 ? frontier : null;
+  // Recent messages all embedded ⇒ the same child (one model in memory) goes on with the older ones, newest first. A
+  // second process for the backfill (`embed --all`) loaded a second model beside this one and filled a 4 GB WSL (12/11).
+  if (!frontier && o.backfill) {
+    const b = await embedPending({
+      dbPath: o.dbPath,
+      limit: o.embedLimit ?? 256,
+      newestFirst: true,
+      countRemaining: false,
+      ...(o.embedBatch ? { batchSize: o.embedBatch } : {}),
+      ...(o.embedBudgetMs ? { deadline: t0 + o.embedBudgetMs } : {}),
+      ...(o.writeTurn ? { writeTurn: o.writeTurn } : {}),
+    });
+    return { embedded: b.embedded, embedMs: Date.now() - t0, more: b.embedded > 0, stuckAt: null };
+  }
   return { embedded: r?.embedded ?? 0, embedMs: Date.now() - t0, more: r?.stoppedEarly === true, stuckAt };
 }
 

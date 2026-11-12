@@ -58,7 +58,7 @@ function dropModelCache(): void {
         stop = true;
       });
       const r = await embedBurst({
-        round: () => embedFastLane({ embedBudgetMs: FAST_VECTOR_BUDGET_MS, embedBatch: FAST_VECTOR_BATCH, writeTurn }),
+        round: () => embedFastLane({ embedBudgetMs: FAST_VECTOR_BUDGET_MS, embedBatch: FAST_VECTOR_BATCH, writeTurn, backfill: true }),
         // a progress line per round that embedded: the daemon ships those vectors now, not when the child ends
         onProgress: (p) => console.log(JSON.stringify({ progress: true, embedded: p.embedded, embedMs: p.embedMs })),
         stopped: () => stop,
