@@ -122,12 +122,17 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   the frame draws both first in the buttons cluster on every page; the app hands its own loading (`onRefresh`) and its words
   (`glossary`), never a refresh or glossary button of its own; with no words the glossary button stands turned off. [page-std-tools]
   **The seek group is the fourth cluster** (v64, the user 12/11: "khu vực filter search tính là 1 khu vực riêng thứ 4 và dời được"):
-  framed like the others and always anchored at the row's right end ("filter luôn neo bên phải như cũ" - no grip; the tabs, page
-  buttons and page info move before it). Every person opens row 2 on **tabs, page buttons, page info, seek group** until they
+  framed and led by a grip like the others; by default (and left automatic) it is anchored at the row's right end ("filter luôn
+  neo bên phải như cũ… mặc định nó dính vào đó… khi user kéo thì vẫn dc"); the person drags it elsewhere, and drags one pinned
+  filter onto another to reorder them, as tabs ("kéo dc từng khung filter giống tab"). Every person opens row 2 on **tabs, page buttons, page info, seek group** until they
   drag ("mặc định… luôn là tab, nút trang, thông tin, filter… khi nào user kéo mới đổi"). **Pinned filters
   never run over another cluster**: each one on the bar keeps a width it can be pressed at ("1 khung filter nhỏ xíu cũng ko bấm
   vào dc"); the first pinned ones that fit stand there, the others wait in the popover; measured in the page's own px, so each
-  display size fits its own count. [seek-cluster] A cluster with nothing to show is hidden, never an empty frame.
+  display size fits its own count. [seek-cluster] A cluster with nothing to show is hidden, never an empty frame. **Every
+  cluster works when pressed** (v64, the user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt
+  động dc để các repo nó tự dò và sửa"): refresh asks the server again, the glossary opens its words, the filter button its
+  popover of filters, the filter box filters the rows and gives them back, the tab switch changes the tabs - each pressed by the
+  browser check on every page, the page left as it was. [bar-works]
 - **The whole app scales to the window from one design canvas** (v50): signed in, the page is drawn on 1920 x 1080 and zoomed to min(width/1920,
   height/1080), never above 1 nor below 0.7, so dragging the window never re-flows the layout; a phone (768 px and less) is
   never zoomed. Each person turns it off in Settings > Layout (Scale to the screen: fit the window | 100%). Under the zoom,

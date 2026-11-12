@@ -1699,16 +1699,18 @@ export const RULES = [
   // nén… chỉ lấy các filter ở đầu ra thôi… 1 khung filter nhỏ xíu cũng ko bấm vào dc")
   {
     id: 'seek-cluster',
-    rule: 'the seek group (pinned filters, filter button, filter box, view switch) is the fourth cluster of row 2, framed like the others and always anchored at the row\'s right end (no grip: the other three move before it); its pinned filters never run over another cluster, and each one on the bar keeps a width it can be pressed at (at least 6rem of the page) - the first pinned ones stand there, the ones that do not fit wait in the popover; measured in the page\'s own px, so every display size fits its own count',
+    rule: 'the seek group (pinned filters, filter button, filter box, view switch) is the fourth cluster of row 2, framed and led by a grip like the others, anchored at the row\'s right end by default (the person drags it elsewhere, or drags one pinned filter onto another to reorder them); its pinned filters never run over another cluster, and each one on the bar keeps a width it can be pressed at (at least 6rem of the page) - the first pinned ones stand there, the ones that do not fit wait in the popover; measured in the page\'s own px, so every display size fits its own count',
     check: `(() => {
       const bar = document.querySelector('#page-bar > .page-toolbar'), tools = bar && bar.querySelector(':scope > .card-tools');
       if (!bar || !tools || !bar.getClientRects().length || innerWidth < 768) return true;
       if (!tools.matches('.bar-cluster[data-cluster="seek"]') || !(parseFloat(getComputedStyle(tools).borderTopWidth) >= 1)) return 'the seek group is no framed cluster of row 2';
-      // (the user 12/11: "filter luôn neo bên phải như cũ") it always ends the row at its right: no cluster after it
+      // (the user 12/11: "filter… nắm kéo dc cả cụm như 3 cụm kia… mặc định nó dính vào đó… khi user kéo thì vẫn dc") led by its grip;
+      // standing last (the default) it is anchored at the row's right end
+      const grip = tools.querySelector(':scope > .bar-grip');
+      if (!grip || !grip.getClientRects().length) return 'the seek cluster has no grip to drag it';
       const tr = tools.getBoundingClientRect(), bs = getComputedStyle(bar), right = bar.getBoundingClientRect().right - parseFloat(bs.paddingRight);
-      if (Math.abs(tr.right - right) > 2) return 'the seek cluster does not end the row at its right (' + Math.round(right - tr.right) + ' px short)';
       const after = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')].find(c => c !== tools && c.getClientRects().length && c.getBoundingClientRect().left >= tr.right - 1 && c.getBoundingClientRect().top < tr.bottom && c.getBoundingClientRect().bottom > tr.top);
-      if (after) return 'a cluster stands after the seek cluster: ' + (after.dataset.cluster || after.id);
+      if (!after && Math.abs(tr.right - right) > 2) return 'the seek cluster, last of the row, is not anchored at its right end (' + Math.round(right - tr.right) + ' px short)';
       // (the user 12/11: "khung filter phải theo size filter tổng chứ ko dc dài hơn") the frame is as wide as what it holds
       const ts = getComputedStyle(tools), kids = [...tools.children].filter(k => k.getClientRects().length && k.getBoundingClientRect().width > 0);
       const holds = kids.reduce((a, k) => a + k.getBoundingClientRect().width, 0) + Math.max(0, kids.length - 1) * (parseFloat(ts.columnGap) || 0)
@@ -1824,6 +1826,85 @@ export const DIALOG_RULES = [
 
 /** (v31) Probes: async browser expressions (evaluate with awaitPromise) that move the page and measure it, then put it back. */
 export const PROBES = [
+  // (v64, the user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt động dc để các repo nó tự dò
+  // và sửa") every control of row 2 is pressed as a person would and must do what it says; the page is left as it was
+  {
+    id: 'bar-works',
+    rule: 'every cluster of row 2 works when pressed: refresh asks the server again (a request within 8 s); the glossary opens its dialog with its words and Escape closes it (or it stands turned off with no words); the filter button opens its popover, which holds filters, and Escape closes it; the filter box filters what the page shows (a text no row holds leaves no row or the empty state, clearing it gives every row back); the short / long switch of the tabs changes them or offers the ways out; the page is left as it was',
+    check: `(async () => {
+      const bar = document.querySelector('#page-bar > .page-toolbar, .page-toolbar');
+      if (!bar || !bar.getClientRects().length) return true;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const until = async (f, ms) => { for (let t = 0; t <= ms; t += 100) { try { if (f()) return true; } catch { /* drawing */ } await wait(100); } return false; };
+      const shown = e => Boolean(e) && e.getClientRects().length > 0;
+      const esc = () => { for (const type of ['keydown', 'keyup']) document.dispatchEvent(new KeyboardEvent(type, {key: 'Escape', bubbles: true})); };
+      const out = [];
+      // refresh: one request to the server at least, counted on fetch and XMLHttpRequest
+      const refresh = document.getElementById('page-refresh');
+      if (shown(refresh) && !refresh.disabled) {
+        // the frame's own rounds (who is signed in, health, notices, the person's settings) are not the page asking again
+        let asked = 0;
+        const own = u => /\\/(auth\\/me|auth\\/ui|health|notices|notifications)\\b/.test(String(u && (u.url || u)));
+        const fetch0 = window.fetch, open0 = XMLHttpRequest.prototype.open;
+        window.fetch = function (...a) { if (!own(a[0])) asked++; return fetch0.apply(this, a); };
+        XMLHttpRequest.prototype.open = function (...a) { if (!own(a[1])) asked++; return open0.apply(this, a); };
+        try { refresh.click(); if (!(await until(() => asked > 0, 8000))) out.push('refresh asked the server nothing'); }
+        finally { window.fetch = fetch0; XMLHttpRequest.prototype.open = open0; }
+        await until(() => !document.querySelector('#page-refresh[aria-busy="true"]'), 15000);
+        await wait(600);
+      }
+      // glossary: its dialog with its words, closed by Escape
+      const gl = document.getElementById('page-glossary');
+      if (shown(gl) && !gl.disabled) {
+        gl.click();
+        const d = () => document.querySelector('#page-glossary-dialog');
+        if (!(await until(() => d() && d().open, 2000))) out.push('the glossary opened no dialog');
+        else {
+          if (!d().querySelector('dt')) out.push('the glossary dialog holds no words');
+          esc();
+          if (!(await until(() => !d() || !d().open, 2000))) out.push('Escape left the glossary open');
+        }
+      }
+      // filter button: its popover, holding filters, closed by Escape
+      const ft = document.getElementById('filter-toggle'), pop = document.getElementById('filter-pop');
+      if (shown(ft) && !ft.disabled && pop) {
+        ft.click();
+        if (!(await until(() => !pop.hidden && shown(pop), 2000))) out.push('the filter button opened no popover');
+        else {
+          if (!pop.querySelector('.filter-place, .filter-field, select, input') && !document.querySelector('#filter-row .filter-place')) out.push('the filter popover holds no filter');
+          esc();
+          if (!(await until(() => pop.hidden || !shown(pop), 2000))) out.push('Escape left the filter popover open');
+        }
+      }
+      // filter box: a text no row holds empties the list; clearing gives the rows back
+      const box = document.querySelector('#page-search input, .page-toolbar .page-search input');
+      const rows = () => [...document.querySelectorAll('#page table tbody tr, #page .view-grid tbody tr')].filter(r => shown(r) && !r.querySelector('[data-empty], .empty-state')).length;
+      if (shown(box) && !box.disabled) {
+        const n0 = rows();
+        if (n0 > 0) {
+          const put = v => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(box, v); box.dispatchEvent(new Event('input', {bubbles: true})); };
+          put('zq\\u00a7xj~nothing');
+          if (!(await until(() => rows() < n0 || document.querySelector('#page [data-empty], #page .empty-state'), 3000))) out.push('the filter box filtered nothing (' + n0 + ' rows stayed)');
+          put('');
+          if (!(await until(() => rows() >= n0, 3000))) out.push('clearing the filter box did not give the rows back (' + rows() + ' of ' + n0 + ')');
+        }
+      }
+      // the short / long switch: the tabs change, or the ways out are offered; then back as it was
+      const sw = document.getElementById('page-tabs-style');
+      if (shown(sw)) {
+        const s0 = sw.dataset.style;
+        sw.click();
+        const changed = await until(() => { const n = document.getElementById('page-tabs-style'); return (n && n.dataset.style !== s0) || shown(document.getElementById('page-tabs-offer')); }, 2500);
+        if (!changed) out.push('the short / long switch of the tabs did nothing');
+        else if (shown(document.getElementById('page-tabs-offer'))) { esc(); document.body.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true})); }
+        else { const n = document.getElementById('page-tabs-style'); if (n) n.click(); await until(() => document.getElementById('page-tabs-style')?.dataset.style === s0, 2500); }
+      }
+      // every grip and edge takes the pointer
+      const dead = [...document.querySelectorAll('.bar-grip, #page-tabs-grip, .bar-resize')].find(g => shown(g) && getComputedStyle(g).pointerEvents === 'none');
+      if (dead) out.push('a grip of row 2 does not take the pointer');
+      return out.length ? out.join('; ') : true;
+    })()`,
+  },
   // (v51, the user 09/11 through an app of the family: a widened column ran a table out of its panel. Async, Reconcile 09/11: a
   // page that draws its tables after it settles - a journal awaiting its API - passed a rule read at once on no table at all)
   {
