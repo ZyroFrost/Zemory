@@ -1,5 +1,5 @@
 ---
-version: 63
+version: 64
 lang: vi
 ---
 
@@ -103,7 +103,12 @@ lang: vi
   và đề xuất "Đưa xuống hàng 3 và bung" hoặc "Giữ gọn ở hàng 2". [tabs-style] **Làm mới và Chú thích đứng đầu cụm nút của mọi
   trang** (v63, user 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm"): khung vẽ cả hai
   đầu cụm nút ở mọi trang; app truyền cách tải lại (`onRefresh`) và thuật ngữ (`glossary`), không tự vẽ nút làm mới hay chú thích
-  riêng; chưa có thuật ngữ thì nút chú thích tắt. [page-std-tools]
+  riêng; chưa có thuật ngữ thì nút chú thích tắt. [page-std-tools] **Cụm tìm là cụm thứ tư** (v64, user 12/11: "khu vực filter
+  search tính là 1 khu vực riêng thứ 4"): có khung như các cụm kia và luôn neo ở mép phải của hàng ("filter luôn neo bên phải như
+  cũ" - không tay nắm; tab, nút trang, tin trang dời trước nó). Mọi người mở hàng 2 theo thứ tự **tab, nút trang, tin trang, cụm
+  tìm** cho tới khi tự kéo ("mặc định… luôn là tab, nút trang, thông tin, filter… khi nào user kéo mới đổi"). **Bộ lọc ghim không bao giờ tràn sang cụm khác**: mỗi bộ lọc trên thanh giữ bề rộng còn bấm được ("1 khung filter
+  nhỏ xíu cũng ko bấm vào dc"); các bộ lọc ghim đầu tiên vừa chỗ thì đứng đó, phần còn lại chờ trong popover; đo bằng px của trang
+  nên mỗi cỡ hiển thị có số riêng của nó. [seek-cluster] Cụm không có gì để hiện thì ẩn, không bao giờ là khung trống.
 - **Mọi điểm dừng của đường dẫn là một trang** (v53): mọi nút của menu là một trang - lá là trang của app, nhánh (phòng ban, nhóm
   báo cáo, nhóm con) là danh sách những gì nó chứa, mỗi phần một dòng rộng bằng trang, các trang của nó trải đều. App đưa nhánh
   trang danh sách riêng (`to` của hàng, của nhóm `toggle`); không có thì khung tự vẽ ở `/~/<khoá>`, đường dẫn là các nhánh xuống tới

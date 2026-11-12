@@ -431,7 +431,9 @@ export const RULES = [
       // (v42, user 07/11: "chiều cao của nút riêng phải luôn bằng chiều cao của nguyên bộ filter bên phải") the height is the
       // filter button's as drawn, within 1 px - the add button and every coloured one too
       const bar = start.closest('.page-toolbar') || start, filter = bar.querySelector('.page-filter > .btn');
-      const h = filter && filter.getClientRects().length ? filter.getBoundingClientRect().height : parseFloat(getComputedStyle(bar).getPropertyValue('--tool-h')) || 38;
+      // (v64) a filter button inside the framed seek cluster stands 8 px shorter than the bar: the bar's height is its + 8
+      const fc = filter && filter.closest('.bar-cluster'), inFrame = fc && parseFloat(getComputedStyle(fc).borderTopWidth) >= 1;
+      const h = filter && filter.getClientRects().length ? filter.getBoundingClientRect().height + (inFrame ? 8 : 0) : parseFloat(getComputedStyle(bar).getPropertyValue('--tool-h')) || 38;
       // a fill or an edge under 4% opacity shows nothing (a fading fill is read as clear)
       const clear = v => { if (!v || v === 'transparent') return true; const a = /rgba\\([^)]*,\\s*([\\d.]+)\\)$/.exec(v); return Boolean(a) && parseFloat(a[1]) < .04; };
       for (const b of start.querySelectorAll('button, a.btn, a.nav-link, [role=button], [role=tab]')) {
@@ -649,7 +651,13 @@ export const RULES = [
         const f = filter.getBoundingClientRect(), x = box.getBoundingClientRect(), end = (views || box).getBoundingClientRect();
         if (x.left - f.right > 12) return 'a gap of ' + Math.round(x.left - f.right) + ' px parts the filter button from the filter box';
         if (views && end.left - x.right > 12) return 'a gap of ' + Math.round(end.left - x.right) + ' px parts the filter box from the view switch';
-        if (Math.abs(end.right - right) > 2) return 'the seek group does not end at the right end of the bar';
+        // (v64, the user 12/11) the seek group is the fourth cluster: framed, it ends the bar by its frame; dragged by the person
+        // before another cluster, it no longer ends the bar (nor do the page tools have to open it)
+        const framedSeek = tools.matches('.bar-cluster') && parseFloat(getComputedStyle(tools).borderTopWidth) >= 1;
+        const tr = tools.getBoundingClientRect();
+        const moved = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')]
+          .some(c => c !== tools && shown(c) && c.getBoundingClientRect().left > tr.left);
+        if (!moved && Math.abs((framedSeek ? tr.right : end.right) - right) > 2) return 'the seek group does not end at the right end of the bar';
         // nothing of the page's own tools inside the seek group
         const stray = tools.querySelector('.page-actions, .add-btn');
         if (stray) return 'a page tool (' + (stray.id || stray.className.split(' ')[0]) + ') stands in the seek group - it belongs at the left';
@@ -659,9 +667,13 @@ export const RULES = [
         const kids = start ? [...start.children].filter(shown) : [];
         const flat = start && getComputedStyle(start).display === 'contents';
         const span = !flat ? (start && start.getBoundingClientRect()) : kids.length ? kids.map(k => k.getBoundingClientRect()).reduce((a, b) => ({left: Math.min(a.left, b.left), right: Math.max(a.right, b.right), top: Math.min(a.top, b.top), bottom: Math.max(a.bottom, b.bottom)})) : null;
-        if (span && (flat || shown(start))) {
+        if (span && (flat || shown(start)) && !moved) {
           const from = shown(lead) ? lead.getBoundingClientRect().right : left;
-          if (span.left - from > 20) return 'the page tools do not stand from the left of the bar';
+          // (v64, the user 12/11: "mặc định… luôn là tab, nút trang, thông tin, filter") the tab cluster in row 2 opens the row by
+          // default: the left group is whatever cluster stands first
+          const tabsIn = bar.querySelector('#page-tabs-slot > .page-tabs-panel');
+          const opens = shown(tabsIn) ? Math.min(span.left, tabsIn.getBoundingClientRect().left) : span.left;
+          if (opens - from > 20) return 'the page tools do not stand from the left of the bar';
           // the two groups never meet: on one line (a phone wraps them onto two), the first thing shown in the seek group
           // starts after the page tools end
           const p = span, t = tools.getBoundingClientRect();
@@ -1546,7 +1558,7 @@ export const RULES = [
   // (v56, the user: a report of few pages lost a whole row to its strip; the tabs one cluster with a grip to drag it)
   {
     id: 'tabs-cluster',
-    rule: 'the tabs of the sibling pages are one cluster led by a grip: in row 2 it is one framed group at the bar\'s one height, between the page\'s tools and the seek group, touching neither, every tab on the row when it stands there on its own (automatic); left automatic, it never stands as row 3 when row 2 has room for it',
+    rule: 'the tabs of the sibling pages are one cluster led by a grip: in row 2 it is one framed group at the bar\'s one height, (v64) first of the row by default - tabs, page buttons, page info, seek group, until the person drags them - touching no other cluster, every tab on the row when it stands there on its own (automatic); left automatic, it never stands as row 3 when row 2 has room for it',
     check: `(() => {
       const t = document.getElementById('page-tabs');
       if (!t || !t.getClientRects().length || innerWidth < 768) return true;
@@ -1640,6 +1652,8 @@ export const RULES = [
           const a = units[i - 1].r, b = units[i].r;
           if (b.top >= a.bottom || a.top >= b.bottom) continue;   // on another line of the row
           const gap = b.left - a.right;
+          // (v64) the seek cluster standing last keeps the row's right end: the room before it is what the row leaves, never less
+          if (i === units.length - 1 && units[i].e.dataset.cluster === 'seek') { if (gap < pad - 1) return 'the seek cluster stands ' + Math.round(gap) + ' px from the cluster before it, the row keeps ' + Math.round(pad); continue; }
           if (Math.abs(gap - pad) > 1) return 'two clusters of row 2 stand ' + Math.round(gap) + ' px apart, the row keeps ' + Math.round(pad) + ' px at its ends';
         }
       }
@@ -1673,6 +1687,34 @@ export const RULES = [
           .filter(e => e.getClientRects().length && !e.closest('.dropdown-menu, .slicer-menu, [hidden]'))
           .find(e => { const b = e.getBoundingClientRect(); return b.width > 0 && b.left < r.right - 1 && b.right > r.left + 1 && b.top < r.bottom && b.bottom > r.top; });
         if (hit) return 'the tab cluster in row 2 runs over the seek group: ' + (hit.id || hit.getAttribute('aria-label') || hit.className).slice(0, 30);
+      }
+      return true;
+    })()`,
+  },
+  // (v64, the user 12/11: "khu vực filter search tính là 1 khu vực riêng thứ 4 và dời được… khu trải filter nó đang bị cấn vào chỗ tab
+  // nén… chỉ lấy các filter ở đầu ra thôi… 1 khung filter nhỏ xíu cũng ko bấm vào dc")
+  {
+    id: 'seek-cluster',
+    rule: 'the seek group (pinned filters, filter button, filter box, view switch) is the fourth cluster of row 2, framed like the others and always anchored at the row\'s right end (no grip: the other three move before it); its pinned filters never run over another cluster, and each one on the bar keeps a width it can be pressed at (at least 6rem of the page) - the first pinned ones stand there, the ones that do not fit wait in the popover; measured in the page\'s own px, so every display size fits its own count',
+    check: `(() => {
+      const bar = document.querySelector('#page-bar > .page-toolbar'), tools = bar && bar.querySelector(':scope > .card-tools');
+      if (!bar || !tools || !bar.getClientRects().length || innerWidth < 768) return true;
+      if (!tools.matches('.bar-cluster[data-cluster="seek"]') || !(parseFloat(getComputedStyle(tools).borderTopWidth) >= 1)) return 'the seek group is no framed cluster of row 2';
+      // (the user 12/11: "filter luôn neo bên phải như cũ") it always ends the row at its right: no cluster after it
+      const tr = tools.getBoundingClientRect(), bs = getComputedStyle(bar), right = bar.getBoundingClientRect().right - parseFloat(bs.paddingRight);
+      if (Math.abs(tr.right - right) > 2) return 'the seek cluster does not end the row at its right (' + Math.round(right - tr.right) + ' px short)';
+      const after = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')].find(c => c !== tools && c.getClientRects().length && c.getBoundingClientRect().left >= tr.right - 1 && c.getBoundingClientRect().top < tr.bottom && c.getBoundingClientRect().bottom > tr.top);
+      if (after) return 'a cluster stands after the seek cluster: ' + (after.dataset.cluster || after.id);
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const places = [...tools.querySelectorAll('#filter-row > .filter-place')].filter(p => p.getClientRects().length);
+      const thin = places.find(p => p.offsetWidth < 6 * rem - 1);
+      if (thin) return 'a pinned filter on the bar is ' + thin.offsetWidth + ' px wide, too narrow to press (at least ' + Math.round(6 * rem) + '): ' + (thin.dataset.filterId || '');
+      const row = tools.querySelector('#filter-row');
+      if (row && row.scrollWidth > row.clientWidth + 1) return 'the pinned filters run past their row (' + row.scrollWidth + ' px in ' + row.clientWidth + ')';
+      const others = [...bar.querySelectorAll('.bar-cluster[data-cluster], #page-tabs-slot > .page-tabs-panel')].filter(c => c !== tools && c.getClientRects().length).map(c => c.getBoundingClientRect());
+      for (const p of places) {
+        const r = p.getBoundingClientRect();
+        if (others.some(o => r.left < o.right - 1 && r.right > o.left + 1 && r.top < o.bottom && r.bottom > o.top)) return 'a pinned filter runs over another cluster of row 2: ' + (p.dataset.filterId || '');
       }
       return true;
     })()`,
