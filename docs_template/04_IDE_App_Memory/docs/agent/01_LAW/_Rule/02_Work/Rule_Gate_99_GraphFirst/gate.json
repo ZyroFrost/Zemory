@@ -31,6 +31,21 @@
       }
     },
     {
+      "note": "source code in a folder named docs below the root is still code",
+      "files": {
+        "backend/src/docs/rules.ts": "export const r = 1;\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "backend/src/docs/rules.ts",
+        "old_string": "export const r = 1;",
+        "new_string": "export const r = 2;"
+      },
+      "policy": {
+        "flags_dir": "docs/hooks"
+      }
+    },
+    {
       "note": "a recursive grep over the code of a repo that has code",
       "files": {
         "package.json": "{}\n"
@@ -75,6 +90,38 @@
                 "name": "mcp__zemory__graph_impact",
                 "input": {
                   "file": "src/db/queries.ts"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "policy": {
+        "flags_dir": "docs/hooks"
+      }
+    },
+    {
+      "note": "the session asked the graph through the CLI run from a checkout",
+      "files": {
+        "src/db/queries.ts": "export const q = 1;\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "src/db/queries.ts",
+        "old_string": "export const q = 1;",
+        "new_string": "export const q = 2;"
+      },
+      "transcript": [
+        {
+          "type": "assistant",
+          "message": {
+            "role": "assistant",
+            "content": [
+              {
+                "type": "tool_use",
+                "name": "Bash",
+                "input": {
+                  "command": "node dist/cli.js graph impact src/db/queries.ts"
                 }
               }
             ]

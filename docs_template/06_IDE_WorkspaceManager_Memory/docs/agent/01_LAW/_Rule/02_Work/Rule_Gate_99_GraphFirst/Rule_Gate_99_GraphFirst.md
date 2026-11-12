@@ -1,11 +1,11 @@
 ---
 id: Rule_99
 name: graph-first
-version: 1
+version: 2
 kind: action
 code: 02_Work
 checked: [Rule_Keys_80_SharedChangeImpact, Rule_Keys_81_FollowExistingPattern, Rule_Gate_59_ReadFirst]
-from: _Store/01_LAW/_Rule/02_Work/Rule_Gate_99_GraphFirst @v1 #b78c6b7d3c57
+from: _Store/01_LAW/_Rule/02_Work/Rule_Gate_99_GraphFirst @v2 #cfda83542639
 ---
 # Rule_Gate_99_GraphFirst — Ask the code graph before grepping the code or changing a file
 

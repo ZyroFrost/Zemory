@@ -108,7 +108,10 @@ interface ProfileSpec {
 
 const PROFILE_SPECS: Record<EmbedProfile, ProfileSpec> = {
   raw: { model: GEMMA1_MODEL, pooling: "mean", prompted: false, dims: 768, dtype: "fp32", sequential: true },
-  "gemma-prompt-v1": { model: GEMMA1_MODEL, pooling: "mean", prompted: true, dims: 768, dtype: "fp32", sequential: true },
+  // q4, not fp32 (2026-11-12): in a 2 GB WSL cap the fp32 child (~2 GB) swapped and once hung the VM; on 40 real queries
+  // against 240 GM messages q4 found the same answers (MRR 0.597 vs 0.601, #1 20/40 both, top-10 31/40 both, cos 0.98) at
+  // 362 MB peak and 0.7 s/text vs fp32 1.9 s under that cap. An index keeps the dtype it was built with (vec_config).
+  "gemma-prompt-v1": { model: GEMMA1_MODEL, pooling: "mean", prompted: true, dims: 768, dtype: "q4", sequential: true },
   // Same prompt contract as v1 (the model card lists the same `task: … | query:` / `title: none | text:` strings).
   "gemma2-prompt-v1": { model: GEMMA2_MODEL, loader: "text-only", pooling: "mean", prompted: true, dims: 768, dtype: "fp32", sequential: true },
   // int8, not fp32: measured 637 vs 1388 ms/message on this CPU while the quality difference

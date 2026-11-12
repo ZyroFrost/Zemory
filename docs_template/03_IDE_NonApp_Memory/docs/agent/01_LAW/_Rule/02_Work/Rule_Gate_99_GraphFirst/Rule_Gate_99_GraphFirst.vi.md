@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Rule_Gate_99_GraphFirst — Ask the code graph before grepping the code or changing a file

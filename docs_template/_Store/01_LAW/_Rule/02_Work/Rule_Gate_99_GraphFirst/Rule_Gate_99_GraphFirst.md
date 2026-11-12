@@ -1,7 +1,7 @@
 ---
 id: Rule_99
 name: graph-first
-version: 1
+version: 2
 kind: action
 code: 02_Work
 checked: [Rule_Keys_80_SharedChangeImpact, Rule_Keys_81_FollowExistingPattern, Rule_Gate_59_ReadFirst]

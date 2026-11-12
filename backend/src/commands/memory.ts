@@ -1543,6 +1543,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         try {
           r = await embedPending({
             limit,
+            newestFirst: all,
             onProgress: (p) => {
               if (p.done === p.total || p.done - lastProgress >= 25) {
                 lastProgress = p.done;

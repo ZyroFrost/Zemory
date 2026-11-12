@@ -312,10 +312,14 @@ export interface EmbedProgress {
   currentId: number;
 }
 
-/** Which pending messages `embedPending` takes first: shortest-first for the backfill, id order from `fromId` on. */
-export function pendingOrderSql(fromId?: number): { where: string; orderBy: string } {
+/**
+ * Which pending messages `embedPending` takes first: shortest-first for the backfill, id order from `fromId` on, newest
+ * first for a whole-corpus run (`embed --all`: a rebuild that takes days gives back the recent weeks in its first hours).
+ */
+export function pendingOrderSql(fromId?: number, newestFirst = false): { where: string; orderBy: string } {
   const from = fromId !== undefined && Number.isFinite(fromId) ? Math.trunc(fromId) : null;
-  return from !== null ? { where: ` AND id >= ${from}`, orderBy: "id ASC" } : { where: "", orderBy: "length(content) ASC, id ASC" };
+  if (from !== null) return { where: ` AND id >= ${from}`, orderBy: "id ASC" };
+  return { where: "", orderBy: newestFirst ? "id DESC" : "length(content) ASC, id ASC" };
 }
 
 /**
@@ -336,6 +340,8 @@ export async function embedPending(
      * shorter ones elsewhere and sealed blocks with 0 messages.
      */
     fromId?: number;
+    /** Newest messages first instead of shortest first (ignored with `fromId`): the order of an `embed --all` run. */
+    newestFirst?: boolean;
     /**
      * Epoch ms. Checked before every model batch except the first (each pass still makes progress): past it ⇒ stop and
      * report `stoppedEarly`. The p2p fast lane holds the daemon's one job slot while it embeds, and on a slow machine
@@ -374,7 +380,7 @@ export async function embedPending(
     // "Pending" is keyed on the chunk-0 row (rowid = message id) — the invariant
     // every count/query in this file shares.
     const ex = SCOPE_EXCLUDE_SQL();
-    const order = pendingOrderSql(opts.fromId);
+    const order = pendingOrderSql(opts.fromId, opts.newestFirst);
     const rows = db
       .prepare(
         `SELECT id, content FROM messages

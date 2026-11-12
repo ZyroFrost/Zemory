@@ -113,7 +113,8 @@ const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|03_SKIL
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 
 const GRAPH_SRC = /\.(ts|tsx|js|jsx|mjs|cjs|py|sh|bash|java|go|rs|cs)$/i;
-const GRAPH_SKIP = /(^|\/)(test|tests|__tests__|node_modules|external|attic|dist|build|docs|docs_template|\.claude)\//;
+// the harness folders only at the repo root: backend/src/docs/ is code
+const GRAPH_SKIP = /(^|\/)(test|tests|__tests__|node_modules|external|attic|dist|build)\/|^(docs|docs_template|\.claude)\//;
 const GRAPH_TEST = /\.test\.|\.spec\.|_test\.|(^|\/)test_[^/]+\.py$/;
 const GREP = /(^|[\s;&|(])(grep|egrep|rg|git\s+grep|findstr|select-string|sls)(\s|$)/i;
 const RECURSIVE = /\s-[a-zA-Z]*[rR][a-zA-Z]*(\s|$)|(^|[\s;&|(])rg(\s|$)|git\s+grep|-Recurse\b|\s\/s(\s|$)/i;
@@ -135,7 +136,8 @@ function graphAsked(payload) {
       if (!b || b.type !== "tool_use") continue;
       const inp = b.input || {};
       if (/graph_(impact|neighbors)$/.test(String(b.name || ""))) out.push(String(inp.file || "").replace(/\\/g, "/"));
-      else if (typeof inp.command === "string" && /\bzemory(\.cmd)?\s+graph\s+(impact|neighbors)\b/.test(inp.command)) out.push(inp.command.replace(/\\/g, "/"));
+      // the CLI as installed (zemory, zemory.cmd) or run from a checkout (node dist/cli.js graph impact …)
+      else if (typeof inp.command === "string" && /(\bzemory(\.cmd)?|\bcli\.js)\s+graph\s+(impact|neighbors)\b/.test(inp.command)) out.push(inp.command.replace(/\\/g, "/"));
     }
   }
   return out.filter(Boolean);
