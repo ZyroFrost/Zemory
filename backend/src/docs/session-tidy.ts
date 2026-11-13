@@ -184,6 +184,22 @@ function sizeOf(dir: string, cap = 400_000): number {
   return total;
 }
 
+/**
+ * The session's scratch folder: `<tmp>/claude/<folder>/<session>/scratchpad`. The middle folder is not the encoded repo path
+ * on every host (13/11, Claude Code on Windows: a hash, `be9caeef4f51d857`), so row ② read an empty guess and always said 0.
+ * The folder that holds this session's scratchpad is found; the encoded path stays the answer when none exists yet.
+ */
+export function scratchpadOf(tmp: string, repo: string, session: string): string {
+  const root = join(tmp, "claude");
+  let names: string[] = [];
+  try { names = readdirSync(root); } catch { /* no claude temp folder */ }
+  for (const n of names) {
+    const p = join(root, n, session, "scratchpad");
+    if (existsSync(p)) return p;
+  }
+  return join(root, encodeProjectDir(repo), session, "scratchpad");
+}
+
 export type TidyOptions = {
   repo: string;
   session?: string | null;
@@ -213,7 +229,7 @@ export function tidySession(o: TidyOptions): TidyReport {
   // counted in row ③ because a command named it)
   const container = (p: string): boolean => { const r = resolve(p); return dirname(r) === r || under(repo, r); };
   const made = trace.paths.filter((p) => existsSync(p) && !container(p) && !tracked(p));
-  const scratch = session ? join(o.tempDir ?? tmpdir(), "claude", encodeProjectDir(repo), session, "scratchpad") : null;
+  const scratch = session ? scratchpadOf(o.tempDir ?? tmpdir(), repo, session) : null;
   const now = o.now ?? Date.now();
   const rm = (p: string): boolean => { try { rmSync(p, { recursive: true, force: true }); return !existsSync(p); } catch { return false; } };
   const row = (what: string, items: string[], removed: string[] = [], note?: string): TidyRow => ({ n: items.length - removed.length, what, items, removed, note });
