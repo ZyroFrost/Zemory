@@ -1,7 +1,7 @@
 ---
 id: Skill_Harness_RepoMove
 name: harness-repo-move
-version: 2
+version: 3
 type: process
 checked: [Skill_Harness_Reshape, Skill_Harness_Reconcile, Skill_Harness_Adopt, Skill_Harness_SessionClose, Rule_Gate_44_RepoScope]
 description: Rename or move a whole repo folder together with everything bound to its path - Claude Code sessions, memory entries, session titles and the places that point at it - then prove nothing still points at the old path. Use whenever a repo folder is renamed, or moved to another drive or parent folder. Restructuring the inside of a repo is Skill_Harness_Reshape or Skill_Harness_Reconcile, not this. Vietnamese triggers - "đổi tên repo", "dời repo", "chuyển thư mục repo", "move repo", "rename repo".
@@ -47,7 +47,7 @@ The move only renames the session folder; the lines inside the session files sti
 - Edit only STRUCTURAL fields, value by JSON value, never a blind string replace over a whole line:
   - `cwd` · `trackingPath`: every earlier path of the repo (including paths before earlier moves, a different drive-letter case) → the new path,
     keeping the tail after the repo name.
-  - `customTitle` · `agentName`: the session name by the pattern `<repo>_<Model>_<d-m-yyyy>`, keeping the old date.
+  - `customTitle` · `agentName`: the session name by the pattern `<repo>_<Brand>_<d-m-yyyy>`, keeping the old date.
 - Leave alone: the conversation content (real history) · `cwd` lines pointing at ANOTHER repo (when the session stood in another repo) · sessions with no name.
 - Do not use the proposal of `zemory peers --fix` when it glues the new repo name onto an old session name (met 22/10:
   `_DB_ERP_Claude_DB_AppCore_Claude_21-10-2026`). An unchanged line is written back byte for byte.
