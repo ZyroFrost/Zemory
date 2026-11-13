@@ -70,7 +70,7 @@ export async function cmdProject(args: string[]): Promise<void> {
   // place says so at the moment it matters (28/10: the SasinHub move ran without the skill being opened).
   console.log("  Done. Next, by skill harness-repo-move (Skill_Harness_RepoMove):");
   console.log("  2. point the old sessions at the new path: in ~/.claude/projects/<new session folder>/*.jsonl, back up first, then edit");
-  console.log("     cwd · trackingPath (paths) and customTitle · agentName (<Repo>_<Model>_<d-m-yyyy>) value by JSON value, never a line-wide replace;");
+  console.log("     cwd · trackingPath (paths) and customTitle · agentName (<Repo>_<Brand>_<d-m-yyyy>) value by JSON value, never a line-wide replace;");
   console.log("  3. accept with the whole table: folder · git log -1 and status unchanged · `zemory conform --gate` in the new folder ·");
   console.log("     0 old names in those fields · `zemory peers --all --check` · an old session reopened; then list what still points at the old path.");
 }

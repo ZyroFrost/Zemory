@@ -1,4 +1,4 @@
-// `zemory peers [--repo <name>] [--json] [--check] [--all] [--fix [--apply]]` — which local session to message for each
+// `zemory peers [--repo <name>] [--json] [--check] [--all] [--fix [--session <id>] [--apply]]` — which local session to message for each
 // repo, and the session-title gate (user rulings 2026-10-07).
 // ListAgents prints only MESSAGING names (`dept-gro-b2`); the user's session TITLE (`Dept_GRO_Claude_6-10-2026`) lives
 // in the session jsonl. This prints both side by side, ★ = the session the send guard lets a message through to.
@@ -9,7 +9,7 @@
 // `--fix` prints the retitle plan; `--apply` writes it: one `custom-title` line appended per session — exactly what
 // Claude Code writes when the user renames a session. A title that cannot be derived safely is listed, never guessed.
 import { appendFileSync, readFileSync } from "node:fs";
-import { listPeers, listStoredSessions, suggestTitle } from "../memory/send-guard.js";
+import { listPeers, listStoredSessions, suggestTitle, titleDate, titleForSession } from "../memory/send-guard.js";
 import { listKnownProjects } from "../projects.js";
 
 /** The repo folders a project folder can map back to: every linked repo + every live session's cwd. */
@@ -44,19 +44,51 @@ function fixTitles(repo: string, apply: boolean): void {
   );
 }
 
+/** `--fix --session <id>`: title ONE session by its repo and start day (skill session-open), whatever title it holds now. */
+function titleOne(id: string, apply: boolean): void {
+  const all = listStoredSessions(knownRoots());
+  const s = all.find((x) => x.sessionId === id);
+  if (!s) {
+    console.log(`zemory peers --fix --session: no stored session ${id} (a new session is written to disk after its first message).`);
+    process.exitCode = 1;
+    return;
+  }
+  if (s.title && !s.problem && titleDate(s.title) === s.startDay) {
+    console.log(`zemory peers --fix --session: ✓ "${s.title}" already follows the rule — nothing to do.`);
+    return;
+  }
+  const next = titleForSession(s, all);
+  if (!next) {
+    console.log(`zemory peers --fix --session: cannot derive a title for ${id} (repo "${s.repo}", no start day) — the user titles it.`);
+    process.exitCode = 1;
+    return;
+  }
+  console.log(`  ${apply ? "✓" : "→"} ${s.repo}  "${s.title ?? "(untitled)"}"  →  "${next}"`);
+  if (!apply) {
+    console.log("zemory peers --fix --session: add --apply to write.");
+    return;
+  }
+  const text = readFileSync(s.file, "utf8");
+  appendFileSync(s.file, (text.endsWith("\n") ? "" : "\n") + JSON.stringify({ type: "custom-title", customTitle: next, sessionId: s.sessionId }) + "\n");
+  console.log("zemory peers --fix --session --apply: titled. A VS Code tab may show the new title only after a reload.");
+}
+
 export function cmdPeers(args: string[]): void {
-  const known = new Set(["--json", "--repo", "--check", "--all", "--fix", "--apply"]);
-  const unknown = args.filter((a, i) => a.startsWith("-") && !known.has(a) && args[i - 1] !== "--repo");
-  if (unknown.length || (args.includes("--apply") && !args.includes("--fix"))) {
-    console.log(`zemory peers: unknown flag: ${unknown.join(" ") || "--apply without --fix"}`);
-    console.log("  usage: zemory peers [--repo <folder name>] [--json] [--check] [--all] [--fix [--apply]]");
+  const known = new Set(["--json", "--repo", "--check", "--all", "--fix", "--apply", "--session"]);
+  const unknown = args.filter((a, i) => a.startsWith("-") && !known.has(a) && args[i - 1] !== "--repo" && args[i - 1] !== "--session");
+  const sat = args.indexOf("--session");
+  const session = sat >= 0 ? (args[sat + 1] ?? "") : null;
+  if (unknown.length || (args.includes("--apply") && !args.includes("--fix")) || (session !== null && (!session || session.startsWith("-") || !args.includes("--fix")))) {
+    console.log(`zemory peers: ${unknown.length ? `unknown flag: ${unknown.join(" ")}` : args.includes("--apply") && !args.includes("--fix") ? "--apply without --fix" : "--session needs a session id and --fix"}`);
+    console.log("  usage: zemory peers [--repo <folder name>] [--json] [--check] [--all] [--fix [--session <id>] [--apply]]");
     process.exitCode = 1;
     return;
   }
   const at = args.indexOf("--repo");
   const repo = at >= 0 ? (args[at + 1] ?? "").toLowerCase() : "";
   if (args.includes("--fix")) {
-    fixTitles(repo, args.includes("--apply"));
+    if (session) titleOne(session, args.includes("--apply"));
+    else fixTitles(repo, args.includes("--apply"));
     return;
   }
   if (args.includes("--all")) {
@@ -85,7 +117,7 @@ export function cmdPeers(args: string[]): void {
     const unused = peers.filter((p) => !p.title).length;
     console.log(
       bad.length
-        ? `zemory peers --check: ${bad.length} session title(s) break the rule (<Repo>_<Model>_<d-m-yyyy>) — retitle the session in the session list (rename).`
+        ? `zemory peers --check: ${bad.length} session title(s) break the rule (<Repo>_<Brand>_<d-m-yyyy>) — retitle the session in the session list (rename).`
         : `zemory peers --check: ✓ every titled live session follows the rule (${unused} untitled = unused).`,
     );
     if (bad.length) process.exitCode = 1;

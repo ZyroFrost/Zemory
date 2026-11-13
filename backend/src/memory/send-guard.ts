@@ -1,7 +1,7 @@
 // PreToolUse latch for cross-session messaging (`SendMessage`) — user rulings 2026-10-07:
 //   "phải gọi vào session đang hoạt động, ko dc gọi mấy cái session Untitle mặc định nữa"
 //   "khi t ko đặt tên mới theo chuẩn tức là session đó là session chưa dc xài, ko dc chat vào đó"
-//   ⇒ message the session whose TITLE follows `<Repo>_<Model>_<d-m-yyyy>` with the NEWEST date for that repo.
+//   ⇒ message the session whose TITLE follows `<Repo>_<Brand>_<d-m-yyyy>` with the NEWEST date for that repo.
 //
 // 🔴 TWO NAMES PER SESSION (measured 2026-10-07, reported by the data-warehouse session):
 //   · the MESSAGING name — what `SendMessage` addresses and `ListAgents` prints (`dept-gro-b2`). Auto-derived from the
@@ -68,8 +68,9 @@ export function titleDate(title: string | null): number | null {
 
 /**
  * The session-title rule (user ruling 2026-10-07, "tên session cũng nên có luật"):
- * `<Repo>_<Model>_<d-m-yyyy>`, or `<Repo>_<Model>_<Topic>_<d-m-yyyy>` — `<Repo>` is the repo folder name with its exact
- * case, `<Model>` the model the session runs (`Claude`, `Codex`, … — "Claude là Model, vì nhiều khi t đổi model khác"),
+ * `<Repo>_<Brand>_<d-m-yyyy>`, or `<Repo>_<Brand>_<Topic>_<d-m-yyyy>` — `<Repo>` is the repo folder name with its exact
+ * case, `<Brand>` the model BRAND the session runs on (`Claude`, `Codex`, `Gemini` …) — never the model name (`Opus`, `Sonnet`):
+ * agents read the old word "Model" as the model name (Opus) (user 13/11: "cái này là Brand luôn mới đúng"),
  * the date has no zero padding (`7-10-2026`). An off-pattern title that still carries a date is accepted by the send
  * guard (it can still pick the newest), but `zemory peers` flags it so the user can fix it.
  */
@@ -92,7 +93,7 @@ export const MAX_TITLE_DRIFT_MS = 2 * 86_400_000;
  */
 export function titleProblem(title: string | null, repo: string, startDay: number | null): string | null {
   if (!title) return null; // untitled = unused — a different case, reported as such
-  if (!standardTitle(title, repo)) return `not ${repo}_<Model>_<d-m-yyyy>`;
+  if (!standardTitle(title, repo)) return `not ${repo}_<Brand>_<d-m-yyyy>`;
   const t = titleDate(title);
   if (t !== null && startDay !== null && Math.abs(t - startDay) > MAX_TITLE_DRIFT_MS) {
     const d = new Date(startDay);
@@ -177,6 +178,26 @@ export function suggestTitle(title: string | null, repo: string, startDay: numbe
   return standardTitle(next, repo) ? next : null;
 }
 
+/**
+ * The title a session gets when it opens (skill session-open, user 13/11: "tự đặt tên session luôn"): `<Repo>_<Brand>_<d-m-yyyy>`
+ * from its start day, `_<n>` when `n - 1` sessions of the same repo opened that day already carry a standard title of that
+ * day. Any title the session holds is ignored: after `/clear` Claude Code hands the new session the old session's title.
+ */
+export function titleForSession(s: StoredSession, all: StoredSession[], brand = "Claude"): string | null {
+  if (s.startDay === null || !s.repo) return null;
+  const d = new Date(s.startDay);
+  const day = `${d.getUTCDate()}-${d.getUTCMonth() + 1}-${d.getUTCFullYear()}`;
+  const base = `${s.repo}_${brand}_${day}`;
+  const taken = new Set(
+    all.filter((o) => o.sessionId !== s.sessionId && o.repo.toLowerCase() === s.repo.toLowerCase() && o.title).map((o) => o.title!),
+  );
+  for (let n = 1; n < 100; n++) {
+    const t = n === 1 ? base : `${base}_${n}`;
+    if (!taken.has(t)) return standardTitle(t, s.repo) ? t : null;
+  }
+  return null;
+}
+
 export interface StoredSession {
   sessionId: string;
   file: string;
@@ -200,7 +221,7 @@ export const projectDirName = (p: string): string => p.replace(/[\\/]+$/, "").re
  * title read as wrong. `roots` = the known repo folders; a project folder no root matches falls back to `cwd`.
  */
 /** The last folder of a path written by any machine. `basename` splits on the running system's separator only: in the
- *  container a Windows cwd came back whole, and `peers --check` asked for `D:\…\<Repo>_<Model>_<d-m-yyyy>` (28/10). */
+ *  container a Windows cwd came back whole, and `peers --check` asked for `D:\…\<Repo>_<Brand>_<d-m-yyyy>` (28/10). */
 export function folderName(p: string): string {
   return p.replace(/[\\/]+$/, "").split(/[\\/]/).pop() ?? "";
 }
@@ -499,13 +520,13 @@ export function judgeSendTarget(to: unknown, peers: PeerSession[] = listPeers())
   const why = !target.title
     ? `\`${name}\` has NO session title — an unused session ("Untitled": opened by Claude Code, never worked in)`
     : target.titleDate === null
-      ? `\`${name}\` is titled "${target.title}", not a standard title (\`<Repo>_<Model>_<d-m-yyyy>\`)`
+      ? `\`${name}\` is titled "${target.title}", not a standard title (\`<Repo>_<Brand>_<d-m-yyyy>\`)`
       : `\`${name}\` ("${target.title}") is not the newest titled session of ${target.repo}`;
   return (
     `BLOCKED (send guard): ${why} (02_RULES §Phạm vi project, user ruling 2026-10-07).\n` +
     (right
       ? `Send to \`${right.name}\` instead — that is "${right.title}", the newest titled session of ${right.repo}.`
-      : `${target.repo} has NO session with a standard title ⇒ do NOT send; ask the user to title the session at work (\`<Repo>_<Model>_<d-m-yyyy>\`).`) +
+      : `${target.repo} has NO session with a standard title ⇒ do NOT send; ask the user to title the session at work (\`<Repo>_<Brand>_<d-m-yyyy>\`).`) +
     "\nEvery repo's sessions: `zemory peers`. Replying to a message you received? Use its `from` address (`uds:…`) — that always passes."
   );
 }

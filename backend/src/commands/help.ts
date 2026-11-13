@@ -36,7 +36,7 @@ function usageLines(): string[] {
       "  mcp       run the local MCP stdio server (memory_search/show, plan_search/show)",
       "  hook      runtime hooks: install for Claude/Codex · session-start · stop",
       "  project   project move <from> <to> [--apply]: move a repo folder with its memory, Claude Code sessions and settings (dry run by default)",
-      "  peers     which local session to message per repo: title ↔ address, ★ = send here (--repo · --json · --check = title gate)",
+      "  peers     which local session to message per repo: title ↔ address, ★ = send here (--repo · --json · --check = title gate · --all · --fix [--session <id>] [--apply] = retitle; --session titles one session at open)",
       "  gates     does each repo RUN its gates: guard wired · pre-commit wired · a row per constitution article · ungated rules on top (--all · --json · --write-top = write the top block here)",
       "  impact    impact <part>: every repo carrying a store part (law · slot · skill) and its copy state (current · behind · edited · absent) - run before editing or retiring it in the store",
       "  store     store assemble: rebuild every set folder from HS - run after changing a part, commit the part with the sets it changed",

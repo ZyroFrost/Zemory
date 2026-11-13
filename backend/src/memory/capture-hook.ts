@@ -104,7 +104,7 @@ function warnedFlagPath(sessionId: string): string {
 /**
  * Class-C rule reminders for UserPromptSubmit (rule audit 2026-10-07). A machine cannot judge these rules, only remind
  * at the right moment; each kind fires at most ONCE per session (flag file), so the hook adds 0 characters otherwise.
- *   · session title (02 §Phạm vi project): only when the session HAS a title and it breaks `<Repo>_<Model>_<d-m-yyyy>` —
+ *   · session title (02 §Phạm vi project): only when the session HAS a title and it breaks `<Repo>_<Brand>_<d-m-yyyy>` —
  *     an untitled new session is normal and gets nothing.
  *   · closing a session (02 §Chốt phiên): the prompt says "chốt phiên / note lại / ghi sổ …" ⇒ the session-close steps.
  *   · auditing the ledger (02 §Hành xử): the prompt asks "còn gì / soát sổ / check todo …" ⇒ measure all three sources.
@@ -137,7 +137,7 @@ export function ruleReminders(payload: any, verdicts?: Map<string, boolean>): st
     if (problem && once("title")) {
       let where = "02_RULES §Phạm vi project";
       try { if (isFolderHarness(harnessPathsAt(toLocalPath(projectDir)).agent)) where = `${SHELF.structure}/_Host/IDE`; } catch { /* keep the file-harness pointer */ }
-      out.push(`[zemory] ⚠ This session's title "${title}" breaks the session-title rule (${problem}) — ask the user ONCE to retitle it ${repo}_<Model>_<d-m-yyyy> (${where}).`);
+      out.push(`[zemory] ⚠ This session's title "${title}" breaks the session-title rule (${problem}) — ask the user ONCE to retitle it ${repo}_<Brand>_<d-m-yyyy> (${where}).`);
     }
   }
   // A host event delivered as a "prompt" (a background task finishing, a system notice) is not the user speaking: its
