@@ -112,8 +112,9 @@ function warnedFlagPath(sessionId: string): string {
 export function ruleReminders(payload: any, verdicts?: Map<string, boolean>): string {
   const sidRaw = String(payload?.session_id ?? payload?.transcript_path ?? "");
   if (!sidRaw) return "";
+  const flagOf = (kind: string): string => join(currentMemoryDir(), "context-guard", `${sidRaw.replace(/[^\w.-]/g, "_")}.${kind}`);
   const once = (kind: string): boolean => {
-    const flag = join(currentMemoryDir(), "context-guard", `${sidRaw.replace(/[^\w.-]/g, "_")}.${kind}`);
+    const flag = flagOf(kind);
     if (existsSync(flag)) return false;
     mkdirSync(dirname(flag), { recursive: true });
     writeFileAtomic(flag, new Date().toISOString());
@@ -143,6 +144,15 @@ export function ruleReminders(payload: any, verdicts?: Map<string, boolean>): st
   // A host event delivered as a "prompt" (a background task finishing, a system notice) is not the user speaking: its
   // text quotes agent output, so keyword doors fired on it (two reminders on one task notification, 2026-10-14).
   if (/<task-notification>|\[SYSTEM NOTIFICATION|^\s*<system-reminder>/i.test(prompt)) return out.join("\n");
+  // The first message a person types in a session, whatever it says ("làm tiếp" is enough): the whole opening routine,
+  // so the person no longer has to ask for "read the docs, title the session, then continue" (skill session-open).
+  // The transcript is read on the first prompt the hook sees in a session, never again: the flag is set either way, so a
+  // session already under way when this shipped is read once and stays quiet.
+  if (transcript && !existsSync(flagOf("open"))) {
+    const first = isFirstPrompt(toLocalPath(transcript), prompt);
+    once("open");
+    if (first) out.push(OPEN_REMINDER);
+  }
   const gates = promptGatesAt(cwd);
   // a self-trained model (plan/38 §8) answers the doors it was switched on for, in ~0.2 ms here; none switched on ⇒ empty
   const said = verdicts ?? modelVerdicts(prompt, gates);
@@ -152,6 +162,33 @@ export function ruleReminders(payload: any, verdicts?: Map<string, boolean>): st
     if (fire && once(g.kind)) out.push(g.text);
   }
   return out.join("\n");
+}
+
+export const OPEN_REMINDER =
+  "[zemory] New session: follow skill session-open BEFORE the task — title it (`zemory peers --fix --session <CLAUDE_CODE_SESSION_ID> --apply`) → read the core docs in full → the newest handover in the TODO → re-measure the item you pick → build it.";
+
+/** A message a person typed, not a host line delivered in the user role (a command, its caveat, a reminder, a tool result). */
+const typed = (s: string): boolean => !/^\s*<(local-command|command-|system-reminder|task-notification)/i.test(s) && !/^\s*\[SYSTEM NOTIFICATION/i.test(s);
+
+/**
+ * True when no message the person typed comes before this one in the transcript (the host may or may not have written the
+ * current one yet). After `/clear` the new transcript holds only the command's lines, so the first real message counts.
+ */
+export function isFirstPrompt(file: string, prompt: string): boolean {
+  let text: string;
+  try { text = readFileSync(file, "utf8"); } catch { return false; } // no transcript: cannot tell, stay quiet
+  const said: string[] = [];
+  for (const line of text.split("\n")) {
+    if (!line.includes('"type":"user"')) continue;
+    try {
+      const j = JSON.parse(line) as { type?: string; isMeta?: boolean; message?: { content?: unknown } };
+      const c = j.message?.content;
+      if (j.type !== "user" || j.isMeta || typeof c !== "string" || !typed(c)) continue;
+      said.push(c.trim());
+      if (said.length > 1) return false;
+    } catch { /* a torn line */ }
+  }
+  return said.length === 0 || (said.length === 1 && said[0] === prompt.trim());
 }
 
 /** Folder harness (plan/28 §0n): each reminder is declared beside its owner — a skill or a rule — in gate.json › prompt,
