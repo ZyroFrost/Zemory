@@ -1,9 +1,9 @@
-// `zemory tidy [--session <id>] [--apply] [--json]` (plan/36): the 12 rows of Skill_Harness_SessionClose step 3b, measured
+// `zemory tidy [--session <id>] [--apply] [--json]` (plan/36): the rows of Skill_Harness_SessionClose step 3b (⑬: tool scratch in the system temp folder), measured
 // from the session's transcript. Without --apply it only reports; --apply removes the session's scratch folder, approval
 // flags, stale locks and the litter the session made inside the repo - nothing else. Exit 1 while a row still has items.
 import { tidySession } from "../docs/session-tidy.js";
 
-const MARKS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫"];
+const MARKS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩", "⑪", "⑫", "⑬"];
 
 export function cmdTidy(args: string[]): void {
   const known = new Set(["--apply", "--json", "--session"]);

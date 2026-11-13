@@ -1,7 +1,9 @@
 // `zemory tidy` (plan/36): what a session left behind, measured from the session's own transcript - the 12 rows of
-// Skill_Harness_SessionClose step 3b. "Made by the session" is read from its tool calls, never guessed from a file name.
-// `apply` removes only what is safe by construction: the session's scratch folder, approval flags, stale locks, and the
-// litter the session itself made inside the repo. Everything else is reported.
+// Skill_Harness_SessionClose step 3b, plus row ⑬ (tool scratch in the system temp folder, read from the folder itself).
+// "Made by the session" is read from its tool calls, never guessed from a file name.
+// `apply` removes only what is safe by construction: the session's scratch folder, approval flags, stale locks, the
+// litter the session itself made inside the repo, and `_scratch_*` folders in the system temp folder over a day old.
+// Everything else is reported.
 import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -15,6 +17,10 @@ export type TidyReport = { session: string | null; transcript: string | null; ro
 /** A lock older than this is a dead holder's (the same cap the sync lock uses); a younger one may belong to a job running
  *  in the container, whose pid the host cannot see. */
 export const STALE_LOCK_MS = 15 * 60_000;
+/** A `_scratch_*` folder in the system temp folder older than this outlived the run that made it (row ⑬). */
+export const SCRATCH_AGE_MS = 24 * 3_600_000;
+const bytes = (n: number): string =>
+  n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(1)} GB` : n >= 1024 ** 2 ? `${Math.round(n / 1024 ** 2)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 const LITTER = /(^|[\\/])(_scratch_[^\\/]*|\.tmp[^\\/]*|[^\\/]+\.(bak|orig|rej))$/i;
 const ARCHIVE = /\.(tar|zip|7z|bak)$/i;
 const SHELL_VERBS = /^(new-item|ni|mkdir|md|copy-item|cp|copy|move-item|mv|out-file|set-content|tar)$/i;
@@ -277,6 +283,28 @@ export function tidySession(o: TidyOptions): TidyReport {
 
   // ⑫ executables at the repo root
   rows.push(row("executables at the repo root", readdirSync(repo).filter((n) => /\.(cmd|sh|bat)$/i.test(n) && statSync(join(repo, n)).isFile())));
+
+  // ⑬ tool scratch left in the system temp folder. A tool names its temp folder `_scratch_<name>-…` and removes it when its
+  // run ends (Rule_Gate_04); one still there a day later outlived its run. No transcript names these folders, so rows ② ③
+  // never see them (13/11, a work PC: 1,538 of them, 59 GB, C: under 1% free while every row read 0).
+  const tmp = o.tempDir ?? tmpdir();
+  const leftovers = (existsSync(tmp) ? readdirSync(tmp) : []).filter((n) => /^_scratch_/i.test(n)).map((n) => join(tmp, n))
+    .filter((p) => { try { return now - statSync(p).mtimeMs > SCRATCH_AGE_MS; } catch { return false; } });
+  // a tool leaves files too (screenshots, probe scripts); sizeOf walks folders only
+  const sized = leftovers.map((p) => ({ p, s: statSync(p).isFile() ? statSync(p).size : sizeOf(p), item: "" }));
+  for (const x of sized) x.item = `${x.p} ${bytes(x.s)}`;
+  const total = sized.reduce((a, x) => a + x.s, 0);
+  const byPrefix = new Map<string, { n: number; s: number }>();
+  for (const x of sized) {
+    const k = basename(x.p).replace(/-[^-]*$/, "");
+    const e = byPrefix.get(k) ?? { n: 0, s: 0 };
+    e.n++;
+    e.s += x.s;
+    byPrefix.set(k, e);
+  }
+  const top = [...byPrefix].sort((a, b) => b[1].s - a[1].s).slice(0, 3).map(([k, e]) => `${k} ×${e.n} ${bytes(e.s)}`).join(" · ");
+  rows.push(row("tool scratch (_scratch_*) in the system temp folder, over a day old", sized.map((x) => x.item),
+    o.apply ? sized.filter((x) => rm(x.p)).map((x) => x.item) : [], leftovers.length ? `${bytes(total)} · biggest: ${top}` : undefined));
 
   return { session, transcript, rows };
 }
