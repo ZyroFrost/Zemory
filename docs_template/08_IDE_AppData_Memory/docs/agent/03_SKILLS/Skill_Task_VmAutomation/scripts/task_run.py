@@ -22,6 +22,13 @@ of the vault setting `_runlog_account` when the machine sets one (a work PC whos
 not run the log procedure), else the account the machine's register names; there is no fallback to .env. Nothing secret lives here. Shipped by zemory: store part
 Skill_Task_VmAutomation (its installs); change the store part, never the repo copy.
 
+Retry (`--retry-hours H`, set by vm_deploy from the manifest field `retry_hours` of a schedule): a launcher that exits non-zero is
+logged as that attempt (message starts `RETRY n · next try HH:MM`), then the SAME run sleeps H hours and runs the launcher again,
+until it exits 0 — whichever step failed (a mail server down, a source late) is tried again. Every 5 minutes of the wait it checks
+the Task Scheduler entry: disabled (the off switch of the Automation app) ⇒ the run stops with a `CANCEL` line. Only a task whose
+side effects (mail · upload · writes to another system) carry a done-marker may set it — a rerun skips what is already done.
+The run ends at the task's ExecutionTimeLimit at the latest; the next scheduled run picks up the first period not delivered.
+
 Which repo is acting (Rule_Keys_90 step 3): `repo_name()` = the folder name of the repo's root (`git rev-parse
 --show-toplevel`, else the folder holding docs/.harness.json), never a naming pattern. The launcher gets it as env
 ACTING_REPO, so a task's script sends it as header `X-Acting-Repo` to an app of the family, or writes it to the log's
@@ -106,6 +113,15 @@ def log_run(task, started, seconds, rc, message):
         print("[task_run] WARNING: run log not written: %s" % e, flush=True)
 
 
+def task_disabled(task):
+    """True when the Task Scheduler entry of this task is disabled (the off switch); False when enabled or not found (a test run)."""
+    try:
+        out = subprocess.run(["schtasks", "/Query", "/TN", task, "/FO", "CSV", "/NH"], capture_output=True, text=True, timeout=60)
+        return out.returncode == 0 and '"Disabled"' in out.stdout
+    except Exception:
+        return False
+
+
 def main():
     # the first VM pilot: under Task Scheduler stdout is the log FILE and this process has no PYTHONUTF8 (the launcher's
     # `set PYTHONUTF8=1` only reaches the child) -> cp1252 -> the first Vietnamese line killed the wrapper (UnicodeEncodeError).
@@ -118,6 +134,8 @@ def main():
     ap.add_argument("--task", required=True, help="task name = Task Scheduler name = task folder (+ _Night/_Close…)")
     ap.add_argument("--no-log", action="store_true",
                     help="test run on the work PC: pass output through, write NOTHING to Log_JobRun (the first VM pilot)")
+    ap.add_argument("--retry-hours", type=float, default=0,
+                    help="non-zero exit ⇒ log the attempt, wait this many hours, run again until exit 0 or the task is disabled")
     ap.add_argument("command", nargs=argparse.REMAINDER, help="-- <launcher> [args]")
     a = ap.parse_args()
     cmd = a.command[1:] if a.command[:1] == ["--"] else a.command
@@ -125,15 +143,37 @@ def main():
         sys.exit("usage: task_run.py --task NAME -- <launcher> [args]")
     if cmd[0].lower().endswith((".cmd", ".bat")):
         cmd = ["cmd.exe", "/c"] + cmd
-    started = dt.datetime.now()
-    t0 = time.time()
-    print("[task_run] %s start %s :: %s" % (a.task, started.strftime("%Y-%m-%d %H:%M:%S"), " ".join(cmd)), flush=True)
-    urls, checks, ochecks, tail = [], [], [], []
     env = dict(os.environ)
     if not env.get(REPO_ENV):                                 # an outer caller may already have set it
         name = repo_name()
         if name:
             env[REPO_ENV] = name
+    attempt = 0
+    while True:
+        attempt += 1
+        rc = run_once(a, cmd, env, attempt)
+        if rc == 0 or a.retry_hours <= 0:
+            sys.exit(rc)
+        nxt = dt.datetime.now() + dt.timedelta(hours=a.retry_hours)
+        print("[task_run] %s attempt %d exit %d — next try %s (every %g h until exit 0; disable the task to stop)"
+              % (a.task, attempt, rc, nxt.strftime("%Y-%m-%d %H:%M"), a.retry_hours), flush=True)
+        while dt.datetime.now() < nxt:
+            time.sleep(min(300, max(1, (nxt - dt.datetime.now()).total_seconds())))
+            if task_disabled(a.task):
+                msg = "CANCEL · task disabled while waiting to retry (attempt %d exited %d)" % (attempt, rc)
+                print("[task_run] %s %s" % (a.task, msg), flush=True)
+                if not a.no_log:
+                    log_run(a.task, dt.datetime.now(), 0, rc, msg)
+                sys.exit(rc)
+
+
+def run_once(a, cmd, env, attempt):
+    """One run of the launcher: pass the output through, log one Log_JobRun row, return the exit code."""
+    started = dt.datetime.now()
+    t0 = time.time()
+    print("[task_run] %s start %s%s :: %s" % (a.task, started.strftime("%Y-%m-%d %H:%M:%S"),
+                                             " (attempt %d)" % attempt if attempt > 1 else "", " ".join(cmd)), flush=True)
+    urls, checks, ochecks, tail = [], [], [], []
     try:
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
     except Exception as e:                                    # ONLY a failed start is 99
@@ -155,6 +195,11 @@ def main():
         rc = p.wait()
     secs = time.time() - t0
     parts = []
+    if rc != 0 and a.retry_hours > 0:                         # the attempt is logged; the retry line says when the next one runs
+        nxt = dt.datetime.now() + dt.timedelta(hours=a.retry_hours)
+        parts.append("RETRY %d · next try %s" % (attempt, nxt.strftime("%Y-%m-%d %H:%M")))
+    elif rc == 0 and attempt > 1:
+        parts.append("OK after %d attempts" % attempt)
     if checks:                                                # first: it says whether the run even had valid input
         parts.append("INPUT_CHECK: " + " | ".join(checks)[:800])
     if ochecks:                                               # then: whether what it delivered passed its own check
@@ -167,7 +212,7 @@ def main():
     else:
         log_run(a.task, started, secs, rc, " · ".join(parts))
     print("[task_run] %s end exit %d after %ds" % (a.task, rc, secs), flush=True)
-    sys.exit(rc)
+    return rc
 
 
 if __name__ == "__main__":

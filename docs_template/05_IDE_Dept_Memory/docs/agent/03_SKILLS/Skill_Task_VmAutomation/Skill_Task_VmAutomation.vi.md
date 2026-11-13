@@ -1,5 +1,5 @@
 ---
-version: 22
+version: 23
 lang: vi
 ---
 
@@ -134,9 +134,14 @@ xem) — không để lại trong `03_output`.
 9. **Tới hạn mà chưa đủ data ⇒ tự dò lại mỗi 3 giờ, qua nhiều ngày tới khi đủ** (*"tới ngày, nếu chưa có data, thì cứ
    check lại tự động sau mỗi 3 tiếng cho tới khi nào đủ data"*). Khớp `vm_deploy` (một giờ mỗi lịch): MỘT lịch `daily`, launcher thật
    truyền `--retry-hours 3`; trong lượt chạy, cổng đầu vào/sẵn sàng đỏ ⇒ ngủ 3 giờ rồi dò lại, tới ~23,5 giờ (trước lượt bắn hôm sau).
-   **Chỉ lặp ở CỔNG** — stage sau cổng lỗi thì dừng ngay (lặp ở đó là gửi đôi / che lỗi). Không đẻ task `_Retry` theo giờ.
+   Không đẻ task `_Retry` theo giờ.
    `ExecutionTimeLimit` ≥ 24 giờ (mặc định `schtasks` 72 giờ là đủ). Lượt chưa đủ data thoát ≠ 0 ⇒ `Log_JobRun` đỏ 0–3 lần mỗi kỳ là
    CỔNG CHẶN ĐÚNG, không phải task hỏng.
+   **Một bước sau cổng hỏng (máy chủ mail sập · upload bị từ chối · nguồn đứt giữa lượt) ⇒ 3 giờ sau chạy lại cả launcher, tới khi thoát 0
+   hoặc task bị tắt**: lịch trong `vm_deploy.json` khai `"retry_hours": 3`, `vm_deploy` truyền `--retry-hours 3` cho `scripts/task_run.py`; nó ghi
+   từng lượt hỏng (`RETRY n · next try HH:MM`), ngủ, chạy lại, và dừng với `CANCEL` khi task trong Task Scheduler bị tắt (xem mỗi 5 phút). CHỈ
+   khai khi mọi tác dụng ra ngoài của task đều có dấu "đã làm" (bước 10 cho mail + upload; mail gửi nhiều người ⇒ một dấu mỗi người) — lượt
+   chạy lại bỏ qua phần đã xong, chỉ làm lại phần hỏng. Task chưa có dấu thì không khai: gửi đôi tệ hơn gửi trễ.
 10. **Dấu "đã gửi" TRƯỚC khi upload**: gửi mail thật xong ghi `data/<Task>/02_processing/_sent_<kỳ>.txt`, rồi mới đẩy `DataReport`;
     lượt sau thấy dấu ⇒ dừng (upload lỗi thì báo đẩy tay, KHÔNG gửi lại). Không có dấu thì upload lỗi = lượt 3 giờ sau gửi mail LẦN HAI.
 11. **Mail báo lỗi cho người vận hành** (*"gửi mail cho t nếu task fail và thiếu dữ liệu"*): chỉ ở lượt THẬT đọc DW — lượt chạy bằng dữ liệu mẫu/test **KHÔNG gửi** (07/10 một lượt thử của XYZ gửi
