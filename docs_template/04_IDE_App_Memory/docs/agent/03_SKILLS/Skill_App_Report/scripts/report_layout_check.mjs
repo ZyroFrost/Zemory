@@ -232,8 +232,11 @@ export const RULES = [
       const level = cell.dataset.rpCf, p = paintOf(cell);
       if (seen.has(level) && seen.get(level) !== p) return 'one level painted two ways (' + level + '): ' + seen.get(level) + ' / ' + p;
       seen.set(level, p);
-      const h = /rgb/.test(p) ? hue(p.match(/rgba?\\([^)]*\\)/)[0]) : -1;
-      if (h >= 250 && h <= 320 && sat(p.match(/rgba?\\([^)]*\\)/)?.[0] || p) > .25) return 'a purple stands for a level (' + level + ')';
+      // (Dashboard 13/11) a color-mix() paint computes to color(srgb r g b / a), 0..1 - "srgb" holds "rgb" but no rgb(): read both
+      const m = p.match(/rgba?\\([^)]*\\)/), s = !m && p.match(/color\\(srgb ([\\d.]+) ([\\d.]+) ([\\d.]+)/);
+      const c0 = m ? m[0] : s ? 'rgb(' + s.slice(1, 4).map(x => Math.round(x * 255)).join(', ') + ')' : null;
+      const h = c0 ? hue(c0) : -1;
+      if (h >= 250 && h <= 320 && sat(c0) > .25) return 'a purple stands for a level (' + level + ')';
     }
     return true;`),
   rule('rp-target-graded', 'a % against a target is graded on its real value: < 40 red · 40 to < 70 orange · 70 to < 100 yellow · 100 and more green - four colours, never two (v13, the user 09/11; the bands set by the user)', `

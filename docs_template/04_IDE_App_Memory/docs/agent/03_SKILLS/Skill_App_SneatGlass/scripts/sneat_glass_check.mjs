@@ -1436,7 +1436,8 @@ export const RULES = [
       if (!bar) return true;
       const loose = [...bar.querySelectorAll('span, small, p, div')].filter(e => e.children.length === 0 && e.getClientRects().length
         && getComputedStyle(e).visibility !== 'hidden' && /\\d{1,2}\\/\\d{1,2}\\/\\d{4}/.test(e.textContent || '')
-        && !e.closest('button, .btn, .filter-field, .page-filter, .slicer, .dropdown-menu, [role=dialog], .breadcrumb, .visually-hidden'));
+        // (v67, Audit 13/11, approved by the user) the info cluster (.page-info) is where a page says what it tells - "measured at ..."
+        && !e.closest('button, .btn, .filter-field, .page-filter, .slicer, .dropdown-menu, [role=dialog], .breadcrumb, .visually-hidden, .page-info'));
       return loose.length ? 'a loose text in the top bar: ' + loose[0].textContent.trim().slice(0, 40) : true;
     })()`,
   },
@@ -1576,7 +1577,8 @@ export const RULES = [
           const o = document.getElementById(id), q = o && o.getClientRects().length && o.getBoundingClientRect();
           if (q && q.width > 0 && r.left < q.right - 1 && r.right > q.left + 1) return 'the tab cluster in row 2 runs into #' + id;
         }
-        if (t.dataset.place === 'auto' && t.querySelector('#page-tabs-more')) return 'standing in row 2 on its own, the tab cluster hides tabs under more';
+        // (v67, Dashboard 13/11, approved by the user) a short cluster shows the tab on screen and "more (n)" by design
+        if (t.dataset.place === 'auto' && t.dataset.style !== 'short' && t.querySelector('#page-tabs-more')) return 'standing in row 2 on its own, the tab cluster hides tabs under more';
         return true;
       }
       if (t.dataset.place !== 'auto') return true;
