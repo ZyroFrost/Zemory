@@ -34,6 +34,7 @@ Project này dùng **zemory** (harness). Mọi luật · quy trình · cấu tr�
 | hỏi "repo có sẵn quy trình gì" · thêm/bớt skill | `docs/agent/04_SKILLS.md` |
 | **đụng bất kỳ bề mặt nào của app · thêm/đổi một tiến trình nền** | `.claude/skills/app-design/SKILL.md` |
 | yêu cầu chưa đủ rõ để làm đúng | `.claude/skills/grill/SKILL.md` |
+| tin nhắn đầu tiên của phiên (hook nhắc tự bật) · "làm tiếp" · "đọc docs" · "vào việc" | `.claude/skills/session-open/SKILL.md` |
 | "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/session-close/SKILL.md` |
 | repo lệch chuẩn, cần nắn lại | `.claude/skills/reconcile/SKILL.md` |
 | kiểm độ bám chuẩn | `.claude/skills/conform/SKILL.md` |
