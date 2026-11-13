@@ -1441,6 +1441,20 @@ export const RULES = [
       return loose.length ? 'a loose text in the top bar: ' + loose[0].textContent.trim().slice(0, 40) : true;
     })()`,
   },
+  // (v69, Audit 13/11, approved by the user: Overview's "Đo lúc 13/11/2026 07:05:55" stood under the cards, outside every card,
+  // and no rule caught it - bar-no-extra-text reads row 1 only)
+  {
+    id: 'info-in-bar',
+    rule: 'words about the page (when it was measured or updated - a date or a time) stand in row 2\'s info cluster (.page-info), never loose in the page body outside every card, table and dialog',
+    check: `(() => {
+      const page = document.getElementById('page') || document.querySelector('.layout-page');
+      if (!page) return true;
+      const when = /\\d{1,2}\\/\\d{1,2}\\/\\d{4}|\\b\\d{1,2}:\\d{2}(:\\d{2})?\\b/;
+      const loose = [...page.querySelectorAll('small, p, span, div')].find(e => e.children.length === 0 && e.getClientRects().length
+        && when.test(e.textContent || '') && !e.closest('.card, table, dialog, [role=dialog], .page-toolbar, #page-bar, .page-info, .filter-pop, .toasts, .dropdown-menu, .visually-hidden'));
+      return loose ? 'words about the page stand loose in its body, not in the info cluster: ' + loose.textContent.trim().slice(0, 40) : true;
+    })()`,
+  },
   // (v51, the user 09/11: "ô search đang ko cách đúng khoảng chuẩn… tổng chiều dài của bên phải bằng đúng 1/3 chiều dài của toàn bộ panel đầu")
   {
     id: 'row1-end',
