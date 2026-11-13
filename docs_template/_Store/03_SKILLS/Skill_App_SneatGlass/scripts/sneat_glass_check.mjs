@@ -1980,17 +1980,24 @@ export const PROBES = [
   // (measured on an app: two journal lists of 1274 and 1312 px in boxes as tall as themselves, room 759 px - red)
   {
     id: 'list-one-screen',
-    rule: 'a table longer than the screen scrolls inside a box at most one screen tall (the room under the top bar, --table-room): the body of a page card that fills the frame, or a box of its own - never the page column scrolling a long list, never a box as tall as the whole list - read once the page has drawn its tables',
+    rule: 'a table longer than the screen scrolls inside a box at most one screen tall (the room under the top bar, --table-room): the body of a page card that fills the frame, or a box of its own - on a page card and on every card of a board alike (v68) - never the page column scrolling a long list, never a box as tall as the whole list; its header row and its foot (the total row) both stay in sight in that box - read once the page has drawn its tables, however long it takes (up to 40 s)',
     check: `(async () => {
       // a phone scrolls the window and shows a list's rows as cards
       if (innerWidth < 768) return true;
       const wait = ms => new Promise(r => setTimeout(r, ms));
-      const busy = () => Boolean(document.querySelector('#page.g-loading, #page [aria-busy="true"], #page .spinner-border, #page .state-box[data-state="loading"], #page .placeholder-glow'));
-      for (let ms = 0, calm = 0; ms < 8000; ms += 250) {
-        calm = busy() ? 0 : calm + 250;
-        if (calm >= 1500 && ms >= 2500) break;
+      // (v68, Reconcile 13/11: a journal draws in 25 s and the probe, calm after 8 s, passed on an empty page) busy also while the
+      // page says it is loading, and calm only once nothing in the page has changed for 2 s - up to 40 s
+      const busy = () => Boolean(document.querySelector('#page.g-loading, #page [aria-busy="true"], #page .spinner-border, #page .spinner-grow, #page .state-box[data-state="loading"], #page .placeholder-glow, #page .skeleton'))
+        || /(Đang tải|Loading)/i.test((document.getElementById('page')?.innerText || '').slice(0, 4000));
+      let changed = Date.now();
+      const seen = new MutationObserver(() => { changed = Date.now(); });
+      const pageEl = document.getElementById('page');
+      if (pageEl) seen.observe(pageEl, {childList: true, subtree: true, characterData: true});
+      for (let ms = 0; ms < 40000; ms += 250) {
+        if (!busy() && Date.now() - changed >= 2000 && ms >= 2500) break;
         await wait(250);
       }
+      seen.disconnect();
       const room = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--table-room')) || innerHeight;
       const page = '.layout-page, .content-wrapper, .container-p-y, #page, .page-card:not(.fill) > .page-card-body';
       const out = [];
@@ -2003,7 +2010,16 @@ export const PROBES = [
           if (tall > room + 2) out.push(name + ' (' + Math.round(tall) + ' px) scrolls with the page column - no box of its own one screen tall');
           continue;
         }
-        if (box.clientHeight > room + 2) out.push(name + ': its scroll box is ' + box.clientHeight + ' px, taller than the screen (' + Math.round(room) + ' px)');
+        if (box.clientHeight > room + 2) { out.push(name + ': its scroll box is ' + box.clientHeight + ' px, taller than the screen (' + Math.round(room) + ' px)'); continue; }
+        // (v68) a list that scrolls in its box keeps its header and its total row in sight: both stand inside the box's view
+        if (table.offsetHeight > box.clientHeight + 2) {
+          const r = box.getBoundingClientRect(), th = table.tHead?.rows[0]?.cells[0], tf = table.tFoot?.rows[0]?.cells[0];
+          const was = box.scrollTop; box.scrollTop = Math.round((box.scrollHeight - box.clientHeight) / 2);
+          const h = th?.getBoundingClientRect(), f = tf?.getBoundingClientRect();
+          box.scrollTop = was;
+          if (h && (h.top < r.top - 1 || h.bottom > r.bottom + 1)) out.push(name + ': its header row scrolls out of its box');
+          else if (f && (f.bottom > r.bottom + 1 || f.top < r.top - 1)) out.push(name + ': its total row is not in sight in its box');
+        }
       }
       return out.length ? out.slice(0, 4).join('; ') : true;
     })()`,
