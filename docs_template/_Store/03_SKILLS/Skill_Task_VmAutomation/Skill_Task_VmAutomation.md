@@ -1,7 +1,7 @@
 ---
 id: Skill_Task_VmAutomation
 name: task-vm-automation
-version: 22
+version: 23
 type: process
 aka: vm-automation
 description: Put a periodic task (Daily / Weekly / Monthly) on the VM to RUN BY ITSELF - the vm_deploy.json manifest, the schedule, the Log_JobRun run log, results to the region's SharePoint, the _SharePoint.url shortcut. Use whenever a task goes onto the VM, is automated or scheduled, or its VM run is checked. Vietnamese triggers - "đưa task lên VM", "tự động hoá task", "đặt lịch trên VM", "task chạy trên VM chưa".
@@ -152,9 +152,15 @@ looking) — never left in `03_output`.
    Sample: the department repo's `run_weekly.next_week_after` · `run_nq.next_month_after_delivered`.
 9. **Due but the data not complete ⇒ search again every 3 hours, over several days, until complete.** Matching `vm_deploy` (one hour per schedule): ONE `daily` schedule, the real launcher
    passes `--retry-hours 3`; within the run, the input/readiness gate red ⇒ sleep 3 hours and search again, up to ~23.5 hours (before the next day's run fires).
-   **Repeat only at the GATE** — a stage after the gate failing stops at once (repeating there sends twice / hides the error). Never create hourly `_Retry` tasks.
+   Never create hourly `_Retry` tasks.
    `ExecutionTimeLimit` ≥ 24 hours (the `schtasks` default of 72 hours is enough). A run without complete data exits ≠ 0 ⇒ `Log_JobRun` red 0–3 times per period is
    THE GATE BLOCKING CORRECTLY, not a broken task.
+   **A step after the gate fails (mail server down · upload refused · a source dropped mid-run) ⇒ the whole launcher runs again 3 hours later, until it
+   exits 0 or the task is disabled**: the schedule in `vm_deploy.json` sets `"retry_hours": 3`, `vm_deploy` passes `--retry-hours 3` to `scripts/task_run.py`,
+   which logs each failed attempt (`RETRY n · next try HH:MM`), sleeps, runs again, and stops with `CANCEL` when the Task Scheduler entry is disabled
+   (checked every 5 minutes). Set it ONLY when every side effect of the task carries a done-mark (step 10 for mail + upload; one mark per recipient
+   for a mail to many) — the rerun skips what is done and repeats only what failed. A task without the marks keeps no retry: a duplicate mail is worse
+   than a late one.
 10. **The "sent" mark BEFORE uploading**: after the real mail is sent write `data/<Task>/02_processing/_sent_<period>.txt`, only then push to `DataReport`;
     the next run sees the mark ⇒ stops (an upload error is reported for a manual push, NEVER sent again). Without the mark an upload error = the run 3 hours later sends the mail A SECOND TIME.
 11. **Failure mail to the operator** (mail the operator when the task fails or lacks data): only on a REAL run reading the DW — a run on sample/test data **does NOT send** (07/10 a trial run of XYZ sent
