@@ -100,7 +100,9 @@ export interface DraftRow {
 export function latestPull(dir = trainingDir()): string | null {
   const raw = join(dir, "01_raw");
   if (!existsSync(raw)) return null;
-  const f = readdirSync(raw).filter((n) => /^pull-.*\.jsonl$/.test(n)).sort().pop();
+  // newest by the time in the name, not by the name: "pull-full-<t>" sorts after every "pull-<t>" and hid newer pulls
+  const at = (n: string): string => /\d{4}-\d\d-\d\dT[\d-]+Z/.exec(n)?.[0] ?? "";
+  const f = readdirSync(raw).filter((n) => /^pull-.*\.jsonl$/.test(n)).sort((a, b) => at(a).localeCompare(at(b)) || a.localeCompare(b)).pop();
   return f ? join(raw, f) : null;
 }
 

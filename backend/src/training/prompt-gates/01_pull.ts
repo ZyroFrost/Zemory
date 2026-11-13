@@ -108,13 +108,18 @@ export interface PullResult {
 export function pull(opts: { perProject?: number; dbPath?: string } = {}): PullResult {
   const perProject = opts.perProject ?? 150;
   const db = openMemory(opts.dbPath ?? currentMemoryDb());
-  let all: PulledMessage[];
+  // Streamed row by row, kept only when spoken: the user role also carries tool output, and loading every row at once ran
+  // the heap out of memory (~950 MB) on an 8 GB GM (2026-11-13).
+  let read = 0;
+  const said: PulledMessage[] = [];
   try {
-    all = db.prepare(Q.trainingUserMessages).all() as PulledMessage[];
+    for (const m of db.prepare(Q.trainingUserMessages).iterate() as IterableIterator<PulledMessage>) {
+      read++;
+      if (spoken(m.text)) said.push(m);
+    }
   } finally {
     db.close();
   }
-  const said = all.filter((m) => spoken(m.text));
   const seen = new Set<string>();
   const unique: PulledMessage[] = [];
   for (const m of said) {
@@ -140,7 +145,7 @@ export function pull(opts: { perProject?: number; dbPath?: string } = {}): PullR
     for (let i = 0; i < perProject; i++) rows.push(list[Math.floor(i * step)]);
   }
   rows.sort((a, b) => a.id - b.id);
-  return { read: all.length, spoken: said.length, unique: unique.length, kept: rows.length, projects: byProject.size, rows };
+  return { read, spoken: said.length, unique: unique.length, kept: rows.length, projects: byProject.size, rows };
 }
 
 /**
