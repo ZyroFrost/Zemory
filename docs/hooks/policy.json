@@ -200,6 +200,10 @@
     {
       "file": "02-99_graph-first.cjs",
       "rule": "02-99"
+    },
+    {
+      "file": "02-97_log-never-deleted.cjs",
+      "rule": "02-97"
     }
   ],
   "rule_dirs": [],

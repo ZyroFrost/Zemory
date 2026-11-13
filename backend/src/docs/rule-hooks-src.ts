@@ -1071,4 +1071,54 @@ function check(payload, root, policy) {
       "Need something from a person? Ask the owning repo's session, or tell the user in one line.") };
   } catch { return null; }
 }`, true),
+
+  // 02-97 — a log is never deleted, only compressed (HS Rule_Gate_71_LogNeverDeleted; the folder harness runs that rule's own
+  // hook.cjs, this is the same judgement for a file harness). No flag: the way through is compressing.
+  hook("02-97_log-never-deleted.cjs", String.raw`
+// a log table: Log_<x> (any schema, brackets allowed), <x>_log / <x>_logs, or a table named log / logs
+const SQL_KILL = /\b(?:DELETE\s+(?:TOP\s*\(\s*\d+\s*\)\s+)?(?:FROM\s+)?|TRUNCATE\s+TABLE\s+|DROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?)(?:\[?\w+\]?\.)*\[?(?:Log_\w+|\w+_[Ll]ogs?|[Ll]ogs?)\]?(?![\w.])/i;
+// a log path: a *.log file (rotated .log.1 / compressed .log.gz too), a logs folder, /var/log, a journal folder
+const LOG_PATH = /(\.log(\.\d+)?(\.gz)?(?![\w])|(^|[\s"'=/\\])logs?([/\\"'\s*]|$)|\/var\/log\b|[/\\]journal([/\\\s"']|$))/i;
+const KILL_VERB = /^(?:sudo\s+(?:-\S+\s+)*)?(?:rm|rmdir|rd|del|erase|unlink|shred|truncate|git\s+rm|Remove-Item|ri|Clear-Content|clc)\b/i;
+const VACUUM = /\bjournalctl\b[^\n;|&]*--vacuum-(size|time|files)\b/i;
+const TEST_FILE = /(^|\/)(tests?|__tests__|spec)\/|(^|\/)test_[^/]*$|[._-](test|spec)\.[a-z]+$/i;
+const DELETE_ROUTE = /(\.delete\(\s*["'\x60][^"'\x60]*\blogs?\b|methods\s*=\s*\[?[^\]]*["']DELETE["'][^\n]*\blogs?\b|\blogs?\b[^\n]*methods\s*=\s*\[?[^\]]*["']DELETE["']|\[HttpDelete\([^)]*\blogs?\b)/i;
+const JOURNALD_CAP = /^\s*(SystemMaxUse|SystemMaxFiles|MaxRetentionSec|RuntimeMaxUse|RuntimeMaxFiles)\s*=/;
+const LOGROTATE_DROP = /^\s*(rotate\s+\d+|maxage\s+\d+)\b/;
+const WAY = "\nThere is no flag for this: a log is kept. Compress it instead (gzip a closed file, compress the table, journald Compress=yes).";
+function logCommand(cmd) {
+  if (VACUUM.test(cmd)) return BT + "journalctl --vacuum-*" + BT + " throws old journal lines away";
+  if (SQL_KILL.test(cmd)) return "this SQL deletes, truncates or drops a log table";
+  for (const raw of cmd.split(/\r?\n|;|&&|\|\||\|/)) {
+    const seg = raw.trim();
+    if (KILL_VERB.test(seg) && LOG_PATH.test(seg.replace(KILL_VERB, " "))) return BT + seg.slice(0, 160) + BT + " deletes or empties a log";
+  }
+  return null;
+}
+function logEdit(e) {
+  if (TEST_FILE.test(e.rel)) return null;
+  const journald = /journald\.conf(\.d\/[^/]*)?$|journald\.conf\.d\//i.test(e.rel);
+  const logrotate = /(^|\/)logrotate(\.conf|\.d\/)/i.test(e.rel);
+  for (const line of e.newLines) {
+    const l = BT + line.trim().slice(0, 160) + BT;
+    if (SQL_KILL.test(line)) return e.rel + " gets SQL that deletes, truncates or drops a log table: " + l;
+    if (DELETE_ROUTE.test(line)) return e.rel + " gets a DELETE route on a log: " + l;
+    if (journald && JOURNALD_CAP.test(line)) return e.rel + " gets a journald limit that drops old lines: " + l;
+    if (logrotate && LOGROTATE_DROP.test(line) && !/rotate\s+-1\b/.test(line)) return e.rel + " gets a logrotate count or age that drops old files: " + l + " (keep every file: rotate -1 with compress)";
+  }
+  return null;
+}
+function check(payload, root, policy) {
+  try {
+    const tool = payload.tool_name || "";
+    if (tool === "Bash" || tool === "PowerShell") {
+      const why = logCommand(String((payload.tool_input || {}).command || ""));
+      return why ? blocked(root, policy, "02-97", why) + WAY : null;
+    }
+    const e = edit(payload, root);
+    if (!e) return null;
+    const why = logEdit(e);
+    return why ? blocked(root, policy, "02-97", why) + WAY : null;
+  } catch { return null; }
+}`),
 ];

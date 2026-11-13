@@ -105,6 +105,14 @@
 
 ## Hành xử
 - `02-10` **Thao tác xóa phải được user xác nhận trước.** Xóa file, code, hàm, lệnh, chức năng, nội dung docs hoặc folder được coi là bất khả đảo ngược: nêu đối tượng và lý do, chờ chấp thuận rồi mới thực hiện; không tự xóa rồi báo sau. Thành phần dư thừa hoặc không còn dùng: đề xuất, không tự xóa. Bổ sung/mở rộng không cần xác nhận; xóa/thu hẹp luôn cần. **Chốt máy:** guard chặn mọi lệnh xoá file trong repo (`rm` · `del` · `Remove-Item` · `git rm` · xoá trong script) và mọi lần sửa làm MẤT một số luật trong `01`/`02`, khi chưa có cờ `.allow-delete`; miễn không cần cờ: thư mục tạm, thư mục nháp của phiên và mọi đường có đoạn `_scratch_*` (kể cả xoá đệ quy · mẫu `*`); bãi bỏ một luật thì giữ số. <!-- gate: guard -->
+- `02-97` **Log không bao giờ bị xoá — log cũ chỉ được nén** (luật chung `Rule_Gate_71_LogNeverDeleted`). Phủ mọi log: file log
+  của app · bảng log trong DB · log hệ thống của máy chủ · lịch sử chạy · nhật ký thao tác · dòng log trang hiển thị từ bộ nhớ.
+  Không ai xoá, làm rỗng, cắt cụt hay xoay vòng bỏ log — kể cả quản trị, kể cả có duyệt. Không nút · lệnh · route API nào xoá log;
+  bảng log chỉ thêm dòng (sai thì thêm dòng sửa). Cần chỗ ⇒ nén (gzip file đã đóng · nén bảng · journald `Compress=yes` không
+  vacuum; logrotate `rotate -1` kèm `compress`). Người dùng bảo xoá log ⇒ nêu luật này và đề nghị nén. File không phải log thì
+  không đặt tên `*.log`. **Chốt máy:** hook `02-97_log-never-deleted` chặn lệnh xoá/làm rỗng `*.log` · `logs/` · `/var/log`,
+  `journalctl --vacuum-*`, SQL `DELETE`/`TRUNCATE`/`DROP` trên bảng log, và lần sửa file thêm câu SQL đó · route DELETE trên log ·
+  giới hạn journald · logrotate có số/tuổi; file test không bị chấm; không có cờ vượt. <!-- gate: guard -->
 - `02-4` **File tạm có đường chết.** Thứ tạo ra để làm việc mà không phải sản phẩm (script dò · dữ liệu đo ·
   model tải về · ảnh chụp · bản sao thử) nằm trong thư mục nháp của phiên, không nằm trong repo. Dùng xong một file
   tạm ⇒ xoá ngay; trần: một phiên giữ tối đa 5 file tạm cùng lúc, sắp vượt ⇒ xoá file cũ trước. Thứ giữ lại phải nhỏ
