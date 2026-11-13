@@ -48,8 +48,8 @@ export const RULES = [
       // (v61, Dashboard 11/11: a P&L row named "Tiếp khách, quà tặng, giao tế, khác" read as a list) the label cell that opens a
       // row of a table of two columns or more is the row's name from the data - one fact; words in brackets are its gloss
       const label = c => c.matches('td') && !c.previousElementSibling && c.parentElement && c.parentElement.children.length >= 2;
-      // (v70, Reconcile 13/11: the tables of a board were never read - a fold row "▸ 2 Sasin … · 120 HĐ · 17,302,450" in a td
-      // passed) a table on a board is read as one on a page card
+      // (v70, Reconcile 13/11: the tables of a board were never read - a fold row of a branch, its name, count and sum parted
+      // by " · " in a td, passed) a table on a board is read as one on a page card
       const cells = [...document.querySelectorAll('.page-card tbody td, .page-board tbody td, .card .card-body li, .card dd')].filter(c => !label(c));
       const bad = cells.find(c => / · |, .*, /.test(c.textContent.replace(/\\([^)]*\\)/g, '').trim()) || c.querySelectorAll('.badge').length > 1);
       return bad ? 'a list inside one cell: "' + bad.textContent.trim().slice(0, 60) + '"' : true;
