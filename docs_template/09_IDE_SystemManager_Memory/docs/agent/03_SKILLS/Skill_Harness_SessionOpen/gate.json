@@ -1,0 +1,20 @@
+{
+  "trigger": "tin nhắn đầu tiên của phiên (hook nhắc tự bật) · \"làm tiếp\" · \"đọc docs\" · \"vào việc\" · \"mở phiên\"",
+  "prompt": {
+    "kind": "open",
+    "re": "(đọc (lại |hết )?docs|vào việc|mở phiên|phiên mới rồi)",
+    "text": "[zemory] Opening the session: follow skill session-open — title it (`zemory peers --fix --session <CLAUDE_CODE_SESSION_ID> --apply`) → read the core docs in full → the newest handover in the TODO → re-measure the item you pick → build it."
+  },
+  "block": [
+    {
+      "note": "an opening request",
+      "prompt": "đọc docs rồi làm tiếp"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an ordinary request",
+      "prompt": "sửa lỗi nút lưu"
+    }
+  ]
+}

@@ -48,7 +48,7 @@
 
 ## Sessions and messages between sessions
 
-- Session titles follow `<Repo>_<Model>_<d-m-yyyy>` (`<Repo>` = the repo folder name, exact case; the date without leading zeros); a topic ⇒ inserted before the date; a second session the same day ⇒ `_<n>` after the date. The owner sets the title; an agent that sees its own session title off the pattern reminds once, never renames it itself. `zemory peers --all --check` scores every session; `--fix` prints a plan, `--apply` runs only when asked.
+- Session titles follow `<Repo>_<Brand>_<d-m-yyyy>` (`<Repo>` = the repo folder name, exact case; `<Brand>` = the agent's maker or platform - `Claude`, `Codex`, `Gemini` - never a model name such as `Opus`; the date without leading zeros); a topic ⇒ inserted before the date; a second session the same day ⇒ `_<n>` after the date. The agent titles its own session when it opens (skill `Skill_Harness_SessionOpen`): `zemory peers --fix --session <CLAUDE_CODE_SESSION_ID> --apply` builds the title from the repo and the day the session opened, ignores a title carried over by `/clear`, and keeps a title already on the pattern and the day. The owner may still rename by hand. `zemory peers --all --check` scores every session; `--fix` without `--session` prints a plan for every session, `--apply` runs only when asked.
 - Messaging an agent in another session or repo: only a running session with a standard title; a repo with several sessions ⇒ the one with the newest date. A title is not an address: before every send run `zemory peers`, then send to the address marked ★; no ★ ⇒ do not send, report that the target session needs a title. Replying to a message ⇒ use exactly the message's `from` address.
 - Check: the machine-wide hook `zemory hook send-guard` blocks sending to a session without ★.
 - A session has two names: the messaging name (what `SendMessage` addresses, changed only by `/rename`) and the title the
@@ -85,7 +85,7 @@ zemory doctor
 
 ## 3. Module trong bộ
 
-- Luật chung: 39 (Gate 27 · Keys 12 · Core 0).
+- Luật chung: 40 (Gate 28 · Keys 12 · Core 0).
 - Khung hiến pháp (8): `01_Scope/Cons_Gate_09_Purpose` · `02_Data/Cons_Gate_10_ReadOnlySources` · `02_Data/Cons_Gate_11_WriteBoundary` · `02_Data/Cons_Gate_12_SourceOfTruth` · `03_System/Cons_Gate_13_Architecture` · `04_Security/Cons_Gate_14_Access` · `02_Data/Cons_Gate_15_DataLifecycle` · `03_System/Cons_Gate_16_Dependencies`. Mỗi khung có `Cons.md` mẫu: viết lại cho sản phẩm của dự án, hoặc ghi `status: n/a` kèm lý do.
 - Structure: `Struc_Repo_NonApp` · hệ: `_Host/IDE`.
-- Skill (20): `db-base` · `doc-read-office` · `doc-write-docx` · `doc-write-style` · `frame-own` · `harness-audit` · `harness-conform` · `harness-grill` · `harness-plan-trim` · `harness-reconcile` · `harness-repo-move` · `harness-reshape` · `harness-rule-gate` · `harness-session-close` · `harness-sync-path` · `pbi-base` · `task-case` · `task-fill` · `task-pull` · `task-upload`.
+- Skill (21): `db-base` · `doc-read-office` · `doc-write-docx` · `doc-write-style` · `frame-own` · `harness-audit` · `harness-conform` · `harness-grill` · `harness-plan-trim` · `harness-reconcile` · `harness-repo-move` · `harness-reshape` · `harness-rule-gate` · `harness-session-close` · `harness-session-open` · `harness-sync-path` · `pbi-base` · `task-case` · `task-fill` · `task-pull` · `task-upload`.

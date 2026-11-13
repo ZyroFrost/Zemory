@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 
@@ -41,7 +41,7 @@ Lệnh dời chỉ đổi tên thư mục phiên; các dòng bên trong tệp ph
 - Chỉ sửa trường CẤU TRÚC, theo từng giá trị JSON, không thay chuỗi mù trên cả dòng:
   - `cwd` · `trackingPath`: mọi đời đường cũ của repo (kể cả đường trước các lần dời trước, khác hoa thường ổ đĩa) → đường mới,
     giữ phần đuôi sau tên repo.
-  - `customTitle` · `agentName`: tên phiên theo khuôn `<repo>_<Model>_<d-m-yyyy>`, giữ đúng ngày cũ.
+  - `customTitle` · `agentName`: tên phiên theo khuôn `<repo>_<Brand>_<d-m-yyyy>`, giữ đúng ngày cũ.
 - Giữ nguyên: nội dung hội thoại (lịch sử thật) · dòng `cwd` trỏ repo KHÁC (lúc phiên đứng ở repo khác) · phiên chưa có tên.
 - Không dùng đề xuất của `zemory peers --fix` khi nó ghép tên repo mới đè lên tên phiên cũ (đã gặp 22/10:
   `_DB_ERP_Claude_DB_AppCore_Claude_21-10-2026`). Dòng không đổi thì ghi lại nguyên từng byte.

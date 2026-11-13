@@ -1,0 +1,29 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": ["Bash", "PowerShell", "Write", "Edit", "MultiEdit"]
+  },
+  "block": [
+    {"note": "removing a logs folder", "tool_name": "Bash", "tool_input": {"command": "rm -rf data/logs"}},
+    {"note": "removing one log file in PowerShell", "tool_name": "PowerShell", "tool_input": {"command": "Remove-Item C:\\app\\logs\\app-2026-07-10.log -Force"}},
+    {"note": "emptying a server log", "tool_name": "Bash", "tool_input": {"command": "cd /opt/app && truncate -s 0 /var/log/app/app.log"}},
+    {"note": "throwing old journal lines away", "tool_name": "Bash", "tool_input": {"command": "sudo journalctl --vacuum-time=7d"}},
+    {"note": "SQL deleting rows of a log table", "tool_name": "Bash", "tool_input": {"command": "sqlcmd -S db -Q \"DELETE FROM dbo.Log_AppLine WHERE AppID = 4\""}},
+    {"note": "SQL truncating a log table", "tool_name": "Bash", "tool_input": {"command": "sqlcmd -Q \"TRUNCATE TABLE [dbo].[Log_Run]\""}},
+    {"note": "a DELETE route on the log", "tool_name": "Write", "tool_input": {"file_path": "app/api/monitor.py", "content": "@router.delete(\"/api/logs\", status_code=204)\ndef clear_logs(): ..."}},
+    {"note": "a query that purges old log rows", "tool_name": "Write", "tool_input": {"file_path": "app/store/queries.py", "content": "PURGE = \"DELETE FROM dbo.Log_Operation WHERE OperationAt < ?\""}},
+    {"note": "a journald size cap", "tool_name": "Write", "tool_input": {"file_path": "deploy/journald.conf.d/app.conf", "content": "[Journal]\nSystemMaxUse=500M"}},
+    {"note": "a logrotate count that drops old files", "tool_name": "Write", "tool_input": {"file_path": "deploy/logrotate.d/app", "content": "/var/log/app/*.log {\n  rotate 7\n  compress\n}"}}
+  ],
+  "pass": [
+    {"note": "compressing a closed log file", "tool_name": "Bash", "tool_input": {"command": "gzip /var/log/app/app.log.1"}},
+    {"note": "reading a log", "tool_name": "Bash", "tool_input": {"command": "journalctl -u app --since today"}},
+    {"note": "deleting a file that is not a log", "tool_name": "Bash", "tool_input": {"command": "rm -f changelog.md notes.txt"}},
+    {"note": "SQL deleting from a table that is not a log", "tool_name": "Bash", "tool_input": {"command": "sqlcmd -Q \"DELETE FROM dbo.Catalog WHERE Id = 1\""}},
+    {"note": "compressing a log table", "tool_name": "Bash", "tool_input": {"command": "sqlcmd -Q \"ALTER TABLE dbo.Log_AppLine REBUILD WITH (DATA_COMPRESSION = PAGE)\""}},
+    {"note": "denying delete on a log table, and a trigger refusing it", "tool_name": "Write", "tool_input": {"file_path": "db/models/35_log_appline.sql", "content": "DENY DELETE ON dbo.Log_AppLine TO app_login;\nCREATE TRIGGER TR_Log_AppLine_AppendOnly ON dbo.Log_AppLine INSTEAD OF UPDATE, DELETE AS THROW 50001, 'append-only', 1;"}},
+    {"note": "a test showing the delete is refused", "tool_name": "Write", "tool_input": {"file_path": "backend/test/test_logs_refuse.py", "content": "assert admin.delete(\"/app/api/logs\").status_code == 405"}},
+    {"note": "logrotate keeping every file, compressed", "tool_name": "Write", "tool_input": {"file_path": "deploy/logrotate.d/app", "content": "/var/log/app/*.log {\n  rotate -1\n  compress\n}"}},
+    {"note": "a DELETE route that is not on a log", "tool_name": "Write", "tool_input": {"file_path": "app/api/jobs.py", "content": "@router.delete(\"/api/jobs/{job_id}\", status_code=204)"}}
+  ]
+}

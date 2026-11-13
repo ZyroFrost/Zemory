@@ -59,3 +59,4 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | sneat glass · kiểu sneat-glass · thanh lọc · bộ lọc trang · neo khung · cỡ hộp thoại · bố cục rộng · bố cục gọn | `.claude/skills/app-sneat-glass/SKILL.md` |
 | gắn khung · dùng khung chung · lên bản khung · ghim khung · vùng trang · lỗi khung | `.claude/skills/app-shell-use/SKILL.md` |
 | trang báo cáo · bảng dashboard · dựng lại pbi · chuẩn pbi white cho app · card kpi · bảng ma trận · bố cục chart · bảng giải thích | `.claude/skills/app-report/SKILL.md` |
+| tin nhắn đầu tiên của phiên (hook nhắc tự bật) · "làm tiếp" · "đọc docs" · "vào việc" · "mở phiên" | `.claude/skills/harness-session-open/SKILL.md` |

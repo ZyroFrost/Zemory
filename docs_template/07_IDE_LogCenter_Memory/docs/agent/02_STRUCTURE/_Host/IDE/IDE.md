@@ -1,9 +1,9 @@
 ---
 id: Host_IDE
 name: host-ide
-version: 8
+version: 9
 kind: host
-from: _Store/02_STRUCTURE/_Host/IDE @v8 #ab0bf4b438ef
+from: _Store/02_STRUCTURE/_Host/IDE @v9 #4bc984c03fbc
 ---
 # IDE The IDE host — the agent inside a code editor
 
@@ -50,7 +50,7 @@ from: _Store/02_STRUCTURE/_Host/IDE @v8 #ab0bf4b438ef
 
 ## Sessions and messages between sessions
 
-- Session titles follow `<Repo>_<Model>_<d-m-yyyy>` (`<Repo>` = the repo folder name, exact case; the date without leading zeros); a topic ⇒ inserted before the date; a second session the same day ⇒ `_<n>` after the date. The owner sets the title; an agent that sees its own session title off the pattern reminds once, never renames it itself. `zemory peers --all --check` scores every session; `--fix` prints a plan, `--apply` runs only when asked.
+- Session titles follow `<Repo>_<Brand>_<d-m-yyyy>` (`<Repo>` = the repo folder name, exact case; `<Brand>` = the agent's maker or platform - `Claude`, `Codex`, `Gemini` - never a model name such as `Opus`; the date without leading zeros); a topic ⇒ inserted before the date; a second session the same day ⇒ `_<n>` after the date. The agent titles its own session when it opens (skill `Skill_Harness_SessionOpen`): `zemory peers --fix --session <CLAUDE_CODE_SESSION_ID> --apply` builds the title from the repo and the day the session opened, ignores a title carried over by `/clear`, and keeps a title already on the pattern and the day. The owner may still rename by hand. `zemory peers --all --check` scores every session; `--fix` without `--session` prints a plan for every session, `--apply` runs only when asked.
 - Messaging an agent in another session or repo: only a running session with a standard title; a repo with several sessions ⇒ the one with the newest date. A title is not an address: before every send run `zemory peers`, then send to the address marked ★; no ★ ⇒ do not send, report that the target session needs a title. Replying to a message ⇒ use exactly the message's `from` address.
 - Check: the machine-wide hook `zemory hook send-guard` blocks sending to a session without ★.
 - A session has two names: the messaging name (what `SendMessage` addresses, changed only by `/rename`) and the title the

@@ -1,5 +1,5 @@
 ---
-version: 8
+version: 9
 lang: vi
 ---
 # IDE Hệ IDE — agent trong trình soạn code
@@ -47,7 +47,7 @@ lang: vi
 
 ## Phiên và nhắn liên phiên
 
-- Tiêu đề phiên theo khuôn `<Repo>_<Model>_<d-m-yyyy>` (`<Repo>` = tên folder repo, đúng hoa thường; ngày không đệm số 0); có chủ đề ⇒ chèn trước ngày; phiên thứ hai trong ngày ⇒ thêm `_<số>` sau ngày. Người dùng đặt tiêu đề; agent thấy tiêu đề phiên của chính mình lệch khuôn thì nhắc một lần, không tự đổi. `zemory peers --all --check` chấm mọi phiên; `--fix` in kế hoạch, `--apply` chỉ chạy khi được yêu cầu.
+- Tiêu đề phiên theo khuôn `<Repo>_<Brand>_<d-m-yyyy>` (`<Repo>` = tên folder repo, đúng hoa thường; `<Brand>` = hãng/nền của agent — `Claude`, `Codex`, `Gemini` — không bao giờ là tên model như `Opus`; ngày không đệm số 0); có chủ đề ⇒ chèn trước ngày; phiên thứ hai trong ngày ⇒ thêm `_<số>` sau ngày. Agent tự đặt tiêu đề phiên của mình lúc mở phiên (skill `Skill_Harness_SessionOpen`): `zemory peers --fix --session <CLAUDE_CODE_SESSION_ID> --apply` dựng tiêu đề từ repo và ngày mở phiên, bỏ qua tiêu đề `/clear` mang sang, giữ tiêu đề đã đúng khuôn và đúng ngày. Người dùng vẫn đổi tay được. `zemory peers --all --check` chấm mọi phiên; `--fix` không kèm `--session` in kế hoạch cho mọi phiên, `--apply` chỉ chạy khi được yêu cầu.
 - Nhắn agent ở phiên hoặc repo khác: chỉ nhắn phiên đang chạy có tiêu đề chuẩn; repo nhiều phiên ⇒ phiên có ngày mới nhất. Tiêu đề không phải địa chỉ gửi: trước mỗi lần gửi chạy `zemory peers` rồi gửi tới địa chỉ có ★; không có ★ ⇒ không gửi, báo phiên đích cần đặt tiêu đề. Trả lời tin đến ⇒ dùng đúng địa chỉ `from` của tin.
 - Phép kiểm: hook toàn máy `zemory hook send-guard` chặn gửi tới phiên không có ★.
 - Một phiên có hai tên: tên nhắn tin (thứ `SendMessage` gửi tới, chỉ `/rename` đổi được) và tiêu đề người dùng đặt trong danh sách
