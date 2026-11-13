@@ -48,7 +48,9 @@ export const RULES = [
       // (v61, Dashboard 11/11: a P&L row named "Tiếp khách, quà tặng, giao tế, khác" read as a list) the label cell that opens a
       // row of a table of two columns or more is the row's name from the data - one fact; words in brackets are its gloss
       const label = c => c.matches('td') && !c.previousElementSibling && c.parentElement && c.parentElement.children.length >= 2;
-      const cells = [...document.querySelectorAll('.page-card tbody td, .card .card-body li, .card dd')].filter(c => !label(c));
+      // (v70, Reconcile 13/11: the tables of a board were never read - a fold row "▸ 2 Sasin … · 120 HĐ · 17,302,450" in a td
+      // passed) a table on a board is read as one on a page card
+      const cells = [...document.querySelectorAll('.page-card tbody td, .page-board tbody td, .card .card-body li, .card dd')].filter(c => !label(c));
       const bad = cells.find(c => / · |, .*, /.test(c.textContent.replace(/\\([^)]*\\)/g, '').trim()) || c.querySelectorAll('.badge').length > 1);
       return bad ? 'a list inside one cell: "' + bad.textContent.trim().slice(0, 60) + '"' : true;
     })()`,
@@ -1602,7 +1604,11 @@ export const RULES = [
       const natural = c => { const s = getComputedStyle(c); if (c.id !== 'card-tools' && !(parseFloat(s.flexGrow) > 0)) return c.offsetWidth;
         const k = [...c.children].filter(x => x.getClientRects().length), g = parseFloat(s.columnGap) || 0;
         return k.reduce((a, x) => a + natural(x), 0) + Math.max(0, k.length - 1) * g + parseFloat(s.paddingLeft) + parseFloat(s.paddingRight); };
-      const others = [...bar.children].filter(c => c.id !== 'page-tabs-slot' && c.getClientRects().length);
+      // (v70, Reconcile 13/11: /warehouse read 770 px free where 187 were - #card-start is drawn as its children, display:
+      // contents, 0 px wide, and its 585 px of clusters went uncounted) the row's clusters are counted through a box drawn as its
+      // children, and the spacer between the two ends is room, not a cluster - as the frame weighs them (layouts/PageTabs room())
+      const flat = c => getComputedStyle(c).display === 'contents' ? [...c.children].flatMap(flat) : [c];
+      const others = [...bar.children].flatMap(flat).filter(c => c.id !== 'page-tabs-slot' && !c.classList.contains('bar-spacer') && c.getClientRects().length);
       const used = others.reduce((a, c) => a + natural(c), 0) + Math.max(0, others.length - 1) * gap;
       const free = bar.clientWidth - parseFloat(bs.paddingLeft) - parseFloat(bs.paddingRight) - used - gap;
       if (t.querySelector('#page-tabs-more')) return true;
