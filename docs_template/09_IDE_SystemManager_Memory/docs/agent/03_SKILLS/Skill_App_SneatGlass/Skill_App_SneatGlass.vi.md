@@ -1,5 +1,5 @@
 ---
-version: 74
+version: 75
 lang: vi
 ---
 
@@ -34,6 +34,20 @@ lang: vi
   cỡ chỉ đổi qua `--tool-h`. [bar-one-size]
 - **Hai đầu mỗi hàng chừa bằng nhau** (v42): hàng 1 và thanh trang - từ mép trái tới control đầu bằng từ control
   cuối tới mép phải, lệch tối đa 2 px. [bar-ends-even]
+- **Một khoảng chừa từ mép, từ trên xuống** (v75, user 14/11): hàng 1, hàng 2 và nội dung mọi panel của trang (mỗi phần của
+  thẻ - đầu, thân, bảng, chân) cách mép panel đúng khoảng của khung `--frame-pad` (16 px) - không dính mép, không lệch hàng
+  với phần khác. Phần cố ý canh giữa (trạng thái trống) và mép phải của phần cuộn ngang thì không xét. App không tự đặt khoảng
+  riêng cho panel: dùng token của khung. [pad-even]
+- **Mỗi cột một thanh cuộn** (v75, user 14/11: panel giới hạn trong màn hình hiện 2 thanh cuộn cạnh nhau): hộp cuộn dọc
+  không bao giờ nằm trong một hộp cuộn dọc khác của trang. Trong thẻ trang lấp khung, cửa sổ danh sách cao đúng phần chỗ thân
+  thẻ còn chừa (chiều cao thân trừ đầu panel, padding, viền quanh nó); cửa sổ bị chừa quá ít thì cuộn theo thân. [one-scroll]
+- **Mọi cài đặt chạy thật và được kiểm thật** (v75, user 15/11: cài đặt số khung có lưu mà không báo cáo nào đọc - kiểm ở
+  cài đặt đang có thì không bao giờ thấy). Cài đặt được chứng minh bằng cách đổi nó: bộ kiểm khung bấm mọi lựa chọn của mọi
+  cài đặt khung, mỗi lựa chọn phải đổi thứ người dùng thấy; bộ kiểm live lưu từng lựa chọn của định dạng số và định dạng ngày
+  như Settings lưu, mọi ô số (`td[data-rp-num][data-rp-raw]`, % là tỉ lệ: 0.125) và mọi ngày trong bảng phải đổi theo trong
+  15 s - rồi trả lại cài đặt cũ. Ô trông như số báo cáo mà không gắn định dạng cũng là lỗi đó. Trang không React đọc định dạng
+  ở `<html data-num-format>` / `<html data-date-format>` và viết bằng `sasinShell.fmtNum` / `sasinShell.fmtDate`.
+  [num-format-works] [date-format-works]
 - **Nút hàng 1 có khung** (v42): nút ứng dụng và chuông là
   ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Bên phải hàng 1 là một
   nhóm, đúng một phần ba thanh** (v51): ô tìm và các nút đứng chung ở cuối hàng 1, rộng đúng một phần ba thanh trên cùng (ô tìm lấy phần
