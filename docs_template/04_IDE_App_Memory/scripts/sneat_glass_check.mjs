@@ -24,16 +24,18 @@ export const RULES = [
         const box = bar && bar.querySelector('.page-search .form-control'), filter = bar && bar.querySelector('.page-filter > .btn');
         const views = bar ? [...bar.querySelectorAll('.view-switch > .btn')] : [];
         // no switch = a page of one view (user 06/11: a faded switch only took room); a switch has two views or more
-        if (!box || !filter || views.length === 1) return 'a page card lacks ' + [!box && 'the filter box', !filter && 'the filter button', views.length === 1 && 'a second view in its switch'].filter(Boolean).join(', ');
+        // (v72, the user 14/11 through Dashboard: "khung lọc là khung giả, ko nhập dc") a page with nothing to search draws no box at
+        // all - a box that takes no typing is the fake; bar-works catches a box shown that filters nothing
+        if (!filter || views.length === 1) return 'a page card lacks ' + [!filter && 'the filter button', views.length === 1 && 'a second view in its switch'].filter(Boolean).join(', ');
         const look = e => { const c = getComputedStyle(e); return [Math.round(e.getBoundingClientRect().height), c.borderTopLeftRadius, c.backgroundColor].join(' '); };
         const fill = e => look(e).replace(/ [^ ]+px /, ' ');
         const plain = views.find(b => !b.classList.contains('active')) || views[0] || filter;
         // the filter button is lit while its filters show (it is the switch that opens them): then only its shape is compared
         const lit = filter.getAttribute('aria-expanded') === 'true';
         const shape = e => look(e).split(' ').slice(0, 2).join(' ');
-        if ((lit ? shape(box) !== shape(filter) : look(box) !== look(filter)) || (!lit && fill(filter) !== fill(plain)))
-          return 'the toolbar mixes designs: ' + [look(box), look(filter), look(plain)].join(' | ');
-        const icon = box.parentElement.querySelector('i, svg');
+        if ((box && (lit ? shape(box) !== shape(filter) : look(box) !== look(filter))) || (!lit && fill(filter) !== fill(plain)))
+          return 'the toolbar mixes designs: ' + [box && look(box), look(filter), look(plain)].filter(Boolean).join(' | ');
+        const icon = box && box.parentElement.querySelector('i, svg');
         if (icon && parseFloat(getComputedStyle(box).paddingInlineStart) < icon.getBoundingClientRect().width + 8) return 'the filter box text runs under its icon';
         const active = views.find(b => b.classList.contains('active'));
         if (views.length && !views.some(b => b.disabled) && (!active || getComputedStyle(active).backgroundColor === getComputedStyle(plain).backgroundColor)) return 'the chosen view is not lit';
@@ -642,15 +644,16 @@ export const RULES = [
         const s = getComputedStyle(bar), b = bar.getBoundingClientRect();
         const left = b.left + parseFloat(s.paddingLeft), right = b.right - parseFloat(s.paddingRight);
         const filter = tools.querySelector(':scope > .page-filter'), box = tools.querySelector(':scope > .page-search');
-        if (!filter || !box) return 'the seek group lacks ' + (filter ? 'the filter box' : 'the filter button');
+        // (v72) the filter box only where the page has something to search
+        if (!filter) return 'the seek group lacks the filter button';
         // side by side, in order: [pinned filters] [filter button] [filter box] [view switch], the last ending the bar
         const views = tools.querySelector(':scope > .page-views');
         if (!views && bar.querySelector('.page-views, .view-switch')) return 'the view switch stands outside the seek group - it ends the bar at the right';
-        if (filter.nextElementSibling !== box || box.nextElementSibling !== views) return 'the seek group is not [filters] filter button · filter box · view switch, side by side in that order';
+        if (box ? filter.nextElementSibling !== box || box.nextElementSibling !== views : filter.nextElementSibling !== views) return 'the seek group is not [filters] filter button · filter box · view switch, side by side in that order';
         if (views && views.nextElementSibling) return 'something stands after the view switch at the right end';
         const row = tools.querySelector(':scope > #filter-row');
         if (row && row.nextElementSibling !== filter) return 'the pinned filters do not stand against the filter button';
-        const f = filter.getBoundingClientRect(), x = box.getBoundingClientRect(), end = (views || box).getBoundingClientRect();
+        const f = filter.getBoundingClientRect(), x = (box || filter).getBoundingClientRect(), end = (views || box || filter).getBoundingClientRect();
         if (x.left - f.right > 12) return 'a gap of ' + Math.round(x.left - f.right) + ' px parts the filter button from the filter box';
         if (views && end.left - x.right > 12) return 'a gap of ' + Math.round(end.left - x.right) + ' px parts the filter box from the view switch';
         // (v64, the user 12/11) the seek group is the fourth cluster: framed, it ends the bar by its frame; dragged by the person
