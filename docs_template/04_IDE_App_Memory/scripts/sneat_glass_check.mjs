@@ -2354,10 +2354,14 @@ export const PROBES = [
       };
       const base = {money_unit: 'auto', money_dp: 1, money_round: 1, count_dp: 0, sep: 'dot', pct_dp: 1, neg: 'minus'};
       // saved as Settings saves it; the frame reads the person again when the window takes the focus
-      const save = async v => { const r = await fetch('/api/auth/ui', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({num_format: v})});
+      // the person's settings are saved and read with a clean fetch (a blank frame of the same origin): an app may wrap the page's
+      // fetch and send /api/ calls that are not the frame's to its own server
+      const pane = document.createElement('iframe'); pane.style.display = 'none'; document.body.append(pane);
+      const cf = (u, o) => pane.contentWindow.fetch(location.origin + u, o);
+      const save = async v => { const r = await cf('/api/auth/ui', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({num_format: v})});
         dispatchEvent(new Event('focus')); return r.ok; };
       let before = null;
-      try { before = (await (await fetch('/api/auth/me', {credentials: 'same-origin'})).json())?.ui?.num_format ?? null; } catch { /* read below */ }
+      try { before = (await (await cf('/api/auth/me', {credentials: 'same-origin'})).json())?.ui?.num_format ?? null; } catch { /* read below */ }
       let start = base; try { start = {...base, ...JSON.parse(before || '{}')}; } catch { /* the default */ }
       const kinds = new Set(cells().map(c => c.dataset.rpNum));
       const tries = [];
@@ -2389,6 +2393,7 @@ export const PROBES = [
       } finally {
         await save(before && before.trim() ? before : JSON.stringify(start));
         await wait(800);
+        pane.remove();
       }
       return fault || true;
     })()`,
@@ -2404,10 +2409,14 @@ export const PROBES = [
       const first = dates().slice(0, 30).map(c => [c, (c.textContent || '').trim()]);
       if (!first.length) return true;
       const wait = ms => new Promise(r => setTimeout(r, ms));
-      const save = async v => { const r = await fetch('/api/auth/ui', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({date_format: v})});
+      // the person's settings are saved and read with a clean fetch (a blank frame of the same origin): an app may wrap the page's
+      // fetch and send /api/ calls that are not the frame's to its own server
+      const pane = document.createElement('iframe'); pane.style.display = 'none'; document.body.append(pane);
+      const cf = (u, o) => pane.contentWindow.fetch(location.origin + u, o);
+      const save = async v => { const r = await cf('/api/auth/ui', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({date_format: v})});
         dispatchEvent(new Event('focus')); return r.ok; };
       let before = 'vn';
-      try { before = (await (await fetch('/api/auth/me', {credentials: 'same-origin'})).json())?.ui?.date_format === 'us' ? 'us' : 'vn'; } catch { /* vn */ }
+      try { before = (await (await cf('/api/auth/me', {credentials: 'same-origin'})).json())?.ui?.date_format === 'us' ? 'us' : 'vn'; } catch { /* vn */ }
       if (document.documentElement.dataset.dateFormat !== before) return 'the frame does not name the date format of the person on <html data-date-format> (' + (document.documentElement.dataset.dateFormat || 'none') + ', the person has ' + before + ')';
       const other = before === 'us' ? 'vn' : 'us';
       let fault = null;
@@ -2432,6 +2441,57 @@ export const PROBES = [
       } finally {
         await save(before);
         await wait(800);
+        pane.remove();
+      }
+      return fault || true;
+    })()`,
+  },
+  // (v76, 15/11: in Reconcile every frame setting was dead - the app's fetch wrapper sent the frame's /api/auth/ui to the app's
+  // own server, 405, and the frame put the old choice back) the frame's own Settings, used as a person uses it, must keep the
+  // choice: the date format and a number choice are pressed in the dialog and still stand 3 s later, with no error; put back after
+  {
+    id: 'settings-save-works',
+    rule: 'the frame\'s Settings keeps what the person chooses, in every app: Settings > Date format and Settings > Numbers pressed as a person presses them still stand 3 s later on <html data-date-format> / <html data-num-format>, with no error shown - an app that reroutes or blocks the frame\'s own calls (/api/auth/*) makes every setting dead; put back after',
+    check: `(async () => {
+      const opener = document.getElementById('header-settings');
+      if (!opener) return true;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const html = document.documentElement.dataset;
+      const errors = () => [...document.querySelectorAll('.toast, [role=alert]')].filter(t => t.getClientRects().length).map(t => (t.textContent || '').trim()).filter(Boolean);
+      const seen = new Set(errors());
+      opener.click();
+      for (let t = 0; t < 30 && !document.getElementById('settingsDlg'); t++) await wait(100);
+      if (!document.getElementById('settingsDlg')) return 'Settings did not open from #header-settings';
+      const press = id => document.querySelector('#settingsDlg label[for="' + id + '"]')?.click();
+      const tab = k => document.getElementById('set-tab-' + k)?.click();
+      let fault = null;
+      try {
+        // the date format
+        const d0 = html.dateFormat === 'us' ? 'us' : 'vn', d1 = d0 === 'us' ? 'vn' : 'us';
+        tab('look'); await wait(400);
+        if (!document.querySelector('#settingsDlg label[for="date-' + d1 + '"]')) fault = 'Settings has no date format choice';
+        else {
+          press('date-' + d1); await wait(3000);
+          const fresh = errors().filter(e => !seen.has(e));
+          if (html.dateFormat !== d1) fault = 'Settings > Date format ' + d1 + ' did not hold: <html data-date-format> is ' + (html.dateFormat || 'none') + (fresh.length ? ' - the frame said: ' + fresh.join(' | ').slice(0, 120) : '');
+          press('date-' + d0); await wait(1200);
+        }
+        // a number choice
+        if (!fault) {
+          tab('numbers'); await wait(400);
+          let n0 = 'dot'; try { n0 = JSON.parse(html.numFormat || '{}').sep || 'dot'; } catch { /* dot */ }
+          const n1 = n0 === 'comma' ? 'dot' : 'comma';
+          if (document.querySelector('#settingsDlg label[for="nf-sep-' + n1 + '"]')) {
+            press('nf-sep-' + n1); await wait(3000);
+            let now = ''; try { now = JSON.parse(html.numFormat || '{}').sep; } catch { /* none */ }
+            const fresh = errors().filter(e => !seen.has(e));
+            if (now !== n1) fault = 'Settings > Numbers separator ' + n1 + ' did not hold: <html data-num-format> sep is ' + (now || 'none') + (fresh.length ? ' - the frame said: ' + fresh.join(' | ').slice(0, 120) : '');
+            press('nf-sep-' + n0); await wait(1200);
+          }
+        }
+      } finally {
+        document.querySelector('#settingsDlg .btn-close')?.click();
+        await wait(500);
       }
       return fault || true;
     })()`,

@@ -1,5 +1,5 @@
 ---
-version: 75
+version: 76
 lang: vi
 ---
 
@@ -48,6 +48,10 @@ lang: vi
   15 s - rồi trả lại cài đặt cũ. Ô trông như số báo cáo mà không gắn định dạng cũng là lỗi đó. Trang không React đọc định dạng
   ở `<html data-num-format>` / `<html data-date-format>` và viết bằng `sasinShell.fmtNum` / `sasinShell.fmtDate`.
   [num-format-works] [date-format-works]
+- **Settings của khung giữ được lựa chọn ở mọi app** (v76, 15/11): Settings > Định dạng ngày và Settings > Số, bấm như người dùng,
+  3 s sau vẫn giữ và không báo lỗi. App không đổi đường hay chặn lời gọi của khung (`/api/auth/*`, `/api/apps`,
+  `/api/notifications`, `/api/health`); probe live lưu và đọc bằng fetch sạch nên lớp bọc fetch của app không làm lệch.
+  [settings-save-works]
 - **Nút hàng 1 có khung** (v42): nút ứng dụng và chuông là
   ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Bên phải hàng 1 là một
   nhóm, đúng một phần ba thanh** (v51): ô tìm và các nút đứng chung ở cuối hàng 1, rộng đúng một phần ba thanh trên cùng (ô tìm lấy phần
