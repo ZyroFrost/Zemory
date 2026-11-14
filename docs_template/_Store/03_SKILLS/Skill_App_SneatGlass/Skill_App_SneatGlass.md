@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 74
+version: 75
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -40,6 +40,22 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   button's width - `Rule_Gate_97_BarOneSize` blocks it as it is written; the size changes only through `--tool-h`. [bar-one-size]
 - **Both ends of each row keep the same room** (v42): row 1 and the page bar - from the left edge to the first
   control as from the last control to the right edge, within 2 px. [bar-ends-even]
+- **One room from the edge, from the top down** (v75, the user 14/11): row 1, row 2 and the content of every panel of the page
+  (each part of a card - its header, body, table, footer) stand the frame's room `--frame-pad` (16 px) from their panel's edge -
+  never against it, never off the line of the rest. A part centred on purpose (an empty state) and the right end of a part that
+  scrolls sideways are not judged. An app never sets its own room on a panel: the frame's token is the one. [pad-even]
+- **One scroll bar per column** (v75, the user 14/11: a panel held to the screen showed two bars side by side): a box that
+  scrolls up and down never stands inside another box of the page that scrolls up and down. In a page card that fills the frame
+  a list window is as tall as the room the body leaves it (the body's height less the panel head, paddings and edges round
+  it); a window left too little room scrolls with the body. [one-scroll]
+- **Every setting works for real, and is checked for real** (v75, the user 15/11: the number setting was kept by the frame and
+  read by no report - a check run only at the setting as it stood could never see it). A setting is proven by changing it:
+  the frame's check presses every choice of every frame setting and each must change what the person sees; the live check
+  saves each choice of the number format and of the date format as Settings saves it, and every number cell
+  (`td[data-rp-num][data-rp-raw]`, a % as a share: 0.125) and every date of a table must follow within 15 s - then puts the
+  person's setting back. A cell that reads as a report number but is tied to no format is the same fault. A page without React
+  reads the formats on `<html data-num-format>` / `<html data-date-format>` and writes with `sasinShell.fmtNum` /
+  `sasinShell.fmtDate`. [num-format-works] [date-format-works]
 - **Row 1's buttons are framed** (v42): the apps and the
   bell are squares with the bar's frame (fill, edge, kit radius) at the search box's height; open, lit as the filter button.
   [head-framed] **The right of row 1 is one group, one third of the bar** (v51): the search and the actions stand

@@ -1898,6 +1898,123 @@ export const RULES = [
       return true;
     })()`,
   },
+  // (v75, the user 14/11: every panel and every other place keeps a padding, one and the same room from the top down; a table
+  // header stood against its panel's edge) the frame's room (--frame-pad) is read, never written here, and every part is held to it
+  {
+    id: 'pad-even',
+    rule: 'one room from the edge, from the top down: row 1 of the top bar, the clusters of row 2 and the content of every panel of the page (each part of a card - its header, body, table, footer) stand the frame\'s room (--frame-pad, 16 px) from their panel\'s edge - never against it, never off the line of the rest; a part centred on purpose (an empty state) and the right end of a part that scrolls sideways are not judged',
+    check: `(() => {
+      const shown = e => { if (!e || !e.getClientRects().length) return false; const s = getComputedStyle(e); return s.visibility !== 'hidden' && s.display !== 'none' && +s.opacity !== 0; };
+      const probe = document.createElement('div'); probe.style.cssText = 'position:absolute;visibility:hidden;width:var(--frame-pad, 16px)';
+      document.body.append(probe); const P = probe.getBoundingClientRect().width; probe.remove();
+      // a leaf is measured by its box (a control, an icon, a picture, a framed block); a large drawing is not a leaf: its words are
+      const LEAF = 'img, canvas, svg, input, select, textarea, button, .btn, .badge, .form-check-input, .avatar, i.bx, i[class*="bx-"], .card, .alert, .bar-cluster, .page-tabs-panel';
+      const isLeaf = el => el.matches(LEAF) && !(el.tagName.toLowerCase() === 'svg' && el.getBoundingClientRect().width > 64);
+      const under = (el, root) => { if (el === root) return false; for (let a = el.parentElement; a && a !== root; a = a.parentElement) if (isLeaf(a)) return true; return false; };
+      const name = el => el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\\s+/).slice(0, 2).join('.') : '')
+        + ((el.textContent || '').trim() ? ' "' + el.textContent.trim().slice(0, 24) + '"' : '');
+      const edges = (root, cut) => {
+        let l = Infinity, r = -Infinity, who = '', rwho = '', lel = null; const boxes = new Map();
+        const clips = new Map();
+        const clipOf = el => {
+          if (clips.has(el)) return clips.get(el);
+          let c = {left: -Infinity, right: Infinity};
+          for (let a = el; a && a !== root.parentElement; a = a.parentElement) {
+            if (getComputedStyle(a).overflowX === 'visible') continue;
+            const ar = a.getBoundingClientRect(); c = {left: Math.max(c.left, ar.left), right: Math.min(c.right, ar.right)};
+          }
+          clips.set(el, c); return c;
+        };
+        const take = (rc, el, clip = {left: -Infinity, right: Infinity}) => {
+          if (rc.width <= 0 || rc.height <= 0 || rc.bottom <= cut.top || rc.top >= cut.bottom) return;
+          const L = Math.max(rc.left, cut.left, clip.left), R = Math.min(rc.right, cut.right, clip.right);
+          if (R <= L) return;
+          if (L < l) { l = L; who = name(el); lel = el; }
+          if (R > r) { r = R; rwho = name(el); }
+        };
+        const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+          const p = n.parentElement;
+          if (!n.data.trim() || !p) continue;
+          // a word whose box lies outside the part on screen is passed over before its glyphs are measured (a long table)
+          let pr = boxes.get(p); if (!pr) boxes.set(p, pr = p.getBoundingClientRect());
+          if (pr.bottom <= cut.top || pr.top >= cut.bottom || pr.right <= cut.left || pr.left >= cut.right) continue;
+          if (!shown(p) || p.closest('.visually-hidden, [hidden]') || isLeaf(p) || under(p, root)) continue;
+          const rg = document.createRange(); rg.selectNodeContents(n);
+          for (const rc of rg.getClientRects()) take(rc, p, clipOf(p));
+        }
+        for (const el of root.querySelectorAll(LEAF)) if (isLeaf(el) && shown(el) && !under(el, root) && !el.closest('.visually-hidden')) take(el.getBoundingClientRect(), el);
+        return {l, r, who, rwho, lel};
+      };
+      const scrollsX = x => x.clientWidth > 0 && x.scrollWidth > x.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(x).overflowX);
+      const sideways = el => { for (let a = el.parentElement; a && !a.matches('.card, body'); a = a.parentElement) if (scrollsX(a)) return true; return [el, ...el.querySelectorAll('*')].some(x => scrollsX); };
+      const judge = (where, part, inL, inR) => {
+        const b = part.getBoundingClientRect();
+        const cut = {left: Math.max(b.left, inL), right: Math.min(b.right, inR), top: Math.max(b.top, 0), bottom: Math.min(b.bottom, innerHeight)};
+        if (cut.right <= cut.left || cut.bottom <= cut.top) return null;
+        const e = edges(part, cut);
+        if (e.l === Infinity) return null;
+        const L = e.l - inL, R = inR - e.r, side = sideways(part);
+        if (!side && Math.abs(L - R) <= 6 && L > P + 2) return null;
+        if (L < P - 2) return where + ': content stands ' + Math.round(L) + ' px from the left edge of its panel (' + e.who + '), the frame keeps ' + Math.round(P);
+        if (!side && R < P - 2) return where + ': content stands ' + Math.round(R) + ' px from the right edge of its panel (' + e.rwho + '), the frame keeps ' + Math.round(P);
+        // off the line at the left: unless the part holds only a short thing anchored at its right end (a button in a card head)
+        const wide = e.r - e.l > (inR - inL) / 2;
+        const reads = e.lel && !e.lel.closest('svg') && !/center|right|end/.test(getComputedStyle(e.lel).textAlign) && (e.lel === part || e.lel.matches('th, td, h1, h2, h3, h4, h5, h6, .card-title, .card-header') || e.lel.closest('th, td'));
+        if (reads && L > P + 2 && (side || wide || R > P + 2)) return where + ': content stands ' + Math.round(L) + ' px in from its panel\\'s left edge (' + e.who + '), off the line of the rest (' + Math.round(P) + ' px)';
+        return null;
+      };
+      const inner = el => { const r = el.getBoundingClientRect(), s = getComputedStyle(el); return [r.left + parseFloat(s.borderLeftWidth), r.right - parseFloat(s.borderRightWidth)]; };
+      const nav = document.querySelector('#layout-navbar');
+      if (shown(nav)) {
+        const [l, r] = inner(nav), row1 = nav.querySelector(':scope > .nav-row1') || nav;
+        const f = judge('row 1 of the top bar', row1, l, r); if (f) return f;
+      }
+      for (const bar of document.querySelectorAll('#page-bar > .page-toolbar, .page-card > .page-toolbar')) {
+        if (!shown(bar)) continue;
+        const [l, r] = inner(bar.closest('.page-card') || bar.closest('#layout-navbar') || bar);
+        const f = judge('row 2 (the page bar)', bar, l, r); if (f) return f;
+      }
+      for (const card of document.querySelectorAll('#page .card')) {
+        if (!shown(card) || card.closest('dialog, .modal, .dropdown-menu, .offcanvas, .popover, .toast')) continue;
+        const [l, r] = inner(card);
+        const title = (card.querySelector('.card-title, .card-header, h5, h6')?.textContent || '').trim().slice(0, 30);
+        for (const part of card.children) {
+          if (!shown(part) || part.matches('.page-toolbar, .bar-spacer, script, style') || isLeaf(part) || /absolute|fixed/.test(getComputedStyle(part).position)) continue;
+          const where = 'a panel' + (title ? ' "' + title + '"' : '') + ', its ' + (String(part.className).trim().split(/\\s+/)[0] || part.tagName.toLowerCase());
+          // a part of several blocks (a heading, a person's line, a table) is read block by block, through plain wrappers
+          let blocks = [...part.children].filter(shown);
+          while (blocks.length === 1 && !isLeaf(blocks[0]) && !blocks[0].matches('table, .table-responsive, .table-window, .table-scroller, .matrix-frame, svg') && blocks[0].children.length) blocks = [...blocks[0].children].filter(shown);
+          for (const b of blocks.length > 1 ? blocks : [part]) {
+            if (b !== part && (isLeaf(b) || b.matches('.bar-spacer, script, style') || /absolute|fixed/.test(getComputedStyle(b).position))) continue;
+            const f = judge(where + (b === part ? '' : ' (a block)'), b, l, r);
+            if (f) return f;
+          }
+        }
+      }
+      return true;
+    })()`,
+  },
+  // (v75, the user 14/11: a panel held to the screen showed two scroll bars side by side, very ugly) one box scrolls a column:
+  // a box that scrolls up and down never stands inside another box that scrolls up and down
+  {
+    id: 'one-scroll',
+    rule: 'one scroll bar per column of the page: a box that scrolls up and down (its content taller than it) never stands inside another box of the page that scrolls up and down - the panel scrolls its table, or the table scrolls in a panel that does not; two bars side by side is a fault',
+    check: `(() => {
+      const page = document.querySelector('#page');
+      if (!page) return true;
+      const name = el => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\\s+/).slice(0, 3).join('.') : '');
+      // the size test first (cheap once the page is laid out), the style only for what runs taller than its box
+      const tall = [page, ...page.querySelectorAll('*')].filter(e => e.clientHeight > 0 && e.scrollHeight > e.clientHeight + 1
+        && /auto|scroll/.test(getComputedStyle(e).overflowY) && e.getClientRects().length && !e.closest('dialog, .modal, .dropdown-menu, .offcanvas, .popover'));
+      for (const inner of tall) {
+        const outer = tall.find(o => o !== inner && o.contains(inner));
+        if (outer) return 'two scroll bars, one box inside another: ' + name(inner) + ' (' + inner.clientHeight + ' of ' + inner.scrollHeight + ' px) scrolls inside '
+          + name(outer) + ' (' + outer.clientHeight + ' of ' + outer.scrollHeight + ' px) - one box scrolls the column';
+      }
+      return true;
+    })()`,
+  },
 ];
 
 /** Rules on an open dialog. */
@@ -2203,6 +2320,121 @@ export const PROBES = [
       }
       return out.length ? out.join('; ') : true;
   })()`,
+  },
+  // (v75, the user 15/11: a setting of the person changed and nothing changed - the frame kept it, a report never read it; a
+  // check run only at the setting as it stood could never see it) every choice of the person's number format is saved through
+  // the frame's own path, the frame reads it back, and every number cell of the page's report tables must follow it; the
+  // person's setting is put back after
+  {
+    id: 'num-format-works',
+    rule: 'the person\'s number format works for real: each choice (money unit, money decimals, money rounding, count decimals, % decimals, separators, negatives) is saved as Settings saves it, and every number cell of a report table (td[data-rp-num][data-rp-raw]) shows the number in that choice within 15 s - a choice that changes nothing on the page is a fault; the setting is put back after',
+    check: `(async () => {
+      const cells = () => [...document.querySelectorAll('td[data-rp-num][data-rp-raw]')].filter(c => c.getClientRects().length && !c.closest('[data-rp-id]'));
+      // a cell that reads as a report number (groups of thousands, a unit of money, a %) but is tied to no format is a number the
+      // setting never reaches: named as such, never skipped (a page of such tables read as a page with nothing to change)
+      const looks = /^[-(]?\\d{1,3}([.,\\s]\\d{3})+([.,]\\d+)?([KMB]| (N|tr|tỷ))?\\)?$|^[-(]?\\d+([.,]\\d+)?([KMB]| (N|tr|tỷ))\\)?$|^[-(]?\\d+([.,]\\d+)? ?%\\)?$/;
+      const loose = [...document.querySelectorAll('#page table tbody td, #page table tfoot td')].filter(c => !c.dataset.rpNum && !c.closest('[data-rp-id], dialog')
+        && c.children.length === 0 && c.getClientRects().length && looks.test((c.textContent || '').replace(/\\s+/g, ' ').trim()));
+      if (loose.length) return loose.length + ' number cell(s) of a table are tied to no format (no data-rp-num / data-rp-raw), so the person\\'s number setting never reaches them: ' + loose.slice(0, 3).map(c => c.textContent.trim()).join(', ');
+      if (!cells().length) return true;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const words = document.documentElement.lang === 'en' ? {k: 'K', m: 'M', bn: 'B'} : {k: ' N', m: ' tr', bn: ' tỷ'};
+      // the same steps as the frame's fmtNum and the report rule rp-num-format
+      const fmt = (f, raw, kind) => {
+        const negative = raw < 0, abs = Math.abs(raw); let value = abs, dp = 0, suffix = '';
+        if (kind === 'pct') { value = abs * 100; dp = f.pct_dp; suffix = '%'; }
+        else if (kind === 'count') dp = f.count_dp;
+        else { const unit = f.money_unit === 'auto' ? (abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
+          if (unit === 'vnd') { value = Math.round(abs / f.money_round) * f.money_round; dp = 0; }
+          else { value = abs / (unit === 'k' ? 1e3 : unit === 'm' ? 1e6 : 1e9); dp = f.money_dp; suffix = words[unit]; } }
+        const fixed = value.toFixed(dp), [int, frac] = fixed.split('.');
+        const group = f.sep === 'comma' ? ',' : f.sep === 'space' ? ' ' : '.', point = f.sep === 'comma' ? '.' : ',';
+        const body = int.replace(/\\B(?=(\\d{3})+(?!\\d))/g, group) + (frac ? point + frac : '') + suffix;
+        return negative && Number(fixed) !== 0 ? (f.neg === 'paren' ? '(' + body + ')' : '-' + body) : body;
+      };
+      const base = {money_unit: 'auto', money_dp: 1, money_round: 1, count_dp: 0, sep: 'dot', pct_dp: 1, neg: 'minus'};
+      // saved as Settings saves it; the frame reads the person again when the window takes the focus
+      const save = async v => { const r = await fetch('/api/auth/ui', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({num_format: v})});
+        dispatchEvent(new Event('focus')); return r.ok; };
+      let before = null;
+      try { before = (await (await fetch('/api/auth/me', {credentials: 'same-origin'})).json())?.ui?.num_format ?? null; } catch { /* read below */ }
+      let start = base; try { start = {...base, ...JSON.parse(before || '{}')}; } catch { /* the default */ }
+      const kinds = new Set(cells().map(c => c.dataset.rpNum));
+      const tries = [];
+      if (kinds.has('money')) tries.push({money_unit: 'vnd', money_round: 1000}, {money_unit: 'k', money_dp: 3}, {money_unit: 'm', money_dp: 0}, {money_unit: 'bn', money_dp: 2});
+      if (kinds.has('count')) tries.push({count_dp: start.count_dp === 2 ? 0 : 2});
+      if (kinds.has('pct')) tries.push({pct_dp: start.pct_dp === 2 ? 0 : 2});
+      tries.push({sep: start.sep === 'comma' ? 'space' : 'comma', count_dp: 1, pct_dp: 1}, {neg: 'paren'});
+      for (const c of cells().slice(0, 40)) {
+        const shown = (c.textContent || '').replace(/\\s+/g, ' ').trim(), want = fmt(start, Number(c.dataset.rpRaw), c.dataset.rpNum);
+        if (shown !== want) return 'a number cell does not show its own value in the format the person has now: it shows ' + shown + ', its value ' + c.dataset.rpRaw + ' as ' + c.dataset.rpNum + ' reads ' + want + ' (a % is a share: 0.125 = 12,5 %)';
+      }
+      let fault = null;
+      try {
+        for (const t of tries) {
+          const f = {...start, ...t}, said = JSON.stringify(t).replace(/[{}"]/g, '');
+          if (!(await save(JSON.stringify(f)))) { fault = 'the number setting ' + said + ' could not be saved'; break; }
+          let bad = null;
+          for (let ms = 0; ms <= 15000; ms += 300) {
+            await wait(300);
+            bad = null;
+            for (const c of cells().slice(0, 40)) {
+              const shown = (c.textContent || '').replace(/\\s+/g, ' ').trim(), want = fmt(f, Number(c.dataset.rpRaw), c.dataset.rpNum);
+              if (shown !== want) { bad = shown + ' (want ' + want + ')'; break; }
+            }
+            if (!bad) break;
+          }
+          if (bad) { fault = 'the number setting ' + said + ' changed nothing it should on the page: a cell shows ' + bad; break; }
+        }
+      } finally {
+        await save(before && before.trim() ? before : JSON.stringify(start));
+        await wait(800);
+      }
+      return fault || true;
+    })()`,
+  },
+  // (v75, the user 15/11: every setting works for real and is checked for real) the person's date format is saved through the
+  // frame's own path and every date in a table of the page must turn with it (dd/mm/yyyy - mm/dd/yyyy); put back after
+  {
+    id: 'date-format-works',
+    rule: 'the person\'s date format works for real: saved as Settings saves it (vn dd/mm/yyyy, us mm/dd/yyyy), every date shown in a table of the page turns to it within 15 s; the frame names it on <html data-date-format> for a page without React (sasinShell.fmtDate); the setting is put back after',
+    check: `(async () => {
+      const re = /^(\\d{2})\\/(\\d{2})\\/(\\d{4})(.*)$/;
+      const dates = () => [...document.querySelectorAll('#page table tbody td, #page table tfoot td')].filter(c => c.getClientRects().length && !c.closest('dialog') && re.test((c.textContent || '').trim()));
+      const first = dates().slice(0, 30).map(c => [c, (c.textContent || '').trim()]);
+      if (!first.length) return true;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const save = async v => { const r = await fetch('/api/auth/ui', {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({date_format: v})});
+        dispatchEvent(new Event('focus')); return r.ok; };
+      let before = 'vn';
+      try { before = (await (await fetch('/api/auth/me', {credentials: 'same-origin'})).json())?.ui?.date_format === 'us' ? 'us' : 'vn'; } catch { /* vn */ }
+      if (document.documentElement.dataset.dateFormat !== before) return 'the frame does not name the date format of the person on <html data-date-format> (' + (document.documentElement.dataset.dateFormat || 'none') + ', the person has ' + before + ')';
+      const other = before === 'us' ? 'vn' : 'us';
+      let fault = null;
+      try {
+        if (!(await save(other))) return 'the date format could not be saved';
+        // the same cells, their day and month changed places (a cell drawn anew is found again by its row and column)
+        const spot = c => { const tr = c.closest('tr'); return [tr ? [...tr.parentElement.children].indexOf(tr) : -1, c.cellIndex, tr?.parentElement?.tagName]; };
+        const want = first.map(([c, text]) => { const m = re.exec(text); return [spot(c), m[2] + '/' + m[1] + '/' + m[3] + m[4]]; }).filter(([, w], i) => w !== first[i][1]);
+        if (!want.length) return true;
+        let bad = null;
+        for (let ms = 0; ms <= 15000; ms += 300) {
+          await wait(300);
+          bad = null;
+          for (const [[row, col, part], w] of want) {
+            const body = [...document.querySelectorAll('#page table ' + (part || 'TBODY').toLowerCase())].find(b => b.children[row]?.children[col] && re.test((b.children[row].children[col].textContent || '').trim()));
+            const now = (body?.children[row]?.children[col]?.textContent || '').trim();
+            if (now !== w) { bad = now + ' (want ' + w + ')'; break; }
+          }
+          if (!bad) break;
+        }
+        if (bad) fault = 'the date format ' + other + ' changed nothing it should on the page: a date shows ' + bad;
+      } finally {
+        await save(before);
+        await wait(800);
+      }
+      return fault || true;
+    })()`,
   },
 ];
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop()) && process.argv.includes('--list')) {
