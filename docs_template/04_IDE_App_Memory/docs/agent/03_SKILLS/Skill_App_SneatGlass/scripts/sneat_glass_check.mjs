@@ -1854,10 +1854,56 @@ export const RULES = [
       return Math.abs(h * z - innerHeight) <= 2 || '--app-h ' + h + ' x zoom ' + z + ' is not the window height ' + innerHeight;
     })()`,
   },
+  {
+    // (v74, Reconcile 14/11, approved by the user) the bars of inner layers - a dialog, a card head - wear row 2's bar from the
+    // frame (sasinShell.toolbar / InnerToolbar, frame 1.29.0): the same zones, read here on every inner bar shown
+    id: 'inner-bar',
+    rule: 'an inner bar (a dialog or a layer, .page-toolbar[data-inner-bar]) stands like row 2: its things only in its clusters - the buttons cluster from the left, the info cluster after it, the seek cluster anchored at the right end - one cluster of each kind, each framed, none running over another; words only in the info cluster; a filter box shown takes typing',
+    check: `(() => {
+      const shown = e => Boolean(e) && e.getClientRects().length > 0;
+      for (const bar of document.querySelectorAll('.page-toolbar[data-inner-bar]')) {
+        if (!shown(bar)) continue;
+        const kids = [...bar.children].filter(shown);
+        const loose = kids.find(k => !k.matches('.bar-cluster[data-cluster], .bar-spacer'));
+        if (loose) return 'something stands loose on an inner bar, outside its clusters: ' + ((loose.textContent || '').trim() || loose.className || loose.tagName).toString().slice(0, 40);
+        const one = k => [...bar.querySelectorAll(':scope > [data-cluster="' + k + '"]')].filter(shown);
+        for (const k of ['tools', 'info', 'seek']) if (one(k).length > 1) return 'an inner bar has ' + one(k).length + ' ' + k + ' clusters - one of each kind';
+        const [t] = one('tools'), [i] = one('info'), [s] = one('seek');
+        for (const c of [t, i, s].filter(Boolean)) if (!(parseFloat(getComputedStyle(c).borderTopWidth) >= 1)) return 'the ' + c.dataset.cluster + ' cluster of an inner bar has no frame';
+        // words only in the info cluster (a label, a pick, a chip or a button says its own)
+        for (const c of [t, s].filter(Boolean)) {
+          const walk = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
+          for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+            const el = n.parentElement, words = n.textContent.trim();
+            if (!words || !shown(el)) continue;
+            if (el.closest('button, a, label, select, option, input, .dropdown-menu, [hidden], .visually-hidden, [class*="chip"], [role="button"], .bar-cluster[data-cluster="info"]')) continue;
+            return 'words in the ' + c.dataset.cluster + ' cluster of an inner bar stand in no info cluster: ' + words.slice(0, 40);
+          }
+        }
+        // anchors: the buttons from the left, the seek cluster at the right end (also on a line of its own on a phone)
+        const r = bar.getBoundingClientRect(), cs = getComputedStyle(bar);
+        const left = r.left + parseFloat(cs.paddingLeft), right = r.right - parseFloat(cs.paddingRight);
+        if (t && Math.abs(t.getBoundingClientRect().left - left) > 2) return 'the buttons cluster of an inner bar does not start at its left (' + Math.round(t.getBoundingClientRect().left - left) + ' px)';
+        if (s && Math.abs(s.getBoundingClientRect().right - right) > 2) return 'the seek cluster of an inner bar does not end at its right end (' + Math.round(right - s.getBoundingClientRect().right) + ' px short)';
+        if (t && i) { const a = t.getBoundingClientRect(), b = i.getBoundingClientRect(); if (Math.abs(a.top - b.top) < 4 && b.left < a.right - 1) return 'the info cluster of an inner bar stands before or over its buttons'; }
+        // no cluster runs over another on its line
+        const boxes = [t, i, s].filter(Boolean).map(c => [c, c.getBoundingClientRect()]);
+        for (const [a, ra] of boxes) for (const [b, rb] of boxes) {
+          if (a === b) continue;
+          if (ra.top < rb.bottom - 2 && rb.top < ra.bottom - 2 && ra.left < rb.right - 1 && rb.left < ra.right - 1) return 'the ' + a.dataset.cluster + ' and ' + b.dataset.cluster + ' clusters of an inner bar run over each other';
+        }
+        const box = bar.querySelector('.page-search input, .page-search .form-control');
+        if (shown(box) && (box.disabled || box.readOnly)) return 'a filter box shown on an inner bar takes no typing - a fake box';
+      }
+      return true;
+    })()`,
+  },
 ];
 
 /** Rules on an open dialog. */
 export const DIALOG_RULES = [
+  // (v74) the inner bar of a dialog is read with the dialog open
+  ...RULES.filter(r => r.id === 'inner-bar'),
   {
     id: 'dialog-size',
     rule: 'a dialog is S / M / L = 40 / 60 / 90 % of the frame in both directions at 16:9, whatever it holds; full screen on a phone',
