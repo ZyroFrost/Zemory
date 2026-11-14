@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 72
+version: 73
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -131,7 +131,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   display size fits its own count. [seek-cluster] A cluster with nothing to show is hidden, never an empty frame. **Every
   cluster works when pressed** (v64, the user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt
   động dc để các repo nó tự dò và sửa"): refresh asks the server again, the glossary opens its words, the filter button its
-  popover of filters, the filter box filters the rows (and the chart items) and gives them back - a box shown takes typing, never a disabled fake one (v71, the user 14/11); a page with nothing to search draws no box at all, and the toolbar rules ask for the box only where it stands (v72), the tab switch changes the tabs - each pressed by the
+  popover of filters, the filter box filters the rows (and the chart items) and gives them back - a box shown takes typing, never a disabled fake one (v71, the user 14/11); a page with nothing to search draws no box at all, and the toolbar rules ask for the box only where it stands (v72), the refresh is pressed only once its earlier round ended - a button still busy counts as asked (v73), the tab switch changes the tabs - each pressed by the
   browser check on every page, the page left as it was. [bar-works] **Two anchored ends** (v66, the user 12/11: "ko dc để nó nằm
   giữa"): row 2 holds a left group packed from the left and a right group packed against the right, a spacer between - no cluster
   floats in the middle; a dragged cluster shows every place it can join (both ends, before, between and after the clusters of
