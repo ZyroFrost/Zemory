@@ -308,7 +308,7 @@ export const RULES = [
     return true;`),
   // (v7, user 06/11: "mỗi dashboard dạng list nên có giới hạn bao nhiêu dòng, rồi phần còn lại cho scrollbar tự động trong
   // chính dashboard đó, chứ không có dài cả đống ra") - replaces rp-scroll-alone: a long table stays on the page with the others
-  rule('rp-table-rows-cap', 'a table of a report page shows ten rows at most and scrolls the rest inside its own frame - never a page-long list, and it stays on the page beside the other visuals', `
+  rule('rp-table-rows-cap', 'a table of a report page shows ten rows at least and no more than the screen holds, and scrolls the rest inside its own frame - never a page-long list, never rows scrolled above empty screen; it stays on the page beside the other visuals', `
     for (const table of document.querySelectorAll('[data-rp-page] table')) {
       const rows = [...(table.tBodies[0]?.rows || [])].filter(r => r.getClientRects().length);
       if (rows.length <= 10) continue;
@@ -323,7 +323,15 @@ export const RULES = [
         if (frame.scrollHeight <= frame.clientHeight + 1 && box(table).bottom > innerHeight + 1) return what + ': ' + rows.length + ' rows run past the screen, no scroll of its own';
         continue;
       }
-      if (frame.clientHeight > head + row * 11 + 2) return what + ': shows ' + Math.round((frame.clientHeight - head) / row) + ' rows, the cap is 10';
+      // (v17, user 14/11: a dashboard page is never left empty while its matrix needs scrolling) ten rows at least; a table that
+      // still scrolls takes the screen left below the page
+      const ten = head + rows.slice(0, 10).reduce((a, r) => a + r.getBoundingClientRect().height, 0);
+      if (frame.clientHeight < ten - 2) return what + ': shows ' + Math.round((frame.clientHeight - head) / row) + ' rows of ' + rows.length + ', ten at least';
+      const page = table.closest('[data-rp-page]');
+      if (innerWidth > 768 && frame.scrollHeight > frame.clientHeight + 1 && page) {
+        const room = innerHeight - box(page).bottom;
+        if (room > 64) return what + ': scrolls its rows above ' + Math.round(room) + ' px of empty screen';
+      }
     }
     return true;`),
 

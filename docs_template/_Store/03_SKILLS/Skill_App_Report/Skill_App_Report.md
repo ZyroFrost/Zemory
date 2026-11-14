@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 16
+version: 17
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -107,8 +107,10 @@ description: The report pages of an app - what a page of figures, charts and tab
   kept on `<html data-num-format>`. Each number cell says what it is (`data-rp-num` = `money` · `count` · `pct`) and its value
   (`data-rp-raw`), and shows exactly that format (the frame's `fmtNum`); a negative in red carries `text-danger`. Charts and
   KPI cards keep their own form. [rp-num-format]
-- **A table shows ten rows at most** and scrolls the rest inside its own frame, staying on the page beside the other visuals
+- **A table shows ten rows at least** and scrolls the rest inside its own frame, staying on the page beside the other visuals
   (v7); ten rows as drawn - a row of two lines is taller - never a fixed height. [rp-table-rows-cap] The only table of its page takes the page height, in a frame that really scrolls (v16).
+  Ten rows is the floor, not the ceiling: a table that still scrolls takes the screen left below its page, down to the screen's
+  bottom - rows never scroll above empty screen (v17, user 14/11). A visual below the table keeps it at ten rows.
 - **How a table fits its panel** (v15, the means of rp-no-side-scroll): tight cell padding for a table wider than its panel at
   the kit's; the row measured once, its tables given the width they need only while every panel of the row still fits it (a
   donut or chart keeps 15rem), else the report's shares stand; a header wraps between words, never inside one; a matrix whose

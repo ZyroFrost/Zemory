@@ -1,5 +1,5 @@
 ---
-version: 16
+version: 17
 lang: vi
 ---
 
@@ -92,8 +92,10 @@ lang: vi
 - **Số trong bảng theo định dạng số của từng người** (v9): Cài đặt > Số của khung chung (đơn vị, số lẻ, làm tròn, dấu phân cách, số âm), lưu trên
   `<html data-num-format>`. Ô số nói nó là gì (`data-rp-num` = `money` · `count` · `pct`) và giá trị gốc (`data-rp-raw`), và
   hiện đúng định dạng đó (`fmtNum` của khung); số âm tô đỏ mang `text-danger`. Chart và card KPI giữ cách hiện riêng. [rp-num-format]
-- **Bảng hiện tối đa mười dòng**, phần còn lại cuộn trong khung của chính nó, và vẫn nằm chung trang với các hình khác (v7);
+- **Bảng hiện ít nhất mười dòng**, phần còn lại cuộn trong khung của chính nó, và vẫn nằm chung trang với các hình khác (v7);
   mười dòng theo chiều cao thật - dòng hai hàng chữ cao hơn - không phải chiều cao cố định. [rp-table-rows-cap] Bảng duy nhất của trang được cao hết trang, trong khung thật sự cuộn được (v16).
+  Mười dòng là sàn, không phải trần: bảng còn phải cuộn thì giãn hết phần màn hình trống dưới trang, tới đáy màn hình - không
+  để dòng cuộn trong khung mà dưới trang trống (v17, user 14/11). Có hình nằm dưới bảng thì bảng giữ mười dòng.
 - **Cách cho bảng vừa panel** (v15, cách giữ rp-no-side-scroll): bảng rộng hơn panel ở lề của kit thì dùng lề ô hẹp; đo cả hàng
   một lần, bảng được nới tới cỡ cần chỉ khi mọi panel của hàng vẫn vừa (donut/chart giữ 15rem), không thì giữ tỉ lệ của report;
   tiêu đề xuống dòng giữa các từ, không bẻ giữa một từ; ma trận có trường cột hơn 24 giá trị (80 cửa hàng làm cột) lật lại, các
