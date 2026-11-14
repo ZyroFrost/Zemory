@@ -317,21 +317,22 @@ export const RULES = [
       const what = name(table.closest('[data-rp-visual]') || table);
       if (!frame || frame.matches('[data-rp-page]')) return what + ': ' + rows.length + ' rows and no scroll of its own';
       const row = rows[0].getBoundingClientRect().height || 40, head = table.tHead ? table.tHead.getBoundingClientRect().height : 0;
+      // (v17, user 14/11: a dashboard page is never left empty while its matrix needs scrolling) a table that still scrolls takes
+      // the screen left below the page - the only table of its page as well (MKT_02 by dish: cards and one table, six rows)
+      const page = table.closest('[data-rp-page]');
+      if (innerWidth > 768 && frame.scrollHeight > frame.clientHeight + 1 && page) {
+        const room = innerHeight - box(page).bottom;
+        if (room > 64) return what + ': scrolls its rows above ' + Math.round(room) + ' px of empty screen';
+      }
       // (v16) the only table of its page takes the page: the cap is for a table among other visuals
       if (lone() && table.closest('[data-rp-visual]') === lone()) {
         // ... in a frame that really scrolls (overflow-x alone makes the other axis auto too, with nothing to scroll)
         if (frame.scrollHeight <= frame.clientHeight + 1 && box(table).bottom > innerHeight + 1) return what + ': ' + rows.length + ' rows run past the screen, no scroll of its own';
         continue;
       }
-      // (v17, user 14/11: a dashboard page is never left empty while its matrix needs scrolling) ten rows at least; a table that
-      // still scrolls takes the screen left below the page
+      // (v17) ten rows at least
       const ten = head + rows.slice(0, 10).reduce((a, r) => a + r.getBoundingClientRect().height, 0);
       if (frame.clientHeight < ten - 2) return what + ': shows ' + Math.round((frame.clientHeight - head) / row) + ' rows of ' + rows.length + ', ten at least';
-      const page = table.closest('[data-rp-page]');
-      if (innerWidth > 768 && frame.scrollHeight > frame.clientHeight + 1 && page) {
-        const room = innerHeight - box(page).bottom;
-        if (room > 64) return what + ': scrolls its rows above ' + Math.round(room) + ' px of empty screen';
-      }
     }
     return true;`),
 
