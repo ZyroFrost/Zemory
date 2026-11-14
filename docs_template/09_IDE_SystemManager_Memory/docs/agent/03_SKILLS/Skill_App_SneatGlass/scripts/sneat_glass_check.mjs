@@ -1905,7 +1905,11 @@ export const PROBES = [
         const fetch0 = window.fetch, open0 = XMLHttpRequest.prototype.open;
         window.fetch = function (...a) { if (!own(a[0])) asked++; return fetch0.apply(this, a); };
         XMLHttpRequest.prototype.open = function (...a) { if (!own(a[1])) asked++; return open0.apply(this, a); };
-        try { refresh.click(); if (!(await until(() => asked > 0, 8000))) out.push('refresh asked the server nothing'); }
+        // a refresh still running (aria-busy) swallows a click by design: wait for it, and one still running after the wait
+        // is a refresh that already asked the server
+        const busy = () => refresh.getAttribute('aria-busy') === 'true';
+        await until(() => !busy(), 60000);
+        try { if (busy()) asked++; else refresh.click(); if (!(await until(() => asked > 0, 8000))) out.push('refresh asked the server nothing'); }
         finally { window.fetch = fetch0; XMLHttpRequest.prototype.open = open0; }
         await until(() => !document.querySelector('#page-refresh[aria-busy="true"]'), 15000);
         await wait(600);
