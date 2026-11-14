@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 75
+version: 76
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -56,6 +56,10 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   person's setting back. A cell that reads as a report number but is tied to no format is the same fault. A page without React
   reads the formats on `<html data-num-format>` / `<html data-date-format>` and writes with `sasinShell.fmtNum` /
   `sasinShell.fmtDate`. [num-format-works] [date-format-works]
+- **The frame's Settings keeps the choice in every app** (v76, 15/11): Settings > Date format and Settings > Numbers, pressed
+  as a person presses them, still stand 3 s later with no error. An app never reroutes or blocks the frame's own calls
+  (`/api/auth/*`, `/api/apps`, `/api/notifications`, `/api/health`); the live probes save and read through a clean fetch, so an
+  app's fetch wrapper cannot turn them aside. [settings-save-works]
 - **Row 1's buttons are framed** (v42): the apps and the
   bell are squares with the bar's frame (fill, edge, kit radius) at the search box's height; open, lit as the filter button.
   [head-framed] **The right of row 1 is one group, one third of the bar** (v51): the search and the actions stand
