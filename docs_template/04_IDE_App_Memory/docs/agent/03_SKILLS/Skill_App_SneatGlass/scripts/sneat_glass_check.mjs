@@ -2327,7 +2327,7 @@ export const PROBES = [
   // person's setting is put back after
   {
     id: 'num-format-works',
-    rule: 'the person\'s number format works for real: each choice (money unit, money decimals, money rounding, count decimals, % decimals, separators, negatives) is saved as Settings saves it, and every number cell of a report table (td[data-rp-num][data-rp-raw]) shows the number in that choice within 15 s - a choice that changes nothing on the page is a fault; the setting is put back after',
+    rule: 'the person\'s number format works for real: each choice (money unit, money decimals, money rounding, count decimals, % decimals, separators, negatives) is saved as Settings saves it, and every number cell of a report table (td[data-rp-num][data-rp-raw]; a count whole by rule - people - carries data-rp-whole and keeps no decimals) shows the number in that choice within 15 s - a choice that changes nothing on the page is a fault; the setting is put back after',
     check: `(async () => {
       const cells = () => [...document.querySelectorAll('td[data-rp-num][data-rp-raw]')].filter(c => c.getClientRects().length && !c.closest('[data-rp-id]'));
       // a cell that reads as a report number (groups of thousands, a unit of money, a %) but is tied to no format is a number the
@@ -2340,10 +2340,10 @@ export const PROBES = [
       const wait = ms => new Promise(r => setTimeout(r, ms));
       const words = document.documentElement.lang === 'en' ? {k: 'K', m: 'M', bn: 'B'} : {k: ' N', m: ' tr', bn: ' tỷ'};
       // the same steps as the frame's fmtNum and the report rule rp-num-format
-      const fmt = (f, raw, kind) => {
+      const fmt = (f, raw, kind, whole = false) => {
         const negative = raw < 0, abs = Math.abs(raw); let value = abs, dp = 0, suffix = '';
         if (kind === 'pct') { value = abs * 100; dp = f.pct_dp; suffix = '%'; }
-        else if (kind === 'count') dp = f.count_dp;
+        else if (kind === 'count') dp = whole ? 0 : f.count_dp;
         else { const unit = f.money_unit === 'auto' ? (abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
           if (unit === 'vnd') { value = Math.round(abs / f.money_round) * f.money_round; dp = 0; }
           else { value = abs / (unit === 'k' ? 1e3 : unit === 'm' ? 1e6 : 1e9); dp = f.money_dp; suffix = words[unit]; } }
@@ -2366,7 +2366,7 @@ export const PROBES = [
       if (kinds.has('pct')) tries.push({pct_dp: start.pct_dp === 2 ? 0 : 2});
       tries.push({sep: start.sep === 'comma' ? 'space' : 'comma', count_dp: 1, pct_dp: 1}, {neg: 'paren'});
       for (const c of cells().slice(0, 40)) {
-        const shown = (c.textContent || '').replace(/\\s+/g, ' ').trim(), want = fmt(start, Number(c.dataset.rpRaw), c.dataset.rpNum);
+        const shown = (c.textContent || '').replace(/\\s+/g, ' ').trim(), want = fmt(start, Number(c.dataset.rpRaw), c.dataset.rpNum, 'rpWhole' in c.dataset);
         if (shown !== want) return 'a number cell does not show its own value in the format the person has now: it shows ' + shown + ', its value ' + c.dataset.rpRaw + ' as ' + c.dataset.rpNum + ' reads ' + want + ' (a % is a share: 0.125 = 12,5 %)';
       }
       let fault = null;
@@ -2379,7 +2379,7 @@ export const PROBES = [
             await wait(300);
             bad = null;
             for (const c of cells().slice(0, 40)) {
-              const shown = (c.textContent || '').replace(/\\s+/g, ' ').trim(), want = fmt(f, Number(c.dataset.rpRaw), c.dataset.rpNum);
+              const shown = (c.textContent || '').replace(/\\s+/g, ' ').trim(), want = fmt(f, Number(c.dataset.rpRaw), c.dataset.rpNum, 'rpWhole' in c.dataset);
               if (shown !== want) { bad = shown + ' (want ' + want + ')'; break; }
             }
             if (!bad) break;
