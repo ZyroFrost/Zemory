@@ -1930,17 +1930,24 @@ export const PROBES = [
           if (!(await until(() => pop.hidden || !shown(pop), 2000))) out.push('Escape left the filter popover open');
         }
       }
-      // filter box: a text no row holds empties the list; clearing gives the rows back
+      // filter box: a text no row holds empties the list; clearing gives the rows back. (v71, the user 14/11: "rất nhiều trang
+      // khung lọc là khung giả, ko nhập dc ... nút search phải bấm dc thật ko dc nút ảo") a box shown takes typing - a disabled
+      // or read-only box is a fake - and typing changes what the page shows: its table rows or its chart items
+      for (const b of document.querySelectorAll('#page-search input, .page-toolbar .page-search input')) {
+        if (shown(b) && (b.disabled || b.readOnly)) out.push('the filter box "' + (b.placeholder || b.getAttribute('aria-label') || '') + '" takes no typing - a fake box: give the page a search or show no box');
+      }
       const box = document.querySelector('#page-search input, .page-toolbar .page-search input');
       const rows = () => [...document.querySelectorAll('#page table tbody tr, #page .view-grid tbody tr')].filter(r => shown(r) && !r.querySelector('[data-empty], .empty-state')).length;
-      if (shown(box) && !box.disabled) {
-        const n0 = rows();
-        if (n0 > 0) {
+      const items = () => [...document.querySelectorAll('#page [data-rp-item], #page [data-rp-mark]')].filter(shown).length;
+      if (shown(box) && !box.disabled && !box.readOnly) {
+        const n0 = rows(), m0 = items();
+        if (n0 + m0 === 0) out.push('the filter box stands on a page with no row and no chart item to filter');
+        else {
           const put = v => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(box, v); box.dispatchEvent(new Event('input', {bubbles: true})); };
           put('zq\\u00a7xj~nothing');
-          if (!(await until(() => rows() < n0 || document.querySelector('#page [data-empty], #page .empty-state'), 3000))) out.push('the filter box filtered nothing (' + n0 + ' rows stayed)');
+          if (!(await until(() => rows() < n0 || items() < m0 || document.querySelector('#page [data-empty], #page .empty-state'), 3000))) out.push('the filter box filtered nothing (' + n0 + ' rows and ' + m0 + ' chart items stayed)');
           put('');
-          if (!(await until(() => rows() >= n0, 3000))) out.push('clearing the filter box did not give the rows back (' + rows() + ' of ' + n0 + ')');
+          if (!(await until(() => rows() >= n0 && items() >= m0, 3000))) out.push('clearing the filter box did not give the page back (' + rows() + ' of ' + n0 + ' rows, ' + items() + ' of ' + m0 + ' items)');
         }
       }
       // the short / long switch: the tabs change, or the ways out are offered; then back as it was
