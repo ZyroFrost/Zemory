@@ -1911,8 +1911,9 @@ export const RULES = [
       const LEAF = 'img, canvas, svg, input, select, textarea, button, .btn, .badge, .form-check-input, .avatar, i.bx, i[class*="bx-"], .card, .alert, .bar-cluster, .page-tabs-panel';
       const isLeaf = el => el.matches(LEAF) && !(el.tagName.toLowerCase() === 'svg' && el.getBoundingClientRect().width > 64);
       const under = (el, root) => { if (el === root) return false; for (let a = el.parentElement; a && a !== root; a = a.parentElement) if (isLeaf(a)) return true; return false; };
-      const name = el => el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\\s+/).slice(0, 2).join('.') : '')
-        + ((el.textContent || '').trim() ? ' "' + el.textContent.trim().slice(0, 24) + '"' : '');
+      const tag = el => el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (typeof el.className === 'string' && el.className.trim() ? '.' + el.className.trim().split(/\\s+/).slice(0, 2).join('.') : '');
+      const name = el => { const up = []; for (let e = el.parentElement; e && up.length < 5 && !e.matches('.card, body'); e = e.parentElement) up.unshift(tag(e));
+        return (up.length ? up.join(' > ') + ' > ' : '') + tag(el) + ((el.textContent || '').trim() ? ' "' + el.textContent.trim().slice(0, 24) + '"' : ''); };
       const edges = (root, cut) => {
         let l = Infinity, r = -Infinity, who = '', rwho = '', lel = null; const boxes = new Map();
         const clips = new Map();
@@ -1926,7 +1927,7 @@ export const RULES = [
           clips.set(el, c); return c;
         };
         const take = (rc, el, clip = {left: -Infinity, right: Infinity}) => {
-          if (rc.width <= 0 || rc.height <= 0 || rc.bottom <= cut.top || rc.top >= cut.bottom) return;
+          if (rc.width <= 0 || rc.height <= 0 || (rc.top + rc.bottom) / 2 < cut.top || (rc.top + rc.bottom) / 2 > cut.bottom) return;
           const L = Math.max(rc.left, cut.left, clip.left), R = Math.min(rc.right, cut.right, clip.right);
           if (R <= L) return;
           if (L < l) { l = L; who = name(el); lel = el; }
