@@ -1,5 +1,5 @@
 ---
-version: 70
+version: 71
 lang: vi
 ---
 
@@ -112,7 +112,7 @@ lang: vi
   nên mỗi cỡ hiển thị có số riêng của nó. [seek-cluster] Cụm không có gì để hiện thì ẩn, không bao giờ là khung trống. **Mọi
   cụm phải chạy được khi bấm** (v64, user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt động
   dc để các repo nó tự dò và sửa"): Làm mới gọi lại server, Chú thích mở danh sách thuật ngữ, nút lọc mở popover có bộ lọc, ô tìm
-  lọc được dòng và trả lại dòng khi xoá chữ, nút gọn/dài đổi được tab - bài kiểm trình duyệt bấm từng cái trên mọi trang rồi để
+  lọc được dòng (và mục của chart) và trả lại khi xoá chữ - ô đã hiện thì gõ được, không có ô giả bị khoá (v71, user 14/11), nút gọn/dài đổi được tab - bài kiểm trình duyệt bấm từng cái trên mọi trang rồi để
   trang như cũ. [bar-works] **Hai đầu neo** (v66, user 12/11: "ko dc để nó nằm giữa"): hàng 2 có nhóm trái xếp từ trái và nhóm
   phải xếp sát phải, giữa là khoảng trống co giãn - không cụm nào trôi ra giữa; kéo một cụm thì hiện mọi chỗ có thể thả (hai đầu,
   trước, giữa, sau các cụm mỗi đầu) và cụm vào vạch gần con trỏ nhất. **Cả điện thoại** (v66): mọi luật hàng 2 áp cho điện thoại

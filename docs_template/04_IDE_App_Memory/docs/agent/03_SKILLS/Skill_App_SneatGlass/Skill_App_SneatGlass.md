@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 70
+version: 71
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v70 #b534ab5f9445
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v71 #6ecdaaf1552a
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -132,7 +132,7 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v70 #b534ab5f9445
   display size fits its own count. [seek-cluster] A cluster with nothing to show is hidden, never an empty frame. **Every
   cluster works when pressed** (v64, the user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt
   động dc để các repo nó tự dò và sửa"): refresh asks the server again, the glossary opens its words, the filter button its
-  popover of filters, the filter box filters the rows and gives them back, the tab switch changes the tabs - each pressed by the
+  popover of filters, the filter box filters the rows (and the chart items) and gives them back - a box shown takes typing, never a disabled fake one (v71, the user 14/11), the tab switch changes the tabs - each pressed by the
   browser check on every page, the page left as it was. [bar-works] **Two anchored ends** (v66, the user 12/11: "ko dc để nó nằm
   giữa"): row 2 holds a left group packed from the left and a right group packed against the right, a spacer between - no cluster
   floats in the middle; a dragged cluster shows every place it can join (both ends, before, between and after the clusters of
