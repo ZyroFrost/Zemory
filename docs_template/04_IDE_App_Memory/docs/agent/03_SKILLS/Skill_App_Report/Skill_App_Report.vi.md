@@ -66,8 +66,13 @@ lang: vi
   Legend là các measure (Revenue · Ebitda cạnh nhau) không phải trường: cột nhóm cạnh nhau, số trên đầu mỗi cột (v16).
   [rp-stacked-labels] Các chart chồng theo cùng một trường mang màu cố định của trường đó ở mọi chart của trang (mỗi giá trị một
   màu, như xếp loại A/B/C/D) - hai chart như vậy trùng màu là đúng; chart một chuỗi vẫn lấy màu chính riêng.
-- **Số của chart đường không đè nhau** (v13): không hai nhãn số nào của một hình giao nhau; nhãn
-  mang màu chuỗi của nó. [rp-labels-apart]
+- **Số của chart không đè nhau** (v13; mọi chart ở mọi board, v19 - user 14/11: "số không được đè nhau… nếu trùng phải có line
+  trỏ vào cách xa ra 1 tí giống pbi"): không hai nhãn số nào của một hình giao nhau - kể cả số của đường đè số của cột trong
+  chart kết hợp; nhãn sắp đè nhãn khác thì dời xa điểm của nó, lên trước, hết chỗ thì xuống, kèm một đoạn trỏ mảnh
+  (`data-rp-leader`) từ nhãn về điểm, như Power BI; nhãn mang màu chuỗi của nó. [rp-labels-apart]
+- **Không chữ nào dựng đứng** (v19, user 14/11: "cấm dựng đứng"): số hay tên dài quá chỗ thì nghiêng 45°, không bao giờ 90° -
+  không `writing-mode: vertical-*`, không xoay chữ gần một phần tư vòng; cột hẹp tới mức số nghiêng cũng không vừa thì số nằm
+  trong tooltip. [rp-no-upright]
 - **Tooltip mỗi dòng một thông tin, "Trường: Giá trị"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
   số viết đủ (244.008.536.989), không cắt thành tỷ / tr / k; % và điểm giữ dạng. [rp-tip-field-value]
 - **Màu trên một con số nói mức của nó, không bao giờ để trang trí** (v13, như tô màu có điều kiện của Power BI): một thang mức cho cả app, tốt tới xấu - xanh · vàng ·
