@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 18
+version: 19
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -79,8 +79,14 @@ description: The report pages of an app - what a page of figures, charts and tab
   number, the total at the end of the bar or the top of the column. A legend of measures (Revenue · Ebitda side by side) is no
   field: its columns are grouped, the number over each (v16). [rp-stacked-labels] Charts stacked by the same field wear that field's fixed colours on every chart of the page (one colour per
   value, as a grade A/B/C/D) - two of them sharing a colour is right; a chart of one series still takes its own main colour.
-- **The numbers of a line chart never cover each other** (v13): no two data labels of a
-  visual overlap; a label takes its series' colour. [rp-labels-apart]
+- **The numbers of a chart never cover each other** (v13; every chart of every board, v19 - the user 14/11: "số không được đè
+  nhau… nếu trùng phải có line trỏ vào cách xa ra 1 tí giống pbi"): no two data labels of a visual overlap - a line's figure
+  over a combo's columns included; a label that would cover another moves away from its point, up first, down when the top has
+  no room, with a thin leader (`data-rp-leader`) from the label to its point, as Power BI does; a label takes its series'
+  colour. [rp-labels-apart]
+- **No text stands upright** (v19, the user 14/11: "cấm dựng đứng"): a figure or a name too long for its room slants at 45°,
+  never 90° - no `writing-mode: vertical-*`, no rotation of a text near a quarter turn; a column too narrow even for a slanted
+  figure keeps it in its tip. [rp-no-upright]
 - **A tip says one fact a line, "Field: Value"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
   every number in full (244.008.536.989), never cut to tỷ / tr / k; % and points keep their form. [rp-tip-field-value]
 - **A colour on a number says its level, never decoration** (v13, as Power BI's conditional formatting): one scale of levels for the whole app, good to bad -

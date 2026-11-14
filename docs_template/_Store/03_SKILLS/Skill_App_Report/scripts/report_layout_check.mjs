@@ -213,6 +213,29 @@ export const RULES = [
       }
     }
     return true;`),
+  rule('rp-labels-led', 'a label moved away from its point carries a leader to it (v19, the user 14/11: "nếu trùng phải có line trỏ vào cách xa ra 1 tí giống pbi")', `
+    for (const m of document.querySelectorAll('[data-rp-visual] [data-rp-mark]')) {
+      const l = m.querySelector(':scope > [data-rp-label]');
+      if (!l || !l.getClientRects().length || !m.getClientRects().length) continue;
+      const a = box(l), d = box(m), gap = Math.max(a.top - d.bottom, d.top - a.bottom);
+      if (gap <= 16) continue;
+      const lead = m.querySelector(':scope > [data-rp-leader]');
+      if (!lead || box(lead).height < gap - 8) return 'a label moved ' + Math.round(gap) + ' px from its point has no leader to it (' + txt(l) + ')';
+    }
+    return true;`),
+  rule('rp-no-upright', 'no text stands upright: a long figure or name slants at 45°, never 90° (v19, the user 14/11: "cấm dựng đứng")', `
+    const page = document.querySelector('#page') || document.body;
+    for (const e of page.querySelectorAll('*')) {
+      if (!e.getClientRects().length || ![...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
+      const s = getComputedStyle(e);
+      if (s.writingMode.startsWith('vertical') || s.writingMode.startsWith('sideways')) return 'a text stands upright (writing-mode ' + s.writingMode + '): ' + e.textContent.trim().slice(0, 30);
+      let x = e;
+      for (let up = 0; x && up < 3; up++, x = x.parentElement) {
+        const t = getComputedStyle(x).transform || '', m = t.startsWith('matrix(') ? t.slice(7).split(',').map(Number) : null;
+        if (m && Math.abs(m[0]) < .26 && Math.abs(m[1]) > .96) return 'a text turned near a quarter turn: ' + e.textContent.trim().slice(0, 30);
+      }
+    }
+    return true;`),
   rule('rp-tip-field-value', 'a tip of a data mark says one fact a line, "Field: Value", every number in full - never cut to tỷ / tr / k / M (v13, the user 09/11)', `
     for (const m of document.querySelectorAll('[data-rp-visual] [data-rp-mark][data-tip], [data-rp-visual] [data-rp-mark] [data-tip]')) {
       if (!m.getClientRects().length) continue;
