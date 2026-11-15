@@ -195,9 +195,12 @@ export const RULES = [
     for (const v of vis().filter(v => v.dataset.rpVisual === 'chart' && v.querySelector('[data-rp-legend] [data-cf-dim]:not([data-cf-dim=measure])'))) {
       const body = v.querySelector('[data-rp-body]') || v, b = box(body);
       const labels = [...v.querySelectorAll('[data-rp-label]')].filter(l => l.getClientRects().length).map(box);
-      for (const m of v.querySelectorAll('[data-rp-mark]')) {
-        if (!m.getClientRects().length || m.closest('[data-rp-legend]')) continue;
-        const r = box(m), long = Math.max(r.width / (b.width || 1), r.height / (b.height || 1));
+      const marks = [...v.querySelectorAll('[data-rp-mark]')].filter(m => m.getClientRects().length && !m.closest('[data-rp-legend]'));
+      // (v20, Dashboard 15/11: a thin part of a column read as 6 % by its width) parts that share a left and a width stack upward
+      const key = m => { const r = box(m); return Math.round(r.left) + ':' + Math.round(r.width); }, keys = marks.map(key);
+      const upward = keys.some((k, i) => keys.indexOf(k) !== i);
+      for (const m of marks) {
+        const r = box(m), long = upward ? r.height / (b.height || 1) : r.width / (b.width || 1);
         if (long < .06) continue;
         const inside = m.querySelector('[data-rp-label]') || labels.some(l => l.left + l.width / 2 >= r.left - 1 && l.left + l.width / 2 <= r.right + 1 && l.top + l.height / 2 >= r.top - 1 && l.top + l.height / 2 <= r.bottom + 1);
         if (!inside) return 'a part of a stacked chart carries no number of its own: ' + name(v);
@@ -241,7 +244,7 @@ export const RULES = [
       if (!m.getClientRects().length) continue;
       for (const line of (m.getAttribute('data-tip') || '').split('\\n').map(s => s.trim()).filter(Boolean)) {
         if (!line.includes(': ')) return 'a tip line without "Field: Value": ' + line.slice(0, 40);
-        if (/\\d\\s*(tỷ|tr|k|K|M|B|bn)$/.test(line)) return 'a tip number cut short: ' + line.slice(0, 40);
+        if (/(^|[\\s:(])-?[\\d.,]*\\d\\s*(tỷ|tr|k|K|M|B|bn)$/.test(line)) return 'a tip number cut short: ' + line.slice(0, 40);
       }
     }
     return true;`),
