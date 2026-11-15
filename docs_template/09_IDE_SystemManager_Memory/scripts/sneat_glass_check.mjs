@@ -2117,7 +2117,10 @@ export const PROBES = [
       const items = () => [...document.querySelectorAll('#page [data-rp-item], #page [data-rp-mark]')].filter(shown).length;
       if (shown(box) && !box.disabled && !box.readOnly) {
         const n0 = rows(), m0 = items();
-        if (n0 + m0 === 0) out.push('the filter box stands on a page with no row and no chart item to filter');
+        // (Reconcile 15/11: the invoices of a day with none yet) a page that honestly has nothing today wears the empty template
+        // of the frame; its box stays, since tomorrow it has rows - only a box over nothing and no empty template is red
+        const honest = [...document.querySelectorAll('#page .state-box.empty-state, #page [data-empty]')].some(shown);
+        if (n0 + m0 === 0) { if (!honest) out.push('the filter box stands on a page with no row and no chart item to filter'); }
         else {
           const put = v => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(box, v); box.dispatchEvent(new Event('input', {bubbles: true})); };
           put('zq\\u00a7xj~nothing');
