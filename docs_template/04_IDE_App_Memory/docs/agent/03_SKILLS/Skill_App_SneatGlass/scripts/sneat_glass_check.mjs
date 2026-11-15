@@ -1927,7 +1927,8 @@ export const RULES = [
           clips.set(el, c); return c;
         };
         const take = (rc, el, clip = {left: -Infinity, right: Infinity}) => {
-          if (rc.width <= 0 || rc.height <= 0 || (rc.top + rc.bottom) / 2 < cut.top || (rc.top + rc.bottom) / 2 > cut.bottom) return;
+          if (rc.width <= 0 || rc.height <= 0) return;
+          if ((rc.top < cut.top - 1 || rc.bottom > cut.bottom + 1) && rc.height <= cut.bottom - cut.top) return;
           const L = Math.max(rc.left, cut.left, clip.left), R = Math.min(rc.right, cut.right, clip.right);
           if (R <= L) return;
           if (L < l) { l = L; who = name(el); lel = el; }
@@ -1962,7 +1963,11 @@ export const RULES = [
         // off the line at the left: unless the part holds only a short thing anchored at its right end (a button in a card head)
         const wide = e.r - e.l > (inR - inL) / 2;
         const reads = e.lel && !e.lel.closest('svg') && !/center|right|end/.test(getComputedStyle(e.lel).textAlign) && (e.lel === part || e.lel.matches('th, td, h1, h2, h3, h4, h5, h6, .card-title, .card-header') || e.lel.closest('th, td'));
-        if (reads && L > P + 2 && (side || wide || R > P + 2)) return where + ': content stands ' + Math.round(L) + ' px in from its panel\\'s left edge (' + e.who + '), off the line of the rest (' + Math.round(P) + ' px)';
+        // (Dashboard 15/11, fa05 South at 390: a head row whose first cell is blank, its body cut by the window's foot) a cell
+        // past the first of its row stands where its column puts it: the row's line is its first cell's
+        const cell = e.lel && e.lel.closest('th, td'), lead = cell && cell.cellIndex > 0 && cell.parentElement.cells[0];
+        const ownLine = !lead || lead.getBoundingClientRect().width <= 0;
+        if (reads && ownLine && L > P + 2 && (side || wide || R > P + 2)) return where + ': content stands ' + Math.round(L) + ' px in from its panel\\'s left edge (' + e.who + '), off the line of the rest (' + Math.round(P) + ' px)';
         return null;
       };
       const inner = el => { const r = el.getBoundingClientRect(), s = getComputedStyle(el); return [r.left + parseFloat(s.borderLeftWidth), r.right - parseFloat(s.borderRightWidth)]; };
