@@ -5,6 +5,7 @@ name: harness-session-open
 version: 1
 type: process
 description: Open a work session and get straight back to work - title the session, read the core docs, pick up the newest handover, re-measure the item, then build it. Use on the first message of every session, whatever it says (the reminder hook names this skill there), and whenever asked to read the docs and continue. Counterpart of session-close. Vietnamese triggers - "làm tiếp", "tiếp tục", "đọc docs", "vào việc", "mở phiên".
+from: _Store/03_SKILLS/Skill_Harness_SessionOpen @v1 #381f1fcb5c2f
 ---
 
 # session-open — opening a session and getting back to work

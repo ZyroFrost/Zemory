@@ -1,10 +1,11 @@
 ---
 id: Rule_71
 name: log-never-deleted
-version: 1
+version: 2
 kind: action
 code: 03_Safety
 checked: [Rule_Gate_10_DestructiveOps, Rule_Gate_04_ScratchFiles]
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_71_LogNeverDeleted @v2 #813606796187
 ---
 # Rule_Gate_71_LogNeverDeleted — A log is never deleted; old log is only compressed
 

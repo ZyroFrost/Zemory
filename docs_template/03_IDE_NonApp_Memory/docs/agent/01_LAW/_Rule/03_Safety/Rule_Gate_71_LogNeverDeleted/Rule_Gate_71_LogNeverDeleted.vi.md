@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Rule_Gate_71_LogNeverDeleted — A log is never deleted; old log is only compressed

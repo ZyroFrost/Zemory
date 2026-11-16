@@ -139,8 +139,32 @@ function runnable(cmd) {
   // left "... smtp_mail.py" as a segment of its own (Dept_FIN 2026-10-19: git commit -m blocked on the file name)
   const noGit = noHeredoc.replace(/(^|[\n;&|]\s*)git\b(?:[^"'\n;&|]|"(?:\\.|[^"\\])*"|'[^']*')*/g,
     (m, pre) => (/\bsend-email\b/.test(m) ? m : pre + "git"));
-  return noGit.split(/\n|&&|\|\||;/).filter((s) => !/^\s*git\s/.test(s) || /\bsend-email\b/.test(s))
-    .flatMap((s) => s.split("|")).filter((s) => !readOnly(s)).join(" ; ");
+  return splitOutsideQuotes(noGit).filter((s) => !/^\s*git\s/.test(s) || /\bsend-email\b/.test(s))
+    .filter((s) => !readOnly(s)).join(" ; ");
+}
+// The command's segments: split at a new line, && || ; and | that stand OUTSIDE quotes. A plain split cut a grep pattern
+// "__main__\|argparse\|def main" in three, and its tail "def main" scripts/smtp_mail.py was judged a command that runs a
+// mail script (a department repo 2026-11-16: ls; grep ... smtp_mail.py | head; git show - blocked as a send).
+function splitOutsideQuotes(cmd) {
+  const out = [];
+  let cur = "";
+  let q = "";
+  for (let i = 0; i < cmd.length; i++) {
+    const c = cmd[i];
+    if (q) {
+      if (c === "\\" && q === '"' && i + 1 < cmd.length) { cur += c + cmd[++i]; continue; }
+      if (c === q) q = "";
+      cur += c;
+      continue;
+    }
+    if (c === '"' || c === "'") { q = c; cur += c; continue; }
+    const two = cmd.slice(i, i + 2);
+    if (two === "&&" || two === "||") { out.push(cur); cur = ""; i++; continue; }
+    if (c === "\n" || c === ";" || c === "|") { out.push(cur); cur = ""; continue; }
+    cur += c;
+  }
+  out.push(cur);
+  return out;
 }
 // A launcher named in the command (bin\<Task>.cmd, also behind scripts\task_run.py ... --): it runs a pipeline, and a stage
 // of that pipeline may send — a test run mails the operator too (Dept_TEC 2026-10-19: two real mails went out through
@@ -151,7 +175,16 @@ function launcherSends(cmd, root) {
     const full = path.isAbsolute(l) ? l : path.join(root, l);
     let text = "";
     try { text = fs.readFileSync(full, "utf8"); } catch { continue; }
-    const refs = text.replace(/%~dp0/gi, path.dirname(full) + path.sep).match(/[^\s"'|&<>]+\.(py|ps1)/gi) || [];
+    // what the launcher runs is in its lines, not its remarks: the usage note of bin\_python.cmd ("bin\_python.cmd
+    // scripts\x.py") pointed the check at scripts\ and its mail helper (a department repo 2026-11-16)
+    const lines = text.split(/\r?\n/).filter((ln) => !/^\s*(@?rem\b|::)/i.test(ln)).join("\n");
+    const refs = lines.replace(/%~dp0/gi, path.dirname(full) + path.sep).match(/[^\s"'|&<>]+\.(py|ps1)/gi) || [];
+    // a launcher that hands on its arguments (%*) runs the script named after it in the command: that script's folder is
+    // the pipeline, so its stages are read there (bin\_python.cmd tasks\X\pipeline\08_check.py)
+    if (/%\*/.test(lines)) {
+      const after = cmd.slice(cmd.toLowerCase().indexOf(l.toLowerCase()) + l.length).split(/[;&|\n]/)[0];
+      refs.push(...(after.match(/[^\s"'|&<>]+\.(py|ps1)/gi) || []));
+    }
     const dirs = new Set(refs.map((r) => path.dirname(path.resolve(path.isAbsolute(r) ? r : path.join(root, r)))));
     for (const d of dirs) {
       if (HARNESS.test(path.relative(root, d) + path.sep)) continue;
