@@ -33,6 +33,8 @@ const GEMMA1_MODEL = "onnx-community/embeddinggemma-300m-ONNX";
 // code clearly ahead (78.68 vs 68.76). Measured here 2026-10-15: 245 vs 249 ms per short prompt on this CPU.
 // Needs transformers >= 4.3 (EmbeddingGemma2Model).
 const GEMMA2_MODEL = "onnx-community/embeddinggemma-2-ONNX";
+/** Token ceiling per model input on the text-only (EmbeddingGemma 2) path — see `getPipe` for the measurement. */
+const MAX_TOKENS = 4096;
 
 /** The model a NEW index is built with. An existing index never follows this: its stored profile pins its model. */
 const DEFAULT_MODEL = GEMMA2_MODEL;
@@ -339,8 +341,12 @@ function loadEncoder(dtype: Dtype): Promise<Encoder> {
           text: string[],
           o: Record<string, unknown>,
         ) => Promise<unknown>;
+        // The tokenizer ships model_max_length = 1e30, so `truncation: true` alone cut nothing: a 6,000-char chunk of
+        // mojibake came out at 13,328 tokens, and attention memory grows with the square of that. Measured 14/11 on the
+        // home machine (16 GB): the process grew to ~20 GB on the long-message tail and froze the machine three times;
+        // one chunk at 2,048 tokens peaks at 2.0 GB, at 4,096 at 3.1 GB. 4,096 cuts 3 of 796 chunks in that tail.
         const many = async (texts: string[]): Promise<number[][]> => {
-          const out = await model(await tok(texts, { padding: true, truncation: true }));
+          const out = await model(await tok(texts, { padding: true, truncation: true, max_length: MAX_TOKENS }));
           return tensorToVectors(out.sentence_embedding.tolist() as unknown[]).map(unit);
         };
         return { one: async (t) => (await many([t]))[0], many, dispose: async () => void (await model.dispose()) };
