@@ -344,15 +344,34 @@ function markWslDown(stamp) {
   }
 }
 export function relayCli(env, argv, dir, o = {}) {
-  let token = "";
-  try { token = readFileSync(o.tokenFile ?? join(COMPOSE_DIR, "data", ".cli-token"), "utf8").trim(); } catch { return Promise.resolve(null); }
-  if (!token) return Promise.resolve(null);
   const out = o.out ?? process.stdout, err = o.err ?? process.stderr;
+  // why the port path gave up, said once: a real WSL outage on 2026-11-16 fell back from the port to WSL with no reason
+  // shown, so nobody could tell whether the port (wslrelay.exe serves it on Windows) was down too
+  const why = o.why ?? ((w) => err.write(`zemory (docker): the daemon's port did not run it (${w}).\n`));
+  let token = "";
+  try { token = readFileSync(o.tokenFile ?? join(COMPOSE_DIR, "data", ".cli-token"), "utf8").trim(); } catch { /* below */ }
+  if (!token) {
+    why("no data/.cli-token - a daemon older than 4.12.10 has none");
+    return Promise.resolve(null);
+  }
   const body = JSON.stringify({ argv, cwd: dir || null });
-  return new Promise((done) => {
+  return new Promise((resolveCode) => {
+    let settled = false;
+    const done = (code, reason) => {
+      if (settled) return;
+      settled = true;
+      if (code === null && reason) why(reason);
+      resolveCode(code);
+    };
     const req = http.request({ host: "127.0.0.1", port: Number(o.port ?? env.ZEMORY_PORT ?? 4444), path: "/cli", method: "POST",
       headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body), "x-zemory-cli-token": token } }, (res) => {
-      if (res.statusCode !== 200) { res.resume(); return done(null); }
+      if (res.statusCode !== 200) {
+        let b = "";
+        res.setEncoding("utf8");
+        res.on("data", (c) => (b += c));
+        res.on("end", () => done(null, `HTTP ${res.statusCode}${b ? " " + b.slice(0, 120) : ""}`));
+        return;
+      }
       let buf = "", code = null, any = false;
       res.setEncoding("utf8");
       res.on("data", (t) => {
@@ -370,10 +389,11 @@ export function relayCli(env, argv, dir, o = {}) {
         }
       });
       // the stream cut before its exit line: the command may have run, so it is not run again over WSL
-      res.on("end", () => done(code ?? (any ? 1 : null)));
-      res.on("error", () => done(code ?? (any ? 1 : null)));
+      res.on("end", () => done(code ?? (any ? 1 : null), "the answer ended before its first line"));
+      res.on("aborted", () => done(code ?? (any ? 1 : null), "the connection was cut before the first line"));
+      res.on("error", (e) => done(code ?? (any ? 1 : null), `the answer broke: ${e.code ?? e.message}`));
     });
-    req.on("error", () => done(null));
+    req.on("error", (e) => done(null, `could not reach 127.0.0.1:${o.port ?? env.ZEMORY_PORT ?? 4444}: ${e.code ?? e.message}`));
     req.end(body);
   });
 }
@@ -433,6 +453,11 @@ async function main() {
     const code = await relayCli(env, process.argv.slice(2), dir);
     if (code !== null) process.exit(code);
     r = withWslRetry(() => spawnSync(bin, argv, { stdio: "inherit", windowsHide: true }), { tries: WSL_TRIES - 1 });
+    // WSL still down after its retries (a minute or more): the port may be back by now - one last try there
+    if (isWslFailure(r)) {
+      const last = await relayCli(env, process.argv.slice(2), dir);
+      if (last !== null) process.exit(last);
+    }
   }
   if (r.error) {
     process.stderr.write(`zemory (docker): could not run docker (${r.error.message}). Is Docker running and the zemory container up?\n`);
