@@ -412,13 +412,24 @@ function consumeFlag(name, subject) {
   }
   // First time: do NOT delete at once, only stamp it used. The flag dies when the window closes or when
   // someone asks for a different job - so it is still 'one flag for one job', it merely forgives one retry.
-  try {
-    fs.writeFileSync(p, "ZEMORY-USED " + mark + " " + Date.now() + "\\n");
-  } catch {
-    try { fs.unlinkSync(p); } catch {} // cannot write => old behaviour: one use and done
-  }
+  // The stamp waits until the guard lets the call through: a check further on that blocks the same call leaves the flag
+  // unused (Dept_MKT 2026-11-16: the mail flag was stamped, a later once-per-session reminder blocked the command, and the
+  // retry 389 s later found the flag spent on a call that never ran - one approved send took 2-3 flags).
+  if (!STAMPS.has(p)) STAMPS.set(p, "ZEMORY-USED " + mark + " " + Date.now() + "\\n");
   return true;
 }
+// Flags a check took, stamped only when the guard ends without a block (deny exits 2, a pass exits 0).
+const STAMPS = new Map();
+process.on("exit", (code) => {
+  if (code !== 0) return;
+  for (const [p, text] of STAMPS) {
+    try {
+      fs.writeFileSync(p, text);
+    } catch {
+      try { fs.unlinkSync(p); } catch {} // cannot write => old behaviour: one use and done
+    }
+  }
+});
 
 // The sentence that points the way around. An OLD policy declaring no flag name used to print
 // \`docs/hooks/undefined\`, telling people to create a file literally named "undefined" - a silent
