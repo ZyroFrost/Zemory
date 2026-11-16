@@ -143,6 +143,44 @@
           "mail": ".allow-mail"
         }
       }
+    },
+    {
+      "note": "a | inside a quoted grep pattern is not a pipe: a reader-led line naming mail scripts runs nothing",
+      "files": {
+        "scripts/smtp_mail.py": "import smtplib\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "ls scripts; grep -n \"__main__\\|argparse\\|def main\" scripts/smtp_mail.py | head; git show 41a493f --stat | head -20"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "mail": ".allow-mail"
+        }
+      }
+    },
+    {
+      "note": "an interpreter launcher (%*) is judged by the script it is handed, not by the usage note in its remarks",
+      "files": {
+        "bin/_python.cmd": "@echo off\r\nrem With arguments it also runs them: bin\\_python.cmd scripts\\x.py\r\n\"%PY%\" %*\r\n",
+        "scripts/dw_access.py": "from smtp_mail import send\n",
+        "tasks/X_Case/pipeline/08_check.py": "print('reads only')\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {
+        "command": "cmd /c \"bin\\_python.cmd tasks\\X_Case\\pipeline\\08_check.py\""
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "mail": ".allow-mail"
+        }
+      }
     }
   ]
 }

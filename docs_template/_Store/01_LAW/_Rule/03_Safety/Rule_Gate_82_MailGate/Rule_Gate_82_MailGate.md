@@ -1,7 +1,7 @@
 ---
 id: Rule_82
 name: mail-gate
-version: 10
+version: 11
 kind: action
 code: 03_Safety
 ---
