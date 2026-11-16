@@ -266,7 +266,10 @@ export function isMoveApply(argv) {
 export function isHostCommand(argv) {
   // `setup mcp` writes the agents' own config files (%APPDATA%, the MSIX package folder, ~/.cursor...): inside the
   // container none of them exist, so it listed every agent as not installed and wrote nowhere
-  return argv[0] === "tidy" || (argv[0] === "setup" && argv[1] === "mcp");
+  // `peers --fix` appends a title line to the session's transcript under ~/.claude, which the container mounts read-only
+  // (measured 2026-11-16 in Dept_MKT: EROFS, so the session-open skill's first step failed on every Docker machine); it
+  // reads the transcripts and the live sessions, never the Global Memory
+  return argv[0] === "tidy" || (argv[0] === "setup" && argv[1] === "mcp") || (argv[0] === "peers" && argv.includes("--fix"));
 }
 
 /** Environment of a command run on the host: `ZEMORY_MCP_ENTRY` names this shim, so `setup mcp` writes a launch line
