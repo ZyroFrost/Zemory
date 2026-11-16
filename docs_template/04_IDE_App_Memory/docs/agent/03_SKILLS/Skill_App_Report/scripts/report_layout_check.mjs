@@ -749,7 +749,12 @@ export const SELF_TEST = {
     `<tbody><tr><td>Một câu kết luận rất dài viết ra thành chữ, vượt tám mươi ký tự, lẽ ra phải là một khối chữ chứ không phải một ô</td><td>—</td></tr><tr><td>B</td><td>—</td></tr></tbody></table></div></div>` +
     // (v16) columns standing high in a panel stretched to 320 px · a figure with a unit and no sort value
     `<div class="row"><div class="card" data-rp-visual="chart" style="flex:1;height:320px"><h6 data-rp-title>Cột lơ lửng</h6><div class="bars" data-rp-body>${bars(4, 'rgb(61, 126, 191)')}</div></div>` +
-    `<div class="card" data-rp-visual="table" style="flex:1"><table><thead><tr><th>Nhà</th><th>Ebitda</th></tr></thead><tbody><tr><td>A</td><td data-rp-num="money" data-rp-raw="2800000000">2,8 tỷ</td></tr></tbody></table></div></div>`),
+    `<div class="card" data-rp-visual="table" style="flex:1"><table><thead><tr><th>Nhà</th><th>Ebitda</th></tr></thead><tbody><tr><td>A</td><td data-rp-num="money" data-rp-raw="2800000000">2,8 tỷ</td></tr></tbody></table></div></div>` +
+    // (v20, Dashboard 16/11: the faulty page held no fault of these two v19 rules, so they passed it) a label moved 60 px off its
+    // bar with no leader · a text standing upright
+    `<div class="row"><div class="card" data-rp-visual="chart" style="width:300px"><h6 data-rp-title>Nhãn xa</h6><div class="bars" data-rp-body style="height:120px;display:flex;align-items:flex-end">` +
+    `<i data-rp-mark data-tip="Năm: 2025\\nDoanh thu: 10" style="display:block;width:30px;height:20px;position:relative;background:rgb(61, 126, 191)"><span data-rp-label style="position:absolute;bottom:60px;left:0;font-size:10px">10</span></i>` +
+    `<span style="writing-mode:vertical-rl">Doanh thu</span></div></div></div>`),
 };
 
 if (process.argv.includes('--list')) for (const r of RULES) console.log(r.id.padEnd(22) + r.rule);

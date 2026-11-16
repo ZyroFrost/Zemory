@@ -1,5 +1,5 @@
 ---
-version: 77
+version: 78
 lang: vi
 ---
 
@@ -34,14 +34,16 @@ lang: vi
   cỡ chỉ đổi qua `--tool-h`. [bar-one-size]
 - **Hai đầu mỗi hàng chừa bằng nhau** (v42): hàng 1 và thanh trang - từ mép trái tới control đầu bằng từ control
   cuối tới mép phải, lệch tối đa 2 px. [bar-ends-even]
-- **Một khoảng chừa từ mép, từ trên xuống** (v75, user 14/11): hàng 1, hàng 2 và nội dung mọi panel của trang (mỗi phần của
+- **Một khoảng chừa từ mép, từ trên xuống** (v75, 14/11): hàng 1, hàng 2 và nội dung mọi panel của trang (mỗi phần của
   thẻ - đầu, thân, bảng, chân) cách mép panel đúng khoảng của khung `--frame-pad` (16 px) - không dính mép, không lệch hàng
   với phần khác. Phần cố ý canh giữa (trạng thái trống) và mép phải của phần cuộn ngang thì không xét. App không tự đặt khoảng
-  riêng cho panel: dùng token của khung. [pad-even]
-- **Mỗi cột một thanh cuộn** (v75, user 14/11: panel giới hạn trong màn hình hiện 2 thanh cuộn cạnh nhau): hộp cuộn dọc
+  riêng cho panel: dùng token của khung. Bảng được đo theo khung viền của nó (v78, 16/11: "từ mép padding tới chữ và
+  khung matrix luôn"): khung cách hai mép panel đúng khoảng đó, chữ cột đầu cách khung `--table-pad` (.75rem) - tức 28 px từ mép
+  panel. [pad-even]
+- **Mỗi cột một thanh cuộn** (v75, 14/11: panel giới hạn trong màn hình hiện 2 thanh cuộn cạnh nhau): hộp cuộn dọc
   không bao giờ nằm trong một hộp cuộn dọc khác của trang. Trong thẻ trang lấp khung, cửa sổ danh sách cao đúng phần chỗ thân
   thẻ còn chừa (chiều cao thân trừ đầu panel, padding, viền quanh nó); cửa sổ bị chừa quá ít thì cuộn theo thân. [one-scroll]
-- **Mọi cài đặt chạy thật và được kiểm thật** (v75, user 15/11: cài đặt số khung có lưu mà không báo cáo nào đọc - kiểm ở
+- **Mọi cài đặt chạy thật và được kiểm thật** (v75, 15/11: cài đặt số khung có lưu mà không báo cáo nào đọc - kiểm ở
   cài đặt đang có thì không bao giờ thấy). Cài đặt được chứng minh bằng cách đổi nó: bộ kiểm khung bấm mọi lựa chọn của mọi
   cài đặt khung, mỗi lựa chọn phải đổi thứ người dùng thấy; bộ kiểm live lưu từng lựa chọn của định dạng số và định dạng ngày
   như Settings lưu, mọi ô số (`td[data-rp-num][data-rp-raw]`, % là tỉ lệ: 0.125) và mọi ngày trong bảng phải đổi theo trong
@@ -85,7 +87,8 @@ lang: vi
   thanh trang luôn có; trang không bao giờ cuộn cả cột vì một bảng. Chỉ board nhiều thẻ (tổng quan số liệu và biểu đồ) mới cuộn
   cả cột, và board đứng như trang Thống kê của repo quản hệ: cùng thanh trang, không thẻ trang bọc ngoài, mỗi thẻ là một tấm kính
   riêng đứng thẳng trên nền, cách nhau bằng khoảng hàng của kit (`board` của khung, v49). Chỗ cho dữ liệu đến từ việc thu hàng 1 (`head_fold` Tối đa chỗ, §2b), không bao giờ từ cuộn cả trang.
-  Bảng thẳng hàng với thanh trang: chữ cột đầu bắt đầu đúng chỗ công cụ của thanh bắt đầu (.75rem từ mép thẻ). Bảng của trang
+  Bảng thẳng hàng với thanh trang: khung viền của bảng bắt đầu đúng chỗ công cụ của thanh bắt đầu (cách mép thẻ đúng khoảng
+  của khung), chữ cột đầu cách khung `--table-pad` (v78). Bảng của trang
   bảng nằm thẳng trong thân thẻ trang, không bao giờ bọc trong thẻ con; bảng trong panel của board (một thẻ con) giữ lề 1rem của
   thẻ đó (v47, Dashboard 09/11). [table-edges] [card-inset]
 - **Dải tab các trang cùng nhóm** (v46, Dashboard 08/11 - "khu vực tab phải là khu vực tách rời, ko được load lại…
@@ -109,29 +112,29 @@ lang: vi
   menu (v58). [tabs-reorder] **Hàng 2 chia khu, ở mọi app** (v58): nút của trang, rồi thông tin - chữ và số về trang, trong
   `.page-info` - rồi cụm tab khi nó đứng ở hàng 2; khu thông tin cách khu nút bằng khe của hàng và một vạch ngăn mờ, cụm tab tách
   chỉ bằng khung riêng của nó - trước nó chỉ có khe của hàng, không thêm vạch ngăn và đệm riêng (v60: "nó bị cách tới 2 lần");
-  không chữ nào nằm lẫn giữa các nút. **Hàng 2 quản lý theo cụm** (v62, user 11/11): các nút của trang đứng liền nhau trong MỘT
+  không chữ nào nằm lẫn giữa các nút. **Hàng 2 quản lý theo cụm** (v62, 11/11): các nút của trang đứng liền nhau trong MỘT
   cụm có khung và tay nắm, tin của trang trong một cụm có khung, tay nắm và mép kéo để thu ngắn (chữ dư thành "…"), cụm tab là cụm
   thứ ba; người dùng kéo tay nắm để dời cả cụm sang chỗ khác trong ba cụm, hoặc kéo một mục để đổi chỗ trong chính cụm của nó
   (không sang cụm khác); bố cục là của họ, giữ riêng từng trang; Cài đặt > Bố cục đặt lại. Khung dựng cụm cho `PageCard` và
-  `PageToolbar`. **Các cụm đều nhau** (v63, user 12/11): mọi cụm - nút, tin, tab - mang cùng một khung, cùng một chiều cao (control
+  `PageToolbar`. **Các cụm đều nhau** (v63, 12/11): mọi cụm - nút, tin, tab - mang cùng một khung, cùng một chiều cao (control
   bên trong thấp hơn, như tab), tin luôn nằm trong khung như nút, không bao giờ là chữ trơn; hai cụm cạnh nhau cách đúng bằng padding
-  hai đầu của chính hàng 2, luôn cố định. [bar-zones] **Tab gọn hoặc dài** (v63, user 12/11): nút cạnh tay nắm của cụm thu tab
+  hai đầu của chính hàng 2, luôn cố định. [bar-zones] **Tab gọn hoặc dài** (v63, 12/11): nút cạnh tay nắm của cụm thu tab
   về tab đang mở và "Thêm (n)", hoặc bung mọi tab (mặc định); lựa chọn của từng người, giữ riêng từng nhóm, cũng là lựa chọn ở
   Cài đặt > Bố cục. Ở hàng 2 cụm không bao giờ đè cụm tìm hay bộ lọc ghim: chỉ bung khi mọi tab vừa phần còn lại, không thì giữ gọn
   và đề xuất "Đưa xuống hàng 3 và bung" hoặc "Giữ gọn ở hàng 2". [tabs-style] **Làm mới và Chú thích đứng đầu cụm nút của mọi
-  trang** (v63, user 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm"): khung vẽ cả hai
+  trang** (v63, 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm"): khung vẽ cả hai
   đầu cụm nút ở mọi trang; app truyền cách tải lại (`onRefresh`) và thuật ngữ (`glossary`), không tự vẽ nút làm mới hay chú thích
-  riêng; chưa có thuật ngữ thì nút chú thích tắt. [page-std-tools] **Cụm tìm là cụm thứ tư** (v64, user 12/11: "khu vực filter
+  riêng; chưa có thuật ngữ thì nút chú thích tắt. [page-std-tools] **Cụm tìm là cụm thứ tư** (v64, 12/11: "khu vực filter
   search tính là 1 khu vực riêng thứ 4"): có khung và tay nắm như các cụm kia; mặc định (và khi để tự động) neo ở mép phải của hàng
-  ("mặc định nó dính vào đó… khi user kéo thì vẫn dc"); người dùng kéo cả cụm sang chỗ khác, và kéo từng bộ lọc ghim thả lên bộ
+  ("mặc định nó dính vào đó… khi người dùng kéo thì vẫn dc"); người dùng kéo cả cụm sang chỗ khác, và kéo từng bộ lọc ghim thả lên bộ
   khác để đổi thứ tự, như tab ("kéo dc từng khung filter giống tab"). Mọi người mở hàng 2 theo thứ tự **tab, nút trang, tin trang, cụm
-  tìm** cho tới khi tự kéo ("mặc định… luôn là tab, nút trang, thông tin, filter… khi nào user kéo mới đổi"). **Bộ lọc ghim không bao giờ tràn sang cụm khác**: mỗi bộ lọc trên thanh giữ bề rộng còn bấm được ("1 khung filter
+  tìm** cho tới khi tự kéo ("mặc định… luôn là tab, nút trang, thông tin, filter… khi nào người dùng kéo mới đổi"). **Bộ lọc ghim không bao giờ tràn sang cụm khác**: mỗi bộ lọc trên thanh giữ bề rộng còn bấm được ("1 khung filter
   nhỏ xíu cũng ko bấm vào dc"); các bộ lọc ghim đầu tiên vừa chỗ thì đứng đó, phần còn lại chờ trong popover; đo bằng px của trang
   nên mỗi cỡ hiển thị có số riêng của nó. [seek-cluster] Cụm không có gì để hiện thì ẩn, không bao giờ là khung trống. **Mọi
-  cụm phải chạy được khi bấm** (v64, user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt động
+  cụm phải chạy được khi bấm** (v64, 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt động
   dc để các repo nó tự dò và sửa"): Làm mới gọi lại server, Chú thích mở danh sách thuật ngữ, nút lọc mở popover có bộ lọc, ô tìm
-  lọc được dòng (và mục của chart) và trả lại khi xoá chữ - ô đã hiện thì gõ được, không có ô giả bị khoá (v71, user 14/11); trang không có gì để tìm thì không vẽ ô, luật thanh công cụ chỉ đòi ô ở trang có ô (v72), nút làm mới chỉ bấm khi lượt trước đã xong - nút còn bận tính là đã hỏi (v73); thanh của lớp trong - hộp thoại, đầu thẻ (sasinShell.toolbar) - theo đúng vùng của hàng 2, luật inner-bar: mọi thứ nằm trong cụm, cụm nút từ trái, cụm tin sau đó, cụm tìm neo phải, mỗi loại một cụm, có khung, không chồng nhau, chữ chỉ trong cụm tin, ô lọc gõ được (v74, Reconcile 14/11, user duyệt), nút gọn/dài đổi được tab - bài kiểm trình duyệt bấm từng cái trên mọi trang rồi để
-  trang như cũ. [bar-works] **Hai đầu neo** (v66, user 12/11: "ko dc để nó nằm giữa"): hàng 2 có nhóm trái xếp từ trái và nhóm
+  lọc được dòng (và mục của chart) và trả lại khi xoá chữ - ô đã hiện thì gõ được, không có ô giả bị khoá (v71, 14/11); trang không có gì để tìm thì không vẽ ô, luật thanh công cụ chỉ đòi ô ở trang có ô (v72), nút làm mới chỉ bấm khi lượt trước đã xong - nút còn bận tính là đã hỏi (v73); thanh của lớp trong - hộp thoại, đầu thẻ (sasinShell.toolbar) - theo đúng vùng của hàng 2, luật inner-bar: mọi thứ nằm trong cụm, cụm nút từ trái, cụm tin sau đó, cụm tìm neo phải, mỗi loại một cụm, có khung, không chồng nhau, chữ chỉ trong cụm tin, ô lọc gõ được (v74, Reconcile 14/11, đã duyệt), nút gọn/dài đổi được tab - bài kiểm trình duyệt bấm từng cái trên mọi trang rồi để
+  trang như cũ. [bar-works] **Hai đầu neo** (v66, 12/11: "ko dc để nó nằm giữa"): hàng 2 có nhóm trái xếp từ trái và nhóm
   phải xếp sát phải, giữa là khoảng trống co giãn - không cụm nào trôi ra giữa; kéo một cụm thì hiện mọi chỗ có thể thả (hai đầu,
   trước, giữa, sau các cụm mỗi đầu) và cụm vào vạch gần con trỏ nhất. **Cả điện thoại** (v66): mọi luật hàng 2 áp cho điện thoại
   như máy tính - cụm có khung và tay nắm, bộ lọc ghim, tay nắm cụm tab. [seek-cluster] [bar-zones]
@@ -250,7 +253,7 @@ lang: vi
   cuộn, nên cả con trượt lẫn các dòng đều không lên tới cạnh chữ tiêu đề. (Phép đo của bài kiểm trình duyệt, §6.)
 - **Công tắc kính nằm trong menu tài khoản** cạnh sáng / tối, bật khi kính đang bật. [bar-switches]
 - **Những gì thẻ trang chứa giữ lề của bộ mẫu:** thẻ con đầu tiên (một panel, một thẻ số liệu, một ô) bắt đầu cách ít nhất 1rem bên
-  trong thân thẻ trang - dưới mép trên và trong hai mép bên - không bao giờ dính sát; một bảng thường được chạy mép tới mép.
+  trong thân thẻ trang - dưới mép trên và trong hai mép bên - không bao giờ dính sát; bảng đứng trong khung viền riêng, thụt cùng khoảng đó (v78).
   [card-inset]
 - **Chỉ control của bộ mẫu, một phông:** mọi control là `form-control` · `form-select` · `form-check-input`, mọi nhãn trong hộp thoại
   là `form-label` · `form-check-label`, form trên lưới của bộ mẫu (`row g-*` · `col-*`), phông token ở mọi nơi - cả chữ và số trong

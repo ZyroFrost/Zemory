@@ -383,7 +383,7 @@ export const RULES = [
   },
   {
     id: 'table-edges',
-    rule: '(v46, the user 09/11 through Reconcile) a table in a page card is level with the page bar: the text of its first column starts where the tools of the page bar start (.75rem from the card edge), within 1 px',
+    rule: '(v46, the user 09/11 through Reconcile; v78, the user 16/11) a table in a page card is level with the page bar: the framed box of the table starts where the tools of the page bar start (the frame\'s room from the card edge), and the text of its first column stands --table-pad (.75rem) inside the box, within 1 px',
     check: `(() => {
       const card = document.querySelector('#page > .page-card');
       // (v47, Dashboard 09/11) a table page only: a table straight in the body of a page card that fills the frame - a table in a
@@ -397,7 +397,14 @@ export const RULES = [
       if (!th) return true;
       const barIn = bar.getBoundingClientRect().left + parseFloat(getComputedStyle(bar).paddingLeft);
       const textIn = th.getBoundingClientRect().left + parseFloat(getComputedStyle(th).paddingLeft);
-      return Math.abs(textIn - barIn) <= 1 || 'the first column of the table starts ' + Math.round(textIn - barIn) + ' px off the tools of the page bar';
+      // (v78) the table's own framed box: its wrapper (a scroll box) or the table itself
+      const up = table.parentElement, box = up.matches(':is(.table-responsive, .table-window, .table-scroller, .list-window, .matrix-frame):not(.page-card-body)') || (up.matches('div:not(.page-card-body, [class*="dom-page"], .card, .row)') && up.parentElement.matches('.card-body, .page-card-body, [class*="dom-page"]')) ? up : table;
+      const boxIn = box.getBoundingClientRect().left + parseFloat(getComputedStyle(box).borderLeftWidth);
+      const probe = document.createElement('div'); probe.style.cssText = 'position:absolute;visibility:hidden;width:var(--table-pad, 12px)';
+      document.body.append(probe); const pad = probe.getBoundingClientRect().width; probe.remove();
+      const boxOut = box.getBoundingClientRect().left;
+      if (Math.abs(boxOut - barIn) > 1) return 'the box of the table starts ' + Math.round(boxOut - barIn) + ' px off the tools of the page bar';
+      return Math.abs(textIn - boxIn - pad) <= 1 || 'the first column of the table stands ' + Math.round(textIn - boxIn) + ' px inside its box, the frame keeps ' + Math.round(pad);
     })()`,
   },
   {
@@ -1993,9 +2000,23 @@ export const RULES = [
           // a part of several blocks (a heading, a person's line, a table) is read block by block, through plain wrappers
           let blocks = [...part.children].filter(shown);
           while (blocks.length === 1 && !isLeaf(blocks[0]) && !blocks[0].matches('table, .table-responsive, .table-window, .table-scroller, .matrix-frame, svg') && blocks[0].children.length) blocks = [...blocks[0].children].filter(shown);
-          for (const b of blocks.length > 1 ? blocks : [part]) {
+          // (v78, the user 16/11: "từ mép padding tới chữ và khung matrix luôn") a table stands in a framed box of its own: the box,
+          // not its words, keeps the room from both edges of the panel (its words stand --table-pad inside it, table-edges)
+          // (the page card's own body may carry .table-scroller: it is the panel's body, never a table's box)
+          const TBOX = ':is(.table-responsive, .table-window, .table-scroller, .list-window, .matrix-frame):not(.page-card-body), :is(.card, .card-body, .page-card-body, [class*="dom-page"]) > :is(table, .table), :is(.card-body, .page-card-body, [class*="dom-page"]) > div:not(.page-card-body, [class*="dom-page"], .card, .row):has(> table)';
+          const tpad = (() => { const q = document.createElement('div'); q.style.cssText = 'position:absolute;visibility:hidden;width:var(--table-pad, 12px)'; document.body.append(q); const w = q.getBoundingClientRect().width; q.remove(); return w; })();
+          const boxed = b => { const x = b.getBoundingClientRect(), L = x.left - l, R = r - x.right;
+            if (Math.abs(L - P) > 2) return where + ': the box of a table stands ' + Math.round(L) + ' px from the left edge of its panel, the frame keeps ' + Math.round(P) + ' (' + tag(b) + ')';
+            if (!sideways(b) && Math.abs(R - P) > 2) return where + ': the box of a table stands ' + Math.round(R) + ' px from the right edge of its panel, the frame keeps ' + Math.round(P) + ' (' + tag(b) + ')';
+            // its first column's words stand --table-pad inside the box, past the box's border
+            const t = b.matches('table') ? b : b.querySelector('table'), c = t && [...t.querySelectorAll('tr:first-child > :first-child')].find(shown);
+            if (c && !(b.scrollLeft > 0)) { const inL = x.left + parseFloat(getComputedStyle(b).borderLeftWidth), w = c.getBoundingClientRect().left + parseFloat(getComputedStyle(c).paddingLeft) - inL;
+              if (Math.abs(w - tpad) > 2) return where + ': the first column of a table stands ' + Math.round(w) + ' px inside its box, the frame keeps ' + Math.round(tpad) + ' (' + name(c) + ')'; }
+            return null; };
+          if (part.matches(TBOX)) { const f = boxed(part); if (f) return f; continue; }
+          for (const b of blocks.length > 1 || (blocks.length === 1 && blocks[0].matches(TBOX)) ? blocks : [part]) {
             if (b !== part && (isLeaf(b) || b.matches('.bar-spacer, script, style') || /absolute|fixed/.test(getComputedStyle(b).position))) continue;
-            const f = judge(where + (b === part ? '' : ' (a block)'), b, l, r);
+            const f = b.matches(TBOX) ? boxed(b) : judge(where + (b === part ? '' : ' (a block)'), b, l, r);
             if (f) return f;
           }
         }
