@@ -1,5 +1,5 @@
 ---
-version: 20
+version: 21
 lang: vi
 ---
 
@@ -68,12 +68,12 @@ lang: vi
   Legend là các measure (Revenue · Ebitda cạnh nhau) không phải trường: cột nhóm cạnh nhau, số trên đầu mỗi cột (v16).
   [rp-stacked-labels] Các chart chồng theo cùng một trường mang màu cố định của trường đó ở mọi chart của trang (mỗi giá trị một
   màu, như xếp loại A/B/C/D) - hai chart như vậy trùng màu là đúng; chart một chuỗi vẫn lấy màu chính riêng.
-- **Số của chart không đè nhau** (v13; mọi chart ở mọi board, v19 - user 14/11: "số không được đè nhau… nếu trùng phải có line
+- **Số của chart không đè nhau** (v13; mọi chart ở mọi board, v19 - 14/11: "số không được đè nhau… nếu trùng phải có line
   trỏ vào cách xa ra 1 tí giống pbi"): không hai nhãn số nào của một hình giao nhau - kể cả số của đường đè số của cột trong
   chart kết hợp; nhãn sắp đè nhãn khác thì dời xa điểm của nó, lên trước, hết chỗ thì xuống, kèm một đoạn trỏ mảnh
   (`data-rp-leader`) từ nhãn về điểm, như Power BI; nhãn mang màu chuỗi của nó.
   Nhãn app đã ẩn để giữ các nhãn khác tách nhau (visibility hidden, opacity 0) không được vẽ, không tính (v20). [rp-labels-apart]
-- **Không chữ nào dựng đứng** (v19, user 14/11: "cấm dựng đứng"): số hay tên dài quá chỗ thì nghiêng 45°, không bao giờ 90° -
+- **Không chữ nào dựng đứng** (v19, 14/11: "cấm dựng đứng"): số hay tên dài quá chỗ thì nghiêng 45°, không bao giờ 90° -
   không `writing-mode: vertical-*`, không xoay chữ gần một phần tư vòng; cột hẹp tới mức số nghiêng cũng không vừa thì số nằm
   trong tooltip. [rp-no-upright]
 - **Tooltip mỗi dòng một thông tin, "Trường: Giá trị"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
@@ -103,7 +103,7 @@ lang: vi
 - **Bảng hiện ít nhất mười dòng**, phần còn lại cuộn trong khung của chính nó, và vẫn nằm chung trang với các hình khác (v7);
   mười dòng theo chiều cao thật - dòng hai hàng chữ cao hơn - không phải chiều cao cố định. [rp-table-rows-cap] Bảng duy nhất của trang được cao hết trang, trong khung thật sự cuộn được (v16).
   Mười dòng là sàn, không phải trần: bảng còn phải cuộn thì giãn hết phần màn hình trống dưới trang, tới đáy màn hình - không
-  để dòng cuộn trong khung mà dưới trang trống (v17, user 14/11). Có hình nằm dưới bảng thì bảng giữ mười dòng.
+  để dòng cuộn trong khung mà dưới trang trống (v17, 14/11). Có hình nằm dưới bảng thì bảng giữ mười dòng.
 - **Cách cho bảng vừa panel** (v15, cách giữ rp-no-side-scroll): bảng rộng hơn panel ở lề của kit thì dùng lề ô hẹp; đo cả hàng
   một lần, bảng được nới tới cỡ cần chỉ khi mọi panel của hàng vẫn vừa (donut/chart giữ 15rem), không thì giữ tỉ lệ của report;
   tiêu đề xuống dòng giữa các từ, không bẻ giữa một từ; ma trận có trường cột hơn 24 giá trị (80 cửa hàng làm cột) lật lại, các

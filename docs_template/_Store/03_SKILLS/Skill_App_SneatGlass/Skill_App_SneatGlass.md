@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 77
+version: 78
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -40,15 +40,17 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   button's width - `Rule_Gate_97_BarOneSize` blocks it as it is written; the size changes only through `--tool-h`. [bar-one-size]
 - **Both ends of each row keep the same room** (v42): row 1 and the page bar - from the left edge to the first
   control as from the last control to the right edge, within 2 px. [bar-ends-even]
-- **One room from the edge, from the top down** (v75, the user 14/11): row 1, row 2 and the content of every panel of the page
+- **One room from the edge, from the top down** (v75, 14/11): row 1, row 2 and the content of every panel of the page
   (each part of a card - its header, body, table, footer) stand the frame's room `--frame-pad` (16 px) from their panel's edge -
   never against it, never off the line of the rest. A part centred on purpose (an empty state) and the right end of a part that
-  scrolls sideways are not judged. An app never sets its own room on a panel: the frame's token is the one. [pad-even]
-- **One scroll bar per column** (v75, the user 14/11: a panel held to the screen showed two bars side by side): a box that
+  scrolls sideways are not judged. An app never sets its own room on a panel: the frame's token is the one. A table is read by its
+  framed box (v78, 16/11: "từ mép padding tới chữ và khung matrix luôn"): the box stands the room from both edges and
+  its first column's words stand `--table-pad` (.75rem) inside it - 28 px from the panel's edge. [pad-even]
+- **One scroll bar per column** (v75, 14/11: a panel held to the screen showed two bars side by side): a box that
   scrolls up and down never stands inside another box of the page that scrolls up and down. In a page card that fills the frame
   a list window is as tall as the room the body leaves it (the body's height less the panel head, paddings and edges round
   it); a window left too little room scrolls with the body. [one-scroll]
-- **Every setting works for real, and is checked for real** (v75, the user 15/11: the number setting was kept by the frame and
+- **Every setting works for real, and is checked for real** (v75, 15/11: the number setting was kept by the frame and
   read by no report - a check run only at the setting as it stood could never see it). A setting is proven by changing it:
   the frame's check presses every choice of every frame setting and each must change what the person sees; the live check
   saves each choice of the number format and of the date format as Settings saves it, and every number cell
@@ -97,7 +99,8 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   as the system manager's own overview of figures: the same page bar, no page card round it, each card its own glass straight on the wallpaper, apart
   by the kit's row gutters (the frame's `board`, v49).
   The room for the data comes from row 1 folding (`head_fold` Most room, §2b), never from scrolling the whole page. The
-  table is level with the page bar: its first column's text starts where the bar's tools start (.75rem from the card edge).
+  table is level with the page bar: its framed box starts where the bar's tools start (the frame's room from the card edge)
+  and its first column's text stands `--table-pad` inside the box (v78).
   The table of a table page stands straight in the page card's body, never wrapped in an inner card; a table in a panel of a
   board (an inner card) keeps that card's 1rem inset (v47, Dashboard 09/11). [table-edges] [card-inset]
 - **The tab panel of the sibling pages** (v46, Dashboard 08/11 - "khu vực tab phải là khu vực tách rời, ko
@@ -127,32 +130,32 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   buttons, then its info - words and figures about the page, in `.page-info` - then the tab cluster when it stands in row 2,
   the info zone apart from the buttons by the row's room and a faint divider, the tab cluster by its own frame alone - only the
   row's gap before it, never a divider and room of its own on top (v60: "nó bị cách tới 2 lần"); no words stand loose among the
-  buttons. **Row 2 is managed in clusters** (v62, the user 11/11): the page's buttons stand side by side in ONE framed cluster
+  buttons. **Row 2 is managed in clusters** (v62, 11/11): the page's buttons stand side by side in ONE framed cluster
   led by a grip, the info in one framed cluster led by a grip with an edge that shortens it (its words end in "…"), the tab
   cluster the third; the person drags a cluster by its grip to another place among the three, or one item within its own cluster
   (never into another), and the layout is theirs, kept per page; Settings > Layout resets it. The frame builds the clusters for
-  `PageCard` and `PageToolbar`. **Clusters are even** (v63, the user 12/11): every cluster - the buttons, the info, the tabs -
+  `PageCard` and `PageToolbar`. **Clusters are even** (v63, 12/11): every cluster - the buttons, the info, the tabs -
   wears the same frame at one height (the controls inside stand shorter, like the tabs), the info framed like the buttons, never
   bare words; two clusters side by side are parted by exactly the row's own padding at its ends, always. [bar-zones] **Short or
-  long tabs** (v63, the user 12/11): a switch beside the cluster's grip folds the tabs to the one on screen and "more (n)" or
+  long tabs** (v63, 12/11): a switch beside the cluster's grip folds the tabs to the one on screen and "more (n)" or
   shows them all (the default); the person's choice, kept per group, is the same choice in Settings > Layout. In row 2 the
   cluster never runs over the seek group or its pinned filters: it turns long only when every tab fits the room left, else it
   stays short and offers "move to row 3, every tab" or "keep short in row 2". [tabs-style] **Refresh and glossary head every
-  page's buttons** (v63, the user 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm"):
+  page's buttons** (v63, 12/11: "khung chuẩn của nút riêng phải luôn có nút refresh với chú thích glossary đi kèm"):
   the frame draws both first in the buttons cluster on every page; the app hands its own loading (`onRefresh`) and its words
   (`glossary`), never a refresh or glossary button of its own; with no words the glossary button stands turned off. [page-std-tools]
-  **The seek group is the fourth cluster** (v64, the user 12/11: "khu vực filter search tính là 1 khu vực riêng thứ 4 và dời được"):
+  **The seek group is the fourth cluster** (v64, 12/11: "khu vực filter search tính là 1 khu vực riêng thứ 4 và dời được"):
   framed and led by a grip like the others; by default (and left automatic) it is anchored at the row's right end ("filter luôn
-  neo bên phải như cũ… mặc định nó dính vào đó… khi user kéo thì vẫn dc"); the person drags it elsewhere, and drags one pinned
+  neo bên phải như cũ… mặc định nó dính vào đó… khi người dùng kéo thì vẫn dc"); the person drags it elsewhere, and drags one pinned
   filter onto another to reorder them, as tabs ("kéo dc từng khung filter giống tab"). Every person opens row 2 on **tabs, page buttons, page info, seek group** until they
-  drag ("mặc định… luôn là tab, nút trang, thông tin, filter… khi nào user kéo mới đổi"). **Pinned filters
+  drag ("mặc định… luôn là tab, nút trang, thông tin, filter… khi nào người dùng kéo mới đổi"). **Pinned filters
   never run over another cluster**: each one on the bar keeps a width it can be pressed at ("1 khung filter nhỏ xíu cũng ko bấm
   vào dc"); the first pinned ones that fit stand there, the others wait in the popover; measured in the page's own px, so each
   display size fits its own count. [seek-cluster] A cluster with nothing to show is hidden, never an empty frame. **Every
-  cluster works when pressed** (v64, the user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt
+  cluster works when pressed** (v64, 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt
   động dc để các repo nó tự dò và sửa"): refresh asks the server again, the glossary opens its words, the filter button its
-  popover of filters, the filter box filters the rows (and the chart items) and gives them back - a box shown takes typing, never a disabled fake one (v71, the user 14/11); a page with nothing to search draws no box at all, and the toolbar rules ask for the box only where it stands (v72), the refresh is pressed only once its earlier round ended - a button still busy counts as asked (v73); the bar of an inner layer - a dialog, a card head (sasinShell.toolbar) - meets row 2's zones under rule inner-bar: things only in its clusters, the buttons from the left, the info after, the seek cluster at the right end, one of each, framed, none over another, words only in the info, a box that takes typing (v74, Reconcile 14/11, approved by the user), the tab switch changes the tabs - each pressed by the
-  browser check on every page, the page left as it was. [bar-works] **Two anchored ends** (v66, the user 12/11: "ko dc để nó nằm
+  popover of filters, the filter box filters the rows (and the chart items) and gives them back - a box shown takes typing, never a disabled fake one (v71, 14/11); a page with nothing to search draws no box at all, and the toolbar rules ask for the box only where it stands (v72), the refresh is pressed only once its earlier round ended - a button still busy counts as asked (v73); the bar of an inner layer - a dialog, a card head (sasinShell.toolbar) - meets row 2's zones under rule inner-bar: things only in its clusters, the buttons from the left, the info after, the seek cluster at the right end, one of each, framed, none over another, words only in the info, a box that takes typing (v74, Reconcile 14/11, approved), the tab switch changes the tabs - each pressed by the
+  browser check on every page, the page left as it was. [bar-works] **Two anchored ends** (v66, 12/11: "ko dc để nó nằm
   giữa"): row 2 holds a left group packed from the left and a right group packed against the right, a spacer between - no cluster
   floats in the middle; a dragged cluster shows every place it can join (both ends, before, between and after the clusters of
   each end) and lands on the one nearest the pointer. **The phone too** (v66): every rule of row 2 holds on a phone as on a desktop
@@ -279,7 +282,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   scrollbar track's top margin, so neither the thumb nor the rows reach up beside the titles. (Probe of the browser test, §6.)
 - **The glass switch sits in the account menu** beside light / dark, on while glass is on. [bar-switches]
 - **What a page card holds keeps the kit inset:** the first inner card (a panel, a figure card, a tile) starts at least 1rem
-  inside the page card body - below its top edge and within its sides - never flush; a plain table may run edge to edge.
+  inside the page card body - below its top edge and within its sides - never flush; a table stands in its framed box, inset the same room (v78).
   [card-inset]
 - **Only the kit's controls, one font:** every control is `form-control` · `form-select` · `form-check-input`, every dialog label
   `form-label` · `form-check-label`, forms on the kit's grid (`row g-*` · `col-*`), the token font everywhere - svg text and numbers too - and

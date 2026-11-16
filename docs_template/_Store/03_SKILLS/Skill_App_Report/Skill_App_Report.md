@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 20
+version: 21
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -80,13 +80,13 @@ description: The report pages of an app - what a page of figures, charts and tab
   number, the total at the end of the bar or the top of the column. A legend of measures (Revenue · Ebitda side by side) is no
   field: its columns are grouped, the number over each (v16). [rp-stacked-labels] Charts stacked by the same field wear that field's fixed colours on every chart of the page (one colour per
   value, as a grade A/B/C/D) - two of them sharing a colour is right; a chart of one series still takes its own main colour.
-- **The numbers of a chart never cover each other** (v13; every chart of every board, v19 - the user 14/11: "số không được đè
+- **The numbers of a chart never cover each other** (v13; every chart of every board, v19 - 14/11: "số không được đè
   nhau… nếu trùng phải có line trỏ vào cách xa ra 1 tí giống pbi"): no two data labels of a visual overlap - a line's figure
   over a combo's columns included; a label that would cover another moves away from its point, up first, down when the top has
   no room, with a thin leader (`data-rp-leader`) from the label to its point, as Power BI does; a label takes its series'
   colour. A label the app hides to keep the others apart (visibility hidden, opacity 0) is not drawn and not counted (v20).
   [rp-labels-apart]
-- **No text stands upright** (v19, the user 14/11: "cấm dựng đứng"): a figure or a name too long for its room slants at 45°,
+- **No text stands upright** (v19, 14/11: "cấm dựng đứng"): a figure or a name too long for its room slants at 45°,
   never 90° - no `writing-mode: vertical-*`, no rotation of a text near a quarter turn; a column too narrow even for a slanted
   figure keeps it in its tip. [rp-no-upright]
 - **A tip says one fact a line, "Field: Value"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
@@ -118,7 +118,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **A table shows ten rows at least** and scrolls the rest inside its own frame, staying on the page beside the other visuals
   (v7); ten rows as drawn - a row of two lines is taller - never a fixed height. [rp-table-rows-cap] The only table of its page takes the page height, in a frame that really scrolls (v16).
   Ten rows is the floor, not the ceiling: a table that still scrolls takes the screen left below its page, down to the screen's
-  bottom - rows never scroll above empty screen (v17, user 14/11). A visual below the table keeps it at ten rows.
+  bottom - rows never scroll above empty screen (v17, 14/11). A visual below the table keeps it at ten rows.
 - **How a table fits its panel** (v15, the means of rp-no-side-scroll): tight cell padding for a table wider than its panel at
   the kit's; the row measured once, its tables given the width they need only while every panel of the row still fits it (a
   donut or chart keeps 15rem), else the report's shares stand; a header wraps between words, never inside one; a matrix whose
