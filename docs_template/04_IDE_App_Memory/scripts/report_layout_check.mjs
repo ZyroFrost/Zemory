@@ -252,6 +252,40 @@ export const RULES = [
       }
     }
     return true;`),
+  // (v22, 16/11, from Dashboard's own gate: a combo's column told only "Revenue LY") what a chart's legend names, its tooltip names
+  rule('rp-tip-all-legend', 'a chart\'s tooltip names every entry of its legend: the fullest tip of a chart whose legend names two series or more carries each name, as a Power BI combo tooltip (v22, 16/11)', `
+    for (const v of document.querySelectorAll('[data-rp-visual="chart"]')) {
+      if (!v.getClientRects().length) continue;
+      const key = v.querySelector('[data-rp-legend]'); if (!key) continue;
+      const names = [...key.children].filter(c => c.getClientRects().length && !c.matches('button, .btn')).map(c => c.textContent.trim()).filter(Boolean);
+      if (names.length < 2) continue;
+      // one mark per entry: a legend of the categories on the axis, each mark tells its own
+      const marks = [...v.querySelectorAll('[data-rp-mark]')].filter(m => !m.closest('[data-rp-legend]') && m.getClientRects().length);
+      if (marks.length <= names.length) continue;
+      const tips = [...v.querySelectorAll('[data-rp-mark][data-tip], [data-rp-mark] [data-tip]')].filter(e => !e.closest('[data-rp-legend]')).map(e => e.getAttribute('data-tip') || '');
+      if (!tips.length) continue;
+      const full = tips.reduce((a, b) => b.split('\\n').length > a.split('\\n').length ? b : a).toLowerCase();
+      const missing = names.filter(n => !full.includes(n.toLowerCase()));
+      if (missing.length) return (v.querySelector('[data-rp-title]')?.textContent.trim() || 'a chart') + ': its tooltip leaves out the legend\\'s ' + missing.join(', ');
+    }
+    return true;`),
+  // (v22, 16/11: the size of the numbers in Settings > Numbers covers the charts too) a table's numbers and a chart's labels follow
+  // --num-scale: doubled for a moment, both must double
+  rule('rp-num-size', 'the numbers of a report follow the person\'s number size (Settings > Numbers, --num-scale on <html>): a number of a table and a label of a chart grow and shrink with it (v22, 16/11)', `
+    const root = document.documentElement, cur = getComputedStyle(root).getPropertyValue('--num-scale').trim();
+    if (!cur) return true;
+    const shown = e => e && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
+    // a chart label: one drawn on a data mark first; the figure in the middle of a donut is the chart's own KPI, never read here
+    const labels = [...document.querySelectorAll('[data-rp-visual] [data-rp-label]')].filter(e => shown(e) && !e.closest('[class*="center"]'));
+    const picks = [[...document.querySelectorAll('table td[data-rp-num], table td [data-rp-num]')].find(shown), labels.find(e => e.closest('[data-rp-mark]')) || labels[0]].filter(Boolean);
+    if (!picks.length) return true;
+    const before = picks.map(e => parseFloat(getComputedStyle(e).fontSize)), was = root.style.getPropertyValue('--num-scale');
+    root.style.setProperty('--num-scale', String((parseFloat(cur) || 1) * 2));
+    const after = picks.map(e => parseFloat(getComputedStyle(e).fontSize));
+    if (was) root.style.setProperty('--num-scale', was); else root.style.removeProperty('--num-scale');
+    for (const [i, e] of picks.entries()) if (Math.abs(after[i] / before[i] - 2) > .15)
+      return (e.matches('[data-rp-label]') ? 'a chart label' : 'a table number') + ' does not follow the number size (--num-scale): ' + before[i] + ' px stays ' + after[i] + ' px (' + (e.textContent || '').trim().slice(0, 20) + ')';
+    return true;`),
   rule('rp-value-colour', 'a colour on a value says its level: one colour per level (data-rp-cf) across the even and odd rows - a stripe never paints over it - and no purple or info colour stands for a level (v13, the user 09/11)', `
     const paintOf = e => { const s = getComputedStyle(e); return s.backgroundImage !== 'none' ? s.backgroundImage : !clear(s.backgroundColor) ? s.backgroundColor : s.color; };
     const hue = c => { const [r, g, b] = rgb(c).map(x => x / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; if (!d) return -1;
@@ -695,7 +729,9 @@ const rowsOf = n => Array.from({length: n}, (_, i) => `<tr><td>N${i}</td><td dat
 // (v12) a figure card of the good page carries its tone
 const toned = html => html.replace(/class="card kpi-card"/g, (m, at) => m + ' data-tone="' + 'abcd'[(at / 7 | 0) % 4] + '"');
 export const SELF_TEST = {
-  good: SHELL(toned(`<div class="row" data-rp-visual="cards">${card('Doanh thu', '1.200', '+5,2% MoM', 'up', 'text-success')}` +
+  // (v22) the numbers and the chart labels follow the person's number size
+  good: SHELL(toned(`<style>:root{--num-scale:1}[data-rp-visual] [data-rp-label]{font-size:calc(10px * var(--num-scale))!important}td[data-rp-num]{font-size:calc(14px * var(--num-scale))}</style>` +
+    `<div class="row" data-rp-visual="cards">${card('Doanh thu', '1.200', '+5,2% MoM', 'up', 'text-success')}` +
     `${card('Huỷ món', '35', '+3,0% MoM', 'down', 'text-danger')}${card('Bill', '420', '-1,0% MoM', 'up', 'text-danger')}` +
     `${card('Tỷ trọng', '40%', '+2,0 pp MoM', 'up', 'text-success')}</div>`) +
     `<div class="row">${chart('Theo giờ', 'rgb(61, 126, 191)', 12, 'hour').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}${chart('Theo ngày', 'rgb(46, 156, 122)', 12, 'day').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}</div>` +
@@ -754,7 +790,11 @@ export const SELF_TEST = {
     // bar with no leader · a text standing upright
     `<div class="row"><div class="card" data-rp-visual="chart" style="width:300px"><h6 data-rp-title>Nhãn xa</h6><div class="bars" data-rp-body style="height:120px;display:flex;align-items:flex-end">` +
     `<i data-rp-mark data-tip="Năm: 2025\\nDoanh thu: 10" style="display:block;width:30px;height:20px;position:relative;background:rgb(61, 126, 191)"><span data-rp-label style="position:absolute;bottom:60px;left:0;font-size:10px">10</span></i>` +
-    `<span style="writing-mode:vertical-rl">Doanh thu</span></div></div></div>`),
+    `<span style="writing-mode:vertical-rl">Doanh thu</span></div></div></div>` +
+    // (v22) a chart of two series whose tooltip names only one · numbers and labels of a fixed size while the page has a number size
+    `<style>:root{--num-scale:1}</style><div class="row"><div class="card" data-rp-visual="chart" style="width:300px"><h6 data-rp-title>Hai chuỗi</h6>` +
+    `<div data-rp-legend style="display:flex;gap:6px"><span>Doanh thu</span><span>Cùng kỳ</span></div><div class="bars" data-rp-body>` +
+    [1, 2, 3, 4].map(n => `<i data-rp-mark data-tip="Tháng: T${n}\\nDoanh thu: ${n}0" style="height:${n * 20}px;background:rgb(61, 126, 191)"></i>`).join('') + `</div></div></div>`),
 };
 
 if (process.argv.includes('--list')) for (const r of RULES) console.log(r.id.padEnd(22) + r.rule);
