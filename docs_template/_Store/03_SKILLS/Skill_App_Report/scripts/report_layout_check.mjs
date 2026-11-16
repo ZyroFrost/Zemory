@@ -275,7 +275,9 @@ export const RULES = [
     const root = document.documentElement, cur = getComputedStyle(root).getPropertyValue('--num-scale').trim();
     if (!cur) return true;
     const shown = e => e && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
-    const picks = [[...document.querySelectorAll('table td[data-rp-num], table td [data-rp-num]')].find(shown), [...document.querySelectorAll('[data-rp-visual] [data-rp-label]')].find(shown)].filter(Boolean);
+    // a chart label: one drawn on a data mark first; the figure in the middle of a donut is the chart's own KPI, never read here
+    const labels = [...document.querySelectorAll('[data-rp-visual] [data-rp-label]')].filter(e => shown(e) && !e.closest('[class*="center"]'));
+    const picks = [[...document.querySelectorAll('table td[data-rp-num], table td [data-rp-num]')].find(shown), labels.find(e => e.closest('[data-rp-mark]')) || labels[0]].filter(Boolean);
     if (!picks.length) return true;
     const before = picks.map(e => parseFloat(getComputedStyle(e).fontSize)), was = root.style.getPropertyValue('--num-scale');
     root.style.setProperty('--num-scale', String((parseFloat(cur) || 1) * 2));

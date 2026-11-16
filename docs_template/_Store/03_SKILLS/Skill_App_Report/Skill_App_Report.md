@@ -97,7 +97,8 @@ description: The report pages of an app - what a page of figures, charts and tab
   not judged. [rp-tip-all-legend]
 - **The numbers follow the person's number size** (v22, 16/11): Settings > Numbers > Number size (`--num-scale` on `<html>`,
   at the three levels) sizes the numbers of a table (`data-rp-num`) and the labels of a chart (`data-rp-label`) alike; a chart
-  that places its labels apart counts with the scaled size. [rp-num-size]
+  that places its labels apart counts with the scaled size. The figure in the middle of a donut is the chart's own KPI and keeps
+  its size, as KPI cards do. [rp-num-size]
 - **A colour on a number says its level, never decoration** (v13, as Power BI's conditional formatting): one scale of levels for the whole app, good to bad -
   green · yellow · orange · red; a grade A/B/C/D takes the same scale; the stripes of a table never paint over a cell coloured by
   its value; no purple or info colour stands for a level. [rp-value-colour]
