@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 79
+version: 80
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -45,7 +45,8 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   never against it, never off the line of the rest. A part centred on purpose (an empty state) and the right end of a part that
   scrolls sideways are not judged. An app never sets its own room on a panel: the frame's token is the one. A table is read by its
   framed box (v78, 16/11: "từ mép padding tới chữ và khung matrix luôn"): the box stands the room from both edges and
-  its first column's words stand `--table-pad` (.75rem) inside it - 28 px from the panel's edge. A panel that keeps its table in its own body block (`.card > .rp-body` or `[data-rp-body]`) is read the same way (v79, 16/11). [pad-even]
+  its first column's words stand `--table-pad` (.75rem) inside it - 28 px from the panel's edge. A panel that keeps its table in its own body block (`.card > .rp-body` or `[data-rp-body]`) is read the same way (v79, 16/11), and so is a block that only wraps one table box, a bare panel with no `.card` included
+  (v80, 17/11). [pad-even]
 - **One scroll bar per column** (v75, 14/11: a panel held to the screen showed two bars side by side): a box that
   scrolls up and down never stands inside another box of the page that scrolls up and down. In a page card that fills the frame
   a list window is as tall as the room the body leaves it (the body's height less the panel head, paddings and edges round

@@ -1,5 +1,5 @@
 ---
-version: 79
+version: 80
 lang: vi
 ---
 
@@ -39,7 +39,7 @@ lang: vi
   với phần khác. Phần cố ý canh giữa (trạng thái trống) và mép phải của phần cuộn ngang thì không xét. App không tự đặt khoảng
   riêng cho panel: dùng token của khung. Bảng được đo theo khung viền của nó (v78, 16/11: "từ mép padding tới chữ và
   khung matrix luôn"): khung cách hai mép panel đúng khoảng đó, chữ cột đầu cách khung `--table-pad` (.75rem) - tức 28 px từ mép
-  panel. Panel đặt bảng trong khối thân riêng (`.card > .rp-body` hoặc `[data-rp-body]`) cũng đo như vậy (v79, 16/11). [pad-even]
+  panel. Panel đặt bảng trong khối thân riêng (`.card > .rp-body` hoặc `[data-rp-body]`) cũng đo như vậy (v79, 16/11); khối chỉ bọc đúng một khung bảng cũng vậy, kể cả panel trần không có `.card` (v80, 17/11). [pad-even]
 - **Mỗi cột một thanh cuộn** (v75, 14/11: panel giới hạn trong màn hình hiện 2 thanh cuộn cạnh nhau): hộp cuộn dọc
   không bao giờ nằm trong một hộp cuộn dọc khác của trang. Trong thẻ trang lấp khung, cửa sổ danh sách cao đúng phần chỗ thân
   thẻ còn chừa (chiều cao thân trừ đầu panel, padding, viền quanh nó); cửa sổ bị chừa quá ít thì cuộn theo thân. [one-scroll]
