@@ -46,6 +46,9 @@ function Install-ZemoryDocker {
   wsl.exe -d $distro -u root -- sh -c "usermod -aG docker $wslUser; systemctl enable --now docker >/dev/null 2>&1; docker version --format '{{.Server.Version}}' >/dev/null"
   Native "starting docker inside $distro"
   Say "ok  Docker Engine (inside $distro)"
+  # linger: the user's systemd manager outlives a wsl call, so `docker-rebuild.sh --detach` runs the build as a user unit.
+  # WSL ends every process of a call when wsl.exe returns, setsid or not (measured 2026-11-16).
+  wsl.exe -d $distro -u root -- loginctl enable-linger $wslUser
 
   # Memory back to Windows (plan/30 §0, 2026-11-12). The VM hands Windows only free blocks of 2 MB and more, and by default
   # never drops its file cache: vmmem sat at 3.5 GB while zemory used ~215 MB. The kernel now compacts free memory as it

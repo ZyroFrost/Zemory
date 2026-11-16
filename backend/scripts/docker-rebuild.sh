@@ -11,12 +11,15 @@
 #
 #   wsl -d <distro> -- sh backend/scripts/docker-rebuild.sh --detach
 #
-# --detach: the build leaves the shell that started it (setsid nohup) and runs at the lowest priority (nice 19), so a
+# --detach: the build runs as a systemd user unit (zemory-rebuild, nice 19) instead of a child of the calling shell, so a
 # closed window or an agent harness reaping its own children on a low-memory machine no longer kills it halfway (measured
-# 2026-11-13: Claude Code killed the build with Windows at 1.8 GB free, while WSL itself had 1.3 GB + 3.7 GB swap
-# left). It never waits for memory: WSL is capped (.wslconfig) and leans on its swap, so little RAM means a slower build,
-# not a failed one. Output is appended to <store>/data/logs/docker-rebuild.log (never deleted - rule 02-97); each run
-# ends with the line "rebuild finished, exit <code>".
+# 2026-11-13: Claude Code killed the build with Windows at 1.8 GB free, while WSL itself had 1.3 GB + 3.7 GB swap left).
+# setsid/nohup is not enough: WSL ends every process of a call when wsl.exe returns (measured 2026-11-16: a setsid sleep
+# was gone 20 s later; the same sleep under systemd-run --user lived). The user unit needs linger (the installer sets it;
+# by hand: wsl -d <distro> -u root -- loginctl enable-linger <user>); without it the build runs attached and says so.
+# It never waits for memory: WSL is capped (.wslconfig) and leans on its swap, so little RAM means a slower build, not a
+# failed one. Output is appended to <store>/data/logs/docker-rebuild.log (never deleted - rule 02-97); each run ends with
+# the line "rebuild finished, exit <code>".
 set -eu
 DIR=$(cd "$(dirname "$0")/../.." && pwd)
 CAP_GB=${ZEMORY_DOCKER_CAP_GB:-10}
@@ -27,9 +30,21 @@ if [ "${1:-}" = "--detach" ]; then
   log="${store:-$HOME}/data/logs/docker-rebuild.log"
   mkdir -p "$(dirname "$log")"
   mem=$(awk '/^MemAvailable:/ { m = $2 } /^SwapFree:/ { s = $2 } END { printf "%d MB free + %d MB swap", m / 1024, s / 1024 }' /proc/meminfo)
+  linger=$(loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null || true)
+  if ! command -v systemd-run >/dev/null 2>&1 || [ "$linger" != "yes" ]; then
+    echo "docker-rebuild: cannot detach - WSL ends a job when the wsl call returns unless systemd holds it, and linger is off." >&2
+    echo "  once, as root: wsl -d <distro> -u root -- loginctl enable-linger $(id -un) - running attached now ($mem)" >&2
+    exec sh "$SELF"
+  fi
+  if systemctl --user -q is-active zemory-rebuild 2>/dev/null; then
+    echo "docker-rebuild: already running (systemctl --user status zemory-rebuild) - log $log"
+    exit 0
+  fi
+  systemctl --user reset-failed zemory-rebuild >/dev/null 2>&1 || true
   echo "=== $(date -u +%Y-%m-%dT%H:%M:%SZ) rebuild started, detached · $mem" >> "$log"
-  ZEMORY_REBUILD_DETACHED=1 setsid nohup nice -n 19 sh "$SELF" >> "$log" 2>&1 < /dev/null &
-  echo "docker-rebuild: running detached (pid $!) · $mem - a low figure makes it slower, it does not stop it"
+  systemd-run --user --quiet --unit=zemory-rebuild --collect --nice=19 --setenv=ZEMORY_REBUILD_DETACHED=1 \
+    sh -c 'exec sh "$0" >> "$1" 2>&1 < /dev/null' "$SELF" "$log"
+  echo "docker-rebuild: running detached (systemd user unit zemory-rebuild) · $mem - a low figure makes it slower, it does not stop it"
   echo "docker-rebuild: log $log - the run ends with 'rebuild finished, exit <code>'"
   exit 0
 fi
