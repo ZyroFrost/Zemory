@@ -97,13 +97,13 @@ Khoanh vùng thì thêm `options = {"targetVisualNames": [<id...>], "suppressDat
 ## Tắt / mở Power BI Desktop
 
 ```powershell
-# chi dong dung instance mo file dang lam (command line chua <Ten>.pbip), khong dong Desktop cua repo khac
+# close only the instance that has this file open (its command line holds <Ten>.pbip), never another repo's Desktop
 $t = Get-CimInstance Win32_Process -Filter "Name='PBIDesktop.exe'" | ? { $_.CommandLine -match '<Ten>\.pbip' }
 foreach ($i in $t) { $p = Get-Process -Id $i.ProcessId; $p.CloseMainWindow() | Out-Null
-  if (-not $p.WaitForExit(30000)) { throw "Desktop $($i.ProcessId) chua thoat - xem hop thoai luu (SKILL §1a), khong Kill" } }
+  if (-not $p.WaitForExit(30000)) { throw "Desktop $($i.ProcessId) did not exit - look for a save dialog (SKILL §1a), never Kill" } }
 
-# mo: chi khi khong con PBIDesktop.exe nao (SKILL §1a)
-if (Get-Process PBIDesktop -ErrorAction SilentlyContinue) { throw 'con Desktop dang mo - khong mo them' }
+# open: only when no PBIDesktop.exe is left (SKILL §1a)
+if (Get-Process PBIDesktop -ErrorAction SilentlyContinue) { throw 'a Desktop is still open - do not open another' }
 Start-Process -FilePath "<đường dẫn>\<Tên>.pbip"
 do { Start-Sleep -Seconds 10; $q = Get-Process PBIDesktop -ErrorAction SilentlyContinue }
 while (($q | % { $_.MainWindowTitle }) -notmatch '<Ten>')
