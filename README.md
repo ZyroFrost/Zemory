@@ -490,7 +490,7 @@ is for (`Root_136_Principles`). The path is the slot's key:
   the parent's `## Inside` section. Every path written there must lie under the slot's own path; a place
   elsewhere is named by its slot or skill, and the gate reads every path to keep it so.
 - A design rule is not a slot. It lives in a skill: `app-base` holds what every app surface follows,
-  and a kind skill (`app-glass`) holds one look. A repo declares its kind in `frontend/config/ui.json`.
+  and a kind skill (`app-glass`) holds one look. An app repo declares its kind in `<app repo>/frontend/config/ui.json`.
 
 **Every name on HS follows a declared pattern** (`Rule_Gate_92_NameGrammar`). The pattern table covers
 shelves, layers, chapters, parts, sets, the `name:` field, and the folders and files inside a part:
