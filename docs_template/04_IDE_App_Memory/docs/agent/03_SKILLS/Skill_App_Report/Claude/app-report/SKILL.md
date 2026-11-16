@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 22
+version: 23
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v22 #9e0ff5d690e2
+from: _Store/03_SKILLS/Skill_App_Report @v23 #3ea67f77050d
 ---
 
 # app-report — the report pages of an app
@@ -27,7 +27,7 @@ from: _Store/03_SKILLS/Skill_App_Report @v22 #9e0ff5d690e2
 - **Every % is declared** a direction or a share: `up` (rising is good) · `down` (rising is bad: voids, costs, refunds) ·
   `share` (a part of a total, no good or bad). Undeclared ⇒ red. [rp-pct-declared]
 - **Two colours only, by the declared direction:** good green, bad red (a `down` figure is red when it rises); a target
-  ratio takes 1 as its threshold; a share takes neither colour. No third "nearly" band, no fixed grey %. [rp-pct-color]
+  ratio takes 1 as its threshold; a share takes neither colour. No third "nearly" band, no fixed grey %. A % in brackets with no sign of its own ("(5,8)%", the person's negatives in brackets) is negative (v23, 16/11). [rp-pct-color]
 - **A card whose figure is itself a ratio** (% target, % margin) shows its change in percentage points: `+2,5 pp MoM`,
   never a second %. [rp-pct-pp]
 

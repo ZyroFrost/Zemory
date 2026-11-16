@@ -1,5 +1,5 @@
 ---
-version: 22
+version: 23
 lang: vi
 ---
 
@@ -19,7 +19,7 @@ lang: vi
 - **Mọi % phải khai** chiều hoặc tỷ trọng: `up` (tăng là tốt) · `down` (tăng là xấu: huỷ, chi phí, hoàn tiền) · `share` (một
   phần của tổng, không tốt xấu). Chưa khai ⇒ đỏ. [rp-pct-declared]
 - **Chỉ hai màu, theo chiều đã khai:** tốt xanh, xấu đỏ (chỉ số `down` tăng thì đỏ); tỷ lệ đạt chỉ tiêu lấy ngưỡng 1; tỷ
-  trọng không tô màu. Không có dải vàng "gần đạt", không % xám cố định. [rp-pct-color]
+  trọng không tô màu. Không có dải vàng "gần đạt", không % xám cố định. % trong ngoặc không có dấu ("(5,8)%", số âm hiện bằng ngoặc theo cài đặt của người xem) là số âm (v23, 16/11). [rp-pct-color]
 - **Card mà con số chính đã là tỷ lệ** (% chỉ tiêu, % biên lợi nhuận) ghi thay đổi bằng điểm %: `+2,5 pp MoM`, không ghi %
   lần nữa. [rp-pct-pp]
 

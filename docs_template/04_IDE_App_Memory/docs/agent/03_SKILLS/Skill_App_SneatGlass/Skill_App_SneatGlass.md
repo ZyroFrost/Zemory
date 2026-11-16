@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 78
+version: 79
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v78 #d968a1478998
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v79 #19a0d1c53323
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -46,7 +46,7 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v78 #d968a1478998
   never against it, never off the line of the rest. A part centred on purpose (an empty state) and the right end of a part that
   scrolls sideways are not judged. An app never sets its own room on a panel: the frame's token is the one. A table is read by its
   framed box (v78, 16/11: "từ mép padding tới chữ và khung matrix luôn"): the box stands the room from both edges and
-  its first column's words stand `--table-pad` (.75rem) inside it - 28 px from the panel's edge. [pad-even]
+  its first column's words stand `--table-pad` (.75rem) inside it - 28 px from the panel's edge. A panel that keeps its table in its own body block (`.card > .rp-body` or `[data-rp-body]`) is read the same way (v79, 16/11). [pad-even]
 - **One scroll bar per column** (v75, 14/11: a panel held to the screen showed two bars side by side): a box that
   scrolls up and down never stands inside another box of the page that scrolls up and down. In a page card that fills the frame
   a list window is as tall as the room the body leaves it (the body's height less the panel head, paddings and edges round

@@ -15,7 +15,12 @@ const H = `
   const vis = () => [...document.querySelectorAll('[data-rp-visual]')].filter(e => e.getClientRects().length);
   const box = e => e.getBoundingClientRect();
   const txt = e => (e.innerText || e.textContent || '').trim();
-  const num = s => { const m = String(s).replace(/\\s/g, '').replace('−', '-').match(/[-+]?\\d+([.,]\\d+)?/); return m ? Number(m[0].replace(',', '.')) : NaN; };
+  // (v23, Dashboard 16/11: "(5.8)% vs Target" read as +5.8) a % in brackets with no sign of its own - "(5,8)%" or "(5,8%)" - is
+  // negative: the person's number format may show a negative in brackets (Settings > Numbers > Negatives); a year in brackets
+  // "(2025)" stays what it is
+  const num = s => { const t = String(s).replace(/\\s/g, '').replace('−', '-'), m = t.match(/[-+]?\\d+([.,]\\d+)?/); if (!m) return NaN;
+    const v = Number(m[0].replace(',', '.')), after = t.slice(m.index + m[0].length, m.index + m[0].length + 2);
+    return !/^[-+]/.test(m[0]) && t[m.index - 1] === '(' && (after === ')%' || after === '%)') ? -v : v; };
   const rgb = c => (c.match(/[\\d.]+/g) || []).slice(0, 4).map(Number);
   const clear = c => c === 'transparent' || (rgb(c).length === 4 && rgb(c)[3] === 0);
   const probe = cls => { const p = document.createElement('span'); p.className = cls; document.body.appendChild(p); const c = getComputedStyle(p).color; p.remove(); return c; };
@@ -732,7 +737,7 @@ export const SELF_TEST = {
   // (v22) the numbers and the chart labels follow the person's number size
   good: SHELL(toned(`<style>:root{--num-scale:1}[data-rp-visual] [data-rp-label]{font-size:calc(10px * var(--num-scale))!important}td[data-rp-num]{font-size:calc(14px * var(--num-scale))}</style>` +
     `<div class="row" data-rp-visual="cards">${card('Doanh thu', '1.200', '+5,2% MoM', 'up', 'text-success')}` +
-    `${card('Huỷ món', '35', '+3,0% MoM', 'down', 'text-danger')}${card('Bill', '420', '-1,0% MoM', 'up', 'text-danger')}` +
+    `${card('Huỷ món', '35', '+3,0% MoM', 'down', 'text-danger')}${card('Bill', '420', '(1,0)% MoM', 'up', 'text-danger')}` +
     `${card('Tỷ trọng', '40%', '+2,0 pp MoM', 'up', 'text-success')}</div>`) +
     `<div class="row">${chart('Theo giờ', 'rgb(61, 126, 191)', 12, 'hour').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}${chart('Theo ngày', 'rgb(46, 156, 122)', 12, 'day').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}</div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Chi tiết</h6><table><thead><tr><th>Nhà</th><th>Số</th></tr></thead>` +
