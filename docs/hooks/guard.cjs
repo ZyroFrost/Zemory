@@ -87,7 +87,7 @@ function consumeFlag(name, subject) {
   // First time: do NOT delete at once, only stamp it used. The flag dies when the window closes or when
   // someone asks for a different job - so it is still 'one flag for one job', it merely forgives one retry.
   // The stamp waits until the guard lets the call through: a check further on that blocks the same call leaves the flag
-  // unused (Dept_MKT 2026-11-16: the mail flag was stamped, a later once-per-session reminder blocked the command, and the
+  // unused (a department repo 2026-11-16: the mail flag was stamped, a later once-per-session reminder blocked the command, and the
   // retry 389 s later found the flag spent on a call that never ran - one approved send took 2-3 flags).
   if (!STAMPS.has(p)) STAMPS.set(p, "ZEMORY-USED " + mark + " " + Date.now() + "\n");
   return true;

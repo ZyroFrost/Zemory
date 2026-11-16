@@ -1009,7 +1009,7 @@ function runnable(cmd) {
 }
 // The command's segments: split at a new line, && || ; and | that stand OUTSIDE quotes. A plain split cut a grep pattern
 // "__main__\|argparse\|def main" in three, and its tail "def main" scripts/smtp_mail.py was judged a command that runs a
-// mail script (Dept_MKT 2026-11-16: ls; grep ... smtp_mail.py | head; git show - blocked as a send).
+// mail script (a department repo 2026-11-16: ls; grep ... smtp_mail.py | head; git show - blocked as a send).
 function splitOutsideQuotes(cmd) {
   const out = [];
   let cur = "";
@@ -1041,7 +1041,7 @@ function launcherSends(cmd, root) {
     let text = "";
     try { text = fs.readFileSync(full, "utf8"); } catch { continue; }
     // what the launcher runs is in its lines, not its remarks: the usage note of bin\_python.cmd ("bin\_python.cmd
-    // scripts\x.py") pointed the check at scripts\ and its mail helper (Dept_MKT 2026-11-16)
+    // scripts\x.py") pointed the check at scripts\ and its mail helper (a department repo 2026-11-16)
     const lines = text.split(/\r?\n/).filter((ln) => !/^\s*(@?rem\b|::)/i.test(ln)).join("\n");
     const refs = lines.replace(/%~dp0/gi, path.dirname(full) + path.sep).match(/[^\s"'|&<>]+\.(py|ps1)/gi) || [];
     // a launcher that hands on its arguments (%*) runs the script named after it in the command: that script's folder is

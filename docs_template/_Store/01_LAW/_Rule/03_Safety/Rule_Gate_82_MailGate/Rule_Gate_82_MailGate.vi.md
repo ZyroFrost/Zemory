@@ -1,5 +1,5 @@
 ---
-version: 11
+version: 12
 lang: vi
 ---
 # Rule_Gate_82_MailGate — The agent never sends mail on its own

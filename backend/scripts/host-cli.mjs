@@ -55,7 +55,7 @@ export function dockerCall(env, args, platform = process.platform) {
 
 /**
  * wsl.exe fails on its own, before the command runs: the WSL service does not answer and the call ends after ~30 s with
- * Wsl/Service/WSAETIMEDOUT (measured 2026-11-16 in Dept_MKT and here: 4 of 6 calls in a row, while the distro, the engine
+ * Wsl/Service/WSAETIMEDOUT (measured 2026-11-16 in a department repo and here: 4 of 6 calls in a row, while the distro, the engine
  * and the container were all up; the same call answered in 0.4 s a moment later). It then exits -1, which Node reads as
  * 4294967295; a command run inside the distro exits 0-255. Only that code is retried, so a command that ran is never run
  * twice. `call` is one attempt; `say(n)` reports attempt n failing.
@@ -267,7 +267,7 @@ export function isHostCommand(argv) {
   // `setup mcp` writes the agents' own config files (%APPDATA%, the MSIX package folder, ~/.cursor...): inside the
   // container none of them exist, so it listed every agent as not installed and wrote nowhere
   // `peers --fix` appends a title line to the session's transcript under ~/.claude, which the container mounts read-only
-  // (measured 2026-11-16 in Dept_MKT: EROFS, so the session-open skill's first step failed on every Docker machine); it
+  // (measured 2026-11-16 in a department repo: EROFS, so the session-open skill's first step failed on every Docker machine); it
   // reads the transcripts and the live sessions, never the Global Memory
   return argv[0] === "tidy" || (argv[0] === "setup" && argv[1] === "mcp") || (argv[0] === "peers" && argv.includes("--fix"));
 }

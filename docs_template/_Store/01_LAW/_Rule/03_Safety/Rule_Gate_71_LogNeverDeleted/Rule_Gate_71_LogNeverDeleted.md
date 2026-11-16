@@ -1,7 +1,7 @@
 ---
 id: Rule_71
 name: log-never-deleted
-version: 1
+version: 2
 kind: action
 code: 03_Safety
 checked: [Rule_Gate_10_DestructiveOps, Rule_Gate_04_ScratchFiles]

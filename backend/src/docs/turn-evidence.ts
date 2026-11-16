@@ -12,6 +12,21 @@ const CHECK = /\b(npm\s+(run\s+)?(test|check|lint|build|typecheck)|pnpm\s+(test|
 
 interface Call { name: string; input: Record<string, unknown> }
 
+// A command that only shows a file names it without running it.
+const SHOWS = /^(cat|type|more|less|head|tail|grep|egrep|rg|findstr|select-string|sls|get-content|gc|ls|dir|wc|diff|git|code|notepad|echo)$/i;
+/** Running a script changed this turn is a measurement of that change (a department repo 2026-11-16: `cmd /c "bin\_python.cmd
+ *  tasks\...\08_check_output.py"` read 66,240 cells with 0 gaps right after the last edit, and the turn was still held). */
+function runsChanged(cmd: string, changed: string[]): boolean {
+  if (!changed.length) return false;
+  const first = (cmd.trim().match(/^[^\s"'|;&<>]+/) ?? [""])[0];
+  if (SHOWS.test(first)) return false;
+  const norm = cmd.replace(/\\/g, "/").toLowerCase();
+  return changed.some((f) => {
+    const name = f.split("/").pop()!.toLowerCase();
+    return /\.(py|ps1|psm1|sh|js|mjs|cjs|ts)$/.test(name) && new RegExp(`(^|[\\s"'/])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([\\s"']|$)`).test(norm);
+  });
+}
+
 /** The tool calls the agent made since the last thing the person typed (oldest first). */
 export function callsThisTurn(transcriptText: string): Call[] {
   let calls: Call[] = [];
@@ -47,7 +62,7 @@ export function turnEvidence(transcriptText: string, ownGates: string[] = []): s
       continue;
     }
     const cmd = typeof c.input.command === "string" ? c.input.command : "";
-    if (cmd && (CHECK.test(cmd) || ownGates.some((g) => g && cmd.includes(g)))) changed = [];
+    if (cmd && (CHECK.test(cmd) || ownGates.some((g) => g && cmd.includes(g)) || runsChanged(cmd, changed))) changed = [];
   }
   if (!changed.length) return null;
   const list = [...new Set(changed)];
@@ -67,7 +82,7 @@ const KHO_QUOTED = /"[^"\n]*"|“[^”\n]*”|`[^`\n]*`/g;
  * What the agent wrote since the last Stop (its text blocks after the last typed line or the last `stop_hook_summary`),
  * oldest first. Text before an earlier Stop was already checked there: a turn woken by another session's message (a META
  * user record, so no typed line) kept a blocked line from the person's last prompt in "this turn" and re-blocked every
- * reply with it (SasinONE, 2026-11-12).
+ * reply with it (a department repo, 2026-11-12).
  */
 export function replyThisTurn(transcriptText: string): string {
   let parts: string[] = [];

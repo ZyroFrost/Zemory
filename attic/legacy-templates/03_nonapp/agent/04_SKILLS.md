@@ -23,6 +23,7 @@
 | Skill | Làm gì |
 |---|---|
 | `grill/` | làm rõ yêu cầu chưa đủ rõ TRƯỚC khi bắt tay |
+| `session-open/` | mở phiên: tự đặt tên phiên, đọc lõi, nối khối bàn giao, đo lại việc chọn rồi làm tiếp — hook nhắc tự bật ở tin đầu |
 | `session-close/` | chốt phiên: định tuyến mọi thứ về đúng file, rồi tự dọn hai file sổ |
 | `reconcile/` | nắn repo đã lệch về chuẩn — **đề xuất**, không tự dời |
 | `conform/` | chấm độ bám chuẩn (máy chấm, agent phán) |
