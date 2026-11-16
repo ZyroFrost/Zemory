@@ -54,6 +54,34 @@ export function dockerCall(env, args, platform = process.platform) {
 }
 
 /**
+ * wsl.exe fails on its own, before the command runs: the WSL service does not answer and the call ends after ~30 s with
+ * Wsl/Service/WSAETIMEDOUT (measured 2026-11-16 in Dept_MKT and here: 4 of 6 calls in a row, while the distro, the engine
+ * and the container were all up; the same call answered in 0.4 s a moment later). It then exits -1, which Node reads as
+ * 4294967295; a command run inside the distro exits 0-255. Only that code is retried, so a command that ran is never run
+ * twice. `call` is one attempt; `say(n)` reports attempt n failing.
+ */
+export const WSL_TRIES = 3;
+export function isWslFailure(r) {
+  return r?.status === 4294967295 || r?.status === -1;
+}
+export function withWslRetry(call, o = {}) {
+  const tries = o.tries ?? WSL_TRIES;
+  const say = o.say ?? ((n) => process.stderr.write(`zemory (docker): WSL did not answer (attempt ${n} of ${tries}) - trying again.\n`));
+  let r;
+  for (let n = 1; n <= tries; n++) {
+    r = call();
+    if (!isWslFailure(r)) return r;
+    if (n < tries) say(n);
+  }
+  return r;
+}
+/** One wsl.exe call into the distro with the retry above, for the looks the CLI makes before the command itself. */
+function wslRun(env, args, timeout) {
+  return withWslRetry(() => spawnSync("wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, ...args], { encoding: "utf8", windowsHide: true, timeout }),
+    { say: () => {} });
+}
+
+/**
  * WSL stops an idle distro - and the engine and the container with it - unless a process holds it. The installer starts one
  * hidden `wsl.exe … sleep infinity` from every sign-in; a `wsl --shutdown` kills it until the next sign-in, and the container
  * then stops every time the last call ends (measured 25/10: SIGTERM every 20-60 s). Each CLI call puts the holder back when
@@ -111,7 +139,7 @@ export function ensureKeepAlive(env, o = {}) {
 export function ensureEngine(env, o = {}) {
   const platform = o.platform ?? process.platform;
   if (platform !== "win32" || !env.ZEMORY_WSL_DISTRO) return "skipped";
-  const run = o.run ?? ((args) => spawnSync("wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, ...args], { encoding: "utf8", windowsHide: true, timeout: 120_000 }));
+  const run = o.run ?? ((args) => wslRun(env, args, 120_000));
   run(["-u", "root", "--exec", "sh", "-c", "sed -i -E 's#^([A-Z]: /mnt/[a-z] drvfs metadata,noatime) 0 0$#\\1,nofail 0 0#' /etc/fstab"]);
   const state = String(run(["-u", "root", "--exec", "systemctl", "is-active", "docker"]).stdout ?? "").trim();
   if (state === "active") return "running";
@@ -137,7 +165,7 @@ export function healDriveMount(env, o = {}) {
   const drive = env.HOST_DRIVE ?? "";
   const m = drive.match(/^\/mnt\/([a-z])(\/|$)/i);
   if (platform !== "win32" || !env.ZEMORY_WSL_DISTRO || !m) return "skipped";
-  const run = o.run ?? ((args) => spawnSync("wsl.exe", ["-d", env.ZEMORY_WSL_DISTRO, ...args], { encoding: "utf8", windowsHide: true, timeout: 60_000 }));
+  const run = o.run ?? ((args) => wslRun(env, args, 60_000));
   const log = o.log ?? (() => {});
   const container = env.ZEMORY_CONTAINER || "zemory";
   // restart unless a host command (`docker exec … zemory <args>`, seen as `node /usr/local/bin/zemory`) is running inside
@@ -270,10 +298,11 @@ function holders(path) {
 function runMove(env, argv, dir) {
   const calls = moveCalls(env, argv, dir);
   process.stderr.write("zemory (docker): project move --apply stops the zemory container, moves in a one-off container, then starts it again.\n");
-  spawnSync(calls.stop[0], calls.stop[1], { stdio: "ignore", windowsHide: true });
+  const tries = calls.stop[0] === "wsl.exe" ? WSL_TRIES : 1;
+  withWslRetry(() => spawnSync(calls.stop[0], calls.stop[1], { stdio: "ignore", windowsHide: true }), { tries });
   let status;
   try {
-    const r = spawnSync(calls.run[0], calls.run[1], { encoding: "utf8", windowsHide: true, stdio: ["inherit", "pipe", "pipe"] });
+    const r = withWslRetry(() => spawnSync(calls.run[0], calls.run[1], { encoding: "utf8", windowsHide: true, stdio: ["inherit", "pipe", "pipe"] }), { tries });
     const out = `${r.stdout ?? ""}${r.stderr ?? ""}`.split(/\r?\n/).filter((l) => !/Processing \/etc\/fstab/.test(l)).join("\n");
     process.stdout.write(out.endsWith("\n") ? out : out + "\n");
     status = r.status ?? 1;
@@ -282,7 +311,7 @@ function runMove(env, argv, dir) {
       process.stdout.write(held ? `  Holding it now:\n${held.split("\n").map((l) => `    ${l}`).join("\n")}\n` : "  No holder found from here (a service, or another user's process).\n");
     }
   } finally {
-    spawnSync(calls.start[0], calls.start[1], { stdio: "ignore", windowsHide: true });
+    withWslRetry(() => spawnSync(calls.start[0], calls.start[1], { stdio: "ignore", windowsHide: true }), { tries });
   }
   process.exit(status);
 }
@@ -323,7 +352,7 @@ function main() {
   const tty = Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const args = ["exec", "-i", ...(tty ? ["-t"] : []), ...(dir ? ["-w", dir] : []), container, "zemory", ...process.argv.slice(2)];
   const [bin, argv] = dockerCall(env, args);
-  const r = spawnSync(bin, argv, { stdio: "inherit", windowsHide: true });
+  const r = withWslRetry(() => spawnSync(bin, argv, { stdio: "inherit", windowsHide: true }), { tries: bin === "wsl.exe" ? WSL_TRIES : 1 });
   if (r.error) {
     process.stderr.write(`zemory (docker): could not run docker (${r.error.message}). Is Docker running and the zemory container up?\n`);
     process.exit(127);
