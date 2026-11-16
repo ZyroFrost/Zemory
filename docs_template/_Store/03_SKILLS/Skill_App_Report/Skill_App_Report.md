@@ -227,6 +227,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 | `data-rp-page` (`data-rp-dept`) | the page root | a report page (its department code, for [rp-page-name]); required on every page with data points, the scope of [rp-marked] (icons under 40 px are not visuals) |
 | `data-rp-visual` = `chart` · `donut` · `table` · `cards` | each visual | what the block is; every `.card` holding svg / a table / data points carries it [rp-marked] |
 | `data-rp-title` | the visual's title | [rp-title] [rp-glossary] |
+| `data-rp-glossary` | the page's glossary, behind its button | [rp-glossary] |
 | `data-rp-fields` | a visual | its field set: same kind + same fields ⇒ one row [rp-same-row] |
 | `data-rp-axis="column"` · `data-rp-body` | a column chart · its plot | [rp-baseline] [rp-fill] |
 | `data-rp-mark` (`data-rp-compare`, `data-rp-value`) | each bar / slice / point | a series mark (a comparison series; its value) |
