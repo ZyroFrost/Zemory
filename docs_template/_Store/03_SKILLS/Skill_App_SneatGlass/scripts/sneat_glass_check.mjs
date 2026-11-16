@@ -49,7 +49,9 @@ export const RULES = [
     check: `(() => {
       // (v61, Dashboard 11/11: a P&L row named "Tiếp khách, quà tặng, giao tế, khác" read as a list) the label cell that opens a
       // row of a table of two columns or more is the row's name from the data - one fact; words in brackets are its gloss
-      const label = c => c.matches('td') && !c.previousElementSibling && c.parentElement && c.parentElement.children.length >= 2;
+      // (v77, Dashboard 15/11: a material's name from the DW holds commas - "Thớt nhựa (Màu xanh lá rau củ), 25cm, cái") a cell the
+      // app marks data-rp-name is the name of one thing from the data
+      const label = c => c.matches('[data-rp-name]') || c.matches('td') && !c.previousElementSibling && c.parentElement && c.parentElement.children.length >= 2;
       // (v70, Reconcile 13/11: the tables of a board were never read - a fold row of a branch, its name, count and sum parted
       // by " · " in a td, passed) a table on a board is read as one on a page card
       const cells = [...document.querySelectorAll('.page-card tbody td, .page-board tbody td, .card .card-body li, .card dd')].filter(c => !label(c));
@@ -2313,8 +2315,11 @@ export const PROBES = [
         const th = cellOf(table.tHead), tf = cellOf(table.tFoot), body = table.tBodies[0];
         if (!tf || !body || !table.getClientRects().length) continue;
         let box = table.parentElement;
-        while (box && !(/(auto|scroll)/.test(getComputedStyle(box).overflowY) && box.scrollHeight > box.clientHeight + 1)) box = box.parentElement;
-        if (!box) continue;
+        // (v77, Dashboard 15/11: a short table in its own sideways frame was judged against the page scroller) the box is the
+        // sticky cells' scroll container - the first one up that a person can scroll, overflowing or not; one that does not
+        // overflow covers no row
+        while (box && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+        if (!box || box.scrollHeight <= box.clientHeight + 1) continue;
         const saved = box.scrollTop;
         box.scrollTop = Math.max(0, table.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop) + 120;
         box.dispatchEvent(new Event('scroll')); await wait();

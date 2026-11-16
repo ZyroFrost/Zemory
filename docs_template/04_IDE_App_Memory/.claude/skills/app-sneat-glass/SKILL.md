@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 76
+version: 77
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v76 #693aa2bf715e
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v77 #9720d8f464b7
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -458,7 +458,8 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v76 #693aa2bf715e
   06/11: a grid in a nested frame read as not drawn, and a box left moved pushed the top bar's avatar out of view).
   [rows-painted] The rows passing under a pinned header are cut there, in any scrolling frame (v32). [head-clear] The rows
   passing behind a footer pinned at the bottom are cut at its upper edge, and the box's vertical scrollbar runs between the
-  pinned header and the pinned footer (v33, a probe). [foot-clear]
+  pinned header and the pinned footer (v33, a probe). The box is the sticky cells' scroll container; one that does not overflow
+  covers no row and is passed (v77, Dashboard 15/11). [foot-clear]
 
 ## 6. Check
 

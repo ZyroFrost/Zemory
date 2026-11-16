@@ -1,5 +1,5 @@
 ---
-version: 76
+version: 77
 lang: vi
 ---
 
@@ -417,7 +417,8 @@ lang: vi
   trả lại mọi khung đã cuộn (v34, Reconcile 06/11: lưới trong khung con bị tính là chưa vẽ, một khung bị lệch đẩy avatar ra
   ngoài). [rows-painted] Các dòng trôi xuống dưới đầu bảng ghim bị cắt tại đó, trong mọi khung cuộn (v32). [head-clear] Các
   dòng trôi ra sau dòng chân ghim ở đáy bị cắt tại mép trên của nó, và thanh cuộn dọc của khung chạy giữa đầu bảng ghim và chân
-  ghim (v33, phép đo động). [foot-clear]
+  ghim (v33, phép đo động). Khung là khung cuộn của các ô ghim; khung không tràn thì không che dòng nào và được bỏ qua
+  (v77, Dashboard 15/11). [foot-clear]
 
 ## 6. Kiểm
 

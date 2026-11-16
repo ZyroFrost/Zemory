@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 19
+version: 20
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v19 #dcb8dc2703e0
+from: _Store/03_SKILLS/Skill_App_Report @v20 #0baeb4b93ec8
 ---
 
 # app-report — the report pages of an app
@@ -67,7 +67,8 @@ from: _Store/03_SKILLS/Skill_App_Report @v19 #dcb8dc2703e0
 
 - **Every chart marks its series and takes its colours from the theme sequence,** continuing the sequence within a view;
   **no two charts of one view share the main colour.** Comparison series (LY · LM · LMTD · target) are grey shades.
-  [rp-chart-colour]
+  A chart stacked by a field it keys in its own legend wears that field's colours; a point of two fields
+  (`data-cf-dim="group|method"`) counts when the legend keys either (v20). [rp-chart-colour]
 - **Data labels have no box behind them; every % label is bold.** Every chart shows its numbers (`app-sneat-glass`
   [chart-labels]). [rp-label]
 
@@ -84,12 +85,13 @@ from: _Store/03_SKILLS/Skill_App_Report @v19 #dcb8dc2703e0
   nhau… nếu trùng phải có line trỏ vào cách xa ra 1 tí giống pbi"): no two data labels of a visual overlap - a line's figure
   over a combo's columns included; a label that would cover another moves away from its point, up first, down when the top has
   no room, with a thin leader (`data-rp-leader`) from the label to its point, as Power BI does; a label takes its series'
-  colour. [rp-labels-apart]
+  colour. A label the app hides to keep the others apart (visibility hidden, opacity 0) is not drawn and not counted (v20).
+  [rp-labels-apart]
 - **No text stands upright** (v19, the user 14/11: "cấm dựng đứng"): a figure or a name too long for its room slants at 45°,
   never 90° - no `writing-mode: vertical-*`, no rotation of a text near a quarter turn; a column too narrow even for a slanted
   figure keeps it in its tip. [rp-no-upright]
 - **A tip says one fact a line, "Field: Value"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
-  every number in full (244.008.536.989), never cut to tỷ / tr / k; % and points keep their form. [rp-tip-field-value]
+  every number in full (244.008.536.989), never cut to tỷ / tr / k; % and points keep their form. The check reads a value that is a figure; a name from the data ("Voucher: HN - Giải khát chỉ 9k") is not judged (v20, Dashboard 15/11). [rp-tip-field-value]
 - **A colour on a number says its level, never decoration** (v13, as Power BI's conditional formatting): one scale of levels for the whole app, good to bad -
   green · yellow · orange · red; a grade A/B/C/D takes the same scale; the stripes of a table never paint over a cell coloured by
   its value; no purple or info colour stands for a level. [rp-value-colour]
@@ -240,6 +242,7 @@ from: _Store/03_SKILLS/Skill_App_Report @v19 #dcb8dc2703e0
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | the glossary · each line | [rp-glossary] |
 | `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | a number cell of a table · its raw value | [rp-num-format] |
 | `data-rp-id` | a cell or column of codes (an employee's 03163) | not a number [rp-num-format] |
+| `data-rp-name` | a cell holding the name of one thing from the data (a material "Thớt nhựa (…), 25cm, cái") | one fact: its commas are no list [one-fact] (v20) |
 
 Cards use the four typography roles of `app-sneat-glass` (`kpi-title` · `kpi-main` · `kpi-percentage` · `kpi-secondary`).
 

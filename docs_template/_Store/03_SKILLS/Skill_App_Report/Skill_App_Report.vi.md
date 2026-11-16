@@ -1,5 +1,5 @@
 ---
-version: 18
+version: 20
 lang: vi
 ---
 
@@ -54,7 +54,9 @@ lang: vi
 ## 3. Màu và nhãn của chart
 
 - **Chart nào cũng đánh dấu chuỗi và lấy màu theo thứ tự màu theme,** nối tiếp trong một màn; **hai chart cùng màn không
-  trùng màu chính.** Chuỗi so sánh (LY · LM · LMTD · chỉ tiêu) là các bậc xám. [rp-chart-colour]
+  trùng màu chính.** Chuỗi so sánh (LY · LM · LMTD · chỉ tiêu) là các bậc xám.
+  Biểu đồ chồng theo một trường mà chú giải của nó có thì mặc màu của trường đó; điểm hai trường
+  (`data-cf-dim="group|method"`) được tính khi chú giải có một trong hai (v20). [rp-chart-colour]
 - **Nhãn số không có khung nền; mọi nhãn % in đậm.** Chart nào cũng hiện số (`app-sneat-glass` [chart-labels]). [rp-label]
 
 - **Mỗi điểm dữ liệu khi trỏ vào đều cho biết nó là gì** (một cột, một đoạn cột chồng, một chấm, một lát), kèm giá trị,
@@ -69,12 +71,13 @@ lang: vi
 - **Số của chart không đè nhau** (v13; mọi chart ở mọi board, v19 - user 14/11: "số không được đè nhau… nếu trùng phải có line
   trỏ vào cách xa ra 1 tí giống pbi"): không hai nhãn số nào của một hình giao nhau - kể cả số của đường đè số của cột trong
   chart kết hợp; nhãn sắp đè nhãn khác thì dời xa điểm của nó, lên trước, hết chỗ thì xuống, kèm một đoạn trỏ mảnh
-  (`data-rp-leader`) từ nhãn về điểm, như Power BI; nhãn mang màu chuỗi của nó. [rp-labels-apart]
+  (`data-rp-leader`) từ nhãn về điểm, như Power BI; nhãn mang màu chuỗi của nó.
+  Nhãn app đã ẩn để giữ các nhãn khác tách nhau (visibility hidden, opacity 0) không được vẽ, không tính (v20). [rp-labels-apart]
 - **Không chữ nào dựng đứng** (v19, user 14/11: "cấm dựng đứng"): số hay tên dài quá chỗ thì nghiêng 45°, không bao giờ 90° -
   không `writing-mode: vertical-*`, không xoay chữ gần một phần tư vòng; cột hẹp tới mức số nghiêng cũng không vừa thì số nằm
   trong tooltip. [rp-no-upright]
 - **Tooltip mỗi dòng một thông tin, "Trường: Giá trị"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
-  số viết đủ (244.008.536.989), không cắt thành tỷ / tr / k; % và điểm giữ dạng. [rp-tip-field-value]
+  số viết đủ (244.008.536.989), không cắt thành tỷ / tr / k; % và điểm giữ dạng. Máy chỉ chấm giá trị là con số; tên lấy từ dữ liệu ("Voucher: HN - Giải khát chỉ 9k") không bị chấm (v20, Dashboard 15/11). [rp-tip-field-value]
 - **Màu trên một con số nói mức của nó, không bao giờ để trang trí** (v13, như tô màu có điều kiện của Power BI): một thang mức cho cả app, tốt tới xấu - xanh · vàng ·
   cam · đỏ; xếp loại A/B/C/D theo cùng thang; sọc xen kẽ của bảng không bao giờ đè ô tô theo giá trị; không màu tím hay info cho một
   mức. [rp-value-colour]
@@ -210,6 +213,7 @@ lang: vi
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | bảng giải thích · mỗi dòng | [rp-glossary] |
 | `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | ô số của bảng · giá trị gốc | [rp-num-format] |
 | `data-rp-id` | ô hay cột mã (mã nhân viên 03163) | không phải số [rp-num-format] |
+| `data-rp-name` | ô chứa tên một thứ lấy từ dữ liệu (vật tư "Thớt nhựa (…), 25cm, cái") | một dữ kiện: dấu phẩy trong tên không phải danh sách [one-fact] (v20) |
 
 Card dùng bốn vai chữ của `app-sneat-glass` (`kpi-title` · `kpi-main` · `kpi-percentage` · `kpi-secondary`).
 

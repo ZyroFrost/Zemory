@@ -170,8 +170,9 @@ export const RULES = [
       if (!mark) return 'a chart without data-rp-mark: ' + name(c);
       // (v13, Dashboard 09/11: the charts of a page stacked by one field - CCTV / OS - wear that field's fixed colours, as the
       // report does) a chart whose main parts are the values of a field it keys in its own legend shares the field's colours
-      const part = mark.closest('[data-cf-dim]')?.dataset.cfDim;
-      const byField = part && c.querySelector('[data-rp-legend] [data-cf-dim="' + CSS.escape(part) + '"]');
+      // (v20, Dashboard 15/11: a part of a two-field point carries data-cf-dim="group|method") any field it names that the legend keys
+      const parts = (mark.closest('[data-cf-dim]')?.dataset.cfDim || '').split('|').filter(Boolean);
+      const byField = parts.some(p => c.querySelector('[data-rp-legend] [data-cf-dim="' + CSS.escape(p) + '"]'));
       if (c.dataset.rpVisual === 'chart' && !byField) {
         const col = paint(mark);
         if (seen.has(col)) return 'two charts of one view share the main colour: ' + seen.get(col) + ' · ' + name(c);
@@ -209,7 +210,9 @@ export const RULES = [
     return true;`),
   rule('rp-labels-apart', 'no two data labels of a visual cover each other (v13, the user 09/11: "số bị đè lên nhau")', `
     for (const v of vis()) {
-      const ls = [...v.querySelectorAll('[data-rp-label]')].filter(l => l.getClientRects().length && txt(l)).map(l => [l, box(l)]);
+      // (v20, Dashboard 15/11) a label the app hid to keep the others apart (visibility hidden, opacity 0) is not drawn
+      const shown = l => { const st = getComputedStyle(l); return st.visibility !== 'hidden' && Number(st.opacity) > 0; };
+      const ls = [...v.querySelectorAll('[data-rp-label]')].filter(l => l.getClientRects().length && txt(l) && shown(l)).map(l => [l, box(l)]);
       for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) {
         const a = ls[i][1], c = ls[j][1];
         if (a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1) return 'two numbers cover each other (' + txt(ls[i][0]) + ' · ' + txt(ls[j][0]) + '): ' + name(v);
@@ -244,7 +247,8 @@ export const RULES = [
       if (!m.getClientRects().length) continue;
       for (const line of (m.getAttribute('data-tip') || '').split('\\n').map(s => s.trim()).filter(Boolean)) {
         if (!line.includes(': ')) return 'a tip line without "Field: Value": ' + line.slice(0, 40);
-        if (/(^|[\\s:(])-?[\\d.,]*\\d\\s*(tỷ|tr|k|K|M|B|bn)$/.test(line)) return 'a tip number cut short: ' + line.slice(0, 40);
+        // (Dashboard 15/11) judge the value only when the value IS a figure - "Voucher: HN - Giải khát chỉ 9k" is a name from the data
+        if (/^[+\\-−]?[\\d.,]*\\d\\s*(tỷ|tr|k|K|M|B|bn)$/.test(line.slice(line.indexOf(': ') + 2).trim())) return 'a tip number cut short: ' + line.slice(0, 40);
       }
     }
     return true;`),
@@ -699,10 +703,10 @@ export const SELF_TEST = {
     `<tbody>${rowsOf(8)}</tbody><tfoot><tr data-rp-total style="font-weight:700"><td>Tổng</td><td data-rp-num="money" data-rp-raw="1234567890" data-sort-value="1234567890">1,2 tỷ</td></tr></tfoot></table></div></div>` +
     `<div class="row"><div class="card" data-rp-visual="chart" data-rp-fields="year" style="flex:1;position:relative;display:flex;flex-direction:column"><h6 data-rp-title>Theo năm</h6>` +
     `<div data-rp-legend style="display:flex;gap:6px;white-space:nowrap"><span data-cf-dim="year" data-cf-value="2025" style="height:20px">2025</span><span data-cf-dim="year" data-cf-value="2026" style="height:20px">2026</span><button class="rp-focus-btn" style="height:20px;padding:0">+</button></div>` +
-    `<div class="bars" data-rp-body style="flex:1 0 120px"><i data-rp-mark data-tip="Năm: 2025\\nDoanh thu: 1.200" style="height:60px;background:rgb(214, 96, 77);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">60</span></i>` +
+    `<div class="bars" data-rp-body style="flex:1 0 120px"><i data-rp-mark data-tip="Năm: 2025\\nDoanh thu: 1.200" data-cf-dim="store|year" data-cf-value="A|2025" style="height:60px;background:rgb(61, 126, 191);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">60</span><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px;visibility:hidden">61</span></i>` +
     `<i data-rp-mark data-tip="Năm: 2026\\nDoanh thu: 1.500" style="height:90px;background:rgb(230, 160, 40);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">90</span></i></div></div>` +
     `<div class="card" data-rp-visual="chart" data-rp-fields="store" style="flex:1;position:relative"><h6 data-rp-title>Xếp hạng</h6><button class="rp-focus-btn" style="position:absolute;top:2px;right:2px">+</button>` +
-    `<div class="bar-row" style="display:flex;width:400px"><span class="bar-name" style="width:35%">Nhà hàng A</span><div style="flex:1"><i data-rp-mark data-tip="Nhà hàng: A\\nDoanh thu: 100" style="display:block;height:8px;width:80%;background:rgb(0, 150, 170)"></i></div></div></div></div>` +
+    `<div class="bar-row" style="display:flex;width:400px"><span class="bar-name" style="width:35%">Nhà hàng A</span><div style="flex:1"><i data-rp-mark data-tip="Voucher: Quán A chỉ 9k\\nDoanh thu: 100" style="display:block;height:8px;width:80%;background:rgb(0, 150, 170)"></i></div></div></div></div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Đạt chỉ tiêu</h6><table><thead><tr><th>Nhà</th><th>% Target</th></tr></thead><tbody>` +
     [[30, 'rgb(197, 30, 36)'], [55, 'rgb(240, 140, 0)'], [85, 'rgb(230, 190, 0)'], [104, 'rgb(0, 122, 54)']].map(([v, c], i) => `<tr><td>N${i}</td><td data-rp-target="${v}" data-rp-raw="${v / 100}" data-rp-pct="share" data-rp-cf="${['bad', 'warn', 'ok', 'good'][i]}" data-rp-num="pct" style="background:${c}">${v},0%</td></tr>`).join('') +
     `</tbody></table></div></div>` +
@@ -734,7 +738,7 @@ export const SELF_TEST = {
     `<div data-rp-card data-built style="width:300px"><ul data-rp-card-pages style="display:grid;grid-template-columns:1fr"><li>A</li><li>B</li></ul></div>` +
     `<div class="row" data-rp-visual="cards"><div class="card kpi-card" style="width:120px"><p class="kpi-title">Nhà</p><div class="kpi-main" style="white-space:nowrap">Nhà hàng Lê Văn Sỹ Quận Ba</div></div></div>` +
     `<div class="row" style="align-items:flex-start"><div style="flex:1"><div class="card" data-rp-visual="chart" style="height:300px"><h6 data-rp-title>Cao</h6><svg width="60" height="60"></svg></div></div><div style="flex:1"><div class="card" data-rp-visual="chart" style="height:80px"><h6 data-rp-title>Ngắn</h6><svg width="60" height="60"></svg></div></div></div>` +
-    `<div class="row"><div class="card" data-rp-visual="chart" style="width:400px"><h6 data-rp-title>Chồng</h6><div data-rp-legend style="width:40px"><span data-cf-dim="y" data-cf-value="1">Năm 2025 dài</span></div><div class="bars" data-rp-body><i data-rp-mark data-tip="1,2 tỷ" style="height:80px;width:60px;background:red"></i><span data-rp-label style="position:absolute;left:10px;top:10px">12</span><span data-rp-label style="position:absolute;left:12px;top:12px">13</span></div>` +
+    `<div class="row"><div class="card" data-rp-visual="chart" style="width:400px"><h6 data-rp-title>Chồng</h6><div data-rp-legend style="width:40px"><span data-cf-dim="y" data-cf-value="1">Năm 2025 dài</span></div><div class="bars" data-rp-body><i data-rp-mark data-tip="Doanh thu: 1,2 tỷ" style="height:80px;width:60px;background:red"></i><span data-rp-label style="position:absolute;left:10px;top:10px">12</span><span data-rp-label style="position:absolute;left:12px;top:12px">13</span></div>` +
     `<div class="bar-row" style="display:flex;width:400px"><span class="bar-name" style="width:10%">Nhà hàng có tên rất dài ở quận một</span><div style="flex:1"></div></div></div></div>` +
     `<table><tbody><tr><td data-rp-target="96" style="background:rgb(0, 122, 54)">96%</td></tr><tr><td data-rp-target="104" style="background:rgb(0, 122, 54)">104%</td></tr>` +
     `<tr><td data-rp-cf="good" style="background:rgb(0, 122, 54)">A</td></tr><tr><td data-rp-cf="good" style="background:rgb(240, 240, 240)">A</td></tr></tbody></table>` +
