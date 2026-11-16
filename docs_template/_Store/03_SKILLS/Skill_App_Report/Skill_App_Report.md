@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 21
+version: 22
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -91,6 +91,13 @@ description: The report pages of an app - what a page of figures, charts and tab
   figure keeps it in its tip. [rp-no-upright]
 - **A tip says one fact a line, "Field: Value"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
   every number in full (244.008.536.989), never cut to tỷ / tr / k; % and points keep their form. The check reads a value that is a figure; a name from the data ("Voucher: HN - Giải khát chỉ 9k") is not judged (v20, Dashboard 15/11). [rp-tip-field-value]
+- **A tooltip names every entry of its legend** (v22, 16/11): a chart whose legend names two series or more (a combo, grouped
+  or stacked columns, several lines) gives every mark of one axis point the same tip - the point, then each legend entry
+  "Name: value" in the legend's order, as a Power BI combo tooltip. A legend of the categories on the axis (one mark each) is
+  not judged. [rp-tip-all-legend]
+- **The numbers follow the person's number size** (v22, 16/11): Settings > Numbers > Number size (`--num-scale` on `<html>`,
+  at the three levels) sizes the numbers of a table (`data-rp-num`) and the labels of a chart (`data-rp-label`) alike; a chart
+  that places its labels apart counts with the scaled size. [rp-num-size]
 - **A colour on a number says its level, never decoration** (v13, as Power BI's conditional formatting): one scale of levels for the whole app, good to bad -
   green · yellow · orange · red; a grade A/B/C/D takes the same scale; the stripes of a table never paint over a cell coloured by
   its value; no purple or info colour stands for a level. [rp-value-colour]

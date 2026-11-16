@@ -1,5 +1,5 @@
 ---
-version: 21
+version: 22
 lang: vi
 ---
 
@@ -78,6 +78,11 @@ lang: vi
   trong tooltip. [rp-no-upright]
 - **Tooltip mỗi dòng một thông tin, "Trường: Giá trị"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
   số viết đủ (244.008.536.989), không cắt thành tỷ / tr / k; % và điểm giữ dạng. Máy chỉ chấm giá trị là con số; tên lấy từ dữ liệu ("Voucher: HN - Giải khát chỉ 9k") không bị chấm (v20, Dashboard 15/11). [rp-tip-field-value]
+- **Tooltip ghi đủ mọi mục của chú giải** (v22, 16/11): chart có chú giải từ hai chuỗi trở lên (combo, cột nhóm, cột chồng,
+  nhiều đường) cho mọi mark của một mốc trục cùng một tooltip - tên mốc rồi từng mục chú giải "Tên: số" theo thứ tự chú giải,
+  như tooltip combo của Power BI. Chú giải là các mục trên trục (mỗi mục một mark) thì không xét. [rp-tip-all-legend]
+- **Số theo cỡ số của người xem** (v22, 16/11): Cài đặt › Số liệu › Cỡ số (`--num-scale` trên `<html>`, ba cấp) áp cho số trong
+  bảng (`data-rp-num`) và nhãn số trên chart (`data-rp-label`); chart tự xếp nhãn cho khỏi đè thì tính theo cỡ đã nhân. [rp-num-size]
 - **Màu trên một con số nói mức của nó, không bao giờ để trang trí** (v13, như tô màu có điều kiện của Power BI): một thang mức cho cả app, tốt tới xấu - xanh · vàng ·
   cam · đỏ; xếp loại A/B/C/D theo cùng thang; sọc xen kẽ của bảng không bao giờ đè ô tô theo giá trị; không màu tím hay info cho một
   mức. [rp-value-colour]
