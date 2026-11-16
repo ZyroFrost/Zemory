@@ -400,17 +400,6 @@ export function relayCli(env, argv, dir, o = {}) {
 
 async function main() {
   const env ={ ...readEnv(join(COMPOSE_DIR, ".env")), ...process.env };
-  // internal: the hooks start this in the background (host-hook.mjs healDriveSoon) - heal a stale Drive mount, nothing else
-  if (process.argv[2] === "--heal-drive") {
-    try { healDriveMount(env, { log: healLogTo(join(COMPOSE_DIR, "data")) }); } catch { /* fail-open */ }
-    process.exit(0);
-  }
-  // internal: a hook whose daemon call failed starts this detached (host-hook.mjs wakeHolderSoon) - put the WSL holder and
-  // the engine back, never on the hook's own time (a hook that ran this inline held a Stop for minutes while WSL hung)
-  if (process.argv[2] === "--wake-holder") {
-    try { ensureKeepAlive(env, { now: Number.MAX_SAFE_INTEGER }); } catch { /* fail-open */ }
-    process.exit(0);
-  }
   // one install per machine: the choice the installers recorded decides which command answers
   const choiceFile = installChoiceFile(env);
   const chosen = readInstallChoice(choiceFile);

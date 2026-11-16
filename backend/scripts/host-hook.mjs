@@ -10,7 +10,7 @@
 //
 // The daemon unreachable ⇒ exit 0 and say nothing: a capture hook never blocks the agent's turn (fail-open, as the
 // stdin hook). The send guard only narrows who may be messaged, so it fails open too.
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import http from "node:http";
 import { homedir } from "node:os";
@@ -137,71 +137,6 @@ function manage(add) {
 }
 
 /**
- * The daemon did not answer: put the WSL holder back. A `wsl --shutdown` kills the hidden `sleep infinity` that keeps the
- * distro up, and only a `zemory` command used to restart it - meanwhile WSL stopped the idle distro and the container with it
- * every ~20 s (measured 2026-10-28, 4 minutes of restarts). Hooks run on every turn of every session, so they notice first.
- * Same look as the CLI (ensureKeepAlive), but NOT held back by the CLI's 10-minute stamp: that stamp says a look happened,
- * not that the holder is still alive - measured 29/10, a CLI look 52 s before the holder was killed made the hook skip, and
- * the container stayed down 170 s. The daemon not answering is the reason to look; the hook's own stamp spaces the looks
- * 20 s apart, so a burst of hooks while the container restarts probes once. Only a Docker machine looks (no distro ⇒
- * skipped); fail-open - a hook never blocks the turn.
- */
-export const WAKE_EVERY_MS = 20_000;
-export async function wakeHolder(o = {}) {
-  try {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const cli = o.cli ?? (await import("./host-cli.mjs"));
-    const env = { ...cli.readEnv(join(here, "..", "..", ".env")), ...process.env, ...(o.env ?? {}) };
-    const stamp = o.wakeStamp ?? join(here, "..", "..", "data", ".wsl-wake");
-    const now = o.now ?? Date.now();
-    try {
-      if (now - statSync(stamp).mtimeMs < WAKE_EVERY_MS) return "recent";
-    } catch {
-      /* never woke yet */
-    }
-    try {
-      mkdirSync(dirname(stamp), { recursive: true });
-      writeFileSync(stamp, "");
-    } catch {
-      /* the next hook looks again */
-    }
-    // a `now` far past the CLI's stamp: ensureKeepAlive probes whatever the CLI looked at recently
-    return cli.ensureKeepAlive(env, o.keepAlive ?? { now: Number.MAX_SAFE_INTEGER });
-  } catch {
-    return "failed";
-  }
-}
-
-/**
- * The same look, in a DETACHED process: the turn never waits for it. Run inline it held the prompt while the look ran - a
- * PowerShell probe (up to 15 s) and the engine checks over wsl.exe, each retried while WSL hung (measured 2026-11-16: a
- * UserPromptSubmit hook showed 24 s, .wsl-wake written seconds before). Same 20 s spacing; `start` is injectable for tests.
- */
-export function wakeHolderSoon(o = {}) {
-  try {
-    const here = dirname(fileURLToPath(import.meta.url));
-    const stamp = o.wakeStamp ?? join(here, "..", "..", "data", ".wsl-wake");
-    const now = o.now ?? Date.now();
-    try {
-      if (now - statSync(stamp).mtimeMs < WAKE_EVERY_MS) return "recent";
-    } catch {
-      /* never woke yet */
-    }
-    try {
-      mkdirSync(dirname(stamp), { recursive: true });
-      writeFileSync(stamp, "");
-    } catch {
-      /* the next hook looks again */
-    }
-    const start = o.start ?? (() => spawn(process.execPath, [join(here, "host-cli.mjs"), "--wake-holder"], { detached: true, stdio: "ignore", windowsHide: true }).unref());
-    start();
-    return "started";
-  } catch {
-    return "failed";
-  }
-}
-
-/**
  * The end-of-turn local commit (plan/27 §2e) on a Docker machine: the daemon's git on the 9p mount of the repo took 63 s and
  * timed out (measured 2026-11-16) on every Stop, so the commit runs HERE, on the host's own disk, in a detached process -
  * the turn never waits. The child (`--auto-commit <cwd> <transcript>`) runs the clone's own build of the same code.
@@ -229,43 +164,7 @@ async function autoCommitHere(cwd, transcript) {
   }
 }
 
-/**
- * A Drive mount gone stale is healed by the keep-alive look, which only a `zemory` command made, at most every 10 minutes.
- * Measured 29/10: after the distro restarted, G: stayed "Invalid argument" in WSL and in the container - each distro start
- * fails the fstab mount of the Drive letter - and the daemon kept answering, so no hook ever woke anything. Every hook, at
- * most every 5 minutes, starts the heal in a DETACHED process: the turn never waits for it. Docker machines only.
- */
-export const HEAL_EVERY_MS = 5 * 60_000;
-export function healDriveSoon(o = {}) {
-  try {
-    const here = dirname(fileURLToPath(import.meta.url));
-    if (!(o.distro ?? process.env.ZEMORY_WSL_DISTRO ?? readEnvDistro(join(here, "..", "..", ".env")))) return "skipped";
-    const stamp = o.stamp ?? join(here, "..", "..", "data", ".drive-heal");
-    const now = o.now ?? Date.now();
-    try {
-      if (now - statSync(stamp).mtimeMs < HEAL_EVERY_MS) return "recent";
-    } catch {
-      /* never healed yet */
-    }
-    mkdirSync(dirname(stamp), { recursive: true });
-    writeFileSync(stamp, "");
-    const start = o.start ?? (() => spawn(process.execPath, [join(here, "host-cli.mjs"), "--heal-drive"], { detached: true, stdio: "ignore", windowsHide: true }).unref());
-    start();
-    return "started";
-  } catch {
-    return "failed";
-  }
-}
-function readEnvDistro(file) {
-  try {
-    return /^\s*ZEMORY_WSL_DISTRO\s*=\s*(\S+)/m.exec(readFileSync(file, "utf8"))?.[1] ?? "";
-  } catch {
-    return "";
-  }
-}
-
 function relay() {
-  if (process.platform === "win32") healDriveSoon();
   let raw = "";
   process.stdin.setEncoding("utf8");
   process.stdin.on("data", (c) => (raw += c));
@@ -304,7 +203,6 @@ function relay() {
     req.on("timeout", () => req.destroy());
     req.on("error", () => {
       process.exitCode = 0;
-      wakeHolderSoon();
     });
     req.end(body);
   });
