@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 22
+version: 23
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -26,7 +26,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **Every % is declared** a direction or a share: `up` (rising is good) · `down` (rising is bad: voids, costs, refunds) ·
   `share` (a part of a total, no good or bad). Undeclared ⇒ red. [rp-pct-declared]
 - **Two colours only, by the declared direction:** good green, bad red (a `down` figure is red when it rises); a target
-  ratio takes 1 as its threshold; a share takes neither colour. No third "nearly" band, no fixed grey %. [rp-pct-color]
+  ratio takes 1 as its threshold; a share takes neither colour. No third "nearly" band, no fixed grey %. A % in brackets with no sign of its own ("(5,8)%", the person's negatives in brackets) is negative (v23, 16/11). [rp-pct-color]
 - **A card whose figure is itself a ratio** (% target, % margin) shows its change in percentage points: `+2,5 pp MoM`,
   never a second %. [rp-pct-pp]
 

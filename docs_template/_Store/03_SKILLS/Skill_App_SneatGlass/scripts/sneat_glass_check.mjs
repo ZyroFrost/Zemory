@@ -398,7 +398,7 @@ export const RULES = [
       const barIn = bar.getBoundingClientRect().left + parseFloat(getComputedStyle(bar).paddingLeft);
       const textIn = th.getBoundingClientRect().left + parseFloat(getComputedStyle(th).paddingLeft);
       // (v78) the table's own framed box: its wrapper (a scroll box) or the table itself
-      const up = table.parentElement, box = up.matches(':is(.table-responsive, .table-window, .table-scroller, .list-window, .matrix-frame):not(.page-card-body)') || (up.matches('div:not(.page-card-body, [class*="dom-page"], .card, .row)') && up.parentElement.matches('.card-body, .page-card-body, [class*="dom-page"]')) ? up : table;
+      const up = table.parentElement, box = up.matches(':is(.table-responsive, .table-window, .table-scroller, .list-window, .matrix-frame):not(.page-card-body)') || (up.matches('div:not(.page-card-body, [class*="dom-page"], .card, .row)') && up.parentElement.matches('.card-body, .page-card-body, [class*="dom-page"], .card > .rp-body, .card > [data-rp-body]')) ? up : table;
       const boxIn = box.getBoundingClientRect().left + parseFloat(getComputedStyle(box).borderLeftWidth);
       const probe = document.createElement('div'); probe.style.cssText = 'position:absolute;visibility:hidden;width:var(--table-pad, 12px)';
       document.body.append(probe); const pad = probe.getBoundingClientRect().width; probe.remove();
@@ -2003,7 +2003,7 @@ export const RULES = [
           // (v78, the user 16/11: "từ mép padding tới chữ và khung matrix luôn") a table stands in a framed box of its own: the box,
           // not its words, keeps the room from both edges of the panel (its words stand --table-pad inside it, table-edges)
           // (the page card's own body may carry .table-scroller: it is the panel's body, never a table's box)
-          const TBOX = ':is(.table-responsive, .table-window, .table-scroller, .list-window, .matrix-frame):not(.page-card-body), :is(.card, .card-body, .page-card-body, [class*="dom-page"]) > :is(table, .table), :is(.card-body, .page-card-body, [class*="dom-page"]) > div:not(.page-card-body, [class*="dom-page"], .card, .row):has(> table)';
+          const TBOX = ':is(.table-responsive, .table-window, .table-scroller, .list-window, .matrix-frame):not(.page-card-body), :is(.card, .card-body, .page-card-body, [class*="dom-page"]) > :is(table, .table), :is(.card-body, .page-card-body, [class*="dom-page"]) > div:not(.page-card-body, [class*="dom-page"], .card, .row):has(> table), .card > :is(.rp-body, [data-rp-body]) > div:not(.card, .row):has(> table)';
           const tpad = (() => { const q = document.createElement('div'); q.style.cssText = 'position:absolute;visibility:hidden;width:var(--table-pad, 12px)'; document.body.append(q); const w = q.getBoundingClientRect().width; q.remove(); return w; })();
           const boxed = b => { const x = b.getBoundingClientRect(), L = x.left - l, R = r - x.right;
             if (Math.abs(L - P) > 2) return where + ': the box of a table stands ' + Math.round(L) + ' px from the left edge of its panel, the frame keeps ' + Math.round(P) + ' (' + tag(b) + ')';
