@@ -1144,6 +1144,11 @@ function checkBash(cmd) {
   if (/\b(cat|less|more|head|tail|type|base64|xxd|od|strings|cp|scp)\b/.test(bare)) {
     const toks = cmd.split(/[\s'";|&]+/).filter(Boolean);
     let afterReader = false;
+    // A WHOLE key file copied as a file passes (user, 2026-11-16: "copying the file has nothing to do with it - the point is
+    // that the contents never show in the chat, and are never copied, edited or deleted into a file"). A plain copy (cp ·
+    // scp · rsync · Copy-Item, or cat redirected with >) with no pipe and no command that shows contents moves bytes from
+    // file to file; nothing reaches the transcript. Anything else touching a key file stays blocked, with no flag.
+    const wholeCopy = isWholeFileCopy(cmd);
     toks.forEach((tok, i) => {
       const bareTok = tok.replace(/^["']|["']$/g, "");
       const looksLikePath = /[\/\\]/.test(bareTok);
@@ -1157,10 +1162,25 @@ function checkBash(cmd) {
       if (!suspect) return;
       const name = bareTok.replace(/\\/g, "/").split("/").pop();
       if (name && nameMatches(name, POLICY.key_read_block || [])) {
+        if (wholeCopy) return;
         deny("BLOCKED (guard layer 1): a shell command touching the contents of the key file `" + name + "` - " + POLICY.key_read_reason);
       }
     });
   }
+}
+
+// A whole key file copied file to file: its bytes never reach the transcript (see checkBash above). No pipe (a pipe hands
+// the contents to another command; || is not one), no command that shows or searches contents, and either a copy verb or
+// cat whose output goes to a file (>) - a bare cat prints into the chat.
+function isWholeFileCopy(cmd) {
+  if (/\|/.test(cmd.replace(/\|\|/g, ""))) return false;
+  if (/\b(head|tail|less|more|base64|xxd|od|strings|type|echo|printf|Get-Content|gc|Select-String|sls|findstr|grep|sed|awk)\b/i.test(cmd)) return false;
+  const copyVerb = /\b(cp|scp|rsync|Copy-Item|copy)\b/i.test(cmd);
+  // > makes a copy; >> appends the contents into another file, which is exactly what stays blocked
+  if (/>>/.test(cmd)) return false;
+  const catToFile = /\bcat\b[^;&>]*>\s*\S/.test(cmd);
+  if (/\bcat\b/.test(cmd) && !catToFile) return false;
+  return copyVerb || catToFile;
 }
 
 function main() {

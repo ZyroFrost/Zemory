@@ -213,8 +213,8 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 175 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.md` | 52 |
 | 176 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/Rule_Gate_10_DestructiveOps.vi.md` | 41 |
 | 177 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps/gate.json` | 24 |
-| 178 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/Rule_Gate_21_WhatEntersGit.md` | 67 |
-| 179 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/Rule_Gate_21_WhatEntersGit.vi.md` | 54 |
+| 178 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/Rule_Gate_21_WhatEntersGit.md` | 71 |
+| 179 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/Rule_Gate_21_WhatEntersGit.vi.md` | 58 |
 | 180 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit/gate.json` | 74 |
 | 181 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope/Rule_Gate_44_RepoScope.md` | 49 |
 | 182 | `docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope/Rule_Gate_44_RepoScope.vi.md` | 39 |

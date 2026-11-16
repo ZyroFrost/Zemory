@@ -2,10 +2,10 @@
 id: Rule_21
 aka: 02-21
 name: what-enters-git
-version: 16
+version: 17
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit @v16 #3a071a63fb9c
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit @v17 #06678674536a
 ---
 # Rule_Gate_21_WhatEntersGit — What never enters git
 
@@ -32,7 +32,9 @@ that repo's `.env` — the repo's ONE private home.
       in that repo's `.env` at the root, blocked by `.gitignore` — the ONE private home of a repo; code reads it by name
       (`vault_conn.private(<NAME>)`).
    c. A secret that is a FILE (a certificate, a `.pvk` / `.pem` key, a token file) lives in the machine vault, shared ones in
-      `_ConfigVault/tls/`, one repo's own in `_ConfigVault/certs/<repo>/`; `.env` holds nothing about it.
+      `_ConfigVault/tls/`, one repo's own in `_ConfigVault/certs/<repo>/`; `.env` holds nothing about it. Such a file moves only
+      as a whole file (`cp` · `scp` · `rsync` · `Copy-Item`, or `cat` sent to a new file with `>`): its contents never show in
+      the session, never go through a pipe to another command and are never written into another file.
    d. No other place: no secret folder inside a repo (`data/secrets/` is retired), no per-repo encrypted vault, no copy of a
       vault login inside a repo.
 4. To another machine: a repo's `.env` is carried only as the `secrets` of a deploy manifest; `_ConfigVault` is never synced and
@@ -58,6 +60,8 @@ that repo's `.env` — the repo's ONE private home.
   a password · a private key · a cloud access key); the pre-commit check looks for the same patterns in the staged diff. Passed: a
   value read from an environment variable · a placeholder (`<password>` · `changeme`) · `.env` · `.md` text.
   Test files: one reminder per session (fake passwords are normal). Secrets have no flag.
+- The guard blocks a shell command that shows a key file's contents (`cat` to the screen · `head` · `base64` · `xxd` · a pipe ·
+  `>>` into another file) and the Read tool on a key file; a whole-file copy passes.
 - `_ConfigVault` is outside every repo, so git never sees it; writing there is a write outside the project (`Rule_Gate_44_RepoScope`).
 - Whether a secret sits in the right one of the two homes (`_ConfigVault` · `.env`) is judgment.
 

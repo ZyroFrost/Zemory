@@ -1,5 +1,5 @@
 ---
-version: 16
+version: 17
 lang: vi
 ---
 # Rule_Gate_21_WhatEntersGit — What never enters git
@@ -26,7 +26,9 @@ của repo đó — chỗ riêng DUY NHẤT của repo.
    b. Bí mật dạng chữ chỉ của riêng một repo (mật khẩu file của một phòng, khoá chỉ sản phẩm của nó dùng) nằm ở `.env` ở gốc repo
       đó, có `.gitignore` chặn — chỗ riêng DUY NHẤT của repo; code đọc theo tên (`vault_conn.private(<TÊN>)`).
    c. Bí mật dạng FILE (chứng chỉ, khoá `.pvk` / `.pem`, file token) nằm trong két của máy: dùng chung ở `_ConfigVault/tls/`, riêng
-      một repo ở `_ConfigVault/certs/<repo>/`; `.env` không giữ gì về nó.
+      một repo ở `_ConfigVault/certs/<repo>/`; `.env` không giữ gì về nó. File đó chỉ được chuyển nguyên file (`cp` · `scp` ·
+      `rsync` · `Copy-Item`, hoặc `cat` đổ sang một file mới bằng `>`): nội dung không bao giờ hiện trong phiên, không qua pipe
+      sang lệnh khác, không bị ghi vào file khác.
    d. Không chỗ nào khác: không thư mục bí mật trong repo (`data/secrets/` đã bỏ), không két mã hoá riêng từng repo, không chép
       login của két vào repo.
 4. Sang máy khác: `.env` của repo chỉ đi theo mục `secrets` của manifest deploy; `_ConfigVault` không bao giờ đồng bộ, mang bằng
@@ -50,5 +52,7 @@ của repo đó — chỗ riêng DUY NHẤT của repo.
   khoá riêng · khoá truy cập đám mây); pre-commit soi cùng các mẫu đó trong phần diff đã stage. Cho qua: giá trị đọc từ biến môi
   trường · chỗ điền mẫu (`<password>` · `changeme`) · `.env` · văn bản `.md`. File test: nhắc một lần mỗi phiên
   (mật khẩu giả là bình thường). Nhóm bí mật không có cờ vượt.
+- Guard chặn lệnh shell làm hiện nội dung file khoá (`cat` ra màn hình · `head` · `base64` · `xxd` · pipe · `>>` vào file khác)
+  và công cụ Read trên file khoá; chép nguyên file thì cho qua.
 - `_ConfigVault` nằm ngoài mọi repo nên git không thấy; ghi vào đó là ghi ra ngoài dự án (`Rule_Gate_44_RepoScope`).
 - Bí mật nằm đúng một trong hai nhà (`_ConfigVault` · `.env`) hay không là phán đoán.
