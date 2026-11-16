@@ -173,6 +173,63 @@ export async function wakeHolder(o = {}) {
 }
 
 /**
+ * The same look, in a DETACHED process: the turn never waits for it. Run inline it held the prompt while the look ran - a
+ * PowerShell probe (up to 15 s) and the engine checks over wsl.exe, each retried while WSL hung (measured 2026-11-16: a
+ * UserPromptSubmit hook showed 24 s, .wsl-wake written seconds before). Same 20 s spacing; `start` is injectable for tests.
+ */
+export function wakeHolderSoon(o = {}) {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const stamp = o.wakeStamp ?? join(here, "..", "..", "data", ".wsl-wake");
+    const now = o.now ?? Date.now();
+    try {
+      if (now - statSync(stamp).mtimeMs < WAKE_EVERY_MS) return "recent";
+    } catch {
+      /* never woke yet */
+    }
+    try {
+      mkdirSync(dirname(stamp), { recursive: true });
+      writeFileSync(stamp, "");
+    } catch {
+      /* the next hook looks again */
+    }
+    const start = o.start ?? (() => spawn(process.execPath, [join(here, "host-cli.mjs"), "--wake-holder"], { detached: true, stdio: "ignore", windowsHide: true }).unref());
+    start();
+    return "started";
+  } catch {
+    return "failed";
+  }
+}
+
+/**
+ * The end-of-turn local commit (plan/27 §2e) on a Docker machine: the daemon's git on the 9p mount of the repo took 63 s and
+ * timed out (measured 2026-11-16) on every Stop, so the commit runs HERE, on the host's own disk, in a detached process -
+ * the turn never waits. The child (`--auto-commit <cwd> <transcript>`) runs the clone's own build of the same code.
+ * `start` is injectable for tests; returns what it did.
+ */
+export function autoCommitSoon(payloadText, o = {}) {
+  try {
+    const p = JSON.parse(payloadText);
+    const cwd = String(p?.cwd ?? ""), transcript = String(p?.transcript_path ?? p?.transcriptPath ?? "");
+    if (!cwd || !transcript) return "skipped";
+    const start = o.start ?? ((args) => spawn(process.execPath, [fileURLToPath(import.meta.url), ...args], { detached: true, stdio: "ignore", windowsHide: true }).unref());
+    start(["--auto-commit", cwd, transcript]);
+    return "started";
+  } catch {
+    return "failed";
+  }
+}
+async function autoCommitHere(cwd, transcript) {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const mod = await import(pathToFileURL(join(here, "..", "..", "dist", "docs", "auto-commit.js")).href);
+    mod.autoCommit(cwd, mod.sessionWrittenFilesAt(transcript));
+  } catch {
+    /* fail-open: the next clean turn commits it */
+  }
+}
+
+/**
  * A Drive mount gone stale is healed by the keep-alive look, which only a `zemory` command made, at most every 10 minutes.
  * Measured 29/10: after the distro restarted, G: stayed "Invalid argument" in WSL and in the container - each distro start
  * fails the fstab mount of the Drive letter - and the daemon kept answering, so no hook ever woke anything. Every hook, at
@@ -239,13 +296,15 @@ function relay() {
           if (a.stdout) process.stdout.write(a.stdout);
           if (a.stderr) process.stderr.write(a.stderr);
           process.exitCode = Number.isInteger(a.code) ? a.code : 0;
+          // the turn ended clean (no block from the end-of-turn check): commit the session's work on the host, detached
+          if (event === "stop" && !a.code && !/"decision"\s*:\s*"block"/.test(a.stdout ?? "")) autoCommitSoon(text);
         });
       },
     );
     req.on("timeout", () => req.destroy());
     req.on("error", () => {
       process.exitCode = 0;
-      wakeHolder();
+      wakeHolderSoon();
     });
     req.end(body);
   });
@@ -255,5 +314,6 @@ function relay() {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (event === "install" || event === "uninstall") manage(event === "install");
   else if (event === "memory-guard") memoryGuardHere();
+  else if (event === "--auto-commit") autoCommitHere(process.argv[3] ?? "", process.argv[4] ?? "");
   else relay();
 }

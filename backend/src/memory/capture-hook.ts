@@ -40,6 +40,7 @@ import { findProjectRoot, harnessPathsAt, readMarker } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
 import { MEMORY_GUARD_MATCHER } from "./memory-guard.js";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
+import { RUNTIME } from "../util/runtime.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
 
@@ -586,6 +587,10 @@ export function endOfTurnAutoCommit(payload: any, transcriptPath: string): strin
     // the repo's code graph stays current for graph_impact: a turn that wrote a source file starts a rebuild in a worker
     const root = findProjectRoot(toLocalPath(cwd));
     if (root) void import("./graph/graph-cache.js").then((m) => m.kickGraphAfterTurn(root, written)).catch(() => {});
+    // In the Docker daemon the repo is a 9p mount of the host's disk: git there took 63 s and still timed out (measured
+    // 2026-11-16), on every Stop of every session, and the host hook gave up after 15 s while the git kept running. The
+    // host's hook runs the commit on the host instead, detached (backend/scripts/host-hook.mjs autoCommitSoon).
+    if (RUNTIME === "docker") return "";
     const r = autoCommit(toLocalPath(cwd), written);
     if (!r || (!r.committed && !r.note.startsWith("commit refused"))) return "";
     return r.committed
