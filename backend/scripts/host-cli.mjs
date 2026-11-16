@@ -9,6 +9,7 @@
 //   D:\Workspace) or HOST_WORKSPACE (Linux); ZEMORY_CONTAINER overrides the container name (default zemory).
 import { spawn, spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import http from "node:http";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -319,8 +320,66 @@ function runMove(env, argv, dir) {
   process.exit(status);
 }
 
-function main() {
-  const env = { ...readEnv(join(COMPOSE_DIR, ".env")), ...process.env };
+/**
+ * The daemon's port, for when wsl.exe cannot reach the distro (measured 2026-11-16: after a network / VPN change every
+ * wsl.exe call hung 77-90 s and failed while the daemon answered /ping in 0.09 s). POST /cli runs `zemory <argv>` in the
+ * container (backend/src/util/cli-relay.ts) and streams NDJSON: {"o"} stdout · {"e"} stderr · {"exit"}. The token is the
+ * file the daemon writes into this clone's data/. Resolves the exit code, or null when the port path is not there (no
+ * token, daemon down, refused) so the caller goes back to wsl.exe.
+ */
+export const WSL_DOWN_MS = 300_000;
+export function wslRecentlyDown(stamp, now = Date.now()) {
+  try {
+    return now - statSync(stamp).mtimeMs < WSL_DOWN_MS;
+  } catch {
+    return false;
+  }
+}
+function markWslDown(stamp) {
+  try {
+    mkdirSync(dirname(stamp), { recursive: true });
+    writeFileSync(stamp, new Date().toISOString() + "\n");
+  } catch {
+    /* only a shortcut for the next few commands */
+  }
+}
+export function relayCli(env, argv, dir, o = {}) {
+  let token = "";
+  try { token = readFileSync(o.tokenFile ?? join(COMPOSE_DIR, "data", ".cli-token"), "utf8").trim(); } catch { return Promise.resolve(null); }
+  if (!token) return Promise.resolve(null);
+  const out = o.out ?? process.stdout, err = o.err ?? process.stderr;
+  const body = JSON.stringify({ argv, cwd: dir || null });
+  return new Promise((done) => {
+    const req = http.request({ host: "127.0.0.1", port: Number(o.port ?? env.ZEMORY_PORT ?? 4444), path: "/cli", method: "POST",
+      headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body), "x-zemory-cli-token": token } }, (res) => {
+      if (res.statusCode !== 200) { res.resume(); return done(null); }
+      let buf = "", code = null, any = false;
+      res.setEncoding("utf8");
+      res.on("data", (t) => {
+        buf += t;
+        let i;
+        while ((i = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, i);
+          buf = buf.slice(i + 1);
+          let m;
+          try { m = JSON.parse(line); } catch { continue; }
+          any = true;
+          if (typeof m.o === "string") out.write(m.o);
+          else if (typeof m.e === "string") err.write(m.e);
+          else if (typeof m.exit === "number") code = m.exit;
+        }
+      });
+      // the stream cut before its exit line: the command may have run, so it is not run again over WSL
+      res.on("end", () => done(code ?? (any ? 1 : null)));
+      res.on("error", () => done(code ?? (any ? 1 : null)));
+    });
+    req.on("error", () => done(null));
+    req.end(body);
+  });
+}
+
+async function main() {
+  const env ={ ...readEnv(join(COMPOSE_DIR, ".env")), ...process.env };
   // internal: the hooks start this in the background (host-hook.mjs healDriveSoon) - heal a stale Drive mount, nothing else
   if (process.argv[2] === "--heal-drive") {
     try { healDriveMount(env, { log: healLogTo(join(COMPOSE_DIR, "data")) }); } catch { /* fail-open */ }
@@ -333,10 +392,15 @@ function main() {
     process.stderr.write(nativeMachineMessage(choiceFile));
     process.exit(1);
   }
-  try {
-    ensureKeepAlive(env);
-  } catch {
-    /* fail-open: the command itself still runs */
+  const downStamp = join(COMPOSE_DIR, "data", ".wsl-down");
+  const downRecently = wslRecentlyDown(downStamp);
+  // the keep-alive looks go through wsl.exe too: while WSL is down each would hang up to its timeout first
+  if (!downRecently) {
+    try {
+      ensureKeepAlive(env);
+    } catch {
+      /* fail-open: the command itself still runs */
+    }
   }
   const workspace = env.HOST_WORKSPACE_NATIVE || env.HOST_WORKSPACE || "";
   const container = env.ZEMORY_CONTAINER || "zemory";
@@ -355,7 +419,21 @@ function main() {
   const tty = Boolean(process.stdin.isTTY && process.stdout.isTTY);
   const args = ["exec", "-i", ...(tty ? ["-t"] : []), ...(dir ? ["-w", dir] : []), container, "zemory", ...process.argv.slice(2)];
   const [bin, argv] = dockerCall(env, args);
-  const r = withWslRetry(() => spawnSync(bin, argv, { stdio: "inherit", windowsHide: true }), { tries: bin === "wsl.exe" ? WSL_TRIES : 1 });
+  const viaWsl = bin === "wsl.exe";
+  // WSL failed a moment ago: straight to the daemon's port (a typed command at a terminal still tries WSL first - it may
+  // need its stdin, which the port path does not carry)
+  if (viaWsl && !tty && downRecently) {
+    const code = await relayCli(env, process.argv.slice(2), dir);
+    if (code !== null) process.exit(code);
+  }
+  let r = spawnSync(bin, argv, { stdio: "inherit", windowsHide: true });
+  if (viaWsl && isWslFailure(r)) {
+    markWslDown(downStamp);
+    process.stderr.write("zemory (docker): WSL did not answer - running the command through the daemon's port instead.\n");
+    const code = await relayCli(env, process.argv.slice(2), dir);
+    if (code !== null) process.exit(code);
+    r = withWslRetry(() => spawnSync(bin, argv, { stdio: "inherit", windowsHide: true }), { tries: WSL_TRIES - 1 });
+  }
   if (r.error) {
     process.stderr.write(`zemory (docker): could not run docker (${r.error.message}). Is Docker running and the zemory container up?\n`);
     process.exit(127);
@@ -373,4 +451,9 @@ function main() {
   process.exit(r.status ?? 1);
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((e) => {
+    process.stderr.write(`zemory (docker): ${e?.message ?? e}\n`);
+    process.exit(1);
+  });
+}

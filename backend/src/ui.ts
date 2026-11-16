@@ -242,6 +242,7 @@ function hookPool(): HookLanes | null {
   return hookWorkers;
 }
 import { toHostPath, toLocalPath } from "./util/hostpath.js";
+import { cliRefusal, ensureCliToken, runCliRelay } from "./util/cli-relay.js";
 import { loginViewUrl, otherRuntimeMessage, RUNTIME, runtimeOf, type Runtime } from "./util/runtime.js";
 import { readContextUsage, scanCompactions } from "./memory/context-guard.js";
 import { deepSearchChild } from "./jobs/searchjob.js";
@@ -2599,6 +2600,24 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const ev = decodeURIComponent(p.slice("/hook/".length)), map = parsePathMap(process.env.ZEMORY_PATH_MAP);
       return json(res, hookPool() ? await hookPool()!.run(ev, payload, map) : relayHook(ev, payload, map));
     }
+    // The CLI over HTTP (util/cli-relay.ts): the host's `zemory` when wsl.exe cannot reach the distro. Token + no Origin.
+    if (req.method === "POST" && p === "/cli") {
+      const chunks: Buffer[] = [];
+      let total = 0;
+      for await (const c of req) {
+        total += (c as Buffer).length;
+        if (total > 1024 * 1024) break;
+        chunks.push(c as Buffer);
+      }
+      let body: { argv?: string[]; cwd?: string | null } | null;
+      try { body = JSON.parse(Buffer.concat(chunks).toString("utf8")); } catch { body = null; }
+      const no = cliRefusal(req.headers, ensureCliToken(), body);
+      if (no) {
+        res.writeHead(403, { "content-type": "application/json" });
+        return res.end(JSON.stringify({ error: no }));
+      }
+      return runCliRelay(res, body!.argv!, body!.cwd ?? null);
+    }
     if (req.method === "POST" && p === "/gate-acquire") {
       // A CLI is about to write the memory — pause the scheduler so they don't
       // collide on SQLite (plan 14 §C write gate). Auto-expires; see writegate.ts.
@@ -4391,6 +4410,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // reconcile the OS autostart hook and start the idle background scheduler.
   armCrashReport();
   daemonLog(`daemon up on ${url} pid=${process.pid}`);
+  // the token the host's `zemory` shows on POST /cli (util/cli-relay.ts) - written now, before any host command needs it
+  if (RUNTIME === "docker") ensureCliToken();
   // the prompt hook's harness check walks a repo tree: in the daemon it runs in a worker thread, never on this loop (2026-11-09)
   deferHarnessCheck((here, notePath) => void harnessNoteInWorker(here, notePath));
   hookPool()?.warm(); // the hook workers start with the daemon, not on the first prompt
