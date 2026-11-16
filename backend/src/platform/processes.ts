@@ -87,6 +87,13 @@ export const APP_PROCESSES: AppProcess[] = [
     hidden: true,
     note: "Mỗi phần 300 tin một lượt `claude -p` gắn nhãn cửa nhắc (plan/38 §8), tối đa 4 song song, chỉ khi người dùng gõ `--yes` (tốn token của chính họ). Thư mục tạm của OS, không hook, không lưu transcript.",
   },
+  {
+    shownAs: "node (zemory CLI, trong container)",
+    spawnedBy: "util/cli-relay.ts (`POST /cli` của daemon bản Docker)",
+    lifetime: "oneshot",
+    hidden: true,
+    note: "Lệnh `zemory` của máy chủ chạy qua cổng daemon khi wsl.exe không tới được distro (WSAETIMEDOUT sau khi đổi mạng / VPN). Một lệnh một tiến trình, chết theo khi máy chủ ngắt kết nối.",
+  },
 ];
 
 /**
@@ -96,4 +103,4 @@ export const APP_PROCESSES: AppProcess[] = [
  * spawn mà không cập nhật cả hai ⇒ đỏ. Cố tình để là SỐ chứ không phải danh sách đường dẫn —
  * đường dẫn đổi theo mỗi lần dời file, còn "có bao nhiêu chỗ phóng tiến trình" thì không.
  */
-export const spawnSites = 17;
+export const spawnSites = 18;

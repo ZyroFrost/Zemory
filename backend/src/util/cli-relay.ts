@@ -55,7 +55,7 @@ export function cliRefusal(headers: IncomingMessage["headers"], token: string | 
  */
 export function runCliRelay(res: ServerResponse, argv: string[], cwd: string | null): void {
   const dir = cwd && existsSync(cwd) ? cwd : undefined;
-  const child = spawn(process.execPath, [CLI, ...argv], { cwd: dir, env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn(process.execPath, [CLI, ...argv], { cwd: dir, env: process.env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
   res.writeHead(200, { "content-type": "application/x-ndjson; charset=utf-8", "cache-control": "no-store" });
   const send = (o: Record<string, unknown>) => { if (!res.writableEnded) res.write(JSON.stringify(o) + "\n"); };
   child.stdout.setEncoding("utf8").on("data", (t: string) => send({ o: t }));
