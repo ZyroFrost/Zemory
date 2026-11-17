@@ -20,6 +20,7 @@ import { createHash } from "node:crypto";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { Q } from "./store/queries.js";
+import { isVecPrimaryKeyConflict } from "./vectors.js";
 
 export interface ShipResult {
   /** Số vector đã nhét vào gói. */
@@ -262,7 +263,7 @@ export function shipVectorsInto(
 export function receiveVectorsFrom(
   incomingPath: string,
   targetPath: string,
-): { applied: number; skipped: number; reason?: string } {
+): { applied: number; skipped: number; kept?: number; reason?: string } {
   let inc: Database.Database | null = null;
   let dst: Database.Database | null = null;
   try {
@@ -321,6 +322,7 @@ export function receiveVectorsFrom(
     }[];
 
     let applied = 0;
+    let kept = 0; // already had its vector here - see the insert below
     let skipped = 0;
     const apply = dst.transaction(() => {
       for (const r of rows) {
@@ -331,8 +333,18 @@ export function receiveVectorsFrom(
           skipped++; // tin bị lọc theo scope, hoặc chưa merge — không phải lỗi
           continue;
         }
-        ins.run(hit.id, r.embedding);
-        applied++;
+        // The message already has its vector here (this machine embedded it, or an earlier block brought it). vec0 refuses
+        // INSERT OR REPLACE on an existing rowid, and one refusal rolled the WHOLE transaction back: the call returned
+        // `applied 0` with a reason, so a bulk package overlapping a single locally embedded message lost every vector it
+        // carried, silently (measured 2026-11-17 on sqlite-vec in the container). Same profile is checked above, so the
+        // vector kept is equivalent; keeping it makes a re-run of the same package a no-op.
+        try {
+          ins.run(hit.id, r.embedding);
+          applied++;
+        } catch (e) {
+          if (!isVecPrimaryKeyConflict(e)) throw e;
+          kept++;
+        }
       }
     });
     apply();
@@ -378,7 +390,7 @@ export function receiveVectorsFrom(
     } catch {
       /* fail-open: mất phần đuôi tin dài, tin và vector chính vẫn nguyên */
     }
-    return { applied, skipped };
+    return { applied, skipped, kept };
   } catch (error) {
     return { applied: 0, skipped: 0, reason: error instanceof Error ? error.message : "receive failed" };
   } finally {

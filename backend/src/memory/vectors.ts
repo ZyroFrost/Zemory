@@ -276,7 +276,7 @@ function ensureVecTable(db: Conn, dims: number, profile: EmbedProfile): void {
 
 const toBlob = (v: number[]): Buffer => Buffer.from(new Float32Array(v).buffer);
 
-function isVecPrimaryKeyConflict(error: unknown): boolean {
+export function isVecPrimaryKeyConflict(error: unknown): boolean {
   return (
     error instanceof Error &&
     error.name === "SqliteError" &&
