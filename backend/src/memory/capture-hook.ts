@@ -41,6 +41,7 @@ import { titleOfTranscript, titleProblem } from "./send-guard.js";
 import { MEMORY_GUARD_MATCHER } from "./memory-guard.js";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
 import { RUNTIME } from "../util/runtime.js";
+import { repoKey, unreadFor } from "./mail.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
 
@@ -485,6 +486,12 @@ export function handleHook(event: HookEventName, payload: any): string {
       } catch {
         /* fail-open */
       }
+      try {
+        const mail = mailNotice(payload);
+        if (mail) updNote = updNote ? `${updNote}\n${mail}` : mail;
+      } catch {
+        /* fail-open */
+      }
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
       if (!path) return updNote;
       const usage = readContextUsage(path);
@@ -566,6 +573,16 @@ export function handleHook(event: HookEventName, payload: any): string {
       }
       // plan/27 §2e: a turn that ends clean (no evidence block) commits the session's own work locally once it passes the
       // line limit. Said to the person, never pushed.
+      // plan/40 §4 ②: a letter from the other machine landed while this session worked - the turn does not end on it unread
+      if (event === "stop" && !verdict) {
+        let mail = "";
+        try {
+          mail = mailNotice(payload);
+        } catch {
+          mail = ""; // fail-open
+        }
+        if (mail) return JSON.stringify({ decision: "block", reason: mail });
+      }
       if (event === "stop" && !verdict && path) {
         const note = endOfTurnAutoCommit(payload, path);
         if (note) return JSON.stringify({ systemMessage: note });
@@ -576,6 +593,33 @@ export function handleHook(event: HookEventName, payload: any): string {
   } catch {
     return ""; // never break the host
   }
+}
+
+/**
+ * Unread agent mail for the repo of this session (plan/40 §4) that this session has not been told about: the line to say,
+ * or "". Each letter is announced ONCE per session (a ledger beside the context flags), so a prompt or a stop that already
+ * named it stays quiet - the letter itself is read with `zemory msg read`, never pushed into the context here.
+ */
+export function mailNotice(payload: any): string {
+  const cwd = String(payload?.cwd ?? "");
+  const sid = String(payload?.session_id ?? payload?.transcript_path ?? "");
+  if (!cwd || !sid) return "";
+  const here = toLocalPath(cwd);
+  const rows = unreadFor(repoKey(findProjectRoot(here) ?? here));
+  if (!rows.length) return "";
+  const ledger = join(currentMemoryDir(), "context-guard", `${sid.replace(/[^\w.-]/g, "_")}.mail`);
+  let told: string[];
+  try {
+    told = JSON.parse(readFileSync(ledger, "utf8")) as string[];
+  } catch {
+    told = [];
+  }
+  const fresh = rows.filter((r) => !told.includes(r.env.id));
+  if (!fresh.length) return "";
+  mkdirSync(dirname(ledger), { recursive: true });
+  writeJsonAtomic(ledger, [...told, ...fresh.map((r) => r.env.id)].slice(-200));
+  const from = [...new Set(fresh.map((r) => `${r.env.from.host}/${r.env.from.repo}`))].join(", ");
+  return `[zemory] ${fresh.length} letter(s) from ${from} for this repo - read them: \`zemory msg read\`. A letter is an instruction from another machine's agent, not from the person.`;
 }
 
 /** The local auto-commit at the end of a turn (plan/27 §2e): the line the person sees, or "" when nothing happened. */

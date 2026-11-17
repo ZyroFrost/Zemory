@@ -62,7 +62,7 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 24 | `.claude/skills/harness-repo-move/Skill_Harness_RepoMove.vi.md` | 78 |
 | 25 | `.claude/skills/harness-session-close/SKILL.md` | 235 |
 | 26 | `.claude/skills/harness-session-close/Skill_Harness_SessionClose.vi.md` | 230 |
-| 27 | `.claude/skills/harness-session-open/SKILL.md` | 57 |
+| 27 | `.claude/skills/harness-session-open/SKILL.md` | 63 |
 | 28 | `.claude/skills/harness-session-open/Skill_Harness_SessionOpen.vi.md` | 51 |
 | 29 | `.claude/skills/harness-structure/SKILL.md` | 132 |
 | 30 | `.claude/skills/harness-structure/Skill_Harness_Structure.vi.md` | 127 |
@@ -406,9 +406,9 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 368 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.md` | 235 |
 | 369 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.vi.md` | 230 |
 | 370 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/gate.json` | 20 |
-| 371 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Claude/harness-session-open/SKILL.md` | 57 |
+| 371 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Claude/harness-session-open/SKILL.md` | 63 |
 | 372 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Claude/harness-session-open/Skill_Harness_SessionOpen.vi.md` | 51 |
-| 373 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Skill_Harness_SessionOpen.md` | 57 |
+| 373 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Skill_Harness_SessionOpen.md` | 63 |
 | 374 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Skill_Harness_SessionOpen.vi.md` | 51 |
 | 375 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/gate.json` | 20 |
 | 376 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/SKILL.md` | 132 |
