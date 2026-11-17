@@ -398,7 +398,7 @@ export const RULES = [
       const barIn = bar.getBoundingClientRect().left + parseFloat(getComputedStyle(bar).paddingLeft);
       const textIn = th.getBoundingClientRect().left + parseFloat(getComputedStyle(th).paddingLeft);
       // (v78) the table's own framed box: its wrapper (a scroll box) or the table itself
-      const up = table.parentElement, box = up.matches(':is(.table-responsive, .table-window, .table-scroller, .list-window, .matrix-frame):not(.page-card-body)') || (up.matches('div:not(.page-card-body, [class*="dom-page"], .card, .row)') && up.parentElement.matches('.card-body, .page-card-body, [class*="dom-page"], .card > .rp-body, .card > [data-rp-body]')) ? up : table;
+      const up = table.parentElement, box = up.matches(':is(.table-responsive, .table-window, .table-scroller, .list-window, .matrix-frame):not(.page-card-body)') || (up.matches('div:not(.page-card-body, [class*="dom-page"], .card, .row)') && up.parentElement.matches('.card-body, .page-card-body, [class*="dom-page"], .rp-body, [data-rp-body]')) ? up : table;
       const boxIn = box.getBoundingClientRect().left + parseFloat(getComputedStyle(box).borderLeftWidth);
       const probe = document.createElement('div'); probe.style.cssText = 'position:absolute;visibility:hidden;width:var(--table-pad, 12px)';
       document.body.append(probe); const pad = probe.getBoundingClientRect().width; probe.remove();
@@ -2003,7 +2003,10 @@ export const RULES = [
           // (v78, the user 16/11: "từ mép padding tới chữ và khung matrix luôn") a table stands in a framed box of its own: the box,
           // not its words, keeps the room from both edges of the panel (its words stand --table-pad inside it, table-edges)
           // (the page card's own body may carry .table-scroller: it is the panel's body, never a table's box)
-          const TBOX = ':is(.table-responsive, .table-window, .table-scroller, .list-window, .matrix-frame):not(.page-card-body), :is(.card, .card-body, .page-card-body, [class*="dom-page"]) > :is(table, .table), :is(.card-body, .page-card-body, [class*="dom-page"]) > div:not(.page-card-body, [class*="dom-page"], .card, .row):has(> table), .card > :is(.rp-body, [data-rp-body]) > div:not(.card, .row):has(> table)';
+          const TBOX = ':is(.table-responsive, .table-window, .table-scroller, .list-window, .matrix-frame):not(.page-card-body), :is(.card, .card-body, .page-card-body, [class*="dom-page"]) > :is(table, .table), :is(.card-body, .page-card-body, [class*="dom-page"]) > div:not(.page-card-body, [class*="dom-page"], .card, .row):has(> table), :is(.rp-body, [data-rp-body]) > div:not(.card, .row):has(> table)';
+          // (v80, Dashboard 17/11: a bare panel - page-card-body > section > .rp-body > box - was read by its words, 29 px) a block
+          // that only wraps one table box, through wrappers of one child, is read by that box
+          const inner = b => { let x = b; for (let k = 0; k < 6 && x && !x.matches(TBOX) && !isLeaf(x); k++) { const kids = [...x.children].filter(shown); if (kids.length !== 1) return null; x = kids[0]; } return x && x.matches(TBOX) ? x : null; };
           const tpad = (() => { const q = document.createElement('div'); q.style.cssText = 'position:absolute;visibility:hidden;width:var(--table-pad, 12px)'; document.body.append(q); const w = q.getBoundingClientRect().width; q.remove(); return w; })();
           const boxed = b => { const x = b.getBoundingClientRect(), L = x.left - l, R = r - x.right;
             if (Math.abs(L - P) > 2) return where + ': the box of a table stands ' + Math.round(L) + ' px from the left edge of its panel, the frame keeps ' + Math.round(P) + ' (' + tag(b) + ')';
@@ -2016,7 +2019,8 @@ export const RULES = [
           if (part.matches(TBOX)) { const f = boxed(part); if (f) return f; continue; }
           for (const b of blocks.length > 1 || (blocks.length === 1 && blocks[0].matches(TBOX)) ? blocks : [part]) {
             if (b !== part && (isLeaf(b) || b.matches('.bar-spacer, script, style') || /absolute|fixed/.test(getComputedStyle(b).position))) continue;
-            const f = b.matches(TBOX) ? boxed(b) : judge(where + (b === part ? '' : ' (a block)'), b, l, r);
+            const tb = b.matches(TBOX) ? b : inner(b);
+            const f = tb ? boxed(tb) : judge(where + (b === part ? '' : ' (a block)'), b, l, r);
             if (f) return f;
           }
         }
