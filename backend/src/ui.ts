@@ -2580,6 +2580,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     // hybrid/rerank/scope/pathsWatch. Đây là lời gọi RẺ NHẤT của app (~100 ms) và là lượt đầu
     // tiên FE phát ra, nên công tắc sáng đúng ngay lần vẽ đầu thay vì chờ `/memory-status`.
     if (p === "/ping") return json(res, { app: "zemory", ui: true, pid: process.pid, version: APP_VERSION, host: hostname(), runtime: RUNTIME, ...liveFlags() });
+    // Agent mail (plan/40 §4): a hook asks whether the repo of its session has unread letters. Counts and sender hosts
+    // only - no subject, no body: the letter itself is read with `zemory msg read` inside the session.
+    if (p === "/mail/unread") {
+      const { unreadFor } = await import("./memory/mail.js");
+      const rows = unreadFor(u.searchParams.get("repo") ?? "");
+      return json(res, { unread: rows.length, from: [...new Set(rows.map((r) => r.env.from.host))] });
+    }
     // Hooks over HTTP (plan/30 §5 ②): the host client posts the payload Claude Code handed it; the answer is what the
     // `zemory hook <event>` process would have printed and exited with.
     if (req.method === "POST" && p.startsWith("/hook/")) {

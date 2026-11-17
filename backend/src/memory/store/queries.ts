@@ -167,4 +167,22 @@ export const Q = {
 
   // ── a borrowed browser cookie store (not the memory DB) ───────────────────
   countCookies: "SELECT COUNT(1) n FROM cookies",
+
+  // ── the agent mailbox between machines (data/mail/mail.db, plan/40 - not the memory DB) ─────────────
+  mailDdl: `CREATE TABLE IF NOT EXISTS outbox (id TEXT PRIMARY KEY, to_host TEXT NOT NULL, json TEXT NOT NULL, queued_at TEXT NOT NULL, acked_at TEXT);
+    CREATE TABLE IF NOT EXISTS inbox (id TEXT PRIMARY KEY, from_host TEXT NOT NULL, to_repo TEXT NOT NULL, json TEXT NOT NULL, received_at TEXT NOT NULL, read_at TEXT);
+    CREATE INDEX IF NOT EXISTS inbox_unread ON inbox(to_repo) WHERE read_at IS NULL;
+    CREATE INDEX IF NOT EXISTS outbox_open ON outbox(to_host) WHERE acked_at IS NULL;`,
+  mailPruneInbox: "DELETE FROM inbox WHERE read_at IS NOT NULL AND read_at < ?",
+  mailPruneOutbox: "DELETE FROM outbox WHERE acked_at IS NOT NULL AND acked_at < ?",
+  mailQueue: "INSERT INTO outbox (id, to_host, json, queued_at) VALUES (?,?,?,?)",
+  mailOwed: "SELECT json, to_host FROM outbox WHERE acked_at IS NULL ORDER BY queued_at LIMIT ?",
+  mailAck: "UPDATE outbox SET acked_at = ? WHERE id = ? AND acked_at IS NULL",
+  mailReceive: "INSERT OR IGNORE INTO inbox (id, from_host, to_repo, json, received_at) VALUES (?,?,?,?,?)",
+  mailUnreadRepo: "SELECT json, received_at, read_at FROM inbox WHERE read_at IS NULL AND to_repo = ? ORDER BY received_at",
+  mailUnreadAll: "SELECT json, received_at, read_at FROM inbox WHERE read_at IS NULL ORDER BY received_at",
+  mailLetter: "SELECT json, received_at, read_at FROM inbox WHERE id = ? OR id LIKE ? ORDER BY received_at LIMIT 1",
+  mailMarkRead: "UPDATE inbox SET read_at = ? WHERE id = ? AND read_at IS NULL",
+  mailInbox: "SELECT json, received_at, read_at FROM inbox ORDER BY received_at DESC LIMIT ?",
+  mailOutbox: "SELECT json, queued_at, acked_at FROM outbox ORDER BY queued_at DESC LIMIT ?",
 } as const;

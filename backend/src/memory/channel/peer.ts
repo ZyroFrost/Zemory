@@ -16,6 +16,7 @@
 import tls, { type TLSSocket } from "node:tls";
 import { peerDeviceId, sameDeviceId, type ChannelIdentity } from "./identity.js";
 import { MIRROR_AREAS, type MirrorArea, type MirrorEntry } from "./mirror.js";
+import { asEnvelope, type MailHooks } from "../mail.js";
 import {
   FRAME_BLOCK,
   FRAME_FILE,
@@ -217,6 +218,11 @@ export interface SessionOptions {
   onOpen?: (peerDeviceId: string) => void;
   /** Tên máy của ta, khai trong `hello`. */
   hostName?: string;
+  /**
+   * Agent mail (plan/40). Absent => no `mail` capability in `hello` and no letter is carried. Letters go once both sides
+   * proved the same key and know each other, independent of the block round: a letter never waits for a sync to close.
+   */
+  mail?: MailHooks;
   /** Máy kia khai tên trong `hello` ⇒ ghi sổ. */
   onPeerName?: (peerDeviceId: string, name: string) => void;
   /**
@@ -253,6 +259,10 @@ let sessionSeq = 0;
 
 /** Im bao lâu thì gửi một nhịp tim. Xem `PingMessage` để biết vì sao nhịp tim là bắt buộc. */
 export const PING_IDLE_MS = 20_000;
+/** How often an open link looks at the outbox (plan/40 §6 ③: a letter must reach the other inbox within seconds). */
+export const MAIL_SCAN_MS = 3_000;
+/** A letter sent on this link with no `mailack` yet is offered again after this; the receiver keeps one copy by id. */
+export const MAIL_RESEND_MS = 60_000;
 /**
  * Không nghe thấy gì bao lâu thì coi là ĐỨT.
  *
@@ -411,6 +421,32 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     /** Lớp mirror của ta có chạy trong phiên này không — cần CẢ hai đầu biết nó. */
     const mirrorOn = (): boolean => Boolean(o.mirror) && peerMirror;
 
+    // ── Agent MAIL (plan/40) - its own ledger, never part of a round ──────────────────────────────
+    let peerMail = false;
+    let peerName = "";
+    /** Letters sent on this link and not acked yet -> when. Re-offered after MAIL_RESEND_MS; a new link starts empty. */
+    const mailInFlight = new Map<string, number>();
+    let lastMailScan = 0;
+    const mailOn = (): boolean => Boolean(o.mail) && peerMail && Boolean(peerName);
+    const flushMail = (): void => {
+      if (!mailOn() || !proofOk || !paired) return;
+      lastMailScan = Date.now();
+      let owed: ReturnType<MailHooks["outgoing"]>;
+      try {
+        owed = o.mail?.outgoing(peerName) ?? [];
+      } catch (e) {
+        o.log?.(`[channel] mail: could not read the outbox (${e instanceof Error ? e.message : String(e)}) - next tick`);
+        return;
+      }
+      for (const env of owed) {
+        const at = mailInFlight.get(env.id);
+        if (at !== undefined && Date.now() - at < MAIL_RESEND_MS) continue;
+        mailInFlight.set(env.id, Date.now());
+        send(encodeJson({ t: "mail", m: env }));
+        o.log?.(`[channel] #${sid} mail ${env.id.slice(0, 8)} sent to ${peerName} (${env.to.repo})`);
+      }
+    };
+
     /**
      * Lỗi lúc NHẬN file: in vài dòng đầu, phần còn lại GOM lại một dòng ở cuối phiên.
      *
@@ -503,6 +539,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const timer = setInterval(() => {
       const now = Date.now();
       if (linkDead(now, lastHeard, deadMs)) return finish(persistent ? "máy kia mất tín hiệu" : "máy kia im quá lâu");
+      // a letter queued while the link is open goes within one scan (the CLI writes the outbox in another process)
+      if (now - lastMailScan >= MAIL_SCAN_MS) flushMail();
       // Nhịp tim chỉ có nghĩa ở liên kết thường trực. Lượt một-phát vốn đã có việc để làm; bắn
       // thêm nhịp vào đó là thêm khung mà không mua gì.
       // A one-shot round pings too while it waits on answers: the peer may merge a large block for minutes, silently.
@@ -609,6 +647,8 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         // Khai năng lực tới TRƯỚC mọi thứ khác, nên tới lúc khai kho ta đã biết có chạy pha
         // mirror hay không. Bản cũ không có trường này ⇒ `undefined` ⇒ tắt, đúng như phải vậy.
         peerMirror = m.mirror === true;
+        peerMail = m.mail === true;
+        peerName = typeof m.name === "string" ? m.name.slice(0, 64) : "";
         const [a, b] = initiator ? [myNonce, peerNonce] : [peerNonce, myNonce];
         send(encodeJson({ t: "proof", hmac: computeProof(o.shareKey, a, b) }));
         return;
@@ -626,6 +666,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
           o.log?.(`[channel] phiên #${sid} với ${(peerId ?? "?").slice(0, 11)}… (bản ${peerVersion}) — ${initiator ? "ta gọi" : "máy kia gọi"}`);
         }
         if (paired) o.onOpen?.(peerId ?? "");
+        if (paired) flushMail();
         if (paired && persistent) {
           o.onKick?.((): boolean => {
             if (settled) return false;
@@ -773,6 +814,36 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         return;
       }
       if (m.t === "pong") return;
+      if (m.t === "mail") {
+        if (!proofOk || !paired) return finish("mail sent before the peer proved the same key");
+        const env = asEnvelope(m.m);
+        const id = env?.id ?? (typeof (m.m as { id?: unknown })?.id === "string" ? String((m.m as { id: string }).id).slice(0, 64) : "");
+        if (!env) {
+          o.log?.(`[channel] #${sid} mail: dropped a malformed letter ${id.slice(0, 8)}`);
+          if (id) send(encodeJson({ t: "mailack", id })); // acked so it is not offered for ever; it can never be read
+          return;
+        }
+        try {
+          o.mail?.receive(env, peerName || peerId || "?");
+        } catch (e) {
+          // not acked: the sender offers it again, the store may be free by then
+          o.log?.(`[channel] #${sid} mail ${id.slice(0, 8)}: could not store it (${e instanceof Error ? e.message : String(e)}) - the other machine sends it again`);
+          return;
+        }
+        o.log?.(`[channel] #${sid} mail ${id.slice(0, 8)} from ${env.from.host}/${env.from.repo} -> ${env.to.repo}`);
+        send(encodeJson({ t: "mailack", id }));
+        return;
+      }
+      if (m.t === "mailack") {
+        if (typeof m.id !== "string") return;
+        mailInFlight.delete(m.id);
+        try {
+          o.mail?.acked(m.id);
+        } catch (e) {
+          o.log?.(`[channel] #${sid} mail ${m.id.slice(0, 8)}: ack not recorded (${e instanceof Error ? e.message : String(e)}) - sent again, the receiver keeps one copy`);
+        }
+        return;
+      }
       if (m.t === "done") {
         // Nói ra cả hai chiều `done`: một phiên treo tới hết giờ hầu như luôn là MỘT bên không
         // đóng sổ, và không có hai dòng này thì không cách nào biết bên nào.
@@ -1123,6 +1194,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         nonce: myNonce,
         initiator,
         mirror: Boolean(o.mirror),
+        mail: Boolean(o.mail),
         proto: P2P_PROTO,
         ...(o.hostName ? { name: o.hostName } : {}),
       }),

@@ -49,6 +49,18 @@ export interface HelloMessage {
    * receiver's db (plan/24 §13, HP 18). Absent = 1, the old stored-block channel: the two cannot sync, the session says so.
    */
   proto?: number;
+  /** This machine carries agent mail (plan/40). Absent (older build) = no mail is sent to it; it would only drop it. */
+  mail?: boolean;
+}
+/** One letter of the agent mailbox (plan/40). The receiver stores it by `m.id` and answers `mailack`, a duplicate too. */
+export interface MailMessage {
+  t: "mail";
+  m: unknown;
+}
+/** The letter is stored on the receiving machine - the sender stops offering it. */
+export interface MailAckMessage {
+  t: "mailack";
+  id: string;
 }
 export interface ProofMessage {
   t: "proof";
@@ -171,7 +183,9 @@ export type ControlMessage =
   | MirrorFileMessage
   | MirrorDoneMessage
   | PingMessage
-  | PongMessage;
+  | PongMessage
+  | MailMessage
+  | MailAckMessage;
 
 export function encodeJson(msg: ControlMessage): Buffer {
   const body = Buffer.from(JSON.stringify(msg), "utf8");

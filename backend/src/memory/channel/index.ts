@@ -30,6 +30,7 @@ import {
 import { secureSocket } from "./punch.js";
 import { runSessionOn } from "./peer.js";
 import { mirrorHooks } from "./mirrorstate.js";
+import { mailHooks } from "../mail.js";
 import { blockIO } from "./p2pio.js";
 import { getPeerLastSync, getPeerNames, getPeerSync, setPeerLastSync, setPeerName } from "../../config/settings.js";
 
@@ -600,6 +601,9 @@ export function armPunchWait(o: {
     allowedPeers: o.allowedPeers,
     wantPair: o.wantPair,
     mirror: mirrorHooks(),
+    mail: mailHooks(),
+    // the peer addresses mail by host name: a punched session that did not say it carried no mail (plan/40)
+    hostName: hostname(),
     // Hai hook, hai VAI khác nhau — truyền thiếu một cái là bịt một chiều mà không lỗi nào nổ:
     // `acceptPeer` mở cửa khi TA là bên nghe · `onPaired` ghi sổ khi TA là bên gọi.
     acceptPeer: o.acceptPeer,
@@ -818,6 +822,7 @@ export async function startChannelServer(o: {
         allowedPeers: peers,
         acceptPeer: o.acceptPeer,
         mirror: mirrorHooks(),
+    mail: mailHooks(),
         hostName: hostname(),
         onPeerName: (id: string, nm: string) => setPeerName(id, nm),
         // Cửa nghe THẲNG từng không truyền log ⇒ mọi phiên đến qua đường thẳng CÂM: không `phiên #n`,
@@ -1122,6 +1127,7 @@ async function acceptRelayInvite(
       allowedPeers: peers,
       acceptPeer: o.acceptPeer,
       mirror: mirrorHooks(),
+    mail: mailHooks(),
       hostName: hostname(),
       onPeerName: (id: string, nm: string) => setPeerName(id, nm),
       log,
@@ -1247,6 +1253,7 @@ export async function syncViaRelay(o: {
         acceptPeer: o.acceptPeer,
         onPaired: o.onPaired,
         mirror: mirrorHooks(),
+    mail: mailHooks(),
         hostName: hostname(),
         onPeerName: (id: string, nm: string) => setPeerName(id, nm),
         log: say,
