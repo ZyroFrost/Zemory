@@ -124,6 +124,8 @@ interface ZConfig {
   webPull?: Record<string, { at: string; ok: boolean; status: string; pulled?: number; error?: string }>;
   /** Tên các tool mà tin `tool_use` của chúng ĐƯỢC nhúng vector — xem getEmbedTools. */
   embedTools?: string[];
+  /** Embedding paused on this machine — see getEmbedPaused. */
+  embedPaused?: { reason: string; at: string };
   /** The root of this machine's data tree (Struc_Disk_Data), as the host names it — see getTreeRoot. */
   treeRoot?: string;
 }
@@ -200,6 +202,27 @@ export function getEmbedTools(): string[] {
 export function setEmbedTools(names: string[]): void {
   const c = read();
   c.embedTools = names;
+  write(c);
+}
+
+/**
+ * Embedding paused on THIS machine (`zemory memory embed --pause <reason>` / `--resume`). While set, no path embeds:
+ * the fast lane, the maintain chain and `memory embed` all stop at `embedPending`. Messages still sync without vectors -
+ * the send lane never waits for a vector - so the other machine keeps receiving everything.
+ *
+ * Why it exists: an index being replaced (one machine moved to a new profile, this one still on the old) makes every
+ * vector this machine writes a vector the other refuses and this one drops at the swap. Stopping the old model is the
+ * only way to stop that waste; turning the channel off would stop the messages too.
+ */
+export function getEmbedPaused(): { reason: string; at: string } | null {
+  const v = read().embedPaused;
+  return v && typeof v.reason === "string" ? v : null;
+}
+
+export function setEmbedPaused(reason: string | null): void {
+  const c = read();
+  if (reason) c.embedPaused = { reason, at: new Date().toISOString() };
+  else delete c.embedPaused;
   write(c);
 }
 

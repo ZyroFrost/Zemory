@@ -32,6 +32,7 @@ import { backgroundChildEnv } from "./childenv.js";
 import { hasQueuedIngest } from "./ingestqueue.js";
 import { Q } from "../memory/store/queries.js";
 import { peerMarkKey, type MergedBlock } from "../memory/channel/p2pdb.js";
+import { getEmbedPaused } from "../config/settings.js";
 
 /** Quiet spell after the last new message before a block is sealed. */
 export const FAST_QUIET_MS = 3_000;
@@ -293,7 +294,10 @@ export class FastLane {
   private tickEmbed(now: number): "vectors" | null {
     // a child lives for a whole burst: another job waiting on the slot, or a sync round, asks it to yield (it ends the round
     // in hand, then exits; its result line requeues what is left)
-    if (this.embedChild && !this.embedYieldAsked && (embedLaneYieldWanted() || this.d.syncRunning())) {
+    // paused (`memory embed --pause`): a running child is asked to stop like a yield, and no new one starts - without this
+    // the frontier probe would spawn a child every probe only for `embedPending` to return at its gate
+    const paused = getEmbedPaused() !== null;
+    if (this.embedChild && !this.embedYieldAsked && (paused || embedLaneYieldWanted() || this.d.syncRunning())) {
       this.embedYieldAsked = true;
       try {
         this.embedChild.kill("SIGTERM");
@@ -301,7 +305,7 @@ export class FastLane {
         /* already gone */
       }
     }
-    if (this.embedChild || !this.d.enabled() || this.d.syncRunning()) return null;
+    if (paused || this.embedChild || !this.d.enabled() || this.d.syncRunning()) return null;
     let owed = this.vectorsQueued;
     if (!owed && this.d.frontier && now - this.frontierProbedAt >= FAST_FRONTIER_PROBE_MS) {
       this.frontierProbedAt = now;

@@ -44,7 +44,7 @@ import {
 import { type ScopeNode, scopeTree, toggleLane } from "../memory/scope.js";
 import { uplinkReport } from "../memory/uplinkguard.js";
 import { promotionReport } from "../memory/promote.js";
-import { getDriveDir, getScopeExclude, setScopeExclude, setWebAuth, setWebPull, type ScopeLane } from "../config/settings.js";
+import { getDriveDir, getEmbedPaused, getScopeExclude, setEmbedPaused, setScopeExclude, setWebAuth, setWebPull, type ScopeLane } from "../config/settings.js";
 import { backupMemory, forgetMemory, listBackups, pruneBackupFiles, reRedactMemory, reshipMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
 import { acquireCliWriteLock, cliWriteHolder, releaseCliWriteLock } from "../jobs/writegate.js";
 import { flagValue, positionalArgs } from "./_shared.js";
@@ -209,8 +209,8 @@ const HEAVY_FLAGS: Record<string, { allow: Set<string>; usage: string }> = {
   // the user to use it, so refusing it here made that advice impossible to follow (found 2026-10-05).
   scan: { allow: new Set(["--deep", "--force"]), usage: "zemory memory scan [--deep] [--force]" },
   embed: {
-    allow: new Set(["--all", "--rebuild", "--limit", "--force"]),
-    usage: "zemory memory embed [--all] [--rebuild] [--limit <n>] [--force]",
+    allow: new Set(["--all", "--rebuild", "--limit", "--force", "--pause", "--resume", "--status"]),
+    usage: "zemory memory embed [--all] [--rebuild] [--limit <n>] [--force] · --pause <reason> · --resume · --status",
   },
   digest: { allow: new Set(["--all", "--force"]), usage: "zemory memory digest [<session-id>] [--all] [--force]" },
   // APPENDS a block to the SHARED store. Measured 2026-10-05: `vectors-catchup --help` started a real
@@ -267,6 +267,28 @@ export async function cmdMemory(args: string[]): Promise<void> {
       process.exitCode = 1;
       return;
     }
+  }
+  // `embed --pause <reason>` / `--resume` / `--status` write or read one config flag, never the store: they answer BEFORE the
+  // write gate, so a long embed run holding the lock cannot keep the pause from landing (the pause is what stops that run).
+  if (sub === "embed" && (args.includes("--pause") || args.includes("--resume") || args.includes("--status"))) {
+    if (args.includes("--pause")) {
+      const reason = (flagValue(args, "--pause") ?? "").trim();
+      if (!reason || reason.startsWith("--")) {
+        console.log('zemory memory embed --pause: give the reason, e.g. --pause "index moving to gemma2-prompt-v1"');
+        process.exitCode = 1;
+        return;
+      }
+      setEmbedPaused(reason);
+      console.log(`zemory memory embed: PAUSED on this machine — ${reason}`);
+      console.log("  no path embeds now (fast lane · maintain chain · memory embed); messages still sync, without vectors.");
+      console.log("  resume: zemory memory embed --resume");
+    } else if (args.includes("--resume")) {
+      setEmbedPaused(null);
+      console.log("zemory memory embed: resumed — the fast lane and the maintain chain embed again on their next round.");
+    }
+    const p = getEmbedPaused();
+    console.log(`  state: ${p ? `paused since ${p.at} — ${p.reason}` : "embedding on"}`);
+    return;
   }
   // Write gate: hold the daemon's scheduler off while a heavy write runs here.
   // Shape matters (audit 2026-07-21): the old version wrapped the RUN in the
@@ -1559,6 +1581,10 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
           process.stdout.write(`\n  ⚠ database busy (another zemory process is writing) — retry ${attempt + 1}/8 in ${Math.round(backoffMs / 1000)}s…\n`);
           await sleep(backoffMs);
         }
+      }
+      if (r.paused) {
+        console.log(`zemory memory embed: paused on this machine — ${r.paused} (resume: zemory memory embed --resume)`);
+        return;
       }
       total += r.embedded;
       process.stdout.write(`  +${r.embedded} embedded · remaining ${r.remaining}${r.dims ? ` · ${r.dims}d` : ""}\n`);

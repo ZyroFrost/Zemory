@@ -27,10 +27,11 @@
 // `zemory memory embed --rebuild`.
 
 import { createHash } from "node:crypto";
+import { resolve as resolvePath } from "node:path";
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { currentMemoryDb } from "./db.js";
-import { getEmbedTools, getScopeExclude } from "../config/settings.js";
+import { getEmbedPaused, getEmbedTools, getScopeExclude } from "../config/settings.js";
 import { laneSqlClause } from "./scope.js";
 
 /**
@@ -303,6 +304,8 @@ export interface EmbedPendingResult {
   dims: number | null;
   /** `deadline` passed before every selected message was embedded — the caller should come back for the rest. */
   stoppedEarly?: boolean;
+  /** Embedding is paused on this machine (`memory embed --pause`): nothing was read or written. The reason given. */
+  paused?: string;
 }
 
 export interface EmbedProgress {
@@ -363,6 +366,11 @@ export async function embedPending(
     writeTurn?: () => Promise<() => void>;
   } = {},
 ): Promise<EmbedPendingResult> {
+  // The one gate every embedding path goes through (fast lane · maintain chain · `memory embed` · Drive sync): paused ⇒
+  // no model load, no store read. The default store only - a named store (`--db`, a bench copy) is the caller's choice.
+  // Callers often pass the default store's path explicitly (the fast lane does), so compare paths, not presence.
+  const paused = !opts.dbPath || resolvePath(opts.dbPath) === resolvePath(currentMemoryDb()) ? getEmbedPaused() : null;
+  if (paused) return { embedded: 0, deduped: 0, remaining: -1, dims: null, paused: paused.reason };
   const dbPath = opts.dbPath ?? currentMemoryDb();
   const limit = opts.limit ?? 500;
   const batchSize = Math.max(1, opts.batchSize ?? 16);
