@@ -21,6 +21,7 @@ import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
 import { Q } from "./store/queries.js";
 import { isVecPrimaryKeyConflict } from "./vectors.js";
+import { currentEmbedProfile } from "./embed.js";
 
 export interface ShipResult {
   /** Số vector đã nhét vào gói. */
@@ -278,8 +279,17 @@ export function receiveVectorsFrom(
     dst = new Database(targetPath);
     sqliteVec.load(dst);
     const mine = readVecMeta(dst);
-    // Kho đích chưa từng nhúng ⇒ nhận và ĐÓNG DẤU cấu hình của bên gửi: từ đó máy này nhúng
-    // tiếp bằng đúng cấu hình ấy, không đẻ ra kho lai hai không gian.
+    // A target with no index adopts the sender's config - but ONLY when it is the profile a new index here would get.
+    // Measured 2026-11-17: the laptop dropped its Gemma 1 index to move to Gemma 2, then an auto-sync merged OLD Drive
+    // blocks carrying `gemma-prompt-v1` vectors; the empty store adopted that profile and the fast lane went on embedding
+    // with Gemma 1 - the very model the user had retired. An old block must not decide a new index's model.
+    if (!mine && meta.profile !== currentEmbedProfile()) {
+      return {
+        applied: 0,
+        skipped: total,
+        reason: `no index here yet, and the package's profile ${meta.profile} is not the one a new index gets (${currentEmbedProfile()})`,
+      };
+    }
     if (!mine) {
       dst.exec(`CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(embedding float[${meta.dims}])`);
       dst.exec("CREATE TABLE IF NOT EXISTS vec_config (dims INTEGER, profile TEXT, dtype TEXT)");
