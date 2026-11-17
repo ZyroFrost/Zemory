@@ -17,7 +17,7 @@
 // minh MỚI, đúng thứ nó sinh ra để diệt.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, posix, relative, sep } from "node:path";
 import { harnessPathsAt } from "../core/config.js";
 import { readTextFile } from "../util/read-text.js";
@@ -142,28 +142,43 @@ function findFile(root: string, needle: string): string {
   return hit;
 }
 
-/** Toàn bộ mã nguồn của repo, gộp một lần — tra ký hiệu/endpoint bằng includes cho rẻ. */
-function loadSourceBlob(root: string): { text: string; byFile: Map<string, string> } {
+/**
+ * The repo's source, read once - symbols/endpoints are then looked up with `includes`.
+ *
+ * BOUNDED, and it must be. Measured 2026-11-17: the ERP/Dashboard repo keeps 342 MB of JSON data in `exports/` (65 files,
+ * up to 30 MB each) - the `.json` suffix let it in; V8 holds Vietnamese text at 2 bytes a char (~680 MB) and an unused
+ * `join` doubled it (GC log: 681 -> 1366 MB). The repo sweep runs this in a daemon worker, and a worker out of heap
+ * took the WHOLE daemon down: 154 crashes since 14/11, one every ~8 minutes. A file over `SOURCE_MAX_FILE` is not
+ * hand-written code (data, bundle, lockfile) and is skipped; past `SOURCE_MAX_TOTAL` reading stops. A lookup that misses
+ * reports nothing - it never invents a finding - which beats killing the daemon.
+ */
+const SOURCE_MAX_FILE = 512 * 1024;
+const SOURCE_MAX_TOTAL = 48 * 1024 * 1024;
+function loadSourceBlob(root: string): { byFile: Map<string, string> } {
   const byFile = new Map<string, string>();
-  const SKIP = new Set(["node_modules", ".git", "dist", "attic", "data", "docs", "docs_visual"]);
+  const SKIP = new Set(["node_modules", ".git", "dist", "attic", "data", "docs", "docs_visual", ".venv", "venv", "__pycache__"]);
   const EXT = new Set([".ts", ".mjs", ".js", ".py", ".json"]);
+  let total = 0;
   const walk = (dir: string, depth: number): void => {
-    if (depth > 6) return;
+    if (depth > 6 || total >= SOURCE_MAX_TOTAL) return;
     for (const { name, abs, isDir } of listDir(dir) ?? []) {
       if (SKIP.has(name)) continue;
       if (isDir) {
         walk(abs, depth + 1);
       } else if (EXT.has(extname(name))) {
         try {
+          const size = statSync(abs).size;
+          if (size > SOURCE_MAX_FILE || total + size > SOURCE_MAX_TOTAL) continue;
           byFile.set(relative(root, abs).split(sep).join(posix.sep), readFileSync(abs, "utf8"));
+          total += size;
         } catch {
-          /* file không đọc được thì bỏ, không phải bằng chứng */
+          /* an unreadable file is skipped - it is no evidence either way */
         }
       }
     }
   };
   walk(root, 0);
-  return { text: [...byFile.values()].join("\n"), byFile };
+  return { byFile };
 }
 
 function findInSource(src: { byFile: Map<string, string> }, needle: string): string {

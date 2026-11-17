@@ -27,13 +27,24 @@ export type WorkerResult<T> = { ok: true; value: T } | { ok: false; error: strin
  * Default ceiling 2 minutes: enough for a large sweep, and an outside command (WMI/PowerShell) that hangs is cut instead
  * of holding the worker for ever - the daemon never waits for it.
  * `unref`: the worker does not keep the process alive - a background refresh a short-lived CLI or test need not wait for.
+ * `heapMb`: the worker's own old-generation ceiling. Without one a worker shares the process limit, and a worker that
+ * runs out of heap is a FATAL V8 error for the whole process - measured 2026-11-17: the repo sweep read 342 MB of JSON
+ * data and took the daemon down 154 times since 14/11. With a ceiling the worker alone ends (ERR_WORKER_OUT_OF_MEMORY,
+ * reported as `{ ok: false }`) and the daemon keeps running.
  */
-export function runInWorker<T>(modFromDist: string, fn: string, args: unknown[] = [], timeoutMs = 120_000, opts: { unref?: boolean } = {}): Promise<WorkerResult<T>> {
+export const WORKER_HEAP_MB = 512;
+export function runInWorker<T>(
+  modFromDist: string,
+  fn: string,
+  args: unknown[] = [],
+  timeoutMs = 120_000,
+  opts: { unref?: boolean; heapMb?: number } = {},
+): Promise<WorkerResult<T>> {
   return new Promise((resolve) => {
     let w: Worker;
     try {
       const mod = new URL(`../${modFromDist}`, import.meta.url).href;
-      w = new Worker(WORKER_SRC, { eval: true, workerData: { mod, fn, args } });
+      w = new Worker(WORKER_SRC, { eval: true, workerData: { mod, fn, args }, resourceLimits: { maxOldGenerationSizeMb: opts.heapMb ?? WORKER_HEAP_MB } });
       if (opts.unref) w.unref();
     } catch (e) {
       return resolve({ ok: false, error: `could not start the worker: ${e instanceof Error ? e.message : String(e)}` });
