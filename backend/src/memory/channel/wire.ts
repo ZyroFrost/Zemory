@@ -51,6 +51,11 @@ export interface HelloMessage {
   proto?: number;
   /** This machine carries agent mail (plan/40). Absent (older build) = no mail is sent to it; it would only drop it. */
   mail?: boolean;
+  /**
+   * `"remote"` = a paired PHONE (plan/41 §4), not a machine: `name` is the phone's name, the proof is keyed by that phone's
+   * own pairing token (never `share.key`), and only mail · mailack · ping · pong follow. Absent = a machine, as before.
+   */
+  role?: "remote";
 }
 /** One letter of the agent mailbox (plan/40). The receiver stores it by `m.id` and answers `mailack`, a duplicate too. */
 export interface MailMessage {

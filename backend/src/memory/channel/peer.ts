@@ -16,7 +16,8 @@
 import tls, { type TLSSocket } from "node:tls";
 import { peerDeviceId, sameDeviceId, type ChannelIdentity } from "./identity.js";
 import { MIRROR_AREAS, type MirrorArea, type MirrorEntry } from "./mirror.js";
-import { asEnvelope, type MailHooks } from "../mail.js";
+import { asEnvelope, sameHost as sameMailHost, type MailHooks } from "../mail.js";
+import { phoneHost } from "../phone.js";
 import {
   FRAME_BLOCK,
   FRAME_FILE,
@@ -50,6 +51,8 @@ export interface SyncOutcome {
    *  người dùng thấy "xong" rồi lượt sau vẫn còn việc và không hiểu vì sao. */
   filesLeft: number;
   error?: string;
+  /** Set when the other end was a paired phone (plan/41): the caller must not book it as a machine. */
+  remote?: string;
 }
 
 /**
@@ -223,6 +226,12 @@ export interface SessionOptions {
    * proved the same key and know each other, independent of the block round: a letter never waits for a sync to close.
    */
   mail?: MailHooks;
+  /**
+   * Paired phones this side accepts (plan/41 §4), listener only. Present => a stranger may speak up to its `hello`; one that
+   * says `role: "remote"` with a paired phone name proves itself with THAT phone's token and gets a mail-only session.
+   * Absent => strangers are refused right after TLS, as before.
+   */
+  remotes?: { tokenFor: (phoneName: string) => string | null; host: string };
   /** Máy kia khai tên trong `hello` ⇒ ghi sổ. */
   onPeerName?: (peerDeviceId: string, name: string) => void;
   /**
@@ -579,10 +588,17 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     // HAI ĐẦU đều phải nới: bên NGHE khi đang mở cửa sổ ghép, bên GỌI khi cầm mã ghép. Bản đầu chỉ
     // nới bên nghe, nên lượt ghép đầu tiên chết ngay ở chính máy đi gọi — danh sách của nó còn rỗng.
     const pairing = !known && (typeof o.acceptPeer === "function" || Boolean(o.wantPair));
-    if (!known && !pairing) {
+    // A paired phone has no fingerprint on file (its pairing code carries only a token), so a stranger is heard up to its
+    // `hello` when this side accepts phones; a hello that is not a phone's ends the session there (see `hello`).
+    const mayBeRemote = !known && !initiator && Boolean(o.remotes);
+    if (!known && !pairing && !mayBeRemote) {
       return finish(`máy lạ, chưa ghép đôi: ${peerId}`);
     }
     let paired = known;
+    /** The phone's name once its hello said `role: "remote"`; its token keys the proof. */
+    let remote: string | null = null;
+    let remoteToken = "";
+    const REMOTE_FRAMES = new Set(["hello", "proof", "mail", "mailack", "ping", "pong"]);
 
     const send = (buf: Buffer): void => {
       out.bytesSent += buf.length;
@@ -636,6 +652,31 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     };
 
     const onControl = (m: ControlMessage): void => {
+      // a phone gets mail and keepalive, nothing that reads or writes the GM
+      if (remote && !REMOTE_FRAMES.has(m.t)) return finish(`phone ${remote} sent a frame it may not (${m.t})`);
+      if (m.t === "hello" && (m as { role?: unknown }).role === "remote") {
+        const name = typeof m.name === "string" ? m.name.slice(0, 32) : "";
+        const token = name && o.remotes ? o.remotes.tokenFor(name) : null;
+        if (initiator || !token) return finish(`phone "${name || "?"}" is not paired with this machine`);
+        remote = name;
+        remoteToken = token;
+        out.remote = name;
+        peerNonce = m.nonce;
+        peerVersion = typeof m.appVersion === "string" && m.appVersion ? m.appVersion.slice(0, 20) : "?";
+        peerMail = true;
+        peerName = phoneHost(name);
+        send(encodeJson({ t: "proof", hmac: computeProof(remoteToken, peerNonce, myNonce) }));
+        return;
+      }
+      if (m.t === "hello" && mayBeRemote && !pairing) return finish(`máy lạ, chưa ghép đôi: ${peerId}`);
+      if (m.t === "proof" && remote) {
+        if (!proofMatches(computeProof(remoteToken, peerNonce, myNonce), m.hmac)) return finish(`phone ${remote}: wrong pairing token`);
+        proofOk = true;
+        paired = true;
+        o.log?.(`[channel] #${sid} phone ${remote} connected (app ${peerVersion}) - mail only`);
+        flushMail();
+        return;
+      }
       if (m.t === "hello") {
         peerNonce = m.nonce;
         peerVersion = typeof m.appVersion === "string" && m.appVersion ? m.appVersion.slice(0, 20) : "?";
@@ -821,6 +862,12 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         if (!env) {
           o.log?.(`[channel] #${sid} mail: dropped a malformed letter ${id.slice(0, 8)}`);
           if (id) send(encodeJson({ t: "mailack", id })); // acked so it is not offered for ever; it can never be read
+          return;
+        }
+        // the token proves which phone this is: it may speak only as itself and only to this machine
+        if (remote && (!sameMailHost(env.from.host, peerName) || !o.remotes || !sameMailHost(env.to.host, o.remotes.host))) {
+          o.log?.(`[channel] #${sid} phone ${remote}: dropped letter ${id.slice(0, 8)} (from ${env.from.host} to ${env.to.host})`);
+          send(encodeJson({ t: "mailack", id }));
           return;
         }
         try {

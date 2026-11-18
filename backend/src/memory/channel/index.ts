@@ -31,8 +31,15 @@ import { secureSocket } from "./punch.js";
 import { runSessionOn } from "./peer.js";
 import { mirrorHooks } from "./mirrorstate.js";
 import { mailHooks } from "../mail.js";
-import { PHONE_DRIVE_TICK_MS, phoneDriveTick } from "../phone.js";
+import { PHONE_DRIVE_TICK_MS, listPhones, phoneDriveTick } from "../phone.js";
 import { blockIO } from "./p2pio.js";
+
+/** Paired phones the listening doors accept (plan/41 §4). Read per session, so pairing or revoking a phone takes effect on
+ *  the next connection without restarting the channel. */
+const phoneRemotes = (): { tokenFor: (name: string) => string | null; host: string } => ({
+  tokenFor: (name) => listPhones().find((p) => p.name === name)?.token ?? null,
+  host: hostname(),
+});
 import { getPeerLastSync, getPeerNames, getPeerSync, setPeerLastSync, setPeerName } from "../../config/settings.js";
 
 /**
@@ -825,6 +832,7 @@ export async function startChannelServer(o: {
         acceptPeer: o.acceptPeer,
         mirror: mirrorHooks(),
     mail: mailHooks(),
+    remotes: phoneRemotes(),
         hostName: hostname(),
         onPeerName: (id: string, nm: string) => setPeerName(id, nm),
         // Cửa nghe THẲNG từng không truyền log ⇒ mọi phiên đến qua đường thẳng CÂM: không `phiên #n`,
@@ -1144,6 +1152,7 @@ async function acceptRelayInvite(
       acceptPeer: o.acceptPeer,
       mirror: mirrorHooks(),
     mail: mailHooks(),
+    remotes: phoneRemotes(),
       hostName: hostname(),
       onPeerName: (id: string, nm: string) => setPeerName(id, nm),
       log,
