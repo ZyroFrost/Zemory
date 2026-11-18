@@ -13,6 +13,7 @@
 import { join } from "node:path";
 import type { FeatureExtractionPipeline } from "@huggingface/transformers";
 import { currentMemoryDir } from "./db.js";
+import { getQueryDtype } from "../config/settings.js";
 
 const DTYPES = ["fp32", "fp16", "q8", "int8", "uint8", "q4", "q4f16", "bnb4"] as const;
 type Dtype = (typeof DTYPES)[number];
@@ -196,7 +197,13 @@ export function sliceNormalize(v: number[], dims: number): number[] {
 /** Embed a SEARCH QUERY under the given profile (must match the index's stored profile). */
 export async function embedQuery(text: string, profile: EmbedProfile): Promise<number[] | null> {
   useEmbedProfile(profile); // pins model + pooling too, not just the prompt
-  return embed(promptFor("query", text, profile));
+  const q = queryDtypeNow();
+  if (!q) return embed(promptFor("query", text, profile));
+  try {
+    return await (await getQueryPipe(q)).one(promptFor("query", text, profile));
+  } catch {
+    return null; // fail-open, same contract as embed()
+  }
 }
 
 /** Embed DOCUMENTS under the given profile (must match the index's stored profile). */
@@ -290,14 +297,37 @@ function tensorToVectors(rows: unknown[]): number[][] {
   return [rows.map((n) => Number(n))];
 }
 
+/** The encoder for documents and, unless this machine sets a query dtype, for queries too. */
 async function getPipe(): Promise<Encoder> {
-  if (!pipePromise) {
-    pipePromise = (async (): Promise<Encoder> => {
+  if (!pipePromise) pipePromise = loadEncoder(embedConfig().dtype);
+  return pipePromise;
+}
+
+/** A second encoder, only when this machine encodes queries in another dtype than the index (getQueryDtype). */
+let queryPipe: { dtype: Dtype; p: Promise<Encoder> } | null = null;
+
+/** The query dtype in force: the machine's setting when it is a known dtype different from the index's, else null. */
+export function queryDtypeNow(): Dtype | null {
+  const q = getQueryDtype();
+  return q && (DTYPES as readonly string[]).includes(q) && q !== embedConfig().dtype ? (q as Dtype) : null;
+}
+
+async function getQueryPipe(dtype: Dtype): Promise<Encoder> {
+  if (queryPipe?.dtype !== dtype) {
+    const old = queryPipe;
+    queryPipe = { dtype, p: loadEncoder(dtype) };
+    if (old) void old.p.then((e) => e.dispose()).catch(() => {});
+  }
+  return queryPipe.p;
+}
+
+function loadEncoder(dtype: Dtype): Promise<Encoder> {
+    return (async (): Promise<Encoder> => {
       const T = await import("@huggingface/transformers");
       const cfg = embedConfig();
       T.env.cacheDir = cfg.cacheDir; // weights live here, not in the repo
       const session_options = ortSessionOptions();
-      const opts = { dtype: cfg.dtype, ...(session_options ? { session_options } : {}) };
+      const opts = { dtype, ...(session_options ? { session_options } : {}) };
       if (specOf(effectiveProfile()).loader === "text-only") {
         const config = await T.AutoConfig.from_pretrained(cfg.model);
         const c = config as unknown as { vision_config?: unknown; audio_config?: unknown };
@@ -322,8 +352,6 @@ async function getPipe(): Promise<Encoder> {
         dispose: async () => void (await pipe.dispose()),
       };
     })();
-  }
-  return pipePromise;
 }
 
 /**
@@ -336,6 +364,9 @@ export function resetEmbed(): void {
   const old = pipePromise;
   pipePromise = null;
   if (old) void old.then((e) => e.dispose()).catch(() => {});
+  const oldQ = queryPipe;
+  queryPipe = null; // a profile change moves the model under the query encoder too
+  if (oldQ) void oldQ.p.then((e) => e.dispose()).catch(() => {});
 }
 
 /** Dimensions of the last successful embedding (null until one runs). */

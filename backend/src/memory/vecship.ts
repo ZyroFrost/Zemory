@@ -79,6 +79,22 @@ export function messageKey(uuid: string | null, timestamp: string | null, conten
   return "h:" + createHash("sha256").update(`${timestamp ?? ""}\n${content ?? ""}`, "utf8").digest("hex").slice(0, 32);
 }
 
+/** Rows per write transaction when a package lands: bounds both the JS heap and the WAL one commit grows. */
+export const SHIP_APPLY_BATCH = 2000;
+
+/** Feed a streamed row source to `apply` SHIP_APPLY_BATCH rows at a time - never the whole package in memory at once. */
+export function applyInBatches<T>(rows: Iterable<T>, apply: (batch: T[]) => void, size = SHIP_APPLY_BATCH): void {
+  let batch: T[] = [];
+  for (const r of rows) {
+    batch.push(r);
+    if (batch.length >= size) {
+      apply(batch);
+      batch = [];
+    }
+  }
+  if (batch.length) apply(batch);
+}
+
 function readVecMeta(db: Database.Database): VecMeta | null {
   try {
     const r = db.prepare("SELECT dims, profile, dtype FROM vec_config LIMIT 1").get() as VecMeta | undefined;
@@ -325,17 +341,20 @@ export function receiveVectorsFrom(
       return byHash.get(hashKey(session, mkey));
     };
     const ins = dst.prepare(Q.putVecChunk);
-    const rows = inc.prepare("SELECT session_id, mkey, embedding FROM vector_ship").all() as {
+    // Streamed, never `.all()`: a catch-up block from the other machine carried ~780k fp32 vectors (~3 KB each, ~2.4 GB),
+    // and reading it whole in one array is more than the 2 GB WSL VM the laptop runs in (2026-11-18). Rows are read one by
+    // one and written in transactions of SHIP_APPLY_BATCH; a run cut short is safe to repeat - what landed is `kept`.
+    const rows = inc.prepare("SELECT session_id, mkey, embedding FROM vector_ship").iterate() as Iterable<{
       session_id: string;
       mkey: string;
       embedding: unknown;
-    }[];
+    }>;
 
     let applied = 0;
     let kept = 0; // already had its vector here - see the insert below
     let skipped = 0;
-    const apply = dst.transaction(() => {
-      for (const r of rows) {
+    const apply = dst.transaction((batch: { session_id: string; mkey: string; embedding: unknown }[]) => {
+      for (const r of batch) {
         const hit = (r.mkey.startsWith("h:")
           ? ((id) => (id === undefined ? undefined : { id }))(byHashGet(r.session_id, r.mkey))
           : (find.get(r.session_id, r.mkey) as { id: bigint } | undefined));
@@ -357,7 +376,7 @@ export function receiveVectorsFrom(
         }
       }
     });
-    apply();
+    applyInBatches(rows, apply);
 
     // ── CỬA SỔ PHỤ: cấp rowid tổng hợp CỦA MÁY NÀY ────────────────────────────
     // Gốc 2^40 để không bao giờ đụng dải id tin; `vec_map` trỏ ngược về id tin local.
@@ -373,14 +392,10 @@ export function receiveVectorsFrom(
         if (next < SYNTH_BASE) next = SYNTH_BASE;
         const seen = dst.prepare("SELECT rowid FROM vec_map WHERE message_id = ? AND seq = ?");
         const mapPut = dst.prepare(Q.putVecMap);
-        const chunkRows = inc.prepare("SELECT session_id, mkey, seq, embedding FROM vector_ship_chunk").all() as {
-          session_id: string;
-          mkey: string;
-          seq: number;
-          embedding: unknown;
-        }[];
-        const applyChunks = dst.transaction(() => {
-          for (const r of chunkRows) {
+        type ChunkRow = { session_id: string; mkey: string; seq: number; embedding: unknown };
+        const chunkRows = inc.prepare("SELECT session_id, mkey, seq, embedding FROM vector_ship_chunk").iterate() as Iterable<ChunkRow>;
+        const applyChunks = dst.transaction((batch: ChunkRow[]) => {
+          for (const r of batch) {
             const hit = r.mkey.startsWith("h:")
               ? ((id) => (id === undefined ? undefined : { id }))(byHashGet(r.session_id, r.mkey))
               : (find.get(r.session_id, r.mkey) as { id: bigint } | undefined);
@@ -395,7 +410,7 @@ export function receiveVectorsFrom(
             applied++;
           }
         });
-        applyChunks();
+        applyInBatches(chunkRows, applyChunks);
       }
     } catch {
       /* fail-open: mất phần đuôi tin dài, tin và vector chính vẫn nguyên */

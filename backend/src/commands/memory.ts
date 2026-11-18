@@ -44,7 +44,7 @@ import {
 import { type ScopeNode, scopeTree, toggleLane } from "../memory/scope.js";
 import { uplinkReport } from "../memory/uplinkguard.js";
 import { promotionReport } from "../memory/promote.js";
-import { getDriveDir, getEmbedPaused, getScopeExclude, setEmbedPaused, setScopeExclude, setWebAuth, setWebPull, type ScopeLane } from "../config/settings.js";
+import { getDriveDir, getEmbedPaused, getQueryDtype, getScopeExclude, setEmbedPaused, setQueryDtype, setScopeExclude, setWebAuth, setWebPull, type ScopeLane } from "../config/settings.js";
 import { backupMemory, forgetMemory, listBackups, pruneBackupFiles, reRedactMemory, reshipMemory, restoreMemoryBackup, vacuumMemory } from "../memory/privacy.js";
 import { acquireCliWriteLock, cliWriteHolder, releaseCliWriteLock } from "../jobs/writegate.js";
 import { flagValue, positionalArgs } from "./_shared.js";
@@ -209,8 +209,8 @@ const HEAVY_FLAGS: Record<string, { allow: Set<string>; usage: string }> = {
   // the user to use it, so refusing it here made that advice impossible to follow (found 2026-10-05).
   scan: { allow: new Set(["--deep", "--force"]), usage: "zemory memory scan [--deep] [--force]" },
   embed: {
-    allow: new Set(["--all", "--rebuild", "--limit", "--force", "--pause", "--resume", "--status"]),
-    usage: "zemory memory embed [--all] [--rebuild] [--limit <n>] [--force] · --pause <reason> · --resume · --status",
+    allow: new Set(["--all", "--rebuild", "--limit", "--force", "--pause", "--resume", "--status", "--query-dtype"]),
+    usage: "zemory memory embed [--all] [--rebuild] [--limit <n>] [--force] · --pause <reason> · --resume · --status · --query-dtype <q4|…|off>",
   },
   digest: { allow: new Set(["--all", "--force"]), usage: "zemory memory digest [<session-id>] [--all] [--force]" },
   // APPENDS a block to the SHARED store. Measured 2026-10-05: `vectors-catchup --help` started a real
@@ -270,8 +270,18 @@ export async function cmdMemory(args: string[]): Promise<void> {
   }
   // `embed --pause <reason>` / `--resume` / `--status` write or read one config flag, never the store: they answer BEFORE the
   // write gate, so a long embed run holding the lock cannot keep the pause from landing (the pause is what stops that run).
-  if (sub === "embed" && (args.includes("--pause") || args.includes("--resume") || args.includes("--status"))) {
-    if (args.includes("--pause")) {
+  if (sub === "embed" && (args.includes("--pause") || args.includes("--resume") || args.includes("--status") || args.includes("--query-dtype"))) {
+    if (args.includes("--query-dtype")) {
+      // Queries only: the index keeps its dtype (documents, packages from the other machine). See getQueryDtype.
+      const d = (flagValue(args, "--query-dtype") ?? "").trim();
+      const known = ["fp32", "fp16", "q8", "int8", "uint8", "q4", "q4f16", "bnb4"];
+      if (d !== "off" && !known.includes(d)) {
+        console.log(`zemory memory embed --query-dtype: give one of ${known.join(" · ")} or off`);
+        process.exitCode = 1;
+        return;
+      }
+      setQueryDtype(d === "off" ? null : d);
+    } else if (args.includes("--pause")) {
       const reason = (flagValue(args, "--pause") ?? "").trim();
       if (!reason || reason.startsWith("--")) {
         console.log('zemory memory embed --pause: give the reason, e.g. --pause "index moving to gemma2-prompt-v1"');
@@ -288,6 +298,8 @@ export async function cmdMemory(args: string[]): Promise<void> {
     }
     const p = getEmbedPaused();
     console.log(`  state: ${p ? `paused since ${p.at} — ${p.reason}` : "embedding on"}`);
+    const q = getQueryDtype();
+    console.log(`  queries: ${q ? `encoded in ${q} (the index keeps its own dtype)` : "same dtype as the index"}`);
     return;
   }
   // Write gate: hold the daemon's scheduler off while a heavy write runs here.

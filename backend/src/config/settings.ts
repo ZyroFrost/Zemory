@@ -126,6 +126,8 @@ interface ZConfig {
   embedTools?: string[];
   /** Embedding paused on this machine — see getEmbedPaused. */
   embedPaused?: { reason: string; at: string };
+  /** Search-query dtype on this machine, apart from the index's (see getQueryDtype). */
+  queryDtype?: string;
   /** The root of this machine's data tree (Struc_Disk_Data), as the host names it — see getTreeRoot. */
   treeRoot?: string;
 }
@@ -223,6 +225,27 @@ export function setEmbedPaused(reason: string | null): void {
   const c = read();
   if (reason) c.embedPaused = { reason, at: new Date().toISOString() };
   else delete c.embedPaused;
+  write(c);
+}
+
+/**
+ * Dtype for SEARCH QUERIES on THIS machine, apart from the index's dtype (`zemory memory embed --query-dtype q4|off`).
+ * Null = the query uses the index's dtype (the default everywhere).
+ *
+ * Why it exists (2026-11-18): the shared index is Gemma 2 fp32 - the home PC embeds it - and the laptop runs in a 2 GB WSL
+ * VM where the fp32 model (954 MB peak) chokes it. Measured on 40 real queries against 240 GM messages: q4 queries over
+ * fp32 documents MRR 0.552 vs fp32 over fp32 0.557, #1 18/40 both, top-10 28 vs 29/40, at 522 MB peak. The laptop stops
+ * embedding documents (the PC does, vectors arrive in packages) and only encodes its queries in q4.
+ */
+export function getQueryDtype(): string | null {
+  const v = read().queryDtype;
+  return typeof v === "string" && v ? v : null;
+}
+
+export function setQueryDtype(dtype: string | null): void {
+  const c = read();
+  if (dtype) c.queryDtype = dtype;
+  else delete c.queryDtype;
   write(c);
 }
 
