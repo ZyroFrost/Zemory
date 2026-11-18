@@ -68,7 +68,10 @@ export const RULES = [
     for (const e of document.querySelectorAll('[data-rp-pct]')) {
       if (!e.getClientRects().length) continue;
       if (e.closest('[data-rp-target]')) continue;   // (v15) graded by its band, rp-target-graded
-      const v = num(txt(e)), c = getComputedStyle(e).color, kind = e.dataset.rpPct;
+      // (v24, Dashboard 18/11) a figure in brackets is negative whether or not a minus stands inside: "(132) lỗi", "(-43,2) pp"
+      const said = txt(e), boxed = /\\(\\s*[-−]?\\d[\\d.,]*\\s*(%|pp)?\\s*\\)/.test(said);
+      let v = num(said); if (boxed && v > 0) v = -v;
+      const c = getComputedStyle(e).color, kind = e.dataset.rpPct;
       if (kind === 'share') { if (c === good || c === bad) return 'a share % is coloured as up/down: ' + txt(e).slice(0, 30); continue; }
       if (!['up', 'down'].includes(kind) || !Number.isFinite(v) || v === 0) continue;
       const want = (v > 0) === (kind === 'up') ? good : bad;
@@ -153,6 +156,8 @@ export const RULES = [
     const zero = /^[-+−]?0([.,]0+)?\\s?(k|K|nghìn|ngàn|tr|tr\\.|triệu|tỷ|ty|M|Mn|B|bn)$/;
     for (const v of vis()) for (const e of v.querySelectorAll('*')) {
       if (e.children.length || !e.getClientRects().length) continue;
+      // (v24, the user 18/11) a true zero (its cell's data-rp-raw is 0) stays in the unit the person chose: not a figure rounded to 0
+      const rawAt = e.closest('[data-rp-raw]'); if (rawAt && rawAt.dataset.rpRaw !== '' && Number(rawAt.dataset.rpRaw) === 0) continue;
       const t = txt(e);
       if (zero.test(t)) return 'a figure rounded to 0 with its unit: "' + t + '" in ' + name(v);
     }
@@ -579,27 +584,32 @@ export const RULES = [
     let f = {money_unit: 'auto', money_dp: 1, money_round: 1, count_dp: 0, sep: 'dot', pct_dp: 1, neg: 'minus'};
     try { f = {...f, ...JSON.parse(document.documentElement.dataset.numFormat || '{}')}; } catch {}
     const words = document.documentElement.lang === 'en' ? {k: 'K', m: 'M', bn: 'B'} : {k: ' N', m: ' tr', bn: ' tỷ'};
-    const fmt = (raw, kind) => {
+    // the same steps as the frame's fmtNum (shell 1.33.6, the user 18/11): an amount under the chosen unit steps down to the unit
+    // it fills (a zero stays in it); the bracket form keeps its minus, (-132); a count whole by rule (people, data-rp-whole) has no
+    // decimals whatever count_dp says (the user 13/11)
+    const fmt = (raw, kind, whole = false) => {
       const negative = raw < 0, abs = Math.abs(raw); let value = abs, dp = 0, suffix = '';
       if (kind === 'pct') { value = abs * 100; dp = f.pct_dp; suffix = '%'; }
-      else if (kind === 'count') dp = f.count_dp;
-      else { const unit = f.money_unit === 'auto' ? (abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
+      else if (kind === 'count') dp = whole ? 0 : f.count_dp;
+      else { let unit = f.money_unit === 'auto' ? (abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
+        const below = {bn: 'm', m: 'k', k: 'vnd'}, size = {bn: 1e9, m: 1e6, k: 1e3};
+        while (abs > 0 && unit !== 'vnd' && abs < size[unit]) unit = below[unit];
         if (unit === 'vnd') { value = Math.round(abs / f.money_round) * f.money_round; dp = 0; }
-        else { value = abs / (unit === 'k' ? 1e3 : unit === 'm' ? 1e6 : 1e9); dp = f.money_dp; suffix = words[unit]; } }
+        else { value = abs / size[unit]; dp = f.money_dp; suffix = words[unit]; } }
       const fixed = value.toFixed(dp), [int, frac] = fixed.split('.');
       const group = f.sep === 'comma' ? ',' : f.sep === 'space' ? ' ' : '.', point = f.sep === 'comma' ? '.' : ',';
       const body = int.replace(/\\B(?=(\\d{3})+(?!\\d))/g, group) + (frac ? point + frac : '') + suffix;
       const neg = negative && Number(fixed) !== 0;
-      return {text: neg ? (f.neg === 'paren' ? '(' + body + ')' : '-' + body) : body, neg};
+      return {text: neg ? (f.neg === 'paren' ? '(-' + body + ')' : '-' + body) : body, neg};
     };
-    const looks = /^[-(]?\\d[\\d.,\\s]*(%|K|M|B| N| tr| tỷ)?\\)?$/;
+    const looks = /^\\(?-?\\d[\\d.,\\s]*(%|K|M|B| N| tr| tỷ)?\\)?$/;
     for (const cell of document.querySelectorAll('[data-rp-page] [data-rp-visual="table"] td')) {
       if (!cell.getClientRects().length || cell.closest('[data-rp-id]')) continue;   // (v15) a code (employee 03163) is no number
       const shown = (cell.textContent || '').replace(/\\s+/g, ' ').trim();
       if (!cell.dataset.rpNum) { if (looks.test(shown)) return 'a number outside the format of the person (no data-rp-num): ' + shown; continue; }
       const raw = Number(cell.dataset.rpRaw);
       if (!Number.isFinite(raw)) return 'a number cell without its value (data-rp-raw): ' + shown;
-      const want = fmt(raw, cell.dataset.rpNum);
+      const want = fmt(raw, cell.dataset.rpNum, 'rpWhole' in cell.dataset);
       if (shown !== want.text) return 'a number not in the format of the person: ' + shown + ' (want ' + want.text + ')';
       if (want.neg && f.neg === 'red' && !cell.closest('.text-danger') && !cell.querySelector('.text-danger')) return 'a negative not in red: ' + shown;
     }

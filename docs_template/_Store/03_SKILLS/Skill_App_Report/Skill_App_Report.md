@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 23
+version: 24
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -26,7 +26,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 - **Every % is declared** a direction or a share: `up` (rising is good) · `down` (rising is bad: voids, costs, refunds) ·
   `share` (a part of a total, no good or bad). Undeclared ⇒ red. [rp-pct-declared]
 - **Two colours only, by the declared direction:** good green, bad red (a `down` figure is red when it rises); a target
-  ratio takes 1 as its threshold; a share takes neither colour. No third "nearly" band, no fixed grey %. A % in brackets with no sign of its own ("(5,8)%", the person's negatives in brackets) is negative (v23, 16/11). [rp-pct-color]
+  ratio takes 1 as its threshold; a share takes neither colour. No third "nearly" band, no fixed grey %. A % in brackets with no sign of its own ("(5,8)%", the person's negatives in brackets) is negative (v23, 16/11). So is any figure in brackets, with or without a minus inside: `(132) lỗi`, `(-43,2) pp` (v24, 18/11). [rp-pct-color]
 - **A card whose figure is itself a ratio** (% target, % margin) shows its change in percentage points: `+2,5 pp MoM`,
   never a second %. [rp-pct-pp]
 
@@ -52,7 +52,7 @@ description: The report pages of an app - what a page of figures, charts and tab
   glass of the frame, never white, never the tone as a stripe or a border on one side; the frame keeps the fill of a card with
   `data-tone`. Locked by `Rule_Gate_98_FigureCardTone` (its hook blocks the style that takes the fill off). [rp-card-tone]
 - **A figure is never rounded to 0 with a unit** (v10: a Group Size of 1,75 read "0 k"): a value below the unit
-  shows in a smaller unit or in full; `0 k` · `0 tr` · `0 tỷ` never appear. [rp-figure-scale]
+  shows in a smaller unit or in full; `0 k` · `0 tr` · `0 tỷ` never appear. A true zero (its `data-rp-raw` is 0) stays in the unit the person chose (v24, the user 18/11). [rp-figure-scale]
 - **A card title fits its card;** a long one is abbreviated (the qualifying clause dropped, the full meaning in the page's
   glossary), never by shrinking the font of one card - the titles of a row share one size, and so do the figures.
   [rp-card-label]
@@ -121,7 +121,7 @@ description: The report pages of an app - what a page of figures, charts and tab
   it sideways inside its own frame, never spilling out of its panel (v16).
 - **The numbers of a table follow the person's number format** (v9): Settings > Numbers of the family frame (unit, decimals, rounding, separator, negatives),
   kept on `<html data-num-format>`. Each number cell says what it is (`data-rp-num` = `money` · `count` · `pct`) and its value
-  (`data-rp-raw`), and shows exactly that format (the frame's `fmtNum`); a negative in red carries `text-danger`. Charts and
+  (`data-rp-raw`), and shows exactly that format (the frame's `fmtNum`); a negative in red carries `text-danger`. As the frame 1.33.6 writes it (v24, the user 18/11): an amount under the chosen unit steps down to the unit it fills (275.000 in `tr` reads `275 N`), the bracket form keeps its minus `(-132)`, and a count whole by rule (people) carries `data-rp-whole` and shows no decimals. Charts and
   KPI cards keep their own form. [rp-num-format]
 - **A table shows ten rows at least** and scrolls the rest inside its own frame, staying on the page beside the other visuals
   (v7); ten rows as drawn - a row of two lines is taller - never a fixed height. [rp-table-rows-cap] The only table of its page takes the page height, in a frame that really scrolls (v16).

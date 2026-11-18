@@ -2371,7 +2371,7 @@ export const PROBES = [
       const cells = () => [...document.querySelectorAll('td[data-rp-num][data-rp-raw]')].filter(c => c.getClientRects().length && !c.closest('[data-rp-id]'));
       // a cell that reads as a report number (groups of thousands, a unit of money, a %) but is tied to no format is a number the
       // setting never reaches: named as such, never skipped (a page of such tables read as a page with nothing to change)
-      const looks = /^[-(]?\\d{1,3}([.,\\s]\\d{3})+([.,]\\d+)?([KMB]| (N|tr|tỷ))?\\)?$|^[-(]?\\d+([.,]\\d+)?([KMB]| (N|tr|tỷ))\\)?$|^[-(]?\\d+([.,]\\d+)? ?%\\)?$/;
+      const looks = /^\\(?-?\\d{1,3}([.,\\s]\\d{3})+([.,]\\d+)?([KMB]| (N|tr|tỷ))?\\)?$|^\\(?-?\\d+([.,]\\d+)?([KMB]| (N|tr|tỷ))\\)?$|^\\(?-?\\d+([.,]\\d+)? ?%\\)?$/;
       const loose = [...document.querySelectorAll('#page table tbody td, #page table tfoot td')].filter(c => !c.dataset.rpNum && !c.closest('[data-rp-id], dialog')
         && c.children.length === 0 && c.getClientRects().length && looks.test((c.textContent || '').replace(/\\s+/g, ' ').trim()));
       if (loose.length) return loose.length + ' number cell(s) of a table are tied to no format (no data-rp-num / data-rp-raw), so the person\\'s number setting never reaches them: ' + loose.slice(0, 3).map(c => c.textContent.trim()).join(', ');
@@ -2379,17 +2379,20 @@ export const PROBES = [
       const wait = ms => new Promise(r => setTimeout(r, ms));
       const words = document.documentElement.lang === 'en' ? {k: 'K', m: 'M', bn: 'B'} : {k: ' N', m: ' tr', bn: ' tỷ'};
       // the same steps as the frame's fmtNum and the report rule rp-num-format
+      // (v81, shell 1.33.6, the user 18/11) an amount under the chosen unit steps down to the unit it fills; the bracket form keeps its minus
       const fmt = (f, raw, kind, whole = false) => {
         const negative = raw < 0, abs = Math.abs(raw); let value = abs, dp = 0, suffix = '';
         if (kind === 'pct') { value = abs * 100; dp = f.pct_dp; suffix = '%'; }
         else if (kind === 'count') dp = whole ? 0 : f.count_dp;
-        else { const unit = f.money_unit === 'auto' ? (abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
+        else { let unit = f.money_unit === 'auto' ? (abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
+          const below = {bn: 'm', m: 'k', k: 'vnd'}, size = {bn: 1e9, m: 1e6, k: 1e3};
+          while (abs > 0 && unit !== 'vnd' && abs < size[unit]) unit = below[unit];
           if (unit === 'vnd') { value = Math.round(abs / f.money_round) * f.money_round; dp = 0; }
-          else { value = abs / (unit === 'k' ? 1e3 : unit === 'm' ? 1e6 : 1e9); dp = f.money_dp; suffix = words[unit]; } }
+          else { value = abs / size[unit]; dp = f.money_dp; suffix = words[unit]; } }
         const fixed = value.toFixed(dp), [int, frac] = fixed.split('.');
         const group = f.sep === 'comma' ? ',' : f.sep === 'space' ? ' ' : '.', point = f.sep === 'comma' ? '.' : ',';
         const body = int.replace(/\\B(?=(\\d{3})+(?!\\d))/g, group) + (frac ? point + frac : '') + suffix;
-        return negative && Number(fixed) !== 0 ? (f.neg === 'paren' ? '(' + body + ')' : '-' + body) : body;
+        return negative && Number(fixed) !== 0 ? (f.neg === 'paren' ? '(-' + body + ')' : '-' + body) : body;
       };
       const base = {money_unit: 'auto', money_dp: 1, money_round: 1, count_dp: 0, sep: 'dot', pct_dp: 1, neg: 'minus'};
       // saved as Settings saves it; the frame reads the person again when the window takes the focus

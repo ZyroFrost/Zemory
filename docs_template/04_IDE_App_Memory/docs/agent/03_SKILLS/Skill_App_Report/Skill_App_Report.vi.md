@@ -1,5 +1,5 @@
 ---
-version: 23
+version: 24
 lang: vi
 ---
 
@@ -19,7 +19,7 @@ lang: vi
 - **Mọi % phải khai** chiều hoặc tỷ trọng: `up` (tăng là tốt) · `down` (tăng là xấu: huỷ, chi phí, hoàn tiền) · `share` (một
   phần của tổng, không tốt xấu). Chưa khai ⇒ đỏ. [rp-pct-declared]
 - **Chỉ hai màu, theo chiều đã khai:** tốt xanh, xấu đỏ (chỉ số `down` tăng thì đỏ); tỷ lệ đạt chỉ tiêu lấy ngưỡng 1; tỷ
-  trọng không tô màu. Không có dải vàng "gần đạt", không % xám cố định. % trong ngoặc không có dấu ("(5,8)%", số âm hiện bằng ngoặc theo cài đặt của người xem) là số âm (v23, 16/11). [rp-pct-color]
+  trọng không tô màu. Không có dải vàng "gần đạt", không % xám cố định. % trong ngoặc không có dấu ("(5,8)%", số âm hiện bằng ngoặc theo cài đặt của người xem) là số âm (v23, 16/11). Mọi số trong ngoặc cũng là số âm, có hay không có dấu trừ bên trong: `(132) lỗi`, `(-43,2) pp` (v24, 18/11). [rp-pct-color]
 - **Card mà con số chính đã là tỷ lệ** (% chỉ tiêu, % biên lợi nhuận) ghi thay đổi bằng điểm %: `+2,5 pp MoM`, không ghi %
   lần nữa. [rp-pct-pp]
 
@@ -43,7 +43,7 @@ lang: vi
   hiện tông bằng vạch hay viền một bên; khung giữ nền của thẻ có `data-tone`. Khoá bởi `Rule_Gate_98_FigureCardTone` (hook chặn
   style gỡ nền). [rp-card-tone]
 - **Con số không bao giờ làm tròn về 0 kèm đơn vị** (v10: Group Size 1,75 hiện "0 k"): giá trị nhỏ hơn đơn vị thì
-  hiện bằng đơn vị nhỏ hơn hoặc số đầy đủ; không bao giờ có `0 k` · `0 tr` · `0 tỷ`. [rp-figure-scale]
+  hiện bằng đơn vị nhỏ hơn hoặc số đầy đủ; không bao giờ có `0 k` · `0 tr` · `0 tỷ`. Số 0 thật (`data-rp-raw` bằng 0) giữ đơn vị người xem đã chọn (v24, user 18/11). [rp-figure-scale]
 - **Tiêu đề card vừa card;** dài thì rút gọn (bỏ vế phụ, nghĩa đủ ghi vào bảng giải thích của trang), không thu nhỏ chữ riêng
   một card — tiêu đề một hàng cùng cỡ, con số cũng vậy. [rp-card-label]
 - Màu số trên card theo thứ tự màu của theme (card *i* → màu *i*).
@@ -104,7 +104,7 @@ lang: vi
   report) thì cuộn ngang ma trận trong khung riêng của nó, không bao giờ tràn ra ngoài panel (v16).
 - **Số trong bảng theo định dạng số của từng người** (v9): Cài đặt > Số của khung chung (đơn vị, số lẻ, làm tròn, dấu phân cách, số âm), lưu trên
   `<html data-num-format>`. Ô số nói nó là gì (`data-rp-num` = `money` · `count` · `pct`) và giá trị gốc (`data-rp-raw`), và
-  hiện đúng định dạng đó (`fmtNum` của khung); số âm tô đỏ mang `text-danger`. Chart và card KPI giữ cách hiện riêng. [rp-num-format]
+  hiện đúng định dạng đó (`fmtNum` của khung); số âm tô đỏ mang `text-danger`. Theo khung 1.33.6 (v24, user 18/11): số nhỏ hơn đơn vị đã chọn hạ xuống đơn vị nó đủ lớn (275.000 khi chọn `tr` hiện `275 N`), kiểu ngoặc vẫn giữ dấu trừ `(-132)`, số đếm nguyên theo luật (số người) mang `data-rp-whole` và không có phần lẻ. Chart và card KPI giữ cách hiện riêng. [rp-num-format]
 - **Bảng hiện ít nhất mười dòng**, phần còn lại cuộn trong khung của chính nó, và vẫn nằm chung trang với các hình khác (v7);
   mười dòng theo chiều cao thật - dòng hai hàng chữ cao hơn - không phải chiều cao cố định. [rp-table-rows-cap] Bảng duy nhất của trang được cao hết trang, trong khung thật sự cuộn được (v16).
   Mười dòng là sàn, không phải trần: bảng còn phải cuộn thì giãn hết phần màn hình trống dưới trang, tới đáy màn hình - không
