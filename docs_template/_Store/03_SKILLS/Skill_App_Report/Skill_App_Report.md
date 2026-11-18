@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 24
+version: 25
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -53,6 +53,10 @@ description: The report pages of an app - what a page of figures, charts and tab
   `data-tone`. Locked by `Rule_Gate_98_FigureCardTone` (its hook blocks the style that takes the fill off). [rp-card-tone]
 - **A figure is never rounded to 0 with a unit** (v10: a Group Size of 1,75 read "0 k"): a value below the unit
   shows in a smaller unit or in full; `0 k` · `0 tr` · `0 tỷ` never appear. A true zero (its `data-rp-raw` is 0) stays in the unit the person chose (v24, 18/11). [rp-figure-scale]
+- **A figure that fits one line never wraps** (v25, the user 18/11: "88.76 %" broke in two beside a bar with room to spare): a
+  data label, the value of a bar, a card figure and a table number stand on one line; a bar chart gives up bar length so its
+  figures fit (the value column as wide as the longest figure, `white-space: nowrap`). Only a name wraps, to two lines at most.
+  [rp-figure-one-line]
 - **A card title fits its card;** a long one is abbreviated (the qualifying clause dropped, the full meaning in the page's
   glossary), never by shrinking the font of one card - the titles of a row share one size, and so do the figures.
   [rp-card-label]
@@ -148,6 +152,11 @@ description: The report pages of an app - what a page of figures, charts and tab
 
 - **Visuals of the same kind and fields** (differing only by a filter) **sit in one row,** the same height, the width split
   evenly. [rp-same-row] Each one the whole row (a time series per P&L line) stands one under the other (v16).
+- **A line too tight splits into even lines of the same content** (v25, the user 18/11: five line charts at 340 px cut their
+  titles and put the legend beside the title on two panels, under it on three): when one line would squeeze a panel under about
+  400 px, or its title or legend no longer fits its head line, the visuals take even lines - 5 = 3 + 2, 6 = 3 + 3 - none alone on
+  a line, each line split evenly over the same width. [rp-same-row] On one line every panel keeps its whole title, its legend at
+  one height and its plot on one top and one bottom (2 px). [rp-row-squeeze]
 - **An even split is absolutely even** - two blocks meant to be equal never differ by a few pixels (325 + 330). [rp-even-split]
 - **A chart is as wide as its number of groups** (about 60 px a group); short charts stand side by side; a chart with little
   in it (one series, a few points, a donut of a few slices) is small - at most half the view - and a donut sits in one row,

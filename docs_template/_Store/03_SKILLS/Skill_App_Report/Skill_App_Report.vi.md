@@ -1,5 +1,5 @@
 ---
-version: 24
+version: 25
 lang: vi
 ---
 
@@ -44,6 +44,9 @@ lang: vi
   style gỡ nền). [rp-card-tone]
 - **Con số không bao giờ làm tròn về 0 kèm đơn vị** (v10: Group Size 1,75 hiện "0 k"): giá trị nhỏ hơn đơn vị thì
   hiện bằng đơn vị nhỏ hơn hoặc số đầy đủ; không bao giờ có `0 k` · `0 tr` · `0 tỷ`. Số 0 thật (`data-rp-raw` bằng 0) giữ đơn vị người xem đã chọn (v24, 18/11). [rp-figure-scale]
+- **Số vừa một dòng thì không xuống dòng** (v25, user 18/11: "88.76 %" bị ngắt đôi cạnh thanh bar còn dư chỗ): nhãn số, số cuối
+  thanh bar, số trên thẻ và số trong bảng đứng một dòng; chart bar rút ngắn thanh để số vừa (cột số rộng bằng số dài nhất,
+  `white-space: nowrap`). Chỉ tên được xuống dòng, tối đa hai dòng. [rp-figure-one-line]
 - **Tiêu đề card vừa card;** dài thì rút gọn (bỏ vế phụ, nghĩa đủ ghi vào bảng giải thích của trang), không thu nhỏ chữ riêng
   một card — tiêu đề một hàng cùng cỡ, con số cũng vậy. [rp-card-label]
 - Màu số trên card theo thứ tự màu của theme (card *i* → màu *i*).
@@ -128,6 +131,11 @@ lang: vi
 
 - **Visual cùng loại, cùng trường** (chỉ khác bộ lọc) **xếp một hàng,** cùng chiều cao, chia đều chiều rộng. [rp-same-row] Visual nào cũng trải hết hàng (chuỗi thời gian theo từng
   dòng P&L) thì xếp chồng (v16).
+- **Hàng quá chật thì chia thành các hàng đều, cùng nội dung** (v25, user 18/11: năm chart đường 340 px bị cắt tiêu đề, legend
+  nằm cạnh tiêu đề ở hai panel, dưới tiêu đề ở ba panel): khi một hàng làm panel hẹp dưới khoảng 400 px, hoặc tiêu đề hay legend
+  không còn vừa dòng đầu, các visual chia hàng đều - 5 = 3 + 2, 6 = 3 + 3 - không visual nào lẻ một hàng, mỗi hàng chia đều trên
+  cùng một bề rộng. [rp-same-row] Trên một hàng, panel nào cũng giữ trọn tiêu đề, legend cùng độ cao, vùng vẽ cùng đỉnh cùng đáy
+  (2 px). [rp-row-squeeze]
 - **Chia đều là đều tuyệt đối** — hai khối định bằng nhau không lệch vài px (325 + 330). [rp-even-split]
 - **Chart rộng theo số nhóm** (khoảng 60 px một nhóm); chart ngắn đặt cạnh nhau; chart ít thông tin (một chuỗi, ít điểm, donut
   vài lát) thì nhỏ — tối đa nửa màn — và donut nằm trong một hàng, không kéo thành cột. Chart dài (≥ 28 nhóm) dùng cả chiều
