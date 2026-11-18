@@ -216,8 +216,8 @@ const HEAVY_FLAGS: Record<string, { allow: Set<string>; usage: string }> = {
   // APPENDS a block to the SHARED store. Measured 2026-10-05: `vectors-catchup --help` started a real
   // catch-up against the Drive channel (no --dry-run) — the same class as `embed --help` (2026-08-22).
   "vectors-catchup": {
-    allow: new Set(["--dir", "--key-file", "--dry-run"]),
-    usage: "zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run]",
+    allow: new Set(["--dir", "--key-file", "--dry-run", "--max-vectors"]),
+    usage: "zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run] [--max-vectors <n>]",
   },
 };
 
@@ -1123,18 +1123,31 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   if (sub === "vectors-catchup") {
     const driveDir = (flagValue(args, "--dir") ?? getDriveDir()).trim();
     if (!driveDir) {
-      console.log("usage: zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run]");
+      console.log("usage: zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run] [--max-vectors <n>]");
       console.log("  Rebuilds the shared store into a TEMP file, compares by stable keys (session_id, uuid), then APPENDS");
-      console.log("  one block carrying exactly the vectors the shared store is missing. Old bytes untouched, nothing overwritten.");
+      console.log("  blocks of at most --max-vectors (default 50,000) carrying exactly the vectors the shared store is missing. Old bytes untouched.");
       return;
     }
     const keyFile = resolveShareKey(currentProjectRoot(), flagValue(args, "--key-file"));
     const dryRun = args.includes("--dry-run");
+    const maxRaw = flagValue(args, "--max-vectors");
+    const maxVectors = maxRaw === undefined ? undefined : Number(maxRaw);
+    if (maxVectors !== undefined && !(Number.isInteger(maxVectors) && maxVectors > 0)) {
+      console.log("zemory memory vectors-catchup --max-vectors: give a whole number above 0, e.g. --max-vectors 50000");
+      process.exitCode = 1;
+      return;
+    }
     console.log(`zemory memory vectors-catchup — ${driveDir}${dryRun ? "  (DRY-RUN)" : ""}`);
     console.log("  ⏳ rebuilding the shared store into a temp file to measure (a few minutes, the real store is untouched)…");
+    const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
     try {
-      const r = await vectorCatchUp({ driveDir, keyFile, dryRun });
-      const mb = (b: number) => `${(b / 1048576).toFixed(1)} MB`;
+      const r = await vectorCatchUp({
+        driveDir,
+        keyFile,
+        dryRun,
+        maxVectors,
+        onBlock: (p) => console.log(`  ↑ block ${p.block}/${p.blocks}: ${p.vectors} vector(s) · ${mb(p.bytes)} so far`),
+      });
       // 🔴 VẾ "CÓ HỤT KHÔNG" — in TRƯỚC vế vector, vì nó nặng hơn và vì con số vector một mình
       // ĐÃ TỪNG NÓI DỐI: 2026-09-03 kênh mất hẳn khúc 1 (2,22 GB / 48 khối) mà lệnh này vẫn báo
       // "thiếu 6.551", nghe như lành. Kênh càng CỤT thì kho tạm càng ít tin ⇒ số vector thiếu
@@ -1167,7 +1180,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       console.log(`  the shared store is missing ${r.messagesMissing} message(s) and ${r.missing} vector(s) that this machine HAS.`);
       if (!r.missing && !r.messagesMissing) console.log("  ✓ nothing missing — the shared store has every message and every vector.");
       else if (!r.pushed) console.log("  (DRY-RUN) run again without --dry-run to append the catch-up block.");
-      else console.log(`  ↑ APPENDED catch-up block: ${r.messagesShipped} message(s) · ${r.shipped} vector(s), ${mb(r.bytes)} — the shared store was not overwritten.`);
+      else console.log(`  ↑ APPENDED ${r.blocks ?? 1} catch-up block(s): ${r.messagesShipped} message(s) · ${r.shipped} vector(s), ${mb(r.bytes)} — the shared store was not overwritten.`);
     } catch (error) {
       console.log(`  ⚠ ${error instanceof Error ? error.message : "catch-up failed"}`);
       // 🔴 STACK RA STDERR (2026-08-26). Lượt hỏng đầu tiên chỉ để lại `⚠ UNKNOWN: unknown error,

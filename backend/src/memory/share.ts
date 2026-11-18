@@ -2528,8 +2528,12 @@ export function shareKeyStatus(projectRoot: string, dbDir = currentMemoryDir()):
   return { found: false, source: "none", path: shareKeyPath(dbDir) };
 }
 
+/** Vectors per catch-up block: ~3 KB each in fp32 768d, so ~150 MB a block - a Drive upload and a receiver read that fit. */
+export const CATCHUP_MAX_VECTORS = 50_000;
+
 /**
- * BÙ VECTOR CHO KHO CHUNG — nối thêm MỘT khối chở đúng phần vector còn thiếu.
+ * VECTOR CATCH-UP FOR THE SHARED STORE - appends blocks (at most CATCHUP_MAX_VECTORS vectors each) carrying exactly the
+ * vectors the shared store lacks.
  *
  * 🔴 Vì sao tồn tại: vector nhúng SAU lúc tin được gửi thì không lượt nào quay lại chở (đã vá
  * chiều xuôi bằng `embedFrontierId`, nhưng phần TỒN thì vá đó không lo được). Đo 2026-08-25:
@@ -2549,8 +2553,14 @@ export async function vectorCatchUp(opts: {
   dbPath?: string;
   /** Chỉ ĐO rồi báo, không đụng kho chung. */
   dryRun?: boolean;
+  /** At most this many vectors per appended block (default CATCHUP_MAX_VECTORS). */
+  maxVectors?: number;
+  /** Called after each block lands (progress for the CLI). */
+  onBlock?: (p: { block: number; blocks: number; vectors: number; bytes: number }) => void;
 }): Promise<{
   container: string;
+  /** How many blocks were appended (0 when nothing was pushed). */
+  blocks?: number;
   missing: number;
   /** Messages the shared store lacks altogether (by the stable key), outside the scope's excluded sessions. */
   messagesMissing: number;
@@ -2705,50 +2715,70 @@ export async function vectorCatchUp(opts: {
         d.close();
       }
     })();
-    const part = join(tmp, "catchup.enc");
-    const r = await exportMemoryBundle({
-      outPath: part,
-      dbPath,
-      keyFile: opts.keyFile,
-      force: true,
-      sinceMessageId: top,
-      // the caught-up messages carry their vectors too (the receiver keys them by its own ids, as for any catch-up)
-      vectorCatchUpIds: [...ids, ...msgIds],
-      messageCatchUpIds: msgIds,
-    });
+
+    // Several blocks of at most `maxVectors`, never one block for everything (2026-11-18): the home PC's catch-up after
+    // its Gemma 2 swap carried ~780k fp32 vectors (~3 KB each, ~2.3 GB) in ONE block - a single 2.3 GB Drive upload, and
+    // more than the laptop's 2 GB WSL VM could read before vecship streamed. Each block is exported, appended under the
+    // channel lock and recorded on its own, so a run cut short keeps every block it finished; the next run measures again
+    // and ships only what is still missing. The messages the shared store lacks travel in the first block with their vectors.
+    const maxVectors = Math.max(1, Math.floor(opts.maxVectors ?? CATCHUP_MAX_VECTORS));
+    const slices: number[][] = [];
+    for (let i = 0; i < ids.length; i += maxVectors) slices.push(ids.slice(i, i + maxVectors));
+    if (!slices.length) slices.push([]); // only messages missing: one block carries them
 
     // KHOÁ KÊNH như mọi lượt ghi khác. Bản đầu của tôi nối thẳng — hai máy nối cùng lúc là
     // container rách, đúng thứ `acquireDriveLock` sinh ra để thu hẹp.
     const host = hostname();
-    const release = await acquireChannelWriteLock(dir, {
-      host,
-      onWait: (holder, waited) => {
-        if (waited < 2_000 || Math.floor(waited / 30_000) !== Math.floor((waited - 1) / 30_000)) return;
-        console.log(`  ⏳ đang chờ máy "${holder}" ghi xong kho chung (${Math.round(waited / 1000)}s)…`);
-      },
-    });
     let bytes = 0;
-    try {
-      // Re-read the open segment UNDER the lock: another writer may have filled it while we waited.
-      container = activeSegment(dir).path;
-      // Khúc đang mở có thể là khúc TƯƠI chưa tồn tại (khúc trước vừa đầy) — dựng vỏ magic trước.
-      if (!existsSync(container)) writeFileSync(container, CHUNKS_MAGIC);
-      bytes = appendChunk(container, part);
-      markVectorsShipped(dbPath, r.vectorShippedIds ?? []); // sổ v23 — lệnh bù cũng là một chuyến chở
-      // ĐÁNH DẤU KHỐI CỦA CHÍNH MÌNH LÀ ĐÃ MERGE (cùng lý do như `pushAppend`): nội dung lấy từ
-      // kho local, merge lại vào chính nó là việc thừa 100% — mà không đánh dấu thì lượt sync
-      // sau phải GIẢI MÃ lại nguyên khối 66 MB chỉ để phát hiện "0 dòng mới".
-      const after = listChunks(container);
-      const mine = after[after.length - 1];
-      if (mine) {
-        const copy = join(tmp, "mine.enc");
-        await extractChunk(container, mine, copy);
-        markBundleMerged(ledgerKey(container, mine), bundleSignature(copy), dbPath);
+    let shipped = 0;
+    let messagesShipped = 0;
+    for (const [n, slice] of slices.entries()) {
+      const first = n === 0;
+      const part = join(tmp, "catchup.enc");
+      const r = await exportMemoryBundle({
+        outPath: part,
+        dbPath,
+        keyFile: opts.keyFile,
+        force: true,
+        sinceMessageId: top,
+        // the caught-up messages carry their vectors too (the receiver keys them by its own ids, as for any catch-up)
+        vectorCatchUpIds: first ? [...slice, ...msgIds] : slice,
+        messageCatchUpIds: first ? msgIds : [],
+      });
+      const release = await acquireChannelWriteLock(dir, {
+        host,
+        onWait: (holder, waited) => {
+          if (waited < 2_000 || Math.floor(waited / 30_000) !== Math.floor((waited - 1) / 30_000)) return;
+          console.log(`  ⏳ đang chờ máy "${holder}" ghi xong kho chung (${Math.round(waited / 1000)}s)…`);
+        },
+      });
+      try {
+        // Re-read the open segment UNDER the lock: another writer may have filled it while we waited.
+        container = activeSegment(dir).path;
+        // Khúc đang mở có thể là khúc TƯƠI chưa tồn tại (khúc trước vừa đầy) — dựng vỏ magic trước.
+        if (!existsSync(container)) writeFileSync(container, CHUNKS_MAGIC);
+        bytes += appendChunk(container, part);
+        markVectorsShipped(dbPath, r.vectorShippedIds ?? []); // sổ v23 — lệnh bù cũng là một chuyến chở
+        // ĐÁNH DẤU KHỐI CỦA CHÍNH MÌNH LÀ ĐÃ MERGE (cùng lý do như `pushAppend`): nội dung lấy từ
+        // kho local, merge lại vào chính nó là việc thừa 100% — mà không đánh dấu thì lượt sync
+        // sau phải GIẢI MÃ lại nguyên khối 66 MB chỉ để phát hiện "0 dòng mới".
+        const after = listChunks(container);
+        const mine = after[after.length - 1];
+        if (mine) {
+          const copy = join(tmp, "mine.enc");
+          await extractChunk(container, mine, copy);
+          markBundleMerged(ledgerKey(container, mine), bundleSignature(copy), dbPath);
+          rmSync(copy, { force: true });
+        }
+      } finally {
+        release();
+        rmSync(part, { force: true });
       }
-    } finally {
-      release();
+      shipped += r.vectorsShipped ?? 0;
+      messagesShipped += r.rows?.messages ?? 0;
+      opts.onBlock?.({ block: n + 1, blocks: slices.length, vectors: r.vectorsShipped ?? 0, bytes });
     }
-    return { container, missing: ids.length, messagesMissing: msgIds.length, shipped: r.vectorsShipped ?? 0, messagesShipped: r.rows?.messages ?? 0, bytes, pushed: true, probeSessions, probeMessages, localSessions, localMessages, unreadable };
+    return { container, missing: ids.length, messagesMissing: msgIds.length, shipped, messagesShipped, bytes, blocks: slices.length, pushed: true, probeSessions, probeMessages, localSessions, localMessages, unreadable };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
