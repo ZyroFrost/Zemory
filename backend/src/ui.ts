@@ -2615,6 +2615,33 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const hosts = [hostname(), ...Object.values(getPeerNames()).filter((h) => h && h.toLowerCase() !== hostname().toLowerCase())];
       return json(res, { host: hostname(), repo: k, hosts: [...new Set(hosts)], letters });
     }
+    // Phones paired with this machine (plan/41 §4): list · pair (a QR the phone's camera opens the app with) · revoke.
+    // A phone can never call these (the phone door refuses `/phone/`): pairing is done at the machine.
+    if (p === "/phone/list") {
+      const { listPhones } = await import("./memory/phone.js");
+      return json(res, { host: hostname(), phones: listPhones().map((x) => ({ name: x.name, createdAt: x.createdAt })) });
+    }
+    if (req.method === "POST" && p === "/phone/pair") {
+      const { pairPhone, pairingCode } = await import("./memory/phone.js");
+      const { channelIdentity } = await import("./memory/channel/index.js");
+      try {
+        const ph = pairPhone(u.searchParams.get("name") ?? "");
+        const code = pairingCode({ name: ph.name, host: hostname(), fp: channelIdentity().deviceId, token: ph.token });
+        // the camera reads a link and opens the app on it (the app's intent filter): nothing to type, nothing to copy
+        const link = `zemory://pair?c=${code}`;
+        const QRCode = (await import("qrcode")).default;
+        const svg = await QRCode.toString(link, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
+        return json(res, { ok: true, name: ph.name, link, svg });
+      } catch (e) {
+        return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    if (req.method === "POST" && p === "/phone/revoke") {
+      const { revokePhone } = await import("./memory/phone.js");
+      const { channelIdentity } = await import("./memory/channel/index.js");
+      const ok = revokePhone(u.searchParams.get("name") ?? "", { driveDir: getDriveDir() || undefined, deviceId: channelIdentity().deviceId });
+      return json(res, { ok });
+    }
     // The person writes to a repo's agent from the interface (desktop or phone, plan/41 §6b). From `<this host>/user`, so
     // the agent's answer comes back to the room, not into this machine's own session of that repo.
     if (req.method === "POST" && p === "/mail/send") {

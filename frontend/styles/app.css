@@ -483,6 +483,18 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .chat-m.mine .chat-mb{color:var(--primary)}
 .chat-send{display:flex;gap:6px;align-items:center}
 .chat-send .tin{flex:1}
+/* phones paired with this machine (Sync › machine-to-machine) and the pairing QR */
+.phone-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.phone-list{display:flex;flex-direction:column;gap:6px}
+.phone-row{display:flex;align-items:center;gap:10px;min-width:0}
+.phone-row .muted{font-size:11px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phone-none{font-size:11.5px}
+.phone-name{display:flex;gap:6px}
+.phone-name .tin{flex:1}
+.phone-qr:empty{display:none}
+.phone-qr{margin:12px auto 4px;width:min(260px,100%);background:#fff;padding:8px;border-radius:8px}
+.phone-qr svg{display:block;width:100%;height:auto}
+.phone-msg{font-size:11.5px;margin-top:8px;line-height:1.6}
 /* the machine picker takes the width of its words, never the writing line's: on a phone the input keeps the room */
 .chat-send .rsel{flex:0 1 auto;max-width:32%;min-width:0;text-overflow:ellipsis}
 /* the graph canvas and its full-screen button (top right, on the canvas); full screen enlarges the canvas only */

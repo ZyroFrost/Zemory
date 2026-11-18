@@ -496,6 +496,10 @@
                 <div id="p2pCluster" class="grid" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px"></div>
                 <div style="display:flex;gap:6px;margin-top:10px"><button class="btn sm" data-act="p2p-add-open" data-i18n="p2p.addMachine">+ Thêm máy…</button><button class="btn sm" data-act="p2p-sync" data-i18n="p2p.syncNow">Đồng bộ ngay</button></div>
                 <div id="p2pMsg" class="scanmsg" aria-live="polite"></div>
+                <!-- phones paired with THIS machine (plan/41): the phone is a third machine of the network, paired by a
+                     QR its camera opens the app with -->
+                <div class="section-t phone-h"><span>📱 <span data-i18n="ph.h">Điện thoại</span></span><button class="btn sm" data-act="phone-pair-open" data-i18n="ph.pair">Ghép điện thoại</button></div>
+                <div id="phoneList" class="phone-list"></div>
                 <div class="section-t" data-i18n="p2p.foldersH">Thư mục sẽ đồng bộ</div>
                 <div class="muted p2p-flds" style="font-size:11px;margin:0;line-height:1.7">
                   <div><b>global-memory/</b> — <span data-i18n="p2p.fldMem">kho bộ nhớ, truyền bằng khối mã hoá thay vì sao chép tệp.</span></div>
@@ -620,6 +624,20 @@
   </div>
 </div>
 
+<div class="dlg-back" id="phonePairDlg" style="z-index:110">
+  <div class="dlg sm" role="dialog" data-i18n-aria="ph.pair" aria-label="Ghép điện thoại">
+    <div class="dlg-h"><span class="ci" style="color:var(--primary)">📱</span><b data-i18n="ph.pair">Ghép điện thoại</b><button class="x" id="phonePairClose" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
+    <div class="dlg-b">
+      <div class="phone-name">
+        <input id="phoneNameIn" class="tin" value="dt" data-i18n-ph="ph.nameH" data-i18n-aria="ph.nameH" placeholder="Tên điện thoại" aria-label="Tên điện thoại">
+        <button class="btn sm" data-act="phone-pair-make" data-i18n="ph.make">Tạo mã</button>
+      </div>
+      <div id="phoneQr" class="phone-qr"></div>
+      <div id="phonePairMsg" class="muted phone-msg" data-i18n="ph.howto">Mở camera điện thoại và quét mã: app Zemory tự mở và thêm máy này. Mã chỉ hiện một lần; ghép lại sẽ cắt mã cũ.</div>
+    </div>
+  </div>
+</div>
+
 <div class="dlg-back" id="addProjDlg">
   <div class="dlg sm" role="dialog" data-i18n-aria="addp.title" aria-label="Thêm dự án">
     <div class="dlg-h"><span class="ci" style="color:var(--primary)">＋</span><b data-i18n="addp.title">Thêm dự án</b><button class="x" id="addProjClose" data-i18n-aria="act.close" aria-label="Đóng">✕</button></div>
@@ -715,6 +733,7 @@
 <script src="/scripts/recall.js"></script>
 <script src="/scripts/harness.js"></script>
 <script src="/scripts/chat.js"></script>
+<script src="/scripts/phone.js"></script>
 <script src="/scripts/system.js"></script>
 <script src="/scripts/chrome.js"></script>
 <script src="/scripts/boot.js"></script>

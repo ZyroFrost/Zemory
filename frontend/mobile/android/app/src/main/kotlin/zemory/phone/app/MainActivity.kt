@@ -120,6 +120,7 @@ class MainActivity : Activity() {
         body = FrameLayout(this)
         root.addView(body, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
         setContentView(root)
+        takeLink(intent)
         loadMachines()
         machine.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = showZemory()
@@ -156,7 +157,9 @@ class MainActivity : Activity() {
         if (resultCode == RESULT_OK) {
             unlockedAt = SystemClock.elapsedRealtime()
             pausedAt = 0
-            showZemory()
+            val c = pendingCode
+            pendingCode = null
+            if (c != null) addCode(c) else showZemory()
         } else finish()
     }
 
@@ -168,26 +171,51 @@ class MainActivity : Activity() {
         machine.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, list.map { it.host }.ifEmpty { listOf("Chưa có máy") })
         if (sel in list.indices) machine.setSelection(sel)
         if (list.isEmpty()) status.text = "Trên máy tính chạy: zemory phone pair <tên-điện-thoại>, rồi dán mã vào + Máy."
+        // machines arrived (pairing, or settings merged from a machine) while nothing is shown: show the selected one
+        else if (body.childCount == 0 && !locked()) showZemory()
     }
 
     private fun addMachine() {
         val field = EditText(this).apply { hint = "zph1.…" }
-        AlertDialog.Builder(this).setTitle("Thêm máy").setMessage("Trên máy tính: zemory phone pair <tên-điện-thoại>").setView(field)
-            .setPositiveButton("Thêm") { _, _ ->
-                val code = field.text.toString().trim()
-                val p = Pairing.parse(code) ?: run { status.text = "Mã ghép đôi không đọc được"; return@setPositiveButton }
-                val kept = codes().filter { Pairing.parse(it)?.host != p.host }.toMutableList()
-                kept.add(code)
-                prefs.edit().putString("pairings", JSONArray(kept).toString()).apply()
-                links.remove(p.host)?.close()
-                loadMachines()
-                machine.setSelection(pairings().indexOfFirst { it.host == p.host })
-                io.execute {
-                    runCatching { link(p) }
-                    shareSettings()
-                }
-            }
+        AlertDialog.Builder(this).setTitle("Thêm máy")
+            .setMessage("Trên máy tính: Sync › Máy-tới-máy › Ghép điện thoại, rồi quét mã QR bằng camera. Hoặc dán mã zph1.… vào đây.")
+            .setView(field)
+            .setPositiveButton("Thêm") { _, _ -> addCode(field.text.toString()) }
             .setNegativeButton("Huỷ", null).show()
+    }
+
+    /** Keep one machine's pairing code (from the QR link or pasted) and open its interface. */
+    private fun addCode(raw: String) {
+        val code = raw.trim()
+        val p = Pairing.parse(code) ?: run { status.text = "Mã ghép đôi không đọc được"; return }
+        val kept = codes().filter { Pairing.parse(it)?.host != p.host }.toMutableList()
+        kept.add(code)
+        prefs.edit().putString("pairings", JSONArray(kept).toString()).apply()
+        links.remove(p.host)?.close()
+        loadMachines()
+        machine.setSelection(pairings().indexOfFirst { it.host == p.host })
+        status.text = "Đã thêm ${p.host}"
+        io.execute {
+            runCatching { link(p) }
+            shareSettings()
+        }
+        // the first machine replaces the "no machine" item at the SAME position, so the spinner fires no selection
+        // event - open the interface here, or the screen stays empty after pairing
+        showZemory()
+    }
+
+    /** A pairing code that came by the QR link, kept until the app is unlocked. */
+    private var pendingCode: String? = null
+
+    private fun takeLink(i: Intent?) {
+        val d = i?.data ?: return
+        if (d.scheme == "zemory" && d.host == "pair") d.getQueryParameter("c")?.let { pendingCode = it }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        takeLink(intent)
+        if (!locked()) pendingCode?.let { pendingCode = null; addCode(it) }
     }
 
     // ── the machine's own interface ─────────────────────────────────────────────────────────────────────
