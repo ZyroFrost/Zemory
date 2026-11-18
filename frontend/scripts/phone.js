@@ -46,8 +46,8 @@ var zPhone = (function () {
     if (act === 'phone-pair-make') return make();
     if (act === 'phone-revoke') {
       var n = a.getAttribute('data-name');
-      if (!window.confirm(t('ph.revokeQ').replace('{n}', n))) return;
-      fetch('/phone/revoke?name=' + encodeURIComponent(n), { method: 'POST' }).then(list);
+      zConfirm({ title: t('ph.revoke'), body: t('ph.revokeQ').replace('{n}', n), okLabel: t('ph.revoke'), danger: true,
+        onOk: function () { fetch('/phone/revoke?name=' + encodeURIComponent(n), { method: 'POST' }).then(list); } });
       return;
     }
     if (e.target.closest && (e.target.closest('#phonePairClose') || e.target.id === 'phonePairDlg')) close();

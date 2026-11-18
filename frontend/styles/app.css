@@ -8,6 +8,8 @@
    khi có gate đó, 7 chỗ đã lọt (logo, nút danger, badge, nền dialog, wash của pill).
    ============================================================================ */
 :root,:root[data-theme="dark"]{
+  /* a QR code is read by a camera: dark modules on white paper in either theme */
+  --qr-paper:#FFFFFF;
   --bg:#0E0F13;--surface:#15171C;--surface-2:#1B1E25;--surface-3:#22262E;
   --text:#E5E7EB;--text-dim:#9BA1AD;--text-faint:#6B7280;
   --border:#23262F;--border-strong:#333844;
@@ -27,6 +29,7 @@
   --glow:0 0 24px rgba(255,209,102,.10);--shadow:0 10px 30px rgba(0,0,0,.45);
 }
 :root[data-theme="light"]{
+  --qr-paper:#FFFFFF;
   --bg:#F6F7F9;--surface:#FFFFFF;--surface-2:#FBFBFC;--surface-3:#F1F2F5;
   --text:#16181D;--text-dim:#5B6270;--text-faint:#8A909C;
   --border:#E4E7EC;--border-strong:#D2D6DD;
@@ -492,7 +495,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .phone-name{display:flex;gap:6px}
 .phone-name .tin{flex:1}
 .phone-qr:empty{display:none}
-.phone-qr{margin:12px auto 4px;width:min(260px,100%);background:#fff;padding:8px;border-radius:8px}
+.phone-qr{margin:12px auto 4px;width:min(260px,100%);background:var(--qr-paper);padding:8px;border-radius:8px}
 .phone-qr svg{display:block;width:100%;height:auto}
 .phone-msg{font-size:11.5px;margin-top:8px;line-height:1.6}
 /* the machine picker takes the width of its words, never the writing line's: on a phone the input keeps the room */
