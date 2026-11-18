@@ -4,7 +4,7 @@ name: mobile
 version: 1
 path: frontend/mobile/
 checked: [Frontend_003_Frontend, Frontend_173_Shell, Frontend_063_Pages]
-from: _Store/02_STRUCTURE/_Slot/Frontend_176_Mobile @v1 #1df6738a833f
+from: _Store/02_STRUCTURE/_Slot/Frontend_176_Mobile @v1 #16f896322382
 ---
 # Frontend_176_Mobile mobile — the native phone shell of the app
 
@@ -30,8 +30,8 @@ frontend/mobile/
 
 - Kind of file: the platform's sources and build files (`.kt` · `.swift` · `build.gradle.kts` · `*.xcodeproj`), and the small
   script that joins the shell to the interface.
-- Never inside: build output, local SDK paths, signing keys (`.gitignore` of the platform folder: `build/` · `.gradle/` ·
-  `local.properties` · `*.keystore`); a copy of the interface's pages.
+- Never tracked: build output, the build tool's caches, the local SDK path file, signing keys - the platform folder's own
+  `.gitignore` keeps them out. Never inside: a copy of the interface's pages.
 - Points at no child slot: inside a platform folder the platform's convention rules.
 
 ## Rules

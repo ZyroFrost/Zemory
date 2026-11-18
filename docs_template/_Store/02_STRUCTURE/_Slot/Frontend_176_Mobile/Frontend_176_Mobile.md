@@ -29,8 +29,8 @@ frontend/mobile/
 
 - Kind of file: the platform's sources and build files (`.kt` · `.swift` · `build.gradle.kts` · `*.xcodeproj`), and the small
   script that joins the shell to the interface.
-- Never inside: build output, local SDK paths, signing keys (`.gitignore` of the platform folder: `build/` · `.gradle/` ·
-  `local.properties` · `*.keystore`); a copy of the interface's pages.
+- Never tracked: build output, the build tool's caches, the local SDK path file, signing keys - the platform folder's own
+  `.gitignore` keeps them out. Never inside: a copy of the interface's pages.
 - Points at no child slot: inside a platform folder the platform's convention rules.
 
 ## Rules

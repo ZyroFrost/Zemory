@@ -122,6 +122,7 @@ Trước khi tạo, đổi tên hay dời thư mục, mở slot có đường ch
 | [`Workspaces_169_Workspaces`](_Slot/Workspaces_169_Workspaces/Workspaces_169_Workspaces.md) | `workspaces/` | the output an app produces |
 | [`Backend_174_Training`](_Slot/Backend_174_Training/Backend_174_Training.md) | `backend/src/training/` | the code that trains the repo's own models |
 | [`Data_175_Training`](_Slot/Data_175_Training/Data_175_Training.md) | `data/training/` | the data and results of training a model |
+| [`Frontend_176_Mobile`](_Slot/Frontend_176_Mobile/Frontend_176_Mobile.md) | `frontend/mobile/` | the native phone shell of the app |
 
 | Host note · Ghi chú host | About · Về |
 |---|---|

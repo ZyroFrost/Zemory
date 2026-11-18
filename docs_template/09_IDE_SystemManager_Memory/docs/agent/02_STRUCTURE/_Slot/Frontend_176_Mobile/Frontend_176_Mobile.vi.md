@@ -26,8 +26,8 @@ frontend/mobile/
 
 - Loại file: mã nguồn và file build của nền tảng (`.kt` · `.swift` · `build.gradle.kts` · `*.xcodeproj`), và đoạn script nhỏ
   nối vỏ với giao diện.
-- Không bao giờ ở đây: đầu ra build, đường dẫn SDK cục bộ, khoá ký (`.gitignore` của thư mục nền tảng: `build/` · `.gradle/` ·
-  `local.properties` · `*.keystore`); bản sao các trang của giao diện.
+- Không bao giờ vào git: đầu ra build, cache của công cụ build, file đường dẫn SDK cục bộ, khoá ký — `.gitignore` riêng của
+  thư mục nền tảng giữ chúng ngoài. Không bao giờ ở đây: bản sao các trang của giao diện.
 - Không trỏ tới slot con nào: trong một thư mục nền tảng, quy ước của nền tảng quyết.
 
 ## Luật
