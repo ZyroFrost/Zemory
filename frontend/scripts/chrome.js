@@ -218,6 +218,13 @@
   (function(){var tg=zid('railToggle');if(tg)tg.addEventListener('click',function(){railSetCollapsed(!document.querySelector('.app').classList.contains('railcoll'));});
     var saved='0';try{saved=localStorage.getItem('zemory.railCollapsed')||'0';}catch(_){}
     if(saved==='1')railSetCollapsed(true);
+    // A narrow screen (a phone, plan/41 §6a) starts with the rail collapsed, without touching the choice kept for a wide
+    // one: crossing back over the line restores that choice. The arrow still opens the rail by hand.
+    var narrow=window.matchMedia?window.matchMedia('(max-width:700px)'):null;
+    function fit(){var app=document.querySelector('.app');if(!app||!narrow)return;
+      if(narrow.matches)app.classList.add('railcoll');
+      else{var s='0';try{s=localStorage.getItem('zemory.railCollapsed')||'0';}catch(_){}app.classList.toggle('railcoll',s==='1');}}
+    if(narrow){fit();if(narrow.addEventListener)narrow.addEventListener('change',fit);}
   })();
   function zboot(){
     initSeams();

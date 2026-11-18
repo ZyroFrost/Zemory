@@ -483,6 +483,8 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .chat-m.mine .chat-mb{color:var(--primary)}
 .chat-send{display:flex;gap:6px;align-items:center}
 .chat-send .tin{flex:1}
+/* the machine picker takes the width of its words, never the writing line's: on a phone the input keeps the room */
+.chat-send .rsel{flex:0 1 auto;max-width:32%;min-width:0;text-overflow:ellipsis}
 /* the graph canvas and its full-screen button (top right, on the canvas); full screen enlarges the canvas only */
 .gcanvas-wrap{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0}
 .gcanvas-fs{position:absolute;top:8px;right:8px;z-index:4}
