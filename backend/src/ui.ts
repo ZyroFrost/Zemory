@@ -2607,6 +2607,33 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       ].sort((a, b) => a.env.sentAt.localeCompare(b.env.sentAt));
       return json(res, { host: hostname(), repo: k, letters });
     }
+    // Remote approval (plan/41 §6e). `/approval/ask` is the PermissionRequest hook's: it waits for a phone's answer and
+    // returns what the hook prints (the same {stdout, stderr, code} shape as `/hook/<event>`); a phone may never call it
+    // (the phone door refuses the path). `/approvals` + `/approval/answer` are the phone's.
+    if (req.method === "POST" && p === "/approval/ask") {
+      const chunks: Buffer[] = [];
+      for await (const c of req) chunks.push(c as Buffer);
+      let payload: Record<string, unknown> = {};
+      try {
+        payload = JSON.parse(Buffer.concat(chunks).toString("utf8").replace(new RegExp("^" + String.fromCharCode(0xfeff)), "") || "{}");
+      } catch {
+        // unreadable: no question to ask, the dialog decides
+      }
+      const { askApproval, permissionOutput } = await import("./memory/approvals.js");
+      const d = await askApproval(payload);
+      return json(res, { stdout: d ? permissionOutput(d) : "", stderr: "", code: 0 });
+    }
+    if (p === "/approvals") {
+      const { pendingApprovals } = await import("./memory/approvals.js");
+      return json(res, { host: hostname(), pending: pendingApprovals() });
+    }
+    if (req.method === "POST" && p === "/approval/answer") {
+      const chunks: Buffer[] = [];
+      for await (const c of req) chunks.push(c as Buffer);
+      const { answerApproval } = await import("./memory/approvals.js");
+      const ok = answerApproval(u.searchParams.get("id") ?? "", u.searchParams.get("allow") === "1", Buffer.concat(chunks).toString("utf8"));
+      return json(res, { ok, ...(ok ? {} : { error: "no longer waiting (answered, or the dialog took over on the machine)" }) });
+    }
     // Hooks over HTTP (plan/30 §5 ②): the host client posts the payload Claude Code handed it; the answer is what the
     // `zemory hook <event>` process would have printed and exited with.
     if (req.method === "POST" && p.startsWith("/hook/")) {

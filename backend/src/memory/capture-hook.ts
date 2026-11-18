@@ -669,7 +669,7 @@ export function endOfTurnVerdict(payload: any): string {
 
 interface HookCmd {
   matcher?: string;
-  hooks: { type: "command"; command: string }[];
+  hooks: { type: "command"; command: string; timeout?: number }[];
 }
 
 const CLAUDE_SETTINGS = join(homedir(), ".claude", "settings.json");
@@ -685,7 +685,9 @@ const CODEX_CONFIG = join(homedir(), ".codex", "config.toml");
 // SessionStart ở đây KHÔNG phải "auto-inject memory mỗi phiên" (điều 8 cấm) — handler tự
 // kiểm `source` và im lặng với mọi phiên mở bình thường; nó chỉ mở miệng đúng lúc agent vừa
 // MẤT trí nhớ vì bị nén, tức đúng sự kiện chứ không phải mỗi prompt.
-const ZEMORY_HOOKS: { event: string; command: string; matcher?: string }[] = [
+const ZEMORY_HOOKS: { event: string; command: string; matcher?: string; timeout?: number }[] = [
+  // a permission prompt goes to the paired phone first (plan/41 §6e); its own timeout covers the two-minute wait
+  { event: "PermissionRequest", command: "zemory hook permission", timeout: 130 },
   { event: "Stop", command: "zemory hook stop" },
   { event: "UserPromptSubmit", command: "zemory hook prompt" },
   { event: "PreCompact", command: "zemory hook pre-compact" },
@@ -743,6 +745,7 @@ function mergeCommandHook(
   event: string,
   command: string,
   matcher?: string,
+  timeout?: number,
 ): InstallResult {
   const document = readJsonObject(path);
   const settings = rootKey
@@ -753,7 +756,8 @@ function mergeCommandHook(
     (group.hooks ?? []).some((hook) => hook.type === "command" && hook.command === command),
   );
   if (!already) {
-    groups.push(matcher ? { matcher, hooks: [{ type: "command", command }] } : { hooks: [{ type: "command", command }] });
+    const hook = { type: "command" as const, command, ...(timeout ? { timeout } : {}) };
+    groups.push(matcher ? { matcher, hooks: [hook] } : { hooks: [hook] });
     settings[event] = groups;
     mkdirSync(dirname(path), { recursive: true });
     // File cấu hình của CHÍNH agent (vd settings.json của Claude Code). Ghi hỏng ở đây
@@ -808,8 +812,8 @@ export function installHooks(settingsPath: string = CLAUDE_SETTINGS): InstallRes
   const added: string[] = [];
   const present: string[] = [];
   dropDockerHooks(settingsPath);
-  for (const { event, command, matcher } of ZEMORY_HOOKS) {
-    const result = mergeCommandHook(settingsPath, "hooks", event, command, matcher);
+  for (const { event, command, matcher, timeout } of ZEMORY_HOOKS) {
+    const result = mergeCommandHook(settingsPath, "hooks", event, command, matcher, timeout);
     added.push(...result.added);
     present.push(...result.present);
   }

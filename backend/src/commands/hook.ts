@@ -106,6 +106,37 @@ export async function cmdHook(args: string[]): Promise<void> {
     }
     return;
   }
+  if (sub === "permission") {
+    // PermissionRequest (plan/41 §6e): ask the paired phone through the local daemon and replay its decision. Any failure
+    // (daemon down, no phone, no answer) prints nothing, and Claude Code shows its own dialog - never a silent allow.
+    const raw = (await readStdin()).replace(new RegExp("^" + String.fromCharCode(0xfeff)), "");
+    const { uiPort } = await import("../core/config.js");
+    const http = await import("node:http");
+    const out = await new Promise<string>((resolve) => {
+      const body = Buffer.from(raw || "{}", "utf8");
+      const req = http.request(
+        { host: "127.0.0.1", port: uiPort(), path: "/approval/ask", method: "POST", timeout: 125_000,
+          headers: { host: `127.0.0.1:${uiPort()}`, "content-type": "application/json", "content-length": body.length } },
+        (res) => {
+          let s = "";
+          res.setEncoding("utf8");
+          res.on("data", (c) => (s += c));
+          res.on("end", () => {
+            try {
+              resolve(String((JSON.parse(s) as { stdout?: unknown }).stdout ?? ""));
+            } catch {
+              resolve("");
+            }
+          });
+        },
+      );
+      req.on("timeout", () => req.destroy());
+      req.on("error", () => resolve(""));
+      req.end(body);
+    });
+    if (out) process.stdout.write(out);
+    return;
+  }
   if (sub === "memory-guard") {
     // PreToolUse on every writing tool (Rule_Gate_94, plan/39 §3): no write into the agent's own memory folder
     let payload: unknown = {};

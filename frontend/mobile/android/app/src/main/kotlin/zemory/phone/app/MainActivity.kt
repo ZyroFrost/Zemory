@@ -63,6 +63,18 @@ class MainActivity : Activity() {
     private var room: String? = null
     private var onChat = false
 
+    // permission prompts of the machines' agents, answered from here (plan/41 §6e)
+    private val ui = android.os.Handler(android.os.Looper.getMainLooper())
+    private var approvalsBox: LinearLayout? = null
+    private val shownApprovals = HashSet<String>()
+    private val pollApprovals = object : Runnable {
+        override fun run() {
+            if (!onChat || locked()) return
+            refreshApprovals()
+            ui.postDelayed(this, 4_000)
+        }
+    }
+
     // app lock (plan/41 §6a): the device lock guards the app; more than 5 minutes in the background locks it again
     private var unlockedAt = 0L
     private var pausedAt = 0L
@@ -164,6 +176,7 @@ class MainActivity : Activity() {
     override fun onPause() {
         super.onPause()
         pausedAt = SystemClock.elapsedRealtime()
+        ui.removeCallbacks(pollApprovals)
     }
 
     @Deprecated("Activity result API kept on purpose: no AndroidX in this app")
@@ -175,6 +188,15 @@ class MainActivity : Activity() {
             pausedAt = 0
             if (onChat) showChat() else showZemory()
         } else finish()
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        // back from the background while already unlocked: the approvals poll picks up again
+        if (onChat && !locked()) {
+            ui.removeCallbacks(pollApprovals)
+            ui.post(pollApprovals)
+        }
     }
 
     private fun locked() = unlockedAt == 0L
@@ -211,6 +233,7 @@ class MainActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     private fun showZemory() {
         onChat = false
+        ui.removeCallbacks(pollApprovals)
         if (locked()) return
         val p = current() ?: return
         body.removeAllViews()
@@ -261,11 +284,89 @@ class MainActivity : Activity() {
         onChat = true
         if (locked()) return
         body.removeAllViews()
+        val outer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        approvalsBox = box
+        shownApprovals.clear()
+        outer.addView(box)
         val c = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         chat = c
-        body.addView(c, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        outer.addView(c, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
+        body.addView(outer, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+        ui.removeCallbacks(pollApprovals)
+        ui.post(pollApprovals)
         val r = room
         if (r.isNullOrBlank()) showRooms() else showRoom(r)
+    }
+
+    /** Ask every machine for the permission prompts its agents are waiting on; one card per question. */
+    private fun refreshApprovals() {
+        io.execute {
+            val found = ArrayList<Pair<Pairing, JSONObject>>()
+            for (p in pairings()) runCatching {
+                val a = JSONObject(link(p).request("GET", "/approvals").text).optJSONArray("pending") ?: JSONArray()
+                for (i in 0 until a.length()) found.add(p to a.getJSONObject(i))
+            }
+            runOnUiThread {
+                val box = approvalsBox ?: return@runOnUiThread
+                val live = found.map { it.second.getString("id") }.toSet()
+                // drop cards whose question is gone (answered elsewhere, or the dialog took over on the machine)
+                for (i in box.childCount - 1 downTo 0) {
+                    val v = box.getChildAt(i)
+                    if (v.tag is String && v.tag !in live) {
+                        box.removeViewAt(i)
+                        shownApprovals.remove(v.tag as String)
+                    }
+                }
+                for ((p, q) in found) {
+                    val id = q.getString("id")
+                    if (!shownApprovals.add(id)) continue
+                    box.addView(approvalCard(p, q))
+                }
+            }
+        }
+    }
+
+    private fun approvalCard(p: Pairing, q: JSONObject): View {
+        val id = q.getString("id")
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            tag = id
+            setBackgroundColor(Color.parseColor("#2A2312"))
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+        }
+        card.addView(TextView(this).apply {
+            text = "Cần duyệt · ${q.optString("tool")} · ${q.optString("repo")}@${p.host}"
+            setTextColor(Color.parseColor("#FFD166"))
+            textSize = 12f
+        })
+        card.addView(TextView(this).apply {
+            text = q.optString("summary")
+            setTextColor(Color.WHITE)
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+        })
+        val note = EditText(this).apply { hint = "Ghi chú cho agent (tuỳ chọn)"; setTextColor(Color.WHITE); setHintTextColor(Color.GRAY); textSize = 13f }
+        card.addView(note)
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fun answer(allow: Boolean) {
+            val n = note.text.toString().trim()
+            card.alpha = 0.5f
+            io.execute {
+                val r = runCatching {
+                    link(p).request("POST", "/approval/answer?id=${java.net.URLEncoder.encode(id, "UTF-8")}&allow=${if (allow) 1 else 0}", n.toByteArray(), "text/plain;charset=UTF-8")
+                }.getOrNull()
+                val ok = r != null && runCatching { JSONObject(r.text).optBoolean("ok") }.getOrDefault(false)
+                runOnUiThread {
+                    status.text = if (ok) "${p.host}: đã ${if (allow) "cho phép" else "từ chối"}" else "${p.host}: câu hỏi không còn chờ (đã có người trả lời trên máy)"
+                    approvalsBox?.removeView(card)
+                }
+            }
+        }
+        row.addView(Button(this).apply { text = "Cho phép"; setOnClickListener { answer(true) } }, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+        row.addView(Button(this).apply { text = "Từ chối"; setOnClickListener { answer(false) } }, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
+        card.addView(row)
+        return card
     }
 
     private fun showRooms() {

@@ -38,7 +38,8 @@ import { uiPort } from "../../core/config.js";
 import { getPeerLastSync, getPeerNames, getPeerSync, setPeerLastSync, setPeerName } from "../../config/settings.js";
 
 /** UI routes a phone may never call through its link: they run commands or hooks, not the interface (plan/41 §6a). */
-const PHONE_DENIED = /^\/(cli|hook|hooks|mcp)(\/|\?|$)/i;
+// `/approval/ask` too: only the machine's own hook may raise a question - a phone answers questions, never asks them
+const PHONE_DENIED = /^\/(cli|hook|hooks|mcp|approval\/ask)(\/|\?|$)/i;
 /** A phone's UI call: bodies and answers are capped - the interface moves JSON and the odd attachment, not bulk data. */
 const PHONE_REQ_MAX = 16 * 1024 * 1024;
 

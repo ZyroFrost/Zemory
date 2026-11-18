@@ -63,6 +63,8 @@ export const HOOKS = [
   // no write into the agent's own memory folder (Rule_Gate_94, plan/39 §3) - judged HERE, on the host, never relayed: the
   // daemon down must not open the door (same matcher as the native install, memory/memory-guard.ts MEMORY_GUARD_MATCHER)
   { event: "PreToolUse", arg: "memory-guard", matcher: "Write|Edit|MultiEdit|NotebookEdit|Bash|PowerShell" },
+  // a permission prompt goes to the paired phone first (plan/41 §6e); its own timeout covers the two-minute wait
+  { event: "PermissionRequest", arg: "permission", timeout: 130 },
 ];
 const NATIVE = new Set(HOOKS.map((h) => `zemory hook ${h.arg}`));
 
@@ -86,7 +88,7 @@ export function withHostHooks(doc, add, cmdFor = hookCommand) {
   }
   if (add) {
     for (const h of HOOKS) {
-      const entry = { type: "command", command: cmdFor(h.arg) };
+      const entry = { type: "command", command: cmdFor(h.arg), ...(h.timeout ? { timeout: h.timeout } : {}) };
       (hooks[h.event] ??= []).push(h.matcher ? { matcher: h.matcher, hooks: [entry] } : { hooks: [entry] });
     }
   }
@@ -179,8 +181,9 @@ function relay() {
     }
     const body = Buffer.from(text, "utf8");
     const req = http.request(
-      { host: "127.0.0.1", port, path: "/hook/" + encodeURIComponent(event), method: "POST",
-        headers: { "content-type": "application/json", "content-length": body.length }, timeout: 15000 },
+      // a permission question waits for the phone (up to ~2 min, plan/41 §6e); every other hook answers within seconds
+      { host: "127.0.0.1", port, path: event === "permission" ? "/approval/ask" : "/hook/" + encodeURIComponent(event), method: "POST",
+        headers: { "content-type": "application/json", "content-length": body.length }, timeout: event === "permission" ? 125000 : 15000 },
       (res) => {
         let out = "";
         res.setEncoding("utf8");
