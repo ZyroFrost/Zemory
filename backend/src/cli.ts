@@ -39,6 +39,8 @@ try {
     (await import("./commands/peers.js")).cmdPeers(args);
   } else if (cmd === "msg") {
     await (await import("./commands/msg.js")).cmdMsg(args);
+  } else if (cmd === "phone") {
+    (await import("./commands/phone.js")).cmdPhone(args);
   } else if (cmd === "gates") {
     (await import("./commands/gates.js")).cmdGates(args);
   } else if (cmd === "store") {

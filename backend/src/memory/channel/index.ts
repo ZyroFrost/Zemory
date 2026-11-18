@@ -31,6 +31,7 @@ import { secureSocket } from "./punch.js";
 import { runSessionOn } from "./peer.js";
 import { mirrorHooks } from "./mirrorstate.js";
 import { mailHooks } from "../mail.js";
+import { PHONE_DRIVE_TICK_MS, phoneDriveTick } from "../phone.js";
 import { blockIO } from "./p2pio.js";
 import { getPeerLastSync, getPeerNames, getPeerSync, setPeerLastSync, setPeerName } from "../../config/settings.js";
 
@@ -251,6 +252,7 @@ let running: {
   port: number;
   discovery?: DiscoveryHandle;
   presence?: NodeJS.Timeout;
+  phone?: NodeJS.Timeout;
   relay?: RelayJoin;
 } | null = null;
 // ── ĐỊA CHỈ NGOÀI CỦA MÁY NÀY — mảnh làm ca KHÁC MẠNG chạy bằng một mã ────────────────────────
@@ -974,6 +976,20 @@ export async function startChannelServer(o: {
     // Gắn vào bản ghi đang chạy để `stopChannelServer` đóng được — một nhịp sống sót sau khi tắt
     // kênh là tiếp tục đăng địa chỉ cho một kênh đã tắt (§F15, và nó mời máy kia bắn vào cổng đóng).
     if (running) running.presence = presence;
+    // Phone path 2 (plan/41 §5): letters to and from paired phones through `phone/` on the shared Drive folder.
+    // Cheap when no phone is paired (one file read), so it rides the channel's lifetime like presence does.
+    const phoneTick = (): void => {
+      try {
+        const r = phoneDriveTick({ driveDir: getDriveDir(), fp: channelIdentity().deviceId, host: hostname(), hooks: mailHooks(), log });
+        if (r.received || r.sent || r.rejected)
+          log(`[phone] Drive: ${r.received} letter(s) in · ${r.sent} out${r.rejected ? ` · ${r.rejected} dropped` : ""}`);
+      } catch {
+        /* fail-open: the phone path never touches the channel */
+      }
+    };
+    const phone = setInterval(phoneTick, PHONE_DRIVE_TICK_MS);
+    phone.unref?.();
+    if (running) running.phone = phone;
 
     // GIỮ LỖ MỞ — đường MỘT BÊN DÁN. Bật kênh là máy này tự mở một lỗ trên cổng đục lỗ, nên máy nào
     // có mã của nó đều gọi vào được mà máy này không cần biết trước là ai. Không đè một chỗ chờ
@@ -1298,6 +1314,7 @@ export function stopChannelServer(): void {
   // Bắt được đúng như vậy khi lượt quét đầy đủ đứng im ở nhóm `p2p-channel`.
   cancelPunchWait();
   if (running?.presence) clearInterval(running.presence);
+  if (running?.phone) clearInterval(running.phone);
   // RỜI relay: một chỗ chờ sống sót sau khi tắt kênh là mời máy kia mở phiên tới một kênh đã
   // tắt — và trong tiến trình test, kết nối thường trực đó giữ event loop sống mãi.
   try {
