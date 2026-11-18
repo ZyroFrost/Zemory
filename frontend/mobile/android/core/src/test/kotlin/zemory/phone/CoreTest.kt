@@ -20,7 +20,7 @@ class CoreTest {
     }
 
     @Test fun `pairing code round trip`() {
-        val json = """{"v":1,"name":"pixel","host":"SS01-IT-12","fp":"$pc","token":"abc"}"""
+        val json = """{"v":1,"name":"pixel","host":"LAPTOP-1","fp":"$pc","token":"abc"}"""
         val p = Pairing.parse("zph1." + Base64.getUrlEncoder().withoutPadding().encodeToString(json.toByteArray()))
         assertNotNull(p)
         assertEquals("phone-pixel", p.phoneHost)
