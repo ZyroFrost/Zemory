@@ -12,7 +12,7 @@ import Database from "better-sqlite3";
 import { currentMemoryDb, currentMemoryDir } from "../db.js";
 import { getDriveDir, getDriveOn, getP2pEnabled, getP2pPeers, getP2pPort, getSyncTransport } from "../../config/settings.js";
 import { base32, unbase32, loadOrCreateIdentity, deviceIdBytes, deviceIdFromBytes, sameDeviceId, type ChannelIdentity } from "./identity.js";
-import { serveChannel, type ChannelServer, type SessionOptions, type SyncOutcome } from "./peer.js";
+import { serveChannel, type ChannelServer, type ForwardHub, type SessionOptions, type SyncOutcome, type UiCall, type UiReply } from "./peer.js";
 import { startDiscovery, stripMappedV4, type DiscoveryHandle, type PeerSighting } from "./discovery.js";
 import { punchToPeer } from "./punch.js";
 import { stunPublicIp } from "./stun.js";
@@ -44,8 +44,40 @@ const PHONE_DENIED = /^\/(cli|hook|hooks|mcp|approval\/ask|phone)(\/|\?|$)/i;
 /** A phone's UI call: bodies and answers are capped - the interface moves JSON and the odd attachment, not bulk data. */
 const PHONE_REQ_MAX = 16 * 1024 * 1024;
 
-/** Run one UI API call on this machine's own daemon over loopback, exactly as the desktop window would. */
-function phoneRequest(r: { method: string; path: string; body?: Buffer; type?: string }): Promise<{ status: number; type: string; body: Buffer }> {
+/** Live machine-to-machine links that carry phone calls, by the other machine's host (plan/41 §6f). */
+const forwardLinks = new Map<string, (r: UiCall) => Promise<UiReply>>();
+const forwardHub: ForwardHub = {
+  register: (host, call) => {
+    const k = host.trim().toLowerCase();
+    forwardLinks.set(k, call);
+    return () => {
+      if (forwardLinks.get(k) === call) forwardLinks.delete(k);
+    };
+  },
+  // a call another machine forwards here runs under the SAME door as a phone's own (deny list, size caps)
+  serve: (r) => phoneRequest(r),
+};
+
+/** The cluster as a phone linked to this machine sees it: this machine, then every paired machine, and whether a live
+ *  link reaches it now (plan/41 §6f). */
+export function clusterMachines(): { host: string; self: boolean; linked: boolean }[] {
+  const me = hostname();
+  const names = Object.values(getPeerNames()).filter((h) => h && h.toLowerCase() !== me.toLowerCase());
+  return [
+    { host: me, self: true, linked: true },
+    ...[...new Set(names)].map((h) => ({ host: h, self: false, linked: forwardLinks.has(h.toLowerCase()) })),
+  ];
+}
+
+/** Run one UI API call on this machine's own daemon over loopback, exactly as the desktop window would - or, when the phone
+ *  names another machine of the cluster, hand it over the live link to that machine. */
+function phoneRequest(r: UiCall & { host?: string }): Promise<UiReply> {
+  if (r.host && r.host.trim().toLowerCase() !== hostname().toLowerCase()) {
+    const call = forwardLinks.get(r.host.trim().toLowerCase());
+    if (!call) return Promise.resolve({ status: 503, type: "text/plain", body: Buffer.from(`${r.host} is not linked to ${hostname()} right now`) });
+    if (PHONE_DENIED.test(r.path)) return Promise.resolve({ status: 403, type: "text/plain", body: Buffer.from("not available from a phone") });
+    return call({ method: r.method, path: r.path, ...(r.body ? { body: r.body } : {}), ...(r.type ? { type: r.type } : {}) });
+  }
   return new Promise((resolve) => {
     const deny = (status: number, why: string) => resolve({ status, type: "text/plain", body: Buffer.from(why) });
     if (!r.path.startsWith("/") || r.path.startsWith("//") || PHONE_DENIED.test(r.path)) return deny(403, "not available from a phone");
@@ -664,6 +696,7 @@ export function armPunchWait(o: {
     wantPair: o.wantPair,
     mirror: mirrorHooks(),
     mail: mailHooks(),
+    forward: forwardHub,
     // the peer addresses mail by host name: a punched session that did not say it carried no mail (plan/40)
     hostName: hostname(),
     // Hai hook, hai VAI khác nhau — truyền thiếu một cái là bịt một chiều mà không lỗi nào nổ:
@@ -885,6 +918,7 @@ export async function startChannelServer(o: {
         acceptPeer: o.acceptPeer,
         mirror: mirrorHooks(),
     mail: mailHooks(),
+    forward: forwardHub,
     remotes: phoneRemotes(),
         hostName: hostname(),
         onPeerName: (id: string, nm: string) => setPeerName(id, nm),
@@ -1205,6 +1239,7 @@ async function acceptRelayInvite(
       acceptPeer: o.acceptPeer,
       mirror: mirrorHooks(),
     mail: mailHooks(),
+    forward: forwardHub,
     remotes: phoneRemotes(),
       hostName: hostname(),
       onPeerName: (id: string, nm: string) => setPeerName(id, nm),
@@ -1332,6 +1367,7 @@ export async function syncViaRelay(o: {
         onPaired: o.onPaired,
         mirror: mirrorHooks(),
     mail: mailHooks(),
+    forward: forwardHub,
         hostName: hostname(),
         onPeerName: (id: string, nm: string) => setPeerName(id, nm),
         log: say,

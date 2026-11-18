@@ -107,10 +107,14 @@ export function queueMail(
   path?: string,
 ): MailEnvelope {
   const host = o.host ?? hostname();
-  if (sameHost(o.to.host, host))
+  if (sameHost(o.to.host, host)) {
+    // the person at THIS machine's interface (the project chat, plan/41 §6b): an agent answers them here, so the letter
+    // lands straight in this inbox where the chat room shows it - there is no channel to cross
+    if (repoKey(o.to.repo) === "user") return deliverHere({ ...o, host }, path);
     throw new Error(
       `${o.to.host} is this machine - mail goes between machines; a session here is reached through Claude Code`,
     );
+  }
   const body = redact(o.body.replace(/\r\n/g, "\n")).trim();
   if (!body) throw new Error("the letter is empty");
   if (Buffer.byteLength(body, "utf8") > MAIL_MAX_BODY)

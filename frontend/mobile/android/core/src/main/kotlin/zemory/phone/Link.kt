@@ -39,7 +39,7 @@ class Link private constructor(
     private fun send(m: JSONObject) = Wire.write(out, m)
 
     /** One UI API call, blocking up to [timeoutMs]. Network loss answers 502 rather than throwing. */
-    fun request(method: String, path: String, body: ByteArray? = null, type: String? = null, timeoutMs: Long = 60_000): Reply {
+    fun request(method: String, path: String, body: ByteArray? = null, type: String? = null, timeoutMs: Long = 60_000, host: String? = null): Reply {
         if (!alive) return Reply(502, "text/plain", "link closed".toByteArray())
         val id = "q${seq.incrementAndGet()}"
         val f = CompletableFuture<Reply>()
@@ -47,6 +47,8 @@ class Link private constructor(
         val m = JSONObject().put("t", "req").put("id", id).put("method", method).put("path", path)
         if (body != null && body.isNotEmpty()) m.put("body", Base64.getEncoder().encodeToString(body))
         if (!type.isNullOrBlank()) m.put("type", type)
+        // another machine of the cluster, reached through this one's live link to it (plan/41 §6f)
+        if (!host.isNullOrBlank()) m.put("host", host)
         return try {
             send(m)
             f.get(timeoutMs, TimeUnit.MILLISECONDS)

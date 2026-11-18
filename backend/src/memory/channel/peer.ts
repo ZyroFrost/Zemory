@@ -143,6 +143,25 @@ export interface BlockIO {
   incoming: (peerId: string, id: string, bytes: Buffer) => Promise<void>;
 }
 
+/** One UI call, as a phone makes it and as it is forwarded between machines (plan/41 §6a · §6f). */
+export interface UiCall {
+  method: string;
+  path: string;
+  body?: Buffer;
+  type?: string;
+}
+export interface UiReply {
+  status: number;
+  type: string;
+  body: Buffer;
+}
+export interface ForwardHub {
+  /** A live link to `host` can carry calls; returns the unregister. */
+  register: (host: string, call: (r: UiCall) => Promise<UiReply>) => () => void;
+  /** Run a call another machine forwarded here (its phone asked for THIS machine). */
+  serve: (r: UiCall) => Promise<UiReply>;
+}
+
 export interface SessionOptions {
   blocks: BlockIO;
   identity: ChannelIdentity;
@@ -235,10 +254,16 @@ export interface SessionOptions {
     tokenFor: (phoneName: string) => string | null;
     host: string;
     /** Run one UI API call on this machine's own daemon (plan/41 §6a). Absent = the phone gets mail only. */
-    request?: (r: { method: string; path: string; body?: Buffer; type?: string }) => Promise<{ status: number; type: string; body: Buffer }>;
+    request?: (r: UiCall & { host?: string }) => Promise<UiReply>;
     /** The phone's settings blob: read, and keep when `data` is given (plan/41 §6c). */
     prefs?: (phoneName: string, data?: string) => string | null;
   };
+  /**
+   * Phone calls forwarded between machines (plan/41 §6f). A live machine-to-machine link registers itself here under the
+   * other machine's host name (so a phone linked to THIS machine reaches that one through it), and `serve` runs a call the
+   * other machine forwarded to us.
+   */
+  forward?: ForwardHub;
   /** Máy kia khai tên trong `hello` ⇒ ghi sổ. */
   onPeerName?: (peerDeviceId: string, name: string) => void;
   /**
@@ -444,7 +469,31 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     const mailInFlight = new Map<string, number>();
     let lastMailScan = 0;
     const mailOn = (): boolean => Boolean(o.mail) && peerMail && Boolean(peerName);
+    // ── Phone calls forwarded over THIS machine-to-machine link (plan/41 §6f) ─────────────────────────────────────────
+    let forwardOff: (() => void) | null = null;
+    const xPending = new Map<string, (r: UiReply) => void>();
+    let xSeq = 0;
+    const offerForward = (): void => {
+      if (forwardOff || remote || !o.forward || !peerName || !proofOk || !paired) return;
+      forwardOff = o.forward.register(peerName, (r) =>
+        new Promise<UiReply>((resolve) => {
+          if (settled) return resolve({ status: 502, type: "text/plain", body: Buffer.from("link closed") });
+          const id = `x${++xSeq}`;
+          const timer = setTimeout(() => {
+            xPending.delete(id);
+            resolve({ status: 504, type: "text/plain", body: Buffer.from(`${peerName} did not answer in 60 s`) });
+          }, 60_000);
+          timer.unref?.();
+          xPending.set(id, (v) => {
+            clearTimeout(timer);
+            resolve(v);
+          });
+          send(encodeJson({ t: "xreq", id, method: r.method === "POST" ? "POST" : "GET", path: r.path, ...(r.body?.length ? { body: r.body.toString("base64") } : {}), ...(r.type ? { type: r.type } : {}) }));
+        }),
+      );
+    };
     const flushMail = (): void => {
+      offerForward();
       if (!mailOn() || !proofOk || !paired) return;
       lastMailScan = Date.now();
       let owed: ReturnType<MailHooks["outgoing"]>;
@@ -509,6 +558,9 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
       clearInterval(timer);
       if (roundTimer) clearTimeout(roundTimer);
       if (stuckTimer) clearTimeout(stuckTimer);
+      forwardOff?.();
+      for (const done of xPending.values()) done({ status: 502, type: "text/plain", body: Buffer.from("link closed") });
+      xPending.clear();
       try {
         if (error) sock.destroy();
         else sock.end();
@@ -684,9 +736,34 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         };
         if (!o.remotes?.request) return reply(501, "text/plain", Buffer.from("this machine serves mail only"));
         o.remotes
-          .request({ method: m.method, path: String(m.path ?? ""), ...(m.body ? { body: Buffer.from(m.body, "base64") } : {}), ...(m.type ? { type: m.type } : {}) })
+          .request({
+            method: m.method,
+            path: String(m.path ?? ""),
+            ...(m.body ? { body: Buffer.from(m.body, "base64") } : {}),
+            ...(m.type ? { type: m.type } : {}),
+            ...(typeof m.host === "string" && m.host ? { host: m.host.slice(0, 64) } : {}),
+          })
           .then((r) => reply(r.status, r.type, r.body))
           .catch((e) => reply(502, "text/plain", Buffer.from(e instanceof Error ? e.message : String(e))));
+        return;
+      }
+      // a phone call the other MACHINE forwards to us (plan/41 §6f) - machines only, after the share-key proof
+      if (m.t === "xreq" || m.t === "xres") {
+        if (remote || !proofOk || !paired) return finish(`${m.t} before the machine proved the same key`);
+        if (m.t === "xres") {
+          xPending.get(m.id)?.({ status: m.status, type: m.type, body: Buffer.from(m.body ?? "", "base64") });
+          xPending.delete(m.id);
+          return;
+        }
+        const id = String(m.id ?? "").slice(0, 64);
+        const answer = (r: UiReply): void => {
+          if (!settled) send(encodeJson({ t: "xres", id, status: r.status, type: r.type, body: r.body.toString("base64") }));
+        };
+        if (!o.forward) return answer({ status: 501, type: "text/plain", body: Buffer.from("this machine does not serve forwarded calls") });
+        o.forward
+          .serve({ method: m.method, path: String(m.path ?? ""), ...(m.body ? { body: Buffer.from(m.body, "base64") } : {}), ...(m.type ? { type: m.type } : {}) })
+          .then(answer)
+          .catch((e) => answer({ status: 502, type: "text/plain", body: Buffer.from(e instanceof Error ? e.message : String(e)) }));
         return;
       }
       if (m.t === "prefs") {

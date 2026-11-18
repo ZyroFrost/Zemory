@@ -68,6 +68,27 @@ export interface ReqMessage {
   path: string;
   body?: string;
   type?: string;
+  /** Run it on THIS machine of the cluster instead (plan/41 §6f): the paired machine forwards it over its own link. */
+  host?: string;
+}
+/**
+ * A phone's UI call forwarded between two paired MACHINES (plan/41 §6f): the machine the phone is linked to hands it to
+ * the cluster machine it names. Never from a phone - only a session proved with `share.key` carries these.
+ */
+export interface XReqMessage {
+  t: "xreq";
+  id: string;
+  method: "GET" | "POST";
+  path: string;
+  body?: string;
+  type?: string;
+}
+export interface XResMessage {
+  t: "xres";
+  id: string;
+  status: number;
+  type: string;
+  body: string;
 }
 export interface ResMessage {
   t: "res";
@@ -217,7 +238,9 @@ export type ControlMessage =
   | MailAckMessage
   | ReqMessage
   | ResMessage
-  | PrefsMessage;
+  | PrefsMessage
+  | XReqMessage
+  | XResMessage;
 
 export function encodeJson(msg: ControlMessage): Buffer {
   const body = Buffer.from(JSON.stringify(msg), "utf8");

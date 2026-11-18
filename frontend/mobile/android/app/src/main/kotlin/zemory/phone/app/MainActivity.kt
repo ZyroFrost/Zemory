@@ -63,7 +63,42 @@ class MainActivity : Activity() {
     // ── settings: kept here AND on every machine (plan/41 §6c) ──
     private fun codes(): MutableList<String> = JSONArray(prefs.getString("pairings", "[]")).let { a -> (0 until a.length()).map { a.getString(it) }.toMutableList() }
     private fun pairings(): List<Pairing> = codes().mapNotNull { Pairing.parse(it) }
-    private fun current(): Pairing? = pairings().getOrNull(machine.selectedItemPosition)
+
+    /**
+     * One machine on the picker: a paired one (`host == via.host`), or another machine of a paired one's cluster, reached
+     * through `via` (plan/41 §6f) - joining the cluster once shows every machine in it.
+     */
+    data class Target(val host: String, val via: Pairing) {
+        val direct: Boolean get() = host.equals(via.host, ignoreCase = true)
+        fun label(): String = if (direct) host else "$host (qua ${via.host})"
+    }
+
+    /** The cluster each paired machine last reported (`GET /cluster`), kept so the picker fills before any link opens. */
+    private fun clusterOf(p: Pairing): List<String> = JSONArray(prefs.getString("cluster:${p.host}", "[]")).let { a -> (0 until a.length()).map { a.getString(it) } }
+
+    private fun targets(): List<Target> {
+        val ps = pairings()
+        val out = ps.map { Target(it.host, it) }.toMutableList()
+        for (p in ps) for (h in clusterOf(p)) if (out.none { it.host.equals(h, ignoreCase = true) }) out.add(Target(h, p))
+        return out
+    }
+
+    private fun current(): Target? = targets().getOrNull(machine.selectedItemPosition)
+
+    /** Ask a paired machine who is in its cluster; refresh the picker when that changed. */
+    private fun refreshCluster(p: Pairing, l: Link) {
+        val r = l.request("GET", "/cluster")
+        if (r.status != 200) return
+        val a = JSONObject(r.text).optJSONArray("machines") ?: return
+        val hosts = JSONArray()
+        for (i in 0 until a.length()) {
+            val m = a.getJSONObject(i)
+            if (!m.optBoolean("self")) hosts.put(m.getString("host"))
+        }
+        if (hosts.toString() == JSONArray(clusterOf(p)).toString()) return
+        prefs.edit().putString("cluster:${p.host}", hosts.toString()).apply()
+        runOnUiThread { loadMachines() }
+    }
 
     private fun settingsBlob(): String = JSONObject().put("v", 1).put("machines", JSONArray(codes())).toString()
 
@@ -100,6 +135,8 @@ class MainActivity : Activity() {
         links[p.host] = l
         // settings travel with the link: give ours, take what the machine kept
         mergeSettings(l.prefs(settingsBlob()))
+        // and the cluster behind it: every machine it is paired with shows on the picker
+        io.execute { runCatching { refreshCluster(p, l) } }
         return l
     }
 
@@ -166,9 +203,9 @@ class MainActivity : Activity() {
     private fun locked() = unlockedAt == 0L
 
     private fun loadMachines() {
-        val list = pairings()
+        val list = targets()
         val sel = machine.selectedItemPosition
-        machine.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, list.map { it.host }.ifEmpty { listOf("Chưa có máy") })
+        machine.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, list.map { it.label() }.ifEmpty { listOf("Chưa có máy") })
         if (sel in list.indices) machine.setSelection(sel)
         if (list.isEmpty()) status.text = "Trên máy tính chạy: zemory phone pair <tên-điện-thoại>, rồi dán mã vào + Máy."
         // machines arrived (pairing, or settings merged from a machine) while nothing is shown: show the selected one
@@ -193,7 +230,7 @@ class MainActivity : Activity() {
         prefs.edit().putString("pairings", JSONArray(kept).toString()).apply()
         links.remove(p.host)?.close()
         loadMachines()
-        machine.setSelection(pairings().indexOfFirst { it.host == p.host })
+        machine.setSelection(targets().indexOfFirst { it.direct && it.host == p.host })
         status.text = "Đã thêm ${p.host}"
         io.execute {
             runCatching { link(p) }
@@ -222,12 +259,15 @@ class MainActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     private fun showZemory() {
         if (locked()) return
-        val p = current() ?: return
+        val tg = current() ?: return
+        val p = tg.via
+        // a machine reached through another one: every call names it, the paired machine forwards it (plan/41 §6f)
+        val on = if (tg.direct) null else tg.host
         body.removeAllViews()
         val w = WebView(this)
         w.settings.javaScriptEnabled = true
         w.settings.domStorageEnabled = true
-        w.addJavascriptInterface(Bridge(w, p), "ZB")
+        w.addJavascriptInterface(Bridge(w, p, on), "ZB")
         w.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 val u = request.url
@@ -235,13 +275,18 @@ class MainActivity : Activity() {
                 if (u.path == "/__bridge.js") return WebResourceResponse("text/javascript", "utf-8", assets.open("bridge.js"))
                 val path = (u.encodedPath ?: "/") + (u.encodedQuery?.let { "?$it" } ?: "")
                 val r = try {
-                    link(p).request("GET", path)
+                    link(p).request("GET", path, host = on)
                 } catch (e: Exception) {
                     runOnUiThread { status.text = "Không nối được ${p.host}: ${e.message}" }
                     val page = "<body style='background:#111;color:#ccc;font:14px sans-serif;padding:24px'>Không nối được ${p.host}.<br>${e.message}</body>"
                     return WebResourceResponse("text/html", "utf-8", ByteArrayInputStream(page.toByteArray()))
                 }
-                runOnUiThread { status.text = "${p.host} · ${links[p.host]?.via ?: ""}" }
+                if (r.status == 503 && on != null) {
+                    // the paired machine has no live link to that one right now: say it, do not show a broken page
+                    val page = "<body style='background:#111;color:#ccc;font:14px sans-serif;padding:24px'>${tg.host} chưa nối với ${p.host} lúc này.<br>Thử lại sau, hoặc chọn ${p.host}.</body>"
+                    return WebResourceResponse("text/html", "utf-8", ByteArrayInputStream(page.toByteArray()))
+                }
+                runOnUiThread { status.text = if (on == null) "${p.host} · ${links[p.host]?.via ?: ""}" else "${tg.host} · qua ${p.host}" }
                 val type = r.type.substringBefore(";").trim().ifBlank { "application/octet-stream" }
                 // the bridge must run before the interface's own scripts
                 val bytes = if (type == "text/html") r.text.replaceFirst("<head>", "<head><script src=\"/__bridge.js\"></script>").toByteArray() else r.body
@@ -249,17 +294,17 @@ class MainActivity : Activity() {
             }
         }
         body.addView(w, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
-        status.text = "Đang nối tới ${p.host}…"
+        status.text = "Đang nối tới ${tg.label()}…"
         w.loadUrl("https://zemory.app/")
     }
 
     /** The interface's fetch calls, handed over by bridge.js. */
-    inner class Bridge(private val w: WebView, private val p: Pairing) {
+    inner class Bridge(private val w: WebView, private val p: Pairing, private val on: String?) {
         @JavascriptInterface
         fun req(id: String, method: String, path: String, b64: String, type: String) {
             io.execute {
                 val body = if (b64.isEmpty()) null else Base64.decode(b64, Base64.DEFAULT)
-                val r = try { link(p).request(method, path, body, type) } catch (e: Exception) { Reply(502, "text/plain", (e.message ?: "").toByteArray()) }
+                val r = try { link(p).request(method, path, body, type, host = on) } catch (e: Exception) { Reply(502, "text/plain", (e.message ?: "").toByteArray()) }
                 val enc = Base64.encodeToString(r.body, Base64.NO_WRAP)
                 runOnUiThread { w.evaluateJavascript("window.__zres(${JSONObject.quote(id)},${r.status},${JSONObject.quote(r.type)},${JSONObject.quote(enc)})", null) }
             }

@@ -2617,6 +2617,12 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     }
     // Phones paired with this machine (plan/41 §4): list · pair (a QR the phone's camera opens the app with) · revoke.
     // A phone can never call these (the phone door refuses `/phone/`): pairing is done at the machine.
+    // The cluster as seen from this machine (plan/41 §6f): a phone linked here lists every machine and reaches the linked
+    // ones through this one
+    if (p === "/cluster") {
+      const { clusterMachines } = await import("./memory/channel/index.js");
+      return json(res, { host: hostname(), machines: clusterMachines() });
+    }
     if (p === "/phone/list") {
       const { listPhones } = await import("./memory/phone.js");
       return json(res, { host: hostname(), phones: listPhones().map((x) => ({ name: x.name, createdAt: x.createdAt })) });
