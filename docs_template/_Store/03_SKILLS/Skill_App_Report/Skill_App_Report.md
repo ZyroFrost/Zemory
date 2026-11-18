@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 26
+version: 27
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -53,7 +53,7 @@ description: The report pages of an app - what a page of figures, charts and tab
   `data-tone`. Locked by `Rule_Gate_98_FigureCardTone` (its hook blocks the style that takes the fill off). [rp-card-tone]
 - **A figure is never rounded to 0 with a unit** (v10: a Group Size of 1,75 read "0 k"): a value below the unit
   shows in a smaller unit or in full; `0 k` · `0 tr` · `0 tỷ` never appear. A true zero (its `data-rp-raw` is 0) stays in the unit the person chose (v24, 18/11). [rp-figure-scale]
-- **A figure that fits one line never wraps** (v25, the user 18/11: "88.76 %" broke in two beside a bar with room to spare): a
+- **A figure that fits one line never wraps** (v25, 18/11: "88.76 %" broke in two beside a bar with room to spare): a
   data label, the value of a bar, a card figure and a table number stand on one line; a bar chart gives up bar length so its
   figures fit (the value column as wide as the longest figure, `white-space: nowrap`). Only a name wraps, to two lines at most.
   [rp-figure-one-line]
@@ -152,7 +152,7 @@ description: The report pages of an app - what a page of figures, charts and tab
 
 - **Visuals of the same kind and fields** (differing only by a filter) **sit in one row,** the same height, the width split
   evenly. [rp-same-row] Each one the whole row (a time series per P&L line) stands one under the other (v16).
-- **A line too tight splits into even lines of the same content** (v25, the user 18/11: five line charts at 340 px cut their
+- **A line too tight splits into even lines of the same content** (v25, 18/11: five line charts at 340 px cut their
   titles and put the legend beside the title on two panels, under it on three): when one line would squeeze a panel under about
   400 px, or its title or legend no longer fits its head line, the visuals take even lines - 5 = 3 + 2, 6 = 3 + 3 - none alone on
   a line, each line split evenly over the same width. [rp-same-row] On one line every panel keeps its whole title, its legend at
@@ -208,8 +208,8 @@ description: The report pages of an app - what a page of figures, charts and tab
 
 ## 8. Rebuilding a report
 
-> 🔄 v26 (the user 18/11) replaces v11, where the White version was the report being replaced.
-- **The content of every report is its Classic version** (v26, the user 18/11: "dùng classic từ đầu"): pages, visuals,
+> 🔄 v26 (18/11) replaces v11, where the White version was the report being replaced.
+- **The content of every report is its Classic version** (v26, 18/11: "dùng classic từ đầu"): pages, visuals,
   figures and order follow the Classic report. The White version is no source any more; this skill keeps from it only the way
   a page is set out neatly (§1-7: card rows, even splits, the reading rules). Parity keeps what Classic shows, in the form this
   skill gives it: a card row topped up to four (§2), a small table drawn as a chart (§4).

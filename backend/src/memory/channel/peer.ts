@@ -231,7 +231,14 @@ export interface SessionOptions {
    * says `role: "remote"` with a paired phone name proves itself with THAT phone's token and gets a mail-only session.
    * Absent => strangers are refused right after TLS, as before.
    */
-  remotes?: { tokenFor: (phoneName: string) => string | null; host: string };
+  remotes?: {
+    tokenFor: (phoneName: string) => string | null;
+    host: string;
+    /** Run one UI API call on this machine's own daemon (plan/41 §6a). Absent = the phone gets mail only. */
+    request?: (r: { method: string; path: string; body?: Buffer; type?: string }) => Promise<{ status: number; type: string; body: Buffer }>;
+    /** The phone's settings blob: read, and keep when `data` is given (plan/41 §6c). */
+    prefs?: (phoneName: string, data?: string) => string | null;
+  };
   /** Máy kia khai tên trong `hello` ⇒ ghi sổ. */
   onPeerName?: (peerDeviceId: string, name: string) => void;
   /**
@@ -598,7 +605,7 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
     /** The phone's name once its hello said `role: "remote"`; its token keys the proof. */
     let remote: string | null = null;
     let remoteToken = "";
-    const REMOTE_FRAMES = new Set(["hello", "proof", "mail", "mailack", "ping", "pong"]);
+    const REMOTE_FRAMES = new Set(["hello", "proof", "mail", "mailack", "ping", "pong", "req", "prefs"]);
 
     const send = (buf: Buffer): void => {
       out.bytesSent += buf.length;
@@ -669,6 +676,24 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         return;
       }
       if (m.t === "hello" && mayBeRemote && !pairing) return finish(`máy lạ, chưa ghép đôi: ${peerId}`);
+      if ((m.t === "req" || m.t === "prefs") && !(remote && proofOk)) return finish(`${m.t} before a phone proved its token`);
+      if (m.t === "req") {
+        const id = String(m.id ?? "").slice(0, 64);
+        const reply = (status: number, type: string, body: Buffer): void => {
+          if (!settled) send(encodeJson({ t: "res", id, status, type, body: body.toString("base64") }));
+        };
+        if (!o.remotes?.request) return reply(501, "text/plain", Buffer.from("this machine serves mail only"));
+        o.remotes
+          .request({ method: m.method, path: String(m.path ?? ""), ...(m.body ? { body: Buffer.from(m.body, "base64") } : {}), ...(m.type ? { type: m.type } : {}) })
+          .then((r) => reply(r.status, r.type, r.body))
+          .catch((e) => reply(502, "text/plain", Buffer.from(e instanceof Error ? e.message : String(e))));
+        return;
+      }
+      if (m.t === "prefs") {
+        const held = o.remotes?.prefs?.(remote ?? "", typeof m.data === "string" ? m.data : undefined) ?? null;
+        send(encodeJson({ t: "prefs", ...(held !== null ? { data: held } : {}) }));
+        return;
+      }
       if (m.t === "proof" && remote) {
         if (!proofMatches(computeProof(remoteToken, peerNonce, myNonce), m.hmac)) return finish(`phone ${remote}: wrong pairing token`);
         proofOk = true;

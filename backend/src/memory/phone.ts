@@ -21,6 +21,30 @@ export interface PhoneEntry {
   /** base64url, 32 random bytes. Secret: it opens this machine's mail with the phone. */
   token: string;
   createdAt: string;
+  /**
+   * The phone's own settings, as the phone last sent them (plan/41 §6c): its paired machines (with their codes), the repos
+   * it uses, UI choices. Opaque here; kept beside the token because it holds tokens too. A new phone paired with ANY
+   * machine gets everything back from it.
+   */
+  prefs?: string;
+}
+
+/** A settings blob over this is refused: settings, not files. */
+export const PHONE_PREFS_MAX = 256 * 1024;
+
+export function phonePrefs(name: string, path = phonesPath()): string | null {
+  return listPhones(path).find((p) => p.name === name)?.prefs ?? null;
+}
+
+/** Keep the phone's settings blob. `false` when the phone is not paired here or the blob is too large. */
+export function savePhonePrefs(name: string, prefs: string, path = phonesPath()): boolean {
+  if (Buffer.byteLength(prefs, "utf8") > PHONE_PREFS_MAX) return false;
+  const list = listPhones(path);
+  const p = list.find((x) => x.name === name);
+  if (!p) return false;
+  p.prefs = prefs;
+  savePhones(list, path);
+  return true;
 }
 
 /** How often the daemon looks at `phone/` on Drive. Drive itself adds its own delay on top. */
@@ -59,7 +83,9 @@ function savePhones(list: PhoneEntry[], path: string): void {
 export function pairPhone(name: string, path = phonesPath()): PhoneEntry {
   const n = name.trim().toLowerCase();
   if (!NAME_RE.test(n)) throw new Error(`phone name "${name}" - use a-z, 0-9 and '-', at most 32 characters`);
-  const entry: PhoneEntry = { name: n, token: randomBytes(32).toString("base64url"), createdAt: new Date().toISOString() };
+  // re-pairing keeps the phone's settings: a new phone pairs again and must get them back
+  const prefs = listPhones(path).find((p) => p.name === n)?.prefs;
+  const entry: PhoneEntry = { name: n, token: randomBytes(32).toString("base64url"), createdAt: new Date().toISOString(), ...(prefs ? { prefs } : {}) };
   savePhones([...listPhones(path).filter((p) => p.name !== n), entry], path);
   return entry;
 }

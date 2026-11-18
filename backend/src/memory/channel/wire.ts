@@ -57,6 +57,30 @@ export interface HelloMessage {
    */
   role?: "remote";
 }
+/**
+ * A phone's call into this machine's own UI API (plan/41 §6a): run on the loopback daemon, answered by `res` with the
+ * same `id`. Bodies travel base64 (the UI posts text, JSON and files).
+ */
+export interface ReqMessage {
+  t: "req";
+  id: string;
+  method: "GET" | "POST";
+  path: string;
+  body?: string;
+  type?: string;
+}
+export interface ResMessage {
+  t: "res";
+  id: string;
+  status: number;
+  type: string;
+  body: string;
+}
+/** A phone's settings blob (plan/41 §6c): `data` present = keep it; answered with what this machine holds. */
+export interface PrefsMessage {
+  t: "prefs";
+  data?: string;
+}
 /** One letter of the agent mailbox (plan/40). The receiver stores it by `m.id` and answers `mailack`, a duplicate too. */
 export interface MailMessage {
   t: "mail";
@@ -190,7 +214,10 @@ export type ControlMessage =
   | PingMessage
   | PongMessage
   | MailMessage
-  | MailAckMessage;
+  | MailAckMessage
+  | ReqMessage
+  | ResMessage
+  | PrefsMessage;
 
 export function encodeJson(msg: ControlMessage): Buffer {
   const body = Buffer.from(JSON.stringify(msg), "utf8");

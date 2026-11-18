@@ -2587,6 +2587,26 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const rows = unreadFor(u.searchParams.get("repo") ?? "");
       return json(res, { unread: rows.length, from: [...new Set(rows.map((r) => r.env.from.host))] });
     }
+    // One repo's mail on THIS machine, both directions (plan/41 §6b): a phone merges it with the other machines' into the
+    // repo's chat room. Without `repo`: the repos that have any mail, so the room list needs no second source.
+    if (p === "/mail/thread") {
+      const { listInbox, listOutbox, repoKey } = await import("./memory/mail.js");
+      const inbox = listInbox(500);
+      const outbox = listOutbox(500);
+      const want = u.searchParams.get("repo");
+      if (!want) {
+        const repos = new Set<string>();
+        for (const r of inbox) repos.add(repoKey(r.env.to.repo));
+        for (const r of outbox) repos.add(repoKey(r.env.from.repo));
+        return json(res, { host: hostname(), repos: [...repos].sort() });
+      }
+      const k = repoKey(want);
+      const letters = [
+        ...inbox.filter((r) => repoKey(r.env.to.repo) === k).map((r) => ({ dir: "in", env: r.env, at: r.receivedAt, readAt: r.readAt })),
+        ...outbox.filter((r) => repoKey(r.env.from.repo) === k).map((r) => ({ dir: "out", env: r.env, at: r.queuedAt, ackedAt: r.ackedAt })),
+      ].sort((a, b) => a.env.sentAt.localeCompare(b.env.sentAt));
+      return json(res, { host: hostname(), repo: k, letters });
+    }
     // Hooks over HTTP (plan/30 §5 ②): the host client posts the payload Claude Code handed it; the answer is what the
     // `zemory hook <event>` process would have printed and exited with.
     if (req.method === "POST" && p.startsWith("/hook/")) {

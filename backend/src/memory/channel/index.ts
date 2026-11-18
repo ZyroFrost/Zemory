@@ -31,16 +31,67 @@ import { secureSocket } from "./punch.js";
 import { runSessionOn } from "./peer.js";
 import { mirrorHooks } from "./mirrorstate.js";
 import { mailHooks } from "../mail.js";
-import { PHONE_DRIVE_TICK_MS, listPhones, phoneDriveTick } from "../phone.js";
+import { PHONE_DRIVE_TICK_MS, listPhones, phoneDriveTick, phonePrefs, savePhonePrefs } from "../phone.js";
 import { blockIO } from "./p2pio.js";
+import http from "node:http";
+import { uiPort } from "../../core/config.js";
+import { getPeerLastSync, getPeerNames, getPeerSync, setPeerLastSync, setPeerName } from "../../config/settings.js";
+
+/** UI routes a phone may never call through its link: they run commands or hooks, not the interface (plan/41 §6a). */
+const PHONE_DENIED = /^\/(cli|hook|hooks|mcp)(\/|\?|$)/i;
+/** A phone's UI call: bodies and answers are capped - the interface moves JSON and the odd attachment, not bulk data. */
+const PHONE_REQ_MAX = 16 * 1024 * 1024;
+
+/** Run one UI API call on this machine's own daemon over loopback, exactly as the desktop window would. */
+function phoneRequest(r: { method: string; path: string; body?: Buffer; type?: string }): Promise<{ status: number; type: string; body: Buffer }> {
+  return new Promise((resolve) => {
+    const deny = (status: number, why: string) => resolve({ status, type: "text/plain", body: Buffer.from(why) });
+    if (!r.path.startsWith("/") || r.path.startsWith("//") || PHONE_DENIED.test(r.path)) return deny(403, "not available from a phone");
+    if (r.method !== "GET" && r.method !== "POST") return deny(405, "GET or POST only");
+    if (r.body && r.body.length > PHONE_REQ_MAX) return deny(413, "body too large");
+    const req = http.request(
+      {
+        host: "127.0.0.1",
+        port: uiPort(),
+        method: r.method,
+        path: r.path,
+        // the daemon's loopback guard: a loopback Host and no Origin is what its own window sends
+        headers: { host: `127.0.0.1:${uiPort()}`, ...(r.type ? { "content-type": r.type } : {}), ...(r.body ? { "content-length": String(r.body.length) } : {}) },
+        timeout: 60_000,
+      },
+      (res) => {
+        const parts: Buffer[] = [];
+        let size = 0;
+        res.on("data", (d: Buffer) => {
+          size += d.length;
+          if (size > PHONE_REQ_MAX) {
+            res.destroy();
+            return deny(413, "answer too large for a phone");
+          }
+          parts.push(d);
+        });
+        res.on("end", () => resolve({ status: res.statusCode ?? 502, type: String(res.headers["content-type"] ?? "application/octet-stream"), body: Buffer.concat(parts) }));
+        res.on("error", (e) => deny(502, e.message));
+      },
+    );
+    req.on("timeout", () => req.destroy(new Error("the daemon took over 60 s")));
+    req.on("error", (e) => deny(502, e.message));
+    if (r.body) req.write(r.body);
+    req.end();
+  });
+}
 
 /** Paired phones the listening doors accept (plan/41 §4). Read per session, so pairing or revoking a phone takes effect on
  *  the next connection without restarting the channel. */
-const phoneRemotes = (): { tokenFor: (name: string) => string | null; host: string } => ({
+const phoneRemotes = (): NonNullable<SessionOptions["remotes"]> => ({
   tokenFor: (name) => listPhones().find((p) => p.name === name)?.token ?? null,
   host: hostname(),
+  request: phoneRequest,
+  prefs: (name, data) => {
+    if (data !== undefined) savePhonePrefs(name, data);
+    return phonePrefs(name);
+  },
 });
-import { getPeerLastSync, getPeerNames, getPeerSync, setPeerLastSync, setPeerName } from "../../config/settings.js";
 
 /**
  * Ghi lại kết cục một lượt nối với một máy — CỬA DUY NHẤT, gọi từ MỌI đường phiên.

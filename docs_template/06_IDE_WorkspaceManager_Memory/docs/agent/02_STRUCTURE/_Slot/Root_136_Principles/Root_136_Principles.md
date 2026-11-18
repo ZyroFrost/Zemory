@@ -2,10 +2,10 @@
 id: Slot_136
 aka: 03-136
 name: principles
-version: 14
+version: 15
 kind: guide
 path: .
-from: _Store/02_STRUCTURE/_Slot/Root_136_Principles @v14 #86a2faa107b1
+from: _Store/02_STRUCTURE/_Slot/Root_136_Principles @v15 #a51e64f53eef
 ---
 # Root_136_Principles principles — the general principles of the structure standard
 
@@ -59,5 +59,5 @@ from: _Store/02_STRUCTURE/_Slot/Root_136_Principles @v14 #86a2faa107b1
 - Scope:
   - The APP standard applies to most apps (UI + server side): WebView2 desktop, web apps, tools with a cockpit, AI projects, monorepos; layer-first or domain-first by the number of domains.
   - The NON-APP standard applies to BI/report (Power BI/Tableau), data/analytics (dbt/warehouse), docs-only, design/brand, structured research/notebooks.
-  - NOT forced (their own conventions, only noted as out of scope): pure libraries/SDKs (no UI) · native mobile (Gradle/Xcode) · ML/notebooks · game engines (Unity/Unreal) · browser extensions. Under the NON-APP standard, an app with running code → the APP standard.
+  - NOT forced (their own conventions, only noted as out of scope): pure libraries/SDKs (no UI) · a standalone native mobile repo (Gradle/Xcode; the phone shell OF an app is `Frontend_176_Mobile`, in scope) · ML/notebooks · game engines (Unity/Unreal) · browser extensions. Under the NON-APP standard, an app with running code → the APP standard.
 - Reconcile — bringing a drifted repo back to the standard: a RARE flow; the full procedure (drifted docs · drifted folder structure · an end-to-end recipe) is in `.claude/skills/harness-reconcile/SKILL.md`. `zemory validate`/`structure` only POINT AT the drift (advisory); the agent reshapes with `git mv` (keeping history), zemory never auto-moves; breaking a large structure / something hard to undo → ask FIRST (`Rule_Gate_10_DestructiveOps`, `Rule_Gate_50_Git`).

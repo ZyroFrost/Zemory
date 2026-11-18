@@ -1,14 +1,14 @@
 ---
 id: Struc_Repo_App
 name: repo-app
-version: 12
+version: 13
 profile: app
 label: APP
 intro: (có code chạy: UI · server · CLI)
 index-role: mục lục slot do máy sinh lúc sync, không sửa tay
 trigger: tạo · đổi tên · dời folder · thêm slot · `conform` báo lệch
 installs: [bin/_python.cmd, config/runtime.json]
-from: _Store/02_STRUCTURE/Struc_Repo_App @v12 #3dc30e46f665
+from: _Store/02_STRUCTURE/Struc_Repo_App @v13 #168bd70b22b1
 ---
 # Struc_Repo_App
 
