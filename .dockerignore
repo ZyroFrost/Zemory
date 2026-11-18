@@ -22,3 +22,6 @@ docs_visual
 docs_template
 attic
 !attic/legacy-templates
+# the Android client (plan/41) never runs in the image; its Gradle caches and build output change while a build runs, and
+# sent as context they cancelled the image build ("error from sender: context canceled", measured 2026-11-18)
+frontend/android
