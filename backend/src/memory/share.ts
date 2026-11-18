@@ -1379,7 +1379,9 @@ const DRIVE_READ_ATTEMPTS = 3;
  * Cố ý KHÔNG nhận `ENOENT`/`EACCES`: file không có hoặc không có quyền là sự thật bền, thử lại
  * chỉ làm chậm rồi cũng báo đúng lỗi đó — và che mất lỗi cấu hình thật.
  */
-const TRANSIENT_FS_CODES = new Set(["UNKNOWN", "EBUSY", "EIO", "EAGAIN", "ETIMEDOUT", "EPERM"]);
+// ENOMEM: the WSL drive mount refuses a read when the 2 GB VM is short of memory (18/11: a 3.8 GB catch-up block died
+// at 98% with "ENOMEM: not enough memory, read"; 29/10 the same on a 271 MB segment, clean on the retry).
+const TRANSIENT_FS_CODES = new Set(["UNKNOWN", "EBUSY", "EIO", "EAGAIN", "ETIMEDOUT", "EPERM", "ENOMEM"]);
 
 export function isTransientFsError(e: unknown): boolean {
   const code = (e as NodeJS.ErrnoException | null)?.code;
@@ -1411,13 +1413,20 @@ export async function withDriveRetry<T>(what: string, fn: () => Promise<T>): Pro
 }
 
 async function extractChunk(containerPath: string, chunk: ChunkRef, outPath: string): Promise<void> {
+  // Start clean once; a retry then RESUMES from the bytes already copied instead of re-reading the whole block
+  // (a 3.8 GB block over the WSL drive mount takes 15-25 min; restarting it from zero on a hiccup at 98% wastes
+  // all of that). Every byte written came from a successful read, and the GCM tag still checks the whole block.
+  rmSync(outPath, { force: true });
   await withDriveRetry(`đọc khối #${chunk.index}`, async () => {
-    // Lượt trước có thể để lại file dở; cờ "wx" sẽ ném EEXIST và biến một cú chập đọc thành
-    // một lỗi khác hẳn. Dọn trước khi thử lại.
-    rmSync(outPath, { force: true });
+    let have = existsSync(outPath) ? statSync(outPath).size : 0;
+    if (have > chunk.len) {
+      rmSync(outPath, { force: true });
+      have = 0;
+    }
+    if (have === chunk.len) return;
     await pipeline(
-      createReadStream(containerPath, { start: chunk.offset, end: chunk.offset + chunk.len - 1 }),
-      createWriteStream(outPath, { flags: "wx" }),
+      createReadStream(containerPath, { start: chunk.offset + have, end: chunk.offset + chunk.len - 1 }),
+      createWriteStream(outPath, { flags: have > 0 ? "a" : "w" }),
     );
   });
 }
