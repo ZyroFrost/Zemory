@@ -141,6 +141,32 @@ export function queueMail(
   return env;
 }
 
+/**
+ * A letter from the person at this machine's interface to an agent on THIS machine (plan/41 §6b, the project chat): no
+ * channel to cross, so it lands straight in this inbox, where the hooks wake the target repo's session. Same shape and
+ * redaction as `queueMail`.
+ */
+export function deliverHere(
+  o: { to: MailAddress; body: string; from: { repo: string; title?: string }; replyTo?: string; host?: string },
+  path?: string,
+): MailEnvelope {
+  const host = o.host ?? hostname();
+  const body = redact(o.body.replace(/\r\n/g, "\n")).trim();
+  if (!body) throw new Error("the letter is empty");
+  if (Buffer.byteLength(body, "utf8") > MAIL_MAX_BODY) throw new Error(`the letter is over ${MAIL_MAX_BODY / 1024} KB`);
+  const env: MailEnvelope = {
+    id: randomUUID(),
+    from: { host, repo: o.from.repo, ...(o.from.title ? { title: o.from.title } : {}) },
+    to: { ...o.to, host },
+    ...(o.replyTo ? { replyTo: o.replyTo } : {}),
+    subject: body.split("\n")[0].slice(0, 120),
+    body,
+    sentAt: new Date().toISOString(),
+  };
+  receiveMail(env, host, path);
+  return env;
+}
+
 /** Letters still owed to `peerHost` (no ack yet), oldest first. */
 export function outgoingFor(
   peerHost: string,

@@ -304,7 +304,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
      lúc dài thêm một dòng. Chỉ thêm padding thì lúc chưa tràn lại dư một khoảng trống.
    • Kèm một khoảng thở: chữ dừng sát mép thanh cuộn vẫn đọc ra là bị cắt.
    Đặt ở lớp CHUNG cho mọi vùng cuộn — vá riêng panel vừa bị chê thì panel kế tiếp lại dính. */
-.scroll,.card-b,.dlg-b,.sub[data-sy],.pg-tree,.pg-right,.pg-top,.fpre{scrollbar-gutter:stable}
+.scroll,.card-b,.dlg-b,.sub[data-sy],.pg-tree,.pg-right,.pg-top,.fpre,.chat-list{scrollbar-gutter:stable}
 .card-b{overflow-y:auto;overflow-x:hidden;flex:1;min-height:0;padding-right:8px}
 .stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:15px 16px}
 .stat .lbl{display:flex;align-items:center;gap:8px;color:var(--text-dim);font-size:12px}
@@ -466,6 +466,23 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .tabs button .qbadge:empty{display:none}
 .sub{display:none;flex:1;min-height:0;flex-direction:column;gap:14px}
 .sub.on{display:flex}
+/* project chat (plan/41 §6b): prompts waiting on top, the letters scroll, the send row at the bottom - all one card
+   style; the send row's three controls take --ctl-h (§F0c), the list never scrolls sideways (§F12) */
+#pjChat{gap:10px}
+.chat-ask:empty{display:none}
+.chat-ask{display:flex;flex-direction:column;gap:8px}
+.chat-q{border:1px solid var(--warn);border-radius:10px;padding:10px 12px;background:var(--surface-2);display:flex;flex-direction:column;gap:6px}
+.chat-qh{font-size:11.5px;color:var(--warn)}
+.chat-qs{margin:0;font-size:12px;white-space:pre-wrap;word-break:break-word;color:var(--text)}
+.chat-qa{display:flex;gap:6px;align-items:center}
+.chat-qa .tin{flex:1}
+.chat-list{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;padding-right:6px}
+.chat-m{display:flex;flex-direction:column;gap:3px;min-width:0}
+.chat-mh{font-size:11px;color:var(--text-dim)}
+.chat-mb{font-size:13px;white-space:pre-wrap;word-break:break-word;color:var(--text)}
+.chat-m.mine .chat-mb{color:var(--primary)}
+.chat-send{display:flex;gap:6px;align-items:center}
+.chat-send .tin{flex:1}
 /* the graph canvas and its full-screen button (top right, on the canvas); full screen enlarges the canvas only */
 .gcanvas-wrap{position:relative;display:flex;flex-direction:column;min-width:0;min-height:0}
 .gcanvas-fs{position:absolute;top:8px;right:8px;z-index:4}

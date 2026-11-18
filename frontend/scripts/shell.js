@@ -45,6 +45,8 @@
     // Màn Đồng bộ: nhịp nhật ký CHỈ chạy khi tab máy-tới-máy đang mở — hỏi log mỗi 15s trong lúc
     // không ai nhìn là đốt I/O suông.
     else if(attr==='data-sy'&&window.zSyncScreen)window.zSyncScreen(v==='p2p');
+    // Project detail: Graph · Chat (plan/41 §6b) - the room polls only while its tab is open
+    else if(attr==='data-pd'&&typeof zChat==='object')zChat.show(v==='chat');
   }
   function subOf(screen){var a=SUBATTR[screen];if(!a)return null;
     var b=document.querySelector('.screen[data-s="'+screen+'"] .tabs button['+a+'].on');return b?b.getAttribute(a):null;}
@@ -67,7 +69,7 @@
       subSet(attr,b.getAttribute(attr));
     });
   }
-  subtabs('data-ht');subtabs('data-rc');subtabs('data-gm');subtabs('data-pj');subtabs('data-sy'); // data-pj: Projects → Dự án | Thêm dự án (user 2026-08-29)
+  subtabs('data-ht');subtabs('data-rc');subtabs('data-gm');subtabs('data-pj');subtabs('data-sy');subtabs('data-pd'); // data-pj: Projects → Dự án | Thêm dự án (user 2026-08-29)
   // Cây Nguồn TỰ TƯƠI khi đang mở Global Memory: nhịp nền/watcher kéo xong là daemon xoá cache, nhưng FE
   // trước đây chỉ vẽ lại theo cú bấm ⇒ user thấy ⚠ + số cũ 10 phút sau khi kho đã đổi (2026-08-29, ảnh
   // "linked rồi mà vẫn chấm đỏ"). Đọc bản cache (~40 ms) mỗi 60 s, chỉ khi màn đó đang hiện.
@@ -89,9 +91,11 @@
     document.getElementById('projList').style.display='none';
     var d=document.getElementById('projDetail');d.style.display='flex';
     document.getElementById('projProf').textContent=prof==='non-app'?'NON-APP':'APP';
-    // Chi tiết dự án chỉ còn Graph — khối "Tài liệu dự án" gỡ 2026-09-16 (user chốt), và cùng lượt
-    // đó thanh sub-tab hết lý do tồn tại: một nhóm tab còn đúng một nút là thanh tab giả.
+    // Project detail = Graph · Chat (plan/41 §6b); the old "project docs" block stays removed (2026-09-16).
     gApplyLayout();loadProjGraph(curProjRoot);
+    // the Chat tab left open on another project now shows THIS project's room
+    var ct=document.querySelector('#projDetail .tabs button[data-pd="chat"]');
+    if(ct&&ct.classList.contains('on')&&typeof zChat==='object')zChat.show(true);
   }
   // Project-card → detail (works for real cards too; pin/forget + hit-select are
   // handled by the Phase-2 wiring block below, not here, to avoid double firing).

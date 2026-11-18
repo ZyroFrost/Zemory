@@ -2601,11 +2601,36 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         return json(res, { host: hostname(), repos: [...repos].sort() });
       }
       const k = repoKey(want);
+      // the room = every letter with this repo at EITHER end (an agent's letters, and the person's to it); a letter held
+      // in both boxes (a local one) is listed once
+      const inRoom = (e: { from: { repo: string }; to: { repo: string } }) => repoKey(e.to.repo) === k || repoKey(e.from.repo) === k;
+      const seen = new Set<string>();
       const letters = [
-        ...inbox.filter((r) => repoKey(r.env.to.repo) === k).map((r) => ({ dir: "in", env: r.env, at: r.receivedAt, readAt: r.readAt })),
-        ...outbox.filter((r) => repoKey(r.env.from.repo) === k).map((r) => ({ dir: "out", env: r.env, at: r.queuedAt, ackedAt: r.ackedAt })),
-      ].sort((a, b) => a.env.sentAt.localeCompare(b.env.sentAt));
-      return json(res, { host: hostname(), repo: k, letters });
+        ...inbox.filter((r) => inRoom(r.env)).map((r) => ({ dir: "in", env: r.env, at: r.receivedAt, readAt: r.readAt })),
+        ...outbox.filter((r) => inRoom(r.env)).map((r) => ({ dir: "out", env: r.env, at: r.queuedAt, ackedAt: r.ackedAt })),
+      ]
+        .filter((x) => !seen.has(x.env.id) && Boolean(seen.add(x.env.id)))
+        .sort((a, b) => a.env.sentAt.localeCompare(b.env.sentAt));
+      const { getPeerNames } = await import("./config/settings.js");
+      const hosts = [hostname(), ...Object.values(getPeerNames()).filter((h) => h && h.toLowerCase() !== hostname().toLowerCase())];
+      return json(res, { host: hostname(), repo: k, hosts: [...new Set(hosts)], letters });
+    }
+    // The person writes to a repo's agent from the interface (desktop or phone, plan/41 §6b). From `<this host>/user`, so
+    // the agent's answer comes back to the room, not into this machine's own session of that repo.
+    if (req.method === "POST" && p === "/mail/send") {
+      const chunks: Buffer[] = [];
+      for await (const c of req) chunks.push(c as Buffer);
+      const { deliverHere, parseAddress, queueMail, sameHost } = await import("./memory/mail.js");
+      const to = parseAddress(u.searchParams.get("to") ?? "");
+      if (!to) return json(res, { ok: false, error: "to: <host>/<repo>" });
+      const body = Buffer.concat(chunks).toString("utf8");
+      try {
+        const o = { to, body, from: { repo: "user" } };
+        const env = sameHost(to.host, hostname()) ? deliverHere(o) : queueMail(o);
+        return json(res, { ok: true, id: env.id, local: sameHost(to.host, hostname()) });
+      } catch (e) {
+        return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
+      }
     }
     // Remote approval (plan/41 §6e). `/approval/ask` is the PermissionRequest hook's: it waits for a phone's answer and
     // returns what the hook prints (the same {stdout, stderr, code} shape as `/hook/<event>`); a phone may never call it

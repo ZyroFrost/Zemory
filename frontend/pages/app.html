@@ -228,8 +228,20 @@
                  nay chỉ còn Graph, nên thanh tab không còn gì để chuyển. -->
           <div class="tabs pjtabs">
             <span class="pjhead"><b id="projName">Zemory</b><span class="badge-prof" id="projProf">APP</span><span class="back" id="projBack">← <span data-i18n="pj.back">Danh sách</span></span></span>
+            <button class="on" data-pd="graph">◇ <span data-i18n="pd.graph">Graph</span></button><button data-pd="chat">💬 <span data-i18n="pd.chat">Chat</span></button>
           </div>
-          <div class="sub on" id="gArea">
+          <!-- the project's chat room (plan/41 §6b): this repo's letters between machines, the person's, and the
+               permission prompts its agents wait on (§6e) - the same room on the desktop and on the phone -->
+          <div class="sub" data-pd="chat" id="pjChat">
+            <div id="chatAsk" class="chat-ask"></div>
+            <div id="chatList" class="chat-list"><div class="muted" data-i18n="chat.empty">Chưa có thư nào trong phòng này.</div></div>
+            <div class="chat-send">
+              <select id="chatTo" class="rsel" data-i18n-aria="chat.to" aria-label="Gửi tới máy"></select>
+              <input id="chatIn" class="tin" data-i18n-ph="chat.ph" placeholder="Viết cho agent của dự án…" aria-label="Viết cho agent của dự án">
+              <button id="chatGo" class="btn sm" data-i18n="chat.send">Gửi</button>
+            </div>
+          </div>
+          <div class="sub on" data-pd="graph" id="gArea">
             <div class="graph-toolbar">
               <span id="gCrumb" class="gcrumb"></span>
               <span id="gStats" class="muted" style="font-size:11.5px"></span>
@@ -702,6 +714,7 @@
 <script src="/scripts/sources.js"></script>
 <script src="/scripts/recall.js"></script>
 <script src="/scripts/harness.js"></script>
+<script src="/scripts/chat.js"></script>
 <script src="/scripts/system.js"></script>
 <script src="/scripts/chrome.js"></script>
 <script src="/scripts/boot.js"></script>
