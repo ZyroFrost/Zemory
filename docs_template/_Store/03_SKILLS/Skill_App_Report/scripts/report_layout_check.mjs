@@ -162,6 +162,24 @@ export const RULES = [
       if (zero.test(t)) return 'a figure rounded to 0 with its unit: "' + t + '" in ' + name(v);
     }
     return true;`),
+  rule('rp-figure-one-line', 'a figure that fits one line never wraps: a data label, the value of a bar, a card figure and a table number stand on one line, a bar chart giving up bar length for them; only a name wraps, to two lines at most (v25, the user 18/11: "thông tin nào vừa hết trên 1 hàng thì phải để 1 hàng ko dc xuống hàng", "88.76 %" broke in two beside a bar with room to spare)', `
+    // the lines a text stands on, read from its own boxes (one per line), so padding or a tall row never counts as a line
+    const lines = e => { const r = document.createRange(); r.selectNodeContents(e);
+      const tops = [...r.getClientRects()].filter(q => q.width > .5 && q.height > 0).map(q => q.top).sort((a, b) => a - b);
+      let n = 0, last = -1e9; for (const t of tops) { if (t - last > 4) n++; last = t; } return n; };
+    const skip = e => { if (!e.getClientRects().length || e.closest('.slant, [data-rp-slant]')) return true;
+      const st = getComputedStyle(e); return st.visibility === 'hidden' || Number(st.opacity) === 0 || st.transform !== 'none'; };
+    for (const v of vis()) {
+      for (const e of v.querySelectorAll('[data-rp-label], .bar-value, td[data-rp-num], .kpi-main')) {
+        if (skip(e) || !txt(e)) continue;
+        const n = lines(e); if (n > 1) return 'a figure wraps onto ' + n + ' lines: "' + txt(e).replace(/\\s+/g, ' ').slice(0, 20) + '" in ' + name(v);
+      }
+      for (const e of v.querySelectorAll('[data-rp-name], .bar-name')) {
+        if (skip(e) || !txt(e)) continue;
+        const n = lines(e); if (n > 2) return 'a name runs to ' + n + ' lines, two at most: "' + txt(e).slice(0, 24) + '" in ' + name(v);
+      }
+    }
+    return true;`),
   rule('rp-card-label', 'a card title fits its card and every title of a card row has one size (abbreviate, never shrink one card)', `
     for (const row of document.querySelectorAll('[data-rp-visual=cards]')) {
       const titles = [...row.querySelectorAll('.kpi-title')].filter(t => t.getClientRects().length);
@@ -420,10 +438,20 @@ export const RULES = [
       if (list.length < 2) continue;
       // (v16) each one the whole row (a time series of twelve months per P&L line, OPS_03 Metrics): stacked as a phone stacks
       if (list.every(v => box(v).width >= box(page).width * 0.9)) continue;
-      const spread = f => { const xs = list.map(f); return Math.max(...xs) - Math.min(...xs); };
-      if (spread(v => box(v).top) > 1) return 'visuals of one kind on different rows: ' + k;
-      if (spread(v => box(v).height) > 1) return 'visuals of one kind with different heights: ' + k;
-      if (spread(v => box(v).width) > 1) return 'visuals of one kind with an uneven split: ' + k;
+      const spread = xs => Math.max(...xs) - Math.min(...xs);
+      if (spread(list.map(v => box(v).height)) > 1) return 'visuals of one kind with different heights: ' + k;
+      // (v25, the user 18/11: "không dồn 1 hàng mà tách ra 2 hàng, vẫn cùng 1 nội dung") a line too tight splits into even lines of
+      // the same content - 5 = 3 + 2, 6 = 3 + 3 - none alone on a line, every line split evenly over the same width (no hole)
+      const lines = new Map();
+      for (const v of list) { const t = Math.round(box(v).top), at = [...lines.keys()].find(x => Math.abs(x - t) <= 1) ?? t; lines.set(at, [...(lines.get(at) || []), v]); }
+      const all = [...lines.values()];
+      if (all.length > 1) {
+        const counts = all.map(l => l.length);
+        if (spread(counts) > 1 || counts.some(c => c < 2)) return 'visuals of one kind on uneven lines (' + counts.join(' + ') + '): ' + k;
+        const spans = all.map(l => Math.max(...l.map(v => box(v).right)) - Math.min(...l.map(v => box(v).left)));
+        if (spread(spans) > 2) return 'the lines of one kind do not fill the same width (a hole): ' + k;
+      }
+      for (const l of all) if (spread(l.map(v => box(v).width)) > 1) return 'visuals of one kind with an uneven split: ' + k;
     }
     return true;`),
   rule('rp-even-split', 'blocks sharing one row that are meant to be equal are absolutely equal (never 325 + 330)', `
@@ -454,6 +482,26 @@ export const RULES = [
       rows.set(k, [...(rows.get(k) || []), Math.max(...bars.map(b => box(b).bottom))]);
     }
     for (const b of rows.values()) if (Math.max(...b) - Math.min(...b) > 3) return 'the column bottoms of one row differ by ' + (Math.max(...b) - Math.min(...b)).toFixed(0) + ' px';
+    return true;`),
+  rule('rp-row-squeeze', 'panels of one kind and fields on one line each keep their whole title, their legend at one height and their plots on one top and one bottom; a line too tight for that splits into even lines (rp-same-row) (v25, the user 18/11: five line charts at 340 px cut their titles and put the legend beside the title on two, under it on three)', `
+    if (innerWidth < 768) return true;   // a phone stacks the visuals of a row
+    const groups = new Map();
+    for (const v of vis()) {
+      if (!v.dataset.rpFields || v.parentElement.closest('[data-rp-visual]')) continue;
+      const k = v.dataset.rpVisual + '|' + v.dataset.rpFields + '|' + Math.round(box(v).top); groups.set(k, [...(groups.get(k) || []), v]);
+    }
+    const spread = xs => Math.max(...xs) - Math.min(...xs);
+    for (const list of groups.values()) {
+      if (list.length < 2) continue;
+      for (const v of list) { const t = v.querySelector('[data-rp-title]'); if (t && t.getClientRects().length && t.scrollWidth > t.clientWidth + 1) return 'a title cut on a tight line: "' + txt(t).slice(0, 30) + '" - split the line into even lines'; }
+      const legends = list.map(v => { const l = v.querySelector('[data-rp-legend]'); return l && l.getClientRects().length ? box(l).top - box(v).top : null; }).filter(x => x !== null);
+      if (legends.length > 1 && spread(legends) > 2) return 'the legends of one line stand at heights ' + spread(legends).toFixed(0) + ' px apart: ' + name(list[0]) + ' - split the line into even lines';
+      const plots = list.map(v => v.querySelector('[data-rp-body]')).filter(b => b && b.getClientRects().length);
+      if (plots.length === list.length) for (const edge of ['top', 'bottom']) {
+        const d = spread(plots.map(b => box(b)[edge]));
+        if (d > 2) return 'the plots of one line differ at their ' + edge + ' by ' + d.toFixed(0) + ' px: ' + name(list[0]);
+      }
+    }
     return true;`),
   rule('rp-fill', 'no column chart leaves more than 30 % of its width empty once full of data (its columns span at least 70 % of the plot)', `
     for (const v of vis().filter(v => v.dataset.rpVisual === 'chart' && v.dataset.rpAxis === 'column')) {
@@ -809,7 +857,16 @@ export const SELF_TEST = {
     // (v22) a chart of two series whose tooltip names only one · numbers and labels of a fixed size while the page has a number size
     `<style>:root{--num-scale:1}</style><div class="row"><div class="card" data-rp-visual="chart" style="width:300px"><h6 data-rp-title>Hai chuỗi</h6>` +
     `<div data-rp-legend style="display:flex;gap:6px"><span>Doanh thu</span><span>Cùng kỳ</span></div><div class="bars" data-rp-body>` +
-    [1, 2, 3, 4].map(n => `<i data-rp-mark data-tip="Tháng: T${n}\\nDoanh thu: ${n}0" style="height:${n * 20}px;background:rgb(61, 126, 191)"></i>`).join('') + `</div></div></div>`),
+    [1, 2, 3, 4].map(n => `<i data-rp-mark data-tip="Tháng: T${n}\\nDoanh thu: ${n}0" style="height:${n * 20}px;background:rgb(61, 126, 191)"></i>`).join('') + `</div></div></div>` +
+    // (v25, the user 18/11) two line charts of one kind squeezed on a line: one title cut, the legend beside the title on one and
+    // under it on the other, so the plots stand at different heights · a bar's figure broken onto two lines beside a bar with room
+    `<div class="row">` + ['Điểm theo tháng của AM Nguyễn Văn An', 'B'].map((t, i) => `<div class="card" data-rp-visual="chart" data-rp-fields="am-month" style="width:160px">` +
+      `<h6 data-rp-title style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0">${t}</h6>` +
+      `<div data-rp-legend style="margin-top:${i ? 24 : 0}px"><span>Điểm</span></div><div data-rp-body style="height:60px"></div></div>`).join('') + `</div>` +
+    `<div class="row"><div class="card" data-rp-visual="chart" style="width:300px"><h6 data-rp-title>Điểm theo AM</h6>` +
+    `<div class="bar-row" style="display:flex;align-items:center"><span class="bar-name" style="width:60px">An</span>` +
+    `<i data-rp-mark data-tip="AM: An\\nĐiểm: 88,76 %" style="display:block;flex:1;height:12px;background:rgb(61, 126, 191)"></i>` +
+    `<span class="bar-value" style="width:28px">88.76 %</span></div></div></div>`),
 };
 
 if (process.argv.includes('--list')) for (const r of RULES) console.log(r.id.padEnd(22) + r.rule);
