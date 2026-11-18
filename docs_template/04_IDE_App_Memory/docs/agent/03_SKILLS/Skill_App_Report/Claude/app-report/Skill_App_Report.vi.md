@@ -1,5 +1,5 @@
 ---
-version: 25
+version: 26
 lang: vi
 ---
 
@@ -179,9 +179,13 @@ lang: vi
 
 ## 8. Dựng lại một report
 
-- **Report đang thay là bản Power BI White** (v11):
-  bản classic chỉ là bản nháp đầu; trang, visual và thứ tự theo White, chỉ đọc classic cho trang mà White không có. Đối
-  chiếu giữ cái White hiện, theo dạng skill này quy định: hàng card bổ sung cho đủ bốn (§2), bảng nhỏ vẽ thành chart (§4).
+> 🔄 v26 (user 18/11) thay v11, khi bản White là report đang thay.
+- **Nội dung mọi report là bản Classic** (v26, user 18/11: "dùng classic từ đầu"): trang, visual, số liệu và thứ tự theo
+  report Classic. Bản White không còn là nguồn; skill này chỉ giữ của nó cách sắp xếp trang cho ngay ngắn (§1-7: hàng card, chia
+  đều, các luật đọc). Đối chiếu giữ cái Classic hiện, theo dạng skill này quy định: hàng card bổ sung cho đủ bốn (§2), bảng nhỏ
+  vẽ thành chart (§4).
+- **Board giữ cấu trúc của chính nó** (v26): trang và tab theo cấu trúc board của app đã có; không chia tab theo kiểu report
+  White.
 - **Mọi trang và mọi visual của report đang thay đều có mặt**, đúng thứ tự. Visual bỏ có chủ đích, hoặc đang chờ nguồn DW
   chưa có, khai trong danh sách đối chiếu của bảng kèm lý do; test của repo so danh sách đó với visual của report (cả hai chiều).
 - **Số khớp report:** mỗi measure dựng lại từ công thức và đối chiếu với chính số của report, từng phần; chỗ lệch có chủ đích
