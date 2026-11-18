@@ -174,12 +174,13 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
     return;
   }
 
-  // ── CHỐT 2: CHỈ FAST-FORWARD ────────────────────────────────────────────────
-  // `--ff-only` để không bao giờ đẻ merge commit tự động trên máy người khác. Nhánh đã
-  // rẽ ⇒ dừng, người thật xử — đúng doctrine "bị chặn thì đi HỎI, không tìm đường vòng".
-  // Tiễn daemon TRƯỚC bước dựng — nó là kẻ duy nhất giữ khoá trên `dist/zemory.exe`.
-  const stoppedPid = await stopDaemonForBuild();
-  if (stoppedPid === -1) { process.exitCode = 1; return; }
+  // ── LATCH 2: FAST-FORWARD ONLY ──────────────────────────────────────────────
+  // `--ff-only` never creates a merge commit on someone else's machine. A diverged branch stops here for a human to resolve.
+  // The daemon is stopped AFTER the pull and BEFORE the first npm step: it is the only holder of the lock on
+  // `dist/zemory.exe`, and the pull never touches `dist/`. The old order stopped it before the pull and returned on a red
+  // pull, leaving it dead - measured 2026-11-18 04:11 UTC: the pull failed on a diverged branch and this PC lost its p2p
+  // link for 20 minutes until someone relaunched the daemon by hand. Once stopped, every exit path brings it back (finally).
+  let stoppedPid: number | null = null;
 
   // npm KHÔNG gọi thẳng `npm.cmd` nữa: từ Node 20.12 (vá CVE-2024-27980) spawn một `.cmd` mà
   // thiếu `shell: true` bị từ chối bằng EINVAL — đúng thứ đã làm lệnh này chết câm trên Windows.
@@ -194,47 +195,61 @@ export async function cmdSelfUpdate(args: string[] = []): Promise<void> {
   const sideline = [...plan.clash, ...plan.same]; // an identical file is taken, never kept: no question, still restorable
   const aside = sideline.length ? setAsideClashes(root, sideline, keep) : null;
   if (aside) console.log(`  · local versions of ${sideline.length} file(s) copied to ${aside}`);
-  for (const [label, cmd, a, sh] of steps) {
-    process.stdout.write(`  · ${label} … `);
-    const r = run(cmd, a, root, sh);
-    const back = aside && cmd === "git" ? restoreKept(root, aside, !r.ok) : [];
-    const backLine = (what: string): void => {
-      if (back.length) console.log(`    ${what} ${back.length} file(s): ${back.slice(0, 5).join(" · ")}${back.length > 5 ? " …" : ""}`);
-    };
-    if (!r.ok) {
-      console.log("FAILED");
-      backLine("the pull failed — put back your version of");
-      console.log(r.out.split(/\r?\n/).slice(-12).join("\n"));
-      const why = cmd === "git" ? diagnosePull(root) : null;
-      if (why) console.log(`    🔴 ${why}`);
-      console.log(`    → stopped at step "${label}". The installed copy is NOT left half-updated if the failure is in pull;`);
-      console.log("      if the failure is in build, run `npm run build` again once the cause is fixed.");
-      process.exitCode = 1;
-      return;
+  try {
+    for (const [label, cmd, a, sh] of steps) {
+      if (cmd !== "git" && stoppedPid === null) {
+        stoppedPid = await stopDaemonForBuild();
+        if (stoppedPid === -1) { stoppedPid = null; process.exitCode = 1; return; }
+      }
+      process.stdout.write(`  · ${label} … `);
+      const r = run(cmd, a, root, sh);
+      const back = aside && cmd === "git" ? restoreKept(root, aside, !r.ok) : [];
+      const backLine = (what: string): void => {
+        if (back.length) console.log(`    ${what} ${back.length} file(s): ${back.slice(0, 5).join(" · ")}${back.length > 5 ? " …" : ""}`);
+      };
+      if (!r.ok) {
+        console.log("FAILED");
+        backLine("the pull failed — put back your version of");
+        console.log(r.out.split(/\r?\n/).slice(-12).join("\n"));
+        const why = cmd === "git" ? diagnosePull(root) : null;
+        if (why) console.log(`    🔴 ${why}`);
+        console.log(`    → stopped at step "${label}". The installed copy is NOT left half-updated if the failure is in pull;`);
+        console.log("      if the failure is in build, run `npm run build` again once the cause is fixed.");
+        process.exitCode = 1;
+        return;
+      }
+      console.log("ok");
+      backLine("kept your version of");
     }
-    console.log("ok");
-    backLine("kept your version of");
-  }
 
-  const after = appVersion();
-  // Đo lại NGAY: cache còn giữ số của lượt trước thì chip vẫn kêu "có bản mới" sau khi vừa cập
-  // nhật xong — người dùng đọc thành "cập nhật không ăn". Rẻ: sha vừa pull đã nằm dưới máy.
-  refreshRemoteVersion(root, undefined, appVersion());
-  console.log(`  ✓ done: ${before || "?"} → ${after || "?"}`);
-  // Trước đây chỗ này chỉ DẶN người ta tự tắt tự mở, nên ai làm theo cũng vẫn ngồi với mã cũ cho
-  // tới lúc nhớ ra. Đã tiễn daemon ở trên thì phải trả nó lại — tự dọn cái mình đã dọn đi.
-  if (stoppedPid !== null) {
-    const cli = join(root, "dist", "cli.js");
-    if (existsSync(cli)) {
-      // Runtime MANG TÊN APP (`dist/zemory.exe`) nếu có — cùng luật với `selfupdate-run.mjs`. Phóng bằng
-      // `process.execPath` (= node.exe khi gõ từ CLI) thì daemon chạy dưới tên node (app-design §B1): đo
-      // 2026-10-04, daemon node.exe giữ cổng kênh, lệnh tắt theo tên zemory.exe không chạm tới nó.
-      const exe = join(root, "dist", "zemory.exe");
-      const launcher = existsSync(exe) ? exe : process.execPath;
-      spawn(launcher, [cli, "ui"], { detached: true, stdio: "ignore", cwd: root, windowsHide: true }).unref();
-      console.log("  ✓ daemon relaunched on the new code");
-    } else {
-      console.log(`  ⚠ ${cli} not found — daemon NOT relaunched, run \`zemory ui\` once this is fixed`);
-    }
+    const after = appVersion();
+    // Measure again now: a cache holding the previous round's number keeps the chip saying "new version" right after an
+    // update, which reads as "the update did not take". Cheap: the sha just pulled is already on disk.
+    refreshRemoteVersion(root, undefined, appVersion());
+    console.log(`  ✓ done: ${before || "?"} → ${after || "?"}`);
+  } finally {
+    // A daemon this command stopped is always brought back, also when an npm step failed (if dist/ survived, the daemon
+    // runs the build that is there).
+    if (stoppedPid !== null) relaunchDaemon(root);
   }
+}
+
+/** Relaunch the daemon from `dist/` when the build is there; otherwise say what to do. Returns whether it launched. */
+export function relaunchDaemon(root: string, launch: (cmd: string, args: string[]) => void = defaultLaunch): boolean {
+  const cli = join(root, "dist", "cli.js");
+  if (!existsSync(cli)) {
+    console.log(`  ⚠ ${cli} not found — daemon NOT relaunched, run \`zemory ui\` once the build is fixed`);
+    return false;
+  }
+  // The runtime carrying the app's name (`dist/zemory.exe`) when present - same rule as `selfupdate-run.mjs`. Launched
+  // via `process.execPath` (node.exe from the CLI) the daemon runs under the name node (app-design §B1): measured
+  // 2026-10-04, a node.exe daemon held the channel port and a stop by the name zemory.exe never reached it.
+  const exe = join(root, "dist", "zemory.exe");
+  launch(existsSync(exe) ? exe : process.execPath, [cli, "ui"]);
+  console.log("  ✓ daemon relaunched");
+  return true;
+}
+
+function defaultLaunch(cmd: string, args: string[]): void {
+  spawn(cmd, args, { detached: true, stdio: "ignore", cwd: dirname(dirname(args[0])), windowsHide: true }).unref();
 }
