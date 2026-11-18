@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 25
+version: 26
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -208,9 +208,13 @@ description: The report pages of an app - what a page of figures, charts and tab
 
 ## 8. Rebuilding a report
 
-- **The report being replaced is its Power BI White version** (v11): the classic report is only the first draft; pages, visuals and order follow White, and the classic is
-  read only for a page White does not have. Parity keeps what White shows, in the form this skill gives it: a card row
-  topped up to four (§2), a small table drawn as a chart (§4).
+> 🔄 v26 (the user 18/11) replaces v11, where the White version was the report being replaced.
+- **The content of every report is its Classic version** (v26, the user 18/11: "dùng classic từ đầu"): pages, visuals,
+  figures and order follow the Classic report. The White version is no source any more; this skill keeps from it only the way
+  a page is set out neatly (§1-7: card rows, even splits, the reading rules). Parity keeps what Classic shows, in the form this
+  skill gives it: a card row topped up to four (§2), a small table drawn as a chart (§4).
+- **The board keeps its own structure** (v26): pages and tabs follow the structure the app's board already has; no tabs cut
+  the way the White report cut them.
 - **Every page and every visual of the report being replaced is present**, in its order. A visual dropped on purpose, or
   waiting for a source the DW does not have yet, is declared in the board's parity list with its reason; the repo's test
   compares that list with the report's visuals (both ways).
