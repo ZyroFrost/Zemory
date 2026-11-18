@@ -36,6 +36,8 @@ export const LIGHT_DESPITE_MATCH = {
   "docker-runtime.test.mjs": 46,
   // Measured with gate-cage 2026-11-17: names `embedPending` but only while the pause flag is set, so it returns at the gate.
   "embed-pause.test.mjs": 52,
+  // Measured with gate-cage 2026-11-18: settings + queryDtypeNow only, no model is loaded.
+  "query-dtype.test.mjs": 46,
   // Đo bằng gate-cage 2026-10-12: đẩy/gộp khối kênh với `embed: false` + con chạy giả — không nạp model.
   "fastlane.test.mjs": 130,
   "graph-docs.test.mjs": 129,

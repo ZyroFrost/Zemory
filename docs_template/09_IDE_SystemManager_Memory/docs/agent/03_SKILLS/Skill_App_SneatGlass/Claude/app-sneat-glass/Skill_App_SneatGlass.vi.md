@@ -49,7 +49,7 @@ lang: vi
   như Settings lưu, mọi ô số (`td[data-rp-num][data-rp-raw]`, % là tỉ lệ: 0.125) và mọi ngày trong bảng phải đổi theo trong
   15 s - rồi trả lại cài đặt cũ. Ô trông như số báo cáo mà không gắn định dạng cũng là lỗi đó. Trang không React đọc định dạng
   ở `<html data-num-format>` / `<html data-date-format>` và viết bằng `sasinShell.fmtNum` / `sasinShell.fmtDate`.
-  Probe viết số như khung 1.33.6: số nhỏ hơn đơn vị đã chọn hạ xuống đơn vị nó đủ lớn, kiểu ngoặc giữ dấu trừ `(-132)` (v81, user 18/11).
+  Probe viết số như khung 1.33.6: số nhỏ hơn đơn vị đã chọn hạ xuống đơn vị nó đủ lớn, kiểu ngoặc giữ dấu trừ `(-132)` (v81, 18/11).
   [num-format-works] [date-format-works]
 - **Settings của khung giữ được lựa chọn ở mọi app** (v76, 15/11): Settings > Định dạng ngày và Settings > Số, bấm như người dùng,
   3 s sau vẫn giữ và không báo lỗi. App không đổi đường hay chặn lời gọi của khung (`/api/auth/*`, `/api/apps`,
