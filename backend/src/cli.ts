@@ -51,6 +51,8 @@ try {
     await (await import("./commands/project.js")).cmdProject(args);
   } else if (cmd === "tidy") {
     (await import("./commands/tidy.js")).cmdTidy(args);
+  } else if (cmd === "vecpost") {
+    (await import("./commands/vecpost.js")).cmdVecPost(args);
   } else {
     await runRest();
   }

@@ -59,6 +59,7 @@ import {
   type EmbedProfile,
 } from "./embed.js";
 import { Q } from "./store/queries.js";
+import { activePost, applyPost, type VecPost } from "./vecpost.js";
 
 type Conn = Database.Database;
 
@@ -411,6 +412,9 @@ export async function embedPending(
     const profile = storedProfile(db);
     const dimsTarget = storedDims(db);
     useEmbedDtype(storedDtype(db));
+    // A transformed index (vecpost.ts) takes new documents in the same transformed space as the ones already stored.
+    // Copied vectors (dedup) are read back from the index, so they are transformed already and never pass here.
+    const post: VecPost | null = activePost(db);
 
     let dims: number | null = null;
     let embedded = 0;
@@ -531,7 +535,8 @@ export async function embedPending(
       await takeTurn(); // …then one short turn for the batch's writes
       for (let j = 0; j < batch.length; j++) {
         const r = batch[j];
-        const v = vectors[j] ? sliceNormalize(vectors[j] as number[], dimsTarget) : null;
+        const sliced = vectors[j] ? sliceNormalize(vectors[j] as number[], dimsTarget) : null;
+        const v = sliced && post ? applyPost(sliced, post) : sliced;
         if (v) {
           // `key` đi CÙNG giao dịch — trước đây `hashPut` chạy sau, tách rời, nên một lần
           // kill đúng khe đó để lại vector không có hash (hoặc ngược lại).
@@ -624,21 +629,24 @@ export async function vectorRanks(
     const dbPath = opts.dbPath ?? currentMemoryDb();
     let profile: EmbedProfile;
     let dims: number;
+    let post: VecPost | null;
     {
       const probe = vecConnect(dbPath);
       try {
         if (!tableExists(probe)) return [];
-        // The query MUST live in the index's space: same prompt profile, same dims.
+        // The query MUST live in the index's space: same prompt profile, same dims, same post-transform.
         profile = storedProfile(probe);
         dims = storedDims(probe);
         useEmbedDtype(storedDtype(probe));
+        post = activePost(probe);
       } finally {
         probe.close();
       }
     }
     const raw = await embedQuery(query, profile);
     if (!raw) return [];
-    const qv = sliceNormalize(raw, dims);
+    const sliced = sliceNormalize(raw, dims);
+    const qv = post ? applyPost(sliced, post) : sliced;
     if (out) out.v = Float32Array.from(qv);
     const db = vecConnect(dbPath);
     try {

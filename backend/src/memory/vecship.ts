@@ -22,6 +22,7 @@ import * as sqliteVec from "sqlite-vec";
 import { Q } from "./store/queries.js";
 import { isVecPrimaryKeyConflict } from "./vectors.js";
 import { currentEmbedProfile } from "./embed.js";
+import { postSignature } from "./vecpost.js";
 
 export interface ShipResult {
   /** Số vector đã nhét vào gói. */
@@ -37,6 +38,8 @@ export interface VecMeta {
   dims: number;
   profile: string;
   dtype: string;
+  /** Post-transform signature (vecpost.ts); '' = raw vectors. Packages from before it read as ''. */
+  post?: string;
 }
 
 const SHIP_DDL = `
@@ -98,7 +101,7 @@ export function applyInBatches<T>(rows: Iterable<T>, apply: (batch: T[]) => void
 function readVecMeta(db: Database.Database): VecMeta | null {
   try {
     const r = db.prepare("SELECT dims, profile, dtype FROM vec_config LIMIT 1").get() as VecMeta | undefined;
-    return r && r.dims ? r : null;
+    return r && r.dims ? { ...r, post: postSignature(db) } : null;
   } catch {
     return null; // kho chưa từng nhúng
   }
@@ -135,6 +138,12 @@ export function shipVectorsInto(
     snap.exec(SHIP_DDL);
     snap.prepare("DELETE FROM vector_ship_meta").run();
     snap.prepare("INSERT INTO vector_ship_meta (dims, profile, dtype) VALUES (?,?,?)").run(meta.dims, meta.profile, meta.dtype);
+    try {
+      snap.exec(Q.vecShipMetaAddPost);
+    } catch {
+      /* the column is there already */
+    }
+    snap.prepare(Q.vecShipMetaPostSet).run(meta.post ?? "");
 
     // 🔴 ID CỦA SNAPSHOT LÀ ID GIẢ — TUYỆT ĐỐI KHÔNG DÙNG NÓ TRA NGƯỢC VỀ KHO NGUỒN.
     // `buildRowsSnapshot` cố ý KHÔNG chép cột `id` (`INSERT INTO main.messages (session_id,
@@ -292,9 +301,26 @@ export function receiveVectorsFrom(
     const total = (inc.prepare("SELECT COUNT(*) c FROM vector_ship").get() as { c: number }).c;
     if (!meta || !total) return { applied: 0, skipped: 0 };
 
+    let incomingPost = "";
+    try {
+      incomingPost = ((inc.prepare(Q.vecShipMetaPostGet).get() as { post?: string | null } | undefined)?.post ?? "") || "";
+    } catch {
+      /* a package from before post-transforms: raw vectors */
+    }
+
     dst = new Database(targetPath);
     sqliteVec.load(dst);
     const mine = readVecMeta(dst);
+    // Transformed and raw vectors live in different spaces, and so do two transforms fitted on different data. An empty
+    // index cannot adopt a transformed package either: it has no parameters to bring its own queries into that space.
+    const minePost = mine?.post ?? "";
+    if (incomingPost !== minePost) {
+      return {
+        applied: 0,
+        skipped: total,
+        reason: `post-transform differs (package '${incomingPost || "none"}' · this index '${minePost || "none"}')`,
+      };
+    }
     // A target with no index adopts the sender's config - but ONLY when it is the profile a new index here would get.
     // Measured 2026-11-17: the laptop dropped its Gemma 1 index to move to Gemma 2, then an auto-sync merged OLD Drive
     // blocks carrying `gemma-prompt-v1` vectors; the empty store adopted that profile and the fast lane went on embedding
