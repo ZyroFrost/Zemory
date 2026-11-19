@@ -488,7 +488,9 @@ function driveProgressCount(): Promise<DriveProgress> {
             lastPushAt: c.lastPushAt,
             newestAt: c.newestAt,
           }
-        : { ...(driveProgCache?.v ?? DRIVE_PROG_NONE), stale: true };
+        : driveProgCache
+          ? { ...driveProgCache.v, stale: true }
+          : { ...DRIVE_PROG_NONE, stale: true, counting: true }; // never counted yet: placeholders, not "0 %"
       driveProgCache = { at: Date.now(), v };
       return v;
     })().finally(() => {
