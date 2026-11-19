@@ -1,12 +1,12 @@
 ---
 id: Skill_App_CrossFilter
 name: app-cross-filter
-version: 10
+version: 11
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_PBI_Base]
 installs: [scripts/crossfilter_check.mjs]
 description: Cross-filtering between the visuals of one report page, as Power BI does it - a click on a data point (a bar, a column, a donut part, a table row) filters every other visual, table and KPI of the page; Ctrl adds points; the clicked visual only dims; chips show what is picked; Escape clears. Use when building or fixing a report page of an app (charts, KPI tiles, tables over the same facts), or when a chart is asked to "filter the others". Vietnamese triggers - "lọc chéo", "bấm chart lọc", "chart lọc lẫn nhau", "liên kết chart", "filter như PBI", "cross filter", "bấm vào cột lọc".
-from: _Store/03_SKILLS/Skill_App_CrossFilter @v10 #cd89d08f89c7
+from: _Store/03_SKILLS/Skill_App_CrossFilter @v11 #f7ef5dfedceb
 ---
 
 # app-cross-filter — the visuals of a report page filter each other
@@ -78,7 +78,8 @@ from: _Store/03_SKILLS/Skill_App_CrossFilter @v10 #cd89d08f89c7
   `INTERACTION` (awaited) once per page: it clicks a point and expects the point lit, its siblings dimmed, the chips shown and
   at least one OTHER visual or KPI changed, the field's page filter present and counted; a second click clears; Escape clears.
   Then `EVERY_CLICK` (awaited): in each visual a click on a point changes another visual and a second click brings the page
-  back - a point that filters nothing is no point. Then `LEGEND_CLICK` (awaited): a click on the first legend entry sets its
+  back - a point that filters nothing is no point; a point of the Measure filter (`data-cf-dim="measure"`) dims and filters no
+  row, so it is left out (v11); each click waits for the page to show its change, 3 s at most (v11). Then `LEGEND_CLICK` (awaited): a click on the first legend entry sets its
   field's filter on the page bar to that entry and the filter button counts one more; a second click takes it off. It runs `SELF_TEST` first: the good page must
   pass and the faulty page must fail every rule, so the check is proven red.
 - (v9) The checks click a point by a dispatched click event, not `.click()`: a point may be an svg mark (a donut's slice).

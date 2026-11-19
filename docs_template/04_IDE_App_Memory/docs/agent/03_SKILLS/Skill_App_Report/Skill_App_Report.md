@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 29
+version: 30
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v29 #1c9250b0f25f
+from: _Store/03_SKILLS/Skill_App_Report @v30 #419101061625
 ---
 
 # app-report — the report pages of an app
@@ -303,7 +303,8 @@ Cards use the four typography roles of `app-sneat-glass` (`kpi-title` · `kpi-ma
 - `FOCUS_PROBE` (v29, async) is run by the same test on each report page at a desktop width: it presses every enlarge
   button in turn, runs [rp-focus-whole] on the visual in focus, and presses it again. The seven rules of v28 have their gates
   since v29: [rp-cards] (a page of charts with no card row, a card of only "—"), [rp-axis-labels] (`data-rp-tick`),
-  [rp-bar-gap], [rp-bar-values-apart], [rp-focus-whole], [rp-title-legend], [rp-abbr-caps] (the trade's codes, plus the terms of
+  [rp-bar-gap], [rp-bar-values-apart], [rp-focus-whole], [rp-title-legend] (v30: the room is the head's line, short of the
+  enlarge button), [rp-abbr-caps] (the trade's codes, plus the terms of
   3 to 5 capitals in the page's glossary, checked on words that start with a capital); the shapes of slanted text are
   compared as turned.
 - **A board is not done until this check is green on its pages** (v15, `Rule_Gate_01_DoneMeansRun`): a count of the visuals

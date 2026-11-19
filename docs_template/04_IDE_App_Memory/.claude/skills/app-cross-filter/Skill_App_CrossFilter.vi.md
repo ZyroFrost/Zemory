@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 
@@ -68,7 +68,9 @@ lang: vi
 - Bài kiểm trình duyệt của repo import `scripts/crossfilter_check.mjs`, chạy mọi luật `RULES` trên mọi trang báo cáo, rồi chạy
   `INTERACTION` (có chờ) một lần mỗi trang: bấm một điểm và đòi điểm đó sáng, các điểm cùng trường mờ, chip hiện và ít nhất một
   hình hay KPI KHÁC đổi, ô lọc của trường có mặt và được đếm; bấm lần hai thì bỏ; Esc thì bỏ. Rồi `EVERY_CLICK` (có chờ): ở
-  mỗi hình, bấm một điểm làm một hình khác đổi và bấm lần hai đưa trang về như cũ - điểm không lọc gì thì không phải điểm. Rồi
+  mỗi hình, bấm một điểm làm một hình khác đổi và bấm lần hai đưa trang về như cũ - điểm không lọc gì thì không phải điểm; điểm
+  của bộ lọc Số đo (`data-cf-dim="measure"`) chỉ làm tối, không lọc hàng, nên được bỏ qua (v11); mỗi lần bấm chờ trang hiện thay
+  đổi, tối đa 3 s (v11). Rồi
   `LEGEND_CLICK` (có chờ): bấm mục legend đầu thì bộ lọc của trường đó trên thanh trang hiện mục ấy và nút lọc đếm thêm một; bấm lần
   hai thì bỏ. Nó chạy `SELF_TEST` trước: trang tốt phải qua và trang lỗi phải trượt mọi
   luật, để chứng minh phép kiểm đỏ được.
