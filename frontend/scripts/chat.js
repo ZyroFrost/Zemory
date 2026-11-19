@@ -3,7 +3,7 @@
 // permission prompts it waits on, and a line that writes into that very session (a letter its hooks wake it with).
 // The same tab on the desktop and on the phone. Refreshes only while the tab is open.
 var zChat = (function () {
-  var repo = null, sess = null, list = [], sent = [], thread = null, timer = null, busy = false, lastSig = '';
+  var repo = null, sess = null, list = [], sent = [], thread = null, timer = null, busy = false, lastSig = '', lastHtml = '';
   function el(id) { return document.getElementById(id); }
   function esc(s) { return stdEsc(String(s == null ? '' : s)); }
   function repoOf(root) { return String(root || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop().toLowerCase(); }
@@ -16,7 +16,7 @@ var zChat = (function () {
   function cur() { return list.filter(function (s) { return s.sessionId === sess; })[0] || null; }
   // until an answer came back the tab says it is loading, never "nothing here" (over the phone's link the first answer
   // can take seconds, and a failed call is retried on the next tick)
-  function loading() { el('chatList').innerHTML = '<div class="muted">' + esc(t('chat.loading')) + '</div>'; }
+  function loading() { lastHtml = ''; el('chatList').innerHTML = '<div class="muted">' + esc(t('chat.loading')) + '</div>'; }
 
   function drawSessions() {
     var sel = el('chatSess');
@@ -42,6 +42,50 @@ var zChat = (function () {
     }).join('');
   }
 
+  // The thread as a chat, the way the agent's terminal shows it: what the person wrote and the agent's answers in full,
+  // each tool call one short line with its result folded under it, a host notice one dim line. Recall › Sessions keeps
+  // the raw record; this is the same messages, drawn for reading.
+  var SYS_RE = /^\s*(<task-notification>|<system-reminder>|<local-command|<command-name>|Stop hook feedback:|\[SYSTEM NOTIFICATION)/;
+  function toolLine(name, body) {
+    var hint = '';
+    try {
+      var o = JSON.parse(body);
+      hint = o.description || o.command || o.file_path || o.pattern || o.query || o.prompt || o.url || '';
+    } catch (e) { hint = body; }
+    hint = String(hint).replace(/\s+/g, ' ').trim();
+    if (hint.length > 140) hint = hint.slice(0, 140) + '…';
+    return '🔧 ' + (name || '?') + (hint ? ' — ' + hint : '');
+  }
+  function steps(ms) {
+    var out = [];
+    ms.forEach(function (m) {
+      var c = String(m.content || '');
+      if (m.role === 'user' && SYS_RE.test(c)) { out.push({ k: 'sys', body: c }); return; }
+      c.split(/\n(?=\[tool_use:|\[tool_result\])/).forEach(function (seg) {
+        var mu = seg.match(/^\[tool_use:([^\]]*)\]\s*([\s\S]*)$/);
+        if (mu) { out.push({ k: 'use', name: mu[1], body: mu[2] }); return; }
+        var mr = seg.match(/^\[tool_result\]\s*([\s\S]*)$/);
+        if (mr) { out.push({ k: 'res', body: mr[1] }); return; }
+        if (seg.trim()) out.push({ k: 'msg', m: { role: m.role, content: seg, timestamp: m.timestamp, atts: m.atts } });
+      });
+    });
+    return out;
+  }
+  // the person's words and the agent's answers: the one message renderer of Recall (msgBlock), unchanged
+  function textMsg(m) { return msgBlock(m, 0); }
+  function drawSteps(ms) {
+    var h = '', run = '';
+    function flush() { if (run) { h += '<div class="chat-steps">' + run + '</div>'; run = ''; } }
+    steps(ms).forEach(function (x) {
+      if (x.k === 'msg') { flush(); h += textMsg(x.m); return; }
+      if (x.k === 'use') run += fold(toolLine(x.name, x.body), x.body);
+      else if (x.k === 'res') run += fold('⎿ ' + t('chat.result') + ' · ' + foldSize(x.body.length), x.body);
+      else run += fold('ⓘ ' + t('chat.sys'), x.body);
+    });
+    flush();
+    return h;
+  }
+
   function drawThread(s) {
     thread = s;
     var box = el('chatList');
@@ -50,12 +94,18 @@ var zChat = (function () {
     var last = ms.length ? Date.parse(ms[ms.length - 1].timestamp || '') || 0 : 0;
     var c = cur();
     var waiting = sent.filter(function (x) { return Date.parse(x.sentAt) > last && (!c || !c.host || String(x.to).toLowerCase() === String(c.host).toLowerCase()); });
-    if (!ms.length && !waiting.length) { box.innerHTML = '<div class="muted">' + esc(t('chat.empty')) + '</div>'; return; }
+    if (!ms.length && !waiting.length) { lastHtml = ''; box.innerHTML = '<div class="muted">' + esc(t('chat.empty')) + '</div>'; return; }
     var atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
-    box.innerHTML = '<div class="thread">' + ms.map(function (m) { return msgBlock(m, 0); }).join('') +
+    var html = '<div class="thread">' + drawSteps(ms) +
       waiting.map(function (x) {
         return '<div class="msg chat-wait"><div class="who"><span class="tag user">' + esc(t('chat.you')) + '</span> · ' + esc(when(x.sentAt)) + ' · ' + esc(t('chat.waiting')) + '</div><div class="body">' + esc(x.body) + '</div></div>';
       }).join('') + '</div>';
+    // redrawn every tick: an unchanged thread is left alone, and a fold the person opened stays open across a redraw
+    if (html === lastHtml) return;
+    var open = [].map.call(box.querySelectorAll('details'), function (d) { return d.open; });
+    box.innerHTML = html;
+    lastHtml = html;
+    [].forEach.call(box.querySelectorAll('details'), function (d, i) { if (open[i]) d.open = true; });
     if (atBottom || !box.dataset.seen) box.scrollTop = box.scrollHeight;
     box.dataset.seen = '1';
   }

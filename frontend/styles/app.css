@@ -486,6 +486,11 @@ body{background:var(--bg);color:var(--text);font:14px/1.5 -apple-system,"Segoe U
 .chat-qa{display:flex;gap:6px;align-items:center}
 .chat-qa .tin{flex:1}
 .chat-list{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:10px;padding-right:6px}
+/* tool calls between two answers: one line each, folded, as a terminal shows them */
+.chat-steps{display:flex;flex-direction:column;margin:2px 0 8px}
+.chat-steps>.fold{margin:0;border:0;border-radius:0;background:transparent}
+.chat-steps>.fold>summary{padding:2px 4px;font-family:ui-monospace,monospace;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-steps>.fold[open]>pre.code{border:1px solid var(--border);border-radius:6px;margin:2px 0 6px}
 .chat-m{display:flex;flex-direction:column;gap:3px;min-width:0}
 .chat-mh{font-size:11px;color:var(--text-dim)}
 .chat-mb{font-size:13px;white-space:pre-wrap;word-break:break-word;color:var(--text)}
