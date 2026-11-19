@@ -3,7 +3,7 @@
 // permission prompts it waits on, and a line that writes into that very session (a letter its hooks wake it with).
 // The same tab on the desktop and on the phone. Refreshes only while the tab is open.
 var zChat = (function () {
-  var repo = null, sess = null, list = [], sent = [], thread = null, timer = null, busy = false, lastSig = '', lastHtml = '';
+  var repo = null, sess = null, list = [], sent = [], thread = null, timer = null, busy = false, lastSig = '', lastHtml = '', again = false;
   function el(id) { return document.getElementById(id); }
   function esc(s) { return stdEsc(String(s == null ? '' : s)); }
   function repoOf(root) { return String(root || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop().toLowerCase(); }
@@ -111,7 +111,8 @@ var zChat = (function () {
   }
 
   function refresh() {
-    if (!repo || busy) return;
+    if (!repo) return;
+    if (busy) { again = true; return; }
     busy = true;
     Promise.all([
       zGet('/chat/sessions?repo=' + encodeURIComponent(repo)).catch(function () { return null; }),
@@ -141,7 +142,11 @@ var zChat = (function () {
         lastSig = sig;
         drawThread(s);
       });
-    }).catch(function () {}).finally(function () { busy = false; });
+    }).catch(function () {}).finally(function () {
+      busy = false;
+      // a refresh asked for while this one ran (a send, a session switch) runs now, not at the next 4 s tick
+      if (again) { again = false; refresh(); }
+    });
   }
 
   function send() {
@@ -151,6 +156,10 @@ var zChat = (function () {
     el('chatIn').value = '';
     // into THIS session: its machine and repo (the session's hooks wake it on the letter)
     var host = c.host || '';
+    // shown the moment it is sent, with its "waiting" line (it used to appear only after the send and a full refresh
+    // came back: 2-3 s on the phone); the next refresh replaces it with the machine's own copy
+    sent.push({ id: 'local-' + Date.now(), body: text, sentAt: new Date().toISOString(), to: host });
+    if (thread) drawThread(thread);
     fetch('/mail/send?to=' + encodeURIComponent(host + '/' + repo), { method: 'POST', body: text })
       .then(function (r) { return r.json(); })
       .then(function (r) { if (!r.ok && typeof zToast === 'function') zToast(r.error || ''); lastSig = ''; refresh(); });
