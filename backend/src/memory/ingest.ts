@@ -695,6 +695,31 @@ function byteAt(path: string, at: number): number {
  * stay one consistent pair (a line written meanwhile is read next scan). `from` sits right after a "\n"; a cut at `end` is a
  * partial last line, which the caller never consumes.
  */
+/** The folder a transcript was opened in: the first cwd in its head (a record's own `cwd`, or a meta line of the
+ *  adapter, e.g. a Codex session_meta). Reads at most 256 KB; null when the head names none. */
+export function launchCwd(path: string, size: number, parseLine?: (line: string) => { kind: string; cwd?: string }): string | null {
+  let head: string;
+  try {
+    head = readRange(path, 0, Math.min(size, 256 * 1024));
+  } catch {
+    return null;
+  }
+  const lines = head.split("\n");
+  if (!head.endsWith("\n")) lines.pop(); // a cut last line is not a record
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    try {
+      const o = JSON.parse(line) as { cwd?: unknown };
+      if (typeof o.cwd === "string" && o.cwd) return o.cwd;
+    } catch {
+      continue;
+    }
+    const p = parseLine?.(line);
+    if (p && p.kind === "meta" && p.cwd) return p.cwd;
+  }
+  return null;
+}
+
 function readRange(path: string, from: number, end: number): string {
   const fd = openSync(path, "r");
   try {
@@ -772,6 +797,7 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
   }
 
   let cwd: string | undefined;
+  let project: string | undefined;
   let title: string | undefined;
   let titleLocked = false;
   const msgs: PendingMsg[] = [];
@@ -823,6 +849,11 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
       } else if (p.kind === "meta" && p.cwd) cwd = p.cwd;
     }
     nextLine = base + completeLines;
+    // The session's project is the folder it was OPENED in (the first cwd of the file - Claude Code files the transcript
+    // under that folder too), not the last one: a `cd` of the agent into a temp folder moved the whole session out of
+    // its repo (measured 2026-11-19: 64 lines with cwd = AppData\Local\Temp, and the project chat lost the session).
+    // Read from the head on every scan so a session already moved heals on its next turn.
+    project = launchCwd(file.path, file.size, adapter.parseLine) ?? undefined;
   } else if (adapter.mode === "whole" && adapter.parseFile) {
     const parsed = adapter.parseFile(file.path);
     if (!parsed) return { changed: false, sessions: [] };
@@ -842,11 +873,13 @@ function ingestFile(db: MemoryDB, adapter: Adapter, file: TranscriptFile): FileR
        VALUES (@id, @source, @origin, @project, @cwd, @title, @host)
        ON CONFLICT(id) DO UPDATE SET
          origin       = excluded.origin,
-         project_root = COALESCE(excluded.project_root, sessions.project_root),
+         -- a user-merged (pinned) project_root is kept, as in writeSession
+         project_root = CASE WHEN sessions.project_pinned = 1 THEN sessions.project_root
+                            ELSE COALESCE(excluded.project_root, sessions.project_root) END,
          cwd          = COALESCE(excluded.cwd, sessions.cwd),
          title        = COALESCE(excluded.title, sessions.title),
          host         = excluded.host`,
-    ).run({ id: sessionId, source: file.source, origin: adapter.origin ?? "local", project: canonProjectRoot(cwd ?? null), cwd: canonProjectRoot(cwd ?? null), title: title ?? null, host: hostFor(adapter.origin) });
+    ).run({ id: sessionId, source: file.source, origin: adapter.origin ?? "local", project: canonProjectRoot(project ?? cwd ?? null), cwd: canonProjectRoot(cwd ?? null), title: title ?? null, host: hostFor(adapter.origin) });
 
     const before = wholeReplace
       ? (db.prepare(Q.countSessionMessages).get(sessionId) as { c: number }).c

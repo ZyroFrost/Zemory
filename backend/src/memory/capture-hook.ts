@@ -12,11 +12,11 @@
 // stays available as an opt-in handler but is NOT installed by default.
 // Handlers MUST be fail-safe: a hook error must never break the host session.
 
-import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { writeFileAtomic, writeJsonAtomic } from "../util/fs-atomic.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
-import { scan, scanOneFile } from "./ingest.js";
+import { launchCwd, scan, scanOneFile } from "./ingest.js";
 import { recallCard } from "./recall.js";
 import { lastCompactAt, readContextUsage, scanCompactions } from "./context-guard.js";
 import { currentMemoryDir } from "./db.js";
@@ -519,6 +519,15 @@ export function handleHook(event: HookEventName, payload: any): string {
       // the turn ended: the session and its repo stop spinning (re-marked below when a letter holds the turn open)
       markIdle(payload ?? {});
       clearRepo(String(payload?.cwd ?? payload?.project_dir ?? ""));
+      // the repo is the folder the session was OPENED in: a turn that ended after a `cd` elsewhere left the repo's mark
+      // (and the project chat's spinner) on for the full stale window (measured 2026-11-19)
+      try {
+        const tp = String(payload?.transcript_path ?? payload?.transcriptPath ?? "");
+        const opened = tp ? launchCwd(tp, statSync(tp).size) : null;
+        if (opened) clearRepo(opened);
+      } catch {
+        /* fail-open: the stale window still ends the spinner */
+      }
       // Đường nạp CHÍNH (per-message). `scan()` cả kho chỉ còn là lối CHÓT cho host không
       // đưa `transcript_path` — và ngay cả nó cũng phải nhường write-gate.
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
