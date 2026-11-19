@@ -1,5 +1,5 @@
 ---
-version: 41
+version: 42
 lang: vi
 ---
 
@@ -174,6 +174,8 @@ HÀNH VI thì báo bao nhiêu lần cũng không hết.
 · Ngoại lệ: khối **mã nguồn** (`pre.code`, `.fpre`) — bẻ dòng mã làm sai nghĩa, nên nó được giữ cuộn ngang · **lưới dữ liệu
   trên điện thoại** (§M5) — cuộn ngang TRONG khung của lưới, cột định danh ghim trái; trang vẫn không bao giờ cuộn ngang.
 · Đo bằng máy, đừng nhìn ảnh: quét `scrollWidth - clientWidth > 0` trên MỌI màn × MỌI tab con ở vài khổ khung (1100 · 900). Phân biệt **`overflow:hidden` + ellipsis** (cắt chữ, KHÔNG sinh thanh cuộn — hợp lệ) với vùng thật sự cuộn được.
+· (v42, 19/11, Dashboard Cons_Gate_102: một trang bị treo) **Độ rộng cuộn ngang trong khung luôn có trần** (8.000 px): biểu đồ nới rộng để tách nhãn (app-report `rp-axis-labels`) phải chặn độ rộng nó tính ra, không thì vài nghìn nhóm thành hàng triệu px và trang treo.
+· (v42, như trên: BIZ_01 Franchise treo ở khổ 390) **Không dò chữ bằng cách gán text rồi đọc chiều cao trong vòng lặp.** Đo một lần, phần còn lại đo bằng canvas (`measureText`) - mỗi lần ghi rồi đọc bắt trình duyệt dàn lại cả trang.
 
 ### F13. Thẻ (card): NEO cố định, thứ liên quan ĐỨNG SÁT NHAU
 **Cụm nút neo góc phải trên — giữ nguyên vị trí dù khung co giãn; badge gom thành một cụm; thứ liên quan nhau đứng sát nhau.** Một thẻ có ba hạng nội dung, và mỗi hạng là MỘT HÀNG riêng, không trộn:
