@@ -30,11 +30,48 @@ const H = `
   const tabs = () => [...document.querySelectorAll('[role=tab], .board-tabs .nav-link')].filter(e => e.getClientRects().length);
   // (v16) a page of one matrix: its only data visual is a table (a P&L of 71 columns, as the report's own page)
   const lone = () => { const d = vis().filter(v => v.dataset.rpVisual !== 'cards' && !v.parentElement.closest('[data-rp-visual]')); return d.length === 1 && d[0].dataset.rpVisual === 'table' ? d[0] : null; };
+  // (v29) a text the app keeps on screen (a label hidden to keep the others apart is not drawn), and its drawn shape - a slanted
+  // one as turned: four corners on the screen from its own size and the turn of it or a parent (an SVG text: its box and
+  // matrix). Two shapes meet when no side of either keeps them apart.
+  const drawn = e => { if (!e.getClientRects().length) return false; const st = getComputedStyle(e); return st.visibility !== 'hidden' && Number(st.opacity) > 0; };
+  const shape = e => {
+    const r = box(e); let a = 0, w = r.width, h = r.height;
+    if (e instanceof SVGGraphicsElement && e.getBBox) { const m = e.getCTM(), b = e.getBBox(), k = m ? Math.hypot(m.a, m.b) : 1; a = m ? Math.atan2(m.b, m.a) : 0; w = b.width * k; h = b.height * k; }
+    else { w = e.offsetWidth || w; h = e.offsetHeight || h;
+      for (let x = e, up = 0; x && up < 3; up++, x = x.parentElement) { const t = getComputedStyle(x).transform || ''; if (t.startsWith('matrix(')) { const m = t.slice(7).split(',').map(Number); a = Math.atan2(m[1], m[0]); break; } } }
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2, c = Math.cos(a), s = Math.sin(a), hw = Math.max(0, w / 2 - .5), hh = Math.max(0, h / 2 - .5);
+    return [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].map(([x, y]) => [cx + x * c - y * s, cy + x * s + y * c]);
+  };
+  const meet = (p, q) => {
+    for (const g of [p, q]) for (let i = 0; i < 4; i++) {
+      const [x1, y1] = g[i], [x2, y2] = g[(i + 1) % 4], nx = y2 - y1, ny = x1 - x2, on = z => z.map(([x, y]) => x * nx + y * ny);
+      const a = on(p), b = on(q);
+      if (Math.max(...a) <= Math.min(...b) || Math.max(...b) <= Math.min(...a)) return false;
+    }
+    return true;
+  };
 `;
 const rule = (id, text, body) => ({id, rule: text, check: `(() => {${H}${body}})()`});
 
 // The words that name a comparison period or a base, in the app's two languages.
 const PERIOD = String.raw`(MoM|WoW|QoQ|YoY|DoD|LMTD|LM|LY|LW|pp|vs\.?|of|so với|của|trên|tháng trước|tuần trước|kỳ trước|năm trước|chỉ tiêu|target|mục tiêu)`;
+
+// (v29) the trade's codes always in capitals (rp-abbr-caps); the codes of each page's glossary join them. MoM, YoY and the like
+// are written as they are and stay out.
+const ABBR = ['EBITDA', 'KPI', 'YTD', 'MTD', 'LTD', 'AOV', 'ROI', 'COGS', 'SKU', 'NQ', 'TC', 'GP', 'HQ', 'NPS', 'OPEX', 'CAPEX'];
+// (v29) an enlarged visual: the one whose enlarge button is pressed (aria-pressed) or that carries data-rp-focused; what it
+// holds - its plot, svg, table, cards, text - is shown and has a size
+const FOCUS_WHOLE = `
+    const focused = [...document.querySelectorAll('.rp-focus-btn[aria-pressed=true]')].map(b => b.closest('[data-rp-visual]'))
+      .concat([...document.querySelectorAll('[data-rp-visual][data-rp-focused]')]).filter(Boolean);
+    for (const v of new Set(focused)) {
+      if (!drawn(v) || box(v).height < 40) return 'an enlarged visual is not shown: ' + name(v);
+      const parts = [...v.querySelectorAll('[data-rp-body], svg, table, .kpi-card, [data-rp-text]')].filter(p => !p.closest('.rp-focus-btn'));
+      if (!parts.length && !txt(v).replace(txt(v.querySelector('[data-rp-title]') || document.createElement('i')), '').trim()) return 'an enlarged visual holds nothing: ' + name(v);
+      const gone = parts.find(p => !drawn(p) || box(p).width < 1 || box(p).height < 1);
+      if (gone) return 'an enlarged visual is blank - its ' + (gone.matches('table') ? 'table' : gone.matches('svg') ? 'drawing' : gone.matches('.kpi-card') ? 'cards' : 'plot') + ' stepped aside: ' + name(v);
+    }
+    return true;`;
 
 export const RULES = [
   rule('rp-marked', 'every visual of a report page declares data-rp-visual (chart · table · donut · cards) so the rules can read it', `
@@ -95,7 +132,15 @@ export const RULES = [
       if (cards.length < 4) return 'a card row of ' + cards.length + ' card(s): keep at least four, or drop the row';
       const bare = cards.find(c => !c.querySelector('[data-rp-pct]'));
       if (bare) return 'a card without its % line: ' + txt(bare).slice(0, 30);
+      // (v28, Dashboard Cons_Gate_102 §18) a card that would show only "—" is dropped, never shown
+      const dash = cards.find(c => /^[—–-]?$/.test(txt(c.querySelector('.kpi-main') || c)));
+      if (dash) return 'a card that shows only "—" (drop it): ' + txt(dash).slice(0, 30);
     }
+    // (v28 §18: "mỗi trang có ít nhất 4 card") a page of charts tops its cards up to four from what it reads; not an export page
+    // (one table) or a board whose owner settled its own cards (data-rp-cards-own on the page root)
+    const page = document.querySelector('[data-rp-page]');
+    if (page && !page.hasAttribute('data-rp-cards-own') && !lone() && !vis().some(v => v.dataset.rpVisual === 'cards')
+      && vis().filter(v => v.dataset.rpVisual !== 'cards').length > 1) return 'a report page with no card row: top it up to four cards from the figures it reads';
     return true;`),
   rule('rp-cards-apart', 'a card row stands alone on its line: no chart, donut or table beside it in the same row of the grid (v10, user 08/11: "nó không được nằm trong chỗ card, nó phải nằm riêng ra")', `
     for (const row of document.querySelectorAll('[data-rp-visual=cards]')) {
@@ -257,7 +302,31 @@ export const RULES = [
       if (!lead || box(lead).height < gap - 8) return 'a label moved ' + Math.round(gap) + ' px from its point has no leader to it (' + txt(l) + ')';
     }
     return true;`),
-  rule('rp-no-upright', 'no text stands upright: a long figure or name slants at 45°, never 90° (v19, the user 14/11: "cấm dựng đứng")', `
+  rule('rp-axis-labels', 'the names of an axis (data-rp-tick) never cover each other, on every chart: flat, slanted, wrapped, or the chart scrolls; still too close, only every k-th name is written (v29 gate of v28 §16, Dashboard Cons_Gate_102 §16)', `
+    for (const v of vis()) {
+      const ts = [...v.querySelectorAll('[data-rp-tick]')].filter(t => drawn(t) && txt(t)).map(t => [t, shape(t)]);
+      for (let i = 0; i < ts.length; i++) for (let j = i + 1; j < ts.length; j++)
+        if (meet(ts[i][1], ts[j][1])) return 'two names of an axis cover each other (' + txt(ts[i][0]).slice(0, 20) + ' · ' + txt(ts[j][0]).slice(0, 20) + '): ' + name(v);
+    }
+    return true;`),
+  rule('rp-bar-gap', 'the columns of a column chart never touch: a tight chart makes its columns thinner, never closer (v29 gate of v28 §17)', `
+    for (const v of vis().filter(v => v.dataset.rpAxis === 'column' || v.querySelector('[data-rp-axis=column]'))) {
+      const ms = [...v.querySelectorAll('[data-rp-mark]')].filter(m => drawn(m) && box(m).width >= 1 && !m.closest('.bar-row')).map(m => box(m)).sort((a, b) => a.left - b.left);
+      for (let i = 1; i < ms.length; i++) {
+        const a = ms[i - 1], b = ms[i];
+        if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 1) continue;   // parts of one stacked column
+        if (b.left - a.right < 1) return 'two columns touch (' + Math.round(b.left - a.right) + ' px apart): ' + name(v);
+      }
+    }
+    return true;`),
+  rule('rp-bar-values-apart', 'the figures over the columns never stack: one that would cover a figure already shown is hidden (its value stays in the tip); compared by their drawn shape, a slanted figure as turned (v29 gate of v28 §17)', `
+    for (const v of vis().filter(v => v.dataset.rpAxis === 'column' || v.querySelector('[data-rp-axis=column]'))) {
+      const ls = [...v.querySelectorAll('[data-rp-label]')].filter(l => drawn(l) && txt(l)).map(l => [l, shape(l)]);
+      for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++)
+        if (meet(ls[i][1], ls[j][1])) return 'two figures over the columns stack (' + txt(ls[i][0]) + ' · ' + txt(ls[j][0]) + '): ' + name(v);
+    }
+    return true;`),
+  rule('rp-no-upright','no text stands upright: a long figure or name slants at 45°, never 90° (v19, the user 14/11: "cấm dựng đứng")', `
     const page = document.querySelector('#page') || document.body;
     for (const e of page.querySelectorAll('*')) {
       if (!e.getClientRects().length || ![...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
@@ -548,7 +617,8 @@ export const RULES = [
       if (chip && chip.getClientRects().length && (Math.abs(box(b).height - box(chip).height) > 1 || Math.abs(box(b).top - box(chip).top) > 2)) return 'the enlarge button is not a legend chip high and on its line: ' + name(v);
     }
     return true;`),
-  rule('rp-catalog-rows', 'a report card of a catalog page is a row as wide as its page, never a card in a narrow column (v13, the user 09/11)', `
+  rule('rp-focus-whole', 'an enlarged visual is never blank: the chart, table, cards or text it holds stay shown in focus (v29 gate of v28 §19; FOCUS_PROBE presses every enlarge button and runs it)', FOCUS_WHOLE),
+  rule('rp-catalog-rows','a report card of a catalog page is a row as wide as its page, never a card in a narrow column (v13, the user 09/11)', `
     if (innerWidth < 768) return true;
     for (const card of document.querySelectorAll('[data-rp-card]')) {
       if (!card.getClientRects().length) continue;
@@ -580,6 +650,40 @@ export const RULES = [
       sizes.add(getComputedStyle(t).fontSize);
     }
     return sizes.size > 1 ? 'visual titles of one page differ in size: ' + [...sizes].join(' / ') : true;`),
+  rule('rp-title-legend', 'the title and the legend share the head by length: both on one line when they fit, the title whole; the legend on a line of its own only when they do not, the title then on two lines at most; the legend never cut (v29 gate of v28 §7)', `
+    for (const v of vis().filter(v => v.dataset.rpVisual === 'chart')) {
+      const t = v.querySelector('[data-rp-title]'), g = v.querySelector('[data-rp-legend]');
+      if (!t || !g || !drawn(t) || !drawn(g) || box(v).width < 1) continue;
+      const tb = box(t), gb = box(g), vb = box(v), lh = parseFloat(getComputedStyle(t).lineHeight) || parseFloat(getComputedStyle(t).fontSize) * 1.2;
+      if (gb.top - tb.bottom > lh * 2) continue;                       // a legend under the plot is no part of the head
+      const chips = [...g.children].filter(drawn);
+      if (g.scrollWidth > g.clientWidth + 1 || chips.some(c => box(c).right > vb.right + 1 || box(c).left < vb.left - 1)) return 'the legend is cut: ' + name(v);
+      if (Math.min(tb.bottom, gb.bottom) - Math.max(tb.top, gb.top) > 2) {
+        if (t.scrollWidth > t.clientWidth + 1) return 'the title is cut beside its legend: ' + name(v);
+        continue;
+      }
+      const r = document.createRange(); r.selectNodeContents(t);
+      const tw = [...r.getClientRects()].reduce((s, x) => s + x.width, 0), gap = parseFloat(getComputedStyle(g).columnGap) || 0;
+      const gw = chips.reduce((s, c) => s + box(c).width, 0) + gap * Math.max(0, chips.length - 1);
+      const cs = getComputedStyle(v), room = v.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      if (tw + gw + 8 <= room) return 'the legend stands under the title though both fit on one line (' + Math.round(tw) + ' + ' + Math.round(gw) + ' of ' + Math.round(room) + ' px): ' + name(v);
+      if (Math.round(tb.height / lh) > 2) return 'a title on ' + Math.round(tb.height / lh) + ' lines over its legend (two at most): ' + name(v);
+    }
+    return true;`),
+  rule('rp-abbr-caps', 'an abbreviation is in capitals or written out (NQ, EBITDA), never half way ("Nq", "Ebitda"): the codes of the glossary and of the trade, in every title, legend, header, axis name, card title and tip (v29 gate of v28 §9)', `
+    if (!vis().length) return true;
+    const codes = new Set(${JSON.stringify(ABBR)});
+    // a glossary also explains plain words (phút, Voucher): only a term it writes in capitals is a code (Dashboard 19/11)
+    // and a code is short: a longer word in capitals (TARGET) is a word written loud, not a code; a code of two letters from a
+    //   glossary (LY, TY) is also a Vietnamese word (Ly nhựa, Công Ty) - only the trade's own two-letter codes count (Dashboard 20/11)
+    for (const e of document.querySelectorAll('[data-rp-term]')) { const k = e.dataset.rpTerm.trim(); if (k.length > 2 && k.length <= 5 && /\\p{Lu}/u.test(k) && k === k.toUpperCase()) codes.add(k); }
+    const said = [...document.querySelectorAll('[data-rp-title], [data-rp-legend] > *, [data-rp-visual] th, [data-rp-tick], .kpi-title, [data-rp-page-name]')].filter(drawn).map(txt)
+      .concat([...document.querySelectorAll('[data-rp-visual] [data-tip]')].map(e => e.dataset.tip), tabs().map(txt));
+    // a code written half way starts with its capital (Nq, Ebitda); a word all in small letters is a word of the language
+    //   ("Mì ly" is a cup, not LY - Dashboard 20/11)
+    for (const s of said) for (const w of String(s).split(/[^\\p{L}\\p{N}&]+/u))
+      if (w.length > 1 && /^\\p{Lu}/u.test(w) && codes.has(w.toUpperCase()) && w !== w.toUpperCase()) return 'an abbreviation half in capitals: "' + w + '" in ' + String(s).slice(0, 40) + ' (write ' + w.toUpperCase() + ')';
+    return true;`),
 
   // G. Glossary (§7)
   rule('rp-glossary', 'a report page has its own glossary that spells out every abbreviation shown on the page, one definition per line', `
@@ -772,7 +876,26 @@ export const SORT_PROBE = `(async () => {
   return true;
 })()`;
 
-const SHELL = body => `<!doctype html><html><head><meta charset="utf-8"><style>
+/** v29 probe (async; the repo's browser check runs it on each report page): every enlarge button pressed in turn - the visual
+ *  in focus is never blank (rp-focus-whole) - then pressed again, so the page comes back. */
+export const FOCUS_PROBE = `(async () => {${H}
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const whole = () => {${FOCUS_WHOLE}};
+  const buttons = () => [...document.querySelectorAll('[data-rp-page] [data-rp-visual] .rp-focus-btn')].filter(b => b.getClientRects().length);
+  for (let i = 0, n = buttons().length; i < n; i++) {
+    const b = buttons()[i]; if (!b) break;
+    const v = b.closest('[data-rp-visual]');
+    b.click(); await sleep(600);
+    v?.setAttribute('data-rp-focused', '');            // a button that says nothing of its state still marks its visual
+    const said = whole(), on = document.querySelector('.rp-focus-btn[aria-pressed=true]');
+    v?.removeAttribute('data-rp-focused');
+    (on || b).click(); await sleep(400);
+    if (said !== true) return said;
+  }
+  return true;
+})()`;
+
+const SHELL = body =>`<!doctype html><html><head><meta charset="utf-8"><style>
   .kpi-card[data-tone]{background:rgba(61,126,191,.14)}
   body{font:14px sans-serif;margin:0;width:1200px}.row{display:flex;gap:10px;margin:10px}.card{background:#fff;border-radius:8px;padding:8px;box-sizing:border-box}
   .text-success{color:rgb(0,122,54)}.text-danger{color:rgb(197,30,36)}.kpi-title{font-size:14px;white-space:nowrap;overflow:hidden}.kpi-main{font-size:22px}
@@ -800,8 +923,8 @@ export const SELF_TEST = {
     `<div class="row">${chart('Theo giờ', 'rgb(61, 126, 191)', 12, 'hour').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}${chart('Theo ngày', 'rgb(46, 156, 122)', 12, 'day').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}</div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Chi tiết</h6><table><thead><tr><th>Nhà</th><th>Số</th></tr></thead>` +
     `<tbody>${rowsOf(8)}</tbody><tfoot><tr data-rp-total style="font-weight:700"><td>Tổng</td><td data-rp-num="money" data-rp-raw="1234567890" data-sort-value="1234567890">1,2 tỷ</td></tr></tfoot></table></div></div>` +
-    `<div class="row"><div class="card" data-rp-visual="chart" data-rp-fields="year" style="flex:1;position:relative;display:flex;flex-direction:column"><h6 data-rp-title>Theo năm</h6>` +
-    `<div data-rp-legend style="display:flex;gap:6px;white-space:nowrap"><span data-cf-dim="year" data-cf-value="2025" style="height:20px">2025</span><span data-cf-dim="year" data-cf-value="2026" style="height:20px">2026</span><button class="rp-focus-btn" style="height:20px;padding:0">+</button></div>` +
+    `<div class="row"><div class="card" data-rp-visual="chart" data-rp-fields="year" style="flex:1;position:relative;display:flex;flex-direction:column"><div style="display:flex;gap:8px;align-items:flex-start"><h6 data-rp-title>Theo năm</h6>` +
+    `<div data-rp-legend style="display:flex;gap:6px;white-space:nowrap"><span data-cf-dim="year" data-cf-value="2025" style="height:20px">2025</span><span data-cf-dim="year" data-cf-value="2026" style="height:20px">2026</span><button class="rp-focus-btn" style="height:20px;padding:0">+</button></div></div>` +
     `<div class="bars" data-rp-body style="flex:1 0 120px"><i data-rp-mark data-tip="Năm: 2025\\nDoanh thu: 1.200" data-cf-dim="store|year" data-cf-value="A|2025" style="height:60px;background:rgb(61, 126, 191);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">60</span><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px;visibility:hidden">61</span></i>` +
     `<i data-rp-mark data-tip="Năm: 2026\\nDoanh thu: 1.500" style="height:90px;background:rgb(230, 160, 40);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">90</span></i></div></div>` +
     `<div class="card" data-rp-visual="chart" data-rp-fields="store" style="flex:1;position:relative"><h6 data-rp-title>Xếp hạng</h6><button class="rp-focus-btn" style="position:absolute;top:2px;right:2px">+</button>` +
@@ -809,6 +932,12 @@ export const SELF_TEST = {
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Đạt chỉ tiêu</h6><table><thead><tr><th>Nhà</th><th>% Target</th></tr></thead><tbody>` +
     [[30, 'rgb(197, 30, 36)'], [55, 'rgb(240, 140, 0)'], [85, 'rgb(230, 190, 0)'], [104, 'rgb(0, 122, 54)']].map(([v, c], i) => `<tr><td>N${i}</td><td data-rp-target="${v}" data-rp-raw="${v / 100}" data-rp-pct="share" data-rp-cf="${['bad', 'warn', 'ok', 'good'][i]}" data-rp-num="pct" style="background:${c}">${v},0%</td></tr>`).join('') +
     `</tbody></table></div></div>` +
+    // (v29) a column chart in focus: columns apart, slanted axis names and figures that keep apart, all of it shown
+    `<div class="row"><div class="card" data-rp-visual="chart" data-rp-axis="column" data-rp-fields="week" style="flex:1"><h6 data-rp-title>Theo tuần</h6>` +
+    `<button class="rp-focus-btn" aria-pressed="true" style="float:right">-</button><div class="bars" data-rp-body style="gap:12px">` +
+    [1, 2, 3, 4].map(n => `<i data-rp-mark data-rp-item data-tip="Tuần: W${n}\\nBill: ${n}0" style="height:${n * 20}px;background:rgb(200, 90, 60);position:relative">` +
+      `<span data-rp-label style="position:absolute;top:-16px;left:0;font-size:10px;transform:rotate(-45deg)">${n}0</span></i>`).join('') + `</div>` +
+    `<div style="display:flex;gap:12px;height:30px">${[1, 2, 3, 4].map(n => `<span style="flex:1"><span data-rp-tick style="display:inline-block;font-size:10px;transform:rotate(-45deg)">Tuần ${n}</span></span>`).join('')}</div></div></div>` +
     `<nav><a role="tab">Tổng quan</a><a role="tab">Huỷ món</a></nav>` +
     `<div data-rp-glossary hidden><p data-rp-term="TC">TC (Transaction Count): số hoá đơn</p></div>` +
     `<div data-rp-card data-built style="position:relative;width:auto;margin:10px"><button data-rp-card-flip style="position:absolute;top:4px;right:4px">i</button>` +
@@ -866,7 +995,15 @@ export const SELF_TEST = {
     `<div class="row"><div class="card" data-rp-visual="chart" style="width:300px"><h6 data-rp-title>Điểm theo AM</h6>` +
     `<div class="bar-row" style="display:flex;align-items:center"><span class="bar-name" style="width:60px">An</span>` +
     `<i data-rp-mark data-tip="AM: An\\nĐiểm: 88,76 %" style="display:block;flex:1;height:12px;background:rgb(61, 126, 191)"></i>` +
-    `<span class="bar-value" style="width:28px">88.76 %</span></div></div></div>`),
+    `<span class="bar-value" style="width:28px">88.76 %</span></div></div></div>` +
+    // (v29, v28 §16 §17 §19) columns touching · two axis names over each other · two slanted figures stacked · an enlarged chart
+    // whose plot stepped aside
+    `<div class="row"><div class="card" data-rp-visual="chart" data-rp-axis="column" style="width:300px"><h6 data-rp-title>Cột sát</h6><div class="bars" data-rp-body style="gap:0">` +
+    [1, 2, 3].map(n => `<i data-rp-mark data-tip="Tuần: W${n}\\nBill: ${n}" style="height:${n * 20}px;background:rgb(61, 126, 191)"></i>`).join('') + `</div>` +
+    `<div style="position:relative;height:24px">${[10, 16].map(x => `<span data-rp-label style="position:absolute;top:4px;left:${x}px;font-size:10px;transform:rotate(-45deg)">1.2${x}</span>`).join('')}</div>` +
+    `<div style="position:relative;height:30px"><span data-rp-tick style="position:absolute;left:10px;font-size:10px">Tuần một dài</span><span data-rp-tick style="position:absolute;left:40px;font-size:10px">Tuần hai dài</span></div></div>` +
+    `<div class="card" data-rp-visual="chart" style="width:300px;height:200px"><h6 data-rp-title>Phóng to</h6><button class="rp-focus-btn" aria-pressed="true">-</button>` +
+    `<div data-rp-body style="display:none">${bars(3, 'rgb(46, 156, 122)')}</div></div></div>`),
 };
 
 if (process.argv.includes('--list')) for (const r of RULES) console.log(r.id.padEnd(22) + r.rule);
