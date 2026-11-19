@@ -125,11 +125,15 @@ export function regionRepos(root: string, storeDir = STORE_DIR): string[] {
   return out;
 }
 
+/** The marker owner that keeps a repo out of every manager's sync (managedRepos never claims it, conform accepts it). */
+export const OWNER_NONE = "none";
+
 /**
  * The workspace declarations of the repo at `root`: `wrong` (blocking) — the owner rule of its template broken, an owner whose
  * template does not manage this one, a service from a repo whose template does not provide it, a name that is no repo, the old
  * marker key `role`; `pending` (advisory) — a repo named whose template is not assembled yet, so it cannot be judged.
- * A repo assembled from no set is not judged.
+ * A repo assembled from no set is not judged. Owner "none" (OWNER_NONE) keeps a repo out of every manager — allowed only where
+ * its template makes the owner optional.
  */
 export function regionLinkFindings(root: string, storeDir = STORE_DIR): { wrong: string[]; pending: string[] } {
   const wrong: string[] = [];
@@ -142,7 +146,10 @@ export function regionLinkFindings(root: string, storeDir = STORE_DIR): { wrong:
   const uses = (m.uses && typeof m.uses === "object" ? m.uses : {}) as Record<string, unknown>;
   const label = (at: string): string => repoRole(at, storeDir)?.name ?? "no template";
   if (Array.isArray(owner)) wrong.push("one owner only — owner is a single repo name");
-  else if (typeof owner === "string" && owner) {
+  // 2026-11-20: an app the user keeps out of a system-manager's sync (Website beside ERP) — no repo name, a stand-alone
+  else if (owner === OWNER_NONE) {
+    if (role.owner === "required") wrong.push(`a ${role.name} must name its owner — "${OWNER_NONE}" is only for a repo whose owner is optional`);
+  } else if (typeof owner === "string" && owner) {
     if (role.owner === "none") wrong.push(`a ${role.name} has no owner (its template says owner: none)`);
     const at = findRegionRepo(owner, root);
     if (!at) wrong.push(`owner "${owner}" is no repo of this workspace`);

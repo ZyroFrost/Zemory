@@ -62,7 +62,8 @@ export function managedRepos(root: string, storeDir = STORE_DIR): { repos: Manag
     if (!r || !me.manages.includes(r.name)) continue;
     const owner = readMarker(at)?.data.owner;
     if (owner === name) repos.push({ root: at, name: basename(at), role: r.name, ownerMissing: false });
-    // another repo's, or a malformed owner (a list) — conform reports that one; never overwritten here
+    // another repo's, "none" (stands outside — OWNER_NONE), or a malformed owner (a list) — conform reports that one;
+    // never overwritten here
     else if (owner !== undefined && owner !== null && owner !== "") continue;
     else {
       const managers = region.filter((x) => roles.get(x)?.manages.includes(r.name));
