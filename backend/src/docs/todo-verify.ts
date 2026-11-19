@@ -224,6 +224,26 @@ const ymd = (t: number): string => new Date(t * 1000).toISOString().slice(0, 10)
 const NEG = /(chưa|CHƯA|không có|KHÔNG có|còn thiếu|0 match|chưa wire|chưa làm|chưa sửa|chưa code)/;
 
 /**
+ * Does the sentence deny that `raw` EXISTS (or was made) - not merely hold a "not yet" word somewhere? Rule ③ accuses the
+ * ledger of being stale, so its negation must govern the name itself: a denial of existence or of making right before
+ * the name, or a "not yet / not" + existence-or-making verb right after it (DENY_BEFORE / DENY_AFTER).
+ * A "not yet" about something else in the same sentence is not about the name (measured 2026-11-19: a sentence that said
+ * a file sits on the other machine and is "not yet pushed", and one that asked whether another repo had loaded a table
+ * "yet" - a question - both flagged a name that was never said missing; 3 of 3 rule-③ findings over 19 repos were of
+ * this kind). Rule ① keeps the wide NEG: there a negation only SPARES a reference, narrowing it would accuse the other way.
+ */
+const DENY_BEFORE = /(?:chưa có|chưa ai|không có|còn thiếu|thiếu|chưa (?:wire|làm|sửa|code|viết|tạo|dựng))\s*[:(]?\s*$/iu;
+const DENY_AFTER = /^\s*[),.:;]?\s*(?:chưa|không)\s+(?:có|ai|wire|làm|sửa|code|viết|tạo|dựng|tồn tại)(?![\p{L}])/iu;
+export function deniesExistence(sentence: string, raw: string): boolean {
+  const tick = `\`${raw}\``;
+  for (let i = sentence.indexOf(tick); i >= 0; i = sentence.indexOf(tick, i + 1)) {
+    const before = sentence.slice(0, i).trimEnd().split(/\s+/).slice(-4).join(" ");
+    if (DENY_BEFORE.test(before) || DENY_AFTER.test(sentence.slice(i + tick.length))) return true;
+  }
+  return false;
+}
+
+/**
  * Cắt câu trên văn bản markdown.
  *
  * Phải GỠ dấu nhấn (`**`, `*`, `_`) TRƯỚC khi cắt: docs ở đây viết `**Edge id chưa ai TIÊU
@@ -361,7 +381,9 @@ export function verifyTodo(root: string, todoPath?: string): TodoVerifyReport {
     //    Đúng khuôn hai ca đã trả giá: write-gate ghi "chưa sửa" trong khi
     //    `acquireCliWriteLock` có kèm test; plan 14 ghi "chưa chốt tray" trong khi
     //    `platform/tray.ts` nặng 24 KB.
-    const suspects = it.refs.filter((r) => r.exists && !measured.has(r.raw) && negated(r.raw));
+    const suspects = it.refs.filter(
+      (r) => r.exists && !measured.has(r.raw) && sentences.some((s) => deniesExistence(s, r.raw)),
+    );
     if (suspects.length) {
       findings.push({
         line: it.line,
