@@ -2623,15 +2623,28 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     if (p === "/chat/sessions") {
       const repo = (u.searchParams.get("repo") ?? "").trim().toLowerCase();
       if (!repo) return json(res, { sessions: [] });
-      const { busySessions } = await import("./memory/session-live.js");
+      const { busyRepos, busySessions } = await import("./memory/session-live.js");
+      const { listInbox, listOutbox, repoKey } = await import("./memory/mail.js");
       const busy = busySessions();
+      // a letter woke this repo (no prompt hook for that turn): the repo's newest session HERE is the one working
+      const repoBusy = busyRepos().get(repo) ?? null;
+      const me = hostname().toLowerCase();
       const base = (x: unknown) => String(x ?? "").replace(/[\\/]+$/, "").split(/[\\/]/).pop()?.toLowerCase() ?? "";
-      const found = querySessions(60, 0, { q: repo }).items as Array<Record<string, unknown>>;
-      const sessions = found
-        .filter((s) => base(s.project) === repo)
-        .slice(0, 20)
-        .map((s) => ({ ...s, busy: busy.has(String(s.sessionId)), busySince: busy.get(String(s.sessionId)) ?? null }));
-      return json(res, { host: hostname(), sessions });
+      const found = (querySessions(60, 0, { q: repo }).items as Array<Record<string, unknown>>).filter((s) => base(s.project) === repo).slice(0, 20);
+      const newestHere = found.find((s) => String(s.host ?? "").toLowerCase() === me)?.sessionId;
+      const sessions = found.map((s) => {
+        const sid = String(s.sessionId);
+        const since = busy.get(sid) ?? (repoBusy && sid === newestHere ? repoBusy : null);
+        return { ...s, busy: Boolean(since), busySince: since };
+      });
+      // what the person wrote to this repo lately: shown at the end of the thread until the session's own record has it
+      const cut = Date.now() - 60 * 60_000;
+      const fromPerson = (e: { from: { host: string; repo: string } }) => e.from.repo === "user" || /^phone-/.test(e.from.host);
+      const sent = [...listInbox(200).map((r) => r.env), ...listOutbox(200).map((r) => r.env)]
+        .filter((e) => fromPerson(e) && repoKey(e.to.repo) === repo && Date.parse(e.sentAt) > cut)
+        .filter((e, i, a) => a.findIndex((x) => x.id === e.id) === i)
+        .map((e) => ({ id: e.id, body: e.body, sentAt: e.sentAt, to: e.to.host }));
+      return json(res, { host: hostname(), sessions, sent });
     }
     // The cluster as seen from this machine (plan/41 §6f): a phone linked here lists every machine and reaches the linked
     // ones through this one
@@ -2653,7 +2666,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         const link = `zemory://pair?c=${code}`;
         const QRCode = (await import("qrcode")).default;
         const svg = await QRCode.toString(link, { type: "svg", margin: 1, errorCorrectionLevel: "M" });
-        return json(res, { ok: true, name: ph.name, link, svg });
+        // both ways to the phone: the QR its camera scans, and the same code as text to paste
+        return json(res, { ok: true, name: ph.name, link, svg, code });
       } catch (e) {
         return json(res, { ok: false, error: e instanceof Error ? e.message : String(e) });
       }

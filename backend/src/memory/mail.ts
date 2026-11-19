@@ -12,6 +12,7 @@ import { basename, dirname, join } from "node:path";
 import Database from "better-sqlite3";
 import { currentMemoryDir } from "./db.js";
 import { redact } from "./redact.js";
+import { markRepoBusy } from "./session-live.js";
 import { Q } from "./store/queries.js";
 
 export interface MailAddress {
@@ -238,6 +239,9 @@ export function receiveMail(
   fromHost: string,
   path?: string,
 ): boolean {
+  // the repo's session is about to be woken by this letter, with no prompt hook to say so: mark it working (plan/41 §6b).
+  // Only for the live store - a test's own mail file must not touch this machine's marks.
+  if (!path) markRepoBusy(repoKey(env.to.repo));
   return withMail(
     (db) =>
       db

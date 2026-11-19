@@ -3,7 +3,7 @@
 // permission prompts it waits on, and a line that writes into that very session (a letter its hooks wake it with).
 // The same tab on the desktop and on the phone. Refreshes only while the tab is open.
 var zChat = (function () {
-  var repo = null, sess = null, list = [], timer = null, busy = false, lastSig = '';
+  var repo = null, sess = null, list = [], sent = [], thread = null, timer = null, busy = false, lastSig = '';
   function el(id) { return document.getElementById(id); }
   function esc(s) { return stdEsc(String(s == null ? '' : s)); }
   function repoOf(root) { return String(root || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop().toLowerCase(); }
@@ -40,11 +40,19 @@ var zChat = (function () {
   }
 
   function drawThread(s) {
+    thread = s;
     var box = el('chatList');
     var ms = (s && s.messages) || [];
-    if (!ms.length) { box.innerHTML = '<div class="muted">' + esc(t('chat.empty')) + '</div>'; return; }
+    // what the person wrote that the session's record does not have yet (it lands there when the turn ends)
+    var last = ms.length ? Date.parse(ms[ms.length - 1].timestamp || '') || 0 : 0;
+    var c = cur();
+    var waiting = sent.filter(function (x) { return Date.parse(x.sentAt) > last && (!c || !c.host || String(x.to).toLowerCase() === String(c.host).toLowerCase()); });
+    if (!ms.length && !waiting.length) { box.innerHTML = '<div class="muted">' + esc(t('chat.empty')) + '</div>'; return; }
     var atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
-    box.innerHTML = '<div class="thread">' + ms.map(function (m) { return msgBlock(m, 0); }).join('') + '</div>';
+    box.innerHTML = '<div class="thread">' + ms.map(function (m) { return msgBlock(m, 0); }).join('') +
+      waiting.map(function (x) {
+        return '<div class="msg chat-wait"><div class="who"><span class="tag user">' + esc(t('chat.you')) + '</span> · ' + esc(when(x.sentAt)) + ' · ' + esc(t('chat.waiting')) + '</div><div class="body">' + esc(x.body) + '</div></div>';
+      }).join('') + '</div>';
     if (atBottom || !box.dataset.seen) box.scrollTop = box.scrollHeight;
     box.dataset.seen = '1';
   }
@@ -57,6 +65,7 @@ var zChat = (function () {
       zGet('/approvals').catch(function () { return null; }),
     ]).then(function (r) {
       list = (r[0] && r[0].sessions) || [];
+      sent = (r[0] && r[0].sent) || [];
       if (!sess || !cur()) sess = list.length ? list[0].sessionId : null;
       drawSessions();
       drawAsks(r[1] && r[1].pending);
@@ -64,7 +73,11 @@ var zChat = (function () {
       if (!c) { drawThread(null); return; }
       // the thread is fetched again only when the session moved on (a new message, or the spinner state changed)
       var sig = c.sessionId + '|' + c.messages + '|' + c.endedAt + '|' + c.busy;
-      if (sig === lastSig) return;
+      if (sig === lastSig) {
+        // the session did not move, but a letter of the person may have: redraw from what we hold
+        if (thread) drawThread(thread);
+        return;
+      }
       lastSig = sig;
       // the last part only: the full session is Recall › Sessions' job
       return zGet('/memory-session?id=' + encodeURIComponent(c.sessionId) + '&tail=120').then(drawThread);

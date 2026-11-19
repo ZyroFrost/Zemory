@@ -633,10 +633,12 @@
     <div class="dlg-b">
       <div class="phone-name">
         <input id="phoneNameIn" class="tin" value="dt" data-i18n-ph="ph.nameH" data-i18n-aria="ph.nameH" placeholder="Tên điện thoại" aria-label="Tên điện thoại">
-        <button class="btn sm" data-act="phone-pair-make" data-i18n="ph.make">Tạo mã</button>
+        <button class="btn sm" data-act="phone-pair-qr" data-i18n="ph.qr">Mã QR</button>
+        <button class="btn sm" data-act="phone-pair-text" data-i18n="ph.text">Mã chữ</button>
       </div>
       <div id="phoneQr" class="phone-qr"></div>
-      <div id="phonePairMsg" class="muted phone-msg" data-i18n="ph.howto">Mở camera điện thoại và quét mã: app Zemory tự mở và thêm máy này. Mã chỉ hiện một lần; ghép lại sẽ cắt mã cũ.</div>
+      <div id="phoneCodeBox" class="phone-code"><textarea id="phoneCode" class="tin" readonly rows="4" data-i18n-aria="ph.text" aria-label="Mã chữ"></textarea><button class="btn sm" data-act="phone-copy" data-i18n="ph.copy">Chép</button></div>
+      <div id="phonePairMsg" class="muted phone-msg" data-i18n="ph.pick">Chọn cách ghép: QR để điện thoại quét, hoặc mã chữ để dán.</div>
     </div>
   </div>
 </div>

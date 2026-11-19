@@ -36,8 +36,48 @@ export function markIdle(payload: Record<string, unknown>, dir = liveDir()): voi
   }
 }
 
+/**
+ * A letter reached this repo (mail.ts receive/deliverHere): its session is about to be woken WITHOUT a prompt - the
+ * host's UserPromptSubmit hook never runs for a turn a letter starts - so the repo itself is marked working until a turn
+ * of that repo ends.
+ */
+export function markRepoBusy(repo: string, dir = liveDir()): void {
+  const k = repo.trim().toLowerCase();
+  if (!/^[a-z0-9._-]{1,120}$/.test(k)) return;
+  try {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, `repo~${k}.json`), JSON.stringify({ since: new Date().toISOString() }));
+  } catch {
+    /* fail-open */
+  }
+}
+
+/** A turn of this repo ended (the Stop hook, from its cwd). */
+export function clearRepo(cwd: string, dir = liveDir()): void {
+  const k = cwd.replace(/[\\/]+$/, "").split(/[\\/]/).pop()?.toLowerCase() ?? "";
+  if (!k) return;
+  try {
+    rmSync(join(dir, `repo~${k}.json`), { force: true });
+  } catch {
+    /* fail-open */
+  }
+}
+
+/** Repos a letter just woke -> since when (same stale line as sessions). */
+export function busyRepos(dir = liveDir(), now = Date.now()): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [k, v] of busyMarks(dir, now)) if (k.startsWith("repo~")) out.set(k.slice(5), v);
+  return out;
+}
+
 /** Sessions working now -> since when. */
 export function busySessions(dir = liveDir(), now = Date.now()): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [k, v] of busyMarks(dir, now)) if (!k.startsWith("repo~")) out.set(k, v);
+  return out;
+}
+
+function busyMarks(dir: string, now: number): Map<string, string> {
   const out = new Map<string, string>();
   if (!existsSync(dir)) return out;
   for (const f of readdirSync(dir)) {

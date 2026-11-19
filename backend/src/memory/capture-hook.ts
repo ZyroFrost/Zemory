@@ -28,7 +28,7 @@ import { tryWriteTurnSync } from "../jobs/writeturn.js";
 const HOOK_TURN_WAIT_MS = 3_000;
 import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
-import { markBusy, markIdle } from "./session-live.js";
+import { clearRepo, markBusy, markIdle } from "./session-live.js";
 import { kitBehind } from "../docs/kit-sync.js";
 import { repoKit } from "../docs/kit-apply.js";
 import { coreForCompaction, coreReinjectCap } from "../docs/rule-core.js";
@@ -516,7 +516,9 @@ export function handleHook(event: HookEventName, payload: any): string {
     }
 
     if (event === "stop" || event === "session-end") {
+      // the turn ended: the session and its repo stop spinning (re-marked below when a letter holds the turn open)
       markIdle(payload ?? {});
+      clearRepo(String(payload?.cwd ?? payload?.project_dir ?? ""));
       // Đường nạp CHÍNH (per-message). `scan()` cả kho chỉ còn là lối CHÓT cho host không
       // đưa `transcript_path` — và ngay cả nó cũng phải nhường write-gate.
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
@@ -585,7 +587,11 @@ export function handleHook(event: HookEventName, payload: any): string {
         } catch {
           mail = ""; // fail-open
         }
-        if (mail) return JSON.stringify({ decision: "block", reason: mail });
+        if (mail) {
+          // the letter holds the turn open: the agent goes on working, so the session keeps spinning
+          markBusy(payload ?? {});
+          return JSON.stringify({ decision: "block", reason: mail });
+        }
       }
       if (event === "stop" && !verdict && path) {
         const note = endOfTurnAutoCommit(payload, path);

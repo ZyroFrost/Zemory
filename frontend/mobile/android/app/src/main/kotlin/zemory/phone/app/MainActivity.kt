@@ -11,7 +11,6 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.util.Base64
 import android.view.Gravity
-import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.webkit.JavascriptInterface
@@ -19,14 +18,12 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.Spinner
 import android.widget.TextView
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
 import org.json.JSONArray
 import org.json.JSONObject
 import zemory.phone.Identity
@@ -38,19 +35,16 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
- * Zemory on the phone (plan/41 §6): the phone is a third machine of the user's network. The screen is the selected
- * machine's OWN interface, loaded through the link - the project chat (plan/41 §6b) and the permission prompts (§6e)
- * live in it, one interface for desktop and phone. Native here: the device lock, the machine picker, pairing, and the
- * settings that live on the machines (a new phone paired with any machine gets them back).
+ * Zemory on the phone (plan/41 §6): the phone is a third machine of the user's network. The whole screen is the selected
+ * machine's OWN interface, loaded through the link - no bar of its own: switching machines, scanning a pairing QR and
+ * pasting a code live in the interface (Sync › Machine-to-machine), which reaches the app through `window.ZB`. Native
+ * here only: the device lock, the QR scanner, and the settings kept on the machines.
  */
 class MainActivity : Activity() {
     private val prefs by lazy { getSharedPreferences("zemory", Context.MODE_PRIVATE) }
     private val identity by lazy { Identity.loadOrCreate(filesDir, "phone") }
     private val io = Executors.newCachedThreadPool()
     private val links = ConcurrentHashMap<String, Link>()
-
-    private lateinit var machine: Spinner
-    private lateinit var status: TextView
     private lateinit var body: FrameLayout
 
     // app lock (plan/41 §6a): the device lock guards the app; more than 5 minutes in the background locks it again
@@ -64,16 +58,12 @@ class MainActivity : Activity() {
     private fun codes(): MutableList<String> = JSONArray(prefs.getString("pairings", "[]")).let { a -> (0 until a.length()).map { a.getString(it) }.toMutableList() }
     private fun pairings(): List<Pairing> = codes().mapNotNull { Pairing.parse(it) }
 
-    /**
-     * One machine on the picker: a paired one (`host == via.host`), or another machine of a paired one's cluster, reached
-     * through `via` (plan/41 §6f) - joining the cluster once shows every machine in it.
-     */
+    /** A paired machine, or another machine of a paired one's cluster reached through it (plan/41 §6f). */
     data class Target(val host: String, val via: Pairing) {
         val direct: Boolean get() = host.equals(via.host, ignoreCase = true)
         fun label(): String = if (direct) host else "$host (qua ${via.host})"
     }
 
-    /** The cluster each paired machine last reported (`GET /cluster`), kept so the picker fills before any link opens. */
     private fun clusterOf(p: Pairing): List<String> = JSONArray(prefs.getString("cluster:${p.host}", "[]")).let { a -> (0 until a.length()).map { a.getString(it) } }
 
     private fun targets(): List<Target> {
@@ -83,21 +73,11 @@ class MainActivity : Activity() {
         return out
     }
 
-    private fun current(): Target? = targets().getOrNull(machine.selectedItemPosition)
-
-    /** Ask a paired machine who is in its cluster; refresh the picker when that changed. */
-    private fun refreshCluster(p: Pairing, l: Link) {
-        val r = l.request("GET", "/cluster")
-        if (r.status != 200) return
-        val a = JSONObject(r.text).optJSONArray("machines") ?: return
-        val hosts = JSONArray()
-        for (i in 0 until a.length()) {
-            val m = a.getJSONObject(i)
-            if (!m.optBoolean("self")) hosts.put(m.getString("host"))
-        }
-        if (hosts.toString() == JSONArray(clusterOf(p)).toString()) return
-        prefs.edit().putString("cluster:${p.host}", hosts.toString()).apply()
-        runOnUiThread { loadMachines() }
+    /** The machine on screen (kept across launches). */
+    private fun current(): Target? {
+        val all = targets()
+        val want = prefs.getString("current", null)
+        return all.firstOrNull { it.host.equals(want, ignoreCase = true) } ?: all.firstOrNull()
     }
 
     private fun settingsBlob(): String = JSONObject().put("v", 1).put("machines", JSONArray(codes())).toString()
@@ -117,68 +97,52 @@ class MainActivity : Activity() {
                 added = true
             }
         }
-        if (added) {
-            prefs.edit().putString("pairings", JSONArray(mine).toString()).apply()
-            runOnUiThread { loadMachines() }
-        }
+        if (added) prefs.edit().putString("pairings", JSONArray(mine).toString()).apply()
     }
 
-    /** Push the settings to every machine a link is open to. */
     private fun shareSettings() {
         val blob = settingsBlob()
         for (l in links.values) io.execute { if (l.alive) l.prefs(blob) }
+    }
+
+    private fun refreshCluster(p: Pairing, l: Link) {
+        val r = l.request("GET", "/cluster")
+        if (r.status != 200) return
+        val a = JSONObject(r.text).optJSONArray("machines") ?: return
+        val hosts = JSONArray()
+        for (i in 0 until a.length()) {
+            val m = a.getJSONObject(i)
+            if (!m.optBoolean("self")) hosts.put(m.getString("host"))
+        }
+        prefs.edit().putString("cluster:${p.host}", hosts.toString()).apply()
     }
 
     private fun link(p: Pairing): Link {
         links[p.host]?.let { if (it.alive) return it }
         val l = Link.open(p, identity)
         links[p.host] = l
-        // settings travel with the link: give ours, take what the machine kept
         mergeSettings(l.prefs(settingsBlob()))
-        // and the cluster behind it: every machine it is paired with shows on the picker
         io.execute { runCatching { refreshCluster(p, l) } }
         return l
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#111418"))
-            setPadding(dp(8), dp(20), dp(8), dp(4))
-        }
-        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        machine = Spinner(this)
-        top.addView(machine, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f))
-        top.addView(Button(this).apply { text = "+ Máy"; setOnClickListener { addMachine() } })
-        root.addView(top)
-        status = TextView(this).apply { setTextColor(Color.parseColor("#9AA4B2")); textSize = 12f }
-        root.addView(status)
-        body = FrameLayout(this)
-        root.addView(body, LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
-        setContentView(root)
+        body = FrameLayout(this).apply { setBackgroundColor(Color.parseColor("#111418")) }
+        setContentView(body)
         takeLink(intent)
-        loadMachines()
-        machine.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) = showZemory()
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
     }
 
     override fun onResume() {
         super.onResume()
         val km = getSystemService(KEYGUARD_SERVICE) as KeyguardManager
-        if (!km.isDeviceSecure) {
-            body.removeAllViews()
-            status.text = "Đặt khoá màn hình (PIN / vân tay) cho điện thoại để mở Zemory."
-            return
-        }
+        if (!km.isDeviceSecure) return showNote("Đặt khoá màn hình (PIN / vân tay) cho điện thoại để mở Zemory.")
         val away = pausedAt > 0 && SystemClock.elapsedRealtime() - pausedAt > 5 * 60_000
         if (unlockedAt == 0L || away) {
             unlockedAt = 0L
             @Suppress("DEPRECATION")
             val i: Intent? = km.createConfirmDeviceCredentialIntent("Zemory", "Mở khoá để xem các máy của bạn")
-            if (i != null) startActivityForResult(i, lockRequest) else unlockedAt = SystemClock.elapsedRealtime()
+            if (i != null) startActivityForResult(i, lockRequest) else { unlockedAt = SystemClock.elapsedRealtime(); show() }
         }
     }
 
@@ -191,57 +155,71 @@ class MainActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode != lockRequest) return
-        if (resultCode == RESULT_OK) {
-            unlockedAt = SystemClock.elapsedRealtime()
-            pausedAt = 0
-            val c = pendingCode
-            pendingCode = null
-            if (c != null) addCode(c) else showZemory()
-        } else finish()
+        if (resultCode != RESULT_OK) return finish()
+        unlockedAt = SystemClock.elapsedRealtime()
+        pausedAt = 0
+        val c = pendingCode
+        pendingCode = null
+        if (c != null) addCode(c) else show()
     }
 
     private fun locked() = unlockedAt == 0L
 
-    private fun loadMachines() {
-        val list = targets()
-        val sel = machine.selectedItemPosition
-        machine.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, list.map { it.label() }.ifEmpty { listOf("Chưa có máy") })
-        if (sel in list.indices) machine.setSelection(sel)
-        if (list.isEmpty()) status.text = "Trên máy tính chạy: zemory phone pair <tên-điện-thoại>, rồi dán mã vào + Máy."
-        // machines arrived (pairing, or settings merged from a machine) while nothing is shown: show the selected one
-        else if (body.childCount == 0 && !locked()) showZemory()
+    /** The machine's interface, or - with no machine yet - the two ways to add one. */
+    private fun show() {
+        if (locked()) return
+        if (targets().isEmpty()) showFirstRun() else showZemory()
     }
 
-    private fun addMachine() {
+    private fun showNote(text: String) {
+        body.removeAllViews()
+        body.addView(TextView(this).apply { this.text = text; setTextColor(Color.parseColor("#9AA4B2")); setPadding(dp(24), dp(48), dp(24), dp(24)) })
+    }
+
+    private fun showFirstRun() {
+        body.removeAllViews()
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; setPadding(dp(24), dp(24), dp(24), dp(24)) }
+        col.addView(TextView(this).apply {
+            text = "Zemory\n\nTrên PC hoặc laptop: Sync › Máy-tới-máy › Ghép điện thoại.\nRồi quét mã QR, hoặc dán mã chữ."
+            setTextColor(Color.parseColor("#E5E7EB")); gravity = Gravity.CENTER; textSize = 15f
+        })
+        col.addView(Button(this).apply { text = "📷 Quét QR"; setOnClickListener { scan() } }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply { topMargin = dp(24) })
+        col.addView(Button(this).apply { text = "⌨ Dán mã"; setOnClickListener { paste() } }, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+        body.addView(col, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+    }
+
+    // ── adding a machine: scan the QR a machine shows, or paste its text code ──
+    private fun scan() {
+        GmsBarcodeScanning.getClient(this).startScan()
+            .addOnSuccessListener { b -> (b.rawValue ?: "").let { v -> addCode(Regex("c=([A-Za-z0-9._-]+)").find(v)?.groupValues?.get(1) ?: v) } }
+            .addOnFailureListener { e -> AlertDialog.Builder(this).setMessage("Không quét được: ${e.message}\nDùng Dán mã thay.").setPositiveButton("OK", null).show() }
+    }
+
+    private fun paste() {
         val field = EditText(this).apply { hint = "zph1.…" }
-        AlertDialog.Builder(this).setTitle("Thêm máy")
-            .setMessage("Trên máy tính: Sync › Máy-tới-máy › Ghép điện thoại, rồi quét mã QR bằng camera. Hoặc dán mã zph1.… vào đây.")
-            .setView(field)
+        AlertDialog.Builder(this).setTitle("Dán mã").setMessage("Trên PC hoặc laptop: Sync › Máy-tới-máy › Ghép điện thoại › Mã chữ › Chép.").setView(field)
             .setPositiveButton("Thêm") { _, _ -> addCode(field.text.toString()) }
             .setNegativeButton("Huỷ", null).show()
     }
 
-    /** Keep one machine's pairing code (from the QR link or pasted) and open its interface. */
     private fun addCode(raw: String) {
         val code = raw.trim()
-        val p = Pairing.parse(code) ?: run { status.text = "Mã ghép đôi không đọc được"; return }
+        val p = Pairing.parse(code) ?: run {
+            AlertDialog.Builder(this).setMessage("Mã ghép đôi không đọc được.").setPositiveButton("OK", null).show()
+            return
+        }
         val kept = codes().filter { Pairing.parse(it)?.host != p.host }.toMutableList()
         kept.add(code)
-        prefs.edit().putString("pairings", JSONArray(kept).toString()).apply()
+        prefs.edit().putString("pairings", JSONArray(kept).toString()).putString("current", p.host).apply()
         links.remove(p.host)?.close()
-        loadMachines()
-        machine.setSelection(targets().indexOfFirst { it.direct && it.host == p.host })
-        status.text = "Đã thêm ${p.host}"
         io.execute {
             runCatching { link(p) }
             shareSettings()
         }
-        // the first machine replaces the "no machine" item at the SAME position, so the spinner fires no selection
-        // event - open the interface here, or the screen stays empty after pairing
         showZemory()
     }
 
-    /** A pairing code that came by the QR link, kept until the app is unlocked. */
+    /** A pairing code that came by the QR link (the system camera), kept until the app is unlocked. */
     private var pendingCode: String? = null
 
     private fun takeLink(i: Intent?) {
@@ -255,11 +233,11 @@ class MainActivity : Activity() {
         if (!locked()) pendingCode?.let { pendingCode = null; addCode(it) }
     }
 
-    // ── the machine's own interface ─────────────────────────────────────────────────────────────────────
+    // ── the machine's own interface, full screen ────────────────────────────────────────────────────────
     @SuppressLint("SetJavaScriptEnabled")
     private fun showZemory() {
         if (locked()) return
-        val tg = current() ?: return
+        val tg = current() ?: return showFirstRun()
         val p = tg.via
         // a machine reached through another one: every call names it, the paired machine forwards it (plan/41 §6f)
         val on = if (tg.direct) null else tg.host
@@ -277,16 +255,9 @@ class MainActivity : Activity() {
                 val r = try {
                     link(p).request("GET", path, host = on)
                 } catch (e: Exception) {
-                    runOnUiThread { status.text = "Không nối được ${p.host}: ${e.message}" }
-                    val page = "<body style='background:#111;color:#ccc;font:14px sans-serif;padding:24px'>Không nối được ${p.host}.<br>${e.message}</body>"
-                    return WebResourceResponse("text/html", "utf-8", ByteArrayInputStream(page.toByteArray()))
+                    return page("Không nối được ${tg.label()}.<br>${e.message}")
                 }
-                if (r.status == 503 && on != null) {
-                    // the paired machine has no live link to that one right now: say it, do not show a broken page
-                    val page = "<body style='background:#111;color:#ccc;font:14px sans-serif;padding:24px'>${tg.host} chưa nối với ${p.host} lúc này.<br>Thử lại sau, hoặc chọn ${p.host}.</body>"
-                    return WebResourceResponse("text/html", "utf-8", ByteArrayInputStream(page.toByteArray()))
-                }
-                runOnUiThread { status.text = if (on == null) "${p.host} · ${links[p.host]?.via ?: ""}" else "${tg.host} · qua ${p.host}" }
+                if (r.status == 503 && on != null) return page("${tg.host} chưa nối với ${p.host} lúc này. Thử lại sau, hoặc mở ${p.host}.")
                 val type = r.type.substringBefore(";").trim().ifBlank { "application/octet-stream" }
                 // the bridge must run before the interface's own scripts
                 val bytes = if (type == "text/html") r.text.replaceFirst("<head>", "<head><script src=\"/__bridge.js\"></script>").toByteArray() else r.body
@@ -294,11 +265,18 @@ class MainActivity : Activity() {
             }
         }
         body.addView(w, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
-        status.text = "Đang nối tới ${tg.label()}…"
         w.loadUrl("https://zemory.app/")
     }
 
-    /** The interface's fetch calls, handed over by bridge.js. */
+    /** A page the app draws itself when the machine cannot answer - with the ways out (other machine · add one). */
+    private fun page(msg: String): WebResourceResponse {
+        val others = targets().joinToString("") { "<button onclick=\"ZB.open('${it.host}')\">${it.label()}</button>" }
+        val html = "<!doctype html><meta name=viewport content='width=device-width'><body style='background:#111418;color:#ccc;font:14px sans-serif;padding:24px'>" +
+            "<p>$msg</p><div style='display:flex;flex-direction:column;gap:8px'>$others<button onclick='ZB.scan()'>📷 Quét QR</button><button onclick='ZB.paste()'>⌨ Dán mã</button></div></body>"
+        return WebResourceResponse("text/html", "utf-8", ByteArrayInputStream(html.toByteArray()))
+    }
+
+    /** The interface's side of the app: its fetch calls (bridge.js), and the machine switch / pairing it shows on a phone. */
     inner class Bridge(private val w: WebView, private val p: Pairing, private val on: String?) {
         @JavascriptInterface
         fun req(id: String, method: String, path: String, b64: String, type: String) {
@@ -309,6 +287,26 @@ class MainActivity : Activity() {
                 runOnUiThread { w.evaluateJavascript("window.__zres(${JSONObject.quote(id)},${r.status},${JSONObject.quote(r.type)},${JSONObject.quote(enc)})", null) }
             }
         }
+
+        /** The machines this phone holds: `{current, list:[{host, label, direct}]}`. */
+        @JavascriptInterface
+        fun machines(): String {
+            val a = JSONArray()
+            for (t in targets()) a.put(JSONObject().put("host", t.host).put("label", t.label()).put("direct", t.direct))
+            return JSONObject().put("current", current()?.host ?: "").put("list", a).toString()
+        }
+
+        @JavascriptInterface
+        fun open(host: String) {
+            prefs.edit().putString("current", host).apply()
+            runOnUiThread { showZemory() }
+        }
+
+        @JavascriptInterface
+        fun scan() = runOnUiThread { this@MainActivity.scan() }
+
+        @JavascriptInterface
+        fun paste() = runOnUiThread { this@MainActivity.paste() }
     }
 
     override fun onDestroy() {

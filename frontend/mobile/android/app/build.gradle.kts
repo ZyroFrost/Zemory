@@ -10,8 +10,8 @@ android {
         applicationId = "zemory.phone"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "0.6.0"
+        versionCode = 8
+        versionName = "0.7.0"
     }
     buildTypes {
         release {
@@ -33,4 +33,7 @@ android {
 dependencies {
     // org.json is part of Android
     implementation(project(":core")) { exclude(group = "org.json") }
+    // the pairing QR a machine shows: Google's code scanner opens the camera in its own screen - no camera permission,
+    // no scanner UI of ours (needs Google Play services, as on any stock Android phone)
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 }
