@@ -37,6 +37,7 @@
 | `app-design/` | chuẩn thiết kế APP — FE (bề mặt) + BE (tiến trình); RÀNG BUỘC, `02_RULES` chỉ trỏ sang |
 | `write-style/` | bộ luật văn phong cho văn bản ĐƯA NGƯỜI ĐỌC — chưng cất từ Wikipedia:Signs of AI writing |
 | `plan-trim/` | gọt plan vượt trần mà KHÔNG mất ý — lùi bản gốc, nháp ngoài repo, soát độc lập so với bản gốc + code |
+| `install-switch/` | đổi một máy giữa bản native và bản Docker (hai chiều): chở GM + `data`, tắt hẳn mọi lối vào bản cũ, phép kiểm không sót |
 
 ## 3. Skill NGOÀI — vendor, KHÔNG chép nội dung (HP điều 2)
 
