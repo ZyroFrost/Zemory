@@ -39,7 +39,7 @@
       <!-- Chip ④ CỔNG REPO (user 2026-10-07): repo có CHẠY cổng không — guard cắm · pre-commit cắm · đủ hàng cổng cho hiến
            pháp. Khác chip ②: ② so FILE với bộ chuẩn, ④ đo cổng có thật sự được gọi. Cùng phép đo với `zemory gates --all`. -->
       <div class="status-chip upd" id="railGates" style="cursor:pointer;display:none" data-i18n-title="rail.gatesTip" title="Cổng kiểm của các repo — bấm xem"><span class="cic" data-icon="gates"></span><span class="dot"></span><div><b style="font-size:12px" id="railGatesN">—</b><div class="muted" style="font-size:10.5px" id="railGatesSub"></div></div></div>
-      <div class="status-chip" id="railHealthChip" data-nav="system" style="cursor:pointer" title="Features"><span class="cic" data-icon="health"></span><span class="dot" id="railDot"></span><div><b style="font-size:12px" id="railHealth">—</b><div class="muted" style="font-size:10.5px" id="railHealthSub" data-i18n="st.operational">Hoạt động tốt</div></div></div>
+      <div class="status-chip" id="railHealthChip" data-nav="system" style="cursor:pointer" title="Features"><span class="cic" data-icon="health"></span><span class="dot" id="railDot"></span><div><b style="font-size:12px" id="railHealth">—</b><div class="muted" style="font-size:10.5px" id="railHealthSub" data-i18n="st.loading">…</div></div></div>
     </div>
   </aside>
   <!-- Rail collapse (user 2026-10-28): a round arrow always visible on the rail's edge - the arrow hidden behind the logo's
@@ -238,7 +238,7 @@
               <span id="chatBusy" class="chat-busy" data-i18n="chat.busy">đang chạy…</span>
             </div>
             <div id="chatAsk" class="chat-ask"></div>
-            <div id="chatList" class="chat-list"><div class="muted" data-i18n="chat.empty">Chưa có phiên nào của dự án này.</div></div>
+            <div id="chatList" class="chat-list"><div class="muted" data-i18n="chat.loading">Đang tải…</div></div>
             <div class="chat-send">
               <input id="chatIn" class="tin" data-i18n-ph="chat.ph" data-i18n-aria="chat.ph" placeholder="Viết cho phiên này…" aria-label="Viết cho phiên này">
               <button id="chatGo" class="btn sm" data-i18n="chat.send">Gửi</button>

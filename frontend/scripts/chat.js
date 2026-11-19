@@ -14,6 +14,9 @@ var zChat = (function () {
     return p(d.getDate()) + '/' + p(d.getMonth() + 1) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
   function cur() { return list.filter(function (s) { return s.sessionId === sess; })[0] || null; }
+  // until an answer came back the tab says it is loading, never "nothing here" (over the phone's link the first answer
+  // can take seconds, and a failed call is retried on the next tick)
+  function loading() { el('chatList').innerHTML = '<div class="muted">' + esc(t('chat.loading')) + '</div>'; }
 
   function drawSessions() {
     var sel = el('chatSess');
@@ -64,7 +67,9 @@ var zChat = (function () {
       zGet('/chat/sessions?repo=' + encodeURIComponent(repo)).catch(function () { return null; }),
       zGet('/approvals').catch(function () { return null; }),
     ]).then(function (r) {
-      list = (r[0] && r[0].sessions) || [];
+      // no answer: keep what is on screen (the loading line, or the last thread) - an empty list is only an answer
+      if (!r[0]) return;
+      list = r[0].sessions || [];
       sent = (r[0] && r[0].sent) || [];
       if (!sess || !cur()) sess = list.length ? list[0].sessionId : null;
       drawSessions();
@@ -78,9 +83,14 @@ var zChat = (function () {
         if (thread) drawThread(thread);
         return;
       }
-      lastSig = sig;
-      // the last part only: the full session is Recall › Sessions' job
-      return zGet('/memory-session?id=' + encodeURIComponent(c.sessionId) + '&tail=120').then(drawThread);
+      // another session than the one on screen: say so while its messages come
+      if (!thread || thread.sessionId !== c.sessionId) loading();
+      // the last part only: the full session is Recall › Sessions' job; the signature sticks only once it arrived
+      return zGet('/memory-session?id=' + encodeURIComponent(c.sessionId) + '&tail=120').then(function (s) {
+        if (sess !== c.sessionId) return;
+        lastSig = sig;
+        drawThread(s);
+      });
     }).catch(function () {}).finally(function () { busy = false; });
   }
 
@@ -118,7 +128,7 @@ var zChat = (function () {
       clearInterval(timer);
       timer = null;
       var r = repoOf(typeof curProjRoot === 'string' ? curProjRoot : '');
-      if (r !== repo) { repo = r; sess = null; list = []; lastSig = ''; el('chatList').dataset.seen = ''; }
+      if (r !== repo) { repo = r; sess = null; list = []; thread = null; lastSig = ''; el('chatList').dataset.seen = ''; loading(); }
       if (!on || !repo) return;
       refresh();
       timer = setInterval(function () {
