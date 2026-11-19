@@ -6,7 +6,7 @@
 // returns null so callers fall back to FTS-only — embedding is never required.
 //
 // Config-driven so swapping the model is config, not a rewrite:
-//   ZEMORY_EMBED_MODEL  (a NEW index defaults to EmbeddingGemma 2; an existing index keeps its stored profile)
+//   ZEMORY_EMBED_MODEL  (a NEW index defaults to EmbeddingGemma 300M; an existing index keeps its stored profile)
 //   ZEMORY_EMBED_DTYPE  (default fp32 — see DEFAULT_DTYPE)
 //   ZEMORY_MODEL_DIR    (weight cache; default <memory-dir>/models — never committed)
 
@@ -36,8 +36,14 @@ const GEMMA2_MODEL = "onnx-community/embeddinggemma-2-ONNX";
 /** Token ceiling per model input on the text-only (EmbeddingGemma 2) path — see `getPipe` for the measurement. */
 const MAX_TOKENS = 4096;
 
-/** The model a NEW index is built with. An existing index never follows this: its stored profile pins its model. */
-const DEFAULT_MODEL = GEMMA2_MODEL;
+/**
+ * The model a NEW index is built with. An existing index never follows this: its stored profile pins its model.
+ * Back to EmbeddingGemma 300M (user 2026-11-19), measured on the live store, 108 labeled queries, hybrid strict MRR:
+ * Gemma 1 0.191 · Gemma 2 0.152 · Gemma 2 + search-time ABTT (vecpost.ts) 0.168; @40 48% · 32% · 39%. Encoding of
+ * Gemma 2 was verified identical to Google's PyTorch reference (cos 1.00000 on 216 texts), so this is the model, not
+ * the way it was run. Gemma 2 stays registered (profile gemma2-prompt-v1) for indexes built with it.
+ */
+const DEFAULT_MODEL = GEMMA1_MODEL;
 
 // ---------------------------------------------------------------------------
 // Prompt profiles (asymmetric query/document encoding).
