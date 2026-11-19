@@ -667,12 +667,14 @@ export const RULES = [
       const gw = chips.reduce((s, c) => s + box(c).width, 0) + gap * Math.max(0, chips.length - 1);
       // the room is the head's line: from the title's start to the end of the box holding title and legend (its padding off),
       //   short of the enlarge button where it stands on that line - not the panel's width (Dashboard 20/11: a card-header of
-      //   16 px a side and a button column of 60 px made 0 px of gap read as room to spare)
+      //   16 px a side and a button column of 60 px made 0 px of gap read as room to spare). The button's column counts on
+      //   whatever line the button stands at the moment: a legend gone under the title takes the button with it (rp-key-below),
+      //   and brought back up it would take that column again (Dashboard 20/11, v31)
       let head = t.parentElement; while (head && head !== v && !head.contains(g)) head = head.parentElement;
       const hb = box(head || v), hs = getComputedStyle(head || v);
       let end = hb.right - parseFloat(hs.paddingRight) - parseFloat(hs.borderRightWidth || 0);
       const fb = v.querySelector('.rp-focus-btn');
-      if (fb && drawn(fb)) { const b = box(fb); if (b.top < tb.bottom && b.bottom > tb.top && b.left < end) end = b.left; }
+      if (fb && drawn(fb)) { const b = box(fb); if (b.left < end && b.left > tb.left) end = b.left; }
       const room = end - tb.left;
       if (tw + gw + 8 <= room) return 'the legend stands under the title though both fit on one line (' + Math.round(tw) + ' + ' + Math.round(gw) + ' of ' + Math.round(room) + ' px): ' + name(v);
       if (Math.round(tb.height / lh) > 2) return 'a title on ' + Math.round(tb.height / lh) + ' lines over its legend (two at most): ' + name(v);
