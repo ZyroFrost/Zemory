@@ -1,5 +1,5 @@
 ---
-version: 31
+version: 32
 lang: vi
 ---
 
@@ -268,7 +268,7 @@ Card dùng bốn vai chữ của `app-sneat-glass` (`kpi-title` · `kpi-main` ·
 - `FOCUS_PROBE` (v29, bất đồng bộ) do cùng bài kiểm chạy trên mỗi trang báo cáo ở khổ desktop: lần lượt bấm từng nút phóng to,
   chạy [rp-focus-whole] trên visual đang phóng, rồi bấm lại. Bảy luật của v28 có cổng máy từ v29: [rp-cards] (trang có chart mà
   không có hàng card, card chỉ hiện "—"), [rp-axis-labels] (`data-rp-tick`), [rp-bar-gap], [rp-bar-values-apart],
-  [rp-focus-whole], [rp-title-legend] (v30-31: chỗ trống là dòng của phần đầu, trừ cột nút phóng to dù nút đang ở dòng nào), [rp-abbr-caps] (mã của ngành, cộng các mục 3 đến 5 chữ in hoa trong bảng giải thích của
+  [rp-focus-whole], [rp-title-legend] (v30-32: chỗ trống là dòng của phần đầu, trừ cột nút phóng to dù nút đang ở dòng nào và 8 px trước nút), [rp-abbr-caps] (mã của ngành, cộng các mục 3 đến 5 chữ in hoa trong bảng giải thích của
   trang, soát trên chữ mở đầu bằng chữ hoa); chữ nghiêng được so theo hình đã xoay.
 - **Bảng chưa xong khi bài kiểm này chưa xanh trên các trang của nó** (v15, `Rule_Gate_01_DoneMeansRun`): đếm đủ visual không
   phải là kiểm. Bài kiểm của repo chạy riêng một bảng (`--only <tiền tố đường dẫn>`) trong lúc dựng.
