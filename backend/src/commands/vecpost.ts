@@ -1,18 +1,18 @@
-// `zemory vecpost status|apply` - the post-transform of a vector index (memory/vecpost.ts).
+// `zemory vecpost status|fit|drop` - the search-time transform of a vector index (memory/vecpost.ts).
 //
-//   status [--db <path>]                          the index's transform: none, applied (method, k, hash), or half-done
-//   apply --db <path> [--k <n>] [--yes]           fit "all-but-the-top" on the index's own vectors and rewrite every stored
-//                                                 vector with it. --db is required and the default store is refused without
-//                                                 --yes: the rewrite cannot be undone, so it runs on a copy first and on the
-//                                                 live store only with the daemon stopped and a backup taken.
-import { resolve } from "node:path";
+//   status [--db <path>]            the fitted transform (method, k, hash, when), or none; and whether this shell has it on
+//   fit [--db <path>] [--k <n>]     fit "all-but-the-top" on a sample of the index's own vectors and store the parameters
+//                                   (one small row - the stored vectors are only read). On trial: used only with
+//                                   ZEMORY_VECPOST=1.
+//   drop [--db <path>]              remove the parameters: search goes back to the raw vectors
 import { currentMemoryDb } from "../memory/db.js";
 import { vecConnect } from "../memory/vectors.js";
-import { applyPostToIndex, readVecPost } from "../memory/vecpost.js";
+import { dropPost, fitPost, readVecPost } from "../memory/vecpost.js";
 
 const USAGE = [
   "usage: zemory vecpost status [--db <path>]",
-  "       zemory vecpost apply --db <path> [--k <n>] [--yes]",
+  "       zemory vecpost fit [--db <path>] [--k <n>]",
+  "       zemory vecpost drop [--db <path>]",
 ];
 
 const flag = (args: string[], name: string): string | null => {
@@ -23,49 +23,40 @@ const flag = (args: string[], name: string): string | null => {
 export function cmdVecPost(args: string[]): void {
   const [sub, ...rest] = args;
   const dbArg = flag(rest, "--db");
+  const dbPath = dbArg || currentMemoryDb();
   if (sub === "status") {
-    const db = vecConnect(dbArg || currentMemoryDb());
+    const db = vecConnect(dbPath);
     try {
       const p = readVecPost(db);
-      if (!p) console.log("zemory vecpost: raw index (no post-transform)");
-      else if (p.appliedAt) console.log(`zemory vecpost: ${p.method}${p.k}:${p.hash} · ${p.dims}d · fitted ${p.fittedAt} · applied ${p.appliedAt}`);
-      else console.log(`zemory vecpost: HALF-APPLIED ${p.method}${p.k}:${p.hash} - rewrite stopped at rowid ${p.appliedUpto ?? 0}; restore the backup`);
+      const on = /^(1|on|true)$/i.test(process.env.ZEMORY_VECPOST?.trim() ?? "");
+      if (!p) console.log("zemory vecpost: none - search uses the raw vectors");
+      else console.log(`zemory vecpost: ${p.method}${p.k}:${p.hash} · ${p.dims}d · fitted ${p.fittedAt} · ${on ? "ON in this shell" : "fitted but OFF (on trial: set ZEMORY_VECPOST=1)"}`);
     } finally {
       db.close();
     }
     return;
   }
-  if (sub === "apply") {
-    if (!dbArg) {
-      console.log("zemory vecpost apply: --db <path> is required");
-      process.exitCode = 1;
-      return;
-    }
-    if (resolve(dbArg) === resolve(currentMemoryDb()) && !rest.includes("--yes")) {
-      console.log("zemory vecpost apply: this is the live store - stop the daemon, back it up, then add --yes");
-      process.exitCode = 1;
-      return;
-    }
+  if (sub === "fit") {
     const k = Number(flag(rest, "--k") ?? 2);
     if (!Number.isInteger(k) || k < 0 || k > 16) {
-      console.log("zemory vecpost apply: --k takes 0..16");
+      console.log("zemory vecpost fit: --k takes 0..16");
       process.exitCode = 1;
       return;
     }
-    const db = vecConnect(dbArg);
+    const db = vecConnect(dbPath);
     try {
-      let last = 0;
-      const r = applyPostToIndex(db, {
-        k,
-        onProgress: (done, total) => {
-          const pct = Math.floor((100 * done) / total);
-          if (pct >= last + 10 || done === total) {
-            last = pct;
-            console.log(`  rewritten ${done}/${total} (${pct}%)`);
-          }
-        },
-      });
-      console.log(`zemory vecpost apply: ${r.vectors} vectors rewritten under abtt${k}:${r.hash} in ${(r.ms / 1000).toFixed(0)} s`);
+      const r = fitPost(db, { k });
+      console.log(`zemory vecpost fit: abtt${r.k}:${r.hash} from ${r.sampled} sampled vectors in ${(r.ms / 1000).toFixed(0)} s - used by searches run with ZEMORY_VECPOST=1`);
+    } finally {
+      db.close();
+    }
+    return;
+  }
+  if (sub === "drop") {
+    const db = vecConnect(dbPath);
+    try {
+      dropPost(db);
+      console.log("zemory vecpost drop: removed - search uses the raw vectors");
     } finally {
       db.close();
     }

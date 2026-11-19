@@ -59,7 +59,7 @@ import {
   type EmbedProfile,
 } from "./embed.js";
 import { Q } from "./store/queries.js";
-import { activePost, applyPost, type VecPost } from "./vecpost.js";
+import { activePost, applyPost, POST_CANDIDATES, type VecPost } from "./vecpost.js";
 
 type Conn = Database.Database;
 
@@ -277,6 +277,26 @@ function ensureVecTable(db: Conn, dims: number, profile: EmbedProfile): void {
 
 const toBlob = (v: number[]): Buffer => Buffer.from(new Float32Array(v).buffer);
 
+/**
+ * Second stage of a transformed search (vecpost.ts): the KNN ranked raw documents against the transformed query, which
+ * gets the direction right but skips each document's own re-normalization. Re-score the candidates with the full
+ * transform and return them nearest first, `distance` as the L2 distance between the two unit vectors (the same scale
+ * the KNN reports, so the abstain gate keeps reading one kind of number).
+ */
+function rescoreWithPost(db: Conn, rows: { rowid: number; distance: number }[], qv: number[], post: VecPost): { rowid: number; distance: number }[] {
+  const get = db.prepare(Q.vecEmbedding);
+  const dims = post.dims;
+  const out = rows.map((r) => {
+    const row = get.get(BigInt(r.rowid)) as { embedding: Buffer } | undefined;
+    if (!row?.embedding || row.embedding.byteLength < dims * 4) return { rowid: r.rowid, distance: 2 };
+    const d = applyPost(new Float32Array(row.embedding.buffer, row.embedding.byteOffset, dims), post);
+    let s = 0;
+    for (let j = 0; j < dims; j++) s += d[j] * qv[j];
+    return { rowid: r.rowid, distance: Math.sqrt(Math.max(0, 2 - 2 * s)) };
+  });
+  return out.sort((a, b) => a.distance - b.distance);
+}
+
 export function isVecPrimaryKeyConflict(error: unknown): boolean {
   return (
     error instanceof Error &&
@@ -412,9 +432,6 @@ export async function embedPending(
     const profile = storedProfile(db);
     const dimsTarget = storedDims(db);
     useEmbedDtype(storedDtype(db));
-    // A transformed index (vecpost.ts) takes new documents in the same transformed space as the ones already stored.
-    // Copied vectors (dedup) are read back from the index, so they are transformed already and never pass here.
-    const post: VecPost | null = activePost(db);
 
     let dims: number | null = null;
     let embedded = 0;
@@ -535,8 +552,7 @@ export async function embedPending(
       await takeTurn(); // …then one short turn for the batch's writes
       for (let j = 0; j < batch.length; j++) {
         const r = batch[j];
-        const sliced = vectors[j] ? sliceNormalize(vectors[j] as number[], dimsTarget) : null;
-        const v = sliced && post ? applyPost(sliced, post) : sliced;
+        const v = vectors[j] ? sliceNormalize(vectors[j] as number[], dimsTarget) : null;
         if (v) {
           // `key` đi CÙNG giao dịch — trước đây `hashPut` chạy sau, tách rời, nên một lần
           // kill đúng khe đó để lại vector không có hash (hoặc ngược lại).
@@ -646,6 +662,7 @@ export async function vectorRanks(
     const raw = await embedQuery(query, profile);
     if (!raw) return [];
     const sliced = sliceNormalize(raw, dims);
+    // With a search-time transform (vecpost.ts) the query moves into the transformed space; the stored vectors stay raw.
     const qv = post ? applyPost(sliced, post) : sliced;
     if (out) out.v = Float32Array.from(qv);
     const db = vecConnect(dbPath);
@@ -654,9 +671,10 @@ export async function vectorRanks(
       const pool = opts.pool ?? 60;
       // Over-fetch: several chunks of one long message can occupy KNN slots
       // before collapsing to a single message below.
-      const rows = db
+      let rows = db
         .prepare("SELECT rowid, distance FROM vec_chunks WHERE embedding MATCH ? ORDER BY distance LIMIT ?")
-        .all(toBlob(qv), pool * 2) as { rowid: number; distance: number }[];
+        .all(toBlob(qv), post ? Math.max(pool * 2, POST_CANDIDATES) : pool * 2) as { rowid: number; distance: number }[];
+      if (post) rows = rescoreWithPost(db, rows, qv, post);
       const hasMap = tableExists(db, "vec_map");
       const mapGet = hasMap ? db.prepare("SELECT message_id FROM vec_map WHERE rowid = ?") : null;
       const seen = new Set<number>();
@@ -699,10 +717,13 @@ export function vectorsByRowid(ids: number[], dbPath: string = currentMemoryDb()
       if (!tableExists(db)) return out;
       const dims = storedDims(db);
       const get = db.prepare(Q.vecEmbedding);
+      // Callers compare these with the query vector and with each other, so they come back in the space the search uses.
+      const post = activePost(db);
       for (const id of ids) {
         const row = get.get(id) as { embedding: Buffer } | undefined;
         if (row?.embedding && row.embedding.byteLength >= dims * 4) {
-          out.set(id, new Float32Array(row.embedding.buffer, row.embedding.byteOffset, dims));
+          const v = new Float32Array(row.embedding.buffer, row.embedding.byteOffset, dims);
+          out.set(id, post ? Float32Array.from(applyPost(v, post)) : v);
         }
       }
     } finally {

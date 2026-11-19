@@ -159,20 +159,15 @@ export const Q = {
   vecEmbedding: "SELECT embedding FROM vec_chunks WHERE rowid = ?",
   putVecChunk: "INSERT OR REPLACE INTO vec_chunks(rowid, embedding) VALUES (?, ?)",
   putVecMap: "INSERT OR REPLACE INTO vec_map(rowid, message_id, seq) VALUES (?, ?, ?)",
-  // the post-transform of an index (memory/vecpost.ts): its fitted parameters, and how far the rewrite of the stored
-  // vectors got. One row; `applied_at` set = every stored vector and every new one lives in the transformed space.
+  // the search-time transform of an index (memory/vecpost.ts): parameters fitted on its own vectors, one row. The stored
+  // vectors are never rewritten - dropping this table is the whole way back.
   vecPostDdl:
-    "CREATE TABLE IF NOT EXISTS vec_post (id INTEGER PRIMARY KEY CHECK (id = 1), method TEXT NOT NULL, k INTEGER NOT NULL, dims INTEGER NOT NULL, mu BLOB NOT NULL, pcs BLOB NOT NULL, hash TEXT NOT NULL, fitted_at TEXT NOT NULL, applied_upto INTEGER, applied_at TEXT)",
-  vecPostGet: "SELECT method, k, dims, mu, pcs, hash, fitted_at, applied_upto, applied_at FROM vec_post WHERE id = 1",
+    "CREATE TABLE IF NOT EXISTS vec_post (id INTEGER PRIMARY KEY CHECK (id = 1), method TEXT NOT NULL, k INTEGER NOT NULL, dims INTEGER NOT NULL, mu BLOB NOT NULL, pcs BLOB NOT NULL, hash TEXT NOT NULL, fitted_at TEXT NOT NULL)",
+  vecPostGet: "SELECT method, k, dims, mu, pcs, hash, fitted_at FROM vec_post WHERE id = 1",
   vecPostPut: "INSERT OR REPLACE INTO vec_post (id, method, k, dims, mu, pcs, hash, fitted_at) VALUES (1, ?, ?, ?, ?, ?, ?, ?)",
-  vecPostProgress: "UPDATE vec_post SET applied_upto = ? WHERE id = 1",
-  vecPostDone: "UPDATE vec_post SET applied_at = ? WHERE id = 1",
+  vecPostDrop: "DROP TABLE IF EXISTS vec_post",
   vecAllEmbeddings: "SELECT rowid, embedding FROM vec_chunks",
-  vecUpdateEmbedding: "UPDATE vec_chunks SET embedding = ? WHERE rowid = ?",
-  // the post-transform a vector package was built under ('' = none); older packages have no such column
-  vecShipMetaAddPost: "ALTER TABLE vector_ship_meta ADD COLUMN post TEXT",
-  vecShipMetaPostSet: "UPDATE vector_ship_meta SET post = ?",
-  vecShipMetaPostGet: "SELECT post FROM vector_ship_meta LIMIT 1",
+  vecRowCount: "SELECT COUNT(*) c FROM vec_chunks_rowids",
 
   // ── schema probes · attach ────────────────────────────────────────────────
   tableExists: "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
