@@ -674,7 +674,9 @@ export const RULES = [
       const hb = box(head || v), hs = getComputedStyle(head || v);
       let end = hb.right - parseFloat(hs.paddingRight) - parseFloat(hs.borderRightWidth || 0);
       const fb = v.querySelector('.rp-focus-btn');
-      if (fb && drawn(fb)) { const b = box(fb); if (b.left < end && b.left > tb.left) end = b.left; }
+      // (v32) and the legend keeps the same 8 px from the button as from the title: brought up flush against the button it
+      //   would touch it (Dashboard ops01 daily 20/11: 660 needed of 667 to the button's edge, 659 with the gap)
+      if (fb && drawn(fb)) { const b = box(fb); if (b.left - 8 < end && b.left > tb.left) end = b.left - 8; }
       const room = end - tb.left;
       if (tw + gw + 8 <= room) return 'the legend stands under the title though both fit on one line (' + Math.round(tw) + ' + ' + Math.round(gw) + ' of ' + Math.round(room) + ' px): ' + name(v);
       if (Math.round(tb.height / lh) > 2) return 'a title on ' + Math.round(tb.height / lh) + ' lines over its legend (two at most): ' + name(v);
