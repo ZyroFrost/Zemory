@@ -2617,6 +2617,22 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     }
     // Phones paired with this machine (plan/41 §4): list · pair (a QR the phone's camera opens the app with) · revoke.
     // A phone can never call these (the phone door refuses `/phone/`): pairing is done at the machine.
+    // The project chat's sessions (plan/41 §6b): this repo's agent sessions, newest first, each with whether it is working
+    // now (session-live.ts). Read from the GM, so a session of another machine of the cluster shows too (its `host` says
+    // where a letter to it goes); only this machine's own sessions can say `busy`.
+    if (p === "/chat/sessions") {
+      const repo = (u.searchParams.get("repo") ?? "").trim().toLowerCase();
+      if (!repo) return json(res, { sessions: [] });
+      const { busySessions } = await import("./memory/session-live.js");
+      const busy = busySessions();
+      const base = (x: unknown) => String(x ?? "").replace(/[\\/]+$/, "").split(/[\\/]/).pop()?.toLowerCase() ?? "";
+      const found = querySessions(60, 0, { q: repo }).items as Array<Record<string, unknown>>;
+      const sessions = found
+        .filter((s) => base(s.project) === repo)
+        .slice(0, 20)
+        .map((s) => ({ ...s, busy: busy.has(String(s.sessionId)), busySince: busy.get(String(s.sessionId)) ?? null }));
+      return json(res, { host: hostname(), sessions });
+    }
     // The cluster as seen from this machine (plan/41 §6f): a phone linked here lists every machine and reaches the linked
     // ones through this one
     if (p === "/cluster") {

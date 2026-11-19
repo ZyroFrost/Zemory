@@ -28,6 +28,7 @@ import { tryWriteTurnSync } from "../jobs/writeturn.js";
 const HOOK_TURN_WAIT_MS = 3_000;
 import { getContextWarnPercent } from "../config/settings.js";
 import { syncCheck } from "../docs/adopt.js";
+import { markBusy, markIdle } from "./session-live.js";
 import { kitBehind } from "../docs/kit-sync.js";
 import { repoKit } from "../docs/kit-apply.js";
 import { coreForCompaction, coreReinjectCap } from "../docs/rule-core.js";
@@ -444,6 +445,8 @@ export function handleHook(event: HookEventName, payload: any): string {
 
     // UserPromptSubmit — đồng hồ đo context. Dưới ngưỡng: IM TUYỆT ĐỐI (0 ký tự, 0 token).
     if (event === "prompt") {
+      // the project chat spins while this session works (plan/41 §6b); the Stop hook clears it
+      markBusy(payload ?? {});
       // "Chấm than update" tầng hook (2026-08-21, user chốt): kiểm ĐÚNG MỘT LẦN mỗi phiên xem
       // repo đang đứng có CŨ so với bộ chuẩn hiện hành không (file template thiếu / guard lỗi
       // thời). Repo càng nhiều thì đây là tầng thay việc "gọi từng con áp update": agent mở
@@ -513,6 +516,7 @@ export function handleHook(event: HookEventName, payload: any): string {
     }
 
     if (event === "stop" || event === "session-end") {
+      markIdle(payload ?? {});
       // Đường nạp CHÍNH (per-message). `scan()` cả kho chỉ còn là lối CHÓT cho host không
       // đưa `transcript_path` — và ngay cả nó cũng phải nhường write-gate.
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
