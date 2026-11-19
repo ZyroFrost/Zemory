@@ -90,10 +90,18 @@ var zChat = (function () {
     thread = s;
     var box = el('chatList');
     var ms = (s && s.messages) || [];
-    // what the person wrote that the session's record does not have yet (it lands there when the turn ends)
-    var last = ms.length ? Date.parse(ms[ms.length - 1].timestamp || '') || 0 : 0;
+    var tsOf = function (m) { return Date.parse(m.timestamp || '') || 0; };
+    var first = ms.length ? tsOf(ms[0]) : 0, last = ms.length ? tsOf(ms[ms.length - 1]) : 0;
     var c = cur();
-    var waiting = sent.filter(function (x) { return Date.parse(x.sentAt) > last && (!c || !c.host || String(x.to).toLowerCase() === String(c.host).toLowerCase()); });
+    var mine = sent.filter(function (x) { return !c || !c.host || String(x.to).toLowerCase() === String(c.host).toLowerCase(); });
+    // A letter of the person is not a prompt, so the session's record never holds it as one: the ones inside the shown
+    // stretch take their place in the thread by time; the ones after its last message wait at the end, marked so.
+    var inline = mine.filter(function (x) { var t0 = Date.parse(x.sentAt); return t0 >= first && t0 <= last; });
+    if (inline.length) {
+      ms = ms.concat(inline.map(function (x) { return { role: 'user', content: x.body, timestamp: x.sentAt }; }))
+        .sort(function (a, b) { return tsOf(a) - tsOf(b); });
+    }
+    var waiting = mine.filter(function (x) { return Date.parse(x.sentAt) > last; });
     if (!ms.length && !waiting.length) { lastHtml = ''; box.innerHTML = '<div class="muted">' + esc(t('chat.empty')) + '</div>'; return; }
     var atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
     var html = '<div class="thread">' + drawSteps(ms) +

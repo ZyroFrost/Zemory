@@ -2646,15 +2646,20 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const repoBusy = busyRepos().get(repo) ?? null;
       const me = hostname().toLowerCase();
       const base = (x: unknown) => String(x ?? "").replace(/[\\/]+$/, "").split(/[\\/]/).pop()?.toLowerCase() ?? "";
-      const found = (querySessions(60, 0, { q: repo }).items as Array<Record<string, unknown>>).filter((s) => base(s.project) === repo).slice(0, 20);
+      // working sessions only: the host's memory notes (claude-code-memory, one per note) are not a conversation to chat in
+      // (measured 2026-11-19: 10 of the 20 rows of the picker were notes)
+      const found = (querySessions(80, 0, { q: repo }).items as Array<Record<string, unknown>>)
+        .filter((s) => base(s.project) === repo && s.source !== "claude-code-memory")
+        .slice(0, 20);
       const newestHere = found.find((s) => String(s.host ?? "").toLowerCase() === me)?.sessionId;
       const sessions = found.map((s) => {
         const sid = String(s.sessionId);
         const since = busy.get(sid) ?? (repoBusy && sid === newestHere ? repoBusy : null);
         return { ...s, busy: Boolean(since), busySince: since };
       });
-      // what the person wrote to this repo lately: shown at the end of the thread until the session's own record has it
-      const cut = Date.now() - 60 * 60_000;
+      // what the person wrote to this repo lately: the chat places each letter in the thread at its time (a letter is not a
+      // prompt, so the session's record never holds it as one), and marks the ones newer than the last message as waiting
+      const cut = Date.now() - 24 * 60 * 60_000;
       const fromPerson = (e: { from: { host: string; repo: string } }) => e.from.repo === "user" || /^phone-/.test(e.from.host);
       const sent = [...listInbox(200).map((r) => r.env), ...listOutbox(200).map((r) => r.env)]
         .filter((e) => fromPerson(e) && repoKey(e.to.repo) === repo && Date.parse(e.sentAt) > cut)
