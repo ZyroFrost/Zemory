@@ -1,5 +1,5 @@
 ---
-version: 27
+version: 28
 lang: vi
 ---
 
@@ -25,8 +25,11 @@ lang: vi
 
 ## 2. Card
 
-- **Hàng card chỉ chứa card** — không chart, không bảng — **ít nhất bốn**, card nào cũng có dòng %. Trang chỉ tự có 1–3 card
-  mới thì bỏ cả hàng; card mang sang từ report đang thay thì giữ và bổ sung cho đủ bốn bằng chỉ số trang đã đọc. [rp-cards]
+- **Hàng card chỉ chứa card** — không chart, không bảng — **ít nhất bốn**, card nào cũng có dòng %. [rp-cards]
+  (v28, 19/11, Dashboard Cons_Gate_102 §18: "mỗi trang có ít nhất 4 card") Trang thiếu thì bù cho đủ bốn, theo thứ tự: số liệu
+  mà biểu đồ và bảng của chính trang đang đọc, giữ bộ lọc của chúng; rồi số liệu của các trang khác cùng dashboard mà dashboard đã
+  tải. Card chỉ ra "—" thì bỏ. Không áp cho trang xuất dữ liệu (một bảng, không card) và board mà chủ đã chốt giữ card riêng (repo
+  khai báo). Thay luật v27 bỏ cả hàng khi trang chỉ có 1–3 card mới.
 - **Hàng card đứng riêng một dòng** (v10): không chart,
   donut hay bảng nào đứng cạnh nó trong cùng một hàng của lưới - chart của cùng chỉ số đặt ở hàng dưới. [rp-cards-apart]
 - **Hàng card nằm trên một hàng có cùng số panel thì thẳng mép với chúng** (v15): mỗi card rộng bằng panel bên dưới, lệch tối đa
@@ -68,7 +71,7 @@ lang: vi
 
 - **Chart có legend theo một trường thì vẽ chồng theo legend** (v13): cột hay thanh chia
   theo giá trị của legend, màu của report, mỗi phần đủ rộng (6 % bề dài) mang số của nó, tổng ở cuối thanh hay đầu cột.
-  Legend là các measure (Revenue · Ebitda cạnh nhau) không phải trường: cột nhóm cạnh nhau, số trên đầu mỗi cột (v16).
+  Legend là các measure (Revenue · EBITDA cạnh nhau) không phải trường: cột nhóm cạnh nhau, số trên đầu mỗi cột (v16).
   [rp-stacked-labels] Các chart chồng theo cùng một trường mang màu cố định của trường đó ở mọi chart của trang (mỗi giá trị một
   màu, như xếp loại A/B/C/D) - hai chart như vậy trùng màu là đúng; chart một chuỗi vẫn lấy màu chính riêng.
 - **Số của chart không đè nhau** (v13; mọi chart ở mọi board, v19 - 14/11: "số không được đè nhau… nếu trùng phải có line
@@ -79,6 +82,15 @@ lang: vi
 - **Không chữ nào dựng đứng** (v19, 14/11: "cấm dựng đứng"): số hay tên dài quá chỗ thì nghiêng 45°, không bao giờ 90° -
   không `writing-mode: vertical-*`, không xoay chữ gần một phần tư vòng; cột hẹp tới mức số nghiêng cũng không vừa thì số nằm
   trong tooltip. [rp-no-upright]
+- **Nhãn trục không bao giờ đè nhau** (v28, 19/11, Dashboard Cons_Gate_102 §16), mọi biểu đồ. Thử theo thứ tự, cái đầu tiên
+  vừa: ngang 1 dòng → xéo 45° → xuống hàng nằm ngang, tối đa 3 dòng → xuống hàng rồi xéo → biểu đồ nới rộng và cuộn ngang (độ
+  rộng có trần, app-base). Đã cuộn thì tên dài cũng xéo; vẫn quá sát thì chỉ ghi cách quãng mỗi k tên, tên bị bỏ xem trong tooltip.
+  Tên không bao giờ làm cột rộng ra. [rp-axis-labels]
+- **Cột không bao giờ dính sát nhau** (v28, §17): các cột trong một nhóm chiếm 70 % chỗ của nhóm; chật thì cột bóp nhỏ lại, không
+  xích gần nhau. [rp-bar-gap]
+- **Số trên đầu cột không chồng lên nhau** (v28, §17): số nào sắp che số đã hiện thì ẩn, xem trong tooltip (nhãn bị ẩn không tính,
+  rp-labels-apart). Phép so dùng đúng hình chữ đã vẽ - chữ xéo so theo hình đã xoay - và chạy lại khi biểu đồ chuyển sang tên xéo
+  hoặc khi cột mọc xong. [rp-bar-values-apart]
 - **Tooltip mỗi dòng một thông tin, "Trường: Giá trị"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
   số viết đủ (244.008.536.989), không cắt thành tỷ / tr / k; % và điểm giữ dạng. Máy chỉ chấm giá trị là con số; tên lấy từ dữ liệu ("Voucher: HN - Giải khát chỉ 9k") không bị chấm (v20, Dashboard 15/11). [rp-tip-field-value]
 - **Tooltip ghi đủ mọi mục của chú giải** (v22, 16/11): chart có chú giải từ hai chuỗi trở lên (combo, cột nhóm, cột chồng,
@@ -154,7 +166,8 @@ lang: vi
   bao giờ thanh dài cạnh tên sáu dòng. [rp-rank-name]
 - **Chart nào cũng phóng to riêng được** (v13, như focus mode của Power BI): một nút (`.rp-focus-btn`) trên mỗi chart và
   donut, cao bằng một chip legend và cùng hàng; bấm thì chart chiếm thân trang, hình khác ẩn, thanh trang giữ; bấm lại hay Esc thì
-  trang về như cũ. [rp-focus]
+  trang về như cũ. [rp-focus] **Phóng to không bao giờ ra trắng** (v28, 19/11, Dashboard Cons_Gate_102 §19): mọi biểu đồ,
+  bảng, card, khung chữ giữ nguyên nội dung khi phóng to. [rp-focus-whole]
 - **Trang giữ nguyên cỡ** (v15): không bao giờ thu nhỏ cho vừa màn hình (không transform scale trên trang hay một khối của nó);
   trang cao hơn màn hình thì cuộn. Từng trang một tab hay mọi trang nối nhau là cách xem; không cách nào thu nhỏ. [rp-no-page-scale]
 - **Danh sách báo cáo của phòng ban là các dòng rộng bằng trang** (v13): mỗi card báo cáo của trang
@@ -167,6 +180,12 @@ lang: vi
 - **Tên trang và tab** không mang mã phòng, không có chữ Report / Dashboard / Báo cáo; bảng chỉ một trang thì gọi là Tổng quan.
   [rp-page-name]
 - **Visual nào cũng có tiêu đề,** canh trái, một cỡ trên trang; chú giải ở trên bên trái (donut thì bên cạnh). [rp-title]
+- **Tiêu đề và chú giải chia dòng đầu theo độ dài** (v28, 19/11, Dashboard Cons_Gate_102 §7), không chia cố định một nửa: tiêu
+  đề chiếm đúng độ rộng của nó trên một dòng, chú giải lấy phần còn lại. Chỉ khi không đứng chung một dòng được thì chú giải mới
+  xuống dòng riêng, lúc đó tiêu đề được dài tối đa 2 dòng. Chú giải không bao giờ bị cắt hay che; panel rộng ra thì đo lại từ đầu,
+  panel rộng 0 px thì không đo. [rp-title-legend]
+- **Viết tắt thì viết hoa hết, không thì viết đầy đủ** (v28, §9): NQ, EBITDA - không bao giờ nửa vời ("Nq", "Ebitda"). App giữ một
+  danh sách mã duy nhất; nhãn, tiêu đề, tooltip đều đọc từ đó. [rp-abbr-caps]
 
 ## 7. Bảng giải thích
 

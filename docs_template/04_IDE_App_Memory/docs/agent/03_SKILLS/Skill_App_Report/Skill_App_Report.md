@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 27
+version: 28
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v27 #a2d3546c52c0
+from: _Store/03_SKILLS/Skill_App_Report @v28 #0ea68c970781
 ---
 
 # app-report — the report pages of an app
@@ -33,9 +33,12 @@ from: _Store/03_SKILLS/Skill_App_Report @v27 #a2d3546c52c0
 
 ## 2. Cards
 
-- **A card row holds only cards** - no chart, no table in it - **at least four**, every card with its % line. A page whose
-  own new cards would be one to three drops the row; cards carried over from the report being replaced are kept and topped
-  up to four with figures the page already reads. [rp-cards]
+- **A card row holds only cards** - no chart, no table in it - **at least four**, every card with its % line. [rp-cards]
+  (v28, 19/11, Dashboard Cons_Gate_102 §18: "mỗi trang có ít nhất 4 card") A page short of four tops them up, in this order:
+  figures its own charts and tables read, with their filters kept; then figures of the other pages of the same board that
+  the board has already loaded. A card that would show only "—" is dropped. Not for an export page (one table, no cards) or a
+  board whose owner settled its own cards (the repo declares it). This replaces the rule of v27 that dropped a row of one to
+  three new cards.
 - **The card row stands alone on its line** (v10): no
   chart, donut or table beside it in the same row of the grid - a chart of the same figures goes on the row below. [rp-cards-apart]
 - **A card row over a row of as many panels is in line with them** (v15): each card is as wide as the panel under it, edges
@@ -82,7 +85,7 @@ from: _Store/03_SKILLS/Skill_App_Report @v27 #a2d3546c52c0
 
 - **A chart with a legend of a field is stacked by that legend** (v13): its columns or
   bars are cut by the legend's values in the report's colours, every part wide enough (6 % of the length) carries its own
-  number, the total at the end of the bar or the top of the column. A legend of measures (Revenue · Ebitda side by side) is no
+  number, the total at the end of the bar or the top of the column. A legend of measures (Revenue · EBITDA side by side) is no
   field: its columns are grouped, the number over each (v16). [rp-stacked-labels] Charts stacked by the same field wear that field's fixed colours on every chart of the page (one colour per
   value, as a grade A/B/C/D) - two of them sharing a colour is right; a chart of one series still takes its own main colour.
 - **The numbers of a chart never cover each other** (v13; every chart of every board, v19 - 14/11: "số không được đè
@@ -94,6 +97,16 @@ from: _Store/03_SKILLS/Skill_App_Report @v27 #a2d3546c52c0
 - **No text stands upright** (v19, 14/11: "cấm dựng đứng"): a figure or a name too long for its room slants at 45°,
   never 90° - no `writing-mode: vertical-*`, no rotation of a text near a quarter turn; a column too narrow even for a slanted
   figure keeps it in its tip. [rp-no-upright]
+- **The names of an axis never cover each other** (v28, 19/11, Dashboard Cons_Gate_102 §16), on every chart. The ladder,
+  the first that fits: one line across → slanted 45° → wrapped across, three lines at most → wrapped and slanted → the chart
+  grows wider and scrolls sideways (its width capped, app-base). Once it scrolls a long name slants too; still too close,
+  only every k-th name is written and the ones left out are in the tip. A name never makes its column wider. [rp-axis-labels]
+- **Columns never touch** (v28, §17): the columns of one group take 70 % of the group's room; a tight chart makes its
+  columns thinner, never closer. [rp-bar-gap]
+- **The figures over the columns never stack** (v28, §17): a figure that would cover one already shown is hidden and stays
+  in the tip (a hidden label is not counted, rp-labels-apart). The test uses the drawn shape of the text - a slanted figure is
+  compared as turned - and runs again when the chart turns to slanted names and when the columns have finished growing.
+  [rp-bar-values-apart]
 - **A tip says one fact a line, "Field: Value"** (v13): `Tháng: T3` · `Xếp loại: C` · `Số NH: 15` · `Tỷ lệ: 36%`,
   every number in full (244.008.536.989), never cut to tỷ / tr / k; % and points keep their form. The check reads a value that is a figure; a name from the data ("Voucher: HN - Giải khát chỉ 9k") is not judged (v20, Dashboard 15/11). [rp-tip-field-value]
 - **A tooltip names every entry of its legend** (v22, 16/11): a chart whose legend names two series or more (a combo, grouped
@@ -181,7 +194,8 @@ from: _Store/03_SKILLS/Skill_App_Report @v27 #a2d3546c52c0
   most (the full name in the tip), never a long bar beside a name on six lines. [rp-rank-name]
 - **Every chart can be enlarged alone** (v13, as Power BI's focus mode): a button (`.rp-focus-btn`) on each chart
   and donut, as tall as a legend chip and on its line; pressed, the chart takes the page body, the others hide, the page bar
-  stays; pressed again or Escape, the page comes back. [rp-focus]
+  stays; pressed again or Escape, the page comes back. [rp-focus] **Enlarged is never blank** (v28, 19/11, Dashboard
+  Cons_Gate_102 §19): every chart, table, card and text panel keeps its whole content in focus. [rp-focus-whole]
 - **A department's list of reports is rows the width of the page** (v13): each
   report card of a catalog page is a row as wide as its page, its pages spread across that width - never a card in a narrow
   column. [rp-catalog-rows]
@@ -195,6 +209,12 @@ from: _Store/03_SKILLS/Skill_App_Report @v27 #a2d3546c52c0
   Tổng quan (Overview). [rp-page-name]
 - **Every visual has a title,** aligned left, one size on the page; legends at the top left (a donut's beside it).
   [rp-title]
+- **The title and the legend share the head by length** (v28, 19/11, Dashboard Cons_Gate_102 §7), never a fixed half: the
+  title takes its own width on one line and the legend the rest. Only when both cannot stand on one line does the legend take a
+  line of its own, and then the title may run to two lines at most. The legend is never cut or covered; a wider panel measures
+  again from the start, and a panel 0 px wide is not measured. [rp-title-legend]
+- **An abbreviation is in capitals or written out** (v28, §9): NQ, EBITDA - never half way ("Nq", "Ebitda"). The app keeps
+  one list of its codes, and every label, title and tip reads from it. [rp-abbr-caps]
 
 ## 7. Glossary
 
