@@ -3,7 +3,7 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 41
+version: 42
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
@@ -181,6 +181,8 @@ the BEHAVIOUR never ends however many times it is reported.
 · Exceptions: **source code** blocks (`pre.code`, `.fpre`) — wrapping code lines changes their meaning, so they keep horizontal scrolling · **data grids
   on phones** (§M5) — scrolling sideways INSIDE the grid's frame, the identity column pinned left; the page still never scrolls sideways.
 · Measure by machine, not by looking at screenshots: scan `scrollWidth - clientWidth > 0` on EVERY screen × EVERY sub-tab at a few frame widths (1100 · 900). Tell **`overflow:hidden` + ellipsis** (cuts text, produces NO scrollbar — valid) apart from areas that really scroll.
+· (v42, 19/11, Dashboard Cons_Gate_102: a page froze) **A width that scrolls inside a frame always has a ceiling** (8,000 px): a chart that grows to keep its names apart (app-report `rp-axis-labels`) caps the width it works out, or a few thousand groups make it millions of px and the page hangs.
+· (v42, same: BIZ_01 Franchise froze at 390 px) **Never fit text by setting it and reading its height in a loop.** Measure once, then measure the rest on a canvas (`measureText`) - every write-then-read forces the browser to lay the page out again.
 
 ### F13. Cards: a FIXED ANCHOR, related things STAND TOGETHER
 **The button cluster is anchored at the top right — keeping its position however the frame stretches; badges gather into one cluster; related things stand together.** A card has three ranks of content, and each rank is ONE separate ROW, never mixed:
