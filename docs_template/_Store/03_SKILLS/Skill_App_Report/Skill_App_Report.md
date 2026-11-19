@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 29
+version: 30
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -302,7 +302,8 @@ Cards use the four typography roles of `app-sneat-glass` (`kpi-title` · `kpi-ma
 - `FOCUS_PROBE` (v29, async) is run by the same test on each report page at a desktop width: it presses every enlarge
   button in turn, runs [rp-focus-whole] on the visual in focus, and presses it again. The seven rules of v28 have their gates
   since v29: [rp-cards] (a page of charts with no card row, a card of only "—"), [rp-axis-labels] (`data-rp-tick`),
-  [rp-bar-gap], [rp-bar-values-apart], [rp-focus-whole], [rp-title-legend], [rp-abbr-caps] (the trade's codes, plus the terms of
+  [rp-bar-gap], [rp-bar-values-apart], [rp-focus-whole], [rp-title-legend] (v30: the room is the head's line, short of the
+  enlarge button), [rp-abbr-caps] (the trade's codes, plus the terms of
   3 to 5 capitals in the page's glossary, checked on words that start with a capital); the shapes of slanted text are
   compared as turned.
 - **A board is not done until this check is green on its pages** (v15, `Rule_Gate_01_DoneMeansRun`): a count of the visuals

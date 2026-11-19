@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 28
+version: 29
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v28 #0ea68c970781
+from: _Store/03_SKILLS/Skill_App_Report @v29 #1c9250b0f25f
 ---
 
 # app-report — the report pages of an app
@@ -274,11 +274,14 @@ from: _Store/03_SKILLS/Skill_App_Report @v28 #0ea68c970781
 | `data-rp-axis="column"` · `data-rp-body` | a column chart · its plot | [rp-baseline] [rp-fill] |
 | `data-rp-mark` (`data-rp-compare`, `data-rp-value`) | each bar / slice / point | a series mark (a comparison series; its value) |
 | `data-rp-item` · `data-rp-topn` · `data-rp-rows` | items · a Top N visual · the count that exists | [rp-topn] |
-| `data-rp-label` | a data label | [rp-label] |
+| `data-rp-label` | a data label | [rp-label] [rp-bar-values-apart] |
+| `data-rp-tick` | each name of an axis (v29) | drawn shapes apart [rp-axis-labels] |
 | `data-rp-pct` = `up` · `down` · `share` | each % (card line, label, cell) | [rp-pct-*] |
 | `data-rp-target` = the % (as 85) | a % against a target | its band colour [rp-target-graded] |
 | `data-rp-cf` = `good` · `ok` · `warn` · `bad` | a value coloured by its level | one colour per level [rp-value-colour] |
 | `.rp-focus-btn` · `.bar-name` | a chart's enlarge button · a ranking bar's name | [rp-focus] [rp-rank-name] |
+| `aria-pressed="true"` on `.rp-focus-btn` · `data-rp-focused` | the visual in focus (v29) | never blank [rp-focus-whole] |
+| `data-rp-cards-own` | the page root (v29) | the owner settled the cards: no top-up to four [rp-cards] |
 | `data-tone` = a slot of the theme | each figure card | its pastel fill [rp-card-tone] |
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | a table · its total row | [rp-table-few] [rp-table-style] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | the glossary · each line | [rp-glossary] |
@@ -297,6 +300,12 @@ Cards use the four typography roles of `app-sneat-glass` (`kpi-title` · `kpi-ma
 - `SORT_PROBE` (v16, async) is run by the same test on each report page at a desktop width: it clicks the header of a figure
   column three times (asc, desc, none) and fails when the column did not sort or a panel grew wider. It is proven red on the
   two faults it was made for (no sort value; a width ratchet) by running it on the page with each fault put back.
+- `FOCUS_PROBE` (v29, async) is run by the same test on each report page at a desktop width: it presses every enlarge
+  button in turn, runs [rp-focus-whole] on the visual in focus, and presses it again. The seven rules of v28 have their gates
+  since v29: [rp-cards] (a page of charts with no card row, a card of only "—"), [rp-axis-labels] (`data-rp-tick`),
+  [rp-bar-gap], [rp-bar-values-apart], [rp-focus-whole], [rp-title-legend], [rp-abbr-caps] (the trade's codes, plus the terms of
+  3 to 5 capitals in the page's glossary, checked on words that start with a capital); the shapes of slanted text are
+  compared as turned.
 - **A board is not done until this check is green on its pages** (v15, `Rule_Gate_01_DoneMeansRun`): a count of the visuals
   drawn is not the check. The repo's test runs one board alone (`--only <path prefix>`) while it is being built.
 - Not measured by the machine yet (judged when the page is shown): chart width by groups, a donut kept in its row, a tab

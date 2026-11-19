@@ -228,15 +228,20 @@ export const EVERY_CLICK = `(async () => {
   document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await wait(300);
   const out = [];
   for (const v of visuals()) {
-    const p = [...v.querySelectorAll('[data-cf-value]')].find(e => e.getClientRects().length);
+    // (v11, Dashboard 20/11) a point of the Measure filter (data-cf-dim="measure") dims series and filters no row by design (§2)
+    const p = [...v.querySelectorAll('[data-cf-value]')].find(e => e.getClientRects().length && e.dataset.cfDim !== 'measure');
     if (!p) continue;
     const dim = p.dataset.cfDim, value = p.dataset.cfValue, whole = sig(null), others = sig(p);
-    p.dispatchEvent(new MouseEvent('click', {bubbles: true})); await wait(400);   // (v9) an svg mark has no click()
-    const again = document.querySelector('[data-cf-dim="' + CSS.escape(dim) + '"][data-cf-value="' + CSS.escape(value) + '"]');
-    const changed = sig(again) !== others;
-    again?.dispatchEvent(new MouseEvent('click', {bubbles: true})); await wait(400);
+    const point = () => document.querySelector('[data-cf-dim="' + CSS.escape(dim) + '"][data-cf-value="' + CSS.escape(value) + '"]');
+    // (v11) a large page redraws in more than 400 ms (Dashboard ops01 daily, a dev build: 1.6 s to filter, 4.3 s back): each
+    //   click waits until the page shows the change, 3 s at most - a page that never changes still fails, only later
+    const until = async f => { for (let t = 0; t < 3000; t += 100) { if (f()) return true; await wait(100); } return f(); };
+    p.dispatchEvent(new MouseEvent('click', {bubbles: true}));   // (v9) an svg mark has no click()
+    const changed = await until(() => sig(point()) !== others);
+    point()?.dispatchEvent(new MouseEvent('click', {bubbles: true}));
+    const back = await until(() => sig(null) === whole);
     if (!changed) out.push('a point of ' + dim + ' (' + value + ') filters nothing');
-    else if (sig(null) !== whole) out.push('a point of ' + dim + ': a second click does not bring the page back');
+    else if (!back) out.push('a point of ' + dim + ': a second click does not bring the page back');
   }
   return out.length ? out.join('; ') : true;
 })()`;

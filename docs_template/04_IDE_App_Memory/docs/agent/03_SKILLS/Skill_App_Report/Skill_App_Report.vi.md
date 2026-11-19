@@ -1,5 +1,5 @@
 ---
-version: 28
+version: 29
 lang: vi
 ---
 
@@ -240,11 +240,14 @@ lang: vi
 | `data-rp-axis="column"` · `data-rp-body` | chart cột · vùng vẽ | [rp-baseline] [rp-fill] |
 | `data-rp-mark` (`data-rp-compare`, `data-rp-value`) | mỗi cột / lát / điểm | dấu của chuỗi (chuỗi so sánh; giá trị) |
 | `data-rp-item` · `data-rp-topn` · `data-rp-rows` | mục · visual Top N · số mục có thật | [rp-topn] |
-| `data-rp-label` | nhãn số | [rp-label] |
+| `data-rp-label` | nhãn số | [rp-label] [rp-bar-values-apart] |
+| `data-rp-tick` | mỗi nhãn trục (v29) | hình vẽ không chạm nhau [rp-axis-labels] |
 | `data-rp-pct` = `up` · `down` · `share` | mỗi % (dòng card, nhãn, ô) | [rp-pct-*] |
 | `data-rp-target` = số % (như 85) | một % so chỉ tiêu | màu theo dải [rp-target-graded] |
 | `data-rp-cf` = `good` · `ok` · `warn` · `bad` | giá trị tô theo mức | mỗi mức một màu [rp-value-colour] |
 | `.rp-focus-btn` · `.bar-name` | nút phóng to của chart · tên của thanh xếp hạng | [rp-focus] [rp-rank-name] |
+| `aria-pressed="true"` trên `.rp-focus-btn` · `data-rp-focused` | visual đang phóng to (v29) | không bao giờ trắng [rp-focus-whole] |
+| `data-rp-cards-own` | gốc trang (v29) | chủ bảng đã chốt card riêng: không bù cho đủ bốn [rp-cards] |
 | `data-tone` = một ô màu của theme | mỗi thẻ chỉ số | nền pastel của nó [rp-card-tone] |
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | bảng · dòng tổng | [rp-table-few] [rp-table-style] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | bảng giải thích · mỗi dòng | [rp-glossary] |
@@ -262,6 +265,11 @@ Card dùng bốn vai chữ của `app-sneat-glass` (`kpi-title` · `kpi-main` ·
 - `SORT_PROBE` (v16, bất đồng bộ) do cùng bài kiểm chạy trên mỗi trang báo cáo ở khổ desktop: bấm tiêu đề một cột số ba lần
   (tăng, giảm, bỏ) và đỏ khi cột không được sắp hoặc một panel rộng ra. Đã chứng minh đỏ trên đúng hai lỗi nó sinh ra để bắt
   (không có giá trị sắp; bề ngang lớn dần) bằng cách chạy trên trang có từng lỗi được đặt lại.
+- `FOCUS_PROBE` (v29, bất đồng bộ) do cùng bài kiểm chạy trên mỗi trang báo cáo ở khổ desktop: lần lượt bấm từng nút phóng to,
+  chạy [rp-focus-whole] trên visual đang phóng, rồi bấm lại. Bảy luật của v28 có cổng máy từ v29: [rp-cards] (trang có chart mà
+  không có hàng card, card chỉ hiện "—"), [rp-axis-labels] (`data-rp-tick`), [rp-bar-gap], [rp-bar-values-apart],
+  [rp-focus-whole], [rp-title-legend], [rp-abbr-caps] (mã của ngành, cộng các mục 3 đến 5 chữ in hoa trong bảng giải thích của
+  trang, soát trên chữ mở đầu bằng chữ hoa); chữ nghiêng được so theo hình đã xoay.
 - **Bảng chưa xong khi bài kiểm này chưa xanh trên các trang của nó** (v15, `Rule_Gate_01_DoneMeansRun`): đếm đủ visual không
   phải là kiểm. Bài kiểm của repo chạy riêng một bảng (`--only <tiền tố đường dẫn>`) trong lúc dựng.
 - Máy chưa đo (xét khi trình trang): chiều rộng chart theo số nhóm, donut nằm trong hàng, tab chỉ thêm vì quá tải, màu theo nghĩa.
