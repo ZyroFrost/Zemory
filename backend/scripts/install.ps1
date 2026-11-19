@@ -133,6 +133,63 @@ function Install-Zemory {
   Say "ok  recorded the choice in $choice (the Docker command, if one is left, now points here)"
   ReloadPath
 
+  # ── 2c. The memory store comes back out of Docker (the mirror of install-docker.ps1 step 5) ──────────────────────────
+  # A machine that ran Docker keeps its live GM inside the distro; without this step the native install opens the old
+  # native GM and the real one stays behind (measured 2026-11-19: 8 GB in WSL against a 10 MB native GM of 04/11, copied
+  # by hand). Copy, prove the copy (sha256, integrity_check), keep the old native GM - never delete either side.
+  # ZEMORY_MIGRATE=0 skips it; ZEMORY_MIGRATE=plan prints the decision and writes nothing.
+  function EnvVal($file, $key) { if (Test-Path $file) { $l = Get-Content $file | Where-Object { $_ -match "^$key=" } | Select-Object -Last 1; if ($l) { $l.Split("=", 2)[1].Trim().Trim('"') } } }
+  $dEnv = Join-Path $dir ".env"
+  $dStore = EnvVal $dEnv "ZEMORY_STORE"; $dDistro = EnvVal $dEnv "ZEMORY_WSL_DISTRO"
+  $locFile = Join-Path $env:USERPROFILE ".zemory\location.json"
+  if ($env:ZEMORY_MIGRATE -ne "0" -and $dStore -and $dDistro) {
+    $unc = "\\wsl.localhost\$dDistro" + ($dStore -replace "/", "\")
+    $loc = if (Test-Path $locFile) { Get-Content $locFile -Raw | ConvertFrom-Json } else { $null }
+    $srcDb = Join-Path $unc "global-memory\global_memory.db"
+    if (-not $loc -or -not $loc.memoryRoot -or -not $loc.dataDir) {
+      Say "skip GM move: $locFile names no memoryRoot/dataDir - move it by hand (skill install-switch §2)"
+    } elseif (-not (Test-Path $srcDb)) {
+      Say "skip GM move: no Docker GM at $srcDb"
+    } else {
+      $mem = $loc.memoryRoot; $data = $loc.dataDir; $dstDb = Join-Path $mem "global_memory.db"
+      $src = Get-Item $srcDb; $dst = if (Test-Path $dstDb) { Get-Item $dstDb } else { $null }
+      $newer = (-not $dst) -or ($src.LastWriteTimeUtc -gt $dst.LastWriteTimeUtc)
+      $plan = "Docker GM $([int]($src.Length / 1MB)) MB $($src.LastWriteTimeUtc.ToString('o')) · native GM " +
+        $(if ($dst) { "$([int]($dst.Length / 1MB)) MB $($dst.LastWriteTimeUtc.ToString('o'))" } else { "none" })
+      if (-not $newer) { Say "skip GM move: the native GM is the newer one ($plan)" }
+      elseif ($env:ZEMORY_MIGRATE -eq "plan") { Say "plan: would copy the Docker GM out ($plan) into $mem, and merge $unc\data into $data" }
+      else {
+        Say "moving the Docker GM out ($plan)"
+        wsl.exe -d $dDistro -- docker stop -t 60 zemory *> $null   # no writer while the three files are copied
+        $stage = "$mem.incoming"; New-Item -ItemType Directory -Force $stage | Out-Null
+        robocopy (Join-Path $unc "global-memory") $stage global_memory.db global_memory.db-wal global_memory.db-shm /J /R:2 /W:5 /NP /NFL /NDL | Out-Null
+        if ($LASTEXITCODE -ge 8) { throw "copying the Docker GM failed (robocopy $LASTEXITCODE) - nothing was changed; $stage holds a partial copy" }
+        foreach ($f in "global_memory.db", "global_memory.db-wal") {
+          $a = Join-Path (Join-Path $unc "global-memory") $f; $b = Join-Path $stage $f
+          if ((Test-Path $a) -and ((Get-FileHash $a).Hash -ne (Get-FileHash $b).Hash)) { throw "$f copy differs from the Docker one - nothing was changed" }
+        }
+        $stamp = (Get-Date).ToString("yyyy-MM-dd"); $bk = Join-Path $data "backups"; New-Item -ItemType Directory -Force $bk, $mem | Out-Null
+        Get-ChildItem $mem -Force -File | ForEach-Object { Move-Item $_.FullName (Join-Path $bk "$($_.Name).native-old-$stamp") }
+        Get-ChildItem $stage -Force | ForEach-Object { Move-Item $_.FullName $mem }
+        Remove-Item $stage   # empty now
+        $check = node -e "const D=require(process.argv[1]);const d=new D(process.argv[2]);const r=d.pragma('integrity_check',{simple:true});d.pragma('wal_checkpoint(TRUNCATE)');console.log(r,d.prepare('SELECT COUNT(*) n FROM messages').get().n);d.close()" (Join-Path $dir "node_modules\better-sqlite3") $dstDb
+        if (-not ("$check" -match "^ok ")) { throw "the moved GM failed integrity_check ($check) - the old native GM is in $bk" }
+        Say "ok  GM moved ($check messages) - the old native GM is kept in $bk"
+        # data: the machine's identity must be the same on both sides, or the other machine meets a stranger
+        foreach ($k in "share.key", "secrets\channel\device.key") {
+          $a = Join-Path $unc "data\$k"; $b = Join-Path $data $k
+          if ((Test-Path $a) -and (Test-Path $b) -and ((Get-FileHash $a).Hash -ne (Get-FileHash $b).Hash)) { throw "$k differs between Docker and native - data left as it is; decide which identity this machine keeps" }
+        }
+        $keepRoots = if (Test-Path (Join-Path $data "config.json")) { (Get-Content (Join-Path $data "config.json") -Raw | ConvertFrom-Json).ignoredRoots } else { $null }
+        robocopy $data (Join-Path $bk "native-before-docker-merge-$stamp") /E /XD (Join-Path $data "models") (Join-Path $data "backups") /R:1 /W:2 /NP /NFL /NDL | Out-Null
+        robocopy (Join-Path $unc "data") $data /E /XD (Join-Path $unc "data\backups") (Join-Path $unc "data\cockpit") (Join-Path $unc "data\cache") /R:2 /W:5 /NP /NFL /NDL | Out-Null
+        if ($LASTEXITCODE -ge 8) { throw "merging the Docker data failed (robocopy $LASTEXITCODE) - the native data is backed up in $bk" }
+        if ($keepRoots) { node -e "const f=require('fs'),p=process.argv[1],c=JSON.parse(f.readFileSync(p,'utf8'));c.ignoredRoots=JSON.parse(process.argv[2]);f.writeFileSync(p,JSON.stringify(c,null,2))" (Join-Path $data "config.json") (ConvertTo-Json @($keepRoots) -Compress) }
+        Say "ok  Docker data merged into $data (the native one backed up first)"
+      }
+    }
+  }
+
   # ── 3. This machine's memory ─────────────────────────────────────────────────────────────────────────────────────
   # Flags only: a bare `zemory setup` asks [Y/n] and would wait for an answer.
   if ($env:ZEMORY_NO_SHORTCUT -eq "1") { zemory setup --no-shortcut } else { zemory setup --shortcut }

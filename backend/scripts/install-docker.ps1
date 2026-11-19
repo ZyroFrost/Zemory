@@ -180,6 +180,17 @@ function Install-ZemoryDocker {
     if ($edge) { $s.TargetPath = $edge; $s.Arguments = "--app=http://127.0.0.1:4444" } else { $s.TargetPath = "http://127.0.0.1:4444" }
     $ico = Join-Path $dir "backend\resources\packaging\zemory.ico"; if (Test-Path $ico) { $s.IconLocation = $ico }
     $s.Save(); Say "ok  Start Menu: Zemory (opens the cockpit)"
+    # The native install also put Zemory.lnk on the Desktop (often the OneDrive Desktop), pointing at its launch.vbs: left
+    # alone it keeps opening the native daemon the step above stopped. Point every such one at the cockpit too.
+    $desks = @([Environment]::GetFolderPath("Desktop"), (Join-Path $env:USERPROFILE "Desktop")) | Where-Object { $_ } | Select-Object -Unique
+    foreach ($d in $desks) {
+      $dl = Join-Path $d "Zemory.lnk"
+      if (-not (Test-Path $dl)) { continue }
+      $ds = (New-Object -ComObject WScript.Shell).CreateShortcut($dl)
+      if ("$($ds.TargetPath) $($ds.Arguments)" -notmatch "launch\.vbs") { continue }
+      $ds.TargetPath = $s.TargetPath; $ds.Arguments = $s.Arguments; $ds.WorkingDirectory = ""; if ($s.IconLocation) { $ds.IconLocation = $s.IconLocation }
+      $ds.Save(); Say "ok  Desktop: $dl now opens the cockpit (it opened the native launch.vbs)"
+    }
   }
   Say "done - the container restarts with the distro (restart: unless-stopped). Back to native: run install.ps1."
 }

@@ -46,17 +46,19 @@ Desktop có thể nằm trong OneDrive (`<OneDrive>\Desktop`) — quét cả hai
 5. **Cài native:** trong repo `node backend/scripts/fetch-prebuilds.mjs` · `npm ci` · `npm run build` · `npm install -g .` ·
    gỡ Run `Zemory (WSL)` (ghi lại giá trị trước khi gỡ) · `install.json` `runtime: native` · `zemory setup --shortcut` ·
    `zemory hook install` · khởi động bằng chính lối tắt (`wscript launch.vbs`) · `zemory memory scan`.
-   Tương đương `install.ps1`, trừ bước 3–4 mà `install.ps1` CHƯA làm.
+
+`install.ps1` làm đủ §2.1–5 (bước 2c lo 3–4: chỉ chép khi GM Docker mới hơn GM native; `ZEMORY_MIGRATE=plan` in quyết
+định không ghi gì, `=0` bỏ qua). Làm tay khi: `location.json` không có `memoryRoot`/`dataDir`, hoặc `share.key` /
+`device.key` hai bên khác nhau (bộ cài dừng và nói ra — người dùng chọn danh tính máy giữ lại).
 
 ## 3. Native → Docker
 
 Chạy `install-docker.ps1` (bước 4–6 của nó: dừng daemon native · gỡ Startup · `npm uninstall -g zemory` · chuyển GM native
 vào `<store>` khi GM Docker còn trống · dựng container · Run `Zemory (WSL)` · `install.json` docker · lệnh `WindowsApps\
-zemory.cmd` · lối tắt Start Menu). Rồi làm tay phần nó CHƯA làm:
-- Lối tắt **Desktop** `Zemory.lnk` (kể cả Desktop OneDrive) còn trỏ `launch.vbs` native ⇒ trỏ lại như Start Menu hoặc xoá
-  (hỏi trước khi xoá).
-- `%APPDATA%\zemory\launch.vbs` còn gọi `dist\zemory.exe` ⇒ không lối tắt nào được trỏ vào nó.
+zemory.cmd` · lối tắt Start Menu · lối tắt Desktop, kể cả Desktop OneDrive, còn trỏ `launch.vbs` native ⇒ trỏ lại như
+Start Menu). Làm tay khi:
 - GM Docker KHÔNG trống ⇒ bộ cài không chuyển GM: tự chép theo §2.3 theo chiều ngược, cùng phép kiểm.
+- `%APPDATA%\zemory\launch.vbs` còn nằm đó: vô hại khi không lối tắt nào trỏ vào nó (§4 điểm 2).
 
 ## 4. Phép kiểm "không sót bản cũ" — chạy đủ, ghi số vào `06_CHANGES`
 
