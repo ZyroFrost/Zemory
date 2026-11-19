@@ -3622,7 +3622,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
     if (p === "/memory-session") {
       const th = getSessionThread(u.searchParams.get("id") ?? "");
       if (!th) return json(res, {});
-      return json(res, { ...th, messages: withAttachments(th.messages) });
+      // `tail=N`: only the last N messages (the project chat, plan/41 §6b) - a working session runs to thousands of
+      // messages, and the whole of it over a phone's relay link takes seconds the chat cannot wait
+      const tail = Number(u.searchParams.get("tail") || 0);
+      const msgs = tail > 0 && th.messages.length > tail ? th.messages.slice(-tail) : th.messages;
+      return json(res, { ...th, messages: withAttachments(msgs), total: th.messages.length });
     }
     if (p === "/recent-messages") {
       // Recall default list (never empty): newest messages, scoped like recall.

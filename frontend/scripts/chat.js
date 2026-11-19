@@ -66,7 +66,8 @@ var zChat = (function () {
       var sig = c.sessionId + '|' + c.messages + '|' + c.endedAt + '|' + c.busy;
       if (sig === lastSig) return;
       lastSig = sig;
-      return zGet('/memory-session?id=' + encodeURIComponent(c.sessionId)).then(drawThread);
+      // the last part only: the full session is Recall › Sessions' job
+      return zGet('/memory-session?id=' + encodeURIComponent(c.sessionId) + '&tail=120').then(drawThread);
     }).catch(function () {}).finally(function () { busy = false; });
   }
 
