@@ -107,6 +107,14 @@ function send(args: string[]): void {
     },
     ...(reply ? { replyTo: reply } : {}),
   });
+  // A letter to this machine's own person never crosses a link: queueMail delivered it into this inbox already, where
+  // the project chat shows it. Reporting it as "queued, waiting for a paired machine" sent people chasing a stuck letter.
+  if (sameHost(addr.host, hostname())) {
+    console.log(
+      `zemory msg send: delivered ${env.id} to ${addr.host}/${addr.repo} - this machine's inbox, shown in the project chat`,
+    );
+    return;
+  }
   console.log(
     `zemory msg send: queued ${env.id} for ${addr.host}/${addr.repo} - the open link carries it within seconds, else on the next connect`,
   );
