@@ -193,6 +193,8 @@
     if(body)body.classList.toggle('frozen',!on);
     document.querySelectorAll('[data-needs-drive]').forEach(function(el){el.classList.toggle('frozen',!on);});
     if(!on)return;
+    // the first count after a start is still running: say so, never draw its placeholder zeros as "0% · up to date"
+    if(d&&d.counting){lbl.textContent='…';var ct=zid('driveSyncedTxt');if(ct)ct.textContent=t('st.loading');zset('drvCount','…');return;}
     var pct=Math.max(0,Math.min(100,(d&&d.syncPercent!=null)?d.syncPercent:0));
     if(pct>=100)arc.removeAttribute('stroke-dasharray'); // solid ring — no dash seam, no track sliver
     else arc.setAttribute('stroke-dasharray',(pct/100*DONUT_C).toFixed(1)+' '+DONUT_C.toFixed(1));

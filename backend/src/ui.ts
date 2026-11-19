@@ -448,6 +448,8 @@ type DriveProgress = {
   newestAt: string | null;
   /** Worker hỏng ⇒ số của lượt đếm được gần nhất (hoặc 0 khi chưa đếm được lần nào), không phải số tươi. */
   stale?: true;
+  /** No count has landed yet (the first one after a start is still running): the numbers are placeholders, not zeros. */
+  counting?: true;
 };
 
 /**
@@ -462,8 +464,16 @@ const DRIVE_PROG_TTL_MS = 5_000;
 let driveProgCache: { at: number; v: DriveProgress } | null = null;
 let driveProgInFlight: Promise<DriveProgress> | null = null;
 const DRIVE_PROG_NONE: DriveProgress = { syncPercent: 0, syncedMessages: 0, totalMessages: 0, pendingMessages: 0, lastPushAt: null, newestAt: null };
-async function driveSyncProgressAsync(): Promise<DriveProgress> {
+async function driveSyncProgressAsync(opts: { wait?: boolean } = {}): Promise<DriveProgress> {
   if (driveProgCache && Date.now() - driveProgCache.at < DRIVE_PROG_TTL_MS) return driveProgCache.v;
+  const pending = driveProgressCount();
+  if (opts.wait !== false) return pending;
+  // The dashboard does not wait for the count: the first one after a start runs a full scan of a cold store (measured
+  // 2026-11-19: the worker hit its 60 s cap three times, and the whole /memory-status - the project cards with it -
+  // waited behind it). The last count, or "counting", now; the next call reads the fresh one.
+  return driveProgCache ? driveProgCache.v : { ...DRIVE_PROG_NONE, counting: true };
+}
+function driveProgressCount(): Promise<DriveProgress> {
   if (!driveProgInFlight) {
     driveProgInFlight = (async () => {
       const c = await driveCountsInWorker(currentMemoryDb(), `drive:${hostname()}`, (why) =>
@@ -570,7 +580,7 @@ function driveHealthNow(prog: DriveProgress): ReturnType<typeof syncHealthOf> {
 }
 
 async function driveSummary(): Promise<DriveSummary> {
-  const prog = await driveSyncProgressAsync();
+  const prog = await driveSyncProgressAsync({ wait: false });
   const probe = probeDrive(getDriveDir());
   // the cockpit shows the folder the way the user named it on the host, not the container's mount of it
   return { ...probe, path: toHostPath(probe.path), on: getDriveOn(), level: getSyncLevel(), atts: getSyncAttachments(), ...prog, health: driveHealthNow(prog) };
