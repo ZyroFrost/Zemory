@@ -171,6 +171,14 @@ export function healDriveMount(env, o = {}) {
   const container = env.ZEMORY_CONTAINER || "zemory";
   // restart unless a host command (`docker exec … zemory <args>`, seen as `node /usr/local/bin/zemory`) is running inside
   const restart = (done, why) => {
+    // A stopped container stays stopped: `docker restart` STARTS a stopped one, and the exec below cannot see inside it, so
+    // a container stopped on purpose (the machine moved to the native install) came back at the next hook of any session
+    // (measured 2026-11-19, 10:05:26Z). Healing a mount is never a reason to revive what someone stopped.
+    const state = run(["--exec", "docker", "inspect", "-f", "{{.State.Running}}", container]);
+    if (String(state.stdout ?? "").trim() !== "true") {
+      log(`skipped (${why}): container ${container} is not running - left stopped`);
+      return "stopped";
+    }
     const r = run(["--exec", "docker", "exec", container, "sh", "-c", "ps -eo args | grep -c '^node /usr/local/bin/zemory '"]);
     const busy = Number.parseInt(String(r.stdout ?? "").trim(), 10) || 0;
     if (busy > 0) {
