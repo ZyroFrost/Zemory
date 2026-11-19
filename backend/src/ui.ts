@@ -1144,7 +1144,7 @@ const DASH_TTL_MS = 60_000;
 /** Full-table scans (token sum, embed backlog) — barely move between scans. */
 const HEAVY_TTL_MS = 300_000;
 
-let dashCache: { at: number; value: Record<string, unknown> } | null = null;
+let dashCache: { at: number; value: Record<string, unknown>; ttl?: number } | null = null;
 let heavyCache: {
   at: number;
   value: { tokensEst: number; count: number; remaining: number; covered: number; embeddable: number; outOfScope: number };
@@ -1213,12 +1213,14 @@ function saveHeavyCache(): void {
 /** Drop cached stats after anything that actually changes the memory. */
 function invalidateDashboard(): void {
   dashCache = null;
-  heavyCache = null;
+  // Mark the heavy numbers old, never drop them: this runs after EVERY scan/sync - on a busy machine after every turn -
+  // and a dropped cache made the next /memory-status wait for a full recount (measured 2026-11-19: heavy 57-157 s, the
+  // project cards held behind it). Old numbers now, the recount in the background (heavyStatsAsync).
+  if (heavyCache) heavyCache.at = 0;
   markConnectionsStale();
-  // KHÔNG xoá bản ướp trên đĩa. Hàm này chạy sau MỖI lượt scan/sync, nên xoá ở đây là xoá đúng thứ
-  // vừa ghi ⇒ lớp ướp không bao giờ sống tới lần khởi động sau (đo: vẫn 54,6 s, y như chưa vá).
-  // Không cần xoá vẫn đúng: `loadHeavyCache()` chỉ đọc đĩa một lần mỗi tiến trình, nên `heavyCache
-  // = null` ở trên là đủ để lượt sau tính lại — xem `heavyDiskLoaded`.
+  // The copy on disk is not deleted either: this runs after every scan/sync, so deleting it would delete what was just
+  // written and the copy would never live to the next start (measured: still 54.6 s, as if unfixed). The stale mark
+  // above is enough for the next call to recount - `loadHeavyCache()` reads the disk once per process (heavyDiskLoaded).
 }
 
 /**
@@ -1355,7 +1357,7 @@ function liveFlags(): Record<string, unknown> {
 
 async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown> {
   const now = Date.now();
-  if (!opts.fresh && dashCache && now - dashCache.at < DASH_TTL_MS) {
+  if (!opts.fresh && dashCache && now - dashCache.at < (dashCache.ttl ?? DASH_TTL_MS)) {
     return { ...dashCache.value, ...liveFlags(), cached: true, cachedAgeMs: now - dashCache.at };
   }
   if (opts.fresh) invalidateDashboard();
@@ -1466,7 +1468,9 @@ async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown>
   // ngay sau khi khởi động daemon **timeout hai lần** (45 s rồi 240 s).
   // Bằng chứng nội tại rằng đây là SÓT, không phải chủ ý: nhánh async ở `heavyStatsAsync` đã dùng
   // `Date.now()` lúc hoàn tất từ trước (hai chỗ), chỉ hai đường đồng bộ này còn dùng mốc vào.
-  dashCache = { at: Date.now(), value: payload };
+  // built on old heavy numbers (their recount is running): hold it 5 s, not the full TTL, so the fresh ones show soon
+  const heavyOld = !heavyCache || Date.now() - heavyCache.at >= HEAVY_TTL_MS;
+  dashCache = { at: Date.now(), value: payload, ttl: heavyOld ? 5_000 : DASH_TTL_MS };
   return { ...payload, cached: false, cachedAgeMs: 0 };
 }
 
