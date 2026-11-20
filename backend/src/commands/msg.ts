@@ -22,6 +22,7 @@ import {
   parseAddress,
   queueMail,
   landedSince,
+  pidAlive,
   registerWaiter,
   repoKey,
   sameHost,
@@ -128,6 +129,12 @@ function send(args: string[]): void {
   }
 }
 
+/** The process that started this one is gone (a stopped background task): nobody reads this output any more. */
+// ZEMORY_WAITER_PARENT names the process to outlive instead (tests: Windows ends a detached child with its parent
+// inside a test runner, so the real orphan case cannot be staged there)
+const PARENT = Number(process.env.ZEMORY_WAITER_PARENT) || process.ppid;
+const orphaned = (): boolean => PARENT > 1 && !pidAlive(PARENT);
+
 async function wait(args: string[]): Promise<void> {
   const t = flag(args, "--timeout");
   const timeoutS = t === null ? 0 : Number(t);
@@ -175,6 +182,9 @@ async function wait(args: string[]): Promise<void> {
       process.exitCode = 2;
       return;
     }
+    // orphaned (20/11: Claude Code's TaskStop ends the shell, the node child lived on) ⇒ leave: a waiter nobody hears
+    // only blocks the hook from asking for a live one
+    if (orphaned()) return;
     await new Promise((r) => setTimeout(r, 1000));
   }
 }
@@ -219,6 +229,9 @@ async function watch(args: string[]): Promise<void> {
       for (const r of rows) printLetter(r);
       if (!keep) markRead(rows.map((r) => r.env.id));
     }
+    // orphaned (20/11: Claude Code's TaskStop ends the shell, the node child lived on) ⇒ leave: a waiter nobody hears
+    // only blocks the hook from asking for a live one
+    if (orphaned()) return;
     await new Promise((r) => setTimeout(r, 1000));
   }
 }

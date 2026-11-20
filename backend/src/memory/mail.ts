@@ -364,7 +364,7 @@ export function waitersDir(machineDir = currentMemoryDir()): string {
 
 const safe = (s: string): string => s.replace(/[^\w.-]/g, "_").slice(0, 80) || "_";
 
-function pidAlive(pid: number): boolean {
+export function pidAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
