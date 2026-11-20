@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 32
+version: 33
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v32 #95c0e2ed2fd7
+from: _Store/03_SKILLS/Skill_App_Report @v33 #5183b809f0f0
 ---
 
 # app-report — the report pages of an app
@@ -60,7 +60,8 @@ from: _Store/03_SKILLS/Skill_App_Report @v32 #95c0e2ed2fd7
 - **A figure that fits one line never wraps** (v25, 18/11: "88.76 %" broke in two beside a bar with room to spare): a
   data label, the value of a bar, a card figure and a table number stand on one line; a bar chart gives up bar length so its
   figures fit (the value column as wide as the longest figure, `white-space: nowrap`). Only a name wraps, to two lines at most.
-  [rp-figure-one-line]
+  A name clamped to two lines (`-webkit-line-clamp`, or a box that hides its overflow) counts the lines it shows, not the
+  lines the clamp hides (v33, Dashboard 20/11). [rp-figure-one-line]
 - **A card title fits its card;** a long one is abbreviated (the qualifying clause dropped, the full meaning in the page's
   glossary), never by shrinking the font of one card - the titles of a row share one size, and so do the figures.
   [rp-card-label]
@@ -287,6 +288,7 @@ from: _Store/03_SKILLS/Skill_App_Report @v32 #95c0e2ed2fd7
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | the glossary · each line | [rp-glossary] |
 | `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | a number cell of a table · its raw value | [rp-num-format] |
 | `data-rp-id` | a cell or column of codes (an employee's 03163) | not a number [rp-num-format] |
+| `data-rp-unit` = `bn` · `m` · `k` | a money cell of a column held in one unit (v33): under the person's `auto` it stands in that unit, never stepping down (-770000 in `m` = -0,8 tr); a unit the person chose wins | [rp-num-format] [num-format-works] |
 | `data-rp-name` | a cell holding the name of one thing from the data (a material "Thớt nhựa (…), 25cm, cái") | one fact: its commas are no list [one-fact] (v20) |
 
 Cards use the four typography roles of `app-sneat-glass` (`kpi-title` · `kpi-main` · `kpi-percentage` · `kpi-secondary`).
