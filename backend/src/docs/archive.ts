@@ -350,13 +350,14 @@ export function archiveChanges(
 
   // Prepend the moved block (newest-of-moved on top) to the archive file.
   const archivePath = archiveOf(harnessPaths(ctx).archive, mainPath, "changes");
-  const movedText = relinkFrom(lines.slice(splitLine).join(eol).replace(/\s+$/, ""), dirname(mainPath), dirname(archivePath)) + "\n";
   // XEM TRƯỚC (xem `ArchiveOptions`): đếm xong thì dừng, không ghi byte nào.
   if (opts.dryRun) return { moved, activeLines: keptText.split(/\r?\n/).length, archivePath };
   mkdirSync(dirname(archivePath), { recursive: true });
   const prev = existsSync(archivePath) ? readTextFile(archivePath) : "";
   const prevBody = prev.startsWith(ARCHIVE_INTRO) ? prev.slice(ARCHIVE_INTRO.length) : prev;
-  writeFileAtomic(archivePath, toEol(ARCHIVE_INTRO + movedText + (prevBody.trim() ? "\n" + prevBody : ""), eol));
+  const movedText = notYetArchived(lines.slice(splitLine), prevBody, (t) => relinkFrom(t, dirname(mainPath), dirname(archivePath)));
+  const body = movedText ? movedText + "\n" + (prevBody.trim() ? "\n" + prevBody : "") : prevBody;
+  writeFileAtomic(archivePath, toEol(ARCHIVE_INTRO + body, eol));
   // backup: đây là thao tác PHÁ HUỶ (cắt ngắn NGUỒN changelog) — giữ .bak để lùi được,
   // nhưng đặt ở attic/ chứ không cạnh file (xem bakDir).
   writeFileAtomic(mainPath, keptText, { backupDir: bakDir(ctx) });
@@ -368,6 +369,25 @@ export function archiveChanges(
   importChangelog(mainPath, ctx.hostRoot ?? ctx.projectRoot, dbPath, { replace: true });
   importChangelog(archivePath, ctx.hostRoot ?? ctx.projectRoot, dbPath, { replace: true, archived: true });
   return { moved, activeLines: keptText.split(/\r?\n/).length, archivePath };
+}
+
+/**
+ * The moved entries the archive does not hold yet, relinked and joined (newest first, as they stood). An entry whose
+ * text already stands in the archive word for word is left out: measured 2026-11-21 on the PC, the laptop had archived
+ * 13 entries, the archive reached the PC by git while the PC's active file still held them, and the PC's archive run
+ * copied all 13 in again - validate then reported 13 duplicate keys. Same key with OTHER text is still copied (both
+ * kept, validate names the clash): dropping a different text would lose it.
+ */
+export function notYetArchived(movedLines: string[], archiveBody: string, relink: (t: string) => string): string {
+  const have = archiveBody.replace(/\r\n/g, "\n");
+  const heads = entryHeads(movedLines);
+  const starts = heads.length && heads[0] === 0 ? heads : [0, ...heads];
+  const out: string[] = [];
+  for (let i = 0; i < starts.length; i++) {
+    const entry = relink(movedLines.slice(starts[i], starts[i + 1] ?? movedLines.length).join("\n").replace(/\s+$/, ""));
+    if (entry && !have.includes(entry)) out.push(entry);
+  }
+  return out.join("\n\n");
 }
 
 /** The archive file of a ledger: the one the archive folder already has (under any name the ledger has had), else the

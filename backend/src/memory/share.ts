@@ -2714,8 +2714,10 @@ export async function vectorCatchUp(opts: {
     // Phép đếm này gần như miễn phí: kho tạm đã dựng xong ở bước ①, chỉ thêm hai câu COUNT.
     let probeSessions = 0;
     let probeMessages = 0;
-    const p = new Database(probe, { readonly: true });
-    try {
+    // no segment rebuilt (a one-segment channel whose segment is unreadable) leaves no probe file: the channel then counts
+    // 0, which is what it holds - opening it threw SQLITE_CANTOPEN and hid the UNREADABLE verdict (measured 20/11)
+    const p = existsSync(probe) ? new Database(probe, { readonly: true }) : null;
+    if (p) try {
       probeSessions = (p.prepare(Q.countSessions).get() as { c: number }).c;
       probeMessages = (p.prepare(Q.countMessages).get() as { c: number }).c;
       const none = !hasVecTable(p);

@@ -804,7 +804,11 @@ export function setP2pPeerAddrs(map: Record<string, string[]>): void {
 
 /** Cổng lớp kênh nghe. 0 ⇒ để hệ tự chọn (dùng cho test). */
 export function getP2pPort(): number {
-  const v = Number(read().p2pPort);
+  const raw = read().p2pPort;
+  // an explicit 0 stays 0 so the OS picks a free port (measured 20/11: read as 21038, the gate's channel-serve tests
+  // fought the running daemon for its real port and failed EADDRINUSE); only a missing or bad value takes the default
+  if (raw === 0) return 0;
+  const v = Number(raw);
   return Number.isFinite(v) && v > 0 && v < 65536 ? v : 21038;
 }
 export function setP2pPort(port: number): void {
