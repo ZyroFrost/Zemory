@@ -4595,6 +4595,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // the prompt hook's harness check walks a repo tree: in the daemon it runs in a worker thread, never on this loop (2026-11-09)
   deferHarnessCheck((here, notePath) => void harnessNoteInWorker(here, notePath));
   hookPool()?.warm(); // the hook workers start with the daemon, not on the first prompt
+  // a running turn reaches the GM while it runs, not at its end (jobs/live-ingest.ts): the fast lane ingests what queued
+  {
+    const sizes = new Map<string, number>();
+    setInterval(() => {
+      void import("./jobs/live-ingest.js").then((m) => m.liveIngestTick(sizes)).catch(() => {});
+    }, 3_000).unref();
+  }
   // every letter of the mail store into the GM (idempotent): letters from before 4.19.9, or one whose GM write failed
   setTimeout(() => {
     void import("./memory/mail-gm.js")

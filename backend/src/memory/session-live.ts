@@ -19,7 +19,10 @@ export function markBusy(payload: Record<string, unknown>, dir = liveDir()): voi
   if (!ID_RE.test(sid)) return;
   try {
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, `${sid}.json`), JSON.stringify({ since: new Date().toISOString(), cwd: String(payload.cwd ?? "") }));
+    // the transcript too: while the turn runs the daemon ingests what it grows by (live-ingest.ts), so the chat on the
+    // phone shows each step within seconds instead of the whole turn at its end
+    const transcript = String(payload.transcript_path ?? payload.transcriptPath ?? "");
+    writeFileSync(join(dir, `${sid}.json`), JSON.stringify({ since: new Date().toISOString(), cwd: String(payload.cwd ?? ""), ...(transcript ? { transcript } : {}) }));
   } catch {
     /* fail-open */
   }
@@ -74,6 +77,24 @@ export function busyRepos(dir = liveDir(), now = Date.now()): Map<string, string
 export function busySessions(dir = liveDir(), now = Date.now()): Map<string, string> {
   const out = new Map<string, string>();
   for (const [k, v] of busyMarks(dir, now)) if (!k.startsWith("repo~")) out.set(k, v);
+  return out;
+}
+
+/** Sessions working now whose prompt hook named their transcript: what live-ingest.ts follows. */
+export function busyTranscripts(dir = liveDir(), now = Date.now()): { session: string; transcript: string }[] {
+  const out: { session: string; transcript: string }[] = [];
+  if (!existsSync(dir)) return out;
+  for (const f of readdirSync(dir)) {
+    if (!f.endsWith(".json") || f.startsWith("repo~")) continue;
+    try {
+      const m = JSON.parse(readFileSync(join(dir, f), "utf8")) as { since?: unknown; transcript?: unknown };
+      const t = Date.parse(String(m.since ?? ""));
+      if (Number.isFinite(t) && now - t < LIVE_STALE_MS && typeof m.transcript === "string" && m.transcript)
+        out.push({ session: f.slice(0, -5), transcript: m.transcript });
+    } catch {
+      /* a mark being written: next look */
+    }
+  }
   return out;
 }
 
