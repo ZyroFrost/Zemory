@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 34
+version: 35
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v34 #8a904c166235
+from: _Store/03_SKILLS/Skill_App_Report @v35 #19efb408a250
 ---
 
 # app-report — the report pages of an app
@@ -131,8 +131,11 @@ from: _Store/03_SKILLS/Skill_App_Report @v34 #8a904c166235
   only; a % column coloured by its own measure (§1); heat maps (intensity colour) are kept. Column headers are reader's words,
   never field names (`chi_tieu`, `StoreName2`). [rp-table-style]
 - **A table is not for little information:** one row ⇒ a card with several values; one dimension with six values or fewer
-  (and no column field) ⇒ a chart, measures of other units in its tooltip (v11) - also when the report being replaced drew it as a table, and also when it has several
-  measures. A detail table (one row per record) is exempt; a table of few groups is never declared one. [rp-table-few]
+  (and no column field) ⇒ a chart, measures of other units in its tooltip (v11), also when it has several measures. A table
+  that is a visual of the report it rebuilds (`data-pbi-visual` on it or a parent) stays a table, however few groups - the
+  report is read as it is (v35, the user 20/11, Dashboard Cons_Gate_102 §1; replaces v11's "also when the report drew it as a
+  table"); a one-row table is a card all the same. A detail table (one row per record) is exempt; a table of few groups is
+  never declared one. [rp-table-few]
 - **Nothing scrolls sideways inside its frame, and no table spills out of its panel** (column widths are measured at first draw, so headers may wrap; a phone scrolls a data grid inside its frame, app-base M5). A table spread over periods shows only the latest ones (the window follows
   the page filter); columns are as wide as their longest figure, all fitting the frame; figures that still do not fit switch
   to millions with one decimal. Scrolling down is normal. A table's own sideways box (`table-boxed` of app-sneat-glass) is no
@@ -286,6 +289,7 @@ from: _Store/03_SKILLS/Skill_App_Report @v34 #8a904c166235
 | `data-rp-cards-own` | the page root (v29) | the owner settled the cards: no top-up to four [rp-cards] |
 | `data-tone` = a slot of the theme | each figure card | its pastel fill [rp-card-tone] |
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | a table · its total row | [rp-table-few] [rp-table-style] |
+| `data-pbi-visual` (on the visual or a parent) | the visual is one of the report it rebuilds: a table of few groups stays a table (v35) | [rp-table-few] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | the glossary · each line | [rp-glossary] |
 | `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | a number cell of a table · its raw value | [rp-num-format] |
 | `data-rp-id` | a cell or column of codes (an employee's 03163) | not a number [rp-num-format] |

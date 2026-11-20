@@ -448,11 +448,13 @@ export const RULES = [
       }
     }
     return true;`),
-  rule('rp-table-few', 'a table is not used for little information: one row ⇒ a card; one dimension with six values or fewer ⇒ a chart', `
+  rule('rp-table-few', 'a table is not used for little information: one row ⇒ a card; one dimension with six values or fewer ⇒ a chart, unless the table is a visual of the report it rebuilds (data-pbi-visual, v35)', `
     for (const v of vis().filter(v => v.dataset.rpVisual === 'table' && !v.hasAttribute('data-rp-detail'))) {
       const rows = [...v.querySelectorAll('tbody tr')].filter(r => r.getClientRects().length && !r.hasAttribute('data-rp-total'));
       const dims = Number(v.dataset.rpDims || 1), cap = Number(v.dataset.rpRows || rows.length);
       if (cap === 1) return 'a one-row table (use a card): ' + name(v);
+      // (v35, the user 20/11 through Dashboard Cons_Gate_102 §1) a table the report itself draws stays a table, however few groups
+      if (v.closest('[data-pbi-visual]')) continue;
       if (dims === 1 && cap <= 6) return 'a table of ' + cap + ' groups (use a chart): ' + name(v);
     }
     return true;`),
@@ -957,7 +959,7 @@ export const SELF_TEST = {
     `<i data-rp-mark data-tip="Năm: 2026\\nDoanh thu: 1.500" style="height:90px;background:rgb(230, 160, 40);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">90</span></i></div></div>` +
     `<div class="card" data-rp-visual="chart" data-rp-fields="store" style="flex:1;position:relative"><h6 data-rp-title>Xếp hạng</h6><button class="rp-focus-btn" style="position:absolute;top:2px;right:2px">+</button>` +
     `<div class="bar-row" style="display:flex;width:400px"><span class="bar-name" style="width:35%">Nhà hàng A</span><div style="flex:1"><i data-rp-mark data-tip="Voucher: Quán A chỉ 9k\\nDoanh thu: 100" style="display:block;height:8px;width:80%;background:rgb(0, 150, 170)"></i></div></div></div></div>` +
-    `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Đạt chỉ tiêu</h6><table><thead><tr><th>Nhà</th><th>% Target</th></tr></thead><tbody>` +
+    `<div class="row"><div class="card" data-rp-visual="table" data-pbi-visual="v-target" style="flex:1"><h6 data-rp-title>Đạt chỉ tiêu</h6><table><thead><tr><th>Nhà</th><th>% Target</th></tr></thead><tbody>` +
     [[30, 'rgb(197, 30, 36)'], [55, 'rgb(240, 140, 0)'], [85, 'rgb(230, 190, 0)'], [104, 'rgb(0, 122, 54)']].map(([v, c], i) => `<tr><td>N${i}</td><td data-rp-target="${v}" data-rp-raw="${v / 100}" data-rp-pct="share" data-rp-cf="${['bad', 'warn', 'ok', 'good'][i]}" data-rp-num="pct" style="background:${c}">${v},0%</td></tr>`).join('') +
     `</tbody></table></div></div>` +
     // (v29) a column chart in focus: columns apart, slanted axis names and figures that keep apart, all of it shown
@@ -983,7 +985,7 @@ export const SELF_TEST = {
     `<h6 data-rp-title style="font-size:18px;text-align:center">TC theo giờ</h6><div class="bars" data-rp-body style="overflow-x:auto;justify-content:flex-start">` +
     `<div style="min-width:900px;display:flex;align-items:flex-end;height:100px;padding-bottom:20px"><i data-rp-mark data-rp-item style="height:40px;width:20px;background:rgb(61, 126, 191)"></i>` +
     `<i data-rp-mark data-rp-compare style="height:30px;width:20px;background:rgb(255, 0, 0)"></i><span data-rp-label style="background:#fff">12%</span></div></div></div></div>` +
-    `<div class="row"><div class="card" data-rp-visual="table" data-rp-dims="1" style="width:400px"><h6 data-rp-title>Một dòng</h6><table><thead><tr><th style="font-weight:400;background:none">a</th></tr></thead>` +
+    `<div class="row"><div class="card" data-rp-visual="table" data-rp-dims="1" data-pbi-visual="v-one" style="width:400px"><h6 data-rp-title>Một dòng</h6><table><thead><tr><th style="font-weight:400;background:none">a</th></tr></thead>` +
     `<tbody><tr><td style="border-left:1px solid #000">1</td></tr></tbody></table></div><div class="card" style="width:200px"><svg width="60" height="60"></svg></div></div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="width:403px"><h6 data-rp-title>Dài</h6><div class="wrap" style="max-height:60px">` +
     `<table><thead><tr><th>a</th></tr></thead><tbody>${Array.from({length: 20}, (_, i) => `<tr><td>${i}</td></tr>`).join('')}</tbody></table></div></div>` +

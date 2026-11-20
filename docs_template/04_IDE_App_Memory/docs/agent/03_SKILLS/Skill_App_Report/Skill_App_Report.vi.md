@@ -1,5 +1,5 @@
 ---
-version: 34
+version: 35
 lang: vi
 ---
 
@@ -112,9 +112,10 @@ lang: vi
 - **Mọi bảng một kiểu:** header đậm có nền, dòng xen màu, dòng tổng đậm, chỉ kẻ ngang; cột % tô theo chính chỉ số đó (§1);
   heat map (màu theo cường độ) được giữ. Tên cột là chữ người đọc, không để tên field (`chi_tieu`, `StoreName2`). [rp-table-style]
 - **Bảng không dùng cho ít thông tin:** một dòng ⇒ card nhiều giá trị; một chiều ≤ 6 giá trị (không có trường cột) ⇒ chart,
-  chỉ số khác đơn vị để trong tooltip (v11) - kể cả
-  khi report đang thay vẽ nó thành bảng, và kể cả khi nó có nhiều measure. Bảng chi tiết (mỗi dòng một bản ghi) được miễn;
-  bảng ít nhóm không bao giờ được khai là bảng chi tiết. [rp-table-few]
+  chỉ số khác đơn vị để trong tooltip (v11), kể cả khi nó có nhiều measure. Bảng là visual của chính report đang dựng lại
+  (`data-pbi-visual` trên nó hoặc khung cha) thì giữ là bảng dù ít nhóm - report đọc đúng như nó là (v35, user 20/11, Dashboard
+  Cons_Gate_102 §1; thay câu "kể cả khi report vẽ nó thành bảng" của v11); bảng một dòng thì vẫn là card. Bảng chi tiết (mỗi
+  dòng một bản ghi) được miễn; bảng ít nhóm không bao giờ được khai là bảng chi tiết. [rp-table-few]
 - **Không gì cuộn ngang trong khung, không bảng nào tràn ra ngoài panel** (bề rộng cột đo lúc vẽ lần đầu, nên header được xuống dòng; điện thoại cho bảng dữ liệu cuộn ngang trong khung, app-base M5). Bảng trải theo kỳ chỉ hiện các kỳ gần nhất (cửa sổ đi theo bộ lọc trang); cột rộng
   vừa số dài nhất, tổng vừa khung; vẫn không vừa thì đổi sang triệu một chữ số lẻ. Cuộn dọc là bình thường. Hộp cuộn ngang riêng của
   bảng (`table-boxed` của app-sneat-glass) không phải là cuộn khi bảng vừa nó: chỉ bảng rộng hơn panel, hay hộp có nội dung tràn, mới
@@ -253,6 +254,7 @@ lang: vi
 | `data-rp-cards-own` | gốc trang (v29) | chủ bảng đã chốt card riêng: không bù cho đủ bốn [rp-cards] |
 | `data-tone` = một ô màu của theme | mỗi thẻ chỉ số | nền pastel của nó [rp-card-tone] |
 | `data-rp-dims` · `data-rp-rows` · `data-rp-detail` · `data-rp-total` | bảng · dòng tổng | [rp-table-few] [rp-table-style] |
+| `data-pbi-visual` (trên visual hoặc khung cha) | visual là của chính report đang dựng lại: bảng ít nhóm giữ là bảng (v35) | [rp-table-few] |
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | bảng giải thích · mỗi dòng | [rp-glossary] |
 | `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | ô số của bảng · giá trị gốc | [rp-num-format] |
 | `data-rp-id` | ô hay cột mã (mã nhân viên 03163) | không phải số [rp-num-format] |
