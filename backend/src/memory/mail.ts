@@ -6,7 +6,7 @@
 // sending and reading are tool calls in a transcript. Second machine (02-1): the letters themselves are what crosses,
 // over the channel; the box state is per machine on purpose.
 import { randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { basename, dirname, join } from "node:path";
 import Database from "better-sqlite3";
@@ -326,4 +326,93 @@ export function mailHooks(path?: string): MailHooks {
     receive: (env, from) => void receiveMail(env, from, path),
     acked: (id) => void markAcked(id, path),
   };
+}
+
+// ── Waiters (user 20/11: "msg watch phải luôn tự bật cho mọi phiên") ─────────────────────────────────────────────────
+// Only a background task wakes an IDLE session, and it wakes only the session that started it. Measured on the PC
+// 20/11: a session with no waiter left two letters unread for about an hour, until the person typed. So every
+// `msg wait`/`msg watch` started for a session registers here (one file per process, removed on exit), and the Stop hook
+// asks "does THIS session still have a live waiter?" - a waiter that fired on a letter, or was reaped for low memory,
+// is gone, and the hook has the agent arm a new one.
+export interface Waiter {
+  pid: number;
+  repo: string;
+  session: string;
+  startedAt: string;
+}
+
+export function waitersDir(machineDir = currentMemoryDir()): string {
+  return join(machineDir, "mail", "waiters");
+}
+
+const safe = (s: string): string => s.replace(/[^\w.-]/g, "_").slice(0, 80) || "_";
+
+function pidAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    return (e as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/** Record this process as a waiter for `session` (and `repo`); the file goes when the process exits. */
+export function registerWaiter(repo: string, session: string, dir = waitersDir()): string {
+  mkdirSync(dir, { recursive: true });
+  const w: Waiter = { pid: process.pid, repo: repoKey(repo || ""), session, startedAt: new Date().toISOString() };
+  const file = join(dir, `${safe(session || "nosession")}.${process.pid}.json`);
+  writeFileSync(file, JSON.stringify(w));
+  if (session) writeFileSync(join(dir, `${safe(session)}.last`), w.startedAt);
+  const drop = (): void => {
+    try {
+      rmSync(file, { force: true });
+    } catch {
+      /* the next reader drops a dead pid's file */
+    }
+  };
+  process.once("exit", drop);
+  for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) process.once(sig, () => (drop(), process.exit(130)));
+  return file;
+}
+
+/** The live waiters (a dead pid's file is removed on the way). */
+export function liveWaiters(dir = waitersDir()): Waiter[] {
+  let names: string[];
+  try {
+    names = readdirSync(dir).filter((n) => n.endsWith(".json"));
+  } catch {
+    return [];
+  }
+  const out: Waiter[] = [];
+  for (const n of names) {
+    const file = join(dir, n);
+    try {
+      const w = JSON.parse(readFileSync(file, "utf8")) as Waiter;
+      if (Number.isInteger(w.pid) && pidAlive(w.pid)) out.push(w);
+      else rmSync(file, { force: true });
+    } catch {
+      /* half-written or gone: skip */
+    }
+  }
+  return out;
+}
+
+/** Does `session` have a live waiter that covers `repo` (its own repo, or every repo)? */
+export function sessionHasWaiter(session: string, repo: string, dir = waitersDir()): boolean {
+  const key = repoKey(repo);
+  return liveWaiters(dir).some((w) => w.session === session && (!w.repo || w.repo === key));
+}
+
+/** When `session` last started a waiter (kept after the waiter exits), or "" - the Stop hook's "was it re-armed?". */
+export function lastWaiterStart(session: string, dir = waitersDir()): string {
+  try {
+    return readFileSync(join(dir, `${safe(session)}.last`), "utf8").trim();
+  } catch {
+    return "";
+  }
+}
+
+/** The command the hooks hand to the agent: a background waiter bound to this session. */
+export function waiterCommand(session: string): string {
+  return `zemory msg wait --timeout 0 --session ${session}`;
 }

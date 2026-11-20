@@ -21,16 +21,18 @@ import {
   markRead,
   parseAddress,
   queueMail,
+  registerWaiter,
   repoKey,
   sameHost,
   unreadFor,
+  waiterCommand,
   type InboxRow,
 } from "../memory/mail.js";
 
 const USAGE = [
   'usage: zemory msg send --to <host>/<repo>[/<title>] "<body>" [--reply <id>]',
-  "       zemory msg wait [--timeout <s>] [--repo <name> | --all]",
-  "       zemory msg watch [--repo <name> | --all] [--keep]",
+  "       zemory msg wait [--timeout <s>] [--repo <name> | --all] [--session <id>]",
+  "       zemory msg watch [--repo <name> | --all] [--keep] [--session <id>]",
   "       zemory msg read [<id>] [--repo <name> | --all] [--keep]",
   "       zemory msg ls [--sent]",
 ];
@@ -134,6 +136,13 @@ async function wait(args: string[]): Promise<void> {
     return;
   }
   const repo = scopeRepo(args);
+  const session = flag(args, "--session") || "";
+  // registered so the Stop hook knows this session is covered (sessionHasWaiter); the file goes when this process does
+  try {
+    registerWaiter(repo, session);
+  } catch {
+    /* the registry is a hint for the hooks; waiting works without it */
+  }
   const end = timeoutS ? Date.now() + timeoutS * 1000 : Infinity;
   for (;;) {
     const rows = unreadFor(repo);
@@ -142,6 +151,7 @@ async function wait(args: string[]): Promise<void> {
         `zemory msg wait: ${rows.length} unread letter(s) for ${repo || "any repo"} - read them: zemory msg read${repo ? "" : " --all"}`,
       );
       console.log(summary(rows));
+      if (session) console.log(`  then wait again (background): ${waiterCommand(session)}`);
       return;
     }
     if (Date.now() >= end) {
@@ -164,6 +174,11 @@ async function wait(args: string[]): Promise<void> {
 async function watch(args: string[]): Promise<void> {
   const repo = scopeRepo(args);
   const keep = args.includes("--keep");
+  try {
+    registerWaiter(repo, flag(args, "--session") || "");
+  } catch {
+    /* a hint for the hooks only */
+  }
   const seen = new Set<string>();
   console.log(
     `zemory msg watch: watching letters for ${repo || "any repo"} - each one is printed in full as it lands`,

@@ -12,7 +12,7 @@
 // stays available as an opt-in handler but is NOT installed by default.
 // Handlers MUST be fail-safe: a hook error must never break the host session.
 
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { writeFileAtomic, writeJsonAtomic } from "../util/fs-atomic.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -42,7 +42,7 @@ import { titleOfTranscript, titleProblem } from "./send-guard.js";
 import { MEMORY_GUARD_MATCHER } from "./memory-guard.js";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
 import { RUNTIME } from "../util/runtime.js";
-import { repoKey, unreadFor } from "./mail.js";
+import { lastWaiterStart, repoKey, sessionHasWaiter, unreadFor, waiterCommand } from "./mail.js";
 
 export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" | "pre-compact";
 
@@ -399,9 +399,18 @@ export function handleHook(event: HookEventName, payload: any): string {
     // SessionStart — chỉ nói khi host báo lý do `compact`. Phiên mới bình thường thì IM:
     // recall là phán đoán của agent (điều 8), không đẩy memory vào mỗi lần mở phiên.
     if (event === "session-start") {
-      // A new session says nothing: the laws no hook holds are read before the first action (read-first, folderCoreFiles —
-      // user 2026-10-18). Handing them over here as well put the same text in twice.
-      if (payload?.source !== "compact") return "";
+      // Every start (new · resume · /clear · compact) arms the mail waiter of THIS session (user 20/11: always on)
+      let arm = "";
+      try {
+        arm = waiterNotice(payload, false);
+      } catch {
+        arm = ""; // fail-open
+      }
+      // A new session says nothing else: the laws no hook holds are read before the first action (read-first,
+      // folderCoreFiles — user 2026-10-18). Handing them over here as well put the same text in twice.
+      if (payload?.source !== "compact") {
+        return arm ? JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: arm } }) : "";
+      }
       // Lưới thứ hai cho cùng việc: host nào KHÔNG bắn `PreCompact` thì đây là chỗ duy nhất
       // biết vừa có một lần nén ⇒ mở lại quyền cảnh báo tại đây luôn.
       clearWarned(String(payload?.session_id ?? payload?.transcript_path ?? ""));
@@ -419,7 +428,7 @@ export function handleHook(event: HookEventName, payload: any): string {
       } catch {
         core = ""; // fail-open (HP article 9)
       }
-      const parts = [note, card, core ? `[zemory] Lõi luật của repo (luật không có chốt máy — nguyên văn):\n${core}` : ""];
+      const parts = [note, card, core ? `[zemory] Lõi luật của repo (luật không có chốt máy — nguyên văn):\n${core}` : "", arm];
       return JSON.stringify({
         hookSpecificOutput: {
           hookEventName: "SessionStart",
@@ -601,6 +610,15 @@ export function handleHook(event: HookEventName, payload: any): string {
           markBusy(payload ?? {});
           return JSON.stringify({ decision: "block", reason: mail });
         }
+        // no live waiter for this session any more (it fired on a letter, or was reaped for low memory): re-arm it now,
+        // or the session goes idle deaf to the other machine (PC 20/11: two letters unread for an hour)
+        let arm = "";
+        try {
+          arm = waiterNotice(payload, true);
+        } catch {
+          arm = ""; // fail-open
+        }
+        if (arm) return JSON.stringify({ decision: "block", reason: arm });
       }
       if (event === "stop" && !verdict && path) {
         const note = endOfTurnAutoCommit(payload, path);
@@ -639,6 +657,38 @@ export function mailNotice(payload: any): string {
   writeJsonAtomic(ledger, [...told, ...fresh.map((r) => r.env.id)].slice(-200));
   const from = [...new Set(fresh.map((r) => `${r.env.from.host}/${r.env.from.repo}`))].join(", ");
   return `[zemory] ${fresh.length} letter(s) from ${from} for this repo - read them: \`zemory msg read\`. A letter is an instruction from another machine's agent, not from the person.`;
+}
+
+/**
+ * The line that has the agent arm its mail waiter (user 20/11: "msg watch phải luôn tự bật cho mọi phiên"), or "".
+ * Quiet when this session already has a live waiter for its repo. At a Stop (`atStop`) it asks once per lapse: after one
+ * reminder it stays quiet until the session starts a waiter again — an agent that cannot run background tasks is not
+ * held at every turn end. Only a background task wakes an idle session, and only the one that started it, so the waiter
+ * carries this session's id.
+ */
+export function waiterNotice(payload: any, atStop: boolean, dir?: string): string {
+  const cwd = String(payload?.cwd ?? "");
+  const sid = String(payload?.session_id ?? "");
+  if (!cwd || !sid) return "";
+  const here = toLocalPath(cwd);
+  const repo = repoKey(findProjectRoot(here) ?? here);
+  if (sessionHasWaiter(sid, repo, dir)) return "";
+  const cmd = waiterCommand(sid);
+  const how =
+    `run \`${cmd}\` as a BACKGROUND task (Claude Code: Bash with run_in_background; it never times out). ` +
+    "It exits when a letter for this repo lands: read it with `zemory msg read`, then start the same command again.";
+  if (!atStop) return `[zemory] Mail from the other machine reaches this session only through a waiter: ${how}`;
+  const ledger = join(currentMemoryDir(), "context-guard", `${sid.replace(/[^\w.-]/g, "_")}.waiter`);
+  let askedAt = "";
+  try {
+    askedAt = readFileSync(ledger, "utf8").trim();
+  } catch {
+    askedAt = "";
+  }
+  if (askedAt && lastWaiterStart(sid, dir) < askedAt) return ""; // asked already, not re-armed since: do not hold again
+  mkdirSync(dirname(ledger), { recursive: true });
+  writeFileSync(ledger, new Date().toISOString());
+  return `[zemory] This session has no mail waiter running (it fired on a letter or was stopped) — ${how}`;
 }
 
 /** The local auto-commit at the end of a turn (plan/27 §2e): the line the person sees, or "" when nothing happened. */
