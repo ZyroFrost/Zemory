@@ -2649,7 +2649,8 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // working sessions only: the host's memory notes (claude-code-memory, one per note) are not a conversation to chat in
       // (measured 2026-11-19: 10 of the 20 rows of the picker were notes)
       const found = (querySessions(80, 0, { q: repo }).items as Array<Record<string, unknown>>)
-        .filter((s) => base(s.project) === repo && s.source !== "claude-code-memory")
+        // mail threads (zemory-mail) are letters, shown inline in the thread at their time, not a session to chat in
+        .filter((s) => base(s.project) === repo && s.source !== "claude-code-memory" && s.source !== "zemory-mail")
         .slice(0, 20);
       const newestHere = found.find((s) => String(s.host ?? "").toLowerCase() === me)?.sessionId;
       const sessions = found.map((s) => {
@@ -4582,6 +4583,15 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // the prompt hook's harness check walks a repo tree: in the daemon it runs in a worker thread, never on this loop (2026-11-09)
   deferHarnessCheck((here, notePath) => void harnessNoteInWorker(here, notePath));
   hookPool()?.warm(); // the hook workers start with the daemon, not on the first prompt
+  // every letter of the mail store into the GM (idempotent): letters from before 4.19.9, or one whose GM write failed
+  setTimeout(() => {
+    void import("./memory/mail-gm.js")
+      .then((m) => {
+        const r = m.mailBackfill();
+        if (r.added) daemonLog(`mail: ${r.added} of ${r.letters} letter(s) written into the GM`);
+      })
+      .catch((e) => daemonLog(`mail backfill failed: ${e instanceof Error ? e.message : String(e)}`));
+  }, 5000).unref();
   // Mồi 3 check RẺ (FTS query · đọc docs · đọc skill — <1s mỗi cái) để cửa sổ đầu tiên mở ra
   // là pill sáng liền. CỐ Ý không mồi probe sâu (vector/rerank nạp model 8s+ — giữ thủ công).
   setTimeout(() => {

@@ -605,7 +605,7 @@ function writeAttachments(
   }
 }
 
-interface PendingMsg {
+export interface PendingMsg {
   uuid: string | null;
   role: string;
   content: string;
@@ -614,7 +614,7 @@ interface PendingMsg {
   atts?: ParsedAttachment[];
 }
 
-interface WriteSessionArgs {
+export interface WriteSessionArgs {
   sessionId: string;
   source: string;
   origin: string;
@@ -639,7 +639,7 @@ function keptSessionId(db: MemoryDB, id: string): string {
   return (db.prepare(Q.sessionAliasOf).get(id) as { id: string } | undefined)?.id ?? id;
 }
 
-function writeSession(db: MemoryDB, args: WriteSessionArgs): number {
+export function writeSession(db: MemoryDB, args: WriteSessionArgs): number {
   const a = { ...args, sessionId: keptSessionId(db, args.sessionId) };
   db.prepare(
     `INSERT INTO sessions (id, source, origin, project_root, cwd, title, host, account)

@@ -13,6 +13,7 @@ import Database from "better-sqlite3";
 import { currentMemoryDir } from "./db.js";
 import { redact } from "./redact.js";
 import { markRepoBusy } from "./session-live.js";
+import { letterToMemorySafe } from "./mail-gm.js";
 import { Q } from "./store/queries.js";
 
 export interface MailAddress {
@@ -40,8 +41,7 @@ export interface OutboxRow {
   ackedAt: string | null;
 }
 
-/** Read or delivered letters older than this are dropped when the store opens (plan/40 §7: 30 days). */
-export const MAIL_KEEP_DAYS = 30;
+
 /** A body over this is refused: mail carries instructions, not payloads (files are step ⑤, packages go by mirror). */
 export const MAIL_MAX_BODY = 256 * 1024;
 
@@ -56,9 +56,8 @@ export function openMail(path = mailDbPath()): Database.Database {
   db.pragma("journal_mode = WAL");
   db.pragma("busy_timeout = 5000");
   db.exec(Q.mailDdl);
-  const cut = new Date(Date.now() - MAIL_KEEP_DAYS * 86_400_000).toISOString();
-  db.prepare(Q.mailPruneInbox).run(cut);
-  db.prepare(Q.mailPruneOutbox).run(cut);
+  // no pruning since 2026-11-20: this store is the SOURCE of every letter (its GM rows derive from it, mail-gm.ts), and a
+  // source is kept like a transcript file is - pruning at 30 days made old letters unfindable
   return db;
 }
 
@@ -143,6 +142,8 @@ export function queueMail(
         .run(env.id, env.to.host, JSON.stringify(env), env.sentAt),
     path,
   );
+  // the letter is a message of the GM too, so it travels with the GM's sync and stays findable (mail-gm.ts)
+  if (!path) letterToMemorySafe(env);
   return env;
 }
 
@@ -242,7 +243,7 @@ export function receiveMail(
   // the repo's session is about to be woken by this letter, with no prompt hook to say so: mark it working (plan/41 §6b).
   // Only for the live store - a test's own mail file must not touch this machine's marks.
   if (!path) markRepoBusy(repoKey(env.to.repo));
-  return withMail(
+  const fresh = withMail(
     (db) =>
       db
         .prepare(Q.mailReceive)
@@ -255,6 +256,8 @@ export function receiveMail(
         ).changes > 0,
     path,
   );
+  if (fresh && !path) letterToMemorySafe(env);
+  return fresh;
 }
 
 /** Unread letters for a repo (all repos when `repo` is empty), oldest first. */

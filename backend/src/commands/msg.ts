@@ -37,6 +37,7 @@ const USAGE = [
   "       zemory msg watch [--repo <name> | --all] [--keep] [--session <id>]",
   "       zemory msg read [<id>] [--repo <name> | --all] [--keep]",
   "       zemory msg ls [--sent]",
+  "       zemory msg backfill   (every letter of this machine into the GM; idempotent)",
 ];
 
 const flag = (args: string[], name: string): string | null => {
@@ -293,6 +294,12 @@ export async function cmdMsg(args: string[]): Promise<void> {
     if (sub === "watch") return await watch(rest);
     if (sub === "read") return read(rest);
     if (sub === "ls") return ls(rest);
+    if (sub === "backfill") {
+      const { mailBackfill } = await import("../memory/mail-gm.js");
+      const r = mailBackfill();
+      console.log(`zemory msg backfill: ${r.added} new message(s) in the GM from ${r.letters} letter(s)`);
+      return;
+    }
   } catch (e) {
     console.log(
       `zemory msg ${sub}: ${e instanceof Error ? e.message : String(e)}`,

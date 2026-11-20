@@ -184,8 +184,6 @@ export const Q = {
     CREATE TABLE IF NOT EXISTS inbox (id TEXT PRIMARY KEY, from_host TEXT NOT NULL, to_repo TEXT NOT NULL, json TEXT NOT NULL, received_at TEXT NOT NULL, read_at TEXT);
     CREATE INDEX IF NOT EXISTS inbox_unread ON inbox(to_repo) WHERE read_at IS NULL;
     CREATE INDEX IF NOT EXISTS outbox_open ON outbox(to_host) WHERE acked_at IS NULL;`,
-  mailPruneInbox: "DELETE FROM inbox WHERE read_at IS NOT NULL AND read_at < ?",
-  mailPruneOutbox: "DELETE FROM outbox WHERE acked_at IS NOT NULL AND acked_at < ?",
   mailQueue: "INSERT INTO outbox (id, to_host, json, queued_at) VALUES (?,?,?,?)",
   mailOwed: "SELECT json, to_host FROM outbox WHERE acked_at IS NULL ORDER BY queued_at LIMIT ?",
   mailAck: "UPDATE outbox SET acked_at = ? WHERE id = ? AND acked_at IS NULL",
@@ -195,6 +193,11 @@ export const Q = {
   // a waiter wakes on every letter that LANDED after it started, read or not: another reader must not starve it
   mailLandedSinceRepo: "SELECT json, received_at, read_at FROM inbox WHERE received_at > ? AND to_repo = ? ORDER BY received_at",
   mailLandedSinceAll: "SELECT json, received_at, read_at FROM inbox WHERE received_at > ? ORDER BY received_at",
+  // every letter this machine holds, sent and received, for the GM backfill (mail-gm.ts)
+  mailAllInbox: "SELECT json FROM inbox ORDER BY received_at",
+  mailAllOutbox: "SELECT json FROM outbox ORDER BY queued_at",
+  // the project folders whose name ends like a repo, newest first: a mail thread files under the repo's own project
+  projectRootsLike: "SELECT project_root AS root FROM sessions WHERE project_root IS NOT NULL AND lower(project_root) LIKE ? GROUP BY project_root ORDER BY MAX(ended_at) DESC LIMIT 20",
   mailLetter: "SELECT json, received_at, read_at FROM inbox WHERE id = ? OR id LIKE ? ORDER BY received_at LIMIT 1",
   mailMarkRead: "UPDATE inbox SET read_at = ? WHERE id = ? AND read_at IS NULL",
   mailInbox: "SELECT json, received_at, read_at FROM inbox ORDER BY received_at DESC LIMIT ?",
