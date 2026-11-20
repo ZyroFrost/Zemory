@@ -209,8 +209,19 @@ export const RULES = [
     return true;`),
   rule('rp-figure-one-line', 'a figure that fits one line never wraps: a data label, the value of a bar, a card figure and a table number stand on one line, a bar chart giving up bar length for them; only a name wraps, to two lines at most (v25, the user 18/11: "thông tin nào vừa hết trên 1 hàng thì phải để 1 hàng ko dc xuống hàng", "88.76 %" broke in two beside a bar with room to spare)', `
     // the lines a text stands on, read from its own boxes (one per line), so padding or a tall row never counts as a line
-    const lines = e => { const r = document.createRange(); r.selectNodeContents(e);
-      const tops = [...r.getClientRects()].filter(q => q.width > .5 && q.height > 0).map(q => q.top).sort((a, b) => a - b);
+    // (v33, Dashboard 20/11: a name clamped to two lines read 8 - a range keeps the boxes of the lines line-clamp hides) each text
+    // counts only the lines inside the box of every element that cuts it between it and e (line-clamp, or overflow not visible)
+    const lines = e => { const tops = [], w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+      for (let t = w.nextNode(); t; t = w.nextNode()) {
+        let top = -1e9, bottom = 1e9;
+        for (let a = t.parentElement; a; a = a === e ? null : a.parentElement) {
+          const st = getComputedStyle(a), clamp = st.webkitLineClamp && st.webkitLineClamp !== 'none';
+          if (clamp || st.overflowY !== 'visible') { const b = a.getBoundingClientRect(); top = Math.max(top, b.top); bottom = Math.min(bottom, b.bottom); }
+        }
+        const r = document.createRange(); r.selectNodeContents(t);
+        for (const q of r.getClientRects()) if (q.width > .5 && q.height > 0 && q.top < bottom - 2 && q.bottom > top + 2) tops.push(q.top);
+      }
+      tops.sort((a, b) => a - b);
       let n = 0, last = -1e9; for (const t of tops) { if (t - last > 4) n++; last = t; } return n; };
     const skip = e => { if (!e.getClientRects().length || e.closest('.slant, [data-rp-slant]')) return true;
       const st = getComputedStyle(e); return st.visibility === 'hidden' || Number(st.opacity) === 0 || st.transform !== 'none'; };
@@ -751,15 +762,18 @@ export const RULES = [
     // the same steps as the frame's fmtNum (shell 1.33.6, the user 18/11): an amount under the chosen unit steps down to the unit
     // it fills (a zero stays in it); the bracket form keeps its minus, (-132); a count whole by rule (people, data-rp-whole) has no
     // decimals whatever count_dp says (the user 13/11)
-    const fmt = (raw, kind, whole = false) => {
+    const fmt = (raw, kind, whole = false, col = '') => {
       const negative = raw < 0, abs = Math.abs(raw); let value = abs, dp = 0, suffix = '';
       if (kind === 'pct') { value = abs * 100; dp = f.pct_dp; suffix = '%'; }
       else if (kind === 'count') dp = whole ? 0 : f.count_dp;
-      else { let unit = f.money_unit === 'auto' ? (abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
-        const below = {bn: 'm', m: 'k', k: 'vnd'}, size = {bn: 1e9, m: 1e6, k: 1e3};
-        while (abs > 0 && unit !== 'vnd' && abs < size[unit]) unit = below[unit];
+      else { const below = {bn: 'm', m: 'k', k: 'vnd'}, size = {bn: 1e9, m: 1e6, k: 1e3};
+        // (v33, Dashboard 20/11, its Cons_Gate_102 §10: one unit for a whole money column) a cell naming its column's unit
+        // (data-rp-unit = bn | m | k) stands in it under 'auto', never stepping down (-770000 in m = -0,8 tr); a unit the person chose wins
+        let unit = f.money_unit === 'auto' ? (size[col] ? col : abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
+        if (f.money_unit === 'auto' && size[col]) { value = abs / size[col]; dp = f.money_dp; suffix = words[col]; unit = null; }
+        while (unit && abs > 0 && unit !== 'vnd' && abs < size[unit]) unit = below[unit];
         if (unit === 'vnd') { value = Math.round(abs / f.money_round) * f.money_round; dp = 0; }
-        else { value = abs / size[unit]; dp = f.money_dp; suffix = words[unit]; } }
+        else if (unit) { value = abs / size[unit]; dp = f.money_dp; suffix = words[unit]; } }
       const fixed = value.toFixed(dp), [int, frac] = fixed.split('.');
       const group = f.sep === 'comma' ? ',' : f.sep === 'space' ? ' ' : '.', point = f.sep === 'comma' ? '.' : ',';
       const body = int.replace(/\\B(?=(\\d{3})+(?!\\d))/g, group) + (frac ? point + frac : '') + suffix;
@@ -773,7 +787,7 @@ export const RULES = [
       if (!cell.dataset.rpNum) { if (looks.test(shown)) return 'a number outside the format of the person (no data-rp-num): ' + shown; continue; }
       const raw = Number(cell.dataset.rpRaw);
       if (!Number.isFinite(raw)) return 'a number cell without its value (data-rp-raw): ' + shown;
-      const want = fmt(raw, cell.dataset.rpNum, 'rpWhole' in cell.dataset);
+      const want = fmt(raw, cell.dataset.rpNum, 'rpWhole' in cell.dataset, cell.dataset.rpUnit || '');
       if (shown !== want.text) return 'a number not in the format of the person: ' + shown + ' (want ' + want.text + ')';
       if (want.neg && f.neg === 'red' && !cell.closest('.text-danger') && !cell.querySelector('.text-danger')) return 'a negative not in red: ' + shown;
     }
@@ -934,7 +948,10 @@ export const SELF_TEST = {
     `${card('Tỷ trọng', '40%', '+2,0 pp MoM', 'up', 'text-success')}</div>`) +
     `<div class="row">${chart('Theo giờ', 'rgb(61, 126, 191)', 12, 'hour').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}${chart('Theo ngày', 'rgb(46, 156, 122)', 12, 'day').replace('<h6 data-rp-title>', '<button class="rp-focus-btn" style="float:right">+</button><h6 data-rp-title>')}</div>` +
     `<div class="row"><div class="card" data-rp-visual="table" data-rp-detail style="flex:1"><h6 data-rp-title>Chi tiết</h6><table><thead><tr><th>Nhà</th><th>Số</th></tr></thead>` +
-    `<tbody>${rowsOf(8)}</tbody><tfoot><tr data-rp-total style="font-weight:700"><td>Tổng</td><td data-rp-num="money" data-rp-raw="1234567890" data-sort-value="1234567890">1,2 tỷ</td></tr></tfoot></table></div></div>` +
+    // (v33, Dashboard 20/11) a long name clamped to two lines is two lines, whatever lines the clamp hides
+    `<tbody>${rowsOf(7)}<tr><td data-rp-name><div class="rp-clamp" style="display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;width:90px">CÔNG TY CỔ PHẦN TRANG TRÍ NỘI THẤT MIỀN NAM</div></td><td data-rp-num="count" data-rp-raw="7">7</td></tr>` +
+    // (v33) a money column of one unit: an amount under it stays in it
+    `<tr><td>N8</td><td data-rp-num="money" data-rp-raw="-770000" data-rp-unit="m" data-sort-value="-770000">-0,8 tr</td></tr></tbody><tfoot><tr data-rp-total style="font-weight:700"><td>Tổng</td><td data-rp-num="money" data-rp-raw="1234567890" data-sort-value="1234567890">1,2 tỷ</td></tr></tfoot></table></div></div>` +
     `<div class="row"><div class="card" data-rp-visual="chart" data-rp-fields="year" style="flex:1;position:relative;display:flex;flex-direction:column"><div style="display:flex;gap:8px;align-items:flex-start"><h6 data-rp-title>Theo năm</h6>` +
     `<div data-rp-legend style="display:flex;gap:6px;white-space:nowrap"><span data-cf-dim="year" data-cf-value="2025" style="height:20px">2025</span><span data-cf-dim="year" data-cf-value="2026" style="height:20px">2026</span><button class="rp-focus-btn" style="height:20px;padding:0">+</button></div></div>` +
     `<div class="bars" data-rp-body style="flex:1 0 120px"><i data-rp-mark data-tip="Năm: 2025\\nDoanh thu: 1.200" data-cf-dim="store|year" data-cf-value="A|2025" style="height:60px;background:rgb(61, 126, 191);position:relative"><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px">60</span><span data-rp-label style="position:absolute;top:2px;left:0;font-size:10px;visibility:hidden">61</span></i>` +

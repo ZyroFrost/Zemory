@@ -1,5 +1,5 @@
 ---
-version: 32
+version: 33
 lang: vi
 ---
 
@@ -49,7 +49,8 @@ lang: vi
   hiện bằng đơn vị nhỏ hơn hoặc số đầy đủ; không bao giờ có `0 k` · `0 tr` · `0 tỷ`. Số 0 thật (`data-rp-raw` bằng 0) giữ đơn vị người xem đã chọn (v24, 18/11). [rp-figure-scale]
 - **Số vừa một dòng thì không xuống dòng** (v25, 18/11: "88.76 %" bị ngắt đôi cạnh thanh bar còn dư chỗ): nhãn số, số cuối
   thanh bar, số trên thẻ và số trong bảng đứng một dòng; chart bar rút ngắn thanh để số vừa (cột số rộng bằng số dài nhất,
-  `white-space: nowrap`). Chỉ tên được xuống dòng, tối đa hai dòng. [rp-figure-one-line]
+  `white-space: nowrap`). Chỉ tên được xuống dòng, tối đa hai dòng. Tên bị cắt còn hai dòng (`-webkit-line-clamp`, hay khung ẩn phần tràn) tính số dòng
+  hiện ra, không tính các dòng bị giấu (v33, Dashboard 20/11). [rp-figure-one-line]
 - **Tiêu đề card vừa card;** dài thì rút gọn (bỏ vế phụ, nghĩa đủ ghi vào bảng giải thích của trang), không thu nhỏ chữ riêng
   một card — tiêu đề một hàng cùng cỡ, con số cũng vậy. [rp-card-label]
 - Màu số trên card theo thứ tự màu của theme (card *i* → màu *i*).
@@ -253,6 +254,7 @@ lang: vi
 | `data-rp-glossary` (`data-rp-common`) · `data-rp-term` | bảng giải thích · mỗi dòng | [rp-glossary] |
 | `data-rp-num` = `money` · `count` · `pct` · `data-rp-raw` | ô số của bảng · giá trị gốc | [rp-num-format] |
 | `data-rp-id` | ô hay cột mã (mã nhân viên 03163) | không phải số [rp-num-format] |
+| `data-rp-unit` = `bn` · `m` · `k` | ô tiền của một cột giữ một đơn vị (v33): khi người dùng để `auto`, số đứng đúng đơn vị đó, không hạ xuống (-770000 theo `m` = -0,8 tr); đơn vị người dùng tự chọn thì thắng | [rp-num-format] [num-format-works] |
 | `data-rp-name` | ô chứa tên một thứ lấy từ dữ liệu (vật tư "Thớt nhựa (…), 25cm, cái") | một dữ kiện: dấu phẩy trong tên không phải danh sách [one-fact] (v20) |
 
 Card dùng bốn vai chữ của `app-sneat-glass` (`kpi-title` · `kpi-main` · `kpi-percentage` · `kpi-secondary`).

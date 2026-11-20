@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 82
+version: 83
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -58,7 +58,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   (`td[data-rp-num][data-rp-raw]`, a % as a share: 0.125) and every date of a table must follow within 15 s - then puts the
   person's setting back. A cell that reads as a report number but is tied to no format is the same fault. A page without React
   reads the formats on `<html data-num-format>` / `<html data-date-format>` and writes with `sasinShell.fmtNum` /
-  `sasinShell.fmtDate`. The probe writes numbers as the frame 1.33.6 does: an amount under the chosen unit steps down to the unit it fills, the bracket form keeps its minus `(-132)` (v81, 18/11). [num-format-works] [date-format-works]
+  `sasinShell.fmtDate`. The probe writes numbers as the frame 1.33.6 does: an amount under the chosen unit steps down to the unit it fills, the bracket form keeps its minus `(-132)` (v81, 18/11); a money cell naming its column's one unit (`data-rp-unit`, skill app-report v33) stands in it under `auto` (v83, 20/11). [num-format-works] [date-format-works]
 - **The frame's Settings keeps the choice in every app** (v76, 15/11): Settings > Date format and Settings > Numbers, pressed
   as a person presses them, still stand 3 s later with no error. An app never reroutes or blocks the frame's own calls
   (`/api/auth/*`, `/api/apps`, `/api/notifications`, `/api/health`); the live probes save and read through a clean fetch, so an
