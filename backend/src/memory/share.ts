@@ -22,6 +22,7 @@ import {
   renameSync,
   rmSync,
   statSync,
+  statfsSync,
   truncateSync,
   writeFileSync,
 } from "node:fs";
@@ -2145,6 +2146,36 @@ export function publishChannelVersion(driveDir: string, version: string, host: s
   }
 }
 
+/** A staged copy older than this belongs to a compaction that died: none runs this long (measured 20/11: 29 min for 5 GB). */
+export const STALE_STAGED_MS = 12 * 3600_000;
+
+/**
+ * Remove the staged copies a dead compaction left in the channel folder (measured 20/11: `.global_memory.enc.staged-20400`,
+ * 2.1 GB, survived a compaction on the PC). Judged by AGE, not by pid: the folder is shared, so the pid may be a live
+ * process on the other machine, and a pid check here would be asked of the wrong machine.
+ */
+export function sweepStaleStaged(dir: string, now = Date.now()): string[] {
+  const gone: string[] = [];
+  let names: string[] = [];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return gone;
+  }
+  for (const f of names) {
+    if (!/^\..+\.staged-\d+$/.test(f)) continue;
+    const p = join(dir, f);
+    try {
+      if (now - statSync(p).mtimeMs < STALE_STAGED_MS) continue;
+      rmSync(p, { force: true });
+      gone.push(f);
+    } catch {
+      /* a file another machine holds open stays for the next round */
+    }
+  }
+  return gone;
+}
+
 /**
  * NỐI THÊM phần mới của máy này vào kho chính — đường ghi mặc định từ 2026-08-12.
  *
@@ -2237,6 +2268,7 @@ async function pushAppend(o: {
     const target = compacting ? join(dir, MAIN_BUNDLE) : active.path;
     onProgress("write");
     if (compacting) {
+      sweepStaleStaged(dir);
       // GỘP: mọi khúc gấp về MỘT khúc 1 tươi; bản khúc-1 cũ giữ đúng một thế hệ làm đường lùi;
       // khúc ≥2 xoá (nội dung đã nằm trong khúc tươi — export since=0 SAU khi merge đủ).
       //
@@ -2556,6 +2588,37 @@ export const CATCHUP_MAX_VECTORS = 50_000;
  * nhận, rồi so bằng khoá BỀN `(session_id, uuid)` — không dùng `messages.id` vì id là số cục bộ
  * của từng máy. Tin nào bên đó thiếu vector mà bên này có ⇒ vào danh sách bù.
  */
+/** A disk-full error from writing a LOCAL file (node ENOSPC, or SQLite finding its disk full) - not a fault of what was read. */
+export function isLocalDiskFull(e: unknown): boolean {
+  const code = (e as { code?: unknown } | null)?.code;
+  if (code === "ENOSPC" || code === "SQLITE_FULL") return true;
+  return /ENOSPC|no space left on device|database or disk is full/i.test(e instanceof Error ? e.message : String(e));
+}
+
+/** Rebuilding a channel takes about this many times its size on the local disk (measured 20/11: 5 GB needed over 12 GB). */
+export const CATCHUP_TMP_FACTOR = 2.5;
+
+function diskFullMessage(tmpBase: string, segments: string[]): string {
+  const gb = (b: number) => (b / 1024 ** 3).toFixed(1);
+  let size = 0;
+  for (const p of segments) {
+    try {
+      size += statSync(p).size;
+    } catch {
+      /* a segment that cannot be measured adds nothing */
+    }
+  }
+  let free = "";
+  try {
+    const f = statfsSync(tmpBase);
+    free = `, ${gb(Number(f.bavail) * Number(f.bsize))} GB free`;
+  } catch {
+    /* free space unknown - the need alone still says what to do */
+  }
+  return `not enough space in ${tmpBase}: rebuilding the channel needs about ${gb(size * CATCHUP_TMP_FACTOR)} GB there${free}. ` +
+    `Give a folder on a roomier disk with --tmp <dir>. This is a LOCAL disk error - no channel segment was judged unreadable.`;
+}
+
 export async function vectorCatchUp(opts: {
   driveDir: string;
   keyFile?: string;
@@ -2566,6 +2629,8 @@ export async function vectorCatchUp(opts: {
   maxVectors?: number;
   /** Called after each block lands (progress for the CLI). */
   onBlock?: (p: { block: number; blocks: number; vectors: number; bytes: number }) => void;
+  /** Where the probe store is rebuilt (default the OS temp folder) - it needs room for the whole channel unpacked. */
+  tmpDir?: string;
 }): Promise<{
   container: string;
   /** How many blocks were appended (0 when nothing was pushed). */
@@ -2596,7 +2661,8 @@ export async function vectorCatchUp(opts: {
   let container = activeSegment(dir).path;
   const dbPath = opts.dbPath ?? currentMemoryDb();
 
-  const tmp = mkdtempSync(join(tmpdir(), "zemory-catchup-"));
+  const tmpBase = opts.tmpDir?.trim() || tmpdir();
+  const tmp = mkdtempSync(join(tmpBase, "zemory-catchup-"));
   const probe = join(tmp, "probe.db");
   try {
     // ① Dựng lại kho chung y như một máy mới sẽ nhận được — MỌI khúc, không riêng khúc đang mở
@@ -2614,10 +2680,14 @@ export async function vectorCatchUp(opts: {
       let last: unknown = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
+          if (process.env.ZEMORY_CATCHUP_FAULT === "enospc") throw Object.assign(new Error("ENOSPC: no space left on device, write (fault injected for the gate)"), { code: "ENOSPC" });
           await mergeMemoryBundle({ bundlePath: s.path, dbPath: probe, keyFile: opts.keyFile });
           last = null;
           break;
         } catch (e) {
+          // the local disk filled while WRITING the probe: the segment was never judged, so naming it unreadable is a
+          // false alarm (measured 20/11 on the PC: "UNREADABLE SEGMENT" + "CHANNEL SHORT by 884,432" on a sound channel)
+          if (isLocalDiskFull(e)) throw new Error(diskFullMessage(tmpBase, segsAll.map((x) => x.path)));
           last = e;
         }
       }
