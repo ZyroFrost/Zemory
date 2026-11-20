@@ -12,7 +12,7 @@
 // stays available as an opt-in handler but is NOT installed by default.
 // Handlers MUST be fail-safe: a hook error must never break the host session.
 
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { writeFileAtomic, writeJsonAtomic } from "../util/fs-atomic.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -688,7 +688,7 @@ export function waiterNotice(payload: any, atStop: boolean, dir?: string): strin
   }
   if (askedAt && lastWaiterStart(sid, dir) < askedAt) return ""; // asked already, not re-armed since: do not hold again
   mkdirSync(dirname(ledger), { recursive: true });
-  writeFileSync(ledger, new Date().toISOString());
+  writeFileAtomic(ledger, new Date().toISOString());
   return `[zemory] This session has no mail waiter running (it fired on a letter or was stopped) — ${how}`;
 }
 
