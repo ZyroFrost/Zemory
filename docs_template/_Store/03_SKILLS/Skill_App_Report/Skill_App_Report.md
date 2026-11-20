@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 33
+version: 34
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -93,7 +93,8 @@ description: The report pages of an app - what a page of figures, charts and tab
   over a combo's columns included; a label that would cover another moves away from its point, up first, down when the top has
   no room, with a thin leader (`data-rp-leader`) from the label to its point, as Power BI does; a label takes its series'
   colour. A label the app hides to keep the others apart (visibility hidden, opacity 0) is not drawn and not counted (v20).
-  [rp-labels-apart]
+  Two labels are compared by the shape drawn - a slanted figure as turned, never its upright box: two slanted figures side by
+  side keep apart when their lines do (v34, Dashboard 20/11). [rp-labels-apart]
 - **No text stands upright** (v19, 14/11: "cấm dựng đứng"): a figure or a name too long for its room slants at 45°,
   never 90° - no `writing-mode: vertical-*`, no rotation of a text near a quarter turn; a column too narrow even for a slanted
   figure keeps it in its tip. [rp-no-upright]

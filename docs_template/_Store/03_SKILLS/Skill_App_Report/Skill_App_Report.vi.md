@@ -1,5 +1,5 @@
 ---
-version: 33
+version: 34
 lang: vi
 ---
 
@@ -79,7 +79,9 @@ lang: vi
   trỏ vào cách xa ra 1 tí giống pbi"): không hai nhãn số nào của một hình giao nhau - kể cả số của đường đè số của cột trong
   chart kết hợp; nhãn sắp đè nhãn khác thì dời xa điểm của nó, lên trước, hết chỗ thì xuống, kèm một đoạn trỏ mảnh
   (`data-rp-leader`) từ nhãn về điểm, như Power BI; nhãn mang màu chuỗi của nó.
-  Nhãn app đã ẩn để giữ các nhãn khác tách nhau (visibility hidden, opacity 0) không được vẽ, không tính (v20). [rp-labels-apart]
+  Nhãn app đã ẩn để giữ các nhãn khác tách nhau (visibility hidden, opacity 0) không được vẽ, không tính (v20). Hai nhãn so
+  theo hình đã vẽ - số xéo so theo hình đã xoay, không theo hộp thẳng: hai số xéo cạnh nhau tách nhau khi hai dòng chữ tách
+  nhau (v34, Dashboard 20/11). [rp-labels-apart]
 - **Không chữ nào dựng đứng** (v19, 14/11: "cấm dựng đứng"): số hay tên dài quá chỗ thì nghiêng 45°, không bao giờ 90° -
   không `writing-mode: vertical-*`, không xoay chữ gần một phần tư vòng; cột hẹp tới mức số nghiêng cũng không vừa thì số nằm
   trong tooltip. [rp-no-upright]
