@@ -295,12 +295,11 @@ export const RULES = [
   rule('rp-labels-apart', 'no two data labels of a visual cover each other (v13, the user 09/11: "số bị đè lên nhau")', `
     for (const v of vis()) {
       // (v20, Dashboard 15/11) a label the app hid to keep the others apart (visibility hidden, opacity 0) is not drawn
-      const shown = l => { const st = getComputedStyle(l); return st.visibility !== 'hidden' && Number(st.opacity) > 0; };
-      const ls = [...v.querySelectorAll('[data-rp-label]')].filter(l => l.getClientRects().length && txt(l) && shown(l)).map(l => [l, box(l)]);
-      for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) {
-        const a = ls[i][1], c = ls[j][1];
-        if (a.left < c.right - 1 && c.left < a.right - 1 && a.top < c.bottom - 1 && c.top < a.bottom - 1) return 'two numbers cover each other (' + txt(ls[i][0]) + ' · ' + txt(ls[j][0]) + '): ' + name(v);
-      }
+      // (v34, Dashboard 20/11) compared by the drawn shape: two slanted figures side by side have upright boxes that cross while
+      // their lines run apart (BIZ_01 "45,61 tỷ" · "39,58 tỷ": boxes 35x35 over each other, 32 px apart across lines 10 px high)
+      const ls = [...v.querySelectorAll('[data-rp-label]')].filter(l => drawn(l) && txt(l)).map(l => [l, shape(l)]);
+      for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++)
+        if (meet(ls[i][1], ls[j][1])) return 'two numbers cover each other (' + txt(ls[i][0]) + ' · ' + txt(ls[j][0]) + '): ' + name(v);
     }
     return true;`),
   rule('rp-labels-led', 'a label moved away from its point carries a leader to it (v19, the user 14/11: "nếu trùng phải có line trỏ vào cách xa ra 1 tí giống pbi")', `
@@ -966,6 +965,7 @@ export const SELF_TEST = {
     `<button class="rp-focus-btn" aria-pressed="true" style="float:right">-</button><div class="bars" data-rp-body style="gap:12px">` +
     [1, 2, 3, 4].map(n => `<i data-rp-mark data-rp-item data-tip="Tuần: W${n}\\nBill: ${n}0" style="height:${n * 20}px;background:rgb(200, 90, 60);position:relative">` +
       `<span data-rp-label style="position:absolute;top:-16px;left:0;font-size:10px;transform:rotate(-45deg)">${n}0</span></i>`).join('') + `</div>` +
+    `<div style="position:relative;height:44px">${[0, 30].map((x, k) => `<span data-rp-label style="position:absolute;top:14px;left:${x}px;font-size:10px;line-height:10px;white-space:nowrap;transform:rotate(-45deg)">${k ? '39,58' : '45,61'} tỷ</span>`).join('')}</div>` +
     `<div style="display:flex;gap:12px;height:30px">${[1, 2, 3, 4].map(n => `<span style="flex:1"><span data-rp-tick style="display:inline-block;font-size:10px;transform:rotate(-45deg)">Tuần ${n}</span></span>`).join('')}</div></div></div>` +
     `<nav><a role="tab">Tổng quan</a><a role="tab">Huỷ món</a></nav>` +
     `<div data-rp-glossary hidden><p data-rp-term="TC">TC (Transaction Count): số hoá đơn</p></div>` +
