@@ -136,6 +136,9 @@ function send(args: string[]): void {
 const PARENT = Number(process.env.ZEMORY_WAITER_PARENT) || process.ppid;
 const orphaned = (): boolean => PARENT > 1 && !pidAlive(PARENT);
 
+/** A letter written to one session (the project chat) is that session's alone; any other letter is the repo's. */
+const forMe = (r: InboxRow, session: string): boolean => !r.env.to.session || !session || r.env.to.session === session;
+
 async function wait(args: string[]): Promise<void> {
   const t = flag(args, "--timeout");
   const timeoutS = t === null ? 0 : Number(t);
@@ -160,7 +163,7 @@ async function wait(args: string[]): Promise<void> {
     let rows: InboxRow[] = [];
     try {
       const seen = new Set<string>();
-      rows = [...unreadFor(repo), ...landedSince(repo, startedAt)].filter((r) => !seen.has(r.env.id) && !!seen.add(r.env.id));
+      rows = [...unreadFor(repo), ...landedSince(repo, startedAt)].filter((r) => forMe(r, session) && !seen.has(r.env.id) && !!seen.add(r.env.id));
     } catch (e) {
       // a busy store must not end the wait: try again on the next tick
       console.error(`zemory msg wait: ${e instanceof Error ? e.message : String(e)}`);
@@ -216,7 +219,7 @@ async function watch(args: string[]): Promise<void> {
   for (;;) {
     let rows: InboxRow[] = [];
     try {
-      rows = [...unreadFor(repo), ...landedSince(repo, startedAt)].filter((r) => !seen.has(r.env.id) && !!seen.add(r.env.id));
+      rows = [...unreadFor(repo), ...landedSince(repo, startedAt)].filter((r) => forMe(r, session) && !seen.has(r.env.id) && !!seen.add(r.env.id));
     } catch (e) {
       // A locked or busy store must not end the watch: report it and try again on the next tick.
       console.error(

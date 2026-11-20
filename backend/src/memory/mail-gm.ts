@@ -20,8 +20,16 @@ export const MAIL_SOURCE = "zemory-mail";
 
 const end = (a: { host: string; repo: string }): string => `${a.host.toLowerCase()}/${repoKey(a.repo)}`;
 
-/** The thread a letter belongs to: the same id on both machines, whichever way the letter went. */
+/** The GM thread of the letters written to one agent session (the project chat, from the desktop or a phone). */
+export const sessionMailThread = (session: string): string => `mail:to:${session}`;
+
+/**
+ * The thread a letter belongs to - the same id on both machines, whichever way the letter went: a letter to a session
+ * files under that session (user 2026-11-20: a message from the phone sits in the GM with the session it was written
+ * to), any other one under its pair of endpoints.
+ */
 export function mailThreadId(env: MailEnvelope): string {
+  if (env.to.session) return sessionMailThread(env.to.session);
   const [a, b] = [end(env.from), end(env.to)].sort();
   return `mail:${a}~${b}`;
 }
@@ -59,12 +67,13 @@ export function lettersToMemory(envs: MailEnvelope[], dbPath: string = currentMe
         const first = list[0];
         const [a, b] = [end(first.from), end(first.to)].sort();
         const project = localProject(db, first, host);
+        const title = first.to.session ? `Mail -> session ${first.to.session.slice(0, 8)}` : `Mail ${a} ↔ ${b}`;
         added += writeSession(db, {
           sessionId: id,
           source: MAIL_SOURCE,
           origin: "local",
           ...(project ? { project, cwd: project } : {}),
-          title: `Mail ${a} ↔ ${b}`,
+          title,
           msgs: list.map((e) => ({ uuid: e.id, role: "user", content: letterText(e), tool: null, ts: e.sentAt })),
           wholeReplace: false,
         });

@@ -2706,8 +2706,11 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const chunks: Buffer[] = [];
       for await (const c of req) chunks.push(c as Buffer);
       const { deliverHere, parseAddress, queueMail, sameHost } = await import("./memory/mail.js");
-      const to = parseAddress(u.searchParams.get("to") ?? "");
-      if (!to) return json(res, { ok: false, error: "to: <host>/<repo>" });
+      const parsed = parseAddress(u.searchParams.get("to") ?? "");
+      if (!parsed) return json(res, { ok: false, error: "to: <host>/<repo>" });
+      // the session the chat has open: the letter files under it in the GM (mail-gm.ts sessionMailThread)
+      const session = (u.searchParams.get("session") ?? "").trim().slice(0, 128);
+      const to = session ? { ...parsed, session } : parsed;
       const body = Buffer.concat(chunks).toString("utf8");
       try {
         const o = { to, body, from: { repo: "user" } };
@@ -3662,7 +3665,16 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // messages, and the whole of it over a phone's relay link takes seconds the chat cannot wait
       const tail = Number(u.searchParams.get("tail") || 0);
       const msgs = tail > 0 && th.messages.length > tail ? th.messages.slice(-tail) : th.messages;
-      return json(res, { ...th, messages: withAttachments(msgs), total: th.messages.length });
+      // `letters=1` (the project chat): what was written TO this session from the chat - its own GM thread
+      // (mail:to:<session>, mail-gm.ts) - so the chat reads one store, the GM, on every machine and on the phone
+      // body only: the stored text is headed "✉ from → to · letter <id8>" (letterText), the chat shows what was written
+      let letters: Array<{ body: string; timestamp: string | null }> = [];
+      if (u.searchParams.get("letters") === "1") {
+        const { sessionMailThread } = await import("./memory/mail-gm.js");
+        const lt = getSessionThread(sessionMailThread(String(th.sessionId ?? u.searchParams.get("id"))));
+        letters = (lt?.messages ?? []).map((m) => ({ body: m.content.replace(/^✉[^\n]*\n\n/, ""), timestamp: m.timestamp ?? null }));
+      }
+      return json(res, { ...th, messages: withAttachments(msgs), total: th.messages.length, letters });
     }
     if (p === "/recent-messages") {
       // Recall default list (never empty): newest messages, scoped like recall.

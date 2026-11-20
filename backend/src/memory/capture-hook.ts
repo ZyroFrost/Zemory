@@ -651,7 +651,8 @@ export function mailNotice(payload: any): string {
   } catch {
     told = [];
   }
-  const fresh = rows.filter((r) => !told.includes(r.env.id));
+  // a letter written to one session (the project chat) is announced to that session only
+  const fresh = rows.filter((r) => !told.includes(r.env.id) && (!r.env.to.session || r.env.to.session === sid));
   if (!fresh.length) return "";
   mkdirSync(dirname(ledger), { recursive: true });
   writeJsonAtomic(ledger, [...told, ...fresh.map((r) => r.env.id)].slice(-200));

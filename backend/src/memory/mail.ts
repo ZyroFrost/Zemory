@@ -20,6 +20,8 @@ export interface MailAddress {
   host: string;
   repo: string;
   title?: string;
+  /** the agent session the letter is for (the project chat names it): its GM thread is mail:to:<session> (mail-gm.ts) */
+  session?: string;
 }
 export interface MailEnvelope {
   id: string;
@@ -225,6 +227,7 @@ export function asEnvelope(x: unknown): MailEnvelope | null {
   )
     return null;
   if (e.replyTo !== undefined && !str(e.replyTo, 64)) return null;
+  if (e.to.session !== undefined && !str(e.to.session, 128)) return null;
   return {
     ...e,
     subject:

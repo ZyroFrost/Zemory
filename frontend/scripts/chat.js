@@ -3,7 +3,7 @@
 // permission prompts it waits on, and a line that writes into that very session (a letter its hooks wake it with).
 // The same tab on the desktop and on the phone. Refreshes only while the tab is open.
 var zChat = (function () {
-  var repo = null, sess = null, list = [], sent = [], thread = null, timer = null, busy = false, lastSig = '', lastHtml = '', again = false;
+  var repo = null, sess = null, list = [], pending = [], thread = null, timer = null, busy = false, lastSig = '', lastHtml = '', again = false;
   function el(id) { return document.getElementById(id); }
   function esc(s) { return stdEsc(String(s == null ? '' : s)); }
   function repoOf(root) { return String(root || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop().toLowerCase(); }
@@ -92,10 +92,13 @@ var zChat = (function () {
     var ms = (s && s.messages) || [];
     var tsOf = function (m) { return Date.parse(m.timestamp || '') || 0; };
     var first = ms.length ? tsOf(ms[0]) : 0, last = ms.length ? tsOf(ms[ms.length - 1]) : 0;
-    var c = cur();
-    var mine = sent.filter(function (x) { return !c || !c.host || String(x.to).toLowerCase() === String(c.host).toLowerCase(); });
-    // A letter of the person is not a prompt, so the session's record never holds it as one: the ones inside the shown
-    // stretch take their place in the thread by time; the ones after its last message wait at the end, marked so.
+    // What was written to THIS session from the chat lives in the GM with it (its mail:to:<session> thread, user
+    // 2026-11-20): the same on every machine and on the phone. A letter is not a prompt, so the session's record never
+    // holds it as one: the ones inside the shown stretch take their place by time; the ones after its last message wait
+    // at the end, marked so. A line just sent shows at once (pending) until the GM's copy comes back.
+    var stored = ((s && s.letters) || []).map(function (x) { return { body: x.body, sentAt: x.timestamp }; });
+    pending = pending.filter(function (p) { return p.session === (s && s.sessionId) && !stored.some(function (x) { return x.body === p.body; }); });
+    var mine = stored.concat(pending);
     var inline = mine.filter(function (x) { var t0 = Date.parse(x.sentAt); return t0 >= first && t0 <= last; });
     if (inline.length) {
       ms = ms.concat(inline.map(function (x) { return { role: 'user', content: x.body, timestamp: x.sentAt }; }))
@@ -129,7 +132,6 @@ var zChat = (function () {
       // no answer: keep what is on screen (the loading line, or the last thread) - an empty list is only an answer
       if (!r[0]) return;
       list = r[0].sessions || [];
-      sent = (r[0] && r[0].sent) || [];
       if (!sess || !cur()) sess = list.length ? list[0].sessionId : null;
       drawSessions();
       drawAsks(r[1] && r[1].pending);
@@ -145,7 +147,7 @@ var zChat = (function () {
       // another session than the one on screen: say so while its messages come
       if (!thread || thread.sessionId !== c.sessionId) loading();
       // the last part only: the full session is Recall › Sessions' job; the signature sticks only once it arrived
-      return zGet('/memory-session?id=' + encodeURIComponent(c.sessionId) + '&tail=120').then(function (s) {
+      return zGet('/memory-session?id=' + encodeURIComponent(c.sessionId) + '&tail=120&letters=1').then(function (s) {
         if (sess !== c.sessionId) return;
         lastSig = sig;
         drawThread(s);
@@ -166,9 +168,9 @@ var zChat = (function () {
     var host = c.host || '';
     // shown the moment it is sent, with its "waiting" line (it used to appear only after the send and a full refresh
     // came back: 2-3 s on the phone); the next refresh replaces it with the machine's own copy
-    sent.push({ id: 'local-' + Date.now(), body: text, sentAt: new Date().toISOString(), to: host });
+    pending.push({ body: text, sentAt: new Date().toISOString(), session: c.sessionId });
     if (thread) drawThread(thread);
-    fetch('/mail/send?to=' + encodeURIComponent(host + '/' + repo), { method: 'POST', body: text })
+    fetch('/mail/send?to=' + encodeURIComponent(host + '/' + repo) + '&session=' + encodeURIComponent(c.sessionId), { method: 'POST', body: text })
       .then(function (r) { return r.json(); })
       .then(function (r) { if (!r.ok && typeof zToast === 'function') zToast(r.error || ''); lastSig = ''; refresh(); });
   }
