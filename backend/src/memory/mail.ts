@@ -270,6 +270,23 @@ export function unreadFor(repo: string, path?: string): InboxRow[] {
   );
 }
 
+/**
+ * Letters for a repo (all repos when empty) that landed after `sinceIso`, READ OR NOT. Measured 20/11 on both machines:
+ * a leftover `msg watch` marked each letter read ~0.15 s after it landed, so a waiter asking for UNREAD letters never
+ * woke and the session never saw the letter. What wakes a waiter is a letter arriving, not its read flag.
+ */
+export function landedSince(repo: string, sinceIso: string, path?: string): InboxRow[] {
+  return withMail(
+    (db) =>
+      (
+        (repo
+          ? db.prepare(Q.mailLandedSinceRepo).all(sinceIso, repoKey(repo))
+          : db.prepare(Q.mailLandedSinceAll).all(sinceIso)) as Row[]
+      ).map(inboxRow),
+    path,
+  );
+}
+
 /** One letter of the inbox by id (or id prefix), read or not. */
 export function inboxLetter(id: string, path?: string): InboxRow | null {
   return withMail((db) => {

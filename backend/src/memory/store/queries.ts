@@ -192,6 +192,9 @@ export const Q = {
   mailReceive: "INSERT OR IGNORE INTO inbox (id, from_host, to_repo, json, received_at) VALUES (?,?,?,?,?)",
   mailUnreadRepo: "SELECT json, received_at, read_at FROM inbox WHERE read_at IS NULL AND to_repo = ? ORDER BY received_at",
   mailUnreadAll: "SELECT json, received_at, read_at FROM inbox WHERE read_at IS NULL ORDER BY received_at",
+  // a waiter wakes on every letter that LANDED after it started, read or not: another reader must not starve it
+  mailLandedSinceRepo: "SELECT json, received_at, read_at FROM inbox WHERE received_at > ? AND to_repo = ? ORDER BY received_at",
+  mailLandedSinceAll: "SELECT json, received_at, read_at FROM inbox WHERE received_at > ? ORDER BY received_at",
   mailLetter: "SELECT json, received_at, read_at FROM inbox WHERE id = ? OR id LIKE ? ORDER BY received_at LIMIT 1",
   mailMarkRead: "UPDATE inbox SET read_at = ? WHERE id = ? AND read_at IS NULL",
   mailInbox: "SELECT json, received_at, read_at FROM inbox ORDER BY received_at DESC LIMIT ?",

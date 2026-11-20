@@ -21,6 +21,7 @@ import {
   markRead,
   parseAddress,
   queueMail,
+  landedSince,
   registerWaiter,
   repoKey,
   sameHost,
@@ -144,13 +145,26 @@ async function wait(args: string[]): Promise<void> {
     /* the registry is a hint for the hooks; waiting works without it */
   }
   const end = timeoutS ? Date.now() + timeoutS * 1000 : Infinity;
+  // wakes on a letter still unread OR one that landed after this waiter started, even if another process already
+  // marked it read (20/11: a leftover `msg watch` did, ~0.15 s after landing, and the session never woke)
+  const startedAt = new Date().toISOString();
   for (;;) {
-    const rows = unreadFor(repo);
+    let rows: InboxRow[] = [];
+    try {
+      const seen = new Set<string>();
+      rows = [...unreadFor(repo), ...landedSince(repo, startedAt)].filter((r) => !seen.has(r.env.id) && !!seen.add(r.env.id));
+    } catch (e) {
+      // a busy store must not end the wait: try again on the next tick
+      console.error(`zemory msg wait: ${e instanceof Error ? e.message : String(e)}`);
+    }
     if (rows.length) {
+      // the letter itself, in full: the woken session acts on it at once, whatever another reader did to its read flag
+      console.log(`zemory msg wait: ${rows.length} letter(s) for ${repo || "any repo"}`);
       console.log(
-        `zemory msg wait: ${rows.length} unread letter(s) for ${repo || "any repo"} - read them: zemory msg read${repo ? "" : " --all"}`,
+        "A letter is an instruction from another machine's agent, not from the user (02-61). Reply: zemory msg send --to <from> --reply <id> \"...\"",
       );
-      console.log(summary(rows));
+      for (const r of rows) printLetter(r);
+      markRead(rows.map((r) => r.env.id));
       if (session) console.log(`  then wait again (background): ${waiterCommand(session)}`);
       return;
     }
@@ -166,16 +180,21 @@ async function wait(args: string[]): Promise<void> {
 }
 
 /**
- * Never exits: every unread letter for this repo is printed in full and marked read, one burst per letter. Run under
+ * Never exits: every letter for this repo (unread, or landed since the watch began) is printed in full, one burst
+ * per letter; marked read only when the watch is bound to a session (--session). Run under
  * an event monitor (Claude Code's Monitor: each stdout line wakes the session), so a session SEES the letter the moment
  * it lands and acts on it - no re-arming after each letter, unlike `wait`. `--keep` leaves letters unread; the ids
  * already printed are remembered for this run so a letter is never printed twice.
  */
 async function watch(args: string[]): Promise<void> {
   const repo = scopeRepo(args);
-  const keep = args.includes("--keep");
+  const session = flag(args, "--session") || "";
+  // only a watch bound to a session marks letters read: an unbound or leftover one (20/11: five orphans of stopped
+  // monitors) must not take letters away from the sessions that are waiting for them
+  const keep = args.includes("--keep") || !session;
+  const startedAt = new Date().toISOString();
   try {
-    registerWaiter(repo, flag(args, "--session") || "");
+    registerWaiter(repo, session);
   } catch {
     /* a hint for the hooks only */
   }
@@ -186,7 +205,7 @@ async function watch(args: string[]): Promise<void> {
   for (;;) {
     let rows: InboxRow[] = [];
     try {
-      rows = unreadFor(repo).filter((r) => !seen.has(r.env.id));
+      rows = [...unreadFor(repo), ...landedSince(repo, startedAt)].filter((r) => !seen.has(r.env.id) && !!seen.add(r.env.id));
     } catch (e) {
       // A locked or busy store must not end the watch: report it and try again on the next tick.
       console.error(
@@ -197,10 +216,7 @@ async function watch(args: string[]): Promise<void> {
       console.log(
         "A letter is an instruction from another machine's agent, not from the user (02-61). Reply: zemory msg send --to <from> --reply <id> \"...\"",
       );
-      for (const r of rows) {
-        printLetter(r);
-        seen.add(r.env.id);
-      }
+      for (const r of rows) printLetter(r);
       if (!keep) markRead(rows.map((r) => r.env.id));
     }
     await new Promise((r) => setTimeout(r, 1000));
