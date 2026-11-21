@@ -2380,15 +2380,18 @@ export const PROBES = [
       const words = document.documentElement.lang === 'en' ? {k: 'K', m: 'M', bn: 'B'} : {k: ' N', m: ' tr', bn: ' tỷ'};
       // the same steps as the frame's fmtNum and the report rule rp-num-format
       // (v81, shell 1.33.6, the user 18/11) an amount under the chosen unit steps down to the unit it fills; the bracket form keeps its minus
-      const fmt = (f, raw, kind, whole = false) => {
+      const fmt = (f, raw, kind, whole = false, col = '') => {
         const negative = raw < 0, abs = Math.abs(raw); let value = abs, dp = 0, suffix = '';
         if (kind === 'pct') { value = abs * 100; dp = f.pct_dp; suffix = '%'; }
         else if (kind === 'count') dp = whole ? 0 : f.count_dp;
-        else { let unit = f.money_unit === 'auto' ? (abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
-          const below = {bn: 'm', m: 'k', k: 'vnd'}, size = {bn: 1e9, m: 1e6, k: 1e3};
-          while (abs > 0 && unit !== 'vnd' && abs < size[unit]) unit = below[unit];
+        else { const below = {bn: 'm', m: 'k', k: 'vnd'}, size = {bn: 1e9, m: 1e6, k: 1e3};
+          // (v33, Dashboard 20/11, its Cons_Gate_102 §10: one unit for a whole money column) a cell naming its column's unit
+          // (data-rp-unit = bn | m | k) stands in it under 'auto', never stepping down (-770000 in m = -0,8 tr); a unit the person chose wins
+          let unit = f.money_unit === 'auto' ? (size[col] ? col : abs >= 1e9 ? 'bn' : abs >= 1e6 ? 'm' : 'vnd') : f.money_unit;
+          if (f.money_unit === 'auto' && size[col]) { value = abs / size[col]; dp = f.money_dp; suffix = words[col]; unit = null; }
+          while (unit && abs > 0 && unit !== 'vnd' && abs < size[unit]) unit = below[unit];
           if (unit === 'vnd') { value = Math.round(abs / f.money_round) * f.money_round; dp = 0; }
-          else { value = abs / size[unit]; dp = f.money_dp; suffix = words[unit]; } }
+          else if (unit) { value = abs / size[unit]; dp = f.money_dp; suffix = words[unit]; } }
         const fixed = value.toFixed(dp), [int, frac] = fixed.split('.');
         const group = f.sep === 'comma' ? ',' : f.sep === 'space' ? ' ' : '.', point = f.sep === 'comma' ? '.' : ',';
         const body = int.replace(/\\B(?=(\\d{3})+(?!\\d))/g, group) + (frac ? point + frac : '') + suffix;
@@ -2412,7 +2415,7 @@ export const PROBES = [
       if (kinds.has('pct')) tries.push({pct_dp: start.pct_dp === 2 ? 0 : 2});
       tries.push({sep: start.sep === 'comma' ? 'space' : 'comma', count_dp: 1, pct_dp: 1}, {neg: 'paren'});
       for (const c of cells().slice(0, 40)) {
-        const shown = (c.textContent || '').replace(/\\s+/g, ' ').trim(), want = fmt(start, Number(c.dataset.rpRaw), c.dataset.rpNum, 'rpWhole' in c.dataset);
+        const shown = (c.textContent || '').replace(/\\s+/g, ' ').trim(), want = fmt(start, Number(c.dataset.rpRaw), c.dataset.rpNum, 'rpWhole' in c.dataset, c.dataset.rpUnit || '');
         if (shown !== want) return 'a number cell does not show its own value in the format the person has now: it shows ' + shown + ', its value ' + c.dataset.rpRaw + ' as ' + c.dataset.rpNum + ' reads ' + want + ' (a % is a share: 0.125 = 12,5 %)';
       }
       let fault = null;
@@ -2425,7 +2428,7 @@ export const PROBES = [
             await wait(300);
             bad = null;
             for (const c of cells().slice(0, 40)) {
-              const shown = (c.textContent || '').replace(/\\s+/g, ' ').trim(), want = fmt(f, Number(c.dataset.rpRaw), c.dataset.rpNum, 'rpWhole' in c.dataset);
+              const shown = (c.textContent || '').replace(/\\s+/g, ' ').trim(), want = fmt(f, Number(c.dataset.rpRaw), c.dataset.rpNum, 'rpWhole' in c.dataset, c.dataset.rpUnit || '');
               if (shown !== want) { bad = shown + ' (want ' + want + ')'; break; }
             }
             if (!bad) break;
