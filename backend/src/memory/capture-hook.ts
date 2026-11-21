@@ -680,7 +680,7 @@ export function waiterNotice(payload: any, atStop: boolean, dir?: string): strin
     "It exits when a letter for this repo lands: read it with `zemory msg read`, then start the same command again.";
   if (!atStop) return `[zemory] Mail from the other machine reaches this session only through a waiter: ${how}`;
   const ledger = join(currentMemoryDir(), "context-guard", `${sid.replace(/[^\w.-]/g, "_")}.waiter`);
-  let askedAt = "";
+  let askedAt: string;
   try {
     askedAt = readFileSync(ledger, "utf8").trim();
   } catch {

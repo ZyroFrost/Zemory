@@ -314,6 +314,15 @@ CREATE TABLE IF NOT EXISTS session_replaced (
   max_ts     TEXT,
   at         TEXT NOT NULL
 );
+-- A display title the user gave a session (\`memory retitle\`, PC 2026-11-22). \`sessions.title\` is what the source said and is
+-- never edited (constitution article 3): readers show COALESCE(session_title.title, sessions.title). \`title\` NULL = cleared, kept as a row
+-- so the clearing travels too. Shipped whole with every delta; the newer \`set_at\` wins on merge.
+CREATE TABLE IF NOT EXISTS session_title (
+  session_id TEXT PRIMARY KEY,
+  title      TEXT,
+  set_at     TEXT NOT NULL
+);
+
 -- A replace received from the origin, applied once every listed message has arrived (a large delta comes in blocks).
 CREATE TABLE IF NOT EXISTS session_replace_pending (
   session_id TEXT PRIMARY KEY,

@@ -31,6 +31,7 @@ import { WEB_PLATFORMS, accountsOf, scanWeb, scanWebPlatforms, showLinkedPage } 
 import { borrowCookies, dropBackup, findBorrowSource, restoreProfile } from "./memory/borrowcookies.js";
 import { listConnections, probeDue, webProfileDir } from "./memory/connections.js";
 import { currentMemoryDb, currentMemoryDir, openMemory } from "./memory/db.js";
+import { applyRetitle, displayTitles, planRetitle } from "./memory/retitle.js";
 import { attachmentBlob, attachmentsFor } from "./memory/attachments.js";
 import type { AttachmentMeta } from "./memory/attachments.js";
 // `recall` (hybrid+rerank) KHÔNG còn được gọi từ daemon nữa — nó là lớp đắt, nay chạy ở
@@ -918,10 +919,16 @@ function querySessions(
 
     const cond: string[] = [];
     const args: unknown[] = [];
+    // Display titles the user gave (memory/retitle.ts) - a small table, overlaid on the rows and matched by the filter too.
+    const shown = displayTitles(db);
     if (o.q) {
-      cond.push("(lower(COALESCE(s.title,'')) LIKE ? OR lower(COALESCE(s.project_root,'')) LIKE ? OR lower(s.source) LIKE ?)");
-      const like = `%${o.q.toLowerCase()}%`;
-      args.push(like, like, like);
+      const q = o.q.toLowerCase();
+      const titled = [...shown].filter(([, t]) => t.toLowerCase().includes(q)).map(([id]) => id);
+      const like = `%${q}%`;
+      cond.push(
+        `(lower(COALESCE(s.title,'')) LIKE ? OR lower(COALESCE(s.project_root,'')) LIKE ? OR lower(s.source) LIKE ?${titled.length ? ` OR s.id IN (${titled.map(() => "?").join(",")})` : ""})`,
+      );
+      args.push(like, like, like, ...titled);
     }
     if (o.days && o.days > 0) {
       cond.push("COALESCE(s.ended_at, s.started_at, '') >= ?");
@@ -962,7 +969,9 @@ function querySessions(
       .all(...args, limit, offset) as Array<Record<string, unknown>>;
     const items = rows.map((r) => {
       const n = attBySession.get(String(r.sessionId));
-      return n ? { ...r, atts: n } : r;
+      const t = shown.get(String(r.sessionId));
+      const row = t ? { ...r, title: t, sourceTitle: r.title } : r;
+      return n ? { ...row, atts: n } : row;
     });
     return { items, total };
   } finally {
@@ -973,7 +982,8 @@ function querySessions(
 function queryRecentSessions(limit: number): unknown[] {
   const db = openMemory();
   try {
-    return db
+    const shown = displayTitles(db);
+    const rows = db
       .prepare(
         `SELECT s.id AS sessionId, s.source AS source, s.project_root AS project,
                 s.title AS title, s.ended_at AS endedAt
@@ -983,7 +993,11 @@ function queryRecentSessions(limit: number): unknown[] {
              ON s.project_root = x.project_root AND s.ended_at = x.m
           ORDER BY s.ended_at DESC LIMIT ?`,
       )
-      .all(limit) as unknown[];
+      .all(limit) as Array<Record<string, unknown>>;
+    return rows.map((r) => {
+      const t = shown.get(String(r.sessionId));
+      return t ? { ...r, title: t } : r;
+    });
   } finally {
     db.close();
   }
@@ -2547,7 +2561,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // guard bên dưới đã chặn — nên chỉ cần ép POST là bịt cả họ.
   // Đo 2026-07-27: 24 endpoint đổi trạng thái, 14 trong số đó đang nhận GET.
   const MUTATING =
-    /^\/(set-|drive-sync|forget-project|prune-projects|memory-(forget|redact|restore|scan|digest|embed)|relocate|sync$|migrate$|gate-(acquire|release)|mirror-apply)/;
+    /^\/(set-|drive-sync|forget-project|prune-projects|memory-(forget|redact|restore|scan|digest|embed|retitle)|relocate|sync$|migrate$|gate-(acquire|release)|mirror-apply)/;
   // `mirror-apply` GHI RA ĐĨA (duyệt một dòng chờ ⇒ ghi đè một file trong `docs/`…), nên nó
   // thuộc hạng này dù tên không bắt đầu bằng `set-`. Bắt được lúc thử tay sau khi mở app:
   // endpoint ghi mà đi được bằng GET là một đường ghi chỉ cần một URL.
@@ -4245,6 +4259,21 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       const { getMirrorAuto } = await import("./config/settings.js");
       const ms = await import("./memory/channel/mirrorstate.js");
       return json(res, { ok: true, policy: getMirrorAuto(), log: ms.autoLog().slice(0, 5) });
+    }
+    // Display titles by the 02-48 rule for every session of one project (memory/retitle.ts). apply=0 plans, apply=1 writes.
+    if (p === "/memory-retitle") {
+      const root = (u.searchParams.get("root") ?? "").trim();
+      if (!root) return json(res, { ok: false, error: "bad-args" });
+      const db = openMemory();
+      try {
+        const plan = planRetitle(db, root);
+        const change = plan.filter((r) => r.next && r.next !== r.current).length;
+        const written = u.searchParams.get("apply") === "1" ? applyRetitle(db, plan) : 0;
+        if (written) daemonLog(`[memory] retitle ${root}: ${written} session title(s)`);
+        return json(res, { ok: true, total: plan.length, change, written });
+      } finally {
+        db.close();
+      }
     }
     if (p === "/set-mirror-auto") {
       const { setMirrorAuto, getMirrorAuto } = await import("./config/settings.js");

@@ -6,6 +6,7 @@
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
 import { projectKey } from "../core/config.js";
 import { Q } from "./store/queries.js";
+import { useProjectKey } from "./retitle.js";
 
 // MỘT bản so-path cho cả hệ (F4, 2026-08-02) — bản cũ ở đây không cắt gạch cuối nên
 // `D:\X\` trượt trong khi các chỗ khác khớp.
@@ -58,7 +59,7 @@ export function recallCard(project: string, dbPath: string = currentMemoryDb()):
     // sessions of the WHOLE store and filtered afterwards, so a project whose sessions were all older than that window
     // got an empty card (PC 2026-11-22: 117 merged tarot sessions, newest 27/08, a store of 4,154 - nothing at session
     // start) and a busy project's count was capped at what fell inside the window.
-    db.function("zemory_pkey", { deterministic: true }, (p: unknown) => (typeof p === "string" ? norm(p) : null));
+    useProjectKey(db);
     const totals = db.prepare(Q.recallProjectTotals).get(want) as { n: number; m: number };
     if (!totals.n) return "";
     // Pinned first, then by time, each pinned one MARKED 📌 so the agent knows why it stands there (a line floating up

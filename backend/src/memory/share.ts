@@ -41,6 +41,7 @@ import { type ScopeLane, isExcluded, laneSqlClause } from "./scope.js";
 import { type SyncLevel, getScopeExclude, getSyncAttachments, getSyncLevel } from "../config/settings.js";
 import { Q } from "./store/queries.js";
 import { applyReplaces, followReplacedText, receiveReplaces, shipReplaces } from "./replace.js";
+import { mergeTitles, shipTitles } from "./retitle.js";
 import { forgetVectors } from "./vectors.js";
 
 const MAGIC = "ZEMORY-MEMORY-ENC v1\n";
@@ -335,6 +336,8 @@ function buildRowsSnapshot(
         db.exec("INSERT INTO main.known_stores SELECT * FROM src.known_stores");
         // the origin's whole replaces of the sessions carried here, so the receiver follows them (memory/replace.ts)
         shipReplaces(db);
+        // every display title the user gave a session (memory/retitle.ts) - a small table, carried whole
+        shipTitles(db);
         // L3: chỉ chở khi máy này BẬT công tắc. Bám đúng tập message vừa chở (delta +
         // scope exclude) — chở đính kèm của tin không có trong bundle là chở rác.
         if (opts.attachments) {
@@ -845,6 +848,7 @@ async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeM
           const grown = db.prepare(Q.webLongerWins).all() as { id: number; session_id: string }[];
           if (grown.length && db.prepare(Q.tableExists).get("session_digest")) for (const sid of new Set(grown.map((g) => g.session_id))) db.prepare(Q.deleteSessionDigest).run(sid);
           receiveReplaces(db, hostname() || "unknown");
+          mergeTitles(db);
           replacedIds = [...grown.map((g) => g.id), ...followReplacedText(db), ...applyReplaces(db)];
           db.exec("DELETE FROM sessions WHERE message_count = 0 AND id IN (SELECT id FROM src.sessions)");
         })();
@@ -2168,7 +2172,7 @@ export const STALE_STAGED_MS = 12 * 3600_000;
  */
 export function sweepStaleStaged(dir: string, now = Date.now()): string[] {
   const gone: string[] = [];
-  let names: string[] = [];
+  let names: string[];
   try {
     names = readdirSync(dir);
   } catch {
@@ -2750,7 +2754,7 @@ export async function vectorCatchUp(opts: {
         } catch (e) {
           // the local disk filled while WRITING the probe: the segment was never judged, so naming it unreadable is a
           // false alarm (measured 20/11 on the PC: "UNREADABLE SEGMENT" + "CHANNEL SHORT by 884,432" on a sound channel)
-          if (localFull(e)) throw new Error(diskFullMessage(tmpBase, segsAll.map((x) => x.path)));
+          if (localFull(e)) throw new Error(diskFullMessage(tmpBase, segsAll.map((x) => x.path)), { cause: e });
           last = e;
         }
       }

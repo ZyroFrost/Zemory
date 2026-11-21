@@ -366,6 +366,8 @@ export interface Waiter {
   repo: string;
   session: string;
   startedAt: string;
+  /** "wait" or "watch"; absent on a file written before 4.19.21 */
+  kind?: string;
 }
 
 export function waitersDir(machineDir = currentMemoryDir()): string {
@@ -384,9 +386,9 @@ export function pidAlive(pid: number): boolean {
 }
 
 /** Record this process as a waiter for `session` (and `repo`); the file goes when the process exits. */
-export function registerWaiter(repo: string, session: string, dir = waitersDir()): string {
+export function registerWaiter(repo: string, session: string, dir = waitersDir(), kind = "wait"): string {
   mkdirSync(dir, { recursive: true });
-  const w: Waiter = { pid: process.pid, repo: repoKey(repo || ""), session, startedAt: new Date().toISOString() };
+  const w: Waiter = { pid: process.pid, repo: repoKey(repo || ""), session, startedAt: new Date().toISOString(), kind };
   const file = join(dir, `${safe(session || "nosession")}.${process.pid}.json`);
   writeFileSync(file, JSON.stringify(w));
   if (session) writeFileSync(join(dir, `${safe(session)}.last`), w.startedAt);
@@ -428,6 +430,20 @@ export function liveWaiters(dir = waitersDir()): Waiter[] {
 export function sessionHasWaiter(session: string, repo: string, dir = waitersDir()): boolean {
   const key = repoKey(repo);
   return liveWaiters(dir).some((w) => w.session === session && (!w.repo || w.repo === key));
+}
+
+/**
+ * Has a NEWER waiter of the same kind started for this session? Then this one is a leftover and should leave. Windows
+ * cannot tell it by the parent: the npm shim's `sh` stays alive as the waiter's parent after Claude Code's TaskStop ends
+ * the shell, and the Windows parent of that `sh` is gone even for a live waiter (Git Bash spawns through a short-lived
+ * process). Measured 22/11: 8 leftover sh+node pairs on the laptop, the oldest from 20/11; the PC killed two by hand.
+ */
+export function supersededWaiter(me: Pick<Waiter, "pid" | "session" | "startedAt" | "kind">, dir = waitersDir()): boolean {
+  if (!me.session) return false;
+  return liveWaiters(dir).some(
+    (w) => w.pid !== me.pid && w.session === me.session && (w.kind ?? "wait") === (me.kind ?? "wait") &&
+      (w.startedAt > me.startedAt || (w.startedAt === me.startedAt && w.pid > me.pid)),
+  );
 }
 
 /** When `session` last started a waiter (kept after the waiter exits), or "" - the Stop hook's "was it re-armed?". */

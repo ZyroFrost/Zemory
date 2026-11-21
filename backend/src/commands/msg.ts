@@ -24,6 +24,7 @@ import {
   landedSince,
   pidAlive,
   registerWaiter,
+  supersededWaiter,
   repoKey,
   sameHost,
   unreadFor,
@@ -71,15 +72,6 @@ function printLetter(r: InboxRow): void {
   console.log("");
   for (const line of e.body.split("\n")) console.log(`   ${line}`);
   console.log("");
-}
-
-function summary(rows: InboxRow[]): string {
-  return rows
-    .map(
-      (r) =>
-        `  ${r.env.id.slice(0, 8)}  ${r.env.from.host}/${r.env.from.repo}: ${r.env.subject}`,
-    )
-    .join("\n");
 }
 
 function send(args: string[]): void {
@@ -151,10 +143,11 @@ async function wait(args: string[]): Promise<void> {
   const session = flag(args, "--session") || "";
   // registered so the Stop hook knows this session is covered (sessionHasWaiter); the file goes when this process does
   try {
-    registerWaiter(repo, session);
+    registerWaiter(repo, session, undefined, "wait");
   } catch {
     /* the registry is a hint for the hooks; waiting works without it */
   }
+  const me = { pid: process.pid, session, startedAt: new Date().toISOString(), kind: "wait" };
   const end = timeoutS ? Date.now() + timeoutS * 1000 : Infinity;
   // wakes on a letter still unread OR one that landed after this waiter started, even if another process already
   // marked it read (20/11: a leftover `msg watch` did, ~0.15 s after landing, and the session never woke)
@@ -188,7 +181,8 @@ async function wait(args: string[]): Promise<void> {
     }
     // orphaned (20/11: Claude Code's TaskStop ends the shell, the node child lived on) ⇒ leave: a waiter nobody hears
     // only blocks the hook from asking for a live one
-    if (orphaned()) return;
+    // superseded: a newer waiter of this session started (the agent re-armed after stopping this one) => leave
+    if (orphaned() || supersededWaiter(me)) return;
     await new Promise((r) => setTimeout(r, 1000));
   }
 }
@@ -208,10 +202,11 @@ async function watch(args: string[]): Promise<void> {
   const keep = args.includes("--keep") || !session;
   const startedAt = new Date().toISOString();
   try {
-    registerWaiter(repo, session);
+    registerWaiter(repo, session, undefined, "watch");
   } catch {
     /* a hint for the hooks only */
   }
+  const me = { pid: process.pid, session, startedAt, kind: "watch" };
   const seen = new Set<string>();
   console.log(
     `zemory msg watch: watching letters for ${repo || "any repo"} - each one is printed in full as it lands`,
@@ -235,7 +230,8 @@ async function watch(args: string[]): Promise<void> {
     }
     // orphaned (20/11: Claude Code's TaskStop ends the shell, the node child lived on) ⇒ leave: a waiter nobody hears
     // only blocks the hook from asking for a live one
-    if (orphaned()) return;
+    // superseded: a newer waiter of this session started (the agent re-armed after stopping this one) => leave
+    if (orphaned() || supersededWaiter(me)) return;
     await new Promise((r) => setTimeout(r, 1000));
   }
 }

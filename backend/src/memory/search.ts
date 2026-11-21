@@ -14,6 +14,7 @@ import { projectKey } from "../core/config.js";
 import { toHostPath } from "../util/hostpath.js";
 import { isExcluded } from "./scope.js";
 import { Q } from "./store/queries.js";
+import { displayTitle } from "./retitle.js";
 
 export interface SearchHit {
   id: number;
@@ -1030,12 +1031,13 @@ function fuseHitLists(lists: SearchHit[][], limit: number): SearchHit[] {
 export function getMessage(id: number, dbPath: string = currentMemoryDb()) {
   const db = openMemory(dbPath);
   try {
-    return db
+    const row = db
       .prepare(
         `SELECT m.id, m.session_id, m.role, m.content, m.tool_name, m.timestamp, s.source, s.project_root, s.title
          FROM messages m JOIN sessions s ON s.id = m.session_id WHERE m.id = ?`,
       )
-      .get(id);
+      .get(id) as { session_id: string; title: string | null } | undefined;
+    return (row ? { ...row, title: displayTitle(db, row.session_id, row.title) } : row) as unknown;
   } finally {
     db.close();
   }
@@ -1103,7 +1105,7 @@ export function getMessageContext(
       sessionId: target.session_id,
       source: target.source,
       project: target.project_root ?? "(unknown)",
-      title: target.title,
+      title: displayTitle(db, target.session_id, target.title),
       messages,
     };
   } finally {
@@ -1133,7 +1135,7 @@ export function getSessionThread(sessionId: string, dbPath: string = currentMemo
       sessionId,
       source: s.source,
       project: s.project_root ?? "(unknown)",
-      title: s.title,
+      title: displayTitle(db, sessionId, s.title),
       messages: rows.map((m) => ({ ...m, isHit: false })),
       truncated,
     };

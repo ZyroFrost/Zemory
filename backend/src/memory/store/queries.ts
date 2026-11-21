@@ -74,7 +74,21 @@ export const Q = {
   recallProjectTotals:
     "SELECT COUNT(*) AS n, COALESCE(SUM(message_count), 0) AS m FROM sessions WHERE project_root IS NOT NULL AND zemory_pkey(project_root) = ?",
   recallProjectRecent:
-    "SELECT id, title, started_at, ended_at, message_count, source, project_root, pinned FROM sessions WHERE project_root IS NOT NULL AND zemory_pkey(project_root) = ? ORDER BY pinned DESC, ended_at DESC LIMIT 5",
+    "SELECT id, COALESCE((SELECT t.title FROM session_title t WHERE t.session_id = sessions.id), title) AS title, started_at, ended_at, message_count, source, project_root, pinned FROM sessions WHERE project_root IS NOT NULL AND zemory_pkey(project_root) = ? ORDER BY pinned DESC, ended_at DESC LIMIT 5",
+  // display titles (memory/retitle.ts): a session's title as the user set it, over what the source said
+  sessionTitleOf: "SELECT title FROM session_title WHERE session_id = ? AND title IS NOT NULL",
+  sessionTitleAll: "SELECT session_id AS id, title FROM session_title WHERE title IS NOT NULL",
+  sessionTitleUpsert:
+    "INSERT INTO session_title (session_id, title, set_at) VALUES (?, ?, ?) ON CONFLICT(session_id) DO UPDATE SET title = excluded.title, set_at = excluded.set_at",
+  retitleProjectSessions:
+    "SELECT s.id, s.source, s.title AS raw, t.title AS shown, s.started_at, s.ended_at, s.project_root FROM sessions s LEFT JOIN session_title t ON t.session_id = s.id WHERE s.project_root IS NOT NULL AND zemory_pkey(s.project_root) = ? ORDER BY COALESCE(s.started_at, s.ended_at, ''), s.id",
+  retitleOneSession:
+    "SELECT s.id, s.source, s.title AS raw, t.title AS shown, s.started_at, s.ended_at, s.project_root FROM sessions s LEFT JOIN session_title t ON t.session_id = s.id WHERE s.id = ?",
+  // the channel: every display title rides each bundle (`src` = live store, `main` = bundle); on merge the newer set_at wins
+  sessionTitleShipDdl: "CREATE TABLE IF NOT EXISTS main.session_title (session_id TEXT PRIMARY KEY, title TEXT, set_at TEXT NOT NULL)",
+  sessionTitleShip: "INSERT OR REPLACE INTO main.session_title SELECT session_id, title, set_at FROM src.session_title",
+  sessionTitleMerge:
+    "INSERT INTO session_title (session_id, title, set_at) SELECT session_id, title, set_at FROM src.session_title WHERE true ON CONFLICT(session_id) DO UPDATE SET title = excluded.title, set_at = excluded.set_at WHERE excluded.set_at > session_title.set_at",
   sessionsBySource: "SELECT id, ended_at FROM sessions WHERE source = ?",
   refreshSessionStats: `UPDATE sessions SET
        message_count = (SELECT COUNT(*) FROM messages WHERE session_id = @id),
