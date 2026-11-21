@@ -3,6 +3,7 @@
 // keeps the key out-of-band via --key-file or ZEMORY_SHARE_KEY.
 
 import Database from "better-sqlite3";
+import { sweepStaleTemps } from "../jobs/scratchpad.js";
 import { appVersion } from "../core/config.js";
 import { cmpSemver } from "../util/semver.js";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
@@ -642,6 +643,12 @@ export interface MergeMemoryBundleOptions extends MemoryShareKeyOptions {
   dbPath?: string;
   /** Provenance lanes to NOT pull from the incoming bundle (scoped sync). */
   excludeLanes?: ScopeLane[];
+  /**
+   * Where the decrypted chunk and the merge copy go (each about the size of one channel segment - 5 GB on 21/11).
+   * Default: the OS temp folder. `vectors-catchup --tmp` passes its folder here too: it moved only the probe until
+   * 21/11, and the 10 GB of chunk + merge copies still filled C: (PC).
+   */
+  tmpDir?: string;
 }
 
 export interface MergeMemoryBundleResult {
@@ -690,13 +697,17 @@ export async function mergeMemoryBundle(opts: MergeMemoryBundleOptions): Promise
     let first: MergeMemoryBundleResult | null = null;
     let last: MergeMemoryBundleResult | null = null;
     let vectors = 0;
+    let skipReason: string | undefined;
     for (const chunk of chunks) {
-      const tmp = mkdtempSync(join(tmpdir(), "zemory-mchunk-"));
+      const tmp = mkdtempSync(join(opts.tmpDir?.trim() || tmpdir(), "zemory-mchunk-"));
       try {
         const part = join(tmp, "chunk.enc");
         await extractChunk(opts.bundlePath, chunk, part);
         const r = await mergeSingleBundle({ ...opts, bundlePath: part });
         vectors += r.vectorsApplied ?? 0;
+        // a chunk whose vectors were skipped says why - dropping the reason here hid a full disk as "804,626 vectors
+        // missing" (PC 21/11)
+        skipReason ??= r.vectorsSkippedReason;
         first ??= r;
         last = r;
       } finally {
@@ -713,6 +724,7 @@ export async function mergeMemoryBundle(opts: MergeMemoryBundleOptions): Promise
       sessionsAdded: last!.sessionsAfter - first!.sessionsBefore,
       messagesAdded: last!.messagesAfter - first!.messagesBefore,
       vectorsApplied: vectors,
+      ...(skipReason ? { vectorsSkippedReason: skipReason } : {}),
     };
   }
   return mergeSingleBundle(opts);
@@ -720,7 +732,7 @@ export async function mergeMemoryBundle(opts: MergeMemoryBundleOptions): Promise
 
 async function mergeSingleBundle(opts: MergeMemoryBundleOptions): Promise<MergeMemoryBundleResult> {
   const targetPath = opts.dbPath ?? currentMemoryDb();
-  const dir = mkdtempSync(join(tmpdir(), "zemory-memory-merge-"));
+  const dir = mkdtempSync(join(opts.tmpDir?.trim() || tmpdir(), "zemory-memory-merge-"));
   const srcPath = join(dir, "incoming.db");
   try {
     const incoming = await decryptBundleToFile(opts, srcPath);
@@ -2651,6 +2663,9 @@ export async function vectorCatchUp(opts: {
   /** Khúc trên kênh KHÔNG giải mã được (tên file + lý do). Hạng báo động NẶNG NHẤT — nặng hơn
    *  "hụt tin", vì máy mới dựng lại sẽ chết ngay ở đó chứ không phải chỉ nhận thiếu. */
   unreadable: { file: string; error: string }[];
+  /** Segments whose VECTOR layer did not go into the rebuilt store (reason given): every vector of such a segment would
+   *  count as missing, so nothing is appended while one is listed. */
+  vectorsSkipped: { file: string; reason: string }[];
 }> {
   const dir = opts.driveDir.trim();
   if (!dir) throw new Error("No Drive folder linked.");
@@ -2662,6 +2677,9 @@ export async function vectorCatchUp(opts: {
   const dbPath = opts.dbPath ?? currentMemoryDb();
 
   const tmpBase = opts.tmpDir?.trim() || tmpdir();
+  // a run killed mid-way (timeout) leaves its probe and merge folders behind - 11 GB on the PC, 21/11. The daemon sweeps
+  // the OS temp folder; a --tmp folder it never sees, so the catch-up sweeps its own base (only folders over 6 hours old).
+  if (opts.tmpDir?.trim()) sweepStaleTemps({ base: tmpBase });
   const tmp = mkdtempSync(join(tmpBase, "zemory-catchup-"));
   const probe = join(tmp, "probe.db");
   try {
@@ -2674,6 +2692,7 @@ export async function vectorCatchUp(opts: {
     // Nay: hỏng khúc nào GHI TÊN khúc đó rồi đi tiếp; phần đọc được vẫn dựng và vẫn đếm được.
     // Đây KHÔNG phải nuốt lỗi — `unreadable` là hạng báo động nặng nhất mà người gọi phải in ra.
     const unreadable: { file: string; error: string }[] = [];
+    const vectorsSkipped: { file: string; reason: string }[] = [];
     for (const s of segsAll) {
       // a read that fails once often passes the next time (29/10: ENOMEM on one 271 MB segment while a gate ran beside
       // it, clean on the retry) - three tries before a segment counts as unreadable
@@ -2681,7 +2700,15 @@ export async function vectorCatchUp(opts: {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           if (process.env.ZEMORY_CATCHUP_FAULT === "enospc") throw Object.assign(new Error("ENOSPC: no space left on device, write (fault injected for the gate)"), { code: "ENOSPC" });
-          await mergeMemoryBundle({ bundlePath: s.path, dbPath: probe, keyFile: opts.keyFile });
+          const m = await mergeMemoryBundle({ bundlePath: s.path, dbPath: probe, keyFile: opts.keyFile, tmpDir: tmpBase });
+          const fault = process.env.ZEMORY_CATCHUP_FAULT;
+          const why = fault === "vec-full" ? "database or disk is full" : fault === "vec-other" ? "embedding profile differs (fault injected for the gate)" : m.vectorsSkippedReason;
+          if (why) {
+            // the vector layer is fail-open in a merge; here a full disk must be named as one, not counted as missing
+            // vectors - thrown with its code so the catch below reports the disk, never the segment
+            if (isLocalDiskFull(new Error(why))) throw Object.assign(new Error(why), { code: "ENOSPC" });
+            vectorsSkipped.push({ file: basename(s.path), reason: why });
+          }
           last = null;
           break;
         } catch (e) {
@@ -2782,8 +2809,8 @@ export async function vectorCatchUp(opts: {
 
     // A store rebuilt without one of its segments makes every vector of that segment look missing: 29/10 such a run
     // appended 71,617 vectors (320 MB) the channel already had. With an unreadable segment nothing is appended at all.
-    if ((!ids.length && !msgIds.length) || opts.dryRun || unreadable.length) {
-      return { container, missing: ids.length, messagesMissing: msgIds.length, shipped: 0, messagesShipped: 0, bytes: 0, pushed: false, probeSessions, probeMessages, localSessions, localMessages, unreadable };
+    if ((!ids.length && !msgIds.length) || opts.dryRun || unreadable.length || vectorsSkipped.length) {
+      return { container, missing: ids.length, messagesMissing: msgIds.length, shipped: 0, messagesShipped: 0, bytes: 0, pushed: false, probeSessions, probeMessages, localSessions, localMessages, unreadable, vectorsSkipped };
     }
 
     // ③ Gói CHỈ CÓ VECTOR: `sinceMessageId` đặt quá đỉnh kho ⇒ 0 tin, nhưng danh sách bù vẫn
@@ -2859,7 +2886,7 @@ export async function vectorCatchUp(opts: {
       messagesShipped += r.rows?.messages ?? 0;
       opts.onBlock?.({ block: n + 1, blocks: slices.length, vectors: r.vectorsShipped ?? 0, bytes });
     }
-    return { container, missing: ids.length, messagesMissing: msgIds.length, shipped, messagesShipped, bytes, blocks: slices.length, pushed: true, probeSessions, probeMessages, localSessions, localMessages, unreadable };
+    return { container, missing: ids.length, messagesMissing: msgIds.length, shipped, messagesShipped, bytes, blocks: slices.length, pushed: true, probeSessions, probeMessages, localSessions, localMessages, unreadable, vectorsSkipped };
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
