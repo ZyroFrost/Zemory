@@ -284,6 +284,8 @@ export interface SessionOptions {
   roundGapMs?: number;
   /** A stuck round ends the session after this long. Default `STUCK_ROUND_MS`; tests shorten it. */
   stuckRoundMs?: number;
+  /** A round still open this long after both "done"s of the other machine landed is called stuck. Default `STUCK_SAY_MS`. */
+  stuckSayMs?: number;
   /**
    * TAY NGẮT của liên kết thường trực — và là đường DUY NHẤT để người dùng cắt nó.
    *
@@ -321,6 +323,12 @@ export const LINK_DEAD_MS = PING_IDLE_MS * 3;
 export const ROUND_GAP_MS = 30_000;
 /** A round stuck this long after saying so ends the session (see `stuckTimer`). */
 export const STUCK_ROUND_MS = 10 * 60_000;
+/**
+ * Grace before a round is called stuck. The two machines' rounds run half a beat apart: the other side's "done" lands
+ * while this side's own is a round gap (30 s) away, and the round then closes normally. Saying "stuck" at once wrote
+ * 29,971 false lines into the laptop's daemon.log (measured 21/11, two a minute for weeks).
+ */
+export const STUCK_SAY_MS = 3 * 60_000;
 
 /**
  * Đã tới lúc gửi nhịp tim chưa — im quá `PING_IDLE_MS` kể từ lần CUỐI có byte đi qua.
@@ -1062,14 +1070,28 @@ function runSession(sock: TLSSocket, o: SessionOptions, initiator: boolean): Pro
         ].filter(Boolean);
         if (miss.length) {
           stuckSaid = true;
-          o.log?.(`[channel] phiên #${sid}: lượt chưa đóng sổ — còn chờ: ${miss.join(" · ")}`);
           const round = roundNo;
+          // say it only if the round is STILL open after the grace - a half-beat round closes well inside it
           stuckTimer = setTimeout(() => {
             stuckTimer = null;
             if (settled || roundNo !== round) return;
-            o.log?.(`[channel] phiên #${sid}: lượt kẹt quá ${STUCK_ROUND_MS / 60_000}′ — đóng phiên để nối lại và mở lượt mới`);
-            finish(`round stuck: ${miss.join(" · ")}`);
-          }, o.stuckRoundMs ?? STUCK_ROUND_MS);
+            const still = [
+              !sentDone && "my done",
+              mirrorOn() && !mSentDone && "my mdone",
+              pending.length > 0 && `${pending.length} block(s) queued`,
+              merging > 0 && `${merging} block(s) merging`,
+              awaiting.size > 0 && `${awaiting.size} ack(s) from the other machine`,
+            ].filter(Boolean);
+            const why = (still.length ? still : miss).join(" · ");
+            o.log?.(`[channel] phiên #${sid}: lượt chưa đóng sổ — còn chờ: ${why}`);
+            stuckTimer = setTimeout(() => {
+              stuckTimer = null;
+              if (settled || roundNo !== round) return;
+              o.log?.(`[channel] phiên #${sid}: lượt kẹt quá ${STUCK_ROUND_MS / 60_000}′ — đóng phiên để nối lại và mở lượt mới`);
+              finish(`round stuck: ${why}`);
+            }, o.stuckRoundMs ?? STUCK_ROUND_MS);
+            stuckTimer.unref?.();
+          }, o.stuckSayMs ?? STUCK_SAY_MS);
           stuckTimer.unref?.();
         }
       }
