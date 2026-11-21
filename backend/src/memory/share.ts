@@ -2610,8 +2610,7 @@ export function isLocalDiskFull(e: unknown): boolean {
 /** Rebuilding a channel takes about this many times its size on the local disk (measured 20/11: 5 GB needed over 12 GB). */
 export const CATCHUP_TMP_FACTOR = 2.5;
 
-function diskFullMessage(tmpBase: string, segments: string[]): string {
-  const gb = (b: number) => (b / 1024 ** 3).toFixed(1);
+function segmentBytes(segments: string[]): number {
   let size = 0;
   for (const p of segments) {
     try {
@@ -2620,13 +2619,42 @@ function diskFullMessage(tmpBase: string, segments: string[]): string {
       /* a segment that cannot be measured adds nothing */
     }
   }
-  let free = "";
+  return size;
+}
+
+/** Free bytes in the temp folder, or null when it cannot be measured. ZEMORY_CATCHUP_TMP_FREE overrides it for the gate. */
+function tmpFreeBytes(tmpBase: string): number | null {
+  const forced = process.env.ZEMORY_CATCHUP_TMP_FREE;
+  if (forced !== undefined && forced !== "" && Number.isFinite(Number(forced))) return Number(forced);
   try {
     const f = statfsSync(tmpBase);
-    free = `, ${gb(Number(f.bavail) * Number(f.bsize))} GB free`;
+    return Number(f.bavail) * Number(f.bsize);
   } catch {
-    /* free space unknown - the need alone still says what to do */
+    return null;
   }
+}
+
+/** SQLite's generic "disk I/O error" (SQLITE_IOERR and its extended codes) - on its own it may be a bad disk, not a full one. */
+export function isSqliteIoError(e: unknown): boolean {
+  const code = (e as { code?: unknown } | null)?.code;
+  if (typeof code === "string" && code.startsWith("SQLITE_IOERR")) return true;
+  return /disk I\/O error/i.test(e instanceof Error ? e.message : String(e));
+}
+
+/**
+ * An I/O error counts as a full disk only when the temp folder is measurably short of what the rebuild needs
+ * (PC 21/11: a rebuild on a nearly full C: died with "disk I/O error", not SQLITE_FULL). Free space unknown or
+ * ample ⇒ false: the error is reported as it came, because then it may be a real disk fault.
+ */
+export function ioErrorIsLowSpace(e: unknown, freeBytes: number | null, needBytes: number): boolean {
+  return isSqliteIoError(e) && freeBytes !== null && freeBytes < needBytes;
+}
+
+function diskFullMessage(tmpBase: string, segments: string[]): string {
+  const gb = (b: number) => (b / 1024 ** 3).toFixed(1);
+  const size = segmentBytes(segments);
+  const f = tmpFreeBytes(tmpBase);
+  const free = f === null ? "" : `, ${gb(f)} GB free`;
   return `not enough space in ${tmpBase}: rebuilding the channel needs about ${gb(size * CATCHUP_TMP_FACTOR)} GB there${free}. ` +
     `Give a folder on a roomier disk with --tmp <dir>. This is a LOCAL disk error - no channel segment was judged unreadable.`;
 }
@@ -2693,6 +2721,9 @@ export async function vectorCatchUp(opts: {
     // Đây KHÔNG phải nuốt lỗi — `unreadable` là hạng báo động nặng nhất mà người gọi phải in ra.
     const unreadable: { file: string; error: string }[] = [];
     const vectorsSkipped: { file: string; reason: string }[] = [];
+    const needBytes = segmentBytes(segsAll.map((x) => x.path)) * CATCHUP_TMP_FACTOR;
+    // a full disk by its code, or an I/O error while the temp folder is measurably short of the rebuild's need
+    const localFull = (e: unknown): boolean => isLocalDiskFull(e) || ioErrorIsLowSpace(e, tmpFreeBytes(tmpBase), needBytes);
     for (const s of segsAll) {
       // a read that fails once often passes the next time (29/10: ENOMEM on one 271 MB segment while a gate ran beside
       // it, clean on the retry) - three tries before a segment counts as unreadable
@@ -2700,13 +2731,14 @@ export async function vectorCatchUp(opts: {
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           if (process.env.ZEMORY_CATCHUP_FAULT === "enospc") throw Object.assign(new Error("ENOSPC: no space left on device, write (fault injected for the gate)"), { code: "ENOSPC" });
+          if (process.env.ZEMORY_CATCHUP_FAULT === "ioerr") throw Object.assign(new Error("disk I/O error (fault injected for the gate)"), { code: "SQLITE_IOERR_WRITE" });
           const m = await mergeMemoryBundle({ bundlePath: s.path, dbPath: probe, keyFile: opts.keyFile, tmpDir: tmpBase });
           const fault = process.env.ZEMORY_CATCHUP_FAULT;
-          const why = fault === "vec-full" ? "database or disk is full" : fault === "vec-other" ? "embedding profile differs (fault injected for the gate)" : m.vectorsSkippedReason;
+          const why = fault === "vec-full" ? "database or disk is full" : fault === "vec-ioerr" ? "disk I/O error" : fault === "vec-other" ? "embedding profile differs (fault injected for the gate)" : m.vectorsSkippedReason;
           if (why) {
             // the vector layer is fail-open in a merge; here a full disk must be named as one, not counted as missing
             // vectors - thrown with its code so the catch below reports the disk, never the segment
-            if (isLocalDiskFull(new Error(why))) throw Object.assign(new Error(why), { code: "ENOSPC" });
+            if (localFull(new Error(why))) throw Object.assign(new Error(why), { code: "ENOSPC" });
             vectorsSkipped.push({ file: basename(s.path), reason: why });
           }
           last = null;
@@ -2714,7 +2746,7 @@ export async function vectorCatchUp(opts: {
         } catch (e) {
           // the local disk filled while WRITING the probe: the segment was never judged, so naming it unreadable is a
           // false alarm (measured 20/11 on the PC: "UNREADABLE SEGMENT" + "CHANNEL SHORT by 884,432" on a sound channel)
-          if (isLocalDiskFull(e)) throw new Error(diskFullMessage(tmpBase, segsAll.map((x) => x.path)));
+          if (localFull(e)) throw new Error(diskFullMessage(tmpBase, segsAll.map((x) => x.path)));
           last = e;
         }
       }

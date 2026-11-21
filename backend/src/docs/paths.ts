@@ -72,6 +72,11 @@ export type UnresolvedReason =
   | "text-match"
   /** a string only a rule's test cases hold (`gate.json` › block · pass · partial) — an input made up for the case */
   | "test-case"
+  /** the target sits in an archive/attic slot that fills later (`zemory archive` creates `docs/archive/04_TODO.md` on its
+   *  first run, and a fresh ledger's header already names it) - a pointer to a record, not a broken one */
+  | "archive-later"
+  /** a package manifest's entry field (`"main"` · `"types"` · `"exports"`) names what the BUILD writes next to it, absent until then */
+  | "build-output"
   | "io-error";
 
 export interface PathsReport {
@@ -265,7 +270,9 @@ export function isDictionaryFile(relPath: string): boolean {
   return (
     // AGENTS.md is the template's router text: it names slots that exist LATER (`docs/archive/`,
     // `attic/dead-plans/`). Measured 2026-09-09 on Dept_CTL — hand-count 0, machine said 2, both from here.
-    /^AGENTS\.md$/.test(p) ||
+    // its tier variants too (`AGENTS.Basic.md` describes the Basic tier's `.claude/hooks/guard.ps1`, which a full-tier repo
+    // never has - measured 21/11: 9 repos reported that one line dead).
+    /^AGENTS(\.[A-Za-z]+)?\.md$/.test(p) ||
     // the four standard files of the file harness by NAME — in the folder harness `04_TODO.md` is the ledger, and it points
     /(^|\/)docs\/agent\/0[1-4]_(CONSTITUTION|RULES|STRUCTURE|SKILLS)\.md$/.test(p) ||
     /(^|\/)docs_template\//.test(p) ||
@@ -292,19 +299,27 @@ const under = (abs: string, root: string): boolean => {
   return a === r || a.startsWith(r.endsWith("/") || r.endsWith("\\") ? r : r + (process.platform === "win32" ? "\\" : "/"));
 };
 
+/** A package.json entry field: `"main"` · `"module"` · `"types"` · `"style"` · `"exports"` and its conditions/subpaths. */
+const MANIFEST_ENTRY = /^\s*"(main|module|types|typings|style|browser|exports|import|require|default|node|\.[^"]*)"\s*:/;
+
 // ── history markers ───────────────────────────────────────────────────────────
 /** By FILE: archive/ · attic/ · 06_CHANGES.md · a date in the file name. */
 export function isHistoryFile(relPath: string): boolean {
   const p = posix(relPath);
   const name = p.split("/").pop() ?? "";
-  return /(^|\/)docs\/(agent\/)?archive\//.test(p) || /(^|\/)attic\//.test(p) || /(^|\/)0[56]_CHANGES\.md$/.test(p) || /\d{4}-\d{2}-\d{2}/.test(name);
+  // any change log by name (`CHANGELOG.md` · `key_migration_changes.md`) is a record like 05/06_CHANGES
+  return (
+    /(^|\/)docs\/(agent\/)?archive\//.test(p) || /(^|\/)attic\//.test(p) || /(^|\/)0[56]_CHANGES\.md$/.test(p) ||
+    /(^|[_-])(changes|changelog)\.md$/i.test(name) || /\d{4}-\d{2}-\d{2}/.test(name)
+  );
 }
 /** By LINE: an ISO date or a supersede marker. History also lives inside live files (a comment in
  *  config.ts still names the 2026-07 location) — the file rule alone mis-files those as dead.
  *  Deliberately NO Vietnamese word list ("cũ" · "từng"): "từng bước" and "code cũ" are everyday
  *  words in live instructions, and the ASCII `\b` of JS does not even delimit them correctly. */
 export function isHistoryLine(line: string): boolean {
-  return /\d{4}-\d{2}-\d{2}/.test(line) || /🔄|⤴|Supersede/u.test(line);
+  // a struck-through span (`~~…~~`) is a decision the line itself marks as superseded
+  return /\d{4}-\d{2}-\d{2}/.test(line) || /🔄|⤴|Supersede/u.test(line) || /~~[^~]+~~/.test(line);
 }
 
 // ── extraction ────────────────────────────────────────────────────────────────
@@ -731,6 +746,7 @@ export function pathsCheck(ctx: Context, opts: { code?: boolean } = {}): PathsRe
     report.scanned.files++;
     const caseOnly = /(^|\/)gate\.json$/i.test(rel) ? gateCaseOnly(text) : null;
     const histFile = isHistoryFile(rel);
+    const manifest = /(^|\/)package\.json$/i.test(rel);
     // + folders the REPO declares as a standard written for other repos (`pathCheck.dictionary`) — declared, never guessed.
     const dictionary = isDictionaryFile(rel) || dictDirs.some((d) => rel === d || rel.startsWith(d + "/"));
     // Markdown link targets under docs/ are validate.ts §1's job already — do not report them twice.
@@ -781,8 +797,14 @@ export function pathsCheck(ctx: Context, opts: { code?: boolean } = {}): PathsRe
           report.unresolved.push({ ...hit, reason: "test-case" });
           continue;
         }
+        if (manifest && MANIFEST_ENTRY.test(lines[i])) {
+          report.unresolved.push({ ...hit, reason: "build-output" });
+          continue;
+        }
         const v = classify(c, abs, judge, { dictionary, line: lines[i], bases: jobCwd ? [jobCwd] : [] });
         if (v.kind === "unresolved") report.unresolved.push({ ...hit, reason: v.reason });
+        else if (v.kind === "dead" && (v.rels ?? []).length && (v.rels ?? []).every((r) => (isHistoryFile(r) || isHistoryFile(r.replace(/\/?$/, "/"))) && !/\d{4}-\d{2}-\d{2}/.test(r)))
+          report.unresolved.push({ ...hit, reason: "archive-later" });
         else if (v.kind === "dead") (histFile || isHistoryLine(lines[i]) ? report.history : report.dead).push({ ...hit, rels: v.rels });
         else alive.add(hitKey(hit));
       }

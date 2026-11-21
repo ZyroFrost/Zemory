@@ -18,7 +18,8 @@
 // Riêng nhóm secret KHÔNG có flag. Agent chỉ được tạo flag SAU khi user nói rõ trong phiên.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync, writeFileSync } from "node:fs";
-import { basename, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { LEGACY_READ_FIRST_FILE, READ_FIRST_FILE, READ_FIRST_SOURCE } from "./read-first-src.js";
 import { SQL_GATE_FILE, SQL_GATE_SOURCE } from "./sql-gate-src.js";
@@ -1884,7 +1885,38 @@ export function guardDrift(projectRoot: string): string[] {
   return stale;
 }
 
-export function generateGuards(projectRoot: string): GuardGenResult {
+/** The version this dist/ was compiled at (dist/build.json, written by backend/scripts/build-stamp.mjs); "" = unknown. */
+export function builtVersion(): string {
+  try {
+    const p = join(dirname(fileURLToPath(import.meta.url)), "..", "build.json");
+    return String((JSON.parse(readFileSync(p, "utf8")) as { version?: unknown }).version ?? "");
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Why the guard must NOT be written into `projectRoot`, or null. Only a zemory SOURCE tree is concerned: its hooks are
+ * git-tracked output of its own code, so code of another version writing them puts the tree ahead of (or behind) HEAD
+ * and blocks `git pull` - measured on the second machine 21/11: a build newer than the tree regenerated
+ * docs/hooks/02-47_other-repo.cjs equal to origin, and the pull refused until the file was stashed (twice). The pull
+ * brings the matching hooks; the tree's own build regenerates them after that.
+ */
+export function foreignBuildReason(projectRoot: string, built = builtVersion()): string | null {
+  if (!built) return null;
+  let pkg: { name?: unknown; version?: unknown };
+  try {
+    pkg = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf8")) as { name?: unknown; version?: unknown };
+  } catch {
+    return null;
+  }
+  if (pkg.name !== "zemory" || typeof pkg.version !== "string" || pkg.version === built) return null;
+  return `nothing written: this zemory tree is ${pkg.version} but the running build is ${built} - its hooks are git-tracked, writing them would block \`git pull\`; pull (or rebuild this tree) first`;
+}
+
+export function generateGuards(projectRoot: string, opts: { built?: string } = {}): GuardGenResult {
+  const foreign = foreignBuildReason(projectRoot, opts.built ?? builtVersion());
+  if (foreign) return { hooksDir: hooksDirOf(projectRoot), added: [], kept: [foreign], protectedWrite: [] };
   // File harness: hooks/ beside the agent folder (`docs/agent` → `docs/hooks`). Folder harness: the folder of rule 02-55
   // (plan/28 §0d). relative() lets the policy find its way back to the repo root.
   const folder = isFolderHarness(harnessPathsAt(projectRoot).agent);
