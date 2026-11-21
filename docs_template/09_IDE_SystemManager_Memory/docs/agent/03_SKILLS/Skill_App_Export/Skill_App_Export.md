@@ -5,6 +5,7 @@ version: 1
 type: process
 checked: [Skill_App_Base, Skill_App_Report, Skill_App_CrossFilter, Skill_Db_Base]
 description: Export data of an app as a file the safe way - a dialog with the scope (filters, a period), the columns picked from one fixed list (personal ones marked), the format (CSV or Excel), the place to save (the browser's Save as), the row count first and the purpose for personal data; the backend checks it all again and logs the export before the file leaves. Use when building or changing any export, download of a list, CSV or Excel button of an app. Vietnamese triggers - "xuất csv", "xuất excel", "xuất file", "tải danh sách", "export", "tải về".
+from: _Store/03_SKILLS/Skill_App_Export @v1 #bdabf7341cf5
 ---
 
 # app-export — data leaves an app as a file, scoped, chosen and logged

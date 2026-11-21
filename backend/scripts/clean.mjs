@@ -1,4 +1,4 @@
-import { rmSync } from "node:fs";
+import { closeSync, existsSync, openSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -31,8 +31,19 @@ function sleepSync(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
+/**
+ * Throws EBUSY/EPERM while a process runs from `exe`: Windows refuses to open a loaded image for writing. Asked BEFORE
+ * anything is deleted - a recursive delete removes every other file first and only then trips on the exe, so a build
+ * started beside a running daemon left dist/ holding nothing but zemory.exe and zemory broken until a rebuild
+ * (PC 2026-11-22, a vectors job running from dist/ at the time).
+ */
+export function assertNotRunning(exe) {
+  if (existsSync(exe)) closeSync(openSync(exe, "r+"));
+}
+
 function main() {
   try {
+    retryOnLock(() => assertNotRunning(fileURLToPath(new URL("zemory.exe", dist + "/"))));
     retryOnLock(() => rmSync(dist, { recursive: true, force: true }));
   } catch (e) {
     // EPERM/EBUSY past the wait is almost always one cause: the daemon still runs from dist/zemory.exe and Windows

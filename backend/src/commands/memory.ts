@@ -49,6 +49,7 @@ import { backupMemory, forgetMemory, listBackups, pruneBackupFiles, reRedactMemo
 import { acquireCliWriteLock, cliWriteHolder, releaseCliWriteLock } from "../jobs/writegate.js";
 import { flagValue, positionalArgs } from "./_shared.js";
 import { Q } from "../memory/store/queries.js";
+import { DEFAULT_PATTERN, applyRetitle, planRetitle, setSessionTitle } from "../memory/retitle.js";
 
 function fmtDate(iso: string | null): string {
   return iso ? iso.slice(0, 10) : "—";
@@ -186,7 +187,7 @@ function printHits(query: string, scopeLabel: string, hits: SearchHit[], abstain
 // run directly (fallback). Auto-expiring hold + the engine's own retry are the
 // safety nets. Kept advisory (no delegation) so a multi-hour `embed --all` never
 // hits an HTTP timeout.
-const HEAVY_WRITES = new Set(["scan", "scan-web", "embed", "digest", "sync", "forget", "redact", "reship"]);
+const HEAVY_WRITES = new Set(["scan", "scan-web", "embed", "digest", "sync", "forget", "redact", "reship", "retitle"]);
 /** Commands whose `--force` means "apply" (delete / rewrite for real), never "run over another writer's lock". 2026-10-26:
  *  `forget --force` ran beside the channel and the fast lane, took no write lock and died on "database is locked". */
 const FORCE_MEANS_APPLY = new Set(["forget", "redact", "reship"]);
@@ -213,6 +214,10 @@ const HEAVY_FLAGS: Record<string, { allow: Set<string>; usage: string }> = {
     usage: "zemory memory embed [--all] [--rebuild] [--limit <n>] [--force] · --pause <reason> · --resume · --status · --query-dtype <q4|…|off>",
   },
   digest: { allow: new Set(["--all", "--force"]), usage: "zemory memory digest [<session-id>] [--all] [--force]" },
+  retitle: {
+    allow: new Set(["--project", "--pattern", "--session", "--title", "--clear", "--apply", "--json", "--force", "--db"]),
+    usage: 'zemory memory retitle --project <root> [--pattern "{repo}_{brand}_{topic}_{date}"] [--apply] [--json] · --session <id> (--title "<t>" | --clear)',
+  },
   // APPENDS a block to the SHARED store. Measured 2026-10-05: `vectors-catchup --help` started a real
   // catch-up against the Drive channel (no --dry-run) — the same class as `embed --help` (2026-08-22).
   "vectors-catchup": {
@@ -1474,6 +1479,48 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
     console.log("  Full text: `zemory memory show <#id>`. Drop a message: `zemory memory forget --message <#id>`.");
     return;
   }
+  if (sub === "retitle") {
+    const project = flagValue(args, "--project");
+    const session = flagValue(args, "--session");
+    if (!project && !session) {
+      console.log(`usage: ${HEAVY_FLAGS.retitle.usage}`);
+      console.log("  Display titles for stored sessions (the source title is never edited). --project plans every session of a");
+      console.log("  project by the 02-48 rule <Repo>_<Brand>_<Topic>_<d-m-yyyy> - dry run unless --apply. --session sets or");
+      console.log("  clears one title. The titles ride the next sync to the other machines.");
+      return;
+    }
+    const db = openMemory(flagValue(args, "--db") ?? currentMemoryDb());
+    try {
+      if (session) {
+        const title = args.includes("--clear") ? null : flagValue(args, "--title");
+        if (title === undefined) {
+          console.error("zemory memory retitle --session: give --title \"<title>\" or --clear");
+          process.exitCode = 1;
+          return;
+        }
+        const ok = setSessionTitle(db, session, title);
+        console.log(ok ? `zemory memory retitle: ${session} ${title ? `→ "${title}"` : "cleared (the source title shows again)"}` : `zemory memory retitle: no session ${session}`);
+        if (!ok) process.exitCode = 1;
+        return;
+      }
+      const plan = planRetitle(db, project!, flagValue(args, "--pattern") ?? DEFAULT_PATTERN);
+      const apply = args.includes("--apply");
+      const written = apply ? applyRetitle(db, plan) : 0;
+      if (args.includes("--json")) {
+        console.log(JSON.stringify({ project, apply, written, plan }));
+        return;
+      }
+      const change = plan.filter((r) => r.next && r.next !== r.current);
+      const left = plan.filter((r) => !r.next);
+      console.log(`zemory memory retitle — ${project}: ${plan.length} session(s), ${change.length} to retitle, ${plan.length - change.length - left.length} already titled, ${left.length} left as they are`);
+      for (const r of change) console.log(`  ${r.id.slice(0, 12)}  "${(r.current ?? "(untitled)").slice(0, 60)}"  →  ${r.next}`);
+      for (const r of left) console.log(`  ? ${r.id.slice(0, 12)}  "${(r.current ?? "(untitled)").slice(0, 60)}" — ${r.why}`);
+      console.log(apply ? `  written: ${written}. The next sync carries them to the other machines.` : "  dry run — add --apply to write.");
+    } finally {
+      db.close();
+    }
+    return;
+  }
   if (sub === "reship") {
     const sessions = args.flatMap((a, i) => (a === "--session" && args[i + 1] ? [args[i + 1]] : []));
     if (!sessions.length) {
@@ -2235,6 +2282,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "  forget [selectors] [--force]",
       "                    dry-run/delete memory rows by --session, --project, --source, --before, or --message.",
       "  redact [--force]   re-apply secret redaction to already ingested memory rows.",
+      "  retitle --project <root> [--pattern <p>] [--apply] · --session <id> (--title <t> | --clear)",
+      "                    display titles for stored sessions by the 02-48 rule; the source title is never edited.",
       "  reship --session <id> [--force]",
       "                    this machine's copy of a session wins: the next sync makes every other machine take it.",
       "  audit             scan stored content for hidden control characters (read-only, changes nothing).",

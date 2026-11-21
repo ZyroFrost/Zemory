@@ -246,6 +246,22 @@
     var md='# '+svThread.title+'\n\n'+svThread.messages.map(function(m){return '## '+(m.role||'')+' · '+String(m.timestamp||'').slice(0,16).replace('T',' ')+'\n\n'+String(m.content||'');}).join('\n\n---\n\n');
     var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([md],{type:'text/markdown'}));a.download='session-'+(svCur||'export')+'.md';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
   }
+  // Title every session of the open session's project by the 02-48 rule (display titles - the source title is kept).
+  function svRetitle(){
+    var meta=svList.filter(function(s){return s.sessionId===svCur;})[0];
+    if(!meta||!meta.project){zToast(t('sess.pickFirst'));return;}
+    var q='/memory-retitle?root='+encodeURIComponent(meta.project);
+    zPost(q+'&apply=0').then(function(r){
+      if(!r||!r.ok){zToast(t('ph.err'));return;}
+      if(!r.change){zToast(t('sess.retitleNone'));return;}
+      zConfirm({title:t('sess.retitle'),body:t('sess.retitleQ').replace('{n}',zN(r.change)).replace('{p}',zProjName(meta.project)),okLabel:t('sess.retitle'),onOk:function(){
+        zPost(q+'&apply=1').then(function(w){
+          zToast(t('sess.retitleDone').replace('{n}',zN((w&&w.written)||0)));
+          loadSessions();if(svCur)openSess(svCur);
+        }).catch(function(){zToast(t('ph.err'));});
+      }});
+    }).catch(function(){zToast(t('ph.err'));});
+  }
   // Seam công khai để màn khác mở một phiên (màn Tệp bấm một tấm ảnh ⇒ về đúng hội thoại).
   // MỘT hàm dùng chung thay vì mỗi màn tự dựng lại đường mở phiên — bài học `zemory sweep`
   // 12/09: hai bề mặt của cùng một chức năng phải đi qua cùng một cửa.
@@ -254,6 +270,7 @@
     if(!e.target.closest)return;
     var li=e.target.closest('#sessList [data-sess]');if(li){openSess(li.dataset.sess);return;}
     if(e.target.id==='sessExport'){svExport();return;}
+    if(e.target.id==='sessRetitle'){svRetitle();return;}
   });
   // Gõ → hỏi lại SERVER (lọc trên cả 1.206 phiên, không phải 120 phiên đã tải). Chờ 250ms
   // để không bắn một truy vấn cho mỗi phím.

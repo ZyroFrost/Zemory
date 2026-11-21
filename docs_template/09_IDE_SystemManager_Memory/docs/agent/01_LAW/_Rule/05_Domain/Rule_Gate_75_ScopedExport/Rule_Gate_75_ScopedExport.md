@@ -5,6 +5,7 @@ version: 1
 kind: action
 code: 05_Domain
 checked: [Skill_App_Export, Skill_App_Base, Rule_Keys_90_AppFamilyContract, Rule_Keys_87_NoSilentBlankPage]
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_75_ScopedExport @v1 #c1cccd9635cd
 ---
 # Rule_Gate_75_ScopedExport — Data leaves an app as a file only with a scope, picked columns, a chosen format and a log row
 
