@@ -8,6 +8,7 @@
 //
 // The result must be plain data (structured clone). A failing / overdue function gives `{ ok: false, error }`, never a
 // throw - the caller decides: skip the round (housekeeping) or use an empty value (fail-open, HP article 9).
+import { spawn } from "node:child_process";
 import { Worker } from "node:worker_threads";
 
 const WORKER_SRC = `
@@ -16,6 +17,16 @@ import(workerData.mod)
   .then((m) => Promise.resolve(m[workerData.fn](...workerData.args)))
   .then((value) => parentPort.postMessage({ ok: true, value }))
   .catch((e) => parentPort.postMessage({ ok: false, error: String((e && e.message) || e) }));
+`;
+
+// The same, in a CHILD PROCESS (isolate: "process"): the job arrives over IPC, the result goes back the same way.
+const CHILD_SRC = `
+process.once("message", (job) => {
+  import(job.mod)
+    .then((m) => Promise.resolve(m[job.fn](...job.args)))
+    .then((value) => process.send({ ok: true, value }, () => process.exit(0)))
+    .catch((e) => process.send({ ok: false, error: String((e && e.message) || e) }, () => process.exit(0)));
+});
 `;
 
 // `timedOut`: the work ran past its limit. A caller must NOT then run it on the event loop: work too slow for a worker
@@ -38,8 +49,9 @@ export function runInWorker<T>(
   fn: string,
   args: unknown[] = [],
   timeoutMs = 120_000,
-  opts: { unref?: boolean; heapMb?: number } = {},
+  opts: { unref?: boolean; heapMb?: number; isolate?: "thread" | "process" } = {},
 ): Promise<WorkerResult<T>> {
+  if (opts.isolate === "process") return runInChild<T>(modFromDist, fn, args, timeoutMs, opts);
   return new Promise((resolve) => {
     let w: Worker;
     try {
@@ -62,5 +74,58 @@ export function runInWorker<T>(
     w.once("message", (m: WorkerResult<T>) => finish(m));
     w.once("error", (e) => finish({ ok: false, error: e instanceof Error ? e.message : String(e) }));
     w.once("exit", (code) => finish({ ok: false, error: `worker exited (code ${code}) before returning a result` }));
+  });
+}
+
+/**
+ * `isolate: "process"` - for a job that may read a huge input in one piece. A worker's heap ceiling holds for small
+ * steps, but one allocation far past it (a 342 MB JSON.parse, 2026-11-17) can still be a FATAL V8 error before the
+ * worker is stopped, and a fatal error in a worker thread ends the whole daemon. In a child process the same fatal
+ * error ends the child only. Costs one Node start (~0.1 s), so it is for rare heavy sweeps, not for hot paths.
+ */
+function runInChild<T>(
+  modFromDist: string,
+  fn: string,
+  args: unknown[],
+  timeoutMs: number,
+  opts: { unref?: boolean; heapMb?: number },
+): Promise<WorkerResult<T>> {
+  return new Promise((resolve) => {
+    let c: ReturnType<typeof spawn>;
+    try {
+      const mod = new URL(`../${modFromDist}`, import.meta.url).href;
+      c = spawn(process.execPath, [`--max-old-space-size=${opts.heapMb ?? WORKER_HEAP_MB}`, "-e", CHILD_SRC], {
+        stdio: ["ignore", "ignore", "pipe", "ipc"],
+        serialization: "advanced",
+        windowsHide: true,
+      });
+      c.send({ mod, fn, args });
+      if (opts.unref) {
+        c.unref();
+        (c.channel as { unref?: () => void } | undefined)?.unref?.();
+      }
+    } catch (e) {
+      return resolve({ ok: false, error: `could not start the worker: ${e instanceof Error ? e.message : String(e)}` });
+    }
+    let err = "";
+    c.stderr?.on("data", (d: Buffer) => {
+      if (err.length < 4000) err += d.toString();
+    });
+    let done = false;
+    const finish = (r: WorkerResult<T>): void => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (c.exitCode === null) c.kill();
+      resolve(r);
+    };
+    const timer = setTimeout(() => finish({ ok: false, error: `over ${Math.round(timeoutMs / 1000)} s`, timedOut: true }), timeoutMs);
+    timer.unref?.();
+    c.once("message", (m) => finish(m as WorkerResult<T>));
+    c.once("error", (e) => finish({ ok: false, error: e.message }));
+    c.once("exit", (code, sig) => {
+      const oom = /heap out of memory|Reached heap limit/i.test(err);
+      finish({ ok: false, error: `worker process exited (${sig ?? code}) before returning a result${oom ? ": out of memory" : ""}` });
+    });
   });
 }

@@ -88,6 +88,13 @@ export const APP_PROCESSES: AppProcess[] = [
     note: "Mỗi phần 300 tin một lượt `claude -p` gắn nhãn cửa nhắc (plan/38 §8), tối đa 4 song song, chỉ khi người dùng gõ `--yes` (tốn token của chính họ). Thư mục tạm của OS, không hook, không lưu transcript.",
   },
   {
+    shownAs: "zemory.exe (con, việc quét repo)",
+    spawnedBy: "jobs/fnworker.ts `isolate: \"process\"` (repo sweep · chip cổng repo của ui.ts)",
+    lifetime: "job",
+    hidden: true,
+    note: "Việc có thể đọc một khối dữ liệu rất lớn một lần (342 MB JSON, 17/11) chạy ở tiến trình con thay vì worker thread: lỗi FATAL hết heap chỉ giết con, daemon sống. Trần heap `--max-old-space-size`, chết theo khi xong hoặc quá giờ.",
+  },
+  {
     shownAs: "node (zemory CLI, trong container)",
     spawnedBy: "util/cli-relay.ts (`POST /cli` của daemon bản Docker)",
     lifetime: "oneshot",
@@ -103,4 +110,4 @@ export const APP_PROCESSES: AppProcess[] = [
  * spawn mà không cập nhật cả hai ⇒ đỏ. Cố tình để là SỐ chứ không phải danh sách đường dẫn —
  * đường dẫn đổi theo mỗi lần dời file, còn "có bao nhiêu chỗ phóng tiến trình" thì không.
  */
-export const spawnSites = 18;
+export const spawnSites = 19;

@@ -443,7 +443,7 @@ async function reconcileTick(): Promise<void> {
  */
 /** Periodic repo sweep: conform · validate · todo verify over every registered repo, in a worker; report only. */
 async function repoSweepTick(): Promise<void> {
-  const r = await runInWorker<{ repos: number; red: number }>("docs/repo-sweep.js", "sweepRepos", [], 10 * 60_000);
+  const r = await runInWorker<{ repos: number; red: number }>("docs/repo-sweep.js", "sweepRepos", [], 10 * 60_000, { isolate: "process" });
   if (!r.ok) log(`repo sweep skipped: ${r.error}`);
   else log(`repo sweep: ${r.value.repos} repo(s), ${r.value.red} with findings`);
 }
