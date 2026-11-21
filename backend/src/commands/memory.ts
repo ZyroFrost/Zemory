@@ -216,8 +216,8 @@ const HEAVY_FLAGS: Record<string, { allow: Set<string>; usage: string }> = {
   // APPENDS a block to the SHARED store. Measured 2026-10-05: `vectors-catchup --help` started a real
   // catch-up against the Drive channel (no --dry-run) — the same class as `embed --help` (2026-08-22).
   "vectors-catchup": {
-    allow: new Set(["--dir", "--key-file", "--dry-run", "--max-vectors"]),
-    usage: "zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run] [--max-vectors <n>]",
+    allow: new Set(["--dir", "--key-file", "--dry-run", "--max-vectors", "--tmp"]),
+    usage: "zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run] [--max-vectors <n>] [--tmp <dir>]",
   },
 };
 
@@ -1123,7 +1123,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
   if (sub === "vectors-catchup") {
     const driveDir = (flagValue(args, "--dir") ?? getDriveDir()).trim();
     if (!driveDir) {
-      console.log("usage: zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run] [--max-vectors <n>]");
+      console.log("usage: zemory memory vectors-catchup [--dir <folder>] [--key-file <path>] [--dry-run] [--max-vectors <n>] [--tmp <dir>]");
       console.log("  Rebuilds the shared store into a TEMP file, compares by stable keys (session_id, uuid), then APPENDS");
       console.log("  blocks of at most --max-vectors (default 50,000) carrying exactly the vectors the shared store is missing. Old bytes untouched.");
       return;
@@ -1146,6 +1146,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         keyFile,
         dryRun,
         maxVectors,
+        tmpDir: flagValue(args, "--tmp"),
         onBlock: (p) => console.log(`  ↑ block ${p.block}/${p.blocks}: ${p.vectors} vector(s) · ${mb(p.bytes)} so far`),
       });
       // 🔴 VẾ "CÓ HỤT KHÔNG" — in TRƯỚC vế vector, vì nó nặng hơn và vì con số vector một mình
@@ -2208,7 +2209,7 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
       "                    · sync = run ONE pass against one address: a DIRECT call first; if there is",
       "                    no way in, it falls back to NAT HOLE PUNCHING (both machines must run at once; `--punch`",
       "                    skips the direct call, `--local-port` changes the punch port). OFF by default.",
-      "  vectors-catchup [--dir <folder>] [--dry-run]",
+      "  vectors-catchup [--dir <folder>] [--dry-run] [--tmp <dir>]",
       "                    compare the shared store with this machine's store: reports UNREADABLE segments, reports",
       "                    a channel SHORT of messages, then appends the missing vectors. --dry-run = measure only, no write.",
       "  verify [--db <path>] [--json]",

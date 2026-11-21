@@ -1,5 +1,5 @@
 ---
-version: 35
+version: 36
 lang: vi
 ---
 
@@ -113,7 +113,7 @@ lang: vi
   heat map (màu theo cường độ) được giữ. Tên cột là chữ người đọc, không để tên field (`chi_tieu`, `StoreName2`). [rp-table-style]
 - **Bảng không dùng cho ít thông tin:** một dòng ⇒ card nhiều giá trị; một chiều ≤ 6 giá trị (không có trường cột) ⇒ chart,
   chỉ số khác đơn vị để trong tooltip (v11), kể cả khi nó có nhiều measure. Bảng là visual của chính report đang dựng lại
-  (`data-pbi-visual` trên nó hoặc khung cha) thì giữ là bảng dù ít nhóm - report đọc đúng như nó là (v35, user 20/11, Dashboard
+  (`data-pbi-visual` trên nó hoặc khung cha) thì giữ là bảng dù ít nhóm - report đọc đúng như nó là (v35, 20/11, Dashboard
   Cons_Gate_102 §1; thay câu "kể cả khi report vẽ nó thành bảng" của v11); bảng một dòng thì vẫn là card. Bảng chi tiết (mỗi
   dòng một bản ghi) được miễn; bảng ít nhóm không bao giờ được khai là bảng chi tiết. [rp-table-few]
 - **Không gì cuộn ngang trong khung, không bảng nào tràn ra ngoài panel** (bề rộng cột đo lúc vẽ lần đầu, nên header được xuống dòng; điện thoại cho bảng dữ liệu cuộn ngang trong khung, app-base M5). Bảng trải theo kỳ chỉ hiện các kỳ gần nhất (cửa sổ đi theo bộ lọc trang); cột rộng

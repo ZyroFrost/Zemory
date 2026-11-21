@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 35
+version: 36
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v35 #19efb408a250
+from: _Store/03_SKILLS/Skill_App_Report @v36 #76cba025bc22
 ---
 
 # app-report — the report pages of an app
@@ -133,7 +133,7 @@ from: _Store/03_SKILLS/Skill_App_Report @v35 #19efb408a250
 - **A table is not for little information:** one row ⇒ a card with several values; one dimension with six values or fewer
   (and no column field) ⇒ a chart, measures of other units in its tooltip (v11), also when it has several measures. A table
   that is a visual of the report it rebuilds (`data-pbi-visual` on it or a parent) stays a table, however few groups - the
-  report is read as it is (v35, the user 20/11, Dashboard Cons_Gate_102 §1; replaces v11's "also when the report drew it as a
+  report is read as it is (v35, 20/11, Dashboard Cons_Gate_102 §1; replaces v11's "also when the report drew it as a
   table"); a one-row table is a card all the same. A detail table (one row per record) is exempt; a table of few groups is
   never declared one. [rp-table-few]
 - **Nothing scrolls sideways inside its frame, and no table spills out of its panel** (column widths are measured at first draw, so headers may wrap; a phone scrolls a data grid inside its frame, app-base M5). A table spread over periods shows only the latest ones (the window follows
