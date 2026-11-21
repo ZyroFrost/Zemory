@@ -69,6 +69,12 @@ export const Q = {
 
   // ── sessions ──────────────────────────────────────────────────────────────
   countSessions: "SELECT COUNT(*) c FROM sessions",
+  // the recall card (recall.ts): one project's sessions, matched through zemory_pkey() - projectKey registered as a SQL
+  // function by the caller - so the filter runs over the whole store, not over a window of the newest sessions
+  recallProjectTotals:
+    "SELECT COUNT(*) AS n, COALESCE(SUM(message_count), 0) AS m FROM sessions WHERE project_root IS NOT NULL AND zemory_pkey(project_root) = ?",
+  recallProjectRecent:
+    "SELECT id, title, started_at, ended_at, message_count, source, project_root, pinned FROM sessions WHERE project_root IS NOT NULL AND zemory_pkey(project_root) = ? ORDER BY pinned DESC, ended_at DESC LIMIT 5",
   sessionsBySource: "SELECT id, ended_at FROM sessions WHERE source = ?",
   refreshSessionStats: `UPDATE sessions SET
        message_count = (SELECT COUNT(*) FROM messages WHERE session_id = @id),

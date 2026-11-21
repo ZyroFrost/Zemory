@@ -5,6 +5,7 @@
 
 import { type MemoryDB, currentMemoryDb, openMemory } from "./db.js";
 import { projectKey } from "../core/config.js";
+import { Q } from "./store/queries.js";
 
 // MỘT bản so-path cho cả hệ (F4, 2026-08-02) — bản cũ ở đây không cắt gạch cuối nên
 // `D:\X\` trượt trong khi các chỗ khác khớp.
@@ -53,37 +54,24 @@ export function recallCard(project: string, dbPath: string = currentMemoryDb()):
   const db: MemoryDB = openMemory(dbPath);
   try {
     const want = norm(project);
-    const cols = `id, title, started_at, ended_at, message_count, source, project_root, pinned`;
-    const rows = db
-      .prepare(
-        `SELECT ${cols} FROM sessions WHERE project_root IS NOT NULL
-         ORDER BY ended_at DESC LIMIT 400`,
-      )
-      .all() as Row[];
-    // Phiên GHIM lấy bằng truy vấn RIÊNG, không dựa vào cửa sổ 400 dòng ở trên: ghim để
-    // nhớ lâu, mà thứ đáng ghim thường là phiên CŨ — đúng loại rơi ra khỏi cửa sổ trước
-    // tiên. Ghim mà vẫn tuột khỏi thẻ thì cái ghim thành vô nghĩa.
-    const pinned = db
-      .prepare(`SELECT ${cols} FROM sessions WHERE project_root IS NOT NULL AND pinned = 1 ORDER BY ended_at DESC`)
-      .all() as Row[];
-
-    const mine = rows.filter((r) => norm(r.project_root) === want);
-    const pinnedMine = pinned.filter((r) => norm(r.project_root) === want);
-    if (!mine.length && !pinnedMine.length) return "";
-
-    const seen = new Set(mine.map((r) => r.id));
-    const all = [...pinnedMine.filter((r) => !seen.has(r.id)), ...mine];
-    const totalMsgs = all.reduce((n, r) => n + r.message_count, 0);
-    // Ghim lên đầu, phần còn lại theo thời gian — và ĐÁNH DẤU 📌 để agent biết vì sao nó
-    // đứng đó (một dòng nổi lên không lý do trông như lỗi sắp xếp).
-    const recent = [...pinnedMine, ...all.filter((r) => !r.pinned)].slice(0, 5);
+    // Filter by project IN SQL, through the same projectKey every other path uses. The old code took the newest 400
+    // sessions of the WHOLE store and filtered afterwards, so a project whose sessions were all older than that window
+    // got an empty card (PC 2026-11-22: 117 merged tarot sessions, newest 27/08, a store of 4,154 - nothing at session
+    // start) and a busy project's count was capped at what fell inside the window.
+    db.function("zemory_pkey", { deterministic: true }, (p: unknown) => (typeof p === "string" ? norm(p) : null));
+    const totals = db.prepare(Q.recallProjectTotals).get(want) as { n: number; m: number };
+    if (!totals.n) return "";
+    // Pinned first, then by time, each pinned one MARKED 📌 so the agent knows why it stands there (a line floating up
+    // for no reason looks like a sorting bug). Pinned ones sort ahead of the time order: what is worth pinning is
+    // usually OLD.
+    const recent = db.prepare(Q.recallProjectRecent).all(want) as Row[];
     const lines = recent.map((r) => {
       const label = (r.title ?? "(untitled session)").replace(/\s+/g, " ").slice(0, 70);
       return ` ·${r.pinned ? " 📌" : ""} ${day(r.ended_at)} — "${label}" (${r.source}, ${r.message_count} msgs)`;
     });
 
     return [
-      `[zemory memory] Prior context exists for this project: ${mine.length} session(s), ${totalMsgs} messages across agents. Recent:`,
+      `[zemory memory] Prior context exists for this project: ${totals.n} session(s), ${totals.m} messages across agents. Recent:`,
       ...lines,
       `Use \`zemory memory search "<query>"\` to recall specifics (cross-project: add --all).`,
     ].join("\n");
