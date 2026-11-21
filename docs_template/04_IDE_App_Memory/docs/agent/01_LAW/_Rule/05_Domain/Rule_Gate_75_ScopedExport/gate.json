@@ -1,0 +1,111 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit"
+    ]
+  },
+  "prompt": {
+    "kind": "Rule_75",
+    "re": "\\b(xuat (ra )?(csv|excel|xlsx|file|tep|danh sach|du lieu)|tai (ve )?(danh sach|file|tep)|export(s|ing)?\\b|download (the )?list|nut xuat)",
+    "text": "[zemory] Rule_Gate_75_ScopedExport: an export is never one click on everything - the button opens a dialog (scope with at least one filter or a period · columns from ONE fixed list, personal ones marked · purpose for a personal column · format CSV or Excel · the browser's Save as · the row count first); the backend checks them again and writes the export's log row BEFORE the file leaves - no row, no file; nothing is kept on the server. Skill app-export."
+  },
+  "block": [
+    {
+      "note": "a file answer with no log row of the export",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "backend/app/api/export.py",
+        "content": "from fastapi import Response\n\n@app.get('/api/members/export')\ndef export():\n    rows = read_all()\n    return Response(content=to_csv(rows), headers={'Content-Disposition': 'attachment; filename=\"members.csv\"'})\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a language logger is not the export's log row",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "server/routes/report.ts",
+        "content": "router.get('/export', async (req, res) => {\n  console.log('export');\n  log.info('exporting');\n  res.setHeader('Content-Disposition', 'attachment; filename=\"orders.xlsx\"');\n  res.send(await build());\n});\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "thêm nút xuất excel danh sách đơn hàng"
+    }
+  ],
+  "pass": [
+    {
+      "note": "the file answer beside the app's export log row",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "backend/app/api/export.py",
+        "content": "@app.post('/api/members/export')\nasync def export(body):\n    rows = read(body)\n    store.log('member_export', level='warn', detail=detail(rows, body))\n    return Response(content=to_csv(rows), headers={'Content-Disposition': 'attachment; filename=\"crm-members.csv\"'})\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "the log written in a thread, by its action name",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "backend/app/api/routes.py",
+        "content": "await asyncio.to_thread(get_store().log, \"member_export\", level=\"warn\", detail=d)\nreturn Response(content=f, headers={\"Content-Disposition\": f'attachment; filename=\"{name}\"'})\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a file answer in the frontend is not the server's",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/download.ts",
+        "content": "const name = /filename=\"([^\"]+)\"/.exec(r.headers.get('content-disposition') || '')?.[1]; // attachment\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "an inline answer (a picture shown in the page), not a file",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "backend/app/api/images.py",
+        "content": "return Response(content=png, media_type='image/png', headers={'Content-Disposition': 'inline'})\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút lưu"
+    }
+  ]
+}

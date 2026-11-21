@@ -1,0 +1,24 @@
+{
+  "trigger": "xuất csv · xuất excel · xuất file · tải danh sách · export · tải về",
+  "prompt": {
+    "kind": "app-export",
+    "re": "\\b(xuat (ra )?(csv|excel|xlsx|file|tep|danh sach|du lieu)|tai (ve )?(danh sach|file|tep)|export(s|ing)?\\b|download (the )?list|nut xuat)",
+    "text": "[zemory] Export: follow skill app-export (Rule_Gate_75_ScopedExport) - the button opens a dialog, never a file: scope (at least one filter, a period counts) · period · columns from ONE fixed list, personal ones marked · purpose when a personal column is picked · format CSV or Excel · the browser's Save as · the row count first. The backend checks rank, scope, columns, purpose and format again, writes the log row (rows · scope · columns · purpose · format) BEFORE the file leaves - no row, no file - and keeps nothing on the server."
+  },
+  "block": [
+    {
+      "note": "a request for an export button",
+      "prompt": "thêm nút xuất csv cho trang thành viên"
+    },
+    {
+      "note": "a request to download a list",
+      "prompt": "cho tải danh sách khách về máy"
+    }
+  ],
+  "pass": [
+    {
+      "note": "a page filter, not an export",
+      "prompt": "thêm ô chọn kỳ vào bộ lọc trang"
+    }
+  ]
+}
