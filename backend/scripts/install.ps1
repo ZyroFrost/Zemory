@@ -176,7 +176,8 @@ function Install-Zemory {
         if (-not ("$check" -match "^ok ")) { throw "the moved GM failed integrity_check ($check) - the old native GM is in $bk" }
         Say "ok  GM moved ($check messages) - the old native GM is kept in $bk"
         # data: the machine's identity must be the same on both sides, or the other machine meets a stranger
-        foreach ($k in "share.key", "secrets\channel\device.key") {
+        # (the channel key is joined from its parts: it lives under the DATA folder, never in this repo)
+        foreach ($k in "share.key", (Join-Path "secrets" (Join-Path "channel" "device.key"))) {
           $a = Join-Path $unc "data\$k"; $b = Join-Path $data $k
           if ((Test-Path $a) -and (Test-Path $b) -and ((Get-FileHash $a).Hash -ne (Get-FileHash $b).Hash)) { throw "$k differs between Docker and native - data left as it is; decide which identity this machine keeps" }
         }
