@@ -12,7 +12,7 @@ import { basename, dirname, join } from "node:path";
 import Database from "better-sqlite3";
 import { currentMemoryDir } from "./db.js";
 import { redact } from "./redact.js";
-import { markRepoBusy } from "./session-live.js";
+import { markRepoBusy, markSessionBusy } from "./session-live.js";
 import { letterToMemorySafe } from "./mail-gm.js";
 import { Q } from "./store/queries.js";
 
@@ -245,7 +245,11 @@ export function receiveMail(
 ): boolean {
   // the repo's session is about to be woken by this letter, with no prompt hook to say so: mark it working (plan/41 §6b).
   // Only for the live store - a test's own mail file must not touch this machine's marks.
-  if (!path) markRepoBusy(repoKey(env.to.repo));
+  if (!path) {
+    markRepoBusy(repoKey(env.to.repo));
+    // a letter for one session: that session's turn is followed live too, not only its repo's spinner
+    if (env.to.session) markSessionBusy(env.to.session);
+  }
   const fresh = withMail(
     (db) =>
       db

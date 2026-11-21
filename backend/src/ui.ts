@@ -4390,7 +4390,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // the chip never waits for the walk (minutes through a Docker mount, 25/10): the last rows at once, the new ones next call;
       // only the dialog's explicit re-check waits for the pass it asked for
       if (!fresh && (!repoGatesCache || now - repoGatesCache.at > 300_000)) {
-        repoGatesRun ??= runInWorker<RepoGateRow[]>("docs/repo-sweep.js", "repoGateRows", [], 900_000)
+        repoGatesRun ??= runInWorker<RepoGateRow[]>("docs/repo-sweep.js", "repoGateRows", [], 900_000, { isolate: "process" })
           .then((w) => {
             const rows = w.ok ? w.value : (repoGatesCache?.rows ?? []); // fail-open — a reminder surface must not die
             repoGatesCache = { at: Date.now(), rows };
@@ -4405,7 +4405,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // synchronous reads over 20 repos froze every other request (the chip's dialog opened after 7.9 s, 2026-10-20) ⇒ a
         // worker; requests that arrive while it runs share the one pass.
         // never re-run on the event loop when the worker fails: that is the very freeze the worker exists to avoid
-        repoGatesRun ??= runInWorker<RepoGateRow[]>("docs/repo-sweep.js", "repoGateRows", [], 600_000)
+        repoGatesRun ??= runInWorker<RepoGateRow[]>("docs/repo-sweep.js", "repoGateRows", [], 600_000, { isolate: "process" })
           .then((w) => (w.ok ? w.value : (repoGatesCache?.rows ?? []))) // fail-open — a reminder surface must not die
           .finally(() => (repoGatesRun = null));
         const rows = await repoGatesRun;
