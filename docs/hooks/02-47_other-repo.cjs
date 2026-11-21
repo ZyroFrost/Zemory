@@ -113,8 +113,13 @@ const LANG_EXEMPT = [/(^|\/)external\//, /(^|\/)attic\//, /(^|\/)(skills|03_SKIL
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py)$/i;
 
 const WRITES = /\bzemory(?:\.cmd)?\s+(init|sync(?!\s+--check)|reindex|archive|migrate|adopt|setup|hook|memory\s+(?:scan|sync|embed|forget|redact)|gates\s+--write-top|project\s+move)\b/i;
+// Git Bash spells a drive as /h/...: the same place as H:/... (PC 2026-11-21 - left as is, it resolved to <drive>:\h\...)
+function drivePath(d) {
+  const m = process.platform === "win32" ? /^\/([A-Za-z])(\/|$)/.exec(d) : null;
+  return m ? m[1] + ":/" + d.slice(3) : d;
+}
 function outsideOf(root, dir) {
-  const d = String(dir || "").replace(/^["']|["']$/g, "");
+  const d = drivePath(String(dir || "").replace(/^["']|["']$/g, ""));
   if (!d || d === "-" || /^[~$%]/.test(d)) return false;
   const rel = relOf(root, d);
   return !inside(rel) && rel !== "";
@@ -139,14 +144,15 @@ function check(payload, root, policy) {
     if (!WRITES.test(live)) return null;
     let target = null;
     // Push-Location is PowerShell's pushd under its full name — it slipped through until 2026-10-15.
-    const cd = /(?:^|[;&|]\s*)(?:cd|set-location|sl|pushd|push-location)\s+("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
+    // the bare form stops at a separator: \S+ took "X;" from "cd X; zemory archive" and judged that (PC 2026-11-21)
+    const cd = /(?:^|[;&|]\s*)(?:cd|set-location|sl|pushd|push-location)\s+("[^"]+"|'[^']+'|[^\s;&|]+)/i.exec(cmd);
     // a command that first moves INTO this repo by an absolute path runs here, wherever the shell stood: judging it by
     // the shell's old folder blocked "cd <this repo>; zemory archive" three times (PC 2026-11-21)
-    const cdDir = cd ? cd[1].replace(/^["']|["']$/g, "") : "";
+    const cdDir = cd ? drivePath(cd[1].replace(/^["']|["']$/g, "")) : "";
     const cdHere = !!cdDir && path.isAbsolute(cdDir) && !outsideOf(root, cdDir);
     if (!cdHere && payload.cwd && outsideOf(root, payload.cwd)) target = payload.cwd;
     if (!target && cd && outsideOf(root, cd[1])) target = cd[1];
-    const r = /--root[= ]("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
+    const r = /--root[= ]("[^"]+"|'[^']+'|[^\s;&|]+)/i.exec(cmd);
     if (!target && r && outsideOf(root, r[1])) target = r[1];
     if (!target) return null;
     return { flag: "outside", subject: cmd, msg: blocked(root, policy, "02-47", "a zemory command that writes, aimed at " + target +
