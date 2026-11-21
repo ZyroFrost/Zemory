@@ -4226,6 +4226,17 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         return json(res, { ...r, error });
       }
       daemonLog(`[channel] chiều với ${id.slice(0, 11)}…: ${r.direction}${r.source ? ` · nguồn ${r.source.slice(0, 11)}…` : ""}${r.origin ? ` · gốc ${r.origin.slice(0, 11)}…` : ""}`);
+      // The pair's origin answers the "same lines" rows under the author policy (§9.6b), so settle what is waiting now.
+      try {
+        const { getMirrorAuto } = await import("./config/settings.js");
+        const policy = getMirrorAuto();
+        if (policy.mode !== "ask") {
+          const s = ms.autoResolve(ms.mirrorDb(), policy, ch.channelIdentity().deviceId, { peerId: id });
+          if (s.applied.length) daemonLog(`[mirror] tự duyệt sau khi đổi gốc: áp ${s.applied.length}, còn chờ ${s.left}`);
+        }
+      } catch {
+        /* fail-open: the rows stay in the queue for a click */
+      }
       return json(res, r);
     }
     // Auto-settle of the two-way review queue (plan/24 §9.6b) — the cluster's gear. Saving a policy settles what is

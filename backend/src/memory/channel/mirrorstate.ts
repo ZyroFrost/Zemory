@@ -723,7 +723,7 @@ export function mirrorHooks(opts: {
   };
 }
 
-export type PeerSyncLookup = (peerId: string) => { direction: "two-way" | "one-way"; source?: string };
+export type PeerSyncLookup = (peerId: string) => { direction: "two-way" | "one-way"; source?: string; origin?: string };
 
 /** Máy kia có phải NGUỒN của cặp một chiều không. So bỏ gạch nối, không phân biệt hoa thường. */
 function isSourcePeer(source: string | undefined, peerId: string): boolean {
@@ -859,7 +859,8 @@ export function setPeerDirection(
       if (diff > 0) return { ok: false, reason: "diverged", count: diff, at: inv.at };
     }
   }
-  // Đổi máy gốc của cặp two-way không ghi đè byte nào (nó chỉ đổi gợi ý + nút giữ-gốc) ⇒ không cần chốt hội tụ.
+  // Changing the origin of a two-way pair overwrites nothing by itself (no convergence check). Under the author policy the
+  // caller then settles the waiting "same lines" rows by it (§9.6b), the replaced copy stashed first.
   setPeerSync(peerId, want.direction === "one-way" ? { direction: "one-way", source: want.source } : { direction: "two-way", origin: want.origin });
   const c = getPeerSync(peerId);
   return { ok: true, direction: c.direction, ...(c.source ? { source: c.source } : {}), ...(c.origin ? { origin: c.origin } : {}) };
@@ -915,7 +916,7 @@ export function autoChoice(
   row: Pick<QueueRow, "peerId" | "verdict">,
   policy: MirrorAuto,
   selfId: string,
-  when: { mine: number | null; theirs: number | null; grown?: "mine" | "theirs" | null },
+  when: { mine: number | null; theirs: number | null; grown?: "mine" | "theirs" | null; origin?: string | null },
 ): { choice: ApplyChoice; why: string; stashMine?: boolean } | null {
   if (policy.mode === "fixed" && policy.machine) {
     const fixed = normId(policy.machine);
@@ -935,8 +936,17 @@ export function autoChoice(
     // coming back is caught earlier still, at the receive door, by the persisted sent memory.)
     if (when.grown === "mine") return { choice: "mine", why: "author: this machine's version only adds to the other's" };
     if (when.grown === "theirs") return { choice: "theirs", why: "author: the other version only adds to this machine's" };
-    // Both machines really edited the same lines ⇒ ASK. File times cannot say who edited first: a machine that RECEIVED a
-    // copy stamps it with the time of receipt (2026-10-14: an old copy read as "earlier" and won, twice).
+    // Both machines really edited the same lines. File times cannot say who edited first: a machine that RECEIVED a copy
+    // stamps it with the time of receipt (2026-10-14: an old copy read as "earlier" and won, twice). The pair's ORIGIN
+    // machine (§9.2) is the answer the user already gave to "which machine's copy" - asking again after choosing automatic
+    // settling AND an origin is the bug the PC user reported 2026-11-22 (05_TODO, 06_CHANGES, .seen.json kept asking).
+    // No origin on the pair ⇒ ASK.
+    if (when.origin && normId(when.origin) === normId(row.peerId)) {
+      return { choice: "theirs", why: "author: same lines, the pair's origin machine wins", stashMine: true };
+    }
+    if (when.origin && normId(when.origin) === normId(selfId)) {
+      return { choice: "mine", why: "author: same lines, this machine is the pair's origin" };
+    }
     return null;
   }
   return null;
@@ -978,7 +988,8 @@ export function autoResolve(
   }
   for (const row of listQueue(db, opts.peerId, { freshen: true, repoRoot: opts.repoRoot, storeRoot: opts.storeRoot })) {
     if (row.dismissedAt) continue;
-    if ((opts.peerSync ?? getPeerSync)(row.peerId).direction !== "two-way") { out.left++; continue; }
+    const pair = (opts.peerSync ?? getPeerSync)(row.peerId);
+    if (pair.direction !== "two-way") { out.left++; continue; }
     const root = mirrorRootFor(row.area, opts);
     const abs = root ? resolveMirrorPath(root, row.rel) : null;
     const mine = ((): number | null => {
@@ -987,7 +998,7 @@ export function autoResolve(
     const inv = peerInventory(row.peerId, opts.inventoryFile);
     const theirs = inv?.entries.find((e) => e.area === row.area && e.rel === row.rel)?.mtimeMs ?? null;
     const grown = row.verdict === "block" && abs && existsSync(abs) ? growth(readFileSync(abs), queueBodies(db, row.id).theirs) : null;
-    const pick = autoChoice(row, policy, selfId, { mine, theirs, grown });
+    const pick = autoChoice(row, policy, selfId, { mine, theirs, grown, origin: pair.origin ?? null });
     if (!pick) { out.left++; continue; }
     let stash: string | undefined;
     if (pick.stashMine && abs && existsSync(abs)) {
