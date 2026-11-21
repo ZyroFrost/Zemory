@@ -2,7 +2,7 @@
 id: Rule_44
 aka: 02-44
 name: repo-scope
-version: 11
+version: 12
 kind: action
 code: 03_Safety
 ---

@@ -2,10 +2,10 @@
 id: Rule_44
 aka: 02-44
 name: repo-scope
-version: 11
+version: 12
 kind: action
 code: 03_Safety
-from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope @v11 #8d07c95f3cbb
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope @v12 #863b034caa2f
 ---
 # Rule_Gate_44_RepoScope — Write only inside the open project
 
