@@ -1163,6 +1163,8 @@ async function cmdMemoryInner(args: string[]): Promise<void> {
         console.error(`UNREADABLE SEGMENT in the shared store: ${r.unreadable.map((u) => u.file).join(", ")}`);
         process.exitCode = 1;
       }
+      for (const v of r.vectorsSkipped) console.log(`  🟠 VECTORS NOT REBUILT from ${v.file}: ${v.reason} - the vector counts below are not real, nothing is appended`);
+      if (r.vectorsSkipped.length) process.exitCode = 1;
       console.log(`  rebuilt from the channel: ${r.probeSessions} session(s) · ${r.probeMessages} message(s)   (this machine's store: ${r.localSessions} session(s) · ${r.localMessages} message(s))`);
       // Kênh giữ dữ liệu của MỌI máy nên bình thường nó phải ≥ kho máy này; thiếu chút là do delta
       // chưa đẩy (bị chặn theo ranh giới đã nhúng). Hụt NHIỀU nghĩa là kênh mất khúc — thứ không

@@ -138,9 +138,13 @@ function check(payload, root, policy) {
     const live = segs.filter((seg) => !SEARCH.test((seg.trim().split(/\s+/)[0] || "").replace(/^.*[\\/]/, ""))).join(" ; ");
     if (!WRITES.test(live)) return null;
     let target = null;
-    if (payload.cwd && outsideOf(root, payload.cwd)) target = payload.cwd;
     // Push-Location is PowerShell's pushd under its full name — it slipped through until 2026-10-15.
     const cd = /(?:^|[;&|]\s*)(?:cd|set-location|sl|pushd|push-location)\s+("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
+    // a command that first moves INTO this repo by an absolute path runs here, wherever the shell stood: judging it by
+    // the shell's old folder blocked "cd <this repo>; zemory archive" three times (PC 2026-11-21)
+    const cdDir = cd ? cd[1].replace(/^["']|["']$/g, "") : "";
+    const cdHere = !!cdDir && path.isAbsolute(cdDir) && !outsideOf(root, cdDir);
+    if (!cdHere && payload.cwd && outsideOf(root, payload.cwd)) target = payload.cwd;
     if (!target && cd && outsideOf(root, cd[1])) target = cd[1];
     const r = /--root[= ]("[^"]+"|'[^']+'|\S+)/i.exec(cmd);
     if (!target && r && outsideOf(root, r[1])) target = r[1];
