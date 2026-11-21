@@ -73,8 +73,10 @@ export async function main() {
   const meta = exeMetadata(pkg);
   await rcedit(tmp, { ...meta, ...(existsSync(ICON) ? { icon: ICON } : {}) });
   const { renameSync, rmSync } = await import("node:fs");
-  rmSync(EXE, { force: true });
-  renameSync(tmp, EXE);
+  // the old exe may still be locked by a daemon that is exiting: wait for the lock, as clean does
+  const { retryOnLock } = await import("./clean.mjs");
+  retryOnLock(() => rmSync(EXE, { force: true }));
+  retryOnLock(() => renameSync(tmp, EXE));
   writeFileSync(STAMP, JSON.stringify(want) + "\n");
   console.log(`make-exe: dist/zemory.exe built from ${process.execPath} (node ${process.version} · app ${pkg.version}${existsSync(ICON) ? " · icon" : " · NO icon"})`);
   return 0;
