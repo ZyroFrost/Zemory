@@ -2607,8 +2607,10 @@ export function isLocalDiskFull(e: unknown): boolean {
   return /ENOSPC|no space left on device|database or disk is full/i.test(e instanceof Error ? e.message : String(e));
 }
 
-/** Rebuilding a channel takes about this many times its size on the local disk (measured 20/11: 5 GB needed over 12 GB). */
-export const CATCHUP_TMP_FACTOR = 2.5;
+/** Rebuilding a channel takes about this many times its size on the local disk. Measured on the PC 21/11: a 5.26 GB
+ *  channel peaked at >= 17.5 GB of temp (3.33x, sampled every 30 s, so the true peak is a little higher) - 2.5x told
+ *  the user 12.9 GB was enough when 15.4 GB free still failed. */
+export const CATCHUP_TMP_FACTOR = 3.5;
 
 function segmentBytes(segments: string[]): number {
   let size = 0;
@@ -2654,7 +2656,9 @@ function diskFullMessage(tmpBase: string, segments: string[]): string {
   const gb = (b: number) => (b / 1024 ** 3).toFixed(1);
   const size = segmentBytes(segments);
   const f = tmpFreeBytes(tmpBase);
-  const free = f === null ? "" : `, ${gb(f)} GB free`;
+  // measured AFTER the failed merge removed its own temp files - at the failure itself the disk was at 0 (PC 21/11:
+  // the line said 9.9 GB free while C: read 0 GB); say so, or the number reads as "there was room"
+  const free = f === null ? "" : `; ${gb(f)} GB free now that this run's temp files are removed`;
   return `not enough space in ${tmpBase}: rebuilding the channel needs about ${gb(size * CATCHUP_TMP_FACTOR)} GB there${free}. ` +
     `Give a folder on a roomier disk with --tmp <dir>. This is a LOCAL disk error - no channel segment was judged unreadable.`;
 }
