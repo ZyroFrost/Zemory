@@ -18,7 +18,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { extname, posix, relative, sep } from "node:path";
+import { basename, extname, posix, relative, sep } from "node:path";
 import { harnessPathsAt } from "../core/config.js";
 import { readTextFile } from "../util/read-text.js";
 import { listDir } from "../util/list-dir.js";
@@ -37,6 +37,8 @@ export interface TodoRef {
 export interface TodoItem {
   /** Dòng bắt đầu mục trong `05_TODO.md` (1-based) — để nhảy thẳng tới. */
   line: number;
+  /** Last line of the item (1-based, continuation lines included); the item's time is the NEWEST line in line..lastLine. */
+  lastLine: number;
   status: TodoStatus;
   /** Dòng đầu, cắt ngắn cho bảng. */
   title: string;
@@ -202,11 +204,14 @@ export function parseTodoItems(md: string): TodoItem[] {
       flush();
       const mark = m[1] ?? m[2];
       const status: TodoStatus = mark === "x" || mark === "✅" ? "done" : mark === "~" ? "doing" : "open";
-      cur = { line: i + 1, status, title: m[3].slice(0, 110), body: m[3], refs: [] };
+      cur = { line: i + 1, lastLine: i + 1, status, title: m[3].slice(0, 110), body: m[3], refs: [] };
       continue;
     }
     // Dòng nối tiếp: thụt lề và KHÔNG mở mục mới.
-    if (cur && /^\s+\S/.test(ln)) cur.body += `\n${ln}`;
+    if (cur && /^\s+\S/.test(ln)) {
+      cur.body += `\n${ln}`;
+      cur.lastLine = i + 1;
+    }
     else if (cur && ln.trim() === "") continue;
     else if (cur && /^\S/.test(ln)) flush();
   }
@@ -356,7 +361,10 @@ export function verifyTodo(root: string, todoPath?: string): TodoVerifyReport {
     //    chữ nào trong code — nhưng git thì biết: file đó đã bị sửa SAU khi dòng sổ này
     //    được viết. "Đã đụng vào sau" không chứng minh "đã xong", nên đây là NGHI VẤN để
     //    người đọc đo lại, đúng vai máy-nêu-sự-kiện.
-    const itemTime = lineTimes.get(it.line) ?? 0;
+    // The item's time is its NEWEST line, not just the first: a re-measure note is usually written in the body
+    // while the first line stays untouched, so the first line alone kept flagging items just re-measured (Dashboard 21/11).
+    let itemTime = 0;
+    for (let l = it.line; l <= it.lastLine; l++) itemTime = Math.max(itemTime, lineTimes.get(l) ?? 0);
     if (itemTime) {
       const newer = it.refs
         // Chỉ canh file CODE. Đo 2026-08-07: để cả `.md` thì `AGENTS.md`/`CLAUDE.md` — hub
@@ -401,6 +409,7 @@ export function verifyTodo(root: string, todoPath?: string): TodoVerifyReport {
 
 export function formatTodoVerify(r: TodoVerifyReport): string {
   const out: string[] = [];
+  const base = basename(r.file);
   out.push(`zemory todo verify — ${r.file}`);
   out.push(`  ${r.items.length} mục · ${r.checkable} mục có tên kiểm được tất định`);
   if (!r.findings.length) {
@@ -411,17 +420,17 @@ export function formatTodoVerify(r: TodoVerifyReport): string {
     const newer = r.findings.filter((f) => f.kind === "code-moi-hon-so");
     if (maybe.length) {
       out.push(`\n  ⚠ NGHI ĐÃ XONG (${maybe.length}) — sổ nói "chưa", code nói "có":`);
-      for (const f of maybe) out.push(`    05_TODO.md:${f.line}  ${f.title}\n        ${f.detail}`);
+      for (const f of maybe) out.push(`    ${base}:${f.line}  ${f.title}\n        ${f.detail}`);
     }
     if (dead.length) {
       out.push(`\n  ✗ REF CHẾT (${dead.length}) — sổ trỏ vào thứ không còn tồn tại:`);
-      for (const f of dead) out.push(`    05_TODO.md:${f.line}  ${f.title}\n        ${f.detail}`);
+      for (const f of dead) out.push(`    ${base}:${f.line}  ${f.title}\n        ${f.detail}`);
     }
     // Loại này từng bị NUỐT: findings có (exit 1) mà bảng in 0 dòng — gate đỏ không nói vì
     // sao là gate bị tắt. Bắt buộc mọi kind có mặt trong bảng; kind mới phải thêm ở ĐÂY.
     if (newer.length) {
       out.push(`\n  ⏱ CODE MỚI HƠN SỔ (${newer.length}) — file mục nêu tên đã bị sửa SAU khi dòng sổ được viết (đo lại rồi cập nhật sổ):`);
-      for (const f of newer) out.push(`    05_TODO.md:${f.line}  ${f.title}\n        ${f.detail}`);
+      for (const f of newer) out.push(`    ${base}:${f.line}  ${f.title}\n        ${f.detail}`);
     }
   }
   out.push(
