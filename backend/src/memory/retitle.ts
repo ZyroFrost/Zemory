@@ -111,8 +111,13 @@ export function planRetitle(db: MemoryDB, project: string, pattern = DEFAULT_PAT
   // the repo name as STORED (exact case, 02-48), not as typed: a lower-case --project still titles Tarot_Study
   const repo = folderName(rows[0]?.project_root ?? project);
   const seen = new Map<string, number>();
+  // A source title that already follows 02-48 (a Claude/Codex session the agent titled itself) is left as it is:
+  // rebuilding it from its own text gave Tarot_Study_Claude_TarotStudyClaude22112026_22-11-2026 (PC, 22/11).
+  // Its name is still taken, so no other session is given the same title.
+  for (const s of rows) if (standardTitle(s.raw, repo)) seen.set(s.raw as string, 1);
   return rows.map((s) => {
     const base: RetitleRow = { id: s.id, source: s.source, raw: s.raw, current: s.shown ?? s.raw, next: null };
+    if (standardTitle(s.raw, repo)) return { ...base, why: "already follows the rule" };
     const b = build(pattern, s, repo);
     if (!b.title) return { ...base, why: b.why };
     const n = (seen.get(b.title) ?? 0) + 1;
