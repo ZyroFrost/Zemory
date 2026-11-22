@@ -17,9 +17,10 @@
 //  ③ Xoá phiên CŨ NHẤT trước, và chỉ tới khi về dưới trần; không "dọn cho sạch".
 //  ④ Fail-open tuyệt đối (HP điều 9): mọi lỗi đều nuốt, job này hỏng không được kéo theo ai.
 
-import { readdirSync, rmSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 /** Giữ lại phiên mới hơn mốc này, kể cả khi tổng vượt trần. */
 const MIN_AGE_MS = 6 * 60 * 60_000; // 6 giờ
@@ -161,13 +162,42 @@ export function sweepScratchpads(
   return out;
 }
 
+/** backend/test of this checkout: present on the development machine only (the tests are kept out of the public repo). */
+const DEFAULT_TEST_DIR = join(dirname(dirname(dirname(fileURLToPath(import.meta.url)))), "backend", "test");
+
+/**
+ * The mkdtemp prefixes the gate's tests use (`"zmailhook-"`, `"zctx-"` …), read from the test files themselves so the list
+ * never drifts. `npm test` points TEMP at its own run folder and removes it, but a test file run straight with `node --test`
+ * writes into the system temp folder and many never clean up (measured 2026-11-22 on the laptop: 984 folders, 5.05 GB, the
+ * oldest from 15/10). Empty when the folder is missing (an installed copy has no tests).
+ */
+export function testTempPrefixes(testDir: string): Set<string> {
+  const out = new Set<string>();
+  let files: string[];
+  try {
+    files = readdirSync(testDir).filter((f) => f.endsWith(".mjs"));
+  } catch {
+    return out;
+  }
+  for (const f of files) {
+    let src: string;
+    try {
+      src = readFileSync(join(testDir, f), "utf8");
+    } catch {
+      continue;
+    }
+    for (const m of src.matchAll(/["'`](z[a-z0-9-]*-)["'`]/g)) out.add(m[1]);
+  }
+  return out;
+}
+
 /**
  * Temp folders zemory's own code makes with mkdtemp (`<tmp>/zemory-<what>-XXXXXX`) and a killed process never removed:
  * a sync push or an export cut short leaves its folder behind, since `finally` does not run in a killed process
  * (measured 2026-10-16: `zemory-push-*` and `zemory-memory-rows-*` from 10:44 still there hours later). Only that name
  * shape, only folders untouched for MIN_AGE_MS, never `zemory-test` (the test runner owns it); every error is swallowed.
  */
-export function sweepStaleTemps(opts: { base?: string; now?: number } = {}): string[] {
+export function sweepStaleTemps(opts: { base?: string; now?: number; testDir?: string } = {}): string[] {
   const base = opts.base ?? tmpdir();
   const now = opts.now ?? Date.now();
   const removed: string[] = [];
@@ -177,8 +207,14 @@ export function sweepStaleTemps(opts: { base?: string; now?: number } = {}): str
   } catch {
     return removed;
   }
+  const testPrefixes = testTempPrefixes(opts.testDir ?? DEFAULT_TEST_DIR);
+  const isTestTemp = (name: string): boolean => {
+    const m = /^(.+-)[A-Za-z0-9]{6}$/.exec(name);
+    return Boolean(m && testPrefixes.has(m[1]));
+  };
   for (const name of names) {
-    if (!/^zemory-[a-z0-9-]+-[A-Za-z0-9]{6}$/.test(name) || name.startsWith("zemory-test")) continue;
+    const own = /^zemory-[a-z0-9-]+-[A-Za-z0-9]{6}$/.test(name) && !name.startsWith("zemory-test");
+    if (!own && !isTestTemp(name)) continue;
     const p = join(base, name);
     try {
       const st = statSync(p);
