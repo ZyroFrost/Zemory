@@ -309,7 +309,10 @@ function cmdSyncRun(args: string[]): void {
   // `--stamp` = MỒI: đóng dấu cho repo đã có harness mà chưa có dấu. Ngày trong dấu là ngày của bản
   // template mà file BÁM SÁT NHẤT, đo trên lịch sử git — không phải ngày hôm nay. Chỉ thêm một dòng
   // chú thích cuối file, không đụng nội dung.
-  if ((args.includes("--stamp") || args.includes("--standard")) && isStandardSource(root)) {
+  // The guard covers the FILE standard (docs_template flowing back into its source). A kit is assembled from the parts
+  // store like any other repo, and the source repo moves to its kit the same way (plan/39 §6, plan/28 §0l ⑤).
+  const kitMove = args.includes("--standard") && args.includes("--kit");
+  if ((args.includes("--stamp") || args.includes("--standard")) && isStandardSource(root) && !kitMove && !repoKit(root)) {
     // Nói ra, đừng im: "không có gì để áp" ở repo nguồn nghe như "đã khớp", mà sự thật là KHÔNG ĐO.
     console.log(`zemory sync — ${root}`);
     console.log("  · this is the template SOURCE repo: the standard flows OUT from here, never back in (plan/26 §8).");

@@ -14,12 +14,13 @@
     "attic",
     "external",
     "global-memory",
-    "docs/agent/01_CONSTITUTION.md"
+    "docs/agent/01_LAW/_Cons"
   ],
   "secretNames": [
     "share.key",
     "*.enc",
     "global_memory*.db"
   ],
-  "dockerPrune": true
+  "dockerPrune": true,
+  "kit": "04_IDE_App_Memory"
 }
