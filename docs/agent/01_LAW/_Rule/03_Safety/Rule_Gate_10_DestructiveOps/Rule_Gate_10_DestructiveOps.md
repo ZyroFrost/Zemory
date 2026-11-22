@@ -1,0 +1,52 @@
+---
+id: Rule_10
+aka: 02-10
+name: destructive-ops
+version: 11
+kind: action
+code: 03_Safety
+from: _Store/01_LAW/_Rule/03_Safety/Rule_Gate_10_DestructiveOps @v11 #f98bee1db480
+---
+# Rule_Gate_10_DestructiveOps — Destroying anything needs approval; original inputs are read-only
+
+## What
+Deleting or overwriting is treated as something that cannot be undone: the agent names the target and the reason, and waits for
+approval before doing it. Original inputs received from outside are only read, never changed.
+
+## When
+- About to delete a file · code · a function · a command · a feature · a delivered product (deliverable · measure) · a script ·
+  docs content · a folder.
+- About to overwrite something that exists.
+- Working with an original input (a file someone sent · a pull from a source).
+- Retiring a law.
+
+## Do
+1. Overwriting is deleting too: adding a feature ⇒ extend the old one, do not replace it; replace only when the request says so.
+2. Before deleting or overwriting ⇒ name the target and the reason, wait for approval, then do it; never do it and report after.
+3. Something unused or redundant ⇒ propose it; never delete it on your own. Adding · extending needs no approval; deleting ·
+   narrowing always does. Files the agent made to work (scratch, `Rule_Gate_04_ScratchFiles`) are not that: it deletes them itself.
+4. An original input ⇒ read-only: no editing, overwriting or deleting; clean a copy instead. A lost input is gone for good and has
+   to be asked for again. Where originals and intermediate copies live: the slots of `02_STRUCTURE`.
+5. Retiring a law ⇒ keep its number and mark it *retired*.
+
+## Example
+- Situation: the sales team sends the month's sales Excel with a few badly formatted columns; the folder also holds three old
+  files that look unused.
+- ✗ Wrong: fix the original file and save over it, delete the three old files and write "cleaned up spare files"; one of them is
+  a copy another department opens every week.
+- ✓ Right: copy the original to the working place to clean it, keep the original as is; list the three old files with reasons and
+  wait for approval of each before deleting.
+
+## Check
+- The guard blocks a delete command in the repo (`rm` · `del` · `Remove-Item` · `git rm` · a delete inside a script) and an edit
+  that removes a law number, until the flag `.allow-delete` exists. Exempt with no flag: the agent's own scratch - the session's
+  scratch folder and any path with a `_scratch_*` segment, recursive and globs too - and other targets in a temp folder. The
+  target is read the way the shell reads it: a `cd` before it, quotes glued to a word, `$TEMP` / `$env:TEMP`, a variable set in
+  the command, a `Get-ChildItem -Filter` piped into `Remove-Item $_`. A target that is not scratch on the same line still asks.
+- Original inputs: the marker key `protected` (globs, for example `data/*/01_raw`).
+- A Basic set (no guard): the host's own permissions from `gate.json › native` ask before `rm -r` · `Remove-Item` ·
+  `git reset --hard` · `git clean` · `git checkout --`; a delete hidden in a script is not seen there, the text decides.
+
+## Links · Liên kết
+- Repo declares · Repo khai: `Cons_Gate_10_ReadOnlySources` — the repo declares its read-only sources · repo khai nguồn chỉ đọc
+- Related · Liên quan: `Rule_Gate_61_HookSafetyNet` — a flag lets one approved action through · cờ cho qua đúng một việc đã duyệt

@@ -1,0 +1,20 @@
+{
+  "trigger": "kiểu glass · kính mờ · đổi màu theme · hiệu ứng · bóng đổ · blur",
+  "prompt": {
+    "kind": "app-glass",
+    "re": "\\b(kieu glass|giao dien glass|glass (theme|kind|style)|kinh mo|backdrop.?filter|blur|doi mau theme|bong do|hieu ung (chuyen dong|mo|hien))\\b",
+    "text": "[zemory] Glass surface: follow skill app-glass - values come from the approved template (--g- tokens, light + dark), the solid switch, prefers-reduced-motion for every moving effect."
+  },
+  "block": [
+    {
+      "note": "a request of this kind",
+      "prompt": "đổi màu theme giao diện glass"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa câu SQL"
+    }
+  ]
+}

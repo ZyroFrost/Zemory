@@ -1,0 +1,252 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit"
+    ]
+  },
+  "block": [
+    {
+      "note": "a figure card on bare glass",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".kpi-card { background: transparent; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a toned card painted white",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".row .kpi-card[data-tone] { background-color: #fff !important; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a figure card given the plain glass of the frame",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".card .card.kpi-card { background: var(--g-glass) !important; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "the tone shown as a stripe on the left",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".kpi-card { border-left: 4px solid var(--tone); }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a stripe added inside a card rule already in the file",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n",
+        "frontend/src/styles/app.css": ".kpi-card { padding: 1rem; }\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "old_string": "padding: 1rem;",
+        "new_string": "padding: 1rem; border-top-color: var(--tone);"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "card chỉ số tô nền pastel"
+    }
+  ],
+  "pass": [
+    {
+      "note": "the tone's tinted fill",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".kpi-card[data-tone] { background: var(--tone-bg); }\n.kpi-card[data-tone=\"b\"] { --tone-bg: rgba(46, 156, 122, .14); }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a pastel by color-mix",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".kpi-card { background: color-mix(in srgb, var(--tone) 14%, transparent); }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "what is inside the card",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".kpi-card .kpi-title { background: transparent; }\n.kpi-card .avatar { border-left: 2px solid red; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a hover",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".kpi-card:hover { background: transparent; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a border set to none",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".kpi-card { border-left: 0; border-top: none; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a card that is not a figure card",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".card { background: transparent; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a repo of another style",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"Plain\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".kpi-card { background: transparent; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "a declaration already there, moved",
+      "files": {
+        "frontend/config/ui.json": "{\"style\": \"SneatGlass\"}\n",
+        "frontend/src/styles/app.css": ".kpi-card { background: transparent; }\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "old_string": ".kpi-card { background: transparent; }",
+        "new_string": ".kpi-card { color: red; background: transparent; }"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {}
+      }
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa câu SQL"
+    }
+  ],
+  "prompt": {
+    "kind": "app-card-tone",
+    "re": "\\b(card chỉ số|thẻ chỉ số|card kpi|kpi card|nền pastel|tô nền (card|thẻ)|pastel|data-tone)\\b",
+    "text": "[zemory] Rule_Gate_98_FigureCardTone: every figure card of a report page carries data-tone (card i -> slot i) and the tinted fill of its tone - background: var(--tone-bg), the slot colour at a low alpha; never bare glass, white, or a stripe/border alone. The shared rule rp-card-tone of scripts/report_layout_check.mjs must hold."
+  }
+}

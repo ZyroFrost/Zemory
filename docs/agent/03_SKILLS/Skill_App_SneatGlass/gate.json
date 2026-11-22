@@ -1,0 +1,24 @@
+{
+  "trigger": "sneat glass · kiểu sneat-glass · thanh lọc · bộ lọc trang · neo khung · cỡ hộp thoại · bố cục rộng · bố cục gọn",
+  "prompt": {
+    "kind": "app-sneat-glass",
+    "re": "\\b(sneat.?glass|thanh loc|bo loc trang|o loc|neo khung|neo hang|co hop thoai|hop thoai (nhay|s m l)|bo cuc (rong|gon)|nut (list|grid))\\b",
+    "text": "[zemory] Sneat-Glass surface: follow skill app-sneat-glass - the page bar in two groups (page tools from the left; pinned filters · filter button · filter box · view switch side by side at the right), the filter popover with pins, fitting the window, its filters a draft until Apply, crumbs family / app / page with every earlier layer a link, the pinned header clear glass with the rows cut under it, columns that narrow and widen, names never codes, dates in the person's format, corners as the kit; the repo's browser test runs scripts/sneat_glass_check.mjs and the probes of §6."
+  },
+  "block": [
+    {
+      "note": "a request about the page toolbar",
+      "prompt": "sửa thanh lọc của trang người dùng"
+    },
+    {
+      "note": "a request about the frame",
+      "prompt": "neo khung khi cuộn bảng"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa câu SQL"
+    }
+  ]
+}

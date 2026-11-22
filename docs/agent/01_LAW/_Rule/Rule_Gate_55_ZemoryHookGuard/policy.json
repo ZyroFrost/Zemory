@@ -1,0 +1,221 @@
+{
+  "generator": "zemory",
+  "comment": "ONE source for the layer-1 rules (irreversible actions the machine can check). guard.cjs (PreToolUse) and precommit-guard.cjs both read this file. Generated from the marker (.harness.json keys `protected`/`secretNames`/`secretAllow`/`allowedRoots`/`allowedSqlServers`/`repoGates`/`dockerPrune`) — edit the marker, then run `zemory hook guard` to regenerate.",
+  "protected_write": [
+    "data",
+    "share",
+    "attic",
+    "external",
+    "global-memory",
+    "docs/agent/01_LAW/_Cons",
+    "docs/agent",
+    "docs/plan",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs_template/_Store"
+  ],
+  "harness_write": [
+    "docs/agent",
+    "docs/plan",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "docs_template/_Store"
+  ],
+  "git_local": false,
+  "fill_write": [
+    "docs/agent/04_TODO.md",
+    "docs/agent/05_CHANGES.md",
+    "docs/agent/01_LAW/_Cons/*/Cons.md",
+    "docs/agent/03_SKILLS/Skill_Own_*"
+  ],
+  "protected_write_reason": "a path declared `protected` in .harness.json — it belongs to the repo, the harness agent may not write into it",
+  "harness_write_reason": "the harness docs (Rule_Gate_79_HarnessEdit) — creating, editing, deleting or moving anything in them needs the user's approval in this session; the agent never creates a rule, article, slot, skill or layer on its own",
+  "secret_names": [
+    ".env",
+    ".env.*",
+    "*.env",
+    "*.pem",
+    "*.ppk",
+    "id_rsa*",
+    "id_ed25519*",
+    "*.key",
+    "share.key",
+    "*.enc",
+    "global_memory*.db"
+  ],
+  "secret_allow": [
+    ".env.example",
+    "example.env",
+    "sample.env"
+  ],
+  "secret_reason": "a secret must never enter a commit — there is NO flag to get past this (price already paid: a secret reached GitHub 2026-08-04)",
+  "secret_values": {
+    "patterns": [
+      {
+        "kind": "password",
+        "re": "(?<![A-Za-z])(?:pass(?:word)?|pwd|secret|token|api[_-]?key|client[_-]?secret)(?![A-Za-z])[\"']?\\s*[:=]\\s*[\"']([^\"'\\s$<>{}%]{6,})[\"']",
+        "flags": "i"
+      },
+      {
+        "kind": "connection string",
+        "re": "(?:^|[;\"'])\\s*(?:Password|Pwd)\\s*=\\s*([^;\"'\\s$<>{}%()]{4,})\\s*(?:;|$)",
+        "flags": "i"
+      },
+      {
+        "kind": "private key",
+        "re": "-----BEGIN [A-Z ]*PRIVATE KEY-----",
+        "flags": ""
+      },
+      {
+        "kind": "cloud access key",
+        "re": "\\bAKIA[0-9A-Z]{16}\\b",
+        "flags": ""
+      }
+    ],
+    "placeholder": "^(?:changeme|change_me|password|secret|x{3,}|\\*+|your[_-].*|example.*|dummy.*|fake.*|placeholder.*|<.*>)$",
+    "name": "^(?:[A-Z][A-Z0-9_]{2,}|[.#][a-z]+(?:-[a-z0-9]+)+|[A-Za-z_]\\w*(?:\\.[A-Za-z_]\\w*)+)$",
+    "env": "environ|getenv|process\\.env|\\$\\{|%[A-Z_]+%|GetEnvironmentVariable|_env\\b",
+    "skipPath": "(^|/)(vendors?|third[_-]?party|external|node_modules)/|(^|/)wwwroot/.*/lib/|\\.min\\.js$"
+  },
+  "key_read_block": [
+    "*.pem",
+    "*.ppk",
+    "id_rsa*",
+    "id_ed25519*",
+    "*.key"
+  ],
+  "key_read_reason": "the contents of a key file must never be read, returned or logged; the key PATH is only a path",
+  "allowed_roots": [],
+  "allowed_sql_servers": [],
+  "repo_gates": [],
+  "docker_prune": true,
+  "read_first": {
+    "required": [
+      "docs/agent/04_TODO.md",
+      "docs/agent/01_LAW/_Cons/01_Scope/Cons_Gate_09_Purpose/Cons.md",
+      "docs/agent/01_LAW/_Cons/Cons_Core_101_Repealed/Cons_Core_101_Repealed.md",
+      "docs/agent/01_LAW/_Cons/Cons_Core_104_1Capability1Slot1/Cons_Core_104_1Capability1Slot1.md",
+      "docs/agent/01_LAW/_Cons/Cons_Core_109_FailOpenOMoiLop/Cons_Core_109_FailOpenOMoiLop.md",
+      "docs/agent/01_LAW/_Cons/Cons_Core_112_DoTrungThucGateTruoc/Cons_Core_112_DoTrungThucGateTruoc.md",
+      "docs/agent/01_LAW/_Cons/Cons_Core_115_ChatLuongBoNhoLa/Cons_Core_115_ChatLuongBoNhoLa.md",
+      "docs/agent/01_LAW/_Cons/Cons_Core_117_MotChucNangMotLenh/Cons_Core_117_MotChucNangMotLenh.md",
+      "docs/agent/01_LAW/_Rule/Rule_Core_12_SoatSoDoLaiTung/Rule_Core_12_SoatSoDoLaiTung.md",
+      "docs/agent/01_LAW/_Rule/Rule_Core_39_ViecLoiQuyetDinhO/Rule_Core_39_ViecLoiQuyetDinhO.md",
+      "docs/agent/01_LAW/_Rule/Rule_Core_68_BaLuatDo/Rule_Core_68_BaLuatDo.md",
+      "docs/agent/01_LAW/_Rule/Rule_Core_69_ChotPhienSoatGhi05/Rule_Core_69_ChotPhienSoatGhi05.md",
+      "docs/agent/01_LAW/_Rule/Rule_Core_74_RepoNhoViecHsPhien/Rule_Core_74_RepoNhoViecHsPhien.md"
+    ],
+    "sections": [],
+    "case_root": "tasks",
+    "case_files": [
+      "spec.md",
+      "mail_form.md"
+    ],
+    "triggers": [
+      {
+        "when": "new_dir",
+        "read": "docs/agent/02_STRUCTURE/INDEX.md"
+      },
+      {
+        "when": "path_prefix",
+        "prefix": "frontend",
+        "read": ".claude/skills/app-base/SKILL.md",
+        "alt": [
+          "docs/agent/03_SKILLS/Skill_App_Base/Skill_App_Base.md",
+          "docs/agent/03_SKILLS/Skill_App_Base/SKILL.md",
+          "docs/agent/03_SKILLS/Skill_App_Base/Claude/app-base/SKILL.md"
+        ],
+        "skill": "app-base"
+      },
+      {
+        "when": "cmd_re",
+        "re": "(mail|smtp|email)[\\w.-]*\\.(py|ps1|js|mjs|cjs|cmd|bat)\\b",
+        "read": ".claude/skills/doc-write-style/SKILL.md",
+        "alt": [
+          "docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Skill_Doc_WriteStyle.md",
+          "docs/agent/03_SKILLS/Skill_Doc_WriteStyle/SKILL.md",
+          "docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Claude/doc-write-style/SKILL.md"
+        ],
+        "skill": "doc-write-style"
+      },
+      {
+        "when": "script_re",
+        "re": "smtplib|send-mailmessage|smtpclient|sendmail\\(|send_message\\(|graph_mail|smtp_mail|/sendMail\\b",
+        "read": ".claude/skills/doc-write-style/SKILL.md",
+        "alt": [
+          "docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Skill_Doc_WriteStyle.md",
+          "docs/agent/03_SKILLS/Skill_Doc_WriteStyle/SKILL.md",
+          "docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Claude/doc-write-style/SKILL.md"
+        ],
+        "skill": "doc-write-style"
+      }
+    ]
+  },
+  "rules_file": "docs/agent/01_LAW/_Rule",
+  "todo_file": "docs/agent/04_TODO.md",
+  "rule_hooks": [],
+  "rule_dirs": [
+    "docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_01_DoneMeansRun",
+    "docs/agent/01_LAW/_Rule/04_Writing/Rule_Gate_02_ReaderText",
+    "docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_04_ScratchFiles",
+    "docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_21_WhatEntersGit",
+    "docs/agent/01_LAW/_Rule/04_Writing/Rule_Gate_24_EolKeep",
+    "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_27_HarnessLanguage",
+    "docs/agent/01_LAW/_Rule/04_Writing/Rule_Gate_29_CodeLanguage",
+    "docs/agent/01_LAW/_Rule/04_Writing/Rule_Gate_31_NoBrokenVietnamese",
+    "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_35_OneHome",
+    "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_38_TodoDoor",
+    "docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_44_RepoScope",
+    "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet",
+    "docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_71_LogNeverDeleted",
+    "docs/agent/01_LAW/_Rule/05_Domain/Rule_Gate_75_ScopedExport",
+    "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore",
+    "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked",
+    "docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_93_SubagentSmallOnly",
+    "docs/agent/01_LAW/_Rule/05_Domain/Rule_Gate_97_BarOneSize",
+    "docs/agent/01_LAW/_Rule/05_Domain/Rule_Gate_98_FigureCardTone",
+    "docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_99_GraphFirst"
+  ],
+  "sql": {
+    "rule": "02-25",
+    "rules_file": "docs/agent/02_RULES.md",
+    "stores": [
+      "backend/src/docs/store/queries.ts",
+      "backend/src/memory/store/queries.ts"
+    ],
+    "code_ext": [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".mjs",
+      ".cjs"
+    ],
+    "exclude": [
+      "backend/test/",
+      "backend/scripts/",
+      "test/",
+      "tests/",
+      "scripts/",
+      "attic/",
+      "external/",
+      "docs_template/"
+    ]
+  },
+  "outside_reason": "work stays INSIDE the project folder (Rule_Gate_44_RepoScope) — writing outside it, or making a SQL server write files or change its configuration, needs the user's word first",
+  "hooks_dir": "docs/agent/01_LAW/_Rule/Rule_Gate_55_ZemoryHookGuard",
+  "flags_dir": "docs/.harness-state",
+  "flags": {
+    "push": ".allow-push",
+    "docs_write": ".allow-docs-write",
+    "git_add_all": ".allow-git-add-all",
+    "delete": ".allow-delete",
+    "discard": ".allow-discard",
+    "overwrite": ".allow-overwrite",
+    "outside": ".allow-outside",
+    "translation": ".allow-translation",
+    "todo": ".allow-todo",
+    "mail": ".allow-mail",
+    "agent": ".allow-agent"
+  },
+  "flags_comment": "A flag = the user approving ONE job. The guard lets it through, then STAMPS `ZEMORY-USED <command fingerprint> <timestamp>` into the flag file itself — it is NOT deleted at once. Within 90 seconds THAT SAME command may be retried (a PreToolUse hook cannot know whether the command really ran; another host layer blocking it would cost the flag for nothing). Asking for a DIFFERENT job, or going past 90 seconds, REVOKES the flag and it must be requested again. An agent may only create a flag after the user has said so explicitly in the session."
+}

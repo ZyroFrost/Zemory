@@ -1,0 +1,23 @@
+{
+  "prompt": {
+    "kind": "Rule_95",
+    "re": "(?:\\b(lam (dc|duoc) ma|tu lam|hoi (lai )?quai|cu hoi|lam het|lam tiep|lam di|ko can hoi|khong can hoi|dung hoi)\\b)",
+    "text": "[zemory] Rule_Keys_95_DoItDontHandBack: work the agent can do, it does — through the app's endpoint when the app manages it; a given plan is carried out in full; a decision the person owns is one paragraph (measurement · proposal · one question), never a set of choices."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "việc này bạn làm được mà, đừng hỏi lại"
+    },
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "làm hết danh sách đi"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đọc giúp file này"
+    }
+  ]
+}

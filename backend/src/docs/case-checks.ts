@@ -12,6 +12,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, extname, join, relative, resolve } from "node:path";
 import { archiveDirOf, harnessPathsAt, readMarker } from "../core/config.js";
 import { findRegionRepo, repoRole } from "./region-links.js";
+import { isStandardSource } from "./standard.js";
 import { manifestPaths, manifestSecrets, manifests } from "./stignore-gen.js";
 import { CONS_REPO_FILE, LEDGER, SHELF } from "./harness-names.js";
 import { installsOf, isFolderHarness, listParts, listStructures, shelfDir } from "./store.js";
@@ -280,6 +281,8 @@ export function binLauncherFindings(root: string): string[] {
 
 const SHARED_SLOTS = ["sources", "config", "queries"];
 const TEXT_EXT = new Set([".md", ".py", ".ps1", ".psm1", ".sql", ".yaml", ".yml", ".json", ".cmd", ".bat", ".ts", ".js", ".cjs", ".mjs", ".txt", ".toml", ".ini", ".cfg", ".dax", ".tmdl", ".m"]);
+/** Program source among TEXT_EXT (retiredNameFindings reads only prose in the tool's own source repo). */
+const CODE_EXT = new Set([".py", ".ps1", ".psm1", ".ts", ".js", ".cjs", ".mjs"]);
 
 /** Text files under a folder (recursive, skipping dot folders), repo-relative. */
 function textFilesUnder(root: string, sub: string): string[] {
@@ -469,7 +472,11 @@ export function ownTextFiles(root: string): [string, string][] {
 // file of the repo — measured 2026-10-21: 99 s of a 369 s region sync)
 export function retiredNameFindings(root: string, files: [string, string][] = ownTextFiles(root)): string[] {
   const hits: string[] = [];
+  // The tool's own source repo still serves every file-harness repo: its code must name those files (the migration,
+  // the file-harness readers, their tests). There the check reads prose only; code naming a file is not a stale pointer.
+  const source = isStandardSource(root);
   for (const [r, text] of files) {
+    if (source && CODE_EXT.has(extname(r).toLowerCase())) continue;
     const names = new Set<string>();
     for (const m of text.matchAll(RETIRED_RE)) names.add(m[1] ?? "docs/hooks/");
     if (names.size) hits.push(`${r}: ${[...names].join(" · ")}`);

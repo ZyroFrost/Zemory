@@ -1,0 +1,34 @@
+---
+version: 14
+lang: vi
+---
+# Rule_Gate_01_DoneMeansRun — "Done" means it really ran
+
+## Luật là gì
+Agent chỉ báo "xong" khi việc đã chạy thật và đã đo. Riêng cổng xanh không phải bằng chứng.
+
+## Khi nào áp
+- Sắp báo một việc là xong.
+
+## Phải làm gì
+Chỉ báo "xong" khi đủ ba điều:
+1. Có sửa mã ⇒ sau lần sửa cuối đã chạy phép kiểm của repo (gate · test · type check · lint · lệnh kiểm khai trong marker).
+2. Có viết phép kiểm mới (test · script · công thức đối chiếu · bảng so số) ⇒ đã phá đúng thứ nó canh và thấy nó báo đỏ; vẫn
+   xanh ⇒ sửa phép kiểm. Hai lỗ hay gặp: phép kiểm không chạy tới nhánh nguy hiểm; một bản sao logic ở chỗ khác gánh thay.
+3. Thứ vừa dựng được dùng ở máy khác (lớp lưu · chỉ mục · bí mật · tài sản giao đi) ⇒ đã khai đường sang máy đó và đo ở đầu nhận.
+
+Thiếu một điều ⇒ việc còn dở, kể cả khi cổng xanh. Cách phá mã: `.claude/skills/harness-audit/SKILL.md`. Đường sang máy thứ hai:
+`.claude/skills/harness-sync-path/SKILL.md`.
+4. Mã thoát của một cổng đọc từ chính file log của nó (`> gate.log 2>&1; echo EXIT=$?`), không bao giờ qua ống nối, vì ống trả mã
+   thoát của lệnh cuối trong ống.
+5. Ba loại lỗi không cổng nào bắt: đua giữa trạng thái đã ghi và một lời gọi mạng đang chờ · một làn hỏng mà không báo gì · một vòng
+   đời không tự phục hồi. Việc chạm mạng hoặc chạy nền chỉ xong khi app thật đã chạy và log của nó đã được đọc.
+
+## Ví dụ
+- Tình huống: agent viết công thức đối chiếu để canh tổng doanh thu báo cáo khớp với DW.
+- ✗ Sai: chạy lần đầu thấy khớp thì báo xong; thực ra công thức đang so tổng với chính nó, đổi số ở DW vẫn báo khớp.
+- ✓ Đúng: cố ý sửa sai một con số ở nguồn rồi chạy lại; phép đối chiếu phải báo lệch, không báo thì sửa công thức rồi mới báo xong.
+
+## Máy kiểm
+- Hook kết thúc lượt chặn lượt có sửa mã mà không chạy lệnh kiểm nào.
+- Hook nhắc một lần mỗi phiên khi ghi file test mới và khi mã tạo bảng lưu mới.

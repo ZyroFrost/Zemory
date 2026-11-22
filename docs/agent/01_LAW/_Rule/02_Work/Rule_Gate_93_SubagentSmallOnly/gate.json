@@ -1,0 +1,76 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Agent",
+      "Task",
+      "Workflow"
+    ]
+  },
+  "block": [
+    {
+      "note": "a background port that names many files of the main session's context",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "port stage 1",
+        "subagent_type": "general-purpose",
+        "prompt": "Port stage 1 of the approved template. Read design/Glass.html, frontend/src/styles/glass.css, frontend/src/styles/template.css, frontend/src/App.tsx, docs/plan/12_ui.md and docs/agent/03_SKILLS/Skill_App_Base/Skill_App_Base.md first, then rebuild the shell."
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "agent": ".allow-agent"
+        }
+      }
+    },
+    {
+      "note": "a brief that asks for a standard to be read whole",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "check the standard",
+        "prompt": "Đọc toàn bộ chuẩn thiết kế rồi soát lại trang chủ."
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "agent": ".allow-agent"
+        }
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "a small errand with a known target",
+      "tool_name": "Agent",
+      "tool_input": {
+        "description": "find the route",
+        "subagent_type": "Explore",
+        "prompt": "In backend/src/api/, which file registers the /health route? Answer with the path and the line."
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "agent": ".allow-agent"
+        }
+      }
+    },
+    {
+      "note": "a write is not this rule's business",
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "notes/a.md",
+        "content": "x"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "agent": ".allow-agent"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+---
+id: Cons_113
+aka: 01-13
+name: graph-la-lop-dan-xuat
+version: 1
+kind: content
+---
+# Cons_Core_113_GraphLaLopDanXuat Graph là lớp DẪN XUẤT; cạnh KHAI BÁO và SUY LUẬN không được lẫn.
+
+**Graph là lớp DẪN XUẤT; cạnh KHAI BÁO và SUY LUẬN không được lẫn.** Graph (node + cạnh) rebuild được từ `.md` + code + memory — vứt/dựng lại bất cứ lúc nào, KHÔNG là kho sự thật thứ hai (hệ quả điều 3). Build TẤT ĐỊNH, 0 LLM (điều 6): cạnh chỉ sinh bằng parse (routing · references · supersede · `touches` · import/AST) hoặc cosine trên vector ĐÃ CÓ — KHÔNG extract quan hệ bằng LLM. Hai hạng cạnh: **KHAI BÁO** = baseline tất định, luôn đúng; **SUY LUẬN** = overlay fail-open (điều 9), PHẢI gắn nhãn `inferred` và KHÔNG BAO GIỜ giả dạng cạnh khai báo (thang confidence `textual`→`resolved` nằm TRONG hạng suy luận, không tự phong "khai báo"). Graph là engine nội bộ của domain memory, KHÔNG tạo capability thứ 5 (điều 4); consumer ngoài chỉ đọc `graph export` (contract có version), KHÔNG parse lại chuẩn (điều 5). **Đồng bộ bằng CODE, KHÔNG dựa trí nhớ agent:** chuẩn cấu trúc (`03_STRUCTURE`), index điều hướng (routing §4) và từ điển slot của graph (`SLOT_ROLES`) là BA lăng kính của CÙNG một cấu trúc repo — phải luôn khớp và **bổ trợ** nhau; giữ khớp bằng **gate test parity** (`structure-sync`: 03 thêm/đổi slot mà graph không theo ⇒ gate ĐỎ), KHÔNG dựa agent nhớ (rule dễ quên). Rule chỉ để người đọc HIỂU quan hệ; thứ CHẶN drift là code. **MÁY DỰNG · AGENT SỬA NGUỒN (bổ sung 2026-07-26, user chốt):** lớp dẫn xuất (graph · index · taxonomy) do MÁY sinh TẤT ĐỊNH cho MỌI project, không cần config riêng. **Agent KHÔNG BAO GIỜ ghi vào lớp dẫn xuất** — muốn graph có node/cạnh gì thì KHAI vào chuẩn (`03_STRUCTURE`) hoặc sửa NGUỒN (docs · code) rồi để máy dựng lại. Agent VẪN là một mắt xích bắt buộc (dựng repo lần đầu, bảo trì, và **KIỂM lần cuối**): đọc bảng lệch của `zemory conform` → phán phần NGỮ NGHĨA máy không hiểu được → đề xuất sửa nguồn. Luật này **giảm gánh cho agent, KHÔNG loại trừ agent** — và không mâu thuẫn điều 6 vì chiều gọi vẫn là *agent gọi zemory*, zemory không bao giờ gọi model. Suy luận của agent sống ở báo cáo/`05_TODO`, KHÔNG chảy ngược vào lớp dẫn xuất — nếu chảy ngược thì graph mất tính rebuild-được (điều 3) và cạnh suy luận lẫn vào cạnh khai báo. *(gốc: plan 13; user chốt 2026-07-21; đồng-bộ-code index↔structure↔graph 2026-07-22; máy-dựng/agent-kiểm 2026-07-26 — xem `plan/13 §0b.2`.)*
+
+- **Chốt máy:** `structure-sync.test`; agent ghi vào lớp dẫn xuất: CHƯA có nhánh guard — việc mở

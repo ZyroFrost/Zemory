@@ -1,0 +1,21 @@
+{
+  "gate": "conform",
+  "partial": true,
+  "prompt": {
+    "kind": "Rule_92",
+    "re": "\\b(dat ten|doi ten|ten (folder|file|skill|slot|luat|phan|bo|ke|lop)|khuon ten|rename|naming|name (a|the) (folder|file|skill|slot|part))\\b",
+    "text": "[zemory] Rule_Gate_92_NameGrammar: every name on HS follows a pattern in the rule's table (shelf · layer · part · folder and file inside a part · set · name:); folders of many things are plural, words joined by _; no pattern fits => propose the closest one and ask, never invent."
+  },
+  "block": [
+    {
+      "note": "a request to name a new folder in a skill",
+      "prompt": "đặt tên folder mới trong skill này"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa report doanh thu tháng"
+    }
+  ]
+}

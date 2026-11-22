@@ -1,0 +1,19 @@
+{
+  "prompt": {
+    "kind": "Rule_6",
+    "re": "\\b(nhan (cho|sang|ben|qua)|gui (cho|sang|ben|qua|lai)|ban giao|handover|memo|soan (tin|thu|prompt)|viet prompt|prompt (mo ta|de gui|gui)|bao (ben|cho|nó|DW|phong)|hoi (ben|DW)|form mail|mail mau|cau gui mail|viet mail|day (nguoc )?qua|de t gui)\\b",
+    "text": "[zemory] Rule_Keys_06_HandoffInline: A one-time text for someone else: print it in the answer, do not create a file for it."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "soạn tin nhắn gửi cho bên kế toán"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa lỗi đăng nhập"
+    }
+  ]
+}

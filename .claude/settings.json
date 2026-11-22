@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node -e \"require((process.env.CLAUDE_PROJECT_DIR||'.')+'/docs/hooks/guard.cjs')\""
+            "command": "node -e \"require((process.env.CLAUDE_PROJECT_DIR||'.')+'/docs/agent/01_LAW/_Rule/Rule_Gate_55_ZemoryHookGuard/guard.cjs')\""
           }
         ]
       }

@@ -1,0 +1,121 @@
+---
+id: Rule_90
+name: app-family-contract
+version: 12
+kind: judgment
+code: 05_Domain
+checked: [Rule_Gate_35_OneHome, Rule_Keys_80_SharedChangeImpact, Skill_App_Base, Skill_Db_Base, Skill_Task_VmAutomation, Struc_Repo_SystemManager, Struc_Repo_AppData, Skill_App_SneatGlass, Frontend_173_Shell]
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Keys_90_AppFamilyContract @v12 #0d3cad7c6f5b
+---
+# Rule_Keys_90_AppFamilyContract — An app of a family uses the family's one database, its one sign-in, its one admin screen and its log codes
+
+## What
+Apps that belong to one family (repos with role `app`, managed by a `system-manager`, using an `app-data` repo) share five
+things and never build their own copy: the family's one transactional database, the `system-manager`'s one sign-in, its one admin
+screen for roles, the operation-log codes kept by the `app-data` repo, and the frame of the surface kept by the `system-manager`.
+The `system-manager` holds only what is shared — the frame,
+gateway, the sign-in, the admin screen and the links to the apps; every app serves its own pages and its own API.
+
+Why a law of its own: `Rule_Gate_35_OneHome` asks for one home per thing but names no home across the repos of a family;
+`Skill_App_Base` and `Skill_Db_Base` teach how, not this duty; the structures `Struc_Repo_SystemManager` and
+`Struc_Repo_AppData` declare the roles but give them no duty toward each other.
+
+## When
+- Building or changing an app of a family: a table it needs, sign-in, roles, an admin screen, logging, its pages or its API.
+- Someone proposes a database of its own for one app, a sign-in page or an admin screen inside one app, or putting an app's pages
+  or API inside the `system-manager`.
+
+## Do
+1. Data lives in the family's one database, kept by the `app-data` repo. An app gets no database of its own, a large app included:
+   all databases of the family sit on one server, so a split adds work and no resilience (resilience is a second server). A new
+   table or column ⇒ ask the `app-data` repo; the app never changes structure (`Cons_Gate_11_WriteBoundary`).
+2. Identity is shared: one account per person for every app. Roles are per app (one role per person per app). Roles of every app
+   are granted from the `system-manager`'s one admin screen, one role column per app; an app builds no admin screen of its own.
+   The ROLE SET of each app (its role names, their order on screen, their labels) is one table of the family's database, kept by
+   the `app-data` repo; the database refuses a role that is not in the app's set. The admin screen and every app read the set from
+   that table; neither keeps a copy in its code. A new app or a changed role set ⇒ a model of the `app-data` repo, never code.
+   Every role sits on ONE fixed frame of four levels, the same number meaning the same level in every app: 1 `viewer` (read) ·
+   2 `operator` (work on the app's data) · 3 `manager` (+ create accounts and grant roles below its own, in that app only) ·
+   4 `admin` (everything in the app; grants up to `manager`). A higher level holds every right of the lower ones. An app takes only
+   the levels it needs (two is fine) and may add or drop one later, never a level outside the frame. A person grants only a level
+   below their own, in an app where they hold it; an app's `admin` is granted by the `system-manager`'s `admin`. The
+   `system-manager` keeps this standard and checks it when it writes a role. A job title or a department is not a role: it is an
+   attribute of the person that comes from HR, used by an app to narrow the data a person sees, never typed in as a role.
+3. Every app writes each event of six groups as one row of the family's operation log: sign-in · end of session · access denied ·
+   account and role changes · free-form data queries · settings that affect other users. Codes and levels come from the
+   `app-data` repo's contract table; a code not in it ⇒ ask that repo to add it first. Never log passwords, tokens or connection
+   strings; a person not yet signed in is NULL, not an empty string.
+   Each row names the person AND the repo that acted: an agent acts with the person's own account, and the repo it runs in is
+   recorded beside that account (the log's acting-repo column, NULL for a person in the browser). The name is the folder name
+   of the repo's root — `git rev-parse --show-toplevel`, else the folder that holds `docs/.harness.json` — never a naming
+   pattern. Every call an agent makes to an app of the family carries the header `X-Acting-Repo: <that name>`; the app keeps
+   plain names only (`[A-Za-z0-9._-]`, at most 64 characters) and writes them to the column. Code that writes to the family's
+   database directly lists the column in its INSERT with the same name. The name is attribution only, never a permission: rights
+   still come from the person's role.
+4. Sign-in is shared: the `system-manager` has the family's one sign-in page and issues the one session. An app reads that session
+   from the family's database on its own backend, checks its own role there, and sends a person without a live session to the
+   `system-manager`'s sign-in with the address to come back to. An app has no sign-in page, no session cookie of its own and no
+   password screen; signing out and changing a password go through the `system-manager`.
+   A session the app cannot CHECK (the family's database does not answer, its connection is hung or not open) is not "signed
+   out": the app keeps refusing access, tells the person the account server is not answering, retries by itself, and logs when
+   checks start failing and when they come back. It never sends the person to the sign-in for it — the `system-manager` sees a
+   live session and sends them straight back, a loop with no reason shown.
+5. The `system-manager` holds only the shared parts: the gateway (one address, one path per app), the sign-in, the admin screen
+   and the links to the apps. Every app serves its own frontend and its own backend under its own path; the `system-manager` never
+   hosts an app's pages or business API, and apps never call each other through it. What two apps share is the family's database.
+6. The frame of the surface is shared: the top bar, the menu, the page bar with its filters, the table behaviour (pinned header,
+   column resize), the dialogs, the toasts and the person's settings are ONE package kept by the `system-manager`
+   (`frontend/shell/`, `Frontend_173_Shell`) and published as numbered builds. Every app wears the build whose number it pins and
+   builds only the content of its pages; it never draws or patches a part of the frame — a fault of the frame is fixed and published
+   by the `system-manager`, a part the app needs is added to the frame. How: `Skill_App_Shell` (the `system-manager`) and
+   `Skill_App_ShellUse` (each app).
+
+## Example
+- Situation: a new reporting app needs its viewers' roles and wants to record who opened which board.
+- ✗ Wrong: give the app its own database with a `users` table, an admin page to grant roles, and log codes made up on the spot.
+- ✓ Right: add one app row in the family's database, have the roles granted on the `system-manager`'s admin screen, and log
+  sign-in, denials and role changes with the `app-data` repo's codes; viewing a board is not logged.
+- Situation: a file-sync app moves behind the family's gateway and still has its own sign-in page.
+- ✗ Wrong: keep its sign-in page and cookie, or ask the `system-manager` to serve the app's pages and API for it.
+- ✓ Right: the app drops its sign-in page, reads the `system-manager`'s session and checks its own role on its backend, sends a
+  person with no session to the shared sign-in with the address to return to, and keeps serving its own pages under its own path.
+- Situation: the family's database hangs for two minutes while people work in an app behind the gateway.
+- ✗ Wrong: treat every failed session lookup as "no session" and redirect to the shared sign-in; the `system-manager` finds the
+  session alive and returns the person to the app, which redirects again — people see the app bounce to the portal, and nothing
+  in the log says why.
+- ✓ Right: a cookie that could not be checked gets a 503 page in both languages that reloads itself, the API answers 503 with a
+  flag the frontend shows as a banner, and the log holds one line when checks failed and one when they came back.
+- Situation: an app used only by the IT team drops its read-only role and keeps two roles.
+- ✗ Wrong: change the role list written in the app's code and the copy written in the `system-manager`'s code; the two drift, and
+  the admin screen still offers a role the app now refuses.
+- ✓ Right: the `app-data` repo changes the app's rows in the family's role table with a model; the admin screen and the app both
+  read the new set, no code changes.
+- Situation: a risk-register app wants roles named after job titles (chief executive, area manager, internal control).
+- ✗ Wrong: make each job title a role of the app; the titles are typed by hand, drift from HR, and nobody can tell which title
+  may grant which.
+- ✓ Right: the app takes the levels of the frame it needs for what people may do; the job title and department come from HR
+  data and narrow which boards and rows each person sees.
+- Situation: agents of several department repos push files through a file-sync app, each with an account of its own.
+- ✗ Wrong: keep one account per agent, so the log shows the agent and never the person; or guess the repo from a naming rule
+  such as `Dept_<name>`, which breaks on the first repo named another way.
+- ✓ Right: the agent uses the person's account and sends `X-Acting-Repo: Dept_ABC` (its repo's root folder); the row reads
+  person `jane.doe` · repo `Dept_ABC` · `push_apply`, and the person's role decides what was allowed.
+- Situation: in a reporting app of the family the filter popover runs off the window, while the `system-manager`'s pages are fine.
+- ✗ Wrong: fix the popover's height in the reporting app's own copy of the frame; the next app copies the frame again and brings
+  the fault back, and the two copies drift.
+- ✓ Right: the reporting app reports the page, width and theme to the `system-manager`; the fault is reproduced on its pages,
+  fixed in `frontend/shell/`, published as frame `1.0.1`; the reporting app moves its pin from `1.0.0` to `1.0.1` and runs its
+  browser test.
+
+## Check
+- Keyword reminder: a request about an app's own database, its own or the shared sign-in, an admin screen, roles, the operation
+  log or the shared frame shows this law; the rest is judgment.
+- `zemory conform` accepts `frontend/shell/` only in a repo assembled from `Struc_Repo_SystemManager`.
+
+## Links · Liên kết
+- Implements · Thi hành: `Skill_App_Base` — how an app of a family is built · cách dựng một app của hệ
+- Implements · Thi hành: `Skill_App_Shell` — the system-manager keeps and publishes the frame · repo quản hệ giữ và phát khung
+- Implements · Thi hành: `Skill_App_ShellUse` — an app wears the frame at the number it pins · app mang khung ở bản nó ghim
+- Implements · Thi hành: `Skill_App_SneatGlass` — which part of the kind the frame builds, which the app · phần nào của kiểu do khung dựng, phần nào do app
+- Repo declares · Repo khai: `Cons_Gate_11_WriteBoundary` — the app writes data only, never structure · app chỉ ghi dữ liệu, không ghi cấu trúc
+- Related · Liên quan: `Rule_Gate_35_OneHome` — one thing, one home · một thứ một nhà

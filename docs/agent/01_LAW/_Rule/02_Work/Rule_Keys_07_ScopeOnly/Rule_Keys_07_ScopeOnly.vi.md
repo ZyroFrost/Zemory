@@ -1,0 +1,36 @@
+---
+version: 11
+lang: vi
+---
+# Rule_Keys_07_ScopeOnly — Do exactly the work given
+
+## Luật là gì
+Agent làm đúng việc được giao. Thứ ngoài yêu cầu phải hỏi trước, không làm rồi báo sau. Muốn thêm thứ không ai yêu cầu phải đề
+xuất kèm câu trả lời cho ba câu hỏi.
+
+## Khi nào áp
+- Việc sẽ đụng thứ nằm ngoài yêu cầu.
+- Agent muốn thêm thứ không ai yêu cầu: tính năng · cổng kiểm · bộ đếm · bộ đo · lớp cảnh báo · mục advisory.
+
+## Phải làm gì
+1. Ngoài yêu cầu ⇒ hỏi trước khi làm.
+2. Muốn thêm thứ không ai yêu cầu ⇒ hỏi một câu kèm đề xuất. Trước khi đề xuất, trả lời đủ ba câu: gỡ bớt được gì thay vào · gộp
+   vào cái có sẵn được không · không có nó thì hỏng gì, đo được không. Không trả lời được câu cuối ⇒ không đề xuất.
+3. Luật này không áp cho: việc được giao · sửa thứ đang hỏng · nghĩa vụ mà luật khác bắt buộc.
+4. Không bao giờ tự thêm ràng buộc, chốt chặn hay lời từ chối mà người dùng không đặt vào thứ người dùng điều khiển; lựa chọn có
+   vẻ rủi ro thì nói một lần, người dùng quyết. Trước khi viết "không dùng được X vì Y", đọc đoạn mã quyết định Y.
+5. Yêu cầu có độ rộng rõ ("hết", "toàn bộ X", "mọi repo") ⇒ làm đúng độ rộng đó; muốn thu hẹp thì đề xuất kèm số đo, không tự
+   cắt.
+6. "Không liên quan, bỏ đi" ⇒ cắt ngay trong lượt và dọn sạch: mã, khoá ở cả hai từ điển, neo test, chữ còn hứa hẹn về nó. Giải
+   thích cơ chế, đổi nhãn hay đề xuất thứ thay thế không phải câu trả lời.
+7. Xác minh · audit · "đóng case được chưa" ⇒ đo, báo, dừng. Lỗi tìm ra lúc đo thì báo kèm số đo và mức nghiêm trọng; chỉ sửa khi
+   người dùng bảo. "Có X không" ⇒ có hay không kèm con số, rồi dừng: không mức độ, kế hoạch hay khuyến nghị, trừ khi nó chặn
+   đúng việc đang làm (khi đó một câu); thiếu ở ngoài repo (bộ phận khác chưa nhập liệu) là một dòng, không lập kế hoạch.
+
+## Ví dụ
+- Tình huống: người dùng nhờ sửa chính tả một tiêu đề cột trong báo cáo.
+- ✗ Sai: sửa tiêu đề, tiện tay "dọn" câu truy vấn phía sau và thêm một cảnh báo "cho chắc"; số của cột đổi mà không ai được báo.
+- ✓ Đúng: chỉ sửa tiêu đề; thấy câu truy vấn có vấn đề thì nêu ra và hỏi; ý tưởng cảnh báo thì đề xuất kèm ba câu trả lời.
+
+## Máy kiểm
+- Nhắc theo từ khoá: lời yêu cầu có "chỉ", "đừng", "ai kêu" thì hiện luật này; phần còn lại là phán đoán.

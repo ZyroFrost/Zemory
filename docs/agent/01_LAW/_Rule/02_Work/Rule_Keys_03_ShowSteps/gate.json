@@ -1,0 +1,19 @@
+{
+  "prompt": {
+    "kind": "Rule_3",
+    "re": "\\b(lam (di|het|luon|tiep|not|lan luot|tuan tu|tung cai|lai)|lm i|fix (het|lai|di|truoc|tat ca|luon)|chay (di|lai|thu|het|len|tiep|truoc)|cap nhap|cap nhat (len|lai|di)|deploy|cai (lai|dat|di)|push|ap (chuan|xuong|len|cho|het|vao)|up (lai|len|chuan)|dung (lai|bo|khung)|tai cau truc|xu ly|scan lai|migrate|chuyen (het|qua|sang)|trien khai|bat dau|lan luot|tuan tu|toan bo|tat ca|moi repo|cac repo)\\b",
+    "text": "[zemory] Rule_Keys_03_ShowSteps: Long or multi-step job: say one line before each batch of actions, back every claim with a measurement, report a surprise at once."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "làm hết các bước còn lại đi"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đọc giúp file này"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "gate": "gates",
+  "prompt": {
+    "kind": "Rule_73",
+    "re": "\\b(them luat|viet luat|luat moi|dung (cong|hook|chot)|chot may|cong kiem|(ko|khong|chua) (co )?hook|quen luat|agent quen|nhac (lai )?luat|tu khoa (nhac|hook))\\b",
+    "text": "[zemory] Rule_Gate_73_GateEveryRule: every law and slot gets the strongest machine check the machine can see - at least a keyword reminder; a word the reminder missed is added to its re in the same session."
+  },
+  "block": [
+    {
+      "note": "a request about a new law",
+      "prompt": "thêm luật này vào HS đi"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    }
+  ]
+}

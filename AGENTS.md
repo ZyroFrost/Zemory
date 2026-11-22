@@ -1,50 +1,70 @@
-<!-- zemory · file chỉ đường DUY NHẤT ở root. THUẦN điều hướng — KHÔNG luật, KHÔNG nội dung harness (tất cả nằm trong docs/agent/*). -->
 # Zemory
 
-> ⛔ **DỪNG — bạn mở repo này để LÀM VIỆC, hay chỉ để THAM KHẢO?**
-> Nếu project bạn đang làm **KHÔNG phải repo này** (chỉ ghé đọc/tham khảo) → **CHỈ ĐỌC, KHÔNG GHI:**
-> - ❌ **KHÔNG** sửa/tạo/xoá file ở đây. ❌ **KHÔNG** chạy lệnh `zemory` với cwd ở đây — mọi lệnh GHI (`init` · `sync` · `reindex` · `archive` · `memory scan/sync` · `hook`…) ghi vào repo này **và/hoặc** `global_memory.db`.
-> - ⚠ Repo này **có thể đang có phiên agent khác làm việc** — bạn ghi vào = xung đột thật.
-> - ✅ Muốn tham khảo cách làm → đọc rồi ÁP VÀO REPO CỦA BẠN, chạy lệnh `zemory` ở repo của bạn.
-> - Thật sự cần ghi vào đây → **HỎI USER TRƯỚC**.
+> ⛔ **Mở repo này để LÀM VIỆC, hay chỉ để THAM KHẢO?** Repo đang làm không phải repo này ⇒ CHỈ ĐỌC: không sửa / tạo /
+> xoá file ở đây; không chạy lệnh `zemory` với cwd ở đây (lệnh ghi như `init` · `sync` · `reindex` · `archive` ·
+> `memory scan` · `hook` ghi vào repo này và kho nhớ). Repo này có thể đang có phiên agent khác làm việc. Muốn tham khảo
+> ⇒ đọc rồi áp vào repo của mình. Thật sự cần ghi vào đây ⇒ hỏi trước.
 
-Project này dùng **zemory** (harness). Mọi luật · quy trình · cấu trúc · thiết kế nằm trong `docs/` — file này CHỈ chỉ đường vào đó:
+Repo này dùng harness của zemory, hệ **APP** (có code chạy: UI · server · CLI). Luật · hiến pháp · cấu trúc · quy trình nằm trong
+`docs/agent/`, mỗi luật và mỗi slot một folder; file này chỉ chỉ đường.
 
 ## Vào việc
-1. **Chưa có `docs/.harness.json`?** →
-   - **HỎI USER TRƯỚC — dự án này là APP hay NON-APP? (ĐỪNG tự đoán.)** Hai loại áp HAI chuẩn cấu trúc khác nhau; chọn sai là nắn folder sai từ đầu:
-     - **APP** = hệ để **LÀM & BẢO TRÌ một app** — có code CHẠY do mình phát triển (UI / server / CLI). Áp chuẩn `03_STRUCTURE` **APP** (backend/ · frontend/ · docs/ · AGENTS.md).
-     - **NON-APP** = **sản phẩm / tài sản**, agent chỉ **đọc · dò · kéo · điền · xuất FILE** (BI/report · data · docs-only · design). *Mở một `.pbix` ra dò, đổ số vào template — KHÔNG phải phát triển app.* Áp chuẩn `03_STRUCTURE` **NON-APP** (deliverable + tasks/ + data/ … · **0 luật UI**).
-   - Rồi chạy: **APP** → `zemory init` · **NON-APP** → `zemory init --non-app` → `zemory doctor` xanh. (Thiếu lệnh `zemory` → cài bằng **MỘT lệnh** (Windows, PowerShell): `irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install.ps1 | iex` — đặt `$env:ZEMORY_DIR` = thư mục user muốn cài TRƯỚC lệnh đó (HỎI nếu chưa rõ; thư mục nào cũng được — kho nhớ KHÔNG nằm trong thư mục cài). Lệnh tự làm hết: cài Git / Node ≥ 20 / VC++ nếu thiếu (winget, không có thì bộ cài chính hãng) → clone (hoặc cập nhật bản đã cài) → `fetch-prebuilds` → `npm ci` → build → `npm install -g .` → `setup --shortcut` · `memory scan` · `hook install` · `memory embed --all`. Chạy lại = cập nhật. macOS/Linux: theo `README.md` §Quickstart. `doctor` chỉ chạy TRONG thư mục dự án. Đường tay thì **`fetch-prebuilds` chạy TRƯỚC `npm ci`, đừng bỏ**: `better-sqlite3` tải nhị phân dựng sẵn từ `github.com`, mạng chặn/bóp host đó (đo 2026-08-13: lọt **1/10** lượt, `api.github.com` **10/10**) thì nó rơi về `node-gyp` và **clone sạch không dựng được**; script kéo đúng file đó qua đường API rồi đặt vào cache. Không có lifecycle hook nào chạy đủ sớm — npm chạy install script của dependency TRƯỚC `preinstall` của gói gốc. **`npm i -g zemory` KHÔNG chạy** — gói chưa publish lên npm. **`npm i -g github:…` cũng không** — cài global không kéo devDependencies nên thiếu `tsc`.) Đã có `.harness.json` → bỏ qua bước này (profile đã chốt trong đó).
-   - **Init xong → liệt kê luật chung rồi HỎI USER một lần:** mọi luật `02-N` trong `docs/agent/02_RULES.md` (số + tiêu đề, chia `## Lõi` — luật không có chốt máy — và luật mang dấu `<!-- gate: … -->`); hỏi luật nào giữ nguyên · sửa · bỏ, rồi sửa file đúng câu trả lời. Bỏ luật = giữ số, ghi *bãi bỏ* (`02-10` chặn mọi lần sửa làm mất số luật). Chưa trả lời ⇒ giữ mặc định.
-2. **ĐỌC LÕI `docs/agent/`** — máy ép ĐÚNG các mục này, không hơn: `02_RULES` §Lõi · ở `01_CONSTITUTION` khối ĐỌC KỸ, các điều khối đó liệt kê và §Mục đích · cả `05_TODO`. Phần còn lại của `01`/`02` không bắt đọc: luật ở đó có chốt máy, vi phạm thì bị chặn. `06_CHANGES` tra bằng `zemory changelog search`. **`docs/plan/*` KHÔNG bắt đọc mỗi phiên** — trước khi đề xuất hay đổi thiết kế một vùng, tra `zemory plan search "<vùng>"`; sửa đúng một spec thì đọc trọn spec đó. *(Ngoại lệ: `docs_visual/` nằm NGOÀI `docs/` — chỉ mở khi user nhắc.)* **`03_STRUCTURE` và `04_SKILLS` KHÔNG nằm trong bộ này** — xem §Mở khi trúng trigger bên dưới.
-3. **`03_STRUCTURE` KHÔNG đọc hết mỗi phiên — nó là TỪ ĐIỂN SLOT + INDEX của cả app, dùng để TRA.** Mở nó (đúng mục cần, không đọc cả file) khi: **tạo/đổi tên/dời folder** · **thêm hoặc sửa slot** · **tra index "thứ này nằm đâu"** · `conform` báo lệch. Máy canh giúp: `zemory conform` chấm độ bám chuẩn và chỉ thẳng mục cần mở — đã nối vào `npm run check`, nên lệch chuẩn là gate đỏ, không phải chờ ai nhớ. *(Các luật nổ lúc VIẾT CODE — SQL · secret · panel resize · dialog · version · deploy — đã dời sang `02_RULES §Luật khi VIẾT`, vốn luôn nạp.)*
-4. **Lịch sử cũ nằm ở `docs/archive/`** (và plan đã chết ở `attic/dead-plans/`) — NGOÀI bộ đọc mỗi phiên nhưng **vẫn tra được** (`zemory changelog search` · `zemory plan search`, phủ cả tầng archive). Không thấy một việc/quyết định trong `05_TODO`/`06_CHANGES` **KHÔNG** có nghĩa là chưa từng có — tra archive trước khi kết luận "chưa làm".
-5. Làm theo những gì vừa đọc — `01_CONSTITUTION` (bất biến, TỐI CAO) trên `02_RULES` (luật làm việc).
+1. **Chưa có `docs/.harness.json`?** ⇒ hỏi trước: dự án là APP hay NON-APP (không tự đoán). APP ⇒
+   `zemory init --kit 04`;
+   rồi `zemory doctor` xanh. Thiếu lệnh `zemory` ⇒ cài bằng một lệnh PowerShell:
+   `irm https://raw.githubusercontent.com/ZyroFrost/Zemory/main/backend/scripts/install.ps1 | iex` (đặt `$env:ZEMORY_DIR` trước — hỏi nếu chưa rõ thư mục cài; kho
+   nhớ không nằm trong thư mục cài). Tab Code của Claude Desktop không đọc PowerShell profile ⇒ cài xong mở lại app.
+   - Init xong ⇒ viết hiến pháp: mỗi khung trong `docs/agent/01_LAW/_Cons/` có `Cons.md` mẫu; viết lại cho sản phẩm này
+     (`status: written`) hoặc ghi `status: n/a` kèm lý do. `zemory conform` đỏ tới khi viết đủ.
+   - Rồi liệt kê một lần mọi luật `docs/agent/01_LAW/_Rule/Rule_*/` (tên đầy đủ) và hỏi giữ · sửa · bỏ. Bỏ một luật =
+     thêm `retired: true` vào đầu file luật, giữ folder và số (`Rule_Gate_10_DestructiveOps`). Chưa trả lời ⇒ giữ mặc định.
+2. **Luật tự đến, không phải đọc trước** — mỗi loại một đường:
+   - `Core` và `Keys` (luật phán đoán) cùng hiến pháp của repo được chèn nguyên văn lúc mở phiên và sau mỗi lần nén;
+   - `Keys` còn nhắc lại một dòng khi câu gõ trúng từ khoá của luật đó;
+   - `Gate` chặn đúng lúc định làm sai — câu chặn mang tên đầy đủ và nguyên văn luật.
+3. **Đọc `docs/agent/04_TODO.md`** và mọi `Cons.md` đã viết trước khi làm.
+4. **Tra khi cần, không đọc hết:** luật `docs/agent/01_LAW/_Rule/` · hiến pháp `docs/agent/01_LAW/_Cons/` · cấu trúc
+   `docs/agent/02_STRUCTURE/` (`INDEX.md`: mục lục slot do máy sinh lúc sync, không sửa tay; slot ở `_Slot/`) · lịch sử `zemory changelog search` (phủ cả
+   `docs/archive/`) · thiết kế `zemory plan search "<vùng>"` trước khi đề xuất hay đổi thiết kế một vùng. Không thấy
+   một việc trong `04_TODO`/`05_CHANGES` không có nghĩa là chưa từng có — tra archive trước khi kết luận.
+5. Luật chung (`01_LAW/_Rule/`) là sàn cho mọi repo; hiến pháp (`01_LAW/_Cons/`) của repo chỉ siết thêm, không nới.
 
-## Mở khi trúng trigger — chưa trúng thì KHÔNG mở
-> Ba thứ nằm NGOÀI bộ đọc mỗi phiên: `03_STRUCTURE` · `04_SKILLS` · các quy trình trong `.claude/skills/`.
-> Cộng lại chúng dài hơn cả bộ luôn-nạp, mà mỗi phiên chỉ dùng tới một hai cái — nạp trước cho "chắc" là
-> đốt ngữ cảnh trước khi bắt đầu làm việc. **Mở một skill = đọc NGUYÊN file đó**, không đọc lướt; thà mở
-> thừa một skill còn hơn làm sai, nghi ngờ thì mở.
+## Mở khi trúng trigger — chưa trúng thì không mở
+Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `description`; bảng này là đường dự phòng.
 
 | Mở khi | Đọc |
 |---|---|
-| tạo · đổi tên · dời folder · thêm/sửa slot · `conform` báo lệch | `docs/agent/03_STRUCTURE.md` (đúng mục cần) |
-| hỏi "repo có sẵn quy trình gì" · thêm/bớt skill | `docs/agent/04_SKILLS.md` |
-| **đụng bất kỳ bề mặt nào của app · thêm/đổi một tiến trình nền** | `.claude/skills/app-design/SKILL.md` |
-| yêu cầu chưa đủ rõ để làm đúng | `.claude/skills/grill/SKILL.md` |
-| tin nhắn đầu tiên của phiên (hook nhắc tự bật) · "làm tiếp" · "đọc docs" · "vào việc" | `.claude/skills/session-open/SKILL.md` |
-| "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/session-close/SKILL.md` |
-| repo lệch chuẩn, cần nắn lại | `.claude/skills/reconcile/SKILL.md` |
-| kiểm độ bám chuẩn | `.claude/skills/conform/SKILL.md` |
-| sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác | `.claude/skills/sync-path/SKILL.md` |
-| user nói "audit toàn diện" / "soi hết" | `.claude/skills/audit/SKILL.md` |
-| cần ĐỌC nội dung `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/read-office/SKILL.md` |
-| cần SỬA / TẠO file Word `.docx` | `.claude/skills/write-docx/SKILL.md` |
-| cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/write-style/SKILL.md` |
-| `zemory validate` báo plan vượt trần · "gọt plan" / "dọn plan" | `.claude/skills/plan-trim/SKILL.md` |
-| đổi máy giữa native ↔ Docker · cài lại zemory · lối tắt/lệnh mở bản cũ | `.claude/skills/install-switch/SKILL.md` |
+| tạo · đổi tên · dời folder · thêm slot · `conform` báo lệch | `docs/agent/02_STRUCTURE/INDEX.md` + slot liên quan |
+| hỏi repo có quy trình gì · thêm/bớt skill | `docs/agent/03_SKILLS/INDEX.md` |
+| lấy · cập nhật logo, icon, tài nguyên giao diện dùng chung | `.claude/skills/app-assets-pull/SKILL.md` |
+| đụng bất kỳ bề mặt nào của app · thêm/đổi một tiến trình nền | `.claude/skills/app-base/SKILL.md` |
+| lọc chéo · bấm chart lọc · chart lọc lẫn nhau · liên kết chart · filter như PBI · cross filter | `.claude/skills/app-cross-filter/SKILL.md` |
+| xuất csv · xuất excel · xuất file · tải danh sách · export · tải về | `.claude/skills/app-export/SKILL.md` |
+| kiểu glass · kính mờ · đổi màu theme · hiệu ứng · bóng đổ · blur | `.claude/skills/app-glass/SKILL.md` |
+| sắp đẩy hoặc đóng gói một bản build · chọn số version | `.claude/skills/app-release/SKILL.md` |
+| trang báo cáo · bảng dashboard · dựng lại pbi · chuẩn pbi white cho app · card kpi · bảng ma trận · bố cục chart · bảng giải thích | `.claude/skills/app-report/SKILL.md` |
+| gắn khung · dùng khung chung · lên bản khung · ghim khung · vùng trang · lỗi khung | `.claude/skills/app-shell-use/SKILL.md` |
+| kiểu sneat · khung sneat · mẫu sneat · template sneat · menu theo app · trang chủ launcher | `.claude/skills/app-sneat/SKILL.md` |
+| sneat glass · kiểu sneat-glass · thanh lọc · bộ lọc trang · neo khung · cỡ hộp thoại · bố cục rộng · bố cục gọn | `.claude/skills/app-sneat-glass/SKILL.md` |
+| tạo · đổi bảng, cột, khoá, view trong cơ sở dữ liệu | `.claude/skills/db-base/SKILL.md` |
+| cần ĐỌC `.xlsx .xls .docx .pptx .pdf` | `.claude/skills/doc-read-office/SKILL.md` |
+| cần SỬA / TẠO file Word `.docx` | `.claude/skills/doc-write-docx/SKILL.md` |
+| cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi) | `.claude/skills/doc-write-style/SKILL.md` |
+| lời gọi "audit toàn diện" / "soi hết" | `.claude/skills/harness-audit/SKILL.md` |
+| kiểm độ bám chuẩn | `.claude/skills/harness-conform/SKILL.md` |
+| yêu cầu chưa đủ rõ để làm đúng | `.claude/skills/harness-grill/SKILL.md` |
+| `zemory validate` báo plan vượt trần · "gọt plan" | `.claude/skills/harness-plan-trim/SKILL.md` |
+| repo lệch chuẩn, cần nắn lại | `.claude/skills/harness-reconcile/SKILL.md` |
+| đổi tên repo · dời repo · chuyển thư mục repo sang chỗ khác · zemory project move | `.claude/skills/harness-repo-move/SKILL.md` |
+| nắn repo lên bộ chuẩn · áp chuẩn · chuyển repo sang bộ · sync --standard | `.claude/skills/harness-reshape/SKILL.md` |
+| được duyệt thêm hoặc sửa luật, khung hiến pháp, chốt máy | `.claude/skills/harness-rule-gate/SKILL.md` |
+| "note lại" · "ghi sổ" · "chốt phiên" · sắp đổi session | `.claude/skills/harness-session-close/SKILL.md` |
+| tin nhắn đầu tiên của phiên (hook nhắc tự bật) · "làm tiếp" · "đọc docs" · "vào việc" · "mở phiên" | `.claude/skills/harness-session-open/SKILL.md` |
+| sắp gọi một việc là XONG · thêm lớp lưu/chỉ mục/bí mật mới · bàn giao sang máy khác | `.claude/skills/harness-sync-path/SKILL.md` |
 
-> Chạy trong Claude Code: các skill trên được harness **tự nạp theo `description`**; bảng này là đường
-> dự phòng khi cơ chế đó không có (và là chỗ khai báo skill mới — xem `04_SKILLS` §4).
+## Trigger riêng của repo
+
+| Mở khi | Đọc |
+|---|---|
+| **đụng bất kỳ bề mặt nào của app · thêm/đổi một tiến trình nền** | `.claude/skills/app-design/SKILL.md` |
+| đổi máy giữa native ↔ Docker · cài lại zemory · lối tắt/lệnh mở bản cũ | `.claude/skills/install-switch/SKILL.md` |

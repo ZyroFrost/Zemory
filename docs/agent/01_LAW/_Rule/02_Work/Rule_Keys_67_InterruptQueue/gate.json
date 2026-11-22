@@ -1,0 +1,19 @@
+{
+  "prompt": {
+    "kind": "Rule_67",
+    "re": "\\b(tien tay|nhan tien|lam them|them (cai|viec) nay|con (cai|viec) nay nua|xong (cai|viec) nay (roi|thi))\\b",
+    "text": "[zemory] Rule_Keys_67_InterruptQueue: A request that cuts in waits its turn: note it in one line, finish the current task (or reach a safe point), then do it."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "tiện tay sửa luôn cái này nữa"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đọc giúp file này"
+    }
+  ]
+}

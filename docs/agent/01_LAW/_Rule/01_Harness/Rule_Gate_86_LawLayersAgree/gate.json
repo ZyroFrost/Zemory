@@ -1,0 +1,21 @@
+{
+  "gate": "conform",
+  "partial": true,
+  "prompt": {
+    "kind": "Rule_86",
+    "re": "\\b(mau thuan|trai (luat|nhau)|nguoc (luat|nhau)|lien ket|thi hanh|implements|links?|khop (luat|nhau)|tang (luat|tren|duoi))\\b",
+    "text": "[zemory] Rule_Gate_86_LawLayersAgree: law and frame > the repo's Cons.md > skill; a lower layer never contradicts a higher one, and links are written in the body (## Links · ## Implements), both directions."
+  },
+  "block": [
+    {
+      "note": "a request this rule's keywords catch",
+      "prompt": "skill này đang mâu thuẫn với luật"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đổi màu nút"
+    }
+  ]
+}
