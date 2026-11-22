@@ -106,6 +106,7 @@ export const SLOT_ROLES: Record<string, string> = {
   locales: "UI translations (i18n)",
   public: "static files served as-is (favicon/robots/manifest)",
   types: "types (client-only, or shared under backend/src/shared)",
+  mobile: "native phone shell (Android/iOS) showing the app's own pages",
   // ── non-app deliverables (§7) ──
   sources: "source definitions: Power Query / connection spec / SQL",
   measures: "named DAX/metric library",
