@@ -21,6 +21,8 @@ import { toHostPath, toLocalPath } from "../util/hostpath.js";
 export const AUTO_COMMIT_LINES = 0;
 
 const STORE_REL = "docs_template/_Store/";
+/** The guard's one-use approval flags and its own state, by name: never committed, whichever folder holds them. */
+const HARNESS_STATE_FILE = /(^|\/)(\.allow-[^/]*|\.seen\.json)$/;
 
 /** The front-matter value of `key` in a part's main file (a one-line value, or a `[a, b]` list). */
 function metaValues(text: string, key: string): string[] {
@@ -240,7 +242,10 @@ export function autoCommit(root: string, transcript: string | string[], limit = 
       return r && !r.startsWith("..") && !isAbsolute(r) ? r : null;
     };
     const listed = typeof transcript === "string" ? sessionWrittenFiles(transcript) : transcript;
-    const written = [...new Set(listed.map(rel).filter((x): x is string => Boolean(x)))];
+    // a one-use approval flag (.allow-*) or the guard's own state (.seen.json) is never work to commit, wherever it sits: a
+    // flag that reached git would travel to the other machine by pull and let an action through there that nobody approved
+    // (23/11: the second machine's auto-commit staged docs/hooks/.allow-outside once 4.19.23 had removed that folder's .gitignore)
+    const written = [...new Set(listed.map(rel).filter((x): x is string => Boolean(x) && !HARNESS_STATE_FILE.test(x as string)))];
     if (!written.length) return null;
     // the index alone says which are tracked (no stat, no hashing); the rest that exist are untracked unless ignored
     const inIndex = git(top, [...eol, "ls-files", "-z", "--", ...written]).split("\0").filter(Boolean);

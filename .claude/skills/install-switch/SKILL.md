@@ -48,7 +48,7 @@ Desktop có thể nằm trong OneDrive (`<OneDrive>\Desktop`) — quét cả hai
    gỡ Run `Zemory (WSL)` (ghi lại giá trị trước khi gỡ) · `install.json` `runtime: native` · `zemory setup --shortcut` ·
    `zemory hook install` · khởi động bằng chính lối tắt (`wscript launch.vbs`) · `zemory memory scan`.
 6. **Khai lại dòng MCP cấp máy:** `zemory setup mcp` — hàng `claude-code … (user scope)` báo `⚠ Docker line, native PC` thì
-   chạy đúng lệnh sửa nó in ra (`claude mcp remove zemory -s user` rồi `claude mcp add-json …`), sao lưu `~/.claude.json`
+   chạy đúng lệnh sửa nó in ra (`claude mcp remove zemory -s user` rồi `claude mcp add -s user zemory -- …`), sao lưu `~/.claude.json`
    trước. Bỏ sót bước này: shim Docker từ chối trên máy native và thoát ngay, mọi phiên mất công cụ MCP của zemory mà không
    báo gì (laptop 19–23/11).
 

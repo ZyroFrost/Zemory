@@ -1222,8 +1222,12 @@ function cmdSetupMcp(args: string[]): void {
     };
     console.log(`  ${userMark[user.state].padEnd(26)} ${"claude-code".padEnd(15)} ${CLAUDE_USER_CONFIG()} (user scope)`);
     if (user.state !== "absent" && user.state !== "wired") {
-      const line = JSON.stringify({ type: "stdio", ...serverEntry("user"), env: {} });
-      console.log(`  ${" ".repeat(26)} ${"↳ fix".padEnd(15)} claude mcp remove zemory -s user  then  claude mcp add-json zemory '${line}' -s user`);
+      // `claude mcp add … -- <command> <args>`, not `add-json '<json>'`: Windows PowerShell 5.1 strips the double quotes
+      // inside a JSON argument handed to a native program, so the JSON form only works from Git Bash
+      const e = serverEntry("user");
+      const q = (s: string): string => (/[\s"]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s);
+      console.log(`  ${" ".repeat(26)} ${"↳ fix".padEnd(15)} claude mcp remove zemory -s user`);
+      console.log(`  ${" ".repeat(26)} ${"".padEnd(15)} claude mcp add -s user zemory -- ${[e.command, ...e.args].map(q).join(" ")}`);
     }
     console.log("");
     console.log("  write to one agent:  zemory setup mcp <agent> [--force]");
