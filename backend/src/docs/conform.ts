@@ -16,12 +16,13 @@
 // diện". Báo nó thành lỗi là hiểu ngược chuẩn.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { createRequire } from "node:module";
+import { basename, dirname, join, relative } from "node:path";
 import { archiveDirOf, harnessPathsAt, readMarker } from "../core/config.js";
 import { sourceNodes } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
-import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots, withReadOnlyPass } from "./store.js";
+import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, isRetired, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots, withReadOnlyPass } from "./store.js";
 import { coreReinjectCap } from "./rule-core.js";
 import { wiredHooks } from "./hook-wiring.js";
 import { precommitState } from "./guard-gen.js";
@@ -119,6 +120,31 @@ export function foreignLayout(root: string): ForeignLayout | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * What the repo's rules find wrong in it by their own check: a rule whose `hook.cjs` exports `conform(root)` returns the
+ * findings as strings (empty = the repo holds). A retired rule is skipped; a hook that throws or returns something else
+ * finds nothing (fail-open, as a hook). Each finding is named after the rule's folder.
+ */
+export function ruleConformFindings(root: string, agentDir: string): string[] {
+  const out: string[] = [];
+  const req = createRequire(import.meta.url);
+  for (const p of listParts(agentDir, SHELF.rules)) {
+    if (isRetired(p)) continue;
+    const hook = join(p.dir, "hook.cjs");
+    if (!existsSync(hook)) continue;
+    try {
+      const mod = req(hook) as { conform?: unknown };
+      if (typeof mod.conform !== "function") continue;
+      const found = (mod.conform as (r: string) => unknown)(root);
+      if (!Array.isArray(found)) continue;
+      for (const f of found) if (typeof f === "string" && f.trim()) out.push(`${basename(p.dir)}: ${f}`);
+    } catch {
+      /* a hook that fails finds nothing */
+    }
+  }
+  return out;
 }
 
 export function conform(root: string): ConformReport {
@@ -393,6 +419,10 @@ function conformRun(root: string): ConformReport {
       for (const why of r) broken.push(`${p.id} ${p.name}: ${why}`);
     }
     push("slot-gate", "blocking", "Slot không đạt phép kiểm khai trong gate.json", broken, "sửa repo cho đúng slot (xem SLOT.md của slot đó)");
+    // ②bis-b — a rule whose hook.cjs also exports `conform(root)` judges the repo as it stands, not only the call it catches
+    // (Rule_Gate_76_DeployChecksFrame: a deploy whose browser check loads too few of the frame's rule files).
+    push("rule-conform", "advisory", "A rule's own check finds the repo off it", ruleConformFindings(root, hp.agent),
+      "fix the repo as the finding says (the rule's header names the way); the rule's hook blocks the same thing when it runs");
     // The constitution (plan/28 §0q): every assembled frame must have its Cons.md written for this repo, or marked n/a.
     push("cons-unwritten", "blocking", "Constitution frame not written for this repo", consFindings(hp.agent),
       "write Cons.md from the frame's template for this product, or set status: n/a with the reason");

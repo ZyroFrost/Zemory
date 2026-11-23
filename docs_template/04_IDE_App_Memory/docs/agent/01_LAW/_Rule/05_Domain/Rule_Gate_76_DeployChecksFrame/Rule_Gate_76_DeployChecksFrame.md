@@ -1,11 +1,11 @@
 ---
 id: Rule_76
 name: deploy-checks-frame
-version: 1
+version: 2
 kind: action
 code: 05_Domain
 checked: [Skill_App_ShellUse, Skill_App_SneatGlass, Skill_App_Report, Skill_App_Release, Rule_Keys_90_AppFamilyContract]
-from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_76_DeployChecksFrame @v1 #997d2e724bb4
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_76_DeployChecksFrame @v2 #540b7163c541
 ---
 # Rule_Gate_76_DeployChecksFrame — An app of a family deploys only through the frame's shared checks
 
@@ -40,6 +40,8 @@ check out. The pinned frame build is never below the family's floor; below the n
   skips a check · the pin is below `floor`. A pin below `latest` is blocked once per session as a warning; the retry passes.
   Passed: a dry check (`-Check`) or a rollback · a repo that pins no frame · a command that only names the script. The hook
   failing lets the call through.
+- `zemory conform` (`rule-conform`, advisory) runs the same loading check on every `deploy*` script of an app that pins a frame,
+  as the repo stands: the hook exports `conform(root)`.
 - What the hook cannot see (the check run but its result ignored) is the deploy script's own gate, judged by the owner.
 
 ## Links · Liên kết

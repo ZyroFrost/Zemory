@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Rule_Gate_76_DeployChecksFrame — An app of a family deploys only through the frame's shared checks
@@ -34,6 +34,8 @@ Bản khung ghim không bao giờ thấp hơn mức sàn của họ; thấp hơn
   chung · app có `data-rp-page` mà không nạp luật báo cáo · lệnh kèm công tắc bỏ kiểm · bản ghim thấp hơn `floor`. Bản ghim thấp
   hơn `latest` bị chặn một lần mỗi phiên như lời cảnh báo; chạy lại thì qua. Cho qua: lần kiểm khô (`-Check`) hay quay lại bản
   cũ · repo không ghim khung · lệnh chỉ nhắc tên script. Hook lỗi thì cho qua.
+- `zemory conform` (`rule-conform`, chỉ báo) chạy cùng phép kiểm nạp luật trên mọi script `deploy*` của app có ghim khung, theo
+  repo như đang có: hook export `conform(root)`.
 - Cái hook không thấy (bộ kiểm có chạy nhưng kết quả bị bỏ qua) là việc của chính cổng trong script deploy, chủ repo phán.
 
 ## Links · Liên kết

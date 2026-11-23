@@ -224,6 +224,44 @@ const SHARED = [
   { file: "sneat_glass_check.mjs", names: ["RULES", "PROBES", "DIALOG_RULES"], skill: "app-sneat-glass" },
   { file: "report_layout_check.mjs", names: ["RULES"], skill: "app-report", report: true },
 ];
+// What the deploy script runs that leaves the shared rules out, in one sentence; null when it loads them all.
+function loadGap(root, script) {
+  const rel = (p) => path.relative(root, p).replace(/\\/g, "/");
+  const { files, texts } = checkFiles(root, script);
+  const report = hasReportPage(root);
+  const runner = texts.some((t) => RUNNER.test(t));
+  const missing = [];
+  for (const s of SHARED) {
+    if (s.report && !report) continue;
+    const got = namesFrom(texts, s.file);
+    if (got.has("*")) continue;
+    // the family's runner handed the shared frame rules (by name, or through a file that imports them whole)
+    if (runner && !s.report && texts.some((t) => t.includes(s.file))) continue;
+    const lack = s.names.filter((n) => !got.has(n));
+    if (lack.length) missing.push("scripts/" + s.file + " (" + lack.join(" · ") + ", skill " + s.skill + ")");
+  }
+  if (files.length && !missing.length) return null;
+  const seen = files.length ? files.slice(0, 6).map(rel).join(", ") + (files.length > 6 ? ", …" : "") : "no script of a browser check";
+  return rel(script) + " deploys without the shared rules of the frame: what it runs (" + seen + ") does not load " +
+    missing.join(" and ") + (report ? " - the app has a report page (data-rp-page), so the report rules are required too" : "") + ".";
+}
+// zemory conform (rule-conform): the same check on the repo as it stands - every deploy script of an app that pins a frame.
+function conform(root) {
+  try {
+    if (!fs.existsSync(path.join(root, "frontend", "config", "shell.json"))) return [];
+    const out = [];
+    for (const dir of ["backend/scripts", "scripts", "."]) {
+      let list = [];
+      try { list = fs.readdirSync(path.join(root, dir)); } catch { continue; }
+      for (const n of list) {
+        if (!/^deploy[\w-]*\.(ps1|sh)$/i.test(n)) continue;
+        const gap = loadGap(root, path.join(root, dir, n));
+        if (gap) out.push(gap);
+      }
+    }
+    return out;
+  } catch { return []; }
+}
 function check(payload, root, policy) {
   try {
     const tool = payload.tool_name || "";
@@ -248,25 +286,10 @@ function check(payload, root, policy) {
         "without the switch.");
     }
     // (1) the browser check loads the shared rules
-    const { files, texts } = checkFiles(root, script);
-    const report = hasReportPage(root);
-    const runner = texts.some((t) => RUNNER.test(t));
-    const missing = [];
-    for (const s of SHARED) {
-      if (s.report && !report) continue;
-      const got = namesFrom(texts, s.file);
-      if (got.has("*")) continue;
-      // the family's runner handed the shared frame rules (by name, or through a file that imports them whole)
-      if (runner && !s.report && texts.some((t) => t.includes(s.file))) continue;
-      const lack = s.names.filter((n) => !got.has(n));
-      if (lack.length) missing.push("scripts/" + s.file + " (" + lack.join(" · ") + ", skill " + s.skill + ")");
-    }
-    if (!files.length || missing.length) {
-      const seen = files.length ? files.slice(0, 6).map(rel).join(", ") + (files.length > 6 ? ", …" : "") : "no script of a browser check";
-      return blocked(root, policy, "05-76", rel(script) + " deploys without the shared rules of the frame: what it runs (" + seen +
-        ") does not load " + missing.join(" and ") + (report ? " - the app has a report page (data-rp-page), so the report rules are " +
-        "required too" : "") + ". Make the browser check the deploy runs import those names and evaluate them on every page at a " +
-        "desktop and a phone width, both themes (skill app-shell-use §6), then deploy.");
+    const gap = loadGap(root, script);
+    if (gap) {
+      return blocked(root, policy, "05-76", gap + " Make the browser check the deploy runs import those names and evaluate them on " +
+        "every page at a desktop and a phone width, both themes (skill app-shell-use §6), then deploy.");
     }
     // (2) the pinned frame build against the family's floor and its newest build
     let pinned = "";
@@ -285,4 +308,4 @@ function check(payload, root, policy) {
     return null;
   } catch { return null; }
 }
-module.exports = { check };
+module.exports = { check, conform };
