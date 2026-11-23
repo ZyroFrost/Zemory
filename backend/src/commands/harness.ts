@@ -20,7 +20,8 @@ import { formatTodoVerify, verifyTodo } from "../docs/todo-verify.js";
 import { conform } from "../docs/conform.js";
 import { applyFix, monitorPaths, monitorSummary, pathsCheck, pathsFixProposals, pathsSummary } from "../docs/paths.js";
 import { listKnownProjects } from "../projects.js";
-import { UNSUPPORTED, agentTargets, inspectAgent, inspectProtocol, serverEntry, wireAgent, writeProtocol } from "../mcpsetup.js";
+import { CLAUDE_USER_CONFIG, UNSUPPORTED, agentTargets, claudeUserLine, inspectAgent, inspectProtocol, serverEntry, wireAgent, writeProtocol } from "../mcpsetup.js";
+import { readInstallChoice } from "../util/install-choice.js";
 import { importDoc, pruneMissingDocs } from "../docs/plan.js";
 import { importChangelog } from "../docs/changelog.js";
 import { GUARD_MATCHER, generateGuards, guardDrift, guardMatcherGaps, hooksDirOf } from "../docs/guard-gen.js";
@@ -1203,6 +1204,26 @@ function cmdSetupMcp(args: string[]): void {
         `  ${" ".repeat(26)} ${"↳ protocol".padEnd(15)} ${memo[inspectProtocol(t)]}` +
           (memoWhere ? ` — ${memoWhere}` : t.memoWhy ? ` (${t.memoWhy})` : ""),
       );
+    }
+    // Claude Code's per-machine line (`claude mcp add -s user`): judged, never written here (see claudeUserLine)
+    let userCfg: unknown;
+    try {
+      userCfg = JSON.parse(readFileSync(CLAUDE_USER_CONFIG(), "utf8"));
+    } catch {
+      userCfg = null; // no file, or a file Claude Code is rewriting this instant: reported as not wired
+    }
+    const user = claudeUserLine(userCfg, readInstallChoice()?.runtime ?? null);
+    const userMark: Record<string, string> = {
+      absent: "· not wired",
+      wired: "✓ wired",
+      "file-missing": "⚠ wired, file missing",
+      "docker-on-native": "⚠ Docker line, native PC",
+      "native-on-docker": "⚠ native line, Docker PC",
+    };
+    console.log(`  ${userMark[user.state].padEnd(26)} ${"claude-code".padEnd(15)} ${CLAUDE_USER_CONFIG()} (user scope)`);
+    if (user.state !== "absent" && user.state !== "wired") {
+      const line = JSON.stringify({ type: "stdio", ...serverEntry("user"), env: {} });
+      console.log(`  ${" ".repeat(26)} ${"↳ fix".padEnd(15)} claude mcp remove zemory -s user  then  claude mcp add-json zemory '${line}' -s user`);
     }
     console.log("");
     console.log("  write to one agent:  zemory setup mcp <agent> [--force]");

@@ -259,6 +259,33 @@ export function entryBroken(entry: unknown, exists: (p: string) => boolean = exi
   return paths.some((p) => !exists(p));
 }
 
+/** Claude Code's own per-machine file: `claude mcp add -s user` writes the zemory line at the top of it (`mcpServers`).
+ *  zemory only judges that line, it does not write the file: Claude Code holds it open and rewrites it. */
+export const CLAUDE_USER_CONFIG = (): string => join(homedir(), ".claude.json");
+
+export type UserLineState = "absent" | "wired" | "file-missing" | "docker-on-native" | "native-on-docker";
+
+/** The zemory line of ~/.claude.json judged against the install this machine runs. Measured 2026-11-23: the laptop moved
+ *  from Docker to native on 19/11 and its line kept running the Docker host shim, which refuses on a native machine and
+ *  exits at once; every session went four days without zemory's MCP tools and nothing said so, because `setup mcp` looked
+ *  only at the repo's `.mcp.json`. `runtime` is the machine's choice (`~/.zemory/install.json`), null when unknown. */
+export function claudeUserLine(
+  cfg: unknown,
+  runtime: "docker" | "native" | null,
+  exists: (p: string) => boolean = existsSync,
+): { state: UserLineState; entry?: ServerEntry } {
+  const servers = cfg && typeof cfg === "object" ? (cfg as { mcpServers?: unknown }).mcpServers : undefined;
+  const raw = servers && typeof servers === "object" ? (servers as Record<string, unknown>).zemory : undefined;
+  if (!raw || typeof raw !== "object") return { state: "absent" };
+  const e = raw as { command?: unknown; args?: unknown };
+  const entry: ServerEntry = { command: String(e.command ?? ""), args: Array.isArray(e.args) ? e.args.map(String) : [] };
+  if (entryBroken(entry, exists)) return { state: "file-missing", entry };
+  const parts = [entry.command, ...entry.args];
+  if (runtime === "native" && parts.some((p) => /(^|[\\/])host-cli\.mjs$/i.test(p))) return { state: "docker-on-native", entry };
+  if (runtime === "docker" && parts.some((p) => /[\\/]dist[\\/]cli\.js$/i.test(p))) return { state: "native-on-docker", entry };
+  return { state: "wired", entry };
+}
+
 export interface MergeResult {
   next: Record<string, unknown>;
   changed: boolean;

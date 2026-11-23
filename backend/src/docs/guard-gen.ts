@@ -694,7 +694,10 @@ function dropTextOps(s) {
   return String(s)
     // (?<!path): os.path.join / path.join build the write path and keep their arguments (2026-10-19, a write slipped through)
     .replace(new RegExp("(?<!path)\\\\.(replace|replaceAll|startswith|endswith|startsWith|endsWith|split|join|rsplit|find|rfind|index|count|includes|strip|lstrip|rstrip)\\\\s*" + TEXT_ARGS, "g"), ".$1()")
-    .replace(new RegExp("\\\\b(re\\\\.sub|re\\\\.search|re\\\\.match|re\\\\.findall|print|console\\\\.log)\\\\s*" + TEXT_ARGS, "g"), "$1()");
+    .replace(new RegExp("\\\\b(re\\\\.sub|re\\\\.search|re\\\\.match|re\\\\.findall|print|console\\\\.log)\\\\s*" + TEXT_ARGS, "g"), "$1()")
+    // the event name of a listener is no path: p.stdout.on("data", ...) (2026-11-23); the rest of the call is kept, so a
+    // write inside the callback is still judged
+    .replace(/\\.(on|once|off|addListener|removeListener|prependListener|prependOnceListener)\\s*\\(\\s*(["'])[^"'\\\\]*\\2/g, ".$1(");
 }
 
 function denyOutside(what, subject) {
@@ -1148,10 +1151,41 @@ function checkBash(cmd) {
   // a command string cannot know where the script will write. Real blocking belongs at the operating-system layer
   // (file permissions / ACL), not here. This branch only closes the EASIEST road.
   const REDIRECT = /(?:^|[\\s;&|])>{1,2}\\s*(["']?)([^\\s"'|;&]+)\\1/g;
+  // A ">" inside quotes is text, not a redirection (2026-11-23: the regex "<w:p[ >]" of a read-only python payload was read
+  // as writing into "].*?</w:p>"). Quoted parts are masked to FIND a redirection; its target is read from the original, so a
+  // quoted target (echo x > "a b.txt") is still judged. A shell run on a command string (bash -c · cmd /c · pwsh -Command)
+  // keeps its quoted payload as a command line: there a quoted ">" is a real redirection.
+  const SHELL_PAYLOAD = /(?:^|[\\s;&|(/\\\\])(?:bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|wsl)(?:\\.exe)?\\s+(?:-c|-command|\\/c|-e)\\b/i;
+  const maskQuoted = (s) => {
+    let out = "";
+    let q = "";
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (q) {
+        if (q === '"' && c === "\\\\" && i + 1 < s.length) { out += "__"; i++; continue; }
+        if (c === q) { q = ""; out += c; } else out += "_";
+      } else { if (c === '"' || c === "'") q = c; out += c; }
+    }
+    return out;
+  };
+  const redirectTargets = (seg) => {
+    const s = String(seg);
+    const scan = SHELL_PAYLOAD.test(s) ? s : maskQuoted(s);
+    const re = new RegExp(REDIRECT.source, "dg");
+    const out = [];
+    let m;
+    while ((m = re.exec(scan))) out.push(s.slice(m.indices[2][0], m.indices[2][1]));
+    return out;
+  };
   const MOVERS = /^(mv|move|move-item|mi|rename|ren|cp|copy|copy-item|robocopy|rsync)$/;
   // \`open(\` writes only with a write mode (2026-10-19: \`ast.parse(open(p).read())\` was blocked as a write); write_text /
   // write_bytes were missed by \`\\bwrite\\b\` (the next character is a word character)
   const WRITE_VERB = /\\bopen\\s*\\((?:[^()\\n]|\\([^()\\n]*\\))*,\\s*(?:mode\\s*=\\s*)?[rbuU]?["'][rbt]*[wax+][rbt+]*["']|\\b(write|write_text|write_bytes|writeFile|appendFile|writeFileSync|appendFileSync|Set-Content|Add-Content|Out-File|dump|save)\\b/i;
+  // A write to a process stream is no file write: process.stdout.write(x) · sys.stdout.write(x) · a child's p.stdin.write(x)
+  // (2026-11-23: a read-only probe that fed JSON to a child's stdin was blocked as writing into "data"). The event name of a
+  // listener, p.stdout.on("data", ...), is no path either: dropTextOps drops it.
+  const STREAM_WRITE = /\\b(?:process|sys)\\s*\\.\\s*(?:stdout|stderr)\\s*\\.\\s*write\\b|\\.\\s*stdin\\s*\\.\\s*write\\b/g;
+  const writesFile = (s) => WRITE_VERB.test(String(s).replace(STREAM_WRITE, " "));
 
   // 🔴 FINGERPRINT PER COMMAND, NOT PER PATH (fixed 2026-09-04, reported from the Dept_LOG repo).
   // This spot used to call \`consumeFlag("docs_write", rel)\` — the fingerprint was computed over ONE path.
@@ -1192,9 +1226,7 @@ function checkBash(cmd) {
     CUR_BASE = FOLDERS.get(seg) || process.cwd();
     const word = cmdWordOf(seg);
     // 1 redirection \`>\`/\`>>\` — the target is a file being overwritten or appended to, whatever command stands in front.
-    let m;
-    REDIRECT.lastIndex = 0;
-    while ((m = REDIRECT.exec(seg))) flagWritePath(m[2], "writing (redirection) into");
+    for (const t of redirectTargets(seg)) flagWritePath(t, "writing (redirection) into");
     // 2 MOVE / COPY commands: a SOURCE inside protected means it leaves the protected area (hole 3);
     //    a TARGET inside protected means writing into that area.
     if (MOVERS.test(word)) {
@@ -1216,7 +1248,7 @@ function checkBash(cmd) {
     if (/^(touch|mkdir|md|new-item|ni|set-content|sc|add-content|ac|out-file|tee|tee-object)$/.test(word) || inPlace || gitMv) {
       for (const a of tokens.slice(gitMv ? 2 : 1)) if (a && !a.startsWith("-") && /[\\/.]/.test(a)) flagWritePath(a, "writing (" + word + ") into");
     }
-    if (SEG_INTERP.test(word) && WRITE_VERB.test(seg)) {
+    if (SEG_INTERP.test(word) && writesFile(seg)) {
       for (const tok of dropTextOps(seg).split(/[\\s'"(),]+/)) {
         // Do NOT require the token to contain a \`/\`: a protected path is often a BARE NAME at the repo root
         // (\`.vault\` · \`attic\` · \`data\`) — measured 2026-08-26 across 7 of 9 PBI repos, and at first they slipped clean through
@@ -1247,7 +1279,7 @@ function checkBash(cmd) {
       const file = /\\.(m?js|cjs|ts|py|ps1|sh)$/i.test(scriptTok) ? path.resolve(ROOT, scriptTok) : "";
       let body = "";
       try { if (file && fs.statSync(file).size < 262144 && adHoc(file)) body = fs.readFileSync(file, "utf8"); } catch { body = ""; }
-      if (body && WRITE_VERB.test(body)) {
+      if (body && writesFile(body)) {
         const Q = "[" + String.fromCharCode(34, 39, 96) + "]";
         const SEP = "[/" + String.fromCharCode(92, 92) + "]";
         const esc = (s) => String(s).split(".").join("[.]");
@@ -1284,9 +1316,7 @@ function checkBash(cmd) {
   for (const seg of splitSegments(bare)) {
     CUR_BASE = FOLDERS.get(seg) || process.cwd();
     const word = cmdWordOf(seg);
-    let m;
-    REDIRECT.lastIndex = 0;
-    while ((m = REDIRECT.exec(seg))) outsideHit(m[2], "writing (redirection) into", false);
+    for (const t of redirectTargets(seg)) outsideHit(t, "writing (redirection) into", false);
     const toks = shellWords(seg);
     const at = toks.findIndex((t) => (t.replace(/\\\\/g, "/").split("/").pop() || "").toLowerCase() === word);
     const args = at < 0 ? [] : toks.slice(at + 1);
@@ -1324,7 +1354,7 @@ function checkBash(cmd) {
       }
     }
     // Interpreter payloads that write. The first plain argument is the SCRIPT being run (read, not written) - skip it.
-    if (SEG_INTERP.test(word) && WRITE_VERB.test(seg)) {
+    if (SEG_INTERP.test(word) && writesFile(seg)) {
       const script = args.find((t) => !t.startsWith("-"));
       for (const tok of dropTextOps(seg).split(/[\\s'"(),]+/)) {
         if (!tok || tok.startsWith("-") || tok === script) continue;
@@ -1338,7 +1368,7 @@ function checkBash(cmd) {
     const HEREDOC = /<<-?\\s*(['"]?)(\\w+)\\1[^\\n]*\\n([\\s\\S]*?)^\\2\\b/gm;
     let h;
     while ((h = HEREDOC.exec(cmd))) {
-      if (!WRITE_VERB.test(h[3])) continue;
+      if (!writesFile(h[3])) continue;
       for (const tok of dropTextOps(h[3]).split(/[\\s'"(),]+/)) {
         if (tok && !tok.startsWith("-")) outsideHit(tok, "writing (through a heredoc script) into", true);
       }

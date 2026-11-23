@@ -405,7 +405,9 @@ export const RETIRED_HARNESS_NAMES: Record<string, string> = {
 const RETIRED_RE = /(?<![\w/])(DEPT_STANDARD|01_CONSTITUTION|02_RULES|03_STRUCTURE|04_SKILLS|05_TODO|06_CHANGES)(?!\w)|docs\/hooks\//g;
 /** The block `zemory sync` keeps in the TODO ledger (docs/kit-sync.ts); same markers, kept here to avoid an import cycle. */
 const STANDARD_TODO_BLOCK = /<!-- zemory:standard-todo:start[\s\S]*?<!-- zemory:standard-todo:end -->/g;
-const SCAN_SKIP_DIRS = new Set([".git", "node_modules", "__pycache__", "attic", "data", "docs_template", "dist", "build", "external", "vendor"]);
+// global-memory: the memory store's folder in a zemory tree; what sits there is chat content, not the repo's text (23/11:
+// opened attachment copies under global-memory/attachments-open/ turned the second machine's conform red)
+const SCAN_SKIP_DIRS = new Set([".git", "node_modules", "__pycache__", "attic", "data", "global-memory", "docs_template", "dist", "build", "external", "vendor"]);
 
 /** Repo files the harness ships (skill and structure installs, the host's skill copies): changed in the store, not here. */
 function shippedFiles(root: string, agent: string): Set<string> {

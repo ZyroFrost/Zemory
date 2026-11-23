@@ -25,6 +25,7 @@ lời cho phép của người dùng trong phiên (`Rule_Gate_44`).
 | `data` (khoá · danh tính kênh · model · config) | `location.json` → `dataDir` (vd `D:\_ConfigVault\zemory\data`) | `<store>/data` |
 | Lựa chọn của máy | `~/.zemory/install.json` `runtime: native` | `runtime: docker` |
 | Hook Claude Code/Codex | `~/.claude/settings.json` gọi `zemory hook …` (cùng chuỗi cho cả hai — bản nào trả lời do lệnh `zemory` nào đứng đầu PATH) | như trái |
+| Dòng MCP cấp máy của Claude Code | `~/.claude.json` → `mcpServers.zemory` = `node %APPDATA%\npm\node_modules\zemory\dist\cli.js mcp` | `node <repo>\backend\scripts\host-cli.mjs mcp` (shim chuyển `mcp` vào container) |
 
 Desktop có thể nằm trong OneDrive (`<OneDrive>\Desktop`) — quét cả hai.
 
@@ -46,6 +47,10 @@ Desktop có thể nằm trong OneDrive (`<OneDrive>\Desktop`) — quét cả hai
 5. **Cài native:** trong repo `node backend/scripts/fetch-prebuilds.mjs` · `npm ci` · `npm run build` · `npm install -g .` ·
    gỡ Run `Zemory (WSL)` (ghi lại giá trị trước khi gỡ) · `install.json` `runtime: native` · `zemory setup --shortcut` ·
    `zemory hook install` · khởi động bằng chính lối tắt (`wscript launch.vbs`) · `zemory memory scan`.
+6. **Khai lại dòng MCP cấp máy:** `zemory setup mcp` — hàng `claude-code … (user scope)` báo `⚠ Docker line, native PC` thì
+   chạy đúng lệnh sửa nó in ra (`claude mcp remove zemory -s user` rồi `claude mcp add-json …`), sao lưu `~/.claude.json`
+   trước. Bỏ sót bước này: shim Docker từ chối trên máy native và thoát ngay, mọi phiên mất công cụ MCP của zemory mà không
+   báo gì (laptop 19–23/11).
 
 `install.ps1` làm đủ §2.1–5 (bước 2c lo 3–4: chỉ chép khi GM Docker mới hơn GM native; `ZEMORY_MIGRATE=plan` in quyết
 định không ghi gì, `=0` bỏ qua). Làm tay khi: `location.json` không có `memoryRoot`/`dataDir`, hoặc `share.key` /
@@ -59,8 +64,10 @@ zemory.cmd` · lối tắt Start Menu · lối tắt Desktop, kể cả Desktop 
 Start Menu). Làm tay khi:
 - GM Docker KHÔNG trống ⇒ bộ cài không chuyển GM: tự chép theo §2.3 theo chiều ngược, cùng phép kiểm.
 - `%APPDATA%\zemory\launch.vbs` còn nằm đó: vô hại khi không lối tắt nào trỏ vào nó (§4 điểm 2).
+- Dòng MCP cấp máy còn gọi `dist\cli.js` của bản native: `zemory setup mcp` báo `⚠ native line, Docker PC` ⇒ chạy lệnh sửa
+  nó in ra (chạy qua lệnh `zemory` của Docker, để dòng mới trỏ shim).
 
-## 4. Phép kiểm "không sót bản cũ" — chạy đủ, ghi số vào `06_CHANGES`
+## 4. Phép kiểm "không sót bản cũ" — chạy đủ, ghi số vào `05_CHANGES`
 
 1. `Get-Command zemory -All` ⇒ chỉ một họ (native: `%APPDATA%\npm\…` · Docker: `WindowsApps\zemory.cmd`).
 2. Mọi `Zemory.lnk` ở Start Menu · Desktop · Desktop OneDrive · Startup ⇒ trỏ đúng bản mới (in `TargetPath` + `Arguments`).
@@ -72,3 +79,5 @@ Start Menu). Làm tay khi:
 6. Thư mục GM của bản mới chỉ có `global_memory.db` (+ `-wal`/`-shm`); số phiên/tin ≥ số đếm ở bước kiểm GM.
 7. Kênh: daemon log có phiên `#n` với máy kia ngay sau khi khởi động (danh tính giữ nguyên).
 8. Từ điện thoại / trình duyệt: mở lối tắt, màn Dự án hiện thẻ, tab Chat tải được.
+9. Dòng MCP: `zemory setup mcp` hàng `claude-code … (user scope)` = `✓ wired` (hoặc `· not wired` nếu máy chưa từng khai) và
+   `claude mcp get zemory` ⇒ `✔ Connected`. Phiên đang mở giữ kết nối cũ: `/mcp` để nối lại, hoặc mở phiên mới.
