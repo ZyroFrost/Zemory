@@ -2,9 +2,11 @@
 // it ends. "Done" without a measurement is the failure this rule exists for; a reminder about it is ignorable, evidence in
 // the transcript is not. The check is the transcript itself: the tool calls since the person last spoke.
 //
-// Edits = Write / Edit / MultiEdit / NotebookEdit on a code file. Checks = a shell command that runs the repo's gate, tests,
-// type check or lint (or a command the repo declares in its marker as one of its own gates). The verdict blocks once per
-// turn: the host marks a Stop that follows our own block with `stop_hook_active`, and that one always passes.
+// Edits = Write / Edit / MultiEdit / NotebookEdit on a code file OF THE REPO (inside the session's cwd; a scratch file in the
+// host's temp folder or a file of another repo is not this repo's code). Checks = a shell command that runs the repo's gate,
+// tests, type check or lint (or a command the repo declares in its marker as one of its own gates), or that runs the changed
+// script itself - a changed SQL file fed to its client too. The verdict blocks once per turn: the host marks a Stop that
+// follows our own block with `stop_hook_active`, and that one always passes.
 import { closeSync, fstatSync, openSync, readSync } from "node:fs";
 
 const CODE = /\.(ts|tsx|js|jsx|mjs|cjs|py|ps1|psm1|sh|sql|cs|go|rs|java|kt|rb|php|vue|svelte)$/i;
@@ -23,8 +25,21 @@ function runsChanged(cmd: string, changed: string[]): boolean {
   const norm = cmd.replace(/\\/g, "/").toLowerCase();
   return changed.some((f) => {
     const name = f.split("/").pop()!.toLowerCase();
-    return /\.(py|ps1|psm1|sh|js|mjs|cjs|ts)$/.test(name) && new RegExp(`(^|[\\s"'/])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([\\s"']|$)`).test(norm);
+    // a SQL file runs through its client (psql -f x.sql · psql < x.sql · sqlcmd -i x.sql): the warehouse repo, 2026-11-23,
+    // changed a read-only query, ran it at once, and every later turn was still held for it
+    return /\.(py|ps1|psm1|sh|js|mjs|cjs|ts|sql)$/.test(name) && new RegExp(`(^|[\\s"'/])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([\\s"']|$)`).test(norm);
   });
+}
+
+/** Is the file inside the repo (the session's cwd)? Relative paths are; no root known ⇒ every file counts (the old rule).
+ *  Compared case-blind with `/` separators: a Windows path and its root differ only in case and slashes. */
+function insideRoot(file: string, root: string): boolean {
+  if (!root) return true;
+  const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  const f = norm(file);
+  if (!/^([a-z]:\/|\/)/.test(f)) return true;
+  const r = norm(root);
+  return f === r || f.startsWith(r + "/");
 }
 
 /** The tool calls the agent made since the last thing the person typed (oldest first). */
@@ -51,14 +66,16 @@ export function callsThisTurn(transcriptText: string): Call[] {
   return calls;
 }
 
-/** null = the turn may end · string = why it may not (the code files changed after the last check). */
-export function turnEvidence(transcriptText: string, ownGates: string[] = []): string | null {
+/** null = the turn may end · string = why it may not (the code files changed after the last check).
+ *  root = the repo (the session's cwd): a file outside it is not the repo's code - 2026-11-23 a read-only query in the host's
+ *  scratch folder held every turn of a warehouse session for hours, the repo's gate green each time. */
+export function turnEvidence(transcriptText: string, ownGates: string[] = [], root = ""): string | null {
   const calls = callsThisTurn(transcriptText);
   let changed: string[] = [];
   for (const c of calls) {
     const file = String(c.input.file_path ?? c.input.notebook_path ?? "");
     if (["Write", "Edit", "MultiEdit", "NotebookEdit"].includes(c.name) && CODE.test(file)) {
-      changed.push(file.replace(/\\/g, "/").split("/").slice(-2).join("/"));
+      if (insideRoot(file, root)) changed.push(file.replace(/\\/g, "/").split("/").slice(-2).join("/"));
       continue;
     }
     const cmd = typeof c.input.command === "string" ? c.input.command : "";
@@ -157,7 +174,7 @@ export function readTurn(path: string, chunk = 256 * 1024): string {
 
 /** The Stop hook's answer: a block decision once per turn, nothing otherwise (fail-open on any error). */
 export function stopDecision(
-  payload: { transcript_path?: unknown; stop_hook_active?: unknown },
+  payload: { transcript_path?: unknown; stop_hook_active?: unknown; cwd?: unknown },
   ownGates: string[] = [],
   checks: { evidence?: boolean; vocab?: boolean } = { evidence: true },
 ): string {
@@ -166,7 +183,8 @@ export function stopDecision(
   if (!p) return "";
   try {
     const text = readTurn(p);
-    const why = [checks.evidence ? turnEvidence(text, ownGates) : null, checks.vocab ? replyVocab(replyThisTurn(text)) : null]
+    const root = typeof payload.cwd === "string" ? payload.cwd : "";
+    const why = [checks.evidence ? turnEvidence(text, ownGates, root) : null, checks.vocab ? replyVocab(replyThisTurn(text)) : null]
       .filter((x): x is string => Boolean(x));
     return why.length ? JSON.stringify({ decision: "block", reason: why.join("\n\n") }) : "";
   } catch {
