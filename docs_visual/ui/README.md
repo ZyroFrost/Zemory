@@ -1,7 +1,7 @@
 # Ảnh chụp giao diện — dùng cho `README.md` ở gốc repo
 
 Ảnh **cho NGƯỜI xem** (tài liệu), nên nằm ở `docs_visual/` chứ không phải `frontend/assets/`
-(chỗ đó dành cho ảnh SHIP trong app: logo, favicon, icon tray) — theo `03_STRUCTURE §3`.
+(chỗ đó dành cho ảnh SHIP trong app: logo, favicon, icon tray) — theo cấu trúc chuẩn (`docs/agent/02_STRUCTURE/`).
 
 **MÁY chụp, không chụp tay** — làm tươi lại bằng một lệnh (daemon phải đang chạy):
 

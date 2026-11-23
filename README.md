@@ -704,8 +704,8 @@ zemory hook guard    # regenerate policy.json + guard.cjs + precommit-guard.cjs 
                      # (init and sync run it too) and merge them into .claude/settings.json without overwriting it
 ```
 
-In a folder harness the guard lives in the folder of the law that owns it, `Rule_Gate_59_ReadFirst`; in
-a file harness (such as this repo) it lives in `docs/hooks/`. `policy.json` is generated from the marker
+In a folder harness the guard lives in the folder of the law that owns it, `Rule_Gate_59_ReadFirst` (in
+this repo, `Rule_Gate_55_ZemoryHookGuard`); an older file harness keeps it in a hooks folder beside its docs. `policy.json` is generated from the marker
 (`protected` paths and globs such as `data/*/01_raw`) and from the repo's constitution (frame 10's SQL
 servers, frame 14's secret-file patterns), so the rules follow the repo. What it blocks:
 
@@ -1049,8 +1049,8 @@ zemory memory search "<what a past session decided>" --all
 
 ## Repository structure
 
-Code is arranged **domain-first**. This repo still runs the older file harness (`docs/agent/01_…06_*.md`
-and `docs/hooks/`); moving it onto its own set is open work.
+Code is arranged **domain-first**. Since 2026-11-22 this repo runs the folder harness assembled from HS, like
+every other repo (set `04_IDE_App_Memory`); the older file harness it ran before is kept in `docs/archive/`.
 
 ```text
 backend/                server side: 100% first-party code + thin entry surfaces

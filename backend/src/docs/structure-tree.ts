@@ -130,6 +130,11 @@ export const SLOT_ROLES: Record<string, string> = {
  *  there. */
 export const NONAPP_FREEFORM_PARENTS = ["tasks", "pipelines", "data"];
 
+/** Slots whose standard layout is one sub-folder per item, on every kind of repo: `training/<model>/` (Backend_174_Training,
+ *  "one model = one sub-folder"). A file in `backend/src/training/prompt-gates/` belongs to `training`; read by name alone it
+ *  was off-standard (conform on Zemory, 2026-11-23). */
+export const ITEM_FOLDER_SLOTS = ["training"];
+
 /** Top-level roles that differ from the src-slot meaning of the same name. */
 const ROOT_ROLES: Record<string, string> = {
   backend: "server-side: your code + entry (100% yours)",

@@ -474,9 +474,11 @@ export function retiredNameFindings(root: string, files: [string, string][] = ow
   const hits: string[] = [];
   // The tool's own source repo still serves every file-harness repo: its code must name those files (the migration,
   // the file-harness readers, their tests). There the check reads prose only; code naming a file is not a stale pointer.
+  // Its specs are skipped too: they design the file harness the tool still serves and the move away from it (plan/26–29),
+  // so they name those files as their subject.
   const source = isStandardSource(root);
   for (const [r, text] of files) {
-    if (source && CODE_EXT.has(extname(r).toLowerCase())) continue;
+    if (source && (CODE_EXT.has(extname(r).toLowerCase()) || r.startsWith("docs/plan/"))) continue;
     const names = new Set<string>();
     for (const m of text.matchAll(RETIRED_RE)) names.add(m[1] ?? "docs/hooks/");
     if (names.size) hits.push(`${r}: ${[...names].join(" · ")}`);

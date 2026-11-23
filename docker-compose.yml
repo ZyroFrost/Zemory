@@ -53,7 +53,7 @@ services:
       - ${HOST_HOME:?set HOST_HOME to your home folder}/.codex:/home/node/.codex:ro
       # the repos: project roots are stored as host paths and looked up here (util/hostpath.ts). Writable: `zemory sync`,
       # `init`, `archive`, `paths fix` write into a repo here as the native CLI does; the agent's own edits are guarded
-      # on the host (docs/hooks/guard.cjs runs there), not here
+      # on the host (the repo's guard.cjs runs there), not here
       - ${HOST_WORKSPACE:?set HOST_WORKSPACE to the folder holding your repos}:/host/workspace
       # the Drive sync folder, written to (the channel appends its blocks there). Docker Desktop cannot see a Google Drive
       # letter (G:) and silently mounts an empty folder instead (measured 2026-10-22): mount it in Ubuntu first

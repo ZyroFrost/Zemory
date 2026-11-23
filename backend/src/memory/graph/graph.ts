@@ -11,7 +11,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, join, relative } from "node:path";
-import { declaredSlots, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "../../docs/structure-tree.js";
+import { declaredSlots, ITEM_FOLDER_SLOTS, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "../../docs/structure-tree.js";
 import { listDir } from "../../util/list-dir.js";
 
 /**
@@ -45,6 +45,9 @@ export function slotOfDir(dir: string, dict: Set<string>, declared?: Set<string>
   const segs = dir.split("/").filter(Boolean);
   const last = segs[segs.length - 1];
   if (last && dict.has(last)) return last;
+  // one sub-folder per item by the slot's own layout (`training/<model>/`)
+  const parent = segs[segs.length - 2];
+  if (parent && dict.has(parent) && ITEM_FOLDER_SLOTS.includes(parent)) return parent;
   const first = segs[0];
   // 🔴 Điều kiện leo là `declared` (repo TỰ KHAI ở §3), KHÔNG phải `dict` (= chuẩn ∪ khai). Bản đầu
   // dùng `dict` nên `pipelines/` — một slot của bảng chuẩn APP — cũng được miễn trên repo app, tức
