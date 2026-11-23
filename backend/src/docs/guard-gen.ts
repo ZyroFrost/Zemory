@@ -695,9 +695,9 @@ function dropTextOps(s) {
     // (?<!path): os.path.join / path.join build the write path and keep their arguments (2026-10-19, a write slipped through)
     .replace(new RegExp("(?<!path)\\\\.(replace|replaceAll|startswith|endswith|startsWith|endsWith|split|join|rsplit|find|rfind|index|count|includes|strip|lstrip|rstrip)\\\\s*" + TEXT_ARGS, "g"), ".$1()")
     .replace(new RegExp("\\\\b(re\\\\.sub|re\\\\.search|re\\\\.match|re\\\\.findall|print|console\\\\.log)\\\\s*" + TEXT_ARGS, "g"), "$1()")
-    // the event name of a listener is no path: p.stdout.on("data", ...) (2026-11-23); the rest of the call is kept, so a
-    // write inside the callback is still judged
-    .replace(/\\.(on|once|off|addListener|removeListener|prependListener|prependOnceListener)\\s*\\(\\s*(["'])[^"'\\\\]*\\2/g, ".$1(");
+    // a stream's event name is no path: p.stdout.on("data", ...) (2026-11-23). Only the known event names are dropped, and
+    // the rest of the call is kept, so a write inside the callback is still judged
+    .replace(/\\.(on|once|off|addListener|removeListener|prependListener|prependOnceListener)\\s*\\(\\s*(["'])(?:data|end|close|error|exit|finish|drain|readable|line|message|spawn|open|disconnect)\\2/g, ".$1(");
 }
 
 function denyOutside(what, subject) {
@@ -1151,41 +1151,49 @@ function checkBash(cmd) {
   // a command string cannot know where the script will write. Real blocking belongs at the operating-system layer
   // (file permissions / ACL), not here. This branch only closes the EASIEST road.
   const REDIRECT = /(?:^|[\\s;&|])>{1,2}\\s*(["']?)([^\\s"'|;&]+)\\1/g;
-  // A ">" inside quotes is text, not a redirection (2026-11-23: the regex "<w:p[ >]" of a read-only python payload was read
-  // as writing into "].*?</w:p>"). Quoted parts are masked to FIND a redirection; its target is read from the original, so a
-  // quoted target (echo x > "a b.txt") is still judged. A shell run on a command string (bash -c · cmd /c · pwsh -Command)
-  // keeps its quoted payload as a command line: there a quoted ">" is a real redirection.
-  const SHELL_PAYLOAD = /(?:^|[\\s;&|(/\\\\])(?:bash|sh|zsh|dash|ksh|pwsh|powershell|cmd|wsl)(?:\\.exe)?\\s+(?:-c|-command|\\/c|-e)\\b/i;
+  // Redirections are scanned on the raw segment, quotes and all (a shell run on a string - bash -lc, powershell -NoProfile
+  // -Command, cmd /s /c, a pipe into sh - redirects inside its quotes). ONE exception, where a quoted ">" is provably text
+  // (2026-11-23: the regex "<w:p[ >]" of a read-only python payload was read as writing outside the project): the segment's
+  // command is a code interpreter, its quotes balance, and its code starts no shell. Then only the unquoted ">" count. The
+  // masked scan also reads a quoted target whole (echo x > "data/a b.txt"), so its targets are always added. A review of
+  // 23/11 showed that recognising shells by name instead (bash -c only) let every other spelling of a shell through.
+  const CODE_INTERP = /^(node|nodejs|python|python3|py|perl|ruby|deno|bun)$/i;
+  const STARTS_SHELL = /child_process|\\bexec(?:Sync|File|FileSync)?\\s*\\(|\\bspawn(?:Sync)?\\s*\\(|\\bsystem\\s*\\(|popen|Popen|subprocess|\\beval\\b|\\$\\(|\`|\\|\\s*(?:ba|z|da|k)?sh\\b/;
   const maskQuoted = (s) => {
     let out = "";
     let q = "";
     for (let i = 0; i < s.length; i++) {
       const c = s[i];
       if (q) {
-        if (q === '"' && c === "\\\\" && i + 1 < s.length) { out += "__"; i++; continue; }
+        // an escape inside double quotes: backslash (bash) or backtick (PowerShell)
+        if (q === '"' && (c === "\\\\" || c === "\`") && i + 1 < s.length) { out += "__"; i++; continue; }
         if (c === q) { q = ""; out += c; } else out += "_";
       } else { if (c === '"' || c === "'") q = c; out += c; }
     }
-    return out;
+    return { out, open: q !== "" };
   };
   const redirectTargets = (seg) => {
     const s = String(seg);
-    const scan = SHELL_PAYLOAD.test(s) ? s : maskQuoted(s);
-    const re = new RegExp(REDIRECT.source, "dg");
-    const out = [];
-    let m;
-    while ((m = re.exec(scan))) out.push(s.slice(m.indices[2][0], m.indices[2][1]));
-    return out;
+    const scanOf = (text) => {
+      const re = new RegExp(REDIRECT.source, "dg");
+      const found = [];
+      let m;
+      while ((m = re.exec(text))) found.push(s.slice(m.indices[2][0], m.indices[2][1]));
+      return found;
+    };
+    const masked = maskQuoted(s);
+    const viaMask = masked.open ? [] : scanOf(masked.out);
+    const quotedTextOnly = !masked.open && CODE_INTERP.test(cmdWordOf(s)) && !STARTS_SHELL.test(s);
+    return quotedTextOnly ? viaMask : [...new Set([...scanOf(s), ...viaMask])];
   };
   const MOVERS = /^(mv|move|move-item|mi|rename|ren|cp|copy|copy-item|robocopy|rsync)$/;
   // \`open(\` writes only with a write mode (2026-10-19: \`ast.parse(open(p).read())\` was blocked as a write); write_text /
   // write_bytes were missed by \`\\bwrite\\b\` (the next character is a word character)
   const WRITE_VERB = /\\bopen\\s*\\((?:[^()\\n]|\\([^()\\n]*\\))*,\\s*(?:mode\\s*=\\s*)?[rbuU]?["'][rbt]*[wax+][rbt+]*["']|\\b(write|write_text|write_bytes|writeFile|appendFile|writeFileSync|appendFileSync|Set-Content|Add-Content|Out-File|dump|save)\\b/i;
-  // A write to a process stream is no file write: process.stdout.write(x) · sys.stdout.write(x) · a child's p.stdin.write(x)
-  // (2026-11-23: a read-only probe that fed JSON to a child's stdin was blocked as writing into "data"). The event name of a
-  // listener, p.stdout.on("data", ...), is no path either: dropTextOps drops it.
-  const STREAM_WRITE = /\\b(?:process|sys)\\s*\\.\\s*(?:stdout|stderr)\\s*\\.\\s*write\\b|\\.\\s*stdin\\s*\\.\\s*write\\b/g;
-  const writesFile = (s) => WRITE_VERB.test(String(s).replace(STREAM_WRITE, " "));
+  // Every "write" counts, stream writes too: a child's stdin can feed a program that writes a file, and exempting stream
+  // writes disarmed the scan whenever the real change used a verb WRITE_VERB lacks (review 23/11). The false block of a
+  // read-only probe (p.stdin.write + p.stdout.on("data")) is cured where it came from: dropTextOps drops a stream event name.
+  const writesFile = (s) => WRITE_VERB.test(String(s));
 
   // 🔴 FINGERPRINT PER COMMAND, NOT PER PATH (fixed 2026-09-04, reported from the Dept_LOG repo).
   // This spot used to call \`consumeFlag("docs_write", rel)\` — the fingerprint was computed over ONE path.

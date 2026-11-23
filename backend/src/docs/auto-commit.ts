@@ -22,7 +22,8 @@ export const AUTO_COMMIT_LINES = 0;
 
 const STORE_REL = "docs_template/_Store/";
 /** The guard's one-use approval flags and its own state, by name: never committed, whichever folder holds them. */
-const HARNESS_STATE_FILE = /(^|\/)(\.allow-[^/]*|\.seen\.json)$/;
+// case-insensitive: on Windows the guard honours a flag written as .Allow-Push too (review 23/11)
+const HARNESS_STATE_FILE = /(^|\/)(\.allow-[^/]*|\.seen\.json)$/i;
 
 /** The front-matter value of `key` in a part's main file (a one-line value, or a `[a, b]` list). */
 function metaValues(text: string, key: string): string[] {

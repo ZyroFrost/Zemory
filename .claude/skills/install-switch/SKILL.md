@@ -64,8 +64,9 @@ zemory.cmd` · lối tắt Start Menu · lối tắt Desktop, kể cả Desktop 
 Start Menu). Làm tay khi:
 - GM Docker KHÔNG trống ⇒ bộ cài không chuyển GM: tự chép theo §2.3 theo chiều ngược, cùng phép kiểm.
 - `%APPDATA%\zemory\launch.vbs` còn nằm đó: vô hại khi không lối tắt nào trỏ vào nó (§4 điểm 2).
-- Dòng MCP cấp máy còn gọi `dist\cli.js` của bản native: `zemory setup mcp` báo `⚠ native line, Docker PC` ⇒ chạy lệnh sửa
-  nó in ra (chạy qua lệnh `zemory` của Docker, để dòng mới trỏ shim).
+- Dòng MCP cấp máy còn gọi `dist\cli.js` của bản native: `zemory setup mcp` báo `⚠ native line, Docker PC` (hoặc
+  `⚠ wired, file missing` khi `npm uninstall -g` đã gỡ file đó) ⇒ chạy lệnh sửa nó in ra, qua lệnh `zemory` của Docker để
+  dòng mới trỏ shim.
 
 ## 4. Phép kiểm "không sót bản cũ" — chạy đủ, ghi số vào `05_CHANGES`
 

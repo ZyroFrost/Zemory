@@ -1225,7 +1225,8 @@ function cmdSetupMcp(args: string[]): void {
       // `claude mcp add … -- <command> <args>`, not `add-json '<json>'`: Windows PowerShell 5.1 strips the double quotes
       // inside a JSON argument handed to a native program, so the JSON form only works from Git Bash
       const e = serverEntry("user");
-      const q = (s: string): string => (/[\s"]/.test(s) ? `"${s.replace(/"/g, '\\"')}"` : s);
+      // every argument double-quoted, forward slashes: an unquoted C:\path loses its backslashes in Git Bash (review 23/11)
+      const q = (s: string): string => `"${s.replace(/\\/g, "/").replace(/"/g, '\\"')}"`;
       console.log(`  ${" ".repeat(26)} ${"↳ fix".padEnd(15)} claude mcp remove zemory -s user`);
       console.log(`  ${" ".repeat(26)} ${"".padEnd(15)} claude mcp add -s user zemory -- ${[e.command, ...e.args].map(q).join(" ")}`);
     }
