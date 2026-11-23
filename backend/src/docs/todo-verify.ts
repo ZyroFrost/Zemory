@@ -433,9 +433,10 @@ export function formatTodoVerify(r: TodoVerifyReport): string {
       for (const f of newer) out.push(`    ${base}:${f.line}  ${f.title}\n        ${f.detail}`);
     }
   }
+  // the ledger by its own name (`base`): a fixed "05_TODO.md" stayed here after the folder harness renumbered it 04_TODO.md
   out.push(
     `\n  (Máy chỉ nêu SỰ KIỆN tra được. "Tồn tại" KHÔNG tự động nghĩa là "đã xong" —` +
-      ` phần đó agent/người đọc phán, rồi sửa NGUỒN là chính \`05_TODO.md\`.)`,
+      ` phần đó agent/người đọc phán, rồi sửa NGUỒN là chính \`${base}\`.)`,
   );
   return out.join("\n");
 }
