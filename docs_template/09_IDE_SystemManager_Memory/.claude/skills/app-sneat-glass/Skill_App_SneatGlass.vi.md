@@ -1,5 +1,5 @@
 ---
-version: 84
+version: 85
 lang: vi
 ---
 
@@ -220,6 +220,8 @@ lang: vi
   `aspect-ratio: 16 / 9`, P = 40 / 60 / 90. Không `min-width`, không `max-height` làm méo khung; thân cuộn bên trong; đổi tab không
   làm khung dời hay đổi cỡ. Toàn màn trên điện thoại. Mở xong, hộp thoại kết thúc hiệu ứng mở ở đúng cỡ: hộp đứng yên mà vẫn
   thu nhỏ là chưa nhận trạng thái đã mở, và được gọi đúng tên như vậy (v57). [dialog-size]
+- Lớp nổi - ngăn kéo đang mở (`.offcanvas.show`), thân hộp thoại đang mở, menu đang mở - là mặt đặc: nền đục ít nhất 85 %, hoặc
+  có làm mờ phía sau; chỉ màu giấy của kiểu kính thì nhìn xuyên thấy trang (v85, CRM 23/11). [layer-solid]
 
 ## 4. Cài đặt bố cục (bộ tuỳ chỉnh của bộ mẫu)
 

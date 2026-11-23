@@ -1864,6 +1864,26 @@ export const RULES = [
     })()`,
   },
   {
+    // (v85, CRM 23/11, approved by the user: "làm luôn") a floating layer - an open drawer, an open dialog's body, an open menu -
+    // is a surface over the page: its fill nearly opaque, or what is behind it blurred. CRM's member drawer read through to the
+    // page on frame 1.43.2 (the glass theme's paper colour, 7 % white, without a blur), fixed in frame 1.43.4
+    id: 'layer-solid',
+    rule: 'a floating layer (.offcanvas.show, an open dialog\'s .modal-content, .dropdown-menu.show) is solid: its fill at least 85 % opaque, or a backdrop blur behind it',
+    check: `(() => {
+      const layers = [...document.querySelectorAll('.offcanvas.show, dialog[open] .modal-content, .dropdown-menu.show')]
+        .filter(e => e.getClientRects().length);
+      for (const e of layers) {
+        const cs = getComputedStyle(e);
+        const m = /rgba?\(([^)]*)\)/.exec(cs.backgroundColor);
+        const parts = m ? m[1].split(/[\s,\/]+/).filter(Boolean) : [];
+        const alpha = m ? (parts.length > 3 ? parseFloat(parts[3]) : 1) : 0;
+        const blur = (cs.backdropFilter || cs.webkitBackdropFilter || 'none') !== 'none';
+        if (alpha < 0.85 && !blur) return 'a floating layer is see-through (' + String(e.className).split(' ').slice(0, 3).join('.') + ', fill ' + cs.backgroundColor + ')';
+      }
+      return true;
+    })()`,
+  },
+  {
     // (v74, Reconcile 14/11, approved by the user) the bars of inner layers - a dialog, a card head - wear row 2's bar from the
     // frame (sasinShell.toolbar / InnerToolbar, frame 1.29.0): the same zones, read here on every inner bar shown
     id: 'inner-bar',
@@ -2053,7 +2073,7 @@ export const RULES = [
 /** Rules on an open dialog. */
 export const DIALOG_RULES = [
   // (v74) the inner bar of a dialog is read with the dialog open
-  ...RULES.filter(r => r.id === 'inner-bar'),
+  ...RULES.filter(r => r.id === 'inner-bar' || r.id === 'layer-solid'),
   {
     id: 'dialog-size',
     rule: 'a dialog is S / M / L = 40 / 60 / 90 % of the frame in both directions at 16:9, whatever it holds; full screen on a phone',
