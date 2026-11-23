@@ -187,7 +187,9 @@ function printHits(query: string, scopeLabel: string, hits: SearchHit[], abstain
 // run directly (fallback). Auto-expiring hold + the engine's own retry are the
 // safety nets. Kept advisory (no delegation) so a multi-hour `embed --all` never
 // hits an HTTP timeout.
-const HEAVY_WRITES = new Set(["scan", "scan-web", "embed", "digest", "sync", "forget", "redact", "reship", "retitle"]);
+// `vacuum` rewrites the whole file and holds the write lock for minutes (23/11: an 8.8 GB GM): without the lock and the gate
+// it ran beside the daemon's jobs, which then die on "database is locked".
+const HEAVY_WRITES = new Set(["scan", "scan-web", "embed", "digest", "sync", "forget", "redact", "reship", "retitle", "vacuum"]);
 /** Commands whose `--force` means "apply" (delete / rewrite for real), never "run over another writer's lock". 2026-10-26:
  *  `forget --force` ran beside the channel and the fast lane, took no write lock and died on "database is locked". */
 const FORCE_MEANS_APPLY = new Set(["forget", "redact", "reship"]);
