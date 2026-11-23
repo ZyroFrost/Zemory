@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 
@@ -63,6 +63,11 @@ lang: vi
    build hiện đủ khung (phép kiểm của kiểu chạy trên nó); ghi chú hợp đồng của số đó liệt kê cái gì đổi với app.
 4. Sau khi phát: nhắn phiên của mọi app trong hệ (`role.manages`) số mới và việc app phải làm để lên số đó; ghi vào sổ của repo quản
    hệ app nào đang ghim số nào.
+5. Mức sàn của họ (v3, `Rule_Gate_76_DeployChecksFrame`): `shell_floor.json` cạnh luật 76 giữ `latest` (số mới nhất đã phát; app
+   deploy với bản ghim cũ hơn bị cảnh báo một lần) và `floor` (số thấp nhất app còn được deploy, thấp hơn thì chặn). Phát một bản
+   thì ghi `latest`; bản sửa một lỗi nặng của khung (lỗi làm hỏng trang) thì nâng `floor` lên số
+   đó, ghi lý do vào `why` — hỏi người giao việc trước, vì mọi app thấp hơn sẽ bị chặn ở lần deploy tới. Rồi ráp store và sync để các app mang
+   file mới.
 
 ## 5. Lỗi một app báo
 

@@ -1,11 +1,11 @@
 ---
 id: Skill_App_Shell
 name: app-shell
-version: 2
+version: 3
 type: process
-checked: [Skill_App_SneatGlass, Skill_App_Base, Skill_App_Release, Rule_Keys_90_AppFamilyContract, Frontend_173_Shell]
+checked: [Skill_App_SneatGlass, Skill_App_Base, Skill_App_Release, Rule_Keys_90_AppFamilyContract, Rule_Gate_76_DeployChecksFrame, Frontend_173_Shell]
 description: Build, change and publish the frame every app of a system wears - the one copy of the top bar, menu, page bar, filters, tables, dialogs and toasts kept in the system-manager repo (frontend/shell/) and published as numbered builds the apps pin. Use in a system-manager repo when the frame is changed, a part moves between the frame and an app, an app reports a fault of the frame, or a build of the frame is published. Vietnamese triggers - "khung chung", "khung chuẩn", "gói khung", "phát khung", "bản khung", "sửa khung".
-from: _Store/03_SKILLS/Skill_App_Shell @v2 #c04ac5a46092
+from: _Store/03_SKILLS/Skill_App_Shell @v3 #e325636544a7
 ---
 
 # app-shell — the system's one frame, kept and published by the system manager
@@ -73,6 +73,11 @@ from: _Store/03_SKILLS/Skill_App_Shell @v2 #c04ac5a46092
    list what changed for apps.
 4. After publishing: message the session of every app of the system (`role.manages`) with the number and what an app must do
    to move to it; record which number each app pins in the system manager's ledger.
+5. The family's floor (v3, `Rule_Gate_76_DeployChecksFrame`): `shell_floor.json` beside rule 76 holds `latest` (the newest
+   published number; an app deploying an older pin is warned once) and `floor` (the lowest number an app may still deploy,
+   blocked below). Publishing writes `latest`; a build that fixes a grave fault of the frame (one that breaks a page)
+   raises `floor` to it, with the reason in `why` - asked of the person who gave the task first, since every app below it is stopped at its
+   next deploy. Then the store is assembled and synced, so the apps carry the new file.
 
 ## 5. A fault an app reports
 
