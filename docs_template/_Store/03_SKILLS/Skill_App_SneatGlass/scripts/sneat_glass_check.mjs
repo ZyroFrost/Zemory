@@ -2372,7 +2372,9 @@ export const PROBES = [
         box.scrollTop = Math.max(0, table.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop) + 120;
         box.dispatchEvent(new Event('scroll')); await wait();
         const behind = body.getBoundingClientRect().bottom - tf.getBoundingClientRect().top;
-        const m = /inset\\(\\s*(-?[\\d.]+)px\\s+(-?[\\d.]+)px\\s+(-?[\\d.]+)px/.exec(getComputedStyle(body).clipPath || ''), cut = m ? parseFloat(m[3]) : 0;
+        // (v86, Dashboard: a 121 px cut read as 0) the browser writes inset() short, as CSS does - inset(121px 0px 121px)
+        // comes back inset(121px 0px) - so read one to four values: the bottom is the third, else the first
+        const m = /inset\\(\\s*(-?[\\d.]+)px(?:\\s+(-?[\\d.]+)px)?(?:\\s+(-?[\\d.]+)px)?/.exec(getComputedStyle(body).clipPath || ''), cut = m ? parseFloat(m[3] ?? m[1]) : 0;
         if (behind > 2 && cut < behind - 2) out.push((table.dataset.resizeId || 'a table') + ': ' + Math.round(behind) + ' px of rows behind its pinned footer, cut ' + Math.round(cut) + ' px');
         const st = getComputedStyle(box), want = [th ? Math.round(th.getBoundingClientRect().height) : 0, Math.round(tf.getBoundingClientRect().height)];
         const have = [parseFloat(st.getPropertyValue('--th')) || 0, parseFloat(st.getPropertyValue('--tf')) || 0];
