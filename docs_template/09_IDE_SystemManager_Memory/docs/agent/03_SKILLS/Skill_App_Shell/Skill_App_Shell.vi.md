@@ -1,5 +1,5 @@
 ---
-version: 3
+version: 4
 lang: vi
 ---
 
@@ -80,6 +80,8 @@ lang: vi
 
 - Phép kiểm ranh giới của repo (§2) chạy trong build và build mock.
 - Phép kiểm trình duyệt của kiểu (`Skill_App_SneatGlass` §6) chạy trên trang của repo quản hệ và trên trang trống ở §4 bước 3.
+- Bảng app của repo quản hệ ghi cho mỗi app các cổng máy mà phép kiểm lúc deploy chiếm (`check_ports`, v4), cổng kiểm của nó
+  báo đỏ khi một cổng thuộc hai app; app mới nhận cổng ở đó trước lần deploy đầu (`Skill_App_ShellUse` §6).
 - `zemory conform` chỉ nhận `frontend/shell/` ở repo ráp từ `Struc_Repo_SystemManager` (`Frontend_173_Shell`).
 - Giữ các số đã phát, sổ số app đang ghim và việc nhắn các app do chủ repo xét.
 

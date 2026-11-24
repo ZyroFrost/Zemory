@@ -1,7 +1,7 @@
 ---
 id: Skill_App_ShellUse
 name: app-shell-use
-version: 8
+version: 9
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_App_Shell, Skill_App_Report, Skill_App_Release, Rule_Keys_90_AppFamilyContract, Frontend_173_Shell]
 description: Wear the system's frame in an app of the system - pin a published build, hand it the app's config, build only page content, and ask the system manager for anything of the frame. Use in an app of a system (role app, owner a system-manager) when its surface is built or changed, when it moves onto the frame or to a newer build, or when something of the frame looks wrong. Vietnamese triggers - "gắn khung", "dùng khung chung", "lên bản khung", "ghim khung", "vùng trang", "lỗi khung".
@@ -99,6 +99,11 @@ description: Wear the system's frame in an app of the system - pin a published b
   runner `live-app.mjs`), and `RULES` of `scripts/report_layout_check.mjs` when the app has a page marked `data-rp-page`. No
   switch of the deploy skips it. A pin below the family's floor (`shell_floor.json` of rule 76) is blocked; below the newest
   build it warns once.
+- The deploy's check stands on the app's own PC ports (v9): the app declares its preview port once, in the `url` of
+  `ui_check.json`, and the deploy reads it from there; every port it takes (a preview, a fixed CDP port) is in the system
+  manager's app table, one port one app, out of Vite's step-up range (5173 upward). A port already taken stops the deploy; the
+  deploy stops only the processes it started (their tree, by id), never whatever listens on a port - that may be another app's
+  check halfway through.
 - The app's build fails when `frontend/config/shell.json` is missing or names a number the gateway does not serve.
 - A part of the frame rebuilt in the app (§1) is judged by the owner; the kind's rules catch most of it on the page.
 

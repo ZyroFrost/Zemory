@@ -1,11 +1,11 @@
 ---
 id: Skill_App_Shell
 name: app-shell
-version: 3
+version: 4
 type: process
 checked: [Skill_App_SneatGlass, Skill_App_Base, Skill_App_Release, Rule_Keys_90_AppFamilyContract, Rule_Gate_76_DeployChecksFrame, Frontend_173_Shell]
 description: Build, change and publish the frame every app of a system wears - the one copy of the top bar, menu, page bar, filters, tables, dialogs and toasts kept in the system-manager repo (frontend/shell/) and published as numbered builds the apps pin. Use in a system-manager repo when the frame is changed, a part moves between the frame and an app, an app reports a fault of the frame, or a build of the frame is published. Vietnamese triggers - "khung chung", "khung chuẩn", "gói khung", "phát khung", "bản khung", "sửa khung".
-from: _Store/03_SKILLS/Skill_App_Shell @v3 #e325636544a7
+from: _Store/03_SKILLS/Skill_App_Shell @v4 #9dce1c76d664
 ---
 
 # app-shell — the system's one frame, kept and published by the system manager
@@ -90,6 +90,8 @@ from: _Store/03_SKILLS/Skill_App_Shell @v3 #e325636544a7
 
 - The repo's boundary check (§2) runs in its build and its mock build.
 - The kind's browser check (`Skill_App_SneatGlass` §6) runs on the system manager's pages and on the blank page of §4 step 3.
+- The system manager's app table gives every app the PC ports its deploy check takes (`check_ports`, v4), and its gate reds a
+  port held by two apps; a new app gets its ports there before its first deploy (`Skill_App_ShellUse` §6).
 - `zemory conform` accepts `frontend/shell/` only in a repo assembled from `Struc_Repo_SystemManager` (`Frontend_173_Shell`).
 - Keeping published numbers, the ledger of pinned numbers and messaging the apps are judged by the owner.
 
