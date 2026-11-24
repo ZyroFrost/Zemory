@@ -1,5 +1,5 @@
 ---
-version: 2
+version: 3
 lang: vi
 ---
 # Rule_Gate_76_DeployChecksFrame — An app of a family deploys only through the frame's shared checks
@@ -21,6 +21,8 @@ Bản khung ghim không bao giờ thấp hơn mức sàn của họ; thấp hơn
 3. Không thêm công tắc bỏ bộ kiểm (`-SkipLive`, `-NoCheck` …), và không chạy deploy kèm công tắc đó.
 4. Bản ghim giữ bằng hoặc cao hơn `floor` trong `shell_floor.json` cạnh luật này. Repo quản hệ nâng mức sàn khi một bản khung sửa
    lỗi nặng, và ghi bản mới nhất vào đó mỗi khi phát một bản (skill app-shell).
+5. Bộ kiểm đứng trên cổng riêng của app và chỉ dừng tiến trình chính lệnh deploy bật, theo id cả cây - không bao giờ dừng thứ
+   đang nghe trên một cổng, vì đó có thể là bộ kiểm của app khác đang chạy dở (skill app-shell-use §6).
 
 ## Ví dụ
 - Tình huống: script deploy của một app báo cáo chạy unit test và build rồi đẩy luôn.
@@ -35,7 +37,9 @@ Bản khung ghim không bao giờ thấp hơn mức sàn của họ; thấp hơn
   hơn `latest` bị chặn một lần mỗi phiên như lời cảnh báo; chạy lại thì qua. Cho qua: lần kiểm khô (`-Check`) hay quay lại bản
   cũ · repo không ghim khung · lệnh chỉ nhắc tên script. Hook lỗi thì cho qua.
 - `zemory conform` (`rule-conform`, chỉ báo) chạy cùng phép kiểm nạp luật trên mọi script `deploy*` của app có ghim khung, theo
-  repo như đang có: hook export `conform(root)`.
+  repo như đang có: hook export `conform(root)`. Nó còn chỉ ra dòng của script deploy, hoặc của bộ kiểm script đó chạy, dừng
+  chủ của một cổng (`Get-NetTCPConnection … | Stop-Process`, `… .OwningProcess`, `netstat … | taskkill`, `fuser -k`,
+  `lsof -t -i … | kill`, `kill-port`; chú thích không tính).
 - Cái hook không thấy (bộ kiểm có chạy nhưng kết quả bị bỏ qua) là việc của chính cổng trong script deploy, chủ repo phán.
 
 ## Links · Liên kết

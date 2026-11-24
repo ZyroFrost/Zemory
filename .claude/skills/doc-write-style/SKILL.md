@@ -2,10 +2,10 @@
 id: Skill_Doc_WriteStyle
 aka: write-style
 name: doc-write-style
-version: 11
+version: 12
 type: process
 description: Strict prose rules for reader-facing text (reports, emails, announcements, content, docs handed to people) — distilled from Wikipedia's "Signs of AI writing" into hard bans, so the result reads like a careful human wrote it. Use BEFORE drafting any text a person will read, and as a revision checklist afterwards. Do not use for code comments or the harness docs themselves (those follow the repo's own language rules). Vietnamese triggers - "viết văn bản", "soạn báo cáo", "viết email", "viết content", "viết bài", "văn phong", "giọng AI quá", "viết cho tự nhiên", "bớt giọng máy".
-from: _Store/03_SKILLS/Skill_Doc_WriteStyle @v11 #af38f346a51c
+from: _Store/03_SKILLS/Skill_Doc_WriteStyle @v12 #c7c11612b042
 ---
 
 # write-style — the writing-style rules for text handed to readers
