@@ -1,7 +1,7 @@
 ---
 id: Skill_App_CrossFilter
 name: app-cross-filter
-version: 11
+version: 12
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_PBI_Base]
 installs: [scripts/crossfilter_check.mjs]
@@ -76,7 +76,7 @@ description: Cross-filtering between the visuals of one report page, as Power BI
 - The repo's browser test imports `scripts/crossfilter_check.mjs`, evaluates every `RULES` entry on every report page, then runs
   `INTERACTION` (awaited) once per page: it clicks a point and expects the point lit, its siblings dimmed, the chips shown and
   at least one OTHER visual or KPI changed, the field's page filter present and counted; a second click clears; Escape clears.
-  Then `EVERY_CLICK` (awaited): in each visual a click on a point changes another visual and a second click brings the page
+  Then `EVERY_CLICK` (awaited): in each visual a click on a point changes another visual (its text or the shape of its marks, v12) and a second click brings the page
   back - a point that filters nothing is no point; a point of the Measure filter (`data-cf-dim="measure"`) dims and filters no
   row, so it is left out (v11); each click waits for the page to show its change, 3 s at most (v11). Then `LEGEND_CLICK` (awaited): a click on the first legend entry sets its
   field's filter on the page bar to that entry and the filter button counts one more; a second click takes it off. It runs `SELF_TEST` first: the good page must
