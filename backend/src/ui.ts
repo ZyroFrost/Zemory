@@ -121,6 +121,30 @@ let harnessUpdCache: { at: number; stale: Array<{ root: string; name: string; mi
 let harnessUpdInflight: Promise<void> | null = null;
 let repoGatesCache: { at: number; rows: RepoGateRow[] } | null = null;
 let repoGatesRun: Promise<RepoGateRow[]> | null = null;
+
+/**
+ * Measure which linked repos are behind HS (docs/harness-updates.ts), in a worker: it reads every linked repo's harness,
+ * minutes through a Docker mount (measured 25/10: > 600 s for 20 repos). No request waits for it: the last result is
+ * served at once and the new one lands for the next call - waiting left both rail chips undrawn for as long as the walk
+ * took. Then the repos found behind are synced by the daemon itself (jobs/repo-autoupdate.ts, user 24/11: the chips must
+ * turn green on their own), and both chips are measured again once that pass ends.
+ */
+function kickHarnessUpd(): void {
+  if (harnessUpdInflight) return;
+  harnessUpdInflight = runInWorker<HarnessStaleRow[]>("docs/harness-updates.js", "harnessStaleRows", [], 900_000)
+    .then((w) => {
+      const stale = w.ok ? w.value : (harnessUpdCache?.stale ?? []); // fail-open: a reminder surface must not die
+      harnessUpdCache = { at: Date.now(), stale };
+      autoUpdateRepos(stale, () => {
+        harnessUpdCache = null;
+        repoGatesCache = null;
+        kickHarnessUpd();
+      });
+    })
+    .finally(() => {
+      harnessUpdInflight = null;
+    });
+}
 /**
  * LÀM MỚI số phiên bản của remote — ở TIẾN TRÌNH CON, không bao giờ trong vòng lặp sự kiện.
  *
@@ -170,6 +194,7 @@ import type { WorkspaceGraph } from "./memory/graph/graph-standard.js";
 import { edgeId } from "./memory/graph/graph.js";
 import { autostartStatus, desktopShortcutStatus, reconcileAutostart, reconcileShortcuts, setAutostart, setDesktopShortcut } from "./platform/autostart.js";
 import { schedulerChildRunning, startScheduler, stopScheduler, webLaneKey } from "./jobs/scheduler.js";
+import { autoUpdateRepos } from "./jobs/repo-autoupdate.js";
 import { setEmbedLaneProbe, startSyncJob, stopSyncJob, syncJobRunning, syncJobStatus, SYNC_WATCHDOG_EMBED_MS } from "./jobs/syncjob.js";
 import { FastLane } from "./jobs/fastlane.js";
 import type { DriveProbe } from "./jobs/driveprobe.js";
@@ -4460,19 +4485,7 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // và độ tươi từng phút không có giá trị với thứ đổi vài lần một tuần.
       const now = Date.now();
       // `fresh=1` sau khi vừa áp chuẩn cho một repo: đo lại ngay, không đợi hết 5′ cache.
-      if ((!harnessUpdCache || now - harnessUpdCache.at > 300_000 || u.searchParams.get("fresh") === "1") && !harnessUpdInflight) {
-        // in a worker (docs/harness-updates.ts): it reads every linked repo's harness, minutes through a Docker mount
-        // (measured 25/10: > 600 s for 20 repos). The answer never waits for it: the last result is served at once and the
-        // new one lands for the next call - waiting left both rail chips undrawn for as long as the walk took.
-        harnessUpdInflight = runInWorker<HarnessStaleRow[]>("docs/harness-updates.js", "harnessStaleRows", [], 900_000)
-          .then((w) => {
-            const stale = w.ok ? w.value : (harnessUpdCache?.stale ?? []); // fail-open: a reminder surface must not die
-            harnessUpdCache = { at: Date.now(), stale };
-          })
-          .finally(() => {
-            harnessUpdInflight = null;
-          });
-      }
+      if (!harnessUpdCache || now - harnessUpdCache.at > 300_000 || u.searchParams.get("fresh") === "1") kickHarnessUpd();
       const measuring = !harnessUpdCache; // no repo measurement yet: the chip says so instead of claiming all is current
       // `appUpdate` là sự thật cấp MÁY (bản zemory này cũ hơn bản đã phát hành), KHÔNG cache theo
       // 5' của vòng repo: nó rẻ (đọc một file JSON nhỏ) và là thứ user cần thấy sớm nhất.
@@ -4664,6 +4677,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   // `unref` để nó không giữ tiến trình sống thêm một nhịp nào.
   daemonHeartbeat();
   setInterval(daemonHeartbeat, 30_000).unref();
+  // repos behind HS are measured (and synced, jobs/repo-autoupdate.ts) every 15 minutes with no window open too; the first
+  // pass 3 minutes after boot, off the scheduler's starting beats
+  setTimeout(kickHarnessUpd, 3 * 60_000).unref();
+  setInterval(kickHarnessUpd, 15 * 60_000).unref();
   // Before the first link opens: a block a session receives is merged by the fast lane's child, never on this event loop.
   const blockSink = useFastLaneMerge(() => fastLane?.requestMerge());
   // GIỮ LIÊN KẾT — nhịp này chỉ canh SỔ (mọi máy đã ghép phải có một liên kết đang giữ, và không

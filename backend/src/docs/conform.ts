@@ -22,7 +22,7 @@ import { archiveDirOf, harnessPathsAt, readMarker } from "../core/config.js";
 import { sourceNodes } from "../memory/graph/graph.js";
 import { buildStandardGraph } from "../memory/graph/graph-standard.js";
 import { declaredSlots, extraDirOk, NONAPP_FREEFORM_PARENTS, SLOT_ROLES } from "./structure-tree.js";
-import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, isRetired, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, slotGateFailures, structureSlots, withReadOnlyPass } from "./store.js";
+import { bodyOf, consFindings, folderCoreFiles, isFolderHarness, isRetired, leafOf, listParts, listStructures, shelfDir, skillsIndexOf, SLOT_LAYER, skillsWithoutPrompt, slotGateFailures, structureSlots, withReadOnlyPass } from "./store.js";
 import { coreReinjectCap } from "./rule-core.js";
 import { wiredHooks } from "./hook-wiring.js";
 import { precommitState } from "./guard-gen.js";
@@ -547,6 +547,18 @@ function conformRun(root: string): ConformReport {
       onDisk.filter((d) => !agents.includes(`.claude/skills/${d}/`)),
       "thêm một dòng “mở khi …” vào bảng trigger trong `AGENTS.md`",
     );
+    // User 24/11: every skill reminds on the words of a request by itself. A set's skill that lacks it is fixed in HS and
+    // reaches the repo by sync; a skill of the repo's own only its session can give words, so it lands in its TODO here.
+    if (folder) {
+      const fromSet = new Set(listParts(hp.agent, SHELF.skills).filter((p) => p.from).map((p) => String(p.meta.name ?? "") || p.folder));
+      push(
+        "skill-no-prompt",
+        "advisory",
+        "Skill riêng của repo không có từ khoá nhắc (`gate.json › prompt`) — câu gõ đúng việc của nó không bật nó",
+        skillsWithoutPrompt(skillsDir, hp.agent, null).filter((s) => !fromSet.has(s)),
+        "thêm `prompt {kind, re, text}` vào `gate.json` của skill (mẫu: một skill HS có `prompt`), kèm một ca `block` là câu người dùng hay gõ",
+      );
+    }
   } else if (sk) {
     const roster = sk.match(/\*\*Skill inline hiện có:\*\*(.+)/);
     if (roster) {

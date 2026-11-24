@@ -51,6 +51,8 @@ interface ZConfig {
   /** Auto-sync the memory via the Drive bundle when data drifts (plan 14 §3b).
    *  Default false — it moves data off the machine, so it stays opt-in. */
   autosync?: boolean;
+  /** The daemon syncs every linked repo behind HS by itself (jobs/repo-autoupdate.ts); default on (user 24/11). */
+  autoRepoUpdate?: boolean;
   /** Idle background scheduler (scan → embed → digest) while the daemon runs
    *  (plan 14 §6.B). Default true — this is the "it just keeps itself current" bit. */
   scheduler?: boolean;
@@ -319,6 +321,14 @@ export function setAutostartSetting(on: boolean): void {
 }
 
 /** Auto-sync the memory via Drive when data drifts (plan 14 §3b). Opt-in. */
+export function getAutoRepoUpdate(): boolean {
+  return read().autoRepoUpdate !== false;
+}
+export function setAutoRepoUpdate(on: boolean): void {
+  const c = read();
+  c.autoRepoUpdate = on;
+  write(c);
+}
 export function getAutosync(): boolean {
   return read().autosync ?? false;
 }
