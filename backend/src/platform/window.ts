@@ -9,10 +9,11 @@
 // the UI" — it just loses the custom icon.
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getWindowBox, setWindowBox } from "../config/settings.js";
+import { killedFromOutside, logsDir } from "../logging/daemon-log.js";
 
 /**
  * MỘT APP = MỘT CỬA SỔ (user chốt 2026-09-12: *"mở app lại mà app UI cũ vẫn còn, không biết cái nào
@@ -40,13 +41,16 @@ function pidFilePath(): string | null {
 function claimSingleWindow(file: string): void {
   try {
     if (existsSync(file)) {
-      const [pidRaw, image = ""] = readFileSync(file, "utf8").trim().split("|");
+      const [pidRaw, image = "", title = ""] = readFileSync(file, "utf8").trim().split("|");
       const prev = Number(pidRaw);
       if (Number.isInteger(prev) && prev > 0 && prev !== process.pid) {
         if (process.platform === "win32") {
           const args = ["/F", "/T", "/FI", `PID eq ${prev}`];
           // Lọc theo TÊN ẢNH để một pid đã được hệ dùng lại thành vô hại thay vì bị giết oan.
           if (image) args.push("/FI", `IMAGENAME eq ${image}`);
+          // The daemon runs under the same image (zemory.exe) and has no window: the TITLE makes a pid the system gave
+          // to the daemon a no-op instead of a kill of the daemon and its whole tree (closePrevWindow in ui.ts does the same).
+          if (title) args.push("/FI", `WINDOWTITLE eq ${title}`);
           try { spawn("taskkill", args, { stdio: "ignore", windowsHide: true }).unref(); } catch { /* đã tắt */ }
         } else {
           try { process.kill(prev); } catch { /* đã tắt */ }
@@ -320,6 +324,7 @@ async function main(): Promise<void> {
       if (refused) {
         if (++miss < MAX_MISS) return;
         console.error(`[zemory window] cổng daemon bị từ chối ${MAX_MISS} nhịp liên tiếp — daemon đã tắt, đóng cửa sổ`);
+        if (daemonPid !== null) relaunchIfKilled(daemonPid);
       } else {
         if (++busy < MAX_BUSY) return;
         console.error(`[zemory window] daemon không trả lời ${MAX_BUSY} nhịp liên tiếp (~3 phút) — coi là kẹt, đóng cửa sổ`);
@@ -329,6 +334,36 @@ async function main(): Promise<void> {
     })();
   }, HEARTBEAT_MS);
   beat.unref?.(); // đừng giữ tiến trình sống chỉ vì cái hẹn giờ này
+}
+
+/**
+ * A daemon killed from outside comes back by itself (user 24/11: "ko có cái nào tự động bảo đảm nó tự chạy"). Measured
+ * 24/11: three daemons ended with no `process exit` line, no crash report and no Windows event - TerminateProcess from
+ * another process (logging/daemon-log.ts), which no handler in the daemon can catch. The window is a process of its
+ * own and sees it: the port refuses and the heartbeat has no ` exit` mark. It writes the processes created in the
+ * last 3 minutes to window.log (to name the killer next time), then starts the daemon again with the same launcher the
+ * Start Menu uses; the new daemon opens its own window. A daemon that left on its own (tray · signal) is not restarted.
+ */
+function relaunchIfKilled(pid: number): void {
+  if (process.platform !== "win32") return;
+  try {
+    const hbFile = join(logsDir(), "daemon-heartbeat");
+    const hb = existsSync(hbFile) ? readFileSync(hbFile, "utf8") : null;
+    if (!killedFromOutside(hb, pid)) return;
+    const vbs = join(process.env.APPDATA ?? "", "zemory", "launch.vbs");
+    if (!existsSync(vbs)) return;
+    console.error(`${new Date().toISOString()} [zemory window] daemon pid ${pid} bị giết từ ngoài (nhịp tim cuối: ${(hb ?? "").trim()}) — tiến trình tạo trong 3 phút trước:`);
+    try {
+      const ps = String.raw`$t=(Get-Date).AddMinutes(-3); Get-CimInstance Win32_Process | Where-Object { $_.CreationDate -gt $t } | ForEach-Object { $c = ("$($_.CommandLine)" -replace '\s+',' '); if ($c.Length -gt 160) { $c = $c.Substring(0,160) }; '  {0} {1} pid {2} <- {3} {4}' -f $_.CreationDate.ToString('HH:mm:ss'), $_.Name, $_.ProcessId, $_.ParentProcessId, $c }`;
+      console.error(execFileSync("powershell", ["-NoProfile", "-NonInteractive", "-Command", ps], { encoding: "utf8", timeout: 20_000, windowsHide: true }).trimEnd());
+    } catch {
+      /* the list is a clue, not a condition */
+    }
+    spawn("wscript.exe", [vbs], { detached: true, stdio: "ignore", windowsHide: true }).unref();
+    console.error(`${new Date().toISOString()} [zemory window] đã phóng lại daemon (${vbs})`);
+  } catch {
+    /* fail-open: the window closes as before */
+  }
 }
 
 main().catch((error) => {

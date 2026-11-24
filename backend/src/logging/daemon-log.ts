@@ -57,6 +57,24 @@ export function daemonHeartbeat(): void {
   }
 }
 
+/** The last beat of a daemon that leaves on its own (signal · tray · crash it could log): the heartbeat ends in ` exit`.
+ *  A heartbeat without it, and a port that refuses, is a daemon killed from outside (TerminateProcess) - the window
+ *  then starts a new one (platform/window.ts, user 24/11: the app keeps itself running). */
+export function daemonExitMark(): void {
+  try {
+    writeFileSync(join(logsDir(), "daemon-heartbeat"), `${new Date().toISOString()} pid=${process.pid} exit\n`);
+  } catch {
+    /* diagnostic only */
+  }
+}
+
+/** Pure: did the heartbeat's owner `pid` leave on its own? Unknown (no file, another pid) counts as not killed. */
+export function killedFromOutside(heartbeat: string | null, pid: number): boolean {
+  if (!heartbeat) return false;
+  const m = /pid=(\d+)( exit)?\s*$/.exec(heartbeat.trim());
+  return !!m && Number(m[1]) === pid && !m[2];
+}
+
 export function daemonLog(line: string): void {
   const msg = `${new Date().toISOString()} ${line}`;
   console.error(msg);

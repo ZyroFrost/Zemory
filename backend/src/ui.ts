@@ -204,7 +204,7 @@ import { startTray, stopTray } from "./platform/tray.js";
 import { sweepDeadTrayIcons } from "./platform/traysweep.js";
 import { UI_SWEEP_MIN_AGE_MS, type BrowserSweepResult as OrphanSweepResult } from "./platform/browsersweep.js";
 import { acquireCliWrite, releaseCliWrite } from "./jobs/writegate.js";
-import { armCrashReport, daemonHeartbeat, daemonLog, logsDir } from "./logging/daemon-log.js";
+import { armCrashReport, daemonExitMark, daemonHeartbeat, daemonLog, logsDir } from "./logging/daemon-log.js";
 import {
   getAutostart,
   getAutosync,
@@ -4759,7 +4759,10 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   // Black box: a daemon must never die silently. Whatever path ends the process
   // (signal, tray quit, drained loop, crash) leaves a line saying so.
-  process.on("exit", (code) => daemonLog(`process exit code=${code}`));
+  process.on("exit", (code) => {
+    daemonLog(`process exit code=${code}`);
+    daemonExitMark(); // the window tells a daemon that left from one killed from outside by this mark
+  });
   process.on("uncaughtException", (e) => {
     daemonLog(`uncaughtException: ${e instanceof Error ? (e.stack ?? e.message) : e}`);
     process.exit(1);
