@@ -1804,6 +1804,30 @@ function repoSkillDirs(skillsDir: string, agentDir?: string): Array<{ host: stri
   return out;
 }
 
+/** The skills that do not remind on the words of a request (no `gate.json › prompt`), by host name — a repo's (its set's
+ *  and its own) and, prefixed `~/`, the machine's (`<home>/.claude/skills`). User 24/11: every skill has a hook that fires
+ *  by itself; `zemory gates` and the rail's "Cổng skill" column show the ones that do not. A frame (`frame: true`) is copied
+ *  and filled, never run. A machine skill with no gate.json at all was installed from elsewhere and loads by its own
+ *  description, so it is not counted (user 24/11: "chỉ nhắc bổ sung cho skill mới"); one with a gate.json is zemory's. */
+export function skillsWithoutPrompt(skillsDir: string, agentDir: string, home: string | null): string[] {
+  const hasPrompt = (dir: string): boolean => {
+    const g = gateOf(dir)?.prompt;
+    return Boolean(g && g.kind && g.re && g.text);
+  };
+  const frames = new Set(listParts(agentDir, SHELF.skills).filter((p) => p.meta.frame === "true").map((p) => hostSkillOf(p)));
+  const out = repoSkillDirs(skillsDir, agentDir).filter((s) => !frames.has(s.host) && !hasPrompt(s.gates)).map((s) => s.host);
+  if (home) {
+    const root = join(home, ".claude", "skills");
+    let names: string[] = [];
+    try { names = readdirSync(root); } catch { /* no machine skills */ }
+    for (const n of names) {
+      if (n.startsWith(".") || n === "synced" || !existsSync(join(root, n, "gate.json"))) continue;
+      if (!hasPrompt(join(root, n))) out.push(`~/${n}`);
+    }
+  }
+  return out.sort();
+}
+
 /** Read-before-write doors a repo's skills declare (`gate.json › read`): each names the skill (its host name) and where
  *  its source is, so the latch can accept a reading of any copy of the same skill. */
 export function skillReadTriggers(skillsDir: string, agentDir?: string): Array<ReadTrigger & { skill: string; source: string | null }> {

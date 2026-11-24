@@ -306,6 +306,8 @@
     var rules=!rr?na:rr.noCore?no(t('gates.cellNoCore'),t('gates.noCore')):(g.core&&g.core.length)?no(t('gates.cellMarks'),g.core.join(' · ')):
       rr.missing.length?no(rr.hooked+'/'+rr.gateable,t('gates.ruleMissing').replace('{l}',rr.missing.map(function(m){return m.id+' — '+m.why;}).join(' · '))):
       ok('✓ '+rr.hooked+'/'+rr.gateable,t('gates.ruleOk').replace('{h}',rr.hooked).replace('{j}',rr.judgement));
+    // Skill gates (user 24/11): every skill reminds on the words of a request; the cell names the ones that do not.
+    var sk=!g.skills?na:g.skills.length?no(g.skills.length+'',t('gates.skillMissing').replace('{l}',g.skills.join(' · '))):ok();
     var top=!g.hp?na:(g.top&&g.top.length?no(t('gates.cellStale'),t('gates.top')):ok());
     var rf=g.readFirst===false?no(t('gates.cellNo'),t('gates.noReadFirst')):ok();
     // The daemon's periodic sweep (conform · validate · todo verify); null = not swept yet. Labels via i18n, the finding
@@ -318,7 +320,7 @@
       (s.failed||[]).forEach(function(f){parts.push(t('gates.swFailed')+' — '+f);});
     }
     var sw=!s?na:(parts.length?no(t('gates.cellFindings').replace('{n}',parts.length),parts.join(' · ')):ok());
-    return [guard,pre,rules,hp,top,rf,sw];
+    return [guard,pre,rules,sk,hp,top,rf,sw];
   }
   function gatesDialog(){
     // The dialog opens at once on the rows the chip already holds and says it is re-checking; the fresh pass (~5 s over
@@ -328,7 +330,7 @@
       var rows=(GATES||[]).slice().sort(function(a,b){return (b.gaps>0)-(a.gaps>0)||a.name.localeCompare(b.name);});
       var cell=function(c){return '<span class="'+(c.na?'na':c.ok?'ok':'no')+'"'+(c.tip?' title="'+stdEsc(c.tip)+'"':'')+'>'+stdEsc(c.txt)+'</span>';};
       var head='<div class="gchk h"><span>'+stdEsc(t('gates.colRepo'))+'</span><span>'+stdEsc(t('gates.colGuard'))+'</span><span>'+stdEsc(t('gates.colPre'))+
-        '</span><span>'+stdEsc(t('gates.colRules'))+'</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span><span>'+stdEsc(t('gates.colSweep'))+'</span></div>';
+        '</span><span>'+stdEsc(t('gates.colRules'))+'</span><span>'+stdEsc(t('gates.colSkills'))+'</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span><span>'+stdEsc(t('gates.colSweep'))+'</span></div>';
       var body=rows.length?head+rows.map(function(g){
         return '<div class="gchk"><b title="'+stdEsc(g.root||'')+'">'+stdEsc(g.name)+'</b>'+gateCells(g).map(cell).join('')+'</div>';
       }).join(''):GATES===null?'':'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';

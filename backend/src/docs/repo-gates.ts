@@ -7,13 +7,14 @@
 //   · pre-commit — a generated precommit-guard.cjs that git never calls (6/18 repos, same day)
 //   · constitution gates — articles with no row in 02_RULES `## Cổng cho hiến pháp`
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
 import { noGateIssues } from "./no-gate.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
 import { coreIssueLines, coreIssues, folderCoreIssues, forcedChars, ruleCoverage, ruleCoverageLines, type RuleCoverage } from "./rule-core.js";
-import { isFolderHarness } from "./store.js";
+import { isFolderHarness, skillsWithoutPrompt } from "./store.js";
 import { hpGateCoverage } from "./validate.js";
 
 export interface RepoGates {
@@ -34,11 +35,14 @@ export interface RepoGates {
   forced: number;
   /** Per-rule gate coverage: rules registered as gateable vs those whose gate really runs here (judgement rules not counted). */
   rules: RuleCoverage;
+  /** Skills that do not remind on the words of a request - the repo's and, as `~/<name>`, the machine's (store.ts
+   *  skillsWithoutPrompt). null = not a folder harness (its skills carry no gate.json). */
+  skills: string[] | null;
   /** Count of open gaps (0 = the repo runs every gate it should). */
   gaps: number;
 }
 
-export function repoGates(root: string, name: string): RepoGates | null {
+export function repoGates(root: string, name: string, home: string | null = homedir()): RepoGates | null {
   if (!readMarker(root)) return null; // not a zemory repo — nothing to hold it to
   const settings = join(root, ".claude", "settings.json");
   const wiring = guardMatcherGaps(existsSync(settings) ? readFileSync(settings, "utf8") : null);
@@ -56,14 +60,16 @@ export function repoGates(root: string, name: string): RepoGates | null {
     : existsSync(rulesPath) ? coreIssueLines(coreIssues(readFileSync(rulesPath, "utf8"), root)) : [];
   const forced = forcedChars(agentDir);
   const rules = ruleCoverage(root, agentDir);
+  const skills = folder ? skillsWithoutPrompt(harnessPathsAt(root).skills, agentDir, home) : null;
   const gaps =
     (wiring === null ? 1 : wiring.length ? 1 : 0) +
     (precommit === "none" || precommit === "other" || precommit === "dead" ? 1 : 0) +
     (hp && hp.missing.length ? 1 : 0) +
     (top.length ? 1 : 0) +
     (readFirst ? 0 : 1) +
-    (core.length || rules.missing.length ? 1 : 0);
-  return { root, name, wiring, precommit, hp, top, readFirst, core, forced, rules, gaps };
+    (core.length || rules.missing.length ? 1 : 0) +
+    (skills && skills.length ? 1 : 0);
+  return { root, name, wiring, precommit, hp, top, readFirst, core, forced, rules, skills, gaps };
 }
 
 /** All three pieces must be there — a latch file an OLD guard never calls is a rule in words only. */
@@ -93,5 +99,6 @@ export function repoGateLines(g: RepoGates): string[] {
   if (!g.readFirst) out.push(`read-before-write latch not in place — ${READ_FIRST_FILE} missing or not called by guard.cjs (\`zemory hook guard\`)`);
   out.push(...g.core);
   if (!g.rules.noCore) out.push(...ruleCoverageLines(g.rules));
+  if (g.skills && g.skills.length) out.push(`skill(s) with no keyword reminder (gate.json > prompt): ${g.skills.join(" · ")}`);
   return out;
 }
