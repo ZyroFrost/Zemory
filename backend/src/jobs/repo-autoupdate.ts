@@ -12,6 +12,7 @@ import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getAutoRepoUpdate } from "../config/settings.js";
+import { repoKit } from "../docs/kit-apply.js";
 import { daemonLog } from "../logging/daemon-log.js";
 
 export interface StaleRepo {
@@ -42,16 +43,34 @@ export function autoUpdateTargets(stale: StaleRepo[], tried: Map<string, { gap: 
   });
 }
 
-const tried = new Map<string, { gap: string; at: number }>();
+const tried = new Map<string, { gap: string; at: number; told?: boolean }>();
 let running = false;
 
 function cliEntry(): string {
   return join(dirname(fileURLToPath(import.meta.url)), "..", "cli.js");
 }
 
-function syncOne(r: StaleRepo): Promise<number> {
+/**
+ * Pure: the commands of one repo's pass - what "Cập nhật repo" does (ui.ts /harness-apply). A kit repo: `zemory sync` is
+ * the whole update. A file-harness repo: `zemory sync` only fills the missing files, so the guard and the standard's
+ * edits to files it has need their own commands (PC 24/11: three such repos stayed "guardStale 10" after a plain sync).
+ */
+export function passOf(kit: boolean): string[][] {
+  return kit ? [["sync"]] : [["sync"], ["hook", "guard"], ["sync", "--standard", "--apply"]];
+}
+
+async function syncOne(r: StaleRepo): Promise<number> {
+  let worst = 0;
+  for (const args of passOf(Boolean(repoKit(r.root)))) {
+    const code = await runOne(r, args);
+    if (code !== 0) worst = code;
+  }
+  return worst;
+}
+
+function runOne(r: StaleRepo, args: string[]): Promise<number> {
   return new Promise((done) => {
-    const child = spawn(process.execPath, [cliEntry(), "sync"], { cwd: r.root, stdio: "ignore", windowsHide: true });
+    const child = spawn(process.execPath, [cliEntry(), ...args], { cwd: r.root, stdio: "ignore", windowsHide: true });
     const timer = setTimeout(() => {
       try { child.kill(); } catch { /* gone */ }
     }, CHILD_TIMEOUT_MS);
@@ -64,6 +83,14 @@ function syncOne(r: StaleRepo): Promise<number> {
 export function autoUpdateRepos(stale: StaleRepo[], onDone: () => void): void {
   if (running || !getAutoRepoUpdate()) return;
   const now = Date.now();
+  // a repo synced and still behind for the very same gap: said once, so "N ok" is never read as "up to date"
+  for (const r of stale) {
+    const t = tried.get(r.root.toLowerCase());
+    if (t && t.gap === gapOf(r) && !t.told && (r.missing || r.guardStale || r.drift)) {
+      t.told = true;
+      daemonLog(`[repo-autoupdate] ${r.name} still behind after its pass (missing ${r.missing} · guard ${r.guardStale} · drift ${r.drift ?? 0} · hand-edited ${r.manual ?? 0}) — left for its session; tried again in ${RETRY_MS / 3_600_000} h`);
+    }
+  }
   const targets = autoUpdateTargets(stale, tried, now);
   if (!targets.length) return;
   running = true;
