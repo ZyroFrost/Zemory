@@ -61,7 +61,8 @@ function readTriggerFires(t: { when: string; prefix?: string; re?: string }, ex:
 
 /** Does a prompt / read gate fire on this example? Same matching as the reminder hook and the read-first latch. */
 function fires(gate: Gate, ex: Example): boolean {
-  if (gate.prompt) return promptMatches(gate.prompt.re, ex.prompt ?? "");
+  // a skill with both doors (keywords AND a read trigger, 24/11): a tool-call example is judged by the read trigger
+  if (gate.prompt && (typeof ex.prompt === "string" || !gate.read)) return promptMatches(gate.prompt.re, ex.prompt ?? "");
   return (gate.read ?? []).some((t) => readTriggerFires(t, ex));
 }
 

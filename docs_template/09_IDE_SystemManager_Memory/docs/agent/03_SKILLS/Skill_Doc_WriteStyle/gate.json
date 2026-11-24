@@ -1,5 +1,10 @@
 {
   "trigger": "cần VIẾT văn bản đưa người đọc (báo cáo · email · content · tài liệu giao đi)",
+  "prompt": {
+    "kind": "doc-write-style",
+    "re": "\\b(viet van ban|soan (bao cao|thu|email|van ban|noi dung)|viet (email|mail|thu|bai|content|thong bao|bao cao)|van phong|giong (ai|may)|viet cho tu nhien|bot giong may)\\b",
+    "text": "[zemory] Text for a reader: follow skill doc-write-style - the hard bans against machine-sounding prose, before drafting and as the revision checklist."
+  },
   "read": [
     {
       "when": "cmd_re",
@@ -19,6 +24,10 @@
       "note": "a script whose body sends mail",
       "command": "python scripts/03_send.py",
       "script": "import smtplib\n"
+    },
+    {
+      "note": "a request in words",
+      "prompt": "soạn báo cáo gửi sếp"
     }
   ],
   "pass": [
@@ -30,6 +39,10 @@
     {
       "note": "a mail-named file only READ inside node -e, not run",
       "command": "node -e \"console.log(require('fs').readFileSync('tests/test_sent_mail.py','utf8').split('\\n')[3])\""
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "chạy lại test"
     }
   ]
 }

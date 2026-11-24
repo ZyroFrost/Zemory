@@ -3,7 +3,7 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 42
+version: 43
 type: process
 installs: [scripts/ui_check.mjs]
 checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]

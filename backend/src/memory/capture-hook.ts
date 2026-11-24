@@ -12,7 +12,7 @@
 // stays available as an opt-in handler but is NOT installed by default.
 // Handlers MUST be fail-safe: a hook error must never break the host session.
 
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { writeFileAtomic, writeJsonAtomic } from "../util/fs-atomic.js";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -194,6 +194,23 @@ export function isFirstPrompt(file: string, prompt: string): boolean {
   return said.length === 0 || (said.length === 1 && said[0] === prompt.trim());
 }
 
+/** The prompt reminders of the machine-level skills: `<home>/.claude/skills/<name>/gate.json` › prompt, the same shape a
+ *  repo skill declares. `synced` (the host's own copies) and dot folders are not the machine's skills. Fail-open: none. */
+export function machineSkillGates(home = homedir()): PromptGate[] {
+  const root = join(home, ".claude", "skills");
+  let names: string[];
+  try { names = readdirSync(root); } catch { return []; }
+  const out: PromptGate[] = [];
+  for (const n of names) {
+    if (n.startsWith(".") || n === "synced") continue;
+    try {
+      const g = (JSON.parse(readFileSync(join(root, n, "gate.json"), "utf8")) as { prompt?: PromptGate }).prompt;
+      if (g && g.kind && g.re && g.text) out.push({ kind: g.kind, re: g.re, text: g.text });
+    } catch { /* no gate.json, or a broken one: that skill has no reminder */ }
+  }
+  return out;
+}
+
 /** Folder harness (plan/28 §0n): each reminder is declared beside its owner — a skill or a rule — in gate.json › prompt,
  *  so a repo carries exactly the reminders of the skills and rules it has. File harness: the built-in four. */
 function promptGatesAt(cwd: string): PromptGate[] {
@@ -202,7 +219,11 @@ function promptGatesAt(cwd: string): PromptGate[] {
     const hit = gatesSeen.get(cwd);
     if (hit && now - hit.at < GATES_TTL_MS) return hit.gates;
     const hp = cwd ? harnessPathsAt(toLocalPath(cwd)) : null;
-    const gates = hp && isFolderHarness(hp.agent) ? promptGates(hp.skills, hp.agent) : BUILTIN_PROMPT_GATES;
+    const repoGates = hp && isFolderHarness(hp.agent) ? promptGates(hp.skills, hp.agent) : BUILTIN_PROMPT_GATES;
+    // the machine's own skills (~/.claude/skills, owned by no repo) remind in every repo and outside any (user 24/11:
+    // "toàn bộ skill đều có hook kích hoạt tự động"); a repo skill of the same kind wins
+    const kinds = new Set(repoGates.map((g) => g.kind));
+    const gates = [...repoGates, ...machineSkillGates().filter((g) => !kinds.has(g.kind))];
     gatesSeen.set(cwd, { at: now, gates });
     return gates;
   } catch {

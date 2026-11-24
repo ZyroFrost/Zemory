@@ -1,5 +1,10 @@
 {
   "trigger": "đụng bất kỳ bề mặt nào của app · thêm/đổi một tiến trình nền",
+  "prompt": {
+    "kind": "app-base",
+    "re": "\\b(giao dien|man hinh|frontend|front-end|ui|ux|nut bam|them nut|trang (moi|chu|nay)|tien trinh nen|chay nen|background (job|task|process)|daemon)\\b",
+    "text": "[zemory] App surface or background process: follow skill app-base - the design standard of FE (surfaces) and BE (processes, resources)."
+  },
   "read": [
     {
       "when": "path_prefix",
@@ -10,12 +15,20 @@
     {
       "note": "a write under frontend/ needs this skill read first",
       "path": "frontend/pages/home.js"
+    },
+    {
+      "note": "a request in words",
+      "prompt": "sửa giao diện trang chủ cho gọn"
     }
   ],
   "pass": [
     {
       "note": "a write elsewhere",
       "path": "backend/src/a.ts"
+    },
+    {
+      "note": "an unrelated request",
+      "prompt": "đọc sổ TODO"
     }
   ]
 }

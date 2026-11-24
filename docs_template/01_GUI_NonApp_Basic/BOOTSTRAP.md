@@ -365,7 +365,7 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 327 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Claude/doc-write-style/Skill_Doc_WriteStyle.vi.md` | 122 |
 | 328 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Skill_Doc_WriteStyle.md` | 129 |
 | 329 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/Skill_Doc_WriteStyle.vi.md` | 122 |
-| 330 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/gate.json` | 35 |
+| 330 | `docs/agent/03_SKILLS/Skill_Doc_WriteStyle/gate.json` | 48 |
 | 331 | `docs/agent/03_SKILLS/Skill_Frame_Own/Skill_Frame_Own.md` | 37 |
 | 332 | `docs/agent/03_SKILLS/Skill_Harness_Audit/Claude/harness-audit/SKILL.md` | 271 |
 | 333 | `docs/agent/03_SKILLS/Skill_Harness_Audit/Claude/harness-audit/Skill_Harness_Audit.vi.md` | 266 |
