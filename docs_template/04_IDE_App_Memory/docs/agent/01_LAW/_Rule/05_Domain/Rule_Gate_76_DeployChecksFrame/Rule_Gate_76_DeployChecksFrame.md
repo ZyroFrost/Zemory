@@ -1,11 +1,11 @@
 ---
 id: Rule_76
 name: deploy-checks-frame
-version: 2
+version: 3
 kind: action
 code: 05_Domain
 checked: [Skill_App_ShellUse, Skill_App_SneatGlass, Skill_App_Report, Skill_App_Release, Rule_Keys_90_AppFamilyContract]
-from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_76_DeployChecksFrame @v2 #540b7163c541
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_76_DeployChecksFrame @v3 #0e5d47ecfca3
 ---
 # Rule_Gate_76_DeployChecksFrame — An app of a family deploys only through the frame's shared checks
 
@@ -26,6 +26,8 @@ check out. The pinned frame build is never below the family's floor; below the n
 3. Never add a switch that skips the check (`-SkipLive`, `-NoCheck` ...), and never run the deploy with one.
 4. The pin stays at or above the floor in `shell_floor.json` beside this rule. The system manager raises the floor when a
    build fixes a grave fault of the frame, and writes the newest build there when it publishes one (skill app-shell).
+5. The check stands on the app's own ports and stops only the processes the deploy started, by id with their tree - never
+   whatever listens on a port, which may be another app's check halfway through (skill app-shell-use §6).
 
 ## Example
 - Situation: a report app's deploy script runs its unit tests and the build, then ships.
@@ -41,7 +43,9 @@ check out. The pinned frame build is never below the family's floor; below the n
   Passed: a dry check (`-Check`) or a rollback · a repo that pins no frame · a command that only names the script. The hook
   failing lets the call through.
 - `zemory conform` (`rule-conform`, advisory) runs the same loading check on every `deploy*` script of an app that pins a frame,
-  as the repo stands: the hook exports `conform(root)`.
+  as the repo stands: the hook exports `conform(root)`. It also names the line of the deploy script, or of the check it runs,
+  that stops a port's owner (`Get-NetTCPConnection … | Stop-Process`, `… .OwningProcess`, `netstat … | taskkill`,
+  `fuser -k`, `lsof -t -i … | kill`, `kill-port`; comments do not count).
 - What the hook cannot see (the check run but its result ignored) is the deploy script's own gate, judged by the owner.
 
 ## Links · Liên kết

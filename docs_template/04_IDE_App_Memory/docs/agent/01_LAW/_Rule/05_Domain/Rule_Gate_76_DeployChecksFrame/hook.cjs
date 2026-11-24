@@ -245,6 +245,30 @@ function loadGap(root, script) {
   return rel(script) + " deploys without the shared rules of the frame: what it runs (" + seen + ") does not load " +
     missing.join(" and ") + (report ? " - the app has a report page (data-rp-page), so the report rules are required too" : "") + ".";
 }
+// Stopping whatever listens on a port: the deploy's check may stop another app's check halfway through, or a server the
+// person runs. One statement (a pipeline continued over lines by a trailing | or backtick is one statement) that finds a
+// port's owner and stops it.
+const PORT_KILL = [
+  /Get-NetTCPConnection\b[^\n]*\|[^\n]*\b(?:Stop-Process|taskkill|kill)\b/i,
+  /\b(?:Stop-Process|taskkill)\b[^\n]*(?:Get-NetTCPConnection|OwningProcess)/i,
+  /\bnetstat\b[^\n]*\|[^\n]*\b(?:taskkill|Stop-Process|kill)\b/i,
+  /\bfuser\b[^\n]*\s-k\b|\bfuser\s+-k\b/,
+  /\blsof\b[^\n]*-t[^\n]*-i[^\n]*\|[^\n]*\bkill\b|\bkill\b[^\n]*\$\(\s*lsof\b[^\n]*-i/,
+  /\bkill-port\b/,
+];
+// The first statement of the deploy script or of the check it runs that stops a port's owner: "file:line"; null when none.
+function portKill(root, script) {
+  const rel = (p) => path.relative(root, p).replace(/\\/g, "/");
+  for (const f of [script, ...checkFiles(root, script).files]) {
+    const lines = codeOf(readOr(f, ""), kindOf(f)).split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      let stmt = lines[i], j = i;
+      while (/(\||`)\s*$/.test(stmt) && j + 1 < lines.length) stmt = stmt.replace(/`\s*$/, " ") + " " + lines[++j];
+      if (PORT_KILL.some((re) => re.test(stmt))) return rel(f) + ":" + (i + 1);
+    }
+  }
+  return null;
+}
 // zemory conform (rule-conform): the same check on the repo as it stands - every deploy script of an app that pins a frame.
 function conform(root) {
   try {
@@ -257,6 +281,9 @@ function conform(root) {
         if (!/^deploy[\w-]*\.(ps1|sh)$/i.test(n)) continue;
         const gap = loadGap(root, path.join(root, dir, n));
         if (gap) out.push(gap);
+        const kill = portKill(root, path.join(root, dir, n));
+        if (kill) out.push(kill + " stops whatever listens on a port - it may be another app's check halfway through: stop only " +
+          "the processes the deploy started, by id with their tree (skill app-shell-use, section 6).");
       }
     }
     return out;
