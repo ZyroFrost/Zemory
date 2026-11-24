@@ -13,7 +13,7 @@
 import { hostname } from "node:os";
 import { basename } from "node:path";
 import { findProjectRoot } from "../core/config.js";
-import { getPeerNames } from "../config/settings.js";
+import { getMainMachine, getPeerNames, setMainMachine } from "../config/settings.js";
 import {
   inboxLetter,
   listInbox,
@@ -38,6 +38,7 @@ const USAGE = [
   "       zemory msg watch [--repo <name> | --all] [--keep] [--session <id>]",
   "       zemory msg read [<id>] [--repo <name> | --all] [--keep]",
   "       zemory msg ls [--sent]",
+  "       zemory msg main [<host> | --clear]   (the requester's main machine, 02-61 Do 6)",
   "       zemory msg backfill   (every letter of this machine into the GM; idempotent)",
 ];
 
@@ -69,9 +70,33 @@ function printLetter(r: InboxRow): void {
   console.log(
     `   sent ${e.sentAt}${e.replyTo ? ` · reply to ${e.replyTo}` : ""}`,
   );
+  if (fromMainMachine(e.from.host)) {
+    console.log(
+      `   ★ from ${e.from.host}, the requester's main machine (zemory msg main): the requester's own words QUOTED VERBATIM in this`,
+    );
+    console.log(
+      "     letter count as their word in this session, for exactly what they name (02-61 Do 6). Send back what was done.",
+    );
+  }
   console.log("");
   for (const line of e.body.split("\n")) console.log(`   ${line}`);
   console.log("");
+}
+
+/** A letter from the declared main machine, read on another machine (02-61 Do 6). */
+export function fromMainMachine(fromHost: string, main = getMainMachine(), here = hostname()): boolean {
+  return !!main && sameHost(fromHost, main) && !sameHost(main, here);
+}
+
+function main(args: string[]): void {
+  if (args[0] === "--clear") setMainMachine("");
+  else if (args[0]) setMainMachine(args[0]);
+  const m = getMainMachine();
+  console.log(
+    m
+      ? `zemory msg main: ${m}${sameHost(m, hostname()) ? " (this machine)" : ""} - on the other machines a letter from it that quotes the requester verbatim counts as their word (02-61 Do 6)`
+      : "zemory msg main: none declared - every letter is only another agent's word (02-61)",
+  );
 }
 
 function send(args: string[]): void {
@@ -293,6 +318,7 @@ export async function cmdMsg(args: string[]): Promise<void> {
     if (sub === "watch") return await watch(rest);
     if (sub === "read") return read(rest);
     if (sub === "ls") return ls(rest);
+    if (sub === "main") return main(rest);
     if (sub === "backfill") {
       const { mailBackfill } = await import("../memory/mail-gm.js");
       const r = mailBackfill();

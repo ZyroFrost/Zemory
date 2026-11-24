@@ -93,6 +93,8 @@ interface ZConfig {
   p2pPeerLastSync?: Record<string, { at?: string; via?: string; ok?: boolean; error?: string }>;
   /** Tên máy đã ghép theo vân tay — xem `getPeerNames`. */
   p2pPeerNames?: Record<string, string>;
+  /** 02-61 Do 6 — xem getMainMachine. */
+  mainMachine?: string;
   /** plan/24 §5 — cổng lớp kênh nghe. */
   p2pPort?: number;
   /** plan/24 §9.6b — tự duyệt hàng chờ hai chiều — xem getMirrorAuto. */
@@ -702,6 +704,19 @@ export function setPeerName(peerId: string, name: string): void {
   write(c);
 }
 
+/** The requester's main machine (02-61 Do 6): on the OTHER machines, a letter from it that quotes the requester's own words
+ *  verbatim counts as their word in the session. Empty = none declared (every letter is only another agent's word). */
+export function getMainMachine(): string {
+  const v = read().mainMachine;
+  return typeof v === "string" ? v.trim() : "";
+}
+export function setMainMachine(host: string): void {
+  const c = read();
+  const h = host.replace(/[^\w.-]/g, "").slice(0, 64);
+  if (h) c.mainMachine = h;
+  else delete c.mainMachine;
+  write(c);
+}
 export function getPeerLastSync(): Record<string, { at?: string; via?: string; ok?: boolean; error?: string }> {
   const v = read().p2pPeerLastSync;
   return v && typeof v === "object" ? v : {};
