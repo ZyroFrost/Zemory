@@ -1,0 +1,20 @@
+{
+  "trigger": "đổi máy giữa native ↔ Docker · cài lại zemory · lối tắt/lệnh mở bản cũ",
+  "prompt": {
+    "kind": "install-switch",
+    "re": "\\b(chuyen ve cai thang|bo docker|chuyen sang docker|cai lai zemory|tra lai cai pc|(startmenu|start menu|loi tat) mo ban cu|cai ben nay ben kia sot|native ?(<->|sang|ve) ?docker|docker ?(<->|sang|ve) ?native)\\b",
+    "text": "[zemory] Switching a machine's zemory install: follow skill install-switch - carry the GM across, check sha256, and leave nothing of the old install (command, shortcuts, autostart, hooks, the MCP line)."
+  },
+  "block": [
+    {
+      "note": "a switch request",
+      "prompt": "chuyển sang docker cho máy này"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa nút lưu"
+    }
+  ]
+}

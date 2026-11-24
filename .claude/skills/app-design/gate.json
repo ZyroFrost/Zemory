@@ -1,0 +1,20 @@
+{
+  "trigger": "đụng bất kỳ bề mặt nào của app · thêm/đổi một tiến trình nền",
+  "prompt": {
+    "kind": "app-design",
+    "re": "\\b(giao dien|man hinh|frontend|ui|ux|nut bam|them nut|trang (moi|chu|nay)|tien trinh nen|chay nen|daemon)\\b",
+    "text": "[zemory] zemory's own surface or a background process: follow skill app-design - the design standard of this app's FE and BE."
+  },
+  "block": [
+    {
+      "note": "a surface request",
+      "prompt": "sửa giao diện màn Dự án"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đọc sổ TODO"
+    }
+  ]
+}
