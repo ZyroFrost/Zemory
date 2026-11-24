@@ -7,7 +7,7 @@
 // Report only, never a gate: it prints what it scanned so a clean run cannot be
 // mistaken for "scanned nothing". Verify every hit by hand (audit rule 2).
 //
-// Usage: node .claude/skills/audit/scripts/lang_scan.mjs [repoRoot] [--all]
+// Usage: node .claude/skills/harness-audit/scripts/lang_scan.mjs [repoRoot] [--all]
 //        --all prints every hit instead of the first 60 per face.
 
 import { execSync } from 'node:child_process'
