@@ -392,6 +392,15 @@ export function ensureHarness(projectRoot: string, profile?: StructureProfile): 
     needsReconcile = true; // existing non-standard docs → agent must reconcile
     for (const f of agentMd) present.push(f);
   }
+  // conform requires docs/plan/00_overview.md on every repo. The plan template above lands only on a fresh scaffold, so a
+  // repo whose docs/agent already had files and whose docs/plan was emptied stayed red for good (Tools, PC 24/11). The
+  // overview stands alone in docs/plan - gap-fill it whatever branch ran; never overwrite.
+  const overviewSrc = join(tplBase, "plan", "00_overview.md");
+  const overviewDst = join(planDir, "00_overview.md");
+  if (existsSync(overviewSrc) && !existsSync(overviewDst)) {
+    writeFileSync(overviewDst, readFileSync(overviewSrc, "utf8").replace(/<PROJECT>/g, projectName));
+    added.push("plan/00_overview.md");
+  }
 
   // Root entries — thin pointers only; the whole harness stays inside docs/.
   //   AGENTS.md  the cross-vendor standard (agents.md): read by Codex, Cursor,
