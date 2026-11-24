@@ -1,0 +1,130 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": ["Bash", "PowerShell"]
+  },
+  "block": [
+    {
+      "note": "a deploy whose script runs no browser check",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "Push-Location frontend\nnpm test\nnpm run build\nPop-Location\n",
+        "frontend/package.json": "{\"scripts\": {\"build\": \"vite build\", \"test\": \"node --test test/a.test.mjs\"}}\n",
+        "frontend/test/a.test.mjs": "import test from 'node:test';\ntest('adds', () => {});\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1"}
+    },
+    {
+      "note": "a browser check that quotes the import only in a comment",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "node scripts/ui_test.mjs\nif ($LASTEXITCODE -ne 0) { exit 1 }\n",
+        "scripts/ui_test.mjs": "// import {RULES, PROBES, DIALOG_RULES} from './sneat_glass_check.mjs';\nconsole.log('ok');\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {"command": "powershell -File backend/scripts/deploy_linux.ps1"}
+    },
+    {
+      "note": "a browser check without the dialog rules",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "node scripts/ui_test.mjs\n",
+        "scripts/ui_test.mjs": "import {RULES, PROBES} from './sneat_glass_check.mjs';\nconsole.log(RULES.length + PROBES.length);\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": "backend/scripts/deploy_linux.ps1"}
+    },
+    {
+      "note": "an app with a report page whose check leaves the report rules out",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "frontend/src/pages/Overview.tsx": "export const Overview = () => <div data-rp-page=\"ops\" />;\n",
+        "backend/scripts/deploy_linux.ps1": "node scripts/ui_test.mjs\n",
+        "scripts/ui_test.mjs": "import {RULES, PROBES, DIALOG_RULES} from './sneat_glass_check.mjs';\nconsole.log(RULES, PROBES, DIALOG_RULES);\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1"}
+    },
+    {
+      "note": "a switch that skips the browser check",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "node scripts/ui_test.mjs\n",
+        "scripts/ui_test.mjs": "import {RULES, PROBES, DIALOG_RULES} from './sneat_glass_check.mjs';\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1 -SkipLive"}
+    },
+    {
+      "note": "a frame build below the family's floor",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"1.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "node scripts/ui_test.mjs\n",
+        "scripts/ui_test.mjs": "import {RULES, PROBES, DIALOG_RULES} from './sneat_glass_check.mjs';\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1"}
+    }
+  ],
+  "pass": [
+    {
+      "note": "a browser check that loads the frame rules, a pin at or above the floor",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "$p = Start-Process node -ArgumentList 'scripts/sneat_check.mjs', '--page', $pg -NoNewWindow -PassThru -Wait\n",
+        "scripts/sneat_check.mjs": "import path from 'node:path';\nconst {RULES, DIALOG_RULES = [], PROBES = []} = await import(pathToFileURL(path.join(root, 'scripts', 'sneat_glass_check.mjs')).href);\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1"}
+    },
+    {
+      "note": "a report app whose check loads both rule files whole",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "frontend/src/pages/Overview.tsx": "export const Overview = () => <div data-rp-page=\"ops\" />;\n",
+        "backend/scripts/deploy_linux.ps1": "node frontend/test/shell_check.mjs --widths 1440\n",
+        "frontend/test/shell_check.mjs": "const rulesFile = process.env.SNEAT_GLASS_RULES || path.join(repo, 'scripts', 'sneat_glass_check.mjs');\nconst sg = await import(pathToFileURL(rulesFile));\nconst rp = await import(pathToFileURL(path.join(repo, 'scripts', 'report_layout_check.mjs')));\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1"}
+    },
+    {
+      "note": "the family's runner handed the shared rules through a Python step",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "& $py (Join-Path $root \"backend\\scripts\\live_check.py\")\n",
+        "backend/scripts/live_check.py": "RUNNER = ROOT.parent / \"_Manager\" / \"frontend\" / \"test\" / \"live-app.mjs\"\nrules = ROOT / \"backend\" / \"test\" / \"live_rules.mjs\"\ncmd = [node, str(RUNNER), \"--rules\", str(rules)]\n",
+        "backend/test/live_rules.mjs": "import * as family from '../../scripts/sneat_glass_check.mjs';\nexport const RULES = [...family.RULES];\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1"}
+    },
+    {
+      "note": "a dry check on the server ships nothing",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"1.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "npm run build\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1 -Check"}
+    },
+    {
+      "note": "a repo that pins no frame (the system manager itself)",
+      "files": {
+        "backend/scripts/deploy_linux.ps1": "npm run build\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1"}
+    },
+    {
+      "note": "a command that only reads the deploy script",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"1.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "npm run build\n"
+      },
+      "tool_name": "Bash",
+      "tool_input": {"command": "git log --oneline -- backend/scripts/deploy_linux.ps1"}
+    }
+  ]
+}

@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 83
+version: 86
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v83 #f606422b9deb
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v86 #5a2d55811ec6
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -247,6 +247,8 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v83 #f606422b9deb
   and `aspect-ratio: 16 / 9`, P = 40 / 60 / 90. No `min-width`, no `max-height` that bends it; the body scrolls inside; switching a
   tab never moves or resizes the frame. Full screen on a phone. Opened, a dialog ends its opening effect at its full size: one
   standing still while shrunk never got its opened state, and is named so (v57). [dialog-size]
+- A floating layer - an open drawer (`.offcanvas.show`), an open dialog's body, an open menu - is solid: its fill at least 85 %
+  opaque, or a backdrop blur behind it; the glass paper colour alone reads through to the page (v85, CRM 23/11). [layer-solid]
 
 ## 4. Layout settings (the kit's customizer)
 

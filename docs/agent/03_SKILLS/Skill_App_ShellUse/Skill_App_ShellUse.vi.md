@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 9
 lang: vi
 ---
 
@@ -82,8 +82,18 @@ lang: vi
 - Phép kiểm trình duyệt của app chạy luật và bộ đo của kiểu (`Skill_App_SneatGlass` §6) trên mọi trang của app CÓ gắn khung đã ghim,
   ở một độ rộng máy bàn và một độ rộng điện thoại, cả hai theme; xanh trước mỗi lần phát. Phép kiểm đo px thiết kế: đặt
   `localStorage sasinShell.scale = off` trước khi trang tải (v5).
+- Lệnh deploy chạy phép kiểm đó, đỏ hoặc không kiểm được thì không đẩy gì (v8, `Rule_Gate_76_DeployChecksFrame`): phép kiểm nạp
+  `RULES` · `PROBES` · `DIALOG_RULES` của `scripts/sneat_glass_check.mjs` (hoặc giao file đó cho bộ chạy `live-app.mjs` của repo
+  quản hệ), và `RULES` của `scripts/report_layout_check.mjs` khi app có trang gắn `data-rp-page`. Không công tắc nào của lệnh
+  deploy được bỏ nó. Ghim bản thấp hơn mức sàn của họ (`shell_floor.json` của luật 76) bị chặn; thấp hơn bản mới nhất thì cảnh
+  báo một lần.
+- Phép kiểm của lệnh deploy đứng trên cổng máy riêng của app (v9): app khai cổng preview một lần, ở `url` của `ui_check.json`,
+  lệnh deploy đọc từ đó; mọi cổng nó chiếm (một preview, một cổng CDP cố định) nằm trong bảng app của repo quản hệ, một cổng một
+  app, ngoài dải Vite tự nhảy (từ 5173 lên). Cổng đã bị chiếm thì lệnh deploy dừng; lệnh deploy chỉ dừng tiến trình chính nó bật
+  (cả cây, theo id), không bao giờ dừng thứ đang nghe trên một cổng - đó có thể là phép kiểm của app khác đang chạy dở.
 - Build của app hỏng khi thiếu `frontend/config/shell.json` hoặc nó ghi một số gateway không phục vụ.
 - Một phần của khung bị app tự dựng lại (§1) do chủ repo xét; luật của kiểu bắt phần lớn trên trang.
 
 ## Implements · Thi hành luật
 - `Rule_Keys_90_AppFamilyContract` — an app wears the system's one frame at the number it pins · app mang khung duy nhất của hệ ở bản nó ghim
+- `Rule_Gate_76_DeployChecksFrame` — a deploy goes through the frame's shared checks · deploy đi qua bộ kiểm chung của khung

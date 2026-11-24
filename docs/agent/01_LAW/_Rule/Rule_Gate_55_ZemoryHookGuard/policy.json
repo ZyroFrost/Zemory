@@ -172,6 +172,7 @@
     "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet",
     "docs/agent/01_LAW/_Rule/03_Safety/Rule_Gate_71_LogNeverDeleted",
     "docs/agent/01_LAW/_Rule/05_Domain/Rule_Gate_75_ScopedExport",
+    "docs/agent/01_LAW/_Rule/05_Domain/Rule_Gate_76_DeployChecksFrame",
     "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_83_HarnessFromStore",
     "docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_85_ProposeChecked",
     "docs/agent/01_LAW/_Rule/02_Work/Rule_Gate_93_SubagentSmallOnly",

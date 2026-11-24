@@ -1864,6 +1864,26 @@ export const RULES = [
     })()`,
   },
   {
+    // (v85, CRM 23/11, approved by the user: "làm luôn") a floating layer - an open drawer, an open dialog's body, an open menu -
+    // is a surface over the page: its fill nearly opaque, or what is behind it blurred. CRM's member drawer read through to the
+    // page on frame 1.43.2 (the glass theme's paper colour, 7 % white, without a blur), fixed in frame 1.43.4
+    id: 'layer-solid',
+    rule: 'a floating layer (.offcanvas.show, an open dialog\'s .modal-content, .dropdown-menu.show) is solid: its fill at least 85 % opaque, or a backdrop blur behind it',
+    check: `(() => {
+      const layers = [...document.querySelectorAll('.offcanvas.show, dialog[open] .modal-content, .dropdown-menu.show')]
+        .filter(e => e.getClientRects().length);
+      for (const e of layers) {
+        const cs = getComputedStyle(e);
+        const m = /rgba?\(([^)]*)\)/.exec(cs.backgroundColor);
+        const parts = m ? m[1].split(/[\s,\/]+/).filter(Boolean) : [];
+        const alpha = m ? (parts.length > 3 ? parseFloat(parts[3]) : 1) : 0;
+        const blur = (cs.backdropFilter || cs.webkitBackdropFilter || 'none') !== 'none';
+        if (alpha < 0.85 && !blur) return 'a floating layer is see-through (' + String(e.className).split(' ').slice(0, 3).join('.') + ', fill ' + cs.backgroundColor + ')';
+      }
+      return true;
+    })()`,
+  },
+  {
     // (v74, Reconcile 14/11, approved by the user) the bars of inner layers - a dialog, a card head - wear row 2's bar from the
     // frame (sasinShell.toolbar / InnerToolbar, frame 1.29.0): the same zones, read here on every inner bar shown
     id: 'inner-bar',
@@ -2053,7 +2073,7 @@ export const RULES = [
 /** Rules on an open dialog. */
 export const DIALOG_RULES = [
   // (v74) the inner bar of a dialog is read with the dialog open
-  ...RULES.filter(r => r.id === 'inner-bar'),
+  ...RULES.filter(r => r.id === 'inner-bar' || r.id === 'layer-solid'),
   {
     id: 'dialog-size',
     rule: 'a dialog is S / M / L = 40 / 60 / 90 % of the frame in both directions at 16:9, whatever it holds; full screen on a phone',
@@ -2064,12 +2084,15 @@ export const DIALOG_RULES = [
       if (innerWidth <= 768) return Math.abs(r.width - innerWidth) <= 2 ? true : 'a phone dialog is not full screen';
       const size = [...d.classList].find(c => /^sz-[sml]$/.test(c));
       if (!size) return 'a dialog has no size class sz-s / sz-m / sz-l';
+      // (v84, CRM 23/11: 1302x733 against 1296x729, red twice at a deploy, green the third run - the opening effect overshoots
+      // past scale 1 by less than the .01 below) a dialog with a running animation is still opening, shrunk or grown: its size
+      // is judged only once it stands still
+      if (d.getAnimations({subtree: true}).some(a => a.playState === 'running')) return 'the dialog is still opening';
       // (v57, Reconcile 11/11: a third dialog stood still at 0.94 of its size, the opening scale) a dialog still opening is
       // waited for; one standing still while shrunk never got its opened state - named apart from a wrong size
       const shrunk = [d, ...d.querySelectorAll('.modal-dialog, .modal-content')].map(e => ({e, s: new DOMMatrixReadOnly(getComputedStyle(e).transform === 'none' ? undefined : getComputedStyle(e).transform).a}))
         .find(x => Math.abs(x.s - 1) > .01);
-      if (shrunk) return d.getAnimations({subtree: true}).some(a => a.playState === 'running') ? 'the dialog is still opening'
-        : 'a dialog stands shrunk at ' + shrunk.s.toFixed(2) + ' of its size (' + (shrunk.e.id || String(shrunk.e.className).split(' ')[0] || shrunk.e.tagName) + '): its opening effect never ended - the opened state is not applied';
+      if (shrunk) return 'a dialog stands shrunk at ' + shrunk.s.toFixed(2) + ' of its size (' + (shrunk.e.id || String(shrunk.e.className).split(' ')[0] || shrunk.e.tagName) + '): its opening effect never ended - the opened state is not applied';
       const p = {s: 40, m: 60, l: 90}[size.slice(3)], w = Math.min(p * innerWidth / 100, p * innerHeight / 100 * 16 / 9);
       return Math.abs(r.width - w) <= 2 && Math.abs(r.height - w * 9 / 16) <= 2 ? true
         : 'dialog ' + Math.round(r.width) + 'x' + Math.round(r.height) + ', want ' + Math.round(w) + 'x' + Math.round(w * 9 / 16);
@@ -2349,7 +2372,9 @@ export const PROBES = [
         box.scrollTop = Math.max(0, table.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop) + 120;
         box.dispatchEvent(new Event('scroll')); await wait();
         const behind = body.getBoundingClientRect().bottom - tf.getBoundingClientRect().top;
-        const m = /inset\\(\\s*(-?[\\d.]+)px\\s+(-?[\\d.]+)px\\s+(-?[\\d.]+)px/.exec(getComputedStyle(body).clipPath || ''), cut = m ? parseFloat(m[3]) : 0;
+        // (v86, Dashboard: a 121 px cut read as 0) the browser writes inset() short, as CSS does - inset(121px 0px 121px)
+        // comes back inset(121px 0px) - so read one to four values: the bottom is the third, else the first
+        const m = /inset\\(\\s*(-?[\\d.]+)px(?:\\s+(-?[\\d.]+)px)?(?:\\s+(-?[\\d.]+)px)?/.exec(getComputedStyle(body).clipPath || ''), cut = m ? parseFloat(m[3] ?? m[1]) : 0;
         if (behind > 2 && cut < behind - 2) out.push((table.dataset.resizeId || 'a table') + ': ' + Math.round(behind) + ' px of rows behind its pinned footer, cut ' + Math.round(cut) + ' px');
         const st = getComputedStyle(box), want = [th ? Math.round(th.getBoundingClientRect().height) : 0, Math.round(tf.getBoundingClientRect().height)];
         const have = [parseFloat(st.getPropertyValue('--th')) || 0, parseFloat(st.getPropertyValue('--tf')) || 0];
