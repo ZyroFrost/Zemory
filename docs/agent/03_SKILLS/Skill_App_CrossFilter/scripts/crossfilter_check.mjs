@@ -223,7 +223,10 @@ export const INTERACTION = `(async () => {
 export const EVERY_CLICK = `(async () => {
   const wait = ms => new Promise(r => setTimeout(r, ms));
   const visuals = () => [...document.querySelectorAll('[data-rp-visual], .card')].filter(v => v.querySelector('[data-cf-value]'));
-  const sig = except => visuals().filter(v => !except || !v.contains(except)).map(v => v.innerText).join('#');
+  // (v12, Dashboard 24/11) the text and the marks' shape: at 390 a column chart shows no figure, so a filter moves only its bars
+  //   (height 5.3% -> 13.5%) and the text alone read "filters nothing"
+  const shape = v => [...v.querySelectorAll('[data-rp-mark]')].map(m => m.style.cssText + '|' + ['d', 'height', 'width', 'x', 'y', 'r', 'points'].map(a => m.getAttribute(a) || '').join(',')).join(';');
+  const sig = except => visuals().filter(v => !except || !v.contains(except)).map(v => v.innerText + '\\u0001' + shape(v)).join('#');
   if ((() => { const d = [...document.querySelectorAll('[data-rp-visual]')].filter(v => v.getClientRects().length && v.dataset.rpVisual !== 'cards' && !v.parentElement.closest('[data-rp-visual]')); return d.length === 1 && d[0].dataset.rpVisual === 'table'; })()) return true;   // (v10) a page of one matrix: nothing else to filter
   document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true})); await wait(300);
   const out = [];
