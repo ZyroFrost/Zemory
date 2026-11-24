@@ -13,7 +13,7 @@
 //  · a shared skill the repo edited stays the repo's own; trigger rows of AGENTS.md for skills outside the kit are carried.
 // What is NOT touched: 05_TODO · 06_CHANGES · plan/ · the repo's own skills · anything outside the harness.
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import { harnessPathsAt, readMarker } from "../core/config.js";
 import { TEMPLATE_DIR } from "./adopt.js";
 import { generateGuards, hooksDirOf } from "./guard-gen.js";
@@ -345,7 +345,10 @@ export function repointLinks(root: string, apply: boolean): string[] {
     [/(\]\([^)\s]*?)agent\/archive\//g, `$1archive/`],
   ];
   // Assembled parts (rules · slots · articles · skills) are fixed in the store and reach the repo by sync, never here.
-  const SKIP = /[\\/](archive|node_modules|\.git|\.claude|attic|external|dist|0[12]_RULES|01_LAW|0[23]_STRUCTURE[\\/](03-|Slot_|_Slot|_Host|Struc_)|0[12]_CONSTITUTION[\\/](01-|Cons_))([\\/]|$)/;
+  // A dot folder other than .github is a machine's own corner (a PC's `.aside-pc` set aside, `.harness-state`, `.venv`),
+  // and `data/selfupdate-keep` holds the versions a person kept at an update: copies kept as they were, never repointed
+  // (PC 24/11: one sync rewrote three of them after the old skill folders were removed).
+  const SKIP = /[\\/](archive|node_modules|\.(?!github[\\/]|github$)[^\\/]+|attic|external|dist|selfupdate-keep|0[12]_RULES|01_LAW|0[23]_STRUCTURE[\\/](03-|Slot_|_Slot|_Host|Struc_)|0[12]_CONSTITUTION[\\/](01-|Cons_))([\\/]|$)/;
   // The purpose a repo wrote now lives in the purpose frame's Cons.md (plan/28 §0q), when the repo has that frame.
   const purposeFrame = existsSync(shelfDir(agentDir, SHELF.constitution))
     ? listParts(agentDir, SHELF.constitution).find((p) => p.key === "Cons_9" && p.from)?.folder
@@ -373,7 +376,8 @@ export function repointLinks(root: string, apply: boolean): string[] {
     try { ents = readdirSync(d, { withFileTypes: true }); } catch { return; }
     for (const e of ents) {
       const p = join(d, e.name);
-      if (SKIP.test(p + (e.isDirectory() ? "/" : ""))) continue;
+      // measured from the repo root: a repo that itself sits under a dot folder (~/.x/repo) is still walked
+      if (SKIP.test(sep + relative(root, p) + (e.isDirectory() ? sep : ""))) continue;
       if (e.isDirectory()) { walk(p); continue; }
       if (!/\.md$/i.test(e.name)) continue;
       const t = readFileSync(p, "utf8");
