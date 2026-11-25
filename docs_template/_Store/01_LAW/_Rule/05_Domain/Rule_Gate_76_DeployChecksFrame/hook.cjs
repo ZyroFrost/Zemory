@@ -86,6 +86,17 @@ function deployRun(cmd) {
 }
 // a switch that leaves the browser check out
 const SKIP = /\s-{1,2}((?:skip|no)[-_]?(?:browser|ui|check|checks|qa|shell|gate|gates|test|tests|live)\w*)\b/i;
+// (v4, the user 25/11 through Dashboard) a revert - code that brings back what a wrong change broke - ships first and is checked
+// right after, on the build that shipped; it names the commit whose break it undoes, so it is never a back door for new work
+const REVERT = /\s-{1,2}revert\b(?:[\s=:]+["']?([^\s"';|&]+))?/i;
+// the named commit is a commit of the repo; no git here (a fixture, a copy) => not measurable, let through
+function commitKnown(root, ref) {
+  if (!fs.existsSync(path.join(root, ".git"))) return true;
+  try {
+    const r = require("node:child_process").spawnSync("git", ["-C", root, "cat-file", "-e", ref + "^{commit}"], { timeout: 4000, windowsHide: true });
+    return r.error ? true : r.status === 0;
+  } catch { return true; }
+}
 // a script a file names: a path or a bare name ending .mjs or .py (Python glues a path from pieces: the name is enough)
 const SCRIPT = /((?:\.{0,2}[\\/])?(?:[\w.-]+[\\/])*[\w.-]+\.(?:mjs|py))\b/g;
 const NPM = /\bnpm(?:\.cmd)?\s+(?:run\s+|run-script\s+)?([\w:.-]+)/g;
@@ -311,6 +322,19 @@ function check(payload, root, policy) {
       return blocked(root, policy, "05-76", BT + "-" + skip[1] + BT + " leaves the browser check out of the deploy. A deploy of an app of the " +
         "family always runs its browser check with the shared rules of the frame; red or not checked => nothing ships. Run the deploy " +
         "without the switch.");
+    }
+    const rev = REVERT.exec(d.seg);
+    if (rev) {
+      const ref = rev[1] || "";
+      if (!/^[0-9a-f]{7,40}$/i.test(ref)) {
+        return blocked(root, policy, "05-76", BT + "-Revert" + BT + " names no commit. A revert ships first and is checked right after, " +
+          "so it names the commit whose break it undoes: " + BT + "-Revert <commit>" + BT + ". New work, or a new fix, is checked before it ships: " +
+          "run the deploy without " + BT + "-Revert" + BT + ".");
+      }
+      if (!commitKnown(root, ref)) {
+        return blocked(root, policy, "05-76", BT + "-Revert " + ref + BT + " names no commit of this repo. Name the commit whose break " +
+          "the revert undoes (" + BT + "git log" + BT + "), or run the deploy without " + BT + "-Revert" + BT + " so the check runs before it ships.");
+      }
     }
     // (1) the browser check loads the shared rules
     const gap = loadGap(root, script);
