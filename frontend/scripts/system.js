@@ -299,7 +299,13 @@
     var ok=function(txt,tip){return {ok:true,txt:txt||'✓',tip:tip};},no=function(txt,tip){return {ok:false,txt:'✗ '+txt,tip:tip};},na={na:true,txt:'—'};
     var guard=g.wiring===null?no(t('gates.cellNo'),t('gates.noGuard')):(g.wiring&&g.wiring.length?no(t('gates.cellTools').replace('{n}',g.wiring.length),t('gates.matcher').replace('{t}',g.wiring.join(' · '))):ok());
     var pre=g.precommit==='guard'?ok():g.precommit==='no-git'?na:g.precommit==='none'?no(t('gates.cellNo'),t('gates.noPrecommit')):no(t('gates.cellOwn'),t('gates.ownPrecommit'));
-    var hp=!g.hp?na:!g.hp.table?no(t('gates.cellNoTable'),t('gates.noTable').replace('{n}',g.hp.articles)):
+    // Constitution gates (user 25/11: every repo has a constitution, a column of dashes was nonsense). Folder harness: its
+    // article folders counted like the rules (cons); file harness: the gate table of 02_RULES, plus the READ-CAREFULLY block
+    // it needs (that file-harness-only column was dropped).
+    var cc=g.cons;
+    var hp=cc?(cc.missing.length?no(cc.hooked+'/'+cc.gateable,t('gates.consMissing').replace('{l}',cc.missing.map(function(m){return m.id+' — '+m.why;}).join(' · '))):
+      ok('✓ '+cc.hooked+'/'+cc.gateable,t('gates.ruleOk').replace('{h}',cc.hooked).replace('{j}',cc.judgement))):
+      !g.hp?na:(g.top&&g.top.length)?no(t('gates.cellStale'),t('gates.top')):!g.hp.table?no(t('gates.cellNoTable'),t('gates.noTable').replace('{n}',g.hp.articles)):
       g.hp.missing.length?no((g.hp.articles-g.hp.missing.length)+'/'+g.hp.articles,t('gates.noRow').replace('{a}',g.hp.missing.join(', ')).replace('{n}',g.hp.articles)):ok('✓ '+g.hp.articles+'/'+g.hp.articles);
     // Rule gates (plan/27 §3): rules REGISTERED as gateable vs those whose gate really runs here; judgement rules are not counted.
     var rr=g.rules;
@@ -308,7 +314,6 @@
       ok('✓ '+rr.hooked+'/'+rr.gateable,t('gates.ruleOk').replace('{h}',rr.hooked).replace('{j}',rr.judgement));
     // Skill gates (user 24/11): every skill reminds on the words of a request; the cell names the ones that do not.
     var sk=!g.skills?na:g.skills.length?no(g.skills.length+'',t('gates.skillMissing').replace('{l}',g.skills.join(' · '))):ok();
-    var top=!g.hp?na:(g.top&&g.top.length?no(t('gates.cellStale'),t('gates.top')):ok());
     var rf=g.readFirst===false?no(t('gates.cellNo'),t('gates.noReadFirst')):ok();
     // The daemon's periodic sweep (conform · validate · todo verify); null = not swept yet. Labels via i18n, the finding
     // itself is the check's own text.
@@ -320,7 +325,7 @@
       (s.failed||[]).forEach(function(f){parts.push(t('gates.swFailed')+' — '+f);});
     }
     var sw=!s?na:(parts.length?no(t('gates.cellFindings').replace('{n}',parts.length),parts.join(' · ')):ok());
-    return [guard,pre,rules,sk,hp,top,rf,sw];
+    return [guard,pre,rules,hp,sk,rf,sw];
   }
   function gatesDialog(){
     // The dialog opens at once on the rows the chip already holds and says it is re-checking; the fresh pass (~5 s over
@@ -330,7 +335,7 @@
       var rows=(GATES||[]).slice().sort(function(a,b){return (b.gaps>0)-(a.gaps>0)||a.name.localeCompare(b.name);});
       var cell=function(c){return '<span class="'+(c.na?'na':c.ok?'ok':'no')+'"'+(c.tip?' title="'+stdEsc(c.tip)+'"':'')+'>'+stdEsc(c.txt)+'</span>';};
       var head='<div class="gchk h"><span>'+stdEsc(t('gates.colRepo'))+'</span><span>'+stdEsc(t('gates.colGuard'))+'</span><span>'+stdEsc(t('gates.colPre'))+
-        '</span><span>'+stdEsc(t('gates.colRules'))+'</span><span>'+stdEsc(t('gates.colSkills'))+'</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colTop'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span><span>'+stdEsc(t('gates.colSweep'))+'</span></div>';
+        '</span><span>'+stdEsc(t('gates.colRules'))+'</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colSkills'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span><span>'+stdEsc(t('gates.colSweep'))+'</span></div>';
       var body=rows.length?head+rows.map(function(g){
         return '<div class="gchk"><b title="'+stdEsc(g.root||'')+'">'+stdEsc(g.name)+'</b>'+gateCells(g).map(cell).join('')+'</div>';
       }).join(''):GATES===null?'':'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';

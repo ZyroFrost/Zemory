@@ -5,7 +5,8 @@
 // What the "repo standard" chip does NOT see, and this does:
 //   · guard wiring — a generated guard.cjs that `.claude/settings.json` never calls (6/17 repos, 2026-10-07)
 //   · pre-commit — a generated precommit-guard.cjs that git never calls (6/18 repos, same day)
-//   · constitution gates — articles with no row in 02_RULES `## Cổng cho hiến pháp`
+//   · constitution gates — file harness: articles with no row in 02_RULES `## Cổng cho hiến pháp`; folder harness: each
+//     article folder (01_LAW/_Cons) with a working gate.json, counted apart from the rules
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -13,7 +14,7 @@ import { harnessPathsAt, readMarker } from "../core/config.js";
 import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
 import { noGateIssues } from "./no-gate.js";
 import { READ_FIRST_FILE } from "./read-first-src.js";
-import { coreIssueLines, coreIssues, folderCoreIssues, forcedChars, ruleCoverage, ruleCoverageLines, type RuleCoverage } from "./rule-core.js";
+import { coreIssueLines, coreIssues, folderCoreIssues, consCoverage, forcedChars, ruleCoverage, ruleCoverageLines, type RuleCoverage } from "./rule-core.js";
 import { isFolderHarness, skillsWithoutPrompt } from "./store.js";
 import { hpGateCoverage } from "./validate.js";
 
@@ -23,8 +24,10 @@ export interface RepoGates {
   /** null = guard not wired at all · [] = wired in full · else the tools the matcher skips. */
   wiring: string[] | null;
   precommit: ReturnType<typeof precommitState>;
-  /** null = no constitution article to map. */
+  /** File harness: the gate table of 02_RULES (null = no constitution article to map, or a folder harness). */
   hp: { articles: number; missing: number[]; table: boolean } | null;
+  /** Folder harness: its constitution articles, counted as `rules` counts rules. null = a file harness (see hp). */
+  cons: RuleCoverage | null;
   /** Problems with the "ungated rules first" layout (docs/no-gate.ts). Empty = in place and fresh. */
   top: string[];
   /** Read-before-write latch in place: 02-59_read-first.cjs present, policy.json declares read_first, and guard.cjs calls it. */
@@ -33,7 +36,7 @@ export interface RepoGates {
   core: string[];
   /** Characters a session must read before acting (02 core + 01 forced part + 05_TODO). */
   forced: number;
-  /** Per-rule gate coverage: rules registered as gateable vs those whose gate really runs here (judgement rules not counted). */
+  /** Per-rule gate coverage (folder harness: the rules shelf only, the constitution is `cons`): rules registered as gateable vs those whose gate really runs here (judgement rules not counted). */
   rules: RuleCoverage;
   /** Skills that do not remind on the words of a request - the repo's and, as `~/<name>`, the machine's (store.ts
    *  skillsWithoutPrompt). null = not a folder harness (its skills carry no gate.json). */
@@ -60,6 +63,7 @@ export function repoGates(root: string, name: string, home: string | null = home
     : existsSync(rulesPath) ? coreIssueLines(coreIssues(readFileSync(rulesPath, "utf8"), root)) : [];
   const forced = forcedChars(agentDir);
   const rules = ruleCoverage(root, agentDir);
+  const cons = consCoverage(root, agentDir);
   const skills = folder ? skillsWithoutPrompt(harnessPathsAt(root).skills, agentDir, home) : null;
   const gaps =
     (wiring === null ? 1 : wiring.length ? 1 : 0) +
@@ -68,8 +72,9 @@ export function repoGates(root: string, name: string, home: string | null = home
     (top.length ? 1 : 0) +
     (readFirst ? 0 : 1) +
     (core.length || rules.missing.length ? 1 : 0) +
+    (cons && cons.missing.length ? 1 : 0) +
     (skills && skills.length ? 1 : 0);
-  return { root, name, wiring, precommit, hp, top, readFirst, core, forced, rules, skills, gaps };
+  return { root, name, wiring, precommit, hp, cons, top, readFirst, core, forced, rules, skills, gaps };
 }
 
 /** All three pieces must be there — a latch file an OLD guard never calls is a rule in words only. */
@@ -99,6 +104,10 @@ export function repoGateLines(g: RepoGates): string[] {
   if (!g.readFirst) out.push(`read-before-write latch not in place — ${READ_FIRST_FILE} missing or not called by guard.cjs (\`zemory hook guard\`)`);
   out.push(...g.core);
   if (!g.rules.noCore) out.push(...ruleCoverageLines(g.rules));
+  if (g.cons && g.cons.missing.length) {
+    out.push(`${g.cons.missing.length} constitution article(s) with no working gate (${g.cons.hooked}/${g.cons.gateable}): ` +
+      g.cons.missing.map((m) => `${m.id} ${m.why}`).join(" · "));
+  }
   if (g.skills && g.skills.length) out.push(`skill(s) with no keyword reminder (gate.json > prompt): ${g.skills.join(" · ")}`);
   return out;
 }

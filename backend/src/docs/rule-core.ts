@@ -257,8 +257,8 @@ interface FolderRule {
   badJson: boolean;
 }
 
-function folderRules(agentDir: string): FolderRule[] {
-  return ([SHELF.constitution, SHELF.rules] as const).flatMap((shelf) =>
+function folderRules(agentDir: string, shelves: readonly (typeof SHELF)[keyof typeof SHELF][] = [SHELF.constitution, SHELF.rules]): FolderRule[] {
+  return shelves.flatMap((shelf) =>
     listParts(agentDir, shelf).filter((part) => !isRetired(part)).map((part) => {
       const p = join(part.dir, "gate.json");
       if (!existsSync(p)) return { part, gate: null, badJson: false };
@@ -313,10 +313,10 @@ export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
   return { noCore: false, unmarked, gatedInCore, badGate, overCap: shared > FOLDER_CORE_MAX_CHARS ? shared : 0, cap: FOLDER_CORE_MAX_CHARS };
 }
 
-function folderCoverage(root: string, agentDir: string): RuleCoverage {
+function folderCoverage(root: string, agentDir: string, shelves: readonly (typeof SHELF)[keyof typeof SHELF][]): RuleCoverage {
   const out: RuleCoverage = { noCore: false, gateable: 0, hooked: 0, judgement: 0, missing: [] };
   const facts = gateFacts(root, agentDir);
-  for (const r of folderRules(agentDir)) {
+  for (const r of folderRules(agentDir, shelves)) {
     const id = r.part.id;
     if (r.part.kind === "judgment") { out.judgement++; continue; }
     if (!r.gate) { out.gateable++; out.missing.push({ id, why: "no gate.json" }); continue; }
@@ -338,9 +338,10 @@ function folderCoverage(root: string, agentDir: string): RuleCoverage {
   return out;
 }
 
-/** For every rule registered as gateable, is its gate really in place in this repo? Judgement rules are not counted. */
+/** For every rule registered as gateable, is its gate really in place in this repo? Judgement rules are not counted.
+ *  A folder harness counts its rules shelf here; its constitution articles are consCoverage (their own column). */
 export function ruleCoverage(root: string, agentDir: string): RuleCoverage {
-  if (isFolderHarness(agentDir)) return folderCoverage(root, agentDir);
+  if (isFolderHarness(agentDir)) return folderCoverage(root, agentDir, [SHELF.rules]);
   const text = readOr(() => readFileSync(join(agentDir, "02_RULES.md"), "utf8"), "");
   const out: RuleCoverage = { noCore: coreSection(text) === null, gateable: 0, hooked: 0, judgement: 0, missing: [] };
   if (!text) return out;
@@ -363,6 +364,12 @@ export function ruleCoverage(root: string, agentDir: string): RuleCoverage {
     }
   }
   return out;
+}
+
+/** The constitution articles of a folder harness, counted as ruleCoverage counts rules; null = a file harness (its
+ *  constitution is mapped by the gate table of 02_RULES, hpGateCoverage). User 25/11: the column showed "—" on every repo. */
+export function consCoverage(root: string, agentDir: string): RuleCoverage | null {
+  return isFolderHarness(agentDir) ? folderCoverage(root, agentDir, [SHELF.constitution]) : null;
 }
 
 export function ruleCoverageLines(c: RuleCoverage): string[] {
