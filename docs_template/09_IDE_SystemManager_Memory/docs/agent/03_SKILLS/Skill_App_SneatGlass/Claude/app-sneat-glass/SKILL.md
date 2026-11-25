@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 89
+version: 90
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v89 #e3cb6085d448
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v90 #1e87a4fff0b1
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -64,6 +64,10 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v89 #e3cb6085d448
   as a person presses them, still stand 3 s later with no error. An app never reroutes or blocks the frame's own calls
   (`/api/auth/*`, `/api/apps`, `/api/notifications`, `/api/health`); the live probes save and read through a clean fetch, so an
   app's fetch wrapper cannot turn them aside. [settings-save-works]
+- **Choosing a tone changes the whole page** (v90, the user 25/11: "chọn theme phải đổi toàn bộ ko chỉ cái ảnh nền"; frame
+  1.44.0): each tone carries its accent pair, so a button on, a switch on, a link, the chosen tab and view, a table's head line,
+  a row's hover and chosen state and the scrollbar all change with it, light and dark (skill app-glass, tokens). No colour of
+  the page is written as a literal (Rule_Gate_77_ColoursFromTheme). [theme-follow: the probe sees the page under two tones, Ocean and Sunset]
 - **Row 1's buttons are framed** (v42): the apps and the
   bell are squares with the bar's frame (fill, edge, kit radius) at the search box's height; open, lit as the filter button.
   [head-framed] **The search is the middle third of row 1** (v89, the user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng",

@@ -1,5 +1,5 @@
 ---
-version: 89
+version: 90
 lang: vi
 ---
 
@@ -56,6 +56,10 @@ lang: vi
   3 s sau vẫn giữ và không báo lỗi. App không đổi đường hay chặn lời gọi của khung (`/api/auth/*`, `/api/apps`,
   `/api/notifications`, `/api/health`); probe live lưu và đọc bằng fetch sạch nên lớp bọc fetch của app không làm lệch.
   [settings-save-works]
+- **Chọn tông là đổi cả trang** (v90, user 25/11: "chọn theme phải đổi toàn bộ ko chỉ cái ảnh nền"; khung 1.44.0): mỗi tông
+  mang cặp màu nhấn riêng, nên nút đang bật, switch đang bật, link, tab và kiểu xem đang chọn, vạch đầu bảng, dòng rê chuột và
+  dòng đang chọn, thanh cuộn đều đổi theo, cả sáng lẫn tối (skill app-glass, token). Không màu nào của trang được viết cứng
+  (Rule_Gate_77_ColoursFromTheme). [theme-follow: probe xem trang dưới hai tông]
 - **Nút hàng 1 có khung** (v42): nút ứng dụng và chuông là
   ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Ô tìm là một phần ba
   giữa của hàng 1** (v89, user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng", thay một phần ba ở cuối của v51): từ máy
