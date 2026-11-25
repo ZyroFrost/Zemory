@@ -5,7 +5,7 @@
 //
 // The read-first latch is a generated stdlib script and cannot import this; it carries its own small marker reader —
 // both sides key on the SAME markers (CORE_START / CORE_END / the no-gate block), and rule-core.test pins them together.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, relative } from "node:path";
 import { guardMatcherGaps, hooksDirOf, precommitState } from "./guard-gen.js";
@@ -134,12 +134,20 @@ export interface CoreIssues {
   cap?: number;
 }
 
-/** The holes in a rule file's core layout. `root` resolves `test:<name>` marks (checked only where backend/test exists). */
+/** The test gate's suite is on this machine: `dir` holds at least one `*.test.mjs`. The suite stays on the development
+ *  machine (the gitignore keeps the test folder out of git, user 2026-10-23), so a clone's folder may hold a fixture
+ *  alone - the PC's recall-corpus.json (17/11) made every `test:*` gate there read "missing" (11 constitution reds, 25/11). */
+export function hasTestSuite(dir: string | null | undefined): boolean {
+  if (!dir || !existsSync(dir)) return false;
+  try { return readdirSync(dir).some((n) => n.endsWith(".test.mjs")); } catch { return false; }
+}
+
+/** The holes in a rule file's core layout. `root` resolves `test:<name>` marks (checked only where the test suite is). */
 export function coreIssues(text: string, root: string | null): CoreIssues {
   const core = coreSection(text);
   const blocks = ruleBlocks(text);
   const testDir = root ? join(root, "backend", "test") : null;
-  const checkTests = Boolean(testDir && existsSync(testDir));
+  const checkTests = hasTestSuite(testDir);
   const badGate: string[] = [];
   for (const b of blocks) {
     if (!b.gate) continue;
@@ -229,6 +237,8 @@ function resolveGate(id: string, mark: string, f: GateFacts): "ok" | "na" | stri
   // A test gate lives in the repo, or — for a rule about the tool's own behaviour — in the zemory install every repo runs.
   if (kind === "test") {
     const self = selfRepoRoot();
+    // no suite on this machine (repo nor install) => nothing here can run it: not a hole, the dev machine measures it
+    if (!hasTestSuite(join(f.root, "backend", "test")) && !hasTestSuite(self ? join(self, "backend", "test") : null)) return "na";
     const here = existsSync(join(f.root, "backend", "test", `${ref}.test.mjs`));
     const tool = Boolean(self && existsSync(join(self, "backend", "test", `${ref}.test.mjs`)));
     return here || tool ? "ok" : `test ${ref} missing`;
@@ -280,7 +290,7 @@ function folderCoreText(agentDir: string): string {
 /** Holes in a folder harness, in the same shape as the file harness check. */
 export function folderCoreIssues(root: string, agentDir: string): CoreIssues {
   const testDir = join(root, "backend", "test");
-  const checkTests = existsSync(testDir);
+  const checkTests = hasTestSuite(testDir);
   const unmarked: string[] = [];
   const gatedInCore: string[] = [];
   const badGate: string[] = [];
