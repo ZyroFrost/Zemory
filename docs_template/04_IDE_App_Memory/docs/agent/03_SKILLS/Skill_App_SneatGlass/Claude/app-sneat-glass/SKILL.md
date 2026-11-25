@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 92
+version: 93
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v92 #0fad4368be0d
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v93 #32bcbefc8047
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -260,6 +260,7 @@ app takes them - its own z-index is a variable of this table (`var(--z-focus)`),
 | 3 | `--z-ai` (1078) | the AI chat and its button - over the top bar (the user 19/11: "chat phải luôn ở trên cùng") |
 | 4 | `--z-focus` (1079) | a visual enlarged over the page, inside the page frame, over the AI chat (skill app-report, rp-focus) |
 | 5 | `--z-offcanvas` (1090) | drawers, the sheet over the page |
+| 5b | `--z-modal` (1095) | a dialog drawn as an overlay: the search (Ctrl+K), a Bootstrap `.modal` and its backdrop (frame 1.47.0) |
 | 6 | `--z-tip` (1100) | tips (a tip inside an open dialog or popover joins it) |
 | 7 | top layer | the menus and popovers of the head (`--z-float` 1080 only for a float drawn in place) |
 | 8 | top layer | dialogs |

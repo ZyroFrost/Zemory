@@ -2139,7 +2139,8 @@ export const PROBES = [
     rule: 'the layers stand in the order of the frame (--z-page < --z-bar < --z-ai < --z-focus < --z-offcanvas < --z-tip; the menus and popovers of the head, dialogs and toasts in the top layer), the AI chat under an enlarged visual, and every menu or popover opened from row 1 or the page bar stays seen under a cover at the focus layer laid over it: the point in its middle hits it',
     check: `(async () => {
       const css = getComputedStyle(document.documentElement), z = n => parseFloat(css.getPropertyValue('--z-' + n));
-      const order = ['page', 'bar', 'ai', 'focus', 'offcanvas', 'tip'];
+      // (v93) --z-modal (frame 1.47.0) between the drawers and the tips, asked only of a frame that names it
+      const order = ['page', 'bar', 'ai', 'focus', 'offcanvas', 'modal', 'tip'].filter(n => n !== 'modal' || Number.isFinite(z(n)));
       if (order.some(n => !Number.isFinite(z(n)))) return 'the frame names no layers (--z-page … --z-tip): wear frame 1.43.6 or later';
       // a frame older than 1.45.0 (the focus still under the AI chat, the head's menus drawn in place) is not asked yet
       if (z('focus') < z('ai')) return true;

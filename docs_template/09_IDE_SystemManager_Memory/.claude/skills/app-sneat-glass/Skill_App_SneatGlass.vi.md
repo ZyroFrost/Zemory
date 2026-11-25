@@ -1,5 +1,5 @@
 ---
-version: 92
+version: 93
 lang: vi
 ---
 
@@ -233,6 +233,7 @@ z-index của app là một biến trong bảng (`var(--z-focus)`), không bao g
 | 3 | `--z-ai` (1078) | khung chat AI và nút AI - trên thanh đầu (user 19/11: "chat phải luôn ở trên cùng") |
 | 4 | `--z-focus` (1079) | visual phóng to trên trang, trong khung trang, trên khung chat AI (skill app-report, rp-focus) |
 | 5 | `--z-offcanvas` (1090) | ngăn kéo, tấm phủ trên trang |
+| 5b | `--z-modal` (1095) | hộp thoại vẽ thành lớp phủ: ô tìm (Ctrl+K), `.modal` của Bootstrap và nền mờ của nó (khung 1.47.0) |
 | 6 | `--z-tip` (1100) | tip (tip trong hộp thoại hay popover đang mở thì gắn vào đó) |
 | 7 | top layer | menu và popover của thanh đầu (`--z-float` 1080 chỉ cho lớp nổi vẽ tại chỗ) |
 | 8 | top layer | hộp thoại |
