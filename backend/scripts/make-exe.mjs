@@ -78,6 +78,10 @@ export async function main() {
   retryOnLock(() => rmSync(EXE, { force: true }));
   retryOnLock(() => renameSync(tmp, EXE));
   writeFileSync(STAMP, JSON.stringify(want) + "\n");
+  // The tray copy on BOTH paths: only the up-to-date path made it, so every release (a new version = a rebuild after
+  // clean emptied dist/) shipped without dist/zemory-tray.exe and the tray ran the library's own binary (user 25/11).
+  const tray = brandTrayBinary();
+  console.log(`make-exe: ${tray ? "dist/zemory-tray.exe copied" : "NO tray copy (systray2 binary missing)"}`);
   console.log(`make-exe: dist/zemory.exe built from ${process.execPath} (node ${process.version} · app ${pkg.version}${existsSync(ICON) ? " · icon" : " · NO icon"})`);
   return 0;
 }
