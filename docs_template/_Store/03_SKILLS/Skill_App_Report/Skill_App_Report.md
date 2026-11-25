@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 36
+version: 37
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
@@ -248,7 +248,10 @@ description: The report pages of an app - what a page of figures, charts and tab
 - What the owner adjusted in the report stays as the owner left it; a settled layout moves only with approval
   (`Rule_Keys_62_DesignChangeApproval`).
 
-- **A report card on a catalog page** lists its pages in two even columns (`data-rp-card-pages`) and, once built, turns by a
+- **A report card on a catalog page** lists its pages in as many even columns as its width holds at its longest page name with
+  room (v37, the user 25/11 through Dashboard: use the room the screen leaves, never two columns in a wide card): every column
+  one width, no page name cut, and no room left for one more column while pages remain - one column width for every card of
+  the page, so their columns line up (`data-rp-card-pages`), and, once built, turns by a
   button at its top right (`data-rp-card-flip`) to the state of its numbers (`data-rp-card-status`): normal, a period with no
   numbers yet, a read that failed with the last good read, not read yet; the time of the update, the period, how long it read,
   how often it refreshes. Only the content turns; the card's glass stands still (v7). [rp-card-pages-even]
