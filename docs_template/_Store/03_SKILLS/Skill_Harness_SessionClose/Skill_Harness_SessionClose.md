@@ -2,9 +2,9 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 25
+version: 26
 type: process
-description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, or when the context is running out or the session is about to switch. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
+description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, when the context is running out or the session is about to switch, and BEFORE a session or a case is closed - by the person or by the session that opened it - even when its work is not finished. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "đóng phiên", "đóng case", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
 ---
 
 # session-close — closing a session / writing the ledgers
@@ -12,6 +12,21 @@ description: Close out a work session correctly - route everything that happened
 > Trigger (a hard rule, `Rule_Keys_11_VerifyClaims`): a request to "note it down" · "write the docs" · "write the ledger" ·
 > "close the session" · "context running out / switching session / opening a new session" — or any wording that means
 > **closing this session's books so the next session can read on**.
+
+## Before ANY close — the books first, and no close while holding another repo's work
+
+- **Every close, at any point, finished or not** (the user 25/11): a session about to be closed — its window shut by the
+  person, stopped by the session that opened it (skill `session-launch` Step 8), switched — and a case about to be closed
+  (skill `task-case`) ⇒ this skill runs FIRST, on the state at that moment. Work not finished goes to `04_TODO` as `[~]`: how far
+  it got, the next step, where its files are. Only then is the session stopped or the case closed.
+- **Told by another session that it is about to be closed** (a `SendMessage` from the one that opened it) ⇒ run this skill,
+  commit the ledgers, and answer that session with the ledger commit and every piece of work from another repo it still holds.
+- **Holding work from another repo** (a task received by `SendMessage` or by mail whose result has not gone back) ⇒ the session
+  is NOT closed: send the result, or its state and what is left, to the session that gave it, and say so to whoever asked for
+  the close.
+- *Measured 25/11: SasinONE stopped the three sessions it had opened (CRM · Infrastructure · Harvest) as soon as their work was
+  committed; none had written its `05_CHANGES` entry, and their transcripts were not on disk (each folder held only a hook's
+  output), so the next session of those repos had nothing to read but `git log`.*
 
 **NEVER write docs from a summarised memory.** Writing from a summary = losing detail, and what is lost is always
 what the next session needs most.
@@ -178,7 +193,7 @@ Run every row, print its number — **0 is a result, silence is not**:
 | ③ | what the session made OUTSIDE the repo | the paths from the transcript that lie outside the repo (temp folders · compose overrides · copies · downloads) and still exist | delete; one that holds a backup the acceptance still needs (a reopened session, a compared copy) is kept and named in the report with the condition to delete it |
 | ④ | backups taken before an edit | `*.tar` · `*.zip` · `*.bak` copies the session made (session-file backups of a repo move, a file copied before a patch) | the acceptance passed ⇒ delete; not yet ⇒ keep and name |
 | ⑤ | approval flags | `docs/.harness-state/.allow-*` in this repo and in every repo the session wrote into | delete every used or expired flag (`conform` lists them as `dead-flag`) |
-| ⑥ | processes and background tasks | every `run_in_background` task and monitor the session started · dev servers · test runs · one-off containers (`docker ps -a`) | stop what is done; one still needed is named with what it waits for |
+| ⑥ | processes and background tasks | every `run_in_background` task and monitor the session started · dev servers · test runs · one-off containers (`docker ps -a`) · sessions it opened in other repos (skill `session-launch`) | stop what is done; one still needed is named with what it waits for; a session it opened is closed only after it wrote its books (section *Before ANY close*) |
 | ⑦ | edits left in other repos | `git status --short` in every repo the session wrote into | the session's own files ⇒ commit them there with `--only <paths>` after checking each diff holds only its edit; mixed with that repo's own work ⇒ report to that repo's session |
 | ⑧ | git litter | branches · stashes · worktrees the session created (`git branch` · `git stash list` · `git worktree list`) | merged or abandoned ⇒ remove; with work on it ⇒ name it |
 | ⑨ | stale locks | `.harness-state/*.lock` (sync · assemble) whose process is gone | delete (a lock of a live process stays) |
