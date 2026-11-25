@@ -918,21 +918,57 @@ export const SORT_PROBE = `(async () => {
   return true;
 })()`;
 
+// (v38, the user 25/11 through Dashboard, after a first try that covered the whole window: the enlarged visual stays inside the
+// page frame - it takes the place of the board's other visuals, never the menu or the top bar - and stands above the AI chat,
+// solid) where an enlarged visual stands: the board's width, from under the page bar to the foot of the window, nothing over it
+const FOCUS_COVER = `
+    const r = box(v), board = document.querySelector('[data-rp-page]');
+    const bar = [...document.querySelectorAll('#page-bar, .page-toolbar')].find(e => e.getClientRects().length);
+    const top0 = Math.max(bar ? box(bar).bottom : 0, 0), b = board ? box(board) : {left: 0, right: innerWidth};
+    const over = e => e && e.getClientRects().length && r.left < box(e).right - 1 && r.right > box(e).left + 1 && r.top < box(e).bottom - 1 && r.bottom > box(e).top + 1;
+    if (over(document.querySelector('#layout-menu'))) return 'an enlarged visual covers the menu: ' + name(v);
+    if (over(document.querySelector('#layout-navbar'))) return 'an enlarged visual covers the top bar: ' + name(v);
+    if (Math.abs(r.left - Math.max(b.left, 0)) > 2 || Math.abs(r.right - Math.min(b.right, innerWidth)) > 2)
+      return 'an enlarged visual does not take the board width (' + Math.round(r.left) + '-' + Math.round(r.right) + ' px, the board ' + Math.round(b.left) + '-' + Math.round(b.right) + '): ' + name(v);
+    if (r.top < top0 - 1 || r.bottom > innerHeight + 1 || r.height < (innerHeight - top0) * 0.8)
+      return 'an enlarged visual does not take the board from under the page bar to the foot of the window (' + Math.round(r.top) + '-' + Math.round(r.bottom) + ' px of ' + Math.round(top0) + '-' + innerHeight + '): ' + name(v);
+    for (const [x, y] of [[.5, .5], [.1, .15], [.9, .15], [.1, .9], [.9, .9]]) {
+      const el = document.elementFromPoint(r.left + r.width * x, r.top + r.height * y);
+      if (el && !v.contains(el)) return 'something stands over an enlarged visual (' + (el.id ? '#' + el.id : String(el.className || el.tagName).split(' ')[0]) + '): ' + name(v);
+    }
+    let alpha = 0;
+    for (let e = v; e && e !== document.documentElement && !alpha; e = e.parentElement) {
+      const m = /rgba?\\(([^)]+)\\)/.exec(getComputedStyle(e).backgroundColor), p = m ? m[1].split(',').map(Number) : [];
+      if (p.length) alpha = p.length > 3 ? p[3] : 1;
+    }
+    if (alpha < 1) return 'an enlarged visual lets the page show through (its fill alpha ' + alpha + '): ' + name(v);
+    return true;`;
+
 /** v29 probe (async; the repo's browser check runs it on each report page): every enlarge button pressed in turn - the visual
- *  in focus is never blank (rp-focus-whole) - then pressed again, so the page comes back. */
+ *  in focus is never blank (rp-focus-whole) and (v38) stands inside the page frame over the board, solid, under nothing
+ *  (rp-focus-cover) - then Escape, and the page comes back as it was. */
 export const FOCUS_PROBE = `(async () => {${H}
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const whole = () => {${FOCUS_WHOLE}};
+  const cover = v => {${FOCUS_COVER}};
   const buttons = () => [...document.querySelectorAll('[data-rp-page] [data-rp-visual] .rp-focus-btn')].filter(b => b.getClientRects().length);
+  const same = (a, c) => Math.abs(a.left - c.left) <= 2 && Math.abs(a.top - c.top) <= 2 && Math.abs(a.width - c.width) <= 2 && Math.abs(a.height - c.height) <= 2;
   for (let i = 0, n = buttons().length; i < n; i++) {
     const b = buttons()[i]; if (!b) break;
     const v = b.closest('[data-rp-visual]');
+    const before = v ? box(v) : null;
     b.click(); await sleep(600);
     v?.setAttribute('data-rp-focused', '');            // a button that says nothing of its state still marks its visual
-    const said = whole(), on = document.querySelector('.rp-focus-btn[aria-pressed=true]');
+    const said = whole(), placed = v ? cover(v) : true;
     v?.removeAttribute('data-rp-focused');
-    (on || b).click(); await sleep(400);
+    // (v38) Escape gives the page back; a visual Escape leaves enlarged is closed by its button and named
+    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+    await sleep(400);
+    const on = document.querySelector('.rp-focus-btn[aria-pressed=true]'), stuck = Boolean(on) || (v && before && !same(box(v), before));
+    if (stuck) { (on || b).click(); await sleep(400); }
     if (said !== true) return said;
+    if (placed !== true) return placed;
+    if (stuck) return 'Escape left an enlarged visual enlarged: ' + name(v);
   }
   return true;
 })()`;

@@ -1,5 +1,5 @@
 ---
-version: 37
+version: 38
 lang: vi
 ---
 
@@ -169,8 +169,11 @@ lang: vi
 - **Thanh xếp hạng chừa chỗ cho tên** (v13): cột tên 30 tới 40 % bề ngang thanh, tối đa hai dòng (tên đủ ở tooltip), không
   bao giờ thanh dài cạnh tên sáu dòng. [rp-rank-name]
 - **Chart nào cũng phóng to riêng được** (v13, như focus mode của Power BI): một nút (`.rp-focus-btn`) trên mỗi chart và
-  donut, cao bằng một chip legend và cùng hàng; bấm thì chart chiếm thân trang, hình khác ẩn, thanh trang giữ; bấm lại hay Esc thì
-  trang về như cũ. [rp-focus] **Phóng to không bao giờ ra trắng** (v28, 19/11, Dashboard Cons_Gate_102 §19): mọi biểu đồ,
+  donut, cao bằng một chip legend và cùng hàng; bấm thì chart chiếm đúng chỗ của các visual khác trong board - bề ngang của
+  board, từ dưới thanh trang xuống chân cửa sổ - ở top layer, nền đặc, nằm trên khung chat AI và mọi panel, không bao giờ đè lên
+  menu hay thanh trên (v38, user 25/11: "nó chỉ phóng to trong khung thôi, tức là mở rộng hết vị trí của các dashboard khác ban
+  đầu"); bấm lại hay Esc thì trang về đúng như cũ. [rp-focus] [rp-focus-cover: FOCUS_PROBE bấm từng nút phóng to, đo chỗ visual
+  đứng, thứ gì đè lên nó và nền của nó, rồi bấm Esc] **Phóng to không bao giờ ra trắng** (v28, 19/11, Dashboard Cons_Gate_102 §19): mọi biểu đồ,
   bảng, card, khung chữ giữ nguyên nội dung khi phóng to. [rp-focus-whole]
 - **Trang giữ nguyên cỡ** (v15): không bao giờ thu nhỏ cho vừa màn hình (không transform scale trên trang hay một khối của nó);
   trang cao hơn màn hình thì cuộn. Từng trang một tab hay mọi trang nối nhau là cách xem; không cách nào thu nhỏ. [rp-no-page-scale]
