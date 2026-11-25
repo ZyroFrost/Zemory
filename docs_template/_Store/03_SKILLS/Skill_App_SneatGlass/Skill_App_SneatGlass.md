@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 92
+version: 93
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -259,6 +259,7 @@ app takes them - its own z-index is a variable of this table (`var(--z-focus)`),
 | 3 | `--z-ai` (1078) | the AI chat and its button - over the top bar (the user 19/11: "chat phải luôn ở trên cùng") |
 | 4 | `--z-focus` (1079) | a visual enlarged over the page, inside the page frame, over the AI chat (skill app-report, rp-focus) |
 | 5 | `--z-offcanvas` (1090) | drawers, the sheet over the page |
+| 5b | `--z-modal` (1095) | a dialog drawn as an overlay: the search (Ctrl+K), a Bootstrap `.modal` and its backdrop (frame 1.47.0) |
 | 6 | `--z-tip` (1100) | tips (a tip inside an open dialog or popover joins it) |
 | 7 | top layer | the menus and popovers of the head (`--z-float` 1080 only for a float drawn in place) |
 | 8 | top layer | dialogs |
