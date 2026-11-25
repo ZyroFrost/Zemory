@@ -2137,7 +2137,7 @@ export const PROBES = [
   // tones change only the wallpaper, is not asked.
   {
     id: 'theme-follow',
-    rule: 'choosing a tone changes the whole page, not only the wallpaper: seen under the Sasin tone and under the Ocean tone, every accent surface of the page (a primary button, a switch on, a chosen tab or view, an accent badge, the chosen item of a menu) shows a different colour in each; one that keeps its colour is a colour written as a literal',
+    rule: 'choosing a tone changes the whole page, not only the wallpaper: seen under the Ocean tone and under the Sunset tone, every accent surface of the page (a primary button, a switch on, a chosen tab or view, an accent badge, the chosen item of a menu) shows a different colour in each; one that keeps its colour is a colour written as a literal',
     check: `(async () => {
       const html = document.documentElement, was = html.dataset.wall;
       const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -2146,7 +2146,7 @@ export const PROBES = [
       const look = e => { const c = getComputedStyle(e); return [c.backgroundColor, c.backgroundImage, c.color, c.borderTopColor].join('|'); };
       const seen = [], root = [];
       try {
-        for (const tone of ['sasin', 'ocean']) {
+        for (const tone of ['ocean', 'sunset']) {
           html.dataset.wall = tone;
           await wait(700);
           root.push(getComputedStyle(html).getPropertyValue('--g-accent').trim());

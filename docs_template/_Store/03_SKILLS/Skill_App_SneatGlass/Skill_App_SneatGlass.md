@@ -66,7 +66,7 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - **Choosing a tone changes the whole page** (v90, the user 25/11: "chọn theme phải đổi toàn bộ ko chỉ cái ảnh nền"; frame
   1.44.0): each tone carries its accent pair, so a button on, a switch on, a link, the chosen tab and view, a table's head line,
   a row's hover and chosen state and the scrollbar all change with it, light and dark (skill app-glass, tokens). No colour of
-  the page is written as a literal (Rule_Gate_77_ColoursFromTheme). [theme-follow: the probe sees the page under two tones]
+  the page is written as a literal (Rule_Gate_77_ColoursFromTheme). [theme-follow: the probe sees the page under two tones, Ocean and Sunset]
 - **Row 1's buttons are framed** (v42): the apps and the
   bell are squares with the bar's frame (fill, edge, kit radius) at the search box's height; open, lit as the filter button.
   [head-framed] **The search is the middle third of row 1** (v89, the user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng",

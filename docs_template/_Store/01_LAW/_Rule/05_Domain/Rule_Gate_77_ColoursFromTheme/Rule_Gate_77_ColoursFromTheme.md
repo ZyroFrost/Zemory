@@ -29,7 +29,7 @@ writes no colour literal: it takes the frame's tokens.
 
 ## Example
 - Situation: an app styles its chosen row.
-- ✗ Wrong: `tr.on { background: rgba(124, 196, 255, .16); }` - the base blue, also under the Sasin red tone.
+- ✗ Wrong: `tr.on { background: rgba(124, 196, 255, .16); }` - the base blue, also under the brand's red tone.
 - ✓ Right: `tr.on { background: rgba(var(--g-accent-rgb), .16); }` - the chosen tone's accent, light and dark.
 
 ## Check

@@ -25,7 +25,7 @@ của khung.
 
 ## Ví dụ
 - Tình huống: một app tô dòng đang chọn.
-- ✗ Sai: `tr.on { background: rgba(124, 196, 255, .16); }` - màu xanh gốc, cả khi đang dùng tông đỏ Sasin.
+- ✗ Sai: `tr.on { background: rgba(124, 196, 255, .16); }` - màu xanh gốc, cả khi đang dùng tông đỏ của thương hiệu.
 - ✓ Đúng: `tr.on { background: rgba(var(--g-accent-rgb), .16); }` - màu nhấn của tông đang chọn, sáng lẫn tối.
 
 ## Kiểm
