@@ -50,6 +50,7 @@ import { gatherStatus } from "./status.js";
 import type { FolderTree } from "./docs/structure-tree.js";
 import { applySkills, applyStandard } from "./docs/standard.js";
 import type { RepoGateRow } from "./docs/repo-sweep.js";
+import { otherMachineGates, publishRepoGates } from "./docs/machine-gates.js";
 import { localChangePlan, restoreKept, setAsideClashes } from "./update/local-changes.js";
 
 // Cache của /harness-updates — phép đo rẻ nhưng chạy trên MỌI project trong registry.
@@ -4458,12 +4459,13 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         repoGatesRun ??= runInWorker<RepoGateRow[]>("docs/repo-sweep.js", "repoGateRows", [], 900_000, { isolate: "process" })
           .then((w) => {
             const rows = w.ok ? w.value : (repoGatesCache?.rows ?? []); // fail-open — a reminder surface must not die
+            if (w.ok) publishRepoGates(rows); // only a real measurement reaches the other machine
             repoGatesCache = { at: Date.now(), rows };
             return rows;
           })
           .finally(() => (repoGatesRun = null));
-        if (!repoGatesCache) return json(res, { checkedAt: null, measuring: true, repos: [] });
-        return json(res, { checkedAt: new Date(repoGatesCache.at).toISOString(), repos: repoGatesCache.rows });
+        if (!repoGatesCache) return json(res, { checkedAt: null, measuring: true, repos: [], machines: otherMachineGates() });
+        return json(res, { checkedAt: new Date(repoGatesCache.at).toISOString(), repos: repoGatesCache.rows, machines: otherMachineGates() });
       }
       if (!repoGatesCache || fresh) {
         // The daemon's 6-hour sweep (conform · validate · todo verify) joins each repo's gaps: one chip, one list. ~5 s of
@@ -4471,12 +4473,15 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
         // worker; requests that arrive while it runs share the one pass.
         // never re-run on the event loop when the worker fails: that is the very freeze the worker exists to avoid
         repoGatesRun ??= runInWorker<RepoGateRow[]>("docs/repo-sweep.js", "repoGateRows", [], 600_000, { isolate: "process" })
-          .then((w) => (w.ok ? w.value : (repoGatesCache?.rows ?? []))) // fail-open — a reminder surface must not die
+          .then((w) => {
+            if (w.ok) publishRepoGates(w.value); // only a real measurement reaches the other machine
+            return w.ok ? w.value : (repoGatesCache?.rows ?? []); // fail-open — a reminder surface must not die
+          })
           .finally(() => (repoGatesRun = null));
         const rows = await repoGatesRun;
         repoGatesCache = { at: Date.now(), rows };
       }
-      return json(res, { checkedAt: new Date(repoGatesCache.at).toISOString(), repos: repoGatesCache.rows });
+      return json(res, { checkedAt: new Date(repoGatesCache.at).toISOString(), repos: repoGatesCache.rows, machines: otherMachineGates() });
     }
     if (p === "/harness-updates") {
       // "Chấm than update" (2026-08-21): repo nào trong registry đang CŨ so với bộ chuẩn

@@ -275,11 +275,20 @@
   //    phía daemon, đây chỉ hỏi lại mỗi 10' + một lần lúc mở app. Fail-open: lỗi ⇒ giữ ẩn.
   // ── Chip ④ CỔNG REPO (user 2026-10-07): repo có CHẠY cổng không. Đi theo MỌI đường làm tươi chip ② (boot · đổi ngôn
   //    ngữ · nhịp 10′) bằng cách gọi từ chính refreshHarnessUpdates — thêm một danh sách chỗ gọi thứ hai là danh sách sẽ quên.
-  var GATES=null;
+  var GATES=null,MACHINES=[];
+  // Every machine's rows in one list (user 26/11: "gộp cả repo PC"): this machine's as measured here, the other machine's as
+  // it last published them (docs/machine-gates.ts), each tagged with its host and the time it measured.
+  function allGateRows(){
+    var out=(GATES||[]).slice();
+    (MACHINES||[]).forEach(function(m){(m.repos||[]).forEach(function(g){out.push(Object.assign({},g,{host:m.host,hostAt:m.at}));});});
+    return out;
+  }
+  function gateName(g){return g.host?g.host+' · '+g.name:g.name;}
   function refreshRepoGates(fresh){
     return zGet('/repo-gates'+(fresh?'?fresh=1':'')).then(function(r){
       var chip=zid('railGates');if(!chip)return;
-      var rows=(r&&r.repos)||[];GATES=rows;
+      GATES=(r&&r.repos)||[];MACHINES=(r&&r.machines)||[];
+      var rows=allGateRows();
       var bad=rows.filter(function(g){return g.gaps>0;});
       chip.style.display='';
       // the walk has not finished yet: say so, and ask again shortly (never "all gates run" before it was measured)
@@ -287,7 +296,7 @@
       chip.classList.toggle('warn',!!bad.length);
       var d=chip.querySelector('.dot');if(d)d.className=bad.length?'dot warn':'dot';
       zset('railGatesN',bad.length?t('rail.gatesBad').replace('{n}',bad.length)+' ⚠':t('rail.gatesOk'));
-      zset('railGatesSub',bad.length?bad[0].name+(bad.length>1?' +'+(bad.length-1):''):t('rail.gatesOkSub').replace('{n}',rows.length));
+      zset('railGatesSub',bad.length?gateName(bad[0])+(bad.length>1?' +'+(bad.length-1):''):t('rail.gatesOkSub').replace('{n}',rows.length));
       return r;
     // Background refresh stays quiet (fail-open); a refresh the USER asked for (`fresh`) must surface the failure —
     // swallowing it made "Kiểm lại cổng" look finished when the check never ran.
@@ -332,12 +341,14 @@
     // 20 repos) redraws it when it lands. Waiting for that pass before opening read as a dead button (7.9 s, 2026-10-20).
     var open=function(){var d=zid('zDlg');return !!d&&d.classList.contains('on')&&d.dataset.dlg==='gates';};
     function draw(note){
-      var rows=(GATES||[]).slice().sort(function(a,b){return (b.gaps>0)-(a.gaps>0)||a.name.localeCompare(b.name);});
+      var rows=allGateRows().sort(function(a,b){return (b.gaps>0)-(a.gaps>0)||(a.host||'').localeCompare(b.host||'')||a.name.localeCompare(b.name);});
+      var when=function(iso){var d=new Date(iso);return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+' '+('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2);};
       var cell=function(c){return '<span class="'+(c.na?'na':c.ok?'ok':'no')+'"'+(c.tip?' title="'+stdEsc(c.tip)+'"':'')+'>'+stdEsc(c.txt)+'</span>';};
       var head='<div class="gchk h"><span>'+stdEsc(t('gates.colRepo'))+'</span><span>'+stdEsc(t('gates.colGuard'))+'</span><span>'+stdEsc(t('gates.colPre'))+
         '</span><span>'+stdEsc(t('gates.colRules'))+'</span><span>'+stdEsc(t('gates.colHp'))+'</span><span>'+stdEsc(t('gates.colSkills'))+'</span><span>'+stdEsc(t('gates.colRf'))+'</span><span>'+stdEsc(t('gates.colSweep'))+'</span></div>';
       var body=rows.length?head+rows.map(function(g){
-        return '<div class="gchk"><b title="'+stdEsc(g.root||'')+'">'+stdEsc(g.name)+'</b>'+gateCells(g).map(cell).join('')+'</div>';
+        var tag=g.host?'<small class="muted gchk-host">'+stdEsc(t('gates.otherMachine').replace('{h}',g.host).replace('{t}',when(g.hostAt)))+'</small>':'';
+        return '<div class="gchk"><b title="'+stdEsc(g.root||'')+'">'+stdEsc(g.name)+tag+'</b>'+gateCells(g).map(cell).join('')+'</div>';
       }).join(''):GATES===null?'':'<div class="muted">'+stdEsc(t('gates.allOk'))+'</div>';
       zDialog({iconHtml:ZICON.gates,size:'lg',tag:'gates',title:t('gates.title'),bodyHtml:'<div style="font-size:12.5px">'+body+'</div>',
         okLabel:t('gates.recheck'),onOk:function(){
@@ -351,7 +362,7 @@
     // A re-check that changes nothing must still SAY it ran: when, and what it found.
     function checkedNote(r){
       var at=r&&r.checkedAt?new Date(r.checkedAt):new Date();
-      var n=(GATES||[]).filter(function(g){return g.gaps>0;}).length;
+      var n=allGateRows().filter(function(g){return g.gaps>0;}).length;
       var hh=('0'+at.getHours()).slice(-2)+':'+('0'+at.getMinutes()).slice(-2);
       return (n?t('gates.checkedBad').replace('{n}',n):t('gates.checkedOk')).replace('{t}',hh);
     }
