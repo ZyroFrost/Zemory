@@ -2,7 +2,7 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 16
+version: 17
 type: process
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
@@ -61,6 +61,10 @@ SITS, not which WORK it belongs to.**
 - A move keeps the name. Renaming a case declares the old name in `spec.md` (`references/naming.md` §3).
 
 ## CLOSING a case
+
+**The books first, on the state at that moment** (the user 25/11): before the Status changes, run skill `session-close` - what
+the case did goes to `05_CHANGES`, what it still owes to `04_TODO` (`[~]` with how far it got and the next step), finished or
+not. A case closed before its books are written is closed for the next session too.
 
 Sync the whole spec in the same turn, not just flip the status mark: `references/spec_block.md` §Closing a case.
 
