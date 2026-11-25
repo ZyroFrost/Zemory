@@ -2246,6 +2246,53 @@ export const PROBES = [
       return out.length ? out.join('; ') : true;
     })()`,
   },
+  // (v88, the user 25/11 through SasinONE: "is the English-Vietnamese gate missing?" - the dictionaries were only compared key
+  // for key, and no check ever looked at a page in English) the page is switched to English with the frame's own language
+  // buttons, its words are read, and it is switched back
+  {
+    id: 'lang-both',
+    rule: 'the page speaks the language chosen: switched to English with the language buttons of the account menu, no word of the frame or of the app (buttons, labels, column headers, headings, tabs, dialog titles, box hints, tooltips of controls) shows Vietnamese; data keeps its own words (table rows, pick-list options, report content, the person\'s name, anything marked translate="no"); the page is switched back as it was',
+    check: `(async () => {
+      const en = document.querySelector('[data-lang="en"]'), vi = document.querySelector('[data-lang="vi"]');
+      if (!en || !vi) return true;
+      // one look per page and browser: the words do not change with the width or the theme
+      const key = 'sgc-lang-both:' + location.pathname + location.hash;
+      try { if (sessionStorage.getItem(key)) return true; } catch { /* no storage */ }
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const until = async (f, ms) => { for (let t = 0; t <= ms; t += 100) { try { if (f()) return true; } catch { /* drawing */ } await wait(100); } return false; };
+      const shown = e => Boolean(e) && e.getClientRects().length > 0;
+      const VI = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+      const DATA = '[data-rp-page], tbody, .slicer-item, .slicer-menu, select, option, .avatar, [translate="no"], [data-raw], #greeting, .account-greeting, #account-menu h6, .toast, #layout-menu .menu-link, .breadcrumb, .slicer-btn';
+      const WORDS = 'button, .btn, label, .form-label, thead th, .modal-title, .dropdown-header, .menu-header-text, .empty-state, [role="tab"], .nav-link, h1, h2, h3, h4, h5, h6, .card-title';
+      const pressed = b => b.getAttribute('aria-pressed') === 'true';
+      const was = pressed(en) ? 'en' : 'vi';
+      const out = [];
+      try {
+        if (was !== 'en') {
+          en.click();
+          if (!(await until(() => pressed(document.querySelector('[data-lang="en"]')), 6000))) return 'the English button changed nothing';
+          await wait(800);
+        }
+        const seen = new Set();
+        const say = (where, text) => { const t = text.trim().replace(/\\s+/g, ' ').slice(0, 50); if (!seen.has(t) && out.length < 6) { seen.add(t); out.push(where + ' "' + t + '"'); } };
+        for (const e of document.querySelectorAll(WORDS)) {
+          if (!shown(e) || e.closest(DATA)) continue;
+          const walk = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+          for (let n = walk.nextNode(); n; n = walk.nextNode()) if (VI.test(n.nodeValue) && !n.parentElement.closest(DATA)) say(e.tagName.toLowerCase(), n.nodeValue);
+        }
+        // the label of a filter rides in its button; only the label is the app's word, the value after it is data
+        for (const l of document.querySelectorAll('.filter-label')) if (shown(l) && !l.closest('[translate="no"]') && VI.test(l.textContent)) say('filter label', l.textContent);
+        for (const e of document.querySelectorAll('[placeholder], [aria-label], [title], [data-tip]')) {
+          if (!shown(e) || e.closest(DATA) || e.matches('svg *, path')) continue;
+          for (const a of ['placeholder', 'aria-label', 'title', 'data-tip']) { const v = e.getAttribute(a); if (v && VI.test(v)) say(a, v); }
+        }
+      } finally {
+        if (was !== 'en') { const back = document.querySelector('[data-lang="vi"]'); if (back) { back.click(); await until(() => pressed(document.querySelector('[data-lang="vi"]')), 6000); await wait(400); } }
+        try { sessionStorage.setItem(key, '1'); } catch { /* no storage */ }
+      }
+      return out.length ? 'Vietnamese shows in the English page: ' + out.join('; ') : true;
+    })()`,
+  },
   // (v51, the user 09/11 through an app of the family: a widened column ran a table out of its panel. Async, Reconcile 09/11: a
   // page that draws its tables after it settles - a journal awaiting its API - passed a rule read at once on no table at all)
   {

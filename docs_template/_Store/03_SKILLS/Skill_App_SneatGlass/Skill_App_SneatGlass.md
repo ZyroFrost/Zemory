@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 87
+version: 88
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -390,6 +390,12 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   cell is one (a column named Mã / Code / ID shows codes on purpose). A pick list drawn only while open is opened as a person
   opens it - each filter on the page, on row 2 and in the filter popover - and no option may read as a code. [names-in-lists]
   Any list built from stored values names each value: `optionsOf(values, v => name(v))`, never `optionsOf(values)` alone.
+- **The page speaks the language chosen** (v88, the user 25/11: the two dictionaries were only compared key for key, and no
+  check ever looked at a page in English): switched to English by the language buttons of the account menu, no word of the
+  frame or of the app shows Vietnamese - buttons, labels, column headers, headings, tabs, dialog titles, box hints, the
+  tooltips of controls. Data keeps its own words (table rows, pick-list options, report content, the person's name); a name
+  that is data but stands where a word would is marked `translate="no"`. The probe switches the page back as it was, once per
+  page and browser. [lang-both]
 - **The status dot is whole:** an online avatar's dot sits on its edge, and no box around it - a button or a menu row that
   clips for its ripple - cuts it. A count on a button (the bell's unread, `.badge-notifications` or `data-count-badge`) stands
   whole out of it the same way (v33: the count was cut inside the bell's round button). [dot-whole]

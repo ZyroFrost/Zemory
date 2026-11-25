@@ -1,5 +1,5 @@
 ---
-version: 87
+version: 88
 lang: vi
 ---
 
@@ -356,6 +356,12 @@ lang: vi
   khi mở thì được mở như người dùng mở - từng bộ lọc trên trang, trên hàng 2 và trong ô bộ lọc - và không lựa chọn nào được đọc
   ra mã. [names-in-lists] Danh sách dựng từ giá trị lưu phải đặt tên từng giá trị: `optionsOf(values, v => name(v))`, không bao
   giờ chỉ `optionsOf(values)`.
+- **Trang nói đúng ngôn ngữ đã chọn** (v88, user 25/11: "cổng tiếng anh việt đang bị thiếu à?" - hai từ điển chỉ được so từng
+  khoá, chưa phép kiểm nào nhìn một trang ở tiếng Anh): chuyển sang tiếng Anh bằng nút ngôn ngữ trong menu tài khoản thì không
+  chữ nào của khung hay của app còn tiếng Việt - nút, nhãn, tiêu đề cột, tiêu đề, tab, tiêu đề hộp thoại, gợi ý trong ô nhập,
+  tooltip của nút. Dữ liệu giữ chữ của nó (dòng bảng, lựa chọn trong danh sách, nội dung báo cáo, tên người); tên là dữ liệu mà
+  đứng ở chỗ của một chữ thì đánh dấu `translate="no"`. Phép thử chuyển trang lại như cũ, mỗi trang một lần trong một trình
+  duyệt. [lang-both]
 - **Chấm trạng thái nguyên vẹn:** chấm của avatar trực tuyến nằm trên mép nó, và không khung nào bao quanh - nút hay dòng menu cắt
   tràn vì hiệu ứng gợn sóng - cắt mất chấm. Con số trên một nút (số tin chưa đọc của chuông, `.badge-notifications` hoặc `data-count-badge`)
   cũng nằm trọn, lòi ra ngoài nút như vậy (v33: con số bị cắt trong nút tròn của chuông). [dot-whole]
