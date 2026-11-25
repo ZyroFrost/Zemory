@@ -57,6 +57,36 @@
       "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1 -SkipLive"}
     },
     {
+      "note": "a revert that names no commit (v4: a revert ships first and names the commit whose break it undoes)",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "node scripts/ui_test.mjs\n",
+        "scripts/ui_test.mjs": "import {RULES, PROBES, DIALOG_RULES} from './sneat_glass_check.mjs';\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1 -Revert"}
+    },
+    {
+      "note": "a revert naming a word, not a commit",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "node scripts/ui_test.mjs\n",
+        "scripts/ui_test.mjs": "import {RULES, PROBES, DIALOG_RULES} from './sneat_glass_check.mjs';\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1 -Revert newwork"}
+    },
+    {
+      "note": "a revert whose script has no browser check to run after it ships",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "npm run build\n",
+        "frontend/package.json": "{\"scripts\": {\"build\": \"vite build\"}}\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1 -Revert e528481"}
+    },
+    {
       "note": "a frame build below the family's floor",
       "files": {
         "frontend/config/shell.json": "{\"version\": \"1.0.0\"}\n",
@@ -99,6 +129,16 @@
       },
       "tool_name": "PowerShell",
       "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1"}
+    },
+    {
+      "note": "the user 25/11: \"cái nào thuộc dạng sửa ngược lại là deploy liền rồi mới kiểm sau\" - a revert naming its commit ships first, its check runs right after",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"99.0.0\"}\n",
+        "backend/scripts/deploy_linux.ps1": "node scripts/ui_test.mjs\n",
+        "scripts/ui_test.mjs": "import {RULES, PROBES, DIALOG_RULES} from './sneat_glass_check.mjs';\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1 -Revert e528481"}
     },
     {
       "note": "a dry check on the server ships nothing",
