@@ -2131,6 +2131,34 @@ export const DIALOG_RULES = [
 
 /** (v31) Probes: async browser expressions (evaluate with awaitPromise) that move the page and measure it, then put it back. */
 export const PROBES = [
+  // (v90, the user 25/11: "toàn bộ màu sắc của scroolbarr, nút khi bật, màu table … đều đang là màu cố định … chọn theme phải
+  // đổi toàn bộ ko chỉ cái ảnh nền") the page is seen under two tones: every accent surface of the page shows a different colour
+  // in each - one that keeps its colour is written as a literal (Rule_Gate_77_ColoursFromTheme). A frame older than 1.44.0, whose
+  // tones change only the wallpaper, is not asked.
+  {
+    id: 'theme-follow',
+    rule: 'choosing a tone changes the whole page, not only the wallpaper: seen under the Sasin tone and under the Ocean tone, every accent surface of the page (a primary button, a switch on, a chosen tab or view, an accent badge, the chosen item of a menu) shows a different colour in each; one that keeps its colour is a colour written as a literal',
+    check: `(async () => {
+      const html = document.documentElement, was = html.dataset.wall;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const els = [...document.querySelectorAll('.btn-primary, .form-check-input:checked, .nav-pills .nav-link.active, .view-switch > .btn.active, .bg-label-primary, .dropdown-item.active, .page-tabs-list .nav-link.active')]
+        .filter(e => e.getClientRects().length && !e.closest('.sw, [data-theme-fixed]')).slice(0, 40);
+      const look = e => { const c = getComputedStyle(e); return [c.backgroundColor, c.backgroundImage, c.color, c.borderTopColor].join('|'); };
+      const seen = [], root = [];
+      try {
+        for (const tone of ['sasin', 'ocean']) {
+          html.dataset.wall = tone;
+          await wait(700);
+          root.push(getComputedStyle(html).getPropertyValue('--g-accent').trim());
+          seen.push(els.map(look));
+        }
+      } finally { html.dataset.wall = was; }
+      if (root[0] === root[1]) return true;
+      const still = els.filter((e, i) => seen[0][i] === seen[1][i]);
+      const name = e => e.id ? '#' + e.id : (e.tagName.toLowerCase() + '.' + String(e.className).trim().split(/\\s+/).slice(0, 2).join('.'));
+      return still.length ? 'these keep one colour whatever the tone (a colour written as a literal): ' + still.slice(0, 5).map(name).join(', ') : true;
+    })()`,
+  },
   // (v64, the user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt động dc để các repo nó tự dò
   // và sửa") every control of row 2 is pressed as a person would and must do what it says; the page is left as it was
   {

@@ -1,7 +1,7 @@
 ---
 id: Skill_App_Glass
 name: app-glass
-version: 7
+version: 8
 type: process
 checked: [Skill_App_Base, Skill_PBI_White, Design_172_Design]
 installs: [scripts/fx_check.mjs]
@@ -41,7 +41,8 @@ is a bug (`app-base`, tokens). Each theme redeclares the WHOLE set.
 | glass layers | `--g-glass` · `--g-glass-strong` · `--g-edge` · `--g-edge-soft` · `--g-dim` | the strong layer is what a panel falls back to without blur |
 | depth | `--g-shadow` · `--g-blur` | one shadow token per elevation; blur only through the token |
 | accent and states | `--g-accent` · `--g-accent-2` · `--g-good` · `--g-warn` · the brand colour | a state colour never doubles as an accent (`app-base` F11) |
-| wallpaper | `--g-blob-a` · `--g-blob-b` · `--g-blob-c`, one tone set per `data-wall` value | the default tone is the brand's; others are choices |
+| wallpaper and its accent | `--g-blob-a` · `--g-blob-b` · `--g-blob-c` and `--g-accent` · `--g-accent-2` (with `-rgb`) · `--g-on-accent`, one set per `data-wall` value and theme | the default tone is the brand's; others are choices; choosing one changes the whole page, never only the wallpaper (v8, the user 25/11) |
+| neutrals | `--g-shade-rgb` (shadows) · `--g-light-rgb` (highlights) · `--g-solid` (the solid switch's fill) · `--g-native-ink` (the browser's own lists) | no colour of a page is written as a literal outside a token's definition (Rule_Gate_77_ColoursFromTheme); a colour that must not follow the tone carries `/* theme-fixed: <why> */` |
 | type | `--g-font` (one family with a system fallback) + one size scale | no second family on a page |
 | motion | `--g-spring` · `--g-out` (the two curves) | durations stay in the 0.2–0.8 s band of the template |
 
