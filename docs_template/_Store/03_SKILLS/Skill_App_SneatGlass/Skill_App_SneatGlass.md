@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 86
+version: 87
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -385,7 +385,11 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
 - **A person reads names, never codes:** a pick list, a filter, a badge or an action name shows the name of a value from the
   dictionaries, never its stored code (`data_query`, `login_ok`); a code outside the list reads as "Other action". The action
   codes are the family's closed list (the app contract of the family database): the app keeps that list with a name for each code in every
-  language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code]
+  language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code] (v87, the
+  user 25/11: a Group filter listed `data` and `ops`) a bare lowercase word is a code too, and so is a table column whose every
+  cell is one (a column named Mã / Code / ID shows codes on purpose). A pick list drawn only while open is opened as a person
+  opens it - each filter on the page, on row 2 and in the filter popover - and no option may read as a code. [names-in-lists]
+  Any list built from stored values names each value: `optionsOf(values, v => name(v))`, never `optionsOf(values)` alone.
 - **The status dot is whole:** an online avatar's dot sits on its edge, and no box around it - a button or a menu row that
   clips for its ripple - cuts it. A count on a button (the bell's unread, `.badge-notifications` or `data-count-badge`) stands
   whole out of it the same way (v33: the count was cut inside the bell's round button). [dot-whole]

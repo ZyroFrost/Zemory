@@ -1,5 +1,5 @@
 ---
-version: 86
+version: 87
 lang: vi
 ---
 
@@ -351,7 +351,11 @@ lang: vi
 - **Người dùng đọc tên, không đọc mã:** danh sách chọn, bộ lọc, nhãn hay tên hành động hiện tên của giá trị lấy từ từ điển, không
   bao giờ hiện mã lưu (`data_query`, `login_ok`); mã ngoài danh sách đọc là "Hành động khác". Mã hành động là danh sách đóng của
   hệ (hợp đồng app của DB hệ): app giữ danh sách đó, mỗi mã có tên ở mọi ngôn ngữ, và một phép kiểm tĩnh đối chiếu danh sách với
-  hợp đồng khi hợp đồng có trên máy. [no-raw-code]
+  hợp đồng khi hợp đồng có trên máy. [no-raw-code] (v87, user 25/11: bộ lọc Nhóm liệt kê `data` và `ops`) một chữ thường đứng
+  một mình cũng là mã, và một cột bảng mà mọi ô đều là mã cũng vậy (cột tên Mã / Code / ID cố ý hiện mã). Danh sách chọn chỉ vẽ
+  khi mở thì được mở như người dùng mở - từng bộ lọc trên trang, trên hàng 2 và trong ô bộ lọc - và không lựa chọn nào được đọc
+  ra mã. [names-in-lists] Danh sách dựng từ giá trị lưu phải đặt tên từng giá trị: `optionsOf(values, v => name(v))`, không bao
+  giờ chỉ `optionsOf(values)`.
 - **Chấm trạng thái nguyên vẹn:** chấm của avatar trực tuyến nằm trên mép nó, và không khung nào bao quanh - nút hay dòng menu cắt
   tràn vì hiệu ứng gợn sóng - cắt mất chấm. Con số trên một nút (số tin chưa đọc của chuông, `.badge-notifications` hoặc `data-count-badge`)
   cũng nằm trọn, lòi ra ngoài nút như vậy (v33: con số bị cắt trong nút tròn của chuông). [dot-whole]

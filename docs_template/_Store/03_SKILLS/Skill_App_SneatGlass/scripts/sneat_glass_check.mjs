@@ -720,18 +720,29 @@ export const RULES = [
   },
   {
     id: 'no-raw-code',
-    rule: 'a person reads names, never codes: a pick list, a filter, a badge or an action name shows the name of a value (from the dictionaries), never its stored code (data_query, login_ok) - a code outside the list reads as "other"',
+    rule: 'a person reads names, never codes: a pick list, a filter, a badge, an action name or a table column shows the name of a value (from the dictionaries), never its stored code - neither a code with an underscore (data_query, login_ok) nor a bare lowercase word (data, ops) - a code outside the list reads as "other"; a list drawn only while open is read by the probe names-in-lists',
     check: `(() => {
-      const code = /^[a-z]+(_[a-z]+)+$/;
+      // (v87, the user 25/11 through SasinONE: the Group filter of Apps listed "data" and "ops" - lowercase, not in
+      // Vietnamese - and this rule passed them: it knew only codes with an underscore) a bare lowercase word is a code too
+      const code = /^[a-z]+(_[a-z]+)*$/;
       const spots = '.slicer-item .form-check-label, .filter-field select option, .filter-row .slicer-btn, .badge, .log-action > b, td[data-label] > .badge, .g-select-menu .dropdown-item';
       const raw = [...document.querySelectorAll(spots)].find(e => code.test((e.textContent || '').replace(/^[^:]*:\\s*/, '').trim()));
       if (raw) return 'a stored code shows where a person reads a name: ' + raw.textContent.trim();
-      // the action column of a log table
       for (const t of document.querySelectorAll('table')) {
-        const at = [...t.querySelectorAll('thead th')].findIndex(h => /^(hành động|action)$/i.test(h.textContent.trim()));
-        if (at < 0) continue;
-        const cell = [...t.querySelectorAll('tbody tr')].map(r => r.cells[at]).find(c => c && code.test(c.textContent.trim()));
+        const heads = [...t.querySelectorAll('thead th')].map(h => h.textContent.trim());
+        const rows = [...t.querySelectorAll('tbody tr')];
+        // the action column of a log table: one code is enough
+        const at = heads.findIndex(h => /^(hành động|action)$/i.test(h));
+        const cell = at < 0 ? null : rows.map(r => r.cells[at]).find(c => c && code.test(c.textContent.trim()));
         if (cell) return 'a stored action code shows in the log: ' + cell.textContent.trim();
+        // (v87) any other column whose every filled cell is a code, two at least (the Group column of Apps printed data, ops);
+        // a column named as an identifier (Mã, Code, ID) shows codes on purpose
+        for (let i = 0; i < heads.length; i++) {
+          if (i === at || /^(mã|code|id)(?=\\s|$)/i.test(heads[i])) continue;
+          const cells = rows.map(r => r.cells[i]).filter(c => c && c.textContent.trim());
+          if (cells.length >= 2 && cells.every(c => code.test(c.textContent.trim())))
+            return 'a column shows stored codes where a person reads names: ' + (heads[i] || 'column ' + (i + 1)) + ' (' + cells[0].textContent.trim() + ')';
+        }
       }
       return true;
     })()`,
@@ -2192,6 +2203,46 @@ export const PROBES = [
       // every grip and edge takes the pointer
       const dead = [...document.querySelectorAll('.bar-grip, #page-tabs-grip, .bar-resize')].find(g => shown(g) && getComputedStyle(g).pointerEvents === 'none');
       if (dead) out.push('a grip of row 2 does not take the pointer');
+      return out.length ? out.join('; ') : true;
+    })()`,
+  },
+  // (v87, the user 25/11 through SasinONE: the Group filter of Apps listed "data" and "ops" - untranslated, lowercase - and the
+  // user asked for a gate that never lets such a list through) a multi-pick list is drawn only while it is open, so no-raw-code,
+  // which reads what stands on the page, never saw its options: this probe opens each one as a person does and reads them
+  {
+    id: 'names-in-lists',
+    rule: 'every pick list of the page - each filter on the page or row 2 and each in the filter popover - offers names, never stored codes: opened as a person opens it, no option reads as a bare lowercase word or a code with an underscore (data, ops, data_query); the page is left as it was',
+    check: `(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const until = async (f, ms) => { for (let t = 0; t <= ms; t += 100) { try { if (f()) return true; } catch { /* drawing */ } await wait(100); } return false; };
+      const shown = e => Boolean(e) && e.getClientRects().length > 0;
+      const esc = () => { for (const type of ['keydown', 'keyup']) document.dispatchEvent(new KeyboardEvent(type, {key: 'Escape', bubbles: true})); };
+      const code = /^[a-z]+(_[a-z]+)*$/;
+      const out = [];
+      let read = 0;
+      const look = async btn => {
+        if (read++ >= 12) return;   // a page with many filters: the first twelve are enough to find a list of codes
+        const menu = () => document.getElementById(btn.getAttribute('aria-controls'));
+        btn.click();
+        if (!(await until(() => menu(), 2000))) return;
+        await wait(150);
+        const name = (btn.getAttribute('aria-label') || '').split(':')[0].trim() || 'a filter';
+        const hit = [...menu().querySelectorAll('.slicer-item .form-check-label, [role="option"]')].map(e => (e.textContent || '').trim()).find(t => code.test(t));
+        if (hit) out.push('the filter ' + name + ' offers a stored code: ' + hit);
+        btn.click();
+        if (!(await until(() => !menu(), 1500))) { esc(); await until(() => !menu(), 1500); }
+      };
+      const lists = root => [...root.querySelectorAll('button.slicer-btn[aria-haspopup="listbox"][aria-controls]')].filter(b => shown(b) && !b.disabled);
+      for (const b of lists(document).filter(b => !b.closest('#filter-pop'))) await look(b);
+      const ft = document.getElementById('filter-toggle'), pop = document.getElementById('filter-pop');
+      if (shown(ft) && !ft.disabled && pop) {
+        ft.click();
+        if (await until(() => !pop.hidden && shown(pop), 2000)) {
+          for (const b of lists(pop)) await look(b);
+          esc();
+          if (!(await until(() => pop.hidden || !shown(pop), 2000))) ft.click();
+        }
+      }
       return out.length ? out.join('; ') : true;
     })()`,
   },
