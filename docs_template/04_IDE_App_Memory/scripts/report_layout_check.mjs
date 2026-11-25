@@ -987,7 +987,8 @@ export const SELF_TEST = {
     `<nav><a role="tab">Tổng quan</a><a role="tab">Huỷ món</a></nav>` +
     `<div data-rp-glossary hidden><p data-rp-term="TC">TC (Transaction Count): số hoá đơn</p></div>` +
     `<div data-rp-card data-built style="position:relative;width:auto;margin:10px"><button data-rp-card-flip style="position:absolute;top:4px;right:4px">i</button>` +
-    `<ul data-rp-card-pages style="display:grid;grid-template-columns:1fr 1fr;margin-top:30px"><li>A</li><li>B</li><li>C</li></ul><div data-rp-card-status hidden>ok</div></div>`),
+    // (v37) the pages in as many even columns as fit at the longest page name with room
+    `<ul data-rp-card-pages style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr));margin-top:30px"><li>Tổng quan</li><li>Theo giờ</li><li>Theo cửa hàng</li></ul><div data-rp-card-status hidden>ok</div></div>`),
   faulty: SHELL(`<div class="row" style="align-items:stretch"><div class="row" data-rp-visual="cards" style="flex:2;margin:0">${cardB('Group Size', '0 k', '+1,0% MoM', 'up', 'text-success')}${cardB('B', '2', '+1,0% MoM', 'up', 'text-success')}` +
     `${cardB('C', '3', '+1,0% MoM', 'up', 'text-success')}${cardB('D', '4', '+1,0% MoM', 'up', 'text-success')}</div>` +
     `<div class="row" data-rp-visual="cards" style="flex-wrap:nowrap">${Array.from({length: 9}, (_, i) => card('K' + i, String(i + 1), '+1,0% MoM', 'up', 'text-success')).join('')}</div>` +
