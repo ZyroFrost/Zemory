@@ -60,8 +60,12 @@ const appEntries = [];
 for (const s of [16, 32, 48, 64, 256]) appEntries.push({ s, buf: await png(s).toBuffer() });
 writeFileSync(join(PKG, "zemory.ico"), buildIco(appEntries));
 
-// Tray: rewrite the embedded base64 in tray.ts (Windows ICO 64, mac/Linux PNG 64).
-const trayIco = buildIco([{ s: 64, buf: await png(64).toBuffer() }]).toString("base64");
+// Tray: rewrite the embedded base64 in tray.ts (Windows ICO 16..64, mac/Linux PNG 64). The Windows tray draws 16 px
+// (20/24 at 125/150 % DPI): an ICO holding only 64 px was shrunk by the shell into a blur of blocks (user 25/11, the
+// hidden-icons flyout), so every size the tray asks for is in the file.
+const trayEntries = [];
+for (const s of [16, 20, 24, 32, 48, 64]) trayEntries.push({ s, buf: await png(s).toBuffer() });
+const trayIco = buildIco(trayEntries).toString("base64");
 const trayPng = (await png(64).toBuffer()).toString("base64");
 const trayPath = join(ROOT, "backend", "src", "platform", "tray.ts");
 let tray = readFileSync(trayPath, "utf8");
