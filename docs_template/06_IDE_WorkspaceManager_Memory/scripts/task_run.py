@@ -19,7 +19,9 @@ Where the run log goes — one database, named `<MACHINE>/<DATABASE>` (the real 
     where every other repo logs. It lives in the vault, not in the region values, because those do not reach the VM.
 The connection comes from the machine vault through scripts/vault_conn.py: `conn(machine, database, account)` with the account
 of the vault setting `_runlog_account` when the machine sets one (a work PC whose default account is a read-only agent that may
-not run the log procedure), else the account the machine's register names; there is no fallback to .env. Nothing secret lives here. Shipped by zemory: store part
+not run the log procedure), else the account the machine's register names; there is no fallback to .env. A register entry with "engine": "postgresql" (the DW
+on PostgreSQL, DW plan/33) is reached with psycopg instead - same vault keys, `CALL dbo."_LogTaskRun"(...)`, same row; any
+other entry is SQL Server over ODBC. Nothing secret lives here. Shipped by zemory: store part
 Skill_Task_VmAutomation (its installs); change the store part, never the repo copy.
 
 Retry (`--retry-hours H`, set by vm_deploy from the manifest field `retry_hours` of a schedule): a launcher that exits non-zero is
@@ -92,9 +94,26 @@ def run_log_target():
         return ""
 
 
+PG_LOG_CALL = ('CALL dbo."_LogTaskRun"(p_taskname => %s, p_startedat => %s, p_durationseconds => %s, p_exitcode => %s, '
+               'p_message => %s, p_servername => %s)')
+
+
+def pg_connect_args(spec, machine, database, account):
+    """psycopg keyword arguments for a register entry with "engine": "postgresql" - the same vault keys as the ODBC path
+    (<MACHINE>_<DATABASE>_<ACCOUNT>_ID/_PASS), the database name in lower case (PostgreSQL folds unquoted names), TLS
+    required. The DW's scripts/pg_conn.py connects the same way (DW plan/33)."""
+    import vault_conn
+    acct = account or spec.get("account")
+    if not acct:
+        raise vault_conn.VaultMissing("vault: %s/%s names no account for this machine and the caller gave none" % (machine, database))
+    return {"host": spec["address"], "port": int(spec.get("port") or 5432), "dbname": database.lower(),
+            "user": vault_conn.secret(machine, database, acct, "ID"),
+            "password": vault_conn.secret(machine, database, acct, "PASS"),
+            "sslmode": "require", "connect_timeout": 15}
+
+
 def log_run(task, started, seconds, rc, message):
     try:
-        import pyodbc
         target = run_log_target()
         if not target or "/" not in target:
             print("[task_run] WARNING: no run-log database (RUNLOG_DB · config/runlog.json · vault setting _runlog_db) — run not logged",
@@ -104,10 +123,18 @@ def log_run(task, started, seconds, rc, message):
         import vault_conn
         machine, database = target.split("/", 1)
         account = (vault_conn.setting("_runlog_account") or "").strip() or None
-        cn = pyodbc.connect(vault_conn.conn(machine, database, account), timeout=30, autocommit=True)
-        cn.execute("EXEC dbo._LogTaskRun @TaskName=?, @StartedAt=?, @DurationSeconds=?, @ExitCode=?, @Message=?, @ServerName=?",
-                   task, started.replace(microsecond=0), int(seconds), int(rc), message[:4000], socket.gethostname())
-        cn.close()
+        values = (task, started.replace(microsecond=0), int(seconds), int(rc), message[:4000], socket.gethostname())
+        spec = vault_conn._entry(machine, database) or {}
+        if str(spec.get("engine", "")).lower() == "postgresql":   # the DW on PostgreSQL (DW plan/33): psycopg, same row
+            import psycopg
+            with psycopg.connect(**pg_connect_args(spec, machine, database, account), autocommit=True) as cn:
+                cn.execute(PG_LOG_CALL, values)
+        else:                                                      # SQL Server: the ODBC path, unchanged
+            import pyodbc
+            cn = pyodbc.connect(vault_conn.conn(machine, database, account), timeout=30, autocommit=True)
+            cn.execute("EXEC dbo._LogTaskRun @TaskName=?, @StartedAt=?, @DurationSeconds=?, @ExitCode=?, @Message=?, @ServerName=?",
+                       *values)
+            cn.close()
         print("[task_run] logged to Log_JobRun (%s): %s exit %d (%ds)" % (target, task, rc, seconds), flush=True)
     except BaseException as e:                                # never fail the task because the log could not be written
         print("[task_run] WARNING: run log not written: %s" % e, flush=True)
