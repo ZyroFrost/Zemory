@@ -1064,7 +1064,7 @@ export const RULES = [
   },
   {
     id: 'crumbs',
-    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs taking its room from the start, then the search right beside the actions at its end, no day and time; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs are family / app / [group] / page (a small app: <family> / its name / its page; the hub: <family> / Hub / ...), every layer before the current page a link to that layer home, only the current page plain text',
+    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs taking its room from the start, then the search (from a desktop up the middle third of the bar, row1-thirds; below 1200 px right beside the actions) and the actions at its end, no day and time; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs are family / app / [group] / page (a small app: <family> / its name / its page; the hub: <family> / Hub / ...), every layer before the current page a link to that layer home, only the current page plain text',
     check: `(() => {
       const head = document.querySelector('#layout-navbar');
       if (!head) return 'no top bar';
@@ -1080,7 +1080,7 @@ export const RULES = [
         const search = row1.querySelector('.navbar-search'), actions = row1.querySelector('.navbar-actions');
         const c = crumbs.getBoundingClientRect(), s = search.getBoundingClientRect(), a = actions.getBoundingClientRect();
         if (c.right > s.left + 1 || s.right > a.left + 1) return 'row 1 is not crumbs · search · actions in that order';
-        if (a.left - s.right > 24) return 'the search does not stand beside the actions (' + Math.round(a.left - s.right) + ' px between)';
+        if (innerWidth < 1200 && a.left - s.right > 24) return 'the search does not stand beside the actions (' + Math.round(a.left - s.right) + ' px between)';
         if (row1.querySelector('#today, .navbar-today')) return 'the day and time still stand in row 1';
       }
       const tools = row2.querySelector(':scope > .page-toolbar > .card-tools');
@@ -1480,18 +1480,36 @@ export const RULES = [
       return loose ? 'words about the page stand loose in its body, not in the info cluster: ' + loose.textContent.trim().slice(0, 40) : true;
     })()`,
   },
-  // (v51, the user 09/11: "ô search đang ko cách đúng khoảng chuẩn… tổng chiều dài của bên phải bằng đúng 1/3 chiều dài của toàn bộ panel đầu")
+  // (v89, the user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng" - over v51's one third at the end of row 1)
   {
-    id: 'row1-end',
-    rule: 'from a desktop up, the right of row 1 - the search and the actions, one group - is exactly one third of the top bar, and every part of it stands apart from the next by the own gap of the page bar (the gap of its tools)',
+    id: 'row1-thirds',
+    rule: 'from a desktop up (1200 px), row 1 is three thirds of the top bar: the crumbs, the search in the middle with its centre on the centre of the bar, the actions ending at the end of the row, each apart from the next by the own gap of the page bar (the gap of its tools); the search fills the middle third, narrower only by what the crumbs need to read whole (from both ends, so it stays centred), never below 14rem; crumbs longer still push it right at 14rem',
     check: `(() => {
-      const n = document.getElementById('layout-navbar'), r = n && n.querySelector('.navbar-right');
-      if (!r || !r.getClientRects().length || innerWidth < 1200) return true;
-      const third = n.getBoundingClientRect().width / 3, w = r.getBoundingClientRect().width;
-      if (Math.abs(w - third) > 2) return 'the right of row 1 is ' + Math.round(w) + ' px, not one third of the panel (' + Math.round(third) + ')';
+      const n = document.getElementById('layout-navbar'), row1 = n && n.querySelector(':scope > .nav-row1'), grid = row1 && row1.querySelector('#navbar-collapse');
+      if (!row1 || !grid || !row1.getClientRects().length || innerWidth < 1200) return true;
+      const s = row1.querySelector('.navbar-search'), a = row1.querySelector('.navbar-actions'), c = row1.querySelector('.navbar-crumbs');
+      if (!s || !a || !s.getClientRects().length || !a.getClientRects().length) return 'row 1 has no search or no actions';
+      const p = n.getBoundingClientRect(), r = s.getBoundingClientRect(), third = p.width / 3;
+      // the crumbs read whole first, then the search keeps the centre, then it fills the third
+      const trail = row1.querySelector('.navbar-crumbs .breadcrumb');
+      let need = 0;
+      if (trail && trail.getClientRects().length) { const was = trail.style.width; trail.style.width = 'max-content'; need = trail.getBoundingClientRect().width; trail.style.width = was; }
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position: absolute; visibility: hidden; width: 14rem';
+      grid.append(probe);
+      const least = probe.getBoundingClientRect().width;
+      probe.remove();
+      const col = c && c.getClientRects().length ? c.getBoundingClientRect().width : 0, spare = col > need + 2, atLeast = r.width <= least + 2;
+      const off = (r.left + r.right) / 2 - (p.left + p.right) / 2;
+      if (r.width > third + 2) return 'the search is ' + Math.round(r.width) + ' px wide, more than the middle third of the bar (' + Math.round(third) + ')';
+      if (col < need - 2 && !atLeast) return 'the crumbs are cut (' + Math.round(col) + ' px for ' + Math.round(need) + ') while the search could still give way (' + Math.round(r.width) + ' px, its least ' + Math.round(least) + ')';
+      if (Math.abs(off) > 2 && (spare || !atLeast)) return 'the search stands ' + Math.round(off) + ' px off the centre of the bar (only crumbs that need the room may push it, at its least width)';
+      if (r.width < third - 2 && spare) return 'the search is ' + Math.round(r.width) + ' px, narrower than the middle third (' + Math.round(third) + ') while the crumbs have room to spare (' + Math.round(col) + ' px for ' + Math.round(need) + ')';
+      const ar = a.getBoundingClientRect(), stop = grid.getBoundingClientRect().right;
+      if (Math.abs(ar.right - stop) > 2) return 'the actions end ' + Math.round(stop - ar.right) + ' px before the end of row 1';
       const tools = document.querySelector('.page-toolbar .card-tools');
       const gap = tools ? parseFloat(getComputedStyle(tools).columnGap) || 8 : 8;
-      const parts = [r.querySelector('.navbar-search'), ...r.querySelectorAll('.navbar-actions > .nav-item')].filter(e => e && e.getClientRects().length);
+      const parts = [...a.querySelectorAll(':scope > .nav-item')].filter(e => e.getClientRects().length);
       for (let i = 1; i < parts.length; i++) {
         const g = parts[i].getBoundingClientRect().left - parts[i - 1].getBoundingClientRect().right;
         if (Math.abs(g - gap) > 1) return 'row 1: ' + Math.round(g) + ' px before ' + (parts[i].querySelector('[id]')?.id || 'a part') + ' (the page bar gap: ' + gap + ' px)';

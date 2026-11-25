@@ -1,5 +1,5 @@
 ---
-version: 88
+version: 89
 lang: vi
 ---
 
@@ -57,9 +57,11 @@ lang: vi
   `/api/notifications`, `/api/health`); probe live lưu và đọc bằng fetch sạch nên lớp bọc fetch của app không làm lệch.
   [settings-save-works]
 - **Nút hàng 1 có khung** (v42): nút ứng dụng và chuông là
-  ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Bên phải hàng 1 là một
-  nhóm, đúng một phần ba thanh** (v51): ô tìm và các nút đứng chung ở cuối hàng 1, rộng đúng một phần ba thanh trên cùng (ô tìm lấy phần
-  các nút để lại), mọi phần cách phần kế bằng đúng khoảng cách của thanh trang - không bao giờ khe rộng hơn trước ô tìm. [row1-end]
+  ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Ô tìm là một phần ba
+  giữa của hàng 1** (v89, user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng", thay một phần ba ở cuối của v51): từ máy
+  tính (1200 px) trở lên, hàng 1 chia ba phần của thanh trên cùng - đường dẫn, ô tìm có tâm trùng tâm thanh, dãy nút kết thúc ở
+  cuối hàng, các nút cách nhau đúng khoảng cách của thanh trang. Ô tìm lấp đúng một phần ba giữa; khi đường dẫn cần thêm chỗ để
+  đọc đủ thì ô co đều từ hai đầu, vẫn ở giữa, nhỏ nhất 14rem; đường dẫn dài hơn nữa thì đẩy ô (ở 14rem) sang phải. Dưới 1200 px ô tìm đứng sát dãy nút. [row1-thirds]
   **Đường
   dẫn ngăn bằng mũi tên của kit,** không bao giờ là "/" gõ tay ("cái path nên thành >"). [crumb-chevron]
 - **Cái đang chọn thì sáng, phần còn lại mang khung xám** (v42): mọi tab trong hàng có khung khi chưa chọn; tab đang chọn, kiểu xem đang
@@ -184,7 +186,7 @@ lang: vi
   thanh trang luôn đứng yên. Trang không có thanh riêng thì chỉ có hàng 1. [crumbs] [frame] Đầu trang lớn theo hai hàng của nó - không bao giờ giữ
   `block-size: 4rem` cố định của bộ mẫu để thanh trang tràn ra ngoài - và trang bắt đầu dưới nó, không phần nào của trang nằm dưới
   thanh. [head-whole]
-- **Hàng 1 nhường chỗ cho đường dẫn:** đường dẫn từ đầu hàng, rồi ô tìm duy nhất đứng sát dãy nút ở cuối, và dãy nút chỉ còn app ·
+- **Hàng 1 nhường chỗ cho đường dẫn:** đường dẫn từ đầu hàng, ô tìm duy nhất ở giữa (row1-thirds; dưới 1200 px thì đứng sát dãy nút), dãy nút ở cuối, và dãy nút chỉ còn app ·
   chuông · tài khoản. Không có ngày giờ. Điện thoại bỏ đường dẫn khỏi hàng 1. [crumbs] Lớp hệ, lớp app và trang đang xem luôn đọc
   đủ; chỉ các lớp ở giữa co lại thành "…" và hiện đủ tên khi rê chuột. [crumbs-whole]
 - **Đường dẫn là hệ / app / [nhóm] / trang:** app nhỏ là `<hệ> / <app> / <trang>`; bản thân system-manager cũng là một app, là

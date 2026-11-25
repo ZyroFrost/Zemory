@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 88
+version: 89
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v88 #33a7e425d753
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v89 #e3cb6085d448
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -66,9 +66,11 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v88 #33a7e425d753
   app's fetch wrapper cannot turn them aside. [settings-save-works]
 - **Row 1's buttons are framed** (v42): the apps and the
   bell are squares with the bar's frame (fill, edge, kit radius) at the search box's height; open, lit as the filter button.
-  [head-framed] **The right of row 1 is one group, one third of the bar** (v51): the search and the actions stand
-  together at the end of row 1, exactly a third of the top bar wide (the search takes what the buttons leave), every part
-  apart from the next by the page bar's own gap - never a wider gap before the search. [row1-end]
+  [head-framed] **The search is the middle third of row 1** (v89, the user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng",
+  over v51's one third at the end): from a desktop up (1200 px) row 1 is three thirds of the top bar - the crumbs, the search
+  with its centre on the bar's, the actions ending at the end of the row, apart from each other by the page bar's own gap. The
+  search fills the middle third; where the crumbs need more room to read whole it gives way from both ends, staying centred,
+  never below 14rem; crumbs longer still push it right at 14rem. Below 1200 px the search stands right beside the actions. [row1-thirds]
   **The crumbs are parted by the kit's chevron,** never a typed "/" ("cái path nên thành >"). [crumb-chevron]
 - **What is chosen is lit, the rest wears the grey frame** (v42): every tab of a row is framed at rest; the chosen tab, the chosen view of
   the switch and a tool that is on are filled with the accent (white words), and a light runs across the one just chosen,
@@ -208,8 +210,8 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v88 #33a7e425d753
   scroll only: the header row, a pinned first column and the page bar always stay. A page with no bar of its own shows row 1 only. [crumbs] [frame] The head grows with its two rows - never the kit's fixed
   `block-size: 4rem` that the page bar spills out of - and the page starts below it, nothing of the page under the bar.
   [head-whole]
-- **Row 1 gives its room to the crumbs:** the crumbs from its start, then the one search right beside the buttons at its end,
-  and the buttons are only apps · bell · account. No day and time. A phone drops the crumbs from row 1. [crumbs] The family,
+- **Row 1 gives its room to the crumbs:** the crumbs from its start, the one search in the middle (row1-thirds; below 1200 px right
+  beside the buttons), the buttons at its end, and the buttons are only apps · bell · account. No day and time. A phone drops the crumbs from row 1. [crumbs] The family,
   the app and the page on screen always read whole; only the layers between them shrink to "…" and show their whole name on
   hover. [crumbs-whole]
 - **The crumbs are family / app / [group] / page:** a small app is `<family> / <app> / <page>`; the system-manager is
