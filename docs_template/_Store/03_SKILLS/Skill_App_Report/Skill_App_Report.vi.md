@@ -1,5 +1,5 @@
 ---
-version: 39
+version: 40
 lang: vi
 ---
 
@@ -170,7 +170,7 @@ lang: vi
   bao giờ thanh dài cạnh tên sáu dòng. [rp-rank-name]
 - **Chart nào cũng phóng to riêng được** (v13, như focus mode của Power BI): một nút (`.rp-focus-btn`) trên mỗi chart và
   donut, cao bằng một chip legend và cùng hàng; bấm thì chart chiếm đúng chỗ của các visual khác trong board - bề ngang của
-  board, từ dưới thanh trang xuống chân cửa sổ - ở top layer, nền đặc, nằm trên khung chat AI và mọi panel, không bao giờ đè lên
+  board, từ dưới thanh trang xuống chân cửa sổ - nền đặc, ở lớp phóng to (`--z-focus`, skill app-sneat-glass §2c): trên trang và khung chat AI, dưới mọi lớp nổi - menu, popover, tip và hộp thoại vẫn nằm trên (v40) - không bao giờ đè lên
   menu hay thanh trên (v38, user 25/11: "nó chỉ phóng to trong khung thôi, tức là mở rộng hết vị trí của các dashboard khác ban
   đầu"); bấm lại hay Esc thì trang về đúng như cũ. [rp-focus] [rp-focus-cover: FOCUS_PROBE bấm từng nút phóng to, đo chỗ visual
   đứng, thứ gì đè lên nó và nền của nó, rồi bấm Esc] **Phóng to không bao giờ ra trắng** (v28, 19/11, Dashboard Cons_Gate_102 §19): mọi biểu đồ,

@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 90
+version: 91
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -245,6 +245,30 @@ description: The Sneat-Glass kind of an app surface - the Sneat layout (skill ap
   under is one layer of the crumbs (`<family> / <app> / <group> / ... / <page>` - several group layers when the menu nests them),
   its own page lists what it holds, and every page under it shows it in its crumbs. A page card never repeats a group's name as
   a heading over its content; an inner card's own title is its own name. [group-in-crumbs]
+
+## 2c. Layers — one order for every app (v91)
+
+The user 25/11, through Dashboard: "bảng skill phải có thứ tư lớp cho từng loại và mọi app phải bám theo"; "mấy cái popover và
+dialogbox phải luôn ở lớp cao nhất". The frame names the layers as CSS variables (frame 1.43.6; the order below from 1.45.0); an
+app takes them - its own z-index is a variable of this table (`var(--z-focus)`), never a number of its own.
+
+| Layer, low to high | Variable | What stands there |
+|---|---|---|
+| 1 | `--z-page` (1) | the page, its cards, their sticky heads and pinned columns (local layers inside a card stay under 10) |
+| 2 | `--z-bar` (1075) | the top bar with the page bar |
+| 3 | `--z-ai` (1078) | the AI chat and its button - over the top bar (the user 19/11: "chat phải luôn ở trên cùng") |
+| 4 | `--z-focus` (1079) | a visual enlarged over the page, inside the page frame, over the AI chat (skill app-report, rp-focus) |
+| 5 | `--z-offcanvas` (1090) | drawers, the sheet over the page |
+| 6 | `--z-tip` (1100) | tips (a tip inside an open dialog or popover joins it) |
+| 7 | top layer | the menus and popovers of the head (`--z-float` 1080 only for a float drawn in place) |
+| 8 | top layer | dialogs |
+| 9 | top layer | toasts |
+
+- A floating layer - a dropdown, a menu, a popover, a tip, a dialog - is never covered by anything of the page, an enlarged
+  visual or the AI chat included. [float-on-top]
+- No app lifts content of the page into the top layer: the top layer holds the frame's menus, popovers, dialogs and toasts.
+- A box that holds a floating layer makes no stacking context that traps it (z-index with a position, transform, filter,
+  backdrop-filter, isolation, contain): the float goes to `<body>` or to the open dialog, as the frame's select menu and tip do.
 
 ## 3. Dialogs — exactly S / M / L (`app-base` F2 in this kind)
 

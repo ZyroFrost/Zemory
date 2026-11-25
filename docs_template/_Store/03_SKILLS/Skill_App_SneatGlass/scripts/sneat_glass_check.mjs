@@ -2131,6 +2131,55 @@ export const DIALOG_RULES = [
 
 /** (v31) Probes: async browser expressions (evaluate with awaitPromise) that move the page and measure it, then put it back. */
 export const PROBES = [
+  // (v91, the user 25/11 through Dashboard: "mấy cái popover và dialogbox phải luôn ở lớp cao nhất") the layers of the frame stand in
+  // their order, and every menu or popover opened from the head is seen over anything of the page: a cover at the focus layer
+  // (the highest a page may reach) laid over what an opener opens never hides it
+  {
+    id: 'float-on-top',
+    rule: 'the layers stand in the order of the frame (--z-page < --z-bar < --z-ai < --z-focus < --z-offcanvas < --z-tip; the menus and popovers of the head, dialogs and toasts in the top layer), the AI chat under an enlarged visual, and every menu or popover opened from row 1 or the page bar stays seen under a cover at the focus layer laid over it: the point in its middle hits it',
+    check: `(async () => {
+      const css = getComputedStyle(document.documentElement), z = n => parseFloat(css.getPropertyValue('--z-' + n));
+      const order = ['page', 'bar', 'ai', 'focus', 'offcanvas', 'tip'];
+      if (order.some(n => !Number.isFinite(z(n)))) return 'the frame names no layers (--z-page … --z-tip): wear frame 1.43.6 or later';
+      // a frame older than 1.45.0 (the focus still under the AI chat, the head's menus drawn in place) is not asked yet
+      if (z('focus') < z('ai')) return true;
+      for (let i = 1; i < order.length; i++) if (!(z(order[i - 1]) < z(order[i]))) return 'the layers are out of order: --z-' + order[i - 1] + ' is not under --z-' + order[i];
+      for (const ai of document.querySelectorAll('.ai-chat, .ai-fab')) {
+        const v = parseFloat(getComputedStyle(ai).zIndex);
+        if (Number.isFinite(v) && v >= z('focus')) return 'the AI chat stands at ' + v + ', not under an enlarged visual (--z-focus ' + z('focus') + ')';
+      }
+      const head = document.getElementById('layout-navbar');
+      if (!head) return true;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const esc = () => { for (const type of ['keydown', 'keyup']) document.dispatchEvent(new KeyboardEvent(type, {key: 'Escape', bubbles: true})); };
+      const name = e => e.id ? '#' + e.id : (e.getAttribute('aria-label') || e.className && '.' + String(e.className).trim().split(/\\s+/)[0] || e.tagName.toLowerCase());
+      const out = [];
+      for (const b of [...head.querySelectorAll('[aria-expanded="false"]')].filter(e => e.getClientRects().length && !e.disabled)) {
+        b.click();
+        await wait(400);
+        const id = b.getAttribute('aria-controls');
+        let pop = id && document.getElementById(id);
+        if (!pop || !pop.getClientRects().length) pop = b.closest('.dropdown, .sn-dd, .nav-item')?.querySelector('.dropdown-menu.show, [role="dialog"]:not([hidden]), [role="menu"]:not([hidden])');
+        if (pop && pop.getClientRects().length) {
+          const r = pop.getBoundingClientRect(), cover = document.createElement('div');
+          cover.id = 'g-probe-cover';
+          cover.style.cssText = 'position: fixed; left: 0; top: 0; width: 100px; height: 100px; z-index: var(--z-focus); background: transparent';
+          document.body.append(cover);
+          // a page drawn zoomed: the cover is placed in its own px (a rect is on screen)
+          const k = cover.getBoundingClientRect().width / 100 || 1;
+          Object.assign(cover.style, {left: r.left / k + 'px', top: r.top / k + 'px', width: r.width / k + 'px', height: r.height / k + 'px'});
+          const x = Math.min(innerWidth - 2, Math.max(1, (r.left + r.right) / 2)), y = Math.min(innerHeight - 2, Math.max(1, (r.top + r.bottom) / 2));
+          const hit = document.elementFromPoint(x, y);
+          cover.remove();
+          if (hit && !pop.contains(hit)) out.push(name(b) + ': what it opens (' + name(pop) + ') is hidden by ' + (hit.id === 'g-probe-cover' ? 'anything of the page at the focus layer' : name(hit)));
+        }
+        if (b.getAttribute('aria-expanded') === 'true') b.click();
+        esc();
+        await wait(250);
+      }
+      return out.length ? out.join(' | ') : true;
+    })()`,
+  },
   // (v90, the user 25/11: "toàn bộ màu sắc của scroolbarr, nút khi bật, màu table … đều đang là màu cố định … chọn theme phải
   // đổi toàn bộ ko chỉ cái ảnh nền") the page is seen under two tones: every accent surface of the page shows a different colour
   // in each - one that keeps its colour is written as a literal (Rule_Gate_77_ColoursFromTheme). A frame older than 1.44.0, whose
