@@ -722,7 +722,7 @@ export const RULES = [
     id: 'no-raw-code',
     rule: 'a person reads names, never codes: a pick list, a filter, a badge, an action name or a table column shows the name of a value (from the dictionaries), never its stored code - neither a code with an underscore (data_query, login_ok) nor a bare lowercase word (data, ops) - a code outside the list reads as "other"; a list drawn only while open is read by the probe names-in-lists',
     check: `(() => {
-      // (v87, the user 25/11 through SasinONE: the Group filter of Apps listed "data" and "ops" - lowercase, not in
+      // (v87, the user 25/11 through the system-manager repo: the Group filter of Apps listed "data" and "ops" - lowercase, not in
       // Vietnamese - and this rule passed them: it knew only codes with an underscore) a bare lowercase word is a code too
       const code = /^[a-z]+(_[a-z]+)*$/;
       const spots = '.slicer-item .form-check-label, .filter-field select option, .filter-row .slicer-btn, .badge, .log-action > b, td[data-label] > .badge, .g-select-menu .dropdown-item';
@@ -2206,7 +2206,7 @@ export const PROBES = [
       return out.length ? out.join('; ') : true;
     })()`,
   },
-  // (v87, the user 25/11 through SasinONE: the Group filter of Apps listed "data" and "ops" - untranslated, lowercase - and the
+  // (v87, the user 25/11 through the system-manager repo: the Group filter of Apps listed "data" and "ops" - untranslated, lowercase - and the
   // user asked for a gate that never lets such a list through) a multi-pick list is drawn only while it is open, so no-raw-code,
   // which reads what stands on the page, never saw its options: this probe opens each one as a person does and reads them
   {
@@ -2246,7 +2246,7 @@ export const PROBES = [
       return out.length ? out.join('; ') : true;
     })()`,
   },
-  // (v88, the user 25/11 through SasinONE: "is the English-Vietnamese gate missing?" - the dictionaries were only compared key
+  // (v88, the user 25/11 through the system-manager repo: "is the English-Vietnamese gate missing?" - the dictionaries were only compared key
   // for key, and no check ever looked at a page in English) the page is switched to English with the frame's own language
   // buttons, its words are read, and it is switched back
   {

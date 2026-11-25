@@ -20,7 +20,7 @@ lang: vi
 - **Đang giữ việc của repo khác** (việc nhận qua `SendMessage` hay thư mà kết quả chưa gửi về; user 25/11: "lỡ nó có đang nhận
   việc từ repo khác thì bạn ko dc đóng") ⇒ KHÔNG đóng: gửi kết quả, hoặc trạng thái và phần còn lại, cho phiên đã giao, và nói rõ
   với bên đòi đóng.
-- *Đo được 25/11: SasinONE dừng ba phiên nó mở (CRM · Infrastructure · Harvest) ngay khi việc của chúng đã commit; không phiên nào
+- *Đo được 25/11: phiên system-manager dừng ba phiên nó mở (CRM · Infrastructure · Harvest) ngay khi việc của chúng đã commit; không phiên nào
   kịp ghi mục `05_CHANGES`, và transcript của chúng không có trên đĩa (mỗi thư mục chỉ còn output của một hook), nên phiên sau
   của các repo đó chỉ còn `git log` để đọc.*
 

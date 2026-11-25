@@ -24,7 +24,7 @@ description: Close out a work session correctly - route everything that happened
 - **Holding work from another repo** (a task received by `SendMessage` or by mail whose result has not gone back) ⇒ the session
   is NOT closed: send the result, or its state and what is left, to the session that gave it, and say so to whoever asked for
   the close.
-- *Measured 25/11: SasinONE stopped the three sessions it had opened (CRM · Infrastructure · Harvest) as soon as their work was
+- *Measured 25/11: the system-manager session stopped the three sessions it had opened (CRM · Infrastructure · Harvest) as soon as their work was
   committed; none had written its `05_CHANGES` entry, and their transcripts were not on disk (each folder held only a hook's
   output), so the next session of those repos had nothing to read but `git log`.*
 
