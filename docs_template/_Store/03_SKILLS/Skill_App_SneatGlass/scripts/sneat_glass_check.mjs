@@ -2190,8 +2190,11 @@ export const PROBES = [
     check: `(async () => {
       const html = document.documentElement, was = html.dataset.wall;
       const wait = ms => new Promise(r => setTimeout(r, ms));
-      const els = [...document.querySelectorAll('.btn-primary, .form-check-input:checked, .nav-pills .nav-link.active, .view-switch > .btn.active, .bg-label-primary, .dropdown-item.active, .page-tabs-list .nav-link.active')]
-        .filter(e => e.getClientRects().length && !e.closest('.sw, [data-theme-fixed]')).slice(0, 40);
+      // (v92, Dashboard 25/11: every page with page tabs read red) an accent surface is what PAINTS the accent: the chosen page
+      // tab is clear over the pill that carries it, so the pill is read, and an element with no fill of its own is left out
+      const painted = e => { const c = getComputedStyle(e); return c.backgroundImage !== 'none' || !['transparent', 'rgba(0, 0, 0, 0)'].includes(c.backgroundColor); };
+      const els = [...document.querySelectorAll('.btn-primary, .form-check-input:checked, .nav-pills .nav-link.active, .view-switch > .btn.active, .bg-label-primary, .dropdown-item.active, .page-tabs-panel > .page-tabs-pill')]
+        .filter(e => e.getClientRects().length && !e.closest('.sw, [data-theme-fixed]') && painted(e)).slice(0, 40);
       const look = e => { const c = getComputedStyle(e); return [c.backgroundColor, c.backgroundImage, c.color, c.borderTopColor].join('|'); };
       const seen = [], root = [];
       try {
