@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 39
+version: 40
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v39 #67be5d378062
+from: _Store/03_SKILLS/Skill_App_Report @v40 #310761eff913
 ---
 
 # app-report — the report pages of an app
@@ -199,8 +199,8 @@ from: _Store/03_SKILLS/Skill_App_Report @v39 #67be5d378062
   most (the full name in the tip), never a long bar beside a name on six lines. [rp-rank-name]
 - **Every chart can be enlarged alone** (v13, as Power BI's focus mode): a button (`.rp-focus-btn`) on each chart
   and donut, as tall as a legend chip and on its line; pressed, the chart takes the place of the board's other visuals -
-  the board's width, from under the page bar to the foot of the window - in the top layer, solid, above the AI chat and every
-  panel, and never over the menu or the top bar (v38, the user 25/11: a first try that covered the whole window was wrong);
+  the board's width, from under the page bar to the foot of the window - solid, on the focus layer (`--z-focus`, skill app-sneat-glass §2c): above
+  the page and the AI chat, under every floating layer - menus, popovers, tips and dialogs stay over it (v40) - and never over the menu or the top bar (v38, the user 25/11: a first try that covered the whole window was wrong);
   pressed again or Escape, the page comes back as it was. [rp-focus] [rp-focus-cover: FOCUS_PROBE presses each enlarge
   button, measures where the visual stands, what stands over it and its fill, then presses Escape] **Enlarged is never blank** (v28, 19/11, Dashboard
   Cons_Gate_102 §19): every chart, table, card and text panel keeps its whole content in focus. [rp-focus-whole]

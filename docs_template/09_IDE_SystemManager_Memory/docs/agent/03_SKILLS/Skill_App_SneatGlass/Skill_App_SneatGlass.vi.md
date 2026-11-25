@@ -1,5 +1,5 @@
 ---
-version: 90
+version: 91
 lang: vi
 ---
 
@@ -219,6 +219,30 @@ lang: vi
   một lớp của đường dẫn (`<family> / <app> / <group> / ... / <page>` - nhiều lớp nhóm khi menu lồng nhiều tầng), trang riêng của nhóm
   liệt kê những gì nó chứa, và mọi trang thuộc nhóm hiện nhóm đó trong đường dẫn. Thẻ trang không bao giờ lặp tên nhóm thành tiêu đề
   trên nội dung; tiêu đề của một thẻ con là tên riêng của thẻ đó. [group-in-crumbs]
+
+## 2c. Lớp — một thứ tự cho mọi app (v91)
+
+User 25/11, qua Dashboard: "bảng skill phải có thứ tư lớp cho từng loại và mọi app phải bám theo"; "mấy cái popover và dialogbox
+phải luôn ở lớp cao nhất". Khung đặt tên các lớp thành biến CSS (khung 1.43.6; thứ tự dưới đây từ 1.45.0); app dùng các biến này -
+z-index của app là một biến trong bảng (`var(--z-focus)`), không bao giờ là số tự đặt.
+
+| Lớp, từ thấp lên cao | Biến | Cái gì nằm ở đó |
+|---|---|---|
+| 1 | `--z-page` (1) | trang, các card, đầu bảng dính và cột ghim (lớp riêng bên trong card dưới 10) |
+| 2 | `--z-bar` (1075) | thanh trên cùng và thanh trang |
+| 3 | `--z-ai` (1078) | khung chat AI và nút AI - trên thanh đầu (user 19/11: "chat phải luôn ở trên cùng") |
+| 4 | `--z-focus` (1079) | visual phóng to trên trang, trong khung trang, trên khung chat AI (skill app-report, rp-focus) |
+| 5 | `--z-offcanvas` (1090) | ngăn kéo, tấm phủ trên trang |
+| 6 | `--z-tip` (1100) | tip (tip trong hộp thoại hay popover đang mở thì gắn vào đó) |
+| 7 | top layer | menu và popover của thanh đầu (`--z-float` 1080 chỉ cho lớp nổi vẽ tại chỗ) |
+| 8 | top layer | hộp thoại |
+| 9 | top layer | toast |
+
+- Lớp nổi (dropdown, menu, popover, tip, hộp thoại) không bao giờ bị thứ gì của trang che, kể cả visual phóng to và khung chat
+  AI. [float-on-top]
+- Không app nào đưa nội dung trang lên top layer: top layer chỉ giữ menu, popover, hộp thoại và toast của khung.
+- Hộp nào chứa một lớp nổi thì không tạo lớp xếp chồng riêng giam nó (z-index kèm position, transform, filter, backdrop-filter,
+  isolation, contain): lớp nổi gắn vào `<body>` hoặc hộp thoại đang mở, như menu chọn và tip của khung.
 
 ## 3. Hộp thoại — đúng S / M / L (`app-base` F2 trong kiểu này)
 
