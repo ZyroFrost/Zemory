@@ -1,5 +1,5 @@
 ---
-version: 25
+version: 26
 lang: vi
 ---
 
@@ -8,6 +8,21 @@ lang: vi
 > Kích hoạt (luật cứng, `Rule_Keys_11_VerifyClaims`): có yêu cầu "note lại" · "docs lại" · "ghi sổ" ·
 > "chốt phiên" · "sắp hết context / đổi session / mở phiên mới" — hoặc bất kỳ cách nói nào mang
 > nghĩa **kết sổ phiên này để phiên sau đọc tiếp**.
+
+## Trước MỌI lần đóng — ghi sổ trước, và không đóng khi đang giữ việc của repo khác
+
+- **Mọi lần đóng, lúc nào cũng vậy, xong việc hay chưa** (user 25/11: "đóng case hay đóng phiên đều phải docs lại thời điểm lúc
+  đó, dù session chưa hết cũng phải docs trước khi đóng"): phiên sắp bị đóng — người tắt cửa sổ, phiên đã mở nó dừng nó (skill
+  `session-launch` Bước 8), đổi phiên — và case sắp đóng (skill `task-case`) ⇒ skill này chạy TRƯỚC, trên trạng thái lúc đó.
+  Việc chưa xong ghi vào `04_TODO` dạng `[~]`: tới đâu, bước tiếp, file nằm đâu. Xong rồi mới dừng phiên hay đóng case.
+- **Được phiên khác báo sắp đóng** (`SendMessage` từ phiên đã mở nó) ⇒ chạy skill này, commit sổ, rồi trả lời phiên đó mã commit
+  sổ và mọi việc của repo khác mà nó còn đang giữ.
+- **Đang giữ việc của repo khác** (việc nhận qua `SendMessage` hay thư mà kết quả chưa gửi về; user 25/11: "lỡ nó có đang nhận
+  việc từ repo khác thì bạn ko dc đóng") ⇒ KHÔNG đóng: gửi kết quả, hoặc trạng thái và phần còn lại, cho phiên đã giao, và nói rõ
+  với bên đòi đóng.
+- *Đo được 25/11: phiên system-manager dừng ba phiên nó mở (CRM · Infrastructure · Harvest) ngay khi việc của chúng đã commit; không phiên nào
+  kịp ghi mục `05_CHANGES`, và transcript của chúng không có trên đĩa (mỗi thư mục chỉ còn output của một hook), nên phiên sau
+  của các repo đó chỉ còn `git log` để đọc.*
 
 **TUYỆT ĐỐI không ghi docs theo trí nhớ tóm tắt.** Ghi theo tóm tắt = mất chi tiết, và cái mất luôn
 là cái phiên sau cần nhất.
@@ -174,7 +189,7 @@ Chạy đủ mọi dòng, in số của từng dòng — **0 là một kết qu�
 | ③ | thứ phiên tạo NGOÀI repo | các đường trong transcript nằm ngoài repo (thư mục tạm · compose override · bản chép · file tải về) mà còn tồn tại | xoá; cái đang giữ bản sao lưu mà phép nghiệm thu còn cần (phiên chưa mở lại, bản đối chiếu) thì giữ và nêu tên trong báo cáo kèm điều kiện để xoá |
 | ④ | bản sao lưu chụp trước khi sửa | các bản `*.tar` · `*.zip` · `*.bak` phiên tạo (sao lưu file phiên khi dời repo, file chép trước khi vá) | nghiệm thu đã qua ⇒ xoá; chưa ⇒ giữ và nêu tên |
 | ⑤ | cờ duyệt | `docs/.harness-state/.allow-*` ở repo này và ở mọi repo phiên đã ghi vào | xoá mọi cờ đã dùng hoặc hết hạn (`conform` báo là `dead-flag`) |
-| ⑥ | tiến trình và tác vụ nền | mọi tác vụ `run_in_background` và monitor phiên mở · dev server · lượt test · container chạy một lần (`docker ps -a`) | dừng cái đã xong; cái còn cần thì nêu tên và nó đang chờ gì |
+| ⑥ | tiến trình và tác vụ nền | mọi tác vụ `run_in_background` và monitor phiên mở · dev server · lượt test · container chạy một lần (`docker ps -a`) · phiên nó mở ở repo khác (skill `session-launch`) | dừng cái đã xong; cái còn cần thì nêu tên và nó đang chờ gì; phiên nó mở chỉ đóng sau khi phiên đó đã ghi sổ (mục *Trước MỌI lần đóng*) |
 | ⑦ | chỗ sửa còn ở repo khác | `git status --short` ở mọi repo phiên đã ghi vào | file của chính phiên ⇒ commit ở đó bằng `--only <đường>` sau khi kiểm diff chỉ chứa chỗ sửa của phiên; lẫn với việc của repo đó ⇒ báo phiên của repo đó |
 | ⑧ | rác git | nhánh · stash · worktree phiên tạo (`git branch` · `git stash list` · `git worktree list`) | đã gộp hay bỏ ⇒ gỡ; còn việc trên đó ⇒ nêu tên |
 | ⑨ | khoá cũ | `.harness-state/*.lock` (sync · assemble) mà tiến trình đã mất | xoá (khoá của tiến trình còn sống thì giữ) |

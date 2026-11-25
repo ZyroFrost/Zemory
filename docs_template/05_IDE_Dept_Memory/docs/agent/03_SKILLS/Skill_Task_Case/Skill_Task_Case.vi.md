@@ -1,5 +1,5 @@
 ---
-version: 16
+version: 17
 lang: vi
 ---
 
@@ -53,6 +53,10 @@ NẰM, không nói nó thuộc VIỆC gì.**
 - Dời thì giữ nguyên tên. Đổi tên case thì khai tên cũ ở `spec.md` (`references/naming.md` §3).
 
 ## ĐÓNG case
+
+**Ghi sổ trước, trên trạng thái lúc đó** (user 25/11: "đóng case hay đóng phiên đều phải docs lại thời điểm lúc đó"): trước khi
+đổi Trạng thái, chạy skill `session-close` - việc case đã làm vào `05_CHANGES`, việc còn nợ vào `04_TODO` (`[~]` kèm tới đâu và
+bước tiếp), xong hay chưa cũng vậy. Case đóng trước khi ghi sổ là đóng luôn với phiên sau.
 
 Đồng bộ cả spec trong cùng lượt, không chỉ đổi dấu trạng thái: `references/spec_block.md` §Đóng case.
 

@@ -3,7 +3,7 @@
   "prompt": {
     "kind": "task-case",
     "re": "\\b(mo case|luu thanh task|task moi|dong case|mo lai case|vu nay luu o dau)\\b",
-    "text": "[zemory] Case work: follow skill task-case — one case is one folder under tasks/."
+    "text": "[zemory] Case work: follow skill task-case — one case is one folder under tasks/; closing a case writes its books first on the state at that moment (skill session-close), finished or not."
   },
   "block": [
     {
