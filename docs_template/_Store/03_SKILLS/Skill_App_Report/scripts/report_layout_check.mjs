@@ -741,9 +741,14 @@ export const RULES = [
   // J. The report cards of a catalog page (§9, user 06/11). (v37, the user 25/11 through Dashboard: use the room the screen
   // leaves and add columns, as long as the longest page name is never cut nor pressed against its neighbour - two columns left
   // a wide card half empty and stretched the list down) as many even columns as fit at the longest page name with room
-  rule('rp-card-pages-even', 'a report card on a catalog page lists its pages in as many even columns as its width holds at its longest page name with room: every column one width, no page name cut, and no room left for one more column while pages remain', `
-    for (const list of document.querySelectorAll('[data-rp-card] [data-rp-card-pages], .board-card .board-tabs')) {
-      if (!list.getClientRects().length || list.children.length < 2) continue;
+  // (v39, Dashboard's live run 25/11: "5 columns where 6 fit" on a card whose own names were short) every card of a page shares
+  // one column width, so their columns line up: the longest page name is the page's, not the card's
+  rule('rp-card-pages-even', 'a report card on a catalog page lists its pages in as many even columns as its width holds at the page\'s longest page name with room (every card of the page shares that column width, so their columns line up): every column one width, no page name cut, and no room left for one more column while pages remain', `
+    const lists = [...document.querySelectorAll('[data-rp-card] [data-rp-card-pages], .board-card .board-tabs')].filter(l => l.getClientRects().length && l.children.length >= 2);
+    // each page at its own width (max-content), measured and put back in the same moment; a column needs the longest + 40 px
+    const natural = item => { const w0 = item.style.width; item.style.width = 'max-content'; const w = item.getBoundingClientRect().width; item.style.width = w0; return w; };
+    const widest = Math.max(0, ...lists.flatMap(l => [...l.children].filter(c => c.getClientRects().length).map(natural)));
+    for (const list of lists) {
       const cols = getComputedStyle(list).gridTemplateColumns.split(' ').map(parseFloat).filter(w => w > 0);
       if (!cols.length) return 'the pages of a report card are not laid out in columns';
       if (Math.max(...cols) - Math.min(...cols) > 1) return 'the page columns of a report card differ in width: ' + cols.map(Math.round).join(' / ') + ' px';
@@ -753,11 +758,9 @@ export const RULES = [
         if (name.scrollWidth > name.clientWidth + 1) return 'a page name is cut in a report card: ' + (item.textContent || '').trim().slice(0, 40);
       }
       if (items.length > cols.length) {
-        // the widest page at its own width (max-content), measured and put back in the same moment; a column needs it + 40 px
-        const widest = Math.max(...items.map(item => { const w0 = item.style.width; item.style.width = 'max-content'; const w = item.getBoundingClientRect().width; item.style.width = w0; return w; }));
         const cs = getComputedStyle(list), gap = parseFloat(cs.columnGap) || 0, n = cols.length;
         const room = list.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
-        if ((n + 1) * (widest + 40) + n * gap <= room) return 'a report card lists its pages in ' + n + ' column(s) where ' + (n + 1) + ' fit (' + Math.round(room) + ' px wide, its longest page ' + Math.round(widest) + ' px)';
+        if ((n + 1) * (widest + 40) + n * gap <= room) return 'a report card lists its pages in ' + n + ' column(s) where ' + (n + 1) + ' fit (' + Math.round(room) + ' px wide, the page\\'s longest page ' + Math.round(widest) + ' px)';
       }
     }
     return true;`),

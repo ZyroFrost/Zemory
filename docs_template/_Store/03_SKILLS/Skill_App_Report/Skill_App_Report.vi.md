@@ -1,5 +1,5 @@
 ---
-version: 38
+version: 39
 lang: vi
 ---
 
@@ -222,7 +222,7 @@ lang: vi
 - **Thẻ report ở trang danh mục** xếp các trang của nó thành nhiều cột đều nhất mà bề ngang thẻ chứa được, tính theo tên trang
   dài nhất cộng chỗ thở (v37, user 25/11 qua Dashboard: "cơ chế dựa vào phần dư của màn hình, và tự động thêm cột vào"): mọi cột
   một bề rộng, không tên trang nào bị cắt, và không còn chỗ cho thêm một cột khi trang còn nhiều - mọi thẻ của trang dùng chung
-  một bề rộng cột để cột thẳng hàng (`data-rp-card-pages`), và, khi đã dựng, lật được bằng một
+  một bề rộng cột để cột thẳng hàng, đo theo tên trang dài nhất của cả trang chứ không theo từng thẻ (v39) (`data-rp-card-pages`), và, khi đã dựng, lật được bằng một
   nút ở góc phải trên (`data-rp-card-flip`) sang trạng thái số liệu (`data-rp-card-status`): bình thường, kỳ chưa có số, đọc
   lỗi kèm lần đọc tốt gần nhất, chưa đọc; giờ cập nhật, kỳ, thời gian đọc, chu kỳ tự làm mới. Chỉ phần nội dung lật, nền kính của
   thẻ đứng yên (v7). [rp-card-pages-even] [rp-card-status]
