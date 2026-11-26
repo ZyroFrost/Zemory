@@ -2,13 +2,21 @@
   "trigger": "\"note lại\" · \"ghi sổ\" · \"chốt phiên\" · sắp đổi session",
   "prompt": {
     "kind": "close",
-    "re": "(chốt phiên|note lại|ghi sổ|docs lại|đổi session|sắp hết context|mở phiên mới)",
+    "re": "(chốt phiên|note lại|ghi sổ|docs lại|đổi session|sắp hết context|mở phiên mới|đóng phiên|dong phien|tắt phiên|tat phien|đóng case|dong case|trước khi đóng|truoc khi dong)",
     "text": "[zemory] Closing the session: follow skill session-close — `zemory memory scan` → digest/search GM (the summary is not the source) → re-measure 04_TODO from 3 sources → `zemory archive` → `zemory validate`."
   },
   "block": [
     {
       "note": "closing words",
       "prompt": "note lại rồi chốt phiên nhé"
+    },
+    {
+      "note": "the user 25/11: a close of a session or a case writes the books first",
+      "prompt": "đóng case hay đóng phiên đều phải docs lại thời điểm lúc đó, dù sesion chưa hết cũng phải docs trước khi đóng"
+    },
+    {
+      "note": "closing another session's window",
+      "prompt": "khoan, trước khi đóng nhắn tụi nó docs lại đã"
     }
   ],
   "pass": [

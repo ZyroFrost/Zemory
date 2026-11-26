@@ -738,12 +738,30 @@ export const RULES = [
     const bad = marks.find(m => !/\\d/.test(m.getAttribute('data-tip') || ''));
     return bad ? 'a data mark without its tooltip: ' + (bad.getAttribute('title') || bad.getAttribute('data-cf-value') || bad.className || bad.tagName).toString().slice(0, 50) : true;`),
 
-  // J. The report cards of a catalog page (§9, user 06/11)
-  rule('rp-card-pages-even', 'a report card on a catalog page lists its pages in two even columns, so a long list never stretches it past its neighbour', `
-    for (const list of document.querySelectorAll('[data-rp-card] [data-rp-card-pages], .board-card .board-tabs')) {
-      if (!list.getClientRects().length || list.children.length < 2) continue;
-      const cols = getComputedStyle(list).gridTemplateColumns.split(' ').filter(c => c && c !== 'none');
-      if (cols.length !== 2) return 'the pages of a report card in ' + cols.length + ' column(s), two wanted';
+  // J. The report cards of a catalog page (§9, user 06/11). (v37, the user 25/11 through Dashboard: use the room the screen
+  // leaves and add columns, as long as the longest page name is never cut nor pressed against its neighbour - two columns left
+  // a wide card half empty and stretched the list down) as many even columns as fit at the longest page name with room
+  // (v39, Dashboard's live run 25/11: "5 columns where 6 fit" on a card whose own names were short) every card of a page shares
+  // one column width, so their columns line up: the longest page name is the page's, not the card's
+  rule('rp-card-pages-even', 'a report card on a catalog page lists its pages in as many even columns as its width holds at the page\'s longest page name with room (every card of the page shares that column width, so their columns line up): every column one width, no page name cut, and no room left for one more column while pages remain', `
+    const lists = [...document.querySelectorAll('[data-rp-card] [data-rp-card-pages], .board-card .board-tabs')].filter(l => l.getClientRects().length && l.children.length >= 2);
+    // each page at its own width (max-content), measured and put back in the same moment; a column needs the longest + 40 px
+    const natural = item => { const w0 = item.style.width; item.style.width = 'max-content'; const w = item.getBoundingClientRect().width; item.style.width = w0; return w; };
+    const widest = Math.max(0, ...lists.flatMap(l => [...l.children].filter(c => c.getClientRects().length).map(natural)));
+    for (const list of lists) {
+      const cols = getComputedStyle(list).gridTemplateColumns.split(' ').map(parseFloat).filter(w => w > 0);
+      if (!cols.length) return 'the pages of a report card are not laid out in columns';
+      if (Math.max(...cols) - Math.min(...cols) > 1) return 'the page columns of a report card differ in width: ' + cols.map(Math.round).join(' / ') + ' px';
+      const items = [...list.children].filter(c => c.getClientRects().length);
+      for (const item of items) {
+        const name = [...item.querySelectorAll('span, a, button')].find(e => e.clientWidth > 0 && (e.textContent || '').trim()) || item;
+        if (name.scrollWidth > name.clientWidth + 1) return 'a page name is cut in a report card: ' + (item.textContent || '').trim().slice(0, 40);
+      }
+      if (items.length > cols.length) {
+        const cs = getComputedStyle(list), gap = parseFloat(cs.columnGap) || 0, n = cols.length;
+        const room = list.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+        if ((n + 1) * (widest + 40) + n * gap <= room) return 'a report card lists its pages in ' + n + ' column(s) where ' + (n + 1) + ' fit (' + Math.round(room) + ' px wide, the page\\'s longest page ' + Math.round(widest) + ' px)';
+      }
     }
     return true;`),
   rule('rp-card-status', 'a built report card turns, by a button at its top right, to the state of its numbers: normal, a period with no numbers yet, a read that failed (with the last good read), not read yet; the time of the update, the period, how long it read, how often it refreshes', `
@@ -903,21 +921,57 @@ export const SORT_PROBE = `(async () => {
   return true;
 })()`;
 
+// (v38, the user 25/11 through Dashboard, after a first try that covered the whole window: the enlarged visual stays inside the
+// page frame - it takes the place of the board's other visuals, never the menu or the top bar - and stands above the AI chat,
+// solid) where an enlarged visual stands: the board's width, from under the page bar to the foot of the window, nothing over it
+const FOCUS_COVER = `
+    const r = box(v), board = document.querySelector('[data-rp-page]');
+    const bar = [...document.querySelectorAll('#page-bar, .page-toolbar')].find(e => e.getClientRects().length);
+    const top0 = Math.max(bar ? box(bar).bottom : 0, 0), b = board ? box(board) : {left: 0, right: innerWidth};
+    const over = e => e && e.getClientRects().length && r.left < box(e).right - 1 && r.right > box(e).left + 1 && r.top < box(e).bottom - 1 && r.bottom > box(e).top + 1;
+    if (over(document.querySelector('#layout-menu'))) return 'an enlarged visual covers the menu: ' + name(v);
+    if (over(document.querySelector('#layout-navbar'))) return 'an enlarged visual covers the top bar: ' + name(v);
+    if (Math.abs(r.left - Math.max(b.left, 0)) > 2 || Math.abs(r.right - Math.min(b.right, innerWidth)) > 2)
+      return 'an enlarged visual does not take the board width (' + Math.round(r.left) + '-' + Math.round(r.right) + ' px, the board ' + Math.round(b.left) + '-' + Math.round(b.right) + '): ' + name(v);
+    if (r.top < top0 - 1 || r.bottom > innerHeight + 1 || r.height < (innerHeight - top0) * 0.8)
+      return 'an enlarged visual does not take the board from under the page bar to the foot of the window (' + Math.round(r.top) + '-' + Math.round(r.bottom) + ' px of ' + Math.round(top0) + '-' + innerHeight + '): ' + name(v);
+    for (const [x, y] of [[.5, .5], [.1, .15], [.9, .15], [.1, .9], [.9, .9]]) {
+      const el = document.elementFromPoint(r.left + r.width * x, r.top + r.height * y);
+      if (el && !v.contains(el)) return 'something stands over an enlarged visual (' + (el.id ? '#' + el.id : String(el.className || el.tagName).split(' ')[0]) + '): ' + name(v);
+    }
+    let alpha = 0;
+    for (let e = v; e && e !== document.documentElement && !alpha; e = e.parentElement) {
+      const m = /rgba?\\(([^)]+)\\)/.exec(getComputedStyle(e).backgroundColor), p = m ? m[1].split(',').map(Number) : [];
+      if (p.length) alpha = p.length > 3 ? p[3] : 1;
+    }
+    if (alpha < 1) return 'an enlarged visual lets the page show through (its fill alpha ' + alpha + '): ' + name(v);
+    return true;`;
+
 /** v29 probe (async; the repo's browser check runs it on each report page): every enlarge button pressed in turn - the visual
- *  in focus is never blank (rp-focus-whole) - then pressed again, so the page comes back. */
+ *  in focus is never blank (rp-focus-whole) and (v38) stands inside the page frame over the board, solid, under nothing
+ *  (rp-focus-cover) - then Escape, and the page comes back as it was. */
 export const FOCUS_PROBE = `(async () => {${H}
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const whole = () => {${FOCUS_WHOLE}};
+  const cover = v => {${FOCUS_COVER}};
   const buttons = () => [...document.querySelectorAll('[data-rp-page] [data-rp-visual] .rp-focus-btn')].filter(b => b.getClientRects().length);
+  const same = (a, c) => Math.abs(a.left - c.left) <= 2 && Math.abs(a.top - c.top) <= 2 && Math.abs(a.width - c.width) <= 2 && Math.abs(a.height - c.height) <= 2;
   for (let i = 0, n = buttons().length; i < n; i++) {
     const b = buttons()[i]; if (!b) break;
     const v = b.closest('[data-rp-visual]');
+    const before = v ? box(v) : null;
     b.click(); await sleep(600);
     v?.setAttribute('data-rp-focused', '');            // a button that says nothing of its state still marks its visual
-    const said = whole(), on = document.querySelector('.rp-focus-btn[aria-pressed=true]');
+    const said = whole(), placed = v ? cover(v) : true;
     v?.removeAttribute('data-rp-focused');
-    (on || b).click(); await sleep(400);
+    // (v38) Escape gives the page back; a visual Escape leaves enlarged is closed by its button and named
+    document.dispatchEvent(new KeyboardEvent('keydown', {key: 'Escape', bubbles: true}));
+    await sleep(400);
+    const on = document.querySelector('.rp-focus-btn[aria-pressed=true]'), stuck = Boolean(on) || (v && before && !same(box(v), before));
+    if (stuck) { (on || b).click(); await sleep(400); }
     if (said !== true) return said;
+    if (placed !== true) return placed;
+    if (stuck) return 'Escape left an enlarged visual enlarged: ' + name(v);
   }
   return true;
 })()`;
@@ -972,7 +1026,8 @@ export const SELF_TEST = {
     `<nav><a role="tab">Tổng quan</a><a role="tab">Huỷ món</a></nav>` +
     `<div data-rp-glossary hidden><p data-rp-term="TC">TC (Transaction Count): số hoá đơn</p></div>` +
     `<div data-rp-card data-built style="position:relative;width:auto;margin:10px"><button data-rp-card-flip style="position:absolute;top:4px;right:4px">i</button>` +
-    `<ul data-rp-card-pages style="display:grid;grid-template-columns:1fr 1fr;margin-top:30px"><li>A</li><li>B</li><li>C</li></ul><div data-rp-card-status hidden>ok</div></div>`),
+    // (v37) the pages in as many even columns as fit at the longest page name with room
+    `<ul data-rp-card-pages style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr));margin-top:30px"><li>Tổng quan</li><li>Theo giờ</li><li>Theo cửa hàng</li></ul><div data-rp-card-status hidden>ok</div></div>`),
   faulty: SHELL(`<div class="row" style="align-items:stretch"><div class="row" data-rp-visual="cards" style="flex:2;margin:0">${cardB('Group Size', '0 k', '+1,0% MoM', 'up', 'text-success')}${cardB('B', '2', '+1,0% MoM', 'up', 'text-success')}` +
     `${cardB('C', '3', '+1,0% MoM', 'up', 'text-success')}${cardB('D', '4', '+1,0% MoM', 'up', 'text-success')}</div>` +
     `<div class="row" data-rp-visual="cards" style="flex-wrap:nowrap">${Array.from({length: 9}, (_, i) => card('K' + i, String(i + 1), '+1,0% MoM', 'up', 'text-success')).join('')}</div>` +

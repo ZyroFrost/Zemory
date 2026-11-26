@@ -720,18 +720,29 @@ export const RULES = [
   },
   {
     id: 'no-raw-code',
-    rule: 'a person reads names, never codes: a pick list, a filter, a badge or an action name shows the name of a value (from the dictionaries), never its stored code (data_query, login_ok) - a code outside the list reads as "other"',
+    rule: 'a person reads names, never codes: a pick list, a filter, a badge, an action name or a table column shows the name of a value (from the dictionaries), never its stored code - neither a code with an underscore (data_query, login_ok) nor a bare lowercase word (data, ops) - a code outside the list reads as "other"; a list drawn only while open is read by the probe names-in-lists',
     check: `(() => {
-      const code = /^[a-z]+(_[a-z]+)+$/;
+      // (v87, the user 25/11 through the system-manager repo: the Group filter of Apps listed "data" and "ops" - lowercase, not in
+      // Vietnamese - and this rule passed them: it knew only codes with an underscore) a bare lowercase word is a code too
+      const code = /^[a-z]+(_[a-z]+)*$/;
       const spots = '.slicer-item .form-check-label, .filter-field select option, .filter-row .slicer-btn, .badge, .log-action > b, td[data-label] > .badge, .g-select-menu .dropdown-item';
       const raw = [...document.querySelectorAll(spots)].find(e => code.test((e.textContent || '').replace(/^[^:]*:\\s*/, '').trim()));
       if (raw) return 'a stored code shows where a person reads a name: ' + raw.textContent.trim();
-      // the action column of a log table
       for (const t of document.querySelectorAll('table')) {
-        const at = [...t.querySelectorAll('thead th')].findIndex(h => /^(hành động|action)$/i.test(h.textContent.trim()));
-        if (at < 0) continue;
-        const cell = [...t.querySelectorAll('tbody tr')].map(r => r.cells[at]).find(c => c && code.test(c.textContent.trim()));
+        const heads = [...t.querySelectorAll('thead th')].map(h => h.textContent.trim());
+        const rows = [...t.querySelectorAll('tbody tr')];
+        // the action column of a log table: one code is enough
+        const at = heads.findIndex(h => /^(hành động|action)$/i.test(h));
+        const cell = at < 0 ? null : rows.map(r => r.cells[at]).find(c => c && code.test(c.textContent.trim()));
         if (cell) return 'a stored action code shows in the log: ' + cell.textContent.trim();
+        // (v87) any other column whose every filled cell is a code, two at least (the Group column of Apps printed data, ops);
+        // a column named as an identifier (Mã, Code, ID) shows codes on purpose
+        for (let i = 0; i < heads.length; i++) {
+          if (i === at || /^(mã|code|id)(?=\\s|$)/i.test(heads[i])) continue;
+          const cells = rows.map(r => r.cells[i]).filter(c => c && c.textContent.trim());
+          if (cells.length >= 2 && cells.every(c => code.test(c.textContent.trim())))
+            return 'a column shows stored codes where a person reads names: ' + (heads[i] || 'column ' + (i + 1)) + ' (' + cells[0].textContent.trim() + ')';
+        }
       }
       return true;
     })()`,
@@ -1053,23 +1064,24 @@ export const RULES = [
   },
   {
     id: 'crumbs',
-    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs taking its room from the start, then the search right beside the actions at its end, no day and time; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs are family / app / [group] / page (a small app: <family> / its name / its page; the hub: <family> / Hub / ...), every layer before the current page a link to that layer home, only the current page plain text',
+    rule: 'the top bar is one glass head of two rows: row 1 = the crumbs taking its room from the start, then the search (from a desktop up the middle third of the bar, row1-thirds; below 1200 px right beside the actions) and the actions at its end, no day and time; the greeting lives in the account menu; row 2 = the page bar (its filters and tools); the crumbs are family / app / [group] / page (a small app: <family> / its name / its page; the hub: <family> / Hub / ...), every layer before the current page a link to that layer home, only the current page plain text',
     check: `(() => {
       const head = document.querySelector('#layout-navbar');
       if (!head) return 'no top bar';
       const row1 = head.querySelector(':scope > .nav-row1'), row2 = head.querySelector(':scope > #page-bar');
       if (!row1 || !row2) return 'the top bar is not one head of two rows (row 1 and the page bar)';
       if (document.querySelector('.page-toolbar .page-crumbs')) return 'the crumbs still sit in the page bar - they start row 1';
-      if ([...row1.querySelectorAll('.navbar-hello, #greeting')].some(e => !e.closest('#account-menu')))
-        return 'the greeting still takes row 1 - it belongs in the account menu';
-      if (!document.querySelector('#account-menu .account-greeting')) return 'the account menu does not greet the person';
+      // (v94, the user 26/11: "chào + tên sso ở ngoài luôn") the greeting with the name stands in row 1 right before the actions;
+      // a frame before 1.47.4 still greets in the account menu - either place, never at the start of row 1 nor beside the crumbs
+      if ([...row1.querySelectorAll('.navbar-hello, #greeting')].some(e => !e.closest('#account-menu, .navbar-end')))
+        return 'the greeting stands in row 1 anywhere but right before the actions';
       const crumbs = row1.querySelector('.page-crumbs');
       if (innerWidth >= 768) {
         if (!crumbs || !crumbs.getClientRects().length) return 'no crumbs at the start of row 1';
         const search = row1.querySelector('.navbar-search'), actions = row1.querySelector('.navbar-actions');
         const c = crumbs.getBoundingClientRect(), s = search.getBoundingClientRect(), a = actions.getBoundingClientRect();
         if (c.right > s.left + 1 || s.right > a.left + 1) return 'row 1 is not crumbs · search · actions in that order';
-        if (a.left - s.right > 24) return 'the search does not stand beside the actions (' + Math.round(a.left - s.right) + ' px between)';
+        if (innerWidth < 1200 && a.left - s.right > 24) return 'the search does not stand beside the actions (' + Math.round(a.left - s.right) + ' px between)';
         if (row1.querySelector('#today, .navbar-today')) return 'the day and time still stand in row 1';
       }
       const tools = row2.querySelector(':scope > .page-toolbar > .card-tools');
@@ -1469,18 +1481,36 @@ export const RULES = [
       return loose ? 'words about the page stand loose in its body, not in the info cluster: ' + loose.textContent.trim().slice(0, 40) : true;
     })()`,
   },
-  // (v51, the user 09/11: "ô search đang ko cách đúng khoảng chuẩn… tổng chiều dài của bên phải bằng đúng 1/3 chiều dài của toàn bộ panel đầu")
+  // (v89, the user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng" - over v51's one third at the end of row 1)
   {
-    id: 'row1-end',
-    rule: 'from a desktop up, the right of row 1 - the search and the actions, one group - is exactly one third of the top bar, and every part of it stands apart from the next by the own gap of the page bar (the gap of its tools)',
+    id: 'row1-thirds',
+    rule: 'from a desktop up (1200 px), row 1 is three thirds of the top bar: the crumbs, the search in the middle with its centre on the centre of the bar, the actions ending at the end of the row, each apart from the next by the own gap of the page bar (the gap of its tools); the search fills the middle third, narrower only by what the crumbs need to read whole (from both ends, so it stays centred), never below 14rem; crumbs longer still push it right at 14rem',
     check: `(() => {
-      const n = document.getElementById('layout-navbar'), r = n && n.querySelector('.navbar-right');
-      if (!r || !r.getClientRects().length || innerWidth < 1200) return true;
-      const third = n.getBoundingClientRect().width / 3, w = r.getBoundingClientRect().width;
-      if (Math.abs(w - third) > 2) return 'the right of row 1 is ' + Math.round(w) + ' px, not one third of the panel (' + Math.round(third) + ')';
+      const n = document.getElementById('layout-navbar'), row1 = n && n.querySelector(':scope > .nav-row1'), grid = row1 && row1.querySelector('#navbar-collapse');
+      if (!row1 || !grid || !row1.getClientRects().length || innerWidth < 1200) return true;
+      const s = row1.querySelector('.navbar-search'), a = row1.querySelector('.navbar-actions'), c = row1.querySelector('.navbar-crumbs');
+      if (!s || !a || !s.getClientRects().length || !a.getClientRects().length) return 'row 1 has no search or no actions';
+      const p = n.getBoundingClientRect(), r = s.getBoundingClientRect(), third = p.width / 3;
+      // the crumbs read whole first, then the search keeps the centre, then it fills the third
+      const trail = row1.querySelector('.navbar-crumbs .breadcrumb');
+      let need = 0;
+      if (trail && trail.getClientRects().length) { const was = trail.style.width; trail.style.width = 'max-content'; need = trail.getBoundingClientRect().width; trail.style.width = was; }
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position: absolute; visibility: hidden; width: 14rem';
+      grid.append(probe);
+      const least = probe.getBoundingClientRect().width;
+      probe.remove();
+      const col = c && c.getClientRects().length ? c.getBoundingClientRect().width : 0, spare = col > need + 2, atLeast = r.width <= least + 2;
+      const off = (r.left + r.right) / 2 - (p.left + p.right) / 2;
+      if (r.width > third + 2) return 'the search is ' + Math.round(r.width) + ' px wide, more than the middle third of the bar (' + Math.round(third) + ')';
+      if (col < need - 2 && !atLeast) return 'the crumbs are cut (' + Math.round(col) + ' px for ' + Math.round(need) + ') while the search could still give way (' + Math.round(r.width) + ' px, its least ' + Math.round(least) + ')';
+      if (Math.abs(off) > 2 && (spare || !atLeast)) return 'the search stands ' + Math.round(off) + ' px off the centre of the bar (only crumbs that need the room may push it, at its least width)';
+      if (r.width < third - 2 && spare) return 'the search is ' + Math.round(r.width) + ' px, narrower than the middle third (' + Math.round(third) + ') while the crumbs have room to spare (' + Math.round(col) + ' px for ' + Math.round(need) + ')';
+      const ar = a.getBoundingClientRect(), stop = grid.getBoundingClientRect().right;
+      if (Math.abs(ar.right - stop) > 2) return 'the actions end ' + Math.round(stop - ar.right) + ' px before the end of row 1';
       const tools = document.querySelector('.page-toolbar .card-tools');
       const gap = tools ? parseFloat(getComputedStyle(tools).columnGap) || 8 : 8;
-      const parts = [r.querySelector('.navbar-search'), ...r.querySelectorAll('.navbar-actions > .nav-item')].filter(e => e && e.getClientRects().length);
+      const parts = [...a.querySelectorAll(':scope > .nav-item')].filter(e => e.getClientRects().length);
       for (let i = 1; i < parts.length; i++) {
         const g = parts[i].getBoundingClientRect().left - parts[i - 1].getBoundingClientRect().right;
         if (Math.abs(g - gap) > 1) return 'row 1: ' + Math.round(g) + ' px before ' + (parts[i].querySelector('[id]')?.id || 'a part') + ' (the page bar gap: ' + gap + ' px)';
@@ -2102,6 +2132,87 @@ export const DIALOG_RULES = [
 
 /** (v31) Probes: async browser expressions (evaluate with awaitPromise) that move the page and measure it, then put it back. */
 export const PROBES = [
+  // (v91, the user 25/11 through Dashboard: "mấy cái popover và dialogbox phải luôn ở lớp cao nhất") the layers of the frame stand in
+  // their order, and every menu or popover opened from the head is seen over anything of the page: a cover at the focus layer
+  // (the highest a page may reach) laid over what an opener opens never hides it
+  {
+    id: 'float-on-top',
+    rule: 'the layers stand in the order of the frame (--z-page < --z-bar < --z-ai < --z-focus < --z-offcanvas < --z-tip; the menus and popovers of the head, dialogs and toasts in the top layer), the AI chat under an enlarged visual, and every menu or popover opened from row 1 or the page bar stays seen under a cover at the focus layer laid over it: the point in its middle hits it',
+    check: `(async () => {
+      const css = getComputedStyle(document.documentElement), z = n => parseFloat(css.getPropertyValue('--z-' + n));
+      // (v93) --z-modal (frame 1.47.0) between the drawers and the tips, asked only of a frame that names it
+      const order = ['page', 'bar', 'ai', 'focus', 'offcanvas', 'modal', 'tip'].filter(n => n !== 'modal' || Number.isFinite(z(n)));
+      if (order.some(n => !Number.isFinite(z(n)))) return 'the frame names no layers (--z-page … --z-tip): wear frame 1.43.6 or later';
+      // a frame older than 1.45.0 (the focus still under the AI chat, the head's menus drawn in place) is not asked yet
+      if (z('focus') < z('ai')) return true;
+      for (let i = 1; i < order.length; i++) if (!(z(order[i - 1]) < z(order[i]))) return 'the layers are out of order: --z-' + order[i - 1] + ' is not under --z-' + order[i];
+      for (const ai of document.querySelectorAll('.ai-chat, .ai-fab')) {
+        const v = parseFloat(getComputedStyle(ai).zIndex);
+        if (Number.isFinite(v) && v >= z('focus')) return 'the AI chat stands at ' + v + ', not under an enlarged visual (--z-focus ' + z('focus') + ')';
+      }
+      const head = document.getElementById('layout-navbar');
+      if (!head) return true;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const esc = () => { for (const type of ['keydown', 'keyup']) document.dispatchEvent(new KeyboardEvent(type, {key: 'Escape', bubbles: true})); };
+      const name = e => e.id ? '#' + e.id : (e.getAttribute('aria-label') || e.className && '.' + String(e.className).trim().split(/\\s+/)[0] || e.tagName.toLowerCase());
+      const out = [];
+      for (const b of [...head.querySelectorAll('[aria-expanded="false"]')].filter(e => e.getClientRects().length && !e.disabled)) {
+        b.click();
+        await wait(400);
+        const id = b.getAttribute('aria-controls');
+        let pop = id && document.getElementById(id);
+        if (!pop || !pop.getClientRects().length) pop = b.closest('.dropdown, .sn-dd, .nav-item')?.querySelector('.dropdown-menu.show, [role="dialog"]:not([hidden]), [role="menu"]:not([hidden])');
+        if (pop && pop.getClientRects().length) {
+          const r = pop.getBoundingClientRect(), cover = document.createElement('div');
+          cover.id = 'g-probe-cover';
+          cover.style.cssText = 'position: fixed; left: 0; top: 0; width: 100px; height: 100px; z-index: var(--z-focus); background: transparent';
+          document.body.append(cover);
+          // a page drawn zoomed: the cover is placed in its own px (a rect is on screen)
+          const k = cover.getBoundingClientRect().width / 100 || 1;
+          Object.assign(cover.style, {left: r.left / k + 'px', top: r.top / k + 'px', width: r.width / k + 'px', height: r.height / k + 'px'});
+          const x = Math.min(innerWidth - 2, Math.max(1, (r.left + r.right) / 2)), y = Math.min(innerHeight - 2, Math.max(1, (r.top + r.bottom) / 2));
+          const hit = document.elementFromPoint(x, y);
+          cover.remove();
+          if (hit && !pop.contains(hit)) out.push(name(b) + ': what it opens (' + name(pop) + ') is hidden by ' + (hit.id === 'g-probe-cover' ? 'anything of the page at the focus layer' : name(hit)));
+        }
+        if (b.getAttribute('aria-expanded') === 'true') b.click();
+        esc();
+        await wait(250);
+      }
+      return out.length ? out.join(' | ') : true;
+    })()`,
+  },
+  // (v90, the user 25/11: "toàn bộ màu sắc của scroolbarr, nút khi bật, màu table … đều đang là màu cố định … chọn theme phải
+  // đổi toàn bộ ko chỉ cái ảnh nền") the page is seen under two tones: every accent surface of the page shows a different colour
+  // in each - one that keeps its colour is written as a literal (Rule_Gate_77_ColoursFromTheme). A frame older than 1.44.0, whose
+  // tones change only the wallpaper, is not asked.
+  {
+    id: 'theme-follow',
+    rule: 'choosing a tone changes the whole page, not only the wallpaper: seen under the Ocean tone and under the Sunset tone, every accent surface of the page (a primary button, a switch on, a chosen tab or view, an accent badge, the chosen item of a menu) shows a different colour in each; one that keeps its colour is a colour written as a literal',
+    check: `(async () => {
+      const html = document.documentElement, was = html.dataset.wall;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      // (v92, Dashboard 25/11: every page with page tabs read red) an accent surface is what PAINTS the accent: the chosen page
+      // tab is clear over the pill that carries it, so the pill is read, and an element with no fill of its own is left out
+      const painted = e => { const c = getComputedStyle(e); return c.backgroundImage !== 'none' || !['transparent', 'rgba(0, 0, 0, 0)'].includes(c.backgroundColor); };
+      const els = [...document.querySelectorAll('.btn-primary, .form-check-input:checked, .nav-pills .nav-link.active, .view-switch > .btn.active, .bg-label-primary, .dropdown-item.active, .page-tabs-panel > .page-tabs-pill')]
+        .filter(e => e.getClientRects().length && !e.closest('.sw, [data-theme-fixed]') && painted(e)).slice(0, 40);
+      const look = e => { const c = getComputedStyle(e); return [c.backgroundColor, c.backgroundImage, c.color, c.borderTopColor].join('|'); };
+      const seen = [], root = [];
+      try {
+        for (const tone of ['ocean', 'sunset']) {
+          html.dataset.wall = tone;
+          await wait(700);
+          root.push(getComputedStyle(html).getPropertyValue('--g-accent').trim());
+          seen.push(els.map(look));
+        }
+      } finally { html.dataset.wall = was; }
+      if (root[0] === root[1]) return true;
+      const still = els.filter((e, i) => seen[0][i] === seen[1][i]);
+      const name = e => e.id ? '#' + e.id : (e.tagName.toLowerCase() + '.' + String(e.className).trim().split(/\\s+/).slice(0, 2).join('.'));
+      return still.length ? 'these keep one colour whatever the tone (a colour written as a literal): ' + still.slice(0, 5).map(name).join(', ') : true;
+    })()`,
+  },
   // (v64, the user 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt động dc để các repo nó tự dò
   // và sửa") every control of row 2 is pressed as a person would and must do what it says; the page is left as it was
   {
@@ -2193,6 +2304,93 @@ export const PROBES = [
       const dead = [...document.querySelectorAll('.bar-grip, #page-tabs-grip, .bar-resize')].find(g => shown(g) && getComputedStyle(g).pointerEvents === 'none');
       if (dead) out.push('a grip of row 2 does not take the pointer');
       return out.length ? out.join('; ') : true;
+    })()`,
+  },
+  // (v87, the user 25/11 through the system-manager repo: the Group filter of Apps listed "data" and "ops" - untranslated, lowercase - and the
+  // user asked for a gate that never lets such a list through) a multi-pick list is drawn only while it is open, so no-raw-code,
+  // which reads what stands on the page, never saw its options: this probe opens each one as a person does and reads them
+  {
+    id: 'names-in-lists',
+    rule: 'every pick list of the page - each filter on the page or row 2 and each in the filter popover - offers names, never stored codes: opened as a person opens it, no option reads as a bare lowercase word or a code with an underscore (data, ops, data_query); the page is left as it was',
+    check: `(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const until = async (f, ms) => { for (let t = 0; t <= ms; t += 100) { try { if (f()) return true; } catch { /* drawing */ } await wait(100); } return false; };
+      const shown = e => Boolean(e) && e.getClientRects().length > 0;
+      const esc = () => { for (const type of ['keydown', 'keyup']) document.dispatchEvent(new KeyboardEvent(type, {key: 'Escape', bubbles: true})); };
+      const code = /^[a-z]+(_[a-z]+)*$/;
+      const out = [];
+      let read = 0;
+      const look = async btn => {
+        if (read++ >= 12) return;   // a page with many filters: the first twelve are enough to find a list of codes
+        const menu = () => document.getElementById(btn.getAttribute('aria-controls'));
+        btn.click();
+        if (!(await until(() => menu(), 2000))) return;
+        await wait(150);
+        const name = (btn.getAttribute('aria-label') || '').split(':')[0].trim() || 'a filter';
+        const hit = [...menu().querySelectorAll('.slicer-item .form-check-label, [role="option"]')].map(e => (e.textContent || '').trim()).find(t => code.test(t));
+        if (hit) out.push('the filter ' + name + ' offers a stored code: ' + hit);
+        btn.click();
+        if (!(await until(() => !menu(), 1500))) { esc(); await until(() => !menu(), 1500); }
+      };
+      const lists = root => [...root.querySelectorAll('button.slicer-btn[aria-haspopup="listbox"][aria-controls]')].filter(b => shown(b) && !b.disabled);
+      for (const b of lists(document).filter(b => !b.closest('#filter-pop'))) await look(b);
+      const ft = document.getElementById('filter-toggle'), pop = document.getElementById('filter-pop');
+      if (shown(ft) && !ft.disabled && pop) {
+        ft.click();
+        if (await until(() => !pop.hidden && shown(pop), 2000)) {
+          for (const b of lists(pop)) await look(b);
+          esc();
+          if (!(await until(() => pop.hidden || !shown(pop), 2000))) ft.click();
+        }
+      }
+      return out.length ? out.join('; ') : true;
+    })()`,
+  },
+  // (v88, the user 25/11 through the system-manager repo: "is the English-Vietnamese gate missing?" - the dictionaries were only compared key
+  // for key, and no check ever looked at a page in English) the page is switched to English with the frame's own language
+  // buttons, its words are read, and it is switched back
+  {
+    id: 'lang-both',
+    rule: 'the page speaks the language chosen: switched to English with the language buttons of the account menu, no word of the frame or of the app (buttons, labels, column headers, headings, tabs, dialog titles, box hints, tooltips of controls) shows Vietnamese; data keeps its own words (table rows, pick-list options, report content, the person\'s name, anything marked translate="no"); the page is switched back as it was',
+    check: `(async () => {
+      const en = document.querySelector('[data-lang="en"]'), vi = document.querySelector('[data-lang="vi"]');
+      if (!en || !vi) return true;
+      // one look per page and browser: the words do not change with the width or the theme
+      const key = 'sgc-lang-both:' + location.pathname + location.hash;
+      try { if (sessionStorage.getItem(key)) return true; } catch { /* no storage */ }
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const until = async (f, ms) => { for (let t = 0; t <= ms; t += 100) { try { if (f()) return true; } catch { /* drawing */ } await wait(100); } return false; };
+      const shown = e => Boolean(e) && e.getClientRects().length > 0;
+      const VI = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]/i;
+      const DATA = '[data-rp-page], tbody, .slicer-item, .slicer-menu, select, option, .avatar, [translate="no"], [data-raw], #greeting, .account-greeting, #account-menu h6, .toast, #layout-menu .menu-link, .breadcrumb, .slicer-btn';
+      const WORDS = 'button, .btn, label, .form-label, thead th, .modal-title, .dropdown-header, .menu-header-text, .empty-state, [role="tab"], .nav-link, h1, h2, h3, h4, h5, h6, .card-title';
+      const pressed = b => b.getAttribute('aria-pressed') === 'true';
+      const was = pressed(en) ? 'en' : 'vi';
+      const out = [];
+      try {
+        if (was !== 'en') {
+          en.click();
+          if (!(await until(() => pressed(document.querySelector('[data-lang="en"]')), 6000))) return 'the English button changed nothing';
+          await wait(800);
+        }
+        const seen = new Set();
+        const say = (where, text) => { const t = text.trim().replace(/\\s+/g, ' ').slice(0, 50); if (!seen.has(t) && out.length < 6) { seen.add(t); out.push(where + ' "' + t + '"'); } };
+        for (const e of document.querySelectorAll(WORDS)) {
+          if (!shown(e) || e.closest(DATA)) continue;
+          const walk = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+          for (let n = walk.nextNode(); n; n = walk.nextNode()) if (VI.test(n.nodeValue) && !n.parentElement.closest(DATA)) say(e.tagName.toLowerCase(), n.nodeValue);
+        }
+        // the label of a filter rides in its button; only the label is the app's word, the value after it is data
+        for (const l of document.querySelectorAll('.filter-label')) if (shown(l) && !l.closest('[translate="no"]') && VI.test(l.textContent)) say('filter label', l.textContent);
+        for (const e of document.querySelectorAll('[placeholder], [aria-label], [title], [data-tip]')) {
+          if (!shown(e) || e.closest(DATA) || e.matches('svg *, path')) continue;
+          for (const a of ['placeholder', 'aria-label', 'title', 'data-tip']) { const v = e.getAttribute(a); if (v && VI.test(v)) say(a, v); }
+        }
+      } finally {
+        if (was !== 'en') { const back = document.querySelector('[data-lang="vi"]'); if (back) { back.click(); await until(() => pressed(document.querySelector('[data-lang="vi"]')), 6000); await wait(400); } }
+        try { sessionStorage.setItem(key, '1'); } catch { /* no storage */ }
+      }
+      return out.length ? 'Vietnamese shows in the English page: ' + out.join('; ') : true;
     })()`,
   },
   // (v51, the user 09/11 through an app of the family: a widened column ran a table out of its panel. Async, Reconcile 09/11: a

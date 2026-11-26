@@ -1,0 +1,251 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit"
+    ]
+  },
+  "block": [
+    {
+      "note": "an app styles its chosen row in the base blue",
+      "files": {},
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "old_string": ".x {}",
+        "new_string": ".x {}\ntr.on { background: rgba(124, 196, 255, .16); }"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a new stylesheet writes white words",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/card.css",
+        "content": ".card-title { color: #fff; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "the next line of a shadow list carries a black",
+      "files": {},
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "frontend/shell/styles/a.css",
+        "old_string": "a",
+        "new_string": ".p { box-shadow: 0 1px 2px var(--x),\n    0 4px 8px rgba(0, 0, 0, .3); }"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "an hsl colour",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "src/b.scss",
+        "content": ".b { border-color: hsl(210 40% 50%); }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "a token of the tone",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/ok.css",
+        "content": "tr.on { background: rgba(var(--g-accent-rgb), .16); color: var(--g-on-accent); }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a token definition",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/shell/styles/t.css",
+        "content": ":root { --g-x: #123456; --g-y-rgb: 1, 2, 3; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a colour marked theme-fixed",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/login.css",
+        "content": ".ms-logo .red { fill: #f25022; } /* theme-fixed: Microsoft's official logo colours */\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a url(#id) and a mask",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/fx.css",
+        "content": ".spark { fill: url(#fade); }\n.m { mask: linear-gradient(#000 0 0); }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a selector with an id that reads like a colour",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/ids.css",
+        "content": "#facade:hover, .x:not(#bead) { color: var(--g-text); }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a wallpaper swatch of the frame",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/shell/styles/sw.css",
+        "content": ".sw[data-w=\"ocean\"] { background: linear-gradient(135deg, #1098ad, #4263eb); }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a hex in a markdown file",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "docs/notes.md",
+        "content": "The old accent was #7cc4ff.\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "built output",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/dist/assets/index.css",
+        "content": ".a{color:#fff}\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    },
+    {
+      "note": "a line already in the file, unchanged",
+      "files": {},
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "frontend/src/styles/old.css",
+        "old_string": ".a { color: #111; }",
+        "new_string": ".a { color: #111; }\n.b { color: var(--g-text); }"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 ---
-version: 86
+version: 94
 lang: vi
 ---
 
@@ -56,10 +56,16 @@ lang: vi
   3 s sau vẫn giữ và không báo lỗi. App không đổi đường hay chặn lời gọi của khung (`/api/auth/*`, `/api/apps`,
   `/api/notifications`, `/api/health`); probe live lưu và đọc bằng fetch sạch nên lớp bọc fetch của app không làm lệch.
   [settings-save-works]
+- **Chọn tông là đổi cả trang** (v90, user 25/11: "chọn theme phải đổi toàn bộ ko chỉ cái ảnh nền"; khung 1.44.0): mỗi tông
+  mang cặp màu nhấn riêng, nên nút đang bật, switch đang bật, link, tab và kiểu xem đang chọn, vạch đầu bảng, dòng rê chuột và
+  dòng đang chọn, thanh cuộn đều đổi theo, cả sáng lẫn tối (skill app-glass, token). Không màu nào của trang được viết cứng
+  (Rule_Gate_77_ColoursFromTheme). [theme-follow: probe xem trang dưới hai tông]
 - **Nút hàng 1 có khung** (v42): nút ứng dụng và chuông là
-  ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Bên phải hàng 1 là một
-  nhóm, đúng một phần ba thanh** (v51): ô tìm và các nút đứng chung ở cuối hàng 1, rộng đúng một phần ba thanh trên cùng (ô tìm lấy phần
-  các nút để lại), mọi phần cách phần kế bằng đúng khoảng cách của thanh trang - không bao giờ khe rộng hơn trước ô tìm. [row1-end]
+  ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Ô tìm là một phần ba
+  giữa của hàng 1** (v89, user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng", thay một phần ba ở cuối của v51): từ máy
+  tính (1200 px) trở lên, hàng 1 chia ba phần của thanh trên cùng - đường dẫn, ô tìm có tâm trùng tâm thanh, dãy nút kết thúc ở
+  cuối hàng, các nút cách nhau đúng khoảng cách của thanh trang. Ô tìm lấp đúng một phần ba giữa; khi đường dẫn cần thêm chỗ để
+  đọc đủ thì ô co đều từ hai đầu, vẫn ở giữa, nhỏ nhất 14rem; đường dẫn dài hơn nữa thì đẩy ô (ở 14rem) sang phải. Dưới 1200 px ô tìm đứng sát dãy nút. [row1-thirds]
   **Đường
   dẫn ngăn bằng mũi tên của kit,** không bao giờ là "/" gõ tay ("cái path nên thành >"). [crumb-chevron]
 - **Cái đang chọn thì sáng, phần còn lại mang khung xám** (v42): mọi tab trong hàng có khung khi chưa chọn; tab đang chọn, kiểu xem đang
@@ -184,7 +190,7 @@ lang: vi
   thanh trang luôn đứng yên. Trang không có thanh riêng thì chỉ có hàng 1. [crumbs] [frame] Đầu trang lớn theo hai hàng của nó - không bao giờ giữ
   `block-size: 4rem` cố định của bộ mẫu để thanh trang tràn ra ngoài - và trang bắt đầu dưới nó, không phần nào của trang nằm dưới
   thanh. [head-whole]
-- **Hàng 1 nhường chỗ cho đường dẫn:** đường dẫn từ đầu hàng, rồi ô tìm duy nhất đứng sát dãy nút ở cuối, và dãy nút chỉ còn app ·
+- **Hàng 1 nhường chỗ cho đường dẫn:** đường dẫn từ đầu hàng, ô tìm duy nhất ở giữa (row1-thirds; dưới 1200 px thì đứng sát dãy nút), dãy nút ở cuối, và dãy nút chỉ còn app ·
   chuông · tài khoản. Không có ngày giờ. Điện thoại bỏ đường dẫn khỏi hàng 1. [crumbs] Lớp hệ, lớp app và trang đang xem luôn đọc
   đủ; chỉ các lớp ở giữa co lại thành "…" và hiện đủ tên khi rê chuột. [crumbs-whole]
 - **Đường dẫn là hệ / app / [nhóm] / trang:** app nhỏ là `<hệ> / <app> / <trang>`; bản thân system-manager cũng là một app, là
@@ -192,9 +198,10 @@ lang: vi
   đều là liên kết về trang đầu của lớp đó (trang đầu của hệ và của hub là trang chọn app, của một nhóm là trang đầu của nhóm) -
   kể cả khi trang đầu đó chính là trang đang mở; chỉ trang hiện tại là chữ thường (`aria-current="page"`); không title nào lặp
   lại nấc cuối. [crumbs]
-- **Menu tài khoản theo bộ mẫu:** tiêu đề của nó là lời chào trên MỘT dòng ("Chào buổi tối, <tên>"), dưới là vai; rồi Hồ sơ của
-  tôi, Cài đặt, các cài đặt nhanh - ngôn ngữ (VI · EN), sáng / tối, công tắc kính - rồi Đăng xuất. Lời chào không bao giờ chiếm chỗ
-  ở hàng 1. [crumbs] [bar-switches]
+- **Lời chào nằm ở hàng 1, ngay trước các nút** (v94, user 26/11: "chào + tên sso ở ngoài luôn để đỡ cấn, chức vụ để lại
+  trong user popover"): "Chào buổi sáng, <họ tên đầy đủ của tài khoản>" trên một dòng, dài thì cắt bằng "…", từ 1200 px. **Menu
+  tài khoản theo bộ mẫu:** tên (phần trước " - "), dưới là vai; rồi Hồ sơ của tôi, Cài đặt, các cài đặt nhanh - ngôn ngữ (VI ·
+  EN), sáng / tối, công tắc kính - rồi Đăng xuất. [crumbs] [bar-switches]
 - **Số phiên bản của app đang mở nằm ở chân menu** (`v<M.m.p>`, đọc từ health của app), ẩn khi menu thu gọn; không bao giờ ở hàng 1.
 - **Thanh trang không có tab riêng của app tới một trang của menu:** các trang của app tìm trong menu; cụm trái của thanh trang là
   công cụ của trang (thao tác chính, một công tắc, các chip lọc chéo). Chỉ cụm tab của khung được đứng ở hàng 2 (v56,
@@ -213,6 +220,31 @@ lang: vi
   một lớp của đường dẫn (`<family> / <app> / <group> / ... / <page>` - nhiều lớp nhóm khi menu lồng nhiều tầng), trang riêng của nhóm
   liệt kê những gì nó chứa, và mọi trang thuộc nhóm hiện nhóm đó trong đường dẫn. Thẻ trang không bao giờ lặp tên nhóm thành tiêu đề
   trên nội dung; tiêu đề của một thẻ con là tên riêng của thẻ đó. [group-in-crumbs]
+
+## 2c. Lớp — một thứ tự cho mọi app (v91)
+
+User 25/11, qua Dashboard: "bảng skill phải có thứ tư lớp cho từng loại và mọi app phải bám theo"; "mấy cái popover và dialogbox
+phải luôn ở lớp cao nhất". Khung đặt tên các lớp thành biến CSS (khung 1.43.6; thứ tự dưới đây từ 1.45.0); app dùng các biến này -
+z-index của app là một biến trong bảng (`var(--z-focus)`), không bao giờ là số tự đặt.
+
+| Lớp, từ thấp lên cao | Biến | Cái gì nằm ở đó |
+|---|---|---|
+| 1 | `--z-page` (1) | trang, các card, đầu bảng dính và cột ghim (lớp riêng bên trong card dưới 10) |
+| 2 | `--z-bar` (1075) | thanh trên cùng và thanh trang |
+| 3 | `--z-ai` (1078) | khung chat AI và nút AI - trên thanh đầu (user 19/11: "chat phải luôn ở trên cùng") |
+| 4 | `--z-focus` (1079) | visual phóng to trên trang, trong khung trang, trên khung chat AI (skill app-report, rp-focus) |
+| 5 | `--z-offcanvas` (1090) | ngăn kéo, tấm phủ trên trang |
+| 5b | `--z-modal` (1095) | hộp thoại vẽ thành lớp phủ: ô tìm (Ctrl+K), `.modal` của Bootstrap và nền mờ của nó (khung 1.47.0) |
+| 6 | `--z-tip` (1100) | tip (tip trong hộp thoại hay popover đang mở thì gắn vào đó) |
+| 7 | top layer | menu và popover của thanh đầu (`--z-float` 1080 chỉ cho lớp nổi vẽ tại chỗ) |
+| 8 | top layer | hộp thoại |
+| 9 | top layer | toast |
+
+- Lớp nổi (dropdown, menu, popover, tip, hộp thoại) không bao giờ bị thứ gì của trang che, kể cả visual phóng to và khung chat
+  AI. [float-on-top]
+- Không app nào đưa nội dung trang lên top layer: top layer chỉ giữ menu, popover, hộp thoại và toast của khung.
+- Hộp nào chứa một lớp nổi thì không tạo lớp xếp chồng riêng giam nó (z-index kèm position, transform, filter, backdrop-filter,
+  isolation, contain): lớp nổi gắn vào `<body>` hoặc hộp thoại đang mở, như menu chọn và tip của khung.
 
 ## 3. Hộp thoại — đúng S / M / L (`app-base` F2 trong kiểu này)
 
@@ -351,7 +383,17 @@ lang: vi
 - **Người dùng đọc tên, không đọc mã:** danh sách chọn, bộ lọc, nhãn hay tên hành động hiện tên của giá trị lấy từ từ điển, không
   bao giờ hiện mã lưu (`data_query`, `login_ok`); mã ngoài danh sách đọc là "Hành động khác". Mã hành động là danh sách đóng của
   hệ (hợp đồng app của DB hệ): app giữ danh sách đó, mỗi mã có tên ở mọi ngôn ngữ, và một phép kiểm tĩnh đối chiếu danh sách với
-  hợp đồng khi hợp đồng có trên máy. [no-raw-code]
+  hợp đồng khi hợp đồng có trên máy. [no-raw-code] (v87, user 25/11: bộ lọc Nhóm liệt kê `data` và `ops`) một chữ thường đứng
+  một mình cũng là mã, và một cột bảng mà mọi ô đều là mã cũng vậy (cột tên Mã / Code / ID cố ý hiện mã). Danh sách chọn chỉ vẽ
+  khi mở thì được mở như người dùng mở - từng bộ lọc trên trang, trên hàng 2 và trong ô bộ lọc - và không lựa chọn nào được đọc
+  ra mã. [names-in-lists] Danh sách dựng từ giá trị lưu phải đặt tên từng giá trị: `optionsOf(values, v => name(v))`, không bao
+  giờ chỉ `optionsOf(values)`.
+- **Trang nói đúng ngôn ngữ đã chọn** (v88, user 25/11: "cổng tiếng anh việt đang bị thiếu à?" - hai từ điển chỉ được so từng
+  khoá, chưa phép kiểm nào nhìn một trang ở tiếng Anh): chuyển sang tiếng Anh bằng nút ngôn ngữ trong menu tài khoản thì không
+  chữ nào của khung hay của app còn tiếng Việt - nút, nhãn, tiêu đề cột, tiêu đề, tab, tiêu đề hộp thoại, gợi ý trong ô nhập,
+  tooltip của nút. Dữ liệu giữ chữ của nó (dòng bảng, lựa chọn trong danh sách, nội dung báo cáo, tên người); tên là dữ liệu mà
+  đứng ở chỗ của một chữ thì đánh dấu `translate="no"`. Phép thử chuyển trang lại như cũ, mỗi trang một lần trong một trình
+  duyệt. [lang-both]
 - **Chấm trạng thái nguyên vẹn:** chấm của avatar trực tuyến nằm trên mép nó, và không khung nào bao quanh - nút hay dòng menu cắt
   tràn vì hiệu ứng gợn sóng - cắt mất chấm. Con số trên một nút (số tin chưa đọc của chuông, `.badge-notifications` hoặc `data-count-badge`)
   cũng nằm trọn, lòi ra ngoài nút như vậy (v33: con số bị cắt trong nút tròn của chuông). [dot-whole]

@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 86
+version: 94
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v86 #5a2d55811ec6
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v94 #6c0ee03f4a09
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -64,11 +64,17 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v86 #5a2d55811ec6
   as a person presses them, still stand 3 s later with no error. An app never reroutes or blocks the frame's own calls
   (`/api/auth/*`, `/api/apps`, `/api/notifications`, `/api/health`); the live probes save and read through a clean fetch, so an
   app's fetch wrapper cannot turn them aside. [settings-save-works]
+- **Choosing a tone changes the whole page** (v90, the user 25/11: "chọn theme phải đổi toàn bộ ko chỉ cái ảnh nền"; frame
+  1.44.0): each tone carries its accent pair, so a button on, a switch on, a link, the chosen tab and view, a table's head line,
+  a row's hover and chosen state and the scrollbar all change with it, light and dark (skill app-glass, tokens). No colour of
+  the page is written as a literal (Rule_Gate_77_ColoursFromTheme). [theme-follow: the probe sees the page under two tones, Ocean and Sunset]
 - **Row 1's buttons are framed** (v42): the apps and the
   bell are squares with the bar's frame (fill, edge, kit radius) at the search box's height; open, lit as the filter button.
-  [head-framed] **The right of row 1 is one group, one third of the bar** (v51): the search and the actions stand
-  together at the end of row 1, exactly a third of the top bar wide (the search takes what the buttons leave), every part
-  apart from the next by the page bar's own gap - never a wider gap before the search. [row1-end]
+  [head-framed] **The search is the middle third of row 1** (v89, the user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng",
+  over v51's one third at the end): from a desktop up (1200 px) row 1 is three thirds of the top bar - the crumbs, the search
+  with its centre on the bar's, the actions ending at the end of the row, apart from each other by the page bar's own gap. The
+  search fills the middle third; where the crumbs need more room to read whole it gives way from both ends, staying centred,
+  never below 14rem; crumbs longer still push it right at 14rem. Below 1200 px the search stands right beside the actions. [row1-thirds]
   **The crumbs are parted by the kit's chevron,** never a typed "/" ("cái path nên thành >"). [crumb-chevron]
 - **What is chosen is lit, the rest wears the grey frame** (v42): every tab of a row is framed at rest; the chosen tab, the chosen view of
   the switch and a tool that is on are filled with the accent (white words), and a light runs across the one just chosen,
@@ -208,8 +214,8 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v86 #5a2d55811ec6
   scroll only: the header row, a pinned first column and the page bar always stay. A page with no bar of its own shows row 1 only. [crumbs] [frame] The head grows with its two rows - never the kit's fixed
   `block-size: 4rem` that the page bar spills out of - and the page starts below it, nothing of the page under the bar.
   [head-whole]
-- **Row 1 gives its room to the crumbs:** the crumbs from its start, then the one search right beside the buttons at its end,
-  and the buttons are only apps · bell · account. No day and time. A phone drops the crumbs from row 1. [crumbs] The family,
+- **Row 1 gives its room to the crumbs:** the crumbs from its start, the one search in the middle (row1-thirds; below 1200 px right
+  beside the buttons), the buttons at its end, and the buttons are only apps · bell · account. No day and time. A phone drops the crumbs from row 1. [crumbs] The family,
   the app and the page on screen always read whole; only the layers between them shrink to "…" and show their whole name on
   hover. [crumbs-whole]
 - **The crumbs are family / app / [group] / page:** a small app is `<family> / <app> / <page>`; the system-manager is
@@ -217,9 +223,10 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v86 #5a2d55811ec6
   in the menu. Every layer before the current page is a link to that layer's home (the family's and the hub's home is the
   launcher, a group's its first page) - even when that home is the page on screen; only the current page is plain text
   (`aria-current="page"`); no title repeats the last crumb. [crumbs]
-- **The account menu is the kit's:** its heading is the greeting on ONE line ("Good evening, <name>") with the role under it;
-  then My profile, Settings, the quick settings - language (VI · EN), light / dark, the glass switch - and Sign out. The
-  greeting never takes room in row 1. [crumbs] [bar-switches]
+- **The greeting stands in row 1, right before the actions** (v94, the user 26/11: "chào + tên sso ở ngoài luôn để đỡ cấn,
+  chức vụ để lại trong user popover"): "Good morning, <the account's full name>" on one line, cut with "…" when long, from
+  1200 px. **The account menu is the kit's:** the name (its part before " - ") with the role under it; then My profile,
+  Settings, the quick settings - language (VI · EN), light / dark, the glass switch - and Sign out. [crumbs] [bar-switches]
 - **The version of the open app stands at the foot of the menu** (`v<M.m.p>`, read from the app's health), hidden while the
   menu is folded; never in row 1.
 - **A page bar carries no tab of the app's own to a page of the menu:** the pages of an app are found in the menu; the page
@@ -240,6 +247,31 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v86 #5a2d55811ec6
   under is one layer of the crumbs (`<family> / <app> / <group> / ... / <page>` - several group layers when the menu nests them),
   its own page lists what it holds, and every page under it shows it in its crumbs. A page card never repeats a group's name as
   a heading over its content; an inner card's own title is its own name. [group-in-crumbs]
+
+## 2c. Layers — one order for every app (v91)
+
+The user 25/11, through Dashboard: "bảng skill phải có thứ tư lớp cho từng loại và mọi app phải bám theo"; "mấy cái popover và
+dialogbox phải luôn ở lớp cao nhất". The frame names the layers as CSS variables (frame 1.43.6; the order below from 1.45.0); an
+app takes them - its own z-index is a variable of this table (`var(--z-focus)`), never a number of its own.
+
+| Layer, low to high | Variable | What stands there |
+|---|---|---|
+| 1 | `--z-page` (1) | the page, its cards, their sticky heads and pinned columns (local layers inside a card stay under 10) |
+| 2 | `--z-bar` (1075) | the top bar with the page bar |
+| 3 | `--z-ai` (1078) | the AI chat and its button - over the top bar (the user 19/11: "chat phải luôn ở trên cùng") |
+| 4 | `--z-focus` (1079) | a visual enlarged over the page, inside the page frame, over the AI chat (skill app-report, rp-focus) |
+| 5 | `--z-offcanvas` (1090) | drawers, the sheet over the page |
+| 5b | `--z-modal` (1095) | a dialog drawn as an overlay: the search (Ctrl+K), a Bootstrap `.modal` and its backdrop (frame 1.47.0) |
+| 6 | `--z-tip` (1100) | tips (a tip inside an open dialog or popover joins it) |
+| 7 | top layer | the menus and popovers of the head (`--z-float` 1080 only for a float drawn in place) |
+| 8 | top layer | dialogs |
+| 9 | top layer | toasts |
+
+- A floating layer - a dropdown, a menu, a popover, a tip, a dialog - is never covered by anything of the page, an enlarged
+  visual or the AI chat included. [float-on-top]
+- No app lifts content of the page into the top layer: the top layer holds the frame's menus, popovers, dialogs and toasts.
+- A box that holds a floating layer makes no stacking context that traps it (z-index with a position, transform, filter,
+  backdrop-filter, isolation, contain): the float goes to `<body>` or to the open dialog, as the frame's select menu and tip do.
 
 ## 3. Dialogs — exactly S / M / L (`app-base` F2 in this kind)
 
@@ -386,7 +418,17 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v86 #5a2d55811ec6
 - **A person reads names, never codes:** a pick list, a filter, a badge or an action name shows the name of a value from the
   dictionaries, never its stored code (`data_query`, `login_ok`); a code outside the list reads as "Other action". The action
   codes are the family's closed list (the app contract of the family database): the app keeps that list with a name for each code in every
-  language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code]
+  language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code] (v87, the
+  user 25/11: a Group filter listed `data` and `ops`) a bare lowercase word is a code too, and so is a table column whose every
+  cell is one (a column named Mã / Code / ID shows codes on purpose). A pick list drawn only while open is opened as a person
+  opens it - each filter on the page, on row 2 and in the filter popover - and no option may read as a code. [names-in-lists]
+  Any list built from stored values names each value: `optionsOf(values, v => name(v))`, never `optionsOf(values)` alone.
+- **The page speaks the language chosen** (v88, the user 25/11: the two dictionaries were only compared key for key, and no
+  check ever looked at a page in English): switched to English by the language buttons of the account menu, no word of the
+  frame or of the app shows Vietnamese - buttons, labels, column headers, headings, tabs, dialog titles, box hints, the
+  tooltips of controls. Data keeps its own words (table rows, pick-list options, report content, the person's name); a name
+  that is data but stands where a word would is marked `translate="no"`. The probe switches the page back as it was, once per
+  page and browser. [lang-both]
 - **The status dot is whole:** an online avatar's dot sits on its edge, and no box around it - a button or a menu row that
   clips for its ripple - cuts it. A count on a button (the bell's unread, `.badge-notifications` or `data-count-badge`) stands
   whole out of it the same way (v33: the count was cut inside the bell's round button). [dot-whole]

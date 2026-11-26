@@ -1,5 +1,5 @@
 ---
-version: 7
+version: 8
 lang: vi
 ---
 
@@ -36,7 +36,8 @@ CSS là lỗi (`app-base`, token). Mỗi theme khai lại TRỌN bộ.
 | lớp kính | `--g-glass` · `--g-glass-strong` · `--g-edge` · `--g-edge-soft` · `--g-dim` | lớp đậm là thứ panel rơi về khi tắt blur |
 | độ sâu | `--g-shadow` · `--g-blur` | mỗi tầng nổi một token bóng; blur chỉ qua token |
 | nhấn và trạng thái | `--g-accent` · `--g-accent-2` · `--g-good` · `--g-warn` · màu thương hiệu | màu trạng thái không kiêm màu nhấn (`app-base` F11) |
-| hình nền | `--g-blob-a` · `--g-blob-b` · `--g-blob-c`, mỗi giá trị `data-wall` một bộ tông | tông mặc định là của thương hiệu; các tông khác là lựa chọn |
+| hình nền và màu nhấn của nó | `--g-blob-a` · `--g-blob-b` · `--g-blob-c` và `--g-accent` · `--g-accent-2` (kèm `-rgb`) · `--g-on-accent`, mỗi giá trị `data-wall` và mỗi theme một bộ | tông mặc định là của thương hiệu; các tông khác là lựa chọn; chọn một tông là đổi cả trang, không bao giờ chỉ đổi hình nền (v8, user 25/11) |
+| màu trung tính | `--g-shade-rgb` (bóng) · `--g-light-rgb` (ánh sáng) · `--g-solid` (nền của chế độ đặc) · `--g-native-ink` (danh sách gốc của trình duyệt) | không màu nào của trang được viết cứng ngoài dòng khai token (Rule_Gate_77_ColoursFromTheme); màu không được theo tông ghi `/* theme-fixed: <lý do> */` |
 | chữ | `--g-font` (một họ phông, có phông hệ thống dự phòng) + một thang cỡ | một trang không dùng họ phông thứ hai |
 | chuyển động | `--g-spring` · `--g-out` (hai đường cong) | thời lượng trong dải 0,2–0,8 s của template |
 
