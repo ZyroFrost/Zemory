@@ -30,6 +30,7 @@
  * hay giữ việc của người ta.
  */
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { hostname } from "node:os";
 import { dirname, join } from "node:path";
 import { currentMemoryDb, currentMemoryDir, openMemory, type MemoryDB } from "../db.js";
 import { getMirrorAuto, getPeerSync, setPeerSync, type MirrorAuto } from "../../config/settings.js";
@@ -410,6 +411,17 @@ export interface IncomingResult {
 }
 
 /**
+ * A file only its own machine writes: `docs/.harness-state/repo-gates/<host>.json` names the host that measured it
+ * (docs/machine-gates.ts). One writer, nothing to merge, no person to ask - queueing it meant the gates chip never saw
+ * the other machine (26/11: the PC's file sat in this machine's approval queue with 90 others). This machine's own file
+ * is never taken from the other side.
+ */
+export function isOtherMachineState(area: MirrorArea, rel: string, self = hostname()): boolean {
+  const m = area === "docs" ? /^\.harness-state\/repo-gates\/([^/]+)\.json$/.exec(rel.replace(/\\/g, "/")) : null;
+  return Boolean(m && m[1].toLowerCase() !== self.toLowerCase());
+}
+
+/**
  * Xử một file vừa nhận. Đây là CỬA DUY NHẤT của chiều nhận — mọi quyết định áp-hay-hỏi
  * sống ở đây, để không có đường nào lách qua hàng đợi.
  *
@@ -626,7 +638,7 @@ export function mirrorHooks(opts: {
       try {
         // Cặp MỘT CHIỀU mà NGUỒN là máy kia ⇒ ta là đích ⇒ áp thẳng, không hàng đợi (§9.2).
         const cfg = lookup(peerId);
-        const autoApply = cfg.direction === "one-way" && isSourcePeer(cfg.source, peerId);
+        const autoApply = (cfg.direction === "one-way" && isSourcePeer(cfg.source, peerId)) || isOtherMachineState(area, rel);
         // Bản quay về đúng là thứ máy này đã chở đi ⇒ hai bên từng khớp ở đó: dời mốc TRƯỚC khi phân
         // loại, để nó ra "push" (bản mình mới hơn) thay vì "hai bên cùng sửa" — không hỏi lại.
         const incoming = hashBytes(body);
