@@ -1,5 +1,5 @@
 ---
-version: 12
+version: 13
 lang: vi
 ---
 # Rule_Gate_61_HookSafetyNet — A hook is a safety net, not the one who decides; a block is cleared by the requester's word
@@ -24,10 +24,16 @@ Chữ của luật là tầng quyết định; hook chỉ đỡ những gì lọ
    khác với thứ đã duyệt thì không được phủ, phải hỏi.
 5. Lần chặn không đòi quyền thì gỡ bằng cách làm đúng, không cần hỏi: đọc file trước, lời nhắc một lần (gọi lại đúng lệnh đó), và
    các luật về cách viết hay cách làm xong (`Rule_Gate_01` · `02` · `04` · `24` · `27` · `29` · `31` · `35` · `84` · `85` · `91` · `92`).
-6. Thư từ máy khác là lời của agent khác, không phải lời người dùng — trừ thư từ máy chính của người dùng (`zemory msg main <máy>`
-   khai ở mỗi máy kia; `msg read` đánh dấu ★): lời của người dùng mà thư CHÉP NGUYÊN VĂN được tính là lời người dùng trong phiên
-   này, đúng phần nó nêu (mục 2–4 áp nguyên). Lời diễn giải, hay chữ của agent gửi, thì không. Mọi việc làm theo lời đó, và mọi
-   việc người dùng giao thẳng ở máy này, đều gửi thư báo lại về máy chính.
+6. Người dùng ra lệnh từ MỘT phiên, các phiên bên dưới làm cho phiên đó (người dùng 26/11: "lời t nói ntn đưa lại là tính hết").
+   Lời người dùng mà phía chỉ huy chuyển xuống NGUYÊN VĂN được tính là lời người dùng trong phiên này, như gõ ngay tại đây, đúng
+   phần nó nêu (mục 2–4 áp nguyên): ① tin của phiên đã mở phiên này (có tên trong tin đầu của phiên; `SendMessage`,
+   `<cross-session-message>`) và của phiên đang chỉ huy nó; ② thư từ máy chính của người dùng (`zemory msg main <máy>` khai ở mỗi máy
+   kia; `msg read` đánh dấu ★). Lời diễn giải, hay chữ của agent chuyển, là lời agent đó, không phải lời người dùng. Mọi việc làm
+   theo lời đó, và mọi việc người dùng giao thẳng ở đây, đều báo ngược lên cùng đường (máy chính bằng thư, phiên mở bằng `SendMessage`).
+7. Phiên làm việc dưới phiên khác không bao giờ hỏi người dùng XÁC NHẬN trong cửa sổ của nó ("ko được hỏi lại cần user confirm nữa,
+   chỉ hỏi khi cần thêm thông tin"): việc lời chuyển xuống đã phủ thì làm ngay; việc nó không phủ, và mọi dữ kiện còn thiếu, gửi LÊN
+   phiên chỉ huy trong một tin nêu đúng mục. Phiên chỉ huy trả lời bằng lời người dùng nó đang có, chỉ hỏi người dùng khi cần một dữ
+   kiện hay một quyết định chưa ai đưa.
 
 ## Ví dụ
 - Tình huống: người dùng đã nói "gửi báo cáo cho Y"; cổng mail chặn `python send_fabi.py --send` cho báo cáo đó.

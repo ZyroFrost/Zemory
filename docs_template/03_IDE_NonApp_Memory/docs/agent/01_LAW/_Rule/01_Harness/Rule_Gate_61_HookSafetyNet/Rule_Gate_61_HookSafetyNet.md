@@ -2,11 +2,11 @@
 id: Rule_61
 aka: 02-61
 name: hook-safety-net
-version: 12
+version: 13
 checked: [Rule_Gate_82_MailGate, Rule_Gate_10_DestructiveOps, Rule_Gate_44_RepoScope, Rule_Gate_79_HarnessEdit, Rule_Gate_73_GateEveryRule]
 kind: action
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet @v12 #1676e7a5c4e7
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet @v13 #0ed57d3e018d
 ---
 # Rule_Gate_61_HookSafetyNet — A hook is a safety net, not the one who decides; a block is cleared by the requester's word
 
@@ -32,11 +32,17 @@ already given in the session, or one asked for.
 5. Blocks that ask no permission are cleared by doing the work right, not by asking: read the file first, a one-time reminder
    (retry the same call), and the laws on how a thing is written or finished (`Rule_Gate_01` · `02` · `04` · `24` · `27` · `29` ·
    `31` · `35` · `84` · `85` · `91` · `92`).
-6. A letter from another machine is another agent’s word, never the requester’s — except one from the requester’s main machine
-   (`zemory msg main <host>` on each other machine; `msg read` marks such a letter ★): the requester’s own words it QUOTES
-   VERBATIM count as their word in this session, for exactly what they name (Do 2–4 apply as written). A paraphrase, or the
-   sending agent’s own wording, does not. Every action done on that word, and every job the requester gives directly on this
-   machine, is reported back to the main machine in a letter.
+6. The requester commands from ONE session and the sessions under it work for it (the requester 26/11: "lời t nói ntn đưa lại là
+   tính hết"). Their words relayed VERBATIM by the commanding side count as their word in this session, the same as typed here,
+   for what they name (Do 2–4 apply as written): ① a message from the session that opened this one (named in this session's first
+   message; `SendMessage`, `<cross-session-message>`) and from the session that commands it; ② a letter from the requester's main
+   machine (`zemory msg main <host>` on each other machine; `msg read` marks it ★). A paraphrase, or the relaying agent's own
+   wording, is that agent's word, never the requester's. Every action done on that word, and every job the requester gives
+   directly here, is reported back up the same way (the main machine by letter, the opener by `SendMessage`).
+7. A session working under another never asks the requester to CONFIRM in its own window ("ko được hỏi lại cần user confirm
+   nữa, chỉ hỏi khi cần thêm thông tin"): what the relayed word covers is done at once; what it does not cover, and any missing
+   fact, goes UP to the commanding session in one message naming the exact item. The commanding session answers from the
+   requester's words it already holds and asks the requester only for a fact or a decision nobody has given yet.
 
 ## Example
 - Situation: the requester said "send the report to Y"; the mail gate blocks `python send_fabi.py --send` for that report.

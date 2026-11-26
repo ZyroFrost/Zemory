@@ -135,9 +135,9 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 97 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_59_ReadFirst/Rule_Gate_59_ReadFirst.md` | 40 |
 | 98 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_59_ReadFirst/Rule_Gate_59_ReadFirst.vi.md` | 29 |
 | 99 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_59_ReadFirst/gate.json` | 1 |
-| 100 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet/Rule_Gate_61_HookSafetyNet.md` | 57 |
-| 101 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet/Rule_Gate_61_HookSafetyNet.vi.md` | 43 |
-| 102 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet/gate.json` | 120 |
+| 100 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet/Rule_Gate_61_HookSafetyNet.md` | 63 |
+| 101 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet/Rule_Gate_61_HookSafetyNet.vi.md` | 49 |
+| 102 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet/gate.json` | 131 |
 | 103 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger/Rule_Gate_63_SkillTrigger.md` | 37 |
 | 104 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger/Rule_Gate_63_SkillTrigger.vi.md` | 28 |
 | 105 | `docs/agent/01_LAW/_Rule/01_Harness/Rule_Gate_63_SkillTrigger/gate.json` | 21 |

@@ -128,8 +128,10 @@ function check(payload, root) {
     if (!what) return null;
     const own = ownRule(root);
     return "BLOCKED (guard layer 1): Rule_Gate_61_HookSafetyNet - a hook blocked an action earlier in this turn: \"" + what +
-      "\". Read back what the user said in this session: they already approved or ordered this exact action => make its " +
-      ".allow-* flag and go on, saying in one line what passed; nothing that covers it => ask the user in one line. Never " +
+      "\". Read back what the user said in this session, typed here or relayed verbatim by the session commanding this one " +
+      "(Do 6): they already approved or ordered this exact action => make its .allow-* flag and go on, saying in one line " +
+      "what passed; nothing that covers it => ask in one line - the commanding session when this one works under another " +
+      "(never a confirm in this window, Do 7), else the user. Never " +
       "route round the hook (another script, tool or copy of the command).\nThis is a reminder, shown once per block: retry " +
       "the same call to continue." + (own && own.text ? "\n\nThe rule (" + own.rel + "):\n" + own.text : "");
   } catch {
