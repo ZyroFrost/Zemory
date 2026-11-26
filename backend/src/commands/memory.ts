@@ -451,12 +451,29 @@ export async function cmdMemory(args: string[]): Promise<void> {
   }
 }
 
+/** `memory scan` on "database is locked": how many passes again, and the first wait (doubles each time: 2·4·8·16 s). */
+const SCAN_BUSY_RETRIES = Number(process.env.ZEMORY_SCAN_BUSY_RETRIES ?? 4);
+const SCAN_BUSY_BACKOFF_MS = Number(process.env.ZEMORY_SCAN_BUSY_BACKOFF_MS ?? 2000);
+
 async function cmdMemoryInner(args: string[]): Promise<void> {
   const sub = args[0];
   if (sub === "scan") {
     const deep = args.includes("--deep");
-    printScanReport(scan({ deep }));
-    return;
+    // A daemon write held past busy_timeout (a block from the other machine, a fast-lane turn) failed the whole scan with
+    // "database is locked" (the FA session, 26/11; embed below has retried for long). A scan is idempotent - ingest_state
+    // is the pointer and (session_id, uuid) is unique - so the pass is run again after a backoff instead of dying.
+    const busy = (e: unknown): boolean => e instanceof Error && /database is locked|SQLITE_BUSY/i.test(e.message);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        printScanReport(scan({ deep }));
+        return;
+      } catch (e) {
+        if (!busy(e) || attempt >= SCAN_BUSY_RETRIES) throw e;
+        const ms = SCAN_BUSY_BACKOFF_MS * 2 ** attempt;
+        console.log(`  ⚠ database busy (another zemory process is writing) — scan again ${attempt + 1}/${SCAN_BUSY_RETRIES} in ${Math.round(ms / 1000)}s…`);
+        await new Promise((r) => setTimeout(r, ms));
+      }
+    }
   }
   if (sub === "scan-web") {
     const platform = flagValue(args, "--platform") ?? "chatgpt";
