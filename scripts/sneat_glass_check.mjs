@@ -526,7 +526,8 @@ export const RULES = [
       if (shown && pill && pill.getClientRects().length && pill.getBoundingClientRect().height > 4 && !pill.getAnimations().length) {
         const c = getComputedStyle(pill);
         if (c.backgroundImage === 'none' && clear(c.backgroundColor)) return 'the menu row of the page on screen stands on no fill';
-        const leaf = menu.querySelector('.menu-item.active:not(:has(> .menu-sub)) > .menu-link'), idle = menu.querySelector('.menu-item:not(.active) > .menu-link');
+        // (v96) the row under the pointer is lit by its hover, never the idle row to compare with
+        const leaf = menu.querySelector('.menu-item.active:not(:has(> .menu-sub)) > .menu-link'), idle = menu.querySelector('.menu-item:not(.active) > .menu-link:not(:hover)');
         if (leaf && idle && getComputedStyle(leaf).color === getComputedStyle(idle).color) return 'the menu row of the page on screen reads like the others';
       }
       return true;
@@ -1504,7 +1505,10 @@ export const RULES = [
       const off = (r.left + r.right) / 2 - (p.left + p.right) / 2;
       if (r.width > third + 2) return 'the search is ' + Math.round(r.width) + ' px wide, more than the middle third of the bar (' + Math.round(third) + ')';
       if (col < need - 2 && !atLeast) return 'the crumbs are cut (' + Math.round(col) + ' px for ' + Math.round(need) + ') while the search could still give way (' + Math.round(r.width) + ' px, its least ' + Math.round(least) + ')';
-      if (Math.abs(off) > 2 && (spare || !atLeast)) return 'the search stands ' + Math.round(off) + ' px off the centre of the bar (only crumbs that need the room may push it, at its least width)';
+      // (v95) crumbs push the search only when it stands right after them: squeezed elsewhere (by the greeting at the end of row 1,
+      // or moved out of the middle cell) it is off the centre for no reason
+      const pushed = Boolean(c && c.getClientRects().length) && r.left - c.getBoundingClientRect().right <= 40;
+      if (Math.abs(off) > 2 && (spare || !atLeast || !pushed)) return 'the search stands ' + Math.round(off) + ' px off the centre of the bar (only crumbs that need the room may push it, at its least width)';
       if (r.width < third - 2 && spare) return 'the search is ' + Math.round(r.width) + ' px, narrower than the middle third (' + Math.round(third) + ') while the crumbs have room to spare (' + Math.round(col) + ' px for ' + Math.round(need) + ')';
       const ar = a.getBoundingClientRect(), stop = grid.getBoundingClientRect().right;
       if (Math.abs(ar.right - stop) > 2) return 'the actions end ' + Math.round(stop - ar.right) + ' px before the end of row 1';
@@ -2171,7 +2175,9 @@ export const PROBES = [
           const k = cover.getBoundingClientRect().width / 100 || 1;
           Object.assign(cover.style, {left: r.left / k + 'px', top: r.top / k + 'px', width: r.width / k + 'px', height: r.height / k + 'px'});
           const x = Math.min(innerWidth - 2, Math.max(1, (r.left + r.right) / 2)), y = Math.min(innerHeight - 2, Math.max(1, (r.top + r.bottom) / 2));
-          const hit = document.elementFromPoint(x, y);
+          // (v96) a loaded machine lifts the menu into the top layer later than 400 ms: asked again for up to about 2 s first
+          let hit = document.elementFromPoint(x, y);
+          for (let n = 0; n < 8 && hit && !pop.contains(hit); n++) { await wait(200); hit = document.elementFromPoint(x, y); }
           cover.remove();
           if (hit && !pop.contains(hit)) out.push(name(b) + ': what it opens (' + name(pop) + ') is hidden by ' + (hit.id === 'g-probe-cover' ? 'anything of the page at the focus layer' : name(hit)));
         }

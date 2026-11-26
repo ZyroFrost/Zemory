@@ -1,5 +1,5 @@
 ---
-version: 94
+version: 96
 lang: vi
 ---
 
