@@ -174,6 +174,8 @@ function kickRemoteVersionCheck(): void {
 }
 // Cache của /check — pill Healthy phải có sẵn khi cửa sổ mở, không bắt user bấm Recheck oan.
 const checkCache = new Map<string, { at: number; r: unknown }>();
+/** Checks being measured again in the background for a stale cache entry: one pass per key at a time. */
+const checkRunning = new Set<string>();
 /**
  * Bộ kiểm sức khoẻ ở WORKER. `runCheck` khai async nhưng bên trong ĐỒNG BỘ: quét đường dẫn docs, `git`
  * qua `spawnSync`, liệt kê tiến trình trình duyệt bằng `execFileSync` — CPU profiler 25/09 bắt được
@@ -1395,9 +1397,18 @@ function liveFlags(): Record<string, unknown> {
   };
 }
 
-async function dashboardMemory(opts: { fresh?: boolean } = {}): Promise<unknown> {
+let dashRevalidating = false;
+async function dashboardMemory(opts: { fresh?: boolean; revalidate?: boolean } = {}): Promise<unknown> {
   const now = Date.now();
-  if (!opts.fresh && dashCache && now - dashCache.at < (dashCache.ttl ?? DASH_TTL_MS)) {
+  // Stale-while-revalidate (user 26/11: a window opened again "cứ chạy lại"): any cached payload is answered at once; a
+  // stale one is computed again after this answer, never in front of it. Only `fresh` (the user's refresh) waits.
+  if (!opts.fresh && !opts.revalidate && dashCache) {
+    if (now - dashCache.at >= (dashCache.ttl ?? DASH_TTL_MS) && !dashRevalidating) {
+      dashRevalidating = true;
+      setImmediate(() => {
+        dashboardMemory({ revalidate: true }).catch(() => {}).finally(() => (dashRevalidating = false));
+      });
+    }
     return { ...dashCache.value, ...liveFlags(), cached: true, cachedAgeMs: now - dashCache.at };
   }
   if (opts.fresh) invalidateDashboard();
@@ -2855,7 +2866,20 @@ export async function startUi(opts: { window?: boolean } = {}): Promise<void> {
       // changes the root must not serve the previous root's verdict.
       const key = `${feat}|${target}`;
       const hit = checkCache.get(key);
-      if (u.searchParams.get("fresh") !== "1" && hit && Date.now() - hit.at < 600_000) return json(res, hit.r);
+      // Stale-while-revalidate (user 26/11: "ẩn xuống chỉ ẩn giao diện chứ đâu có tắt đâu mà cứ chạy lại"): a window
+      // opened after the 10' mark waited for every check to run again from scratch, its rows sitting on "…". The last
+      // verdict is answered at once and a stale one is measured again in the background; only `fresh=1` (the user's ↻)
+      // waits for a new measurement.
+      if (u.searchParams.get("fresh") !== "1" && hit) {
+        if (Date.now() - hit.at >= 600_000 && !checkRunning.has(key)) {
+          checkRunning.add(key);
+          void runCheckOffLoop(feat, target)
+            .then((r) => checkCache.set(key, { at: Date.now(), r }))
+            .catch(() => {})
+            .finally(() => checkRunning.delete(key));
+        }
+        return json(res, hit.r);
+      }
       const r = await runCheckOffLoop(feat, target);
       checkCache.set(key, { at: Date.now(), r });
       return json(res, r);
