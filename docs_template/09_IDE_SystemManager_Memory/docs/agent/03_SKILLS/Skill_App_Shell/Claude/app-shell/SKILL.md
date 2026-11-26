@@ -1,11 +1,11 @@
 ---
 id: Skill_App_Shell
 name: app-shell
-version: 4
+version: 5
 type: process
 checked: [Skill_App_SneatGlass, Skill_App_Base, Skill_App_Release, Rule_Keys_90_AppFamilyContract, Rule_Gate_76_DeployChecksFrame, Frontend_173_Shell]
 description: Build, change and publish the frame every app of a system wears - the one copy of the top bar, menu, page bar, filters, tables, dialogs and toasts kept in the system-manager repo (frontend/shell/) and published as numbered builds the apps pin. Use in a system-manager repo when the frame is changed, a part moves between the frame and an app, an app reports a fault of the frame, or a build of the frame is published. Vietnamese triggers - "khung chung", "khung chuẩn", "gói khung", "phát khung", "bản khung", "sửa khung".
-from: _Store/03_SKILLS/Skill_App_Shell @v4 #9dce1c76d664
+from: _Store/03_SKILLS/Skill_App_Shell @v4 #ae8bdc07db3b
 ---
 
 # app-shell — the system's one frame, kept and published by the system manager
@@ -68,8 +68,9 @@ from: _Store/03_SKILLS/Skill_App_Shell @v4 #9dce1c76d664
    sit outside the code tree a deploy replaces; a number the drop carries is added once, never replaced.
    A number holds: the element build with the framework inside (for an app without it) and its stylesheet · the component build
    with the framework outside, packed as a package an app installs by its URL · the contract notes of the number.
-3. Before publishing: the system manager's own browser test is green on every page with the build it is about to publish; a
-   blank page that loads only the build shows the whole frame (the kind's checks run on it); the contract notes of the number
+3. Publishing ships first (the user 26/11: "deploy liền rồi mới kiểm", `Rule_Gate_76_DeployChecksFrame` v5); right after, the
+   system manager's own browser test runs on every page with the build just published, a red is fixed and published again at
+   once; a blank page that loads only the build shows the whole frame (the kind's checks run on it); the contract notes of the number
    list what changed for apps.
 4. After publishing: message the session of every app of the system (`role.manages`) with the number and what an app must do
    to move to it; record which number each app pins in the system manager's ledger.
