@@ -526,7 +526,8 @@ export const RULES = [
       if (shown && pill && pill.getClientRects().length && pill.getBoundingClientRect().height > 4 && !pill.getAnimations().length) {
         const c = getComputedStyle(pill);
         if (c.backgroundImage === 'none' && clear(c.backgroundColor)) return 'the menu row of the page on screen stands on no fill';
-        const leaf = menu.querySelector('.menu-item.active:not(:has(> .menu-sub)) > .menu-link'), idle = menu.querySelector('.menu-item:not(.active) > .menu-link');
+        // (v96) the row under the pointer is lit by its hover, never the idle row to compare with
+        const leaf = menu.querySelector('.menu-item.active:not(:has(> .menu-sub)) > .menu-link'), idle = menu.querySelector('.menu-item:not(.active) > .menu-link:not(:hover)');
         if (leaf && idle && getComputedStyle(leaf).color === getComputedStyle(idle).color) return 'the menu row of the page on screen reads like the others';
       }
       return true;
@@ -2174,7 +2175,9 @@ export const PROBES = [
           const k = cover.getBoundingClientRect().width / 100 || 1;
           Object.assign(cover.style, {left: r.left / k + 'px', top: r.top / k + 'px', width: r.width / k + 'px', height: r.height / k + 'px'});
           const x = Math.min(innerWidth - 2, Math.max(1, (r.left + r.right) / 2)), y = Math.min(innerHeight - 2, Math.max(1, (r.top + r.bottom) / 2));
-          const hit = document.elementFromPoint(x, y);
+          // (v96) a loaded machine lifts the menu into the top layer later than 400 ms: asked again for up to about 2 s first
+          let hit = document.elementFromPoint(x, y);
+          for (let n = 0; n < 8 && hit && !pop.contains(hit); n++) { await wait(200); hit = document.elementFromPoint(x, y); }
           cover.remove();
           if (hit && !pop.contains(hit)) out.push(name(b) + ': what it opens (' + name(pop) + ') is hidden by ' + (hit.id === 'g-probe-cover' ? 'anything of the page at the focus layer' : name(hit)));
         }
