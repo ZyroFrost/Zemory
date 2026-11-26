@@ -2,14 +2,14 @@
 id: Skill_Task_Case
 aka: case
 name: task-case
-version: 17
+version: 18
 type: process
 description: >
   Mở, đóng hoặc mở lại một CASE trong tasks/<case>/ (chuẩn 1 case = 1 folder của hệ
   NON-APP). Dùng khi có một vấn đề mới cần điều tra, khi quay lại một vấn đề đã xử,
   hoặc khi được yêu cầu đóng/mở lại một case. Cụm hay gặp: "mở case", "lưu thành task",
   "task mới", "đóng case", "mở lại case", "vụ này lưu ở đâu".
-from: _Store/03_SKILLS/Skill_Task_Case @v17 #36b743be2321
+from: _Store/03_SKILLS/Skill_Task_Case @v18 #600076713379
 ---
 
 # case — opening · closing · reopening a case
@@ -63,7 +63,7 @@ SITS, not which WORK it belongs to.**
 
 ## CLOSING a case
 
-**The books first, on the state at that moment** (the user 25/11): before the Status changes, run skill `session-close` - what
+**The books first, on the state at that moment** (the requester 25/11): before the Status changes, run skill `session-close` - what
 the case did goes to `05_CHANGES`, what it still owes to `04_TODO` (`[~]` with how far it got and the next step), finished or
 not. A case closed before its books are written is closed for the next session too.
 

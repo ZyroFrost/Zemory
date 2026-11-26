@@ -1,7 +1,7 @@
 ---
 id: Rule_76
 name: deploy-checks-frame
-version: 5
+version: 6
 kind: action
 code: 05_Domain
 checked: [Skill_App_ShellUse, Skill_App_SneatGlass, Skill_App_Report, Skill_App_Release, Rule_Keys_90_AppFamilyContract]
@@ -12,7 +12,7 @@ checked: [Skill_App_ShellUse, Skill_App_SneatGlass, Skill_App_Report, Skill_App_
 An app that wears the family's frame (it pins a build in `frontend/config/shell.json`) ships a build only through a browser
 check that loads the shared rules of the frame: `RULES` · `PROBES` · `DIALOG_RULES` of `scripts/sneat_glass_check.mjs`, plus
 `RULES` of `scripts/report_layout_check.mjs` when the app has a report page (`data-rp-page`). No switch of the deploy leaves the
-check out. (v5, the user 26/11: "giờ t bắt buộc deploy liền rồi mới kiểm") Every build ships first and is checked right after,
+check out. (v5, the requester 26/11: "giờ t bắt buộc deploy liền rồi mới kiểm") Every build ships first and is checked right after,
 on the build that shipped; a red is said aloud and fixed at once. The pinned frame build is never below the family's floor; below
 the newest build is a warning, not a block.
 

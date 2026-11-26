@@ -1,5 +1,5 @@
 ---
-version: 26
+version: 27
 lang: vi
 ---
 
@@ -11,13 +11,13 @@ lang: vi
 
 ## Trước MỌI lần đóng — ghi sổ trước, và không đóng khi đang giữ việc của repo khác
 
-- **Mọi lần đóng, lúc nào cũng vậy, xong việc hay chưa** (user 25/11: "đóng case hay đóng phiên đều phải docs lại thời điểm lúc
+- **Mọi lần đóng, lúc nào cũng vậy, xong việc hay chưa** (người dùng 25/11: "đóng case hay đóng phiên đều phải docs lại thời điểm lúc
   đó, dù session chưa hết cũng phải docs trước khi đóng"): phiên sắp bị đóng — người tắt cửa sổ, phiên đã mở nó dừng nó (skill
   `session-launch` Bước 8), đổi phiên — và case sắp đóng (skill `task-case`) ⇒ skill này chạy TRƯỚC, trên trạng thái lúc đó.
   Việc chưa xong ghi vào `04_TODO` dạng `[~]`: tới đâu, bước tiếp, file nằm đâu. Xong rồi mới dừng phiên hay đóng case.
 - **Được phiên khác báo sắp đóng** (`SendMessage` từ phiên đã mở nó) ⇒ chạy skill này, commit sổ, rồi trả lời phiên đó mã commit
   sổ và mọi việc của repo khác mà nó còn đang giữ.
-- **Đang giữ việc của repo khác** (việc nhận qua `SendMessage` hay thư mà kết quả chưa gửi về; user 25/11: "lỡ nó có đang nhận
+- **Đang giữ việc của repo khác** (việc nhận qua `SendMessage` hay thư mà kết quả chưa gửi về; người dùng 25/11: "lỡ nó có đang nhận
   việc từ repo khác thì bạn ko dc đóng") ⇒ KHÔNG đóng: gửi kết quả, hoặc trạng thái và phần còn lại, cho phiên đã giao, và nói rõ
   với bên đòi đóng.
 - *Đo được 25/11: phiên system-manager dừng ba phiên nó mở (CRM · Infrastructure · Harvest) ngay khi việc của chúng đã commit; không phiên nào

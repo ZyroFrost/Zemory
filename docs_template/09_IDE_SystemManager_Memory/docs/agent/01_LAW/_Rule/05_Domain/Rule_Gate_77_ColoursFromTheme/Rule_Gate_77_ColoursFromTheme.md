@@ -5,6 +5,7 @@ version: 1
 kind: content
 code: 05_Domain
 checked: [Skill_App_Glass, Skill_App_SneatGlass, Skill_App_Shell, Rule_Gate_76_DeployChecksFrame]
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_77_ColoursFromTheme @v1 #a4a9bf08c204
 ---
 # Rule_Gate_77_ColoursFromTheme — Every colour of an app comes from the theme's tokens
 

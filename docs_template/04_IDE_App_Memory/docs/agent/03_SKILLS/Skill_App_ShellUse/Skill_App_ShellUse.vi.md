@@ -1,5 +1,5 @@
 ---
-version: 10
+version: 11
 lang: vi
 ---
 
@@ -83,7 +83,7 @@ lang: vi
   ở một độ rộng máy bàn và một độ rộng điện thoại, cả hai theme; xanh trước mỗi lần phát. Phép kiểm đo px thiết kế: đặt
   `localStorage sasinShell.scale = off` trước khi trang tải (v5).
 - Lệnh deploy cài trước, rồi chạy phép kiểm đó trên đúng bản vừa lên và tự báo hỏng khi đỏ (v10,
-  `Rule_Gate_76_DeployChecksFrame` v5, user 26/11: "deploy liền rồi mới kiểm"): phép kiểm nạp
+  `Rule_Gate_76_DeployChecksFrame` v5, người dùng 26/11: "deploy liền rồi mới kiểm"): phép kiểm nạp
   `RULES` · `PROBES` · `DIALOG_RULES` của `scripts/sneat_glass_check.mjs` (hoặc giao file đó cho bộ chạy `live-app.mjs` của repo
   quản hệ), và `RULES` của `scripts/report_layout_check.mjs` khi app có trang gắn `data-rp-page`. Không công tắc nào của lệnh
   deploy được bỏ nó. Ghim bản thấp hơn mức sàn của họ (`shell_floor.json` của luật 76) bị chặn; thấp hơn bản mới nhất thì cảnh

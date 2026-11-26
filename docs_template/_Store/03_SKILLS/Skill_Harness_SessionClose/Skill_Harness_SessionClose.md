@@ -2,7 +2,7 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 26
+version: 27
 type: process
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, when the context is running out or the session is about to switch, and BEFORE a session or a case is closed - by the person or by the session that opened it - even when its work is not finished. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "đóng phiên", "đóng case", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
 ---
@@ -15,7 +15,7 @@ description: Close out a work session correctly - route everything that happened
 
 ## Before ANY close — the books first, and no close while holding another repo's work
 
-- **Every close, at any point, finished or not** (the user 25/11): a session about to be closed — its window shut by the
+- **Every close, at any point, finished or not** (the requester 25/11): a session about to be closed — its window shut by the
   person, stopped by the session that opened it (skill `session-launch` Step 8), switched — and a case about to be closed
   (skill `task-case`) ⇒ this skill runs FIRST, on the state at that moment. Work not finished goes to `04_TODO` as `[~]`: how far
   it got, the next step, where its files are. Only then is the session stopped or the case closed.

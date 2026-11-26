@@ -1,5 +1,5 @@
 ---
-version: 96
+version: 97
 lang: vi
 ---
 
@@ -56,13 +56,13 @@ lang: vi
   3 s sau vẫn giữ và không báo lỗi. App không đổi đường hay chặn lời gọi của khung (`/api/auth/*`, `/api/apps`,
   `/api/notifications`, `/api/health`); probe live lưu và đọc bằng fetch sạch nên lớp bọc fetch của app không làm lệch.
   [settings-save-works]
-- **Chọn tông là đổi cả trang** (v90, user 25/11: "chọn theme phải đổi toàn bộ ko chỉ cái ảnh nền"; khung 1.44.0): mỗi tông
+- **Chọn tông là đổi cả trang** (v90, người dùng 25/11: "chọn theme phải đổi toàn bộ ko chỉ cái ảnh nền"; khung 1.44.0): mỗi tông
   mang cặp màu nhấn riêng, nên nút đang bật, switch đang bật, link, tab và kiểu xem đang chọn, vạch đầu bảng, dòng rê chuột và
   dòng đang chọn, thanh cuộn đều đổi theo, cả sáng lẫn tối (skill app-glass, token). Không màu nào của trang được viết cứng
   (Rule_Gate_77_ColoursFromTheme). [theme-follow: probe xem trang dưới hai tông]
 - **Nút hàng 1 có khung** (v42): nút ứng dụng và chuông là
   ô vuông mang khung của thanh (nền, viền, bo góc kit), cao bằng ô tìm; khi mở thì sáng như nút lọc. [head-framed] **Ô tìm là một phần ba
-  giữa của hàng 1** (v89, user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng", thay một phần ba ở cuối của v51): từ máy
+  giữa của hàng 1** (v89, người dùng 25/11: "chỉnh lại cái search này vào giữa cho cân bằng", thay một phần ba ở cuối của v51): từ máy
   tính (1200 px) trở lên, hàng 1 chia ba phần của thanh trên cùng - đường dẫn, ô tìm có tâm trùng tâm thanh, dãy nút kết thúc ở
   cuối hàng, các nút cách nhau đúng khoảng cách của thanh trang. Ô tìm lấp đúng một phần ba giữa; khi đường dẫn cần thêm chỗ để
   đọc đủ thì ô co đều từ hai đầu, vẫn ở giữa, nhỏ nhất 14rem; đường dẫn dài hơn nữa thì đẩy ô (ở 14rem) sang phải. Dưới 1200 px ô tìm đứng sát dãy nút. [row1-thirds]
@@ -198,8 +198,8 @@ lang: vi
   đều là liên kết về trang đầu của lớp đó (trang đầu của hệ và của hub là trang chọn app, của một nhóm là trang đầu của nhóm) -
   kể cả khi trang đầu đó chính là trang đang mở; chỉ trang hiện tại là chữ thường (`aria-current="page"`); không title nào lặp
   lại nấc cuối. [crumbs]
-- **Lời chào nằm ở hàng 1, ngay trước các nút** (v94, user 26/11: "chào + tên sso ở ngoài luôn để đỡ cấn, chức vụ để lại
-  trong user popover"): "Chào buổi sáng, <họ tên đầy đủ của tài khoản>" trên một dòng, dài thì cắt bằng "…", từ 1200 px. **Menu
+- **Lời chào nằm ở hàng 1, ngay trước các nút** (v94, người dùng 26/11: "chào + tên sso ở ngoài luôn để đỡ cấn, chức vụ để lại
+  trong popover tài khoản"): "Chào buổi sáng, <họ tên đầy đủ của tài khoản>" trên một dòng, dài thì cắt bằng "…", từ 1200 px. **Menu
   tài khoản theo bộ mẫu:** tên (phần trước " - "), dưới là vai; rồi Hồ sơ của tôi, Cài đặt, các cài đặt nhanh - ngôn ngữ (VI ·
   EN), sáng / tối, công tắc kính - rồi Đăng xuất. [crumbs] [bar-switches]
 - **Số phiên bản của app đang mở nằm ở chân menu** (`v<M.m.p>`, đọc từ health của app), ẩn khi menu thu gọn; không bao giờ ở hàng 1.
@@ -223,7 +223,7 @@ lang: vi
 
 ## 2c. Lớp — một thứ tự cho mọi app (v91)
 
-User 25/11, qua Dashboard: "bảng skill phải có thứ tư lớp cho từng loại và mọi app phải bám theo"; "mấy cái popover và dialogbox
+Người dùng 25/11, qua Dashboard: "bảng skill phải có thứ tư lớp cho từng loại và mọi app phải bám theo"; "mấy cái popover và dialogbox
 phải luôn ở lớp cao nhất". Khung đặt tên các lớp thành biến CSS (khung 1.43.6; thứ tự dưới đây từ 1.45.0); app dùng các biến này -
 z-index của app là một biến trong bảng (`var(--z-focus)`), không bao giờ là số tự đặt.
 
@@ -231,7 +231,7 @@ z-index của app là một biến trong bảng (`var(--z-focus)`), không bao g
 |---|---|---|
 | 1 | `--z-page` (1) | trang, các card, đầu bảng dính và cột ghim (lớp riêng bên trong card dưới 10) |
 | 2 | `--z-bar` (1075) | thanh trên cùng và thanh trang |
-| 3 | `--z-ai` (1078) | khung chat AI và nút AI - trên thanh đầu (user 19/11: "chat phải luôn ở trên cùng") |
+| 3 | `--z-ai` (1078) | khung chat AI và nút AI - trên thanh đầu (người dùng 19/11: "chat phải luôn ở trên cùng") |
 | 4 | `--z-focus` (1079) | visual phóng to trên trang, trong khung trang, trên khung chat AI (skill app-report, rp-focus) |
 | 5 | `--z-offcanvas` (1090) | ngăn kéo, tấm phủ trên trang |
 | 5b | `--z-modal` (1095) | hộp thoại vẽ thành lớp phủ: ô tìm (Ctrl+K), `.modal` của Bootstrap và nền mờ của nó (khung 1.47.0) |
@@ -383,12 +383,12 @@ z-index của app là một biến trong bảng (`var(--z-focus)`), không bao g
 - **Người dùng đọc tên, không đọc mã:** danh sách chọn, bộ lọc, nhãn hay tên hành động hiện tên của giá trị lấy từ từ điển, không
   bao giờ hiện mã lưu (`data_query`, `login_ok`); mã ngoài danh sách đọc là "Hành động khác". Mã hành động là danh sách đóng của
   hệ (hợp đồng app của DB hệ): app giữ danh sách đó, mỗi mã có tên ở mọi ngôn ngữ, và một phép kiểm tĩnh đối chiếu danh sách với
-  hợp đồng khi hợp đồng có trên máy. [no-raw-code] (v87, user 25/11: bộ lọc Nhóm liệt kê `data` và `ops`) một chữ thường đứng
+  hợp đồng khi hợp đồng có trên máy. [no-raw-code] (v87, người dùng 25/11: bộ lọc Nhóm liệt kê `data` và `ops`) một chữ thường đứng
   một mình cũng là mã, và một cột bảng mà mọi ô đều là mã cũng vậy (cột tên Mã / Code / ID cố ý hiện mã). Danh sách chọn chỉ vẽ
   khi mở thì được mở như người dùng mở - từng bộ lọc trên trang, trên hàng 2 và trong ô bộ lọc - và không lựa chọn nào được đọc
   ra mã. [names-in-lists] Danh sách dựng từ giá trị lưu phải đặt tên từng giá trị: `optionsOf(values, v => name(v))`, không bao
   giờ chỉ `optionsOf(values)`.
-- **Trang nói đúng ngôn ngữ đã chọn** (v88, user 25/11: "cổng tiếng anh việt đang bị thiếu à?" - hai từ điển chỉ được so từng
+- **Trang nói đúng ngôn ngữ đã chọn** (v88, người dùng 25/11: "cổng tiếng anh việt đang bị thiếu à?" - hai từ điển chỉ được so từng
   khoá, chưa phép kiểm nào nhìn một trang ở tiếng Anh): chuyển sang tiếng Anh bằng nút ngôn ngữ trong menu tài khoản thì không
   chữ nào của khung hay của app còn tiếng Việt - nút, nhãn, tiêu đề cột, tiêu đề, tab, tiêu đề hộp thoại, gợi ý trong ô nhập,
   tooltip của nút. Dữ liệu giữ chữ của nó (dòng bảng, lựa chọn trong danh sách, nội dung báo cáo, tên người); tên là dữ liệu mà

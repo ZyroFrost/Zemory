@@ -1,5 +1,5 @@
 ---
-version: 17
+version: 18
 lang: vi
 ---
 
@@ -54,7 +54,7 @@ NẰM, không nói nó thuộc VIỆC gì.**
 
 ## ĐÓNG case
 
-**Ghi sổ trước, trên trạng thái lúc đó** (user 25/11: "đóng case hay đóng phiên đều phải docs lại thời điểm lúc đó"): trước khi
+**Ghi sổ trước, trên trạng thái lúc đó** (người dùng 25/11: "đóng case hay đóng phiên đều phải docs lại thời điểm lúc đó"): trước khi
 đổi Trạng thái, chạy skill `session-close` - việc case đã làm vào `05_CHANGES`, việc còn nợ vào `04_TODO` (`[~]` kèm tới đâu và
 bước tiếp), xong hay chưa cũng vậy. Case đóng trước khi ghi sổ là đóng luôn với phiên sau.
 

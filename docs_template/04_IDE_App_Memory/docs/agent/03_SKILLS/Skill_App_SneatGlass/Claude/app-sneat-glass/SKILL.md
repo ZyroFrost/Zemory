@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 96
+version: 97
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v96 #48b2194a2858
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v97 #a93948aae6e2
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -64,13 +64,13 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v96 #48b2194a2858
   as a person presses them, still stand 3 s later with no error. An app never reroutes or blocks the frame's own calls
   (`/api/auth/*`, `/api/apps`, `/api/notifications`, `/api/health`); the live probes save and read through a clean fetch, so an
   app's fetch wrapper cannot turn them aside. [settings-save-works]
-- **Choosing a tone changes the whole page** (v90, the user 25/11: "chọn theme phải đổi toàn bộ ko chỉ cái ảnh nền"; frame
+- **Choosing a tone changes the whole page** (v90, the requester 25/11: "chọn theme phải đổi toàn bộ ko chỉ cái ảnh nền"; frame
   1.44.0): each tone carries its accent pair, so a button on, a switch on, a link, the chosen tab and view, a table's head line,
   a row's hover and chosen state and the scrollbar all change with it, light and dark (skill app-glass, tokens). No colour of
   the page is written as a literal (Rule_Gate_77_ColoursFromTheme). [theme-follow: the probe sees the page under two tones, Ocean and Sunset]
 - **Row 1's buttons are framed** (v42): the apps and the
   bell are squares with the bar's frame (fill, edge, kit radius) at the search box's height; open, lit as the filter button.
-  [head-framed] **The search is the middle third of row 1** (v89, the user 25/11: "chỉnh lại cái search này vào giữa cho cân bằng",
+  [head-framed] **The search is the middle third of row 1** (v89, the requester 25/11: "chỉnh lại cái search này vào giữa cho cân bằng",
   over v51's one third at the end): from a desktop up (1200 px) row 1 is three thirds of the top bar - the crumbs, the search
   with its centre on the bar's, the actions ending at the end of the row, apart from each other by the page bar's own gap. The
   search fills the middle third; where the crumbs need more room to read whole it gives way from both ends, staying centred,
@@ -223,8 +223,8 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v96 #48b2194a2858
   in the menu. Every layer before the current page is a link to that layer's home (the family's and the hub's home is the
   launcher, a group's its first page) - even when that home is the page on screen; only the current page is plain text
   (`aria-current="page"`); no title repeats the last crumb. [crumbs]
-- **The greeting stands in row 1, right before the actions** (v94, the user 26/11: "chào + tên sso ở ngoài luôn để đỡ cấn,
-  chức vụ để lại trong user popover"): "Good morning, <the account's full name>" on one line, cut with "…" when long, from
+- **The greeting stands in row 1, right before the actions** (v94, the requester 26/11: "chào + tên sso ở ngoài luôn để đỡ cấn,
+  chức vụ để lại trong popover tài khoản"): "Good morning, <the account's full name>" on one line, cut with "…" when long, from
   1200 px. **The account menu is the kit's:** the name (its part before " - ") with the role under it; then My profile,
   Settings, the quick settings - language (VI · EN), light / dark, the glass switch - and Sign out. [crumbs] [bar-switches]
 - **The version of the open app stands at the foot of the menu** (`v<M.m.p>`, read from the app's health), hidden while the
@@ -250,7 +250,7 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v96 #48b2194a2858
 
 ## 2c. Layers — one order for every app (v91)
 
-The user 25/11, through Dashboard: "bảng skill phải có thứ tư lớp cho từng loại và mọi app phải bám theo"; "mấy cái popover và
+The requester 25/11, through Dashboard: "bảng skill phải có thứ tư lớp cho từng loại và mọi app phải bám theo"; "mấy cái popover và
 dialogbox phải luôn ở lớp cao nhất". The frame names the layers as CSS variables (frame 1.43.6; the order below from 1.45.0); an
 app takes them - its own z-index is a variable of this table (`var(--z-focus)`), never a number of its own.
 
@@ -258,7 +258,7 @@ app takes them - its own z-index is a variable of this table (`var(--z-focus)`),
 |---|---|---|
 | 1 | `--z-page` (1) | the page, its cards, their sticky heads and pinned columns (local layers inside a card stay under 10) |
 | 2 | `--z-bar` (1075) | the top bar with the page bar |
-| 3 | `--z-ai` (1078) | the AI chat and its button - over the top bar (the user 19/11: "chat phải luôn ở trên cùng") |
+| 3 | `--z-ai` (1078) | the AI chat and its button - over the top bar (the requester 19/11: "chat phải luôn ở trên cùng") |
 | 4 | `--z-focus` (1079) | a visual enlarged over the page, inside the page frame, over the AI chat (skill app-report, rp-focus) |
 | 5 | `--z-offcanvas` (1090) | drawers, the sheet over the page |
 | 5b | `--z-modal` (1095) | a dialog drawn as an overlay: the search (Ctrl+K), a Bootstrap `.modal` and its backdrop (frame 1.47.0) |
@@ -419,11 +419,11 @@ app takes them - its own z-index is a variable of this table (`var(--z-focus)`),
   dictionaries, never its stored code (`data_query`, `login_ok`); a code outside the list reads as "Other action". The action
   codes are the family's closed list (the app contract of the family database): the app keeps that list with a name for each code in every
   language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code] (v87, the
-  user 25/11: a Group filter listed `data` and `ops`) a bare lowercase word is a code too, and so is a table column whose every
+  requester 25/11: a Group filter listed `data` and `ops`) a bare lowercase word is a code too, and so is a table column whose every
   cell is one (a column named Mã / Code / ID shows codes on purpose). A pick list drawn only while open is opened as a person
   opens it - each filter on the page, on row 2 and in the filter popover - and no option may read as a code. [names-in-lists]
   Any list built from stored values names each value: `optionsOf(values, v => name(v))`, never `optionsOf(values)` alone.
-- **The page speaks the language chosen** (v88, the user 25/11: the two dictionaries were only compared key for key, and no
+- **The page speaks the language chosen** (v88, the requester 25/11: the two dictionaries were only compared key for key, and no
   check ever looked at a page in English): switched to English by the language buttons of the account menu, no word of the
   frame or of the app shows Vietnamese - buttons, labels, column headers, headings, tabs, dialog titles, box hints, the
   tooltips of controls. Data keeps its own words (table rows, pick-list options, report content, the person's name); a name

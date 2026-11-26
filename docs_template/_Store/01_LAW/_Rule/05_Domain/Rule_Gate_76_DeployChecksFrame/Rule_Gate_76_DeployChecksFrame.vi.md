@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 # Rule_Gate_76_DeployChecksFrame — An app of a family deploys only through the frame's shared checks
@@ -8,7 +8,7 @@ lang: vi
 App mang khung chung của họ (ghim một bản khung ở `frontend/config/shell.json`) chỉ được đẩy bản build qua bộ kiểm trình duyệt
 có nạp luật chung của khung: `RULES` · `PROBES` · `DIALOG_RULES` của `scripts/sneat_glass_check.mjs`, cộng `RULES` của
 `scripts/report_layout_check.mjs` khi app có trang báo cáo (`data-rp-page`). Không công tắc nào của lệnh deploy được bỏ bộ kiểm.
-(v5, user 26/11: "giờ t bắt buộc deploy liền rồi mới kiểm") Mọi bản build đẩy trước, kiểm ngay sau trên đúng bản vừa lên;
+(v5, người dùng 26/11: "giờ t bắt buộc deploy liền rồi mới kiểm") Mọi bản build đẩy trước, kiểm ngay sau trên đúng bản vừa lên;
 đỏ thì nói ra và sửa ngay. Bản khung ghim không bao giờ thấp hơn mức sàn của họ; thấp hơn bản mới nhất chỉ cảnh báo, không chặn.
 
 ## Khi nào áp

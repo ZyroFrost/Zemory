@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 
@@ -59,7 +59,7 @@ lang: vi
    nguyên; một số trong bản mang lên được thêm một lần, không bao giờ bị thay.
    Một số gồm: bản thẻ có framework bên trong (cho app không dùng framework đó) cùng stylesheet · bản component để framework bên ngoài,
    đóng thành gói app cài bằng URL của nó · ghi chú hợp đồng của số đó.
-3. Phát trước (user 26/11: "deploy liền rồi mới kiểm", `Rule_Gate_76_DeployChecksFrame` v5); ngay sau đó phép kiểm trình duyệt
+3. Phát trước (người dùng 26/11: "deploy liền rồi mới kiểm", `Rule_Gate_76_DeployChecksFrame` v5); ngay sau đó phép kiểm trình duyệt
    của repo quản hệ chạy trên mọi trang với đúng bản vừa phát, đỏ thì sửa và phát lại ngay; một trang trống chỉ nạp bản
    build hiện đủ khung (phép kiểm của kiểu chạy trên nó); ghi chú hợp đồng của số đó liệt kê cái gì đổi với app.
 4. Sau khi phát: nhắn phiên của mọi app trong hệ (`role.manages`) số mới và việc app phải làm để lên số đó; ghi vào sổ của repo quản
