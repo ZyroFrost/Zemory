@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import { merge3 } from "./standard.js";
 import { archiveDirOf } from "../core/config.js";
 import { relinkFrom } from "./relink.js";
-import { CONS_CHAPTERS, CONS_REPO_FILE, HOST_KIND, PART_FILE, PART_FIXED_FILES, PART_FOLDERS, PART_WORD, RULE_CODES, LEDGER, LEDGER_NAMES, LEGACY_LEDGER, LEGACY_SETS, LEGACY_SHELF, SHELF, TOOL_FORCED_NAMES, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, slotArea } from "./harness-names.js";
+import { CONS_CHAPTERS, CONS_REPO_FILE, HOST_KIND, PART_FILE, PART_FIXED_FILES, PART_FOLDERS, PART_WORD, RULE_CODES, LEDGER, LEDGER_NAMES, LEGACY_LEDGER, LEGACY_SETS, LEGACY_SHELF, SHELF, TOOL_FORCED_NAMES, citationKey, enforcementOf, keyOf, legacyKey, parsePartName, parseSetName, promptMatches, slotArea } from "./harness-names.js";
 import { viName } from "./vi-name-judge.js";
 
 // Same place as adopt.ts TEMPLATE_DIR, computed here: guard-gen imports this module and adopt imports guard-gen, so taking
@@ -1810,9 +1810,14 @@ function repoSkillDirs(skillsDir: string, agentDir?: string): Array<{ host: stri
  *  and filled, never run. A machine skill with no gate.json at all was installed from elsewhere and loads by its own
  *  description, so it is not counted (user 24/11: "chỉ nhắc bổ sung cho skill mới"); one with a gate.json is zemory's. */
 export function skillsWithoutPrompt(skillsDir: string, agentDir: string, home: string | null): string[] {
+  // A reminder counts only when it WORKS on its own examples: every `block` sentence fires it, no `pass` sentence does.
+  // Reconcile 26/11: a heredoc turned `\\b` into a backspace, the regex matched nothing, and the repo still read green.
   const hasPrompt = (dir: string): boolean => {
-    const g = gateOf(dir)?.prompt;
-    return Boolean(g && g.kind && g.re && g.text);
+    const gate = gateOf(dir) as ({ prompt?: PromptGate; block?: Array<{ prompt?: unknown }>; pass?: Array<{ prompt?: unknown }> } | null);
+    const g = gate?.prompt;
+    if (!(g && g.kind && g.re && g.text)) return false;
+    const says = (xs: Array<{ prompt?: unknown }> | undefined) => (xs ?? []).map((x) => x?.prompt).filter((p): p is string => typeof p === "string");
+    return says(gate?.block).every((s) => promptMatches(g.re, s)) && !says(gate?.pass).some((s) => promptMatches(g.re, s));
   };
   const frames = new Set(listParts(agentDir, SHELF.skills).filter((p) => p.meta.frame === "true").map((p) => hostSkillOf(p)));
   const out = repoSkillDirs(skillsDir, agentDir).filter((s) => !frames.has(s.host) && !hasPrompt(s.gates)).map((s) => s.host);
