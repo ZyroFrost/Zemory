@@ -1,5 +1,5 @@
 ---
-version: 41
+version: 42
 lang: vi
 ---
 
@@ -171,7 +171,7 @@ lang: vi
 - **Chart nào cũng phóng to riêng được** (v13, như focus mode của Power BI): một nút (`.rp-focus-btn`) trên mỗi chart và
   donut, cao bằng một chip legend và cùng hàng; bấm thì chart chiếm đúng chỗ của các visual khác trong board - bề ngang của
   board, từ dưới thanh trang xuống chân cửa sổ - nền đặc, ở lớp phóng to (`--z-focus`, skill app-sneat-glass §2c): trên trang và khung chat AI, dưới mọi lớp nổi - menu, popover, tip và hộp thoại vẫn nằm trên (v40) - không bao giờ đè lên
-  menu hay thanh trên (v38, user 25/11: "nó chỉ phóng to trong khung thôi, tức là mở rộng hết vị trí của các dashboard khác ban
+  menu hay thanh trên (v38, người dùng 25/11: "nó chỉ phóng to trong khung thôi, tức là mở rộng hết vị trí của các dashboard khác ban
   đầu"); bấm lại hay Esc thì trang về đúng như cũ. [rp-focus] [rp-focus-cover: FOCUS_PROBE bấm từng nút phóng to, đo chỗ visual
   đứng, thứ gì đè lên nó và nền của nó, rồi bấm Esc] **Phóng to không bao giờ ra trắng** (v28, 19/11, Dashboard Cons_Gate_102 §19): mọi biểu đồ,
   bảng, card, khung chữ giữ nguyên nội dung khi phóng to. [rp-focus-whole]
@@ -220,7 +220,7 @@ lang: vi
   (`Rule_Keys_62_DesignChangeApproval`).
 
 - **Thẻ report ở trang danh mục** xếp các trang của nó thành nhiều cột đều nhất mà bề ngang thẻ chứa được, tính theo tên trang
-  dài nhất cộng chỗ thở (v37, user 25/11 qua Dashboard: "cơ chế dựa vào phần dư của màn hình, và tự động thêm cột vào"): mọi cột
+  dài nhất cộng chỗ thở (v37, người dùng 25/11 qua Dashboard: "cơ chế dựa vào phần dư của màn hình, và tự động thêm cột vào"): mọi cột
   một bề rộng, không tên trang nào bị cắt, và không còn chỗ cho thêm một cột khi trang còn nhiều - mọi thẻ của trang dùng chung
   một bề rộng cột để cột thẳng hàng, đo theo tên trang dài nhất của cả trang chứ không theo từng thẻ (v39) (`data-rp-card-pages`), và, khi đã dựng, lật được bằng một
   nút ở góc phải trên (`data-rp-card-flip`) sang trạng thái số liệu (`data-rp-card-status`): bình thường, kỳ chưa có số, đọc

@@ -1,11 +1,11 @@
 ---
 id: Skill_App_ShellUse
 name: app-shell-use
-version: 10
+version: 11
 type: process
 checked: [Skill_App_Base, Skill_App_SneatGlass, Skill_App_Shell, Skill_App_Report, Skill_App_Release, Rule_Keys_90_AppFamilyContract, Frontend_173_Shell]
 description: Wear the system's frame in an app of the system - pin a published build, hand it the app's config, build only page content, and ask the system manager for anything of the frame. Use in an app of a system (role app, owner a system-manager) when its surface is built or changed, when it moves onto the frame or to a newer build, or when something of the frame looks wrong. Vietnamese triggers - "gắn khung", "dùng khung chung", "lên bản khung", "ghim khung", "vùng trang", "lỗi khung".
-from: _Store/03_SKILLS/Skill_App_ShellUse @v10 #f099f2667a4a
+from: _Store/03_SKILLS/Skill_App_ShellUse @v11 #1a78b5f6ff85
 ---
 
 # app-shell-use — an app wears the system's frame, it never builds one
@@ -96,7 +96,7 @@ from: _Store/03_SKILLS/Skill_App_ShellUse @v10 #f099f2667a4a
   frame mounted, at a desktop and a phone width, in both themes; green before each release. It measures the design's px: it sets
   `localStorage sasinShell.scale = off` before the page loads (v5).
 - The deploy installs, then runs that test on the build that shipped, and reports itself failed when it is red (v10,
-  `Rule_Gate_76_DeployChecksFrame` v5, the user 26/11: "deploy liền rồi mới kiểm"): the test
+  `Rule_Gate_76_DeployChecksFrame` v5, the requester 26/11: "deploy liền rồi mới kiểm"): the test
   loads `RULES` · `PROBES` · `DIALOG_RULES` of `scripts/sneat_glass_check.mjs` (or hands that file to the system manager's
   runner `live-app.mjs`), and `RULES` of `scripts/report_layout_check.mjs` when the app has a page marked `data-rp-page`. No
   switch of the deploy skips it. A pin below the family's floor (`shell_floor.json` of rule 76) is blocked; below the newest
