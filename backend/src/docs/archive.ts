@@ -4,6 +4,7 @@
 // read), keeping the newest in place. The search index is then reseeded from the
 // trimmed source. No DB→md render, no second source of truth.
 
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { writeFileAtomic } from "../util/fs-atomic.js";
 import { readTextFile } from "../util/read-text.js";
@@ -93,6 +94,22 @@ function bakDir(ctx: Context): string {
   return join(ctx.projectRoot, "attic", "harness-bak");
 }
 
+/** The rollback copy for a ledger about to be cut, or none when git already holds these exact bytes (tracked, no change
+ *  against HEAD): `git restore` undoes the cut then, and a .bak is only an untracked file someone must clear (Dept_HR
+ *  26/11). A ledger out of git (gitignored, no repo, no git on the machine) keeps its .bak - it has no other way back. */
+function ledgerBackup(ctx: Context, file: string): string | undefined {
+  try {
+    const run = (args: string[]) =>
+      spawnSync("git", ["-C", dirname(file), ...args], { encoding: "utf8", windowsHide: true, timeout: 10_000 });
+    const tracked = run(["ls-files", "--error-unmatch", "--", basename(file)]);
+    if (tracked.status !== 0) return bakDir(ctx);
+    const same = run(["diff", "--quiet", "HEAD", "--", basename(file)]);
+    return same.status === 0 ? undefined : bakDir(ctx);
+  } catch {
+    return bakDir(ctx);
+  }
+}
+
 
 const TODO_INTRO =
   "<!-- TODO ARCHIVE — mục ĐÃ XONG cắt khỏi 05_TODO.md. NGOÀI bộ đọc mỗi phiên; tra khi cần (vẫn trong git). -->\n# TODO — Archive\n\n";
@@ -180,14 +197,25 @@ export function planTodo(lines: string[]): TodoPlan {
     }
     return j;
   };
+  // An item ends at a heading, a quote, a list line at its own level or above, or a paragraph at its own level or above
+  // after a blank line - prose of the file, not part of the item (Dept_HR 26/11: the two closing paragraphs of 04_TODO went
+  // to the archive with the closed item above them). A line right under the item, with no blank between, is still its
+  // lazy continuation.
   const itemEnd = (i: number, indent: number): number => {
     let j = i + 1;
+    let blank = false;
     for (; j < lines.length; j++) {
       if (fenced[j]) continue;
       const n = lines[j];
       if (ANY_HEAD.test(n) || /^>/.test(n)) break;
       const lm = LIST.exec(n);
       if (lm && lm[1].length <= indent) break;
+      if (!n.trim()) {
+        blank = true;
+        continue;
+      }
+      if (blank && /^\s*/.exec(n)![0].length <= indent) break;
+      blank = false;
     }
     return j;
   };
@@ -294,7 +322,7 @@ export function archiveTodo(ctx: Context, dbPath: string, opts: ArchiveOptions =
   // It goes to attic/, NOT next to the file: docs/agent/ is the folder the agent is told
   // to read in full, so a .bak parked there reads as stray rubbish (it was mistaken for
   // exactly that, twice).
-  writeFileAtomic(mainPath, keptText, { backupDir: bakDir(ctx) });
+  writeFileAtomic(mainPath, keptText, { backupDir: ledgerBackup(ctx, mainPath) });
 
   // Reindex BOTH tiers immediately, same as archiveChanges. Without this the moved
   // items are only searchable after someone remembers to run `reindex` — and "someone
@@ -360,7 +388,7 @@ export function archiveChanges(
   writeFileAtomic(archivePath, toEol(ARCHIVE_INTRO + body, eol));
   // backup: đây là thao tác PHÁ HUỶ (cắt ngắn NGUỒN changelog) — giữ .bak để lùi được,
   // nhưng đặt ở attic/ chứ không cạnh file (xem bakDir).
-  writeFileAtomic(mainPath, keptText, { backupDir: bakDir(ctx) });
+  writeFileAtomic(mainPath, keptText, { backupDir: ledgerBackup(ctx, mainPath) });
 
   // Reseed BOTH tiers from their source files (FILE WINS): the trimmed active file,
   // and the archive that just grew. Without the second call the moved entries fall
