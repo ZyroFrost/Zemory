@@ -6,7 +6,7 @@ version: 13
 checked: [Rule_Gate_82_MailGate, Rule_Gate_10_DestructiveOps, Rule_Gate_44_RepoScope, Rule_Gate_79_HarnessEdit, Rule_Gate_73_GateEveryRule]
 kind: action
 code: 01_Harness
-from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet @v13 #07b5e51ef88c
+from: _Store/01_LAW/_Rule/01_Harness/Rule_Gate_61_HookSafetyNet @v13 #76c4da5465a1
 ---
 # Rule_Gate_61_HookSafetyNet — A hook is a safety net, not the one who decides; a block is cleared by the requester's word
 
@@ -39,8 +39,8 @@ already given in the session, or one asked for.
    machine (`zemory msg main <host>` on each other machine; `msg read` marks it ★). A paraphrase, or the relaying agent's own
    wording, is that agent's word, never the requester's. Every action done on that word, and every job the requester gives
    directly here, is reported back up the same way (the main machine by letter, the opener by `SendMessage`).
-7. A session working under another never asks the requester to CONFIRM in its own window ("ko được hỏi lại cần user confirm
-   nữa, chỉ hỏi khi cần thêm thông tin"): what the relayed word covers is done at once; what it does not cover, and any missing
+7. A session working under another never asks the requester to CONFIRM in its own window (the requester 26/11: ask only when a
+   fact is missing, never for a confirm): what the relayed word covers is done at once; what it does not cover, and any missing
    fact, goes UP to the commanding session in one message naming the exact item. The commanding session answers from the
    requester's words it already holds and asks the requester only for a fact or a decision nobody has given yet.
 

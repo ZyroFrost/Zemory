@@ -30,8 +30,8 @@ Chữ của luật là tầng quyết định; hook chỉ đỡ những gì lọ
    `<cross-session-message>`) và của phiên đang chỉ huy nó; ② thư từ máy chính của người dùng (`zemory msg main <máy>` khai ở mỗi máy
    kia; `msg read` đánh dấu ★). Lời diễn giải, hay chữ của agent chuyển, là lời agent đó, không phải lời người dùng. Mọi việc làm
    theo lời đó, và mọi việc người dùng giao thẳng ở đây, đều báo ngược lên cùng đường (máy chính bằng thư, phiên mở bằng `SendMessage`).
-7. Phiên làm việc dưới phiên khác không bao giờ hỏi người dùng XÁC NHẬN trong cửa sổ của nó ("ko được hỏi lại cần user confirm nữa,
-   chỉ hỏi khi cần thêm thông tin"): việc lời chuyển xuống đã phủ thì làm ngay; việc nó không phủ, và mọi dữ kiện còn thiếu, gửi LÊN
+7. Phiên làm việc dưới phiên khác không bao giờ hỏi người dùng XÁC NHẬN trong cửa sổ của nó (người dùng 26/11: chỉ hỏi khi thiếu dữ
+   kiện, không bao giờ hỏi xác nhận): việc lời chuyển xuống đã phủ thì làm ngay; việc nó không phủ, và mọi dữ kiện còn thiếu, gửi LÊN
    phiên chỉ huy trong một tin nêu đúng mục. Phiên chỉ huy trả lời bằng lời người dùng nó đang có, chỉ hỏi người dùng khi cần một dữ
    kiện hay một quyết định chưa ai đưa.
 
