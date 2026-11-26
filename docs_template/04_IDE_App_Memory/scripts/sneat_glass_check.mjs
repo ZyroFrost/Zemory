@@ -1071,9 +1071,10 @@ export const RULES = [
       const row1 = head.querySelector(':scope > .nav-row1'), row2 = head.querySelector(':scope > #page-bar');
       if (!row1 || !row2) return 'the top bar is not one head of two rows (row 1 and the page bar)';
       if (document.querySelector('.page-toolbar .page-crumbs')) return 'the crumbs still sit in the page bar - they start row 1';
-      if ([...row1.querySelectorAll('.navbar-hello, #greeting')].some(e => !e.closest('#account-menu')))
-        return 'the greeting still takes row 1 - it belongs in the account menu';
-      if (!document.querySelector('#account-menu .account-greeting')) return 'the account menu does not greet the person';
+      // (v94, the user 26/11: "chào + tên sso ở ngoài luôn") the greeting with the name stands in row 1 right before the actions;
+      // a frame before 1.47.4 still greets in the account menu - either place, never at the start of row 1 nor beside the crumbs
+      if ([...row1.querySelectorAll('.navbar-hello, #greeting')].some(e => !e.closest('#account-menu, .navbar-end')))
+        return 'the greeting stands in row 1 anywhere but right before the actions';
       const crumbs = row1.querySelector('.page-crumbs');
       if (innerWidth >= 768) {
         if (!crumbs || !crumbs.getClientRects().length) return 'no crumbs at the start of row 1';

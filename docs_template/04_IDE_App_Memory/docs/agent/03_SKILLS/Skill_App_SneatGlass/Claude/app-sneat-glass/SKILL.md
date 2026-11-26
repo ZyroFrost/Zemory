@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 93
+version: 94
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v93 #32bcbefc8047
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v94 #6c0ee03f4a09
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -223,9 +223,10 @@ from: _Store/03_SKILLS/Skill_App_SneatGlass @v93 #32bcbefc8047
   in the menu. Every layer before the current page is a link to that layer's home (the family's and the hub's home is the
   launcher, a group's its first page) - even when that home is the page on screen; only the current page is plain text
   (`aria-current="page"`); no title repeats the last crumb. [crumbs]
-- **The account menu is the kit's:** its heading is the greeting on ONE line ("Good evening, <name>") with the role under it;
-  then My profile, Settings, the quick settings - language (VI · EN), light / dark, the glass switch - and Sign out. The
-  greeting never takes room in row 1. [crumbs] [bar-switches]
+- **The greeting stands in row 1, right before the actions** (v94, the user 26/11: "chào + tên sso ở ngoài luôn để đỡ cấn,
+  chức vụ để lại trong user popover"): "Good morning, <the account's full name>" on one line, cut with "…" when long, from
+  1200 px. **The account menu is the kit's:** the name (its part before " - ") with the role under it; then My profile,
+  Settings, the quick settings - language (VI · EN), light / dark, the glass switch - and Sign out. [crumbs] [bar-switches]
 - **The version of the open app stands at the foot of the menu** (`v<M.m.p>`, read from the app's health), hidden while the
   menu is folded; never in row 1.
 - **A page bar carries no tab of the app's own to a page of the menu:** the pages of an app are found in the menu; the page

@@ -1,5 +1,5 @@
 ---
-version: 93
+version: 94
 lang: vi
 ---
 
@@ -198,9 +198,10 @@ lang: vi
   đều là liên kết về trang đầu của lớp đó (trang đầu của hệ và của hub là trang chọn app, của một nhóm là trang đầu của nhóm) -
   kể cả khi trang đầu đó chính là trang đang mở; chỉ trang hiện tại là chữ thường (`aria-current="page"`); không title nào lặp
   lại nấc cuối. [crumbs]
-- **Menu tài khoản theo bộ mẫu:** tiêu đề của nó là lời chào trên MỘT dòng ("Chào buổi tối, <tên>"), dưới là vai; rồi Hồ sơ của
-  tôi, Cài đặt, các cài đặt nhanh - ngôn ngữ (VI · EN), sáng / tối, công tắc kính - rồi Đăng xuất. Lời chào không bao giờ chiếm chỗ
-  ở hàng 1. [crumbs] [bar-switches]
+- **Lời chào nằm ở hàng 1, ngay trước các nút** (v94, user 26/11: "chào + tên sso ở ngoài luôn để đỡ cấn, chức vụ để lại
+  trong user popover"): "Chào buổi sáng, <họ tên đầy đủ của tài khoản>" trên một dòng, dài thì cắt bằng "…", từ 1200 px. **Menu
+  tài khoản theo bộ mẫu:** tên (phần trước " - "), dưới là vai; rồi Hồ sơ của tôi, Cài đặt, các cài đặt nhanh - ngôn ngữ (VI ·
+  EN), sáng / tối, công tắc kính - rồi Đăng xuất. [crumbs] [bar-switches]
 - **Số phiên bản của app đang mở nằm ở chân menu** (`v<M.m.p>`, đọc từ health của app), ẩn khi menu thu gọn; không bao giờ ở hàng 1.
 - **Thanh trang không có tab riêng của app tới một trang của menu:** các trang của app tìm trong menu; cụm trái của thanh trang là
   công cụ của trang (thao tác chính, một công tắc, các chip lọc chéo). Chỉ cụm tab của khung được đứng ở hàng 2 (v56,
