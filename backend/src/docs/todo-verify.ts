@@ -18,7 +18,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { basename, extname, posix, relative, sep } from "node:path";
+import { basename, extname, join, posix, relative, sep } from "node:path";
 import { harnessPathsAt } from "../core/config.js";
 import { readTextFile } from "../util/read-text.js";
 import { listDir } from "../util/list-dir.js";
@@ -122,6 +122,11 @@ const RE_ENDPOINT = /`(\/[a-z][a-z0-9-]{2,})`/g;
 /** Tên file được nhắc kiểu rút gọn (`commands/memory.ts`) ⇒ khớp theo ĐUÔI đường dẫn. */
 function findFile(root: string, needle: string): string {
   const want = needle.replace(/\\/g, "/").toLowerCase();
+  // A path written in full from the repo root is looked up as it stands, before the walk and its SKIP list: measured
+  // 26/11 on the PC (music_video_flow), `attic/projects_py_2026-06-11.py` was reported dead although the file is there -
+  // the walk never enters `attic`.
+  const direct = join(root, needle);
+  if (needle.includes("/") && existsSync(direct) && !statSync(direct).isDirectory()) return needle.replace(/\\/g, "/");
   // `.claude/` và `docs_template/` LÀ nội dung repo (skill, bản mẫu) — bỏ qua chúng thì
   // `SKILL.md`/`conventions.md` bị báo chết oan. `data/` thì bỏ thật: nó là runtime,
   // gitignored, và chứa cache model hàng nghìn file.
