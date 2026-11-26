@@ -22,7 +22,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import type { Context } from "../core/types.js";
 import { currentMemoryDir } from "../memory/db.js";
@@ -531,26 +531,50 @@ export function classify(
 
 // ── git as a witness ─────────────────────────────────────────────────────────
 /**
- * Đích nào trong `rels` khớp `.gitignore` của repo. `--no-index` để hỏi THUẦN mẫu (đích không tồn tại
- * nên không có gì trong index để hỏi). Không phải git repo / git lỗi ⇒ tập rỗng (fail-open, điều 9).
- * Vì sao là hỏi git chứ không tự đọc `.gitignore`: cú pháp ignore (phủ định, neo, `**`) đủ rắc rối để một
- * bản chép tay lệch bản thật — mà git đã có sẵn câu trả lời đúng.
+ * Which targets in `rels` match the repo's `.gitignore`. `--no-index` asks the patterns ONLY (the targets do
+ * not exist, so the index has nothing to say). git fails ⇒ empty set (fail-open, article 9).
+ * Why ask git rather than parse `.gitignore`: ignore syntax (negation, anchors, `**`) is tricky enough that a
+ * hand-written copy drifts from the real one, and git already has the right answer.
+ * A folder that is NOT a git repo but has a `.gitignore` (a copy without `.git`, like `ztrading_lab` on the PC
+ * 26/11: `data/cache/` is in `.gitignore`, yet `paper_trading_state.json` was reported dead) ⇒ ask again with a
+ * borrowed empty git dir as `--git-dir` and the folder as `--work-tree`: git still reads the tree's `.gitignore`.
  */
 function gitIgnored(root: string, rels: string[]): Set<string> {
   const out = new Set<string>();
   const list = [...new Set(rels.filter(Boolean))];
   if (!list.length) return out;
-  try {
-    const r = execFileSync("git", ["check-ignore", "--stdin", "-z", "--no-index"], { windowsHide: true,
-      cwd: root, input: list.join("\0") + "\0", encoding: "utf8", maxBuffer: 16 << 20, stdio: ["pipe", "pipe", "ignore"],
-    });
-    for (const p of r.split("\0")) if (p) out.add(posix(p).toLowerCase());
-  } catch (e) {
-    // exit 1 = "không mẫu nào khớp" (đầu ra vẫn là sự thật, có thể rỗng); lỗi khác = không phải git repo.
-    const ex = e as { status?: number; stdout?: string };
-    if (ex.status === 1 && typeof ex.stdout === "string") for (const p of ex.stdout.split("\0")) if (p) out.add(posix(p).toLowerCase());
+  const ask = (pre: string[]): number | undefined => {
+    try {
+      const r = execFileSync("git", [...pre, "check-ignore", "--stdin", "-z", "--no-index"], { windowsHide: true,
+        cwd: root, input: list.join("\0") + "\0", encoding: "utf8", maxBuffer: 16 << 20, stdio: ["pipe", "pipe", "ignore"],
+      });
+      for (const p of r.split("\0")) if (p) out.add(posix(p).toLowerCase());
+      return 0;
+    } catch (e) {
+      // exit 1 = "no pattern matched" (stdout is still the truth, maybe empty); 128 = not a git repo.
+      const ex = e as { status?: number; stdout?: string };
+      if (ex.status === 1 && typeof ex.stdout === "string") for (const p of ex.stdout.split("\0")) if (p) out.add(posix(p).toLowerCase());
+      return ex.status ?? undefined;
+    }
+  };
+  if (ask([]) === 128 && existsSync(join(root, ".gitignore"))) {
+    const bare = emptyGitDir();
+    if (bare) ask(["--git-dir", bare, "--work-tree", root]);
   }
   return out;
+}
+/** One fixed empty git dir, lent to `gitIgnored` in folders without `.git`; reused across runs, rebuilt if a temp sweep removed it. Fails ⇒ null. */
+let emptyGitDirMemo: string | null | undefined;
+function emptyGitDir(): string | null {
+  if (emptyGitDirMemo === null || (emptyGitDirMemo && existsSync(join(emptyGitDirMemo, "HEAD")))) return emptyGitDirMemo;
+  try {
+    const dir = join(tmpdir(), "zemory-emptygit");
+    if (!existsSync(join(dir, "HEAD"))) execFileSync("git", ["init", "-q", "--bare", dir], { windowsHide: true, stdio: "ignore" });
+    emptyGitDirMemo = dir;
+  } catch {
+    emptyGitDirMemo = null;
+  }
+  return emptyGitDirMemo;
 }
 /**
  * Mọi đường từng bị XOÁ hay ĐỔI TÊN trong lịch sử git (`--no-renames` để tên cũ hiện là D). Đây là bằng
@@ -814,7 +838,8 @@ export function pathsCheck(ctx: Context, opts: { code?: boolean } = {}): PathsRe
   // đường viết đúng, chỗ đứng đúng, chỉ là máy này không có bản đó. Đo 2026-09-17: 6/24 "mới chết" ở
   // `_Warehouse_Old` là đúng lớp này (`config/dw_load.env` · `pos_sky.env` · `ipos_loader.env`…).
   // Một lượt `check-ignore` cho cả rổ, không hỏi từng chuỗi.
-  if (fromGit && report.dead.length) {
+  // A folder without `.git` but with a `.gitignore` is asked too (`gitIgnored` lends it an empty git dir).
+  if ((fromGit || existsSync(join(root, ".gitignore"))) && report.dead.length) {
     const ignored = gitIgnored(root, report.dead.flatMap((h) => h.rels ?? []));
     if (ignored.size) {
       const keep: PathHit[] = [];
