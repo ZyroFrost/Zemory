@@ -190,7 +190,7 @@ export async function cmdHook(args: string[]): Promise<void> {
     if (out) process.stdout.write(out);
     return;
   }
-  await hookGuardLog(sub ?? "", payload, Date.now() - t0, r.error);
+  await hookGuardLog(sub ?? "", payload, Date.now() - t0, r.error, r.step);
 }
 
 /** A hook's time ceiling: under Claude Code's own 60 s, so the hook ends before the host gives up on it. */
@@ -199,7 +199,7 @@ const HOOK_LIMIT_MS = Number(process.env.ZEMORY_HOOK_LIMIT_MS) || 50_000;
 const HOOK_HEAP_MB = Number(process.env.ZEMORY_HOOK_HEAP_MB) || 512;
 
 /** One line per hook the guard ended (logs are kept for good, 02-97). Never throws. */
-async function hookGuardLog(event: string, payload: Record<string, unknown>, ms: number, why: string): Promise<void> {
+async function hookGuardLog(event: string, payload: Record<string, unknown>, ms: number, why: string, step?: string): Promise<void> {
   try {
     const tp = String(payload.transcript_path ?? "");
     let size = -1;
@@ -217,6 +217,8 @@ async function hookGuardLog(event: string, payload: Record<string, unknown>, ms:
       ms,
       rssMb: Math.round(process.memoryUsage().rss / 1048576),
       why,
+      // the step the hook was in when it was cut (fnworker `__workerStep`); "" = it never named one
+      step: step ?? "",
     });
     const { currentMemoryDir } = await import("../memory/db.js");
     const dir = join(currentMemoryDir(), "logs");

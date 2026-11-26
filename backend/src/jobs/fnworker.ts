@@ -11,8 +11,11 @@
 import { spawn } from "node:child_process";
 import { Worker } from "node:worker_threads";
 
+// `__workerStep(name)`: the function names the step it enters, so a run cut at its ceiling says WHERE it was (a stop hook
+// ended at 50 s nine times 24-26/11 and no single step was slow when measured alone).
 const WORKER_SRC = `
 const { parentPort, workerData } = require("node:worker_threads");
+globalThis.__workerStep = (s) => parentPort.postMessage({ step: String(s) });
 import(workerData.mod)
   .then((m) => Promise.resolve(m[workerData.fn](...workerData.args)))
   .then((value) => parentPort.postMessage({ ok: true, value }))
@@ -31,7 +34,7 @@ process.once("message", (job) => {
 
 // `timedOut`: the work ran past its limit. A caller must NOT then run it on the event loop: work too slow for a worker
 // (a repo walk through a Docker mount) freezes the daemon there - measured 2026-10-22, /ping silent for 30 s at a time.
-export type WorkerResult<T> = { ok: true; value: T } | { ok: false; error: string; timedOut?: boolean };
+export type WorkerResult<T> = { ok: true; value: T } | { ok: false; error: string; timedOut?: boolean; step?: string };
 
 /**
  * `modFromDist` is the path under `dist/`, e.g. `"platform/browsersweep.js"`.
@@ -62,16 +65,20 @@ export function runInWorker<T>(
       return resolve({ ok: false, error: `could not start the worker: ${e instanceof Error ? e.message : String(e)}` });
     }
     let done = false;
+    let step = "";
     const finish = (r: WorkerResult<T>): void => {
       if (done) return;
       done = true;
       clearTimeout(timer);
       void w.terminate().catch(() => {});
-      resolve(r);
+      resolve(!r.ok && step ? { ...r, step } : r);
     };
     const timer = setTimeout(() => finish({ ok: false, error: `over ${Math.round(timeoutMs / 1000)} s`, timedOut: true }), timeoutMs);
     timer.unref?.();
-    w.once("message", (m: WorkerResult<T>) => finish(m));
+    w.on("message", (m: WorkerResult<T> | { step: string }) => {
+      if (m && typeof m === "object" && "step" in m && !("ok" in m)) step = m.step;
+      else finish(m as WorkerResult<T>);
+    });
     w.once("error", (e) => finish({ ok: false, error: e instanceof Error ? e.message : String(e) }));
     w.once("exit", (code) => finish({ ok: false, error: `worker exited (code ${code}) before returning a result` }));
   });

@@ -56,6 +56,15 @@ export type HookEventName = "session-start" | "stop" | "session-end" | "prompt" 
  */
 const warnAtPercent = (): number => getContextWarnPercent();
 
+/** Name the step the hook enters (fnworker `__workerStep`): a hook cut at its ceiling logs where it was. No-op elsewhere. */
+const step = (name: string): void => {
+  try {
+    (globalThis as { __workerStep?: (s: string) => void }).__workerStep?.(name);
+  } catch {
+    /* fail-open */
+  }
+};
+
 /**
  * Nạp phiên đang chạy vào GM. Ưu tiên `transcript_path` của host (đường MỘT file, <1s);
  * không có thì KHÔNG rơi về quét cả kho — đường per-message mà lặng lẽ quét 1,8–7s (và ~125s
@@ -64,6 +73,7 @@ const warnAtPercent = (): number => getContextWarnPercent();
 function ingestCurrent(payload: any): { newMessages: number; ms: number } | null {
   const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
   if (!path) return null;
+  step("ingest: daemon slot");
   // Daemon holds the job slot ⇒ never wait here (waiting cost ~125 s per answer, measured 2026-08-02). But never skip
   // silently either: leave a note the daemon ingests the moment the slot frees (plan/24 §12.6). The bare skip kept an
   // hour of chat out of the store while the fast lane held the slot almost continuously and the scheduler was off (12/10).
@@ -73,6 +83,7 @@ function ingestCurrent(payload: any): { newMessages: number; ms: number } | null
   }
   // The embed lane may be writing vectors beside the slot (plan/24 §12.7) ⇒ take the store's write turn. Its turns last
   // ms, so this almost never waits; a turn that does not come within a few seconds ⇒ defer, never hang the answer.
+  step("ingest: write turn");
   const release = tryWriteTurnSync(HOOK_TURN_WAIT_MS);
   if (!release) {
     deferIngest(path);
@@ -80,6 +91,7 @@ function ingestCurrent(payload: any): { newMessages: number; ms: number } | null
   }
   let r: ReturnType<typeof scanOneFile>;
   try {
+    step("ingest: scan one file");
     r = scanOneFile(path);
   } finally {
     release();
@@ -547,6 +559,7 @@ export function handleHook(event: HookEventName, payload: any): string {
 
     if (event === "stop" || event === "session-end") {
       // the turn ended: the session and its repo stop spinning (re-marked below when a letter holds the turn open)
+      step("mark idle");
       markIdle(payload ?? {});
       clearRepo(String(payload?.cwd ?? payload?.project_dir ?? ""));
       // the repo is the folder the session was OPENED in: a turn that ended after a `cd` elsewhere left the repo's mark
@@ -563,9 +576,11 @@ export function handleHook(event: HookEventName, payload: any): string {
       const path: string | undefined = payload?.transcript_path ?? payload?.transcriptPath;
       // Rule_Gate_01_DoneMeansRun (plan/28 §0q): in a folder harness that carries rule 11, a turn that changed code must
       // have run a check after the last change. Its answer is the ONLY text this hook ever returns.
+      step("verdict");
       const verdict = event === "stop" ? endOfTurnVerdict(payload) : "";
       const ingested = ingestCurrent(payload);
       if (!ingested && !path && !daemonJobBusyExternal()) {
+        step("scan all (no transcript path)");
         const release = tryWriteTurnSync(HOOK_TURN_WAIT_MS); // same queue as every other writer (plan/24 §12.7)
         if (release) {
           try {
@@ -579,6 +594,7 @@ export function handleHook(event: HookEventName, payload: any): string {
       // lúc vượt ngưỡng (context phình trong lượt trả lời, không phải lúc user gõ). Chỉ GHI SỔ,
       // KHÔNG trả chữ: `Stop` là hook write-only, 0 token (xem `writeContextState`).
       if (path) {
+        step("context usage");
         try {
           const usage = readContextUsage(path);
           // Đòi CẢ percent VÀ window: `percent` suy từ `window`, nhưng ghi sổ một mẫu số `null`
@@ -620,6 +636,7 @@ export function handleHook(event: HookEventName, payload: any): string {
       // line limit. Said to the person, never pushed.
       // plan/40 §4 ②: a letter from the other machine landed while this session worked - the turn does not end on it unread
       if (event === "stop" && !verdict) {
+        step("mail");
         let mail = "";
         try {
           mail = mailNotice(payload);
@@ -633,6 +650,7 @@ export function handleHook(event: HookEventName, payload: any): string {
         }
         // no live waiter for this session any more (it fired on a letter, or was reaped for low memory): re-arm it now,
         // or the session goes idle deaf to the other machine (PC 20/11: two letters unread for an hour)
+        step("waiter");
         let arm = "";
         try {
           arm = waiterNotice(payload, true);
@@ -718,6 +736,7 @@ export function endOfTurnAutoCommit(payload: any, transcriptPath: string): strin
   try {
     const cwd = String(payload?.cwd ?? "");
     if (!cwd) return "";
+    step("auto-commit: files of the session");
     const written = sessionWrittenFilesAt(transcriptPath);
     // the repo's code graph stays current for graph_impact: a turn that wrote a source file starts a rebuild in a worker
     const root = findProjectRoot(toLocalPath(cwd));
@@ -726,6 +745,7 @@ export function endOfTurnAutoCommit(payload: any, transcriptPath: string): strin
     // 2026-11-16), on every Stop of every session, and the host hook gave up after 15 s while the git kept running. The
     // host's hook runs the commit on the host instead, detached (backend/scripts/host-hook.mjs autoCommitSoon).
     if (RUNTIME === "docker") return "";
+    step("auto-commit: git");
     const r = autoCommit(toLocalPath(cwd), written);
     if (!r || (!r.committed && !r.note.startsWith("commit refused"))) return "";
     return r.committed
