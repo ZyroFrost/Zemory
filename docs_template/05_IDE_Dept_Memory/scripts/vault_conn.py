@@ -11,7 +11,7 @@ account its tasks run with). No repo holds a connection string, a password or a 
     cert("BackupCert.pvk")                                     path of a secret FILE of this repo: _ConfigVault\\certs\\<repo>\\<name>
     load_env()                                                the repo's .env settings into the environment
     mailbox("support")                                        a sending mailbox of the mail book, with its password
-    group("dw_lane_alert")                                    {"to": [...], "cc": [...]} of a recipient group
+    group("dw_lane_alert")                                    {"to", "cc", "bcc"} of a recipient group ([] when undeclared)
     stores()                                                  {store id: {"address", "name", "cc", "active", ...}}
 
     python scripts/vault_conn.py                              what this machine can build (names only, never a value)
@@ -23,7 +23,7 @@ Vault layout:
     api\\credentials\\services.env    <SERVICE>_<RESOURCE>_<ACCOUNT>_<KIND>
     mail\\credentials\\smtp.env       <MAIL HOST>_<RESOURCE>_<ACCOUNT>_ID / _PASS
     mail\\configs\\mailboxes.json     {"mailboxes": {<key>: {"address", "holder", "department", "job_title", "host", "port", "password_key"}}}
-    mail\\configs\\recipients.json    {"people": {<address>: {...}}, "stores": {<store id>: {...}}, "groups": {<name>: {"to", "cc"}}}
+    mail\\configs\\recipients.json    {"people": {<address>: {...}}, "stores": {<store id>: {...}}, "groups": {<name>: {"to", "cc", "bcc"}}}
 Key grammar: segments joined by "_", the words inside one segment by "-" (a "." or "_" inside a name becomes "-"), upper case.
 Where the vault is (slot ConfigVault_151, two levels): env CONFIGVAULT_DIR, else the nearest `_ConfigVault` walking UP from this repo
 that holds secrets (`sql\\` / `api\\` / `mail\\`) - the ORGANISATION vault `Workspace\\Company\\<Org>\\_ConfigVault` on a work PC shared by
@@ -175,11 +175,11 @@ def mailbox(key):
 
 
 def group(name):
-    """{"to": [...], "cc": [...]} of a recipient group of the mail book."""
+    """{"to": [...], "cc": [...], "bcc": [...]} of a recipient group of the mail book; a key the group does not declare is []."""
     g = _book("recipients.json").get("groups", {}).get(name)
     if not g:
         raise VaultMissing("vault: group '%s' is not in %s" % (name, MAIL_BOOK / "recipients.json"))
-    return {"to": list(g.get("to") or []), "cc": list(g.get("cc") or [])}
+    return {k: list(g.get(k) or []) for k in ("to", "cc", "bcc")}
 
 
 def stores():
