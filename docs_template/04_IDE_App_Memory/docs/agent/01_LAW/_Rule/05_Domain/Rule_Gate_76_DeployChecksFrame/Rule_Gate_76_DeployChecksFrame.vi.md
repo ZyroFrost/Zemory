@@ -1,5 +1,5 @@
 ---
-version: 4
+version: 5
 lang: vi
 ---
 # Rule_Gate_76_DeployChecksFrame — An app of a family deploys only through the frame's shared checks
@@ -8,23 +8,22 @@ lang: vi
 App mang khung chung của họ (ghim một bản khung ở `frontend/config/shell.json`) chỉ được đẩy bản build qua bộ kiểm trình duyệt
 có nạp luật chung của khung: `RULES` · `PROBES` · `DIALOG_RULES` của `scripts/sneat_glass_check.mjs`, cộng `RULES` của
 `scripts/report_layout_check.mjs` khi app có trang báo cáo (`data-rp-page`). Không công tắc nào của lệnh deploy được bỏ bộ kiểm.
-Việc mới thì kiểm trước khi đẩy; bản sửa ngược - code trả lại cái mà một lần sửa sai đã làm hỏng - thì đẩy trước, kiểm ngay sau
-trên đúng bản vừa lên. Bản khung ghim không bao giờ thấp hơn mức sàn của họ; thấp hơn bản mới nhất chỉ cảnh báo, không chặn.
+(v5, user 26/11: "giờ t bắt buộc deploy liền rồi mới kiểm") Mọi bản build đẩy trước, kiểm ngay sau trên đúng bản vừa lên;
+đỏ thì nói ra và sửa ngay. Bản khung ghim không bao giờ thấp hơn mức sàn của họ; thấp hơn bản mới nhất chỉ cảnh báo, không chặn.
 
 ## Khi nào áp
 - Chạy script deploy của một app có ghim bản khung (`deploy*.ps1` · `deploy*.sh`), trừ lần kiểm khô hoặc quay lại bản cũ.
 
 ## Phải làm gì
-1. Lệnh deploy chạy bộ kiểm trình duyệt trước khi đẩy, hoặc ngay sau khi cài và báo deploy hỏng khi đỏ (skill app-shell-use §6):
-   mọi trang, ở một độ rộng máy bàn và một độ rộng điện thoại, cả hai theme. Đỏ hoặc không kiểm được ⇒ không đẩy gì.
-2. (v4, user 25/11: "cái nào thuộc dạng sửa ngược lại là deploy liền rồi mới kiểm sau") Bản sửa ngược đẩy trước:
-   `-Revert <commit>` nêu commit mà nó gỡ chỗ hỏng; lệnh deploy cài, rồi cùng bộ kiểm trình duyệt chạy ngay sau trên đúng bản vừa
-   lên; đỏ thì nói ra và sửa ngay. Người dùng không phải chờ bộ kiểm mới lấy lại được cái một lần sửa sai đã làm mất. Việc mới và
-   bản sửa mới không bao giờ dùng `-Revert`: chúng được kiểm trước khi đẩy.
+1. (v5) Lệnh deploy cài trước, rồi chạy bộ kiểm trình duyệt trên đúng bản vừa lên (skill app-shell-use §6): mọi trang, ở một độ
+   rộng máy bàn và một độ rộng điện thoại, cả hai theme. Đỏ ⇒ lệnh deploy tự báo hỏng, nói ra, sửa và đẩy lại ngay. Người dùng
+   không phải chờ bộ kiểm mới có bản build. Các cổng nhanh của chính script deploy (vài giây: đăng nhập đóng khi lỗi, tài khoản,
+   đường khung) vẫn chạy trước khi cài.
+2. `-Revert <commit>` (v4) vẫn nhận: nêu commit mà bản build gỡ chỗ hỏng, để ghi sổ; thứ tự như mọi lần deploy.
 3. Bộ kiểm đó import các tên chung, hoặc giao file luật chung cho bộ chạy chung của họ (`live-app.mjs` của repo quản hệ); bộ chạy
    này nạp đủ ba tên. App có trang báo cáo thì nạp thêm luật báo cáo.
-4. Không thêm công tắc bỏ bộ kiểm (`-SkipLive`, `-NoCheck` …), và không chạy deploy kèm công tắc đó. `-Revert` không phải công
-   tắc bỏ kiểm: bộ kiểm vẫn chạy, chỉ là chạy sau.
+4. Không thêm công tắc bỏ bộ kiểm (`-SkipLive`, `-NoCheck` …), và không chạy deploy kèm công tắc đó. Bộ kiểm chạy sau khi cài,
+   không bao giờ bỏ hẳn.
 5. Bản ghim giữ bằng hoặc cao hơn `floor` trong `shell_floor.json` cạnh luật này. Repo quản hệ nâng mức sàn khi một bản khung sửa
    lỗi nặng, và ghi bản mới nhất vào đó mỗi khi phát một bản (skill app-shell).
 6. Bộ kiểm đứng trên cổng riêng của app và chỉ dừng tiến trình chính lệnh deploy bật, theo id cả cây - không bao giờ dừng thứ
@@ -33,8 +32,8 @@ trên đúng bản vừa lên. Bản khung ghim không bao giờ thấp hơn m�
 ## Ví dụ
 - Tình huống: script deploy của một app báo cáo chạy unit test và build rồi đẩy luôn.
 - ✗ Sai: deploy như vậy; các trang chưa từng được soi theo luật của khung, một thanh trang lệch cỡ lên server.
-- ✓ Đúng: lệnh deploy chạy `scripts/sneat_check.mjs` trên bản mock đã build; file này import `RULES`, `PROBES`, `DIALOG_RULES`
-  và `RULES` của luật báo cáo; chỉ lượt xanh mới được đẩy.
+- ✓ Đúng: lệnh deploy cài trước, rồi chạy `scripts/sneat_check.mjs` trên bản mock build từ đúng commit đó; file này import
+  `RULES`, `PROBES`, `DIALOG_RULES` và `RULES` báo cáo; đỏ thì lệnh deploy báo hỏng, sửa và đẩy lại ngay.
 
 ## Máy kiểm
 - Hook chặn lần chạy script deploy trong repo có `frontend/config/shell.json` khi: những gì script chạy (file `.mjs` và `.py`
