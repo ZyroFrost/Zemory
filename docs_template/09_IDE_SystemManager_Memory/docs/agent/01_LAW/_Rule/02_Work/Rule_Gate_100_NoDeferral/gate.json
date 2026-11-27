@@ -1,0 +1,28 @@
+{
+  "gate": "hook:stop-evidence",
+  "prompt": {
+    "kind": "Rule_100",
+    "re": "\\b(dem nay|toi nay|khuya nay|ban dem|ve dem|lam dem|chay dem|doi dem|cho dem|qua dem|ca dem|sang mai|ngay mai|de mai|doi lich|dat lich lai|hen lai|lam lien tuc|chay lien tuc|tonight|overnight|tomorrow|postpone|reschedule)\\b",
+    "text": "[zemory] Rule_Gate_100_NoDeferral: given work runs NOW, as a loop (run · measure · fix · run again) until it is measured done - never moved to tonight, overnight, tomorrow or the next run on the agent's own; only the requester names a later time."
+  },
+  "block": [
+    {
+      "note": "the requester's complaint that names the fault",
+      "prompt": "sao cứ đợi đêm quài, t đã nói chạy liên tục mà"
+    },
+    {
+      "note": "the requester forbids moving work to the night",
+      "prompt": "cấm tự ý chuyển về làm đêm, làm cho xong việc t giao"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "đọc giúp file này"
+    },
+    {
+      "note": "'đem' (to bring) is not 'đêm' (night)",
+      "prompt": "đem file báo cáo qua repo kia"
+    }
+  ]
+}

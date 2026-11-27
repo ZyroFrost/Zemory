@@ -776,9 +776,11 @@ export function endOfTurnVerdict(payload: any): string {
     const evidence = rules.some((p) => p.key === "Rule_1" || p.key === "Rule_11");
     // rule 27's vocabulary in the reply itself ("kho" alone: DW or HS) — every repo whose set carries rule 27
     const vocab = rules.some((p) => p.key === "Rule_27");
-    if (!evidence && !vocab) return "";
+    // rule 100: given work is never moved to a later time on the agent's own - every repo whose set carries it
+    const defer = rules.some((p) => p.key === "Rule_100");
+    if (!evidence && !vocab && !defer) return "";
     const own = (readMarker(here)?.data as { repoGates?: unknown } | undefined)?.repoGates;
-    return stopDecision(payload, Array.isArray(own) ? own.filter((x): x is string => typeof x === "string") : [], { evidence, vocab });
+    return stopDecision(payload, Array.isArray(own) ? own.filter((x): x is string => typeof x === "string") : [], { evidence, vocab, defer });
   } catch {
     return "";
   }

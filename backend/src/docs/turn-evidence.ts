@@ -131,6 +131,45 @@ export function replyVocab(text: string): string | null {
     "warehouse) or HS (the harness store) and send it again:\n" + bad.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n");
 }
 
+// Rule 100 in what the agent SAYS: given work moved to a later time on the agent's own (the requester complained about it
+// more than twenty times, 04/10-27/11, most in the warehouse repo: "sao cứ đợi đêm quài"). Future times only: "last night"
+// is a report, not a deferral.
+const DEFER_VI = /(tối nay|đêm nay|khuya nay|sáng mai|ngày mai|để mai|mai (?:làm|chạy|kiểm|đo|xem)|qua đêm|lượt đêm|chạy đêm|làm đêm|ngoài giờ|đợi (?:tới )?(?:tối|đêm)|chờ (?:tới )?(?:tối|đêm|sáng mai))(?![\p{L}])/iu;
+const DEFER_EN = /\b(tonight|overnight|tomorrow|after hours|off-hours|next session)\b/i;
+/** The requester's own words that set a time: then the time is theirs, not the agent's deferral. */
+const NAMES_TIME = /(đêm|tối|khuya|mai|ngoài giờ|night|tonight|tomorrow|after hours|\d{1,2}[:h]\d{0,2})/iu;
+
+/** What the person typed in this turn (text blocks of the typed lines), "" when the turn was woken by a notice. */
+export function typedThisTurn(transcriptText: string): string {
+  const out: string[] = [];
+  for (const line of transcriptText.split("\n")) {
+    if (!typedLine(line)) continue;
+    try {
+      const c = (JSON.parse(line) as { message?: { content?: unknown } }).message?.content;
+      if (typeof c === "string") out.push(c);
+      else if (Array.isArray(c)) for (const b of c as Array<{ type?: string; text?: string }>) if (b?.type === "text" && b.text) out.push(b.text);
+    } catch {
+      /* a line that does not parse is not typed text */
+    }
+  }
+  return out.join("\n");
+}
+
+/** null = the reply moves nothing to later · string = the block reason with the lines that do (code and quotes are mentions). */
+export function replyDeferral(reply: string, typed = ""): string | null {
+  if (typed && NAMES_TIME.test(typed)) return null;
+  const prose = reply.replace(/```[\s\S]*?```/g, "");
+  const bad = prose.split("\n").filter((l) => {
+    const s = l.replace(KHO_QUOTED, "");
+    return DEFER_VI.test(s) || DEFER_EN.test(s);
+  });
+  if (!bad.length) return null;
+  return "Rule_Gate_100_NoDeferral: this reply moves given work to a later time (tonight · overnight · tomorrow · the next run) on " +
+    "the agent's own. Do it now, as a loop - run, measure, fix, run again - until it is measured done; a long run starts now in " +
+    "the background and is watched; a real blocker is one line with its measurement, never a date. Only the requester names a " +
+    "later time. Rewrite the reply and go on with the work:\n" + bad.slice(0, 3).map((l) => "  " + l.trim().slice(0, 110)).join("\n");
+}
+
 /** Is this transcript line something the person typed (not a tool result, a meta record or a host notice)? */
 function typedLine(line: string): boolean {
   if (!line.includes('"user"')) return false;
@@ -176,7 +215,7 @@ export function readTurn(path: string, chunk = 256 * 1024): string {
 export function stopDecision(
   payload: { transcript_path?: unknown; stop_hook_active?: unknown; cwd?: unknown },
   ownGates: string[] = [],
-  checks: { evidence?: boolean; vocab?: boolean } = { evidence: true },
+  checks: { evidence?: boolean; vocab?: boolean; defer?: boolean } = { evidence: true },
 ): string {
   if (payload.stop_hook_active === true) return "";
   const p = typeof payload.transcript_path === "string" ? payload.transcript_path : "";
@@ -184,8 +223,12 @@ export function stopDecision(
   try {
     const text = readTurn(p);
     const root = typeof payload.cwd === "string" ? payload.cwd : "";
-    const why = [checks.evidence ? turnEvidence(text, ownGates, root) : null, checks.vocab ? replyVocab(replyThisTurn(text)) : null]
-      .filter((x): x is string => Boolean(x));
+    const reply = checks.vocab || checks.defer ? replyThisTurn(text) : "";
+    const why = [
+      checks.evidence ? turnEvidence(text, ownGates, root) : null,
+      checks.vocab ? replyVocab(reply) : null,
+      checks.defer ? replyDeferral(reply, typedThisTurn(text)) : null,
+    ].filter((x): x is string => Boolean(x));
     return why.length ? JSON.stringify({ decision: "block", reason: why.join("\n\n") }) : "";
   } catch {
     return "";

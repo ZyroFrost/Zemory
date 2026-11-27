@@ -2,7 +2,7 @@
 id: Rule_61
 aka: 02-61
 name: hook-safety-net
-version: 13
+version: 14
 checked: [Rule_Gate_82_MailGate, Rule_Gate_10_DestructiveOps, Rule_Gate_44_RepoScope, Rule_Gate_79_HarnessEdit, Rule_Gate_73_GateEveryRule]
 kind: action
 code: 01_Harness
@@ -31,17 +31,17 @@ already given in the session, or one asked for.
 5. Blocks that ask no permission are cleared by doing the work right, not by asking: read the file first, a one-time reminder
    (retry the same call), and the laws on how a thing is written or finished (`Rule_Gate_01` · `02` · `04` · `24` · `27` · `29` ·
    `31` · `35` · `84` · `85` · `91` · `92`).
-6. The requester commands from ONE session and the sessions under it work for it (the requester 26/11: "lời t nói ntn đưa lại là
-   tính hết"). Their words relayed VERBATIM by the commanding side count as their word in this session, the same as typed here,
-   for what they name (Do 2–4 apply as written): ① a message from the session that opened this one (named in this session's first
-   message; `SendMessage`, `<cross-session-message>`) and from the session that commands it; ② a letter from the requester's main
-   machine (`zemory msg main <host>` on each other machine; `msg read` marks it ★). A paraphrase, or the relaying agent's own
-   wording, is that agent's word, never the requester's. Every action done on that word, and every job the requester gives
-   directly here, is reported back up the same way (the main machine by letter, the opener by `SendMessage`).
-7. A session working under another never asks the requester to CONFIRM in its own window (the requester 26/11: ask only when a
-   fact is missing, never for a confirm): what the relayed word covers is done at once; what it does not cover, and any missing
-   fact, goes UP to the commanding session in one message naming the exact item. The commanding session answers from the
-   requester's words it already holds and asks the requester only for a fact or a decision nobody has given yet.
+6. The requester's word counts in every session, wherever it was said. Their words in ANY session of theirs, on any of their
+   machines, count in this session the same as typed here, for what they name (Do 2–4 apply as written), when they reach it
+   VERBATIM: a message from any other session (`SendMessage`, `<cross-session-message>`) or a letter from any of their machines
+   (`zemory msg`). The relay quotes the words and names the session they were said in. In doubt, the receiving agent finds the
+   quote in Global Memory (`zemory memory search`); a quote Global Memory does not hold, a paraphrase, or the relaying agent's
+   own wording is that agent's word, never the requester's. Every action done on a relayed word is reported back to the session
+   or machine that relayed it.
+7. A word already given is never asked for again. No session asks the requester to CONFIRM what their word, in any session,
+   already covers: it is done at once. Only a missing fact or a decision nobody has given yet is asked — by a session working
+   under another, UP to the session that commands it, in one message naming the exact item; that session answers from the
+   requester's words it already holds and asks the requester only for that fact or decision.
 
 ## Example
 - Situation: the requester said "send the report to Y"; the mail gate blocks `python send_fabi.py --send` for that report.
