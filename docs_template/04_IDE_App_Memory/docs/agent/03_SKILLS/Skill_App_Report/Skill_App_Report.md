@@ -1,12 +1,12 @@
 ---
 id: Skill_App_Report
 name: app-report
-version: 42
+version: 43
 type: process
 checked: [Skill_App_Base, Skill_App_CrossFilter, Skill_App_SneatGlass, Skill_PBI_White, Skill_PBI_Base]
 installs: [scripts/report_layout_check.mjs]
 description: The report pages of an app - what a page of figures, charts and tables must look like, carried over from the Power BI White standard (skill pbi-white) so a board rebuilt from a report keeps its readers' habits - percentages with their period and up/down colour, card rows, chart colours and labels, one table style, no table for little information, no sideways scroll, even rows, no empty space, short tab names, a glossary per page, and parity with the report it replaces. Use when building, porting or fixing a report page or a dashboard board of an app, or when a Power BI report is rebuilt as an app page. Vietnamese triggers - "trang báo cáo", "bảng dashboard", "dựng lại pbi", "chuẩn pbi white cho app", "card kpi", "bảng ma trận", "bố cục chart", "bảng giải thích".
-from: _Store/03_SKILLS/Skill_App_Report @v42 #caef91bbdf2e
+from: _Store/03_SKILLS/Skill_App_Report @v43 #e4527f0b9386
 ---
 
 # app-report — the report pages of an app
@@ -115,10 +115,11 @@ from: _Store/03_SKILLS/Skill_App_Report @v42 #caef91bbdf2e
   or stacked columns, several lines) gives every mark of one axis point the same tip - the point, then each legend entry
   "Name: value" in the legend's order, as a Power BI combo tooltip. A legend of the categories on the axis (one mark each) is
   not judged. [rp-tip-all-legend]
-- **The numbers follow the person's number size** (v22, 16/11): Settings > Numbers > Number size (`--num-scale` on `<html>`,
-  at the three levels) sizes the numbers of a table (`data-rp-num`) and the labels of a chart (`data-rp-label`) alike; a chart
-  that places its labels apart counts with the scaled size. The figure in the middle of a donut is the chart's own KPI and keeps
-  its size, as KPI cards do. [rp-num-size]
+- **One size for words and figures** (v43; was v22): Settings > Numbers > Table text size (`--num-scale` on `<html>`, at the three
+  levels, frame 1.49.9) sizes the whole table - its numbers (`data-rp-num`) with its words. A chart's labels (`data-rp-label`)
+  never take it: a figure on a chart is the size of the words of that chart, so the table setting never makes a chart's figures
+  bigger than its words (the requester 27/11). The figure in the middle of a donut is the chart's own KPI and keeps its size, as
+  KPI cards do. [rp-num-size]
 - **A colour on a number says its level, never decoration** (v13, as Power BI's conditional formatting): one scale of levels for the whole app, good to bad -
   green · yellow · orange · red; a grade A/B/C/D takes the same scale; the stripes of a table never paint over a cell coloured by
   its value; no purple or info colour stands for a level. [rp-value-colour]

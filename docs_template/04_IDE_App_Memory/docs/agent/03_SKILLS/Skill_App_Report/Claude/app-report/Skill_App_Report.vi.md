@@ -1,5 +1,5 @@
 ---
-version: 42
+version: 43
 lang: vi
 ---
 
@@ -99,8 +99,10 @@ lang: vi
 - **Tooltip ghi đủ mọi mục của chú giải** (v22, 16/11): chart có chú giải từ hai chuỗi trở lên (combo, cột nhóm, cột chồng,
   nhiều đường) cho mọi mark của một mốc trục cùng một tooltip - tên mốc rồi từng mục chú giải "Tên: số" theo thứ tự chú giải,
   như tooltip combo của Power BI. Chú giải là các mục trên trục (mỗi mục một mark) thì không xét. [rp-tip-all-legend]
-- **Số theo cỡ số của người xem** (v22, 16/11): Cài đặt › Số liệu › Cỡ số (`--num-scale` trên `<html>`, ba cấp) áp cho số trong
-  bảng (`data-rp-num`) và nhãn số trên chart (`data-rp-label`); chart tự xếp nhãn cho khỏi đè thì tính theo cỡ đã nhân. Số ở giữa donut là KPI của chart, giữ cỡ như thẻ KPI. [rp-num-size]
+- **Chữ và số một cỡ** (v43; trước là v22): Cài đặt › Số liệu › Cỡ chữ của bảng (`--num-scale` trên `<html>`, ba cấp, khung
+  1.49.9) phóng cả bảng - số (`data-rp-num`) cùng chữ. Nhãn trên chart (`data-rp-label`) không theo thiết lập này: số trên chart
+  cùng cỡ với chữ của chart đó, nên thiết lập của bảng không bao giờ làm số của chart to hơn chữ (người giao việc 27/11). Số ở
+  giữa donut là KPI của chart, giữ cỡ như thẻ KPI. [rp-num-size]
 - **Màu trên một con số nói mức của nó, không bao giờ để trang trí** (v13, như tô màu có điều kiện của Power BI): một thang mức cho cả app, tốt tới xấu - xanh · vàng ·
   cam · đỏ; xếp loại A/B/C/D theo cùng thang; sọc xen kẽ của bảng không bao giờ đè ô tô theo giá trị; không màu tím hay info cho một
   mức. [rp-value-colour]
