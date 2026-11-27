@@ -131,6 +131,9 @@ const PROGRAM_PARTS = ["Setup", "App", "Data"] as const;
 const isProgramPart = (name: string): boolean => (PROGRAM_PARTS as readonly string[]).includes(name);
 /** Groups whose children are packs, not programs: a driver or a font has no installed copy. */
 const PACK_GROUPS = /^(Drivers|Fonts)$/;
+/** Folders beside the groups that hold no program, so their children are not program folders: the tools' shared cache
+ *  (Software_177_Cache, one folder per tool). */
+const NOT_PROGRAMS = /^Cache$/;
 /**
  * The one file a folder of the frame may hold to explain itself: a split folder names what lives where (Struc_Disk_Data,
  * law 3); a study subject with no learning material kept names its course (Personal_145).
@@ -281,7 +284,7 @@ export function checkLayout(root: string, kind: LayoutKind = layoutKindOf(root) 
               add({ level: "blocking", check: "unknown-value", path: join(abs, a.name), fix: "Software/ holds the groups of Software_148 only" });
               continue;
             }
-            if (PACK_GROUPS.test(a.name)) continue;
+            if (PACK_GROUPS.test(a.name) || NOT_PROGRAMS.test(a.name)) continue;
             for (const prog of programsIn(join(abs, a.name))) {
               const stray = entries(prog).filter((x) => (x.dir ? !isProgramPart(x.name) : x.name !== SPLIT_MARK)).map((x) => x.name);
               if (stray.length) {

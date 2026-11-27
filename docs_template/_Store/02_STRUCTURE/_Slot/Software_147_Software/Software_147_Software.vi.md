@@ -1,5 +1,5 @@
 ---
-version: 5
+version: 6
 lang: vi
 ---
 # Software_147_Software software — mọi chương trình của máy
@@ -29,6 +29,8 @@ Ví dụ thật: `D:\Software\Dev\Microsoft\VSCode\{Setup, App, Data}` · `D:\So
   vụ license, keygen, bản vá cho mọi chương trình của hãng) nằm cạnh các nhóm, ở `Software\_<Hãng>\`, ví dụ `Software\_Autodesk\`
   cho thứ AutoCAD (`CAD\`) và Maya (`3D\`) cùng dùng. Nó chỉ chứa bộ đồ dùng chung đó, không bao giờ chứa chương trình. Bộ đồ
   dùng chung trong MỘT nhóm thì ở lại nhóm đó: `<Nhóm>\<Hãng>\_Setup\` (Software_148).
+- Ngoại lệ thứ hai: `Software\Cache\` nằm cạnh các nhóm, chứa cache mà nhiều công cụ ghi vào thư mục `.cache` của người dùng, mỗi
+  công cụ một thư mục, nối tới qua junction từ `%USERPROFILE%\.cache` (`Software_177_Cache`). Nó không chứa chương trình.
 - Chương trình tìm thấy ở chỗ khác (trong `Documents\`, `Study\`, `Game\`) dời về đây (luật 2 của `Struc_Disk_Data`).
 
 ## Đồng bộ
