@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, delimiter, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripBom } from "../util/read-text.js";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
@@ -61,11 +61,23 @@ export function uiPort(): number {
  *  ở chỗ khác, vì làm vậy là mù với hai bậc kia của thang. */
 export function findMarker(projectRoot: string): string | null {
   for (const rel of MARKER_CANDIDATES) {
+    // the root rung inside a repo's own `docs/` or `harness/` folder is that repo's rung-1/2 marker seen from one level down,
+    // not a project of its own - unless the folder is a git repo itself. Measured 2026-11-27: a command run in
+    // `Zemory\docs\plan` climbed to `Zemory\docs`, took `docs/.harness.json` as a root marker, registered `…\Zemory\docs`, and
+    // the daemon's repo-autoupdate then assembled kit 04 into `docs/` (AGENTS.md · .claude · scripts · docs/docs/…).
+    if (rel === ".harness.json" && isRungFolder(projectRoot)) continue;
     // a host root is looked up where this process sees it - under a mount in the Docker container (util/hostpath.ts)
     const p = toLocalPath(join(projectRoot, rel));
     if (existsSync(p)) return p;
   }
   return null;
+}
+
+/** A folder named like a ladder rung (`docs` · `harness`) that is not a git repo of its own: its `.harness.json` belongs to
+ *  the folder above (see findMarker). */
+function isRungFolder(dir: string): boolean {
+  const name = basename(dir).toLowerCase();
+  return (name === "docs" || name === "harness") && !existsSync(toLocalPath(join(dir, ".git")));
 }
 
 /** Repo đã nối harness chưa (bất kể harness nằm ở đâu). */
