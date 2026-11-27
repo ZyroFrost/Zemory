@@ -13,6 +13,31 @@
 
 /** Rules on the page as it stands (no dialog needed). */
 export const RULES = [
+  // (v102, the requester 27/11 through the system-manager repo: a row of a log table drew its figures bigger than its words -
+  // "setting phải luôn đồng nhất số phải luôn bằng nhau") one row, one size: the person's size scales the whole table, never
+  // the figures alone
+  {
+    id: 'row-one-size',
+    rule: 'every cell of a table row is drawn at one font size, words and figures alike: no cell, and no figure (data-rp-num) inside a cell, bigger or smaller than the others of its row - a size setting scales the whole table',
+    check: `(() => {
+      const px = e => parseFloat(getComputedStyle(e).fontSize);
+      for (const table of document.querySelectorAll('#page table')) {
+        if (!table.getClientRects().length || !table.tBodies.length) continue;
+        const rows = [...table.tBodies[0].rows].filter(r => r.getClientRects().length).slice(0, 20);
+        for (const row of rows) {
+          const cells = [...row.cells].filter(c => c.getClientRects().length && (c.textContent || '').trim());
+          if (cells.length < 2) continue;
+          const size = px(cells[0]);
+          const odd = cells.find(c => Math.abs(px(c) - size) > .5);
+          if (odd) return 'a row draws its cells at two sizes: ' + size + 'px and ' + px(odd) + 'px (' + (odd.textContent || '').trim().slice(0, 24) + ')';
+          for (const c of cells) for (const n of c.querySelectorAll('[data-rp-num]')) {
+            if (Math.abs(px(n) - px(c)) > .5) return 'a figure is drawn at another size than its row: ' + px(n) + 'px in a ' + px(c) + 'px row (' + (n.textContent || '').trim().slice(0, 24) + ')';
+          }
+        }
+      }
+      return true;
+    })()`,
+  },
   {
     id: 'toolbar',
     rule: 'every page card carries one toolbar of one design: filter box · filter button · view switch (same height, radius, fill), the chosen view lit, the box text clear of its icon; a page of one view only (every report) shows no switch at all (user 06/11)',
