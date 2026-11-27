@@ -1,5 +1,5 @@
 ---
-version: 43
+version: 44
 lang: vi
 ---
 
@@ -360,10 +360,11 @@ ngang thanh cuộn là lỗi phải bắt) và đo bố cục:
 | U10 | F1b | tiêu đề cột bảng đang hiển thị thiếu tay nắm kéo có nhãn, từ khổ máy tính bảng trở lên (điện thoại ẩn tay nắm, v41); QA của app còn kéo, tải lại và đặt lại một cột |
 
 - **Cấu hình** `ui_check.json` ở gốc repo: `url` (máy chủ dev hoặc một bản mẫu `file:///`) · `pages` (mỗi trang `{name, hash}` hoặc
-  `{name, click: "<selector>"}`) · `widths` (mặc định 1920 · 1440 · 1100 · 900 · 390; ≤ 768 đo như điện thoại) · `settle_ms` (chờ
+  `{name, click: "<selector>"}`) · `widths` (bỏ trống: 7 cỡ bắt buộc của skill app-screens, mỗi cỡ ở vùng trang của nó; danh sách widths chỉ để xem nhanh - cổng
+  kiểm đo các cỡ bắt buộc, `Rule_Gate_78_ScreenSizes`) · `settle_ms` (chờ
   animation) · `ignore` (selector không bao giờ xét: nền trang trí, lớp phủ đang đóng) · `codes` (`{"U4": {"min_fill": 0.5}}`,
   `{"U6": {"off": true}}` — tắt một mã là một miễn trừ: ghi lý do trong repo).
-- **Chạy** `node scripts/ui_check.mjs` (· `--page <tên>` · `--widths 1440,390` · `--config <tệp>`). Nối vào cổng của repo
+- **Chạy** `node scripts/ui_check.mjs` (· `--page <tên>` · `--widths 1440,390` để xem nhanh · `--config <tệp>`). Nối vào cổng của repo
   (`repoGates`) cho mọi repo có giao diện; một thay đổi bề mặt chưa xong cho tới khi xanh ở mọi bề ngang.
 - **Tự kiểm** `node scripts/ui_check.mjs --self-test` dựng một trang phạm mỗi mã một lần và phải bắt đủ từng mã — chạy sau mỗi lần
   sửa script.
@@ -378,6 +379,7 @@ bản chưa sửa — phải đỏ (bản đã đạt thì phá mã cho đỏ) �
 mới vào danh sách kiểm điện thoại; đưa vào sớm là cổng đỏ trước khi có thiết kế.
 - **Bản máy tính không đổi.** Lớp điện thoại chỉ THÊM, áp dưới mốc chuyển.
 - **Mốc chuyển ≤ 768 px** (`@media (max-width:768px)`); hệ số co toàn trang không áp dưới mốc.
+- **Các cỡ màn** trang được dựng và kiểm, cùng bố cục mỗi cỡ nhận: skill app-screens (`scripts/screens.mjs`).
 - **M1 — vừa màn.** Ở 390 px trang không rộng hơn màn hình, không phần tử nào thò qua mép phải; bảng rộng cuộn TRONG khung
   của nó. Bẫy: con flex mang `min-width:auto` = bề rộng hàng dài nhất ⇒ đẩy tràn dù hàng tự cuộn — khung chứa hàng cuộn phải
   `min-width:0`. Điện thoại NỚI khung bố cục theo phần tràn ⇒ bề ngang báo về lớn hơn 390 chính là lỗi M1.

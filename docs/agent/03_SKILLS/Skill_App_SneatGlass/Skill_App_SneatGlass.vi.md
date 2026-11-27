@@ -1,5 +1,5 @@
 ---
-version: 97
+version: 99
 lang: vi
 ---
 
@@ -275,7 +275,9 @@ z-index của app là một biến trong bảng (`var(--z-focus)`), không bao g
 - **Menu nổi trên thẻ kính** (menu ba chấm của hàng, menu của ô chọn, danh sách của bộ lọc) đặt trên `<body>` (hoặc hộp thoại đang
   mở): thẻ có `backdrop-filter` trở thành khung chứa của menu fixed.
 - **Mọi hiệu ứng của template Glass** giữ dấu `FX:` trong code (`app-glass`); các thẻ của trang lần lượt hiện lên khi trang mở
-  (FX: reveal).
+  (FX: reveal). (v99, người dùng 27/11) **Hiệu ứng con trỏ phải chạy và thấy được:** trên thẻ `.sheen` vệt sáng chạy theo con trỏ
+  bằng một màu thấy được ở mọi tông (`--g-sheen` không bao giờ trong suốt), thẻ `.tilt` nghiêng theo, nút `.magnet` bị hút theo;
+  probe đưa con trỏ qua từng thứ như người dùng. [fx-alive]
 - **Thanh cuộn là của template Glass** ở mọi ô cuộn (12 px, rãnh bo mềm, con trượt chuyển màu nhấn lùi vào bằng viền trong
   suốt), không bao giờ là mặc định của trình duyệt; không luật nào đặt `scrollbar-color` hay `scrollbar-width` (Chromium khi đó
   bỏ các phần của template). [scrollbar]
@@ -384,7 +386,9 @@ z-index của app là một biến trong bảng (`var(--z-focus)`), không bao g
   bao giờ hiện mã lưu (`data_query`, `login_ok`); mã ngoài danh sách đọc là "Hành động khác". Mã hành động là danh sách đóng của
   hệ (hợp đồng app của DB hệ): app giữ danh sách đó, mỗi mã có tên ở mọi ngôn ngữ, và một phép kiểm tĩnh đối chiếu danh sách với
   hợp đồng khi hợp đồng có trên máy. [no-raw-code] (v87, người dùng 25/11: bộ lọc Nhóm liệt kê `data` và `ops`) một chữ thường đứng
-  một mình cũng là mã, và một cột bảng mà mọi ô đều là mã cũng vậy (cột tên Mã / Code / ID cố ý hiện mã). Danh sách chọn chỉ vẽ
+  một mình cũng là mã, và một cột bảng mà mọi ô đều là mã cũng vậy (cột tên Mã / Code / ID cố ý hiện mã). (v98, Audit 27/11 qua repo quản hệ)
+  Bảng bằng chứng thô - các dòng log hiện đúng như lưu, gắn `data-raw-evidence` trên bảng hay một hộp bọc nó - giữ mã ở các cột:
+  đó là dữ liệu; badge, bộ lọc hay danh sách chọn vẫn được đọc như cũ, cả trong bảng đó. Danh sách chọn chỉ vẽ
   khi mở thì được mở như người dùng mở - từng bộ lọc trên trang, trên hàng 2 và trong ô bộ lọc - và không lựa chọn nào được đọc
   ra mã. [names-in-lists] Danh sách dựng từ giá trị lưu phải đặt tên từng giá trị: `optionsOf(values, v => name(v))`, không bao
   giờ chỉ `optionsOf(values)`.

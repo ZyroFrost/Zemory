@@ -68,3 +68,4 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 |---|---|
 | **đụng bất kỳ bề mặt nào của app · thêm/đổi một tiến trình nền** | `.claude/skills/app-design/SKILL.md` |
 | đổi máy giữa native ↔ Docker · cài lại zemory · lối tắt/lệnh mở bản cũ | `.claude/skills/install-switch/SKILL.md` |
+| tỉ lệ màn hình · cỡ màn hình · kích thước màn hình · tự scale · co giãn theo màn · màn dọc · màn siêu rộng · responsive | `.claude/skills/app-screens/SKILL.md` |

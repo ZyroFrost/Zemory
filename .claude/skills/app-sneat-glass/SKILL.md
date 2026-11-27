@@ -1,12 +1,12 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 97
+version: 99
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
 description: The Sneat-Glass kind of an app surface - the Sneat layout (skill app-sneat) wearing the Glass look (skill app-glass) - plus the rules this mix needs of its own - one page toolbar, the frame that stays put, the dialog sizes, the layout settings, the glass controls. Use when a repo declares {"style": "SneatGlass"} in frontend/config/ui.json, or when building or fixing such a surface. Vietnamese triggers - "sneat glass", "kiểu sneat-glass", "thanh lọc", "bộ lọc trang", "neo khung", "cỡ hộp thoại", "bố cục rộng", "bố cục gọn".
-from: _Store/03_SKILLS/Skill_App_SneatGlass @v97 #a93948aae6e2
+from: _Store/03_SKILLS/Skill_App_SneatGlass @v99 #5f6ccfb28a4f
 ---
 
 # app-sneat-glass — the Sneat layout with the Glass look
@@ -303,7 +303,9 @@ app takes them - its own z-index is a variable of this table (`var(--z-focus)`),
 - **A floating menu over a glass card** (a row's dots menu, a select's menu, a filter's list) is placed on `<body>` (or the open
   dialog): a card with `backdrop-filter` becomes the box a fixed menu is placed in.
 - **Every effect of the Glass template** keeps its `FX:` marker in the code (`app-glass`); the cards of a page rise in one after
-  another when it shows (FX: reveal).
+  another when it shows (FX: reveal). (v99, the requester 27/11) **The pointer effects are alive and seen:** over a `.sheen` panel the
+  light spot follows the pointer in a colour that shows in every tone (`--g-sheen` is never transparent), a `.tilt` panel leans,
+  a `.magnet` button is pulled; the probe moves the pointer over each as a person does. [fx-alive]
 - **Scrollbars are the Glass template's** on every scroll box (12 px, a soft rounded track, the accent gradient thumb inset by
   a transparent border), never the browser's default; no rule sets `scrollbar-color` or `scrollbar-width` (Chromium then drops
   the template's parts). [scrollbar]
@@ -420,7 +422,9 @@ app takes them - its own z-index is a variable of this table (`var(--z-focus)`),
   codes are the family's closed list (the app contract of the family database): the app keeps that list with a name for each code in every
   language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code] (v87, the
   requester 25/11: a Group filter listed `data` and `ops`) a bare lowercase word is a code too, and so is a table column whose every
-  cell is one (a column named Mã / Code / ID shows codes on purpose). A pick list drawn only while open is opened as a person
+  cell is one (a column named Mã / Code / ID shows codes on purpose). (v98, Audit 27/11 through the system-manager repo) A
+  table of raw evidence - the rows of a log shown exactly as stored, marked `data-raw-evidence` on the table or a box around
+  it - keeps its codes in its columns: they are data; a badge, a filter or a pick list is read as before, also inside it. A pick list drawn only while open is opened as a person
   opens it - each filter on the page, on row 2 and in the filter popover - and no option may read as a code. [names-in-lists]
   Any list built from stored values names each value: `optionsOf(values, v => name(v))`, never `optionsOf(values)` alone.
 - **The page speaks the language chosen** (v88, the requester 25/11: the two dictionaries were only compared key for key, and no
