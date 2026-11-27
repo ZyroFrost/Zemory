@@ -2138,6 +2138,48 @@ export const DIALOG_RULES = [
 
 /** (v31) Probes: async browser expressions (evaluate with awaitPromise) that move the page and measure it, then put it back. */
 export const PROBES = [
+  // (v99, the requester 27/11 through the system-manager repo: "hiệu ứng ánh sáng theo con trỏ t vừa kiểm thì bị mất, cổng kiểm ko
+  // thấy cái này à? mọi effect cũng cần cổng kiểm") the White tone set the light to transparent and a page's cards had lost the
+  // class, and no rule ever moved the pointer: the probe moves it over each effect as a person does and measures what it does
+  {
+    id: 'fx-alive',
+    rule: 'the pointer effects are alive and seen: over a .sheen panel the light spot follows the pointer (--mx moves) in a colour that shows in the tone on screen (--g-sheen not transparent), a .tilt panel leans towards the pointer, a .magnet button is pulled towards it - unless the person turned the effects off (html.fx-off); tilt and magnet rest under reduced motion',
+    check: `(async () => {
+      if (document.documentElement.classList.contains('fx-off')) return true;
+      const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      const shown = e => { const r = e.getBoundingClientRect(); return r.width > 40 && r.height > 20 && r.bottom > 0 && r.top < innerHeight; };
+      const name = e => e.id ? '#' + e.id : '.' + String(e.className).trim().split(/\\s+/).slice(0, 3).join('.');
+      const move = (e, fx, fy) => { const r = e.getBoundingClientRect(); e.dispatchEvent(new PointerEvent('pointermove', {bubbles: true, clientX: r.left + r.width * fx, clientY: r.top + r.height * fy})); };
+      const rest = () => document.dispatchEvent(new PointerEvent('pointerout', {bubbles: true, relatedTarget: null}));
+      const alpha = c => { const p = c.replace(/^rgba?\\(|\\)$/g, '').split(/[\\s,\\/]+/).filter(Boolean); return p.length > 3 ? parseFloat(p[3]) : 1; };
+      try {
+        const sheen = [...document.querySelectorAll('.sheen')].find(shown);
+        if (sheen) {
+          move(sheen, .25, .3); await wait(40); const a = sheen.style.getPropertyValue('--mx');
+          move(sheen, .75, .7); await wait(40); const b = sheen.style.getPropertyValue('--mx');
+          if (!a || a === b) return 'the pointer light does not follow the pointer over ' + name(sheen) + ' (--mx ' + (b || 'never set') + '): the pointer effects of the frame do not run';
+          const bg = getComputedStyle(sheen, '::after').backgroundImage || 'none';
+          if (bg === 'none') return 'the pointer light of ' + name(sheen) + ' draws nothing: .sheen::after has no gradient';
+          const first = (bg.match(/rgba?\\([^)]*\\)|transparent/) || ['transparent'])[0];
+          if (first === 'transparent' || alpha(first) < .02) return 'the pointer light of ' + name(sheen) + ' is invisible in this tone: its colour (--g-sheen) is ' + first;
+        }
+        if (!still) {
+          const tilt = [...document.querySelectorAll('.sheen.tilt')].find(shown);
+          if (tilt) {
+            move(tilt, .9, .9); await wait(40);
+            if (!/rotate/.test(tilt.style.transform)) return 'the tilt of ' + name(tilt) + ' does not lean towards the pointer (transform ' + (tilt.style.transform || 'none') + ')';
+          }
+          const magnet = [...document.querySelectorAll('.magnet:not(:disabled)')].find(shown);
+          if (magnet) {
+            move(magnet, .95, .9); await wait(40);
+            if (!/translate/.test(magnet.style.transform)) return 'the magnet button ' + name(magnet) + ' is not pulled towards the pointer (transform ' + (magnet.style.transform || 'none') + ')';
+          }
+        }
+        return true;
+      } finally { rest(); }
+    })()`,
+  },
   // (v91, the user 25/11 through Dashboard: "mấy cái popover và dialogbox phải luôn ở lớp cao nhất") the layers of the frame stand in
   // their order, and every menu or popover opened from the head is seen over anything of the page: a cover at the focus layer
   // (the highest a page may reach) laid over what an opener opens never hides it
