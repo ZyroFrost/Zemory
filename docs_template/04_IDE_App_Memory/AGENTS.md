@@ -61,3 +61,4 @@ Mở một skill = đọc nguyên file đó. Host tự nạp skill theo `descrip
 | trang báo cáo · bảng dashboard · dựng lại pbi · chuẩn pbi white cho app · card kpi · bảng ma trận · bố cục chart · bảng giải thích | `.claude/skills/app-report/SKILL.md` |
 | tin nhắn đầu tiên của phiên (hook nhắc tự bật) · "làm tiếp" · "đọc docs" · "vào việc" · "mở phiên" | `.claude/skills/harness-session-open/SKILL.md` |
 | xuất csv · xuất excel · xuất file · tải danh sách · export · tải về | `.claude/skills/app-export/SKILL.md` |
+| tỉ lệ màn hình · cỡ màn hình · kích thước màn hình · tự scale · co giãn theo màn · màn dọc · màn siêu rộng · responsive | `.claude/skills/app-screens/SKILL.md` |

@@ -5,7 +5,8 @@
 // rendered page - never a screenshot by eye. Config: ui_check.json at the repo root (or --config <file>):
 //   { "url": "http://localhost:5173/" | "file:///.../page.html",
 //     "pages": [ { "name": "users", "hash": "users" } | { "name": "access", "click": "#nav [data-to=access]" } ],
-//     "widths": [1920, 1440, 1100, 900, 390],      // optional; <= 768 is measured as a phone
+//     "widths": [1440, 390],                        // optional, a quick look; left out => the required screens of
+//                                                   //   skill app-screens (scripts/screens.mjs), each at its page area
 //     "settle_ms": 900,                              // optional: wait after each navigation (animations)
 //     "ignore": [".carousel *", "#confetti"],         // optional: selectors never judged
 //     "codes": { "U4": { "min_fill": 0.6 } }          // optional: per-code options; "off": true turns one off (say why in the repo)
@@ -40,8 +41,16 @@ if (SELF) { const d = mkdtempSync(path.join(tmpdir(), "_scratch_uicheck-self-"))
     pages: [{ name: "faulty" }], widths: [1100], settle_ms: 100 })); process.on("exit", () => { try { rmSync(d, { recursive: true, force: true }); } catch {} }); }
 if (!existsSync(cfgPath)) { console.error(`[ui-check] no ${cfgPath} - see Skill_App_Base › THE CHECKER`); process.exit(3); }
 const cfg = JSON.parse(readFileSync(cfgPath, "utf8"));
-const WIDTHS = (opt("--widths") || "").split(",").filter(Boolean).map(Number).length
-  ? opt("--widths").split(",").map(Number) : (cfg.widths || [1920, 1440, 1100, 900, 390]);
+// the sizes: a hand list (--widths or the config) is a quick look; else the required screens of skill app-screens (Rule_Gate_78)
+const handList = (opt("--widths") || "").split(",").filter(Boolean).map(Number);
+const byWidth = (w) => ({ id: String(w), w, h: w <= 768 ? 844 : 900, phone: w <= 768 });
+let SIZES = handList.length ? handList.map(byWidth) : cfg.widths ? cfg.widths.map(byWidth) : null;
+if (!SIZES) {
+  try {
+    const s = await import(new URL("./screens.mjs", import.meta.url));
+    SIZES = s.REQUIRED_SCREENS.map((x) => ({ id: x.id, w: x.view[0], h: x.view[1], phone: x.kind === "phone" }));
+  } catch { SIZES = [1920, 1440, 1100, 900, 390].map(byWidth); }
+}
 const SETTLE = cfg.settle_ms ?? 900;
 const ONLY = opt("--page");
 const codeOpt = c => (cfg.codes || {})[c] || {};
@@ -173,16 +182,16 @@ try {
     m.error ? p.rej(Error(JSON.stringify(m.error))) : p.res(m.result); } };
   await cmd("Page.enable"); await cmd("Runtime.enable");
   const pages = (cfg.pages || [{ name: "start" }]).filter(p => !ONLY || p.name === ONLY);
-  for (const w of WIDTHS) {
-    const phone = w <= 768;
-    await cmd("Emulation.setDeviceMetricsOverride", { width: w, height: phone ? 844 : 900, deviceScaleFactor: 1, mobile: phone });
+  for (const S of SIZES) {
+    const w = S.w, phone = S.phone;
+    await cmd("Emulation.setDeviceMetricsOverride", { width: w, height: S.h, deviceScaleFactor: 1, mobile: phone });
     await cmd("Page.navigate", { url: cfg.url }); await sleep(SETTLE + 600);
     for (const p of pages) {
       if (p.hash !== undefined) await ev(`location.hash = ${JSON.stringify(p.hash)}`);
       if (p.click) await ev(`(document.querySelector(${JSON.stringify(p.click)}) || {click(){ throw Error('no ' + ${JSON.stringify(p.click)}) }}).click()`);
       await sleep(SETTLE);
       const list = await ev(MEASURE(cfg.ignore || [], cfg.codes || {}).replace("${W_SET}", String(w)));
-      for (const f of list) { if (codeOpt(f.code).off) continue; findings.push({ page: p.name, width: w, ...f }); }
+      for (const f of list) { if (codeOpt(f.code).off) continue; findings.push({ page: p.name, width: S.id === String(w) ? w : S.id + " " + w + "x" + S.h, ...f }); }
     }
   }
 } catch (e) { console.error("[ui-check] NOT fully checked:", e.message); code = 3; }

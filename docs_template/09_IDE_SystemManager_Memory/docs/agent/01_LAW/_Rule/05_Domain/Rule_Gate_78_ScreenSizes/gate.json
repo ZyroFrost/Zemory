@@ -1,0 +1,162 @@
+{
+  "hook": "hook.cjs",
+  "match": {
+    "tool": ["Write", "Edit", "MultiEdit", "Bash", "PowerShell"]
+  },
+  "block": [
+    {
+      "note": "a new browser check of an app draws its pages at two sizes of its own",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"1.49.5\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/test/ui_test.mjs",
+        "content": "for (const [w, h] of [[1440, 900], [390, 844]]) {\n  await cmd('Emulation.setDeviceMetricsOverride', {width: w, height: h, deviceScaleFactor: 1, mobile: w < 768});\n}\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+      }
+    },
+    {
+      "note": "an edit gives the deploy script a list of widths",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"1.49.5\"}\n",
+        "backend/scripts/deploy_linux.ps1": "npm run build\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "backend/scripts/deploy_linux.ps1",
+        "old_string": "npm run build\n",
+        "new_string": "npm run build\nnode frontend/test/shell_check.mjs --widths 1440,390\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+      }
+    },
+    {
+      "note": "the frame's own runner in the system manager sets one desktop size",
+      "files": {
+        "frontend/shell/CONTRACT.md": "# frame\n"
+      },
+      "tool_name": "Edit",
+      "tool_input": {
+        "file_path": "frontend/test/live-app.mjs",
+        "old_string": "",
+        "new_string": "await cmd('Emulation.setDeviceMetricsOverride', {width: 1440, height: 900, deviceScaleFactor: 1, mobile: false});"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+      }
+    }
+  ],
+  "pass": [
+    {
+      "note": "a check that takes the system's list",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"1.49.5\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/test/ui_test.mjs",
+        "content": "import {REQUIRED_SCREENS, metricsOf} from '../../scripts/screens.mjs';\nfor (const s of REQUIRED_SCREENS) await cmd('Emulation.setDeviceMetricsOverride', metricsOf(s));\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+      }
+    },
+    {
+      "note": "a repo that is no app of the system",
+      "files": {},
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "tools/shot.mjs",
+        "content": "await cmd('Emulation.setDeviceMetricsOverride', {width: 1600, height: 900, deviceScaleFactor: 1, mobile: false});\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+      }
+    },
+    {
+      "note": "a comment that quotes a size",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"1.49.5\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/test/notes.mjs",
+        "content": "// the old check ran setDeviceMetricsOverride at 1440 x 900\nexport const x = 1;\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+      }
+    },
+    {
+      "note": "the shared list itself",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"1.49.5\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "scripts/screens.mjs",
+        "content": "export const metricsOf = (s) => ({ width: s.view[0], height: s.view[1] }); const viewport = { width: 1920 };\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+      }
+    },
+    {
+      "note": "a stylesheet with a width",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"1.49.5\"}\n"
+      },
+      "tool_name": "Write",
+      "tool_input": {
+        "file_path": "frontend/src/styles/app.css",
+        "content": ".card { width: 1440px; }\n"
+      },
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+      }
+    },
+    {
+      "note": "a deploy with no session to remember the warning by",
+      "files": {
+        "frontend/config/shell.json": "{\"version\": \"1.49.5\"}\n",
+        "backend/scripts/deploy_linux.ps1": "node frontend/test/shell_check.mjs --widths 1440\n"
+      },
+      "tool_name": "PowerShell",
+      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1"},
+      "policy": {
+        "rules_file": "docs/agent/01_LAW/_Rule",
+        "todo_file": "docs/agent/04_TODO.md",
+        "flags_dir": "docs/hooks",
+        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+      }
+    }
+  ]
+}

@@ -3,12 +3,12 @@ id: Skill_App_Base
 aka: dev-app-design
 name: app-base
 replaces: [Skill_Dev_AppDesign]
-version: 43
+version: 44
 type: process
 installs: [scripts/ui_check.mjs]
-checked: [Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
+checked: [Skill_App_Screens, Rule_Gate_35_OneHome, Skill_Db_Base, Struc_Repo_SystemManager, Struc_Repo_AppData]
 description: Chuẩn thiết kế của một APP do repo này dựng — FE (bề mặt người dùng) và BE (tiến trình, tài nguyên). Mở khi đụng bất kỳ bề mặt nào của app, hoặc khi thêm/đổi một tiến trình nền.
-from: _Store/03_SKILLS/Skill_App_Base @v43 #4db15be80e40
+from: _Store/03_SKILLS/Skill_App_Base @v44 #1c343e3f8b54
 ---
 
 # app-base — the APP design standard (FE + BE)
@@ -378,10 +378,11 @@ to catch) and measures the layout:
 | U10 | F1b | a visible table header lacks a visible, labelled column-resize handle, from a tablet up (a phone hides the handles, v41); app QA also drags, reloads, and resets a column |
 
 - **Config** `ui_check.json` at the repo root: `url` (the dev server or a `file:///` mock-up) · `pages` (each `{name, hash}` or
-  `{name, click: "<selector>"}`) · `widths` (default 1920 · 1440 · 1100 · 900 · 390; ≤ 768 is measured as a phone) · `settle_ms` (wait
+  `{name, click: "<selector>"}`) · `widths` (left out: the 7 required screens of skill app-screens, each at its page area; a list of widths is for a quick look
+  only - a gate measures the required screens, `Rule_Gate_78_ScreenSizes`) · `settle_ms` (wait
   for animations) · `ignore` (selectors never judged: a decorative background, a closed overlay) · `codes` (`{"U4": {"min_fill": 0.5}}`,
   `{"U6": {"off": true}}` — turning a code off is an exemption: write its reason in the repo).
-- **Run** `node scripts/ui_check.mjs` (· `--page <name>` · `--widths 1440,390` · `--config <file>`). Wire it into the repo's gate
+- **Run** `node scripts/ui_check.mjs` (· `--page <name>` · `--widths 1440,390` for a quick look · `--config <file>`). Wire it into the repo's gate
   (`repoGates`) for every repo with a UI; a change to a surface is not done until it is green at every width.
 - **Self-test** `node scripts/ui_check.mjs --self-test` builds a page that breaks every code once and must catch each one — run it
   after changing the script.
@@ -397,6 +398,7 @@ the unfixed build — it must be red (on a build already passing, break the code
 enter the phone check list; entering early makes the gate red before there is a design.
 - **The desktop build does not change.** The phone layer only ADDS, applied below the breakpoint.
 - **The breakpoint ≤ 768 px** (`@media (max-width:768px)`); the whole-page zoom factor does not apply below the breakpoint.
+- **The screens** a page is built for and checked on, and the layout each one gets: skill app-screens (`scripts/screens.mjs`).
 - **M1 — fits the screen.** At 390 px the page is no wider than the screen, no element sticks past the right edge; wide tables scroll INSIDE their
   frame. The trap: a flex child carrying `min-width:auto` = the width of its longest row ⇒ pushes the overflow even when the row scrolls itself — the frame holding a scrolling row needs
   `min-width:0`. Phones WIDEN the layout frame by the overflow ⇒ a reported width larger than 390 is exactly the M1 bug.

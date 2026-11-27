@@ -1,0 +1,24 @@
+{
+  "trigger": "tỉ lệ màn hình · cỡ màn hình · kích thước màn hình · tự scale · co giãn theo màn · màn dọc · màn siêu rộng · responsive",
+  "prompt": {
+    "kind": "app-screens",
+    "re": "\\b(ti le man hinh|co man hinh|kich thuoc man hinh|tu scale|co gian theo man|man doc|man sieu rong|responsive|viewport|screen sizes?)\\b",
+    "text": "[zemory] Screen sizes: follow skill app-screens - one list of 15 screens in scripts/screens.mjs (size, ratio, page area); an app page is the 1920 x 1080 canvas zoomed 0.7-1, the phone layer at 768 px or less; a full-screen scene is the canvas from 900 x 560 and 1.2 times wider than tall, else one column; every browser check measures REQUIRED_SCREENS (D1 D2 D4 D9 T2 P1 P4), never sizes of its own."
+  },
+  "block": [
+    {
+      "note": "a request about screen ratios",
+      "prompt": "trang này cần tự scale với mọi tỉ lệ màn hình"
+    },
+    {
+      "note": "a request about a portrait layout",
+      "prompt": "sửa bố cục khi màn dọc"
+    }
+  ],
+  "pass": [
+    {
+      "note": "an unrelated request",
+      "prompt": "sửa câu SQL"
+    }
+  ]
+}
