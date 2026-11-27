@@ -1,5 +1,5 @@
 ---
-version: 98
+version: 99
 lang: vi
 ---
 
@@ -275,7 +275,9 @@ z-index của app là một biến trong bảng (`var(--z-focus)`), không bao g
 - **Menu nổi trên thẻ kính** (menu ba chấm của hàng, menu của ô chọn, danh sách của bộ lọc) đặt trên `<body>` (hoặc hộp thoại đang
   mở): thẻ có `backdrop-filter` trở thành khung chứa của menu fixed.
 - **Mọi hiệu ứng của template Glass** giữ dấu `FX:` trong code (`app-glass`); các thẻ của trang lần lượt hiện lên khi trang mở
-  (FX: reveal).
+  (FX: reveal). (v99, người dùng 27/11) **Hiệu ứng con trỏ phải chạy và thấy được:** trên thẻ `.sheen` vệt sáng chạy theo con trỏ
+  bằng một màu thấy được ở mọi tông (`--g-sheen` không bao giờ trong suốt), thẻ `.tilt` nghiêng theo, nút `.magnet` bị hút theo;
+  probe đưa con trỏ qua từng thứ như người dùng. [fx-alive]
 - **Thanh cuộn là của template Glass** ở mọi ô cuộn (12 px, rãnh bo mềm, con trượt chuyển màu nhấn lùi vào bằng viền trong
   suốt), không bao giờ là mặc định của trình duyệt; không luật nào đặt `scrollbar-color` hay `scrollbar-width` (Chromium khi đó
   bỏ các phần của template). [scrollbar]
