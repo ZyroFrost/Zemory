@@ -1,11 +1,11 @@
 ---
 id: Rule_78
 name: screen-sizes
-version: 1
+version: 2
 kind: content
 code: 05_Domain
 checked: [Skill_App_Screens, Skill_App_Base, Skill_App_ShellUse, Rule_Gate_76_DeployChecksFrame]
-from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_78_ScreenSizes @v1 #84763227788e
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_78_ScreenSizes @v2 #42b1e2871cf1
 ---
 # Rule_Gate_78_ScreenSizes — Every app is built for one list of screens and checked on it
 

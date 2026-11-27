@@ -2325,7 +2325,9 @@ export const PROBES = [
       }
       const box = document.querySelector('#page-search input, .page-toolbar .page-search input');
       const rows = () => [...document.querySelectorAll('#page table tbody tr, #page .view-grid tbody tr')].filter(r => shown(r) && !r.querySelector('[data-empty], .empty-state')).length;
-      const items = () => [...document.querySelectorAll('#page [data-rp-item], #page [data-rp-mark]')].filter(shown).length;
+      // (v101, the system-manager repo 27/11: the Apps page in its grid view holds cards, not rows, and its filter box read as over
+      // nothing) the cards of a list drawn as a grid are items too, marked data-item by the page
+      const items = () => [...document.querySelectorAll('#page [data-rp-item], #page [data-rp-mark], #page [data-item]')].filter(shown).length;
       if (shown(box) && !box.disabled && !box.readOnly) {
         const n0 = rows(), m0 = items();
         // (Reconcile 15/11: the invoices of a day with none yet) a page that honestly has nothing today wears the empty template
@@ -2562,7 +2564,10 @@ export const PROBES = [
         const footCell = table.tFoot && table.tFoot.querySelector('td, th');
         const pinned = footCell && [footCell, footCell.parentElement, table.tFoot].some(e => getComputedStyle(e).position === 'sticky');
         const foot = pinned ? footCell.getBoundingClientRect().top : Infinity;   // the pinned cell, drawn where it sticks
-        const bottom = Math.min(innerHeight, scroller.getBoundingClientRect().bottom, frame ? frame.bottom : innerHeight, foot);
+        // (v100, Audit 27/11 through the system-manager repo: at 844 x 340 the page body was the table's scrolling frame too, and its
+        // sideways scroll bar, 12 px, was counted as rows not drawn) the page body's bottom is its inner one, its scroll bar left out
+        const inner = (bx => bx.top + scroller.clientTop + scroller.clientHeight)(scroller.getBoundingClientRect());
+        const bottom = Math.min(innerHeight, inner, frame ? frame.bottom : innerHeight, foot);
         let bad = 0, checked = 0;
         for (const row of table.tBodies[0].rows) {
           const r = row.getBoundingClientRect();

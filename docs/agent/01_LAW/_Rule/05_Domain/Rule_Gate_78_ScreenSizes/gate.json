@@ -1,7 +1,13 @@
 {
   "hook": "hook.cjs",
   "match": {
-    "tool": ["Write", "Edit", "MultiEdit", "Bash", "PowerShell"]
+    "tool": [
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "PowerShell"
+    ]
   },
   "block": [
     {
@@ -18,7 +24,10 @@
         "rules_file": "docs/agent/01_LAW/_Rule",
         "todo_file": "docs/agent/04_TODO.md",
         "flags_dir": "docs/hooks",
-        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
       }
     },
     {
@@ -37,7 +46,10 @@
         "rules_file": "docs/agent/01_LAW/_Rule",
         "todo_file": "docs/agent/04_TODO.md",
         "flags_dir": "docs/hooks",
-        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
       }
     },
     {
@@ -55,7 +67,10 @@
         "rules_file": "docs/agent/01_LAW/_Rule",
         "todo_file": "docs/agent/04_TODO.md",
         "flags_dir": "docs/hooks",
-        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
       }
     }
   ],
@@ -74,7 +89,10 @@
         "rules_file": "docs/agent/01_LAW/_Rule",
         "todo_file": "docs/agent/04_TODO.md",
         "flags_dir": "docs/hooks",
-        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
       }
     },
     {
@@ -89,7 +107,10 @@
         "rules_file": "docs/agent/01_LAW/_Rule",
         "todo_file": "docs/agent/04_TODO.md",
         "flags_dir": "docs/hooks",
-        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
       }
     },
     {
@@ -106,7 +127,10 @@
         "rules_file": "docs/agent/01_LAW/_Rule",
         "todo_file": "docs/agent/04_TODO.md",
         "flags_dir": "docs/hooks",
-        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
       }
     },
     {
@@ -123,7 +147,10 @@
         "rules_file": "docs/agent/01_LAW/_Rule",
         "todo_file": "docs/agent/04_TODO.md",
         "flags_dir": "docs/hooks",
-        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
       }
     },
     {
@@ -140,22 +167,31 @@
         "rules_file": "docs/agent/01_LAW/_Rule",
         "todo_file": "docs/agent/04_TODO.md",
         "flags_dir": "docs/hooks",
-        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
       }
     },
     {
-      "note": "a deploy with no session to remember the warning by",
+      "note": "a deploy whose browser check takes the system's list",
       "files": {
         "frontend/config/shell.json": "{\"version\": \"1.49.5\"}\n",
-        "backend/scripts/deploy_linux.ps1": "node frontend/test/shell_check.mjs --widths 1440\n"
+        "backend/scripts/deploy_linux.ps1": "node frontend/test/ui_test.mjs\n",
+        "frontend/test/ui_test.mjs": "import {REQUIRED_SCREENS, metricsOf} from '../../scripts/screens.mjs';\nfor (const s of REQUIRED_SCREENS) console.log(metricsOf(s));\n"
       },
       "tool_name": "PowerShell",
-      "tool_input": {"command": ".\\backend\\scripts\\deploy_linux.ps1"},
+      "tool_input": {
+        "command": ".\backendscriptsdeploy_linux.ps1"
+      },
       "policy": {
         "rules_file": "docs/agent/01_LAW/_Rule",
         "todo_file": "docs/agent/04_TODO.md",
         "flags_dir": "docs/hooks",
-        "flags": {"todo": ".allow-todo", "outside": ".allow-outside"}
+        "flags": {
+          "todo": ".allow-todo",
+          "outside": ".allow-outside"
+        }
       }
     }
   ]
