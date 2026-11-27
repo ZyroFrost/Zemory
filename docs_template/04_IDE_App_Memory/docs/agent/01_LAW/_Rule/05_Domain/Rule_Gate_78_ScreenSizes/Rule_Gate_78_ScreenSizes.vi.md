@@ -1,5 +1,5 @@
 ---
-version: 1
+version: 2
 lang: vi
 ---
 # Rule_Gate_78_ScreenSizes — Mọi app dựng cho một danh sách cỡ màn và được kiểm trên đó

@@ -1,7 +1,7 @@
 ---
 id: Rule_78
 name: screen-sizes
-version: 1
+version: 2
 kind: content
 code: 05_Domain
 checked: [Skill_App_Screens, Skill_App_Base, Skill_App_ShellUse, Rule_Gate_76_DeployChecksFrame]

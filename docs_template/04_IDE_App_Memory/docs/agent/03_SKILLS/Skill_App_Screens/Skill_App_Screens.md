@@ -6,6 +6,7 @@ type: process
 checked: [Skill_App_Base, Skill_App_ShellUse, Skill_App_SneatGlass, Skill_App_Report]
 installs: [scripts/screens.mjs]
 description: The screens every app of a system is built for and checked on - one list of 15 screens (monitors, laptops, tablets, phones) with their size, ratio and the page area a browser leaves, the rule that picks the layout from the window (the 1920 x 1080 canvas zoomed to it, the phone layer, one column for a full-screen scene), and the 7 screens every browser check measures. Use when building or checking a page for screen sizes, a scale to the window, a phone or tablet layout, a full-screen page, or the page size of a browser check. Vietnamese triggers - "tỉ lệ màn hình", "cỡ màn hình", "kích thước màn hình", "tự scale", "co giãn theo màn", "màn dọc", "màn siêu rộng", "responsive".
+from: _Store/03_SKILLS/Skill_App_Screens @v1 #241d3c2089bf
 ---
 
 # app-screens — one list of screens for every app
