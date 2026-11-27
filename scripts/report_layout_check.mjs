@@ -376,9 +376,10 @@ export const RULES = [
       if (missing.length) return (v.querySelector('[data-rp-title]')?.textContent.trim() || 'a chart') + ': its tooltip leaves out the legend\\'s ' + missing.join(', ');
     }
     return true;`),
-  // (v22, 16/11: the size of the numbers in Settings > Numbers covers the charts too) a table's numbers and a chart's labels follow
-  // --num-scale: doubled for a moment, both must double
-  rule('rp-num-size', 'the numbers of a report follow the person\'s number size (Settings > Numbers, --num-scale on <html>): a number of a table and a label of a chart grow and shrink with it (v22, 16/11)', `
+  // (v22, 16/11) a table's numbers follow --num-scale. (v43, the user 27/11: "miễn sao đều nhau đồng bộ 1 size" - the setting is
+  // the size of the TABLE's text since frame 1.49.9, and a chart's figure grew while the words beside it stayed) a chart's labels
+  // never follow it: doubled for a moment, a table number must double and a chart label must keep its size
+  rule('rp-num-size', 'one size for words and figures: a number of a table grows and shrinks with the table text size (Settings > Numbers, --num-scale on <html>), a label of a chart keeps the size of its chart, never the table setting (v43, 27/11)', `
     const root = document.documentElement, cur = getComputedStyle(root).getPropertyValue('--num-scale').trim();
     if (!cur) return true;
     const shown = e => e && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
@@ -390,8 +391,13 @@ export const RULES = [
     root.style.setProperty('--num-scale', String((parseFloat(cur) || 1) * 2));
     const after = picks.map(e => parseFloat(getComputedStyle(e).fontSize));
     if (was) root.style.setProperty('--num-scale', was); else root.style.removeProperty('--num-scale');
-    for (const [i, e] of picks.entries()) if (Math.abs(after[i] / before[i] - 2) > .15)
-      return (e.matches('[data-rp-label]') ? 'a chart label' : 'a table number') + ' does not follow the number size (--num-scale): ' + before[i] + ' px stays ' + after[i] + ' px (' + (e.textContent || '').trim().slice(0, 20) + ')';
+    for (const [i, e] of picks.entries()) {
+      const label = e.matches('[data-rp-label]'), ratio = after[i] / before[i];
+      if (label && Math.abs(ratio - 1) > .05)
+        return 'a chart label follows the table text size (--num-scale), the words of its chart do not: ' + before[i] + ' px went ' + after[i] + ' px (' + (e.textContent || '').trim().slice(0, 20) + ')';
+      if (!label && Math.abs(ratio - 2) > .15)
+        return 'a table number does not follow the table text size (--num-scale): ' + before[i] + ' px stays ' + after[i] + ' px (' + (e.textContent || '').trim().slice(0, 20) + ')';
+    }
     return true;`),
   rule('rp-value-colour', 'a colour on a value says its level: one colour per level (data-rp-cf) across the even and odd rows - a stripe never paints over it - and no purple or info colour stands for a level (v13, the user 09/11)', `
     const paintOf = e => { const s = getComputedStyle(e); return s.backgroundImage !== 'none' ? s.backgroundImage : !clear(s.backgroundColor) ? s.backgroundColor : s.color; };
@@ -996,8 +1002,8 @@ const rowsOf = n => Array.from({length: n}, (_, i) => `<tr><td>N${i}</td><td dat
 // (v12) a figure card of the good page carries its tone
 const toned = html => html.replace(/class="card kpi-card"/g, (m, at) => m + ' data-tone="' + 'abcd'[(at / 7 | 0) % 4] + '"');
 export const SELF_TEST = {
-  // (v22) the numbers and the chart labels follow the person's number size
-  good: SHELL(toned(`<style>:root{--num-scale:1}[data-rp-visual] [data-rp-label]{font-size:calc(10px * var(--num-scale))!important}td[data-rp-num]{font-size:calc(14px * var(--num-scale))}</style>` +
+  // (v22) the numbers follow the table text size; (v43) the chart labels keep their chart's size
+  good: SHELL(toned(`<style>:root{--num-scale:1}[data-rp-visual] [data-rp-label]{font-size:10px!important}td[data-rp-num]{font-size:calc(14px * var(--num-scale))}</style>` +
     `<div class="row" data-rp-visual="cards">${card('Doanh thu', '1.200', '+5,2% MoM', 'up', 'text-success')}` +
     `${card('Huỷ món', '35', '+3,0% MoM', 'down', 'text-danger')}${card('Bill', '420', '(1,0)% MoM', 'up', 'text-danger')}` +
     `${card('Tỷ trọng', '40%', '+2,0 pp MoM', 'up', 'text-success')}</div>`) +
