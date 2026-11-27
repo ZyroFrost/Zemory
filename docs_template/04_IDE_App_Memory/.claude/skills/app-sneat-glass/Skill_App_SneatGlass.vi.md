@@ -1,5 +1,5 @@
 ---
-version: 97
+version: 98
 lang: vi
 ---
 
@@ -384,7 +384,9 @@ z-index của app là một biến trong bảng (`var(--z-focus)`), không bao g
   bao giờ hiện mã lưu (`data_query`, `login_ok`); mã ngoài danh sách đọc là "Hành động khác". Mã hành động là danh sách đóng của
   hệ (hợp đồng app của DB hệ): app giữ danh sách đó, mỗi mã có tên ở mọi ngôn ngữ, và một phép kiểm tĩnh đối chiếu danh sách với
   hợp đồng khi hợp đồng có trên máy. [no-raw-code] (v87, người dùng 25/11: bộ lọc Nhóm liệt kê `data` và `ops`) một chữ thường đứng
-  một mình cũng là mã, và một cột bảng mà mọi ô đều là mã cũng vậy (cột tên Mã / Code / ID cố ý hiện mã). Danh sách chọn chỉ vẽ
+  một mình cũng là mã, và một cột bảng mà mọi ô đều là mã cũng vậy (cột tên Mã / Code / ID cố ý hiện mã). (v98, Audit 27/11 qua repo quản hệ)
+  Bảng bằng chứng thô - các dòng log hiện đúng như lưu, gắn `data-raw-evidence` trên bảng hay một hộp bọc nó - giữ mã ở các cột:
+  đó là dữ liệu; badge, bộ lọc hay danh sách chọn vẫn được đọc như cũ, cả trong bảng đó. Danh sách chọn chỉ vẽ
   khi mở thì được mở như người dùng mở - từng bộ lọc trên trang, trên hàng 2 và trong ô bộ lọc - và không lựa chọn nào được đọc
   ra mã. [names-in-lists] Danh sách dựng từ giá trị lưu phải đặt tên từng giá trị: `optionsOf(values, v => name(v))`, không bao
   giờ chỉ `optionsOf(values)`.

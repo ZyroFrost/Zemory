@@ -730,6 +730,8 @@ export const RULES = [
       const raw = [...document.querySelectorAll(spots)].find(e => code.test((e.textContent || '').replace(/^[^:]*:\\s*/, '').trim()));
       if (raw) return 'a stored code shows where a person reads a name: ' + raw.textContent.trim();
       for (const t of document.querySelectorAll('table')) {
+        // (v98, Audit 27/11 through the system-manager repo) a table of raw evidence shows a log as stored: its codes are data
+        if (t.closest('[data-raw-evidence]')) continue;
         const heads = [...t.querySelectorAll('thead th')].map(h => h.textContent.trim());
         const rows = [...t.querySelectorAll('tbody tr')];
         // the action column of a log table: one code is enough
