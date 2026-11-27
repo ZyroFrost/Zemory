@@ -209,6 +209,9 @@ export type TidyOptions = {
   configFile?: string;
   dataCapBytes?: number;
   now?: number;
+  /** a line before and during a long removal - `--apply` over ~180 scratch folders (15 GB) printed nothing for minutes and
+   *  read as a hang (Dept_FA 26/11) */
+  progress?: (line: string) => void;
 };
 
 export function tidySession(o: TidyOptions): TidyReport {
@@ -319,8 +322,25 @@ export function tidySession(o: TidyOptions): TidyReport {
     byPrefix.set(k, e);
   }
   const top = [...byPrefix].sort((a, b) => b[1].s - a[1].s).slice(0, 3).map(([k, e]) => `${k} ×${e.n} ${bytes(e.s)}`).join(" · ");
+  const removed13: string[] = [];
+  if (o.apply && sized.length) {
+    o.progress?.(`  ⑬ removing ${sized.length} scratch folder(s), ${bytes(total)}, from ${tmp} - a large total takes minutes`);
+    const t0 = Date.now();
+    let last = t0, freed = 0;
+    sized.forEach((x, i) => {
+      if (rm(x.p)) {
+        removed13.push(x.item);
+        freed += x.s;
+      }
+      // a line every 5 s at most, so a long run is seen moving
+      if (Date.now() - last >= 5000 && i + 1 < sized.length) {
+        last = Date.now();
+        o.progress?.(`     ${i + 1}/${sized.length} · ${bytes(freed)} freed · ${Math.round((last - t0) / 1000)} s`);
+      }
+    });
+  }
   rows.push(row("tool scratch (_scratch_*) in the system temp folder, over a day old", sized.map((x) => x.item),
-    o.apply ? sized.filter((x) => rm(x.p)).map((x) => x.item) : [], leftovers.length ? `${bytes(total)} · biggest: ${top}` : undefined));
+    removed13, leftovers.length ? `${bytes(total)} · biggest: ${top}` : undefined));
 
   return { session, transcript, rows };
 }

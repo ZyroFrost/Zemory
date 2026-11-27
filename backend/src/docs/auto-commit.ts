@@ -12,9 +12,14 @@
 // Cost: git is asked about the session's files only - never a whole-tree `git status`, which over the container's 9p mount
 // re-hashes every file of a Windows-written index (measured 2026-11-09: 37-145 s on this repo, so the Stop hook missed its
 // deadline every turn). The transcript is read from where the previous turn stopped (`sessionWrittenFilesAt`).
-import { execFileSync } from "node:child_process";
-import { closeSync, existsSync, fstatSync, openSync, readdirSync, readFileSync, readSync, realpathSync, statSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import {
+  appendFileSync, closeSync, existsSync, fstatSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, realpathSync, rmSync, statSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { toHostPath, toLocalPath } from "../util/hostpath.js";
 
 /** 0 = every turn that leaves the session's files differing from HEAD commits them (user 2026-11-12). */
@@ -173,14 +178,14 @@ export function forgetSessionFiles(): void {
 }
 
 // literal pathspecs: a file named `a[1].ts` is that file, not a pattern
-const git = (root: string, args: string[], input?: string): string =>
+const git = (root: string, args: string[], input?: string, timeout = 60_000): string =>
   String(
     execFileSync("git", args, {
       cwd: root,
       encoding: "utf8",
       stdio: "pipe",
       windowsHide: true,
-      timeout: 60_000,
+      timeout,
       // check-ignore refuses the literal magic; it reads its paths from stdin, which are taken as they are anyway
       env: args.includes("check-ignore") ? process.env : { ...process.env, GIT_LITERAL_PATHSPECS: "1" },
       ...(input === undefined ? {} : { input }),
@@ -216,6 +221,8 @@ const sameFile =(a: string, b: string): boolean => (process.platform === "win32"
 
 export interface AutoCommitResult {
   committed: boolean;
+  /** the commit was handed to a detached process (`background`); its result lands in logs/auto-commit.log */
+  started?: boolean;
   lines: number;
   files: string[];
   /** why nothing was committed, or the commit's subject */
@@ -226,7 +233,12 @@ export interface AutoCommitResult {
  * Measure, and commit when over the limit. `root` is the repo the session runs in; null when there is nothing to do (no
  * git, nothing of this session uncommitted). Never throws.
  */
-export function autoCommit(root: string, transcript: string | string[], limit = AUTO_COMMIT_LINES): AutoCommitResult | null {
+export function autoCommit(
+  root: string,
+  transcript: string | string[],
+  limit = AUTO_COMMIT_LINES,
+  opts: { background?: boolean } = {},
+): AutoCommitResult | null {
   try {
     // the session may run in a subfolder; outside any git tree rev-parse throws ⇒ null below
     const top = canon(git(root, ["rev-parse", "--show-toplevel"]));
@@ -293,17 +305,88 @@ export function autoCommit(root: string, transcript: string | string[], limit = 
     if (limit > 0 && lines <= limit) return { committed: false, lines, files, note: `under the limit (${lines} ≤ ${limit})` };
     const subject = `Auto-commit: this session's work at the end of a turn (${lines} lines, ${files.length} file(s))`;
     const body = files.slice(0, 30).map((f) => `- ${f}`).join("\n") + (files.length > 30 ? `\n- … ${files.length - 30} more` : "");
-    try {
-      git(top, [...eol, "add", "--", ...files]);
-      // `--only` with pathspecs: exactly these files, whatever else sits in the index
-      git(top, [...eol, "commit", "--only", "-m", subject, "-m", body, "--", ...files]);
-    } catch (e) {
-      const err = e as { stderr?: unknown; stdout?: unknown; message?: string };
-      const why = (String(err.stderr ?? "") + String(err.stdout ?? "")).trim().split(/\r?\n/).slice(-3).join(" | ") || err.message || "git failed";
-      return { committed: false, lines, files, note: `commit refused: ${why.slice(0, 300)}` };
+    if (opts.background) {
+      // The commit runs the repo's own hooks, and they may take long: the DW's pre-commit syncs its registers against the
+      // warehouse (measured 26/11 18:29Z: the Stop hook cut at its 50 s ceiling in step "auto-commit: git", no commit made).
+      // Measuring stays here (~0.5 s); add + commit go to a detached process with no hook ceiling.
+      if (existsSync(join(top, ".git", "index.lock"))) return { committed: false, lines, files, note: "a commit is already running" };
+      const job = join(tmpdir(), `zemory-autocommit-${process.pid}-${Date.now().toString(36)}.json`);
+      writeFileSync(job, JSON.stringify({ top, eol, files, subject, body }));
+      spawn(process.execPath, [fileURLToPath(import.meta.url), BG_FLAG, job], { detached: true, stdio: "ignore", windowsHide: true }).unref();
+      return { committed: false, started: true, lines, files, note: subject };
     }
-    return { committed: true, lines, files, note: subject };
+    const r = commitNow(top, eol, files, subject, body);
+    return { ...r, lines, files };
   } catch {
     return null; // fail-open — a convenience must never break the end of a turn
   }
+}
+
+/** git add + commit of exactly these files, through the repo's own hooks (never --no-verify). */
+function commitNow(top: string, eol: string[], files: string[], subject: string, body: string, timeout = 60_000): { committed: boolean; note: string } {
+  try {
+    git(top, [...eol, "add", "--", ...files], undefined, timeout);
+    // `--only` with pathspecs: exactly these files, whatever else sits in the index
+    git(top, [...eol, "commit", "--only", "-m", subject, "-m", body, "--", ...files], undefined, timeout);
+  } catch (e) {
+    const err = e as { stderr?: unknown; stdout?: unknown; message?: string };
+    const why = (String(err.stderr ?? "") + String(err.stdout ?? "")).trim().split(/\r?\n/).slice(-3).join(" | ") || err.message || "git failed";
+    return { committed: false, note: `commit refused: ${why.slice(0, 300)}` };
+  }
+  return { committed: true, note: subject };
+}
+
+const BG_FLAG = "--zemory-auto-commit";
+const BG_RESULT = "zemory-auto-commit.json";
+const gitDir = (top: string): string => resolve(top, git(top, ["rev-parse", "--git-dir"]));
+
+/** The outcome of the last background commit in this repo, said once and then forgotten: "" when there is none. A refusal
+ *  (the secret latch) must reach the person even though the commit ran after the turn had ended. Never throws. */
+export function takeBackgroundResult(root: string): string {
+  try {
+    const top = canon(git(root, ["rev-parse", "--show-toplevel"]));
+    const f = join(gitDir(top), BG_RESULT);
+    if (!existsSync(f)) return "";
+    const r = JSON.parse(readFileSync(f, "utf8")) as { committed: boolean; note: string; lines: string; files: number };
+    rmSync(f, { force: true });
+    return r.committed
+      ? `[zemory] The background auto-commit landed locally, not pushed: ${r.lines} line(s) in ${r.files} file(s). Undo with \`git reset --soft HEAD~1\` while it is the last commit.`
+      : `[zemory] The background auto-commit of ${r.files} file(s) was refused — ${r.note.replace(/^commit refused: /, "")}`;
+  } catch {
+    return "";
+  }
+}
+/** How long a background commit may run: the repo's hooks (a register sync, an LFS upload) set the pace, not the turn. */
+const BG_TIMEOUT_MS = 15 * 60_000;
+
+/** The detached half: run the job file, delete it, append one line to `logs/auto-commit.log` of the memory folder. */
+async function runBackgroundJob(job: string): Promise<void> {
+  let line: Record<string, unknown> = { at: new Date().toISOString(), job };
+  try {
+    const j = JSON.parse(readFileSync(job, "utf8")) as { top: string; eol: string[]; files: string[]; subject: string; body: string };
+    rmSync(job, { force: true });
+    const t0 = Date.now();
+    const r = commitNow(j.top, j.eol, j.files, j.subject, j.body, BG_TIMEOUT_MS);
+    line = { at: new Date().toISOString(), repo: j.top, files: j.files.length, ms: Date.now() - t0, committed: r.committed, note: r.note };
+    // the next Stop hook of any session in this repo says it to the person (takeBackgroundResult)
+    try {
+      writeFileSync(join(gitDir(j.top), BG_RESULT), JSON.stringify({ ...r, lines: j.subject.match(/\((\d+) lines/)?.[1] ?? "?", files: j.files.length }));
+    } catch {
+      /* no result file: the log still has it */
+    }
+  } catch (e) {
+    line.error = e instanceof Error ? e.message : String(e);
+  }
+  try {
+    const { currentMemoryDir } = await import("../memory/db.js");
+    const dir = join(currentMemoryDir(), "logs");
+    mkdirSync(dir, { recursive: true });
+    appendFileSync(join(dir, "auto-commit.log"), JSON.stringify(line) + "\n");
+  } catch {
+    /* the log is evidence, never a reason to fail */
+  }
+}
+
+if (process.argv[2] === BG_FLAG && process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  void runBackgroundJob(process.argv[3] ?? "");
 }

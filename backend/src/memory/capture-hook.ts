@@ -35,7 +35,7 @@ import { coreForCompaction, coreReinjectCap } from "../docs/rule-core.js";
 import { isFolderHarness, isRetired, listParts, promptGates, type PromptGate } from "../docs/store.js";
 import { modelVerdicts } from "../training/prompt-gates/04_export.js";
 import { stopDecision } from "../docs/turn-evidence.js";
-import { autoCommit, sessionWrittenFilesAt } from "../docs/auto-commit.js";
+import { autoCommit, sessionWrittenFilesAt, takeBackgroundResult } from "../docs/auto-commit.js";
 import { promptMatches, SHELF } from "../docs/harness-names.js";
 import { findProjectRoot, harnessPathsAt, readMarker } from "../core/config.js";
 import { titleOfTranscript, titleProblem } from "./send-guard.js";
@@ -746,11 +746,19 @@ export function endOfTurnAutoCommit(payload: any, transcriptPath: string): strin
     // host's hook runs the commit on the host instead, detached (backend/scripts/host-hook.mjs autoCommitSoon).
     if (RUNTIME === "docker") return "";
     step("auto-commit: git");
-    const r = autoCommit(toLocalPath(cwd), written);
-    if (!r || (!r.committed && !r.note.startsWith("commit refused"))) return "";
-    return r.committed
-      ? `[zemory] Auto-committed locally, not pushed: ${r.lines} line(s) in ${r.files.length} file(s) of this session. Undo with \`git reset --soft HEAD~1\`.`
-      : `[zemory] Auto-commit of ${r.lines} lines in ${r.files.length} file(s) was refused — ${r.note.slice("commit refused: ".length)}`;
+    // background: the commit runs the repo's own hooks, which may outlast the hook's 50 s (DW pre-commit, 26/11). What the
+    // last one did is said first, one turn late; a refusal of the secret latch is never lost.
+    const before = takeBackgroundResult(toLocalPath(cwd));
+    const r = autoCommit(toLocalPath(cwd), written, undefined, { background: true });
+    let now = "";
+    if (r?.started) {
+      now = `[zemory] Auto-commit of ${r.lines} line(s) in ${r.files.length} file(s) of this session runs in the background (the repo's commit hooks run there), not pushed.`;
+    } else if (r?.committed) {
+      now = `[zemory] Auto-committed locally, not pushed: ${r.lines} line(s) in ${r.files.length} file(s) of this session. Undo with \`git reset --soft HEAD~1\`.`;
+    } else if (r?.note.startsWith("commit refused")) {
+      now = `[zemory] Auto-commit of ${r.lines} lines in ${r.files.length} file(s) was refused — ${r.note.slice("commit refused: ".length)}`;
+    }
+    return [before, now].filter(Boolean).join("\n");
   } catch {
     return "";
   }

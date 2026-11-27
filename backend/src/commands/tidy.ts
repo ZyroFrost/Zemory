@@ -17,7 +17,8 @@ export function cmdTidy(args: string[]): void {
     return;
   }
   const apply = args.includes("--apply");
-  const r = tidySession({ repo: process.cwd(), session, apply });
+  // progress goes to stderr, so `--json` keeps a clean stdout
+  const r = tidySession({ repo: process.cwd(), session, apply, progress: (line) => process.stderr.write(line + "\n") });
   if (args.includes("--json")) {
     console.log(JSON.stringify(r, null, 2));
   } else {
