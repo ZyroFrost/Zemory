@@ -1,7 +1,7 @@
 ---
 id: Skill_App_SneatGlass
 name: app-sneat-glass
-version: 97
+version: 98
 type: process
 checked: [Skill_App_Sneat, Skill_App_Glass, Skill_App_Base, Design_172_Design, Skill_App_Shell, Skill_App_ShellUse]
 installs: [scripts/sneat_glass_check.mjs]
@@ -419,7 +419,9 @@ app takes them - its own z-index is a variable of this table (`var(--z-focus)`),
   codes are the family's closed list (the app contract of the family database): the app keeps that list with a name for each code in every
   language, and a static test checks the list covers the contract when the contract is on the machine. [no-raw-code] (v87, the
   requester 25/11: a Group filter listed `data` and `ops`) a bare lowercase word is a code too, and so is a table column whose every
-  cell is one (a column named Mã / Code / ID shows codes on purpose). A pick list drawn only while open is opened as a person
+  cell is one (a column named Mã / Code / ID shows codes on purpose). (v98, Audit 27/11 through the system-manager repo) A
+  table of raw evidence - the rows of a log shown exactly as stored, marked `data-raw-evidence` on the table or a box around
+  it - keeps its codes in its columns: they are data; a badge, a filter or a pick list is read as before, also inside it. A pick list drawn only while open is opened as a person
   opens it - each filter on the page, on row 2 and in the filter popover - and no option may read as a code. [names-in-lists]
   Any list built from stored values names each value: `optionsOf(values, v => name(v))`, never `optionsOf(values)` alone.
 - **The page speaks the language chosen** (v88, the requester 25/11: the two dictionaries were only compared key for key, and no
