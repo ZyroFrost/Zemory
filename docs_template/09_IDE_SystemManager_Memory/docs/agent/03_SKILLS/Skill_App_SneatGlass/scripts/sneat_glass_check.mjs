@@ -2325,7 +2325,9 @@ export const PROBES = [
       }
       const box = document.querySelector('#page-search input, .page-toolbar .page-search input');
       const rows = () => [...document.querySelectorAll('#page table tbody tr, #page .view-grid tbody tr')].filter(r => shown(r) && !r.querySelector('[data-empty], .empty-state')).length;
-      const items = () => [...document.querySelectorAll('#page [data-rp-item], #page [data-rp-mark]')].filter(shown).length;
+      // (v101, the system-manager repo 27/11: the Apps page in its grid view holds cards, not rows, and its filter box read as over
+      // nothing) the cards of a list drawn as a grid are items too, marked data-item by the page
+      const items = () => [...document.querySelectorAll('#page [data-rp-item], #page [data-rp-mark], #page [data-item]')].filter(shown).length;
       if (shown(box) && !box.disabled && !box.readOnly) {
         const n0 = rows(), m0 = items();
         // (Reconcile 15/11: the invoices of a day with none yet) a page that honestly has nothing today wears the empty template
