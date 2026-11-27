@@ -1,5 +1,5 @@
 ---
-version: 100
+version: 101
 lang: vi
 ---
 
@@ -142,7 +142,7 @@ lang: vi
   cụm phải chạy được khi bấm** (v64, 12/11: "bộ kiểm phải kiểm luôn filter và search và mọi cụm chức năng đều phải hoạt động
   dc để các repo nó tự dò và sửa"): Làm mới gọi lại server, Chú thích mở danh sách thuật ngữ, nút lọc mở popover có bộ lọc, ô tìm
   lọc được dòng (và mục của chart) và trả lại khi xoá chữ - ô đã hiện thì gõ được, không có ô giả bị khoá (v71, 14/11); trang không có gì để tìm thì không vẽ ô, luật thanh công cụ chỉ đòi ô ở trang có ô (v72), nút làm mới chỉ bấm khi lượt trước đã xong - nút còn bận tính là đã hỏi (v73); thanh của lớp trong - hộp thoại, đầu thẻ (sasinShell.toolbar) - theo đúng vùng của hàng 2, luật inner-bar: mọi thứ nằm trong cụm, cụm nút từ trái, cụm tin sau đó, cụm tìm neo phải, mỗi loại một cụm, có khung, không chồng nhau, chữ chỉ trong cụm tin, ô lọc gõ được (v74, Reconcile 14/11, đã duyệt), nút gọn/dài đổi được tab - bài kiểm trình duyệt bấm từng cái trên mọi trang rồi để
-  trang như cũ. [bar-works] **Hai đầu neo** (v66, 12/11: "ko dc để nó nằm giữa"): hàng 2 có nhóm trái xếp từ trái và nhóm
+  trang như cũ. (v101) Danh sách vẽ thành lưới thẻ thì gắn `data-item` lên từng thẻ, để ô lọc được đo trên các thẻ như trên dòng. [bar-works] **Hai đầu neo** (v66, 12/11: "ko dc để nó nằm giữa"): hàng 2 có nhóm trái xếp từ trái và nhóm
   phải xếp sát phải, giữa là khoảng trống co giãn - không cụm nào trôi ra giữa; kéo một cụm thì hiện mọi chỗ có thể thả (hai đầu,
   trước, giữa, sau các cụm mỗi đầu) và cụm vào vạch gần con trỏ nhất. **Cả điện thoại** (v66): mọi luật hàng 2 áp cho điện thoại
   như máy tính - cụm có khung và tay nắm, bộ lọc ghim, tay nắm cụm tab. [seek-cluster] [bar-zones]
