@@ -5,7 +5,7 @@ version: 6
 kind: action
 code: 05_Domain
 checked: [Skill_App_ShellUse, Skill_App_SneatGlass, Skill_App_Report, Skill_App_Release, Rule_Keys_90_AppFamilyContract]
-from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_76_DeployChecksFrame @v6 #467510eb8048
+from: _Store/01_LAW/_Rule/05_Domain/Rule_Gate_76_DeployChecksFrame @v6 #b96a83277541
 ---
 # Rule_Gate_76_DeployChecksFrame — An app of a family deploys only through the frame's shared checks
 
