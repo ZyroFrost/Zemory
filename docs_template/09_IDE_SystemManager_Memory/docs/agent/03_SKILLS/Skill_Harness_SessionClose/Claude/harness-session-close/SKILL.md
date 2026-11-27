@@ -2,10 +2,11 @@
 id: Skill_Harness_SessionClose
 aka: session-close
 name: harness-session-close
-version: 27
+version: 28
 type: process
+checked: [Skill_Harness_SessionOpen]
 description: Close out a work session correctly - route everything that happened into the right file so the next session can pick up where this one stopped. Use when asked to write things down, log progress, wrap up, when the context is running out or the session is about to switch, and BEFORE a session or a case is closed - by the person or by the session that opened it - even when its work is not finished. Vietnamese triggers - "note lại", "docs lại", "ghi sổ", "chốt phiên", "đóng phiên", "đóng case", "sắp hết context", "đổi session", "mở phiên mới", "tổng kết lại".
-from: _Store/03_SKILLS/Skill_Harness_SessionClose @v27 #e25c014f3f8d
+from: _Store/03_SKILLS/Skill_Harness_SessionClose @v28 #b72ff8656a68
 ---
 
 # session-close — closing a session / writing the ledgers
@@ -22,6 +23,10 @@ from: _Store/03_SKILLS/Skill_Harness_SessionClose @v27 #e25c014f3f8d
   it got, the next step, where its files are. Only then is the session stopped or the case closed.
 - **Told by another session that it is about to be closed** (a `SendMessage` from the one that opened it) ⇒ run this skill,
   commit the ledgers, and answer that session with the ledger commit and every piece of work from another repo it still holds.
+- **Replaced by a newer session of this repo** (the person opened a new one, or a new session says it takes over) ⇒ run this
+  skill on the state at that moment, then stop every loop, monitor, mail waiter and scheduled wake-up of this session, so what
+  still runs reports to the new session only; tell the new session what still runs and where each one is watched. The running
+  work itself (a job, a unit, a load) is not stopped — only its watch moves (`Skill_Harness_SessionOpen` step 3 item 3).
 - **Holding work from another repo** (a task received by `SendMessage` or by mail whose result has not gone back) ⇒ the session
   is NOT closed: send the result, or its state and what is left, to the session that gave it, and say so to whoever asked for
   the close.
@@ -228,7 +233,8 @@ session is reopened) · ⑦ 17 repos committed (--only) · …`.
 - before adding an untracked file, check it holds no secret.
 
 Then `zemory validate` (reads the files directly — only green counts as closed) → REPORT. **Never `git push` on your own**
-(`Rule_Gate_50_Git`).
+(`Rule_Gate_50_Git`). The report lists what still runs, each with where it is watched (unit · job · log · session it opened):
+the next session takes them over from that list (`Skill_Harness_SessionOpen` step 3 item 3).
 
 ## The documents that go with a change (`Rule_Gate_34_DocsFollowChange`)
 

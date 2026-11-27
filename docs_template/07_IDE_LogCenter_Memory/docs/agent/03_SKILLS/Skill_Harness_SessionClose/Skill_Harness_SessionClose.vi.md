@@ -1,5 +1,5 @@
 ---
-version: 27
+version: 28
 lang: vi
 ---
 
@@ -17,6 +17,10 @@ lang: vi
   Việc chưa xong ghi vào `04_TODO` dạng `[~]`: tới đâu, bước tiếp, file nằm đâu. Xong rồi mới dừng phiên hay đóng case.
 - **Được phiên khác báo sắp đóng** (`SendMessage` từ phiên đã mở nó) ⇒ chạy skill này, commit sổ, rồi trả lời phiên đó mã commit
   sổ và mọi việc của repo khác mà nó còn đang giữ.
+- **Bị một phiên mới hơn của repo này thay** (người dùng mở phiên mới, hoặc phiên mới báo nó nhận việc) ⇒ chạy skill này trên trạng
+  thái lúc đó, rồi dừng mọi vòng lặp, monitor, bộ chờ thư và lượt hẹn thức của phiên này, để thứ còn chạy chỉ báo về phiên mới; báo
+  phiên mới những gì còn chạy và mỗi thứ đang được canh ở đâu. Bản thân việc đang chạy (job, unit, lượt nạp) không bị dừng — chỉ việc
+  canh chuyển đi (`Skill_Harness_SessionOpen` bước 3 mục 3).
 - **Đang giữ việc của repo khác** (việc nhận qua `SendMessage` hay thư mà kết quả chưa gửi về; người dùng 25/11: "lỡ nó có đang nhận
   việc từ repo khác thì bạn ko dc đóng") ⇒ KHÔNG đóng: gửi kết quả, hoặc trạng thái và phần còn lại, cho phiên đã giao, và nói rõ
   với bên đòi đóng.
@@ -223,7 +227,8 @@ Báo cáo nêu từng dòng kèm số và việc đã làm: `② nháp 5 → 0 �
 - trước khi add một file chưa track, soát nó không chứa bí mật.
 
 Rồi `zemory validate` (đọc file trực tiếp — xanh mới coi là chốt xong) → BÁO CÁO. **Không tự `git push`**
-(`Rule_Gate_50_Git`).
+(`Rule_Gate_50_Git`). Bản báo liệt kê những gì còn chạy, mỗi thứ kèm chỗ đang canh (unit · job · log · phiên nó đã mở): phiên sau
+nhận canh từ danh sách đó (`Skill_Harness_SessionOpen` bước 3 mục 3).
 
 ## Bảng soát tài liệu đi cùng thay đổi (`Rule_Gate_34_DocsFollowChange`)
 
