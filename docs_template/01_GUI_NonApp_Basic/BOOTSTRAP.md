@@ -62,8 +62,8 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 24 | `.claude/skills/harness-repo-move/Skill_Harness_RepoMove.vi.md` | 78 |
 | 25 | `.claude/skills/harness-session-close/SKILL.md` | 250 |
 | 26 | `.claude/skills/harness-session-close/Skill_Harness_SessionClose.vi.md` | 245 |
-| 27 | `.claude/skills/harness-session-open/SKILL.md` | 63 |
-| 28 | `.claude/skills/harness-session-open/Skill_Harness_SessionOpen.vi.md` | 51 |
+| 27 | `.claude/skills/harness-session-open/SKILL.md` | 80 |
+| 28 | `.claude/skills/harness-session-open/Skill_Harness_SessionOpen.vi.md` | 72 |
 | 29 | `.claude/skills/harness-structure/SKILL.md` | 132 |
 | 30 | `.claude/skills/harness-structure/Skill_Harness_Structure.vi.md` | 127 |
 | 31 | `.claude/skills/harness-structure/references/conventions.md` | 151 |
@@ -409,10 +409,10 @@ trên Windows; không cần Node, Git hay zemory). Tải xong ⇒ mở lại phi
 | 371 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.md` | 250 |
 | 372 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/Skill_Harness_SessionClose.vi.md` | 245 |
 | 373 | `docs/agent/03_SKILLS/Skill_Harness_SessionClose/gate.json` | 28 |
-| 374 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Claude/harness-session-open/SKILL.md` | 63 |
-| 375 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Claude/harness-session-open/Skill_Harness_SessionOpen.vi.md` | 51 |
-| 376 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Skill_Harness_SessionOpen.md` | 63 |
-| 377 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Skill_Harness_SessionOpen.vi.md` | 51 |
+| 374 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Claude/harness-session-open/SKILL.md` | 80 |
+| 375 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Claude/harness-session-open/Skill_Harness_SessionOpen.vi.md` | 72 |
+| 376 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Skill_Harness_SessionOpen.md` | 80 |
+| 377 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/Skill_Harness_SessionOpen.vi.md` | 72 |
 | 378 | `docs/agent/03_SKILLS/Skill_Harness_SessionOpen/gate.json` | 20 |
 | 379 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/SKILL.md` | 132 |
 | 380 | `docs/agent/03_SKILLS/Skill_Harness_Structure/Claude/harness-structure/Skill_Harness_Structure.vi.md` | 127 |
