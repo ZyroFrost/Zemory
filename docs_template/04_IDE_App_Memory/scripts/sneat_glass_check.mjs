@@ -2562,7 +2562,10 @@ export const PROBES = [
         const footCell = table.tFoot && table.tFoot.querySelector('td, th');
         const pinned = footCell && [footCell, footCell.parentElement, table.tFoot].some(e => getComputedStyle(e).position === 'sticky');
         const foot = pinned ? footCell.getBoundingClientRect().top : Infinity;   // the pinned cell, drawn where it sticks
-        const bottom = Math.min(innerHeight, scroller.getBoundingClientRect().bottom, frame ? frame.bottom : innerHeight, foot);
+        // (v100, Audit 27/11 through the system-manager repo: at 844 x 340 the page body was the table's scrolling frame too, and its
+        // sideways scroll bar, 12 px, was counted as rows not drawn) the page body's bottom is its inner one, its scroll bar left out
+        const inner = (bx => bx.top + scroller.clientTop + scroller.clientHeight)(scroller.getBoundingClientRect());
+        const bottom = Math.min(innerHeight, inner, frame ? frame.bottom : innerHeight, foot);
         let bad = 0, checked = 0;
         for (const row of table.tBodies[0].rows) {
           const r = row.getBoundingClientRect();
