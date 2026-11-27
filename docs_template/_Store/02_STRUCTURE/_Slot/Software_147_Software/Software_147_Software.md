@@ -32,7 +32,7 @@ is the launcher's `Data\`).
   service, a keygen, a patch for every program of the vendor) sits beside the groups in `Software\_<Vendor>\`, e.g.
   `Software\_Autodesk\` for what AutoCAD (`CAD\`) and Maya (`3D\`) both use. It holds only that shared kit, never a program.
   A kit shared inside ONE group stays in that group: `<Group>\<Vendor>\_Setup\` (Software_148).
-- A second exception: `Software\Cache\` beside the groups holds the cache many tools write into the user's `.cache` folder,
+- A second exception: `Software\Cache\` beside the groups holds the cache many tools write into the account's `.cache` folder,
   one folder per tool, reached through a junction from `%USERPROFILE%\.cache` (`Software_177_Cache`). It holds no program.
 - A program found anywhere else (inside `Documents\`, `Study\`, `Game\`) moves here (Law 2 of `Struc_Disk_Data`).
 

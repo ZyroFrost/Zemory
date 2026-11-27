@@ -1,5 +1,5 @@
 ---
-version: 14
+version: 15
 lang: vi
 ---
 # Struc_Disk_Data
@@ -129,6 +129,7 @@ game hay khoá học tải về. Xếp luôn dùng chuỗi câu hỏi ở trên.
 ├── Media\            giải trí sưu tầm (Media_162)
 │  ③ cài đặt
 ├── Software\<Nhóm>\[<Hãng>\]<Ứng dụng>\{Setup,App,Data}   mọi chương trình, kể cả game (Software_147–150)
+│   Software\Cache\<công cụ>\                             cache dùng chung của các công cụ, junction từ %USERPROFILE%\.cache (Software_177)
 │  ④ cất giữ
 ├── Backup\  Archive\  Recovery\                          (Backup_165 · Archive_166 · Recovery_153)
 ```

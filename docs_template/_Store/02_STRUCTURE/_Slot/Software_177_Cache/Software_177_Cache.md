@@ -6,11 +6,11 @@ path: Software/Cache/<tool>/
 scope: layout
 checked: [Software_147_Software, Software_148_Group, Software_149_Program, Data_096_Cache]
 ---
-# Software_177_Cache cache — the cache many tools share in the user's `.cache` folder
+# Software_177_Cache cache — the cache many tools share in the account's `.cache` folder
 
 ## Role
 
-`<data root>\Software\Cache\` holds what tools write into the user's `.cache` folder (`%USERPROFILE%\.cache` on Windows,
+`<data root>\Software\Cache\` holds what tools write into the account's `.cache` folder (`%USERPROFILE%\.cache` on Windows,
 `~/.cache` on Linux) when they give the owner no choice of place: browser-automation runtimes, agent CLIs, dataset and plot
 caches, downloaders. The system drive stays small; the cache lives on the data drive, one folder per tool, and can be emptied
 at any time without losing work.
@@ -19,9 +19,9 @@ at any time without losing work.
 
 - `Software_148_Group`: its fifteen groups hold programs; a cache is no program and belongs to no single group.
 - `Software_149_Program`: a program's own `Data\` holds a cache the program lets the owner place; these tools write to the
-  user's `.cache` folder and give no choice, and several of them have no program folder at all (a CLI run by `npx`).
+  account's `.cache` folder and give no choice, and several of them have no program folder at all (a CLI run by `npx`).
 - `Software_147_Software`: its `_<Vendor>\` exception holds a kit one vendor's programs share, not files many vendors' tools write.
-- `Data_096_Cache`: the cache of one repo inside that repo; this cache belongs to the machine's user, not to a repo.
+- `Data_096_Cache`: the cache of one repo inside that repo; this cache belongs to the machine's account, not to a repo.
 
 ## Inside
 

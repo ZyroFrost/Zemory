@@ -1,7 +1,7 @@
 ---
 id: Struc_Disk_Data
 name: disk-data
-version: 14
+version: 15
 scope: disk
 ---
 # Struc_Disk_Data
@@ -135,6 +135,7 @@ place a game save or a downloaded course. Sorting always uses the chain above.
 ├── Media\            entertainment collected (Media_162)
 │  ③ installed
 ├── Software\<Group>\[<Vendor>\]<App>\{Setup,App,Data}   every program, games included (Software_147–150)
+│   Software\Cache\<tool>\                               the tools' shared cache, junction from %USERPROFILE%\.cache (Software_177)
 │  ④ kept
 ├── Backup\  Archive\  Recovery\                         (Backup_165 · Archive_166 · Recovery_153)
 ```
