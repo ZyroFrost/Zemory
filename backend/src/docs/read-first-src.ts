@@ -35,7 +35,7 @@ const ZEMORY_LOOK = [/^memory (search|show|digest|info|stats|scan|status|context
   /^(peers|gates|validate|doctor|help|--version|-v)\b/, /^graph (impact|neighbors|path|docs|fitness)\b/,
   /^paths check\b/, /^sync --check\b/, /^plan (search|ls|show)\b/, /^changelog search\b/,
   // the opening routine (skill session-open steps 1 and 3) runs BEFORE the docs are read: titling (peers, above) and the
-  // mail - blocked, a session read the docs and never came back to title itself (Dept_FA 20/11 kept "2-11-2026")
+  // mail - blocked, a session read the docs and never came back to title itself (a department repo 20/11 kept "2-11-2026")
   /^msg (read|ls|wait|watch)\b/];
 
 function segments(cmd) {
@@ -73,7 +73,7 @@ function shellActs(cmd) {
     const w = words(seg);
     if (w.length > 1 && /^npx$/i.test(w[0])) w.shift(); // "npx zemory peers"
     if (!w.length) continue;
-    // a bare variable printed ("$env:CLAUDE_CODE_SESSION_ID; zemory peers --fix ..." - _DB_DataWarehouse 24/11) only looks
+    // a bare variable printed ("$env:CLAUDE_CODE_SESSION_ID; zemory peers --fix ..." - the warehouse repo 24/11) only looks
     if (w.length === 1 && /^\$[A-Za-z_][\w:]*$/.test(w[0])) continue;
     const name = w[0].replace(/\\/g, "/").split("/").pop().toLowerCase().replace(/\.(exe|cmd|ps1)$/, "");
     if (LOOK.has(name)) continue;

@@ -210,7 +210,7 @@ export type TidyOptions = {
   dataCapBytes?: number;
   now?: number;
   /** a line before and during a long removal - `--apply` over ~180 scratch folders (15 GB) printed nothing for minutes and
-   *  read as a hang (Dept_FA 26/11) */
+   *  read as a hang (a department repo 26/11) */
   progress?: (line: string) => void;
 };
 

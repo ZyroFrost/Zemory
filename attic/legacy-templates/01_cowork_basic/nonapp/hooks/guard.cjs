@@ -455,7 +455,7 @@ const PUSH_ARG = "(?:\\s+(?:-[Cc]\\s+\\S+|--?[\\w-]+(?:=\\S+)?))*\\s+push\\b";
 // command name sitting inside a piece of PROSE was blocked too:
 //     echo "=== git remote (not pushed) ==="   -> blocked by the git push rule
 //     echo "trying rm -rf"                     -> blocked by the recursive delete rule
-// Blocking wrongly leads straight to "a noisy gate is an ignored gate" (rule 7, .claude/skills/audit).
+// Blocking wrongly leads straight to "a noisy gate is an ignored gate" (rule 7, .claude/skills/harness-audit).
 //
 // The fix: split the line into SEGMENTS (outside quotes), read each segment's FIRST WORD as its
 // command name, then scan only the segments where that name really IS the command. `echo` is never `git`.

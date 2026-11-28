@@ -95,7 +95,7 @@ function bakDir(ctx: Context): string {
 }
 
 /** The rollback copy for a ledger about to be cut, or none when git already holds these exact bytes (tracked, no change
- *  against HEAD): `git restore` undoes the cut then, and a .bak is only an untracked file someone must clear (Dept_HR
+ *  against HEAD): `git restore` undoes the cut then, and a .bak is only an untracked file someone must clear (a department repo
  *  26/11). A ledger out of git (gitignored, no repo, no git on the machine) keeps its .bak - it has no other way back. */
 function ledgerBackup(ctx: Context, file: string): string | undefined {
   try {
@@ -198,7 +198,7 @@ export function planTodo(lines: string[]): TodoPlan {
     return j;
   };
   // An item ends at a heading, a quote, a list line at its own level or above, or a paragraph at its own level or above
-  // after a blank line - prose of the file, not part of the item (Dept_HR 26/11: the two closing paragraphs of 04_TODO went
+  // after a blank line - prose of the file, not part of the item (a department repo 26/11: the two closing paragraphs of 04_TODO went
   // to the archive with the closed item above them). A line right under the item, with no blank between, is still its
   // lazy continuation.
   const itemEnd = (i: number, indent: number): number => {

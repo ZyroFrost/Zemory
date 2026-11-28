@@ -11,12 +11,12 @@ một luật - khung 1920 × 1080 co theo cửa sổ, lớp điện thoại từ
 nhỏ - và bộ kiểm trình duyệt đo 7 cỡ bắt buộc của danh sách. Bộ kiểm không bao giờ đo một danh sách cỡ của riêng nó: các danh
 sách riêng lệch dần giữa các app, và cỡ màn không ai ghi chính là chỗ vỡ.
 
-## Khi nào
+## Khi nào áp
 - Viết hay sửa code đặt cỡ trang trình duyệt (`setDeviceMetricsOverride`, viewport, `--widths`).
 - Chạy deploy của một app mang khung.
 - Dựng bố cục phụ thuộc cửa sổ: co giãn, điểm gãy, trang toàn màn.
 
-## Làm
+## Phải làm gì
 1. Lấy cỡ từ danh sách: `import {REQUIRED_SCREENS, metricsOf} from './screens.mjs'`, vùng trang của mỗi cỡ làm cỡ trang,
    `mobile` cho điện thoại. Bộ kiểm còn thời gian thì lấy đủ `SCREENS`.
 2. Danh sách thiếu một cỡ ⇒ thêm vào danh sách trên HS (skill app-screens, version + 1) để mọi app cùng nhận.
@@ -33,7 +33,7 @@ sách riêng lệch dần giữa các app, và cỡ màn không ai ghi chính l�
   thấy.
 - ✓ Đúng: bộ kiểm import `REQUIRED_SCREENS` và vẽ mọi trang trên 7 cỡ; thanh lọc bị cắt hiện đỏ ở D4 trước khi bản được gọi là đạt.
 
-## Kiểm
+## Máy kiểm
 - Hook chặn một lần Write hay Edit trong repo app (có `frontend/config/shell.json`, hoặc `frontend/shell/` của khung) thêm vào
   code (chú thích không tính) một dòng đặt cỡ trang trình duyệt bằng số - `setDeviceMetricsOverride`, `setViewport`,
   `--window-size`, `defaultViewport`, `--widths`, `widths: [...]` - vào một file không lấy danh sách (`screens.mjs`,
