@@ -101,6 +101,27 @@ export const APP_PROCESSES: AppProcess[] = [
     hidden: true,
     note: "Lệnh `zemory` của máy chủ chạy qua cổng daemon khi wsl.exe không tới được distro (WSAETIMEDOUT sau khi đổi mạng / VPN). Một lệnh một tiến trình, chết theo khi máy chủ ngắt kết nối.",
   },
+  {
+    shownAs: "zemory.exe (child, repo auto-update)",
+    spawnedBy: "jobs/repo-autoupdate.ts",
+    lifetime: "job",
+    hidden: true,
+    note: "One `zemory sync` per known repo that is behind the store, run with the repo as cwd; killed at its timeout. One repo at a time.",
+  },
+  {
+    shownAs: "node.exe / zemory.exe (detached auto-commit)",
+    spawnedBy: "docs/auto-commit.ts (Stop hook, `background`)",
+    lifetime: "oneshot",
+    hidden: true,
+    note: "git add + commit of the turn's work, detached so the repo's own commit hooks have no Stop-hook ceiling (measured 26/11: the DW pre-commit hit the 50 s cut). Exits when the commit is done.",
+  },
+  {
+    shownAs: "wscript.exe (launch.vbs)",
+    spawnedBy: "platform/window.ts (daemon killed from outside)",
+    lifetime: "oneshot",
+    hidden: true,
+    note: "The window relaunches the daemon through %APPDATA%/zemory/launch.vbs when its heartbeat shows it was killed from outside (4.19.32). Exits once the daemon is up.",
+  },
 ];
 
 /**
@@ -110,4 +131,4 @@ export const APP_PROCESSES: AppProcess[] = [
  * spawn mà không cập nhật cả hai ⇒ đỏ. Cố tình để là SỐ chứ không phải danh sách đường dẫn —
  * đường dẫn đổi theo mỗi lần dời file, còn "có bao nhiêu chỗ phóng tiến trình" thì không.
  */
-export const spawnSites = 19;
+export const spawnSites = 22;
